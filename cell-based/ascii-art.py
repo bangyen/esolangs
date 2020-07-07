@@ -18,9 +18,10 @@ if __name__ == '__main__':
             code += re.sub(' *\n', '\n', line)
         code = [line for line in code.split('\n\n') if line.count('\n') < 6]
 
-    index = pointer = 0
-    output = bf = ''
+    bf = ''
     cells = [0]
+    index = pointer = 0
+    
     sym_dict = [
         {'-': '-'}, {'#': '.'}, {'|': ','}, {'\\': '<', '/': '>'},
         {'|': '+'}, {'_': '[', '|': ']'}
@@ -40,11 +41,10 @@ if __name__ == '__main__':
         elif char in '+-':
             cells[pointer] = (cells[pointer] + (1, -1)[char == '-']) % 256
         elif char == '.':
-            output += chr(cells[pointer])
+            print(chr(cells[pointer]), end='')
         elif char == ',':
             cells[pointer] = ord((input('Input: ') + chr(0))[0])
         else:
             if ((cells[pointer] != 0) + (char == '[')) % 2:
                 index = find_bracket(bf, index, char) - 1
         index += 1
-    print(output)
