@@ -3,11 +3,11 @@ import re
 
 
 def find_bracket(symbols, num, mode):
-    bracket = (-1) ** (mode == ']')
+    bracket = (1, -1)[mode == ']']
     while bracket:
-        num = num + (-1) ** (mode == ']')
+        num = num + (1, -1)[mode == ']']
         if (symb := symbols[num]) in '[]':
-            bracket += (-1) ** (symb == ']')
+            bracket += (1, -1)[symb == ']']
     return num
 
 
@@ -34,11 +34,11 @@ if __name__ == '__main__':
     while index < len(bf):
         char = bf[index]
         if char in '<>':
-            pointer = max(pointer + (-1) ** (char == '<'), 0)
+            pointer = max(pointer + (1, -1)[char == '<'], 0)
             if char == '>' and pointer > len(cells) - 1:
                 cells.append(0)
         elif char in '+-':
-            cells[pointer] = (cells[pointer] + (-1) ** (char == '-')) % 256
+            cells[pointer] = (cells[pointer] + (1, -1)[char == '-']) % 256
         elif char == '.':
             output += chr(cells[pointer])
         elif char == ',':
