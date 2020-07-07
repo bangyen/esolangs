@@ -2,7 +2,7 @@
 Python implementations of different esoteric programming languages.
 
 ## Implemented
--   N/A
+-   [ASCII art](https://esolangs.org/wiki/ASCII_art) (50 lines)
 
 ## Future Implementations
--   [ASCII art](https://esolangs.org/wiki/ASCII_art)
+- `None`
