@@ -6,7 +6,7 @@ Python implementations of different esoteric programming languages.
 
 -   [circlefuck](https://esolangs.org/wiki/Circlefuck) (70 lines)
 
-    - Note: The `quine` and `narcissist` programs are the only ones that don't work. The `quine` program doesn't work because the program modifies a left square bracket, causing an infinite loop. My plan is to fix this by introducing a stack that keeps track of bracket positions.
+    - Note: The `narcissist` program is the only one that doesn't work. The `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
 
 ## Future Implementations
 - `None`
