@@ -52,7 +52,6 @@ if __name__ == '__main__':
                         break
                     if (sym := chr(code[index])) in '[]':
                         bracket += (1, -1)[sym == ']']
-                index -= 1
             elif char == '[':
                 brackets.append(index)
             else:
