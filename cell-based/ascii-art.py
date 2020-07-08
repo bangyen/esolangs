@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     bf = ''
     cells = [0]
-    index = pointer = 0
+    index = pointer = new = 0
     
     sym_dict = [
         {'-': '-'}, {'#': '.'}, {'|': ','}, {'\\': '<', '/': '>'},
@@ -43,7 +43,8 @@ if __name__ == '__main__':
         elif char == '.':
             print(chr(cells[pointer]), end='')
         elif char == ',':
-            cells[pointer] = ord((input('Input: ') + chr(0))[0])
+            cells[pointer] = ord((input('\n' * new + 'Input: ') + chr(0))[0])
+            new = True
         else:
             if ((cells[pointer] != 0) + (char == '[')) % 2:
                 index = find_bracket(bf, index, char) - 1
