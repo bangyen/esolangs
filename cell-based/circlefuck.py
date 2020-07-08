@@ -2,18 +2,6 @@ import sys
 import re
 
 
-def find_bracket(symbols, num, mode):
-    bracket = (1, -1)[mode == ']']
-    original = num
-    while bracket:
-        num = (num + (1, -1)[mode == ']']) % len(symbols)
-        if num == original:
-            return
-        if (sym := chr(symbols[num])) in '[]':
-            bracket += (1, -1)[sym == ']']
-    return num
-
-
 if __name__ == '__main__':
     num_list = [
         r'\\[0-9]{3}', r'\\o[0-7]{3}',
@@ -41,6 +29,7 @@ if __name__ == '__main__':
         code = [k if type(k) == int else ord(k) for k in sum(code, [])]
 
     index = pointer = new = 0
+    brackets = []
 
     while index < len(code):
         char = chr(code[index])
@@ -54,12 +43,25 @@ if __name__ == '__main__':
             code[pointer] = ord((input('\n' * new + 'Input: ') + chr(0))[0])
             new = True
         elif char in '[]':
-            if ((code[pointer] != 0) + (char == '[')) % 2:
-                index = find_bracket(code, index, char)
-                if index is None:
-                    break
+            if not code[pointer] and char == '[':
+                bracket = 1
+                original = index
+                while bracket:
+                    index = (index + 1) % len(code)
+                    if index == original:
+                        break
+                    if (sym := chr(code[index])) in '[]':
+                        bracket += (1, -1)[sym == ']']
+                index -= 1
+            elif char == '[':
+                brackets.append(index)
+            else:
+                if code[pointer]:
+                    index = brackets.pop(-1) - 1
+                    if code[index + 1] != 91:
+                        brackets.append(index + 1)
                 else:
-                    index -= 1
+                    brackets.pop(-1)
         elif char in '@':
             break
         elif char == '#':
