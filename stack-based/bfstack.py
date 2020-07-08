@@ -1,9 +1,8 @@
 import sys
-import re
 
 
 def main():
-    code = open(sys.argsv[0]).read()
+    code = open(sys.argv[0]).read()
     line = []
     stack = [0]
     pointer = 0
