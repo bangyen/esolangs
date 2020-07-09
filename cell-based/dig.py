@@ -1,10 +1,12 @@
+import random
 import sys
 import re
 
 line = []
+code = ('', '')
 halt = above = True
 var = mole = move_num = 0
-velocity = position = code = (0, 0)
+velocity = position = (0, 0)
 directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
 mole_dict = {
@@ -41,14 +43,16 @@ def value(pointer, symbols, num=0):
     return ([sym for sym in chars if type(sym) == int] + [num])[0]
 
 
-if __name__ == '__main__':
+def main(die=False):
+    global code, velocity, halt, position, above, move_num, mole
     code = [
-        [int(k) if k.isdigit() else k for k in re.sub(' *\n', '\n', line)]
-        for line in open(sys.argv[1]).readlines()
+        [int(k) if k.isdigit() else k for k in re.sub(' *\n', '\n', code_line)]
+        for code_line in open(sys.argv[1]).readlines()
     ]
 
-    length = max(len(line) for line in code)
-    code = tuple([line + [' '] * (length - len(line)) for line in code] + [['']])
+    prob = random.randint(20, 90)
+    length = max(len(code_line) for code_line in code)
+    code = tuple([code_line + [' '] * (length - len(code_line)) for code_line in code] + [['']])
 
     if (start := code[0][0]) in '\'>':
         velocity = ((start == '\'') + 0, (start == '>') + 0)
@@ -68,6 +72,11 @@ if __name__ == '__main__':
                         (directions.index(velocity) + (-1, 1)[numb]) % 4
                         ]
             elif char == '$':
+                if die:
+                    chance = random.randint(1, 100)
+                    if chance <= prob:
+                        print('\nYou died.')
+                        break
                 above = False
                 move_num = value(position, code) - 1
         else:
@@ -88,3 +97,7 @@ if __name__ == '__main__':
             elif str(char).isalnum() or char in '.,!?':
                 mole = char if type(char) == int else ord(char)
         position = move(position, velocity)
+
+
+if __name__ == '__main__':
+    main()
