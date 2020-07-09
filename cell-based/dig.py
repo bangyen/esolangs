@@ -3,11 +3,10 @@ import sys
 import re
 
 line = []
-code = ('', '')
 halt = above = True
 var = mole = move_num = 0
 velocity = position = (0, 0)
-directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+directions = code = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
 mole_dict = {
     '%': lambda m: ord((' ', '\n')[num]) if (num := value(position, code)) in [0, 1] else m,
@@ -27,18 +26,16 @@ def move(pointer, direct):
 
 
 def value(pointer, symbols, num=0):
-    new_direct = directions[:]
-    if pointer[0] == 0:
-        new_direct.remove((-1, 0))
-    if pointer[0] == max(len(code) - 2, 0):
-        new_direct.remove((1, 0))
-    if pointer[1] == 0:
-        new_direct.remove((0, -1))
-    if pointer[1] == len(code[0]) - 1:
-        new_direct.remove((0, 1))
+    temp = directions[:]
+    new_direct = [
+        temp[0] * (pointer[0] != 0),
+        temp[1] * (pointer[1] != len(code[0]) - 1),
+        temp[2] * (pointer[0] != max(len(code) - 2, 0)),
+        temp[3] * (pointer[1] != 0)
+    ]
     chars = [
         symbols[i][j] for i, j in
-        [move(pointer, pos) for pos in new_direct]
+        [move(pointer, pos) for pos in [k for k in new_direct if k]]
     ]
     return ([sym for sym in chars if type(sym) == int] + [num])[0]
 
