@@ -5,7 +5,7 @@ Python implementations of different esoteric programming languages.
 -   [ASCII art](https://esolangs.org/wiki/ASCII_art) (50 lines)
 -   [circlefuck](https://esolangs.org/wiki/Circlefuck) (70 lines)
 -   [BFStack](https://esolangs.org/wiki/BFStack) (22 lines)
--   [Dig](https://esolangs.org/wiki/Dig) (90 lines)
+-   [Dig](https://esolangs.org/wiki/Dig) (100 lines)
 -   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot) (1 line)
 
 ## Notes
