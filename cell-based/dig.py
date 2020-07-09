@@ -19,9 +19,9 @@ mole_dict = {
 }
 
 
-def move(pointer, direct):
-    i = [0, pointer[0] + direct[0], len(code)][1]
-    j = [0, pointer[1] + direct[1], len(code[0])][1]
+def move(pointer, symbols, direct):
+    i = [0, pointer[0] + direct[0], len(symbols)][1]
+    j = [0, pointer[1] + direct[1], len(symbols[0])][1]
     return i, j
 
 
@@ -29,13 +29,13 @@ def value(pointer, symbols, num=0):
     temp = directions[:]
     new_direct = [
         temp[0] * (pointer[0] != 0),
-        temp[1] * (pointer[1] != len(code[0]) - 1),
-        temp[2] * (pointer[0] != max(len(code) - 2, 0)),
+        temp[1] * (pointer[1] != len(symbols[0]) - 1),
+        temp[2] * (pointer[0] != max(len(symbols) - 2, 0)),
         temp[3] * (pointer[1] != 0)
     ]
     chars = [
         symbols[i][j] for i, j in
-        [move(pointer, pos) for pos in [k for k in new_direct if k]]
+        [move(pointer, symbols, pos) for pos in [k for k in new_direct if k]]
     ]
     return ([sym for sym in chars if type(sym) == int] + [num])[0]
 
@@ -78,7 +78,7 @@ def main(die=False):
                 move_num = value(position, code) - 1
         else:
             if not move_num:
-                move(position, velocity)
+                move(position, code, velocity)
                 above = True
                 continue
             move_num -= 1
@@ -93,7 +93,7 @@ def main(die=False):
                 val = mole
             elif str(char).isalnum() or char in '.,!?':
                 mole = char if type(char) == int else ord(char)
-        position = move(position, velocity)
+        position = move(position, code, velocity)
 
 
 if __name__ == '__main__':
