@@ -4,7 +4,7 @@ import re
 
 line = []
 halt = above = True
-var = mole = move_num = 0
+mole = move_num = 0
 velocity = position = (0, 0)
 directions = code = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
@@ -90,7 +90,7 @@ def main(die=False):
                     mole = input('Input: ')[0]
                 mole = int(mole)
             elif char == ';':
-                val = mole
+                code[position[0]][position[1]] = mole
             elif str(char).isalnum() or char in '.,!?':
                 mole = char if type(char) == int else ord(char)
         position = move(position, code, velocity)
