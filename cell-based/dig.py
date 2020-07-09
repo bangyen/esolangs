@@ -75,7 +75,7 @@ def main(die=False):
                         print('\nYou died.')
                         break
                 above = False
-                move_num = value(position, code) - 1
+                move_num = value(position, code)
         else:
             if not move_num:
                 move(position, code, velocity)
