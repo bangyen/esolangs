@@ -10,5 +10,7 @@ Python implementations of different esoteric programming languages.
 
 -   [BFStack](https://esolangs.org/wiki/BFStack) (22 lines)
 
+-   [Dig](https://esolangs.org/wiki/Dig) (90 lines)
+
 ## Future Implementations
 - `None`
