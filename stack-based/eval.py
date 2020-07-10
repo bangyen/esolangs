@@ -31,7 +31,7 @@ def run(symbols):
         elif char == '!':
             symbols = f'{before}{stacks[st_point].pop(-1)}{after}'
         elif char == '"':
-            string = re.findall('"[^"]*"', symbols[pointer:])[0].replace('`', '"')[1:-1]
+            string = re.findall('"[^"]*["\n]', symbols[pointer:])[0].replace('`', '"')[1:-1]
             stacks[st_point].append(string)
             pointer += len(string) + 1
         elif char == '\'':
@@ -42,4 +42,4 @@ def run(symbols):
 
 
 if __name__ == '__main__':
-    run(open(sys.argv[1]).read())
+    run(open(sys.argv[1]).read() + '\n')
