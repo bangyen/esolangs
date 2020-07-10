@@ -63,7 +63,7 @@ if __name__ == '__main__':
                     if dots[k]:
                         print(dots[k], end='')
                     else:
-                        break
+                        start = False
             elif char == '~':
                 dots[k] = input('\n' * line + 'Input: ')
                 line = True
@@ -78,13 +78,14 @@ if __name__ == '__main__':
                                 temp = (ind, line.find(name))
                                 break
                     else:
-                        break
+                        start = False
                 else:
                     match = 1
                     temp = list(pos)
                     while match:
                         temp[1] += 1
                         if temp[1] == len(lines[0]):
+                            start = False
                             break
                         elif lines[temp[0]][temp[1]] == '(':
                             match += 1
@@ -104,7 +105,7 @@ if __name__ == '__main__':
                                     position[k] = (position[k][0], position[k][1] + len(warp) - 1)
                                 break
                     else:
-                        break
+                        start = False
                 elif lst := re.findall(r'\w+`s', lines[pos[0]][pos[1]:]):
                     warp = lst[0][:-1] + 'e'
                     if warp in file:
@@ -113,7 +114,7 @@ if __name__ == '__main__':
                                 position[k] = (ind, line.find(warp))
                                 break
                     else:
-                        break
+                        start = False
             elif char in '!?:':
                 func = [lambda s: s.isdigit(), lambda s: s.isalpha()][char == '!']
                 if dots[k] and func(dots[k].replace('.', '', char == '?')):
