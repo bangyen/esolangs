@@ -46,6 +46,6 @@ if __name__ == '__main__':
             cells[pointer] = ord((input('\n' * new + 'Input: ') + chr(0))[0])
             new = True
         else:
-            if ((cells[pointer] != 0) + (char == '[')) % 2:
+            if (cells[pointer] != 0) - (char == '['):
                 index = find_bracket(bf, index, char) - 1
         index += 1
