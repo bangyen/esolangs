@@ -27,7 +27,7 @@ if __name__ == '__main__':
     length = max(len(line) for line in lines)
     lines = [line + ' ' * (length - len(line)) for line in lines] + [''] * length
 
-    if file == [' ']:
+    if file == ' ':
         print(' ')
         start = False
     else:
