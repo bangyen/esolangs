@@ -9,6 +9,7 @@ Python implementations of different esoteric programming languages.
 -   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot)
 -   [dotlang](https://esolangs.org/wiki/Dotlang)
 -   [Back](https://esolangs.org/wiki/Back)
+-   [Eval](https://esolangs.org/wiki/Eval)
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
