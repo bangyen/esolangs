@@ -2,13 +2,13 @@
 Python implementations of different esoteric programming languages.
 
 ## Implemented
--   [ASCII art](https://esolangs.org/wiki/ASCII_art) (51 lines)
--   [circlefuck](https://esolangs.org/wiki/Circlefuck) (71 lines)
--   [BFStack](https://esolangs.org/wiki/BFStack) (22 lines)
--   [Dig](https://esolangs.org/wiki/Dig) (98 lines)
--   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot) (1 line)
--   [dotlang](https://esolangs.org/wiki/Dotlang) (121 lines)
--   [Back](https://esolangs.org/wiki/Back) (19 lines)
+-   [ASCII art](https://esolangs.org/wiki/ASCII_art)
+-   [circlefuck](https://esolangs.org/wiki/Circlefuck)
+-   [BFStack](https://esolangs.org/wiki/BFStack)
+-   [Dig](https://esolangs.org/wiki/Dig)
+-   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot)
+-   [dotlang](https://esolangs.org/wiki/Dotlang)
+-   [Back](https://esolangs.org/wiki/Back)
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
