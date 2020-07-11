@@ -12,6 +12,7 @@ Python implementations of different esoteric programming languages.
     -   [dotlang](https://esolangs.org/wiki/Dotlang)
     -   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot)
     -   [Movesum](https://esolangs.org/wiki/Movesum)
+    -   [RAM0](https://esolangs.org/wiki/RAM0)
 
 -   [Stack-based](https://esolangs.org/wiki/Category:Stack-based)
     -   [BFStack](https://esolangs.org/wiki/BFStack)
