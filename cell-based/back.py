@@ -13,7 +13,13 @@ while '*' in sum(code, []) and (char := code[instruct[0]][instruct[1]]) != '*':
     if char in ['<', '>']:
         pointer += (-1, 1)[char == '>']
         if not 0 <= pointer < len(cells):
-            pointer = [lambda n: cells.insert(0, n), cells.append][char == '>'](0) or max(0, pointer)
+            if char == '>':
+                cells.append(0)
+            else:
+                cells.insert(0, 0)
+                pointer = max(0, pointer)
     cells[pointer] = (cells[pointer] + (char == '-')) % 2
     cond = not cells[pointer] if char == '+' else 0
-    instruct = [(instruct[k] + velocity[k]) % len(code[0] if k else code) for k in (0, 1)]
+    for k in (0, 1):
+        instruct[k] += velocity[k]
+        instruct[k] = instruct[k] % len((code, code[0])[k])
