@@ -11,6 +11,7 @@ Python implementations of different esoteric programming languages.
     -   [Dig](https://esolangs.org/wiki/Dig)
     -   [dotlang](https://esolangs.org/wiki/Dotlang)
     -   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot)
+    -   [huf](https://github.com/Charmaster16/huf)
     -   [Movesum](https://esolangs.org/wiki/Movesum)
     -   [RAM0](https://esolangs.org/wiki/RAM0)
 
