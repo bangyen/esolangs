@@ -14,6 +14,7 @@ Python implementations of different esoteric programming languages.
     -   [huf](https://github.com/Charmaster16/huf)
     -   [Movesum](https://esolangs.org/wiki/Movesum)
     -   [RAM0](https://esolangs.org/wiki/RAM0)
+    -   [Polynomial](https://esolangs.org/wiki/Polynomial)
 
 -   [Stack-based](https://esolangs.org/wiki/Category:Stack-based)
     -   [BFStack](https://esolangs.org/wiki/BFStack)
