@@ -26,10 +26,10 @@ def interpret(code):
             temp = 0
         elif sym == '|':
             num = code[pointer + 1]
-            if type(num) == int:
+            if isinstance(num, int):
                 temp *= num
                 pointer += 1
-        elif type(sym) == int:
+        elif isinstance(sym, int):
             temp += sym
         pointer += 1
 
