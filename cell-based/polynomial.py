@@ -11,8 +11,9 @@ def prime(number):
 
 
 def brackets(string, pointer):
-    boolean = len(string[pointer]) == 1 and string[pointer][0] in [2, 6]
-    direct = (1, -1)[boolean]
+    length = len(string[pointer]) == 1
+    end = string[pointer][0] in [2, 6]
+    direct = (1, -1)[length and end]
     count = direct
     while count:
         pointer += direct
@@ -25,10 +26,7 @@ def brackets(string, pointer):
 
 
 def convert(pre):
-    pre = [
-        np.round(k) if np.imag(k) else round(np.real(k))
-        for k in pre
-    ]
+    pre = [np.round(k) for k in pre]
     pre = sorted(pre, key=lambda x: np.imag(x) or x)
     post = []
     num = 2
@@ -58,8 +56,7 @@ def convert(pre):
 def sanitize(code):
     code = code[5:].replace('x^0', '')
     reg_dict = {
-        r'^x': '1x',
-        r'(\D)x': r'\g<1>1x',
+        r'^x': '1x', r'(\D)x': r'\g<1>1x',
         r'x([+-])': r'x^1\1',
     }
     for regex in reg_dict:
@@ -101,12 +98,12 @@ if __name__ == '__main__':
             if one:
                 reg = sym_list[two - 1](reg, one)
             else:
-                lst = [
-                    lambda: print(chr(max(0, reg)), end=''),
-                    lambda: ord((input('\n' * line + 'Input: ') + chr(0))[0]) or -1
-                ]
-                reg = lst[two - 1]() or reg
-                line = 1
+                if two - 1:
+                    string = input('\n' * line + 'Input: ') + chr(0)
+                    reg = ord(string[0]) or -1
+                    line = 1
+                else:
+                    print(chr(max(0, reg)), end='')
         else:
             cond = [lambda: reg > 0, 0, lambda: reg < 0, lambda: not reg]
             if one in [2, 6]:
