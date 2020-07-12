@@ -12,10 +12,14 @@ Python implementations of different esoteric programming languages.
     -   [dotlang](https://esolangs.org/wiki/Dotlang)
     -   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot)
     -   [Movesum](https://esolangs.org/wiki/Movesum)
+    -   [RAM0](https://esolangs.org/wiki/RAM0)
 
 -   [Stack-based](https://esolangs.org/wiki/Category:Stack-based)
     -   [BFStack](https://esolangs.org/wiki/BFStack)
     -   [Eval](https://esolangs.org/wiki/Eval)
+    -   [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
+-   [Finite Automata](https://esolangs.org/wiki/Category:Finite_state_automata)
+    -   [Keys](https://esolangs.org/wiki/Keys)
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
