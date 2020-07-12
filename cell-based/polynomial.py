@@ -78,7 +78,7 @@ def sanitize(code):
 
 
 if __name__ == '__main__':
-    file = re.sub('[ \n]', '', open(sys.argv[1]).read())
+    file = re.sub(r'[^\df(x)=+-^]', '', open(sys.argv[1]).read())
     if file[:5] != 'f(x)=':
         exit()
 
