@@ -4,7 +4,7 @@
 Python implementations of different esoteric programming languages.
 
 ## Implemented
-| Register-Based (Part one)                          | Register-Based (Part two)                          | Tape-based                                         | Stack-based                                                          | Other                                          |
+| Register-Based                                     | Register-Based (cont.)                             | Tape-based                                         | Stack-based                                                          | Other                                          |
 |----------------------------------------------------|----------------------------------------------------|----------------------------------------------------|----------------------------------------------------------------------|------------------------------------------------|
 | [Dig](https://esolangs.org/wiki/Dig)               | [Lightlang](https://esolangs.org/wiki/Lightlang)   | [ASCII art](https://esolangs.org/wiki/ASCII_art)   | [BFStack](https://esolangs.org/wiki/BFStack)                         | [Bitdeque](https://esolangs.org/wiki/Bitdeque) |
 | [dotlang](https://esolangs.org/wiki/Dotlang)       | [Movesum](https://esolangs.org/wiki/Movesum)       | [Back](https://esolangs.org/wiki/Back)             | [Eval](https://esolangs.org/wiki/Eval)                               | [Keys](https://esolangs.org/wiki/Keys)         |
