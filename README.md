@@ -23,11 +23,11 @@ Python implementations of different esoteric programming languages.
     -   [Eval](https://esolangs.org/wiki/Eval)
     -   [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
 
--   [Finite Automata](https://esolangs.org/wiki/Category:Finite_state_automata)
-    -   [Keys](https://esolangs.org/wiki/Keys)
-    
 -   [Deque-based](https://esolangs.org/wiki/Category:Deque-based)
     -   [Bitdeque](https://esolangs.org/wiki/Bitdeque)
+
+-   [Finite Automata](https://esolangs.org/wiki/Category:Finite_state_automata)
+    -   [Keys](https://esolangs.org/wiki/Keys)
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
