@@ -4,30 +4,16 @@
 Python implementations of different esoteric programming languages.
 
 ## Implemented
--   [Cell-based](https://esolangs.org/wiki/Category:Cell-based)
-    -   [ASCII art](https://esolangs.org/wiki/ASCII_art)
-    -   [Back](https://esolangs.org/wiki/Back)
-    -   [circlefuck](https://esolangs.org/wiki/Circlefuck)
-    -   [Dig](https://esolangs.org/wiki/Dig)
-    -   [dotlang](https://esolangs.org/wiki/Dotlang)
-    -   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot)
-    -   [huf](https://github.com/Charmaster16/huf)
-    -   [Lightlang](https://esolangs.org/wiki/Lightlang)
-    -   [Movesum](https://esolangs.org/wiki/Movesum)
-    -   [Polynomial](https://esolangs.org/wiki/Polynomial)
-    -   [RAM0](https://esolangs.org/wiki/RAM0)
-    -   [Suffolk](https://esolangs.org/wiki/Suffolk)
-
--   [Stack-based](https://esolangs.org/wiki/Category:Stack-based)
-    -   [BFStack](https://esolangs.org/wiki/BFStack)
-    -   [Eval](https://esolangs.org/wiki/Eval)
-    -   [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
-
--   [Deque-based](https://esolangs.org/wiki/Category:Deque-based)
-    -   [Bitdeque](https://esolangs.org/wiki/Bitdeque)
-
--   [Finite Automata](https://esolangs.org/wiki/Category:Finite_state_automata)
-    -   [Keys](https://esolangs.org/wiki/Keys)
+| Register-Based                                     | Tape-based                                         | Other                                                |
+|----------------------------------------------------|----------------------------------------------------|------------------------------------------------------|
+| [Dig](https://esolangs.org/wiki/Dig)               | [ASCII art](https://esolangs.org/wiki/ASCII_art)   | [BFStack](https://esolangs.org/wiki/BFStack)         |
+| [dotlang](https://esolangs.org/wiki/Dotlang)       | [Back](https://esolangs.org/wiki/Back)             | [Bitdeque](https://esolangs.org/wiki/Bitdeque)       |
+| [DSDLAI](https://esolangs.org/wiki/DSDLAI)         | [circlefuck](https://esolangs.org/wiki/Circlefuck) | [Eval](https://esolangs.org/wiki/Eval)               |
+| [huf](https://github.com/Charmaster16/huf)         | [Suffolk](https://esolangs.org/wiki/Suffolk)       | [Keys](https://esolangs.org/wiki/Keys)               |
+| [Lightlang](https://esolangs.org/wiki/Lightlang)   |                                                    | [TTS](https://esolangs.org/wiki/The_Temporary_Stack) |
+| [Movesum](https://esolangs.org/wiki/Movesum)       |                                                    |                                                      |
+| [Polynomial](https://esolangs.org/wiki/Polynomial) |                                                    |                                                      |
+| [RAM0](https://esolangs.org/wiki/RAM0)             |                                                    |                                                      |
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
