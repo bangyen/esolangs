@@ -11,13 +11,17 @@ Python implementations of different esoteric programming languages.
     -   [Dig](https://esolangs.org/wiki/Dig)
     -   [dotlang](https://esolangs.org/wiki/Dotlang)
     -   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot)
+    -   [huf](https://github.com/Charmaster16/huf)
+    -   [Lightlang](https://esolangs.org/wiki/Lightlang)
     -   [Movesum](https://esolangs.org/wiki/Movesum)
     -   [RAM0](https://esolangs.org/wiki/RAM0)
+    -   [Polynomial](https://esolangs.org/wiki/Polynomial)
 
 -   [Stack-based](https://esolangs.org/wiki/Category:Stack-based)
     -   [BFStack](https://esolangs.org/wiki/BFStack)
     -   [Eval](https://esolangs.org/wiki/Eval)
     -   [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
+
 -   [Finite Automata](https://esolangs.org/wiki/Category:Finite_state_automata)
     -   [Keys](https://esolangs.org/wiki/Keys)
 
