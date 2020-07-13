@@ -18,5 +18,5 @@ while point < len(code):
         reg = func(reg) if count else func() or reg
     elif sym == 'GOTO':
         if point < len(code) - 1 and (num := code[point + 1]).isdigit():
-            pointer = max(-1, int(num) - 2)
+            point = max(-1, int(num) - 2) if reg else point
     point += 1
