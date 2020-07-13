@@ -25,7 +25,11 @@ Python implementations of different esoteric programming languages.
 
 -   [Finite Automata](https://esolangs.org/wiki/Category:Finite_state_automata)
     -   [Keys](https://esolangs.org/wiki/Keys)
+    
+-   [Deque-based](https://esolangs.org/wiki/Category:Deque-based)
+    -   [Bitdeque](https://esolangs.org/wiki/Bitdeque)
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
 -   For **dotlang**, the interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
+-   For **Suffolk**, although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
