@@ -4,27 +4,14 @@
 Python implementations of different esoteric programming languages.
 
 ## Implemented
--   [Cell-based](https://esolangs.org/wiki/Category:Cell-based)
-    -   [ASCII art](https://esolangs.org/wiki/ASCII_art)
-    -   [Back](https://esolangs.org/wiki/Back)
-    -   [circlefuck](https://esolangs.org/wiki/Circlefuck)
-    -   [Dig](https://esolangs.org/wiki/Dig)
-    -   [dotlang](https://esolangs.org/wiki/Dotlang)
-    -   [DSDLAI](https://esolangs.org/wiki/Dig_straight_down_like_an_idiot)
-    -   [huf](https://github.com/Charmaster16/huf)
-    -   [Lightlang](https://esolangs.org/wiki/Lightlang)
-    -   [Movesum](https://esolangs.org/wiki/Movesum)
-    -   [RAM0](https://esolangs.org/wiki/RAM0)
-    -   [Polynomial](https://esolangs.org/wiki/Polynomial)
-
--   [Stack-based](https://esolangs.org/wiki/Category:Stack-based)
-    -   [BFStack](https://esolangs.org/wiki/BFStack)
-    -   [Eval](https://esolangs.org/wiki/Eval)
-    -   [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
-
--   [Finite Automata](https://esolangs.org/wiki/Category:Finite_state_automata)
-    -   [Keys](https://esolangs.org/wiki/Keys)
+| Register-Based                                     | Register-Based (cont.)                             | Tape-based                                         | Stack-based                                                          | Other                                          |
+|----------------------------------------------------|----------------------------------------------------|----------------------------------------------------|----------------------------------------------------------------------|------------------------------------------------|
+| [Dig](https://esolangs.org/wiki/Dig)               | [Lightlang](https://esolangs.org/wiki/Lightlang)   | [ASCII art](https://esolangs.org/wiki/ASCII_art)   | [BFStack](https://esolangs.org/wiki/BFStack)                         | [Bitdeque](https://esolangs.org/wiki/Bitdeque) |
+| [dotlang](https://esolangs.org/wiki/Dotlang)       | [Movesum](https://esolangs.org/wiki/Movesum)       | [Back](https://esolangs.org/wiki/Back)             | [Eval](https://esolangs.org/wiki/Eval)                               | [Keys](https://esolangs.org/wiki/Keys)         |
+| [DSDLAI](https://esolangs.org/wiki/DSDLAI)         | [Polynomial](https://esolangs.org/wiki/Polynomial) | [circlefuck](https://esolangs.org/wiki/Circlefuck) | [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack) |                                                |
+| [huf](https://github.com/Charmaster16/huf)         | [RAM0](https://esolangs.org/wiki/RAM0)             | [Suffolk](https://esolangs.org/wiki/Suffolk)       |                                                                      |                                                |
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
 -   For **dotlang**, the interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
+-   For **Suffolk**, although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
