@@ -1,8 +1,6 @@
-import sys
-
 deque = []
 point = reg = num = 0
-code = open(sys.argv[1]).read().split()
+file = open(__import__('sys').argv[1]).read()
 
 sym_dict = {
     'PUSH': lambda: deque.append(reg),
@@ -12,7 +10,7 @@ sym_dict = {
     'INVERT': lambda r: not reg
 }
 
-while point < len(code):
+while point < len(code := file.split()):
     if (sym := code[point]) in sym_dict:
         count = (func := sym_dict[sym]).__code__.co_argcount
         reg = func(reg) if count else (func() or reg)
