@@ -54,7 +54,7 @@ if __name__ == '__main__':
             elif char in '^>v<':
                 velocity[k] = directions['^>v<'.find(char)]
             elif char == '#':
-                lst = re.findall(r'#(?:\d+|\d+\.\d+|`.+`)', lines[pos[0]][pos[1]:])
+                lst = re.findall(r'#(?:\d+\.\d+|\d+|`.+`)', lines[pos[0]][pos[1]:])
                 if lst:
                     dots[k] = lst[0][1:].replace('`', '')
                     if velocity[k] == (0, 1):

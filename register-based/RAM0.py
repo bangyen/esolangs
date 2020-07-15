@@ -23,3 +23,4 @@ if __name__ == '__main__':
             if nums := re.findall('GOTO [0-9]+', code[point]):
                 point = max(-1, int(nums[0][5:]) - 2)
         point += 1
+    print(ram, point, reg)
