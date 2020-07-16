@@ -2,8 +2,7 @@ import sys
 import re
 
 ram = {}
-point = 0
-reg = [0, 0]
+reg = [(point := 0), 0]
 
 sym_dict = {
     'C': lambda: point + (not reg[0]),
@@ -15,12 +14,10 @@ sym_dict = {
 }
 
 if __name__ == '__main__':
-    code = [line.strip() + ' ' * 5 for line in open(sys.argv[1])]
+    code = [line.strip() + ' ' for line in open(sys.argv[1])]
     while point < len(code):
         if (char := code[point][0]) in sym_dict:
             point = sym_dict[char]() or point
-        elif code[point][:5] == 'GOTO ':
-            if nums := re.findall('GOTO [0-9]+', code[point]):
-                point = max(-1, int(nums[0][5:]) - 2)
+        elif nums := re.findall('^GOTO *[0-9]+', code[point]):
+            point = max(-1, int(nums[0][4:]) - 2)
         point += 1
-    print(ram, point, reg)
