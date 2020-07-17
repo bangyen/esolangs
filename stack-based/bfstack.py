@@ -10,7 +10,7 @@ sym_dict = {
     '+': lambda: stack.append((stack.pop(-1) + 1) % 256),
     '-': lambda: stack.append((stack.pop(-1) - 1) % 256),
     '.': lambda: print(chr(stack[-1]), end='') or line.append(1),
-    ',': lambda: stack.append(ord((input('\nInput: '[line[-1]:]) + '\0')[0]))
+    ',': lambda: stack.append(ord((input('\nInput: '[not line[-1]:]) + '\0')[0]))
 }
 
 while pointer < len(code):
