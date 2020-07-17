@@ -14,9 +14,12 @@ sym_dict = {
 }
 
 while pointer < len(code):
-    x = sym_dict[char]() if (char := code[pointer]) in sym_dict else 0
-    bracket = (-1, 1)[char == '['] if char in '[]' and (stack[-1] != 0) - (char == '[') else 0
+    char = code[pointer]
+    x = sym_dict[char]() if char in sym_dict else 0
+    cond = char in '[]' and (stack[-1] != 0) - (char == '[')
+    bracket = (-1, 1)[char == '['] if cond else 0
     while bracket:
         pointer += (-1, 1)[char == '[']
-        bracket += (-1, 1)[code[pointer] == '['] * (code[pointer] in '[]')
+        bracket += (-1, 1)[code[pointer] == '[']
+            * (code[pointer] in '[]')
     pointer += 1
