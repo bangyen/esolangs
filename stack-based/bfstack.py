@@ -1,6 +1,6 @@
 code = open(__import__('sys').argv[1]).read()
 
-line = []
+line  = [0]
 stack = [0]
 pointer = 0
 
@@ -9,8 +9,8 @@ sym_dict = {
     '<': lambda: stack.pop(-1) if stack else 0,
     '+': lambda: stack.append((stack.pop(-1) + 1) % 256),
     '-': lambda: stack.append((stack.pop(-1) - 1) % 256),
-    '.': lambda: print(chr(stack[-1]), end=''),
-    ',': lambda: stack.append(ord((input('\n' * bool(line) + 'Input: ') + chr(0))[0])) or line.append(0)
+    '.': lambda: print(chr(stack[-1]), end='') or line.append(1),
+    ',': lambda: stack.append(ord((input('\nInput: '[line[-1]:]) + '\0')[0]))
 }
 
 while pointer < len(code):
@@ -20,6 +20,6 @@ while pointer < len(code):
     bracket = (-1, 1)[char == '['] if cond else 0
     while bracket:
         pointer += (-1, 1)[char == '[']
-        bracket += (-1, 1)[code[pointer] == '[']
+        bracket += (-1, 1)[code[pointer] == '['] \
             * (code[pointer] in '[]')
     pointer += 1
