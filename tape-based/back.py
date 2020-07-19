@@ -18,10 +18,10 @@ while char := code[ins[0]][ins[1]]:
     if char == '*':
         break
     elif char in '\\/':
-        mul = -1 ** (char == '/')
+        mul = (-1) ** (char == '/')
         vel = [k * mul for k in vel][::-1]
     elif char in '<>':
-        point += -1 ** (char == '<')
+        point += (-1) ** (char == '<')
         if not 0 <= point < len(cells):
             if char == '>':
                 cells.append(0)
