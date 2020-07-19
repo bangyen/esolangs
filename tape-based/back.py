@@ -5,7 +5,7 @@ inst = (cells := [0]) * 2
 
 funcs = [lambda n: cells.insert(0, n), cells.append]
 code = [
-    list(line) + [' '] * (max(map(len, file)) - len(line))
+    line + ' ' * (max(map(len, file)) - len(line))
     for line in file
 ]
 
