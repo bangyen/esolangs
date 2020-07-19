@@ -14,8 +14,7 @@ def add(pos, move, sym):
     return [x, y]
 
 
-while True:
-    char = code[ins[0]][ins[1]]
+while char := code[ins[0]][ins[1]]:
     if char == '*':
         break
     elif char in '\\/':
