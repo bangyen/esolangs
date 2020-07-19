@@ -1,22 +1,35 @@
-from sys import argv
+import sys
 
-pointer = cond = char = 0
-inst = (cells := [0]) * 2
-vel = (0, 1)
+ins = cells = [0, 0]
+vel = [(point := 0), 1]
 
-code = [list(line) for line in open(argv[1]).readlines()]
-code = [line + [' '] * (max(len(lst) for lst in code) - len(line)) for line in code]
-funcs = [lambda n: cells.insert(0, n), cells.append]
+file = open(sys.argv[1]).readlines()
+size = max(len(lst) for lst in file)
+code = [(line + ' ' * size)[:size] for line in file]
 
-while '*' in sum(code, []) and (char := code[inst[0]][inst[1]]) != '*':
-    if char in '\\/':
-        vel = [k * (-1, 1)[char == '\\'] for k in (vel[1], vel[0])]
+
+def add(pos, move, sym):
+    x = (pos[0] + move[0]) % len(sym)
+    y = (pos[1] + move[1]) % len(sym[0])
+    return [x, y]
+
+
+while char := code[ins[0]][ins[1]]:
+    if char == '*':
+        break
+    elif char in '\\/':
+        mul = (-1) ** (char == '/')
+        vel = [k * mul for k in vel][::-1]
     elif char in '<>':
-        pointer += (-1, 1)[char == '>']
-        if not 0 <= pointer < len(cells):
-            funcs[char == '>'](0)
-            pointer = max(0, pointer)
-    cells[pointer] = (cells[pointer] + (char == '-')) % 2
-    for k in (0, 1):
-        inst[k] += vel[k] * ((not cells[pointer]) * (char == '+') + 1)
-        inst[k] = inst[k] % len((code, code[0])[k])
+        point += (-1) ** (char == '<')
+        if not 0 <= point < len(cells):
+            if char == '>':
+                cells.append(0)
+            else:
+                cells.insert(0, 0)
+            point = max(0, point)
+    elif char == '-':
+        cells[point] = not cells[point]
+    elif char == '+':
+        ins = add(ins, vel, code)
+    ins = add(ins, vel, code)
