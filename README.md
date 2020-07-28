@@ -10,7 +10,7 @@ Python implementations of different esoteric programming languages. Each interpr
 | [dotlang](https://esolangs.org/wiki/Dotlang)       | [Movesum](https://esolangs.org/wiki/Movesum)         | [Back](https://esolangs.org/wiki/Back)             | [Eval](https://esolangs.org/wiki/Eval)                               | [Keys](https://esolangs.org/wiki/Keys)         |
 | [DSDLAI](https://esolangs.org/wiki/DSDLAI)         | [Polynomial](https://esolangs.org/wiki/Polynomial)   | [circlefuck](https://esolangs.org/wiki/Circlefuck) | [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack) |                                                |
 | [huf](https://esolangs.org/wiki/Huf)               | [RAM0](https://esolangs.org/wiki/RAM0)               | [Suffolk](https://esolangs.org/wiki/Suffolk)       |                                                                      |                                                |
-| [Lightlang](https://esolangs.org/wiki/Lightlang)   |                                                      |                                                    |                                                                      |                                                |
+| [Lightlang](https://esolangs.org/wiki/Lightlang)   |                                                      | [EXCON](https://esolangs.org/wiki/EXCON)           |                                                                      |                                                |
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
