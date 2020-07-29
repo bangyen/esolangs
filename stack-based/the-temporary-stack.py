@@ -18,7 +18,6 @@ def run(char):
         string = input('\n' * line + 'Input: ')
         for ch in string:
             stack.append(ord(ch))
-        line = True
     elif char == 'v':
         if nums := re.findall('^v[0-9]+', code[pointer:]):
             stack.append(int(nums[0][1:]))
@@ -49,6 +48,7 @@ def run(char):
         command -= 1
     while stack and sum(stack[1:]) / 2 > stack[0]:
         print((chr, lambda n: n)[integer](stack.pop(0) - 1), end=' ' * integer)
+        line = True
 
 
 if __name__ == '__main__':
