@@ -18,7 +18,6 @@ def convert(func):
                   [i - 2 ** (num - j - 1) for i in pos]
             for k in pos:
                 lines[k] = lines[k][:-2] + '> '
-
         else:
             for k in range(2 ** num):
                 arg_list = [0] * num + [int(i) for i in bin(k)[2:]]
