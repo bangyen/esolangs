@@ -18,3 +18,4 @@ Python implementations of different esoteric programming languages. Each interpr
 -   For **dotlang**, the interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 -   For **Suffolk**, although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
 -   The `binary.py` program implements a given boolean function in Dig.
+-   The `generate.py` program implements a function in Suffolk which outputs a given string.
