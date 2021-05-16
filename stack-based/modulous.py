@@ -7,7 +7,7 @@ def run(code):
     code = code[1:-1].split('][')
     var = {f'VAR{k}': 0 for k in range(1, 5)}
 
-    line = False
+    line = 'INP' not in code[0]
     inp = True
     ind = 0
     stk = []
