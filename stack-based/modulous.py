@@ -52,12 +52,12 @@ def run(code):
             print(n if 'INT' in mod else chr(n), end='')
             inp = True
         elif 'INP' in mod:
-            n = input('\n' * (line and inp) + 'Input: ')
+            n = input('\n' * inp + 'Input: ')
             inp = False
 
             if 'INT' in mod:
                 while not n.isnumeric():
-                    n = input('\n' * (line and inp) + 'Input: ')
+                    n = input('\n' * inp + 'Input: ')
                 stk.append(int(n))
             else:
                 stk += [ord(c) for c in n][::-1]
