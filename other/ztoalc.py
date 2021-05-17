@@ -11,7 +11,7 @@ def run(code):
 
         if exp == 'input':
             s = ord(input('\n' * inp + 'Input: ')[0])
-            inp = True
+            inp = False
             return s
         elif exp in var:
             return var.get(exp)
