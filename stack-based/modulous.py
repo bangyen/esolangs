@@ -7,19 +7,14 @@ def run(code):
     code = code[1:-1].split('][')
     var = {f'VAR{k}': 0 for k in range(1, 5)}
 
-    line = 'INP' not in code[0]
-    inp = True
+    inp = False
     ind = 0
     stk = []
 
     while ind < len(code):
         mod = code[ind]
-        ind += 1
-
-        if 'INP' not in mod:
-            inp = True
-
         arg = mod.split()
+        ind += 1
 
         if 'JMP' in mod:
             cond = True
@@ -55,14 +50,14 @@ def run(code):
                 n = stk.pop()
 
             print(n if 'INT' in mod else chr(n), end='')
+            inp = True
         elif 'INP' in mod:
-            n = input('\n' * (line and inp) + 'Input: ')
-            line = True
+            n = input('\n' * inp + 'Input: ')
             inp = False
 
             if 'INT' in mod:
                 while not n.isnumeric():
-                    n = input('\n' * (line and inp) + 'Input: ')
+                    n = input('\n' * inp + 'Input: ')
                 stk.append(int(n))
             else:
                 stk += [ord(c) for c in n][::-1]
