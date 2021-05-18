@@ -36,4 +36,4 @@ Sorted by target language.
 
 ## Miscellaneous
 -   The `binary.py` program implements a given boolean function in Dig.
--   The `generate.py` program implements a function in Suffolk which outputs a given string.
+-   The `generate.py` program implements a function in different languages which output a given string.
