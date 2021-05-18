@@ -24,8 +24,8 @@ Implementations written in languages other than Python.
 Sorted by target language.
 | C                                            | x86 Assembly                                 |
 |----------------------------------------------|----------------------------------------------|
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Suffolk](https://esolangs.org/wiki/Suffolk) |
-| [BFStack](https://esolangs.org/wiki/BFStack) |                                              |
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [BFStack](https://esolangs.org/wiki/BFStack) |
+| [BFStack](https://esolangs.org/wiki/BFStack) | [Suffolk](https://esolangs.org/wiki/Suffolk) |
 | [EXCON](https://esolangs.org/wiki/EXCON)     |                                              |
 | [RAM0](https://esolangs.org/wiki/RAM0)       |                                              |
 
