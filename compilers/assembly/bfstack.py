@@ -75,6 +75,7 @@ def comp(code):
         ind += num
 
     res += '\n\tmov eax, 1\n' \
+        + '\tmov ebx, 0\n' \
         + '\tint 0x80\n'
 
     def end(s):
