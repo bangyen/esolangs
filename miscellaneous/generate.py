@@ -55,3 +55,24 @@ def container(text):
         + str(2 * len(text) - 2)
 
     return res
+
+
+def brainif(text):
+    res = ''
+    acc = 0
+
+    for c in text:
+        if (n := ord(c)) < acc:
+            res += f'\n if {acc} move right\n'
+            for k in range(n):
+                res += f'if {k} increment\n'
+            res += f'if {n} output\n'
+        else:
+            res += '\n'
+            for k in range(acc, n):
+                res += f'if {k} increment\n'
+            res += f'if {n} output\n'
+
+        acc = ord(c)
+
+    return res.strip()
