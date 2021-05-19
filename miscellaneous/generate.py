@@ -63,7 +63,7 @@ def brainif(text):
 
     for c in text:
         if (n := ord(c)) < acc:
-            res += f'\n if {acc} move right\n'
+            res += f'\nif {acc} move right\n'
             for k in range(n):
                 res += f'if {k} increment\n'
             res += f'if {n} output\n'
