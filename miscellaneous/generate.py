@@ -10,6 +10,7 @@ def suffolk(s):
         res += f'{a * "!"}{c * ">!"}><{b * "<"}.!>><>!\n'
     return res.strip()
 
+
 def bfstack(text):
     res = '>\n'
     acc = 0
@@ -26,6 +27,7 @@ def bfstack(text):
         acc = ord(c)
 
     return res
+
 
 def container(text):
     ins = ''
