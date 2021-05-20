@@ -80,7 +80,7 @@ def comp(code):
         ind += num
 
     res += '\n\tmov eax, 1\n' \
-        + '\tmov ebx, 0\n' \
+        + '\txor ebx, ebx\n' \
         + '\tint 0x80\n'
 
     def end(s):
@@ -111,7 +111,7 @@ def comp(code):
     if ins[','][1]:
         res += '\ninput:\n' \
             + '\tmov eax, 3\n' \
-            + '\tmov ebx, 0\n' \
+            + '\txor ebx, ebx\n' \
             + '\tdec ecx\n' \
             + '\tint 0x80\n' \
             + end('input')
