@@ -67,18 +67,18 @@ def convert(code, num):
 
         ind += n
 
-    res += '\n\tsub ebx, 1\n' \
+    res += '\n\tdec ebx\n' \
         '\tcmp ebx, 0\n' \
         '\tjg main\n' \
         '\tmov eax, 1\n' \
-        '\tmov ebx, 0\n' \
+        '\txor ebx, ebx\n' \
         '\tint 0x80'
 
     if inp:
         res += '\n\ninput:\n' \
             '\tpush ebx\n' \
             '\tmov eax, 3\n' \
-            '\tmov ebx, 0\n' \
+            '\txor ebx, ebx\n' \
             '\tint 0x80\n' \
             '\tadd esi, [ecx]\n' \
             '\tpop ebx\n' \
@@ -88,19 +88,19 @@ def convert(code, num):
             '\tcmp esi, 0\n' \
             '\tje done_o\n' \
             '\tpush ebx\n' \
-            '\tsub esi, 1\n' \
+            '\tdec esi\n' \
             '\tpush esi\n' \
             '\tmov eax, 4\n' \
             '\tmov ebx, 1\n' \
             '\tint 0x80 \n' \
             '\tpop esi\n' \
-            '\tadd esi, 1\n' \
+            '\tinc esi\n' \
             '\tpop ebx\n' \
             'done_o:\n' \
             '\tret'
     if exc:
         res += '\n\nexcl:\n' \
-            '\tadd DWORD [edi], 1\n' \
+            '\tinc DWORD [edi]\n' \
             '\tsub [edi], esi\n' \
             '\tcmp DWORD [edi], 0\n' \
             '\tjge done_e\n' \
