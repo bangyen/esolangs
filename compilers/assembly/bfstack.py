@@ -49,10 +49,15 @@ def comp(code):
 
             ins[c][1] = True
         elif c in '+-':
-            if (n := num[0]) < 0:
-                res += f'\tsub byte [ecx], {-n}\n'
-            else:
-                res += f'\tadd byte [ecx], {n}\n'
+            if n := num[0]:
+                if n > 1:
+                    res += f'\tadd byte [ecx], {n}\n'
+                elif n == 1:
+                    res += f'\tinc byte [ecx]\n'
+                elif n == -1:
+                    res += f'\tdec byte [ecx]\n'
+                else:
+                    res += f'\tsub byte [ecx], {-n}\n'
 
             ind = num[1]
             continue
@@ -79,15 +84,15 @@ def comp(code):
         + '\tint 0x80\n'
 
     def end(s):
-        return '\tsub edx, 1\n' \
+        return '\tdec edx\n' \
             + '\tcmp edx, 0\n' \
             + f'\tjg {s}\n' \
-            + '\tmov edx, 1\n' \
+            + '\tinc edx\n' \
             + '\tret\n'
 
     if ins['>'][1]:
         res += '\nright:\n' \
-            + '\tsub ecx, 1\n' \
+            + '\tdec ecx\n' \
             + '\tmov byte [ecx], 0\n' \
             + end('right')
     if ins['<'][1]:
@@ -95,7 +100,7 @@ def comp(code):
             + '\tlea edi, [esp - 1]\n' \
             + '\tcmp ecx, edi\n' \
             + '\tje done\n' \
-            + '\tadd ecx, 1\n' \
+            + '\tinc ecx\n' \
             + end('left\ndone:')
     if ins['.'][1]:
         res += '\noutput:\n' \
@@ -107,7 +112,8 @@ def comp(code):
         res += '\ninput:\n' \
             + '\tmov eax, 3\n' \
             + '\tmov ebx, 0\n' \
-            + '\tsub ecx, 1\n' \
+            + '\tdec ecx\n' \
+            + '\tint 0x80\n' \
             + end('input')
 
     return res
