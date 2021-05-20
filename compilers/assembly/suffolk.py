@@ -42,11 +42,11 @@ def convert(code, num):
                 '\tlea edi, [ecx - 4]'
 
             if n > 2:
-                s += \
-                    f'\n\tmov edx, {n - 1}\n' \
+                s += f'\n\tmov edx, {n - 1}\n' \
                     '\tcall left'
             else:
-                s += (n - 1) * '\n\tadd esi, [edi]'
+                s += '\n\tadd esi, [edi]' \
+                    * (n - 1)
 
             add = True
         elif c == '.':
@@ -57,7 +57,8 @@ def convert(code, num):
             inp = True
         else:
             s = 'call excl' \
-                + (n > 1) * f'\n\tadd DWORD [edi], {n - 1}'
+                + f'\n\tadd DWORD [edi], {n - 1}' \
+                * (n > 1)
             exc = True
 
         if c in '.,':
