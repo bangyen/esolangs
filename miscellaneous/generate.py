@@ -1,16 +1,3 @@
-def suffolk(s):
-    res = '>>!' * 12 + '\n'
-
-    for c in s:
-        n = ord(c) + 1
-        a = int(n ** 0.5)
-        b = n // a
-        c = n % a
-
-        res += f'{a * "!"}{c * ">!"}><{b * "<"}.!>><>!\n'
-    return res.strip()
-
-
 def bfstack(text):
     res = '>\n'
     acc = 0
@@ -27,6 +14,27 @@ def bfstack(text):
         acc = ord(c)
 
     return res
+
+
+def brainif(text):
+    res = ''
+    acc = 0
+
+    for c in text:
+        if (n := ord(c)) < acc:
+            res += f'\nif {acc} move right\n'
+            for k in range(n):
+                res += f'if {k} increment\n'
+            res += f'if {n} output\n'
+        else:
+            res += '\n'
+            for k in range(acc, n):
+                res += f'if {k} increment\n'
+            res += f'if {n} output\n'
+
+        acc = ord(c)
+
+    return res.strip()
 
 
 def container(text):
@@ -57,22 +65,14 @@ def container(text):
     return res
 
 
-def brainif(text):
-    res = ''
-    acc = 0
+def suffolk(s):
+    res = '>>!' * 12 + '\n'
 
-    for c in text:
-        if (n := ord(c)) < acc:
-            res += f'\nif {acc} move right\n'
-            for k in range(n):
-                res += f'if {k} increment\n'
-            res += f'if {n} output\n'
-        else:
-            res += '\n'
-            for k in range(acc, n):
-                res += f'if {k} increment\n'
-            res += f'if {n} output\n'
+    for c in s:
+        n = ord(c) + 1
+        a = int(n ** 0.5)
+        b = n // a
+        c = n % a
 
-        acc = ord(c)
-
+        res += f'{a * "!"}{c * ">!"}><{b * "<"}.!>><>!\n'
     return res.strip()
