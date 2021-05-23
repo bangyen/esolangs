@@ -14,11 +14,10 @@ Python implementations of different esoteric programming languages. Each interpr
 
 ## Extra
 Implementations written in languages other than Python.
-| Lean                                                                 | Ruby                                                                 | x86 Assembly                                               | R                                        |
-|----------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------------------------|------------------------------------------|
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [bit~](https://esolangs.org/wiki/Bit~)                               | [Stun Step](https://esolangs.org/wiki/Stun_Step)           | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [EXCON](https://esolangs.org/wiki/EXCON)                             | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) |                                          |
-| [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                                                      |                                                            |                                          |
+| Lean                                                                 | x86 Assembly                                               | Ruby                                   | R                                        |
+|----------------------------------------------------------------------|------------------------------------------------------------|----------------------------------------|------------------------------------------|
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [Stun Step](https://esolangs.org/wiki/Stun_Step)           | [bit~](https://esolangs.org/wiki/Bit~) | [EXCON](https://esolangs.org/wiki/EXCON) |
+| [EXCON](https://esolangs.org/wiki/EXCON)                             | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) |                                        |                                          |
 
 ## Compilers
 Sorted by target language.
