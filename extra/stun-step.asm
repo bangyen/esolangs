@@ -1,8 +1,10 @@
 global _start
 _start:
-	lea ecx, [esp - 16]
-	mov ebx, 0
+	lea ecx, [esp - 20]
+	xor ebx, ebx
 	mov edx, 1
+	mov edi, 1
+	mov esi, 1
 .input:
 	mov eax, 3
 	int 80h
@@ -12,9 +14,9 @@ _start:
 
 	mov byte [ecx], 0
 	sub ecx, 4
-	mov edi, ecx
+	mov eax, ecx
 	dec dword [ecx]
-	lea edx, [esp - 15]
+	lea edx, [esp - 19]
 .parse:
 	dec edx
 	cmp byte [edx], '+'
@@ -29,15 +31,16 @@ _start:
 	cmp byte [edx], 0
 	jne .parse
 
-	lea edx, [esp - 15]
+	lea edx, [esp - 19]
 	cmp dword [ecx], 0
 	jge .parse
 
-	mov ecx, edi
+	mov ecx, eax
 .state:
 	inc dword [ecx]
 	call output
-	cmp dword [ecx], 0
+	dec edi
+	cmp edi, 0
 	je .final
 	
 	mov dword [ecx], ' '
@@ -46,7 +49,7 @@ _start:
 	jmp .state
 .final:
 	mov eax, 1
-	mov ebx, 0
+	xor ebx, ebx
 	int 80h
 
 .plus:
@@ -60,17 +63,23 @@ _start:
 .right:
 	cmp dword [ecx], -1
 	je .parse
+	inc esi
 	sub ecx, 4
+	cmp edi, esi
+	jge .parse
+	inc edi
 	jmp .parse
 .left:
 	cmp ecx, edi
 	je .parse
 	cmp dword [ecx], -1
 	je .parse
+	dec esi
 	add ecx, 4
 	jmp .parse
 
 output:
+	push edi
 	mov edi, [ecx]
 	mov eax, 10
 .max:
@@ -97,6 +106,7 @@ output:
 	
 	cmp eax, 1
 	jne .main
+	pop edi
 	ret
 
 print:
