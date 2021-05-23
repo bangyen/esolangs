@@ -14,11 +14,11 @@ Python implementations of different esoteric programming languages. Each interpr
 
 ## Extra
 Implementations written in languages other than Python.
-| Lean                                                                 | Ruby                                                                 | R                                        |
-|----------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------|
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [bit~](https://esolangs.org/wiki/Bit~)                               | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [EXCON](https://esolangs.org/wiki/EXCON)                             | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                          |
-| [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                                                      |                                          |
+| Lean                                                                 | Ruby                                                                 | R                                        | x86 Assembly                                     |
+|----------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------|--------------------------------------------------|
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [bit~](https://esolangs.org/wiki/Bit~)                               | [EXCON](https://esolangs.org/wiki/EXCON) | [Stun Step](https://esolangs.org/wiki/Stun_Step) |
+| [EXCON](https://esolangs.org/wiki/EXCON)                             | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                          |                                                  |
+| [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                                                      |                                          |                                                  |
 
 ## Compilers
 Sorted by target language.
