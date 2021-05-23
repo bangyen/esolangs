@@ -74,7 +74,7 @@ _start:
 	jmp .parse
 
 output:
-    push edi
+	push edi
 	mov edi, [ecx]
 	mov eax, 10
 .max:
