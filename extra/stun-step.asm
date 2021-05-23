@@ -28,6 +28,11 @@ _start:
 	
 	cmp byte [edx], 0
 	jne .parse
+
+	lea edx, [esp - 15]
+	cmp dword [ecx], 0
+	jge .parse
+
 	mov ecx, edi
 .state:
 	inc dword [ecx]
