@@ -28,9 +28,7 @@ while (c = code[i])
     tape = tape.push(0) if cond
     cell += 1
   when '<'
-    if cell.zero?
-      tape = tape.insert(0, 0)
-    else
+    if cell.nonzero?
       cell -= 1
     end
   when ')'
