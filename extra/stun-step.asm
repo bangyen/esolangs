@@ -5,7 +5,7 @@ _start:
 	mov edx, 1
 .input:
 	mov eax, 3
-	int 0x80
+	int 80h
 	dec ecx
 	cmp eax, 0
 	jg .input
