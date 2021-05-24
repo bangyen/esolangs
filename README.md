@@ -14,11 +14,11 @@ Python implementations of different esoteric programming languages. Each interpr
 
 ## Extra
 Implementations written in languages other than Python.
-| Lean                                                                 | Ruby                                                                 | R                                        |
-|----------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------|
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [bit~](https://esolangs.org/wiki/Bit~)                               | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [EXCON](https://esolangs.org/wiki/EXCON)                             | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                          |
-| [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                                                      |                                          |
+| Lean                                         | x86 Assembly                                               | Ruby                                   | R                                        |
+|----------------------------------------------|------------------------------------------------------------|----------------------------------------|------------------------------------------|
+| [Albabet](https://esolangs.org/wiki/Albabet) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [bit~](https://esolangs.org/wiki/Bit~) | [EXCON](https://esolangs.org/wiki/EXCON) |
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Stun Step](https://esolangs.org/wiki/Stun_Step)           |                                        |                                          |
+| [EXCON](https://esolangs.org/wiki/EXCON)     |                                                            |                                        |                                          |
 
 ## Compilers
 Sorted by target language.
