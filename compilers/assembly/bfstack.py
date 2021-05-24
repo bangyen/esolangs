@@ -84,19 +84,19 @@ def comp(code):
                 arr.append(loop)
                 loop += 1
 
-                res += f'\tje bot{lab}\n' \
-                       + f'top{lab}:\n'
+                res += f'\tje .bot{lab}\n' \
+                       + f'.top{lab}:\n'
             else:
                 lab = n if (n := arr.pop()) > 1 else ''
 
-                res += f'\tjne top{lab}\n' \
-                       + f'bot{lab}:\n'
+                res += f'\tjne .top{lab}\n' \
+                       + f'.bot{lab}:\n'
 
         ind += num
 
     res += '\n\tmov eax, 1\n' \
            + '\txor ebx, ebx\n' \
-           + '\tint 0x80\n'
+           + '\tint 80h\n'
 
     def end(s, mul):
         return mul * ('\tdec esi\n'
@@ -114,27 +114,27 @@ def comp(code):
         res += '\nleft:\n' \
                + '\tlea edi, [esp - 1]\n' \
                + '\tcmp ecx, edi\n' \
-               + '\tje done\n' \
+               + '\tje .done\n' \
                + '\tinc ecx\n'
         if ins['<'][2]:
             res += '\tdec esi\n' \
                    + '\tcmp esi, 0\n' \
                    + f'\tjg left\n' \
                    + '\tinc esi\n'
-        res += 'done:\n' \
+        res += '.done:\n' \
                + '\tret\n'
     if ins['.'][1]:
         res += '\noutput:\n' \
                + '\tmov eax, 4\n' \
                + '\tmov ebx, 1\n' \
-               + '\tint 0x80\n' \
+               + '\tint 80h\n' \
                + end('output', ins['.'][2])
     if ins[','][1]:
         res += '\ninput:\n' \
                + '\tmov eax, 3\n' \
                + '\txor ebx, ebx\n' \
                + '\tdec ecx\n' \
-               + '\tint 0x80\n' \
+               + '\tint 80h\n' \
                + end('input', ins[','][2])
 
     return res
