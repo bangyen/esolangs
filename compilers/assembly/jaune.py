@@ -37,6 +37,9 @@ def count(code, ind):
 
 
 def comp(code):
+    code = sub(r'[^^v><\d+\-#&:?!.$@;%]', '', code)
+    code = sub('([#.;%])\1+', '\1', code)
+
     for c in ':$':
         r = fr'(?:\d{c}){{2,}}'
         for s in findall(r, code):
@@ -214,7 +217,6 @@ if __name__ == '__main__':
     data = f.read()
     f.close()
 
-    data = sub(r'([#.;%])\1+', r'\1', data)
     f = open('output.txt', 'w')
     f.write(comp(data))
     f.close()
