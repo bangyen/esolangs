@@ -119,9 +119,6 @@ def comp(code):
 
         res += '\ndown:\n' \
                + s \
-               + '\tand esi, 3\n' \
-               + ('\tmov ebx, esi\n'
-                  '\tcall cell\n') \
                + '\tret\n'
     if func['f'][1]:
         if func['f'][2]:
