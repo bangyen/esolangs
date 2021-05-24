@@ -36,7 +36,7 @@ def comp(code):
         ';{2,}': ';',
         '^((dddd)+|(ffff)+|k*j[^l]|k*l[^l]*l|k+)': '',
         '([^j])((dddd)+|(ffff)+)': r'\1',
-        '([^j]k)j[^l]|l[^l]*l': r'\1'
+        '([^j]k)(j[^l]|l[^l]*l)': r'\1'
     }
 
     for x, y in reg.items():
@@ -51,6 +51,10 @@ def comp(code):
         c = code[ind]
 
         if c in 'as':
+            if ind and code[ind - 1] == 'j':
+                num = 1 if c == 'a' else -1
+                new = ind + 1
+
             if num > 1:
                 res += f'\tadd dword [ecx], {num}\n'
             elif num == 1:
@@ -60,6 +64,9 @@ def comp(code):
             elif num < -1:
                 res += f'\tsub dword [ecx], {-num}\n'
         elif c in 'dfk':
+            if ind and code[ind - 1] == 'j':
+                num, new = 1, ind + 1
+
             if num != 1:
                 res += f'\tmov eax, {num}\n'
                 func[c][2] = True
@@ -94,6 +101,7 @@ def comp(code):
         if end:
             n = skip if skip - 1 else ""
             res += f'.skip{n}:\n'
+            end = False
         ind = new
 
     def cell(r):
