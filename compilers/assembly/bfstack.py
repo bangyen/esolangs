@@ -22,16 +22,30 @@ def count(code, ind):
 
 
 def comp(code):
+    code = sub(r'[^><+-.,\][]', '', code)
+    b = sub(r'[^\[\]]', '', code)
+
+    while True:
+        if '[]' in b:
+            b = b.replace('[]', '')
+        else:
+            if b:
+                print('Unmatched brackets.')
+                exit(0)
+            else:
+                break
+
     res = 'global _start\n' \
-        + '_start:\n' \
-        + '\tlea ecx, [esp - 6]\n' \
-        + '\tmov edx, 1\n\n'
+          + '_start:\n' \
+          + '\tlea ecx, [esp - 6]\n' \
+          + '\tmov edx, 1\n' \
+          + '\tmov esi, 1\n\n'
 
     ins = {
-        '>': ['right', False],
-        '<': ['left', False],
-        '.': ['output', False],
-        ',': ['input', False]
+        '>': ['right', False, False],
+        '<': ['left', False, False],
+        '.': ['output', False, False],
+        ',': ['input', False, False]
     }
 
     ind = 0
@@ -44,7 +58,8 @@ def comp(code):
 
         if c in '><.,':
             if num > 1:
-                res += f'\tmov edx, {num}\n'
+                res += f'\tmov esi, {num}\n'
+                ins[c][2] = True
             res += f'\tcall {ins[c][0]}\n'
 
             ins[c][1] = True
@@ -70,7 +85,7 @@ def comp(code):
                 loop += 1
 
                 res += f'\tje bot{lab}\n' \
-                    + f'top{lab}:\n'
+                       + f'top{lab}:\n'
             else:
                 lab = n if (n := arr.pop()) > 1 else ''
 
@@ -80,41 +95,47 @@ def comp(code):
         ind += num
 
     res += '\n\tmov eax, 1\n' \
-        + '\txor ebx, ebx\n' \
-        + '\tint 0x80\n'
+           + '\txor ebx, ebx\n' \
+           + '\tint 0x80\n'
 
-    def end(s):
-        return '\tdec edx\n' \
-            + '\tcmp edx, 0\n' \
-            + f'\tjg {s}\n' \
-            + '\tinc edx\n' \
-            + '\tret\n'
+    def end(s, mul):
+        return mul * ('\tdec esi\n'
+                      + '\tcmp esi, 0\n'
+                      + f'\tjg {s}\n'
+                      + '\tinc esi\n') \
+               + '\tret\n'
 
     if ins['>'][1]:
         res += '\nright:\n' \
-            + '\tdec ecx\n' \
-            + '\tmov byte [ecx], 0\n' \
-            + end('right')
+               + '\tdec ecx\n' \
+               + '\tmov byte [ecx], 0\n' \
+               + end('right', ins['>'][2])
     if ins['<'][1]:
         res += '\nleft:\n' \
-            + '\tlea edi, [esp - 1]\n' \
-            + '\tcmp ecx, edi\n' \
-            + '\tje done\n' \
-            + '\tinc ecx\n' \
-            + end('left\ndone:')
+               + '\tlea edi, [esp - 1]\n' \
+               + '\tcmp ecx, edi\n' \
+               + '\tje done\n' \
+               + '\tinc ecx\n'
+        if ins['<'][2]:
+            res += '\tdec esi\n' \
+                   + '\tcmp esi, 0\n' \
+                   + f'\tjg left\n' \
+                   + '\tinc esi\n'
+        res += 'done:\n' \
+               + '\tret\n'
     if ins['.'][1]:
         res += '\noutput:\n' \
-            + '\tmov eax, 4\n' \
-            + '\tmov ebx, 1\n' \
-            + '\tint 0x80\n' \
-            + end('output')
+               + '\tmov eax, 4\n' \
+               + '\tmov ebx, 1\n' \
+               + '\tint 0x80\n' \
+               + end('output', ins['.'][2])
     if ins[','][1]:
         res += '\ninput:\n' \
-            + '\tmov eax, 3\n' \
-            + '\txor ebx, ebx\n' \
-            + '\tdec ecx\n' \
-            + '\tint 0x80\n' \
-            + end('input')
+               + '\tmov eax, 3\n' \
+               + '\txor ebx, ebx\n' \
+               + '\tdec ecx\n' \
+               + '\tint 0x80\n' \
+               + end('input', ins[','][2])
 
     return res
 
@@ -123,19 +144,6 @@ if __name__ == '__main__':
     f = open(sys.argv[1])
     data = f.read()
     f.close()
-
-    data = sub(r'[^><+-.,\][]', '', data)
-    b = sub(r'[^\[\]]', '', data)
-
-    while True:
-        if '[]' in b:
-            b = b.replace('[]', '')
-        else:
-            if b:
-                print('Unmatched brackets.')
-                exit(0)
-            else:
-                break
 
     f = open('output.txt', 'w')
     f.write(comp(data))
