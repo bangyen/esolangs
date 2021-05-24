@@ -42,7 +42,6 @@ def comp(code):
     for x, y in reg.items():
         code = sub(x, y, code)
 
-    print(code)
     skip = ind = 0
     end = False
     loop = 1
