@@ -7,18 +7,18 @@ Python implementations of different esoteric programming languages. Each interpr
 | Register-based                                   | Register-based (cont.)                               | Tape-based                                         | Tape-based (cont.)                             | Stack-based                                                          | Other                                            |
 |--------------------------------------------------|------------------------------------------------------|----------------------------------------------------|------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------|
 | [Dig](https://esolangs.org/wiki/Dig)             | [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) | [ASCII art](https://esolangs.org/wiki/ASCII_art)   | [Minifuck](https://esolangs.org/wiki/Minifuck) | [BFStack](https://esolangs.org/wiki/BFStack)                         | [Bitdeque](https://esolangs.org/wiki/Bitdeque)   |
-| [dotlang](https://esolangs.org/wiki/Dotlang)     | [Movesum](https://esolangs.org/wiki/Movesum)         | [Back](https://esolangs.org/wiki/Back)             | [Suffolk](https://esolangs.org/wiki/Suffolk)   | [Eval](https://esolangs.org/wiki/Eval)                               | [Container](https://esolangs.org/wiki/Container) |
-| [DSDLAI](https://esolangs.org/wiki/DSDLAI)       | [Polynomial](https://esolangs.org/wiki/Polynomial)   | [BrainIf](https://esolangs.org/wiki/BrainIf)       | [6-5](https://esolangs.org/wiki/6-5)           | [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack) | [Keys](https://esolangs.org/wiki/Keys)           |
-| [huf](https://esolangs.org/wiki/Huf)             | [RAM0](https://esolangs.org/wiki/RAM0)               | [circlefuck](https://esolangs.org/wiki/Circlefuck) |                                                | [Modulous](https://esolangs.org/wiki/Modulous)                       | [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)   |
-| [Lightlang](https://esolangs.org/wiki/Lightlang) | [WII2D](https://esolangs.org/wiki/WII2D)             | [EXCON](https://esolangs.org/wiki/EXCON)           |                                                |                                                                      |                                                  |
+| [dotlang](https://esolangs.org/wiki/Dotlang)     | [Movesum](https://esolangs.org/wiki/Movesum)         | [Back](https://esolangs.org/wiki/Back)             | [Suffolk](https://esolangs.org/wiki/Suffolk)   | [Eval](https://esolangs.org/wiki/Eval)                               | [Clockwise](https://esolangs.org/wiki/Clockwise) |
+| [DSDLAI](https://esolangs.org/wiki/DSDLAI)       | [Polynomial](https://esolangs.org/wiki/Polynomial)   | [BrainIf](https://esolangs.org/wiki/BrainIf)       | [6-5](https://esolangs.org/wiki/6-5)           | [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack) | [Container](https://esolangs.org/wiki/Container) |
+| [huf](https://esolangs.org/wiki/Huf)             | [RAM0](https://esolangs.org/wiki/RAM0)               | [circlefuck](https://esolangs.org/wiki/Circlefuck) |                                                | [Modulous](https://esolangs.org/wiki/Modulous)                       | [Keys](https://esolangs.org/wiki/Keys)           |
+| [Lightlang](https://esolangs.org/wiki/Lightlang) | [WII2D](https://esolangs.org/wiki/WII2D)             | [EXCON](https://esolangs.org/wiki/EXCON)           |                                                |                                                                      | [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)   |
 
 ## Extra
 Implementations written in languages other than Python.
-| Lean                                         | x86 Assembly                                               | Ruby                                   | R                                        |
-|----------------------------------------------|------------------------------------------------------------|----------------------------------------|------------------------------------------|
-| [Albabet](https://esolangs.org/wiki/Albabet) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [bit~](https://esolangs.org/wiki/Bit~) | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Stun Step](https://esolangs.org/wiki/Stun_Step)           |                                        |                                          |
-| [EXCON](https://esolangs.org/wiki/EXCON)     |                                                            |                                        |                                          |
+| Lean                                         | x86 Assembly                                               | Ruby                                           | R                                        |
+|----------------------------------------------|------------------------------------------------------------|------------------------------------------------|------------------------------------------|
+| [Albabet](https://esolangs.org/wiki/Albabet) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [bit~](https://esolangs.org/wiki/Bit~)         | [EXCON](https://esolangs.org/wiki/EXCON) |
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Stun Step](https://esolangs.org/wiki/Stun_Step)           | [3x](https://esolangs.org/wiki/3x)             |                                          |
+| [EXCON](https://esolangs.org/wiki/EXCON)     |                                                            | [Unsquare](https://esolangs.org/wiki/Unsquare) |                                          |
 
 ## Compilers
 Sorted by target language.
@@ -32,7 +32,7 @@ Sorted by target language.
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
 -   For **dotlang**, the interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
--   For **Jaune**, input only works for addition and subtraction. Additionally, only one character can be input at a time. TODO: optimize strings of `v?` and `n!`, as well as parse `v?`, `v!`, and `v@`.
+-   For **Jaune**, only one character can be input at a time.
 -   For **Suffolk**, although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
 
 ## Miscellaneous

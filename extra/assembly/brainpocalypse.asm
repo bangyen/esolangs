@@ -81,6 +81,7 @@ output:
 	cmp eax, edi
 	jg .main
 	mov ebx, 10
+	xor edx, edx
 	mul ebx
 	jmp .max
 .main:
