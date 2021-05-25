@@ -17,7 +17,7 @@ Implementations written in languages other than Python.
 | Lean                                         | x86 Assembly                                               | Ruby                                   | R                                        |
 |----------------------------------------------|------------------------------------------------------------|----------------------------------------|------------------------------------------|
 | [Albabet](https://esolangs.org/wiki/Albabet) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [bit~](https://esolangs.org/wiki/Bit~) | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Stun Step](https://esolangs.org/wiki/Stun_Step)           |                                        |                                          |
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Stun Step](https://esolangs.org/wiki/Stun_Step)           | [3x](https://esolangs.org/wiki/3x)     |                                          |
 | [EXCON](https://esolangs.org/wiki/EXCON)     |                                                            |                                        |                                          |
 
 ## Compilers
