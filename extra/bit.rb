@@ -5,16 +5,15 @@ tape = [cell = i = 0] * 8
 line = ''
 ARGV.clear
 
-def find(str, sym, dir, num = 0)
-  loop do
-    if str[sym] == '{'
+def find(str, sym, dir)
+  num = dir
+  while num.nonzero?
+    case str[sym += dir]
+    when '{'
       num += 1
-    elsif str[sym] == '}'
+    when '}'
       num -= 1
     end
-    break if num.zero?
-
-    sym += dir
   end
   sym
 end
@@ -22,20 +21,19 @@ end
 while (c = code[i])
   case c
   when '~'
-    tape[cell] = 1 - tape[cell]
+    tape[cell] ^= 1
   when '>'
     cond = cell + 8 > tape.size
-    tape = tape.push(0) if cond
+    tape.push(0) if cond
     cell += 1
   when '<'
-    if cell.nonzero?
-      cell -= 1
-    end
+    cell -= 1 if cell.nonzero?
   when ')'
-    print line + 'Input: '
+    print "#{line}Input: "
     val = '0' * 8 + gets[0].ord.to_s(2)
     tape[cell..cell + 7] =
       val[-8..-1].chars.map(&:to_i)
+    line = ''
   when '('
     val = tape[cell..cell + 7]
     print val.join.to_i(2).chr
