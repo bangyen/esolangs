@@ -32,7 +32,7 @@ Sorted by target language.
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
 -   For **dotlang**, the interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
--   For **Jaune**, input only works for addition and subtraction. Additionally, only one character can be input at a time. TODO: optimize strings of `v?` and `n!`, as well as parse `v?`, `v!`, and `v@`.
+-   For **Jaune**, only one character can be input at a time.
 -   For **Suffolk**, although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
 
 ## Miscellaneous
