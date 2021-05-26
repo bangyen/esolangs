@@ -22,12 +22,12 @@ Implementations written in languages other than Python.
 
 ## Compilers
 Sorted by target language.
-| C                                            | x86 Assembly                                   |
-|----------------------------------------------|------------------------------------------------|
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [BFStack](https://esolangs.org/wiki/BFStack)   |
-| [BFStack](https://esolangs.org/wiki/BFStack) | [Home Row](https://esolangs.org/wiki/Home_Row) |
-| [EXCON](https://esolangs.org/wiki/EXCON)     | [Jaune](https://esolangs.org/wiki/Jaune)       |
-| [RAM0](https://esolangs.org/wiki/RAM0)       | [Suffolk](https://esolangs.org/wiki/Suffolk)   |
+| C                                            | x86 Assembly                                   | x86 Assembly (cont.)                           |
+|----------------------------------------------|------------------------------------------------|------------------------------------------------|
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [BFStack](https://esolangs.org/wiki/BFStack)   | [Unsquare](https://esolangs.org/wiki/Unsquare) |
+| [BFStack](https://esolangs.org/wiki/BFStack) | [Home Row](https://esolangs.org/wiki/Home_Row) |                                                |
+| [EXCON](https://esolangs.org/wiki/EXCON)     | [Jaune](https://esolangs.org/wiki/Jaune)       |                                                |
+| [RAM0](https://esolangs.org/wiki/RAM0)       | [Suffolk](https://esolangs.org/wiki/Suffolk)   |                                                |
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
