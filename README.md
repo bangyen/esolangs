@@ -34,6 +34,7 @@ Sorted by target language.
 -   For **dotlang**, the interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 -   For **Jaune**, only one character can be input at a time.
 -   For **Suffolk**, although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
+-   For **123**, input is given at the end of the program. The two are separated by a single `|`.
 
 ## Miscellaneous
 -   The `binary.py` program implements a given boolean function in Dig.
@@ -42,3 +43,4 @@ Sorted by target language.
     -   BrainIf
     -   Container
     -   Suffolk
+    -   123
