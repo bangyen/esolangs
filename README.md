@@ -14,11 +14,11 @@ Python implementations of different esoteric programming languages. Each interpr
 
 ## Extra
 Implementations written in languages other than Python.
-| Lean                                         | x86 Assembly                                               | Ruby                                           | R                                        |
-|----------------------------------------------|------------------------------------------------------------|------------------------------------------------|------------------------------------------|
-| [Albabet](https://esolangs.org/wiki/Albabet) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [bit~](https://esolangs.org/wiki/Bit~)         | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Stun Step](https://esolangs.org/wiki/Stun_Step)           | [Unsquare](https://esolangs.org/wiki/Unsquare) |                                          |
-| [EXCON](https://esolangs.org/wiki/EXCON)     | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) | [3x](https://esolangs.org/wiki/3x)             |                                          |
+| Lean                                         | x86 Assembly                                               | x86 Assembly (cont.)                                       | Ruby                                           | R                                        |
+|----------------------------------------------|------------------------------------------------------------|------------------------------------------------------------|------------------------------------------------|------------------------------------------|
+| [Albabet](https://esolangs.org/wiki/Albabet) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) | [bit~](https://esolangs.org/wiki/Bit~)         | [EXCON](https://esolangs.org/wiki/EXCON) |
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Stun Step](https://esolangs.org/wiki/Stun_Step)           |                                                            | [Unsquare](https://esolangs.org/wiki/Unsquare) |                                          |
+| [EXCON](https://esolangs.org/wiki/EXCON)     | [123](https://esolangs.org/wiki/123)                       |                                                            | [3x](https://esolangs.org/wiki/3x)             |                                          |
 
 ## Compilers
 Sorted by target language.
@@ -34,6 +34,7 @@ Sorted by target language.
 -   For **dotlang**, the interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 -   For **Jaune**, only one character can be input at a time.
 -   For **Suffolk**, although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
+-   For **123**, input is given at the end of the program. The two are separated by a single `|`.
 
 ## Miscellaneous
 -   The `binary.py` program implements a given boolean function in Dig.
@@ -42,3 +43,4 @@ Sorted by target language.
     -   BrainIf
     -   Container
     -   Suffolk
+    -   123
