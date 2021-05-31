@@ -43,36 +43,60 @@ def container(text):
 
     for c in text:
         if (o := ord(c) - last) >= 0:
-            ins += f'+{o} A>={ind}\n' \
-                   + f'-{o} A>={ind + 1}\n'
+            ins += (f'+{o} A>={ind}\n'
+                    + f'-{o} A>={ind + 1}\n')
         else:
-            ins += f'-{-o} A>={ind}\n' \
-                   + f'+{-o} A>={ind + 1}\n'
+            ins += (f'-{-o} A>={ind}\n'
+                    + f'+{-o} A>={ind + 1}\n')
         last = ord(c)
         ind += 2
 
-    res = 'A:\n' \
-        + '+1 EXIT>=1\n\n' \
-        + 'PRINT:\n' \
-        + '+1 PRINT<=0\n' \
-        + '-1 PRINT>=1\n\n' \
-        + 'OUT:\n' \
-        + f'{ins}\n' \
-        + 'EXIT=1:\n' \
-        + '-1 A>=' \
+    res = ('A:\n'
+           '+1 EXIT>=1\n\n'
+           'PRINT:\n'
+           '+1 PRINT<=0\n'
+           '-1 PRINT>=1\n\n'
+           'OUT:\n'
+           f'{ins}\n'
+           'EXIT=1:\n'
+           '-1 A>=') \
         + str(2 * len(text) - 2)
 
     return res
 
 
-def suffolk(s):
+def suffolk(text):
     res = '>>!' * 12 + '\n'
 
-    for c in s:
+    for c in text:
         n = ord(c) + 1
         a = int(n ** 0.5)
         b = n // a
         c = n % a
 
-        res += f'{a * "!"}{c * ">!"}><{b * "<"}.!>><>!\n'
+        res += (f'{a * "!"}{c * ">!"}'
+                f'><{b * "<"}.!>><>!\n')
     return res.strip()
+
+
+def _123(text):
+    res = ''
+    last = 0
+
+    for c in text:
+        b = bin(ord(c) ^ last)[2:]
+        s = ''
+
+        for d in (b := ('0' * 8 + b)[-8:]):
+            if d == '1':
+                s += '12'
+            s += '2'
+
+        b = b.rstrip('0')
+        res += (f'{s.rstrip("2")}'
+                f'{"12112" * (not b)}'
+                + f'{"121" * len(b)}'[:-1]
+                + '\n')
+        last = ord(c)
+
+    return res + '1'
