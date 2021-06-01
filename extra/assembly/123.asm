@@ -59,7 +59,6 @@ _start:
 	shr esi, 1
 	jmp .parse
 .read:
-	mov [ecx], edi
 	push edx
 	mov eax, 3
 	xor ebx, ebx
