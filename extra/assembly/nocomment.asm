@@ -38,7 +38,7 @@ _start:
 	cmp byte [edi], 'b'
 	je .back
 	cmp byte [edi], 'o'
-	je .out
+	je .output
 
 	cmp byte [edi], 0
 	jne .parse
@@ -87,7 +87,7 @@ _start:
 	movzx eax, byte [edx]
 	add edi, eax
 	jmp .parse
-.out:
+.output:
 	push edx
 	mov eax, 4
 	mov ebx, 1
