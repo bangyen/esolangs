@@ -16,9 +16,9 @@ Python implementations of different esoteric programming languages. Each interpr
 Implementations written in languages other than Python.
 | Lean                                         | x86 Assembly                                               | x86 Assembly (cont.)                                       | Ruby                                           | R                                        |
 |----------------------------------------------|------------------------------------------------------------|------------------------------------------------------------|------------------------------------------------|------------------------------------------|
-| [Albabet](https://esolangs.org/wiki/Albabet) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) | [bit~](https://esolangs.org/wiki/Bit~)         | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [Stun Step](https://esolangs.org/wiki/Stun_Step)           |                                                            | [Unsquare](https://esolangs.org/wiki/Unsquare) |                                          |
-| [EXCON](https://esolangs.org/wiki/EXCON)     | [123](https://esolangs.org/wiki/123)                       |                                                            | [3x](https://esolangs.org/wiki/3x)             |                                          |
+| [Albabet](https://esolangs.org/wiki/Albabet) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [123](https://esolangs.org/wiki/123)                       | [bit~](https://esolangs.org/wiki/Bit~)         | [EXCON](https://esolangs.org/wiki/EXCON) |
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [NoComment](https://esolangs.org/wiki/NoComment)           | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) | [Unsquare](https://esolangs.org/wiki/Unsquare) |                                          |
+| [EXCON](https://esolangs.org/wiki/EXCON)     | [Stun Step](https://esolangs.org/wiki/Stun_Step)           |                                                            | [3x](https://esolangs.org/wiki/3x)             |                                          |
 
 ## Compilers
 Sorted by target language.
