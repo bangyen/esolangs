@@ -58,9 +58,9 @@ def comp(code):
             if num > 1:
                 res += f'\tadd dword [ecx], {num}\n'
             elif num == 1:
-                res += f'\tinc dword [ecx]\n'
+                res += '\tinc dword [ecx]\n'
             elif num == -1:
-                res += f'\tdec dword [ecx]\n'
+                res += '\tdec dword [ecx]\n'
             elif num < -1:
                 res += f'\tsub dword [ecx], {-num}\n'
         elif c in 'dfk':
