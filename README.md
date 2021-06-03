@@ -11,6 +11,7 @@ Python implementations of different esoteric programming languages. Each interpr
 | [DSDLAI](https://esolangs.org/wiki/DSDLAI)       | [Polynomial](https://esolangs.org/wiki/Polynomial)   | [BrainIf](https://esolangs.org/wiki/BrainIf)       | [6-5](https://esolangs.org/wiki/6-5)           | [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack) | [Container](https://esolangs.org/wiki/Container) |
 | [huf](https://esolangs.org/wiki/Huf)             | [RAM0](https://esolangs.org/wiki/RAM0)               | [circlefuck](https://esolangs.org/wiki/Circlefuck) |                                                | [Modulous](https://esolangs.org/wiki/Modulous)                       | [Keys](https://esolangs.org/wiki/Keys)           |
 | [Lightlang](https://esolangs.org/wiki/Lightlang) | [WII2D](https://esolangs.org/wiki/WII2D)             | [EXCON](https://esolangs.org/wiki/EXCON)           |                                                |                                                                      | [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)   |
+|                                                  |                                                      |                                                    |                                                |                                                                      | [Nevermind](https://esolangs.org/wiki/Nevermind) |
 
 ## Extra
 Implementations written in languages other than Python.
