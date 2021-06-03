@@ -68,9 +68,9 @@ def comp(code):
                 if n > 1:
                     res += f'\tadd byte [ecx], {n}\n'
                 elif n == 1:
-                    res += f'\tinc byte [ecx]\n'
+                    res += '\tinc byte [ecx]\n'
                 elif n == -1:
-                    res += f'\tdec byte [ecx]\n'
+                    res += '\tdec byte [ecx]\n'
                 else:
                     res += f'\tsub byte [ecx], {-n}\n'
 
@@ -119,7 +119,7 @@ def comp(code):
         if ins['<'][2]:
             res += '\tdec esi\n' \
                    + '\tcmp esi, 0\n' \
-                   + f'\tjg left\n' \
+                   + '\tjg left\n' \
                    + '\tinc esi\n'
         res += '.done:\n' \
                + '\tret\n'
