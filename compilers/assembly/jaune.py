@@ -161,7 +161,7 @@ def comp(code):
             if num >= 0:
                 res += f'\tcall sub{add(num)}\n'
             else:
-                res += f'\tcall switch\n'
+                res += '\tcall switch\n'
                 inp[1] = True
         elif c == ';':
             res += '\tret\n'
