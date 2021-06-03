@@ -11,7 +11,7 @@ char* digits(FILE *symbols) {
     char* temp;
 
     while (1) {
-        int len;
+        int len = 0;
         char sym = getc(symbols);
         if (isdigit(sym)) {
             if (len) {
