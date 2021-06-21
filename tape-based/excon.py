@@ -7,7 +7,7 @@ for sym in code:
     if sym == ':':
         pool, cell = ([0] * 8, 7)
     elif sym == '^':
-        pool[cell] = (not pool[cell]) + 0
+        pool[cell] ^= 1
     elif sym == '!':
         num = ''.join(map(str, pool))
         print(chr(int(num, 2)), end='')
