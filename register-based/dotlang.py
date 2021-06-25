@@ -1,121 +1,156 @@
 import sys
 import re
 
-line = False
-start = True
-dots = [None]
 
-velocity = [(0, 0)]
-position = [(0, 0)]
-directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+class Dot:
+    list = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+    mx = my = 0
+    code = ''
+
+    def __init__(self, x, y, d):
+        self.val = None
+        self.dir = d
+        self.x = x
+        self.y = y
+
+    @staticmethod
+    def set(code):
+        Dot.code = code
+        Dot.mx = len(code)
+        Dot.my = len(code[0])
+
+    def new(self, val):
+        if re.match(r'\d+\.\d+', val):
+            self.val = float(val)
+        elif re.match(r'\d+', val):
+            self.val = int(val)
+        else:
+            self.val = val
+
+    def move(self):
+        x, y = Dot.list[self.dir]
+        self.x += x
+        self.y += y
+
+        if x:
+            return 0 <= self.x < Dot.mx
+        return 0 <= self.y < Dot.my
+
+    def match(self, regex):
+        line = Dot.code[self.x][self.y:]
+        return re.match(regex, line)
+
+    def find(self, warp, ret=False):
+        for num, val in enumerate(Dot.code):
+            if warp in val:
+                x, y = num, val.find(warp)
+                if self.dir == 1:
+                    y += len(warp) - 1
+
+                if ret:
+                    return Dot(x, y, self.dir)
+                else:
+                    self.x, self.y = x, y
+                    return True
+        return False
 
 
-def move(pointer, direct):
-    return pointer[0] + direct[0], pointer[1] + direct[1]
+def run(code):
+    if code == [' ']:
+        print(' ', end='')
+        return
 
+    m = max(len(c) for c in code)
+    code = [c + ' ' * (m - len(c)) for c in code]
 
-def swap(direct):
-    index = directions.index(direct)
-    return directions[index + (1, -1)[index % 2]]
+    line = False
+    dots = []
+    curr = 0
+
+    for num, val in enumerate(code):
+        if '•' in val:
+            k = val.find('•')
+            if k and (v := val[k - 1]) in '^>v<':
+                d = '^>v<'.find(v)
+            else:
+                d = 1
+
+            dots.append(Dot(num, k, d))
+            Dot.set(code)
+            break
+    else:
+        return
+
+    while dots:
+        dot = dots[curr]
+        val = code[dot.x][dot.y]
+
+        if val in '^>v<':
+            dot.dir = '^>v<'.find(val)
+        elif val == '#':
+            if g := dot.match(r'#(\d+(\.\d+)?|`.*`)'):
+                dot.new(g.group()[1:].replace('`', ''))
+                if dot.dir == 1:
+                    dot.y += len(g.group()) - 1
+            elif dot.val is not None:
+                print(dot.val, end='')
+                line = True
+            else:
+                return
+        elif val == '~':
+            dot.new(input('\n' * line + 'Input: '))
+            line = False
+        elif val == '(':
+            if g := dot.match(r'\(`\w+'):
+                name = ')' + g.group()[1:]
+                if not (d := dot.find(name, True)):
+                    return
+                dots.append(d)
+            else:
+                match = 1
+                x, y = dot.x, dot.y
+                while match:
+                    if dot.dir % 2:
+                        y += 1
+                        if y == m:
+                            return
+                    else:
+                        x += 1
+                        if x == Dot.mx:
+                            return
+
+                    if (c := code[x][y]) == '(':
+                        match += 1
+                    elif c == ')':
+                        match -= 1
+                dots.append(Dot(x, y, dot.dir))
+        elif val == 'W':
+            if dot.match('W~'):
+                warp = input('\n' * line + 'Warp: ')
+                if not dot.find('W%s`s' % warp):
+                    return
+                line = False
+            elif g := dot.match(r'W\w+`s'):
+                warp = g.group()[:-1] + 'e'
+                if not dot.find(warp):
+                    return
+        elif val in '!?:':
+            t = (str, float, int)['!?:'.find(val)]
+            if isinstance(dot.val, t):
+                if dot.dir % 2:
+                    dot.dir -= 1
+                else:
+                    dot.dir += 1
+
+        if val not in ' \n' and dot.move():
+            curr = (curr + 1) % len(dots)
+        else:
+            dots.pop(curr)
 
 
 if __name__ == '__main__':
-    file = open(sys.argv[1], encoding='utf-8').readlines()
-    lines = [re.sub(' *\n', '\n', line) for line in file]
-    file = ''.join(file)
+    f = open(sys.argv[1], encoding='utf-8')
+    data = f.readlines()
+    f.close()
 
-    length = max(len(line) for line in lines)
-    lines = [line + ' ' * (length - len(line)) for line in lines] + [''] * length
-
-    if file == ' ':
-        print(' ')
-        start = False
-    else:
-        for k in range(len(lines)):
-            if '•' in lines[k]:
-                position[0] = (k, lines[k].find('•'))
-                if (x := lines[k].find('•')) != 0 and lines[k][x - 1] in '^>v<':
-                    velocity[0] = directions['^>v<'.find(lines[k][x - 1])]
-                else:
-                    velocity[0] = directions[1]
-                break
-        else:
-            start = False
-    while start and dots:
-        for k in range(len(position)):
-            position[k] = move(position[k], velocity[k])
-            if (pos := position[k])[0] >= len(lines) or pos[1] >= length:
-                start = False
-                break
-            char = lines[pos[0]][pos[1]]
-            if char in ' \n':
-                for lst in [velocity, position, dots]:
-                    lst.pop(k)
-            elif char in '^>v<':
-                velocity[k] = directions['^>v<'.find(char)]
-            elif char == '#':
-                lst = re.findall(r'#(?:\d+\.\d+|\d+|`.+`)', lines[pos[0]][pos[1]:])
-                if lst:
-                    dots[k] = lst[0][1:].replace('`', '')
-                    if velocity[k] == (0, 1):
-                        position[k] = (pos[0], pos[1] + len(dots[k]))
-                else:
-                    if dots[k]:
-                        print(dots[k], end='')
-                    else:
-                        start = False
-            elif char == '~':
-                dots[k] = input('\n' * line + 'Input: ')
-                line = True
-            elif char == '(':
-                temp = 0
-                if lines[pos[0]][pos[1] + 1] == '`':
-                    lst = re.findall(r'\(`\w+', lines[pos[0]][pos[1]:])
-                    if lst:
-                        name = ')' + lst[0][1:]
-                        for ind, line in enumerate(lines):
-                            if name in line:
-                                temp = (ind, line.find(name))
-                                break
-                    else:
-                        start = False
-                else:
-                    match = 1
-                    temp = list(pos)
-                    while match:
-                        temp[1] += 1
-                        if temp[1] == len(lines[0]):
-                            start = False
-                            break
-                        elif lines[temp[0]][temp[1]] == '(':
-                            match += 1
-                        elif lines[temp[0]][temp[1]] == ')':
-                            match -= 1
-                dots.append(None)
-                position.append(temp)
-                velocity.append(velocity[k])
-            elif char == 'W':
-                if lines[pos[0]][pos[1] + 1] == '~':
-                    warp = 'W%s`s' % input("\n" * line + "Warp: ")
-                    if warp in file:
-                        for ind, line in enumerate(lines):
-                            if warp in line:
-                                position[k] = (ind, line.find(warp))
-                                if velocity[k] == (0, 1):
-                                    position[k] = (position[k][0], position[k][1] + len(warp) - 1)
-                                break
-                    else:
-                        start = False
-                elif lst := re.findall(r'\w+`s', lines[pos[0]][pos[1]:]):
-                    warp = lst[0][:-1] + 'e'
-                    if warp in file:
-                        for ind, line in enumerate(lines):
-                            if warp in line:
-                                position[k] = (ind, line.find(warp))
-                                break
-                    else:
-                        start = False
-            elif char in '!?:':
-                func = [lambda s: s.isdigit(), lambda s: s.isalpha()][char == '!']
-                if dots[k] and func(dots[k].replace('.', '', char == '?')):
-                    velocity[k] = swap(velocity[k])
+    run(data)
