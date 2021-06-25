@@ -40,6 +40,7 @@ Sorted by target language.
 
 ## Miscellaneous
 -   The `binary.py` program implements a given boolean function in Dig.
+
 -   The `generate.py` program implements a function in different languages which output a given string. The supported languages are as follows:
     -   BFStack
     -   BrainIf
