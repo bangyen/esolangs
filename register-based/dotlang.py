@@ -31,7 +31,6 @@ class Dot:
         x, y = Dot.list[self.dir]
         self.x += x
         self.y += y
-
         if x:
             return 0 <= self.x < Dot.mx
         return 0 <= self.y < Dot.my
@@ -46,7 +45,6 @@ class Dot:
                 x, y = num, val.find(warp)
                 if self.dir == 1:
                     y += len(warp) - 1
-
                 if ret:
                     return Dot(x, y, self.dir)
                 else:
@@ -62,7 +60,6 @@ def run(code):
 
     m = max(len(c) for c in code)
     code = [c + ' ' * (m - len(c)) for c in code]
-
     line = False
     dots = []
     curr = 0
@@ -74,7 +71,6 @@ def run(code):
                 d = '^>v<'.find(v)
             else:
                 d = 1
-
             dots.append(Dot(num, k, d))
             Dot.set(code)
             break
@@ -118,7 +114,6 @@ def run(code):
                         x += 1
                         if x == Dot.mx:
                             return
-
                     if (c := code[x][y]) == '(':
                         match += 1
                     elif c == ')':
