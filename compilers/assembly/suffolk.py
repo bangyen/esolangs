@@ -45,9 +45,8 @@ def convert(code, num):
             if n > 2:
                 s += (f'\n\tmov edx, {n - 1}\n'
                       '\tcall left')
-            else:
-                s += ('\n\tadd esi, [edi]'
-                      * (n - 1))
+            elif n == 2:
+                s += '\n\tadd esi, [edi]'
 
             add = True
         elif c == '.':
