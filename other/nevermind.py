@@ -1,8 +1,8 @@
 import sys
 
 
-def find(code, ind, op):
-    if 'end' in op:
+def find(code, ind):
+    if 'end' in (op := code[ind]):
         match = op[3:]
         move = -1
     else:
@@ -74,15 +74,15 @@ def run(code):
                 else:
                     b = x == y
                 if not b:
-                    ind = find(code, ind, op)
+                    ind = find(code, ind)
             elif op == 'loop':
                 if c[1]:
                     c[1] -= 1
                 else:
-                    ind = find(code, ind, op)
+                    ind = find(code, ind)
                     skip = False
             elif op == 'endloop':
-                ind = find(code, ind, op) + 1
+                ind = find(code, ind) + 1
                 skip = True
         ind += 1
 
