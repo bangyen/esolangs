@@ -56,22 +56,23 @@ def run(code):
             return
         else:
             val = code[ind:]
-            if m := re.match('@(.){', val):
-                if acc == ord(m.group(1)):
-                    ind += 2
-                else:
-                    ind = find(code, ind + 2) + 1
-            elif m := re.match(r'@\$(\d+){', val):
+            if m := re.match(r'@\$(\d+){', val):
                 n = m.end() - 1
                 if acc == int(m.group(1)):
                     ind += n
                 else:
                     ind = find(code, ind + n) + 1
-            elif m := re.match('#(.)', val):
-                acc = ord(m.group(1))
-                ind += 1
+            elif m := re.match(r'@\$?(.){', val):
+                n = m.end() - 1
+                if acc == ord(m.group(1)):
+                    ind += n
+                else:
+                    ind = find(code, ind + n) + 1
             elif m := re.match(r'#\$(\d+)', val):
                 acc = int(m.group(1))
+                ind += m.end() - 1
+            elif m := re.match(r'#\$?(.)', val):
+                acc = ord(m.group(1))
                 ind += m.end() - 1
 
         ind += 1
