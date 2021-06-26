@@ -30,16 +30,16 @@ def comp(code):
         'k': ['print', False, False]
     }
 
-    reg = {
-        '[^asdfjkl;]': '',
-        '([^j])k{2,}': r'\1k',
-        ';{2,}': ';',
-        '^((dddd)+|(ffff)+|k*j[^l]|k*l[^l]*l|k+)': '',
-        '([^j])((dddd)+|(ffff)+)': r'\1',
-        '([^j]k)(j[^l]|l[^l]*l)': r'\1'
-    }
+    reg = [
+        ('[^asdfjkl;]', ''),
+        ('([^j])k{2,}', r'\1k'),
+        (';{2,}', ';'),
+        ('^((dddd)+|(ffff)+|k*j[^l]|k*l[^l]*l|k+)', ''),
+        ('([^j])((dddd)+|(ffff)+)', r'\1'),
+        ('([^j]k)(j[^l]|l[^l]*l)', r'\1')
+    ]
 
-    for x, y in reg.items():
+    for x, y in reg:
         code = sub(x, y, code)
 
     skip = ind = 0
@@ -78,8 +78,8 @@ def comp(code):
             end = True
 
             n = skip if skip - 1 else ""
-            res += '\tcmp dword [ecx], 0\n' \
-                   f'\tje .skip{n}\n'
+            res += ('\tcmp dword [ecx], 0\n'
+                    f'\tje .skip{n}\n')
 
             continue
         elif c == 'l':
@@ -88,15 +88,15 @@ def comp(code):
             res += '\tcmp dword [ecx], 0\n'
 
             if loop % 2:
-                res += f'\tjne .top{n}\n' \
-                       f'.bot{n}:\n'
+                res += (f'\tjne .top{n}\n'
+                        f'.bot{n}:\n')
             else:
-                res += f'\tje .bot{n}\n' \
-                       f'.top{n}:\n'
+                res += (f'\tje .bot{n}\n'
+                        f'.top{n}:\n')
         elif c == ';':
-            res += '\n\tmov eax, 1\n' \
-                   '\txor ebx, ebx\n' \
-                   '\tint 80h\n'
+            res += ('\n\tmov eax, 1\n'
+                    '\txor ebx, ebx\n'
+                    '\tint 80h\n')
 
         if end:
             n = skip if skip - 1 else ""
@@ -105,74 +105,74 @@ def comp(code):
         ind = new
 
     def cell(r):
-        return '\tmov eax, 20\n' \
-               f'\tmul {r}\n' \
-               '\tlea ecx, [esp + eax]\n' \
-               '\tlea ecx, [ecx + 4*esi]\n' \
-               '\tmov eax, 1\n'
+        return ('\tmov eax, 20\n'
+                f'\tmul {r}\n'
+                '\tlea ecx, [esp + eax]\n'
+                '\tlea ecx, [ecx + 4*esi]\n'
+                '\tmov eax, 1\n')
 
     if func['d'][1]:
         if func['d'][2]:
-            s = '\tadd edi, eax\n' \
-                '\tand edi, 3\n'
+            s = ('\tadd edi, eax\n'
+                 '\tand edi, 3\n')
         else:
-            s = '\tinc edi\n' \
-                '\tand edi, 3\n'
+            s = ('\tinc edi\n'
+                 '\tand edi, 3\n')
 
         if func['k'][1]:
-            s += '\tmov ebx, edi\n' \
-                 '\tcall cell\n'
+            s += ('\tmov ebx, edi\n'
+                  '\tcall cell\n')
         else:
             s += cell('edi')
 
-        res += '\ndown:\n' \
-               + s \
-               + '\tret\n'
+        res += ('\ndown:\n'
+                + s
+                + '\tret\n')
     if func['f'][1]:
         if func['f'][2]:
-            s = '\tadd esi, eax\n' \
-                '\tand esi, 3\n'
+            s = ('\tadd esi, eax\n'
+                 '\tand esi, 3\n')
         else:
-            s = '\tinc esi\n' \
-                '\tand esi, 3\n'
+            s = ('\tinc esi\n'
+                 '\tand esi, 3\n')
 
         if func['d'][1]:
-            s += '\tmov ebx, esi\n' \
-                 '\tcall cell\n'
+            s += ('\tmov ebx, esi\n'
+                  '\tcall cell\n')
         else:
             s += cell('esi')
 
-        res += '\nright:\n' \
-               + s \
-               + '\tret\n'
+        res += ('\nright:\n'
+                + s
+                + '\tret\n')
     if func['k'][1]:
         b = func['k'][2]
-        res += '\nprint:\n' \
-               + '\tpush eax\n' * b \
-               + '\tmov eax, 4\n' \
-               + '\tmov ebx, 1\n' \
-               + '\tmov edx, 1\n' \
-               + '\tint 80h\n' \
-               + '\tmov dword [ecx], 0\n' \
+        res += ('\nprint:\n'
+                '\tpush eax\n' * b
+                '\tmov eax, 4\n'
+                '\tmov ebx, 1\n'
+                '\tmov edx, 1\n'
+                '\tint 80h\n'
+                '\tmov dword [ecx], 0\n'
                + ('\tpop eax\n'
                   '\tdec eax\n'
                   '\tcmp eax, 0\n'
                   '\tjg print\n'
-                  '\tinc eax\n') * b \
-               + '\tmov eax, 1\n' * (1 - b) \
-               + '\tret\n'
+                  '\tinc eax\n') * b
+               + '\tmov eax, 1\n' * (1 - b)
+               + '\tret\n')
 
     if func['d'][1] and func['f'][1]:
-        res += '\ncell:\n' \
-               + cell('ebx') \
-               + '\tret\n'
+        res += ('\ncell:\n'
+                + cell('ebx')
+                + '\tret\n')
 
-    s = 'global _start\n' \
-        '_start:\n' \
-        '\tlea esp, [esp - 100]\n' \
-        '\tmov ecx, esp\n' \
-        '\txor edi, edi\n' \
-        '\txor esi, esi\n'
+    s = ('global _start\n'
+         '_start:\n'
+         '\tlea esp, [esp - 100]\n'
+         '\tmov ecx, esp\n'
+         '\txor edi, edi\n'
+         '\txor esi, esi\n')
 
     if any(func[c][2] for c in 'dfk'):
         s += '\tmov eax, 1\n'
