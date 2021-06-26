@@ -109,7 +109,7 @@ def comp(code):
         res += ('\nright:\n'
                 '\tdec ecx\n'
                 '\tmov byte [ecx], 0\n'
-                end('right', ins['>'][2]))
+                + end('right', ins['>'][2]))
     if ins['<'][1]:
         res += ('\nleft:\n'
                 '\tlea edi, [esp - 1]\n'
@@ -128,14 +128,14 @@ def comp(code):
                 '\tmov eax, 4\n'
                 '\tmov ebx, 1\n'
                 '\tint 80h\n'
-                end('output', ins['.'][2]))
+                + end('output', ins['.'][2]))
     if ins[','][1]:
         res += ('\ninput:\n'
                 '\tmov eax, 3\n'
                 '\txor ebx, ebx\n'
                 '\tdec ecx\n'
                 '\tint 80h\n'
-                end('input', ins[','][2]))
+                + end('input', ins[','][2]))
 
     return res
 
