@@ -59,8 +59,8 @@ def prep(code):
 
             for n in lst:
                 for k in opr:
-                    code = code \
-                        .replace(n + k, m + k)
+                    code = (code
+                            .replace(n + k, m + k))
 
             code = code.replace(s, m + c)
 
@@ -71,10 +71,10 @@ def prep(code):
             else:
                 n = s.find('?')
 
-            r += s[:2] \
-                + rep(s[2:n - 1]) \
-                + s[n - 1:n + 1] \
-                + rep(s[n + 1:])
+            r += (s[:2]
+                  + rep(s[2:n - 1])
+                  + s[n - 1:n + 1]
+                  + rep(s[n + 1:]))
         else:
             r = s[:2] + rep(s[2:])
 
@@ -91,12 +91,12 @@ def comp(code):
     inp = [False, False]
     ind = 0
 
-    res = 'global _start\n' \
-          '_start:\n' \
-          '\tlea ecx, [esp - 60]\n' \
-          '\txor edi, edi\n' \
-          '\tmov edx, 1\n' \
-          '\tmov esi, 1\n\n'
+    res = ('global _start\n'
+           '_start:\n'
+           '\tlea ecx, [esp - 60]\n'
+           '\txor edi, edi\n'
+           '\tmov edx, 1\n'
+           '\tmov esi, 1\n\n')
     subr = {
         '^': ['output', False, False],
         'v': ['input', False, False],
@@ -116,8 +116,8 @@ def comp(code):
             subr[c][1] = True
         elif c == '&':
             if num > 1:
-                res += f'\tmov esi, {num}\n' \
-                       f'\tcall {subr[c][0]}\n'
+                res += (f'\tmov esi, {num}\n'
+                        f'\tcall {subr[c][0]}\n')
                 subr[c][1] = subr[c][2] = True
             else:
                 res += '\tadd [ecx], edi\n'
@@ -144,17 +144,17 @@ def comp(code):
         elif c == ':':
             res += f'.label{add(num)}:\n'
         elif c in '?!':
-            res += '\tcmp dword [ecx], 0\n' \
-                   f'\tj{"n" if c == "?" else ""}e '
+            res += ('\tcmp dword [ecx], 0\n'
+                    f'\tj{"n" if c == "?" else ""}e ')
             if num >= 0:
                 res += f'.label{add(num)}\n'
             else:
                 res += '.switch\n'
                 inp[0] = True
         elif c == '.':
-            res += '\n\tmov eax, 1\n' \
-                   '\txor ebx, ebx\n' \
-                   '\tint 80h\n'
+            res += ('\n\tmov eax, 1\n'
+                    '\txor ebx, ebx\n'
+                    '\tint 80h\n')
         elif c == '$':
             res += f'sub{add(num)}:\n'
         elif c == '@':
@@ -173,8 +173,8 @@ def comp(code):
     if jump and inp[0]:
         res += '\n.switch:\n'
         for k in jump[:-1]:
-            res += f'\tcmp eax, {k}\n' \
-                   f'\tje .lab{add(k)}\n'
+            res += (f'\tcmp eax, {k}\n'
+                    f'\tje .lab{add(k)}\n')
         for k in jump[::-1]:
             n = add(k)
             if k != jump[-1]:
@@ -183,97 +183,97 @@ def comp(code):
     if rout and inp[1]:
         res += '\nswitch:\n'
         for k in rout[:-1]:
-            res += f'\tcmp eax, {k}\n' \
-                   f'\tje .sub{add(k)}\n'
+            res += (f'\tcmp eax, {k}\n'
+                    f'\tje .sub{add(k)}\n')
         res += '\tret\n'
         for k in rout[::-1]:
             n = add(k)
             if k != rout[-1]:
                 res += f'.sub{n}:\n'
-            res += f'\tcall sub{n}\n' \
-                   '\tret\n'
+            res += (f'\tcall sub{n}\n'
+                    '\tret\n')
 
     def end(opr):
         if subr[opr][2]:
-            mul = '\tdec esi\n' \
-                  '\tcmp esi, 0\n' \
-                  f'\tjg {subr[opr][0]}\n' \
-                  '\tinc esi\n' \
-                  '\tret\n'
+            mul = ('\tdec esi\n'
+                   '\tcmp esi, 0\n'
+                   f'\tjg {subr[opr][0]}\n'
+                   '\tinc esi\n'
+                   '\tret\n')
         else:
             mul = '\tret\n'
         return mul
 
     if subr['^'][1]:
-        res += '\noutput:\n' \
-               '\tmov edi, [ecx]\n' \
-               '\tpush edi\n' \
-               '\n\tmov eax, 10\n' \
-               '\tcmp edi, 0\n' \
-               '\tjge .max\n' \
-               '\n\tmov dword [ecx], \'-\'\n' \
-               '\tcall print\n' \
-               '\tneg edi\n' \
-               '.max:\n' \
-               '\tcmp eax, edi\n' \
-               '\tjg .main\n' \
-               '\tmov ebx, 10\n' \
-               '\tmul ebx\n' \
-               '\tjmp .max\n' \
-               '.main:\n' \
-               '\tmov ebx, 10\n' \
-               '\txor edx, edx\n' \
-               '\tdiv ebx\n' \
-               '\n\txchg eax, edi\n' \
-               '\txor edx, edx\n' \
-               '\tdiv edi\n' \
-               '\tmov [ecx], eax\n' \
-               '\tmov eax, edx\n' \
-               '\txchg eax, edi\n' \
-               '\n\tadd dword [ecx], \'0\'\n' \
-               '\tcall print\n' \
-               '\tsub dword [ecx], \'0\'\n' \
-               '\n\tcmp eax, 1\n' \
-               '\tje .done\n' \
-               '\tjmp .main\n' \
-               '.done:\n' \
-               '\tpop edi\n' \
-               '\tmov [ecx], edi\n' \
-               + end('^') + \
-               '\nprint:\n' \
-               '\tpush eax\n' \
-               '\tmov eax, 4\n' \
-               '\tmov ebx, 1\n' \
-               '\tmov edx, 1\n' \
-               '\tint 80h\n' \
-               '\tpop eax\n' \
-               '\tret\n'
+        res += ('\noutput:\n'
+                '\tmov edi, [ecx]\n'
+                '\tpush edi\n'
+                '\n\tmov eax, 10\n'
+                '\tcmp edi, 0\n'
+                '\tjge .max\n'
+                '\n\tmov dword [ecx], \'-\'\n'
+                '\tcall print\n'
+                '\tneg edi\n'
+                '.max:\n'
+                '\tcmp eax, edi\n'
+                '\tjg .main\n'
+                '\tmov ebx, 10\n'
+                '\tmul ebx\n'
+                '\tjmp .max\n'
+                '.main:\n'
+                '\tmov ebx, 10\n'
+                '\txor edx, edx\n'
+                '\tdiv ebx\n'
+                '\n\txchg eax, edi\n'
+                '\txor edx, edx\n'
+                '\tdiv edi\n'
+                '\tmov [ecx], eax\n'
+                '\tmov eax, edx\n'
+                '\txchg eax, edi\n'
+                '\n\tadd dword [ecx], \'0\'\n'
+                '\tcall print\n'
+                '\tsub dword [ecx], \'0\'\n'
+                '\n\tcmp eax, 1\n'
+                '\tje .done\n'
+                '\tjmp .main\n'
+                '.done:\n'
+                '\tpop edi\n'
+                '\tmov [ecx], edi\n'
+                + end('^') +
+                '\nprint:\n'
+                '\tpush eax\n'
+                '\tmov eax, 4\n'
+                '\tmov ebx, 1\n'
+                '\tmov edx, 1\n'
+                '\tint 80h\n'
+                '\tpop eax\n'
+                '\tret\n')
     if subr['v'][1]:
-        s = '\ninput:\n' \
-            '\tpush ecx\n' \
-            '\tmov eax, 3\n' \
-            '\tmov ebx, 0\n' \
-            '\tlea ecx, [esp - 4]\n' \
-            '\tint 80h\n' \
-            '\tmov eax, [esp - 4]\n' \
-            '\tsub eax, \'0\'\n' \
-            + end('v')
+        s = ('\ninput:\n'
+             '\tpush ecx\n'
+             '\tmov eax, 3\n'
+             '\tmov ebx, 0\n'
+             '\tlea ecx, [esp - 4]\n'
+             '\tint 80h\n'
+             '\tmov eax, [esp - 4]\n'
+             '\tsub eax, \'0\'\n'
+             + end('v'))
         res += s.replace('ret', 'pop ecx\n\tret')
     if subr['<'][1]:
-        res += '\nleft:\n' \
-               '\tlea ecx, [ecx + 4*esi]\n' \
-               '\tlea eax, [esp - 48]\n' \
-               '\tcmp eax, ecx\n' \
-               '\tjge .done\n' \
-               '\tmov ecx, eax\n' \
-               '.done:\n' \
-               '\tret\n'
+        res += ('\nleft:\n'
+                '\tlea ecx, [ecx + 4*esi]\n'
+                '\tlea eax, [esp - 48]\n'
+                '\tcmp eax, ecx\n'
+                '\tjge .done\n'
+                '\tmov ecx, eax\n'
+                '.done:\n'
+                '\tret\n')
     if subr['&'][1]:
-        res += '\nmult:\n' \
-               '\tmov eax, edi\n' \
-               '\tmul esi\n' \
-               '\tadd [ecx], eax\n' \
-               '\tret\n'
+        res += ('\nmult:\n'
+                '\tmov eax, edi\n'
+                '\tmul esi\n'
+                '\tadd [ecx], eax\n'
+                '\tret\n')
 
     return res.replace('\n\n\n', '\n\n')
 
