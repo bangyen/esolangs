@@ -13,65 +13,82 @@ def find(code, ind, op):
     ind += move
 
     while num:
+        if ind == len(code):
+            return ind
         if code[ind][0] == op:
             num += move
         elif code[ind][0] == match:
             num -= move
         ind += move
-
     return ind - 1
 
 
 def run(code):
     ind = 0
     var = {}
-    code = [
-        k.lstrip()
-        .rstrip('\n')
-        .split(',')
-        for k in code
-    ]
+    skip = False
 
-    for y in code:
-        for a, b in enumerate(y):
-            y[a] = b.replace('*44', ',')
+    for num, val in enumerate(code):
+        val = (val.lstrip()
+                  .rstrip('\n')
+                  .split(','))
+
+        code[num] = [
+            v.replace('*44', ',')
+            for v in val if v
+        ]
 
     while ind < len(code):
-        if c := code[ind]:
-            for x, y in enumerate(c):
-                if isinstance(y, str) and y[0] == '$':
-                    c[x] = var[y[1:]]
+        if (c := code[ind]) and not skip:
+            for x, y in enumerate(c[1:]):
+                if isinstance(y, str):
+                    if y[0] == '$':
+                        c[x] = var[y[1:].strip()]
+                    if (isinstance(c[x], str)
+                            and c[x].isdigit()):
+                        c[x] = int(c[x])
 
             if (op := c[0]) == 'print':
-                print(''.join(c[1:]))
+                print(*c[1:], sep='')
             elif op == 'input':
                 var['answer'] = input(c[1])
             elif op == 'make':
-                var[c[1]] = c[2]
+                if len(c) == 5:
+                    if (o := c[3]) == '+':
+                        v = c[2] + c[4]
+                    elif o == '-':
+                        v = c[2] - c[4]
+                    elif o == '*':
+                        v = c[2] * c[4]
+                    else:
+                        v = c[2] / c[4]
+                    var[c[1]] = v
+                else:
+                    var[c[1]] = c[2]
             elif op == 'if':
-                x, y = int(c[1]), int(c[3])
-                if (o := c[2]) == '>':
+                x, o, y = c[1:4]
+                if o == '>':
                     b = x > y
                 elif o == '<':
                     b = x < y
                 else:
-                    b = c[1] == c[3]
-
+                    b = x == y
                 if not b:
                     ind = find(code, ind, op)
             elif op == 'loop':
-                if int(c[1]):
-                    c[1] = int(c[1]) - 1
+                if c[1]:
+                    c[1] -= 1
                 else:
                     ind = find(code, ind, op)
+                    skip = False
             elif op == 'endloop':
                 ind = find(code, ind, op) + 1
+                skip = True
         ind += 1
 
 
 if __name__ == '__main__':
-    f = open(sys.argv[1])
-    data = f.readlines()
-    f.close()
-
-    run(data)
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.readlines()
+            run(data)
