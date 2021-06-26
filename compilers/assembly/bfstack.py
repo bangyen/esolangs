@@ -35,11 +35,11 @@ def comp(code):
             else:
                 break
 
-    res = 'global _start\n' \
-          + '_start:\n' \
-          + '\tlea ecx, [esp - 6]\n' \
-          + '\tmov edx, 1\n' \
-          + '\tmov esi, 1\n\n'
+    res = ('global _start\n'
+           '_start:\n'
+           '\tlea ecx, [esp - 6]\n'
+           '\tmov edx, 1\n'
+           '\tmov esi, 1\n\n')
 
     ins = {
         '>': ['right', False, False],
@@ -84,58 +84,58 @@ def comp(code):
                 arr.append(loop)
                 loop += 1
 
-                res += f'\tje .bot{lab}\n' \
-                       + f'.top{lab}:\n'
+                res += (f'\tje .bot{lab}\n'
+                        f'.top{lab}:\n')
             else:
                 lab = n if (n := arr.pop()) > 1 else ''
 
-                res += f'\tjne .top{lab}\n' \
-                       + f'.bot{lab}:\n'
+                res += (f'\tjne .top{lab}\n'
+                        f'.bot{lab}:\n')
 
         ind += num
 
-    res += '\n\tmov eax, 1\n' \
-           + '\txor ebx, ebx\n' \
-           + '\tint 80h\n'
+    res += ('\n\tmov eax, 1\n'
+            '\txor ebx, ebx\n'
+            '\tint 80h\n')
 
     def end(s, mul):
-        return mul * ('\tdec esi\n'
-                      + '\tcmp esi, 0\n'
-                      + f'\tjg {s}\n'
-                      + '\tinc esi\n') \
-               + '\tret\n'
+        return (mul * ('\tdec esi\n'
+                      '\tcmp esi, 0\n'
+                      f'\tjg {s}\n'
+                      '\tinc esi\n')
+                + '\tret\n')
 
     if ins['>'][1]:
-        res += '\nright:\n' \
-               + '\tdec ecx\n' \
-               + '\tmov byte [ecx], 0\n' \
-               + end('right', ins['>'][2])
+        res += ('\nright:\n'
+                '\tdec ecx\n'
+                '\tmov byte [ecx], 0\n'
+                end('right', ins['>'][2]))
     if ins['<'][1]:
-        res += '\nleft:\n' \
-               + '\tlea edi, [esp - 1]\n' \
-               + '\tcmp ecx, edi\n' \
-               + '\tje .done\n' \
-               + '\tinc ecx\n'
+        res += ('\nleft:\n'
+                '\tlea edi, [esp - 1]\n'
+                '\tcmp ecx, edi\n'
+                '\tje .done\n'
+                '\tinc ecx\n')
         if ins['<'][2]:
-            res += '\tdec esi\n' \
-                   + '\tcmp esi, 0\n' \
-                   + '\tjg left\n' \
-                   + '\tinc esi\n'
-        res += '.done:\n' \
-               + '\tret\n'
+            res += ('\tdec esi\n'
+                    '\tcmp esi, 0\n'
+                    '\tjg left\n'
+                    '\tinc esi\n')
+        res += ('.done:\n'
+                '\tret\n')
     if ins['.'][1]:
-        res += '\noutput:\n' \
-               + '\tmov eax, 4\n' \
-               + '\tmov ebx, 1\n' \
-               + '\tint 80h\n' \
-               + end('output', ins['.'][2])
+        res += ('\noutput:\n'
+                '\tmov eax, 4\n'
+                '\tmov ebx, 1\n'
+                '\tint 80h\n'
+                end('output', ins['.'][2]))
     if ins[','][1]:
-        res += '\ninput:\n' \
-               + '\tmov eax, 3\n' \
-               + '\txor ebx, ebx\n' \
-               + '\tdec ecx\n' \
-               + '\tint 80h\n' \
-               + end('input', ins[','][2])
+        res += ('\ninput:\n'
+                '\tmov eax, 3\n'
+                '\txor ebx, ebx\n'
+                '\tdec ecx\n'
+                '\tint 80h\n'
+                end('input', ins[','][2]))
 
     return res
 
