@@ -148,19 +148,19 @@ def comp(code):
     if func['k'][1]:
         b = func['k'][2]
         res += ('\nprint:\n'
-                '\tpush eax\n' * b
-                '\tmov eax, 4\n'
+                +'\tpush eax\n' * b
+                + '\tmov eax, 4\n'
                 '\tmov ebx, 1\n'
                 '\tmov edx, 1\n'
                 '\tint 80h\n'
                 '\tmov dword [ecx], 0\n'
-               + ('\tpop eax\n'
-                  '\tdec eax\n'
-                  '\tcmp eax, 0\n'
-                  '\tjg print\n'
-                  '\tinc eax\n') * b
-               + '\tmov eax, 1\n' * (1 - b)
-               + '\tret\n')
+                + ('\tpop eax\n'
+                   '\tdec eax\n'
+                   '\tcmp eax, 0\n'
+                   '\tjg print\n'
+                   '\tinc eax\n') * b
+                + '\tmov eax, 1\n' * (1 - b)
+                + '\tret\n')
 
     if func['d'][1] and func['f'][1]:
         res += ('\ncell:\n'
