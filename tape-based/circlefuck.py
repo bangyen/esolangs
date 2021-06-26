@@ -3,11 +3,14 @@ import re
 
 
 def parse(code):
-    for s in re.findall(r'\\\d(\d\d)?', code):
+    reg = re.compile(r'\\(?:\d\d\d|[\dA-F])')
+    for s in reg.findall(code):
         if len(s) == 4:
-            code.replace(s, f'\\{oct(int(s[1:]))}')
+            new = (oct(int(s[1:]))[2:]
+                   .rjust(3, '0'))
         else:
-            code.replace(s, f'\\x0{s}')
+            new = f'x0{s[1:]}'
+        code = code.replace(s, f'\\{new}')
 
     code = (''.join(c for c in code if ord(c) < 127)
               .replace('\\ ', '\200')
@@ -44,7 +47,7 @@ def run(code):
             ptr = (ptr + 1) % len(code)
         elif char == '<':
             ptr = (ptr - 1) % len(code)
-        elif char in '+-':
+        elif char == '+':
             code[ptr] = (code[ptr] + 1) % 256
         elif char == '-':
             code[ptr] = (code[ptr] - 1) % 256
