@@ -2,70 +2,85 @@ import sys
 import re
 
 
-if __name__ == '__main__':
-    num_list = [
-        r'\\[0-9]{3}', r'\\o[0-7]{3}',
-        r'\\x[0-9A-Fa-f]{2}', r'\\[0-9A-F]'
-    ]
-    sub_dict = {
-        r'\\': '\\', r'\ ': ' ', r'\n': '\n',
-        r'\r': '\r', r'\t': '\t', r'\b': '\b'
-    }
-    with open(sys.argv[1]) as file:
-        code = file.read().replace('%s', '%\\s') \
-                          .replace('\n', '')
-        for k in range(len(lst := re.findall(f'({"|".join(num_list)})', code))):
-            item = lst[k]
-            new = item.replace('\\', '').replace('x', '').replace('o', '')
-            code = code.replace('|', '\\|').replace(item, f'|{k}|')
-            num_list.append(int(new, [16, 16, 10, 8][len(item) - 2 - (item[1] == 'x')]))
-        for key in sub_dict:
-            code = code.replace(key, sub_dict[key])
-        code = [
-            [num_list[int(k) + 4]] if k.isdigit()
-            else list(k.replace('%\\s', '%s'))
-            for k in code.split('|')
-        ]
-        code = [k if type(k) == int else ord(k) for k in sum(code, [])]
+def parse(code):
+    for s in re.findall(r'\\\d(\d\d)?', code):
+        if len(s) == 4:
+            code.replace(s, f'\\{oct(int(s[1:]))}')
+        else:
+            code.replace(s, f'\\x0{s}')
 
-    index = pointer = new = 0
-    brackets = []
+    code = (''.join(c for c in code if ord(c) < 127)
+              .replace('\\ ', '\200')
+              .replace('\\o', '\\'))
+    code = (''.join(c for c in code if ord(c) > 32)
+              .replace('\200', ' '))
+    code = (bytes(code, 'utf-8')
+            .decode('unicode_escape'))
 
-    while index < len(code):
-        char = chr(code[index])
-        if char in '<>':
-            pointer = (pointer + (1, -1)[char == '<']) % len(code)
+    return [ord(c) for c in code]
+
+
+def find(code, ind, mode):
+    match = mode
+    start = ind
+    while match:
+        ind = (ind + mode) % len(code)
+        if ind == start:
+            return -1
+        if (sym := chr(code[ind])) == '[':
+            match += 1
+        elif sym == ']':
+            match -= 1
+    return ind
+
+
+def run(code):
+    code = parse(code)
+    ind = ptr = 0
+    new = False
+
+    while True:
+        if (char := chr(code[ind])) == '>':
+            ptr = (ptr + 1) % len(code)
+        elif char == '<':
+            ptr = (ptr - 1) % len(code)
         elif char in '+-':
-            code[pointer] = (code[pointer] + (1, -1)[char == '-']) % 256
+            code[ptr] = (code[ptr] + 1) % 256
+        elif char == '-':
+            code[ptr] = (code[ptr] - 1) % 256
         elif char == '.':
-            print(chr(code[pointer]), end='')
-        elif char == ',':
-            code[pointer] = ord((input('\n' * new + 'Input: ') + chr(0))[0])
+            print(chr(code[ptr]), end='')
             new = True
-        elif char in '[]':
-            if not code[pointer] and char == '[':
-                bracket = 1
-                original = index
-                while bracket:
-                    index = (index + 1) % len(code)
-                    if index == original:
-                        break
-                    if (sym := chr(code[index])) in '[]':
-                        bracket += (1, -1)[sym == ']']
-            elif char == '[':
-                brackets.append(index)
-            else:
-                if code[pointer]:
-                    index = brackets.pop(-1) - 1
-                    if code[index + 1] != 91:
-                        brackets.append(index + 1)
-                else:
-                    brackets.pop(-1)
-        elif char in '@':
-            break
+        elif char == ',':
+            val = input('\n' * new + 'Input: ')
+            new = False
+            if val:
+                code[ptr] = ord(val[0])
+        elif char == '[':
+            if not code[ptr]:
+                ind = find(code, ind, 1)
+            if ind == -1:
+                return
+        elif char == ']':
+            if code[ptr]:
+                ind = find(code, ind, -1)
+            if ind == -1:
+                return
+        elif char == '@':
+            return
         elif char == '#':
-            index += 1
-        elif char in '{}':
-            code.insert(pointer, 0) if char == '{' else code.pop(pointer)
-            index += (char == '{')
-        index += 1
+            ind += 1
+        elif char == '{':
+            code.insert(ptr, 0)
+            ind += 1
+        elif char == '}':
+            code.pop(ptr)
+
+        ind = (ind + 1) % len(code)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.read()
+            run(data)
