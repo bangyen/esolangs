@@ -1,0 +1,19 @@
+This code prints 'Hello, world' (with an exclamation mark)
+as the concatenation of 7 bit strings corresponding to each
+character's ASCII value. It ignores invalid characters.
+
+     code     | letter |  ASCII  
+---------------------------------
+^!^!!^!^!!!   | H      | 100 1000
+^!!^!!^!^!^!  | e      | 110 0101
+!!^!^!!^!!    | l      | 110 1100
+^!!^!^!!^!!   | l      | 110 1100
+^!!^!^!!!!    | o      | 110 1111
+^!^!^!^!!^!!  | ,      | 010 1100
+!^!^!!!!!     |        | 010 0000
+^!!!^!^!!!    | w      | 111 0111
+!!^!^!!!!     | o      | 110 1111
+!!!^!!^!^!    | r      | 111 0010
+^!!^!^!!^!!   | l      | 110 1100
+^!!^!!^!^!!   | d      | 110 0100
+!^!^!!!!^!    # !      | 010 0001
