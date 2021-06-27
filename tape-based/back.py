@@ -1,35 +1,42 @@
 import sys
 
-ins = cells = [0, 0]
-vel = [(point := 0), 1]
 
-file = open(sys.argv[1]).readlines()
-size = max(len(lst) for lst in file)
-code = [(line + ' ' * size)[:size] for line in file]
+def run(code):
+    size = max(len(lst) for lst in code)
+    code = [c.ljust(size) for c in code]
+
+    x, y = 0, 0
+    a, b = 0, 1
+    tape = [0]
+    cell = 0
+
+    while True:
+        if (c := code[x][y]) == '\\':
+            a, b = b, a
+        elif c == '/':
+            a, b = -b, -a
+        elif c == '<':
+            if cell:
+                cell -= 1
+        elif c == '>':
+            cell += 1
+            if cell == len(tape):
+                tape.append(0)
+        elif c == '-':
+            tape[cell] ^= 1
+        elif c == '+' and not tape[cell]:
+            x, y = x + a, y + b
+        elif c == '*':
+            break
+
+        x = (x + a) % len(code)
+        y = (y + b) % size
+
+    print(*tape)
 
 
-def add(pos, move, sym):
-    x = (pos[0] + move[0]) % len(sym)
-    y = (pos[1] + move[1]) % len(sym[0])
-    return [x, y]
-
-
-while char := code[ins[0]][ins[1]]:
-    if char == '*':
-        break
-    elif char in '\\/':
-        mul = (-1) ** (char == '/')
-        vel = [k * mul for k in vel][::-1]
-    elif char in '<>':
-        point += (-1) ** (char == '<')
-        if not 0 <= point < len(cells):
-            if char == '>':
-                cells.append(0)
-            else:
-                cells.insert(0, 0)
-            point = max(0, point)
-    elif char == '-':
-        cells[point] = not cells[point]
-    elif char == '+':
-        ins = add(ins, vel, code)
-    ins = add(ins, vel, code)
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.readlines()
+            run(data)
