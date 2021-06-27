@@ -3,55 +3,54 @@ import re
 
 
 def num(char):
-    if char.isalpha():
-        return ord(char.upper()) - 55
-    elif char.isdigit():
+    if char.isdigit():
         return int(char)
+    return ord(char.upper()) - 55
 
 
-def main(code):
-    point = cell = 0
+def run(code):
+    code = f' {code}'
+    code = re.sub('([^78])C[^\n]*', '\1', code)
+
+    cell = ind = 0
     tape = [0]
     line = 1
 
-    while point < len(code):
-        inst = code[point]
-        if inst == '1':
+    while ind < len(code):
+        if (c := code[ind]) == '1':
             cell += 2
             while len(tape) < cell + 1:
                 tape.append(0)
-        elif inst == '3':
-            cell -= 1 * (cell > 0)
-        elif inst == '6':
-            tape[cell] += 6
-        elif inst == '5':
-            tape[cell] += 5
-        elif inst == '9':
-            tape[cell] -= 6
-        elif inst == '2':
-            tape[cell] -= 5
-        elif inst == '8':
-            val = num(code[point + 1])
-            point = 0
-            while code[:point].count('4') != val:
-                if point == len(code):
-                    break
-        elif inst == '7':
-            if tape[cell] == num(code[point + 1]):
-                point += 1
-        elif inst == '0':
-            break
-        elif inst == 'A':
+        elif c == '3' and cell:
+            cell -= 1
+        elif c in '56':
+            tape[cell] += int(c)
+        elif c in '29':
+            tape[cell] -= int(c) % 6 + 3
+        elif c == '8':
+            val = num(code[ind + 1])
+            reg = f'([^4]*4){val}'
+            if m := re.match(reg, code):
+                ind = m.end() - 1
+        elif c == '7':
+            val = num(code[ind + 1])
+            if tape[cell] == val:
+                ind += 1
+        elif c == '0':
+            return
+        elif c == 'A':
             print(chr(tape[cell]), end='')
             line = 0
-        elif inst == 'B':
-            inp = input('\nInput: '[line:]) + '\0'
-            tape[cell] = ord(inp[0])
+        elif c == 'B':
+            val = input('\nInput: '[line:])
+            tape[cell] = ord(val[0])
+            line = 1
 
-        point += 1
+        ind += 1
 
 
 if __name__ == '__main__':
-    s = f' {open(sys.argv[1]).read()}\n'
-    s = re.sub('([^78])C[^\n]*\n', '\1', s)
-    main(re.sub('[^0-9A-Z]', '', s))
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.read()
+            run(data)
