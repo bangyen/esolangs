@@ -58,8 +58,8 @@ def run(code):
         print(' ', end='')
         return
 
-    m = max(len(c) for c in code)
-    code = [c + ' ' * (m - len(c)) for c in code]
+    size = max(len(lne) for lne in code)
+    code = [c.ljust(size) for c in code]
     line = False
     dots = []
     curr = 0
@@ -108,7 +108,7 @@ def run(code):
                 while match:
                     if dot.dir % 2:
                         y += 1
-                        if y == m:
+                        if y == size:
                             return
                     else:
                         x += 1

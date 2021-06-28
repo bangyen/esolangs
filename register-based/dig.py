@@ -2,8 +2,8 @@ import sys
 
 
 def run(code, func=lambda: 0):
-    m = max(len(c) for c in code)
-    code = [c + ' ' * (m - len(c)) for c in code]
+    size = max(len(lne) for lne in code)
+    code = [c.ljust(size) for c in code]
 
     direct = [(-1, 0), (0, 1), (1, 0), (0, -1)]
     line = mole = num = x = y = 0
@@ -13,7 +13,7 @@ def run(code, func=lambda: 0):
         lst = []
         for i, j in direct:
             if (0 <= x + i < len(code)
-                    and 0 <= y + j < m):
+                    and 0 <= y + j < size):
                 val = code[x + i][y + j]
                 if val.isdigit():
                     lst.append(int(val))
