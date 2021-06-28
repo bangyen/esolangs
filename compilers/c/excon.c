@@ -3,7 +3,7 @@
 int main(int argc, char* argv[]) {
     FILE *file = fopen(argv[1], "r");
     FILE *output = fopen("output.c", "w");
-    char *str, ch;
+    char ch;
 
     fputs(
         "#include <stdio.h>\n#include <string.h>\n\nint"
@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
         output);
 
     while ((ch = getc(file)) != EOF) {
-        str = "";
+        char *str = "";
         switch (ch) {
             case ':': str = "memset(pool, 0, 32); cell = 7;"; break;
             case '^': str = "pool[cell] ^= 1;";               break;

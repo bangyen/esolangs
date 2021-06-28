@@ -1,4 +1,4 @@
-import random
+import secrets
 import sys
 
 
@@ -38,7 +38,7 @@ def run(code):
                 parse(code[ptr][0])
             comm += 1
         elif char == '€':
-            parse(random.choice('@v*oO+:\\'))
+            parse(secrets.choice('@v*oO+:\\'))
 
         while stk and sum(stk[1:]) / 2 > stk[0]:
             new = True
