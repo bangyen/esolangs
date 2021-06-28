@@ -2,6 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+void skip(FILE *file, char c) {
+    fseek(file, -2, SEEK_CUR);
+    char ch = fgetc(file);
+
+    if (ch == 'C') {
+        fseek(file, 2, SEEK_CUR);
+    } else {
+        while ((ch = fgetc(file)) == c) {}
+        if (!feof(file))
+            fseek(file, -1, SEEK_CUR);
+    }
+}
+
 int main(int argc, char *argv[]) {
     FILE *file   = fopen(argv[1], "r");
     FILE *output = fopen("output.c", "w");
@@ -11,7 +24,7 @@ int main(int argc, char *argv[]) {
     char *str, ch;
 
     while ((ch = getc(file)) != EOF) {
-        num |= ch == 'G';
+        num |= ch == 'G' || ch == 'C';
         max += ch == 'A';
     }
 
@@ -29,12 +42,15 @@ int main(int argc, char *argv[]) {
     while ((ch = getc(file)) != EOF) {
         ind++; str = "";
         switch (ch) {
-            case 'Z': str = "z = 0;"; break;
             case 'A': str = "z++;"; break;
-            case 'N': str = "n = z;"; break;
             case 'L': str = "z = ram[z];"; break;
-            case 'S': str = "ram[n] = z;"; break;
             case 'C': str = "ind += z == 0;"; break;
+            case 'Z': str = "z = 0;";
+                      skip(file, ch); break;
+            case 'N': str = "n = z;";
+                      skip(file, ch); break;
+            case 'S': str = "ram[n] = z;";
+                      skip(file, ch); break;
             case 'G':
                 for (max = 1; max < 4; max++)
                     jump[max] = getc(file);
