@@ -25,7 +25,6 @@ int main(int argc, char *argv[]) {
         fputs(
             "\twhile (++ind)\n\t{\n\t\t"
             "switch (ind)\n\t\t{\n", output);
-    max = 1;
 
     while ((ch = getc(file)) != EOF) {
         ind++; str = "";
@@ -35,11 +34,7 @@ int main(int argc, char *argv[]) {
             case 'N': str = "n = z;"; break;
             case 'L': str = "z = ram[z];"; break;
             case 'S': str = "ram[n] = z;"; break;
-            case 'C':
-                str = num
-                    ? "ind += z == 0;"
-                    : "if (z)";
-                break;
+            case 'C': str = "ind += z == 0;"; break;
             case 'G':
                 for (max = 1; max < 4; max++)
                     jump[max] = getc(file);
@@ -60,19 +55,12 @@ int main(int argc, char *argv[]) {
         }
 
         if (strcmp(str, "")) {
-            if (num) {
+            if (num)
                 fprintf(
                     output, "\t\t\tcase %d: "
                     "%s break;\n", ind, str);
-            } else {
-                int val;
-
-                for (val = 0; val < max; val++)
-                    fputc('\t', output);
-
-                ch == 'C' ? max++ : (max = 1);
-                fprintf(output, "%s\n", str);
-            }
+            else
+                fprintf(output, "\t%s\n", str);
         } else {
             ind--;
         }
