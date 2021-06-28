@@ -1,9 +1,9 @@
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-    FILE* file = fopen(argv[1], "r");
-    FILE* output = fopen("output.c", "w");
-    char* str, ch;
+    FILE *file = fopen(argv[1], "r");
+    FILE *output = fopen("output.c", "w");
+    char *str, ch;
 
     fputs(
         "#include <stdio.h>\n#include <string.h>\n\nint"
