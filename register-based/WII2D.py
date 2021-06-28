@@ -1,4 +1,4 @@
-import random
+import secrets
 import sys
 
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         op = code[pos[0]][pos[1]]
         if op in option:
             if op == '?':
-                op = random.choice(direct)
+                op = secrets.choice(direct)
             vel = dir_list[direct.index(op)]
         elif op == '|':
             a, b = vel

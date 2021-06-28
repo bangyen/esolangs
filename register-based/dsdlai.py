@@ -1,13 +1,13 @@
-import random
+import secrets as s
 import sys
 import dig
 
 
 def rand():
-    num = random.randint(20, 90)
+    num = s.randbelow(71) + 20
 
     def chance():
-        n = random.randint(1, 100)
+        n = s.randbelow(100) + 1
         if n <= num:
             print('\nYou died.')
         return n <= num
@@ -15,8 +15,7 @@ def rand():
 
 
 if __name__ == '__main__':
-    f = open(sys.argv[1])
-    data = f.readlines()
-    f.close()
-
-    dig.run(data, rand())
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.readlines()
+            dig.run(data, rand())
