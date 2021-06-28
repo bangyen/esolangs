@@ -1,10 +1,11 @@
-import random
+import secrets
 import sys
 import re
 
 
 def run(code):
-    code = code[1:-1].split('][')
+    reg = re.compile(r'\[([^\[]]*(".*")??)]')
+    code = [k[1] for k in reg.findall(code)]
     var = {f'VAR{k}': 0 for k in range(1, 5)}
 
     inp = False
@@ -20,12 +21,16 @@ def run(code):
             cond = True
             val = stk[-1] if stk else 0
 
-            if 'NIF' in mod or 'IF NOT' in mod:
+            if 'NIF' in mod:
                 cond = val != int(arg[-1])
             elif 'IF' in mod:
                 cond = val == int(arg[-1])
 
-            ind += cond * (int(arg[2]) * (1 if arg[1] == 'F' else -1) - 1)
+            if cond:
+                if arg[1] == 'F':
+                    ind += int(arg[2])
+                else:
+                    ind -= int(arg[2])
         elif 'ADD' in mod:
             stk[-1] += int(arg[1])
         elif 'SUB' in mod:
@@ -36,7 +41,8 @@ def run(code):
             if 'INT' in mod:
                 stk.append(int(arg[2]))
             elif 'STR' in mod:
-                stk += [ord(c) for c in mod.split('"')[1]][::-1]
+                m = mod.split('"')[1]
+                stk += [ord(c) for c in m][::-1]
             elif 'VAR' in mod:
                 var[arg[1]] = stk[-1]
         elif 'POP' == mod:
@@ -49,15 +55,16 @@ def run(code):
             else:
                 n = stk.pop()
 
-            print(n if 'INT' in mod else chr(n), end='')
+            if 'INT' in mod:
+                print(n, end='')
+            else:
+                print(chr(n), end='')
             inp = True
         elif 'INP' in mod:
             n = input('\n' * inp + 'Input: ')
             inp = False
 
-            if 'INT' in mod:
-                while not n.isnumeric():
-                    n = input('\n' * inp + 'Input: ')
+            if 'INT' in mod and n:
                 stk.append(int(n))
             else:
                 stk += [ord(c) for c in n][::-1]
@@ -66,7 +73,8 @@ def run(code):
         elif 'DUP' == mod:
             stk.append(stk[-1])
         elif 'RND' in mod:
-            stk.append(random.randint(0, int(arg[1])))
+            n = secrets.randbelow(int(arg[1]))
+            stk.append(n)
         elif '+' in mod:
             arg = mod.split('+')
             var[arg[0]] += int(arg[1])
@@ -76,18 +84,7 @@ def run(code):
 
 
 if __name__ == '__main__':
-    if len(a := sys.argv) > 1:
-        file = open(a[1])
-    else:
-        file = None
-        print('First argument must be a file name.')
-        exit(0)
-
-    data = file.read()
-    data = re.sub(r'][^\[\]]+\[', '][', data)
-
-    if not re.match(r'^\[.+]*$', data):
-        print('Unmatched brackets.')
-        exit(0)
-
-    run(data)
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.read()
+            run(data)
