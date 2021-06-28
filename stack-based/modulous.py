@@ -4,8 +4,8 @@ import re
 
 
 def run(code):
-    reg = re.compile(r'\[([^\[]]*(".*")??)]')
-    code = [k[1] for k in reg.findall(code)]
+    reg = re.compile(r'\[([^\[\]\"]*(".*")??)]')
+    code = [k[0] for k in reg.findall(code)]
     var = {f'VAR{k}': 0 for k in range(1, 5)}
 
     stk = []
@@ -28,9 +28,9 @@ def run(code):
 
             if cond:
                 if arg[1] == 'F':
-                    ind += int(arg[2])
+                    ind += int(arg[2]) - 1
                 else:
-                    ind -= int(arg[2])
+                    ind -= int(arg[2]) + 1
         elif 'ADD' in mod:
             stk[-1] += int(arg[1])
         elif 'SUB' in mod:
