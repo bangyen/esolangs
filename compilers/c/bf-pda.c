@@ -1,29 +1,23 @@
 #include <stdio.h>
 
-char* str = "", ch;
-int tabs, ind;
-
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     FILE* file = fopen(argv[1], "r");
     FILE* output = fopen("output.c", "w");
+    char* str, ch;
+    int   ind, tabs = 0;
 
-    fputs
-    (
+    fputs(
         "#include <stdio.h>\n\nint stack[500"
-        "], point;\n\nint main() {\n", output
-    );
+        "], point;\n\nint main() {\n", output);
 
-    while ((ch = getc(file)) != EOF)
-    {
+    while ((ch = getc(file)) != EOF) {
         str = "";
-        switch (ch)
-        {
+        switch (ch) {
             case '@':
                 str = "stack[point] = point && !stack[point];";
                 break;
             case '.':
-                str = "printf(\"\%d\", stack[point]);";
+                str = "printf(\"%d\", stack[point]);";
                 break;
             case '<':
                 str = "stack[++point] = 0;";
@@ -38,6 +32,7 @@ int main(int argc, char* argv[])
                 str = "}"; tabs--;
                 break;
         }
+
         for (ind = 0; ind < tabs; ind++)
             fputs("\t", output);
         if (strcmp(str, ""))
@@ -45,8 +40,8 @@ int main(int argc, char* argv[])
 
         tabs += ch == '[';
     }
-    fputs("\treturn 0;\n}\n", output);
 
+    fputs("\treturn 0;\n}\n", output);
     fclose(output);
     fclose(file);
 
