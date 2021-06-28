@@ -1,5 +1,9 @@
 # Custom
+output.txt
+input.txt
 test.txt
+output.c
+a.exe
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
