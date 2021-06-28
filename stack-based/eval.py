@@ -2,44 +2,56 @@ import sys
 import re
 
 
-def run(symbols):
-    stacks = [[], []]
-    pointer = st_point = 0
+def run(code):
+    ptr = 0
+    stk = [[], []]
+    app = stk[ptr].append
+    pop = stk[ptr].pop
 
-    sym_dict = {
-        '`': lambda: stacks[st_point].append(not st_point),
-        '^': lambda: stacks[st_point].append(stacks[st_point][-1]),
-        '0': lambda: stacks[st_point].append(0),
-        '+': lambda: stacks[st_point].append(stacks[st_point].pop(-1) + 1),
-        '-': lambda: stacks[st_point].append(stacks[st_point].pop(-1) - 1),
-        '.': lambda: print(stacks[st_point].pop(-1), end=''),
-        ';': lambda: stacks[st_point].pop(-1),
-        '=': lambda: stacks[not st_point].append(stacks[st_point].pop(-1))
+    dct = {
+        '`': lambda: app(1 - ptr),
+        '^': lambda: app(stk[ptr][-1]),
+        '0': lambda: app(0),
+        '+': lambda: app(pop() + 1),
+        '-': lambda: app(pop() - 1),
+        '.': lambda: print(pop(), end=''),
+        '=': lambda: stk[1 - ptr].append(pop()),
+        ';': lambda: pop()
     }
 
-    while pointer < len(symbols):
-        char = symbols[pointer]
-        before, after = symbols[:pointer + 1], symbols[pointer + 1:]
-        if char in sym_dict:
-            sym_dict[char]()
-        elif char == '~':
-            st_point = not st_point
-        elif char == '*':
-            stacks[st_point] = stacks[st_point][::-1]
-        elif char == '?':
-            symbols = f'{before}{after[not stacks[st_point].pop(-1):]}'
-        elif char == '!':
-            symbols = f'{before}{stacks[st_point].pop(-1)}{after}'
-        elif char == '"':
-            string = re.findall('"[^"]*["\n]', symbols[pointer:])[0].replace('`', '"')[1:-1]
-            stacks[st_point].append(string)
-            pointer += len(string) + 1
-        elif char == '\'':
-            stacks[st_point].insert(0, '"')
-            stacks[st_point].append('"')
-            symbols = f'{before}"{after}'
-        pointer += 1
+    def ins(sym):
+        nonlocal ptr
+        ind = 0
+
+        while ind < len(sym):
+            if (char := sym[ind]) in dct:
+                dct[char]()
+            elif char == '~':
+                ptr ^= 1
+            elif char == '*':
+                stk[ptr] = stk[ptr][::-1]
+            elif char == '?':
+                if not pop():
+                    ind += 1
+            elif char == '!':
+                ins(pop())
+            elif char in '"\'':
+                s = (re.match('[^"]*', sym[ind + 1:])
+                     .group()
+                     .replace('`', '"'))
+                ind += len(s) + 1
+                if char == '\'':
+                    s = f'"{s}"'
+
+                app(s)
+
+            ind += 1
+
+    ins(code)
 
 
 if __name__ == '__main__':
-    run(open(sys.argv[1]).read() + '\n')
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.read()
+            run(data)
