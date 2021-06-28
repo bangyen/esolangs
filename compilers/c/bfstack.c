@@ -12,11 +12,11 @@ int main(int argc, char *argv[])
     fprintf
     (
         output,
-        "#include <stdio.h>\n\nchar stack[500]"
-        ";\nint n, line;\n\nvoid input() {\n\t"
-        "printf(\"%sInput: \", line ? \"\\n\" "
-        ": \"\");\n\tscanf(\"%s\", &stack[++n]"
-        ");\n}\n\nint main() {\n", "%s", "%s"
+        "#include <stdio.h>\n\nchar stack[500];\n"
+        "int n, line;\n\nvoid input() {\n\tprintf"
+        "(\"%sInput: \", line ? \"\\n\" : \"\");"
+        "\n\tscanf(\"%s\", &stack[++n]);\n\tline"
+        " = 0;\n}\n\nint main() {\n", "%s", "%s"
     );
 
     while ((ch = getc(file)) != EOF)
