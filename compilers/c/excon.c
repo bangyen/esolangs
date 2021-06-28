@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
         switch (ch)
         {
         case ':': str = "memset(pool, 0, 32); cell = 7;"; break;
-        case '^': str = "pool[cell] = !pool[cell];";      break;
+        case '^': str = "pool[cell] ^= 1;";      break;
         case '!': str = "printf(\"\%c\", binary(pool));"; break;
         case '<': str = "cell--;";                        break;
         }
