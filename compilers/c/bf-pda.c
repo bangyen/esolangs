@@ -7,30 +7,19 @@ int main(int argc, char* argv[]) {
     char *str, ch;
 
     fputs(
-        "#include <stdio.h>\n\nint stack[500"
-        "], point;\n\nint main() {\n", output);
+        "#include <stdio.h>\n\nint stk[50]"
+        ", ptr;\n\nint main() {\n", output);
 
     while ((ch = getc(file)) != EOF) {
-        str = "";
+        char *str = "";
         switch (ch) {
-            case '@':
-                str = "stack[point] = point && !stack[point];";
-                break;
-            case '.':
-                str = "printf(\"%d\", stack[point]);";
-                break;
-            case '<':
-                str = "stack[++point] = 0;";
-                break;
-            case '>':
-                str = "point -= !!point;";
-                break;
-            case '[':
-                str = "while (stack[point]) {";
-                break;
-            case ']':
-                str = "}"; tabs--;
-                break;
+            case '@': str = "stk[ptr] ^= 1;";     break;
+            case '.': str = "printf(\"%d\", "
+                            "stk[ptr]);";         break;
+            case '<': str = "stk[++ptr] = 0;";    break;
+            case '>': str = "ptr -= !!ptr;";      break;
+            case '[': str = "while (stk[ptr]) {"; break;
+            case ']': str = "}"; tabs--;          break;
         }
 
         for (ind = 0; ind < tabs; ind++)
