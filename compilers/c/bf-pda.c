@@ -1,10 +1,10 @@
 #include <stdio.h>
 
 int main(int argc, char* argv[]) {
-    FILE* file = fopen(argv[1], "r");
-    FILE* output = fopen("output.c", "w");
-    char* str, ch;
-    int   ind, tabs = 0;
+    FILE *file = fopen(argv[1], "r");
+    FILE *output = fopen("output.c", "w");
+    int  ind, tabs = 0;
+    char *str, ch;
 
     fputs(
         "#include <stdio.h>\n\nint stack[500"
