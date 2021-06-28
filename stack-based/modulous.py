@@ -8,9 +8,9 @@ def run(code):
     code = [k[1] for k in reg.findall(code)]
     var = {f'VAR{k}': 0 for k in range(1, 5)}
 
-    inp = False
-    ind = 0
     stk = []
+    new = 1
+    ind = 0
 
     while ind < len(code):
         mod = code[ind]
@@ -59,17 +59,17 @@ def run(code):
                 print(n, end='')
             else:
                 print(chr(n), end='')
-            inp = True
+            new = 0
         elif 'INP' in mod:
-            n = input('\n' * inp + 'Input: ')
-            inp = False
+            n = input('\nInput: '[new:])
+            new = 1
 
             if 'INT' in mod and n:
                 stk.append(int(n))
             else:
                 stk += [ord(c) for c in n][::-1]
         elif 'END' == mod:
-            break
+            return
         elif 'DUP' == mod:
             stk.append(stk[-1])
         elif 'RND' in mod:
