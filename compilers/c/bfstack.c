@@ -1,12 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 
-int loop, brackets;
-char *string, ch;
-
 int main(int argc, char *argv[]) {
-    FILE* file = fopen(argv[1], "r");
-    FILE* output = fopen("output.c", "w");
+    FILE *file = fopen(argv[1], "r");
+    FILE *output = fopen("output.c", "w");
+    int  loop, brackets;
+    char *string, ch;
 
     fprintf(
         output,
