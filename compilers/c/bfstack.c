@@ -4,25 +4,20 @@
 int loop, brackets;
 char *string, ch;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     FILE* file = fopen(argv[1], "r");
     FILE* output = fopen("output.c", "w");
 
-    fprintf
-    (
+    fprintf(
         output,
         "#include <stdio.h>\n\nchar stack[500];\n"
         "int n, line;\n\nvoid input() {\n\tprintf"
         "(\"%sInput: \", line ? \"\\n\" : \"\");"
         "\n\tscanf(\"%s\", &stack[++n]);\n\tline"
-        " = 0;\n}\n\nint main() {\n", "%s", "%s"
-    );
+        " = 0;\n}\n\nint main() {\n", "%s", "%s");
 
-    while ((ch = getc(file)) != EOF)
-    {
-        switch(ch)
-        {
+    while ((ch = getc(file)) != EOF) {
+        switch (ch) {
             case '.':  string = "printf(\"%c\","
                                 " stack[n]); line++;";    break;
             case ',':  string = "input();";               break;
