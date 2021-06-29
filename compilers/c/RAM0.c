@@ -20,11 +20,10 @@ int main(int argc, char *argv[]) {
     FILE *output = fopen("output.c", "w");
 
     int  max = 0, ind = 0, num = 0;
-    char jump[5] = {'G'};
     char *str, ch;
 
     while ((ch = getc(file)) != EOF) {
-        num |= ch == 'G' || ch == 'C';
+        num |= ch == 'C' || isdigit(ch);
         max += ch == 'A';
     }
 
@@ -51,21 +50,19 @@ int main(int argc, char *argv[]) {
                       skip(file, ch); break;
             case 'S': str = "ram[n] = z;";
                       skip(file, ch); break;
-            case 'G':
-                for (max = 1; max < 4; max++)
-                    jump[max] = getc(file);
-                if (!strcmp(jump, "GOTO")) {
+            default:
+                if (isdigit(ch)) {
                     int val;
 
+                    fseek(file, -1, SEEK_CUR);
                     fscanf(file, "%d", &val);
+
                     int len = snprintf(
                         NULL, 0, "%d", val);
                     str = malloc(len + 12);
                     snprintf(
                         str, len + 12,
                         "ind = %i - 1;", val);
-                } else {
-                    fseek(file, -3, SEEK_CUR);
                 }
                 break;
         }
