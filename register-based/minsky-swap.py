@@ -3,7 +3,7 @@ import re
 
 
 def run(text):
-    ind = ptr = 0
+    ind = ptr = val = 0
     reg = [0, 0]
     nums = []
     code = ''
@@ -34,7 +34,8 @@ def run(text):
             if reg[ptr]:
                 reg[ptr] -= 1
             else:
-                ind = nums[ind] - 2
+                ind = nums[val] - 2
+            val += 1
         elif op == '*':
             ptr ^= 1
 
