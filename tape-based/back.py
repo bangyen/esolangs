@@ -2,7 +2,7 @@ import sys
 
 
 def run(code):
-    size = max(len(lst) for lst in code)
+    size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
     x, y = 0, 0

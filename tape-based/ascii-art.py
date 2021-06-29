@@ -2,16 +2,10 @@ import sys
 import re
 
 
-def run(code):
+def parse(code):
     code = re.sub(' +\n', '\n', code)
     code = code.split('\n\n')
-
-    bf = ''
-    stk = []
-    tape = [0]
-    ind = ptr = 0
-    new = False
-
+    res = ''
     sym = {
         (0, '-'): '-', (1, '#'): '.',
         (2, '|'): ',', (3, '\\'): '<',
@@ -22,10 +16,20 @@ def run(code):
     for c in code:
         t = (c.count('\n'), c[-1])
         if t in sym:
-            bf += sym[t]
+            res += sym[t]
+    return res
 
-    while ind < len(bf):
-        if (char := bf[ind]) == '>':
+
+def run(code):
+    code = parse(code)
+    tape = [0]
+
+    ind = ptr = 0
+    stk = []
+    new = 1
+
+    while ind < len(code):
+        if (char := code[ind]) == '>':
             ptr += 1
             if ptr == len(tape):
                 tape.append(0)
@@ -37,11 +41,11 @@ def run(code):
             tape[ptr] = (tape[ptr] - 1) % 256
         elif char == '.':
             print(chr(tape[ptr]), end='')
-            new = True
+            new = 0
         elif char == ',':
-            val = input('\n' * new + 'Input: ')
+            val = input('\nInput: '[:new])
             tape[ptr] = ord(val[0])
-            new = False
+            new = 1
         elif char == '[':
             if tape[ptr]:
                 stk.append(ind)
@@ -49,11 +53,11 @@ def run(code):
                 match = 1
                 while match:
                     ind += 1
-                    if ind == len(bf):
+                    if ind == len(code):
                         return
-                    elif bf[ind] == '[':
+                    elif code[ind] == '[':
                         match += 1
-                    elif bf[ind] == ']':
+                    elif code[ind] == ']':
                         match -= 1
         elif char == ']':
             ind = stk.pop() - 1

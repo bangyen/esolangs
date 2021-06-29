@@ -40,10 +40,10 @@ int main(int argc, char *argv[]) {
             "switch (ind)\n\t\t{\n", output);
 
     while ((ch = getc(file)) != EOF) {
-        ind++; str = "";
+        str = ""; ind++;
         switch (ch) {
-            case 'A': str = "z++;"; break;
-            case 'L': str = "z = ram[z];"; break;
+            case 'A': str = "z++;";           break;
+            case 'L': str = "z = ram[z];";    break;
             case 'C': str = "ind += z == 0;"; break;
             case 'Z': str = "z = 0;";
                       skip(file, ch); break;
