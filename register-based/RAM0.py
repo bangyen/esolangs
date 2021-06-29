@@ -1,23 +1,59 @@
 import sys
 import re
 
-ram = {}
-reg = [(point := 0), 0]
 
-sym_dict = {
-    'C': lambda: point + (not reg[0]),
-    'S': lambda: ram.update({reg[1]: reg[0]}),
-    'A': lambda: reg.insert(0, reg.pop(0) + 1),
-    'L': lambda: reg.insert(0, ram.get(reg.pop(0), 0)),
-    'N': lambda: [reg.pop(1), reg.append(reg[0])][1],
-    'Z': lambda: [reg.pop(0), reg.insert(0, 0)][1]
-}
+def init():
+    z = n = 0
+    ram = {}
+
+    def output():
+        res = (f'z: {z}\n'
+               f'n: {n}\n'
+               'ram: {')
+
+        for x, y in ram.items():
+            res += f'\n    {x}: {y},'
+        if ram:
+            res = res[:-1] + '\n'
+        print(res + '}')
+
+    def change(op):
+        nonlocal z, n
+        if op == 'S':
+            ram[n] = z
+        elif op == 'A':
+            z += 1
+        elif op == 'L':
+            z = ram.get(z, 0)
+        elif op == 'N':
+            n = z
+        elif op == 'Z':
+            z = 0
+        elif op == 0:
+            output()
+        return not z
+    return change
+
+
+def run(code):
+    expr = r'([ZANCLS]|[1-9]\d*)'
+    code = re.findall(expr, code)
+    func = init()
+    ind = 0
+
+    while ind < len(code):
+        skip = func(c := code[ind])
+        if c == 'C' and skip:
+            ind += 1
+        elif c.isdigit():
+            ind = int(c) - 2
+        ind += 1
+
+    func(0)
+
 
 if __name__ == '__main__':
-    code = [line.strip() + ' ' for line in open(sys.argv[1])]
-    while point < len(code):
-        if (char := code[point][0]) in sym_dict:
-            point = sym_dict[char]() or point
-        elif nums := re.findall('^GOTO *[0-9]+', code[point]):
-            point = max(-1, int(nums[0][4:]) - 2)
-        point += 1
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.read()
+            run(data)
