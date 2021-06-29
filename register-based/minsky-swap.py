@@ -9,7 +9,8 @@ def run(text):
     code = ''
 
     if re.match('[+~*]', text):
-        code = (s := text.split(''))[0]
+        code = (s := text.split('\n'))[0]
+        code = re.sub('[^+~*]', '', code)
         if len(s) > 1:
             nums = re.findall(r'\d+', s[1])
             nums = [int(k) for k in nums]
@@ -33,7 +34,7 @@ def run(text):
             if reg[ptr]:
                 reg[ptr] -= 1
             else:
-                ind = int(nums[ind]) - 1
+                ind = nums[ind] - 2
         elif op == '*':
             ptr ^= 1
 
@@ -44,5 +45,5 @@ def run(text):
 if __name__ == '__main__':
     if len(sys.argv[1]) > 1:
         with open(sys.argv[1]) as file:
-            data = file.readlines()
+            data = file.read()
             run(data)
