@@ -1,24 +1,48 @@
 import sys
 import re
 
-point = sym = 0
-reg = [0, 0]
+
+def run(text):
+    ind = ptr = 0
+    reg = [0, 0]
+    nums = []
+    code = ''
+
+    if re.match('[+~*]', text):
+        code = (s := text.split(''))[0]
+        if len(s) > 1:
+            nums = re.findall(r'\d+', s[1])
+            nums = [int(k) for k in nums]
+    else:
+        cmp = r'(inc|swap|decnz)\((\d*)\);'
+        cmp = re.compile(fr'(?:^|\W){cmp}')
+        for m in cmp.findall(text):
+            if (s := m.group()[0]) == 'i':
+                code += '+'
+            elif s == 's':
+                code += '*'
+            else:
+                code += '~'
+                skip = int(m.group(1))
+                nums.append(skip)
+
+    while ind < len(code):
+        if (op := code[ind]) == '+':
+            reg[ptr] += 1
+        elif op == '~':
+            if reg[ptr]:
+                reg[ptr] -= 1
+            else:
+                ind = int(nums[ind]) - 1
+        elif op == '*':
+            ptr ^= 1
+
+        ind += 1
+    print(*reg)
+
 
 if __name__ == '__main__':
-    file = open(sys.argv[1]).readlines() + ['', '']
-    code = re.sub('[^+~*]', '',  file[0])
-    nums = re.sub('[^0-9]', ' ', file[1])
-    nums = (nums + ' 0' * len(code)).split()
-
-    while sym < len(code):
-        op = code[sym]
-        if op == '+':
-            reg[point] += 1
-        elif op == '~':
-            if reg[point]:
-                reg[point] -= 1
-            else:
-                sym = int(nums[sym]) - 1
-        elif op == '*':
-            point = not point
-        sym += 1
+    if len(sys.argv[1]) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.readlines()
+            run(data)
