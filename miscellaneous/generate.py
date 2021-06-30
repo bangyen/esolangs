@@ -37,45 +37,49 @@ def brainif(text):
 
 def container(text):
     ind = last = 0
-    ins = ''
+    if text:
+        res = ('A:\n'
+               '+1 EXIT>=1\n\n'
+               'PRINT:\n'
+               '+1 PRINT<=0\n'
+               '-1 PRINT>=1\n\n'
+               'OUT:\n')
+    else:
+        return ('EXIT=1:\n'
+                f'-1 EXIT>=0')
 
     for c in text:
         if (o := ord(c) - last) >= 0:
-            ins += (f'+{o} A>={ind}\n'
+            res += (f'+{o} A>={ind}\n'
                     f'-{o} A>={ind + 1}\n')
         else:
-            ins += (f'-{-o} A>={ind}\n'
+            res += (f'-{-o} A>={ind}\n'
                     f'+{-o} A>={ind + 1}\n')
         last = ord(c)
         ind += 2
 
-    res = ('A:\n'
-           '+1 EXIT>=1\n\n'
-           'PRINT:\n'
-           '+1 PRINT<=0\n'
-           '-1 PRINT>=1\n\n'
-           'OUT:\n'
-           f'{ins}\n'
-           'EXIT=1:\n'
-           '-1 A>='
-           f'{ind - 2}')
+    res += ('EXIT=1:\n'
+            f'-1 A>={ind - 2}')
 
     return res
 
 
 def suffolk(text):
-    res = '>>!' * 12 + '\n'
+    res = ''
+    num = 0
 
     for c in text:
         n = ord(c) + 1
         a = int(n ** 0.5)
         b = (n // a) * '<'
         c = (n % a) * '>!'
-
+        if a > num:
+            num = a
         res += (f'{a * "!"}{c}'
                 f'><{b}.!>><>!\n')
 
-    return res.strip()
+    return ('>>!' * num
+            + '\n' + res[-1:])
 
 
 def _123(text):
