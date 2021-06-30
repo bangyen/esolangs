@@ -1,30 +1,44 @@
 import sys
 
 
-def run(code):
+def init(code):
     col = [1, 0, -1, 0]
     row = [0, 1, 0, -1]
+    x = y = r = 0
+
+    def move(acc):
+        nonlocal x, y, r
+        o = code[y][x]
+        c = ((o == 'R')
+             or (o == '?' and acc)
+             or (o == '!' and not acc))
+
+        r += c
+        x += col[r]
+        y += row[r]
+        b = x or y or not r
+
+        return o, b
+    return move
+
+
+def run(code):
+    move = init(code)
+    cont = True
+
     inp = []
     out = []
-
-    rot = acc = 0
-    x = y = 0
+    acc = 0
 
     if '.' in ''.join(code):
         for k in input('Input: '):
-            inp += list('0' * 7 + bin(ord(k))[2:])[-7:]
+            val = bin(ord(k))[2:]
+            inp += list(val.zfill(7))
 
-    while x or y or not rot:
-        try:
-            ins = code[y][x]
-        except IndexError:
-            ins = ''
-
-        if ins == 'R':
-            rot = (rot + 1) % 4
-        elif ins in '?!':
-            if (ins == '?') == bool(acc):
-                rot = (rot + 1) % 4
+    while cont:
+        ins, cont = move(acc)
+        if ins in 'R?!':
+            break
         elif ins == '+':
             acc += 1
         elif ins == '-':
@@ -39,16 +53,13 @@ def run(code):
             acc = 0
 
         if len(out) == 7:
-            print(chr(int(''.join(out), 2)), end='')
+            val = int(''.join(out), 2)
+            print(chr(val), end='')
             out = []
-
-        x += col[rot]
-        y += row[rot]
 
 
 if __name__ == '__main__':
-    f = open(sys.argv[1])
-    data = f.readlines()
-    f.close()
-
-    run(data)
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.readlines()
+            run(data)
