@@ -19,16 +19,16 @@ def init():
 
     def change(op):
         nonlocal z, n
-        if op == 'S':
-            ram[n] = z
+        if op == 'Z':
+            z = 0
         elif op == 'A':
             z += 1
-        elif op == 'L':
-            z = ram.get(z, 0)
         elif op == 'N':
             n = z
-        elif op == 'Z':
-            z = 0
+        elif op == 'L':
+            z = ram.get(z, 0)
+        elif op == 'S':
+            ram[n] = z
         elif op == 0:
             output()
         return not z
