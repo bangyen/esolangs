@@ -23,18 +23,6 @@ def count(code, ind):
 
 def comp(code):
     code = sub(r'[^><+-.,\][]', '', code)
-    b = sub(r'[^\[\]]', '', code)
-
-    while True:
-        if '[]' in b:
-            b = b.replace('[]', '')
-        else:
-            if b:
-                print('Unmatched brackets.')
-                exit(0)
-            else:
-                break
-
     res = ('global _start\n'
            '_start:\n'
            '\tlea ecx, [esp - 6]\n'
@@ -100,9 +88,9 @@ def comp(code):
 
     def end(s, mul):
         return (mul * ('\tdec esi\n'
-                      '\tcmp esi, 0\n'
-                      f'\tjg {s}\n'
-                      '\tinc esi\n')
+                       '\tcmp esi, 0\n'
+                       f'\tjg {s}\n'
+                       '\tinc esi\n')
                 + '\tret\n')
 
     if ins['>'][1]:
