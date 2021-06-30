@@ -85,9 +85,9 @@ def run(code):
             dot.dir = '^>v<'.find(val)
         elif val == '#':
             if g := dot.match(r'#(\d+(\.\d+)?|`.*`)'):
-                dot.new(g.group()[1:].replace('`', ''))
+                dot.new(g[0][1:].replace('`', ''))
                 if dot.dir == 1:
-                    dot.y += len(g.group()) - 1
+                    dot.y += len(g[0]) - 1
             elif dot.val is not None:
                 print(dot.val, end='')
                 line = True
@@ -98,7 +98,7 @@ def run(code):
             line = False
         elif val == '(':
             if g := dot.match(r'\(`\w+'):
-                name = ')' + g.group()[1:]
+                name = ')' + g[0][1:]
                 if not (d := dot.find(name, True)):
                     return
                 dots.append(d)
@@ -126,7 +126,7 @@ def run(code):
                     return
                 line = False
             elif g := dot.match(r'W\w+`s'):
-                warp = g.group()[:-1] + 'e'
+                warp = g[0][:-1] + 'e'
                 if not dot.find(warp):
                     return
         elif val in '!?:':
