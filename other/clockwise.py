@@ -13,7 +13,7 @@ def init(code):
              or (o == '?' and acc)
              or (o == '!' and not acc))
 
-        r += c
+        r = (r + c) % 4
         x += col[r]
         y += row[r]
         b = x or y or not r
@@ -23,6 +23,8 @@ def init(code):
 
 
 def run(code):
+    size = max(len(lne) for lne in code)
+    code = [c.ljust(size) for c in code]
     move = init(code)
     cont = True
 
@@ -38,7 +40,7 @@ def run(code):
     while cont:
         ins, cont = move(acc)
         if ins in 'R?!':
-            break
+            continue
         elif ins == '+':
             acc += 1
         elif ins == '-':
