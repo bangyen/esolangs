@@ -18,13 +18,13 @@ def run(text):
         cmp = r'(inc|swap|decnz)\((\d*)\);'
         cmp = re.compile(fr'(?:^|\W){cmp}')
         for m in cmp.findall(text):
-            if (s := m.group()[0]) == 'i':
+            if (s := m[0][0]) == 'i':
                 code += '+'
             elif s == 's':
                 code += '*'
             else:
                 code += '~'
-                skip = int(m.group(1))
+                skip = int(m[1])
                 nums.append(skip)
 
     while ind < len(code):
