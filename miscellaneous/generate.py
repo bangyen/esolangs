@@ -88,7 +88,7 @@ def _123(text):
 
     for c in text:
         b = (bin(ord(c) ^ last)[2:]
-             .rjust(8, '0')
+             .zfill(8)
              .rstrip('0'))
         s = (b.replace('0', '2')
               .replace('1', '122'))

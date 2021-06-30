@@ -77,39 +77,48 @@ def sanitize(code):
     return post
 
 
-if __name__ == '__main__':
-    file = re.sub(r'[^\df(x)=+-^]', '', open(sys.argv[1]).read())
-    if file[:5] != 'f(x)=':
-        exit()
+def run(code):
+    code = re.sub(r'[^\df(x)=+-^]', '', code)
+    if code[:5] != 'f(x)=':
+        return
 
-    const = sanitize(file)
-    roots = [k for k in np.roots(const) if np.imag(k) >= 0]
-    inst = convert(roots)
+    code = sanitize(code)
+    code = [k for k in np.roots(code) if np.imag(k) >= 0]
+    code = convert(code)
 
-    point = reg = line = 0
-    sym_list = [
-        lambda r, a: r + a, lambda r, a: r - a, lambda r, a: r * a,
-        lambda r, a: r / a, lambda r, a: r % a, lambda r, a: r ** a
+    ind = reg = 0
+    new = 1
+    sym = [
+        lambda r, a: r + a, lambda r, a: r - a,
+        lambda r, a: r * a, lambda r, a: r / a,
+        lambda r, a: r % a, lambda r, a: r ** a,
+        lambda: reg > 0, 0,
+        lambda: reg < 0, lambda: not reg
     ]
 
-    while point < len(inst):
-        one, *rest = inst[point]
+    while ind < len(code):
+        one, *rest = code[ind]
         if two := (rest + [0])[0]:
             if one:
-                reg = sym_list[two - 1](reg, one)
+                reg = sym[two - 1](reg, one)
+            elif two - 1:
+                val = input('\nInput: '[new:]) + chr(0)
+                reg = ord(val[0]) or -1
+                new = 1
             else:
-                if two - 1:
-                    string = input('\n' * line + 'Input: ') + chr(0)
-                    reg = ord(string[0]) or -1
-                    line = 1
-                else:
-                    print(chr(max(0, reg)), end='')
-        else:
-            cond = [lambda: reg > 0, 0, lambda: reg < 0, lambda: not reg]
-            if one in [2, 6]:
-                if (beg := inst[brackets(inst, point)][0]) > 4 and cond[(beg - 1) % 4]():
-                    point = brackets(inst, point)
-            else:
-                if not cond[(one % 4) - 1]():
-                    point = brackets(inst, point)
-        point += 1
+                print(chr(max(0, reg)), end='')
+                new = 0
+        elif one in [2, 6]:
+            beg = code[brackets(code, ind)][0]
+            if beg > 4 and sym[(beg - 1) % 4 + 6]():
+                ind = brackets(code, ind)
+        elif not sym[(one % 4) + 5]():
+            ind = brackets(code, ind)
+        ind += 1
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.read()
+            run(data)
