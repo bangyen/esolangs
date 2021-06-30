@@ -37,8 +37,7 @@ def run(code):
                 ins(pop())
             elif char in '"\'':
                 s = (re.match('[^"]*', sym[ind + 1:])
-                     .group()
-                     .replace('`', '"'))
+                     [0].replace('`', '"'))
                 ind += len(s) + 1
                 if char == '\'':
                     s = f'"{s}"'
