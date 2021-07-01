@@ -64,8 +64,7 @@ def run(code):
 
 
 if __name__ == '__main__':
-    f = open(sys.argv[1])
-    data = f.readlines()
-    f.close()
-
-    run(data)
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.readlines()
+            run(data)
