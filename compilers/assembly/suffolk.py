@@ -14,7 +14,7 @@ def count(code, ind):
     return num
 
 
-def convert(code, num):
+def comp(code, num):
     code = sub('[^><.,!]', '', code)
     res = ('global _start\n'
            '_start:\n'
@@ -124,17 +124,14 @@ def convert(code, num):
 
 
 if __name__ == '__main__':
-    loop = 1
     if len(sys.argv) > 2:
-        try:
-            loop = int(sys.argv[2])
-        except ValueError:
-            pass
+        loop = int(sys.argv[2])
+    else:
+        loop = 1
 
-    f = open(sys.argv[1])
-    data = f.read()
-    f.close()
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as f:
+            data = f.read()
 
-    f = open("output.txt", "w")
-    f.write(convert(data, loop))
-    f.close()
+        with open('output.asm', 'w') as f:
+            f.write(comp(data, loop))
