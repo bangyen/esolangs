@@ -181,10 +181,9 @@ def comp(code):
 
 
 if __name__ == '__main__':
-    f = open(sys.argv[1])
-    data = f.read()
-    f.close()
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as f:
+            data = f.read()
 
-    f = open('output.txt', 'w')
-    f.write(comp(data))
-    f.close()
+        with open('output.asm', 'w') as f:
+            f.write(comp(data))
