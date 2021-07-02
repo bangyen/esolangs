@@ -3,11 +3,9 @@ import re
 
 
 def run(code):
-    lst = (
-        'INJECT', 'PUSH',
-        'EJECT',  'POP',
-        'INVERT', r'GOTO *(\d+)'
-    )
+    lst = ('INJECT', 'PUSH',
+           'EJECT',  'POP',
+           'INVERT', r'GOTO *(\d+)')
 
     join = f'({"|".join(lst)})'
     code = re.findall(join, code)
