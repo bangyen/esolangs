@@ -3,14 +3,19 @@ import re
 
 
 def run(code):
-    expr = re.compile(r'GOTO *(\d+)')
-    code = expr.sub('GOTO\1', code)
-    code = code.split()
+    lst = (
+        'INJECT', 'PUSH',
+        'EJECT',  'POP',
+        'INVERT', r'GOTO *(\d+)'
+    )
+
+    join = f'({"|".join(lst)})'
+    code = re.findall(join, code)
     ind = reg = 0
     deq = []
 
     while ind < len(code):
-        sym = code[ind]
+        sym = code[ind][0]
         if sym == 'PUSH':
             deq.append(reg)
         elif sym == 'INJECT':
@@ -21,13 +26,14 @@ def run(code):
         elif sym == 'EJECT':
             reg = (deq.pop(0) if
                    deq else 0)
-        elif (m := expr.search(sym)
-                and reg):
-            ind = int(m[1]) - 1
         elif sym == 'INVERT':
             reg ^= 1
+        elif reg:
+            num = int(sym[4:])
+            ind = num - 1
 
         ind += 1
+    print(*deq)
 
 
 if __name__ == '__main__':
