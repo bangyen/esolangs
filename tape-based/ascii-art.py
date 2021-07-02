@@ -20,12 +20,38 @@ def parse(code):
     return res
 
 
+def init(code, tape):
+    stk = []
+
+    def find(ind, ptr):
+        if code[ind] == '[':
+            if tape[ptr]:
+                stk.append(ind)
+            else:
+                match = 1
+                while match:
+                    ind += 1
+                    if ind == len(code):
+                        return
+                    elif code[ind] == '[':
+                        match += 1
+                    elif code[ind] == ']':
+                        match -= 1
+        else:
+            if tape[ptr]:
+                return stk[-1]
+            stk.pop()
+        return ind
+
+    return find
+
+
 def run(code):
-    code = parse(code)
     tape = [0]
+    code = parse(code)
+    find = init(code, tape)
 
     ind = ptr = 0
-    stk = []
     new = 1
 
     while ind < len(code):
@@ -46,21 +72,10 @@ def run(code):
             val = input('\nInput: '[:new])
             tape[ptr] = ord(val[0])
             new = 1
-        elif char == '[':
-            if tape[ptr]:
-                stk.append(ind)
-            else:
-                match = 1
-                while match:
-                    ind += 1
-                    if ind == len(code):
-                        return
-                    elif code[ind] == '[':
-                        match += 1
-                    elif code[ind] == ']':
-                        match -= 1
-        elif char == ']':
-            ind = stk.pop() - 1
+        elif char in '[]':
+            ind = find(ind, ptr)
+            if ind is None:
+                return
 
         ind += 1
 
