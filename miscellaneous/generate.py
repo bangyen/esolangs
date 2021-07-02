@@ -46,7 +46,7 @@ def container(text):
                'OUT:\n')
     else:
         return ('EXIT=1:\n'
-                f'-1 EXIT>=0')
+                '-1 EXIT>=0')
 
     for c in text:
         if (o := ord(c) - last) >= 0:
