@@ -1,23 +1,41 @@
-bit = point = line = 0
-vel = sym = 1
+import secrets
+import time
+import sys
 
-sym_dict = {
-    '^': lambda: not bit,
-    '!': lambda: print(bit + 0, end=''),
-    '?': lambda: not input('\n' * line + 'Input: '),
-    '@': lambda: __import__('random').choice([0, 1]),
-    '&': lambda p: p + vel * bit,
-    '<': lambda p: -1,
-    '_': lambda: __import__('time').sleep(1)
-}
 
-code = open(__import__('sys').argv[1]).read()
-while point < len(code) and (sym := code[point]) != '#':
-    if sym in sym_dict:
-        if (func := sym_dict[sym]).__code__.co_argcount:
-            point = func(point)
-        else:
-            bit = bit if (f := func()) is None else f
-            line = (sym == '?') or line
-    vel *= (-1) ** (sym == '/')
-    point += vel
+def run(code):
+    bit = ind = 0
+    vel = new = 1
+
+    while ind < len(code):
+        sym = code[ind]
+        if sym == '^':
+            bit ^= 1
+        elif sym == '!':
+            print(bit, end='')
+            new = 0
+        elif sym == '?':
+            val = input('\nInput: '[new:])
+            bit = (not val) + 0
+            new = 1
+        elif sym == '@':
+            bit = secrets.randbelow(2)
+        elif sym == '&' and bit:
+            ind += vel
+        elif sym == '#':
+            return
+        elif sym == '<':
+            ind = -vel
+        elif sym == '/':
+            vel *= -1
+        elif sym == '_':
+            time.sleep(1)
+
+        ind += vel
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.read()
+            run(data)
