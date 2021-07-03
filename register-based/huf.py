@@ -1,30 +1,34 @@
-import itertools
 import sys
 import re
 
 
-def interpret(code):
-    pointer = temp = output = 0
-    while pointer < len(code):
-        sym = code[pointer]
-        if sym in ['#', '@']:
-            output = sym == '#'
+def run(code):
+    code = re.findall(
+        '#[^#@]+@', code)
+    code = ''.join(code)
+    num = mul = 0
+
+    for sym in code:
+        if sym == '#':
+            num = mul = 0
         elif sym == '>':
-            if output:
-                print(chr(temp), end='')
-            temp = 0
+            val = chr(num)
+            print(val, end='')
+            num = 0
         elif sym == '|':
-            num = code[pointer + 1]
-            if isinstance(num, int):
-                temp *= num
-                pointer += 1
-        elif isinstance(sym, int):
-            temp += sym
-        pointer += 1
+            mul = 1
+        elif sym == '!':
+            num *= (mul - 1)
+            mul = 0
+        elif sym == '+':
+            if mul:
+                mul += 1
+            else:
+                num += 1
 
 
-with open(sys.argv[1]) as file:
-    data = re.sub(r'[^\+|!>#@]', '', file.read())
-    data = [''.join(g) for _, g in itertools.groupby(data)]
-    data = [len(k) if k[0] == '+' else k for k in data]
-    interpret(data)
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.read()
+            run(data)
