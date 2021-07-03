@@ -4,7 +4,7 @@ import re
 
 
 def run(code):
-    reg = re.compile(r'\[([^\[\]\"]*(".*")??)]')
+    reg = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
     code = [k[0] for k in reg.findall(code)]
     var = {f'VAR{k}': 0 for k in range(1, 5)}
 
