@@ -1,6 +1,5 @@
 # Test files
-output.txt
-input.txt
+output.asm
 test.txt
 output.c
 a.exe
