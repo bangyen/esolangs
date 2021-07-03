@@ -1,10 +1,22 @@
 import sys
 import re
 
-code = open(sys.argv[1]).readlines() + ['x', 'y']
 
-if cond := ((zero := code[0].strip()) == code[1].strip()):
-    cond = all(chars not in zero for chars in ['-_', '_-', '\\-', '/_'])
-    cond = cond and not re.search(r'[^\\/\-_]', zero)
-    
-print(['Reject.', 'Accept.'][cond])
+def run(code):
+    x = code[0].strip()
+    y = code[1].strip()
+    r = re.compile(
+        r'(-_|_-|\\-|/'
+        r'_|[^\\/\-_])')
+
+    if x == y and not r.search(x):
+        print('Accept.')
+    else:
+        print('Reject.')
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            data = file.readlines()
+            run(data)
