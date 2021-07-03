@@ -1,28 +1,56 @@
-from re import sub
+import itertools
 import sys
+import re
 
 
-def count(code, ind):
-    code += ' '
-    num = 0
+def parse(code):
+    def con(*s):
+        if s[0] in '+-':
+            x = s.count('+')
+            y = s.count('-')
+            return '+', x - y
+        return s[0], len(s)
 
-    if (start := code[ind]) in '+-':
-        while (ins := code[ind]) in '+-':
-            if ins == '+':
-                num += 1
-            else:
-                num -= 1
+    def key(v):
+        if v in '+-':
+            return '+'
+        return v
+
+    code = re.sub(r'[^><+-.,\][]', '', code)
+
+    while re.search(r'(>[+-]*<|\+-|-\+)', code):
+        code = re.sub('>[+-]*<', '', code)
+        code = (code.replace('+-', '')
+                    .replace('-+', ''))
+
+    while m := re.search(r'[>\]]\[', code):
+        ind = m.start() + 1
+        mat = 1
+
+        while mat:
             ind += 1
-        return num, ind
-    else:
-        while code[ind] == start:
-            num += 1
-            ind += 1
-        return num
+            if ind == len(code):
+                return []
+            elif (c := code[ind]) == '[':
+                mat += 1
+            elif c == ']':
+                mat -= 1
+
+        code = (code[:m.start() + 1]
+                + code[ind + 1:])
+
+    code = re.sub(r'[+-]*\[[+-]]', '0', code)
+    code = re.sub('[+-]+<', '<', code)
+    code = itertools.groupby(code, key=key)
+    code = [con(*g) for _, g in code]
+
+    return code
 
 
 def comp(code):
-    code = sub(r'[^><+-.,\][]', '', code)
+    code = parse(code)
+    jump = 0
+    arr = []
     res = ('global _start\n'
            '_start:\n'
            '\tlea ecx, [esp - 6]\n'
@@ -36,51 +64,37 @@ def comp(code):
         ',': ['input', False, False]
     }
 
-    ind = 0
-    loop = 1
-    arr = []
-
-    while ind < len(code):
-        num = count(code, ind)
-        c = code[ind]
-
-        if c in '><.,':
+    for char, num in code:
+        if char == '+':
+            if num > 1:
+                res += f'\tadd byte [ecx], {num}\n'
+            elif num == 1:
+                res += '\tinc byte [ecx]\n'
+            elif num == -1:
+                res += '\tdec byte [ecx]\n'
+            elif num < -1:
+                res += f'\tsub byte [ecx], {-num}\n'
+        elif char == '0':
+            res += '\tmov byte [ecx], 0\n'
+        elif char in '><.,':
             if num > 1:
                 res += f'\tmov esi, {num}\n'
-                ins[c][2] = True
-            res += f'\tcall {ins[c][0]}\n'
+                ins[char][2] = True
+            res += f'\tcall {ins[char][0]}\n'
 
-            ins[c][1] = True
-        elif c in '+-':
-            if n := num[0]:
-                if n > 1:
-                    res += f'\tadd byte [ecx], {n}\n'
-                elif n == 1:
-                    res += '\tinc byte [ecx]\n'
-                elif n == -1:
-                    res += '\tdec byte [ecx]\n'
+            ins[char][1] = True
+        elif char in '[]':
+            for _ in range(num):
+                if char == '[':
+                    jump += 1
+                    arr.append(jump)
+                    res += (f'.T{jump}:\n'
+                            '\tcmp byte [ecx], 0\n'
+                            f'\tje .B{jump}\n')
                 else:
-                    res += f'\tsub byte [ecx], {-n}\n'
-
-            ind = num[1]
-            continue
-        elif c in '[]':
-            res += '\tcmp byte [ecx], 0\n'
-
-            if c == '[':
-                lab = loop if loop > 1 else ''
-                arr.append(loop)
-                loop += 1
-
-                res += (f'\tje .bot{lab}\n'
-                        f'.top{lab}:\n')
-            else:
-                lab = n if (n := arr.pop()) > 1 else ''
-
-                res += (f'\tjne .top{lab}\n'
-                        f'.bot{lab}:\n')
-
-        ind += num
+                    m = arr.pop()
+                    res += (f'\tjmp .T{m}\n'
+                            f'.B{m}:\n')
 
     res += ('\n\tmov eax, 1\n'
             '\txor ebx, ebx\n'
