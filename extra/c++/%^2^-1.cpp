@@ -3,7 +3,8 @@
 
 int main(int argc, char* argv[]) {
     std::ifstream file;
-    int acc = 0;
+    bool out = false;
+    int  acc = 0;
     char c;
 
     if (argc > 1) {
@@ -34,11 +35,18 @@ int main(int argc, char* argv[]) {
                 break;
             case 'l':
                 std::cout << acc;
+                out = true;
                 break;
             case 'e':
                 std::cout << (char) acc;
+                out = true;
                 break;
             case 'n':
+                if (out)
+                    std::cout << std::endl;
+                std::cout << "Input: ";
+                out = false;
+
                 acc = getchar();
                 break;
             case '\'':
