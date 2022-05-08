@@ -64,6 +64,67 @@ def container(text):
     return res
 
 
+def magnitude(text):
+    def close(val, start):
+        if start > val:
+            return 0
+
+        while start <= val:
+            start *= 2
+
+        return start // 2
+
+    mode = True
+    prog = ''
+    last = 0
+
+    for c in text:
+        n = ord(c) - last
+
+        if abs(n) > ord(c):
+            prog += '\''
+            mode = True
+            last = 0
+            n = ord(c)
+
+        if n and mode == (n < 0) and last:
+            prog += 'p'
+            mode ^= 1
+
+        n = abs(n)
+
+        if not last:
+            x = close(n, 2)
+            y = close(n, 3)
+
+            if n - x < n - y:
+                num = int(math.log(x // 2, 2))
+                prog += 's' + num * 'm'
+                n -= x
+            elif y:
+                num = int(math.log(y // 3, 2))
+                prog += 'i' + num * 'm'
+                n -= y
+
+        if n == 1:
+            prog += 'ips'
+            mode ^= 1
+        elif n > 2:
+            prog += (n // 3) * 'i'
+            n = n % 3
+
+            if n % 3 == 1:
+                prog = prog[:-1]
+                n += 3
+
+        prog += (n // 2) * 's' \
+            + mode * 'p' + 'e'
+        last = ord(c)
+        mode = False
+
+    return prog
+
+
 def suffolk(text):
     res = ''
     num = 0
