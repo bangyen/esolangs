@@ -19,8 +19,8 @@ Implementations written in languages other than Python.
 
 | Lean                                                                 | x86 Assembly                                               | x86 Assembly (cont.)                                       | Ruby                                                                 | C++                                              | R                                        |
 |----------------------------------------------------------------------|------------------------------------------------------------|------------------------------------------------------------|----------------------------------------------------------------------|--------------------------------------------------|------------------------------------------|
-| [Albabet](https://esolangs.org/wiki/Albabet)                         | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) | [bit~](https://esolangs.org/wiki/Bit~)                               | [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1) | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [NoComment](https://esolangs.org/wiki/NoComment)           |                                                            | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                                  |                                          |
+| [Albabet](https://esolangs.org/wiki/Albabet)                         | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) | [bit~](https://esolangs.org/wiki/Bit~)                               | [Painfuck](https://esolangs.org/wiki/Painfuck)   | [EXCON](https://esolangs.org/wiki/EXCON) |
+| [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [NoComment](https://esolangs.org/wiki/NoComment)           |                                                            | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) | [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1) |                                          |
 | [EXCON](https://esolangs.org/wiki/EXCON)                             | [Stun Step](https://esolangs.org/wiki/Stun_Step)           |                                                            | [Unsquare](https://esolangs.org/wiki/Unsquare)                       |                                                  |                                          |
 | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) | [123](https://esolangs.org/wiki/123)                       |                                                            | [3x](https://esolangs.org/wiki/3x)                                   |                                                  |                                          |
 
@@ -44,9 +44,10 @@ Sorted by target language.
 ## Miscellaneous
 -   The `binary.py` program implements a given boolean function in Dig.
 
--   The `generate.py` program implements a function in different languages which output a given string. The supported languages are as follows:
+-   The `generate.py` program outputs programs which output a given string in different languages. The supported languages are as follows:
     -   BFStack
     -   BrainIf
     -   Container
     -   Suffolk
     -   123
+    -   %^2^-1 (a.k.a. Magnitude)
