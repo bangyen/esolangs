@@ -3,7 +3,7 @@
 #include <string>
 #include <ctime>
 #include <vector>
-#include "Tape.h"
+#include "common/Tape.h"
 
 void prompt(bool& out) {
     if (out) {
@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
                     tape.start();
                     break;
                 case 't':
-                    val = file.tellg();
+                    val = (int) file.tellg();
                     file.seekg(-1, file.cur);
                     rep = 1;
 
