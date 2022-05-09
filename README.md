@@ -48,6 +48,7 @@ Sorted by target language.
     -   BFStack
     -   BrainIf
     -   Container
+    -   Painfuck
     -   Suffolk
     -   123
     -   %^2^-1 (a.k.a. Magnitude)
