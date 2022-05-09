@@ -109,9 +109,9 @@ int main(int argc, char* argv[]) {
                             if (!file.get(c))
                                 break;
 
-                            if (c == '[')
+                            if (c == 'a')
                                 val++;
-                            else if (c == ']')
+                            else if (c == 'b')
                                 val--;
                         }
                     }
