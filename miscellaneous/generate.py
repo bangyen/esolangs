@@ -64,6 +64,143 @@ def container(text):
     return res
 
 
+def magnitude(text):
+    def close(val, start):
+        if start > val:
+            return 0
+
+        while start <= val:
+            start *= 2
+
+        return start // 2
+
+    mode = True
+    prog = ''
+    last = 0
+
+    for c in text:
+        n = ord(c) - last
+
+        if abs(n) > ord(c):
+            prog += '\''
+            mode = True
+            last = 0
+            n = ord(c)
+
+        if n and mode == (n < 0) and last:
+            prog += 'p'
+            mode ^= 1
+
+        n = abs(n)
+
+        if not last:
+            x = close(n, 2)
+            y = close(n, 3)
+
+            if n - x < n - y:
+                num = int(math.log(x // 2, 2))
+                prog += 's' + num * 'm'
+                n -= x
+            elif y:
+                num = int(math.log(y // 3, 2))
+                prog += 'i' + num * 'm'
+                n -= y
+
+        if n == 1:
+            prog += 'ips'
+            mode ^= 1
+        elif n > 2:
+            prog += (n // 3) * 'i'
+            n = n % 3
+
+            if n % 3 == 1:
+                prog = prog[:-1]
+                n += 3
+
+        prog += (n // 2) * 's' \
+            + mode * 'p' + 'e'
+        last = ord(c)
+        mode = False
+
+    return prog
+
+
+def painfuck(text):
+    def add(val):
+        return (val // 2) * 'p' \
+             + (val % 2) * 'ps'
+
+    def close(val, s, op):
+        if val > 7:
+            pwr = int(math.log(val, 7))
+            s += pwr * 'c' + op
+            val -= 7 ** pwr
+        if val:
+            pwr = 1
+            while 2 * val >= (3 ** pwr - 1):
+                pwr += 1
+
+            s += op + (pwr - 2) * 't'
+            val -= (3 ** (pwr - 1) - 1) // 2
+
+        return val, s
+
+    def loop(val, s, op):
+        sqr = int(math.sqrt(n * 2))
+
+        if sqr > 3:
+            move = ('rl', 'lr')['r' in res]
+            s += move + add(sqr) + 'al'
+
+            if op == 'p':
+                s += add(sqr)
+            else:
+                s += sqr * 's'
+
+            s += move + 'sbl'
+            val -= sqr ** 2
+
+        return val, s
+
+    res = ''
+    last = 0
+
+    for c in text:
+        n = ord(c) - last
+
+        if abs(n) > ord(c):
+            res += ('rl', 'lr')['r' in res]
+            n = ord(c)
+
+        if n > 0:
+            if n % 2:
+                res += 'ps'
+
+            n, res = close(n // 2, res, 'p')
+            n, res = loop(n * 2, res, 'p')
+            res += add(n)
+        elif n < 0:
+            n = abs(n)
+            n, res = close(n, res, 's')
+            n, res = loop(n, res, 's')
+            res += n * 's'
+
+        last = ord(c)
+        res += 'u'
+
+    cyc = ['rwzjkvep', 'dlahiqbostcuy']
+    text = res
+    res = ''
+
+    for k in range(len(text)):
+        for c in cyc:
+            if text[k] in c:
+                n = c.find(text[k])
+                res += c[(n + k) % len(c)]
+
+    return res
+
+
 def suffolk(text):
     res = ''
     num = 0
