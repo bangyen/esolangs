@@ -125,6 +125,82 @@ def magnitude(text):
     return prog
 
 
+def painfuck(text):
+    def add(val):
+        return (val // 2) * 'p' \
+             + (val % 2) * 'ps'
+
+    def close(val, s, op):
+        if val > 7:
+            pwr = int(math.log(val, 7))
+            s += pwr * 'c' + op
+            val -= 7 ** pwr
+        if val:
+            pwr = 1
+            while 2 * val >= (3 ** pwr - 1):
+                pwr += 1
+
+            s += op + (pwr - 2) * 't'
+            val -= (3 ** (pwr - 1) - 1) // 2
+
+        return val, s
+
+    def loop(val, s, op):
+        sqr = int(math.sqrt(n * 2))
+
+        if sqr > 3:
+            move = ('rl', 'lr')['r' in res]
+            s += move + add(sqr) + 'al'
+
+            if op == 'p':
+                s += add(sqr)
+            else:
+                s += sqr * 's'
+
+            s += move + 'sbl'
+            val -= sqr ** 2
+
+        return val, s
+
+    res = ''
+    last = 0
+
+    for c in text:
+        n = ord(c) - last
+
+        if abs(n) > ord(c):
+            res += ('rl', 'lr')['r' in res]
+            n = ord(c)
+
+        if n > 0:
+            if n % 2:
+                res += 'ps'
+
+            n, res = close(n // 2, res, 'p')
+            n, res = loop(n * 2, res, 'p')
+            res += add(n)
+        elif n < 0:
+            n = abs(n)
+            n, res = close(n, res, 's')
+            n, res = loop(n, res, 's')
+            res += n * 's'
+
+        last = ord(c)
+        res += 'u'
+
+    cyc = ['rwzjkvep', 'dlahiqbostcuy']
+    text = res
+    res = ''
+
+    for k in range(len(text)):
+        for c in cyc:
+            if text[k] in c:
+                n = c.find(text[k])
+                res += c[(n + k) % len(c)]
+
+    return res
+
+
 def suffolk(text):
     res = ''
     num = 0
