@@ -9,9 +9,8 @@ int main(int argc, char* argv[]) {
 
     if (argc > 1) {
         file = std::ifstream(argv[1]);
-        if (!file.is_open()) {
+        if (!file.is_open())
             return EXIT_FAILURE;
-        }
     } else {
         return EXIT_FAILURE;
     }
@@ -48,6 +47,7 @@ int main(int argc, char* argv[]) {
                 out = false;
 
                 acc = getchar();
+                while ((c = getchar()) != '\n' && c != EOF);
                 break;
             case '\'':
                 acc = 0;
