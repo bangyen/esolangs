@@ -30,14 +30,15 @@ char trans(char c, int n) {
 int main(int argc, char* argv[]) {
     srand((unsigned int) time(nullptr));
     std::ifstream text;
-    std::fstream  file;
 
     Tape tape = Tape();
     TapeCell* temp;
 
+    std::string inp, prog;
     std::vector<int> loop;
-    std::string input;
-    int  val, rep = 1;
+    int  val,
+         ind = 0,
+         rep = 1;
     bool line = false;
     char c;
 
@@ -47,23 +48,15 @@ int main(int argc, char* argv[]) {
         if (!text.is_open())
             return EXIT_FAILURE;
 
-        std::ios_base::openmode mode =
-            std::fstream::in  |
-            std::fstream::out |
-            std::fstream::trunc;
-        file = std::fstream("temp.txt", mode);
-
         while (text.get(c))
-            file << trans(c, (int) text.tellg() - 1);
+            prog += trans(c, (int) text.tellg() - 1);
 
         text.close();
-        file.clear();
-        file.seekg(0);
     } else {
         return EXIT_FAILURE;
     }
 
-    while (file.get(c)) {
+    while (c = prog[ind++]) {
         while (rep > 0) {
             rep--;
 
@@ -84,8 +77,8 @@ int main(int argc, char* argv[]) {
                     break;
                 case 'i':
                     prompt(line);
-                    std::cin >> input;
-                    tape.set(stoi(input));
+                    std::cin >> inp;
+                    tape.set(stoi(inp));
                     break;
                 case 'j':
                     prompt(line);
@@ -102,11 +95,11 @@ int main(int argc, char* argv[]) {
                     break;
                 case 'a':
                     if (tape.value() != 0) {
-                        loop.push_back((int) file.tellg());
+                        loop.push_back(ind - 1);
                     } else {
                         val = 1;
                         while (val != 0) {
-                            if (!file.get(c))
+                            if (!(c = prog[ind++]))
                                 break;
 
                             if (c == 'a')
@@ -118,7 +111,7 @@ int main(int argc, char* argv[]) {
 
                     break;
                 case 'b':
-                    file.seekg(loop.back() - 1);
+                    ind = loop.back();
                     loop.pop_back();
                     break;
                 case 'k':
@@ -148,37 +141,33 @@ int main(int argc, char* argv[]) {
                     rep = 1;
 
                     while (c == 'c') {
-                        file >> c;
+                        c = prog[ind++];
                         rep *= 7;
                     }
 
                     break;
                 case 'y':
                     if (rand() % 2)
-                        file >> c;
+                        c = prog[ind++];
                     break;
                 case 'e':
-                    file.seekg(0, file.end);
-                    break;
+                    return EXIT_SUCCESS;
                 case 'v':
                     if (tape.curr->value != 0)
-                        file >> c;
+                        c = prog[ind++];
                     break;
                 case 'd':
                     tape.start();
                     break;
                 case 't':
-                    val = (int) file.tellg();
-                    file.seekg(-1, file.cur);
+                    val = ind;
                     rep = 1;
 
-                    while (file.peek() == 't') {
-                        file.seekg(-1, file.cur);
+                    while (prog[--ind] == 't')
                         rep *= 3;
-                    }
 
-                    file >> c;
-                    file.seekg(val);
+                    c = prog[ind];
+                    ind = val;
                     break;
             }
         }
@@ -186,7 +175,5 @@ int main(int argc, char* argv[]) {
         rep++;
     }
 
-    file.close();
-    remove("temp.txt");
     return EXIT_SUCCESS;
 }
