@@ -1,3 +1,6 @@
+import math
+
+
 def bfstack(text):
     res = '>\n'
     acc = 0
@@ -146,7 +149,7 @@ def painfuck(text):
         return val, s
 
     def loop(val, s, op):
-        sqr = int(math.sqrt(n * 2))
+        sqr = int(math.sqrt(val))
 
         if sqr > 3:
             move = ('rl', 'lr')['r' in res]
