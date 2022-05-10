@@ -1,9 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <ctime>
 #include <vector>
-#include "common/Tape.h"
+#include <ctime>
 
 void prompt(bool& out) {
     if (out) {
@@ -14,29 +13,27 @@ void prompt(bool& out) {
     std::cout << "Input: ";
 }
 
-char trans(char c, int n) {
+char trans(char c, int& n) {
     std::vector<std::string> arr = { "pevkjzwr", "yuctsobqihald" };
 
-    for (const auto& s : arr) {
+    for (auto s : arr) {
         size_t p = s.find(c);
 
         if (p != std::string::npos)
-            return s[(p + n) % s.size()];
+            return s[(p + n++) % s.size()];
     }
 
-    return c;
+    return 0;
 }
 
 int main(int argc, char* argv[]) {
     srand((unsigned int) time(nullptr));
     std::ifstream text;
 
-    Tape tape = Tape();
-    TapeCell* temp;
-
+    std::vector<int> loop, tape = {0};
     std::string inp, prog;
-    std::vector<int> loop;
     int  val,
+         ptr = 0,
          ind = 0,
          rep = 1;
     bool line = false;
@@ -44,12 +41,14 @@ int main(int argc, char* argv[]) {
 
     if (argc > 1) {
         text = std::ifstream(argv[1]);
+        int n = 0;
 
         if (!text.is_open())
             return EXIT_FAILURE;
 
         while (text.get(c))
-            prog += trans(c, (int) text.tellg() - 1);
+            if (c = trans(c, n))
+                prog += c;
 
         text.close();
     } else {
@@ -62,39 +61,41 @@ int main(int argc, char* argv[]) {
 
             switch (c) {
                 case 'p':
-                    tape.add(2);
+                    tape[ptr] += 2;
                     break;
                 case 's':
-                    tape.add(-1);
+                    tape[ptr] -= 1;
                     break;
                 case 'r':
-                    tape.next();
-                    tape.next();
+                    ptr += 2;
+
+                    while (ptr >= tape.size())
+                        tape.push_back(0);
+
                     break;
                 case 'l':
-                    if (tape.curr->prev != nullptr)
-                        tape.prev();
+                    if (ptr) ptr--;
                     break;
                 case 'i':
                     prompt(line);
                     std::cin >> inp;
-                    tape.set(stoi(inp));
+                    tape[ptr] = stoi(inp);
                     break;
                 case 'j':
                     prompt(line);
-                    tape.set(getchar());
+                    tape[ptr] = getchar();
                     while ((c = getchar()) != '\n' && c != EOF);
                     break;
                 case 'o':
-                    std::cout << tape.value();
+                    std::cout << tape[ptr];
                     line = true;
                     break;
                 case 'u':
-                    std::cout << (char) tape.value();
+                    std::cout << (char) tape[ptr];
                     line = true;
                     break;
                 case 'a':
-                    if (tape.value() != 0) {
+                    if (tape[ptr] != 0) {
                         loop.push_back(ind - 1);
                     } else {
                         val = 1;
@@ -115,27 +116,24 @@ int main(int argc, char* argv[]) {
                     loop.pop_back();
                     break;
                 case 'k':
-                    val = tape.value();
-                    tape.set(val * val);
+                    val = tape[ptr];
+                    tape[ptr] = val * val;
                     break;
                 case 'z':
-                    tape.set(0);
+                    tape[ptr] = 0;
                     break;
                 case 'h':
-                    val = tape.value();
-                    tape.set(val / 2);
+                    tape[ptr] /= 2;
                     break;
                 case 'w':
-                    temp = tape.curr->next;
-                    if (temp != nullptr)
-                        tape.set(temp->value);
+                    if (ptr + 1 != tape.size())
+                        tape[ptr] = tape[ptr + 1];
                     else
-                        tape.set(0);
+                        tape[ptr] = 0;
                     break;
                 case 'q':
-                    temp = tape.curr->prev;
-                    if (temp != nullptr)
-                        tape.set(temp->value);
+                    if (ptr)
+                        tape[ptr] = tape[ptr - 1];
                     break;
                 case 'c':
                     rep = 1;
@@ -153,11 +151,11 @@ int main(int argc, char* argv[]) {
                 case 'e':
                     return EXIT_SUCCESS;
                 case 'v':
-                    if (tape.curr->value != 0)
+                    if (tape[ptr] != 0)
                         c = prog[ind++];
                     break;
                 case 'd':
-                    tape.start();
+                    ptr = 0;
                     break;
                 case 't':
                     val = ind;
