@@ -1,4 +1,5 @@
 # Esolang Interpreters
+[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/bangyen/esolangs.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bangyen/esolangs/context:python)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) \
 Python implementations of different esoteric programming languages. Each interpreter works by reading the file specified by the first command line argument.
 
