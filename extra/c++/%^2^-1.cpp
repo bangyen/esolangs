@@ -47,7 +47,8 @@ int main(int argc, char* argv[]) {
                 out = false;
 
                 acc = getchar();
-                while ((c = getchar()) != '\n' && c != EOF);
+                while ((c = getchar()) != '\n'
+                       && c != EOF);
                 break;
             case '\'':
                 acc = 0;
