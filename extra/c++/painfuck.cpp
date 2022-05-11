@@ -84,7 +84,8 @@ int main(int argc, char* argv[]) {
                 case 'j':
                     prompt(line);
                     tape[ptr] = getchar();
-                    while ((c = getchar()) != '\n' && c != EOF);
+                    while ((c = getchar()) != '\n'
+                           && c != EOF);
                     break;
                 case 'o':
                     std::cout << tape[ptr];
