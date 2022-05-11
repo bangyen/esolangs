@@ -146,7 +146,8 @@ int main(int argc, char* argv[]) {
                 out = false;
 
                 *val() = getchar();
-                while ((c = getchar()) != '\n' && c != EOF);
+                while ((c = getchar()) != '\n'
+                       && c != EOF);
                 break;
             case '[':
                 if (*val() != 0)
