@@ -17,22 +17,24 @@ Python implementations of different esoteric programming languages. Each interpr
 ## Extra
 Implementations written in languages other than Python.
 
-| Lean                                                                 | x86 Assembly                                               | x86 Assembly (cont.)                                       | Ruby                                                                 | C++                                                  | R                                        |
-|----------------------------------------------------------------------|------------------------------------------------------------|------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------------------|------------------------------------------|
-| [Albabet](https://esolangs.org/wiki/Albabet)                         | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) | [bit~](https://esolangs.org/wiki/Bit~)                               | [Dimensional](https://esolangs.org/wiki/Dimensional) | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [NoComment](https://esolangs.org/wiki/NoComment)           |                                                            | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) | [Painfuck](https://esolangs.org/wiki/Painfuck)       |                                          |
-| [EXCON](https://esolangs.org/wiki/EXCON)                             | [Stun Step](https://esolangs.org/wiki/Stun_Step)           |                                                            | [Unsquare](https://esolangs.org/wiki/Unsquare)                       | [Trash](https://esolangs.org/wiki/Trash)             |                                          |
-| [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) | [123](https://esolangs.org/wiki/123)                       |                                                            | [3x](https://esolangs.org/wiki/3x)                                   | [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)     |                                          |
+| C++                                                  | x86 Assembly                                               | Lean                                                                 | Ruby                                                                 | R                                        |
+|------------------------------------------------------|------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------|
+| [Dimensional](https://esolangs.org/wiki/Dimensional) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [Albabet](https://esolangs.org/wiki/Albabet)                         | [bit~](https://esolangs.org/wiki/Bit~)                               | [EXCON](https://esolangs.org/wiki/EXCON) |
+| [Painfuck](https://esolangs.org/wiki/Painfuck)       | [NoComment](https://esolangs.org/wiki/NoComment)           | [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                          |
+| [Trash](https://esolangs.org/wiki/Trash)             | [Stun Step](https://esolangs.org/wiki/Stun_Step)           | [EXCON](https://esolangs.org/wiki/EXCON)                             | [Unsquare](https://esolangs.org/wiki/Unsquare)                       |                                          |
+| [2dFish](https://esolangs.org/wiki/2dFish)           | [123](https://esolangs.org/wiki/123)                       | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) | [3x](https://esolangs.org/wiki/3x)                                   |                                          |
+| [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)     | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) |                                                                      |                                                                      |                                          |
 
 ## Compilers
 Sorted by target language.
 
-| C                                            | x86 Assembly                                   | x86 Assembly (cont.)                           |
-|----------------------------------------------|------------------------------------------------|------------------------------------------------|
-| [BF-PDA](https://esolangs.org/wiki/BF-PDA)   | [BFStack](https://esolangs.org/wiki/BFStack)   | [Unsquare](https://esolangs.org/wiki/Unsquare) |
-| [BFStack](https://esolangs.org/wiki/BFStack) | [Home Row](https://esolangs.org/wiki/Home_Row) |                                                |
-| [EXCON](https://esolangs.org/wiki/EXCON)     | [Jaune](https://esolangs.org/wiki/Jaune)       |                                                |
-| [RAM0](https://esolangs.org/wiki/RAM0)       | [Suffolk](https://esolangs.org/wiki/Suffolk)   |                                                |
+| x86 Assembly                                   | C                                            |
+|------------------------------------------------|----------------------------------------------|
+| [BFStack](https://esolangs.org/wiki/BFStack)   | [BF-PDA](https://esolangs.org/wiki/BF-PDA)   |
+| [Home Row](https://esolangs.org/wiki/Home_Row) | [BFStack](https://esolangs.org/wiki/BFStack) |
+| [Jaune](https://esolangs.org/wiki/Jaune)       | [EXCON](https://esolangs.org/wiki/EXCON)     |
+| [Suffolk](https://esolangs.org/wiki/Suffolk)   | [RAM0](https://esolangs.org/wiki/RAM0)       |
+| [Unsquare](https://esolangs.org/wiki/Unsquare) |                                              |
 
 ## Notes
 -   For **circlefuck**, the `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
