@@ -72,7 +72,7 @@ int run(std::string& s,
                 return EXIT_FAILURE;
 
             push(stack[stack.size() - 3]);
-            stack.erase(stack.end() - 3);
+            stack.erase(stack.end() - 4);
         } else if (c == '('
                 || c == '['
                 || c == '{') {
