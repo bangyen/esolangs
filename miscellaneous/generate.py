@@ -67,6 +67,24 @@ def container(text):
     return res
 
 
+def forth(text):
+    s = "0123456789ABCDEF"
+    text = text[::-1]
+    res = ''
+
+    for c in text:
+        o = ord(c)
+        n = int(math.log(o, 15))
+        m = o // (15 ** n)
+        p = o - m * 15 ** n
+
+        res += (n * 'F'
+                + (n - 1) * '*'
+                + s[m] + '*'
+                + s[p] + '+')
+    return f'0{res}[.]'
+
+
 def magnitude(text):
     def close(val, start):
         if start > val:
