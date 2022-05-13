@@ -1,10 +1,10 @@
+#include <unordered_map>
 #include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
-#include <map>
 
 int parse(std::string prog, int ind) {
     std::string sub = prog.substr(ind);
@@ -60,7 +60,7 @@ int* move(
 char* value(
         std::vector<int>& ptr,
         std::vector<int>& prime,
-        std::map<int, char>& tape) {
+        std::unordered_map<int, char>& tape) {
     int num = 1;
 
     for (int k = 0; k < ptr.size(); k++)
@@ -73,9 +73,9 @@ char* value(
 }
 
 int main(int argc, char* argv[]) {
+    std::unordered_map<int, char> tape;
     std::vector<int> ptr, prime = {2};
     std::vector<int> loop, dloop;
-    std::map<int, char> tape;
     std::string prog;
 
     bool out = false;
