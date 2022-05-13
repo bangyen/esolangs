@@ -1,5 +1,4 @@
 #include <unordered_map>
-#include <functional>
 #include <iostream>
 #include <fstream>
 #include <sstream>
