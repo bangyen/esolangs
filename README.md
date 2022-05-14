@@ -1,7 +1,7 @@
 # Esolang Interpreters
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/bangyen/esolangs.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bangyen/esolangs/context:python)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) \
-Python implementations of different esoteric programming languages. Each interpreter works by reading the file specified by the first command line argument.
+Implementations of different esoteric programming languages. Most of the interpreters/compilers work by reading the file specified by the first command line argument.
 
 ## Implemented
 | Register-based                                       | Register-based (cont.)                             | Tape-based                                         | Tape-based (cont.)                                                 | Stack-based                                                          | Other                                            |
@@ -17,13 +17,13 @@ Python implementations of different esoteric programming languages. Each interpr
 ## Extra
 Implementations written in languages other than Python.
 
-| C++                                                  | C++ (cont.)                                 | x86 Assembly                                               | Lean                                                                 | Ruby                                                                 | R                                        |
-|------------------------------------------------------|---------------------------------------------|------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------|
-| [Dimensional](https://esolangs.org/wiki/Dimensional) | [Forþ](https://esolangs.org/wiki/For%C3%BE) | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [Albabet](https://esolangs.org/wiki/Albabet)                         | [bit~](https://esolangs.org/wiki/Bit~)                               | [EXCON](https://esolangs.org/wiki/EXCON) |
-| [Painfuck](https://esolangs.org/wiki/Painfuck)       |                                             | [NoComment](https://esolangs.org/wiki/NoComment)           | [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                          |
-| [Trash](https://esolangs.org/wiki/Trash)             |                                             | [Stun Step](https://esolangs.org/wiki/Stun_Step)           | [EXCON](https://esolangs.org/wiki/EXCON)                             | [Unsquare](https://esolangs.org/wiki/Unsquare)                       |                                          |
-| [2dFish](https://esolangs.org/wiki/2dFish)           |                                             | [123](https://esolangs.org/wiki/123)                       | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) | [3x](https://esolangs.org/wiki/3x)                                   |                                          |
-| [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)     |                                             | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) |                                                                      |                                                                      |                                          |
+| C++                                                  | C++ (cont.)                                      | x86 Assembly                                               | Lean                                                                 | Ruby                                                                 | R                                        |
+|------------------------------------------------------|--------------------------------------------------|------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------------|
+| [Dimensional](https://esolangs.org/wiki/Dimensional) | [2dFish](https://esolangs.org/wiki/2dFish)       | [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse) | [Albabet](https://esolangs.org/wiki/Albabet)                         | [bit~](https://esolangs.org/wiki/Bit~)                               | [EXCON](https://esolangs.org/wiki/EXCON) |
+| [Forþ](https://esolangs.org/wiki/For%C3%BE)          | [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1) | [NoComment](https://esolangs.org/wiki/NoComment)           | [BF-PDA](https://esolangs.org/wiki/BF-PDA)                           | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) |                                          |
+| [Kak](https://esolangs.org/wiki/Kak)                 |                                                  | [Stun Step](https://esolangs.org/wiki/Stun_Step)           | [EXCON](https://esolangs.org/wiki/EXCON)                             | [Unsquare](https://esolangs.org/wiki/Unsquare)                       |                                          |
+| [Painfuck](https://esolangs.org/wiki/Painfuck)       |                                                  | [123](https://esolangs.org/wiki/123)                       | [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) | [3x](https://esolangs.org/wiki/3x)                                   |                                          |
+| [Trash](https://esolangs.org/wiki/Trash)             |                                                  | [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) |                                                                      |                                                                      |                                          |
 
 ## Compilers
 Sorted by target language.
@@ -50,8 +50,8 @@ Sorted by target language.
     -   BFStack
     -   BrainIf
     -   Container
+    -   Forþ (Forth)
     -   Painfuck
     -   Suffolk
     -   123
     -   %^2^-1 (Magnitude)
-    -   Forþ (Forth)
