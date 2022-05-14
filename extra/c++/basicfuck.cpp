@@ -4,7 +4,6 @@
 #include <regex>
 
 #define name "([_a-zA-Z]\\w*)(?:->(\\d+))?"
-
 typedef std::vector
     <std::pair<std::string, int>> dict;
 
