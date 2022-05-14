@@ -34,6 +34,7 @@ int main(int argc, char* argv[]) {
 
         for (bool b : tape)
             std::cout << b;
+        std::cout << std::endl;
 
         file.clear();
         file.seekg(0);
