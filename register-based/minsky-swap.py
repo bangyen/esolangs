@@ -8,7 +8,7 @@ def run(text):
     nums = []
     code = ''
 
-    if re.match('[+~*]', text):
+    if re.search('[+~*]', text):
         code = (s := text.split('\n'))[0]
         code = re.sub('[^+~*]', '', code)
         if len(s) > 1:
@@ -33,9 +33,10 @@ def run(text):
         elif op == '~':
             if reg[ptr]:
                 reg[ptr] -= 1
+                val += 1
             else:
                 ind = nums[val] - 2
-            val += 1
+                val = code[:ind - 1].count('~')
         elif op == '*':
             ptr ^= 1
 
