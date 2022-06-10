@@ -169,7 +169,7 @@ fn run(text: Vec<Vec<char>>) {
                 }
             } else {
                 if post {
-                    print!(" ");
+                    print!("\n");
                 } else {
                     post = true;
                 }
