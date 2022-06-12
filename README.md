@@ -51,6 +51,7 @@ Sorted by target language.
     -   BrainIf
     -   Container
     -   Forþ (Forth)
+    -   LaserFuck
     -   Painfuck
     -   Suffolk
     -   123
