@@ -85,6 +85,84 @@ def forth(text):
     return f'0{res}[.]'
 
 
+def laserfuck(text):
+    data = [*map(ord, text)]
+    code = ''
+
+    def get(m):
+        s = ''
+        
+        for n in data:
+            q = n // m
+            s += '>' + '+' * q
+
+        return s.rstrip('>')
+
+    while True:
+        top = max(data)
+        sqr = int(math.sqrt(top))
+
+        if all(data):
+            sqr = min([sqr, *data])
+
+        ops = get(sqr)
+        bck = ops.count('>')
+
+        if bck < 11:
+            ops += bck * '<'
+        else:
+            ops += '[<]>'
+
+        end = get(1)
+        ops = '+' * sqr \
+            + f'[{ops}-]'
+
+        diff = (
+            len(end) - len(ops)
+            - ops.count('[') * 7
+        )
+
+        if diff < 0:
+            break
+
+        code += ops
+        data = [
+            k % sqr for
+            k in data
+        ]
+
+    code += end
+    num = 0
+    res = [
+        '\xFF}}',
+        '|o^',
+        ' _ '
+    ]
+
+    for c in code:
+        if c == '[':
+            top = 'v }  }'
+            bot = '}#^)#^'
+            num += 1
+        elif c == ']':
+            top = '#/)'
+            bot = ' / '
+        else:
+            top = c
+            bot = ' '
+
+        k = 2 - (num == 2)
+        res[0] += top
+        res[3 - k] += bot
+        res[k] += len(top) * ' '
+
+        if c == ']':
+            num -= 1
+
+    res[0] += 'x'
+    return '\n'.join(res)
+
+
 def magnitude(text):
     def close(val, start):
         if start > val:
