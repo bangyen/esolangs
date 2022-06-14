@@ -101,6 +101,10 @@ def laserfuck(text):
     while True:
         top = max(data)
         sqr = int(math.sqrt(top))
+        end = get(1)
+
+        if not top:
+            break
 
         if all(data):
             sqr = min([sqr, *data])
@@ -113,7 +117,6 @@ def laserfuck(text):
         else:
             ops += '[<]>'
 
-        end = get(1)
         ops = '+' * sqr \
             + f'[{ops}-]'
 
@@ -131,10 +134,17 @@ def laserfuck(text):
             k in data
         ]
 
-    code += end
+    if '[' not in code:
+        return f'\xFF}}}}{end}\n|o^\n _ '
+
+    loop = re.search(r'\[([^[\]]*)', code)[1]
+    code = code.replace(loop, '', 1)
+    code = code.replace('[]', '[}]')
+    frst = code.find('[') + 8
+
     num = 0
     res = [
-        '\xFF}}',
+        ' }}',
         '|o^',
         ' _ '
     ]
@@ -159,7 +169,63 @@ def laserfuck(text):
         if c == ']':
             num -= 1
 
-    res[0] += 'x'
+    search = re.search(
+        '}  }v?', res[0])[0]
+    spaces = ' ' * len(search)
+    res[0] = res[0].replace(
+        search, spaces, 1)
+
+    rest = len(loop) + frst
+    over = len(end) + frst
+    over -= len(res[0]) - 2
+    half = (max(over, 0) // 2) + 1
+
+    if end:
+        res[0] += end[:half] + '^'
+        end = end[half:]
+        end = f'x{end[::-1]}{{'
+
+        end = end.rjust(len(res[0]))
+        res.insert(0, end)
+    else:
+        res[0] += 'x'
+
+    size = len(res[0])
+    cntr = 2
+
+    while (rest // cntr) > size:
+        cntr += 1
+    
+    cntr += cntr % 2
+    botm = (rest // cntr) + 1
+    lnth = botm + 1
+
+    res.insert(0,
+        f'\xFF}}{loop[:lnth]}v')
+
+    for k in range(cntr - 1):
+        part = loop[lnth:lnth + botm]
+        lnth += botm
+
+        if not k % 2:
+            part = part[::-1]
+            move = 'v{}{{'
+        else:
+            move = '}}{}v'
+        
+        part = part.rjust(botm)
+        part = move.format(part)
+        res.insert(k + 1, '  ' + part)
+
+    num = ' ' * (frst - 5)
+    beg = f' ^{num}{{  {{'
+
+    cntr -= 1
+    res[cntr] = res[cntr].replace(
+        '  v' + ' ' * frst,
+        beg + 'v '
+    )
+
     return '\n'.join(res)
 
 
