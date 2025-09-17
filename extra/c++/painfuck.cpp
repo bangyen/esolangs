@@ -9,7 +9,7 @@ void prompt(bool& out) {
         std::cout << std::endl;
         out = false;
     }
-        
+
     std::cout << "Input: ";
 }
 

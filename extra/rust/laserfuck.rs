@@ -18,7 +18,7 @@ fn wrap(lsr: &mut Laser,
         *a = len;
         return;
     }
-    
+
     match d {
         0 => *a -= 1,
         1 => *a += 1,
@@ -29,7 +29,7 @@ fn wrap(lsr: &mut Laser,
 }
 
 fn run(text: Vec<Vec<char>>) {
-    let mut rng 
+    let mut rng
         = rand::thread_rng();
     let mut lsrs = Vec::new();
     let mut jmp = false;
@@ -173,7 +173,7 @@ fn run(text: Vec<Vec<char>>) {
                 } else {
                     post = true;
                 }
-                
+
                 print!("{}", c.0);
             }
         }

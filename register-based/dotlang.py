@@ -1,11 +1,11 @@
-import sys
 import re
+import sys
 
 
 class Dot:
     list = [(-1, 0), (0, 1), (1, 0), (0, -1)]
     mx = my = 0
-    code = ''
+    code = ""
 
     def __init__(self, x, y, d):
         self.val = None
@@ -20,9 +20,9 @@ class Dot:
         Dot.my = len(code[0])
 
     def new(self, val):
-        if re.match(r'\d+\.\d+', val):
+        if re.match(r"\d+\.\d+", val):
             self.val = float(val)
-        elif re.match(r'\d+', val):
+        elif re.match(r"\d+", val):
             self.val = int(val)
         else:
             self.val = val
@@ -36,7 +36,7 @@ class Dot:
         return 0 <= self.y < Dot.my
 
     def match(self, regex):
-        line = Dot.code[self.x][self.y:]
+        line = Dot.code[self.x][self.y :]
         return re.match(regex, line)
 
     def find(self, warp, ret=False):
@@ -54,8 +54,8 @@ class Dot:
 
 
 def run(code):
-    if code == [' ']:
-        print(' ', end='')
+    if code == [" "]:
+        print(" ", end="")
         return
 
     size = max(len(lne) for lne in code)
@@ -65,10 +65,10 @@ def run(code):
     curr = 0
 
     for num, val in enumerate(code):
-        if '•' in val:
-            k = val.find('•')
-            if k and (v := val[k - 1]) in '^>v<':
-                d = '^>v<'.find(v)
+        if "•" in val:
+            k = val.find("•")
+            if k and (v := val[k - 1]) in "^>v<":
+                d = "^>v<".find(v)
             else:
                 d = 1
             dots.append(Dot(num, k, d))
@@ -81,24 +81,24 @@ def run(code):
         dot = dots[curr]
         val = code[dot.x][dot.y]
 
-        if val in '^>v<':
-            dot.dir = '^>v<'.find(val)
-        elif val == '#':
-            if g := dot.match(r'#(\d+(\.\d+)?|`.*`)'):
-                dot.new(g[0][1:].replace('`', ''))
+        if val in "^>v<":
+            dot.dir = "^>v<".find(val)
+        elif val == "#":
+            if g := dot.match(r"#(\d+(\.\d+)?|`.*`)"):
+                dot.new(g[0][1:].replace("`", ""))
                 if dot.dir == 1:
                     dot.y += len(g[0]) - 1
             elif dot.val is not None:
-                print(dot.val, end='')
+                print(dot.val, end="")
                 line = True
             else:
                 return
-        elif val == '~':
-            dot.new(input('\n' * line + 'Input: '))
+        elif val == "~":
+            dot.new(input("\n" * line + "Input: "))
             line = False
-        elif val == '(':
-            if g := dot.match(r'\(`\w+'):
-                name = ')' + g[0][1:]
+        elif val == "(":
+            if g := dot.match(r"\(`\w+"):
+                name = ")" + g[0][1:]
                 if not (d := dot.find(name, True)):
                     return
                 dots.append(d)
@@ -114,37 +114,37 @@ def run(code):
                         x += 1
                         if x == Dot.mx:
                             return
-                    if (c := code[x][y]) == '(':
+                    if (c := code[x][y]) == "(":
                         match += 1
-                    elif c == ')':
+                    elif c == ")":
                         match -= 1
                 dots.append(Dot(x, y, dot.dir))
-        elif val == 'W':
-            if dot.match('W~'):
-                warp = input('\n' * line + 'Warp: ')
-                if not dot.find('W%s`s' % warp):
+        elif val == "W":
+            if dot.match("W~"):
+                warp = input("\n" * line + "Warp: ")
+                if not dot.find(f"W{warp}`s"):
                     return
                 line = False
-            elif g := dot.match(r'W\w+`s'):
-                warp = g[0][:-1] + 'e'
+            elif g := dot.match(r"W\w+`s"):
+                warp = g[0][:-1] + "e"
                 if not dot.find(warp):
                     return
-        elif val in '!?:':
-            t = (str, float, int)['!?:'.find(val)]
+        elif val in "!?:":
+            t = (str, float, int)["!?:".find(val)]
             if isinstance(dot.val, t):
                 if dot.dir % 2:
                     dot.dir -= 1
                 else:
                     dot.dir += 1
 
-        if val not in ' \n' and dot.move():
+        if val not in " \n" and dot.move():
             curr = (curr + 1) % len(dots)
         else:
             dots.pop(curr)
 
 
-if __name__ == '__main__':
-    f = open(sys.argv[1], encoding='utf-8')
+if __name__ == "__main__":
+    f = open(sys.argv[1], encoding="utf-8")
     data = f.readlines()
     f.close()
 

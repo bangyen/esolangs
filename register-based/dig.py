@@ -12,8 +12,7 @@ def run(code, func=lambda: 0):
     def value():
         lst = []
         for i, j in direct:
-            if (0 <= x + i < len(code)
-                    and 0 <= y + j < size):
+            if 0 <= x + i < len(code) and 0 <= y + j < size:
                 val = code[x + i][y + j]
                 if val.isdigit():
                     lst.append(int(val))
@@ -22,65 +21,63 @@ def run(code, func=lambda: 0):
     while True:
         char = code[x][y]
         if num:
-            if char == '%':
+            if char == "%":
                 if (n := value()) == 1:
                     mole = 10
                 elif n == 0:
                     mole = 32
-            elif char in '=~':
-                temp = input('\n' * line + 'Input: ')
+            elif char in "=~":
+                temp = input("\n" * line + "Input: ")
                 line = False
 
-                if char == '=':
+                if char == "=":
                     mole = ord(temp[0])
                 else:
                     mole = int(temp[0])
-            elif char == ':':
+            elif char == ":":
                 if mole < 10:
-                    print(mole, end='')
+                    print(mole, end="")
                 else:
-                    print(chr(mole), end='')
+                    print(chr(mole), end="")
 
                 line = True
                 mole = 0
-            elif char == '+':
+            elif char == "+":
                 mole += value()
-            elif char == '-':
+            elif char == "-":
                 mole -= value()
-            elif char == '*':
+            elif char == "*":
                 mole += value()
-            elif char == '/':
+            elif char == "/":
                 mole //= value()
-            elif char == ';':
-                code[x] = (code[x][:y]
-                           + str(mole)
-                           + code[x][y + 1:])
+            elif char == ";":
+                code[x] = code[x][:y] + str(mole) + code[x][y + 1 :]
             elif char.isdigit():
                 mole = int(char)
-            elif char.isalpha() or char in '.,!?':
+            elif char.isalpha() or char in ".,!?":
                 mole = ord(char)
             num -= 1
         else:
-            if char in '^>\'<':
-                move = '^>\'<'.find(char)
-            elif char == '#':
+            if char in "^>'<":
+                move = "^>'<".find(char)
+            elif char == "#":
                 if (n := value()) == 1:
                     move += 1
                 elif n == 0:
                     move -= 1
                 move %= 4
-            elif char == '$':
+            elif char == "$":
                 if func():
                     break
                 num = value()
-            elif char == '@':
+            elif char == "@":
                 break
 
         x += direct[move][0]
         y += direct[move][1]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()

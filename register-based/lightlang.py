@@ -1,6 +1,6 @@
 import secrets
-import time
 import sys
+import time
 
 
 def run(code):
@@ -9,32 +9,32 @@ def run(code):
 
     while ind < len(code):
         sym = code[ind]
-        if sym == '^':
+        if sym == "^":
             bit ^= 1
-        elif sym == '!':
-            print(bit, end='')
+        elif sym == "!":
+            print(bit, end="")
             new = 0
-        elif sym == '?':
-            val = input('\nInput: '[new:])
+        elif sym == "?":
+            val = input("\nInput: "[new:])
             bit = (not val) + 0
             new = 1
-        elif sym == '@':
+        elif sym == "@":
             bit = secrets.randbelow(2)
-        elif sym == '&' and bit:
+        elif sym == "&" and bit:
             ind += vel
-        elif sym == '#':
+        elif sym == "#":
             return
-        elif sym == '<':
+        elif sym == "<":
             ind = -vel
-        elif sym == '/':
+        elif sym == "/":
             vel *= -1
-        elif sym == '_':
+        elif sym == "_":
             time.sleep(1)
 
         ind += vel
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()

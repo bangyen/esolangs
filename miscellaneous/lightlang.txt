@@ -2,7 +2,7 @@ This code prints 'Hello, world' (with an exclamation mark)
 as the concatenation of 7 bit strings corresponding to each
 character's ASCII value. It ignores invalid characters.
 
-     code     | letter |  ASCII  
+     code     | letter |  ASCII
 ---------------------------------
 ^!^!!^!^!!!   | H      | 100 1000
 ^!!^!!^!^!^!  | e      | 110 0101

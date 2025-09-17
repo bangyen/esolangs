@@ -1,11 +1,11 @@
-import sys
 import re
+import sys
 
 
 def total(op, lst):
     if op:
         size = list(map(len, lst))
-        flat = sum(lst, [])
+        flat: list = sum(lst, [])
         m = len(flat)
 
         for k in range(m // 2):
@@ -22,8 +22,8 @@ def total(op, lst):
                 flat[n] -= num
 
         for k in range(23):
-            lst[k] = flat[:size[k]]
-            flat = flat[size[k]:]
+            lst[k] = flat[: size[k]]
+            flat = flat[size[k] :]
     else:
         for num in range(23):
             lst[num][0] += num + 1
@@ -50,11 +50,16 @@ def partial(op, curr, acc):
 
 def run(code):
     ins = (
-        'SEED',    'CONFLAGRATE',
-        'EXCRETE', 'CONSUME',
-        'FISSION', 'DIGEST',
-        'SPRINT',  'LEAPFROG',
-        'ACCEPT',  'PRONOUNCE'
+        "SEED",
+        "CONFLAGRATE",
+        "EXCRETE",
+        "CONSUME",
+        "FISSION",
+        "DIGEST",
+        "SPRINT",
+        "LEAPFROG",
+        "ACCEPT",
+        "PRONOUNCE",
     )
 
     code = re.findall(f'({"|".join(ins)})', code)
@@ -74,19 +79,19 @@ def run(code):
         elif n == 7 and curr[-1]:
             ind = acc - curr[0] - 1
         elif n == 8:
-            val = input('\nInput: '[new:])
+            val = input("\nInput: "[new:])
             new = 1
             if val:
                 m = ord(val[0]) ^ acc
                 lst[0].append(m % 256)
         elif n == 9:
-            print(chr(acc % 256), end='')
+            print(chr(acc % 256), end="")
             new = 0
 
         ind += 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()

@@ -23,7 +23,7 @@ def main :
     | i '0' b  (n + 1) s :=
         main i.next i.next.curr i.has_next n ("0" ++ s)
     | i '1' b  (n + 1) s :=
-        main i.next i.next.curr i.has_next n ("1" ++ s) 
+        main i.next i.next.curr i.has_next n ("1" ++ s)
     | i 'H' b  (n + 1) s := do
         let x := if s.front = '0' then "H" else "",
         main i.next i.next.curr i.has_next n (x ++ s)

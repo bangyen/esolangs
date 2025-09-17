@@ -65,7 +65,7 @@ _start:
 	mov edx, 1
 	int 80h
 	pop edx
-	
+
 	mov edi, [ecx]
 	mov esi, 128
 	jmp .parse
@@ -87,7 +87,7 @@ _start:
 
 	mov eax, edi
 	and eax, esi
-	
+
 	cmp eax, 0
 	je .false
 .true:
