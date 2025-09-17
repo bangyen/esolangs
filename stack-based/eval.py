@@ -1,22 +1,22 @@
-import sys
 import re
+import sys
 
 
 def run(code):
     ptr = 0
-    stk = [[], []]
+    stk: list = [[], []]
     app = stk[ptr].append
     pop = stk[ptr].pop
 
     dct = {
-        '`': lambda: app(1 - ptr),
-        '^': lambda: app(stk[ptr][-1]),
-        '0': lambda: app(0),
-        '+': lambda: app(pop() + 1),
-        '-': lambda: app(pop() - 1),
-        '.': lambda: print(pop(), end=''),
-        '=': lambda: stk[1 - ptr].append(pop()),
-        ';': lambda: pop()
+        "`": lambda: app(1 - ptr),
+        "^": lambda: app(stk[ptr][-1]),
+        "0": lambda: app(0),
+        "+": lambda: app(pop() + 1),
+        "-": lambda: app(pop() - 1),
+        ".": lambda: print(pop(), end=""),
+        "=": lambda: stk[1 - ptr].append(pop()),
+        ";": lambda: pop(),
     }
 
     def ins(sym):
@@ -26,20 +26,20 @@ def run(code):
         while ind < len(sym):
             if (char := sym[ind]) in dct:
                 dct[char]()
-            elif char == '~':
+            elif char == "~":
                 ptr ^= 1
-            elif char == '*':
+            elif char == "*":
                 stk[ptr] = stk[ptr][::-1]
-            elif char == '?':
+            elif char == "?":
                 if not pop():
                     ind += 1
-            elif char == '!':
+            elif char == "!":
                 ins(pop())
-            elif char in '"\'':
-                s = (re.match('[^"]*', sym[ind + 1:])
-                     [0].replace('`', '"'))
+            elif char in "\"'":
+                match = re.match('[^"]*', sym[ind + 1 :])
+                s = match[0].replace("`", '"') if match else ""
                 ind += len(s) + 1
-                if char == '\'':
+                if char == "'":
                     s = f'"{s}"'
 
                 app(s)
@@ -49,7 +49,7 @@ def run(code):
     ins(code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()

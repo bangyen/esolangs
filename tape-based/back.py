@@ -11,22 +11,22 @@ def run(code):
     cell = 0
 
     while True:
-        if (c := code[x][y]) == '\\':
+        if (c := code[x][y]) == "\\":
             a, b = b, a
-        elif c == '/':
+        elif c == "/":
             a, b = -b, -a
-        elif c == '<':
+        elif c == "<":
             if cell:
                 cell -= 1
-        elif c == '>':
+        elif c == ">":
             cell += 1
             if cell == len(tape):
                 tape.append(0)
-        elif c == '-':
+        elif c == "-":
             tape[cell] ^= 1
-        elif c == '+' and not tape[cell]:
+        elif c == "+" and not tape[cell]:
             x, y = x + a, y + b
-        elif c == '*':
+        elif c == "*":
             break
 
         x = (x + a) % len(code)
@@ -35,7 +35,7 @@ def run(code):
     print(*tape)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()

@@ -1,6 +1,7 @@
-import numpy as np
-import sys
 import re
+import sys
+
+import numpy as np
 
 
 def prime(number):
@@ -28,7 +29,7 @@ def brackets(string, pointer):
 def convert(pre):
     pre = [np.round(k) for k in pre]
     pre = sorted(pre, key=lambda x: np.imag(x) or x)
-    post = []
+    post: list = []
     num = 2
 
     while pre:
@@ -39,13 +40,13 @@ def convert(pre):
             if im := np.imag(root):
                 for val in range(1, 7):
                     # to the power of, not multiply
-                    if im == num ** val:
+                    if im == num**val:
                         pre.remove(root)
                         post.append([int(np.real(root)), val])
                         break
             else:
                 for val in range(1, 9):
-                    if root == num ** val:
+                    if root == num**val:
                         pre.remove(root)
                         post.append([val])
                         break
@@ -54,21 +55,22 @@ def convert(pre):
 
 
 def sanitize(code):
-    code = code[5:].replace('x^0', '')
+    code = code[5:].replace("x^0", "")
     reg_dict = {
-        r'^x': '1x', r'(\D)x': r'\g<1>1x',
-        r'x([+-])': r'x^1\1',
+        r"^x": "1x",
+        r"(\D)x": r"\g<1>1x",
+        r"x([+-])": r"x^1\1",
     }
     for regex in reg_dict:
         code = re.sub(regex, reg_dict[regex], code)
 
-    code = code + 'x^0'
-    mono = re.findall(r'-?\d+x\^\d+', code)
-    post = []
+    code = code + "x^0"
+    mono = re.findall(r"-?\d+x\^\d+", code)
+    post: list = []
 
-    for k in range(int(mono[0].split('x^')[1]) + 1):
+    for k in range(int(mono[0].split("x^")[1]) + 1):
         for m in mono:
-            if k == int((nums := m.split('x^'))[1]):
+            if k == int((nums := m.split("x^"))[1]):
                 post.insert(0, int(nums[0]))
                 mono.remove(m)
                 break
@@ -78,8 +80,8 @@ def sanitize(code):
 
 
 def run(code):
-    code = re.sub(r'[^\df(x)=+-^]', '', code)
-    if code[:5] != 'f(x)=':
+    code = re.sub(r"[^\df(x)=+-^]", "", code)
+    if code[:5] != "f(x)=":
         return
 
     code = sanitize(code)
@@ -89,11 +91,16 @@ def run(code):
     ind = reg = 0
     new = 1
     sym = [
-        lambda r, a: r + a, lambda r, a: r - a,
-        lambda r, a: r * a, lambda r, a: r / a,
-        lambda r, a: r % a, lambda r, a: r ** a,
-        lambda: reg > 0, 0,
-        lambda: reg < 0, lambda: not reg
+        lambda r, a: r + a,
+        lambda r, a: r - a,
+        lambda r, a: r * a,
+        lambda r, a: r / a,
+        lambda r, a: r % a,
+        lambda r, a: r**a,
+        lambda: reg > 0,
+        0,
+        lambda: reg < 0,
+        lambda: not reg,
     ]
 
     while ind < len(code):
@@ -102,11 +109,11 @@ def run(code):
             if one:
                 reg = sym[two - 1](reg, one)
             elif two - 1:
-                val = input('\nInput: '[new:]) + chr(0)
+                val = input("\nInput: "[new:]) + chr(0)
                 reg = ord(val[0]) or -1
                 new = 1
             else:
-                print(chr(max(0, reg)), end='')
+                print(chr(max(0, reg)), end="")
                 new = 0
         elif one in [2, 6]:
             beg = code[brackets(code, ind)][0]
@@ -117,7 +124,7 @@ def run(code):
         ind += 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()

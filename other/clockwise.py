@@ -9,9 +9,7 @@ def init(code):
     def move(acc):
         nonlocal x, y, r
         o = code[y][x]
-        c = ((o == 'R')
-             or (o == '?' and acc)
-             or (o == '!' and not acc))
+        c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
 
         r = (r + c) % 4
         x += col[r]
@@ -19,6 +17,7 @@ def init(code):
         b = x or y or not r
 
         return o, b
+
     return move
 
 
@@ -32,35 +31,35 @@ def run(code):
     out = []
     acc = 0
 
-    if '.' in ''.join(code):
-        for k in input('Input: '):
+    if "." in "".join(code):
+        for k in input("Input: "):
             val = bin(ord(k))[2:]
             inp += list(val.zfill(7))
 
     while cont:
         ins, cont = move(acc)
-        if ins in 'R?!':
+        if ins in "R?!":
             continue
-        elif ins == '+':
+        elif ins == "+":
             acc += 1
-        elif ins == '-':
+        elif ins == "-":
             acc -= 1
-        elif ins == '.':
+        elif ins == ".":
             n = int(inp[0])
             acc = (acc | 1) - 1 + n
             inp = inp[1:] + [inp[0]]
-        elif ins == ';':
+        elif ins == ";":
             out.append(str(acc % 2))
-        elif ins == 'S':
+        elif ins == "S":
             acc = 0
 
         if len(out) == 7:
-            val = int(''.join(out), 2)
-            print(chr(val), end='')
+            char_val: int = int("".join(out), 2)
+            print(chr(char_val), end="")
             out = []
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()

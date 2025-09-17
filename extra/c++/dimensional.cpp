@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
     bool out = false;
     int dim, ind = 0;
     char c;
-    
+
     auto val = [&]() {
         return value(ptr, prime, tape);
     };
