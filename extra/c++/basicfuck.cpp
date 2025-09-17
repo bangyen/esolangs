@@ -40,7 +40,7 @@ int run(
         std::smatch pre,
         std::vector<int>& prog,
         std::vector<int>& tape,
-        size_t ptr) {    
+        size_t ptr) {
     char ver = pre[5].str()[0];
     bool out = false;
 
@@ -73,11 +73,11 @@ int run(
 
             if (c == -2)
                 num *= -1;
-            
+
             int& n = *val(0);
             n += num;
             ptr += 2;
-            
+
             if (n < bot) {
                 if (ver == 'h')
                     error("Underflow error.");
@@ -151,7 +151,7 @@ int run(
 std::vector<std::string> lexer(
         std::string prog) {
     std::vector<std::string> tokens;
-    
+
     while (prog.size()) {
         std::smatch m;
         std::regex reg(
@@ -183,7 +183,7 @@ std::vector<std::string> lexer(
  * Nonnegative numbers are variables.
  * Negative numbers below -9 are constants.
  * Odd means positive, even means negative,
- * e.g. 
+ * e.g.
  *  0 : -10
  *  1 : -11,  2 : -13
  * -1 : -12, -2 : -14
@@ -290,12 +290,12 @@ int main(int argc, char* argv[]) {
     std::regex com("\\s*//[^\n]*");
     std::vector<int> ops, tape;
     dict var;
-    
+
     std::string prog, temp;
     std::smatch pre, m;
     std::ifstream file;
     int lim = -1;
-    
+
     if (argc > 1) {
         std::regex dir(
             "#basicfuck t="
@@ -309,7 +309,7 @@ int main(int argc, char* argv[]) {
             "#allocate(?: "
             name ",?)*\\s*"
         );
-        
+
         std::ifstream file =
             std::ifstream(argv[1]);
 

@@ -36,7 +36,7 @@ fn run(text: Vec<char>) {
                 out = true;
                 let val = stk.last()
                     .expect("empty stack");
-                
+
                 if let Some(c)
                         = char::from_u32(
                             *val as u32) {
@@ -88,7 +88,7 @@ fn run(text: Vec<char>) {
                 .expect("missing bracket"),
             _ => ()
         }
-        
+
         ind += 1;
     }
 }
@@ -100,6 +100,6 @@ fn main() {
         .expect("invalid file")
         .chars()
         .collect();
-    
+
     run(text);
 }

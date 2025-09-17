@@ -26,7 +26,7 @@ _start:
 	je .right
 	cmp byte [edx], '<'
 	je .left
-	
+
 	cmp byte [edx], 0
 	jne .parse
 
@@ -36,7 +36,7 @@ _start:
 	dec edi
 	cmp edi, 0
 	je .final
-	
+
 	mov dword [ecx], ' '
 	call print
 	sub ecx, 4
@@ -59,13 +59,13 @@ _start:
 	inc esi
 	cmp edi, esi
 	jge .parse
-	
+
 	inc edi
 	jmp .parse
 .left:
 	cmp ecx, edi
 	je .parse
-	
+
 	dec esi
 	add ecx, 4
 	jmp .parse
@@ -88,7 +88,7 @@ output:
 	mov ebx, 10
 	xor edx, edx
 	div ebx
-	
+
 	xchg eax, edi
 	xor edx, edx
 	div edi
@@ -99,7 +99,7 @@ output:
 	add dword [ecx], '0'
 	call print
 	sub dword [ecx], '0'
-	
+
 	cmp eax, 1
 	jne .main
 	pop edi

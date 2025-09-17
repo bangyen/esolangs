@@ -8,24 +8,24 @@ def run(code, limit=10):
     new = 1
 
     while num < limit:
-        if (sym := code[ind]) == '>':
+        if (sym := code[ind]) == ">":
             ptr += 1
             if ptr == len(tape):
                 tape.append(0)
-        elif sym == '<':
+        elif sym == "<":
             acc += tape[ptr]
             ptr = 0
-        elif sym == '!':
+        elif sym == "!":
             val = tape[ptr] + 1 - acc
             tape[ptr] = max(0, val)
             ptr = acc = 0
-        elif sym == ',':
-            inp = input('\nInput: '[new:])
+        elif sym == ",":
+            inp = input("\nInput: "[new:])
             acc = acc + ord(inp[0]) if inp else 0
             new = 1
-        elif sym == '.' and acc:
-            val = chr(acc - 1)
-            print(val, end='')
+        elif sym == "." and acc:
+            output_val: str = chr(acc - 1)
+            print(output_val, end="")
             new = 0
 
         ind += 1
@@ -34,7 +34,7 @@ def run(code, limit=10):
             num += 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()

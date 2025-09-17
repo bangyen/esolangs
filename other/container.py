@@ -18,11 +18,11 @@ class Con:
 
         res = var[self.name]
         for n, c in self.rules:
-            if '<' in c:
-                x, y = c.split('<=')
+            if "<" in c:
+                x, y = c.split("<=")
                 b = val(x) <= val(y)
             else:
-                x, y = c.split('>=')
+                x, y = c.split(">=")
                 b = val(x) >= val(y)
 
             if b:
@@ -35,7 +35,7 @@ class Con:
 
 
 def run(code):
-    queue = []
+    queue: list = []
     inp = False
     obj = []
     var = {}
@@ -43,10 +43,10 @@ def run(code):
 
     for line in code:
         line = line.strip()
-        if ':' in line:
+        if ":" in line:
             line = line[:-1]
-            if '=' in line:
-                x, y = line.split('=')
+            if "=" in line:
+                x, y = line.split("=")
                 var[x] = int(y)
                 obj.append(Con(x))
             else:
@@ -59,29 +59,28 @@ def run(code):
         for o in obj:
             new[o.name] = o.update(var)
 
-        if 'PRINT' in var:
-            if var['PRINT'] == 0 and bool(new['PRINT']):
-                if 'OUT' in var:
-                    print(chr(new['OUT'] % (1 << 7)), end='')
+        if "PRINT" in var:
+            if var["PRINT"] == 0 and bool(new["PRINT"]):
+                if "OUT" in var:
+                    print(chr(new["OUT"] % (1 << 7)), end="")
                     inp = True
-        if '' in var:
-            if var[''] == 0 and bool(new['']):
-
+        if "" in var:
+            if var[""] == 0 and bool(new[""]):
                 while not queue:
-                    s = input('\n' * inp + 'Input: ')
+                    s = input("\n" * inp + "Input: ")
                     queue += list(s)
 
-                new['INPUT'] = ord(queue[0])
+                new["INPUT"] = ord(queue[0])
                 queue = queue[1:]
                 inp = True
-        if 'EXIT' in var:
-            if var['EXIT'] != new['EXIT']:
-                exit(new['EXIT'])
+        if "EXIT" in var:
+            if var["EXIT"] != new["EXIT"]:
+                exit(new["EXIT"])
 
         var = new.copy()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()

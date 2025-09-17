@@ -6,7 +6,7 @@
 void prompt(bool& out) {
     if (out)
         std::cout << std::endl;
-    
+
     std::cout << "Input: ";
     out = false;
 }
@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
                     std::cout
                         << (char) acc;
                 }
-                
+
                 out = true;
                 break;
             case '$':
