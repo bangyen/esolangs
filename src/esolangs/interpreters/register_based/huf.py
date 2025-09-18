@@ -1,10 +1,18 @@
+"""
+Huf interpreter implementation.
+
+Register-based esoteric language with two variables: num and mul.
+Processes code segments enclosed in #...#@ patterns.
+"""
+
 import re
 import sys
 
 
-def run(code):
-    code = re.findall("#[^#@]+@", code)
-    code = "".join(code)
+def run(code: str) -> None:
+    """Execute a Huf program."""
+    segments = re.findall("#[^#@]+@", code)
+    code = "".join(segments)
     num = mul = 0
 
     for sym in code:
