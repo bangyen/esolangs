@@ -133,3 +133,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Linter configuration (optional, can be customized per developer)
+compile_commands.json
+.rubocop.yml
