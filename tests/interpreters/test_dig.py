@@ -10,15 +10,12 @@ work commands only function underground after digging.
 """
 
 import io
-import sys
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import pytest
 
-# Add src directory to path for imports
-sys.path.insert(0, "src")
-from esolangs.interpreters.register_based.dig import run
+from src.esolangs.interpreters.register_based.dig import run
 
 
 class TestDigBasicCommands:
