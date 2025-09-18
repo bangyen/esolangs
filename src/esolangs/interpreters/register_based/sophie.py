@@ -1,8 +1,16 @@
+"""
+Sophie interpreter implementation.
+
+Esoteric language equivalent to a Finite State Automaton.
+Single accumulator with basic control flow operations.
+"""
+
 import re
 import sys
 
 
 def find(code, ind):
+    """Find the matching closing bracket for a given opening bracket."""
     opr = code[ind]
     end = chr(ord(opr) + 2)
     match = 1
@@ -19,6 +27,7 @@ def find(code, ind):
 
 
 def run(code):
+    """Execute Sophie program code."""
     acc = ind = 0
     skp = False
     stk = []

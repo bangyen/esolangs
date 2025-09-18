@@ -1,7 +1,16 @@
+"""
+Dig interpreter implementation.
+
+2D esoteric language with a mole that moves on a grid and can dig underground.
+Movement commands work overground, work commands function underground.
+"""
+
 import sys
+from typing import Callable
 
 
-def run(code, func=lambda: 0):
+def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
+    """Execute a Dig program with mole movement and underground work commands."""
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
@@ -9,7 +18,8 @@ def run(code, func=lambda: 0):
     line = mole = num = x = y = 0
     move = 1
 
-    def value():
+    def value() -> int:
+        """Get the first digit value from adjacent cells."""
         lst = []
         for i, j in direct:
             if 0 <= x + i < len(code) and 0 <= y + j < size:
@@ -75,6 +85,10 @@ def run(code, func=lambda: 0):
 
         x += direct[move][0]
         y += direct[move][1]
+
+        # Bounds checking to prevent IndexError
+        if x < 0 or x >= len(code) or y < 0 or y >= size:
+            break
 
 
 if __name__ == "__main__":

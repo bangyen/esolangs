@@ -1,12 +1,21 @@
+"""
+RAM0 interpreter implementation.
+
+Computational model with two registers (z, n) and unbounded RAM.
+Seven commands: Z, A, N, C, L, S, and goto.
+"""
+
 import re
 import sys
 
 
 def init():
+    """Initialize RAM0 machine state and return the command execution function."""
     z = n = 0
     ram: dict = {}
 
     def output():
+        """Print the current state of all registers and RAM memory."""
         res = f"z: {z}\n" f"n: {n}\n" "ram: {"
 
         for x, y in ram.items():
@@ -16,6 +25,7 @@ def init():
         print(res + "}")
 
     def change(op):
+        """Execute a single RAM0 command and return whether z register is zero."""
         nonlocal z, n
         if op == "Z":
             z = 0
@@ -35,6 +45,7 @@ def init():
 
 
 def run(code):
+    """Execute a RAM0 program by parsing commands and running them sequentially."""
     expr = r"([ZANCLS]|[1-9]\d*)"
     code = re.findall(expr, code)
     func = init()
