@@ -1,0 +1,12 @@
+# Simple Huf program demonstrating basic commands
+# Outputs "ABC" using different approaches
+
+# Method 1: Simple increments for 'A' (ASCII 65)
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++>@
+
+# Method 2: Multiplication for 'B' (ASCII 66)
+# Using 66 = 6 * 11, so 6 increments, mul=12, multiply by 11
+#++++++|+++++++++++!>@
+
+# Method 3: Simple increments for 'C' (ASCII 67)
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++>@

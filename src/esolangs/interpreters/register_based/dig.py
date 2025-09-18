@@ -5,8 +5,6 @@ Dig is a 2D esoteric programming language with a 3rd dimension for "digging".
 The language features a mole (pointer) that moves on a 2D grid and can dig underground
 to access work commands. Movement commands work overground, while work commands
 only function underground after digging.
-
-Based on the specification at https://esolangs.org/wiki/Dig
 """
 
 import sys
@@ -14,38 +12,7 @@ from typing import Callable
 
 
 def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
-    """
-    Execute a Dig program.
-
-    The interpreter manages a mole (pointer) that moves on a 2D grid. The mole can
-    move overground using movement commands and dig underground to access work commands.
-    The mole has a memory value that starts at 0 and can be modified by various commands.
-
-    Args:
-        code: List of strings representing the 2D program grid
-        func: Optional function that can terminate execution when called during $ command
-
-    Movement Commands (overground):
-        ^ - Point mole up
-        > - Point mole right
-        ' - Point mole down
-        < - Point mole left
-        # - Rotate based on adjacent value (0=left, 1=right, other=straight)
-        $ - Dig underground for N moves (N = adjacent value)
-        @ - Halt execution
-
-    Work Commands (underground only):
-        % - Set memory to space (0) or newline (1) based on adjacent value
-        = - Read character input into memory
-        ~ - Read integer input into memory
-        : - Output memory value and reset to 0
-        + - Add adjacent value to memory
-        - - Subtract adjacent value from memory
-        * - Multiply memory by adjacent value
-        / - Divide memory by adjacent value (integer division)
-        ; - Store current memory value at current position
-        alphanumeric/.,!? - Set memory to ASCII value of character
-    """
+    """Execute a Dig program with mole movement and underground work commands."""
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
@@ -54,15 +21,7 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
     move = 1
 
     def value() -> int:
-        """
-        Get the first digit value from adjacent cells.
-
-        Searches in order: up, right, down, left for the first digit character
-        and returns its integer value. Used by commands that need numeric values.
-
-        Returns:
-            Integer value of the first digit found in adjacent cells
-        """
+        """Get the first digit value from adjacent cells."""
         lst = []
         for i, j in direct:
             if 0 <= x + i < len(code) and 0 <= y + j < size:

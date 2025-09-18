@@ -1,0 +1,11 @@
+# Mathematical operations in Huf
+# Demonstrates multiplication and addition
+
+# Calculate 5 * 3 = 15, then output character with ASCII 15
+#+++++|+++!>@
+
+# Calculate 2 * 4 = 8, then add 2 more = 10, output newline
+#++|++++!++>@
+
+# Calculate 3 * 2 = 6, then add 1 = 7, output bell character
+#+++|++!+>@

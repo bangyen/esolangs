@@ -3,12 +3,7 @@ import sys
 
 
 class Dot:
-    """Represents a dot (instruction pointer) in the Dotlang programming language.
-
-    Dots are the fundamental execution units that move through the 2D code space,
-    carrying values and executing commands. Each dot has a position, direction,
-    and optional value that can be manipulated during program execution.
-    """
+    """Represents a dot (instruction pointer) in the Dotlang programming language."""
 
     list = [
         (-1, 0),
@@ -20,13 +15,7 @@ class Dot:
     code = ""  # The 2D code grid as a list of strings
 
     def __init__(self, x, y, d):
-        """Initialize a new dot at the specified position and direction.
-
-        Args:
-            x: Initial x-coordinate (row) in the code grid
-            y: Initial y-coordinate (column) in the code grid
-            d: Initial direction (0=up, 1=right, 2=down, 3=left)
-        """
+        """Initialize a new dot at the specified position and direction."""
         self.val = None  # The value carried by this dot (int, float, or string)
         self.dir = d  # Current direction of movement
         self.x = x  # Current x-coordinate
@@ -34,23 +23,13 @@ class Dot:
 
     @staticmethod
     def set(code):
-        """Set the global code grid and calculate its dimensions.
-
-        Args:
-            code: List of strings representing the 2D code grid
-        """
+        """Set the global code grid and calculate its dimensions."""
         Dot.code = code
         Dot.mx = len(code)
         Dot.my = len(code[0])
 
     def new(self, val):
-        """Set the dot's value, automatically determining the appropriate type.
-
-        Converts string values to int, float, or keeps as string based on format.
-
-        Args:
-            val: String value to assign to the dot
-        """
+        """Set the dot's value, automatically determining the appropriate type."""
         if re.match(r"\d+\.\d+", val):
             self.val = float(val)
         elif re.match(r"\d+", val):
@@ -59,11 +38,7 @@ class Dot:
             self.val = val
 
     def move(self):
-        """Move the dot one step in its current direction.
-
-        Returns:
-            bool: True if the dot remains within bounds, False if it moves out of bounds
-        """
+        """Move the dot one step in its current direction."""
         x, y = Dot.list[self.dir]
         self.x += x
         self.y += y
@@ -72,27 +47,12 @@ class Dot:
         return 0 <= self.y < Dot.my
 
     def match(self, regex):
-        """Check if the current position matches a regular expression pattern.
-
-        Args:
-            regex: Regular expression pattern to match against
-
-        Returns:
-            re.Match or None: Match object if pattern matches, None otherwise
-        """
+        """Check if the current position matches a regular expression pattern."""
         line = Dot.code[self.x][self.y :]
         return re.match(regex, line)
 
     def find(self, warp, ret=False):
-        """Find a warp destination in the code grid.
-
-        Args:
-            warp: String pattern to search for in the code
-            ret: If True, return a new Dot object at the found location
-
-        Returns:
-            bool or Dot: True if warp found and moved to, or Dot object if ret=True
-        """
+        """Find a warp destination in the code grid."""
         for num, val in enumerate(Dot.code):
             if warp in val:
                 x, y = num, val.find(warp)
@@ -107,24 +67,7 @@ class Dot:
 
 
 def run(code):
-    """Execute a Dotlang program.
-
-    Interprets and executes a 2D Dotlang program, managing dots (instruction pointers)
-    as they move through the code space, execute commands, and interact with values.
-
-    The function handles all Dotlang features including:
-    - Dot creation and movement
-    - Value assignment and output (#, ~)
-    - Control flow (parentheses, warps)
-    - Type checking and direction changes (!, ?, :)
-    - Special quine case (single space)
-
-    Args:
-        code: List of strings representing the 2D Dotlang program
-
-    Returns:
-        None: Output is printed to stdout, input is read from stdin
-    """
+    """Execute a Dotlang program with 2D dot movement and command execution."""
     if code == [" "]:
         print(" ", end="")
         return
