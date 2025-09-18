@@ -25,7 +25,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 keywords = ["esoteric", "programming", "languages", "interpreters", "compilers", "brainfuck", "esolangs"]
-dependencies = []
+dependencies = [
+    "numpy>=1.20.0",
+]
 
 [project.optional-dependencies]
 dev = [
