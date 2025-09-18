@@ -35,12 +35,12 @@ class TestPolynomialHelperFunctions:
     def test_sanitize_simple_polynomial(self) -> None:
         """Test polynomial parsing for simple cases."""
         result = sanitize("f(x) = 3x^2 + x + 7")
-        assert result == [3, 0, 7]  # Note: linear term is missing due to parsing issue
+        assert result == [3, 1, 7]
 
     def test_sanitize_complex_polynomial(self) -> None:
         """Test polynomial parsing for complex cases."""
         result = sanitize("f(x) = x^3 - 2x^2 + x - 1")
-        assert result == [1, 2, 0, 1]  # Note: signs and terms may be parsed differently
+        assert result == [1, -2, 1, -1]
 
     def test_sanitize_missing_terms(self) -> None:
         """Test polynomial parsing with missing terms."""
@@ -104,7 +104,7 @@ class TestPolynomialParsing:
     def test_linear_polynomial_parsing(self) -> None:
         """Test parsing of linear polynomials."""
         result = sanitize("f(x) = x + 1")
-        assert result == [1]  # Note: parsing issue with linear terms
+        assert result == [1, 1]
 
     def test_quadratic_polynomial_parsing(self) -> None:
         """Test parsing of quadratic polynomials."""
@@ -124,7 +124,7 @@ class TestPolynomialParsing:
     def test_polynomial_missing_constant(self) -> None:
         """Test parsing of polynomials missing constant term."""
         result = sanitize("f(x) = x^2 + x")
-        assert result == [1, 0, 0]  # Note: parsing issue with linear terms
+        assert result == [1, 1, 0]
 
 
 class TestPolynomialMathematicalProperties:
@@ -157,12 +157,12 @@ class TestPolynomialEdgeCases:
     def test_high_degree_polynomial_parsing(self) -> None:
         """Test parsing of high degree polynomial."""
         result = sanitize("f(x) = x^5 + x^3 + 1")
-        assert result == [1, 0, 1, 0, 0, 1]  # Note: parsing issue with linear terms
+        assert result == [1, 0, 1, 0, 0, 1]
 
     def test_polynomial_with_large_coefficients(self) -> None:
         """Test parsing of polynomial with large coefficients."""
         result = sanitize("f(x) = 100x^2 + 50x + 25")
-        assert result == [100, 0, 25]  # Note: parsing issue with linear terms
+        assert result == [100, 50, 25]
 
 
 class TestPolynomialSafety:
@@ -185,12 +185,8 @@ class TestPolynomialSafety:
         """Test that helper functions are safe to call."""
         # Test prime function with various inputs
         assert prime(2) is True
-        assert (
-            prime(1) is True
-        )  # Note: current implementation has bug, returns True for 1
-        assert (
-            prime(0) is True
-        )  # Note: current implementation has bug, returns True for 0
+        assert prime(1) is False  # 1 is not prime
+        assert prime(0) is False  # 0 is not prime
 
         # Test sanitize function with various inputs
         assert sanitize("f(x) = 1") == [1]
