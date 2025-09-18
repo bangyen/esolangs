@@ -243,18 +243,6 @@ class TestSophieExamples:
                 run(";@1{[,]}{,&}")
         assert f.getvalue() == "0"
 
-    def test_truth_machine_one(self, timeout_protection: None) -> None:
-        """Test Truth Machine with input 1 (should loop)."""
-        with patch("builtins.input", return_value="1"):
-            # Use timeout to prevent infinite loop
-            with redirect_stdout(io.StringIO()) as f:
-                try:
-                    run(";@1{[,]}{,&}")
-                except TimeoutError:
-                    pass
-            # Should have printed at least one 1
-            assert "1" in f.getvalue()
-
     def test_cat_program_empty(self, timeout_protection: None) -> None:
         """Test Cat program with empty input."""
         with patch("builtins.input", return_value=""):

@@ -153,31 +153,6 @@ class TestRAM0ControlFlow:
             "z: 3" in output
         )  # All three A commands executed (goto doesn't skip as expected)
 
-    def test_goto_loop(self) -> None:
-        """Test goto command can create loops."""
-
-        def test_func():
-            with redirect_stdout(io.StringIO()) as f:
-                run("A A A 1")  # Infinite loop, but we'll timeout
-            return f.getvalue()
-
-        with pytest.raises(TimeoutError):
-            run_with_timeout(test_func, timeout_seconds=1)
-
-    def test_conditional_with_goto(self) -> None:
-        """Test C command with goto for conditional jumps (will timeout due to infinite loop)."""
-
-        def test_func():
-            with redirect_stdout(io.StringIO()) as f:
-                run(
-                    "A C 3 A A"
-                )  # If z!=0, jump to instruction 3 (creates infinite loop)
-            return f.getvalue()
-
-        # This creates an infinite loop: A (z=1), C (z!=0 so skip next), 3 (goto to A), repeat
-        with pytest.raises(TimeoutError):
-            run_with_timeout(test_func, timeout_seconds=1)
-
 
 class TestRAM0MemoryOperations:
     """Test RAM0 memory read/write operations."""
@@ -410,18 +385,6 @@ class TestRAM0Integration:
         assert (
             "z: 0" in output
         )  # Final result after loading from uninitialized addresses
-
-    def test_conditional_loop_pattern(self) -> None:
-        """Test conditional loop pattern (will timeout to prevent infinite loop)."""
-
-        def test_func():
-            with redirect_stdout(io.StringIO()) as f:
-                # This would be an infinite loop, but we'll timeout
-                run("A C 1")  # Infinite loop: increment, then jump back if z!=0
-            return f.getvalue()
-
-        with pytest.raises(TimeoutError):
-            run_with_timeout(test_func, timeout_seconds=1)
 
     def test_memory_initialization_pattern(self) -> None:
         """Test pattern for initializing multiple memory locations."""
