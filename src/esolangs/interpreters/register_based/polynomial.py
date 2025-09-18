@@ -34,6 +34,8 @@ def prime(number: int) -> bool:
     Returns:
         True if number is prime, False otherwise
     """
+    if number < 2:
+        return False
     for val in range(2, int(np.sqrt(number)) + 1):
         if not number % val:
             return False
@@ -123,28 +125,58 @@ def sanitize(code: str) -> List[int]:
     Returns:
         List of coefficients from highest to lowest degree
     """
-    code = code[5:].replace("x^0", "")
-    reg_dict = {
-        r"^x": "1x",
-        r"(\D)x": r"\g<1>1x",
-        r"x([+-])": r"x^1\1",
-    }
-    for regex in reg_dict:
-        code = re.sub(regex, reg_dict[regex], code)
+    # Remove "f(x) = " prefix
+    if not code.startswith("f(x) = "):
+        return [0]
 
-    code = code + "x^0"
-    mono = re.findall(r"-?\d+x\^\d+", code)
-    post: List[int] = []
+    code = code[7:].strip()  # Remove "f(x) = "
 
-    for k in range(int(mono[0].split("x^")[1]) + 1):
-        for m in mono:
-            if k == int((nums := m.split("x^"))[1]):
-                post.insert(0, int(nums[0]))
-                mono.remove(m)
-                break
+    # Handle simple cases
+    if not code or code == "0":
+        return [0]
+
+    # Normalize the polynomial string
+    code = code.replace(" ", "")
+
+    # Add explicit coefficients and degrees for x terms
+    code = re.sub(r"(?<!\d)x(?!\^)", "1x^1", code)  # x -> 1x^1
+    code = re.sub(r"x([+-])", r"x^1\1", code)  # x+ -> x^1+
+
+    # Find all terms with their degrees and coefficients
+    terms = {}
+
+    # Find x^n terms first
+    for match in re.finditer(r"(-?\d*)x\^(\d+)", code):
+        coeff_str = match.group(1)
+        if not coeff_str:
+            coeff = 1
+        elif coeff_str == "-":
+            coeff = -1
         else:
-            post.insert(0, 0)
-    return post
+            coeff = int(coeff_str)
+        degree = int(match.group(2))
+        terms[degree] = coeff
+
+    # Remove x terms from code to find constants
+    code_without_x = re.sub(r"-?\d*x\^\d+", "", code)
+
+    # Find constant terms (remaining numbers)
+    for match in re.finditer(r"-?\d+", code_without_x):
+        coeff = int(match.group(0))
+        terms[0] = coeff
+
+    # If no terms found, return [0]
+    if not terms:
+        return [0]
+
+    # Build coefficient list from highest to lowest degree
+    max_degree = max(terms.keys())
+    coefficients = []
+
+    for degree in range(max_degree, -1, -1):
+        coefficients.append(terms.get(degree, 0))
+
+    return coefficients
 
 
 def run(code: str) -> None:
