@@ -32,7 +32,7 @@ while (c = code[i])
     print "#{line}Input: "
     val = '0' * 8 + gets[0].ord.to_s(2)
     tape[cell..cell + 7] =
-      val[-8..-1].chars.map(&:to_i)
+      val[-8..].chars.map(&:to_i)
     line = ''
   when '('
     val = tape[cell..cell + 7]
