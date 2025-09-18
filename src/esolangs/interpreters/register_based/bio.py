@@ -1,20 +1,7 @@
 """
 BIO (Binary IO) interpreter implementation.
 
-BIO is an esoteric programming language that uses three memory blocks (x, y, z)
-and only two letters (I, O) and two numbers (0, 1) to create commands.
-Each command is ended by a semicolon.
-
-Command format: [0|1][O|I][x|y|z];
-
-Commands:
-- 0O[xyz]: Increment the specified block
-- 1O[xyz]: Decrement the specified block
-- 0I[xyz]: While the block is not 0, execute the following block until }
-- 1I[xyz]: Output the block as a character
-- }: End of while loop block
-
-The language is case-insensitive and inspired by ABCDXYZ.
+Register-based esoteric language with three memory blocks (x, y, z).
 """
 
 import re
@@ -23,25 +10,7 @@ from typing import List
 
 
 def run(code: str) -> None:
-    """
-    Execute BIO code and produce output.
-
-    This function parses and executes BIO (Binary IO) esoteric programming language
-    code. BIO uses three memory registers (x, y, z) and a minimal command set
-    consisting of increment/decrement operations, conditional loops, and output.
-
-    Args:
-        code: The BIO source code as a string. Commands should be separated by
-              semicolons and follow the pattern [0|1][O|I][x|y|z].
-
-    Raises:
-        No explicit exceptions are raised, but malformed code may cause unexpected
-        behavior or infinite loops.
-
-    Example:
-        >>> run("0ox;1ix;")  # Increment x, then output x
-        A
-    """
+    """Execute BIO code and produce output."""
     # Parse BIO commands using regex
     lang = "([01][oOiI][xXyYzZ]|})"
     commands = re.findall(lang, code)
