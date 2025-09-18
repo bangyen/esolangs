@@ -1,9 +1,51 @@
 # Makefile for esolangs project
-# Provides linting targets for all languages used in the project
 
-.PHONY: help lint lint-python lint-c lint-cpp lint-rust lint-ruby lint-lean lint-r lint-asm lint-all clean test install-dev
+# Configuration
+PYTHON = venv/bin/python
+PIP = venv/bin/pip
+BLACK = venv/bin/black
+RUFF = venv/bin/ruff
+MYPY = venv/bin/mypy
+PYTEST = venv/bin/pytest
 
-# Default target
+# Tool paths
+HOMEBREW_BIN = /opt/homebrew/bin
+LLVM_BIN = /opt/homebrew/Cellar/llvm/21.1.1/bin
+CARGO_BIN = $(HOME)/.cargo/bin
+RUBY_BIN = /opt/homebrew/opt/ruby/bin:/opt/homebrew/lib/ruby/gems/3.4.0/bin
+
+# Common functions
+define setup_path
+	@export PATH="$(1):$$PATH"
+endef
+
+define run_tool
+	if command -v $(1) >/dev/null 2>&1; then \
+		$(2); \
+	else \
+		echo "Warning: $(1) not found. $(3)"; \
+	fi
+endef
+
+define lint_c_cpp
+	$(call setup_path,$(HOMEBREW_BIN):$(LLVM_BIN)) && \
+	$(call run_tool,clang-format, \
+		find $(1) -name "$(2)" \
+			-exec clang-format --dry-run --Werror {} \; || \
+		echo "Warning: clang-format found formatting issues. \
+			Run 'clang-format -i $(3)' to fix.", \
+		Install with: brew install clang-format) && \
+	$(call run_tool,clang-tidy, \
+		find $(1) -name "$(2)" \
+			-exec clang-tidy --quiet --warnings-as-errors=* {} \; \
+			2>/dev/null || \
+		echo "Note: clang-tidy found issues or missing compilation database \
+			(expected for standalone files)", \
+		Install with: brew install llvm)
+endef
+
+.PHONY: help lint lint-python lint-c lint-cpp lint-rust lint-ruby lint-lean lint-r lint-asm clean test install-dev
+
 help:
 	@echo "Available targets:"
 	@echo "  lint-python  - Lint Python files with Black, Ruff, and MyPy"
@@ -15,144 +57,86 @@ help:
 	@echo "  lint-r       - Lint R files with lintr"
 	@echo "  lint-asm     - Basic syntax check for Assembly files"
 	@echo "  lint         - Run all linting targets"
-	@echo "  lint-all     - Alias for lint"
 	@echo "  test         - Run Python tests with pytest"
 	@echo "  install-dev  - Install development dependencies"
 	@echo "  clean        - Clean up generated files"
 
-# Python linting (already configured in pyproject.toml)
 lint-python:
-	@echo "Running Python linting..."
-	@echo "Formatting with Black..."
-	black --check .
-	@echo "Linting with Ruff..."
-	ruff check .
-	@echo "Type checking with MyPy..."
-	mypy .
+	$(BLACK) --check .
+	$(RUFF) check .
+	$(MYPY) .
 
-# C linting
 lint-c:
-	@echo "Running C linting..."
-	@if command -v clang-format >/dev/null 2>&1; then \
-		echo "Checking C formatting with clang-format..."; \
-		find compilers/c -name "*.c" -exec clang-format --dry-run --Werror {} \; || \
-		echo "Warning: clang-format found formatting issues. Run 'clang-format -i compilers/c/*.c' to fix."; \
-	else \
-		echo "Warning: clang-format not found. Install with: brew install clang-format"; \
-	fi
-	@if command -v clang-tidy >/dev/null 2>&1; then \
-		echo "Running clang-tidy on C files..."; \
-		find compilers/c -name "*.c" -exec clang-tidy {} \; || true; \
-	else \
-		echo "Warning: clang-tidy not found. Install with: brew install llvm"; \
-	fi
+	$(call lint_c_cpp,compilers/c,*.c,compilers/c/*.c)
 
-# C++ linting
 lint-cpp:
-	@echo "Running C++ linting..."
-	@if command -v clang-format >/dev/null 2>&1; then \
-		echo "Checking C++ formatting with clang-format..."; \
-		find extra/c++ -name "*.cpp" -exec clang-format --dry-run --Werror {} \; || \
-		echo "Warning: clang-format found formatting issues. Run 'clang-format -i extra/c++/*.cpp' to fix."; \
-	else \
-		echo "Warning: clang-format not found. Install with: brew install clang-format"; \
-	fi
-	@if command -v clang-tidy >/dev/null 2>&1; then \
-		echo "Running clang-tidy on C++ files..."; \
-		find extra/c++ -name "*.cpp" -exec clang-tidy {} \; || true; \
-	else \
-		echo "Warning: clang-tidy not found. Install with: brew install llvm"; \
-	fi
+	$(call lint_c_cpp,extra/c++,*.cpp,extra/c++/*.cpp)
 
-# Rust linting
 lint-rust:
-	@echo "Running Rust linting..."
-	@if command -v rustfmt >/dev/null 2>&1; then \
-		echo "Checking Rust formatting with rustfmt..."; \
-		find extra/rust -name "*.rs" -exec rustfmt --check {} \; || \
-		echo "Warning: rustfmt found formatting issues. Run 'rustfmt extra/rust/*.rs' to fix."; \
-	else \
-		echo "Warning: rustfmt not found. Install Rust toolchain."; \
-	fi
-	@if command -v cargo >/dev/null 2>&1; then \
-		echo "Running clippy on Rust files..."; \
-		cd extra/rust && cargo clippy || true; \
-	else \
-		echo "Warning: cargo not found. Install Rust toolchain."; \
-	fi
+	$(call setup_path,$(CARGO_BIN)) && \
+	$(call run_tool,rustfmt, \
+		find extra/rust -name "*.rs" \
+			-exec rustfmt --check {} \; || \
+		echo "Warning: rustfmt found formatting issues. \
+			Run 'rustfmt extra/rust/*.rs' to fix.", \
+		Install Rust toolchain) && \
+	$(call run_tool,cargo, \
+		cd extra/rust && cargo clippy || true, \
+		Install Rust toolchain)
 
-# Ruby linting
 lint-ruby:
-	@echo "Running Ruby linting..."
-	@if command -v ruby >/dev/null 2>&1 && command -v rubocop >/dev/null 2>&1; then \
-		echo "Running rubocop on Ruby files..."; \
-		rubocop extra/ruby/ || true; \
-	else \
-		echo "Warning: Ruby or rubocop not found. Install with: brew install ruby && gem install rubocop"; \
-	fi
+	$(call setup_path,$(RUBY_BIN)) && \
+	$(call run_tool,rubocop, \
+		rubocop extra/ruby/ || true, \
+		Install with: brew install ruby && gem install rubocop)
 
-# Lean linting
 lint-lean:
-	@echo "Running Lean linting..."
-	@if command -v lean >/dev/null 2>&1; then \
-		echo "Checking Lean files..."; \
-		if lean --version >/dev/null 2>&1; then \
-			find extra/lean -name "*.lean" -exec lean --check {} \; || true; \
-		else \
-			echo "Warning: Lean 3 not available on ARM64. Files are Lean 3 syntax and require x86_64 or Lean 4 conversion."; \
-		fi; \
+	@if command -v lean4 >/dev/null 2>&1; then \
+		find extra/lean -name "*.lean" \
+			-exec lean4 --check {} \; || true; \
+	elif command -v lean >/dev/null 2>&1 && \
+		lean --version 2>&1 | grep -q "Lean 4" >/dev/null 2>&1; then \
+		find extra/lean -name "*.lean" \
+			-exec lean --check {} \; || true; \
 	else \
-		echo "Warning: lean not found. Install Lean 4 with: elan toolchain install stable && elan default stable"; \
+		echo "Warning: Lean 4 not found. \
+			Install Lean 4 with: elan toolchain install stable && \
+			elan default stable"; \
+		echo "Note: Current 'lean' command is LeanCloud CLI, \
+			not Lean theorem prover."; \
 	fi
 
-# R linting
 lint-r:
-	@echo "Running R linting..."
-	@if command -v Rscript >/dev/null 2>&1; then \
-		if Rscript -e "if (!require('lintr', quietly=TRUE)) install.packages('lintr', repos='https://cran.rstudio.com/')" 2>/dev/null; then \
-			echo "Running lintr on R files..."; \
-			Rscript -e "lintr::lint_dir('extra/r')" || true; \
-		else \
-			echo "Warning: Could not install or load lintr package."; \
-		fi; \
-	else \
-		echo "Warning: R not found. Install R."; \
-	fi
+	$(call run_tool,Rscript, \
+		Rscript -e "if (!require('lintr', quietly=TRUE)) \
+			install.packages('lintr', repos='https://cran.rstudio.com/')" \
+			2>/dev/null && \
+		Rscript -e "lintr::lint_dir('extra/r')" || true, \
+		Install R)
 
-# Assembly basic syntax checking
 lint-asm:
-	@echo "Running Assembly syntax checking..."
-	@if command -v nasm >/dev/null 2>&1; then \
-		echo "Checking Assembly syntax with nasm..."; \
-		find extra/assembly -name "*.asm" -exec nasm -f elf64 -o /dev/null {} \; 2>/dev/null || \
-		echo "Note: Some assembly files may not be x86-64 compatible or have syntax issues."; \
-	else \
-		echo "Warning: nasm not found. Install with: brew install nasm"; \
-	fi
+	$(call run_tool,nasm, \
+		find extra/assembly -name "*.asm" \
+			-exec nasm -f elf64 -o /dev/null {} \; 2>/dev/null || \
+		echo "Note: Some assembly files may not be x86-64 compatible \
+			or have syntax issues.", \
+		Install with: brew install nasm)
 
-# Run all linting targets
 lint: lint-python lint-c lint-cpp lint-rust lint-ruby lint-lean lint-r lint-asm
 
-# Alias for lint
-lint-all: lint
-
-# Python testing
 test:
-	@echo "Running Python tests..."
-	pytest
+	$(PYTEST)
 
-# Install development dependencies
 install-dev:
-	@echo "Installing development dependencies..."
-	pip install -e ".[dev]"
+	$(PIP) install -e ".[dev]"
 
-# Clean up generated files
 clean:
-	@echo "Cleaning up generated files..."
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "__pycache__" -delete
-	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.o" -delete
-	find . -type f -name "*.so" -delete
-	find . -type f -name "*.dylib" -delete
-	find . -type f -name "*.exe" -delete
+	find . \( \
+		-name "*.pyc" \
+		-o -name "__pycache__" \
+		-o -name "*.egg-info" \
+		-o -name "*.o" \
+		-o -name "*.so" \
+		-o -name "*.dylib" \
+		-o -name "*.exe" \
+	\) -delete 2>/dev/null || true
