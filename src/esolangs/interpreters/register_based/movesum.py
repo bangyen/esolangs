@@ -1,26 +1,66 @@
+"""
+Movesum interpreter implementation.
+
+Movesum is an esoteric programming language by User:PythonshellDebugwindow where
+the only instructions are 'move' and 'sum'. Programs operate on a right-unbounded
+array of unbounded unsigned integers with 0-based indexing.
+
+The language features:
+- Initial array setup via key=value pairs on the first line
+- Special value 42 for user input (replaced with 0 on EOF)
+- Move instruction: copies values between array positions or handles I/O
+- Sum instruction: sets position 0 to sum of positions 1-4
+- Automatic halting when array doesn't change after two commands
+"""
+
 import re
 import sys
+from typing import Dict, List
 
 
-def run(code):
-    reg = re.compile(r"(\d+) *= *(\d+)")
-    arr = dict.fromkeys(range(5), 0)
-    num = ind = 0
-    new = 1
+def run(code: List[str]) -> None:
+    """
+    Execute a Movesum program with move and sum instructions.
+
+    The program uses a right-unbounded array of integers. The first line contains
+    space-separated key=value pairs for initial array setup. Special value 42
+    represents user input (0 on EOF). Subsequent lines contain move/sum instructions
+    that execute cyclically until the array stabilizes (no change for 2 commands).
+
+    Args:
+        code: List of program lines, first line for initialization, rest for instructions
+
+    Raises:
+        ValueError: If code is empty or first line is invalid
+        IndexError: If code has no instructions after initialization
+    """
+    if not code:
+        raise ValueError("Movesum program cannot be empty")
+
+    if len(code) < 2:
+        raise ValueError(
+            "Movesum program must have at least initialization and one instruction"
+        )
+    reg: re.Pattern[str] = re.compile(r"(\d+) *= *(\d+)")
+    arr: Dict[int, int] = dict.fromkeys(range(5), 0)
+    num: int = 0
+    ind: int = 0
+    new: int = 1
 
     for m in reg.finditer(code[0]):
-        x, y = m[1], m[2]
+        x: str = m[1]
+        y: str = m[2]
         if x == "42":
             x = input("Key: ")
         elif y == "42":
             y = input("Value: ")
-            y = y if y else 0
+            y = y if y else "0"
         arr[int(x)] = int(y)
 
     code = code[1:]
     while num < 2:
-        copy = arr.copy()
-        expr = r"(move *(-?\d+)" r" *(-?\d+)|sum)"
+        copy: Dict[int, int] = arr.copy()
+        expr: str = r"(move *(-?\d+)" r" *(-?\d+)|sum)"
 
         match_result = re.search(expr, code[ind])
         if match_result:
@@ -30,19 +70,19 @@ def run(code):
                     arr[0] += arr[k]
             else:
                 if match_result[2].isdigit():
-                    x = int(match_result[2])
-                    n = arr.get(x, 0)
+                    src_idx: int = int(match_result[2])
+                    n: int = arr.get(src_idx, 0)
 
                     if match_result[3].isdigit():
-                        y = int(match_result[3])
-                        arr[y] = n
+                        dst_idx: int = int(match_result[3])
+                        arr[dst_idx] = n
                     else:
                         print(n, end=" ")
                         new = 0
                 elif match_result[3].isdigit():
-                    y = int(match_result[3])
+                    input_dst_idx: int = int(match_result[3])
                     input_str: str = input("\nInput: "[new:])
-                    arr[y] = int(input_str) if input_str else 0
+                    arr[input_dst_idx] = int(input_str) if input_str else 0
                     new = 1
 
         num = (num + 1) * (arr == copy)
