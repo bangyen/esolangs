@@ -97,7 +97,7 @@ ignore = [
 "**/__main__.py" = ["E402"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false  # Relaxed for existing codebase
