@@ -8,7 +8,11 @@ int main(int argc, char *argv[]) {
   char *str, ch;
 
   if (!file || !output) {
-    fprintf(stderr, "Error: Could not open files\n");
+    if (file)
+      fclose(file);
+    if (output)
+      fclose(output);
+    fputs("Error: Could not open files\n", stderr);
     return 1;
   }
 
@@ -43,8 +47,11 @@ int main(int argc, char *argv[]) {
 
     for (ind = 0; ind < tabs; ind++)
       fputs("\t", output);
-    if (strcmp(str, ""))
-      fprintf(output, "\t%s\n", str);
+    if (strcmp(str, "")) {
+      fputs("\t", output);
+      fputs(str, output);
+      fputs("\n", output);
+    }
 
     tabs += ch == '[';
   }
