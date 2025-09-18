@@ -8,17 +8,20 @@ int main(int argc, char *argv[]) {
   char ch;
 
   if (!file || !output) {
-    fprintf(stderr, "Error: Could not open files\n");
+    if (file)
+      fclose(file);
+    if (output)
+      fclose(output);
+    fputs("Error: Could not open files\n", stderr);
     return 1;
   }
 
-  fprintf(output,
-          "#include <stdio.h>\n\nchar stack[500];\n"
-          "int n, line;\n\nvoid input() {\n\tprintf"
-          "(\"%sInput: \", line ? \"\\n\" : \"\");"
-          "\n\tscanf(\"%s\", &stack[++n]);\n\tline"
-          " = 0;\n}\n\nint main() {\n",
-          "%s", "%s");
+  fputs("#include <stdio.h>\n\nchar stack[500];\n"
+        "int n, line;\n\nvoid input() {\n\tprintf"
+        "(\"%sInput: \", line ? \"\\n\" : \"\");"
+        "\n\tscanf(\"%s\", &stack[++n]);\n\tline"
+        " = 0;\n}\n\nint main() {\n",
+        output);
 
   while ((ch = getc(file)) != EOF) {
     char *str = "";
@@ -53,8 +56,11 @@ int main(int argc, char *argv[]) {
 
     for (loop = 0; loop < brackets; loop++)
       fputs("\t", output);
-    if (strcmp(str, ""))
-      fprintf(output, "\t%s\n", str);
+    if (strcmp(str, "")) {
+      fputs("\t", output);
+      fputs(str, output);
+      fputs("\n", output);
+    }
 
     brackets += ch == '[';
   }

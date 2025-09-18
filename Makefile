@@ -76,12 +76,7 @@ lint-rust:
 	fi
 	@if command -v cargo >/dev/null 2>&1; then \
 		echo "Running clippy on Rust files..."; \
-		for file in extra/rust/*.rs; do \
-			if [ -f "$$file" ]; then \
-				echo "Checking $$file..."; \
-				cargo clippy --manifest-path /dev/null -- --allow=dead_code --allow=unused_variables "$$file" || true; \
-			fi; \
-		done; \
+		cd extra/rust && cargo clippy || true; \
 	else \
 		echo "Warning: cargo not found. Install Rust toolchain."; \
 	fi
@@ -101,7 +96,11 @@ lint-lean:
 	@echo "Running Lean linting..."
 	@if command -v lean >/dev/null 2>&1; then \
 		echo "Checking Lean files..."; \
-		find extra/lean -name "*.lean" -exec lean --check {} \; || true; \
+		if lean --version >/dev/null 2>&1; then \
+			find extra/lean -name "*.lean" -exec lean --check {} \; || true; \
+		else \
+			echo "Warning: Lean 3 not available on ARM64. Files are Lean 3 syntax and require x86_64 or Lean 4 conversion."; \
+		fi; \
 	else \
 		echo "Warning: lean not found. Install Lean 4 with: elan toolchain install stable && elan default stable"; \
 	fi

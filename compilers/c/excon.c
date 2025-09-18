@@ -7,7 +7,11 @@ int main(int argc, char *argv[]) {
   char ch;
 
   if (!file || !output) {
-    fprintf(stderr, "Error: Could not open files\n");
+    if (file)
+      fclose(file);
+    if (output)
+      fclose(output);
+    fputs("Error: Could not open files\n", stderr);
     return 1;
   }
 
@@ -35,8 +39,11 @@ int main(int argc, char *argv[]) {
       break;
     }
 
-    if (strcmp(str, ""))
-      fprintf(output, "\t%s\n", str);
+    if (strcmp(str, "")) {
+      fputs("\t", output);
+      fputs(str, output);
+      fputs("\n", output);
+    }
   }
 
   fputs("\treturn 0;\n}\n", output);
