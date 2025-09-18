@@ -1,3 +1,10 @@
+"""
+Dotlang interpreter implementation.
+
+2D esoteric language where dots (instruction pointers) move through a grid.
+Each dot can carry values and execute commands based on its position.
+"""
+
 import re
 import sys
 

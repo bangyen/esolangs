@@ -2,6 +2,7 @@
 BIO (Binary IO) interpreter implementation.
 
 Register-based esoteric language with three memory blocks (x, y, z).
+Uses commands in format [0|1][O|I][x|y|z] for increment/decrement, loops, and output.
 """
 
 import re

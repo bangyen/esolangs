@@ -22,18 +22,7 @@ import numpy as np
 
 
 def prime(number: int) -> bool:
-    """
-    Check if a number is prime.
-
-    Used to find ascending primes for the special encoding that determines
-    execution order of polynomial zeroes.
-
-    Args:
-        number: Integer to check for primality
-
-    Returns:
-        True if number is prime, False otherwise
-    """
+    """Check if a number is prime."""
     if number < 2:
         return False
     for val in range(2, int(np.sqrt(number)) + 1):
@@ -43,19 +32,7 @@ def prime(number: int) -> bool:
 
 
 def brackets(string: List[List[int]], pointer: int) -> int:
-    """
-    Find matching bracket for control flow statements.
-
-    Handles nested if/while blocks by tracking bracket depth and finding
-    the corresponding end statement (endif/endwhile).
-
-    Args:
-        string: List of instruction codes
-        pointer: Current position in instruction list
-
-    Returns:
-        Index of matching bracket instruction
-    """
+    """Find matching bracket for control flow statements."""
     length = len(string[pointer]) == 1
     end = string[pointer][0] in [2, 6]
     direct = (1, -1)[length and end]
@@ -71,18 +48,7 @@ def brackets(string: List[List[int]], pointer: int) -> int:
 
 
 def convert(pre: List[complex]) -> List[List[int]]:
-    """
-    Convert polynomial roots to instruction codes using prime encoding.
-
-    Transforms mathematical roots into executable instructions by applying
-    the special prime-based encoding that preserves execution order.
-
-    Args:
-        pre: List of polynomial roots (complex numbers)
-
-    Returns:
-        List of instruction codes in execution order
-    """
+    """Convert polynomial roots to instruction codes using prime encoding."""
     rounded_roots = [np.round(k) for k in pre]
     # Sort by imaginary part, then by real part
     sorted_roots = sorted(
@@ -113,18 +79,7 @@ def convert(pre: List[complex]) -> List[List[int]]:
 
 
 def sanitize(code: str) -> List[int]:
-    """
-    Parse polynomial string into coefficient list.
-
-    Converts polynomial notation like "f(x) = 3x^2 + x + 7" into
-    a list of coefficients [3, 1, 7] for root finding.
-
-    Args:
-        code: Polynomial string starting with "f(x) = "
-
-    Returns:
-        List of coefficients from highest to lowest degree
-    """
+    """Parse polynomial string into coefficient list."""
     # Remove "f(x) = " prefix
     if not code.startswith("f(x) = "):
         return [0]
@@ -180,20 +135,7 @@ def sanitize(code: str) -> List[int]:
 
 
 def run(code: str) -> None:
-    """
-    Execute a Polynomial program by finding and processing its zeroes.
-
-    Parses a polynomial function, finds its roots, converts them to instructions
-    using prime encoding, and executes them on a single integer register.
-    Supports arithmetic operations, I/O, and control flow through the mathematical
-    properties of the polynomial's zeroes.
-
-    Args:
-        code: Polynomial program string in form "f(x) = ..."
-
-    Raises:
-        ValueError: If code doesn't start with "f(x) = " or is invalid
-    """
+    """Execute a Polynomial program by finding and processing its zeroes."""
     # Clean the input code
     cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
     if cleaned_code[:5] != "f(x)=":

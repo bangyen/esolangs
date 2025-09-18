@@ -1,8 +1,8 @@
 """
 Sophie interpreter implementation.
 
-Sophie is an esoteric programming language designed to be equivalent to a Finite State Automaton.
-It has a single accumulator that can store integers and supports basic control flow operations.
+Esoteric language equivalent to a Finite State Automaton.
+Single accumulator with basic control flow operations.
 """
 
 import re
@@ -10,11 +10,7 @@ import sys
 
 
 def find(code, ind):
-    """Find the matching closing bracket for a given opening bracket.
-
-    This function is used to handle nested bracket structures in Sophie programs,
-    allowing proper parsing of conditional statements and loops.
-    """
+    """Find the matching closing bracket for a given opening bracket."""
     opr = code[ind]
     end = chr(ord(opr) + 2)
     match = 1
@@ -31,11 +27,7 @@ def find(code, ind):
 
 
 def run(code):
-    """Execute Sophie program code.
-
-    Sophie is a finite state automaton language with a single accumulator.
-    Supports loops, conditionals, I/O operations, and basic control flow.
-    """
+    """Execute Sophie program code."""
     acc = ind = 0
     skp = False
     stk = []

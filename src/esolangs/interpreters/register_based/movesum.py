@@ -19,21 +19,7 @@ from typing import Dict, List
 
 
 def run(code: List[str]) -> None:
-    """
-    Execute a Movesum program with move and sum instructions.
-
-    The program uses a right-unbounded array of integers. The first line contains
-    space-separated key=value pairs for initial array setup. Special value 42
-    represents user input (0 on EOF). Subsequent lines contain move/sum instructions
-    that execute cyclically until the array stabilizes (no change for 2 commands).
-
-    Args:
-        code: List of program lines, first line for initialization, rest for instructions
-
-    Raises:
-        ValueError: If code is empty or first line is invalid
-        IndexError: If code has no instructions after initialization
-    """
+    """Execute a Movesum program with move and sum instructions."""
     if not code:
         raise ValueError("Movesum program cannot be empty")
 
