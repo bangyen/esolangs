@@ -1,14 +1,12 @@
-use std::io::{self, Write};
-use ::core::fmt::Display;
+use core::fmt::Display;
 use std::char;
 use std::env;
 use std::fs;
+use std::io::{self, Write};
 
-fn print<T : Display>(value: T) {
+fn print<T: Display>(value: T) {
     print!("{}", value);
-    io::stdout()
-        .flush()
-        .unwrap();
+    io::stdout().flush().unwrap();
 }
 
 fn run(text: Vec<char>) {
@@ -22,8 +20,7 @@ fn run(text: Vec<char>) {
         match text[ind] {
             'O' => stk.push(0),
             'I' => stk.push(1),
-            'A' => acc = stk.pop()
-                .expect("empty stack"),
+            'A' => acc = stk.pop().expect("empty stack"),
             'S' => {
                 let n = stk.len();
                 stk.swap(n - 1, n - 2);
@@ -34,12 +31,9 @@ fn run(text: Vec<char>) {
             'P' => stk.push(acc),
             'o' => {
                 out = true;
-                let val = stk.last()
-                    .expect("empty stack");
+                let val = stk.last().expect("empty stack");
 
-                if let Some(c)
-                        = char::from_u32(
-                            *val as u32) {
+                if let Some(c) = char::from_u32(*val as u32) {
                     print(c);
                 } else {
                     print(val);
@@ -55,17 +49,10 @@ fn run(text: Vec<char>) {
 
                 while val.trim() == "" {
                     print("Input: ");
-                    io::stdin()
-                        .read_line(&mut val)
-                        .unwrap();
+                    io::stdin().read_line(&mut val).unwrap();
                 }
 
-                stk.push(
-                    val.chars()
-                        .next()
-                        .unwrap()
-                    as i128
-                );
+                stk.push(val.chars().next().unwrap() as i128);
             }
             '>' => {
                 if acc == 0 || acc == 1 {
@@ -77,16 +64,15 @@ fn run(text: Vec<char>) {
                         match text[ind] {
                             '>' => num += 1,
                             '<' => num -= 1,
-                            _ => ()
+                            _ => (),
                         }
                     }
                 } else {
                     jmp.push(ind - 1);
                 }
             }
-            '<' => ind = jmp.pop()
-                .expect("missing bracket"),
-            _ => ()
+            '<' => ind = jmp.pop().expect("missing bracket"),
+            _ => (),
         }
 
         ind += 1;
@@ -94,8 +80,7 @@ fn run(text: Vec<char>) {
 }
 
 fn main() {
-    let args: Vec<String>
-        = env::args().collect();
+    let args: Vec<String> = env::args().collect();
     let text = fs::read_to_string(&args[1])
         .expect("invalid file")
         .chars()
