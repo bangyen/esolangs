@@ -67,7 +67,7 @@ lint-python:
 	$(MYPY) .
 
 lint-c:
-	$(call lint_c_cpp,compilers/c,*.c,compilers/c/*.c)
+	$(call lint_c_cpp,src/esolangs/compilers/c,*.c,src/esolangs/compilers/c/*.c)
 
 lint-cpp:
 	$(call lint_c_cpp,extra/c++,*.cpp,extra/c++/*.cpp)
