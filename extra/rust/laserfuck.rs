@@ -35,7 +35,7 @@ fn run(text: Vec<Vec<char>>) {
 
     for (k, v) in text.iter().enumerate() {
         if let Some(n) = v.iter().position(|&c| c == 'o') {
-            if lsrs.len() > 0 {
+            if !lsrs.is_empty() {
                 return;
             } else {
                 let num = rng.gen_range(0..4);
@@ -45,7 +45,7 @@ fn run(text: Vec<Vec<char>>) {
         }
     }
 
-    while lsrs.len() > 0 {
+    while !lsrs.is_empty() {
         wrap(&mut lsrs[ind], len);
         let Laser(x, y, mut m) = lsrs[ind];
 
@@ -122,7 +122,7 @@ fn run(text: Vec<Vec<char>>) {
         ind = (ind + 1) % lsrs.len();
     }
 
-    let out = text.len() > 0 && text[0].len() > 0 && text[0][0] == '\u{FF}';
+    let out = !text.is_empty() && !text[0].is_empty() && text[0][0] == '\u{FF}';
     let mut post = false;
 
     for c in tape.iter() {
@@ -134,7 +134,7 @@ fn run(text: Vec<Vec<char>>) {
                 }
             } else {
                 if post {
-                    print!("\n");
+                    println!();
                 } else {
                     post = true;
                 }
