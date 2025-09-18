@@ -72,7 +72,7 @@ ind:
 	shl cl, 1
 	sub cl, 8
 	neg cl
-	
+
 	mov bl, 3
 	shl bl, cl
 	ret
