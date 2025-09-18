@@ -1,0 +1,10 @@
+# Hello World program in Huf
+# This program outputs "Hi" using Huf's register-based system
+
+# Generate 'H' (ASCII 72)
+# Using multiplication: 72 = 8 * 9, so we can use 8 increments, mul=10, multiply by 9
+#+++++++|+++++++++!>@
+
+# Generate 'i' (ASCII 105)
+# Using simple increments
+#+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++>@

@@ -1,17 +1,38 @@
+"""
+Polynomial interpreter implementation.
+
+Polynomial is an esoteric programming language by User:Maedhros777 where each program
+is a polynomial function. Language statements are executed based on the zeroes of the
+function, with both real and complex zeroes allowed. The language operates on a single
+integer register with operations determined by the mathematical properties of the roots.
+
+The language features:
+- Programs as polynomial functions in the form f(x) = ...
+- Real zeroes for control flow (if/while statements)
+- Complex zeroes for register operations (arithmetic, I/O)
+- Special encoding using ascending primes for execution order
+- Single integer register for all operations
+"""
+
 import re
 import sys
+from typing import Any, List
 
 import numpy as np
 
 
-def prime(number):
+def prime(number: int) -> bool:
+    """Check if a number is prime."""
+    if number < 2:
+        return False
     for val in range(2, int(np.sqrt(number)) + 1):
         if not number % val:
             return False
     return True
 
 
-def brackets(string, pointer):
+def brackets(string: List[List[int]], pointer: int) -> int:
+    """Find matching bracket for control flow statements."""
     length = len(string[pointer]) == 1
     end = string[pointer][0] in [2, 6]
     direct = (1, -1)[length and end]
@@ -26,85 +47,134 @@ def brackets(string, pointer):
     return pointer
 
 
-def convert(pre):
-    pre = [np.round(k) for k in pre]
-    pre = sorted(pre, key=lambda x: np.imag(x) or x)
-    post: list = []
+def convert(pre: List[complex]) -> List[List[int]]:
+    """Convert polynomial roots to instruction codes using prime encoding."""
+    rounded_roots = [np.round(k) for k in pre]
+    # Sort by imaginary part, then by real part
+    sorted_roots = sorted(
+        rounded_roots, key=lambda x: (float(np.imag(x)), float(np.real(x)))
+    )
+    post: List[List[int]] = []
     num = 2
 
-    while pre:
+    while sorted_roots:
         if not prime(num):
             num += 1
             continue
-        for root in pre:
+        for root in sorted_roots[:]:  # Use slice to avoid modification during iteration
             if im := np.imag(root):
                 for val in range(1, 7):
-                    # to the power of, not multiply
                     if im == num**val:
-                        pre.remove(root)
+                        sorted_roots.remove(root)
                         post.append([int(np.real(root)), val])
                         break
             else:
                 for val in range(1, 9):
                     if root == num**val:
-                        pre.remove(root)
+                        sorted_roots.remove(root)
                         post.append([val])
                         break
         num += 1
     return post
 
 
-def sanitize(code):
-    code = code[5:].replace("x^0", "")
-    reg_dict = {
-        r"^x": "1x",
-        r"(\D)x": r"\g<1>1x",
-        r"x([+-])": r"x^1\1",
-    }
-    for regex in reg_dict:
-        code = re.sub(regex, reg_dict[regex], code)
+def sanitize(code: str) -> List[int]:
+    """Parse polynomial string into coefficient list."""
+    # Remove "f(x) = " prefix
+    if not code.startswith("f(x) = "):
+        return [0]
 
-    code = code + "x^0"
-    mono = re.findall(r"-?\d+x\^\d+", code)
-    post: list = []
+    code = code[7:].strip()  # Remove "f(x) = "
 
-    for k in range(int(mono[0].split("x^")[1]) + 1):
-        for m in mono:
-            if k == int((nums := m.split("x^"))[1]):
-                post.insert(0, int(nums[0]))
-                mono.remove(m)
-                break
+    # Handle simple cases
+    if not code or code == "0":
+        return [0]
+
+    # Normalize the polynomial string
+    code = code.replace(" ", "")
+
+    # Add explicit coefficients and degrees for x terms
+    code = re.sub(r"(?<!\d)x(?!\^)", "1x^1", code)  # x -> 1x^1
+    code = re.sub(r"x([+-])", r"x^1\1", code)  # x+ -> x^1+
+
+    # Find all terms with their degrees and coefficients
+    terms = {}
+
+    # Find x^n terms first
+    for match in re.finditer(r"(-?\d*)x\^(\d+)", code):
+        coeff_str = match.group(1)
+        if not coeff_str:
+            coeff = 1
+        elif coeff_str == "-":
+            coeff = -1
         else:
-            post.insert(0, 0)
-    return post
+            coeff = int(coeff_str)
+        degree = int(match.group(2))
+        terms[degree] = coeff
+
+    # Remove x terms from code to find constants
+    code_without_x = re.sub(r"-?\d*x\^\d+", "", code)
+
+    # Find constant terms (remaining numbers)
+    for match in re.finditer(r"-?\d+", code_without_x):
+        coeff = int(match.group(0))
+        terms[0] = coeff
+
+    # If no terms found, return [0]
+    if not terms:
+        return [0]
+
+    # Build coefficient list from highest to lowest degree
+    max_degree = max(terms.keys())
+    coefficients = []
+
+    for degree in range(max_degree, -1, -1):
+        coefficients.append(terms.get(degree, 0))
+
+    return coefficients
 
 
-def run(code):
-    code = re.sub(r"[^\df(x)=+-^]", "", code)
-    if code[:5] != "f(x)=":
-        return
+def run(code: str) -> None:
+    """Execute a Polynomial program by finding and processing its zeroes."""
+    # Clean the input code
+    cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
+    if cleaned_code[:5] != "f(x)=":
+        raise ValueError("Polynomial program must start with 'f(x) = '")
 
-    code = sanitize(code)
-    code = [k for k in np.roots(code) if np.imag(k) >= 0]
-    code = convert(code)
+    # Parse polynomial and get coefficients
+    coefficients = sanitize(cleaned_code)
+
+    # Find roots and filter for non-negative imaginary parts
+    roots = [k for k in np.roots(coefficients) if np.imag(k) >= 0]
+
+    # Convert roots to instruction codes
+    instructions = convert(roots)
 
     ind = reg = 0
     new = 1
-    sym = [
-        lambda r, a: r + a,
-        lambda r, a: r - a,
-        lambda r, a: r * a,
-        lambda r, a: r / a,
-        lambda r, a: r % a,
-        lambda r, a: r**a,
-        lambda: reg > 0,
-        0,
-        lambda: reg < 0,
-        lambda: not reg,
+    # Use Any to avoid complex type checking issues with mixed lambda types
+    sym: List[Any] = [
+        lambda r, a: r + a,  # +=
+        lambda r, a: r - a,  # -=
+        lambda r, a: r * a,  # *=
+        lambda r, a: r / a,  # /=
+        lambda r, a: r % a,  # %=
+        lambda r, a: r**a,  # ^
+        lambda: reg > 0,  # if > 0
+        0,  # endif
+        lambda: reg < 0,  # if < 0
+        lambda: not reg,  # if == 0
     ]
 
-    while ind < len(code):
-        one, *rest = code[ind]
+    # Safety counter to prevent infinite loops
+    max_steps = 10000
+    step_count = 0
+
+    while ind < len(instructions) and step_count < max_steps:
+        instruction = instructions[ind]
+        one = instruction[0]
+        rest = instruction[1:] if len(instruction) > 1 else []
+
         if two := (rest + [0])[0]:
             if one:
                 reg = sym[two - 1](reg, one)
@@ -116,12 +186,13 @@ def run(code):
                 print(chr(max(0, reg)), end="")
                 new = 0
         elif one in [2, 6]:
-            beg = code[brackets(code, ind)][0]
+            beg = instructions[brackets(instructions, ind)][0]
             if beg > 4 and sym[(beg - 1) % 4 + 6]():
-                ind = brackets(code, ind)
+                ind = brackets(instructions, ind)
         elif not sym[(one % 4) + 5]():
-            ind = brackets(code, ind)
+            ind = brackets(instructions, ind)
         ind += 1
+        step_count += 1
 
 
 if __name__ == "__main__":

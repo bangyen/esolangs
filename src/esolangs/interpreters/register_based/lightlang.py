@@ -1,9 +1,17 @@
+"""
+Lightlang interpreter implementation.
+
+Esoteric language that uses only 1 bit as memory.
+Each character is an instruction, invalid instructions are ignored.
+"""
+
 import secrets
 import sys
 import time
 
 
-def run(code):
+def run(code: str) -> None:
+    """Execute Lightlang code using a single bit of memory."""
     bit = ind = 0
     vel = new = 1
 
