@@ -1,9 +1,33 @@
+"""
+Lightlang interpreter implementation.
+
+Lightlang is an esoteric programming language that uses only 1 bit as memory.
+Each character is an instruction, and invalid instructions are ignored.
+"""
+
 import secrets
 import sys
 import time
 
 
-def run(code):
+def run(code: str) -> None:
+    """
+    Execute Lightlang code using a single bit of memory.
+
+    Lightlang is a minimal esoteric language with the following commands:
+    ^ - Toggle the bit
+    ! - Print the bit state (0 or 1)
+    ? - Input: set bit to 0 if input given, 1 if empty
+    @ - Set bit to random state
+    & - Skip next instruction if bit is 1
+    # - Halt the program
+    < - Jump to start of program
+    / - Reverse instruction pointer direction
+    _ - Sleep for 1 second
+
+    Args:
+        code: The Lightlang program to execute
+    """
     bit = ind = 0
     vel = new = 1
 
