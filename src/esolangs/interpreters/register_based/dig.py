@@ -88,6 +88,10 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
         x += direct[move][0]
         y += direct[move][1]
 
+        # Bounds checking to prevent IndexError
+        if x < 0 or x >= len(code) or y < 0 or y >= size:
+            break
+
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
