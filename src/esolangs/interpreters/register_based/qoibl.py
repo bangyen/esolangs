@@ -1,12 +1,40 @@
+"""
+Qoibl (Qwerty oriented impractical bicharacter language) interpreter.
+
+Qoibl is an esoteric programming language with 8 instructions and a 256-variable list.
+It uses only the characters 'e', 'r', 't', 'w', 'q', 'y' for programming constructs.
+"""
+
 import re
 import sys
 
 
 def run(code):
+    """
+    Execute Qoibl program code.
+
+    Processes a list of Qoibl expressions, maintaining a variable store and
+    executing instructions like printing, assignment, conditionals, and loops.
+
+    Args:
+        code: List of strings, each containing a Qoibl expression to execute
+    """
     line = False
     var = {}
 
     def parse(expr):
+        """
+        Parse and execute a single Qoibl expression.
+
+        Handles all Qoibl instructions: tt (print), we (assign), qe (access),
+        et (input), yr (conditionals), ry (math), rr (loops), and binary numbers.
+
+        Args:
+            expr: List of tokens representing a Qoibl expression
+
+        Returns:
+            Result value for expressions that return values, None for statements
+        """
         nonlocal line
 
         if (op := expr[0]) == "tt":
