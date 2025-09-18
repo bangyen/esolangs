@@ -124,7 +124,7 @@ def laserfuck(text):
         data = [k % sqr for k in data]
 
     if "[" not in code:
-        return f"\xFF}}}}{end}\n|o^\n _ "
+        return f"\xff}}}}{end}\n|o^\n _ "
 
     match = re.search(r"\[([^[\]]*)", code)
     loop = match[1] if match else ""
@@ -185,7 +185,7 @@ def laserfuck(text):
     botm = (rest // cntr) + 1
     lnth = botm + 1
 
-    res.insert(0, f"\xFF}}{loop[:lnth]}v")
+    res.insert(0, f"\xff}}{loop[:lnth]}v")
 
     for k in range(cntr - 1):
         part = loop[lnth : lnth + botm]
