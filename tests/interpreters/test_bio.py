@@ -5,14 +5,11 @@ Tests cover all BIO commands, edge cases, and example programs from esolangs.org
 """
 
 import io
-import sys
 from contextlib import redirect_stdout
 
 import pytest
 
-# Add src directory to path for imports
-sys.path.insert(0, "src")
-from esolangs.interpreters.register_based.bio import run
+from src.esolangs.interpreters.register_based.bio import run
 
 
 class TestBIOBasicCommands:
