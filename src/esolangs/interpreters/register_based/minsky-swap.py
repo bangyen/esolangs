@@ -1,9 +1,8 @@
 """
 Minsky Swap interpreter implementation.
 
-Minsky Swap is a Turing-complete esoteric programming language based on Minsky machines.
-It uses two unbounded registers with a register pointer that can be swapped between them.
-Programs consist of a code line with commands and a jump line with jump targets.
+Turing-complete language based on Minsky machines.
+Uses two unbounded registers with a register pointer that can be swapped.
 """
 
 import re
@@ -11,15 +10,7 @@ import sys
 
 
 def run(text: str) -> None:
-    """
-    Execute a Minsky Swap program.
-
-    Supports both compact notation (+~*) and readable notation (inc/swap/decnz).
-    The program uses two registers and a register pointer that can be swapped.
-
-    Args:
-        text: The program source code, either in compact or readable format
-    """
+    """Execute a Minsky Swap program."""
     ind = ptr = val = 0
     reg = [0, 0]
     nums = []

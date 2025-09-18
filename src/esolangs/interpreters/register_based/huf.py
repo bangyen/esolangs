@@ -1,7 +1,7 @@
 """
 Huf interpreter implementation.
 
-Register-based esoteric language with two variables: num and mul.
+Register-based language with two variables: num and mul.
 Processes code segments enclosed in #...#@ patterns.
 """
 

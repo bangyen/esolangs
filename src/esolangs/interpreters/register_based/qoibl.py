@@ -10,31 +10,12 @@ import sys
 
 
 def run(code):
-    """
-    Execute Qoibl program code.
-
-    Processes a list of Qoibl expressions, maintaining a variable store and
-    executing instructions like printing, assignment, conditionals, and loops.
-
-    Args:
-        code: List of strings, each containing a Qoibl expression to execute
-    """
+    """Execute Qoibl program code."""
     line = False
     var = {}
 
     def parse(expr):
-        """
-        Parse and execute a single Qoibl expression.
-
-        Handles all Qoibl instructions: tt (print), we (assign), qe (access),
-        et (input), yr (conditionals), ry (math), rr (loops), and binary numbers.
-
-        Args:
-            expr: List of tokens representing a Qoibl expression
-
-        Returns:
-            Result value for expressions that return values, None for statements
-        """
+        """Parse and execute a single Qoibl expression."""
         nonlocal line
 
         if (op := expr[0]) == "tt":

@@ -1,10 +1,8 @@
 """
 Dig interpreter implementation.
 
-Dig is a 2D esoteric programming language with a 3rd dimension for "digging".
-The language features a mole (pointer) that moves on a 2D grid and can dig underground
-to access work commands. Movement commands work overground, while work commands
-only function underground after digging.
+2D esoteric language with a mole that moves on a grid and can dig underground.
+Movement commands work overground, work commands function underground.
 """
 
 import sys
