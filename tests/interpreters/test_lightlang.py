@@ -101,15 +101,14 @@ class TestLightlangBasicCommands:
 
     def test_sleep_command(self) -> None:
         """Test _ command sleeps for 1 second."""
-        import time
-
-        start_time = time.time()
-        with redirect_stdout(io.StringIO()) as f:
-            run("_!")
-        end_time = time.time()
-        # Should sleep for at least 1 second
-        assert end_time - start_time >= 1.0
-        assert f.getvalue() == "0"
+        with patch(
+            "src.esolangs.interpreters.register_based.lightlang.time.sleep"
+        ) as mock_sleep:
+            with redirect_stdout(io.StringIO()) as f:
+                run("_!")
+            # Verify sleep was called with 1 second
+            mock_sleep.assert_called_once_with(1)
+            assert f.getvalue() == "0"
 
 
 class TestLightlangProgramFlow:
@@ -225,10 +224,14 @@ class TestLightlangExamples:
     def test_loop_with_delay(self) -> None:
         """Test the loop with delay example: !^_<"""
         # Test the basic commands without the infinite loop
-        with redirect_stdout(io.StringIO()) as f:
-            run("!^_")
-        # Should print 0, toggle to 1, sleep
-        assert f.getvalue() == "0"
+        with patch(
+            "src.esolangs.interpreters.register_based.lightlang.time.sleep"
+        ) as mock_sleep:
+            with redirect_stdout(io.StringIO()) as f:
+                run("!^_")
+            # Should print 0, toggle to 1, sleep
+            mock_sleep.assert_called_once_with(1)
+            assert f.getvalue() == "0"
 
     def test_truth_machine_empty_input(self) -> None:
         """Test truth machine with empty input (should loop)."""
