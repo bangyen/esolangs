@@ -61,7 +61,7 @@ while (c = code[ind])
       ptr.pop
     end
   when '['
-    s = code[ind..-1]
+    s = code[ind..]
     print s[/\[([^\]]*)\]/, 1]
     line = 10.chr
   end
