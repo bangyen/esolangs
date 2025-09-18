@@ -5,8 +5,6 @@ Tests cover DSDLAI's probabilistic death mechanism and example programs.
 DSDLAI is a variant of Dig where there is a 20% to 90% chance for the program
 to return an error when using the dig command, analogous to falling into lava
 when digging straight down in Minecraft.
-
-Based on the specification at https://esolangs.org/wiki/Dig_straight_down_like_an_idiot
 """
 
 import io
