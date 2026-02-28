@@ -34,7 +34,7 @@ First, clone the repository and install the project in editable mode with develo
 ```bash
 git clone https://github.com/bangyen/esolangs.git
 cd esolangs
-pip install -e ".[dev]"
+just install-dev
 ```
 
 ### Running Tests
@@ -42,7 +42,7 @@ pip install -e ".[dev]"
 You can run the test suite using pytest to verify your installation or check your modifications:
 
 ```bash
-pytest
+just test
 ```
 
 ### Running an Interpreter
