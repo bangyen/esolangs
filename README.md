@@ -27,22 +27,44 @@ Most interpreters work by reading the file specified by the first command line a
 
 ## Usage
 
-### Running an Interpreter
+### Installation
+
+First, clone the repository and install the project in editable mode with development dependencies:
 
 ```bash
-python interpreter.py program.txt
+git clone https://github.com/bangyen/esolangs.git
+cd esolangs
+pip install -e ".[dev]"
+```
+
+### Running Tests
+
+You can run the test suite using pytest to verify your installation or check your modifications:
+
+```bash
+pytest
+```
+
+### Running an Interpreter
+
+You can run interpreters as Python modules from the command line:
+
+```bash
+python -m esolangs.interpreters.<language> program.txt
 ```
 
 ### Running a Compiler
 
+Similarly, you can run compilers as Python modules:
+
 ```bash
-python compiler.py program.txt output.asm
+python -m esolangs.compilers.<language> program.txt output.asm
 ```
 
 ### Example: Running a Brainfuck Program
 
 ```bash
-python tape-based/brainif.py hello_world.bf
+python -m esolangs.interpreters.brainif hello_world.bf
 ```
 
 ## Implemented Languages
@@ -169,7 +191,7 @@ Utility programs that work with the esoteric languages.
 The `binary.py` program implements a given boolean function in Dig.
 
 ```bash
-python miscellaneous/binary.py
+python -m esolangs.tools.binary
 ```
 
 ### Program Generator
@@ -188,7 +210,7 @@ The `generate.py` program outputs programs which output a given string in differ
 - %^2^-1 (Magnitude)
 
 ```bash
-python miscellaneous/generate.py "Hello, World!"
+python -m esolangs.tools.generate "Hello, World!"
 ```
 
 ## Notes
