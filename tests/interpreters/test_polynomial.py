@@ -8,7 +8,7 @@ statements are executed based on the zeroes of the function.
 
 import pytest
 
-from src.esolangs.interpreters.register_based.polynomial import (
+from esolangs.interpreters.register_based.polynomial import (
     brackets,
     convert,
     prime,
@@ -64,7 +64,7 @@ class TestPolynomialValidation:
 
     def test_empty_program_validation(self) -> None:
         """Test that empty program is handled correctly."""
-        from src.esolangs.interpreters.register_based.polynomial import run
+        from esolangs.interpreters.register_based.polynomial import run
 
         with pytest.raises(
             ValueError, match=r"Polynomial program must start with 'f\(x\) = '"
@@ -73,7 +73,7 @@ class TestPolynomialValidation:
 
     def test_invalid_format_validation(self) -> None:
         """Test that invalid format raises ValueError."""
-        from src.esolangs.interpreters.register_based.polynomial import run
+        from esolangs.interpreters.register_based.polynomial import run
 
         with pytest.raises(
             ValueError, match=r"Polynomial program must start with 'f\(x\) = '"
@@ -173,7 +173,7 @@ class TestPolynomialSafety:
         # Check that the run function exists and has the expected signature
         import inspect
 
-        from src.esolangs.interpreters.register_based.polynomial import run
+        from esolangs.interpreters.register_based.polynomial import run
 
         sig = inspect.signature(run)
         assert "code" in sig.parameters
