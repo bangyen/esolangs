@@ -105,6 +105,33 @@ jobs:
           echo "Built $name"
         done
 
+    - name: Smoke test extra/ C++ implementations
+      run: |
+        set -e
+        : > /tmp/empty.txt
+        for f in extra/c++/*.cpp; do
+          name="$(basename "$f" .cpp)"
+          set +e
+          "/tmp/$name" /tmp/empty.txt > /dev/null 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" -gt 1 ]; then
+            echo "FAIL: $name crashed with exit code $rc on empty input"
+            exit 1
+          fi
+          echo "OK: $name handles empty input"
+        done
+
+        # Output checks for languages with simple terminating programs.
+        printf 't3' > /tmp/trash.txt
+        [ "$(/tmp/trash /tmp/trash.txt)" = "5" ]
+        printf 't9' > /tmp/trash.txt
+        [ "$(/tmp/trash /tmp/trash.txt)" = "0" ]
+        printf 'l' > /tmp/magnitude.txt
+        [ "$(/tmp/%^2^-1 /tmp/magnitude.txt)" = "0" ]
+        [ "$(/tmp/kak /tmp/empty.txt)" = "0" ]
+        echo "All extra/ C++ smoke tests passed"
+
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -114,3 +141,38 @@ jobs:
       run: |
         cargo build --manifest-path extra/rust/Cargo.toml
         cargo fmt --manifest-path extra/rust/Cargo.toml --check
+
+    - name: Smoke test extra/ Rust implementations
+      run: |
+        set -e
+        : > /tmp/empty.txt
+        ./extra/rust/target/debug/laserfuck /tmp/empty.txt
+        ./extra/rust/target/debug/unsquare /tmp/empty.txt
+        echo "All extra/ Rust smoke tests passed"
+
+  extra-languages:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install toolchains
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y r-base nasm
+
+    - name: Check Ruby syntax
+      run: |
+        for f in extra/ruby/*.rb; do
+          ruby -c "$f"
+        done
+
+    - name: Check R syntax
+      run: |
+        Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) parse(f)'
+
+    - name: Assemble extra/ assembly programs
+      run: |
+        for f in extra/assembly/*.asm; do
+          nasm -f elf32 -o /dev/null "$f"
+          echo "Assembled $f"
+        done
