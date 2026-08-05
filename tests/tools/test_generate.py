@@ -1,5 +1,9 @@
 """Unit tests for the program generator tool."""
 
+from unittest.mock import patch
+
+import pytest
+
 import esolangs.tools.generate as gen
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
@@ -49,3 +53,30 @@ class TestGeneratorProducesOutput:
         ]
         for gen_fn in generators:
             assert gen_fn("Hi"), gen_fn.__name__
+
+
+class TestGeneratorBranches:
+    def test_bfstack_large_drop(self) -> None:
+        """A large drop between characters takes the reset branch."""
+        output = gen.bfstack("a\x01")
+        assert "[-]" in output
+
+    def test_brainif_decreasing(self) -> None:
+        """A decreasing character takes the move-right branch."""
+        assert "move right" in gen.brainif("ba")
+
+    def test_container_empty(self) -> None:
+        assert gen.container("") == "EXIT=1:\n-1 EXIT>=0"
+
+    def test_suffolk_empty(self) -> None:
+        assert gen.suffolk("") == "\n"
+
+    def test_123_empty(self) -> None:
+        assert gen._123("") == "1"
+
+    def test_main_prints_all(self, capsys: pytest.CaptureFixture) -> None:
+        with patch("sys.argv", ["esolangs.tools.generate", "Hi"]):
+            gen.main()
+        out = capsys.readouterr().out
+        assert "--- BFStack ---" in out
+        assert "--- BrainIf ---" in out
