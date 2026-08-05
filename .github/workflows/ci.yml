@@ -84,7 +84,7 @@ jobs:
       run: uv sync --extra dev
 
     - name: Run bandit security check
-      run: uv run --with bandit --with safety bandit -r src -f json -o bandit-report.json
+      run: uv run --with bandit bandit -r src -f json -o bandit-report.json
 
-    - name: Run safety check
-      run: uv run --with bandit --with safety safety check --output json --save-json safety-report.json
+    - name: Audit dependencies with pip-audit
+      run: uv run --with pip-audit pip-audit --local
