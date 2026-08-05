@@ -229,7 +229,7 @@ Important information about specific language implementations.
 
 ### Known Issues
 
-- **circlefuck**: The `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
+- **circlefuck**: The `narcissist` program doesn't work — it hangs regardless of input. The `ThisIsAQuine` quine also outputs its source incorrectly; the `{>[.>]@` quine works correctly.
 
 - **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 
