@@ -88,3 +88,29 @@ jobs:
 
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
+
+  cxx:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install g++
+      run: sudo apt-get update && sudo apt-get install -y g++
+
+    - name: Build extra/ C++ implementations
+      run: |
+        for f in extra/c++/*.cpp; do
+          name="$(basename "$f" .cpp)"
+          g++ -std=c++11 "$f" -o "/tmp/$name"
+          echo "Built $name"
+        done
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build extra/ Rust implementations
+      run: |
+        cargo build --manifest-path extra/rust/Cargo.toml
+        cargo fmt --manifest-path extra/rust/Cargo.toml --check
