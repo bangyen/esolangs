@@ -80,7 +80,7 @@ def run(code):
             var[arg[0]] += int(arg[1])
         elif "-" in mod:
             arg = mod.split("-")
-            var[arg[0]] += int(arg[1])
+            var[arg[0]] -= int(arg[1])
 
 
 if __name__ == "__main__":
