@@ -1,5 +1,6 @@
 import math
 import re
+import sys
 
 
 def bfstack(text):
@@ -376,3 +377,33 @@ def _123(text):
         last = ord(c)
 
     return res + "1"
+
+
+_GENERATORS = {
+    "BFStack": bfstack,
+    "BrainIf": brainif,
+    "Container": container,
+    "Forþ": forth,
+    "LaserFuck": laserfuck,
+    "Magnitude": magnitude,
+    "Painfuck": painfuck,
+    "Suffolk": suffolk,
+    "123": _123,
+}
+
+
+def main() -> None:
+    """Generate a program that outputs the given text for each supported language."""
+    if len(sys.argv) < 2:
+        print("usage: python -m esolangs.tools.generate <text>")
+        print('example: python -m esolangs.tools.generate "Hello, World!"')
+        sys.exit(1)
+
+    text = sys.argv[1]
+    for name, gen in _GENERATORS.items():
+        print(f"--- {name} ---")
+        print(gen(text))
+
+
+if __name__ == "__main__":
+    main()
