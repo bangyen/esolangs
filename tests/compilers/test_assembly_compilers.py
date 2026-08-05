@@ -70,3 +70,96 @@ class TestBFStackComp:
 def test_unsquare_emits_syscalls() -> None:
     mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
     assert "int 80h" in mod.comp("ab")
+
+
+class TestHomeRow:
+    def test_arithmetic(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        assert "inc dword" in mod.comp("a")
+        assert "add dword" in mod.comp("aa")
+        assert "dec dword" in mod.comp("s")
+        assert "sub dword" in mod.comp("ss")
+
+    def test_movement(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        assert "down:" in mod.comp("d")
+        assert "right:" in mod.comp("f")
+
+    def test_output(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        assert "print:" in mod.comp("akk")
+
+    def test_conditionals_and_loop(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        assert ".skip" in mod.comp("j")
+        assert ".top" in mod.comp("l")
+        assert ".bot" in mod.comp("l")
+
+    def test_halt(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        assert "int 80h" in mod.comp(";")
+
+
+class TestJaune:
+    def test_arithmetic(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "inc dword" in mod.comp("1+")
+        assert "dec dword" in mod.comp("1-")
+
+    def test_subroutines(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "call output" in mod.comp("^")
+        assert "call input" in mod.comp("v")
+        assert "call left" in mod.comp("<")
+
+    def test_labels_and_jumps(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert ".label" in mod.comp("5:")
+        assert "jne" in mod.comp("5?")
+        assert "je " in mod.comp("5!")
+
+    def test_subroutine_call(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "call sub" in mod.comp("5@")
+
+    def test_control_flow(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "int 80h" in mod.comp(".")
+        assert "ret" in mod.comp(";")
+        assert "sub ecx" in mod.comp(">")
+
+
+class TestUnsquare:
+    def test_register_commands(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        assert "call zero" in mod.comp("O")
+        assert "call one" in mod.comp("I")
+        assert "call down" in mod.comp("A")
+        assert "call up" in mod.comp("P")
+        assert "call swap" in mod.comp("S")
+
+    def test_io(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        assert "call output" in mod.comp("o")
+        assert "call input" in mod.comp("i")
+
+    def test_arithmetic_and_shift(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        assert "add edi" in mod.comp("+")
+        assert "sub edi" in mod.comp("-")
+        assert "shl edi" in mod.comp("x")
+
+    def test_loops(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        output = mod.comp("O>I<")
+        assert ".T1" in output
+        assert ".B1" in output
+
+
+class TestSuffolkComp:
+    def test_compiles_various_programs(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.suffolk")
+        for program in ["!<.", "!!", ">", ">!<", "."]:
+            output = mod.comp(program, 1)
+            assert output.startswith("global _start")
+            assert output
