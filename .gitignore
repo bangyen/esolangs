@@ -137,3 +137,6 @@ dmypy.json
 # Linter configuration (optional, can be customized per developer)
 compile_commands.json
 .rubocop.yml
+
+# macOS
+.DS_Store
