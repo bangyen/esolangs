@@ -162,6 +162,8 @@ def run(code):
             curr = (curr + 1) % len(dots)
         else:
             dots.pop(curr)
+            if dots:
+                curr %= len(dots)
 
 
 if __name__ == "__main__":
