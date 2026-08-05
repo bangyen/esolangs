@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.esolangs.interpreters.register_based.lightlang import run
+from esolangs.interpreters.register_based.lightlang import run
 
 
 class TestLightlangBasicCommands:
@@ -102,7 +102,7 @@ class TestLightlangBasicCommands:
     def test_sleep_command(self) -> None:
         """Test _ command sleeps for 1 second."""
         with patch(
-            "src.esolangs.interpreters.register_based.lightlang.time.sleep"
+            "esolangs.interpreters.register_based.lightlang.time.sleep"
         ) as mock_sleep:
             with redirect_stdout(io.StringIO()) as f:
                 run("_!")
@@ -225,7 +225,7 @@ class TestLightlangExamples:
         """Test the loop with delay example: !^_<"""
         # Test the basic commands without the infinite loop
         with patch(
-            "src.esolangs.interpreters.register_based.lightlang.time.sleep"
+            "esolangs.interpreters.register_based.lightlang.time.sleep"
         ) as mock_sleep:
             with redirect_stdout(io.StringIO()) as f:
                 run("!^_")
@@ -234,14 +234,19 @@ class TestLightlangExamples:
             assert f.getvalue() == "0"
 
     def test_truth_machine_empty_input(self) -> None:
-        """Test truth machine with empty input (should loop)."""
+        """Test truth machine with empty input (bit set to 1)."""
         with patch("builtins.input", return_value=""):
-            # Test the logic without infinite loop
-            with redirect_stdout(io.StringIO()):
+            with redirect_stdout(io.StringIO()) as f:
                 run("?!&")
-            # ? sets bit to 1, ! would print 1, & skips next instruction
-            # We can't test the infinite loop, so we test the logic
-            pass
+            # ? sets bit to 1 on empty input, ! prints it
+            assert f.getvalue() == "1"
+
+    def test_input_nonempty_sets_bit_zero(self) -> None:
+        """Test that non-empty input clears the bit."""
+        with patch("builtins.input", return_value="x"):
+            with redirect_stdout(io.StringIO()) as f:
+                run("?!&")
+            assert f.getvalue() == "0"
 
     def test_truth_machine_with_input(self) -> None:
         """Test truth machine with input (should terminate)."""

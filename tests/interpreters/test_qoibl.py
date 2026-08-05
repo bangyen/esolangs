@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.esolangs.interpreters.register_based.qoibl import run
+from esolangs.interpreters.register_based.qoibl import run
 
 
 class TimeoutError(Exception):

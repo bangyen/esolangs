@@ -8,7 +8,7 @@ warps, and edge cases.
 import io
 from unittest.mock import patch
 
-from src.esolangs.interpreters.register_based.dotlang import Dot, run
+from esolangs.interpreters.register_based.dotlang import Dot, run
 
 
 class TestDot:
@@ -174,37 +174,57 @@ class TestControlFlow:
     """Test cases for control flow commands."""
 
     def test_type_checking_commands(self):
-        """Test type checking commands (!, ?, :)."""
-        # Simplified test that just outputs a single value
-        # The type checking commands are complex and may not work as expected
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+        """Test that type-checking commands turn the dot when types match."""
+        # 42 is an int, so : turns the dot up to the print on the row above
+        code = ["    #", "•#42:"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "42"
+
+    def test_type_checking_float_no_turn(self):
+        """Test that ? does not turn a dot carrying an int."""
+        code = ["•#42?"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            run(code)
+            assert mock_stdout.getvalue() == ""
+
+    def test_type_checking_str_command(self):
+        """Test that ! turns a dot carrying a string."""
+        code = ["      #", "•#`hi`!"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            run(code)
+            assert mock_stdout.getvalue() == "hi"
+
+    def test_type_checking_no_turn_on_mismatch(self):
+        """Test that type-checking commands ignore mismatched types."""
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            run(["•#42!"])
+            assert mock_stdout.getvalue() == ""
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            run(["•#`hi`:"])
+            assert mock_stdout.getvalue() == ""
 
     def test_unnamed_parentheses(self):
-        """Test basic parentheses functionality."""
-        # Simple test that just outputs a value without complex parentheses
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+        """Test that ( spawns a new dot at the matching )."""
+        code = ["•#1(#2#)"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "2"
 
     def test_named_parentheses(self):
-        """Test named parentheses functionality."""
-        # Simple test that just outputs a value without complex parentheses
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+        """Test that a named ( with backtick pairs with the matching )."""
+        code = ["•#1(`x`#2#)`x"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "2"
 
     def test_nested_parentheses(self):
-        """Test nested parentheses functionality."""
-        # Simple test that just outputs a value without complex parentheses
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+        """Test nested parentheses with multiple dots."""
+        code = ["•#1((#2#))"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "2"
 
 
 class TestWarps:
@@ -308,28 +328,25 @@ class TestComplexPrograms:
                 mock_print.assert_called_with("hello", end="")
 
     def test_multiple_dots(self):
-        """Test program with multiple dots created by parentheses."""
-        # Simplified test that just outputs a single value
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+        """Test that parentheses create multiple dots that all execute."""
+        code = ["•#1(#2#)#3#"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "233"
 
     def test_direction_changes_with_type_checking(self):
-        """Test complex direction changes based on type checking."""
-        # Simplified test that just outputs a single value
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+        """Test type checking rotates the dot's direction."""
+        code = ["    #", "•#42:"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "42"
 
     def test_warp_with_multiple_destinations(self):
-        """Test program with multiple warp destinations."""
-        # Simplified test that just outputs a single value
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+        """Test that a dot warps to the matching warp destination."""
+        code = ["•Wstart`s", "Wstart`e#`go`#"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "go"
 
 
 class TestIntegration:
@@ -343,18 +360,16 @@ class TestIntegration:
                 run(code)
                 assert mock_stdout.getvalue() == "test"
 
-    def test_type_checking_with_warps(self):
-        """Test type checking combined with warp functionality."""
-        # Simplified test that just outputs a single value
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+    def test_warp_skips_commands(self):
+        """Test that a dot warps to the destination, skipping commands en route."""
+        code = ["•#1Wgo`s#2#", "Wgo`e#3#"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "3"
 
-    def test_parentheses_with_warps(self):
-        """Test parentheses combined with warp functionality."""
-        # Simplified test that just outputs a single value
-        code = ["•#42#"]
-        with patch("builtins.print") as mock_print:
+    def test_warps_with_multiple_dots(self):
+        """Test that a dot warps to the first matching destination."""
+        code = ["•#1Wgo`s", "Wgo`e#2#", "Wgo`e#3#"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code)
-            mock_print.assert_called_with(42, end="")
+            assert mock_stdout.getvalue() == "2"

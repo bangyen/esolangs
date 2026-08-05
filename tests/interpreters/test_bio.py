@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 
 import pytest
 
-from src.esolangs.interpreters.register_based.bio import run
+from esolangs.interpreters.register_based.bio import run
 
 
 class TestBIOBasicCommands:
