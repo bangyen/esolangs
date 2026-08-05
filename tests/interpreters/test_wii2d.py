@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 import pytest
 
-from src.esolangs.interpreters.register_based.WII2D import run
+from esolangs.interpreters.register_based.WII2D import run
 
 
 class TimeoutError(Exception):
@@ -56,12 +56,12 @@ class TestWII2DBasicCommands:
 
     def test_movement_commands(self) -> None:
         """Test directional movement commands (^v<>)."""
-        # Simple program that moves right and outputs
+        # Simple program that moves right and outputs the accumulator (0)
         code = [">~.", "!"]
 
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code))
-        # Should output the accumulator value (0) as ASCII
+        assert f.getvalue() == "\x00"
 
     def test_arithmetic_operations(self) -> None:
         """Test arithmetic operations (+-*/s)."""
@@ -96,7 +96,9 @@ class TestWII2DBasicCommands:
         """Test halt command (.) that ends program execution."""
         code = ["!", "."]
 
-        # Should complete without hanging
+        with redirect_stdout(io.StringIO()) as f:
+            run_with_timeout(lambda: run(code))
+        assert f.getvalue() == ""
         run_with_timeout(lambda: run(code))
 
     def test_nop_command(self) -> None:
