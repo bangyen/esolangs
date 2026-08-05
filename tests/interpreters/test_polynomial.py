@@ -6,12 +6,16 @@ Polynomial is an esoteric language where programs are polynomial functions and
 statements are executed based on the zeroes of the function.
 """
 
+import io
+from contextlib import redirect_stdout
+
 import pytest
 
 from esolangs.interpreters.register_based.polynomial import (
     brackets,
     convert,
     prime,
+    run,
     sanitize,
 )
 
@@ -195,3 +199,36 @@ class TestPolynomialSafety:
         # Test brackets function with simple input
         code = [[1], [2]]
         assert brackets(code, 0) == 1
+
+
+class TestPolynomialExecution:
+    """Test that valid polynomial programs actually execute."""
+
+    def test_output_instruction(self) -> None:
+        """A root of 2i encodes an output instruction (reg starts at 0)."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run("f(x) = x^2+4")
+        assert buffer.getvalue() == "\x00"
+
+    def test_arithmetic_then_output(self) -> None:
+        """Roots encoding reg += 65 followed by output produce 'A'."""
+        program = "f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061"
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(program)
+        assert buffer.getvalue() == "A"
+
+    def test_no_roots_no_output(self) -> None:
+        for program in ["f(x) = 0", "f(x) = 1", "f(x) = x+1"]:
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                run(program)
+            assert buffer.getvalue() == ""
+
+    def test_run_without_spaces(self) -> None:
+        """The no-space form produced by run's sanitizer still executes."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run("f(x)=x^2+4")
+        assert buffer.getvalue() == "\x00"
