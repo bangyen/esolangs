@@ -16,20 +16,20 @@ repos:
       - id: check-docstring-first
 
   - repo: https://github.com/psf/black
-    rev: 23.7.0
+    rev: 24.10.0
     hooks:
       - id: black
         language_version: python3
         args: [--line-length=88]
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.13.0
+    rev: v0.8.4
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.5.1
+    rev: v1.14.0
     hooks:
       - id: mypy
         additional_dependencies: [types-requests, types-setuptools]
@@ -41,5 +41,5 @@ repos:
         name: Check interpreter syntax
         entry: python -m py_compile
         language: system
-        files: ^(register-based|tape-based|stack-based|other|compilers|miscellaneous)/.*\.py$
+        files: ^src/esolangs/.*\.py$
         pass_filenames: true
