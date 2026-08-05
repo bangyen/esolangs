@@ -2,12 +2,13 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import List, Optional
 from unittest.mock import patch
 
 from esolangs.interpreters.stack_based.modulous import run
 
 
-def run_and_capture(code: str, inputs: list = None) -> str:
+def run_and_capture(code: str, inputs: Optional[List[str]] = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []):
         with redirect_stdout(buffer):
