@@ -81,7 +81,10 @@ jobs:
         python-version: "3.12"
 
     - name: Install dependencies
-      run: |
-        uv sync --extra dev
-        uv run --with bandit --with safety bandit -r src -f json -o bandit-report.json
-        uv run --with bandit --with safety safety check --json --output safety-report.json
+      run: uv sync --extra dev
+
+    - name: Run bandit security check
+      run: uv run --with bandit --with safety bandit -r src -f json -o bandit-report.json
+
+    - name: Run safety check
+      run: uv run --with bandit --with safety safety check --output json --save-json safety-report.json

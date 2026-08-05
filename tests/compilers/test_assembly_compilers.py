@@ -13,7 +13,7 @@ COMPILERS = [
 
 
 @pytest.mark.parametrize("module", COMPILERS)
-def test_compiler_produces_assembly(module) -> None:
+def test_compiler_produces_assembly(module: str) -> None:
     """Each compiler turns a program into x86 assembly."""
     mod = importlib.import_module(module)
     output = mod.comp("Hello")
