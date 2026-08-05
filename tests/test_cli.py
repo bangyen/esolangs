@@ -3,6 +3,11 @@
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+from esolangs.cli import main
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess:
@@ -29,3 +34,22 @@ class TestCLI:
         result = run_cli("esolangs.interpreters.tape_based.excon", str(program))
         assert result.returncode == 0
         assert result.stdout == "A"
+
+
+class TestCLIInProcess:
+    def test_run_interpreter_in_process(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        program = tmp_path / "prog.exc"
+        program.write_text("^<<<<<<^!")
+        args = ["esolangs", "esolangs.interpreters.tape_based.excon", str(program)]
+        with patch.object(sys, "argv", args):
+            main()
+        assert capsys.readouterr().out == "A"
+
+    def test_unknown_module_in_process(self, capsys: pytest.CaptureFixture) -> None:
+        with patch.object(sys, "argv", ["esolangs", "no.such.module"]):
+            with pytest.raises(SystemExit) as exc:
+                main()
+        assert exc.value.code == 2
+        assert "unknown module" in capsys.readouterr().err
