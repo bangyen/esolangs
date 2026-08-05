@@ -50,21 +50,31 @@ just test
 You can run interpreters as Python modules from the command line:
 
 ```bash
-python -m esolangs.interpreters.<language> program.txt
+python -m esolangs.interpreters.<category>.<language> program.txt
 ```
+
+Where `<category>` is one of `register_based`, `tape_based`, `stack_based`, or `other`.
 
 ### Running a Compiler
 
-Similarly, you can run compilers as Python modules:
+Similarly, you can run assembly compilers as Python modules:
 
 ```bash
-python -m esolangs.compilers.<language> program.txt output.asm
+python -m esolangs.compilers.assembly.<language> program.txt
 ```
 
-### Example: Running a Brainfuck Program
+This writes the generated assembly to `output.asm`.
+
+### Example: Running a BrainIf Program
 
 ```bash
-python -m esolangs.interpreters.brainif hello_world.bf
+python -m esolangs.interpreters.tape_based.brainif hello_world.bf
+```
+
+Alternatively, the `esolangs` command runs any module:
+
+```bash
+esolangs esolangs.interpreters.tape_based.brainif hello_world.bf
 ```
 
 ## Implemented Languages
@@ -188,10 +198,10 @@ Utility programs that work with the esoteric languages.
 
 ### Binary Function Generator
 
-The `binary.py` program implements a given boolean function in Dig.
+The `binary.py` program implements a given boolean function in Dig. The function is given as a truth table string (LSB-order output bits):
 
 ```bash
-python -m esolangs.tools.binary
+python -m esolangs.tools.binary 0111   # 2-input OR gate
 ```
 
 ### Program Generator
