@@ -32,3 +32,29 @@ class TestCirclefuck:
     def test_skip_instruction(self) -> None:
         """# skips the next instruction."""
         assert run_and_capture("+#.@") == ""
+
+    def test_input(self) -> None:
+        """, stores a byte of input in the current cell."""
+        assert run_and_capture(",.@", inputs=["A"]) == "A"
+
+    def test_insert_cell(self) -> None:
+        """{ inserts a new zero cell before the current one."""
+        assert run_and_capture("{+.@") == "\x01"
+
+    def test_delete_cell(self) -> None:
+        """} deletes the current cell."""
+        assert run_and_capture("+}.@") == ""
+
+    def test_move_right(self) -> None:
+        """> moves the data pointer to the next cell (wrap-around)."""
+        assert run_and_capture("{>[.>]@") == "{>[.>]@"
+
+    def test_decimal_escape(self) -> None:
+        """:math:`\\NNN` escape sequences decode to a single byte."""
+        assert run_and_capture("\\065.@") == "A"
+
+    def test_hex_escape(self) -> None:
+        assert run_and_capture("\\x41.@") == "A"
+
+    def test_newline_escape(self) -> None:
+        assert run_and_capture("\\n.@") == "\n"
