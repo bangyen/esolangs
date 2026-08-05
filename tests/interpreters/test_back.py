@@ -2,11 +2,12 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import List
 
 from esolangs.interpreters.tape_based.back import run
 
 
-def run_and_capture(code) -> str:
+def run_and_capture(code: List[str]) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         run(code)
