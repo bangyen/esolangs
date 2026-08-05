@@ -36,3 +36,7 @@ def main() -> None:
 
     sys.argv = [args.module, *args.args]
     runpy.run_module(args.module, run_name="__main__")
+
+
+if __name__ == "__main__":
+    main()
