@@ -57,7 +57,7 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
             elif char == "-":
                 mole -= value()
             elif char == "*":
-                mole += value()
+                mole *= value()
             elif char == "/":
                 mole //= value()
             elif char == ";":

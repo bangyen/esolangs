@@ -38,7 +38,7 @@ def run(code: List[str]) -> None:
         y: str = m[2]
         if x == "42":
             x = input("Key: ")
-        elif y == "42":
+        if y == "42":
             y = input("Value: ")
             y = y if y else "0"
         arr[int(x)] = int(y)
