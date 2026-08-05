@@ -2,7 +2,7 @@ import sys
 
 
 def find(code, ind):
-    if "end" in (op := code[ind]):
+    if "end" in (op := code[ind][0]):
         match = op[3:]
         move = -1
     else:
@@ -38,9 +38,9 @@ def run(code):
             for x, y in enumerate(c[1:]):
                 if isinstance(y, str):
                     if y[0] == "$":
-                        c[x] = var[y[1:].strip()]
-                    if isinstance(c[x], str) and c[x].isdigit():
-                        c[x] = int(c[x])
+                        c[x + 1] = var[y[1:].strip()]
+                    if isinstance(c[x + 1], str) and c[x + 1].isdigit():
+                        c[x + 1] = int(c[x + 1])
 
             if (op := c[0]) == "print":
                 print(*c[1:], sep="")
@@ -74,10 +74,9 @@ def run(code):
                     c[1] -= 1
                 else:
                     ind = find(code, ind)
-                    skip = False
+                    skip = True
             elif op == "endloop":
                 ind = find(code, ind) + 1
-                skip = True
         ind += 1
 
 

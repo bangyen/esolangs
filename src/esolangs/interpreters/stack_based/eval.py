@@ -5,18 +5,16 @@ import sys
 def run(code):
     ptr = 0
     stk: list = [[], []]
-    app = stk[ptr].append
-    pop = stk[ptr].pop
 
     dct = {
-        "`": lambda: app(1 - ptr),
-        "^": lambda: app(stk[ptr][-1]),
-        "0": lambda: app(0),
-        "+": lambda: app(pop() + 1),
-        "-": lambda: app(pop() - 1),
-        ".": lambda: print(pop(), end=""),
-        "=": lambda: stk[1 - ptr].append(pop()),
-        ";": lambda: pop(),
+        "`": lambda: stk[ptr].append(1 - ptr),
+        "^": lambda: stk[ptr].append(stk[ptr][-1]),
+        "0": lambda: stk[ptr].append(0),
+        "+": lambda: stk[ptr].append(stk[ptr].pop() + 1),
+        "-": lambda: stk[ptr].append(stk[ptr].pop() - 1),
+        ".": lambda: print(stk[ptr].pop(), end=""),
+        "=": lambda: stk[1 - ptr].append(stk[ptr].pop()),
+        ";": lambda: stk[ptr].pop(),
     }
 
     def ins(sym):
@@ -31,10 +29,10 @@ def run(code):
             elif char == "*":
                 stk[ptr] = stk[ptr][::-1]
             elif char == "?":
-                if not pop():
+                if not stk[ptr].pop():
                     ind += 1
             elif char == "!":
-                ins(pop())
+                ins(stk[ptr].pop())
             elif char in "\"'":
                 match = re.match('[^"]*', sym[ind + 1 :])
                 s = match[0].replace("`", '"') if match else ""
@@ -42,7 +40,7 @@ def run(code):
                 if char == "'":
                     s = f'"{s}"'
 
-                app(s)
+                stk[ptr].append(s)
 
             ind += 1
 
