@@ -68,6 +68,10 @@ class TestGeneratorBranches:
     def test_container_empty(self) -> None:
         assert gen.container("") == "EXIT=1:\n-1 EXIT>=0"
 
+    def test_container_decreasing_char(self) -> None:
+        """A character lower than the previous one takes the negative branch."""
+        assert "-1 A>=" in gen.container("ba")
+
     def test_suffolk_empty(self) -> None:
         assert gen.suffolk("") == "\n"
 

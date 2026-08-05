@@ -5,6 +5,7 @@ so random programs are safe to run in-process. A fixed seed keeps the tests
 deterministic.
 """
 
+import importlib
 import io
 import random
 from contextlib import redirect_stdout
@@ -12,11 +13,19 @@ from unittest.mock import patch
 
 from esolangs.interpreters.other.bitdeque import run as bitdeque_run
 from esolangs.interpreters.other.keys import run as keys_run
+from esolangs.interpreters.register_based.bio import run as bio_run
+from esolangs.interpreters.register_based.huf import run as huf_run
+from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
+from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.minifuck import run as minifuck_run
+
+minsky_run = importlib.import_module(
+    "esolangs.interpreters.register_based.minsky-swap"
+).run
 
 
 def run_safely(fn, program):
@@ -99,3 +108,41 @@ def test_bfstack_random():
             run_safely(bfstack_run, code)
         except IndexError:
             pass  # '.' on an empty stack is an accepted outcome
+
+
+def test_bio_random():
+    random.seed(7)
+    for _ in range(50):
+        try:
+            run_safely(bio_run, _random_string("0O1Ixyz;{}", 30))
+        except IndexError:
+            pass  # pop from an empty stack is an accepted outcome
+
+
+def test_huf_random():
+    random.seed(8)
+    for _ in range(50):
+        run_safely(huf_run, _random_string("#@-*0123456789", 30))
+
+
+def test_minsky_random():
+    random.seed(9)
+    for _ in range(50):
+        run_safely(minsky_run, _random_string("+*~", 30))
+
+
+def test_qoibl_random():
+    random.seed(10)
+    for _ in range(50):
+        run_safely(
+            qoibl_run, _random_string("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ()[]{}", 30)
+        )
+
+
+def test_eval_random():
+    random.seed(11)
+    for _ in range(50):
+        try:
+            run_safely(eval_run, _random_string("0+-.=~^`;*?!", 30))
+        except (IndexError, TypeError):
+            pass  # empty-stack pop / evaluating a non-string are accepted
