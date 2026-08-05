@@ -12,11 +12,11 @@ def total(op, lst):
             x, y = flat[k], flat[m - k - 1]
             n = m - k - 1
 
-            if x > y:
+            if x > y and y:
                 num = x // y
                 flat[k] -= num
                 flat[n] = (x + num) % 256
-            elif x < y:
+            elif x < y and x:
                 num = y % x
                 flat[k] += num
                 flat[n] -= num
@@ -26,8 +26,9 @@ def total(op, lst):
             flat = flat[size[k] :]
     else:
         for num in range(23):
-            lst[num][0] += num + 1
-            lst[num][0] %= 256
+            if lst[num]:
+                lst[num][0] += num + 1
+                lst[num][0] %= 256
 
 
 def partial(op, curr, acc):
@@ -35,9 +36,13 @@ def partial(op, curr, acc):
         curr.append(acc % 256)
         acc = 0
     elif op == 3:
+        if not curr:
+            return acc
         m = (len(curr) - 1) // 2
         acc = curr.pop(m)
     elif op == 4:
+        if not curr:
+            return acc
         m = (len(curr) - 1) // 2
         num = curr.pop(m) // 2
         curr.insert(0, num)
@@ -76,8 +81,10 @@ def run(code):
             acc = partial(n, curr, acc)
         elif n == 6 and acc < len(curr):
             ptr = (ptr + curr[acc]) % 23
-        elif n == 7 and curr[-1]:
+        elif n == 7 and curr and curr[-1]:
             ind = acc - curr[0] - 1
+            if ind < 0:
+                break
         elif n == 8:
             val = input("\nInput: "[new:])
             new = 1
