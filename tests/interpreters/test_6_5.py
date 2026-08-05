@@ -50,3 +50,26 @@ class TestSixFive:
     def test_hello_world(self) -> None:
         """Hello World program from esolangs.org."""
         assert run_and_capture(HELLO_WORLD) == "Hello, World"
+
+    def test_move_right_twice(self) -> None:
+        """1 moves the pointer right two cells."""
+        assert run_and_capture("15555555555A0") == "2"
+
+    def test_move_left(self) -> None:
+        """3 moves the pointer left."""
+        assert run_and_capture("313A0") == "\x00"
+
+    def test_multiple_outputs(self) -> None:
+        assert run_and_capture("5A5A0") == "\x05\n"
+
+    def test_input_adds_to_cell(self) -> None:
+        """B stores input in the cell, then arithmetic applies on top."""
+        assert run_and_capture("B5A0", inputs=["A"]) == "F"
+
+    def test_jump_to_four(self) -> None:
+        """8n jumps to the nth 4 marker."""
+        assert run_and_capture("81A4A0") == "\x00\x00"
+
+    def test_skip_when_equal(self) -> None:
+        """7n skips the next instruction when the cell equals n."""
+        assert run_and_capture("55A7A5A0") == "\n\x0f"
