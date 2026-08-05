@@ -2,14 +2,17 @@
 
 import io
 from contextlib import redirect_stdout
+from typing import List, Optional
+from unittest.mock import patch
 
 from esolangs.interpreters.stack_based.temporary import run
 
 
-def run_and_capture(code: str) -> str:
+def run_and_capture(code: str, inputs: Optional[List[str]] = None) -> str:
     buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(code)
+    with patch("builtins.input", side_effect=inputs or []):
+        with redirect_stdout(buffer):
+            run(code)
     return buffer.getvalue()
 
 
@@ -25,3 +28,22 @@ class TestTemporaryStack:
     def test_ascii_output_mode(self) -> None:
         """o switches output to ASCII characters."""
         assert run_and_capture("o v66 v133") == "A"
+
+    def test_integer_output_mode(self) -> None:
+        """O switches output to integer values (the default)."""
+        assert run_and_capture("O v1 v3") == "0"
+
+    def test_input_command(self) -> None:
+        """@ pushes the ASCII values of each input character."""
+        assert run_and_capture("o @ v1 v133", inputs=["A"]) == "@\x00"
+
+    def test_duplicate(self) -> None:
+        """+ duplicates the top of the stack."""
+        assert run_and_capture("v66 +") == ""
+
+    def test_duplicate_affects_squish(self) -> None:
+        assert run_and_capture("O v1 v3 + v1 v3") == "02"
+
+    def test_repeat_instruction(self) -> None:
+        """: repeats the next instruction until the stack changes."""
+        assert run_and_capture("v66 : v1") == ""

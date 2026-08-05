@@ -31,6 +31,14 @@ class TestBFStack:
         """, pushes ASCII input onto the stack."""
         assert run_and_capture(">,.", inputs=["Z"]) == "Z"
 
+    def test_loop(self) -> None:
+        """A loop that zeroes its cell executes exactly once."""
+        assert run_and_capture(">+[>+<-]>+.") == "\x01"
+
+    def test_loop_skipped_when_zero(self) -> None:
+        """[ jumps past its matching ] when the top is zero."""
+        assert run_and_capture(">[>]") == ""
+
     def test_output_on_empty_stack_raises(self) -> None:
         import pytest
 
