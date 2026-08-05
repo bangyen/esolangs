@@ -128,6 +128,27 @@ class TestJaune:
         assert "ret" in mod.comp(";")
         assert "sub ecx" in mod.comp(">")
 
+    def test_counted_commands(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "mov esi, 2" in mod.comp("^^")
+        assert "mov esi, 2" in mod.comp("&&")
+        assert "add dword" in mod.comp("2+")
+        assert "sub dword" in mod.comp("3-")
+
+    def test_load_and_zero(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "mov edi" in mod.comp("#")
+        assert "mov dword [ecx], 0" in mod.comp("%")
+
+    def test_switch_controls(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert ".switch" in mod.comp("v?")
+        assert "call switch" in mod.comp("v@")
+
+    def test_subroutine_label(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "sub" in mod.comp("5$")
+
 
 class TestUnsquare:
     def test_register_commands(self) -> None:
@@ -154,6 +175,11 @@ class TestUnsquare:
         output = mod.comp("O>I<")
         assert ".T1" in output
         assert ".B1" in output
+
+    def test_zero_one_with_address(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        assert "mov edi" in mod.comp("OA")
+        assert "mov edi" in mod.comp("IA")
 
 
 class TestSuffolkComp:
