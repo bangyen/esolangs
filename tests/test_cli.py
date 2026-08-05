@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+from pathlib import Path
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess:
@@ -22,7 +23,7 @@ class TestCLI:
         result = run_cli()
         assert result.returncode == 2
 
-    def test_run_interpreter(self, tmp_path) -> None:
+    def test_run_interpreter(self, tmp_path: Path) -> None:
         program = tmp_path / "prog.exc"
         program.write_text("^<<<<<<^!")
         result = run_cli("esolangs.interpreters.tape_based.excon", str(program))
