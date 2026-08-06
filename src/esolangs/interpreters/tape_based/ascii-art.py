@@ -31,21 +31,22 @@ def init(code, tape):
         if code[ind] == "[":
             if tape[ptr]:
                 stk.append(ind)
-            else:
-                match = 1
-                while match:
-                    ind += 1
-                    if ind == len(code):
-                        return
-                    elif code[ind] == "[":
-                        match += 1
-                    elif code[ind] == "]":
-                        match -= 1
+                return ind + 1
+            match = 1
+            while match:
+                ind += 1
+                if ind == len(code):
+                    return
+                elif code[ind] == "[":
+                    match += 1
+                elif code[ind] == "]":
+                    match -= 1
+            return ind + 1
         else:
             if tape[ptr]:
                 return stk[-1]
             stk.pop()
-        return ind
+            return ind + 1
 
     return find
 

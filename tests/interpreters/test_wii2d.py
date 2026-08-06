@@ -12,7 +12,7 @@ from typing import Any, Callable
 
 import pytest
 
-from src.esolangs.interpreters.register_based.WII2D import run
+from esolangs.interpreters.register_based.WII2D import run
 
 
 class TimeoutError(Exception):
@@ -56,12 +56,12 @@ class TestWII2DBasicCommands:
 
     def test_movement_commands(self) -> None:
         """Test directional movement commands (^v<>)."""
-        # Simple program that moves right and outputs
+        # Simple program that moves right and outputs the accumulator (0)
         code = [">~.", "!"]
 
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code))
-        # Should output the accumulator value (0) as ASCII
+        assert f.getvalue() == "\x00"
 
     def test_arithmetic_operations(self) -> None:
         """Test arithmetic operations (+-*/s)."""
@@ -96,7 +96,9 @@ class TestWII2DBasicCommands:
         """Test halt command (.) that ends program execution."""
         code = ["!", "."]
 
-        # Should complete without hanging
+        with redirect_stdout(io.StringIO()) as f:
+            run_with_timeout(lambda: run(code))
+        assert f.getvalue() == ""
         run_with_timeout(lambda: run(code))
 
     def test_nop_command(self) -> None:
@@ -175,10 +177,33 @@ class TestWII2DControlFlow:
         """Test ? command that moves in random direction."""
         code = ["!", "?~."]
 
-        # This test may be flaky due to randomness, but should not hang
+        # Randomness may or may not reach the output; just verify it runs
         with redirect_stdout(io.StringIO()):
             run_with_timeout(lambda: run(code))
-        # Should output something without hanging
+
+    def test_reverse_direction(self) -> None:
+        """Test | command that reverses the direction of travel."""
+        # Pointer starts north of ! moving north; | reverses it south to the halt
+        code = ["|", "!", "."]
+
+        with redirect_stdout(io.StringIO()) as f:
+            run_with_timeout(lambda: run(code))
+        assert f.getvalue() == ""
+
+    def test_reverse_horizontal_direction(self) -> None:
+        """Test | reversing an east-moving pointer back to the west."""
+        from unittest.mock import patch
+
+        # ? forced east runs the pointer into | (reverses it west); then ? forced
+        # north wraps the pointer down to the halt.
+        code = [" ?|.", " !  ", " .  "]
+        with patch(
+            "esolangs.interpreters.register_based.WII2D.secrets.randbelow",
+            side_effect=[3, 0],
+        ):
+            with redirect_stdout(io.StringIO()) as f:
+                run(code)
+        assert f.getvalue() == ""
 
 
 class TestWII2DHelloWorld:

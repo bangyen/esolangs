@@ -41,7 +41,7 @@ install-dev:
 lint-python:
     {{PYTHON}} -m black --check .
     {{PYTHON}} -m ruff check .
-    {{PYTHON}} -m mypy .
+    {{PYTHON}} -m mypy src
 
 # lint c
 lint-c:

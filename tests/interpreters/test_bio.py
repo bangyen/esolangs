@@ -9,7 +9,7 @@ from contextlib import redirect_stdout
 
 import pytest
 
-from src.esolangs.interpreters.register_based.bio import run
+from esolangs.interpreters.register_based.bio import run
 
 
 class TestBIOBasicCommands:
@@ -205,6 +205,12 @@ class TestBIOEdgeCases:
         with redirect_stdout(io.StringIO()) as f:
             run("0ix{};1ix;")
         assert f.getvalue() == "\x00"
+
+    def test_unclosed_loop_skipped(self) -> None:
+        """A loop skipped when its register is zero with no closer halts cleanly."""
+        with redirect_stdout(io.StringIO()):
+            run("0iy{0ox;")
+        # Should skip to the end without crashing
 
     def test_while_loop_with_zero_register(self) -> None:
         """Test while loop when register is already zero."""
