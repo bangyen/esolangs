@@ -181,6 +181,30 @@ class TestWII2DControlFlow:
         with redirect_stdout(io.StringIO()):
             run_with_timeout(lambda: run(code))
 
+    def test_reverse_direction(self) -> None:
+        """Test | command that reverses the direction of travel."""
+        # Pointer starts north of ! moving north; | reverses it south to the halt
+        code = ["|", "!", "."]
+
+        with redirect_stdout(io.StringIO()) as f:
+            run_with_timeout(lambda: run(code))
+        assert f.getvalue() == ""
+
+    def test_reverse_horizontal_direction(self) -> None:
+        """Test | reversing an east-moving pointer back to the west."""
+        from unittest.mock import patch
+
+        # ? forced east runs the pointer into | (reverses it west); then ? forced
+        # north wraps the pointer down to the halt.
+        code = [" ?|.", " !  ", " .  "]
+        with patch(
+            "esolangs.interpreters.register_based.WII2D.secrets.randbelow",
+            side_effect=[3, 0],
+        ):
+            with redirect_stdout(io.StringIO()) as f:
+                run(code)
+        assert f.getvalue() == ""
+
 
 class TestWII2DHelloWorld:
     """Test WII2D Hello World program from esolangs.org."""

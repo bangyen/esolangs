@@ -53,6 +53,11 @@ class TestTemporaryStack:
         program = " ".join(["v1"] * 15)
         assert run_and_capture(program) == "0" * 12
 
+    def test_repeat_until_empty(self) -> None:
+        """:math:`\\` repeats until the stack is empty; after a reset it runs once."""
+        program = " ".join(["v1"] * 15 + ["\\", "v1"])
+        assert run_and_capture(program) == "0" * 12
+
     def test_random_command(self) -> None:
         """€ performs a random (here, forced) action."""
         with patch(
