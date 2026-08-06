@@ -378,14 +378,43 @@ def _123(text):
     return res + "1"
 
 
+def excon(text):
+    res = ""
+
+    for c in text:
+        bits = format(ord(c), "08b")
+        res += ":"
+        pos = 7
+        for j in range(7, -1, -1):
+            if bits[j] == "1":
+                res += "<" * (pos - j) + "^"
+                pos = j
+        res += "!"
+
+    return res
+
+
+def modulous(text):
+    return "".join(f"[PSH INT {ord(c)}][PRT]" for c in text) + "[END]"
+
+
+def qoibl(text):
+    return "\n".join(
+        f"tt {bin(ord(c))[2:].replace('0', 'e').replace('1', 'y')} tt" for c in text
+    )
+
+
 _GENERATORS = {
     "BFStack": bfstack,
     "BrainIf": brainif,
     "Container": container,
+    "EXCON": excon,
     "Forþ": forth,
     "LaserFuck": laserfuck,
     "Magnitude": magnitude,
+    "Modulous": modulous,
     "Painfuck": painfuck,
+    "Qoibl": qoibl,
     "Suffolk": suffolk,
     "123": _123,
 }
