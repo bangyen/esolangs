@@ -99,132 +99,130 @@ def forth(text):
 
 
 def laserfuck(text):
-    data = [*map(ord, text)]
+    """Build a LaserFuck program that outputs ``text``.
+
+    Phase 1 generates a brainfuck-style program: each pass picks a base about
+    the square root of the largest remaining value, emits a ``+[>+...+<-]``
+    loop that adds each value's base-aligned chunk, then reduces the values by
+    that base.  Phase 2 lays the program onto the grid, with the first loop's
+    body wrapped around a serpentine track on the edges so the laser travels
+    around it.
+    """
+    values = [ord(c) for c in text]
     code = ""
 
-    def get(m):
-        s = ""
-
-        for n in data:
-            q = n // m
-            s += ">" + "+" * q
-
-        return s.rstrip(">")
+    def chunks(base):
+        # one '>' then '+' per value's base-chunk, ending back at the left
+        return "".join(">" + "+" * (n // base) for n in values).rstrip(">")
 
     while True:
-        top = max(data)
-        sqr = int(math.sqrt(top))
-        end = get(1)
+        top = max(values)
+        base = int(math.sqrt(top))
+        fallback = chunks(1)  # the linear program: add each value directly
 
         if not top:
             break
 
-        if all(data):
-            sqr = min([sqr, *data])
+        if all(values):
+            base = min(base, *values)
 
-        ops = get(sqr)
-        bck = ops.count(">")
+        ops = chunks(base)
+        cells = ops.count(">")  # how many cells the loop body crosses
 
-        if bck < 11:
-            ops += bck * "<"
+        if cells < 11:
+            ops += cells * "<"  # move back to the counter cell
         else:
-            ops += "[<]>"
+            ops += "[<]>"  # a wide loop re-enters from the left instead
 
-        ops = "+" * sqr + f"[{ops}-]"
+        ops = "+" * base + f"[{ops}-]"
 
-        diff = len(end) - len(ops) - ops.count("[") * 7
-
-        if diff < 0:
+        # keep this pass only if it beats the linear fallback in size
+        if len(fallback) - len(ops) - ops.count("[") * 7 < 0:
             break
 
         code += ops
-        data = [k % sqr for k in data]
+        values = [k % base for k in values]
 
     if "[" not in code:
-        return f"\xff}}}}{end}\n|o^\n _ "
+        return f"\xff}}}}{fallback}\n|o^\n _ "
 
+    # -- lay the program out onto the grid --
     match = re.search(r"\[([^[\]]*)", code)
     loop = match[1] if match else ""
-    code = code.replace(loop, "", 1)
-    code = code.replace("[]", "[}]")
-    frst = code.find("[") + 8
+    frame = code.replace(loop, "", 1).replace("[]", "[}]")
+    loop_col = frame.find("[") + 8  # grid column of the loop's opening bracket
 
-    num = 0
-    res = [" }}", "|o^", " _ "]
+    # build the three frame rows; brackets also place mirror cells beside them
+    grid = [" }}", "|o^", " _ "]
+    depth = 0
 
-    for c in code:
+    for c in frame:
         if c == "[":
-            top_str = "v }  }"
-            bot_str = "}#^)#^"
-            num += 1
+            top_cell, bottom_cell, depth = "v }  }", "}#^)#^", depth + 1
         elif c == "]":
-            top_str = "#/)"
-            bot_str = " / "
+            top_cell, bottom_cell = "#/)", " / "
         else:
-            top_str = c
-            bot_str = " "
+            top_cell, bottom_cell = c, " "
 
-        k: int = 2 - (num == 2)
-        res[0] += str(top_str)
-        res[3 - k] += str(bot_str)
-        res[k] += len(str(top_str)) * " "
+        pad_row = 2 - (depth == 2)  # a nested loop also uses the middle row
+        grid[0] += top_cell
+        grid[3 - pad_row] += bottom_cell
+        grid[pad_row] += " " * len(top_cell)
 
         if c == "]":
-            num -= 1
+            depth -= 1
 
-    search_match = re.search("}  }v?", res[0])
-    search = search_match[0] if search_match else ""
-    search_spaces = " " * len(search)
-    res[0] = res[0].replace(search, search_spaces, 1)
+    # the "[" marker's stub is a placeholder; blank it out and let the loop
+    # track connect back into the frame at ``loop_col`` instead
+    entry_match = re.search("}  }v?", grid[0])
+    entry = entry_match[0] if entry_match else ""
+    grid[0] = grid[0].replace(entry, " " * len(entry), 1)
 
-    rest = len(loop) + frst
-    over = len(end) + frst
-    over -= len(res[0]) - 2
-    half = (max(over, 0) // 2) + 1
+    track_len = len(loop) + loop_col
+    overhang = len(fallback) + loop_col - (len(grid[0]) - 2)
+    prefix = (max(overhang, 0) // 2) + 1  # fallback chars that fit on the top row
 
-    if end:
-        res[0] += end[:half] + "^"
-        end = end[half:]
-        end = f"x{end[::-1]}{{"
-
-        end = end.rjust(len(res[0]))
-        res.insert(0, end)
+    if fallback:
+        grid[0] += fallback[:prefix] + "^"
+        remainder = fallback[prefix:]
+        end_row = f"x{remainder[::-1]}{{"
+        grid.insert(0, end_row.rjust(len(grid[0])))
     else:
-        res[0] += "x"
+        grid[0] += "x"  # no fallback: the frame ends by killing the laser
 
-    size = len(res[0])
-    cntr = 2
+    width = len(grid[0])
+    tracks = 2
 
-    while (rest // cntr) > size:
-        cntr += 1
+    # enough serpentine rows to hold the loop body around the frame
+    while (track_len // tracks) > width:
+        tracks += 1
 
-    cntr += cntr % 2
-    botm = (rest // cntr) + 1
-    lnth = botm + 1
+    tracks += tracks % 2  # even, so the serpentine joins back on the left
+    per_row = (track_len // tracks) + 1
+    offset = per_row + 1
 
-    res.insert(0, f"\xff}}{loop[:lnth]}v")
+    # top row: output-mode byte, the loop start, then a turn down
+    grid.insert(0, f"\xff}}{loop[:offset]}v")
 
-    for k in range(cntr - 1):
-        part = loop[lnth : lnth + botm]
-        lnth += botm
+    # serpentine rows carry the rest of the loop body around the frame
+    for row in range(tracks - 1):
+        part = loop[offset : offset + per_row]
+        offset += per_row
 
-        if not k % 2:
+        if not row % 2:
             part = part[::-1]
             move = "v{}{{"
         else:
             move = "}}{}v"
 
-        part = part.rjust(botm)
-        part = move.format(part)
-        res.insert(k + 1, "  " + part)
+        grid.insert(row + 1, "  " + move.format(part.rjust(per_row)))
 
-    spaces: str = " " * (frst - 5)
-    beg = f" ^{spaces}{{  {{"
+    # connect the last serpentine row back into the frame at the loop entry
+    connector = f" ^{' ' * (loop_col - 5)}{{  {{"
+    tracks -= 1
+    grid[tracks] = grid[tracks].replace("  v" + " " * loop_col, connector + "v ")
 
-    cntr -= 1
-    res[cntr] = res[cntr].replace("  v" + " " * frst, beg + "v ")
-
-    return "\n".join(res)
+    return "\n".join(grid)
 
 
 def magnitude(text):
