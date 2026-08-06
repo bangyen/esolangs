@@ -10,8 +10,10 @@ import esolangs.tools.generate as gen
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
 from esolangs.interpreters.register_based.bio import run as bio_run
+from esolangs.interpreters.register_based.dig import run as dig_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.register_based.sophie import run as sophie_run
+from esolangs.interpreters.register_based.WII2D import run as wii2d_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
@@ -55,6 +57,25 @@ class TestGeneratorRoundTrips:
     def test_bio(self) -> None:
         """Registers walk to each character value, then 1ix prints it."""
         assert roundtrip(bio_run, gen.bio("Hello, World!")) == "Hello, World!"
+
+    def test_wii2d(self) -> None:
+        """The accumulator is built with digits and squares, then ~ prints."""
+        assert (
+            roundtrip(wii2d_run, gen.wii2d("Hello, World!").splitlines())
+            == "Hello, World!"
+        )
+
+    def test_dig(self) -> None:
+        """$ digs underground and [letter]: pairs print along the path."""
+        assert (
+            roundtrip(dig_run, gen.dig("Hello, World!").splitlines()) == "Hello, World!"
+        )
+        assert roundtrip(dig_run, gen.dig("abcd").splitlines()) == "abcd"
+
+    def test_dig_unsupported(self) -> None:
+        """Dig can only output letters, digits, spaces and .,!? directly."""
+        with pytest.raises(ValueError, match="only output"):
+            gen.dig("a~b")
 
     def test_six_five(self) -> None:
         """±5/±6 walks reach each character value, then A prints it."""
@@ -232,7 +253,9 @@ class TestGeneratorBranches:
         assert "--- ZTOALC ---" in out
         assert "--- 6-5 ---" in out
         assert "--- ASCII art ---" in out
+        assert "--- Dig ---" in out
         assert "--- Minifuck ---" in out
+        assert "--- WII2D ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
         with patch("sys.argv", ["esolangs.tools.generate"]):
@@ -256,6 +279,7 @@ class TestGeneratorBranches:
             gen.bio,
             gen.six_five,
             gen.ascii_art,
+            gen.wii2d,
         ]
         inputs = [
             "\x01",
