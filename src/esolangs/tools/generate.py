@@ -678,6 +678,22 @@ def unsquare(text):
     return "".join(build(ord(c)) + "Po" for c in text)
 
 
+def home_row(text):
+    """Generate a Home Row program that outputs ``text``.
+
+    ``a`` increments the current cell and ``k`` prints it as a byte, resetting
+    it to zero (the spec's 5x5 grid initializes at zero). A leading ``as``
+    (net zero) keeps NUL characters from collapsing the adjacent ``k``s.
+    """
+    res = []
+    for c in text:
+        if ord(c) == 0:
+            res.append("ask")
+        else:
+            res.append("a" * ord(c) + "k")
+    return "".join(res) + ";"
+
+
 def wii2d(text):
     def build(target):
         best = (float("inf"), "")
@@ -968,6 +984,7 @@ _GENERATORS = {
     "Eval": eval,
     "EXCON": excon,
     "Forþ": forth,
+    "Home Row": home_row,
     "huf": huf,
     "LaserFuck": laserfuck,
     "Magnitude": magnitude,
