@@ -117,7 +117,7 @@ def laserfuck(text):
 
     while True:
         top = max(values)
-        base = int(math.sqrt(top))
+        base = math.isqrt(top)
         fallback = chunks(1)  # the linear program: add each value directly
 
         if not top:
@@ -277,7 +277,7 @@ def magnitude(text):
             prog += q * "i"
             n = r
 
-        prog += (n // 2) * "s" + mode * "p" + "e"
+        prog += (n // 2) * "s" + ("p" if mode else "") + "e"
         last = ord(c)
         mode = False
 
@@ -304,7 +304,7 @@ def painfuck(text):
         return val, s
 
     def loop(val, s, op):
-        sqr = int(math.sqrt(val))
+        sqr = math.isqrt(val)
 
         if sqr > 3:
             move = "lr" if "r" in res else "rl"
