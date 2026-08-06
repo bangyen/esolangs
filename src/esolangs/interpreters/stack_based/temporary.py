@@ -1,55 +1,60 @@
 import secrets
 import sys
+from dataclasses import dataclass, field
+
+
+@dataclass
+class State:
+    stk: list = field(default_factory=list)
+    num: bool = True
+    new: bool = False
+    ptr: int = 0
+    comm: int = 0
 
 
 def run(code):
     code = code.split()
+    state = State()
 
-    stk: list = []
-    num = True
-    new = False
-    ptr = comm = 0
-
-    def parse(char):
-        nonlocal new, ptr, comm, num, stk
-        rest = code[ptr][1:]
+    def parse(state, char):
+        rest = code[state.ptr][1:]
 
         if char == "@":
-            s = input("\n" * new + "Input: ")
-            stk.extend(ord(c) for c in s)
-            new = False
+            s = input("\n" * state.new + "Input: ")
+            state.stk.extend(ord(c) for c in s)
+            state.new = False
         elif char == "v":
-            stk.append(int(rest))
+            state.stk.append(int(rest))
         elif char == "*":
-            stk.extend(ord(c) for c in rest)
+            state.stk.extend(ord(c) for c in rest)
         elif char in "oO":
-            num = char == "O"
+            state.num = char == "O"
         elif char == "+":
-            stk.append(stk[-1])
+            state.stk.append(state.stk[-1])
         elif char == ":":
-            ptr += 1
-            n = len(stk)
-            while len(stk) == n:
-                parse(code[ptr][0])
+            state.ptr += 1
+            n = len(state.stk)
+            while len(state.stk) == n:
+                parse(state, code[state.ptr][0])
         elif char == "\\":
-            ptr += 1
-            while len(stk):
-                parse(code[ptr][0])
+            state.ptr += 1
+            while len(state.stk):
+                parse(state, code[state.ptr][0])
         elif char == "€":
-            parse(secrets.choice("@v*oO+:\\"))
+            parse(state, secrets.choice("@v*oO+:\\"))
 
-        while stk and sum(stk[1:]) / 2 > stk[0]:
-            new = True
-            n = stk.pop(0) - 1
-            print(n if num else chr(n), end="")
+        while state.stk and sum(state.stk[1:]) / 2 > state.stk[0]:
+            state.new = True
+            n = state.stk.pop(0) - 1
+            print(n if state.num else chr(n), end="")
 
-        comm += 1
-        if comm % 15 == 0:
-            stk = []
+        state.comm += 1
+        if state.comm % 15 == 0:
+            state.stk = []
 
-    while ptr < len(code):
-        parse(code[ptr][0])
-        ptr += 1
+    while state.ptr < len(code):
+        parse(state, code[state.ptr][0])
+        state.ptr += 1
 
 
 if __name__ == "__main__":
