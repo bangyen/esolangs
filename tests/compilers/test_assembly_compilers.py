@@ -53,6 +53,17 @@ class TestBFStackParse:
         mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
         assert mod.parse(">[]") == [(">", 1)]
 
+    def test_unmatched_loop_returns_empty(self) -> None:
+        """An unterminated bracket run makes parse bail out."""
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        assert mod.parse(">[[]") == []
+
+    def test_counted_io(self) -> None:
+        """Counted > commands loop the output/input calls."""
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        assert "dec esi" in mod.comp(">>.")
+        assert "dec esi" in mod.comp(">>,")
+
 
 class TestBFStackComp:
     def test_loop_generates_output_and_syscall(self) -> None:
@@ -230,6 +241,28 @@ class TestJaune:
         assert "jne" in output
         assert "je " in output
 
+    def test_conditional_sequence_variants(self) -> None:
+        """!-first and ?-only sequences take the other prep branches."""
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "je " in mod.comp("1!2?")
+        assert "jne" in mod.comp("1?2?")
+
+    def test_multi_label_switch(self) -> None:
+        """Multiple labels produce a richer .switch dispatch table."""
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        output = mod.comp("1:v2:v?")
+        assert ".switch" in output
+        assert "cmp eax" in output
+        assert "je .lab" in output
+
+    def test_subroutine_dispatch_table(self) -> None:
+        """Multiple $ subroutines with @ calls generate a dispatch table."""
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        output = mod.comp("5$v@7$v@")
+        assert "switch:" in output
+        assert "cmp eax" in output
+        assert "je .sub" in output
+
     def test_subroutine_label(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.jaune")
         assert "sub" in mod.comp("5$")
@@ -294,3 +327,40 @@ class TestSuffolkComp:
             output = mod.comp(program, 1)
             assert output.startswith("global _start")
             assert output
+
+
+class TestCompilerFuzz:
+    """Compilers must not crash on arbitrary (possibly malformed) input."""
+
+    ALPHABET = "><+-.,[]{}_|#@$%^&*;:?!\\/'\"" + "asdfjkl;OIAPoi v" + "0123456789"
+
+    @pytest.mark.parametrize(
+        "module",
+        [
+            "esolangs.compilers.assembly.bfstack",
+            "esolangs.compilers.assembly.home-row",
+            "esolangs.compilers.assembly.jaune",
+            "esolangs.compilers.assembly.unsquare",
+        ],
+    )
+    def test_random_input_does_not_crash(self, module: str) -> None:
+        import random
+
+        mod = importlib.import_module(module)
+        random.seed(3)
+        for _ in range(30):
+            code = "".join(
+                random.choice(self.ALPHABET) for _ in range(random.randint(1, 40))
+            )
+            mod.comp(code)  # must not raise
+
+    def test_suffolk_random_input(self) -> None:
+        import random
+
+        mod = importlib.import_module("esolangs.compilers.assembly.suffolk")
+        random.seed(3)
+        for _ in range(30):
+            code = "".join(
+                random.choice(self.ALPHABET) for _ in range(random.randint(1, 40))
+            )
+            mod.comp(code, 1)

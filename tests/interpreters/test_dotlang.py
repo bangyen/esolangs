@@ -245,6 +245,14 @@ class TestWarps:
                 run(code)
                 assert mock_stdout.getvalue() == "42"
 
+    def test_dynamic_warp_input_missing_destination(self):
+        """Test that a warp to a nonexistent destination halts."""
+        code = ["•W~", "Wother`s#42#"]
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            with patch("builtins.input", return_value="test"):
+                run(code)
+                assert mock_stdout.getvalue() == ""
+
     def test_truth_machine(self):
         """Test the truth machine example from the official documentation."""
         code = ["•W~", "W0`s#0#", "W1`s#1>#<"]

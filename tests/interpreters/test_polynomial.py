@@ -233,6 +233,13 @@ class TestPolynomialExecution:
             run("f(x)=x^2+4")
         assert buffer.getvalue() == "\x00"
 
+    def test_control_flow_roots(self) -> None:
+        """Real roots 2 and 4 encode an if-statement pair (reg is 0)."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run("f(x) = x^2 - 6x + 8")
+        assert buffer.getvalue() == ""
+
 
 class TestConvertRealRoots:
     """Real roots encode instructions reached through later primes."""

@@ -177,10 +177,10 @@ class TestWII2DControlFlow:
         """Test ? command that moves in random direction."""
         code = ["!", "?~."]
 
-        # This test may be flaky due to randomness, but should not hang
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code))
-        # Should output something without hanging
+        # Output is random but should be a single character
+        assert len(f.getvalue()) == 1
 
 
 class TestWII2DHelloWorld:
