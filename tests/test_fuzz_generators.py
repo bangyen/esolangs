@@ -53,6 +53,7 @@ NO_INTERPRETER = {
     "_123": gen._123,
     "nocomment": gen.nocomment,
     "unsquare": gen.unsquare,
+    "home_row": gen.home_row,
 }
 
 

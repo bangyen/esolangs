@@ -161,6 +161,15 @@ def comp(code):
         "_start:\n"
         "\tlea esp, [esp - 100]\n"
         "\tmov ecx, esp\n"
+        # the spec's 5x5 grid initializes to zero
+        "\txor eax, eax\n"
+        "\tmov edi, 25\n"
+        ".zero_grid:\n"
+        "\tmov [ecx], eax\n"
+        "\tadd ecx, 4\n"
+        "\tdec edi\n"
+        "\tjnz .zero_grid\n"
+        "\tmov ecx, esp\n"
         "\txor edi, edi\n"
         "\txor esi, esi\n"
     )
