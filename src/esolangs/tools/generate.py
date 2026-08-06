@@ -405,8 +405,9 @@ def qoibl(text):
     )
 
 
-_ZTOALC_SEARCH_LIMIT = 20000
-_length_starts_cache: dict = {}
+_ZTOALC_BASE_LIMIT = 20000
+_ZTOALC_MAX_LIMIT = 1000000
+_length_table_cache: dict = {}
 
 
 def _collatz_length_table(limit):
@@ -439,30 +440,10 @@ def _collatz_length_table(limit):
     return lengths
 
 
-def _length_starts(limit):
-    """Best (size, start) pair for every text length up to ``limit``.
-
-    For each start, walking its trajectory gives the running maximum, which is
-    the program size needed if that start were chosen for a text of length n.
-    The best entry for each n is the smallest such size.
-    """
-    if limit in _length_starts_cache:
-        return _length_starts_cache[limit]
-
-    lengths = _collatz_length_table(limit)
-    best: dict = {}
-    for start in range(2, limit + 1):
-        running = 0
-        value = start
-        for n in range(1, lengths[start] + 1):
-            running = max(running, value)
-            entry = best.get(n)
-            if entry is None or running < entry[0]:
-                best[n] = (running, start)
-            value = value // 2 if value % 2 == 0 else 3 * value + 1
-
-    _length_starts_cache[limit] = best
-    return best
+def _collatz_lengths(limit):
+    if limit not in _length_table_cache:
+        _length_table_cache[limit] = _collatz_length_table(limit)
+    return _length_table_cache[limit]
 
 
 def _collatz_prefix(start, n):
@@ -479,16 +460,33 @@ def ztoalc(text):
     if not text:
         return "2"
 
-    entry = _length_starts(_ZTOALC_SEARCH_LIMIT).get(n)
-    if entry is None:
-        # No trajectory long enough within the search bound: the power-of-two
+    best = None
+    candidate = 2
+    limit = _ZTOALC_BASE_LIMIT
+    lengths = _collatz_lengths(limit)
+
+    while candidate <= _ZTOALC_MAX_LIMIT:
+        if candidate > limit:
+            limit = min(limit * 2, _ZTOALC_MAX_LIMIT)
+            lengths = _collatz_lengths(limit)
+            continue
+        if best is not None and candidate >= best[0]:
+            break
+        if lengths[candidate] >= n:
+            cand_size = max(_collatz_prefix(candidate, n))
+            if best is None or cand_size < best[0]:
+                best = (cand_size, candidate)
+        candidate += 1
+
+    if best is None:
+        # No trajectory long enough within the search cap: the power-of-two
         # start always yields a trajectory of length n, so it works for any
         # text, at the cost of a 2**n-line program.
         size = 2**n
         start = size
         values = [size >> k for k in range(n)]
     else:
-        size, start = entry
+        size, start = best
         values = _collatz_prefix(start, n)
 
     lines = [""] * size
