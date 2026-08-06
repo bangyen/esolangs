@@ -2,6 +2,7 @@
 
 import io
 from contextlib import redirect_stdout
+from unittest.mock import patch
 
 from esolangs.interpreters.tape_based.suffolk import run
 
@@ -28,3 +29,15 @@ class TestSuffolk:
     def test_no_halt_without_instruction(self) -> None:
         """Programs without a halt run until the loop limit is reached."""
         assert run_and_capture("!!!!") == ""
+
+    def test_move_right(self) -> None:
+        """> moves the pointer to a new tape cell."""
+        assert run_and_capture("!!!!!!!!>!><<<<<<<<<.!") == "@"
+
+    def test_input(self) -> None:
+        """, reads input into the accumulator."""
+        buffer = io.StringIO()
+        with patch("builtins.input", return_value="B"):
+            with redirect_stdout(buffer):
+                run(",.", 1)
+        assert buffer.getvalue() == "A"

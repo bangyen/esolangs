@@ -47,3 +47,16 @@ class TestTemporaryStack:
     def test_repeat_instruction(self) -> None:
         """: repeats the next instruction until the stack changes."""
         assert run_and_capture("v66 : v1") == ""
+
+    def test_stack_reset_every_fifteen(self) -> None:
+        """The stack is cleared every 15 commands."""
+        program = " ".join(["v1"] * 15)
+        assert run_and_capture(program) == "0" * 12
+
+    def test_random_command(self) -> None:
+        """€ performs a random (here, forced) action."""
+        with patch(
+            "esolangs.interpreters.stack_based.temporary.secrets.choice",
+            return_value="o",
+        ):
+            assert run_and_capture("€ v66") == ""
