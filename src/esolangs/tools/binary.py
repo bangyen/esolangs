@@ -2,33 +2,45 @@ import math
 import sys
 from inspect import signature
 
+# Dig blocks for one level of the decision tree.
+BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
+CONTINUE = "> "  # a child of a branch: keep facing right into its own block
+LEAF = ">$3{}:@"  # set the mole to the result and print it
+
 
 def convert(func, num=None):
+    """Build a Dig decision tree that computes ``func`` over ``num`` inputs.
+
+    The tree is laid out so the mole starts in the top-left corner (``'``)
+    facing down into the root.  Each ``BRANCH`` block reads one input bit:
+    ``~`` inputs it, ``;`` stores it in the grid, and ``#`` turns the mole
+    down or up on that bit.  The two children of a node keep facing right
+    (``CONTINUE``) into the next level's ``BRANCH``, and the leaves print the
+    function's value for the input combination they stand for.
+    """
     if num is None:
         num = len(signature(func).parameters)
     total = 2 ** (num + 1) - 1
     lines = ["" for _ in range(total)]
-    pos = [total // 2]
+    rows = [total // 2]
 
-    for j in range(num + 1):
-        if j < num:
-            for k in range(total):
-                if k in pos:
-                    lines[k] += ">2$~;#@"
-                else:
-                    lines[k] += " " * 7
-            pos = [i + 2 ** (num - j - 1) for i in pos] + [
-                i - 2 ** (num - j - 1) for i in pos
-            ]
-            for k in pos:
-                lines[k] = lines[k][:-2] + "> "
+    for level in range(num + 1):
+        if level < num:
+            step = 2 ** (num - level - 1)
+            for row in range(total):
+                lines[row] += BRANCH if row in rows else " " * 7
+            rows = [row + step for row in rows] + [row - step for row in rows]
+            for row in rows:
+                lines[row] = lines[row][:-2] + CONTINUE
         else:
             for k in range(2**num):
-                arg_list = [0] * num + [int(i) for i in bin(k)[2:]]
-                lines[k * 2] += f">$3{func(*arg_list[-num:])}:@"
+                bits = [(k >> (num - 1 - b)) & 1 for b in range(num)]
+                lines[2 * k] += LEAF.format(func(*bits))
 
+    # the mole starts at the top-left corner facing down into the root
     lines[0] = "'" + lines[0][1:]
-    return "\n".join(k for k in lines).replace("> >", ">  ")
+    # a CONTINUE marker sits right next to its branch's leading ">"; drop the latter
+    return "\n".join(lines).replace("> >", ">  ")
 
 
 def main() -> None:
