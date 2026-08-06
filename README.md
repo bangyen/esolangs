@@ -228,6 +228,7 @@ The `generate.py` program outputs programs which output a given string in differ
 - BIO
 - BrainIf
 - Container
+- Dig
 - EXCON
 - Forþ (Forth)
 - LaserFuck
@@ -239,6 +240,7 @@ The `generate.py` program outputs programs which output a given string in differ
 - Sophie
 - Suffolk
 - Temporary Stack
+- WII2D
 - ZTOALC
 - 123
 
