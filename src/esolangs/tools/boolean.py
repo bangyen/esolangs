@@ -68,7 +68,7 @@ def brainif(truth_table, n):
     outputs it.
     """
 
-    entries = []
+    entries: list = []
     for i in range(n):
         entries.append(("cmd", "if 0 input"))
         if i < n - 1:
