@@ -11,6 +11,7 @@ from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
 from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.dig import run as dig_run
+from esolangs.interpreters.register_based.polynomial import run as polynomial_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.register_based.sophie import run as sophie_run
 from esolangs.interpreters.register_based.WII2D import run as wii2d_run
@@ -76,6 +77,17 @@ class TestGeneratorRoundTrips:
         """Dig can only output letters, digits, spaces and .,!? directly."""
         with pytest.raises(ValueError, match="only output"):
             gen.dig("a~b")
+
+    def test_polynomial(self) -> None:
+        """The register walks each character, and roots encode the instructions."""
+        assert roundtrip(polynomial_run, gen.polynomial("Hi")) == "Hi"
+        assert roundtrip(polynomial_run, gen.polynomial("aa")) == "aa"
+        assert roundtrip(polynomial_run, gen.polynomial("ba")) == "ba"
+        assert gen.polynomial("").startswith("f(x) = ")
+
+    def test_polynomial_format(self) -> None:
+        """Zero coefficients are omitted from the formatted polynomial."""
+        assert gen._polynomial_format([1, 0, 2]) == "f(x) = x^2 + 2"
 
     def test_six_five(self) -> None:
         """±5/±6 walks reach each character value, then A prints it."""
@@ -255,6 +267,7 @@ class TestGeneratorBranches:
         assert "--- ASCII art ---" in out
         assert "--- Dig ---" in out
         assert "--- Minifuck ---" in out
+        assert "--- Polynomial ---" in out
         assert "--- WII2D ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
