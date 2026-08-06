@@ -624,6 +624,60 @@ def dig(text):
     return "\n".join([r0, "".join(r1)])
 
 
+def _polynomial_primes(count):
+    primes: list = []
+    candidate = 2
+    while len(primes) < count:
+        if all(candidate % p for p in primes):
+            primes.append(candidate)
+        candidate += 1
+    return primes
+
+
+def _polynomial_multiply(a, b):
+    result = [0] * (len(a) + len(b) - 1)
+    for i, ai in enumerate(a):
+        for j, bj in enumerate(b):
+            result[i + j] += ai * bj
+    return result
+
+
+def _polynomial_format(coeffs):
+    terms = []
+    degree = len(coeffs) - 1
+    for i, coeff in enumerate(coeffs):
+        d = degree - i
+        if coeff == 0:
+            continue
+        prefix = (
+            ""
+            if coeff == 1 and d > 0
+            else ("-" if coeff == -1 and d > 0 else str(coeff))
+        )
+        power = f"x^{d}" if d > 1 else ("x" if d == 1 else "")
+        terms.append(f"{prefix}{power}")
+    return "f(x) = " + " + ".join(terms).replace("+ -", "- ")
+
+
+def polynomial(text):
+    instrs = []
+    prev = 0
+    for c in text:
+        delta = ord(c) - prev
+        if delta > 0:
+            instrs.append([delta, 1])  # +=
+        elif delta < 0:
+            instrs.append([-delta, 2])  # -=
+        instrs.append([0, 1])  # output
+        prev = ord(c)
+
+    coeffs = [1]
+    for (a, b), p in zip(instrs, _polynomial_primes(len(instrs))):
+        coeffs = _polynomial_multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
+
+    return _polynomial_format(coeffs)
+
+
 _GENERATORS = {
     "6-5": six_five,
     "ASCII art": ascii_art,
@@ -639,6 +693,7 @@ _GENERATORS = {
     "Minifuck": minifuck,
     "Modulous": modulous,
     "Painfuck": painfuck,
+    "Polynomial": polynomial,
     "Qoibl": qoibl,
     "Sophie": sophie,
     "Suffolk": suffolk,
