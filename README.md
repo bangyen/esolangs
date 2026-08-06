@@ -230,13 +230,17 @@ The `generate.py` program outputs programs which output a given string in differ
 - Clockwise
 - Container
 - Dig
+- Dotlang
+- Eval
 - EXCON
 - Forþ (Forth)
+- huf
 - LaserFuck
 - Magnitude
 - MAMMALIAN
 - Minifuck
 - Modulous
+- Nevermind
 - Painfuck
 - Polynomial
 - Qoibl
