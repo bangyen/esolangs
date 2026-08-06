@@ -64,6 +64,15 @@ class TestBFStackParse:
         assert "dec esi" in mod.comp(">>.")
         assert "dec esi" in mod.comp(">>,")
 
+    def test_zero_command(self) -> None:
+        """A loop that zeroes its cell compiles to a plain zero."""
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        assert "mov byte [ecx], 0" in mod.comp("++++[>++<-]")
+
+    def test_counted_left(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        assert "dec esi" in mod.comp("<<")
+
 
 class TestBFStackComp:
     def test_loop_generates_output_and_syscall(self) -> None:
