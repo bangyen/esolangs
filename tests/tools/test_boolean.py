@@ -88,6 +88,43 @@ def run_brainif(program: str, inputs: list) -> str:
     return buffer.getvalue()
 
 
+def run_nevermind(program: str, inputs: list) -> str:
+    from esolangs.interpreters.other.nevermind import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs):
+        with redirect_stdout(buffer):
+            run(program.splitlines())
+    return buffer.getvalue()
+
+
+class TestNevermind:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.nevermind(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_nevermind(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])) + "\n", f"inputs {bits}"
+
+    def test_structure(self) -> None:
+        """A one-input function reads one input and branches on it."""
+        program = boolean.nevermind("10", 1)
+        assert program.startswith("input,?")
+        assert "if,$a,==,0" in program
+        assert program.count("endif") == 2
+
+
 class TestBrainIf:
     @pytest.mark.parametrize(
         ("table", "n"),
