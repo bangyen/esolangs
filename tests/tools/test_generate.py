@@ -24,6 +24,7 @@ from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
+from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
@@ -204,6 +205,16 @@ class TestGeneratorRoundTrips:
         """Minifuck cannot output NUL (a zero tape means input instead)."""
         with pytest.raises(ValueError, match="NUL"):
             gen.minifuck("\x00")
+
+    def test_circlefuck(self) -> None:
+        """The tape doubles as the program, so cells start at their own codes."""
+        assert roundtrip(circlefuck_run, gen.circlefuck("Hi")) == "Hi"
+        assert (
+            roundtrip(circlefuck_run, gen.circlefuck("Hello, World!"))
+            == "Hello, World!"
+        )
+        assert roundtrip(circlefuck_run, gen.circlefuck("+~")) == "+~"
+        assert roundtrip(circlefuck_run, gen.circlefuck("")) == ""
 
     def test_minifuck_carries_tape(self) -> None:
         """The tape carries between characters; a matching character is a bare dot."""
