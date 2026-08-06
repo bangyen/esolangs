@@ -6,6 +6,7 @@ import pytest
 
 import esolangs.tools.generate as gen
 from esolangs.interpreters.other.container import run as container_run
+from esolangs.interpreters.other.ztoalc import run as ztoalc_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
@@ -35,6 +36,18 @@ class TestGeneratorRoundTrips:
 
     def test_qoibl(self) -> None:
         assert roundtrip(qoibl_run, gen.qoibl("Hi").splitlines()) == "Hi"
+
+    def test_ztoalc(self) -> None:
+        """The Collatz trajectory from 2**n visits every power-of-2 slot once."""
+        assert roundtrip(ztoalc_run, gen.ztoalc("Hi").splitlines()) == "Hi"
+        assert roundtrip(ztoalc_run, gen.ztoalc("").splitlines()) == ""
+
+    def test_ztoalc_program_structure(self) -> None:
+        """The initial pointer is 2**n and each char sits at a power-of-2 slot."""
+        lines = gen.ztoalc("ab").splitlines()
+        assert lines[0] == "4"
+        assert "print 98" in lines
+        assert "print 97" in lines
 
     def test_brainif(self) -> None:
         assert roundtrip(brainif_run, gen.brainif("Hi").splitlines()) == "Hi"
@@ -99,6 +112,7 @@ class TestGeneratorBranches:
         assert "--- EXCON ---" in out
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
+        assert "--- ZTOALC ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
         with patch("sys.argv", ["esolangs.tools.generate"]):
