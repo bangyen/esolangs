@@ -89,7 +89,7 @@ def comp(code):
                     jump += 1
                     arr.append(jump)
                     res += f".T{jump}:\n" "\tcmp byte [ecx], 0\n" f"\tje .B{jump}\n"
-                else:
+                elif arr:
                     m = arr.pop()
                     res += f"\tjmp .T{m}\n" f".B{m}:\n"
 

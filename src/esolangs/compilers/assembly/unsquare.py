@@ -45,13 +45,14 @@ def prep(code):
             num, new = count(code, ind)
             if num in range(2) and new < len(code) and code[new] == ">":
                 alt, res = new, 1
-                while res:
+                while res and alt + 1 < len(code):
                     alt += 1
                     if (c := code[alt]) == ">":
                         res += 1
                     elif c == "<":
                         res -= 1
-                code = code.replace(code[ind : alt + 1], code[ind:new])
+                if not res:
+                    code = code.replace(code[ind : alt + 1], code[ind:new])
         ind += 1
 
     code = sub(r"([OI]A[+\-x]*)+", r"\1", code)

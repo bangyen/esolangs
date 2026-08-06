@@ -25,7 +25,7 @@ def count(code, ind):
         if (c := code[ind - 1]) == "v":
             num = -1
         else:
-            num = int(c)
+            num = int(c) if c.isdigit() else -1
         ind += 1
     else:
         while code[ind] == start:
@@ -47,7 +47,8 @@ def prep(code):
     rout: list = []
 
     for c in ":$":
-        r = rf"(?:[\d]{c})+"
+        esc = "\\$" if c == "$" else c
+        r = rf"(?:[\d]{esc})+"
         for s in findall(r, code):
             lst = [k for k in s if k.isnumeric()]
             num = jump if c == ":" else rout
