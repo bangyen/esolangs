@@ -28,3 +28,7 @@ class TestBitdeque:
 
     def test_empty_deque_prints_nothing(self) -> None:
         assert run_and_capture("POP") == "\n"
+
+    def test_goto(self) -> None:
+        """GOTO with a nonzero register jumps to a numbered instruction."""
+        assert run_and_capture("INVERT GOTO 2 PUSH PUSH") == "1 1\n"

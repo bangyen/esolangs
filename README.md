@@ -231,6 +231,8 @@ Important information about specific language implementations.
 
 - **circlefuck**: The `narcissist` program doesn't work — it hangs regardless of input. The `ThisIsAQuine` quine also outputs its source incorrectly; the `{>[.>]@` quine works correctly.
 
+- **polynomial**: Real roots encoding if/while statements (instruction values 2, 4, 6, and 8) crash the interpreter — the bracket-matching and condition code paths are broken. Arithmetic, output, and input programs work correctly.
+
 - **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 
 ### Usage Notes
