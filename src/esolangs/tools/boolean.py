@@ -83,7 +83,7 @@ def brainif(truth_table, n):
     def build(rows, k):
         if len(rows) == 1:
             r = int(truth_table[rows[0]])
-            block = [("cmd", "if 48 move right"), ("cmd", "if 49 move right")]
+            block: list = [("cmd", "if 48 move right"), ("cmd", "if 49 move right")]
             block += [("cmd", f"if {v} increment") for v in range(48 + r)]
             block.append(("cmd", f"if {48 + r} output"))
             block.append(("if_goto", 48 + r))
