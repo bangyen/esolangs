@@ -652,6 +652,16 @@ def circlefuck(text):
     return "".join(prog)
 
 
+def nocomment(text):
+    """Generate a NoComment program that outputs ``text``.
+
+    NoComment's ``c`` zeroes the current cell, ``i`` increments it, and ``o``
+    prints it as a byte, so each character becomes a fixed ``c`` + ``i``*N + ``o``
+    run.
+    """
+    return "".join("c" + "i" * ord(c) + "o" for c in text)
+
+
 def wii2d(text):
     def build(target):
         best = (float("inf"), "")
@@ -949,6 +959,7 @@ _GENERATORS = {
     "Minifuck": minifuck,
     "Modulous": modulous,
     "Nevermind": nevermind,
+    "NoComment": nocomment,
     "Painfuck": painfuck,
     "Polynomial": polynomial,
     "Qoibl": qoibl,
