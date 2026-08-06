@@ -135,6 +135,7 @@ markers = [
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
+    "ignore:.*found in sys.modules.*:RuntimeWarning",
 ]
 
 [tool.coverage.run]
