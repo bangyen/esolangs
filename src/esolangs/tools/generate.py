@@ -662,6 +662,22 @@ def nocomment(text):
     return "".join("c" + "i" * ord(c) + "o" for c in text)
 
 
+def unsquare(text):
+    """Generate an Unsquare program that outputs ``text``.
+
+    ``OA``/``IA`` build 0/1 in the register and each following ``+`` adds 2,
+    so an even value uses ``OA`` and an odd one ``IA``; ``P`` pushes the
+    register to the stack and ``o`` prints the top byte.
+    """
+
+    def build(v):
+        if v % 2:
+            return "IA" + "+" * ((v - 1) // 2)
+        return "OA" + "+" * (v // 2)
+
+    return "".join(build(ord(c)) + "Po" for c in text)
+
+
 def wii2d(text):
     def build(target):
         best = (float("inf"), "")
@@ -966,6 +982,7 @@ _GENERATORS = {
     "Sophie": sophie,
     "Suffolk": suffolk,
     "Temporary": temporary,
+    "Unsquare": unsquare,
     "WII2D": wii2d,
     "ZTOALC": ztoalc,
     "123": _123,

@@ -6,7 +6,8 @@ nasm, runs the machine code under unicorn, and checks the output.
 
 Compilers with generators (bfstack, suffolk) are round-tripped: the generated
 program is compiled and must reproduce the source text. The others (home-row,
-jaune, unsquare) get fixed programs with known output.
+jaune, unsquare) get fixed programs with known output; unsquare additionally
+round-trips its generator.
 
 Usage:
     python scripts/verify_asm_compilers.py
@@ -26,6 +27,7 @@ CASES = []
 for text in ["Hi", "Hello, World!", "esolangs!"]:
     CASES.append(("bfstack", "bfstack", gen.bfstack(text), text))
     CASES.append(("suffolk", "suffolk", gen.suffolk(text), text))
+    CASES.append(("unsquare", "unsquare", gen.unsquare(text), text))
 CASES.append(("home-row", "home-row", "a" * 65 + "k;", "A"))
 CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))

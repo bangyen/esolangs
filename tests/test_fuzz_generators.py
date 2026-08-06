@@ -52,6 +52,7 @@ NO_INTERPRETER = {
     "painfuck": gen.painfuck,
     "_123": gen._123,
     "nocomment": gen.nocomment,
+    "unsquare": gen.unsquare,
 }
 
 
