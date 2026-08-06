@@ -25,10 +25,7 @@ def prime(number: int) -> bool:
     """Check if a number is prime."""
     if number < 2:
         return False
-    for val in range(2, int(np.sqrt(number)) + 1):
-        if not number % val:
-            return False
-    return True
+    return all(number % val for val in range(2, int(np.sqrt(number)) + 1))
 
 
 def brackets(string: List[List[int]], pointer: int) -> int:
@@ -136,10 +133,7 @@ def sanitize(code: str) -> List[int]:
 
     # Build coefficient list from highest to lowest degree
     max_degree = max(terms.keys())
-    coefficients = []
-
-    for degree in range(max_degree, -1, -1):
-        coefficients.append(terms.get(degree, 0))
+    coefficients = [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
 
     return coefficients
 

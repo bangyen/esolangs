@@ -28,10 +28,10 @@ def run(code):
     var: dict = {}
     skip = False
 
-    for num, val in enumerate(code):
-        val = val.lstrip().rstrip("\n").split(",")
+    for num, raw in enumerate(code):
+        line = raw.lstrip().rstrip("\n").split(",")
 
-        code[num] = [v.replace("*44", ",") for v in val if v]
+        code[num] = [v.replace("*44", ",") for v in line if v]
 
     while ind < len(code):
         if (c := code[ind]) and not skip:

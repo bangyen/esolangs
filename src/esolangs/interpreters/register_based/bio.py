@@ -35,22 +35,21 @@ def run(code: str) -> None:
             print(chr(char_code), end="")
         elif c == "}":
             ind = stk.pop() - 1
-        else:  # 0I[xyz]: While loop
-            if reg[r]:
-                stk.append(ind)
-            else:
-                # Skip the loop block
-                mat = 1
-                while mat:
-                    ind += 1
-                    if ind == len(commands):
-                        break
-                    else:
-                        c = commands[ind][:2]
-                        if c == "0i":
-                            mat += 1
-                        elif c == "}":
-                            mat -= 1
+        elif reg[r]:
+            stk.append(ind)
+        else:
+            # Skip the loop block
+            mat = 1
+            while mat:
+                ind += 1
+                if ind == len(commands):
+                    break
+                else:
+                    c = commands[ind][:2]
+                    if c == "0i":
+                        mat += 1
+                    elif c == "}":
+                        mat -= 1
         ind += 1
 
 

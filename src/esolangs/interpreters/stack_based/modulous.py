@@ -35,7 +35,7 @@ def run(code):
             stk[-1] += int(arg[1])
         elif "SUB" in mod:
             stk[-1] -= int(arg[1])
-        elif "RST" == mod:
+        elif mod == "RST":
             ind = -1
         elif "PSH" in mod:
             if "INT" in mod:
@@ -45,15 +45,12 @@ def run(code):
                 stk += [ord(c) for c in m][::-1]
             elif "VAR" in mod:
                 var[arg[1]] = stk[-1]
-        elif "POP" == mod:
+        elif mod == "POP":
             stk.pop()
-        elif "SWP" == mod:
+        elif mod == "SWP":
             stk.append(stk.pop(-2))
         elif "PRT" in mod:
-            if "VAR" in mod:
-                n = var[arg[1]]
-            else:
-                n = stk.pop()
+            n = var[arg[1]] if "VAR" in mod else stk.pop()
 
             if "INT" in mod:
                 print(n, end="")
@@ -68,9 +65,9 @@ def run(code):
                 stk.append(int(input_str))
             else:
                 stk += [ord(c) for c in str(input_str)][::-1]
-        elif "END" == mod:
+        elif mod == "END":
             return
-        elif "DUP" == mod:
+        elif mod == "DUP":
             stk.append(stk[-1])
         elif "RND" in mod:
             n = secrets.randbelow(int(arg[1]))

@@ -26,10 +26,9 @@ def run(code):
                     val = bin(ord(val[0]))[2:].zfill(8)
                     tape = [*map(int, val)] + tape[8:]
                     inp = 1
-            else:
-                if not tape[ptr]:
-                    tape[ptr + 1] ^= 1
-                    ind += 1
+            elif not tape[ptr]:
+                tape[ptr + 1] ^= 1
+                ind += 1
 
         ind += 1
 

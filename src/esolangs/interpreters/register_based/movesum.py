@@ -54,22 +54,21 @@ def run(code: List[str]) -> None:
                 arr[0] = arr[1]
                 for k in range(2, 5):
                     arr[0] += arr[k]
-            else:
-                if match_result[2].isdigit():
-                    src_idx: int = int(match_result[2])
-                    n: int = arr.get(src_idx, 0)
+            elif match_result[2].isdigit():
+                src_idx: int = int(match_result[2])
+                n: int = arr.get(src_idx, 0)
 
-                    if match_result[3].isdigit():
-                        dst_idx: int = int(match_result[3])
-                        arr[dst_idx] = n
-                    else:
-                        print(n, end=" ")
-                        new = 0
-                elif match_result[3].isdigit():
-                    input_dst_idx: int = int(match_result[3])
-                    input_str: str = input("\nInput: "[new:])
-                    arr[input_dst_idx] = int(input_str) if input_str else 0
-                    new = 1
+                if match_result[3].isdigit():
+                    dst_idx: int = int(match_result[3])
+                    arr[dst_idx] = n
+                else:
+                    print(n, end=" ")
+                    new = 0
+            elif match_result[3].isdigit():
+                input_dst_idx: int = int(match_result[3])
+                input_str: str = input("\nInput: "[new:])
+                arr[input_dst_idx] = int(input_str) if input_str else 0
+                new = 1
 
         num = (num + 1) * (arr == copy)
         ind = (ind + 1) % len(code)

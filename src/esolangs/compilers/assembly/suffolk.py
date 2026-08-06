@@ -132,10 +132,7 @@ def comp(code, num):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 2:
-        loop = int(sys.argv[2])
-    else:
-        loop = 1
+    loop = int(sys.argv[2]) if len(sys.argv) > 2 else 1
 
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as f:

@@ -6,21 +6,20 @@ def count(code, ind):
     code += "  "
     num = 0
 
-    if (start := code[ind]) in "OI":
-        if code[ind + 1] == "A":
-            num = 0 if start == "O" else 1
-            ind += 2
+    if (start := code[ind]) in "OI" and code[ind + 1] == "A":
+        num = 0 if start == "O" else 1
+        ind += 2
 
-            while (ins := code[ind]) in "+-x":
-                if ins == "+":
-                    num += 2
-                elif ins == "-":
-                    num -= 2
-                else:
-                    num *= 2
-                ind += 1
+        while (ins := code[ind]) in "+-x":
+            if ins == "+":
+                num += 2
+            elif ins == "-":
+                num -= 2
+            else:
+                num *= 2
+            ind += 1
 
-            return num, ind
+        return num, ind
     if start in "+-":
         while (ins := code[ind]) in "+-":
             if ins == "+":
@@ -85,11 +84,10 @@ def comp(code):
 
     while ind < len(code):
         num, new = count(code, ind)
-        if (c := code[ind]) in "OI":
-            if (code + " ")[ind + 1] == "A":
-                res += f"\tmov edi, {num}\n"
-                ind = new
-                continue
+        if (c := code[ind]) in "OI" and (code + " ")[ind + 1] == "A":
+            res += f"\tmov edi, {num}\n"
+            ind = new
+            continue
         if c in "OIASPoi":
             if num > 1:
                 res += f"\tmov esi, {num}\n"

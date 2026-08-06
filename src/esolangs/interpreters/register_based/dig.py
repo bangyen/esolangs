@@ -40,10 +40,7 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
                 temp = input("\n" * line + "Input: ")
                 line = False
 
-                if char == "=":
-                    mole = ord(temp[0])
-                else:
-                    mole = int(temp[0])
+                mole = ord(temp[0]) if char == "=" else int(temp[0])
             elif char == ":":
                 if mole < 10:
                     print(mole, end="")
@@ -67,21 +64,20 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
             elif char.isalpha() or char in ".,!?":
                 mole = ord(char)
             num -= 1
-        else:
-            if char in "^>'<":
-                move = "^>'<".find(char)
-            elif char == "#":
-                if (n := value()) == 1:
-                    move += 1
-                elif n == 0:
-                    move -= 1
-                move %= 4
-            elif char == "$":
-                if func():
-                    break
-                num = value()
-            elif char == "@":
+        elif char in "^>'<":
+            move = "^>'<".find(char)
+        elif char == "#":
+            if (n := value()) == 1:
+                move += 1
+            elif n == 0:
+                move -= 1
+            move %= 4
+        elif char == "$":
+            if func():
                 break
+            num = value()
+        elif char == "@":
+            break
 
         x += direct[move][0]
         y += direct[move][1]
