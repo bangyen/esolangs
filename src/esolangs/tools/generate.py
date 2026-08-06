@@ -404,14 +404,39 @@ def qoibl(text):
     )
 
 
+def _collatz_trajectory(start):
+    values = []
+    value = start
+    while value > 1:
+        values.append(value)
+        value = value // 2 if value % 2 == 0 else 3 * value + 1
+    return values
+
+
 def ztoalc(text):
     n = len(text)
-    size = 2**n
-    lines = [""] * size
-    lines[0] = str(size)
+    if not text:
+        return "2"
 
-    for i, ch in enumerate(reversed(text)):
-        lines[2 ** (i + 1) - 1] = f"print {ord(ch)}"
+    best = None
+    for candidate in range(2, 2048):
+        values = _collatz_trajectory(candidate)
+        if len(values) < n:
+            continue
+        cand_size = max(values[:n])
+        if best is None or cand_size < best[0]:
+            best = (cand_size, candidate)
+
+    if best is None:
+        raise ValueError("text too long for the ZTOALC generator")
+
+    size, start = best
+    values = _collatz_trajectory(start)[:n]
+    lines = [""] * size
+    lines[0] = str(start)
+
+    for value, char in zip(values, text):
+        lines[value - 1] = f"print {ord(char)}"
 
     return "\n".join(lines)
 
