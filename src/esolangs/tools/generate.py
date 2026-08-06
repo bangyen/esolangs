@@ -506,6 +506,28 @@ def ztoalc(text):
     return "\n".join(lines)
 
 
+def temporary(text):
+    k = 2 * max((ord(c) + 1 for c in text), default=0) + 2
+    tokens = ["o"]
+    buf: list = []
+
+    for c in text:
+        inc = ord(c) + 1
+        if inc in (9, 10, 11, 12, 13, 28, 29, 30, 31, 32):
+            if buf:
+                tokens.append("*" + "".join(buf))
+                buf = []
+            tokens.append(f"v{inc}")
+        else:
+            buf.append(chr(inc))
+
+    if buf:
+        tokens.append("*" + "".join(buf))
+    tokens.append(f"v{k}")
+
+    return " ".join(tokens)
+
+
 _GENERATORS = {
     "BFStack": bfstack,
     "BrainIf": brainif,
@@ -518,6 +540,7 @@ _GENERATORS = {
     "Painfuck": painfuck,
     "Qoibl": qoibl,
     "Suffolk": suffolk,
+    "Temporary": temporary,
     "ZTOALC": ztoalc,
     "123": _123,
 }
