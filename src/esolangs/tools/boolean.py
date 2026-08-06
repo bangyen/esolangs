@@ -53,3 +53,71 @@ def modulous(truth_table, n):
         return f"[JMP F 2 IF 0][JMP F {d} IF 1][POP]{sub0}[POP]{sub1}"
 
     return "[INP INT]" * n + build(list(range(2**n)), n)
+
+
+def brainif(truth_table, n):
+    """Build a BrainIf program computing the given truth table.
+
+    ``truth_table`` is a binary string of length 2**n indexed by the inputs
+    (most significant first), and ``n`` is the number of inputs.
+
+    BrainIf reads each input into a cell with ``if 0 input``, then a
+    recursive decision tree checks each cell with ``if 48/49 goto`` (the
+    groups' checks sit adjacent so a failed check falls through to the next
+    candidate). Each leaf moves to a fresh cell, increments it to 48+r, and
+    outputs it.
+    """
+
+    entries = []
+    for i in range(n):
+        entries.append(("cmd", "if 0 input"))
+        if i < n - 1:
+            entries.append(("cmd", "if 48 move right"))
+            entries.append(("cmd", "if 49 move right"))
+    for _ in range(n - 1):
+        entries.append(("cmd", "if 48 move left"))
+        entries.append(("cmd", "if 49 move left"))
+
+    counter = [0]
+
+    def build(rows, k):
+        if len(rows) == 1:
+            r = int(truth_table[rows[0]])
+            block = [("cmd", "if 48 move right"), ("cmd", "if 49 move right")]
+            block += [("cmd", f"if {v} increment") for v in range(48 + r)]
+            block.append(("cmd", f"if {48 + r} output"))
+            block.append(("if_goto", 48 + r))
+            return block
+        g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
+        g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
+        l0, l1 = counter[0], counter[0] + 1
+        counter[0] += 2
+        sub0 = build(g0, k + 1)
+        sub1 = build(g1, k + 1)
+        return [
+            ("if", 48, l0),
+            ("if", 49, l1),
+            ("mr", 48, l0),
+            *sub0,
+            ("mr", 49, l1),
+            *sub1,
+        ]
+
+    entries += build(list(range(2**n)), 1)
+    entries.append(("end",))
+    labels = {entry[2]: i + 1 for i, entry in enumerate(entries) if entry[0] == "mr"}
+    end_line = len(entries)
+
+    lines = []
+    for entry in entries:
+        if entry[0] == "cmd":
+            lines.append(entry[1])
+        elif entry[0] == "if":
+            lines.append(f"if {entry[1]} goto {labels[entry[2]]}")
+        elif entry[0] == "mr":
+            lines.append(f"if {entry[1]} move right")
+        elif entry[0] == "if_goto":
+            lines.append(f"if {entry[1]} goto {end_line}")
+        else:
+            lines.append("")
+    return "\n".join(lines)
