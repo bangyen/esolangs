@@ -49,3 +49,8 @@ class TestBrainIfGeneratedHelloWorld:
     def test_unknown_instruction_ignored(self) -> None:
         """Lines without a recognized instruction are ignored."""
         assert run_and_capture(["if 0 output", "if 0 frobnicate"]) == "\x00"
+
+    def test_goto(self) -> None:
+        """goto jumps to the given line number."""
+        code = ["if 0 goto 3", "if 0 output", "if 0 increment", "if 1 output"]
+        assert run_and_capture(code) == "\x01"
