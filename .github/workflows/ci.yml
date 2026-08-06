@@ -203,3 +203,16 @@ jobs:
           nasm -f elf32 -o /dev/null "$f"
           echo "Assembled $f"
         done
+
+    - name: Build and run the RISC-V 123 interpreter
+      run: |
+        sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user
+        riscv64-linux-gnu-gcc -nostdlib -static -march=rv64i -mabi=lp64 \
+          -o /tmp/123-riscv extra/assembly/123-riscv.s
+        # generate the _123 program for "Hi", then run it through the real
+        # qemu-riscv64 (user mode) to verify the interpreter end to end
+        PYTHONPATH=src python3 -c \
+          "from esolangs.tools.generate import _123; open('/tmp/123.prog','w').write(_123('Hi'))"
+        qemu-riscv64 /tmp/123-riscv < /tmp/123.prog > /tmp/123.out
+        [ "$(cat /tmp/123.out)" = "Hi" ] || { echo "got: $(cat /tmp/123.out)"; exit 1; }
+        echo "RISC-V 123 round-tripped Hi"
