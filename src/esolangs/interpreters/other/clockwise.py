@@ -1,30 +1,25 @@
 import sys
 
+COL = [1, 0, -1, 0]
+ROW = [0, 1, 0, -1]
 
-def init(code):
-    col = [1, 0, -1, 0]
-    row = [0, 1, 0, -1]
-    x = y = r = 0
 
-    def move(acc):
-        nonlocal x, y, r
-        o = code[y][x]
-        c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
+def move(x, y, r, code, acc):
+    o = code[y][x]
+    c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
 
-        r = (r + c) % 4
-        x += col[r]
-        y += row[r]
-        b = x or y or not r
+    r = (r + c) % 4
+    x += COL[r]
+    y += ROW[r]
+    b = x or y or not r
 
-        return o, b
-
-    return move
+    return x, y, r, o, b
 
 
 def run(code):
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
-    move = init(code)
+    x = y = r = 0
     cont = True
 
     inp = []
@@ -37,7 +32,7 @@ def run(code):
             inp += list(val.zfill(7))
 
     while cont:
-        ins, cont = move(acc)
+        x, y, r, ins, cont = move(x, y, r, code, acc)
         if ins in "R?!":
             continue
         elif ins == "+":

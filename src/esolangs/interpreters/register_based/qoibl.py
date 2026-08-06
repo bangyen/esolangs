@@ -7,32 +7,36 @@ It uses only the characters 'e', 'r', 't', 'w', 'q', 'y' for programming constru
 
 import re
 import sys
+from dataclasses import dataclass
+
+
+@dataclass
+class State:
+    line: bool = False
 
 
 def run(code):
     """Execute Qoibl program code."""
-    line = False
-    var = {}
+    var: dict = {}
+    state = State()
 
-    def parse(expr):
+    def parse(state, expr):
         """Parse and execute a single Qoibl expression."""
-        nonlocal line
-
         if (op := expr[0]) == "tt":
-            print(chr(parse(expr[1:-1])), end="")
-            line = True
+            print(chr(parse(state, expr[1:-1])), end="")
+            state.line = True
         elif op == "we":
             ind = expr.index("we", 1)
-            var[parse(expr[1:ind])] = parse(expr[ind + 1 : -1])
+            var[parse(state, expr[1:ind])] = parse(state, expr[ind + 1 : -1])
         elif op == "rr":
             ind = expr.index("rr", 1)
-            while parse(expr[1:ind]):
-                parse(expr[ind + 1 : -1])
+            while parse(state, expr[1:ind]):
+                parse(state, expr[ind + 1 : -1])
         elif "yr" in expr:
             beg = expr.index("yr")
             num = expr[beg + 1]
-            x = parse(expr[:beg])
-            y = parse(expr[beg + 3 :])
+            x = parse(state, expr[:beg])
+            y = parse(state, expr[beg + 3 :])
 
             if num == "ee":
                 return x == y
@@ -45,8 +49,8 @@ def run(code):
         elif "ry" in expr:
             beg = expr.index("ry")
             num = expr[beg + 1]
-            x = parse(expr[:beg])
-            y = parse(expr[beg + 3 :])
+            x = parse(state, expr[:beg])
+            y = parse(state, expr[beg + 3 :])
 
             if num == "ee":
                 return x + y
@@ -57,17 +61,17 @@ def run(code):
             elif num == "yy":
                 return x // y
         elif op == "qe":
-            return var.get(parse(expr[1:-1]), 0)
+            return var.get(parse(state, expr[1:-1]), 0)
         elif op == "et":
-            n = input("\n" * line + "Input: ")
-            line = False
+            n = input("\n" * state.line + "Input: ")
+            state.line = False
             return ord(n[0])
         elif re.fullmatch("[ey]+", op):
             op = op.replace("e", "0").replace("y", "1")
             return int(op, 2)
 
     for exp in code:
-        parse(exp.split())
+        parse(state, exp.split())
 
 
 if __name__ == "__main__":
