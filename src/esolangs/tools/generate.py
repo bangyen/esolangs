@@ -1,7 +1,6 @@
 import math
 import re
 import sys
-from collections import deque
 
 from esolangs.tools._ztoalc import _collatz_prefix, _search_start
 from esolangs.tools.ztoalc_starts import STARTS
@@ -471,29 +470,29 @@ def bio(text):
     return "".join(res)
 
 
+_PLUS_REM = ["", "62", "6622", "55599", "559", "5"]  # +5/+6 paths for remainders
+_MINUS_REM = ["", "95", "9955", "999555", "262", "2"]  # -5/-6 paths
+
+
 def _six_five_path(src, dst):
-    """Shortest sequence of 5/6 additions and 2/9 subtractions from src to dst."""
-    steps = [("5", 5), ("6", 6), ("2", -5), ("9", -6)]
-    queue = deque([src])
-    parent: dict = {src: (-1, "")}
+    """Shortest sequence of 5/6 additions and 2/9 subtractions from src to dst.
 
-    while queue:
-        value = queue.popleft()
-        if value == dst:
-            break
-        for cmd, delta in steps:
-            nxt = value + delta
-            if 0 <= nxt <= 255 and nxt not in parent:
-                parent[nxt] = (value, cmd)
-                queue.append(nxt)
-
-    res = []
-    value = dst
-    while value != src:
-        prev, cmd = parent[value]
-        res.append(cmd)
-        value = prev
-    return "".join(reversed(res))
+    The delta is built from a run of sixes (or fives) plus a short remainder
+    pattern, choosing whichever base yields the shorter program.
+    """
+    delta = dst - src
+    if delta < 0:
+        delta = -delta
+        q6, r6 = divmod(delta, 6)
+        q5, r5 = divmod(delta, 5)
+        p6 = "9" * q6 + _MINUS_REM[r6]
+        p5 = "2" * q5 + _MINUS_REM[r5]
+        return p6 if len(p6) <= len(p5) else p5
+    q6, r6 = divmod(delta, 6)
+    q5, r5 = divmod(delta, 5)
+    p6 = "6" * q6 + _PLUS_REM[r6]
+    p5 = "5" * q5 + _PLUS_REM[r5]
+    return p6 if len(p6) <= len(p5) else p5
 
 
 def six_five(text):
