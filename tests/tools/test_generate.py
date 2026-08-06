@@ -111,6 +111,14 @@ class TestGeneratorBranches:
         gen._123("\x00")
         gen._123("".join(chr(k) for k in range(1, 20)))
 
+    def test_laserfuck_zero_loop(self) -> None:
+        """A small value makes laserfuck's loop end with no tail."""
+        gen.laserfuck("\x14")
+
+    def test_painfuck_negative_loop(self) -> None:
+        """A large negative delta exercises painfuck's subtract loop."""
+        gen.painfuck("H$")
+
     def test_module_entry_point(self) -> None:
         """python -m esolangs.tools.generate runs as a script."""
         import subprocess
