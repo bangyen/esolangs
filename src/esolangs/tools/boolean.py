@@ -149,3 +149,46 @@ def nevermind(truth_table, n):
 
     build(0, 0)
     return "\n".join(lines)
+
+
+def circlefuck(truth_table, n):
+    """Build a CircleFuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length 2**n indexed by the inputs
+    (most significant first), and ``n`` is the number of inputs.
+
+    CircleFuck reads each input with ``,`` and normalizes it to 0/1 with 48
+    ``-``s, then a decision tree branches on the cells from the last input
+    down. Each leaf starts from a cleared cell, so it sets the result with
+    ``+``s, prints it, and halts with ``@`` -- halting at the leaf means the
+    tree never needs to skip the sibling branch.
+    """
+
+    def emit(c):
+        prog.append(c)
+
+    prog: list = []
+    for _ in range(n):
+        emit(",")
+        prog.extend("-" * 48)
+        emit(">")
+    prog.pop()  # the trailing ">" would leave the pointer past the last input
+
+    def build(k, row):
+        if k < 0:
+            prog.extend("+" * (48 + int(truth_table[row])))
+            emit(".")
+            emit("@")
+            return
+        emit("[")
+        emit("[-]")
+        if k:
+            emit("<")
+        build(k - 1, row + 2 ** (n - 1 - k))
+        emit("]")
+        if k:
+            emit("<")
+        build(k - 1, row)
+
+    build(n - 1, 0)
+    return "".join(prog)
