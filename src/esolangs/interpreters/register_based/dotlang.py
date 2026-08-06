@@ -103,7 +103,12 @@ def run(code):
             dot.dir = "^>v<".find(val)
         elif val == "#":
             if g := dot.match(r"#(\d+(\.\d+)?|`.*`)"):
-                dot.new(g[0][1:].replace("`", ""))
+                content = g[0][1:]
+                if content.startswith("`"):
+                    # a backtick literal is always a string
+                    dot.val = content[1:-1]
+                else:
+                    dot.new(content)
                 if dot.dir == 1:
                     dot.y += len(g[0]) - 1
             elif dot.val is not None:
