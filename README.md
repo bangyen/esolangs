@@ -210,11 +210,12 @@ python -m esolangs.tools.binary 0111   # 2-input OR gate
 The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import brainif, modulous, sophie
+from esolangs.tools.boolean import brainif, modulous, nevermind, sophie
 
-sophie("0110", 2)     # 2-input XOR in Sophie
-modulous("0110", 2)   # the same truth table in Modulous
-brainif("0110", 2)    # and in BrainIf
+sophie("0110", 2)      # 2-input XOR in Sophie
+modulous("0110", 2)    # the same truth table in Modulous
+brainif("0110", 2)     # and in BrainIf
+nevermind("0110", 2)   # and in Nevermind
 ```
 
 ### Program Generator

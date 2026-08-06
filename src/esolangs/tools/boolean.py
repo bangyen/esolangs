@@ -121,3 +121,31 @@ def brainif(truth_table, n):
         else:
             lines.append("")
     return "\n".join(lines)
+
+
+def nevermind(truth_table, n):
+    """Build a Nevermind program computing the given truth table.
+
+    ``truth_table`` is a binary string of length 2**n indexed by the inputs
+    (most significant first), and ``n`` is the number of inputs.
+
+    Nevermind reads each input with ``input,?`` into its own variable, then a
+    decision tree of nested ``if``/``endif`` blocks prints the result for the
+    matching combination.
+    """
+    lines = []
+    for i in range(n):
+        lines.append("input,?")
+        lines.append(f"make,{chr(ord('a') + i)},$answer")
+
+    def build(k, row):
+        if k == n:
+            lines.append(f"print,{truth_table[row]}")
+            return
+        for bit in (0, 1):
+            lines.append(f"if,${chr(ord('a') + k)},==,{bit}")
+            build(k + 1, row * 2 + bit)
+            lines.append("endif")
+
+    build(0, 0)
+    return "\n".join(lines)
