@@ -10,6 +10,7 @@ from esolangs.interpreters.other.ztoalc import run as ztoalc_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
+from esolangs.interpreters.stack_based.temporary import run as temporary_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 
@@ -41,6 +42,21 @@ class TestGeneratorRoundTrips:
         """The Collatz trajectory from the chosen start visits each slot once."""
         assert roundtrip(ztoalc_run, gen.ztoalc("Hi").splitlines()) == "Hi"
         assert roundtrip(ztoalc_run, gen.ztoalc("").splitlines()) == ""
+
+    def test_temporary(self) -> None:
+        """The Temporary Stack squish prints each character."""
+        assert roundtrip(temporary_run, gen.temporary("Hi")) == "Hi"
+        assert roundtrip(temporary_run, gen.temporary("")) == ""
+
+    def test_temporary_long_text(self) -> None:
+        """Text longer than 13 characters is split across stack resets."""
+        text = "".join(chr(33 + (i % 94)) for i in range(30))
+        assert roundtrip(temporary_run, gen.temporary(text)) == text
+
+    def test_temporary_control_characters(self) -> None:
+        """Characters whose increment is whitespace are pushed with vN."""
+        text = "a\tb \n\x00\x7f"
+        assert roundtrip(temporary_run, gen.temporary(text)) == text
 
     def test_ztoalc_compact(self) -> None:
         """The program is far smaller than the 2**n power-of-2 scheme."""
@@ -151,6 +167,7 @@ class TestGeneratorBranches:
         assert "--- EXCON ---" in out
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
+        assert "--- Temporary ---" in out
         assert "--- ZTOALC ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
@@ -170,6 +187,7 @@ class TestGeneratorBranches:
             gen.excon,
             gen.modulous,
             gen.qoibl,
+            gen.temporary,
         ]
         inputs = [
             "\x01",
