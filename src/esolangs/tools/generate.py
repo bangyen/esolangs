@@ -351,18 +351,22 @@ def painfuck(text):
 
 
 def suffolk(text):
-    res = ""
-    num = 0
-
-    for c in text:
+    res = []
+    for k, c in enumerate(text):
         n = ord(c) + 1
-        a = int(n**0.5)
-        b = (n // a) * "<"
-        tail = (n % a) * ">!"
-        num = max(num, a)
-        res += f'{a * "!"}{tail}' f"><{b}.!>><>!\n"
-
-    return ">>!" * num + "\n" + res[-1:]
+        a = max(1, int(n**0.5))
+        b, r = divmod(n, a)
+        counter, add = 2 * k + 1, 2 * k + 2
+        # A leading ! zeroes the leftover accumulator from the previous char.
+        res.append(
+            "!"
+            + (">" * counter + "!") * a
+            + (">" * add + "!") * r
+            + (">" * counter + "<") * b
+            + ">" * add
+            + "<."
+        )
+    return "\n".join(res)
 
 
 def _123(text):
