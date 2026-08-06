@@ -85,6 +85,13 @@ class TestGeneratorBranches:
         assert "--- BFStack ---" in out
         assert "--- BrainIf ---" in out
 
+    def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
+        with patch("sys.argv", ["esolangs.tools.generate"]):
+            with pytest.raises(SystemExit):
+                gen.main()
+        out = capsys.readouterr().out
+        assert "usage: python -m esolangs.tools.generate" in out
+
     def test_edge_case_inputs(self) -> None:
         """Generators must not crash on edge-case inputs."""
         generators = [gen.magnitude, gen.painfuck, gen.laserfuck, gen.suffolk]
