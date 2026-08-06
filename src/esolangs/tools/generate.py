@@ -7,6 +7,19 @@ from esolangs.tools._ztoalc import _collatz_prefix, _search_start
 from esolangs.tools.ztoalc_starts import STARTS
 
 
+def _ilog(base, n):
+    """Floor of log_base(n), computed with integers to avoid float error.
+
+    Raises ValueError for non-positive ``n``, like ``int(math.log(n, base))``.
+    """
+    if n < 1:
+        raise ValueError("log of non-positive number")
+    k = 0
+    while base ** (k + 1) <= n:
+        k += 1
+    return k
+
+
 def bfstack(text):
     res = ">\n"
     acc = 0
@@ -73,12 +86,11 @@ def container(text):
 
 def forth(text):
     s = "0123456789ABCDEF"
-    text = text[::-1]
     res = ""
 
-    for c in text:
+    for c in text[::-1]:
         o = ord(c)
-        n = int(math.log(o, 15))
+        n = _ilog(15, o)
         m = o // (15**n)
         p = o - m * 15**n
 
@@ -249,11 +261,11 @@ def magnitude(text):
             y = close(n, 3)
 
             if n - x < n - y:
-                num = int(math.log(x // 2, 2))
+                num = _ilog(2, x // 2)
                 prog += "s" + num * "m"
                 n -= x
             elif y:
-                num = int(math.log(y // 3, 2))
+                num = _ilog(2, y // 3)
                 prog += "i" + num * "m"
                 n -= y
 
@@ -261,12 +273,11 @@ def magnitude(text):
             prog += "ips"
             mode = not mode
         elif n > 2:
-            prog += (n // 3) * "i"
-            n = n % 3
-
-            if n % 3 == 1:
-                prog = prog[:-1]
-                n += 3
+            q, r = divmod(n, 3)
+            if r == 1:
+                q, r = q - 1, r + 3
+            prog += q * "i"
+            n = r
 
         prog += (n // 2) * "s" + mode * "p" + "e"
         last = ord(c)
@@ -281,7 +292,7 @@ def painfuck(text):
 
     def close(val, s, op):
         if val > 7:
-            pwr = int(math.log(val, 7))
+            pwr = _ilog(7, val)
             s += pwr * "c" + op
             val -= 7**pwr
         if val:
@@ -298,7 +309,7 @@ def painfuck(text):
         sqr = int(math.sqrt(val))
 
         if sqr > 3:
-            move = ("rl", "lr")["r" in res]
+            move = "lr" if "r" in res else "rl"
             s += move + add(sqr) + "al"
 
             if op == "p":
@@ -337,17 +348,17 @@ def painfuck(text):
         last = ord(c)
         res += "u"
 
-    cyc = ["rwzjkvep", "dlahiqbostcuy"]
-    text = res
-    res = ""
+    # The two output cycles substitute each emitted character by the one
+    # ``k`` steps further along its cycle, keeping the tape uncluttered.
+    cycles = ["rwzjkvep", "dlahiqbostcuy"]
+    shifted = ""
+    for k, ch in enumerate(res):
+        for cycle in cycles:
+            if ch in cycle:
+                n = cycle.find(ch)
+                shifted += cycle[(n + k) % len(cycle)]
 
-    for k in range(len(text)):
-        for c in cyc:
-            if text[k] in c:
-                n = c.find(text[k])
-                res += c[(n + k) % len(c)]
-
-    return res
+    return shifted
 
 
 def suffolk(text):
@@ -366,15 +377,16 @@ def suffolk(text):
 
 
 def _123(text):
+    """A 1/2 program per character, terminated by a trailing 1."""
     res = ""
     last = 0
 
     for c in text:
-        b = bin(ord(c) ^ last)[2:].zfill(8).rstrip("0")
-        s = b.replace("0", "2").replace("1", "122")
+        bits = bin(ord(c) ^ last)[2:].zfill(8).rstrip("0")
+        encoded = bits.replace("0", "2").replace("1", "122")
 
-        if n := len(b):
-            res += f"{s[:-2]}" f'{"121" * n}'[:-1] + "\n"
+        if n := len(bits):
+            res += f"{encoded[:-2]}" f'{"121" * n}'[:-1] + "\n"
         else:
             res += "12112\n"
         last = ord(c)
@@ -432,13 +444,16 @@ def ztoalc(text):
 
 
 def temporary(text):
+    # These control/whitespace characters cannot be embedded in the ``*``
+    # string literal, so they are output via their own ``v<value>`` token.
+    special = (9, 10, 11, 12, 13, 28, 29, 30, 31, 32)
     k = 2 * max((ord(c) + 1 for c in text), default=0) + 2
     tokens = ["o"]
     buf: list = []
 
     for c in text:
         inc = ord(c) + 1
-        if inc in (9, 10, 11, 12, 13, 28, 29, 30, 31, 32):
+        if inc in special:
             if buf:
                 tokens.append("*" + "".join(buf))
                 buf = []
@@ -516,6 +531,7 @@ _ASCII_ART_BLOCKS = {
 
 
 def ascii_art(text):
+    # An empty program still needs a cell; the "+" block is a no-op.
     if not text:
         return _ASCII_ART_BLOCKS["+"]
     bf = "".join("[-]" + "+" * ord(c) + "." for c in text)
