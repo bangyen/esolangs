@@ -526,30 +526,45 @@ def minifuck(text):
     if "\x00" in text:
         raise ValueError("Minifuck cannot output the NUL character")
     res = []
-    tape = [0] * 10
+    tape = [0] * 8
     ptr = 0
 
-    for i, c in enumerate(text):
-        if i:
-            res.append("<" * ptr)
-            ptr = 0
+    def ensure(index):
+        while len(tape) <= index:
+            tape.append(0)
+
+    def flip(position):
+        nonlocal ptr
+        ptr = position + 1
+        ensure(ptr + 1)
+        tape[ptr] ^= 1
+        if not tape[ptr]:
+            ensure(ptr + 2)
+            tape[ptr + 1] ^= 1
+
+    for c in text:
         bits = [int(b) for b in f"{ord(c):07b}"]
-        for k in range(1, 8):
-            res.append("[x")
+        first = next((k for k in range(1, 8) if tape[k] != bits[k - 1]), None)
+        if first is None:
+            res.append(".")
             ptr += 1
+            ensure(ptr)
             tape[ptr] ^= 1
-            if not tape[ptr]:
-                tape[ptr + 1] ^= 1
+            continue
+        if ptr > first - 1:
+            res.append("<" * (ptr - (first - 1)))
+            ptr = first - 1
+        for k in range(ptr + 1 if ptr < first - 1 else first, 8):
+            res.append("[x")
+            flip(k - 1)
             if tape[k] != bits[k - 1]:
                 res.append("<")
                 ptr -= 1
                 res.append("[x")
-                ptr += 1
-                tape[ptr] ^= 1
-                if not tape[ptr]:
-                    tape[ptr + 1] ^= 1
+                flip(k - 1)
         res.append(".")
         ptr += 1
+        ensure(ptr)
         tape[ptr] ^= 1
 
     return "".join(res)

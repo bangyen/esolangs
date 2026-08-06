@@ -84,9 +84,9 @@ class TestGeneratorRoundTrips:
             gen.minifuck("\x00")
 
     def test_minifuck_carries_tape(self) -> None:
-        """The tape carries between characters; the pointer resets each time."""
+        """The tape carries between characters; a matching character is a bare dot."""
         assert gen.minifuck("A") == "[x[x<[x[x[x[x[x[x<[x."
-        assert gen.minifuck("AA") == "[x[x<[x[x[x[x[x[x<[x.<<<<<<<<[x<[x[x[x[x[x[x[x."
+        assert gen.minifuck("AA") == "[x[x<[x[x[x[x[x[x<[x.."
 
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""
