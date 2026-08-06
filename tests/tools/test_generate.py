@@ -72,7 +72,7 @@ class TestGeneratorRoundTrips:
         assert roundtrip(ascii_run, gen.ascii_art("")) == ""
 
     def test_minifuck(self) -> None:
-        """Each character is printed via a BFS-built [x flip sequence."""
+        """Each character is printed by flipping the differing tape bits."""
         minifuck_run = importlib.import_module(
             "esolangs.interpreters.tape_based.minifuck"
         ).run
@@ -83,15 +83,10 @@ class TestGeneratorRoundTrips:
         with pytest.raises(ValueError, match="NUL"):
             gen.minifuck("\x00")
 
-    def test_minifuck_search_failure(self) -> None:
-        """The flip search returns None when the length bound is too small."""
-        assert gen._minifuck_find(65, 0, [0] * 8, maxlen=0) is None
-
-    def test_minifuck_generation_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """minifuck raises when no program is found for a character."""
-        monkeypatch.setattr(gen, "_minifuck_find", lambda *a, **k: None)
-        with pytest.raises(ValueError, match="could not generate"):
-            gen.minifuck("A")
+    def test_minifuck_carries_tape(self) -> None:
+        """The tape carries between characters; the pointer resets each time."""
+        assert gen.minifuck("A") == "[x[x<[x[x[x[x[x[x<[x."
+        assert gen.minifuck("AA") == "[x[x<[x[x[x[x[x[x<[x.<<<<<<<<[x<[x[x[x[x[x[x[x."
 
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""

@@ -522,63 +522,36 @@ def ascii_art(text):
     return "\n\n".join(_ASCII_ART_BLOCKS[ch] for ch in bf)
 
 
-def _minifuck_find(target, ptr, tape, maxlen=60):
-    """BFS the shortest minifuck program from (ptr, tape) that prints target.
-
-    ``[`` flips the current bit and, if it lands on 0, flips the next bit and
-    skips one instruction; a filler ``x`` after each ``[`` absorbs that skip,
-    so the search moves with ``[x`` pairs and ``<``, ending in a printing ``.``.
-    """
-    start = (ptr, tuple(tape))
-    queue = deque([(start, "")])
-    seen = {start}
-
-    while queue:
-        (p, t), prog = queue.popleft()
-        if len(prog) >= maxlen:
-            continue
-        for cmd in ("[x", "<"):
-            nt = list(t)
-            np = p
-            if cmd == "<":
-                if not np:
-                    continue
-                np -= 1
-            else:
-                np += 1
-                if np + 1 >= len(nt):
-                    nt.append(0)
-                nt[np] ^= 1
-                if not nt[np]:
-                    if np + 2 >= len(nt):
-                        nt.append(0)
-                    nt[np + 1] ^= 1
-            state = (np, tuple(nt))
-            if state not in seen:
-                seen.add(state)
-                queue.append((state, prog + cmd))
-        nt = list(t)
-        np = p + 1
-        if np + 1 >= len(nt):
-            nt.append(0)
-        nt[np] ^= 1
-        if int("".join(map(str, nt[:8])), 2) == target:
-            return prog + ".", np, tuple(nt)
-    return None
-
-
 def minifuck(text):
     if "\x00" in text:
         raise ValueError("Minifuck cannot output the NUL character")
-    tape = [0] * 8
-    ptr = 0
     res = []
-    for c in text:
-        found = _minifuck_find(ord(c), ptr, tape)
-        if found is None:
-            raise ValueError(f"could not generate a program for {c!r}")
-        prog, ptr, tape = found
-        res.append(prog)
+    tape = [0] * 10
+    ptr = 0
+
+    for i, c in enumerate(text):
+        if i:
+            res.append("<" * ptr)
+            ptr = 0
+        bits = [int(b) for b in f"{ord(c):07b}"]
+        for k in range(1, 8):
+            res.append("[x")
+            ptr += 1
+            tape[ptr] ^= 1
+            if not tape[ptr]:
+                tape[ptr + 1] ^= 1
+            if tape[k] != bits[k - 1]:
+                res.append("<")
+                ptr -= 1
+                res.append("[x")
+                ptr += 1
+                tape[ptr] ^= 1
+                if not tape[ptr]:
+                    tape[ptr + 1] ^= 1
+        res.append(".")
+        ptr += 1
+        tape[ptr] ^= 1
+
     return "".join(res)
 
 
