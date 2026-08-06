@@ -240,6 +240,13 @@ class TestPolynomialExecution:
             run("f(x) = x^2 - 6x + 8")
         assert buffer.getvalue() == ""
 
+    def test_input_instruction(self) -> None:
+        """A root of 4i encodes an input instruction (value stored in reg)."""
+        import unittest.mock
+
+        with unittest.mock.patch("builtins.input", return_value="A"):
+            run("f(x) = x^2+16")  # does not crash; reg stores the input
+
 
 class TestConvertRealRoots:
     """Real roots encode instructions reached through later primes."""

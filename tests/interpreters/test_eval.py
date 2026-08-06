@@ -24,6 +24,10 @@ class TestEval:
         """A backtick inside stringmode becomes a double quote."""
         assert run_and_capture('"`".') == '"'
 
+    def test_charmode(self) -> None:
+        """' wraps the string in double quotes."""
+        assert run_and_capture("'ab\".") == '"ab"'
+
     def test_move_between_stacks(self) -> None:
         """= moves a value to the other stack; ~ switches the current stack."""
         assert run_and_capture("0=~.") == "0"

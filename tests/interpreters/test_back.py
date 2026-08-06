@@ -30,3 +30,11 @@ class TestBack:
     def test_skip_instruction_on_zero(self) -> None:
         """+ skips the next cell when the current bit is 0."""
         assert run_and_capture([">+-*"]) == "0 0\n"
+
+    def test_reflect_backslash(self) -> None:
+        """\\ reflects the direction."""
+        assert run_and_capture(["\\-*"]) == "1\n"
+
+    def test_reflect_slash(self) -> None:
+        """/ reflects the direction."""
+        assert run_and_capture(["/-*"]) == "1\n"
