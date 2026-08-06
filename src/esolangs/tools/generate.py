@@ -616,7 +616,7 @@ def minifuck(text):
 
 def wii2d(text):
     def build(target):
-        best = None
+        best = (float("inf"), "")
         for cost, digit, value, ops in [
             (1, min(target, 9), lambda d: d, lambda d: f"{d}"),
             (2, round(target**0.5), lambda d: d * d, lambda d: f"{d}s"),
@@ -627,10 +627,9 @@ def wii2d(text):
             d = max(0, min(9, digit))
             v = value(d)
             total = cost + abs(target - v)
-            if best is None or total < best[0]:
+            if total < best[0]:
                 adj = target - v
                 best = (total, ops(d) + ("+" * adj if adj >= 0 else "-" * -adj))
-        assert best is not None
         return best[1]
 
     prog = ">" + "".join(build(ord(c)) + "~" for c in text) + "."
@@ -783,7 +782,7 @@ def mammalian(text):
     for c in text:
         t = ord(c)
         walks = _mammalian_walk(ptr)
-        best = None
+        best = (float("inf"), 0, 0, 0)
 
         for q in range(23):
             target = (t - sum(extras[q])) % 256
@@ -798,11 +797,11 @@ def mammalian(text):
                     mid_k = (k + mid) % 256
                     if q in walks[mid_k]:
                         steps = walks[mid_k][q]
-                        if best is None or seeds + steps < best[0]:
+                        if seeds + steps < best[0]:
                             best = (seeds + steps, mid_k, final, steps)
                         break
 
-        if best is None:
+        if best[0] == float("inf"):
             raise ValueError(f"mammalian: cannot build {c!r}")
         _, mid_k, final, steps = best
         dk = (mid_k - k) % 256
