@@ -1,0 +1,5 @@
+if 0 input
+if 48 output
+if 48 goto 6
+if 49 output
+if 49 goto 2
