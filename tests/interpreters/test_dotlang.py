@@ -306,13 +306,13 @@ class TestEdgeCases:
     def test_vertical_paren_scan(self):
         """A down-moving dot's ( scan reaches the grid bottom."""
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(["•v", "(2#"])
+            run(["v• ", " (2#"])
             assert mock_stdout.getvalue() == ""
 
     def test_vertical_type_check(self):
         """A type-check on a vertically moving dot turns it."""
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(["•v#42:", "   #"])
+            run(["v• ", " #42", " :  "])
             assert mock_stdout.getvalue() == ""
 
     def test_invalid_warp(self):

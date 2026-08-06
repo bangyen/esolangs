@@ -76,6 +76,15 @@ class TestNevermind:
         code = ["if,5,>,3", "if,2,>,1", "print,deep", "endif", "endif", "print,done"]
         assert run_and_capture(code) == "deep\ndone\n"
 
+    def test_false_if_skips_nested_block(self) -> None:
+        """A false outer if scans past a nested if to the matching endif."""
+        code = ["if,5,<,3", "if,2,>,1", "print,deep", "endif", "endif", "print,done"]
+        assert run_and_capture(code) == "done\n"
+
+    def test_unmatched_if_scans_off_end(self) -> None:
+        """A false if with no matching endif halts cleanly."""
+        assert run_and_capture(["if,5,<,3", "print,x"]) == ""
+
     def test_loop_with_nested_if(self) -> None:
         code = ["loop,2", "if,1,>,0", "print,x", "endif", "endloop"]
         assert run_and_capture(code) == "x\nx\n"
