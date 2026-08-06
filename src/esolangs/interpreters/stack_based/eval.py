@@ -1,38 +1,43 @@
 import re
 import sys
+from dataclasses import dataclass, field
+
+
+@dataclass
+class State:
+    ptr: int = 0
+    stk: list = field(default_factory=lambda: [[], []])
 
 
 def run(code):
-    ptr = 0
-    stk: list = [[], []]
+    state = State()
 
     dct = {
-        "`": lambda: stk[ptr].append(1 - ptr),
-        "^": lambda: stk[ptr].append(stk[ptr][-1]),
-        "0": lambda: stk[ptr].append(0),
-        "+": lambda: stk[ptr].append(stk[ptr].pop() + 1),
-        "-": lambda: stk[ptr].append(stk[ptr].pop() - 1),
-        ".": lambda: print(stk[ptr].pop(), end=""),
-        "=": lambda: stk[1 - ptr].append(stk[ptr].pop()),
-        ";": lambda: stk[ptr].pop(),
+        "`": lambda: state.stk[state.ptr].append(1 - state.ptr),
+        "^": lambda: state.stk[state.ptr].append(state.stk[state.ptr][-1]),
+        "0": lambda: state.stk[state.ptr].append(0),
+        "+": lambda: state.stk[state.ptr].append(state.stk[state.ptr].pop() + 1),
+        "-": lambda: state.stk[state.ptr].append(state.stk[state.ptr].pop() - 1),
+        ".": lambda: print(state.stk[state.ptr].pop(), end=""),
+        "=": lambda: state.stk[1 - state.ptr].append(state.stk[state.ptr].pop()),
+        ";": lambda: state.stk[state.ptr].pop(),
     }
 
     def ins(sym):
-        nonlocal ptr
         ind = 0
 
         while ind < len(sym):
             if (char := sym[ind]) in dct:
                 dct[char]()
             elif char == "~":
-                ptr ^= 1
+                state.ptr ^= 1
             elif char == "*":
-                stk[ptr] = stk[ptr][::-1]
+                state.stk[state.ptr] = state.stk[state.ptr][::-1]
             elif char == "?":
-                if not stk[ptr].pop():
+                if not state.stk[state.ptr].pop():
                     ind += 1
             elif char == "!":
-                ins(stk[ptr].pop())
+                ins(state.stk[state.ptr].pop())
             elif char in "\"'":
                 match = re.match('[^"]*', sym[ind + 1 :])
                 s = match[0].replace("`", '"') if match else ""
@@ -40,7 +45,7 @@ def run(code):
                 if char == "'":
                     s = f'"{s}"'
 
-                stk[ptr].append(s)
+                state.stk[state.ptr].append(s)
 
             ind += 1
 
