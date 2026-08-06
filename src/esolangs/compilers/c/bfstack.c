@@ -49,8 +49,10 @@ int main(int argc, char *argv[]) {
       str = "while (stack[n]) {";
       break;
     case ']':
-      str = "}";
-      brackets--;
+      if (brackets > 0) {
+        str = "}";
+        brackets--;
+      }
       break;
     }
 
@@ -65,6 +67,8 @@ int main(int argc, char *argv[]) {
     brackets += ch == '[';
   }
 
+  for (; brackets > 0; brackets--)
+    fputs("\t}\n", output);
   fputs("\treturn 0;\n}\n", output);
   fclose(file);
   fclose(output);
