@@ -84,3 +84,35 @@ class TestGeneratorBranches:
         out = capsys.readouterr().out
         assert "--- BFStack ---" in out
         assert "--- BrainIf ---" in out
+
+    def test_edge_case_inputs(self) -> None:
+        """Generators must not crash on edge-case inputs."""
+        generators = [gen.magnitude, gen.painfuck, gen.laserfuck, gen.suffolk]
+        inputs = [
+            "\x01",
+            "a\x01",
+            "za",
+            "AB",
+            "zZ",
+            " \n",
+            "\x7f",
+            "!@#",
+            "aaaa",
+            "".join(chr(k) for k in range(33, 127)),
+        ]
+        for gen_fn in generators:
+            for text in inputs:
+                gen_fn(text)
+
+    def test_module_entry_point(self) -> None:
+        """python -m esolangs.tools.generate runs as a script."""
+        import subprocess
+        import sys
+
+        result = subprocess.run(
+            [sys.executable, "-m", "esolangs.tools.generate", "Hi"],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        assert "--- BFStack ---" in result.stdout
