@@ -39,6 +39,14 @@ class TestBFStack:
         """[ jumps past its matching ] when the top is zero."""
         assert run_and_capture(">[>]") == ""
 
+    def test_loop_skip_nested(self) -> None:
+        """A skipped loop with nested [ brackets counts both."""
+        assert run_and_capture(">[[-]]") == ""
+
+    def test_loop_skip_unmatched(self) -> None:
+        """A skipped [ with no closing ] halts cleanly."""
+        assert run_and_capture(">[") == ""
+
     def test_output_on_empty_stack_raises(self) -> None:
         import pytest
 

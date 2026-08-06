@@ -163,6 +163,11 @@ class TestHomeRow:
         assert ".top" in output
         assert ".bot" in output
 
+    def test_odd_loop_count(self) -> None:
+        """An odd loop count emits the jne .top branch."""
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        assert "jne .top" in mod.comp("jlajl")
+
     def test_conditionals_and_loop(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.home-row")
         assert ".skip" in mod.comp("j")
@@ -328,6 +333,11 @@ class TestUnsquare:
         assert "mov edi" in mod.comp("OA-")
         assert "mov edi" in mod.comp("OAx")
 
+    def test_nested_loop_scan(self) -> None:
+        """Nested > in the OI-A scan increments the match counter."""
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod.comp("OA>>I<<<")  # must not crash
+
 
 class TestSuffolkComp:
     def test_compiles_various_programs(self) -> None:
@@ -336,6 +346,11 @@ class TestSuffolkComp:
             output = mod.comp(program, 1)
             assert output.startswith("global _start")
             assert output
+
+    def test_counted_left(self) -> None:
+        """Repeated < commands emit a count via edx."""
+        mod = importlib.import_module("esolangs.compilers.assembly.suffolk")
+        assert "mov edx" in mod.comp("<<<<", 1)
 
 
 class TestCompilerFuzz:
