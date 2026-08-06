@@ -7,34 +7,11 @@ visited value, and writes the mapping to ztoalc_starts.py.
 Usage: python scripts/make_ztoalc_table.py
 """
 
-from array import array
 from pathlib import Path
 
-LIMIT = 1_000_000
+from esolangs.tools._ztoalc import _ZTOALC_TABLE_LIMIT, _collatz_length_table
+
 OUT = Path(__file__).resolve().parent.parent / "src/esolangs/tools/ztoalc_starts.py"
-
-
-def collatz_lengths(limit):
-    lengths = array("H", [0]) * (limit + 1)
-    lengths[1] = 0
-
-    for start in range(2, limit + 1):
-        if lengths[start]:
-            continue
-
-        path = []
-        value = start
-        while value > 1 and (value > limit or not lengths[value]):
-            path.append(value)
-            value = value // 2 if value % 2 == 0 else 3 * value + 1
-
-        length = lengths[value] if value <= limit else 0
-        for value in reversed(path):
-            length += 1
-            if value <= limit:
-                lengths[value] = length
-
-    return lengths
 
 
 def best_starts(lengths):
@@ -65,4 +42,4 @@ def write_module(starts):
 
 
 if __name__ == "__main__":
-    write_module(best_starts(collatz_lengths(LIMIT)))
+    write_module(best_starts(_collatz_length_table(_ZTOALC_TABLE_LIMIT)))
