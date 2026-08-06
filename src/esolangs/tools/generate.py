@@ -2,6 +2,7 @@ import math
 import re
 import sys
 
+from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools._ztoalc import _collatz_prefix, _search_start
 from esolangs.tools.ztoalc_starts import STARTS
 
@@ -572,18 +573,19 @@ def minifuck(text):
 def wii2d(text):
     def build(target):
         best = None
-        for d in range(10):
-            for cost, value, ops in [
-                (1, d, f"{d}"),
-                (2, d * d, f"{d}s"),
-                (2, 2 * d, f"{d}*"),
-                (3, 2 * d * d, f"{d}s*"),
-                (3, 4 * d, f"{d}**"),
-            ]:
-                total = cost + abs(target - value)
-                if best is None or total < best[0]:
-                    adj = target - value
-                    best = (total, ops + ("+" * adj if adj >= 0 else "-" * -adj))
+        for cost, digit, value, ops in [
+            (1, min(target, 9), lambda d: d, lambda d: f"{d}"),
+            (2, round(target**0.5), lambda d: d * d, lambda d: f"{d}s"),
+            (2, round(target / 2), lambda d: 2 * d, lambda d: f"{d}*"),
+            (3, round((target / 2) ** 0.5), lambda d: 2 * d * d, lambda d: f"{d}s*"),
+            (3, round(target / 4), lambda d: 4 * d, lambda d: f"{d}**"),
+        ]:
+            d = max(0, min(9, digit))
+            v = value(d)
+            total = cost + abs(target - v)
+            if best is None or total < best[0]:
+                adj = target - v
+                best = (total, ops(d) + ("+" * adj if adj >= 0 else "-" * -adj))
         assert best is not None
         return best[1]
 
@@ -624,41 +626,6 @@ def dig(text):
     return "\n".join([r0, "".join(r1)])
 
 
-def _polynomial_primes(count):
-    primes: list = []
-    candidate = 2
-    while len(primes) < count:
-        if all(candidate % p for p in primes):
-            primes.append(candidate)
-        candidate += 1
-    return primes
-
-
-def _polynomial_multiply(a, b):
-    result = [0] * (len(a) + len(b) - 1)
-    for i, ai in enumerate(a):
-        for j, bj in enumerate(b):
-            result[i + j] += ai * bj
-    return result
-
-
-def _polynomial_format(coeffs):
-    terms = []
-    degree = len(coeffs) - 1
-    for i, coeff in enumerate(coeffs):
-        d = degree - i
-        if coeff == 0:
-            continue
-        prefix = (
-            ""
-            if coeff == 1 and d > 0
-            else ("-" if coeff == -1 and d > 0 else str(coeff))
-        )
-        power = f"x^{d}" if d > 1 else ("x" if d == 1 else "")
-        terms.append(f"{prefix}{power}")
-    return "f(x) = " + " + ".join(terms).replace("+ -", "- ")
-
-
 def polynomial(text):
     instrs = []
     prev = 0
@@ -672,10 +639,10 @@ def polynomial(text):
         prev = ord(c)
 
     coeffs = [1]
-    for (a, b), p in zip(instrs, _polynomial_primes(len(instrs))):
-        coeffs = _polynomial_multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
+    for (a, b), p in zip(instrs, primes(len(instrs))):
+        coeffs = multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
 
-    return _polynomial_format(coeffs)
+    return format_coeffs(coeffs)
 
 
 _GENERATORS = {
