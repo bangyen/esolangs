@@ -310,6 +310,14 @@ class TestLightlangComplexPrograms:
         # ^ sets bit to 1, & skips /, then halt
         assert f.getvalue() == ""
 
+    def test_jump_to_start_terminates(self) -> None:
+        """< jumps to the start; the toggled bit makes & behave differently."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("^&#<")
+        # First pass: ^ (bit 1), & skips #, < jumps to start.
+        # Second pass: ^ (bit 0), & does not skip, # halts.
+        assert f.getvalue() == ""
+
     def test_multiple_prints(self) -> None:
         """Test multiple print commands."""
         with redirect_stdout(io.StringIO()) as f:

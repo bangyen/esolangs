@@ -54,3 +54,8 @@ class TestZTOALCVariables:
         """x = -5 then x + 8 gives 3."""
         code = ["3", "jump x 0", "x = -5", "print x", "x + 8"]
         assert run_and_capture(code) == "\x03"
+
+    def test_firing_jump(self) -> None:
+        """A jump with a nonzero condition increments the pointer."""
+        code = ["3", "print 105", "jump if 1", "print 104"]
+        assert run_and_capture(code) == "hi"
