@@ -76,3 +76,47 @@ class TestBFPDA:
 class TestRAM0:
     def test_increment(self, tmp_path: Path) -> None:
         assert compile_and_run("RAM0.c", "A A A", tmp_path) == b"Z: 3\nN: 0\n"
+
+
+class TestCFuzzing:
+    """C compilers must not crash or emit invalid C on arbitrary input."""
+
+    ALPHABET = "><+-.,[]{}_|#@$%^&*;:?!\\/'\"" + "0123456789" + "ANZLSCxyz \n"
+
+    @pytest.mark.parametrize("compiler", ["bfstack.c", "excon.c", "bf-pda.c", "RAM0.c"])
+    def test_random_input_produces_valid_c(self, compiler: str, tmp_path: Path) -> None:
+        import random
+
+        compiler_bin = tmp_path / "compiler"
+        result = subprocess.run(
+            ["gcc", str(COMPILERS_DIR / compiler), "-o", str(compiler_bin)],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+
+        random.seed(11)
+        for _ in range(20):
+            source = "".join(
+                random.choice(self.ALPHABET) for _ in range(random.randint(1, 50))
+            )
+            src_file = tmp_path / "in.txt"
+            src_file.write_text(source)
+            result = subprocess.run(
+                [str(compiler_bin), str(src_file)],
+                cwd=tmp_path,
+                capture_output=True,
+                text=True,
+            )
+            assert result.returncode < 128, f"compiler crashed on {source!r}"
+
+            generated = tmp_path / "output.c"
+            assert generated.exists(), "compiler produced no output.c"
+            check = subprocess.run(
+                ["gcc", "-c", "-o", "/dev/null", str(generated)],
+                capture_output=True,
+                text=True,
+            )
+            assert (
+                check.returncode == 0
+            ), f"output.c invalid for {source!r}:\n{check.stderr}"
