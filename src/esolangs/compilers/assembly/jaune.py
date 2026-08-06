@@ -22,10 +22,7 @@ def count(code, ind):
         else:
             return n, ind + 1
     elif start in ":$@?!":
-        if (c := code[ind - 1]) == "v":
-            num = -1
-        else:
-            num = int(c) if c.isdigit() else -1
+        num = -1 if (c := code[ind - 1]) == "v" else int(c) if c.isdigit() else -1
         ind += 1
     else:
         while code[ind] == start:
@@ -66,10 +63,7 @@ def prep(code):
 
     for s in findall(r"(?:[v\d][?!]){2,}", code):
         if "?" in s and "!" in s:
-            if s[1] == "?":
-                n = s.find("!")
-            else:
-                n = s.find("?")
+            n = s.find("!") if s[1] == "?" else s.find("?")
 
             repl = s[:2] + rep(s[2 : n - 1]) + s[n - 1 : n + 1] + rep(s[n + 1 :])
         else:
@@ -132,11 +126,10 @@ def comp(code):
                         res += "\tdec dword [ecx]\n"
                     else:
                         res += f"\tsub dword [ecx], {-num}\n"
+                elif c == "+":
+                    res += "\tadd [ecx], eax\n"
                 else:
-                    if c == "+":
-                        res += "\tadd [ecx], eax\n"
-                    else:
-                        res += "\tsub [ecx], eax\n"
+                    res += "\tsub [ecx], eax\n"
         elif c == "#":
             res += "\tmov edi, [ecx]\n"
         elif c == ":":

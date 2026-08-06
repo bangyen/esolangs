@@ -354,10 +354,9 @@ def suffolk(text):
         n = ord(c) + 1
         a = int(n**0.5)
         b = (n // a) * "<"
-        c = (n % a) * ">!"
-        if a > num:
-            num = a
-        res += f'{a * "!"}{c}' f"><{b}.!>><>!\n"
+        tail = (n % a) * ">!"
+        num = max(num, a)
+        res += f'{a * "!"}{tail}' f"><{b}.!>><>!\n"
 
     return ">>!" * num + "\n" + res[-1:]
 
