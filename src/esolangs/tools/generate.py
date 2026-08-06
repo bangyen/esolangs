@@ -645,12 +645,49 @@ def polynomial(text):
     return format_coeffs(coeffs)
 
 
+def clockwise(text):
+    """A 1D parity program wrapped around the perimeter of a square.
+
+    The turtle walks the ring clockwise, executing one instruction per cell.
+    Three corner ``R`` cells turn it, and the final cell walks it back to the
+    origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
+    ``+`` is emitted only when the accumulator's parity needs to flip.
+    """
+    prog = ""
+    parity = 0
+    for c in text:
+        for bit in bin(ord(c))[2:].zfill(7):
+            if parity != int(bit):
+                prog += "+"
+                parity = int(bit)
+            prog += ";"
+
+    if not prog:
+        return ""
+
+    n = max(3, (len(prog) + 10) // 4)
+    ring = [(i, 0) for i in range(n - 1)]
+    ring += [(n - 1, i) for i in range(1, n - 1)]
+    ring += [(i, n - 1) for i in range(n - 2, 0, -1)]
+    ring += [(0, i) for i in range(n - 2, 0, -1)]
+
+    grid = [[" "] * n for _ in range(n)]
+    for (x, y), ch in zip(ring, prog):
+        grid[y][x] = ch
+    grid[0][n - 1] = "R"
+    grid[n - 1][n - 1] = "R"
+    grid[n - 1][0] = "R"
+
+    return "\n".join("".join(row) for row in grid)
+
+
 _GENERATORS = {
     "6-5": six_five,
     "ASCII art": ascii_art,
     "BFStack": bfstack,
     "BIO": bio,
     "BrainIf": brainif,
+    "Clockwise": clockwise,
     "Container": container,
     "Dig": dig,
     "EXCON": excon,
