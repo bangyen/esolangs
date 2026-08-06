@@ -231,8 +231,6 @@ Important information about specific language implementations.
 
 - **circlefuck**: The `narcissist` program doesn't work — it hangs regardless of input. The `ThisIsAQuine` quine also outputs its source incorrectly; the `{>[.>]@` quine works correctly.
 
-- **The Temporary Stack**: The `\` instruction ("repeat until the stack is empty") never terminates when the stack is non-empty — no instruction pops values, and the squish (per the spec's strict "greater than" condition) can never remove the final element. It only completes when the stack is already empty (e.g., after the every-15-command reset). This is a limitation of the language's design.
-
 - **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 
 ### Usage Notes
