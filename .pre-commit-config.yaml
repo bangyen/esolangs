@@ -3,7 +3,9 @@ repos:
     rev: v4.4.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^examples/  # Generated programs match the generator exactly
       - id: end-of-file-fixer
+        exclude: ^examples/  # Generated programs match the generator exactly
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags
       - id: check-added-large-files
@@ -16,7 +18,7 @@ repos:
       - id: check-docstring-first
 
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 26.3.1
     hooks:
       - id: black
         language_version: python3
@@ -39,7 +41,7 @@ repos:
     hooks:
       - id: check-interpreter-syntax
         name: Check interpreter syntax
-        entry: python -m py_compile
+        entry: python3 -m py_compile
         language: system
         files: ^src/esolangs/.*\.py$
         pass_filenames: true

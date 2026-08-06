@@ -120,7 +120,7 @@ TRUTH_MACHINE_EXAMPLES = {
 BASE_DIR = Path(__file__).parent.parent
 
 
-def run_with_input(name: str, subdir: str) -> str:
+def run_with_input(name: str, subdir: str) -> None:
     examples = CAT_EXAMPLES if subdir == "cat" else TRUTH_MACHINE_EXAMPLES
     module, inputs, expected, splitlines = examples[name]
     run = importlib.import_module("esolangs.interpreters." + module).run
