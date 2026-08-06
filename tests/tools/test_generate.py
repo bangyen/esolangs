@@ -49,7 +49,7 @@ class TestGeneratorRoundTrips:
         assert roundtrip(ztoalc_run, program.splitlines()) == "Hello, World!"
 
     def test_ztoalc_extends_search(self) -> None:
-        """Longer text extends the search past the base limit for a better start."""
+        """Longer text uses a precomputed start far beyond the base search limit."""
         text = "a" * 200
         program = gen.ztoalc(text)
         assert int(program.splitlines()[0]) > 20000
@@ -62,10 +62,23 @@ class TestGeneratorRoundTrips:
         program = gen.ztoalc(text)
         assert roundtrip(ztoalc_run, program.splitlines()) == text
 
+    def test_ztoalc_searches_beyond_table(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A length missing from the table falls back to a dynamic search."""
+        monkeypatch.setattr(gen, "STARTS", {1: 2, 3: 8})
+        monkeypatch.setattr(gen, "_ZTOALC_TABLE_LIMIT", 2)
+        monkeypatch.setattr(gen, "_ZTOALC_MAX_LIMIT", 100)
+        program = gen.ztoalc("ab")
+        assert program.splitlines() == ["4", "print 98", "", "print 97"]
+        assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
+
     def test_ztoalc_power_of_two_fallback(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """When no trajectory is found within the search cap, the power-of-2 scheme is used."""
+        """When neither the table nor the search finds a start, the power-of-2 scheme is used."""
+        monkeypatch.setattr(gen, "STARTS", {1: 2})
+        monkeypatch.setattr(gen, "_ZTOALC_TABLE_LIMIT", 2)
         monkeypatch.setattr(gen, "_ZTOALC_MAX_LIMIT", 2)
         program = gen.ztoalc("ab")
         assert program.splitlines() == ["4", "print 98", "", "print 97"]
