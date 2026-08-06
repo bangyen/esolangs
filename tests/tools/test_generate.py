@@ -60,6 +60,7 @@ class TestGeneratorRoundTrips:
         """#<char>, sets the accumulator and prints it as a character."""
         assert roundtrip(sophie_run, gen.sophie("Hello, World!")) == "Hello, World!"
         assert roundtrip(sophie_run, gen.sophie("a\nb")) == "a\nb"
+        assert roundtrip(sophie_run, gen.sophie("a$b")) == "a$b"
 
     def test_bio(self) -> None:
         """Registers walk to each character value, then 1ix prints it."""
@@ -78,6 +79,7 @@ class TestGeneratorRoundTrips:
             roundtrip(dig_run, gen.dig("Hello, World!").splitlines()) == "Hello, World!"
         )
         assert roundtrip(dig_run, gen.dig("abcd").splitlines()) == "abcd"
+        assert roundtrip(dig_run, gen.dig("0E").splitlines()) == "0E"
 
     def test_clockwise(self) -> None:
         """The 1D parity program wraps around a square ring's perimeter."""
@@ -129,6 +131,7 @@ class TestGeneratorRoundTrips:
             roundtrip(dotlang_run, gen.dotlang("Hello, World!").splitlines())
             == "Hello, World!"
         )
+        assert roundtrip(dotlang_run, gen.dotlang("123").splitlines()) == "123"
         assert roundtrip(dotlang_run, gen.dotlang("").splitlines()) == ""
 
     def test_dotlang_multiline(self) -> None:
@@ -147,6 +150,8 @@ class TestGeneratorRoundTrips:
         """nevermind cannot print multiline text, *44, a leading $, or ²³¹."""
         with pytest.raises(ValueError):
             gen.nevermind("a\nb")
+        with pytest.raises(ValueError):
+            gen.nevermind("a\x0bb")
         with pytest.raises(ValueError):
             gen.nevermind("a*44b")
         with pytest.raises(ValueError):

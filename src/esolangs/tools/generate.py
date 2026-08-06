@@ -467,7 +467,9 @@ def temporary(text):
 
 
 def sophie(text):
-    return "".join(f"#${ord(c)}," if c == "\n" else f"#{c}," for c in text)
+    # "$" would be taken as the numeric marker by "#$", so it uses the
+    # numeric form like a newline does.
+    return "".join(f"#${ord(c)}," if c in "\n$" else f"#{c}," for c in text)
 
 
 def bio(text):
@@ -610,6 +612,10 @@ def wii2d(text):
 def dig(text):
     if not all(c == " " or c in ".,!?" or c.isalnum() for c in text):
         raise ValueError("Dig can only output letters, digits, spaces and .,!?")
+    # Each "$" reads a single-digit count from the row below, so a segment can
+    # drive at most nine work commands: four "c:" pairs (two per character).
+    # A segment that starts with a digit would be read as the count instead,
+    # so it gets one extra padding cell first.
     row0 = [">"]
     row1 = [" "]
     seg: list = []
@@ -617,9 +623,12 @@ def dig(text):
     def flush():
         if not seg:
             return
-        n = len(seg) * 2
+        pad = 1 if seg[0][0].isdigit() else 0
+        n = pad + len(seg) * 2
         row0.append("$")
-        row1.append(str(n % 10))
+        row1.append(str(n))
+        if pad:
+            row0.append(" ")
         row0.extend(seg)
         row1.extend(" " * n)
         seg.clear()
@@ -819,9 +828,14 @@ def nevermind(text):
     """A ``print`` command whose arguments are joined without a separator.
 
     Commas separate arguments, so they are encoded as ``*44``, which the
-    interpreter expands back to a comma.
+    interpreter expands back to a comma.  Line breaks would split the program
+    into separate lines, so they are rejected too.
     """
-    if "\n" in text or "*44" in text or text.startswith("$"):
+    if (
+        any(c in "\n\r\v\f\x1c\x1d\x1e\x85" for c in text)
+        or "*44" in text
+        or text.startswith("$")
+    ):
         raise ValueError("nevermind can only print a single line without *44 or $")
     bad = [c for c in text if c.isdigit() and not c.isdecimal()]
     if bad:
