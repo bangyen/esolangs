@@ -28,6 +28,7 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     CASES.append(("bfstack", "bfstack", gen.bfstack(text), text))
     CASES.append(("suffolk", "suffolk", gen.suffolk(text), text))
     CASES.append(("unsquare", "unsquare", gen.unsquare(text), text))
+    CASES.append(("home-row", "home-row", gen.home_row(text), text))
 CASES.append(("home-row", "home-row", "a" * 65 + "k;", "A"))
 CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
