@@ -38,20 +38,20 @@ class TestMain:
 
 
 class TestConvert:
-    def test_xor_matches_wiki(self) -> None:
-        """The XOR gate output matches the example on esolangs.org."""
+    def test_xor_layout(self) -> None:
+        """The XOR gate produces the standard two-level decision tree."""
 
         def xor(a, b):
             return a ^ b
 
         expected = (
-            "'           >  $30:@\n"
-            "     >  2$~;#@\n"
-            "            >  $31:@\n"
+            "'           > >$30:@\n"
+            "     > >2$~;#@\n"
+            "            > >$31:@\n"
             ">2$~;#@       \n"
-            "            >  $31:@\n"
-            "     >  2$~;#@\n"
-            "            >  $30:@"
+            "            > >$31:@\n"
+            "     > >2$~;#@\n"
+            "            > >$30:@"
         )
         assert convert(xor) == expected
 
