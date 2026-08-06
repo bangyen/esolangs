@@ -13,6 +13,7 @@ from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
+from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 
 
 def roundtrip(interpreter, program):
@@ -152,8 +153,18 @@ class TestGeneratorBranches:
         """A character lower than the previous one takes the negative branch."""
         assert "-1 A>=" in gen.container("ba")
 
+    def test_suffolk(self) -> None:
+        """The tape-based Suffolk program prints the text in one cycle."""
+        import io
+        from contextlib import redirect_stdout
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            suffolk_run(gen.suffolk("Hi"), limit=1)
+        assert buffer.getvalue() == "Hi"
+
     def test_suffolk_empty(self) -> None:
-        assert gen.suffolk("") == "\n"
+        assert gen.suffolk("") == ""
 
     def test_123_empty(self) -> None:
         assert gen._123("") == "1"
