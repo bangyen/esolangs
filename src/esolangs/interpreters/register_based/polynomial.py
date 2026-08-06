@@ -39,6 +39,8 @@ def brackets(string: List[List[int]], pointer: int) -> int:
     count = direct
     while count:
         pointer += direct
+        if pointer < 0 or pointer >= len(string):
+            return max(0, min(pointer, len(string) - 1))
         if len(string[pointer]) == 1:
             if string[pointer][0] in [2, 6]:
                 count -= 1
@@ -57,7 +59,14 @@ def convert(pre: List[complex]) -> List[List[int]]:
     post: List[List[int]] = []
     num = 2
 
-    while sorted_roots:
+    # A prime power p**v (v >= 1) is always >= p, so once num exceeds the
+    # largest root magnitude no further root can match.
+    if rounded_roots:
+        limit = max(max(abs(np.imag(k)), abs(np.real(k))) for k in rounded_roots)
+    else:
+        limit = 0
+
+    while sorted_roots and num <= limit + 1:
         if not prime(num):
             num += 1
             continue
@@ -80,11 +89,12 @@ def convert(pre: List[complex]) -> List[List[int]]:
 
 def sanitize(code: str) -> List[int]:
     """Parse polynomial string into coefficient list."""
-    # Remove "f(x) = " prefix
-    if not code.startswith("f(x) = "):
+    # Remove "f(x) = " prefix (with or without surrounding spaces)
+    match = re.match(r"f\(x\)\s*=\s*(.*)", code)
+    if not match:
         return [0]
 
-    code = code[7:].strip()  # Remove "f(x) = "
+    code = match.group(1).strip()
 
     # Handle simple cases
     if not code or code == "0":
@@ -189,7 +199,7 @@ def run(code: str) -> None:
             beg = instructions[brackets(instructions, ind)][0]
             if beg > 4 and sym[(beg - 1) % 4 + 6]():
                 ind = brackets(instructions, ind)
-        elif not sym[(one % 4) + 5]():
+        elif not sym[((one - 1) % 4) + 6]():
             ind = brackets(instructions, ind)
         ind += 1
         step_count += 1

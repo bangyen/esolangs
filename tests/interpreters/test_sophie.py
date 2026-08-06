@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.esolangs.interpreters.register_based.sophie import find, run
+from esolangs.interpreters.register_based.sophie import find, run
 
 
 class TimeoutError(Exception):

@@ -13,7 +13,7 @@ from typing import Any, Callable
 
 import pytest
 
-from src.esolangs.interpreters.register_based.RAM0 import run
+from esolangs.interpreters.register_based.RAM0 import run
 
 
 class TimeoutError(Exception):

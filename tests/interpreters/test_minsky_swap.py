@@ -9,10 +9,12 @@ import importlib.util
 import io
 import sys
 from contextlib import redirect_stdout
+from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
     "minsky_swap",
-    "/Users/bangyen/Documents/repos/esolangs/src/esolangs/interpreters/register_based/minsky-swap.py",
+    Path(__file__).parents[2]
+    / "src/esolangs/interpreters/register_based/minsky-swap.py",
 )
 assert spec is not None, "Failed to load module spec"
 minsky_swap = importlib.util.module_from_spec(spec)

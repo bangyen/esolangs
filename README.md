@@ -2,6 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://python.org)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Coverage](coverage-badge.svg)](coverage-badge.svg)
 
 A comprehensive collection of interpreters and compilers for esoteric programming languages (esolangs). This repository contains implementations of various esoteric languages, ranging from classic stack-based languages to modern register-based systems.
 
@@ -50,21 +51,31 @@ just test
 You can run interpreters as Python modules from the command line:
 
 ```bash
-python -m esolangs.interpreters.<language> program.txt
+python -m esolangs.interpreters.<category>.<language> program.txt
 ```
+
+Where `<category>` is one of `register_based`, `tape_based`, `stack_based`, or `other`.
 
 ### Running a Compiler
 
-Similarly, you can run compilers as Python modules:
+Similarly, you can run assembly compilers as Python modules:
 
 ```bash
-python -m esolangs.compilers.<language> program.txt output.asm
+python -m esolangs.compilers.assembly.<language> program.txt
 ```
 
-### Example: Running a Brainfuck Program
+This writes the generated assembly to `output.asm`.
+
+### Example: Running a BrainIf Program
 
 ```bash
-python -m esolangs.interpreters.brainif hello_world.bf
+python -m esolangs.interpreters.tape_based.brainif hello_world.bf
+```
+
+Alternatively, the `esolangs` command runs any module:
+
+```bash
+esolangs esolangs.interpreters.tape_based.brainif hello_world.bf
 ```
 
 ## Implemented Languages
@@ -188,10 +199,10 @@ Utility programs that work with the esoteric languages.
 
 ### Binary Function Generator
 
-The `binary.py` program implements a given boolean function in Dig.
+The `binary.py` program implements a given boolean function in Dig. The function is given as a truth table string (LSB-order output bits):
 
 ```bash
-python -m esolangs.tools.binary
+python -m esolangs.tools.binary 0111   # 2-input OR gate
 ```
 
 ### Program Generator
@@ -219,7 +230,7 @@ Important information about specific language implementations.
 
 ### Known Issues
 
-- **circlefuck**: The `narcissist` program is the only program for which the interpreter doesn't work. The extended `quine` program doesn't work because it modifies a `+` symbol, causing it to increment incorrectly.
+- **circlefuck**: The `narcissist` program doesn't work — it hangs regardless of input. The `ThisIsAQuine` quine also outputs its source incorrectly; the `{>[.>]@` quine works correctly.
 
 - **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 

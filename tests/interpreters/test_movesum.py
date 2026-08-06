@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.esolangs.interpreters.register_based.movesum import run
+from esolangs.interpreters.register_based.movesum import run
 
 
 class TestMovesumBasicCommands:
@@ -20,17 +20,17 @@ class TestMovesumBasicCommands:
 
     def test_sum_command(self) -> None:
         """Test sum command sets position 0 to sum of positions 1-4."""
-        code = ["0=0 1=1 2=2 3=3 4=4", "sum"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=0 1=1 2=2 3=3 4=4", "sum", "move 0 -1"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should halt immediately as array doesn't change after sum
+        assert f.getvalue() == "10 "
 
     def test_move_command_positive_indices(self) -> None:
         """Test move command with positive indices copies values."""
-        code = ["0=5 1=10", "move 0 2", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=5 1=10", "move 0 2", "move 2 -1"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should halt after two move 0 0 commands
+        assert f.getvalue() == "5 "
 
     def test_move_command_output(self) -> None:
         """Test move command with negative second argument outputs value."""
@@ -41,11 +41,11 @@ class TestMovesumBasicCommands:
 
     def test_move_command_input(self) -> None:
         """Test move command with negative first argument reads input."""
-        code = ["0=0", "move -1 0", "move 0 0"]
+        code = ["0=0", "move -1 0", "move 0 -1"]
         with patch("builtins.input", return_value="42"):
-            with redirect_stdout(io.StringIO()):
+            with redirect_stdout(io.StringIO()) as f:
                 run(code)
-        # Array should be updated with input value
+        assert f.getvalue() == "42 "
 
     def test_move_command_both_negative(self) -> None:
         """Test move command with both arguments negative does nothing."""
@@ -56,42 +56,42 @@ class TestMovesumBasicCommands:
 
     def test_initialization_with_values(self) -> None:
         """Test array initialization with key=value pairs."""
-        code = ["0=4 3=8 19=3 15=12345", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=4 3=8 19=3 15=12345", "move 3 -1", "move 15 -1"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should halt after move 0 0
+        assert f.getvalue() == "8 12345 "
 
     def test_initialization_with_42_key(self) -> None:
         """Test initialization with 42 as key (user input)."""
-        code = ["42=5", "move 0 0"]
+        code = ["42=5", "move 10 -1", "move 0 0"]
         with patch("builtins.input", return_value="10"):
-            with redirect_stdout(io.StringIO()):
+            with redirect_stdout(io.StringIO()) as f:
                 run(code)
-        # Should set position 10 to 5
+        assert f.getvalue() == "5 "
 
     def test_initialization_with_42_value(self) -> None:
         """Test initialization with 42 as value (user input)."""
-        code = ["0=42", "move 0 0"]
+        code = ["0=42", "move 0 -1", "move 0 0"]
         with patch("builtins.input", return_value="99"):
-            with redirect_stdout(io.StringIO()):
+            with redirect_stdout(io.StringIO()) as f:
                 run(code)
-        # Should set position 0 to 99
+        assert f.getvalue() == "99 "
 
     def test_initialization_with_42_both(self) -> None:
         """Test initialization with 42 as both key and value."""
-        code = ["42=42", "move 0 0"]
+        code = ["42=42", "move 5 -1", "move 0 0"]
         with patch("builtins.input", side_effect=["5", "7"]):
-            with redirect_stdout(io.StringIO()):
+            with redirect_stdout(io.StringIO()) as f:
                 run(code)
-        # Should set position 5 to 7
+        assert f.getvalue() == "7 "
 
     def test_empty_input_handling(self) -> None:
         """Test handling of empty input (EOF)."""
-        code = ["0=42", "move 0 0"]
+        code = ["0=42", "move 0 -1", "move 0 0"]
         with patch("builtins.input", return_value=""):
-            with redirect_stdout(io.StringIO()):
+            with redirect_stdout(io.StringIO()) as f:
                 run(code)
-        # Should set position 0 to 0 (empty input treated as 0)
+        assert f.getvalue() == "0 "
 
 
 class TestMovesumProgramFlow:
@@ -120,10 +120,10 @@ class TestMovesumProgramFlow:
 
     def test_array_expansion(self) -> None:
         """Test that array expands beyond initial 5 positions."""
-        code = ["0=1", "move 0 10", "move 10 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=1", "move 0 10", "move 10 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should handle positions beyond initial range
+        assert f.getvalue() == "1 "
 
 
 class TestMovesumExamples:
@@ -165,17 +165,17 @@ class TestMovesumExamples:
         """Test program that adds two inputs."""
         code = ["1=42 2=42", "sum", "move 0 -1", "move 0 0"]
         with patch("builtins.input", side_effect=["5", "3"]):
-            with redirect_stdout(io.StringIO()):
+            with redirect_stdout(io.StringIO()) as f:
                 run(code)
-        # Should output 8 (5+3)
+        assert f.getvalue() == "8 "
 
     def test_truth_machine_zero(self) -> None:
         """Test truth machine with input 0."""
         code = ["0=42", "move 0 -1", "move 0 1", "move 2 1"]
         with patch("builtins.input", return_value="0"):
-            with redirect_stdout(io.StringIO()):
+            with redirect_stdout(io.StringIO()) as f:
                 run(code)
-        # Should output 0 once
+        assert f.getvalue() == "0 "
 
 
 class TestMovesumEdgeCases:
@@ -190,10 +190,10 @@ class TestMovesumEdgeCases:
 
     def test_large_array_indices(self) -> None:
         """Test handling of large array indices."""
-        code = ["0=1", "move 0 1000", "move 1000 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=1", "move 0 1000", "move 1000 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should handle large indices
+        assert f.getvalue() == "1 "
 
     def test_negative_array_indices(self) -> None:
         """Test handling of negative array indices in move command."""
@@ -204,38 +204,38 @@ class TestMovesumEdgeCases:
 
     def test_sum_with_zeros(self) -> None:
         """Test sum command with all zeros."""
-        code = ["0=0 1=0 2=0 3=0 4=0", "sum", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=0 1=0 2=0 3=0 4=0", "sum", "move 0 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should set position 0 to 0
+        assert f.getvalue() == "0 "
 
     def test_sum_with_large_values(self) -> None:
         """Test sum command with large values."""
-        code = ["0=0 1=1000 2=2000 3=3000 4=4000", "sum", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=0 1=1000 2=2000 3=3000 4=4000", "sum", "move 0 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should set position 0 to 10000
+        assert f.getvalue() == "10000 "
 
     def test_multiple_initialization_pairs(self) -> None:
         """Test initialization with many key=value pairs."""
-        code = ["0=1 1=2 2=3 3=4 4=5 5=6 6=7 7=8 8=9 9=10", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=1 1=2 2=3 3=4 4=5 5=6 6=7 7=8 8=9 9=10", "move 9 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should initialize all positions correctly
+        assert f.getvalue() == "10 "
 
     def test_whitespace_in_initialization(self) -> None:
         """Test initialization with various whitespace patterns."""
-        code = ["0 = 1   2=3   4 = 5", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0 = 1   2=3   4 = 5", "move 4 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should handle whitespace correctly
+        assert f.getvalue() == "5 "
 
     def test_instruction_with_whitespace(self) -> None:
         """Test instructions with various whitespace patterns."""
-        code = ["0=1 1=2", "move  0  1", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=1 1=2", "move  0  1", "move 1 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should handle whitespace in instructions
+        assert f.getvalue() == "1 "
 
 
 class TestMovesumValidation:
