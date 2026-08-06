@@ -351,22 +351,18 @@ def painfuck(text):
 
 
 def suffolk(text):
+    if not text:
+        return ""
+    # Cell 2 is a persistent helper large enough that ``!`` (which computes
+    # max(0, cell + 1 - acc)) zeroes cells 0 and 1, so they can be reused.
+    big = max(int((ord(c) + 1) ** 0.5) for c in text) + 2
     res = []
-    for k, c in enumerate(text):
+    for c in text:
         n = ord(c) + 1
         a = max(1, int(n**0.5))
         b, r = divmod(n, a)
-        counter, add = 2 * k + 1, 2 * k + 2
-        # A leading ! zeroes the leftover accumulator from the previous char.
-        res.append(
-            "!"
-            + (">" * counter + "!") * a
-            + (">" * add + "!") * r
-            + (">" * counter + "<") * b
-            + ">" * add
-            + "<."
-        )
-    return "\n".join(res)
+        res.append(f">><!>><>!{'!' * a}{'>!' * r}><{'<' * b}.")
+    return ">>!" * big + "\n" + "\n".join(res)
 
 
 def _123(text):
