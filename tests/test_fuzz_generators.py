@@ -51,6 +51,7 @@ NO_INTERPRETER = {
     "magnitude": gen.magnitude,
     "painfuck": gen.painfuck,
     "_123": gen._123,
+    "nocomment": gen.nocomment,
 }
 
 
