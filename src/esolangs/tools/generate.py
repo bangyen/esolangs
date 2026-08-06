@@ -681,6 +681,92 @@ def clockwise(text):
     return "\n".join("".join(row) for row in grid)
 
 
+_MAMMALIAN_WALK = {}
+
+
+def _mammalian_walk(ptr):
+    """SPRINT paths from ``ptr`` for every possible SEED count mod 256.
+
+    SEED gives array ``i`` the first value ``(i + 1) * K``, so a SPRINT from
+    array ``q`` jumps the pointer to ``(q + (q + 1) * K) % 23``.  Each entry
+    maps a SEED count to the arrays it visits and the step each is first hit.
+    """
+    if ptr not in _MAMMALIAN_WALK:
+        paths = []
+        for k in range(256):
+            q = ptr
+            seen = {}
+            for step in range(1, 47):
+                q = (q + ((q + 1) * k) % 256) % 23
+                if q not in seen:
+                    seen[q] = step
+            paths.append(seen)
+        _MAMMALIAN_WALK[ptr] = paths
+    return _MAMMALIAN_WALK[ptr]
+
+
+def mammalian(text):
+    """A SEED/SPRINT walk that reaches the array whose value is the character.
+
+    SEED once so every array's first value is ``(i + 1) * K`` for the running
+    SEED count K, letting SPRINT move.  For each character, a run of SEEDs is
+    split around the SPRINT walk: the first count is chosen so the walk lands
+    on a usable array, the final count so that DIGEST there equals the
+    character.  EXCRETE stores the value (an "extra") and clears the
+    accumulator for the next character.
+    """
+    if not text:
+        return ""
+    k = 1
+    ptr = 0
+    extras: list[list[int]] = [[] for _ in range(23)]
+    prog = ["SEED"]
+
+    for c in text:
+        t = ord(c)
+        walks = _mammalian_walk(ptr)
+        best = None
+
+        for q in range(23):
+            target = (t - sum(extras[q])) % 256
+            g = math.gcd(q + 1, 256)
+            if target % g:
+                continue
+            base = (target // g) * pow((q + 1) // g, -1, 256 // g) % (256 // g)
+            for lift in range(g):
+                final = base + lift * (256 // g)
+                seeds = (final - k) % 256
+                for mid in range(seeds + 1):
+                    mid_k = (k + mid) % 256
+                    if q in walks[mid_k]:
+                        steps = walks[mid_k][q]
+                        if best is None or seeds + steps < best[0]:
+                            best = (seeds + steps, mid_k, final, steps)
+                        break
+
+        if best is None:
+            raise ValueError(f"mammalian: cannot build {c!r}")
+        _, mid_k, final, steps = best
+        dk = (mid_k - k) % 256
+        d = (final - mid_k) % 256
+        prog += (
+            ["SEED"] * dk
+            + ["SPRINT"] * steps
+            + ["SEED"] * d
+            + [
+                "DIGEST",
+                "PRONOUNCE",
+                "EXCRETE",
+            ]
+        )
+        k += dk + d
+        for _ in range(steps):
+            ptr = (ptr + ((ptr + 1) * mid_k) % 256) % 23
+        extras[ptr].append(t % 256)
+
+    return "\n".join(prog)
+
+
 _GENERATORS = {
     "6-5": six_five,
     "ASCII art": ascii_art,
@@ -694,6 +780,7 @@ _GENERATORS = {
     "Forþ": forth,
     "LaserFuck": laserfuck,
     "Magnitude": magnitude,
+    "MAMMALIAN": mammalian,
     "Minifuck": minifuck,
     "Modulous": modulous,
     "Painfuck": painfuck,

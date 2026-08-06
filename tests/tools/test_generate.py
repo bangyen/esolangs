@@ -21,6 +21,7 @@ from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
+from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 
 
@@ -82,6 +83,23 @@ class TestGeneratorRoundTrips:
             == "Hello, World!"
         )
         assert gen.clockwise("") == ""
+
+    def test_mammalian(self) -> None:
+        """A SEED/SPRINT walk reaches the array holding each character."""
+        assert roundtrip(mammalian_run, gen.mammalian("Hi")) == "Hi"
+        assert (
+            roundtrip(mammalian_run, gen.mammalian("Hello, World!")) == "Hello, World!"
+        )
+        assert gen.mammalian("") == ""
+
+    def test_mammalian_unreachable(self) -> None:
+        """Report a character when no SEED/SPRINT walk can reach a value."""
+        with patch(
+            "esolangs.tools.generate._mammalian_walk",
+            return_value=[{} for _ in range(256)],
+        ):
+            with pytest.raises(ValueError, match="cannot build"):
+                gen.mammalian("H")
 
     def test_dig_unsupported(self) -> None:
         """Dig can only output letters, digits, spaces and .,!? directly."""
@@ -280,6 +298,7 @@ class TestGeneratorBranches:
         assert "--- 6-5 ---" in out
         assert "--- ASCII art ---" in out
         assert "--- Dig ---" in out
+        assert "--- MAMMALIAN ---" in out
         assert "--- Minifuck ---" in out
         assert "--- Polynomial ---" in out
         assert "--- WII2D ---" in out
@@ -308,6 +327,7 @@ class TestGeneratorBranches:
             gen.ascii_art,
             gen.wii2d,
             gen.clockwise,
+            gen.mammalian,
         ]
         inputs = [
             "\x01",
