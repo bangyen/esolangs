@@ -232,3 +232,21 @@ class TestPolynomialExecution:
         with redirect_stdout(buffer):
             run("f(x)=x^2+4")
         assert buffer.getvalue() == "\x00"
+
+
+class TestConvertRealRoots:
+    """Real roots encode instructions reached through later primes."""
+
+    def test_prime_root(self) -> None:
+        """A prime root like 5 matches at its own prime (skipping composites)."""
+        assert convert([5]) == [[1]]
+
+    def test_prime_power_root(self) -> None:
+        """A prime power like 4 (2^2) encodes an if-statement code."""
+        assert convert([4]) == [[2]]
+
+    def test_non_standard_input(self) -> None:
+        assert sanitize("invalid") == [0]
+
+    def test_no_terms(self) -> None:
+        assert sanitize("f(x) = +") == [0]
