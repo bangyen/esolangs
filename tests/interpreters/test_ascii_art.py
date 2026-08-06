@@ -67,3 +67,11 @@ class TestASCIIArt:
             )
             == ""
         )
+
+    def test_unmatched_open_bracket(self) -> None:
+        """An unmatched [ with a zero cell halts cleanly."""
+        assert run_and_capture(program(LOOP_OPEN)) == ""
+
+    def test_nested_open_brackets(self) -> None:
+        """Nested [ brackets are counted during the skip."""
+        assert run_and_capture(program(LOOP_OPEN, LOOP_OPEN)) == ""

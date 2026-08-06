@@ -38,3 +38,7 @@ class TestBack:
     def test_reflect_slash(self) -> None:
         """/ reflects the direction."""
         assert run_and_capture(["/-*"]) == "1\n"
+
+    def test_move_left(self) -> None:
+        """< moves the tape head left when it is not at zero."""
+        assert run_and_capture([">>-<*"]) == "0 0 1\n"

@@ -263,6 +263,17 @@ class TestQoiblExamples:
         result = run_with_timeout(run_adder, timeout_seconds=2)
         assert result == "5"  # Should print 5
 
+    def test_while_loop(self) -> None:
+        """Test the rr while loop: decrement var[1] until it is not > 1."""
+        code: list[str] = [
+            "we y we yy we",  # var[1] = 3
+            "rr qe y qe yr ey yr y rr we y we qe y qe ry ey ry y we rr",
+            "tt qe y qe tt",  # print var[1]
+        ]
+        with redirect_stdout(io.StringIO()) as f:
+            run(code)
+        assert f.getvalue() == chr(1)  # decremented 3 -> 1
+
 
 class TestQoiblEdgeCases:
     """Test edge cases and error conditions."""
