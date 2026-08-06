@@ -530,8 +530,27 @@ def temporary(text):
     return " ".join(tokens)
 
 
+def sophie(text):
+    return "".join(f"#${ord(c)}," if c == "\n" else f"#{c}," for c in text)
+
+
+def bio(text):
+    res = []
+    prev = 0
+    for c in text:
+        n = ord(c)
+        if n > prev:
+            res.append("0ox" * (n - prev))
+        else:
+            res.append("1ox" * (prev - n))
+        res.append("1ix")
+        prev = n
+    return "".join(res)
+
+
 _GENERATORS = {
     "BFStack": bfstack,
+    "BIO": bio,
     "BrainIf": brainif,
     "Container": container,
     "EXCON": excon,
@@ -541,6 +560,7 @@ _GENERATORS = {
     "Modulous": modulous,
     "Painfuck": painfuck,
     "Qoibl": qoibl,
+    "Sophie": sophie,
     "Suffolk": suffolk,
     "Temporary": temporary,
     "ZTOALC": ztoalc,
