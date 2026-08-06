@@ -40,8 +40,10 @@ int main(int argc, char *argv[]) {
       str = "while (stk[ptr]) {";
       break;
     case ']':
-      str = "}";
-      tabs--;
+      if (tabs > 0) {
+        str = "}";
+        tabs--;
+      }
       break;
     }
 
@@ -56,6 +58,8 @@ int main(int argc, char *argv[]) {
     tabs += ch == '[';
   }
 
+  for (; tabs > 0; tabs--)
+    fputs("\t}\n", output);
   fputs("\treturn 0;\n}\n", output);
   fclose(output);
   fclose(file);
