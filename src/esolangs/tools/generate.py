@@ -834,20 +834,33 @@ def dotlang(text):
 def nevermind(text):
     """A ``print`` command whose arguments are joined without a separator.
 
-    Commas separate arguments, so they are encoded as ``*44``, which the
-    interpreter expands back to a comma.  Line breaks would split the program
-    into separate lines, so they are rejected too.
+    Commas separate arguments, so a comma in the text is encoded as ``*44``,
+    which the interpreter expands back; a literal ``*44`` is split across two
+    arguments so the interpreter cannot mistake it for a comma.  Line breaks
+    would split the program into lines and a leading ``$`` would be read as a
+    variable, so both are rejected.
     """
-    if (
-        any(c in "\n\r\v\f\x1c\x1d\x1e\x85" for c in text)
-        or "*44" in text
-        or text.startswith("$")
-    ):
-        raise ValueError("nevermind can only print a single line without *44 or $")
-    bad = [c for c in text if c.isdigit() and not c.isdecimal()]
-    if bad:
-        raise ValueError("nevermind cannot print the superscript digits " + repr(bad))
-    return "print," + text.replace(",", "*44")
+    if any(c in "\n\r\v\f\x1c\x1d\x1e\x85" for c in text) or text.startswith("$"):
+        raise ValueError("nevermind can only print a single line without a leading $")
+
+    args = []
+    buf = ""
+    i = 0
+    while i < len(text):
+        if text.startswith("*44", i):
+            args.append(buf + "*4")
+            buf = "4"
+            i += 3
+        elif text[i] == ",":
+            buf += "*44"
+            i += 1
+        else:
+            buf += text[i]
+            i += 1
+    args.append(buf)
+    args = [a for a in args if a]
+
+    return "print," + ",".join(args)
 
 
 _GENERATORS = {

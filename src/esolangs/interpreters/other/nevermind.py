@@ -39,7 +39,11 @@ def run(code):
                 if isinstance(y, str):
                     if y[0] == "$":
                         c[x + 1] = var[y[1:].strip()]
-                    if isinstance(c[x + 1], str) and c[x + 1].isdigit():
+                    if (
+                        isinstance(c[x + 1], str)
+                        and c[x + 1].isascii()
+                        and c[x + 1].isdigit()
+                    ):
                         c[x + 1] = int(c[x + 1])
 
             if (op := c[0]) == "print":
