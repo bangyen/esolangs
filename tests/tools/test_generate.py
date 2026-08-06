@@ -87,7 +87,9 @@ class TestGeneratorRoundTrips:
 
     def test_polynomial_format(self) -> None:
         """Zero coefficients are omitted from the formatted polynomial."""
-        assert gen._polynomial_format([1, 0, 2]) == "f(x) = x^2 + 2"
+        from esolangs.tools._polynomial import format_coeffs
+
+        assert format_coeffs([1, 0, 2]) == "f(x) = x^2 + 2"
 
     def test_six_five(self) -> None:
         """±5/±6 walks reach each character value, then A prints it."""
