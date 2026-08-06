@@ -90,7 +90,7 @@ def test_extra_language_generators_do_not_crash():
             try:
                 fn(text)
             except ValueError:
-                pass  # forth raises for a NUL character
+                pass  # a generator may still document an unsupported case
 
 
 def test_boolean_generators_random_tables():

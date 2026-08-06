@@ -341,9 +341,8 @@ class TestGeneratorBranches:
         assert gen._123("") == "1"
 
     def test_forth_nul(self) -> None:
-        """forth cannot encode a NUL character."""
-        with pytest.raises(ValueError):
-            gen.forth("\x00")
+        """A NUL is pushed and printed with an explicit dot."""
+        assert gen.forth("a\x00b") == "0F6*7+.0.F6*8+."
 
     def test_main_prints_all(self, capsys: pytest.CaptureFixture) -> None:
         with patch("sys.argv", ["esolangs.tools.generate", "Hi"]):
