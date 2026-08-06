@@ -404,6 +404,18 @@ def qoibl(text):
     )
 
 
+def ztoalc(text):
+    n = len(text)
+    size = 2**n
+    lines = [""] * size
+    lines[0] = str(size)
+
+    for i, ch in enumerate(reversed(text)):
+        lines[2 ** (i + 1) - 1] = f"print {ord(ch)}"
+
+    return "\n".join(lines)
+
+
 _GENERATORS = {
     "BFStack": bfstack,
     "BrainIf": brainif,
@@ -416,6 +428,7 @@ _GENERATORS = {
     "Painfuck": painfuck,
     "Qoibl": qoibl,
     "Suffolk": suffolk,
+    "ZTOALC": ztoalc,
     "123": _123,
 }
 
