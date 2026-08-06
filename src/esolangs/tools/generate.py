@@ -8,12 +8,7 @@ from esolangs.tools.ztoalc_starts import STARTS
 
 
 def _ilog(base, n):
-    """Floor of log_base(n), computed with integers to avoid float error.
-
-    Raises ValueError for non-positive ``n``, like ``int(math.log(n, base))``.
-    """
-    if n < 1:
-        raise ValueError("log of non-positive number")
+    """Floor of log_base(n), computed with integers to avoid float error."""
     k = 0
     while base ** (k + 1) <= n:
         k += 1
@@ -85,17 +80,28 @@ def container(text):
 
 
 def forth(text):
-    s = "0123456789ABCDEF"
-    res = ""
+    """Each character is built as ``m * 15**n + p`` and printed with ``.``.
 
-    for c in text[::-1]:
+    ``F`` pushes 15 (the largest digit), ``*`` and ``+`` do arithmetic, and
+    ``.`` prints the top of the stack as a character.  Characters are pushed
+    in reverse and a ``[.]`` loop prints them, stopping at the seed 0; a NUL
+    would stop that loop, so text containing one is printed with an explicit
+    ``.`` per character instead.
+    """
+    s = "0123456789ABCDEF"
+
+    def build(c):
         o = ord(c)
+        if o == 0:
+            return "0"
         n = _ilog(15, o)
         m = o // (15**n)
         p = o - m * 15**n
+        return n * "F" + (n - 1) * "*" + s[m] + "*" + s[p] + "+"
 
-        res += n * "F" + (n - 1) * "*" + s[m] + "*" + s[p] + "+"
-    return f"0{res}[.]"
+    if "\x00" in text:
+        return "0" + "".join(build(c) + "." for c in text)
+    return "0" + "".join(build(c) for c in text[::-1]) + "[.]"
 
 
 def laserfuck(text):
