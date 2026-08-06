@@ -48,6 +48,14 @@ class TestGeneratorRoundTrips:
         assert len(program.splitlines()) < 100
         assert roundtrip(ztoalc_run, program.splitlines()) == "Hello, World!"
 
+    def test_ztoalc_extends_search(self) -> None:
+        """Longer text extends the search past the base limit for a better start."""
+        text = "a" * 200
+        program = gen.ztoalc(text)
+        assert int(program.splitlines()[0]) > 20000
+        assert len(program.splitlines()) < 100000
+        assert roundtrip(ztoalc_run, program.splitlines()) == text
+
     def test_ztoalc_long_text(self) -> None:
         """The generator scales to longer text without raising."""
         text = "".join(chr(65 + (i % 26)) for i in range(50))
@@ -57,8 +65,8 @@ class TestGeneratorRoundTrips:
     def test_ztoalc_power_of_two_fallback(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """When no compact trajectory is found, the power-of-2 scheme is used."""
-        monkeypatch.setattr(gen, "_ZTOALC_SEARCH_LIMIT", 2)
+        """When no trajectory is found within the search cap, the power-of-2 scheme is used."""
+        monkeypatch.setattr(gen, "_ZTOALC_MAX_LIMIT", 2)
         program = gen.ztoalc("ab")
         assert program.splitlines() == ["4", "print 98", "", "print 97"]
         assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
