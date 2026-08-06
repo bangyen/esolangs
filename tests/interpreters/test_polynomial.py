@@ -240,6 +240,38 @@ class TestPolynomialExecution:
             run("f(x) = x^2 - 6x + 8")
         assert buffer.getvalue() == ""
 
+    def test_if_enters_when_condition_met(self) -> None:
+        """if reg==0 { output } executes the body when reg is 0."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run("f(x) = x^3 - 16x^2 + 25x - 400")
+        assert buffer.getvalue() == "\x00"
+
+    def test_if_skipped_when_condition_not_met(self) -> None:
+        """The spec example: if reg>0 { output } skips the body when reg is 0."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run("f(x) = x^4 - 27x^3 + 59x^2 - 243x + 450")
+        assert buffer.getvalue() == ""
+
+    def test_while_loop(self) -> None:
+        """add 3, while reg>0 { reg-=1 }, output decrements three times."""
+        program = (
+            "f(x) = x^8 - 117900x^7 + 29532615x^6 - 319727030x^5 + 22630555713x^4 "
+            "- 146042691700x^3 + 2538566894185x^2 - 13198909291370x + 28151242605486"
+        )
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(program)
+        assert buffer.getvalue() == "\x00"
+
+    def test_unmatched_bracket_does_not_crash(self) -> None:
+        """A lone endif with no matching opener is handled gracefully."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run("f(x) = x - 4")
+        assert buffer.getvalue() == ""
+
     def test_input_instruction(self) -> None:
         """A root of 4i encodes an input instruction (value stored in reg)."""
         import unittest.mock

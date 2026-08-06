@@ -39,6 +39,8 @@ def brackets(string: List[List[int]], pointer: int) -> int:
     count = direct
     while count:
         pointer += direct
+        if pointer < 0 or pointer >= len(string):
+            return max(0, min(pointer, len(string) - 1))
         if len(string[pointer]) == 1:
             if string[pointer][0] in [2, 6]:
                 count -= 1
@@ -197,7 +199,7 @@ def run(code: str) -> None:
             beg = instructions[brackets(instructions, ind)][0]
             if beg > 4 and sym[(beg - 1) % 4 + 6]():
                 ind = brackets(instructions, ind)
-        elif not sym[(one % 4) + 5]():
+        elif not sym[((one - 1) % 4) + 6]():
             ind = brackets(instructions, ind)
         ind += 1
         step_count += 1
