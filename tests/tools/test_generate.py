@@ -38,12 +38,23 @@ class TestGeneratorRoundTrips:
         assert roundtrip(qoibl_run, gen.qoibl("Hi").splitlines()) == "Hi"
 
     def test_ztoalc(self) -> None:
-        """The Collatz trajectory from 2**n visits every power-of-2 slot once."""
+        """The Collatz trajectory from the chosen start visits each slot once."""
         assert roundtrip(ztoalc_run, gen.ztoalc("Hi").splitlines()) == "Hi"
         assert roundtrip(ztoalc_run, gen.ztoalc("").splitlines()) == ""
 
+    def test_ztoalc_compact(self) -> None:
+        """The program is far smaller than the 2**n power-of-2 scheme."""
+        program = gen.ztoalc("Hello, World!")
+        assert len(program.splitlines()) < 100
+        assert roundtrip(ztoalc_run, program.splitlines()) == "Hello, World!"
+
+    def test_ztoalc_too_long(self) -> None:
+        """Text longer than any trajectory below the search bound is rejected."""
+        with pytest.raises(ValueError, match="too long"):
+            gen.ztoalc("a" * 182)
+
     def test_ztoalc_program_structure(self) -> None:
-        """The initial pointer is 2**n and each char sits at a power-of-2 slot."""
+        """The initial pointer is the chosen start and each char sits on its line."""
         lines = gen.ztoalc("ab").splitlines()
         assert lines[0] == "4"
         assert "print 98" in lines
