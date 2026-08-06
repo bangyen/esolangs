@@ -236,6 +236,7 @@ The `generate.py` program outputs programs which output a given string in differ
 - Minifuck
 - Modulous
 - Painfuck
+- Polynomial
 - Qoibl
 - Sophie
 - Suffolk
