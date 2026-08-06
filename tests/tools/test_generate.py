@@ -9,14 +9,18 @@ import esolangs.tools._ztoalc as zt
 import esolangs.tools.generate as gen
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
+from esolangs.interpreters.other.nevermind import run as nevermind_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
 from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.dig import run as dig_run
+from esolangs.interpreters.register_based.dotlang import run as dotlang_run
+from esolangs.interpreters.register_based.huf import run as huf_run
 from esolangs.interpreters.register_based.polynomial import run as polynomial_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.register_based.sophie import run as sophie_run
 from esolangs.interpreters.register_based.WII2D import run as wii2d_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
+from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
@@ -100,6 +104,55 @@ class TestGeneratorRoundTrips:
         ):
             with pytest.raises(ValueError, match="cannot build"):
                 gen.mammalian("H")
+
+    def test_huf(self) -> None:
+        """Each # + inc >@ segment prints one character."""
+        assert roundtrip(huf_run, gen.huf("Hi")) == "Hi"
+        assert roundtrip(huf_run, gen.huf("Hello, World!")) == "Hello, World!"
+        assert roundtrip(huf_run, gen.huf("a\nb\x00")) == "a\nb\x00"
+        assert gen.huf("") == ""
+
+    def test_eval(self) -> None:
+        """A string literal prints on the dot instruction."""
+        assert roundtrip(eval_run, gen.eval("Hello, World!")) == "Hello, World!"
+        assert roundtrip(eval_run, gen.eval('say "hi"')) == 'say "hi"'
+        assert gen.eval("") == ""
+
+    def test_eval_backtick(self) -> None:
+        """eval cannot output a literal backtick."""
+        with pytest.raises(ValueError, match="backtick"):
+            gen.eval("a`b")
+
+    def test_dotlang(self) -> None:
+        """A single dot prints one backtick-wrapped string literal."""
+        assert (
+            roundtrip(dotlang_run, gen.dotlang("Hello, World!").splitlines())
+            == "Hello, World!"
+        )
+        assert roundtrip(dotlang_run, gen.dotlang("").splitlines()) == ""
+
+    def test_dotlang_multiline(self) -> None:
+        """A newline would split the program into a second grid row."""
+        with pytest.raises(ValueError, match="single line"):
+            gen.dotlang("a\nb")
+        with pytest.raises(ValueError, match="single line"):
+            gen.dotlang("a`b")
+
+    def test_nevermind(self) -> None:
+        """print joins its arguments; nevermind always adds a trailing newline."""
+        assert roundtrip(nevermind_run, gen.nevermind("Hi").splitlines()) == "Hi\n"
+        assert roundtrip(nevermind_run, gen.nevermind("a,b").splitlines()) == "a,b\n"
+
+    def test_nevermind_unsupported(self) -> None:
+        """nevermind cannot print multiline text, *44, a leading $, or ²³¹."""
+        with pytest.raises(ValueError):
+            gen.nevermind("a\nb")
+        with pytest.raises(ValueError):
+            gen.nevermind("a*44b")
+        with pytest.raises(ValueError):
+            gen.nevermind("$abc")
+        with pytest.raises(ValueError):
+            gen.nevermind("a²b")
 
     def test_dig_unsupported(self) -> None:
         """Dig can only output letters, digits, spaces and .,!? directly."""
@@ -298,8 +351,13 @@ class TestGeneratorBranches:
         assert "--- 6-5 ---" in out
         assert "--- ASCII art ---" in out
         assert "--- Dig ---" in out
+        assert "--- Dotlang ---" in out
+        assert "--- Eval ---" in out
+        assert "--- huf ---" in out
+        assert "--- LaserFuck ---" in out
         assert "--- MAMMALIAN ---" in out
         assert "--- Minifuck ---" in out
+        assert "--- Nevermind ---" in out
         assert "--- Polynomial ---" in out
         assert "--- WII2D ---" in out
 
@@ -328,6 +386,7 @@ class TestGeneratorBranches:
             gen.wii2d,
             gen.clockwise,
             gen.mammalian,
+            gen.huf,
         ]
         inputs = [
             "\x01",

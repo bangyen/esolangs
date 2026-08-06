@@ -767,6 +767,54 @@ def mammalian(text):
     return "\n".join(prog)
 
 
+def huf(text):
+    """Each character is ``#`` plus ``ord(c)`` increments, then ``>@``.
+
+    ``#`` resets the value, ``+`` increments it, ``>`` prints it as a
+    character and ``@`` closes the segment the interpreter extracts.
+    """
+    return "".join("#" + "+" * ord(c) + ">@" for c in text)
+
+
+def eval(text):
+    """A string literal that the ``.`` instruction prints.
+
+    A double quote inside the text would end the literal early, so it is
+    encoded as a backtick, which the interpreter expands back to a quote.
+    """
+    if "`" in text:
+        raise ValueError("eval cannot output a literal backtick")
+    if not text:
+        return ""
+    return '"' + text.replace('"', "`") + '".'
+
+
+def dotlang(text):
+    """A single dot that prints one backtick-wrapped string literal.
+
+    The interpreter's backtick match is greedy, so the text must fit on one
+    grid row; line-break characters would split the program into rows and a
+    backtick would be absorbed by the string match.
+    """
+    if any(c in "\n\r\v\f\x1c\x1d\x1e\x85`" for c in text):
+        raise ValueError("dotlang can only output a single line without backticks")
+    return "\u2022#" + "`" + text + "`#"
+
+
+def nevermind(text):
+    """A ``print`` command whose arguments are joined without a separator.
+
+    Commas separate arguments, so they are encoded as ``*44``, which the
+    interpreter expands back to a comma.
+    """
+    if "\n" in text or "*44" in text or text.startswith("$"):
+        raise ValueError("nevermind can only print a single line without *44 or $")
+    bad = [c for c in text if c.isdigit() and not c.isdecimal()]
+    if bad:
+        raise ValueError("nevermind cannot print the superscript digits " + repr(bad))
+    return "print," + text.replace(",", "*44")
+
+
 _GENERATORS = {
     "6-5": six_five,
     "ASCII art": ascii_art,
@@ -776,13 +824,17 @@ _GENERATORS = {
     "Clockwise": clockwise,
     "Container": container,
     "Dig": dig,
+    "Dotlang": dotlang,
+    "Eval": eval,
     "EXCON": excon,
     "Forþ": forth,
+    "huf": huf,
     "LaserFuck": laserfuck,
     "Magnitude": magnitude,
     "MAMMALIAN": mammalian,
     "Minifuck": minifuck,
     "Modulous": modulous,
+    "Nevermind": nevermind,
     "Painfuck": painfuck,
     "Polynomial": polynomial,
     "Qoibl": qoibl,
