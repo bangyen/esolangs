@@ -570,6 +570,61 @@ def minifuck(text):
     return "".join(res)
 
 
+def wii2d(text):
+    def build(target):
+        best = None
+        for d in range(10):
+            for cost, value, ops in [
+                (1, d, f"{d}"),
+                (2, d * d, f"{d}s"),
+                (2, 2 * d, f"{d}*"),
+                (3, 2 * d * d, f"{d}s*"),
+                (3, 4 * d, f"{d}**"),
+            ]:
+                total = cost + abs(target - value)
+                if best is None or total < best[0]:
+                    adj = target - value
+                    best = (total, ops + ("+" * adj if adj >= 0 else "-" * -adj))
+        assert best is not None
+        return best[1]
+
+    prog = ">" + "".join(build(ord(c)) + "~" for c in text) + "."
+    return "\n".join([prog, "!"])
+
+
+def dig(text):
+    if not all(c == " " or c in ".,!?" or c.isalnum() for c in text):
+        raise ValueError("Dig can only output letters, digits, spaces and .,!?")
+    row0 = [">"]
+    row1 = [" "]
+    seg: list = []
+
+    def flush():
+        if not seg:
+            return
+        n = len(seg) * 2
+        row0.append("$")
+        row1.append(str(n % 10))
+        row0.extend(seg)
+        row1.extend(" " * n)
+        seg.clear()
+
+    for c in text:
+        seg.append("%:" if c == " " else f"{c}:")
+        if len(seg) == 4:
+            flush()
+    flush()
+    row0.append("@")
+    row1.append(" ")
+
+    r0 = "".join(row0)
+    r1 = list("".join(row1))
+    for idx, ch in enumerate(r0):
+        if ch == "%":
+            r1[idx] = "0"
+    return "\n".join([r0, "".join(r1)])
+
+
 _GENERATORS = {
     "6-5": six_five,
     "ASCII art": ascii_art,
@@ -577,6 +632,7 @@ _GENERATORS = {
     "BIO": bio,
     "BrainIf": brainif,
     "Container": container,
+    "Dig": dig,
     "EXCON": excon,
     "Forþ": forth,
     "LaserFuck": laserfuck,
@@ -588,6 +644,7 @@ _GENERATORS = {
     "Sophie": sophie,
     "Suffolk": suffolk,
     "Temporary": temporary,
+    "WII2D": wii2d,
     "ZTOALC": ztoalc,
     "123": _123,
 }
