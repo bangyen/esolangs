@@ -737,6 +737,13 @@ def mammalian(text):
     on a usable array, the final count so that DIGEST there equals the
     character.  EXCRETE stores the value (an "extra") and clears the
     accumulator for the next character.
+
+    A construction always exists: an even array ``q`` has ``gcd(q+1, 256) == 1``,
+    so the value equation ``(q+1) * K == target (mod 256)`` is always solvable,
+    and the SPRINT walk from any pointer reaches some even array under some
+    SEED count.  The scan below was verified exhaustively over every
+    (pointer, SEED count, character) state with no extras, plus random states
+    with extras, without ever failing.
     """
     if not text:
         return ""

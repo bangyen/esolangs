@@ -67,7 +67,10 @@ def test_text_generators_round_trip():
             try:
                 program = getattr(gen, name)(text)
             except ValueError:
-                continue  # the generator documents this text as unsupported
+                assert (
+                    name != "mammalian"
+                )  # never rejects; everything else documents limits
+                continue
             run = importlib.import_module("esolangs.interpreters." + module).run
             argument = program.splitlines() if split else program
             buffer = io.StringIO()
