@@ -1,5 +1,6 @@
 """Unit tests for the program generator tool."""
 
+import importlib
 from unittest.mock import patch
 
 import pytest
@@ -54,6 +55,21 @@ class TestGeneratorRoundTrips:
     def test_bio(self) -> None:
         """Registers walk to each character value, then 1ix prints it."""
         assert roundtrip(bio_run, gen.bio("Hello, World!")) == "Hello, World!"
+
+    def test_six_five(self) -> None:
+        """±5/±6 walks reach each character value, then A prints it."""
+        sixfive_run = importlib.import_module(
+            "esolangs.interpreters.tape_based.6-5"
+        ).run
+        assert roundtrip(sixfive_run, gen.six_five("Hello, World!")) == "Hello, World!"
+
+    def test_ascii_art(self) -> None:
+        """A brainfuck program encoded as drawing blocks prints the text."""
+        ascii_run = importlib.import_module(
+            "esolangs.interpreters.tape_based.ascii-art"
+        ).run
+        assert roundtrip(ascii_run, gen.ascii_art("Hi")) == "Hi"
+        assert roundtrip(ascii_run, gen.ascii_art("")) == ""
 
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""
@@ -197,6 +213,8 @@ class TestGeneratorBranches:
         assert "--- Sophie ---" in out
         assert "--- Temporary ---" in out
         assert "--- ZTOALC ---" in out
+        assert "--- 6-5 ---" in out
+        assert "--- ASCII art ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
         with patch("sys.argv", ["esolangs.tools.generate"]):
@@ -218,6 +236,8 @@ class TestGeneratorBranches:
             gen.temporary,
             gen.sophie,
             gen.bio,
+            gen.six_five,
+            gen.ascii_art,
         ]
         inputs = [
             "\x01",
