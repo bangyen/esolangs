@@ -53,3 +53,29 @@ class TestNevermind:
             "endif",
         ]
         assert run_and_capture(code) == "15\n"
+
+    def test_input_command(self) -> None:
+        """input stores a value in the answer variable."""
+        assert (
+            run_and_capture(["input,prompt", "print,$answer"], inputs=["hi"]) == "hi\n"
+        )
+
+    def test_make_subtract(self) -> None:
+        code = ["make,x,10", "make,y,4", "make,z,$x,-,$y", "print,$z"]
+        assert run_and_capture(code) == "6\n"
+
+    def test_make_multiply(self) -> None:
+        code = ["make,x,3", "make,y,4", "make,z,$x,*,$y", "print,$z"]
+        assert run_and_capture(code) == "12\n"
+
+    def test_make_divide(self) -> None:
+        code = ["make,x,8", "make,y,2", "make,z,$x,/,$y", "print,$z"]
+        assert run_and_capture(code) == "4.0\n"
+
+    def test_nested_if(self) -> None:
+        code = ["if,5,>,3", "if,2,>,1", "print,deep", "endif", "endif", "print,done"]
+        assert run_and_capture(code) == "deep\ndone\n"
+
+    def test_loop_with_nested_if(self) -> None:
+        code = ["loop,2", "if,1,>,0", "print,x", "endif", "endloop"]
+        assert run_and_capture(code) == "x\nx\n"
