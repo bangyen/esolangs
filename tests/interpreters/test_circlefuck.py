@@ -58,3 +58,13 @@ class TestCirclefuck:
 
     def test_newline_escape(self) -> None:
         assert run_and_capture("\\n.@") == "\n"
+
+    def test_loop_skipped_when_cell_zero(self) -> None:
+        """[ skips its body when the current cell is zero."""
+        assert run_and_capture("\\0[.@") == ""
+
+    def test_loop_skip_finds_matching_bracket(self) -> None:
+        assert run_and_capture("\\0[.]@") == ""
+
+    def test_decrement(self) -> None:
+        assert run_and_capture("-@") == ""

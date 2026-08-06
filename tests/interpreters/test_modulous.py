@@ -55,6 +55,18 @@ class TestModulous:
         """JMP ... IF jumps only when the top matches."""
         assert run_and_capture("[PSH INT 5][JMP F 1 IF 5][PRT INT][END]") == "5"
 
+    def test_conditional_jump_nif(self) -> None:
+        """JMP ... NIF jumps only when the top does not match."""
+        assert run_and_capture("[PSH INT 5][JMP F 1 NIF 5][PRT INT][END]") == "5"
+
+    def test_backward_jump(self) -> None:
+        """JMP B jumps backwards, eventually landing on END."""
+        assert run_and_capture("[JMP B 1][END]") == ""
+
+    def test_pop(self) -> None:
+        """POP removes the top of the stack."""
+        assert run_and_capture("[PSH INT 5][POP][PSH INT 7][PRT INT][END]") == "7"
+
     def test_reset(self) -> None:
         """RST restarts the module pointer, so output never happens."""
         assert run_and_capture("[RST][PRT INT][END]") == ""
