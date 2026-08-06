@@ -99,10 +99,17 @@ class TestGeneratorBranches:
             "!@#",
             "aaaa",
             "".join(chr(k) for k in range(33, 127)),
+            "".join(chr(k) for k in range(1, 20)),
+            "z\x00",
         ]
         for gen_fn in generators:
             for text in inputs:
                 gen_fn(text)
+
+    def test_control_character_123(self) -> None:
+        """The 123 generator must not crash on control characters."""
+        gen._123("\x00")
+        gen._123("".join(chr(k) for k in range(1, 20)))
 
     def test_module_entry_point(self) -> None:
         """python -m esolangs.tools.generate runs as a script."""
