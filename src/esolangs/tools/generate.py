@@ -413,25 +413,35 @@ def _collatz_trajectory(start):
     return values
 
 
+_ZTOALC_SEARCH_LIMIT = 2048
+
+
 def ztoalc(text):
     n = len(text)
     if not text:
         return "2"
 
     best = None
-    for candidate in range(2, 2048):
+    candidate = 2
+    while candidate < _ZTOALC_SEARCH_LIMIT and (best is None or candidate < best[0]):
         values = _collatz_trajectory(candidate)
-        if len(values) < n:
-            continue
-        cand_size = max(values[:n])
-        if best is None or cand_size < best[0]:
-            best = (cand_size, candidate)
+        if len(values) >= n:
+            cand_size = max(values[:n])
+            if best is None or cand_size < best[0]:
+                best = (cand_size, candidate)
+        candidate += 1
 
     if best is None:
-        raise ValueError("text too long for the ZTOALC generator")
+        # No compact trajectory within the search bound: the power-of-two
+        # start always yields a trajectory of length n, so it works for any
+        # text, at the cost of a 2**n-line program.
+        size = 2**n
+        start = size
+        values = [size >> k for k in range(n)]
+    else:
+        size, start = best
+        values = _collatz_trajectory(start)[:n]
 
-    size, start = best
-    values = _collatz_trajectory(start)[:n]
     lines = [""] * size
     lines[0] = str(start)
 
