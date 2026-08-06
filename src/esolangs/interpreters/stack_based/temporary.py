@@ -11,7 +11,7 @@ def run(code):
     ptr = comm = 0
 
     def parse(char):
-        nonlocal new, ptr, comm, num
+        nonlocal new, ptr, comm, num, stk
         rest = code[ptr][1:]
 
         if char == "@":
@@ -31,12 +31,10 @@ def run(code):
             n = len(stk)
             while len(stk) == n:
                 parse(code[ptr][0])
-            comm += 1
         elif char == "\\":
             ptr += 1
             while len(stk):
                 parse(code[ptr][0])
-            comm += 1
         elif char == "€":
             parse(secrets.choice("@v*oO+:\\"))
 
@@ -45,12 +43,13 @@ def run(code):
             n = stk.pop(0) - 1
             print(n if num else chr(n), end="")
 
-    while ptr < len(code):
-        parse(code[ptr][0])
-        ptr += 1
         comm += 1
         if comm % 15 == 0:
             stk = []
+
+    while ptr < len(code):
+        parse(code[ptr][0])
+        ptr += 1
 
 
 if __name__ == "__main__":
