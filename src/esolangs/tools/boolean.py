@@ -25,10 +25,6 @@ def sophie(truth_table, n):
             for bit in path:
                 row = row * 2 + bit
             return f"#${48 + int(truth_table[row])},&"
-        return (
-            ";"
-            + "@$48{" + build(path + [0]) + "}"
-            + "{" + build(path + [1]) + "}"
-        )
+        return ";" + "@$48{" + build(path + [0]) + "}" + "{" + build(path + [1]) + "}"
 
     return build([])
