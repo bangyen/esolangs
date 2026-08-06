@@ -59,6 +59,17 @@ def assemble(path):
         os.unlink(tmp)
 
 
+def assemble_source(assembly):
+    """Assemble a nasm source string directly, returning the ELF32 object."""
+    fd, tmp = tempfile.mkstemp(suffix=".asm")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(assembly)
+        return assemble(tmp)
+    finally:
+        os.unlink(tmp)
+
+
 def load_text(binary):
     """Return the SHT_PROGBITS (.text) section from a 32-bit ELF object."""
     if binary[:4] != b"\x7fELF" or binary[4] != 1:  # ELFCLASS32
