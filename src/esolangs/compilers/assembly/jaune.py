@@ -70,11 +70,11 @@ def prep(code):
             else:
                 n = s.find("?")
 
-            r += s[:2] + rep(s[2 : n - 1]) + s[n - 1 : n + 1] + rep(s[n + 1 :])
+            repl = s[:2] + rep(s[2 : n - 1]) + s[n - 1 : n + 1] + rep(s[n + 1 :])
         else:
-            r = s[:2] + rep(s[2:])
+            repl = s[:2] + rep(s[2:])
 
-        code = code.replace(s, r)
+        code = code.replace(s, repl)
 
     return code, jump, rout
 
