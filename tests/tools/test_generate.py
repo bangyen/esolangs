@@ -7,6 +7,7 @@ import pytest
 
 import esolangs.tools._ztoalc as zt
 import esolangs.tools.generate as gen
+from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
 from esolangs.interpreters.register_based.bio import run as bio_run
@@ -72,6 +73,15 @@ class TestGeneratorRoundTrips:
             roundtrip(dig_run, gen.dig("Hello, World!").splitlines()) == "Hello, World!"
         )
         assert roundtrip(dig_run, gen.dig("abcd").splitlines()) == "abcd"
+
+    def test_clockwise(self) -> None:
+        """The 1D parity program wraps around a square ring's perimeter."""
+        assert roundtrip(clockwise_run, gen.clockwise("Hi").splitlines()) == "Hi"
+        assert (
+            roundtrip(clockwise_run, gen.clockwise("Hello, World!").splitlines())
+            == "Hello, World!"
+        )
+        assert gen.clockwise("") == ""
 
     def test_dig_unsupported(self) -> None:
         """Dig can only output letters, digits, spaces and .,!? directly."""
@@ -259,6 +269,8 @@ class TestGeneratorBranches:
         out = capsys.readouterr().out
         assert "--- BFStack ---" in out
         assert "--- BrainIf ---" in out
+        assert "--- Clockwise ---" in out
+        assert "--- Container ---" in out
         assert "--- EXCON ---" in out
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
@@ -295,6 +307,7 @@ class TestGeneratorBranches:
             gen.six_five,
             gen.ascii_art,
             gen.wii2d,
+            gen.clockwise,
         ]
         inputs = [
             "\x01",

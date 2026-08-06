@@ -227,6 +227,7 @@ The `generate.py` program outputs programs which output a given string in differ
 - BFStack
 - BIO
 - BrainIf
+- Clockwise
 - Container
 - Dig
 - EXCON
