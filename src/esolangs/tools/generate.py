@@ -213,27 +213,21 @@ def laserfuck(text):
     per_row = (track_len // tracks) + 1
     offset = per_row + 1
 
-    if len(loop) <= offset:
-        # a short loop body would fit entirely on the top row, leaving an
-        # empty serpentine that cannot route the laser back through the body;
-        # emit the linear program instead
+    if len(loop) <= offset or tracks > 2:
+        # a loop body that fits on the top row, or a grid too narrow for the
+        # serpentine's return path to connect, cannot route the laser back
+        # through the body; emit the linear program instead
         return f"\xff}}}}{linear}\n|o^\n _ "
 
     # top row: output-mode byte, the loop start, then a turn down
     grid.insert(0, f"\xff}}{loop[:offset]}v")
 
-    # serpentine rows carry the rest of the loop body around the frame
+    # serpentine rows carry the rest of the loop body around the frame;
+    # tracks is always 2 here (narrower grids fall back to the linear program)
     for row in range(tracks - 1):
         part = loop[offset : offset + per_row]
         offset += per_row
-
-        if not row % 2:
-            part = part[::-1]
-            move = "v{}{{"
-        else:
-            move = "}}{}v"
-
-        grid.insert(row + 1, "  " + move.format(part.rjust(per_row)))
+        grid.insert(row + 1, "  v" + part[::-1].rjust(per_row) + "{")
 
     # connect the last serpentine row back into the frame at the loop entry
     connector = f" ^{' ' * (loop_col - 5)}{{  {{"
