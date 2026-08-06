@@ -9,38 +9,38 @@ import re
 import sys
 
 
-def run(text: str) -> None:
+def run(code: str) -> None:
     """Execute a Minsky Swap program."""
     ind = ptr = val = 0
     reg = [0, 0]
     nums = []
-    code = ""
+    prog = ""
 
-    if re.search(r"(inc|swap|decnz)\(", text):
+    if re.search(r"(inc|swap|decnz)\(", code):
         pattern = r"(inc|swap|decnz)\((\d*)\);"
         cmp = re.compile(pattern)
-        for m in cmp.findall(text):
+        for m in cmp.findall(code):
             if (s := m[0][0]) == "i":
-                code += "+"
+                prog += "+"
             elif s == "s":
-                code += "*"
+                prog += "*"
             else:
-                code += "~"
+                prog += "~"
                 skip = int(m[1]) if m[1] else 1
                 nums.append(skip)
         # Also process any remaining compact notation
-        compact_part = re.sub(r"(inc|swap|decnz)\([^)]*\);", "", text)
+        compact_part = re.sub(r"(inc|swap|decnz)\([^)]*\);", "", code)
         compact_part = re.sub("[^+~*]", "", compact_part)
-        code += compact_part
+        prog += compact_part
     else:
-        code = (s := text.split("\n"))[0]
-        code = re.sub("[^+~*]", "", code)
+        prog = (s := code.split("\n"))[0]
+        prog = re.sub("[^+~*]", "", prog)
         if len(s) > 1:
             nums = re.findall(r"\d+", s[1])
             nums = [int(k) for k in nums]
 
-    while ind < len(code):
-        if (op := code[ind]) == "+":
+    while ind < len(prog):
+        if (op := prog[ind]) == "+":
             reg[ptr] += 1
         elif op == "~":
             if reg[ptr]:
