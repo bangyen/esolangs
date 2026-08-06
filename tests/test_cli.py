@@ -53,3 +53,17 @@ class TestCLIInProcess:
                 main()
         assert exc.value.code == 2
         assert "unknown module" in capsys.readouterr().err
+
+
+class TestPackageEntryPoint:
+    """python -m esolangs dispatches to the CLI via esolangs/__main__.py."""
+
+    def test_run_as_main(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+        import runpy
+
+        program = tmp_path / "prog.exc"
+        program.write_text("^<<<<<<^!")
+        args = ["esolangs", "esolangs.interpreters.tape_based.excon", str(program)]
+        with patch.object(sys, "argv", args):
+            runpy.run_module("esolangs", run_name="__main__")
+        assert capsys.readouterr().out == "A"
