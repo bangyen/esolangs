@@ -14,6 +14,7 @@ SCRIPT = REPO_ROOT / "scripts" / "make_coverage_badge.py"
 
 def load_script() -> object:
     spec = importlib.util.spec_from_file_location("make_coverage_badge", SCRIPT)
+    assert spec is not None
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
@@ -47,7 +48,9 @@ class TestBadgeScript:
         xml_path = tmp_path / "coverage.xml"
         write_xml("0.5", xml_path)
         out_path = tmp_path / "out.svg"
-        monkeypatch.setattr(sys, "argv", ["make_coverage_badge.py", str(xml_path), str(out_path)])
+        monkeypatch.setattr(
+            sys, "argv", ["make_coverage_badge.py", str(xml_path), str(out_path)]
+        )
         badge_module.main()  # type: ignore[attr-defined]
         assert "50%" in out_path.read_text()
 
