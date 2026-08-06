@@ -313,15 +313,16 @@ def painfuck(text):
         sqr = math.isqrt(val)
 
         if sqr > 3:
-            move = "lr" if "r" in res else "rl"
-            s += move + add(sqr) + "al"
+            # "rl" advances the pointer by one from any cell; "lr" would
+            # stall when the pointer is at cell 0
+            s += "rl" + add(sqr) + "al"
 
             if op == "p":
                 s += add(sqr)
             else:
                 s += sqr * "s"
 
-            s += move + "sbl"
+            s += "rl" + "sbl"
             val -= sqr**2
 
         return val, s
@@ -333,7 +334,7 @@ def painfuck(text):
         n = ord(c) - last
 
         if abs(n) > ord(c):
-            res += ("rl", "lr")["r" in res]
+            res += "rl"
             n = ord(c)
 
         if n > 0:
@@ -381,18 +382,33 @@ def suffolk(text):
 
 
 def _123(text):
-    """A 1/2 program per character, terminated by a trailing 1."""
+    """A 1/2 program per character, terminated by a trailing 1.
+
+    ``edi`` carries the running XOR of the characters, so each segment only
+    emits the difference from the previous character.  ``esi`` walks down the
+    bits of that difference: ``2`` clears a bit position and ``122`` sets it
+    (an XOR) before continuing.  Then a ``121`` march doubles ``esi`` up to
+    512, where ``2`` outputs ``edi`` as a character and resets ``esi``.  The
+    final ``1`` leaves ``esi`` above 128 so the program halts at the
+    terminator.
+    """
     res = ""
     last = 0
 
     for c in text:
         bits = bin(ord(c) ^ last)[2:].zfill(8).rstrip("0")
-        encoded = bits.replace("0", "2").replace("1", "122")
+        n = len(bits)
 
-        if n := len(bits):
-            res += f"{encoded[:-2]}" f'{"121" * n}'[:-1] + "\n"
+        if n:
+            # walk down the bits; the last is always 1, so dropping the final
+            # "22" leaves esi at 2 instead of 0
+            walk = bits.replace("0", "2").replace("1", "122")
+            # a "121" toggles a bit twice (a no-op on edi) while doubling esi;
+            # n doublings carry esi from 2 to 512, where the final "2" outputs
+            march = "121" * n
+            res += walk[:-2] + march[:-1] + "\n"
         else:
-            res += "12112\n"
+            res += "12112\n"  # no difference: just march esi up and output
         last = ord(c)
 
     return res + "1"
