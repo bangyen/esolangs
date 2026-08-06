@@ -26,11 +26,18 @@ def convert(func, num=None):
     for level in range(num + 1):
         if level < num:
             step = 2 ** (num - level - 1)
+            children = [row + step for row in rows] + [row - step for row in rows]
             for row in range(total):
-                lines[row] += BRANCH if row in rows else " " * 7
-            rows = [row + step for row in rows] + [row - step for row in rows]
-            for row in rows:
-                lines[row] = lines[row][:-2] + CONTINUE
+                if row in rows:
+                    block = BRANCH
+                elif row in children:
+                    # the mole arrives here vertically from the parent's "#";
+                    # right-justify the turn so the ">" sits under that "#"
+                    block = CONTINUE.rjust(len(BRANCH))
+                else:
+                    block = " " * len(BRANCH)
+                lines[row] += block
+            rows = children
         else:
             for k in range(2**num):
                 bits = [(k >> (num - 1 - b)) & 1 for b in range(num)]
@@ -38,8 +45,7 @@ def convert(func, num=None):
 
     # the mole starts at the top-left corner facing down into the root
     lines[0] = "'" + lines[0][1:]
-    # a CONTINUE marker sits right next to its branch's leading ">"; drop the latter
-    return "\n".join(lines).replace("> >", ">  ")
+    return "\n".join(lines)
 
 
 def main() -> None:
