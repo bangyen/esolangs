@@ -45,9 +45,8 @@ def run(text: str) -> None:
         elif op == "~":
             if reg[ptr]:
                 reg[ptr] -= 1
-            else:
-                if val < len(nums):
-                    ind = nums[val] - 1
+            elif val < len(nums):
+                ind = nums[val] - 1
             val += 1
         elif op == "*":
             ptr ^= 1

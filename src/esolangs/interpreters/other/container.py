@@ -28,8 +28,7 @@ class Con:
             if b:
                 res += n
 
-        if res < 0:
-            res = 0
+        res = max(res, 0)
 
         return res
 
@@ -41,8 +40,8 @@ def run(code):
     var = {}
     new = {}
 
-    for line in code:
-        line = line.strip()
+    for raw in code:
+        line = raw.strip()
         if ":" in line:
             line = line[:-1]
             if "=" in line:
@@ -59,23 +58,19 @@ def run(code):
         for o in obj:
             new[o.name] = o.update(var)
 
-        if "PRINT" in var:
-            if var["PRINT"] == 0 and bool(new["PRINT"]):
-                if "OUT" in var:
-                    print(chr(new["OUT"] % (1 << 7)), end="")
-                    inp = True
-        if "" in var:
-            if var[""] == 0 and bool(new[""]):
-                while not queue:
-                    s = input("\n" * inp + "Input: ")
-                    queue += list(s)
+        if "PRINT" in var and var["PRINT"] == 0 and bool(new["PRINT"]) and "OUT" in var:
+            print(chr(new["OUT"] % (1 << 7)), end="")
+            inp = True
+        if "" in var and var[""] == 0 and bool(new[""]):
+            while not queue:
+                s = input("\n" * inp + "Input: ")
+                queue += list(s)
 
-                new["INPUT"] = ord(queue[0])
-                queue = queue[1:]
-                inp = True
-        if "EXIT" in var:
-            if var["EXIT"] != new["EXIT"]:
-                exit(new["EXIT"])
+            new["INPUT"] = ord(queue[0])
+            queue = queue[1:]
+            inp = True
+        if "EXIT" in var and var["EXIT"] != new["EXIT"]:
+            sys.exit(new["EXIT"])
 
         var = new.copy()
 

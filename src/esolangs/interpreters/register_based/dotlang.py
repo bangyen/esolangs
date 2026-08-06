@@ -12,7 +12,7 @@ import sys
 class Dot:
     """Represents a dot (instruction pointer) in the Dotlang programming language."""
 
-    list = [
+    DIRS = [
         (-1, 0),
         (0, 1),
         (1, 0),
@@ -46,7 +46,7 @@ class Dot:
 
     def move(self):
         """Move the dot one step in its current direction."""
-        x, y = Dot.list[self.dir]
+        x, y = Dot.DIRS[self.dir]
         self.x += x
         self.y += y
         if x:
@@ -88,10 +88,7 @@ def run(code):
     for num, val in enumerate(code):
         if "•" in val:
             k = val.find("•")
-            if k and (v := val[k - 1]) in "^>v<":
-                d = "^>v<".find(v)
-            else:
-                d = 1
+            d = "^>v<".find(v) if k and (v := val[k - 1]) in "^>v<" else 1
             dots.append(Dot(num, k, d))
             Dot.set(code)
             break
@@ -167,8 +164,7 @@ def run(code):
 
 
 if __name__ == "__main__":
-    f = open(sys.argv[1], encoding="utf-8")
-    data = f.readlines()
-    f.close()
+    with open(sys.argv[1], encoding="utf-8") as f:
+        data = f.readlines()
 
     run(data)

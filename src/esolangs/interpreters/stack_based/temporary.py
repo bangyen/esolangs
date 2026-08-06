@@ -58,8 +58,7 @@ def run(code):
 
 
 if __name__ == "__main__":
-    f = open(sys.argv[1], encoding="utf-8")
-    data = f.read()
-    f.close()
+    with open(sys.argv[1], encoding="utf-8") as f:
+        data = f.read()
 
     run(data)
