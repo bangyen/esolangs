@@ -614,6 +614,44 @@ def minifuck(text):
     return "".join(res)
 
 
+def circlefuck(text):
+    """Generate a CircleFuck program that outputs ``text``.
+
+    CircleFuck's tape is the program itself, so each cell starts out holding
+    the character code of whatever instruction occupies that position. The
+    generator walks a single data pointer across the cells, emitting the
+    ``+``/``-`` run needed to reach each target value (reading the current
+    cell's base off the program text built so far), then ``.`` to print and
+    ``>`` to advance, ending with ``@``.
+    """
+    if not text:
+        return "@"
+    prog: list[str] = []
+    for i, c in enumerate(text):
+        target = ord(c)
+        if i == 0:
+            if target >= 44:
+                run = "+" * (target - 43)
+            elif target == 43:
+                run = "+-"
+            else:
+                run = "-" * (45 - target)
+        else:
+            delta = (target - ord(prog[i])) % 256
+            if delta == 0:
+                run = ""
+            elif delta <= 128:
+                run = "+" * delta
+            else:
+                run = "-" * (256 - delta)
+        prog.extend(run)
+        prog.append(".")
+        if i != len(text) - 1:
+            prog.append(">")
+    prog.append("@")
+    return "".join(prog)
+
+
 def wii2d(text):
     def build(target):
         best = (float("inf"), "")
@@ -897,6 +935,7 @@ _GENERATORS = {
     "BIO": bio,
     "BrainIf": brainif,
     "Clockwise": clockwise,
+    "CircleFuck": circlefuck,
     "Container": container,
     "Dig": dig,
     "Dotlang": dotlang,

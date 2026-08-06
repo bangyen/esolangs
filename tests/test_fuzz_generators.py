@@ -23,6 +23,7 @@ ROUND_TRIP = {
     "bfstack": ("stack_based.bfstack", False, {}, ""),
     "bio": ("register_based.bio", False, {}, ""),
     "brainif": ("tape_based.brainif", True, {}, ""),
+    "circlefuck": ("tape_based.circlefuck", False, {}, ""),
     "clockwise": ("other.clockwise", True, {}, ""),
     "container": ("other.container", True, {}, ""),
     "dig": ("register_based.dig", True, {}, ""),
