@@ -71,6 +71,28 @@ class TestGeneratorRoundTrips:
         assert roundtrip(ascii_run, gen.ascii_art("Hi")) == "Hi"
         assert roundtrip(ascii_run, gen.ascii_art("")) == ""
 
+    def test_minifuck(self) -> None:
+        """Each character is printed via a BFS-built [x flip sequence."""
+        minifuck_run = importlib.import_module(
+            "esolangs.interpreters.tape_based.minifuck"
+        ).run
+        assert roundtrip(minifuck_run, gen.minifuck("Hello, World!")) == "Hello, World!"
+
+    def test_minifuck_nul(self) -> None:
+        """Minifuck cannot output NUL (a zero tape means input instead)."""
+        with pytest.raises(ValueError, match="NUL"):
+            gen.minifuck("\x00")
+
+    def test_minifuck_search_failure(self) -> None:
+        """The flip search returns None when the length bound is too small."""
+        assert gen._minifuck_find(65, 0, [0] * 8, maxlen=0) is None
+
+    def test_minifuck_generation_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """minifuck raises when no program is found for a character."""
+        monkeypatch.setattr(gen, "_minifuck_find", lambda *a, **k: None)
+        with pytest.raises(ValueError, match="could not generate"):
+            gen.minifuck("A")
+
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""
         assert roundtrip(ztoalc_run, gen.ztoalc("Hi").splitlines()) == "Hi"
@@ -215,6 +237,7 @@ class TestGeneratorBranches:
         assert "--- ZTOALC ---" in out
         assert "--- 6-5 ---" in out
         assert "--- ASCII art ---" in out
+        assert "--- Minifuck ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
         with patch("sys.argv", ["esolangs.tools.generate"]):
