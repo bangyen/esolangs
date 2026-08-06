@@ -2,6 +2,9 @@ import math
 import re
 import sys
 from array import array
+from typing import Optional, Tuple
+
+from esolangs.tools.ztoalc_starts import STARTS
 
 
 def bfstack(text):
@@ -405,8 +408,17 @@ def qoibl(text):
     )
 
 
-_ZTOALC_BASE_LIMIT = 20000
-_ZTOALC_MAX_LIMIT = 1000000
+def _collatz_prefix(start, n):
+    values = []
+    value = start
+    for _ in range(n):
+        values.append(value)
+        value = value // 2 if value % 2 == 0 else 3 * value + 1
+    return values
+
+
+_ZTOALC_TABLE_LIMIT = 1_000_000
+_ZTOALC_MAX_LIMIT = 10_000_000
 _length_table_cache: dict = {}
 
 
@@ -446,24 +458,12 @@ def _collatz_lengths(limit):
     return _length_table_cache[limit]
 
 
-def _collatz_prefix(start, n):
-    values = []
-    value = start
-    for _ in range(n):
-        values.append(value)
-        value = value // 2 if value % 2 == 0 else 3 * value + 1
-    return values
-
-
-def ztoalc(text):
-    n = len(text)
-    if not text:
-        return "2"
-
-    best = None
-    candidate = 2
-    limit = _ZTOALC_BASE_LIMIT
+def _search_start(n: int) -> Optional[Tuple[int, int]]:
+    """Best start for a text length the committed table does not cover."""
+    best: Optional[Tuple[int, int]] = None
+    limit = _ZTOALC_TABLE_LIMIT
     lengths = _collatz_lengths(limit)
+    candidate = _ZTOALC_TABLE_LIMIT
 
     while candidate <= _ZTOALC_MAX_LIMIT:
         if candidate > limit:
@@ -478,16 +478,30 @@ def ztoalc(text):
                 best = (cand_size, candidate)
         candidate += 1
 
-    if best is None:
-        # No trajectory long enough within the search cap: the power-of-two
-        # start always yields a trajectory of length n, so it works for any
-        # text, at the cost of a 2**n-line program.
-        size = 2**n
-        start = size
-        values = [size >> k for k in range(n)]
+    return best
+
+
+def ztoalc(text):
+    n = len(text)
+    if not text:
+        return "2"
+
+    start = STARTS.get(n)
+    if start is None:
+        best = _search_start(n)
+        if best is None:
+            # No trajectory long enough within the search cap: the power-of-two
+            # start always yields a trajectory of length n, so it works for any
+            # text, at the cost of a 2**n-line program.
+            size = 2**n
+            start = size
+            values = [size >> k for k in range(n)]
+        else:
+            size, start = best
+            values = _collatz_prefix(start, n)
     else:
-        size, start = best
         values = _collatz_prefix(start, n)
+        size = max(values)
 
     lines = [""] * size
     lines[0] = str(start)
