@@ -1,4 +1,3 @@
-import math
 import sys
 from inspect import signature
 
@@ -51,7 +50,7 @@ def main() -> None:
         sys.exit(1)
 
     table = sys.argv[1]
-    num = round(math.log2(len(table)))
+    num = len(table).bit_length() - 1
     if 2**num != len(table):
         print("error: truth table length must be a power of 2")
         sys.exit(1)
