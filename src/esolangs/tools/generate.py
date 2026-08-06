@@ -1,6 +1,7 @@
 import math
 import re
 import sys
+from collections import deque
 
 from esolangs.tools._ztoalc import _collatz_prefix, _search_start
 from esolangs.tools.ztoalc_starts import STARTS
@@ -470,7 +471,60 @@ def bio(text):
     return "".join(res)
 
 
+def _six_five_path(src, dst):
+    """Shortest sequence of 5/6 additions and 2/9 subtractions from src to dst."""
+    steps = [("5", 5), ("6", 6), ("2", -5), ("9", -6)]
+    queue = deque([src])
+    parent: dict = {src: (-1, "")}
+
+    while queue:
+        value = queue.popleft()
+        if value == dst:
+            break
+        for cmd, delta in steps:
+            nxt = value + delta
+            if 0 <= nxt <= 255 and nxt not in parent:
+                parent[nxt] = (value, cmd)
+                queue.append(nxt)
+
+    res = []
+    value = dst
+    while value != src:
+        prev, cmd = parent[value]
+        res.append(cmd)
+        value = prev
+    return "".join(reversed(res))
+
+
+def six_five(text):
+    cur = 0
+    res = []
+    for c in text:
+        res.append(_six_five_path(cur, ord(c)))
+        res.append("A")
+        cur = ord(c)
+    return "".join(res)
+
+
+_ASCII_ART_BLOCKS = {
+    "-": "-",
+    ".": "#\n#",
+    "+": "|\n|\n|\n|\n|",
+    "[": "_\n_\n_\n_\n_\n_",
+    "]": "|\n|\n|\n|\n|\n|",
+}
+
+
+def ascii_art(text):
+    if not text:
+        return _ASCII_ART_BLOCKS["+"]
+    bf = "".join("[-]" + "+" * ord(c) + "." for c in text)
+    return "\n\n".join(_ASCII_ART_BLOCKS[ch] for ch in bf)
+
+
 _GENERATORS = {
+    "6-5": six_five,
+    "ASCII art": ascii_art,
     "BFStack": bfstack,
     "BIO": bio,
     "BrainIf": brainif,
