@@ -1,6 +1,7 @@
 import math
 import re
 import sys
+from functools import lru_cache
 
 
 def bfstack(text):
@@ -404,16 +405,23 @@ def qoibl(text):
     )
 
 
-def _collatz_trajectory(start):
+_ZTOALC_SEARCH_LIMIT = 20000
+
+
+@lru_cache(maxsize=None)
+def _collatz_length(start):
+    if start == 1:
+        return 0
+    return 1 + _collatz_length(start // 2 if start % 2 == 0 else 3 * start + 1)
+
+
+def _collatz_prefix(start, n):
     values = []
     value = start
-    while value > 1:
+    for _ in range(n):
         values.append(value)
         value = value // 2 if value % 2 == 0 else 3 * value + 1
     return values
-
-
-_ZTOALC_SEARCH_LIMIT = 2048
 
 
 def ztoalc(text):
@@ -424,9 +432,8 @@ def ztoalc(text):
     best = None
     candidate = 2
     while candidate < _ZTOALC_SEARCH_LIMIT and (best is None or candidate < best[0]):
-        values = _collatz_trajectory(candidate)
-        if len(values) >= n:
-            cand_size = max(values[:n])
+        if _collatz_length(candidate) >= n:
+            cand_size = max(_collatz_prefix(candidate, n))
             if best is None or cand_size < best[0]:
                 best = (cand_size, candidate)
         candidate += 1
@@ -440,7 +447,7 @@ def ztoalc(text):
         values = [size >> k for k in range(n)]
     else:
         size, start = best
-        values = _collatz_trajectory(start)[:n]
+        values = _collatz_prefix(start, n)
 
     lines = [""] * size
     lines[0] = str(start)
