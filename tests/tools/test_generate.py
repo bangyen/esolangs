@@ -7,7 +7,9 @@ import pytest
 import esolangs.tools.generate as gen
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
+from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
+from esolangs.interpreters.register_based.sophie import run as sophie_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
@@ -42,6 +44,15 @@ class TestGeneratorRoundTrips:
 
     def test_qoibl(self) -> None:
         assert roundtrip(qoibl_run, gen.qoibl("Hi").splitlines()) == "Hi"
+
+    def test_sophie(self) -> None:
+        """#<char>, sets the accumulator and prints it as a character."""
+        assert roundtrip(sophie_run, gen.sophie("Hello, World!")) == "Hello, World!"
+        assert roundtrip(sophie_run, gen.sophie("a\nb")) == "a\nb"
+
+    def test_bio(self) -> None:
+        """Registers walk to each character value, then 1ix prints it."""
+        assert roundtrip(bio_run, gen.bio("Hello, World!")) == "Hello, World!"
 
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""
@@ -182,6 +193,7 @@ class TestGeneratorBranches:
         assert "--- EXCON ---" in out
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
+        assert "--- Sophie ---" in out
         assert "--- Temporary ---" in out
         assert "--- ZTOALC ---" in out
 
@@ -203,6 +215,8 @@ class TestGeneratorBranches:
             gen.modulous,
             gen.qoibl,
             gen.temporary,
+            gen.sophie,
+            gen.bio,
         ]
         inputs = [
             "\x01",
