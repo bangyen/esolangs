@@ -23,6 +23,11 @@ class TestNevermind:
     def test_print_comma_escape(self) -> None:
         assert run_and_capture(["print,Hello*44 World!"]) == "Hello, World!\n"
 
+    def test_print_unicode_digits(self) -> None:
+        """Non-ASCII digits stay strings instead of being converted to int."""
+        assert run_and_capture(["print,²"]) == "²\n"
+        assert run_and_capture(["print,١٢٣"]) == "١٢٣\n"
+
     def test_make_and_print_variable(self) -> None:
         assert run_and_capture(["make,x,5", "print,$x"]) == "5\n"
 
