@@ -145,19 +145,20 @@ class TestGeneratorRoundTrips:
         """print joins its arguments; nevermind always adds a trailing newline."""
         assert roundtrip(nevermind_run, gen.nevermind("Hi").splitlines()) == "Hi\n"
         assert roundtrip(nevermind_run, gen.nevermind("a,b").splitlines()) == "a,b\n"
+        assert (
+            roundtrip(nevermind_run, gen.nevermind("a*44b").splitlines()) == "a*44b\n"
+        )
+        assert roundtrip(nevermind_run, gen.nevermind("a²b").splitlines()) == "a²b\n"
+        assert roundtrip(nevermind_run, gen.nevermind("١٢٣").splitlines()) == "١٢٣\n"
 
     def test_nevermind_unsupported(self) -> None:
-        """nevermind cannot print multiline text, *44, a leading $, or ²³¹."""
+        """nevermind cannot print multiline text or a leading $."""
         with pytest.raises(ValueError):
             gen.nevermind("a\nb")
         with pytest.raises(ValueError):
             gen.nevermind("a\x0bb")
         with pytest.raises(ValueError):
-            gen.nevermind("a*44b")
-        with pytest.raises(ValueError):
             gen.nevermind("$abc")
-        with pytest.raises(ValueError):
-            gen.nevermind("a²b")
 
     def test_dig_unsupported(self) -> None:
         """Dig can only output letters, digits, spaces and .,!? directly."""
