@@ -458,7 +458,7 @@ def _collatz_lengths(limit):
     return _length_table_cache[limit]
 
 
-def _search_start(n: int) -> Optional[Tuple[int, int]]:
+def _search_start(n: int) -> int:
     """Best start for a text length the committed table does not cover."""
     best: Optional[Tuple[int, int]] = None
     limit = _ZTOALC_TABLE_LIMIT
@@ -478,7 +478,11 @@ def _search_start(n: int) -> Optional[Tuple[int, int]]:
                 best = (cand_size, candidate)
         candidate += 1
 
-    return best
+    if best is None:
+        raise ValueError(
+            f"no Collatz start with a trajectory of length {n} within the search limit"
+        )
+    return best[1]
 
 
 def ztoalc(text):
@@ -488,20 +492,10 @@ def ztoalc(text):
 
     start = STARTS.get(n)
     if start is None:
-        best = _search_start(n)
-        if best is None:
-            # No trajectory long enough within the search cap: the power-of-two
-            # start always yields a trajectory of length n, so it works for any
-            # text, at the cost of a 2**n-line program.
-            size = 2**n
-            start = size
-            values = [size >> k for k in range(n)]
-        else:
-            size, start = best
-            values = _collatz_prefix(start, n)
-    else:
-        values = _collatz_prefix(start, n)
-        size = max(values)
+        start = _search_start(n)
+
+    values = _collatz_prefix(start, n)
+    size = max(values)
 
     lines = [""] * size
     lines[0] = str(start)

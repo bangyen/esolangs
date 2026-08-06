@@ -73,16 +73,13 @@ class TestGeneratorRoundTrips:
         assert program.splitlines() == ["4", "print 98", "", "print 97"]
         assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
 
-    def test_ztoalc_power_of_two_fallback(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """When neither the table nor the search finds a start, the power-of-2 scheme is used."""
+    def test_ztoalc_search_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Text longer than any trajectory in the search range is rejected."""
         monkeypatch.setattr(gen, "STARTS", {1: 2})
         monkeypatch.setattr(gen, "_ZTOALC_TABLE_LIMIT", 2)
         monkeypatch.setattr(gen, "_ZTOALC_MAX_LIMIT", 2)
-        program = gen.ztoalc("ab")
-        assert program.splitlines() == ["4", "print 98", "", "print 97"]
-        assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
+        with pytest.raises(ValueError, match="no Collatz start"):
+            gen.ztoalc("abcde")
 
     def test_ztoalc_program_structure(self) -> None:
         """The initial pointer is the chosen start and each char sits on its line."""
