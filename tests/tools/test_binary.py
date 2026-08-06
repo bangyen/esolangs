@@ -69,3 +69,25 @@ class TestConvert:
 
         program = convert(fn, num=2)
         assert program.startswith("'")
+
+
+class TestRoundTrip:
+    def test_xor_truth_table(self) -> None:
+        """The generated Dig program computes the function on the interpreter."""
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+
+        from esolangs.interpreters.register_based.dig import run
+
+        def xor(a, b):
+            return a ^ b
+
+        program = convert(xor).splitlines()
+        for a in (0, 1):
+            for b in (0, 1):
+                buffer = io.StringIO()
+                with patch("builtins.input", side_effect=[str(a), str(b)]):
+                    with redirect_stdout(buffer):
+                        run(program)
+                assert buffer.getvalue() == str(xor(a, b))
