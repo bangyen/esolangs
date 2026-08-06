@@ -1,7 +1,7 @@
 import math
 import re
 import sys
-from functools import lru_cache
+from array import array
 
 
 def bfstack(text):
@@ -408,11 +408,34 @@ def qoibl(text):
 _ZTOALC_SEARCH_LIMIT = 20000
 
 
-@lru_cache(maxsize=None)
-def _collatz_length(start):
-    if start == 1:
-        return 0
-    return 1 + _collatz_length(start // 2 if start % 2 == 0 else 3 * start + 1)
+def _collatz_length_table(limit):
+    """Stopping times for every start up to ``limit``, as unsigned shorts.
+
+    Index ``value`` holds the number of Collatz steps from ``value`` to 1;
+    index 1 is 0 and a zero elsewhere means "not yet computed". Chain values
+    above ``limit`` are walked through without being stored, keeping the
+    table bounded at two bytes per entry.
+    """
+    lengths = array("H", [0]) * (limit + 1)
+    lengths[1] = 0
+
+    for start in range(2, limit + 1):
+        if lengths[start]:
+            continue
+
+        path = []
+        value = start
+        while value > 1 and (value > limit or not lengths[value]):
+            path.append(value)
+            value = value // 2 if value % 2 == 0 else 3 * value + 1
+
+        length = lengths[value] if value <= limit else 0
+        for value in reversed(path):
+            length += 1
+            if value <= limit:
+                lengths[value] = length
+
+    return lengths
 
 
 def _collatz_prefix(start, n):
@@ -429,10 +452,11 @@ def ztoalc(text):
     if not text:
         return "2"
 
+    lengths = _collatz_length_table(_ZTOALC_SEARCH_LIMIT)
     best = None
     candidate = 2
     while candidate < _ZTOALC_SEARCH_LIMIT and (best is None or candidate < best[0]):
-        if _collatz_length(candidate) >= n:
+        if lengths[candidate] >= n:
             cand_size = max(_collatz_prefix(candidate, n))
             if best is None or cand_size < best[0]:
                 best = (cand_size, candidate)
