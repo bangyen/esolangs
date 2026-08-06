@@ -66,6 +66,34 @@ class TestBFStackComp:
         mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
         assert "input:" in mod.comp(">,")
 
+    def test_single_plus_minus(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        assert "inc byte" in mod.comp("+")
+        assert "dec byte" in mod.comp("-")
+
+    def test_counted_plus_minus(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        assert "add byte [ecx], 3" in mod.comp("+++")
+        assert "sub byte [ecx], 3" in mod.comp("---")
+
+    def test_counted_movement(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        output = mod.comp(">>")
+        assert "mov esi, 2" in output
+        assert "call right" in output
+
+    def test_subroutines(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        output = mod.comp(">.<,>")
+        for label in ["right:", "left:", "output:", "input:"]:
+            assert label in output
+
+    def test_loop_labels(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        output = mod.comp(">+[>]<")
+        assert ".T1:" in output
+        assert ".B1:" in output
+
 
 def test_unsquare_emits_syscalls() -> None:
     mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
@@ -88,6 +116,32 @@ class TestHomeRow:
     def test_output(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.home-row")
         assert "print:" in mod.comp("akk")
+
+    def test_conditional_movement_and_output(self) -> None:
+        """Commands preceded by j emit the count via eax."""
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        assert "mov eax" in mod.comp("jak")
+
+    def test_cell_shared_function(self) -> None:
+        """Both movement commands together emit the shared cell function."""
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        output = mod.comp("dkf")
+        assert "cell:" in output
+        assert "mov ebx, edi" in output
+
+    def test_counted_movement(self) -> None:
+        """Repeated movement commands emit a count and add to the position."""
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        assert "add edi, eax" in mod.comp("ddk")
+        assert "add esi, eax" in mod.comp("ffk")
+
+    def test_loop_with_skip(self) -> None:
+        """A loop combined with a conditional skip emits both labels."""
+        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        output = mod.comp("jl")
+        assert ".skip" in output
+        assert ".top" in output
+        assert ".bot" in output
 
     def test_conditionals_and_loop(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.home-row")
@@ -145,6 +199,37 @@ class TestJaune:
         assert ".switch" in mod.comp("v?")
         assert "call switch" in mod.comp("v@")
 
+    def test_register_arithmetic(self) -> None:
+        """A bare + or - operates on the register via eax."""
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "add [ecx]" in mod.comp("+")
+        assert "sub [ecx]" in mod.comp("-")
+
+    def test_chained_arithmetic(self) -> None:
+        """Consecutive digit+ sequences accumulate in count."""
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "add dword" in mod.comp("1+2+3+")
+
+    def test_switch_table_generation(self) -> None:
+        """A label plus a conditional jump generates the switch table."""
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        output = mod.comp("5:v?")
+        assert ".switch" in output
+        assert "jmp .label" in output
+
+    def test_multiply(self) -> None:
+        """& multiplies via a subroutine when counted, else adds edi."""
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        assert "call mult" in mod.comp("&&")
+        assert "add [ecx], edi" in mod.comp("&")
+
+    def test_conditional_sequence(self) -> None:
+        """Consecutive ?/! jumps are condensed in prep."""
+        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        output = mod.comp("1?2!")
+        assert "jne" in output
+        assert "je " in output
+
     def test_subroutine_label(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.jaune")
         assert "sub" in mod.comp("5$")
@@ -180,6 +265,26 @@ class TestUnsquare:
         mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
         assert "mov edi" in mod.comp("OA")
         assert "mov edi" in mod.comp("IA")
+
+    def test_prep_optimization(self) -> None:
+        """OA/I-A sequences with a following loop are optimized in prep."""
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        assert ".T1" in mod.comp("OAI>")
+        assert "shl edi" in mod.comp("OAIx")
+
+    def test_counted_register(self) -> None:
+        """Repeated O/I/A commands emit a count and repeated-call loop."""
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        assert "mov esi, 2" in mod.comp("OO")
+        assert "dec esi" in mod.comp("OO")
+        assert "dec esi" in mod.comp("AA")
+
+    def test_address_arithmetic(self) -> None:
+        """OA followed by +/-/x adjusts the stored value in count."""
+        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        assert "mov edi" in mod.comp("OA+")
+        assert "mov edi" in mod.comp("OA-")
+        assert "mov edi" in mod.comp("OAx")
 
 
 class TestSuffolkComp:
