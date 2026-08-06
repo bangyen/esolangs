@@ -36,6 +36,10 @@ class TestGeneratorRoundTrips:
     def test_modulous(self) -> None:
         assert roundtrip(modulous_run, gen.modulous("Hi")) == "Hi"
 
+    def test_modulous_compact(self) -> None:
+        """Safe text uses the PSH STR idiom instead of per-character pushes."""
+        assert gen.modulous("Hi") == '[PSH STR "Hi"][PRT STR][JMP B 1 NIF 0]'
+
     def test_qoibl(self) -> None:
         assert roundtrip(qoibl_run, gen.qoibl("Hi").splitlines()) == "Hi"
 

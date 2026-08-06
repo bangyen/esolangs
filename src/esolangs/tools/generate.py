@@ -403,7 +403,9 @@ def excon(text):
 
 
 def modulous(text):
-    return "".join(f"[PSH INT {ord(c)}][PRT]" for c in text) + "[END]"
+    if not text or '"' in text or "[" in text or "]" in text or "\x00" in text:
+        return "".join(f"[PSH INT {ord(c)}][PRT]" for c in text) + "[END]"
+    return f'[PSH STR "{text}"][PRT STR][JMP B 1 NIF 0]'
 
 
 def qoibl(text):
