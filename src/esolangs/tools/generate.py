@@ -116,6 +116,7 @@ def laserfuck(text):
     """
     values = [ord(c) for c in text]
     code = ""
+    linear = "".join(">" + "+" * ord(c) for c in text).rstrip(">")
 
     def chunks(base):
         # one '>' then '+' per value's base-chunk, ending back at the left
@@ -148,6 +149,11 @@ def laserfuck(text):
 
         code += ops
         values = [k % base for k in values]
+
+    if code:
+        # the counter cell would end at 0 and be dumped as a NUL; a final "-"
+        # makes it negative, which the interpreter's output excludes
+        code += "-"
 
     if "[" not in code:
         return f"\xff}}}}{fallback}\n|o^\n _ "
@@ -206,6 +212,12 @@ def laserfuck(text):
     tracks += tracks % 2  # even, so the serpentine joins back on the left
     per_row = (track_len // tracks) + 1
     offset = per_row + 1
+
+    if len(loop) <= offset:
+        # a short loop body would fit entirely on the top row, leaving an
+        # empty serpentine that cannot route the laser back through the body;
+        # emit the linear program instead
+        return f"\xff}}}}{linear}\n|o^\n _ "
 
     # top row: output-mode byte, the loop start, then a turn down
     grid.insert(0, f"\xff}}{loop[:offset]}v")
