@@ -6,8 +6,11 @@ import pytest
 
 import esolangs.tools.generate as gen
 from esolangs.interpreters.other.container import run as container_run
+from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
+from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
+from esolangs.interpreters.tape_based.excon import run as excon_run
 
 
 def roundtrip(interpreter, program):
@@ -23,6 +26,15 @@ def roundtrip(interpreter, program):
 class TestGeneratorRoundTrips:
     def test_bfstack(self) -> None:
         assert roundtrip(bfstack_run, gen.bfstack("Hi")) == "Hi"
+
+    def test_excon(self) -> None:
+        assert roundtrip(excon_run, gen.excon("Hi")) == "Hi"
+
+    def test_modulous(self) -> None:
+        assert roundtrip(modulous_run, gen.modulous("Hi")) == "Hi"
+
+    def test_qoibl(self) -> None:
+        assert roundtrip(qoibl_run, gen.qoibl("Hi").splitlines()) == "Hi"
 
     def test_brainif(self) -> None:
         assert roundtrip(brainif_run, gen.brainif("Hi").splitlines()) == "Hi"
@@ -84,6 +96,9 @@ class TestGeneratorBranches:
         out = capsys.readouterr().out
         assert "--- BFStack ---" in out
         assert "--- BrainIf ---" in out
+        assert "--- EXCON ---" in out
+        assert "--- Modulous ---" in out
+        assert "--- Qoibl ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
         with patch("sys.argv", ["esolangs.tools.generate"]):
@@ -94,7 +109,15 @@ class TestGeneratorBranches:
 
     def test_edge_case_inputs(self) -> None:
         """Generators must not crash on edge-case inputs."""
-        generators = [gen.magnitude, gen.painfuck, gen.laserfuck, gen.suffolk]
+        generators = [
+            gen.magnitude,
+            gen.painfuck,
+            gen.laserfuck,
+            gen.suffolk,
+            gen.excon,
+            gen.modulous,
+            gen.qoibl,
+        ]
         inputs = [
             "\x01",
             "a\x01",
