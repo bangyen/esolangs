@@ -234,6 +234,7 @@ The `generate.py` program outputs programs which output a given string in differ
 - Forþ (Forth)
 - LaserFuck
 - Magnitude
+- MAMMALIAN
 - Minifuck
 - Modulous
 - Painfuck
