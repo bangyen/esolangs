@@ -51,9 +51,9 @@ class TestMovesumBasicCommands:
     def test_move_command_both_negative(self) -> None:
         """Test move command with both arguments negative does nothing."""
         code = ["0=5", "move -1 -1", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should halt without changes
+        assert f.getvalue() == ""
 
     def test_initialization_with_values(self) -> None:
         """Test array initialization with key=value pairs."""
@@ -108,24 +108,24 @@ class TestMovesumProgramFlow:
 
     def test_cyclic_execution(self) -> None:
         """Test that instructions execute cyclically."""
-        code = ["0=1 1=2", "move 0 2", "move 1 3", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=1 1=2", "move 0 -1", "move 1 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should execute cyclically until halt
+        assert f.getvalue() == "1 2 "
 
     def test_halting_condition(self) -> None:
         """Test program halts when array doesn't change for 2 commands."""
-        code = ["0=5", "move 0 0", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=5", "move 0 -1", "move 0 0", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should halt after two identical commands
+        assert f.getvalue() == "5 "
 
     def test_forced_halt_sequence(self) -> None:
         """Test the forced halt sequence move 0 0 twice."""
         code = ["0=1 1=2", "move 0 0", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should halt immediately
+        assert f.getvalue() == ""
 
     def test_array_expansion(self) -> None:
         """Test that array expands beyond initial 5 positions."""
@@ -196,10 +196,10 @@ class TestMovesumEdgeCases:
 
     def test_minimal_program(self) -> None:
         """Test minimal valid program."""
-        code = ["0=0", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        code = ["0=0", "move 0 -1", "move 0 0"]
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should execute without error
+        assert f.getvalue() == "0 "
 
     def test_large_array_indices(self) -> None:
         """Test handling of large array indices."""
@@ -270,13 +270,13 @@ class TestMovesumValidation:
     def test_invalid_initialization_handled_gracefully(self) -> None:
         """Test that invalid initialization is handled gracefully."""
         code = ["invalid line", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should not crash, just ignore invalid initialization
+        assert f.getvalue() == ""
 
     def test_invalid_instruction_handled_gracefully(self) -> None:
         """Test that invalid instructions are handled gracefully."""
         code = ["0=1", "invalid instruction", "move 0 0"]
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should not crash, just skip invalid instructions
+        assert f.getvalue() == ""
