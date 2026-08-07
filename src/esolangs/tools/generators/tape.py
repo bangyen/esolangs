@@ -2,14 +2,16 @@
 
 import math
 
+from esolangs.tools.transpilers import bf_to_ascii_art
+
 __all__ = [
-    "_ASCII_ART_BLOCKS",
     "_MAMMALIAN_WALK",
     "_MINUS_REM",
     "_PLUS_REM",
     "_mammalian_walk",
     "_six_five_path",
     "ascii_art",
+    "bf",
     "bfstack",
     "brainif",
     "circlefuck",
@@ -63,20 +65,30 @@ def _mammalian_walk(ptr: int) -> list[dict[int, int]]:
     return _MAMMALIAN_WALK[ptr]
 
 
+_MAMMALIAN_WALK: dict[int, list[dict[int, int]]] = {}
+
+
 _PLUS_REM = ["", "62", "6622", "55599", "559", "5"]  # +5/+6 paths for remainders
 _MINUS_REM = ["", "95", "9955", "999555", "262", "2"]  # -5/-6 paths
 
-_MINUS_REM = ["", "95", "9955", "999555", "262", "2"]  # -5/-6 paths
 
-_ASCII_ART_BLOCKS = {
-    "-": "-",
-    ".": "#\n#",
-    "+": "|\n|\n|\n|\n|",
-    "[": "_\n_\n_\n_\n_\n_",
-    "]": "|\n|\n|\n|\n|\n|",
-}
+def bf(text: str) -> str:
+    """Generate a brainfuck program that outputs ``text``.
 
-_MAMMALIAN_WALK: dict[int, list[dict[int, int]]] = {}
+    ``[-]`` zeroes the current cell (so each character starts from a known
+    state), a run of ``+``s sets it to the target value, and ``.`` prints
+    it.
+    """
+    return "".join("[-]" + "+" * ord(c) + "." for c in text)
+
+
+def ascii_art(text: str) -> str:
+    """Generate an ASCII-art program that outputs ``text``.
+
+    ASCII art is brainfuck with an art alphabet, so the program is exactly
+    the brainfuck program for ``text`` rendered as art blocks.
+    """
+    return bf_to_ascii_art(bf(text))
 
 
 def bfstack(text: str) -> str:
@@ -155,14 +167,6 @@ def six_five(text: str) -> str:
         res.append("A")
         cur = ord(c)
     return "".join(res)
-
-
-def ascii_art(text: str) -> str:
-    # An empty program still needs a cell; the "+" block is a no-op.
-    if not text:
-        return _ASCII_ART_BLOCKS["+"]
-    bf = "".join("[-]" + "+" * ord(c) + "." for c in text)
-    return "\n\n".join(_ASCII_ART_BLOCKS[ch] for ch in bf)
 
 
 def minifuck(text: str) -> str:

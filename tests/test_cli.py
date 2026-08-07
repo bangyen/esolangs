@@ -64,6 +64,13 @@ class TestSubprocess:
         assert result.returncode == 0
         assert result.stdout == "Hi"
 
+    def test_transpile(self, tmp_path: Path) -> None:
+        program = tmp_path / "prog.bf"
+        program.write_text(esolangs.generate("BF", "Hi"))
+        result = run_cli("transpile", "BF", "ASCII art", str(program))
+        assert result.returncode == 0
+        assert esolangs.run("ASCII art", result.stdout) == "Hi"
+
 
 class TestInProcess:
     def test_list(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -123,6 +130,35 @@ class TestInProcess:
             call_main(["run", "NoSuchLanguage", str(program)], capsys)
         assert exc.value.code == 2
         assert "unknown language" in capsys.readouterr().err
+
+    def test_transpile(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        program = tmp_path / "prog.bf"
+        program.write_text(esolangs.generate("BF", "Hi"))
+        out = call_main(["transpile", "BF", "ASCII art", str(program)], capsys)
+        assert esolangs.run("ASCII art", out) == "Hi"
+
+    def test_transpile_unsupported_pair(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        program = tmp_path / "prog.bf"
+        program.write_text("x")
+        with pytest.raises(SystemExit) as exc:
+            call_main(["transpile", "BF", "CircleFuck", str(program)], capsys)
+        assert exc.value.code == 2
+        assert "no transpiler" in capsys.readouterr().err
+
+    def test_transpile_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["transpile", "BF", "ASCII art"], capsys)
+        assert exc.value.code == 2
+
+    def test_transpile_missing_file(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["transpile", "BF", "ASCII art", "/no/such/file"], capsys)
+        assert exc.value.code == 2
+        assert "cannot read" in capsys.readouterr().err
 
     def test_unknown_command(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:

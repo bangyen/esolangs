@@ -3,7 +3,11 @@
 import pytest
 
 import esolangs
-from esolangs.exceptions import EsolangError, UnknownLanguageError
+from esolangs.exceptions import (
+    EsolangError,
+    UnknownLanguageError,
+    UnsupportedTranspilationError,
+)
 from esolangs.tools import boolean
 
 
@@ -39,3 +43,16 @@ def test_run_eof_when_input_runs_out() -> None:
     program = boolean.circlefuck("10", 1)  # reads one input bit
     with pytest.raises(EOFError):
         esolangs.run("CircleFuck", program, stdin="")
+
+
+def test_transpile_round_trips() -> None:
+    program = esolangs.generate("BF", "Hi")
+    art = esolangs.transpile("BF", "ASCII art", program)
+    assert esolangs.run("ASCII art", art) == "Hi"
+
+
+def test_transpile_unsupported_pair_raises() -> None:
+    with pytest.raises(UnsupportedTranspilationError):
+        esolangs.transpile("BF", "CircleFuck", "x")
+    assert issubclass(UnsupportedTranspilationError, EsolangError)
+    assert issubclass(UnsupportedTranspilationError, ValueError)

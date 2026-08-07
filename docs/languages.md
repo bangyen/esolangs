@@ -9,6 +9,7 @@ hand.
 | 123 | yes |  |  |  |  |
 | 6-5 | yes | yes |  |  | hello cat |
 | ASCII art | yes | yes |  |  | hello |
+| BF | yes | yes |  |  | hello |
 | BF-PDA |  |  |  | yes |  |
 | BFStack | yes | yes |  | yes | hello |
 | BIO | yes | yes |  |  | hello |

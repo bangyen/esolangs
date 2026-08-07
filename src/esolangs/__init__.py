@@ -1,7 +1,8 @@
 """Public API for the esolangs package.
 
 Provides ``generate`` (produce a program that prints a text), ``run``
-(execute a program through an interpreter), and ``list_languages``.
+(execute a program through an interpreter), ``transpile`` (rewrite a
+program between languages), and ``list_languages``.
 """
 
 import importlib
@@ -9,8 +10,12 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from esolangs.exceptions import UnknownLanguageError
+from esolangs.exceptions import (
+    UnknownLanguageError,
+    UnsupportedTranspilationError,
+)
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
+from esolangs.tools.transpilers import TRANSPILERS
 
 
 def generate(language: str, text: str) -> str:
@@ -44,6 +49,15 @@ def run(language: str, program: str, stdin: str = "") -> str:
     with patch("builtins.input", read_input), redirect_stdout(buffer):
         run_fn(program.splitlines() if split else program, **kwargs)
     return buffer.getvalue()
+
+
+def transpile(source: str, target: str, program: str) -> str:
+    """Rewrite a ``program`` in ``source`` into an equivalent one in ``target``."""
+    try:
+        fn = TRANSPILERS[(source, target)]
+    except KeyError:
+        raise UnsupportedTranspilationError(source, target) from None
+    return fn(program)
 
 
 def list_languages() -> list[str]:
