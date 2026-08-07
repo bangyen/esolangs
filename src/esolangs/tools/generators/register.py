@@ -1,5 +1,7 @@
 """Register text generators."""
 
+from collections.abc import Callable
+
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
 
 __all__ = [
@@ -44,7 +46,7 @@ def dig(text: str) -> str:
     # so it gets one extra padding cell first.
     row0 = [">"]
     row1 = [" "]
-    seg: list = []
+    seg: list[str] = []
 
     def flush() -> None:
         if not seg:
@@ -103,13 +105,16 @@ def qoibl(text: str) -> str:
 def wii2d(text: str) -> str:
     def build(target: int) -> str:
         best = (float("inf"), "")
-        for cost, digit, value, ops in [
+        strategies: list[
+            tuple[int, int, Callable[[int], int], Callable[[int], str]]
+        ] = [
             (1, min(target, 9), lambda d: d, lambda d: f"{d}"),
             (2, round(target**0.5), lambda d: d * d, lambda d: f"{d}s"),
             (2, round(target / 2), lambda d: 2 * d, lambda d: f"{d}*"),
             (3, round((target / 2) ** 0.5), lambda d: 2 * d * d, lambda d: f"{d}s*"),
             (3, round(target / 4), lambda d: 4 * d, lambda d: f"{d}**"),
-        ]:
+        ]
+        for cost, digit, value, ops in strategies:
             d = max(0, min(9, digit))
             v = value(d)
             total = cost + abs(target - v)

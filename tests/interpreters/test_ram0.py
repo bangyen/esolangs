@@ -25,7 +25,7 @@ def timeout_handler(signum: int, frame: Any) -> None:
     raise TimeoutError("Test timed out")
 
 
-def run_with_timeout(func: Callable, timeout_seconds: int = 5) -> Any:
+def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
     """Run a function with a timeout to prevent hanging tests.
 
     Args:

@@ -15,7 +15,7 @@ def temporary(text: str) -> str:
     special = (9, 10, 11, 12, 13, 28, 29, 30, 31, 32)
     k = 2 * max((ord(c) + 1 for c in text), default=0) + 2
     tokens = ["o"]
-    buf: list = []
+    buf: list[str] = []
 
     for c in text:
         inc = ord(c) + 1

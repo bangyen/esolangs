@@ -10,6 +10,7 @@ import io
 import random
 from collections.abc import Callable
 from contextlib import redirect_stdout, suppress
+from typing import Any
 from unittest.mock import patch
 
 from esolangs.interpreters.other.bitdeque import run as bitdeque_run
@@ -29,7 +30,7 @@ minsky_run = importlib.import_module(
 ).run
 
 
-def run_safely(fn: Callable, program: str | list[str]) -> None:
+def run_safely(fn: Callable[..., Any], program: str | list[str]) -> None:
     """Run a program, asserting it raises nothing unexpected."""
     buffer = io.StringIO()
     with patch("builtins.input", return_value="0"), redirect_stdout(buffer):

@@ -8,7 +8,9 @@ when digging straight down in Minecraft.
 
 import io
 import random
+from collections.abc import Callable
 from contextlib import redirect_stdout
+from typing import cast
 from unittest.mock import patch
 
 from esolangs.interpreters.register_based.dsdlai import rand, run
@@ -146,7 +148,7 @@ class TestDSDLAHelloWorld:
             mock_rand.return_value = lambda: True
 
             # Test that the mocked function works
-            mocked_death_func = mock_rand.return_value
+            mocked_death_func = cast(Callable[[], bool], mock_rand.return_value)
             assert mocked_death_func() is True
 
 

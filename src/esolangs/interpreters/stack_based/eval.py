@@ -1,5 +1,6 @@
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
@@ -13,7 +14,7 @@ class State:
 def run(code: str) -> None:
     state = State()
 
-    dct = {
+    dct: dict[str, Callable[[], object]] = {
         "`": lambda: state.stk[state.ptr].append(1 - state.ptr),
         "^": lambda: state.stk[state.ptr].append(state.stk[state.ptr][-1]),
         "0": lambda: state.stk[state.ptr].append(0),
