@@ -34,7 +34,7 @@ def run(language: str, program: str, stdin: str = "") -> str:
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     lines = iter(stdin.splitlines())
 
-    def read_input(prompt: str = "") -> str:
+    def read_input(_prompt: str = "") -> str:
         try:
             return next(lines)
         except StopIteration:

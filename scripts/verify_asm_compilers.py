@@ -34,7 +34,7 @@ CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
 
 
-def main(argv: list[str]) -> int:
+def main() -> int:
     failures = 0
     for name, module, source, expected in CASES:
         comp = importlib.import_module(f"esolangs.compilers.assembly.{module}").comp
@@ -48,4 +48,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())
