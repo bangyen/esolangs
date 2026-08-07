@@ -107,7 +107,7 @@ files = ["src"]
 exclude = ["\\.venv/", "build/", "dist/"]
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false  # Relaxed for existing codebase
+disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
 disallow_untyped_decorators = false  # Relaxed for existing codebase
@@ -117,6 +117,31 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+
+# The legacy esolang implementations are deliberately terse, untyped
+# dispatchers; they are grandfathered here so the typing rules apply to the
+# public API, tools, tests, and any new code. Annotate them incrementally.
+[[tool.mypy.overrides]]
+module = [
+    "esolangs.interpreters.*",
+    "esolangs.compilers.*",
+    "esolangs.tools.generate",
+    "esolangs.tools.boolean",
+    "esolangs.tools._polynomial",
+    "esolangs.tools._ztoalc",
+    "tests.*",
+    "make_coverage_badge",
+    "make_ztoalc_table",
+    "riscv_elf_runner",
+    "riscv_sim",
+    "verify",
+    "verify_123_differential",
+    "verify_123_unicorn",
+    "verify_asm_compilers",
+    "verify_x86_generators",
+    "x86_elf_runner",
+]
+disallow_untyped_defs = false
 ignore_missing_imports = true  # For external dependencies
 explicit_package_bases = true  # Handle duplicate module names
 
