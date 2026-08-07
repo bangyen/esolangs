@@ -1,17 +1,14 @@
 """Command-line interface for the esolangs package.
 
 Subcommands:
-    esolangs list                       list the supported languages
+    esolangs list                        list the supported languages
     esolangs generate <language> <text>  print a program that outputs text
     esolangs run <language> <file>       run a program through its interpreter
 
-For compatibility the command also runs any dotted module as ``__main__``,
-so ``esolangs esolangs.interpreters.tape_based.excon prog.txt`` behaves like
-``python -m esolangs.interpreters.tape_based.excon prog.txt``.
+For anything else (compilers, tools), invoke the module directly with
+``python -m``, e.g. ``python -m esolangs.compilers.assembly.unsquare``.
 """
 
-import importlib.util
-import runpy
 import sys
 
 from esolangs import generate, list_languages, run
@@ -22,7 +19,6 @@ commands:
   list                        list the supported languages
   generate <language> <text>  print a program that outputs text
   run <language> <file>       run a program through its interpreter
-  <module> [args]             run a dotted module as __main__
 
 examples:
   esolangs list
@@ -34,17 +30,6 @@ examples:
 def _fail(message: str) -> None:
     sys.stderr.write(message + "\n")
     sys.exit(2)
-
-
-def _run_module(module: str, args: list) -> None:
-    try:
-        spec = importlib.util.find_spec(module)
-    except (ModuleNotFoundError, ImportError):
-        spec = None
-    if spec is None:
-        _fail(f"unknown module: {module}")
-    sys.argv = [module, *args]
-    runpy.run_module(module, run_name="__main__")
 
 
 def main() -> None:
@@ -81,7 +66,7 @@ def main() -> None:
             _fail(str(exc))
         sys.stdout.write(output)
     else:
-        _run_module(cmd, rest)
+        _fail(f"unknown command: {cmd}\n\n{USAGE}")
 
 
 if __name__ == "__main__":
