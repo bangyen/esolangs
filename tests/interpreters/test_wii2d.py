@@ -168,9 +168,9 @@ class TestWII2DControlFlow:
         """Test @ command that jumps to closest @."""
         code = ["!", ">@~.", "  @"]
 
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code))
-        # Should jump to the second @ and output
+        assert f.getvalue() == "\x00"
 
     def test_random_direction(self) -> None:
         """Test ? command that moves in random direction."""
@@ -250,8 +250,9 @@ class TestWII2DEdgeCases:
         """Test that empty program produces no output."""
         code: list[str] = []
 
-        # Should return immediately without error
-        run_with_timeout(lambda: run(code))
+        with redirect_stdout(io.StringIO()) as f:
+            run_with_timeout(lambda: run(code))
+        assert f.getvalue() == ""
 
     def test_program_without_start_marker(self) -> None:
         """Test program without ! start marker."""
@@ -272,9 +273,9 @@ class TestWII2DEdgeCases:
         """Test program with uneven line lengths."""
         code = [">~.", "  +", "!"]
 
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code))
-        # Should handle padding correctly
+        assert f.getvalue() == "\x00"
 
     def test_wrap_around_behavior(self) -> None:
         """Test pointer wrap-around at grid boundaries."""
@@ -307,9 +308,9 @@ class TestWII2DEdgeCases:
         """Test @ command when no other @ commands exist."""
         code = [">@~.", "!"]  # Try to jump but no other @ exists
 
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code))
-        # Should continue execution normally
+        assert f.getvalue() == "\x00"
 
 
 class TestWII2DIntegration:

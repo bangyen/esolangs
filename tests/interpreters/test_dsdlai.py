@@ -76,29 +76,24 @@ class TestDSDLABasicPrograms:
 
     def test_halt_without_dig(self) -> None:
         """Test that programs without dig commands work normally."""
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(["@"])
-        # Should halt immediately without error
+        assert f.getvalue() == ""
 
     def test_simple_movement(self) -> None:
         """Test simple movement without dig commands."""
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(["@ "])
-        # Should move right and halt
+        assert f.getvalue() == ""
 
     def test_program_with_dig_risk(self) -> None:
         """Test that programs with dig commands may terminate early."""
-        # This test may or may not terminate early depending on random chance
-        # We'll run it multiple times to ensure it doesn't always fail
-        for _ in range(10):
-            try:
-                with redirect_stdout(io.StringIO()):
-                    run(["$1@"])
-                # If we get here, the program completed without death
-                break
-            except SystemExit:
-                # Program terminated due to death - this is expected behavior
-                pass
+        # With a guaranteed survival, the dig completes without death
+        with patch("esolangs.interpreters.register_based.dsdlai.rand") as mock_rand:
+            mock_rand.return_value = lambda: False
+            with redirect_stdout(io.StringIO()) as f:
+                run(["$1@"])
+        assert f.getvalue() == ""
 
 
 class TestDSDLAHelloWorld:
@@ -110,9 +105,9 @@ class TestDSDLAHelloWorld:
         hello_world_code = ["@"]
 
         # Test that the program can be parsed without syntax errors
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(hello_world_code)
-        # Should complete normally
+        assert f.getvalue() == ""
 
     def test_hello_world_with_deterministic_death(self) -> None:
         """Test Hello World with mocked death function."""
@@ -210,22 +205,21 @@ class TestDSDLAIntegration:
         # Simple program that just moves and halts
         code = [">@"]
 
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should complete normally
+        assert f.getvalue() == ""
 
     def test_program_with_multiple_dig_commands(self) -> None:
         """Test program with multiple dig commands."""
         # Program with multiple dig operations
         code = ["$1$2@", " 1 2"]
 
-        # This may terminate early due to death chance
-        try:
-            with redirect_stdout(io.StringIO()):
+        # With a guaranteed survival, all digs complete
+        with patch("esolangs.interpreters.register_based.dsdlai.rand") as mock_rand:
+            mock_rand.return_value = lambda: False
+            with redirect_stdout(io.StringIO()) as f:
                 run(code)
-        except SystemExit:
-            # Expected if mole dies during any dig operation
-            pass
+        assert f.getvalue() == ""
 
     def test_complex_program_structure(self) -> None:
         """Test a more complex program structure."""
@@ -233,6 +227,6 @@ class TestDSDLAIntegration:
         code = [">@"]
 
         # This should complete normally
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run(code)
-        # Should complete without error
+        assert f.getvalue() == ""
