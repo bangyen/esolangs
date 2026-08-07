@@ -12,7 +12,12 @@ import importlib
 from collections.abc import Callable
 from typing import cast
 
-__all__ = ["TRANSPILERS", "ascii_art_to_bf", "bf_to_ascii_art"]
+__all__ = [
+    "TRANSPILERS",
+    "ascii_art_to_bf",
+    "bf_to_ascii_art",
+    "bf_to_circlefuck",
+]
 
 # The eight brainfuck commands -> their ASCII-art blocks.  This is the
 # single source of truth for the art alphabet; ``ascii-art.parse`` decodes
@@ -55,7 +60,33 @@ def ascii_art_to_bf(program: str) -> str:
     return parse(program)
 
 
-TRANSPILERS: dict[tuple[str, str], Callable[[str], str]] = {
+def bf_to_circlefuck(program: str, size: int = 32) -> str:
+    """Rewrite a brainfuck program into CircleFuck.
+
+    CircleFuck's tape is the program itself, so a clean data region must be
+    set up first.  Each of the ``size`` data cells holds ``>`` -- the only
+    command whose value (62) is not a bracket -- so the setup walk can move
+    past them and zero each with an exact run of ``-``s without ever writing
+    a ``[``/``]`` character (CircleFuck's bracket matching reads the current
+    cell values, so a zeroed ``[`` would no longer be a bracket).  The
+    brainfuck commands then follow unchanged: CircleFuck's ``[``/``]``
+    already test the cell at the data pointer.  ``@`` halts.
+
+    The source program must keep its data pointer within ``[0, size)``:
+    moving below cell 0 wraps around to the end of the program (where
+    brainfuck clamps), and moving past cell ``size - 1`` enters the setup
+    code.  Most programs use a handful of cells; pass ``size`` explicitly
+    when a program uses more.
+    """
+    if size < 1:
+        raise ValueError(f"size must be positive, got {size}")
+    ops = [c for c in program if c in "+-<>.,[]"]
+    setup = ">" * size + ("<" + "-" * 62) * size
+    return setup + "".join(ops) + "@"
+
+
+TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BF", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "BF"): ascii_art_to_bf,
+    ("BF", "CircleFuck"): bf_to_circlefuck,
 }
