@@ -159,7 +159,6 @@ module = [
     "esolangs.compilers.assembly.jaune",
     "esolangs.tools._polynomial",
     "esolangs.tools._ztoalc",
-    "tests.*",
 ]
 disallow_untyped_defs = false
 ignore_missing_imports = true  # For external dependencies
