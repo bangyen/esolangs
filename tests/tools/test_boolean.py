@@ -145,3 +145,27 @@ class TestBrainIf:
         program = boolean.brainif("10", 1)
         assert program.startswith("if 0 input")
         assert "if 48 goto" in program
+
+
+def run_taglate(program: str, inputs: list[str]) -> str:
+    import esolangs
+
+    return esolangs.run("Taglate", program, stdin="\n".join(inputs))
+
+
+class TestTaglate:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [("00", 1), ("01", 1), ("10", 1), ("11", 1)],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.taglate(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_taglate(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_only_supports_one_input(self) -> None:
+        with pytest.raises(ValueError, match="n == 1"):
+            boolean.taglate("0110", 2)

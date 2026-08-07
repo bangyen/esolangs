@@ -96,14 +96,16 @@ def run(code: list[str]) -> None:
             queue.pop(0)
         elif tok == "gy":
             if not queue or queue[0] == 0:
-                ind = match.get(ind)
-                if ind is None:
+                partner = match.get(ind)
+                if partner is None:
                     return
+                ind = partner
         elif tok == "gz":
             if queue and queue[0] != 0:
-                ind = match.get(ind)
-                if ind is None:
+                partner = match.get(ind)
+                if partner is None:
                     return
+                ind = partner
         elif tok == "h":
             val = input("\nInput: "[:new])
             queue.append(ord(val[0]))
