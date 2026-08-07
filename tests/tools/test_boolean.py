@@ -9,7 +9,7 @@ import pytest
 from esolangs.tools import boolean
 
 
-def run_sophie(program: str, inputs: list) -> str:
+def run_sophie(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.sophie import run
 
     buffer = io.StringIO()
@@ -42,7 +42,7 @@ class TestSophie:
         assert boolean.sophie("10", 1) == ";@$48{#$49,&}{#$48,&}"
 
 
-def run_modulous(program: str, inputs: list) -> str:
+def run_modulous(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.stack_based.modulous import run
 
     buffer = io.StringIO()
@@ -76,7 +76,7 @@ class TestModulous:
         assert "[JMP F 2 IF 0]" in boolean.modulous("10", 1)
 
 
-def run_brainif(program: str, inputs: list) -> str:
+def run_brainif(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.brainif import run
 
     buffer = io.StringIO()
@@ -85,7 +85,7 @@ def run_brainif(program: str, inputs: list) -> str:
     return buffer.getvalue()
 
 
-def run_nevermind(program: str, inputs: list) -> str:
+def run_nevermind(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.nevermind import run
 
     buffer = io.StringIO()

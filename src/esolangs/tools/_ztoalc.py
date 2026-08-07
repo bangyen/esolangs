@@ -10,7 +10,7 @@ from typing import Any
 
 _ZTOALC_TABLE_LIMIT = 1_000_000
 _ZTOALC_MAX_LIMIT = 10_000_000
-_length_table_cache: dict = {}
+_length_table_cache: dict[int, Any] = {}
 
 
 def _collatz_prefix(start: int, n: int) -> list[int]:

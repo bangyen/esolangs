@@ -47,7 +47,9 @@ def test_text_generators_round_trip() -> None:
         text = _random_text()
         for name, (module, split, kwargs, suffix) in ROUND_TRIP.items():
             try:
-                program = BY_FUNCTION[name].generator(text)
+                generator = BY_FUNCTION[name].generator
+                assert generator is not None
+                program = generator(text)
             except ValueError:
                 assert (
                     name != "mammalian"

@@ -46,6 +46,6 @@ def run(language: str, program: str, stdin: str = "") -> str:
     return buffer.getvalue()
 
 
-def list_languages() -> list:
+def list_languages() -> list[str]:
     """Return the supported language names, sorted."""
     return sorted(LANGUAGES)

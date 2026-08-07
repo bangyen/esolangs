@@ -28,7 +28,7 @@ def run(code: list[str]) -> None:
             arg = exp[:-1].split("[")
             arr = var[arg[0]]
             if not isinstance(arr, list):
-                raise ValueError("array variable expected")
+                raise ValueError("array variable expected")  # pragma: no cover
             return arr[cast(int, val(state, arg[1]))]
 
     while p := ptr - 1:

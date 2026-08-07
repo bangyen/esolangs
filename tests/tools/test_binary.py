@@ -9,12 +9,12 @@ from esolangs.tools.binary import convert
 
 
 class TestMain:
-    def test_usage(self, capsys: pytest.CaptureFixture) -> None:
+    def test_usage(self, capsys: pytest.CaptureFixture[str]) -> None:
         with patch("sys.argv", ["esolangs.tools.binary"]), pytest.raises(SystemExit):
             binary.main()
         assert "usage: python -m esolangs.tools.binary" in capsys.readouterr().out
 
-    def test_bad_length(self, capsys: pytest.CaptureFixture) -> None:
+    def test_bad_length(self, capsys: pytest.CaptureFixture[str]) -> None:
         with (
             patch("sys.argv", ["esolangs.tools.binary", "011"]),
             pytest.raises(SystemExit),
@@ -22,14 +22,14 @@ class TestMain:
             binary.main()
         assert "must be a power of 2" in capsys.readouterr().out
 
-    def test_valid_table(self, capsys: pytest.CaptureFixture) -> None:
+    def test_valid_table(self, capsys: pytest.CaptureFixture[str]) -> None:
         with patch("sys.argv", ["esolangs.tools.binary", "0111"]):
             binary.main()
         program = capsys.readouterr().out
         assert program.startswith("'")
         assert "$30:@" in program
 
-    def test_entry_point(self, capsys: pytest.CaptureFixture) -> None:
+    def test_entry_point(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Running the module as __main__ dispatches to main()."""
         import runpy
 

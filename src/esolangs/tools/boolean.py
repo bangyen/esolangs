@@ -6,6 +6,7 @@ combination it is given.
 """
 
 from collections.abc import Sequence
+from typing import cast
 
 
 def sophie(truth_table: str, n: int) -> str:
@@ -70,7 +71,7 @@ def brainif(truth_table: str, n: int) -> str:
     outputs it.
     """
 
-    entries: list = []
+    entries: list[tuple[object, ...]] = []
     for i in range(n):
         entries.append(("cmd", "if 0 input"))
         if i < n - 1:
@@ -82,10 +83,13 @@ def brainif(truth_table: str, n: int) -> str:
 
     counter = [0]
 
-    def build(rows: list[int], k: int) -> list:
+    def build(rows: list[int], k: int) -> list[tuple[object, ...]]:
         if len(rows) == 1:
             r = int(truth_table[rows[0]])
-            block: list = [("cmd", "if 48 move right"), ("cmd", "if 49 move right")]
+            block: list[tuple[object, ...]] = [
+                ("cmd", "if 48 move right"),
+                ("cmd", "if 49 move right"),
+            ]
             block += [("cmd", f"if {v} increment") for v in range(48 + r)]
             block.append(("cmd", f"if {48 + r} output"))
             block.append(("if_goto", 48 + r))
@@ -107,15 +111,19 @@ def brainif(truth_table: str, n: int) -> str:
 
     entries += build(list(range(2**n)), 1)
     entries.append(("end",))
-    labels = {entry[2]: i + 1 for i, entry in enumerate(entries) if entry[0] == "mr"}
+    labels = {
+        cast(int, entry[2]): i + 1
+        for i, entry in enumerate(entries)
+        if entry[0] == "mr"
+    }
     end_line = len(entries)
 
-    lines = []
+    lines: list[str] = []
     for entry in entries:
         if entry[0] == "cmd":
-            lines.append(entry[1])
+            lines.append(cast(str, entry[1]))
         elif entry[0] == "if":
-            lines.append(f"if {entry[1]} goto {labels[entry[2]]}")
+            lines.append(f"if {entry[1]} goto {labels[cast(int, entry[2])]}")
         elif entry[0] == "mr":
             lines.append(f"if {entry[1]} move right")
         elif entry[0] == "if_goto":
@@ -135,7 +143,7 @@ def nevermind(truth_table: str, n: int) -> str:
     decision tree of nested ``if``/``endif`` blocks prints the result for the
     matching combination.
     """
-    lines = []
+    lines: list[str] = []
     for i in range(n):
         lines.append("input,?")
         lines.append(f"make,{chr(ord('a') + i)},$answer")
