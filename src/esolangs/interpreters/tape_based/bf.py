@@ -1,29 +1,13 @@
-import re
+"""Interpreter for Brainfuck.
+
+The semantics deliberately match the ASCII-art interpreter (which is
+brainfuck with an art alphabet) so that the two are interchangeable: an
+8-bit wrapping tape, rightward growth, ``<`` clamped at the left edge, and
+matching-bracket loops.  This is what lets the BF-to-ASCII-art transpiler
+be verified end-to-end.
+"""
+
 import sys
-
-
-def parse(code: str) -> str:
-    if not code:
-        return ""
-    code = re.sub(" +\n", "\n", code)
-    blocks = code.split("\n\n")
-    res = ""
-    sym = {
-        (0, "-"): "-",
-        (1, "#"): ".",
-        (2, "|"): ",",
-        (3, "\\"): "<",
-        (3, "/"): ">",
-        (4, "|"): "+",
-        (5, "_"): "[",
-        (5, "|"): "]",
-    }
-
-    for c in blocks:
-        t = (c.count("\n"), c[-1])
-        if t in sym:
-            res += sym[t]
-    return res
 
 
 def matches(code: str) -> dict[int, int]:
@@ -42,7 +26,6 @@ def matches(code: str) -> dict[int, int]:
 
 def run(code: str) -> None:
     tape: list[int] = [0]
-    code = parse(code)
     m = matches(code)
 
     ind = ptr = 0
@@ -56,7 +39,7 @@ def run(code: str) -> None:
                 tape.append(0)
         elif char == "<" and ptr:
             ptr -= 1
-        elif char in "+":
+        elif char == "+":
             tape[ptr] = (tape[ptr] + 1) % 256
         elif char == "-":
             tape[ptr] = (tape[ptr] - 1) % 256
@@ -84,5 +67,4 @@ def run(code: str) -> None:
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
-            data = file.read()
-            run(data)
+            run(file.read())

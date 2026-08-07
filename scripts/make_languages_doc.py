@@ -52,9 +52,7 @@ def render() -> str:
     ]
     for name in sorted(set(LANGUAGES) | C_COMPILERS):
         c = _capabilities(name)
-        examples = " ".join(
-            k for k in ("hello", "cat", "truth-machine") if c[k]
-        )
+        examples = " ".join(k for k in ("hello", "cat", "truth-machine") if c[k])
         lines.append(
             f"| {name} | {'yes' if c['generator'] else ''} | "
             f"{'yes' if c['interpreter'] else ''} | {'yes' if c['boolean'] else ''} | "

@@ -40,6 +40,7 @@ LANGUAGES: dict[str, Language] = {
     "6-5": Language("6-5", _generate.six_five, "tape_based.6-5"),
     "ASCII art": Language("ASCII art", _generate.ascii_art, "tape_based.ascii-art"),
     "Back": Language("Back", interpreter="tape_based.back", split=True),
+    "BF": Language("BF", _generate.bf, "tape_based.bf"),
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
     "BIO": Language("BIO", _generate.bio, "register_based.bio"),
     "BitDeque": Language("BitDeque", interpreter="other.bitdeque"),

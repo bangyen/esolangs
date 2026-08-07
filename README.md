@@ -17,6 +17,7 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
   - [Other Languages](#other-languages)
 - [Extra Implementations](#extra-implementations)
 - [Compilers](#compilers)
+- [Transpilers](#transpilers)
 - [Tools](#tools)
 - [Notes](#notes)
 
@@ -80,6 +81,7 @@ The installed `esolangs` command provides friendly subcommands:
 esolangs list                          # list the supported languages
 esolangs generate CircleFuck "Hello"   # print a program that outputs "Hello"
 esolangs run CircleFuck program.txt    # run a program through its interpreter
+esolangs transpile BF "ASCII art" hello.bf   # rewrite a program as ASCII art
 ```
 
 ## Public API
@@ -92,6 +94,7 @@ import esolangs
 program = esolangs.generate("CircleFuck", "Hello, World!")
 output = esolangs.run("CircleFuck", program)
 esolangs.list_languages()   # every supported language
+art = esolangs.transpile("BF", "ASCII art", program)   # rewrite between languages
 ```
 
 ## Implemented Languages
@@ -120,6 +123,7 @@ Languages that operate on a tape (similar to Turing machines).
 
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
 - [Back](https://esolangs.org/wiki/Back)
+- [Brainfuck](https://esolangs.org/wiki/Brainfuck)
 - [BrainIf](https://esolangs.org/wiki/BrainIf)
 - [circlefuck](https://esolangs.org/wiki/Circlefuck)
 - [EXCON](https://esolangs.org/wiki/EXCON)
@@ -212,6 +216,20 @@ Compilers that translate esoteric languages to other target languages.
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [RAM0](https://esolangs.org/wiki/RAM0)
+
+## Transpilers
+
+Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
+
+- [BF](https://esolangs.org/wiki/Brainfuck) -> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block.
+
+```bash
+esolangs transpile BF "ASCII art" program.bf   # print the art
+```
+
+```python
+art = esolangs.transpile("BF", "ASCII art", program)  # or via the API
+```
 
 ## Tools
 
