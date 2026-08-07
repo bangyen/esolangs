@@ -1,0 +1,103 @@
+"""Single source of truth for the languages the package supports.
+
+Each :class:`Language` describes a language's generator (if any), its
+interpreter (if any), and how a program is handed to that interpreter. The
+public API, the tools, and the test suite all derive from this table, so
+adding a language is a one-place change.
+"""
+
+from dataclasses import dataclass
+from typing import Callable, Optional
+
+from esolangs.tools import generate as _generate
+
+
+@dataclass(frozen=True)
+class Language:
+    """Metadata for one language.
+
+    ``generator`` produces a program that prints a text (None if the
+    language has no generator).  ``interpreter`` is the dotted module under
+    ``esolangs.interpreters`` that runs programs (None if the executable
+    lives elsewhere, e.g. in extra/).  ``split`` passes the program split
+    into lines to the interpreter, and ``kwargs`` holds any extra run()
+    keyword arguments as (name, value) pairs.
+    """
+
+    name: str
+    generator: Optional[Callable[[str], str]] = None
+    interpreter: Optional[str] = None
+    split: bool = False
+    kwargs: tuple = ()
+
+
+def _kw(**kwargs: int) -> tuple:
+    return tuple(kwargs.items())
+
+
+LANGUAGES: dict = {
+    "123": Language("123", _generate._123),
+    "6-5": Language("6-5", _generate.six_five, "tape_based.6-5"),
+    "ASCII art": Language("ASCII art", _generate.ascii_art, "tape_based.ascii-art"),
+    "Back": Language("Back", interpreter="tape_based.back", split=True),
+    "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
+    "BIO": Language("BIO", _generate.bio, "register_based.bio"),
+    "BitDeque": Language("BitDeque", interpreter="other.bitdeque"),
+    "BrainIf": Language("BrainIf", _generate.brainif, "tape_based.brainif", True),
+    "CircleFuck": Language("CircleFuck", _generate.circlefuck, "tape_based.circlefuck"),
+    "Clockwise": Language("Clockwise", _generate.clockwise, "other.clockwise", True),
+    "Container": Language("Container", _generate.container, "other.container", True),
+    "Dig": Language("Dig", _generate.dig, "register_based.dig", True),
+    "Dotlang": Language("Dotlang", _generate.dotlang, "register_based.dotlang", True),
+    "DSDLAI": Language("DSDLAI", interpreter="register_based.dsdlai", split=True),
+    "Eval": Language("Eval", _generate.eval, "stack_based.eval"),
+    "EXCON": Language("EXCON", _generate.excon, "tape_based.excon"),
+    "Forþ": Language("Forþ", _generate.forth),
+    "Home Row": Language("Home Row", _generate.home_row),
+    "huf": Language("huf", _generate.huf, "register_based.huf"),
+    "Keys": Language("Keys", interpreter="other.keys", split=True),
+    "LaserFuck": Language("LaserFuck", _generate.laserfuck),
+    "Lightlang": Language("Lightlang", interpreter="register_based.lightlang"),
+    "Magnitude": Language("Magnitude", _generate.magnitude),
+    "MAMMALIAN": Language("MAMMALIAN", _generate.mammalian, "tape_based.mammalian"),
+    "Minifuck": Language("Minifuck", _generate.minifuck, "tape_based.minifuck"),
+    "Minsky Swap": Language("Minsky Swap", interpreter="register_based.minsky-swap"),
+    "Modulous": Language("Modulous", _generate.modulous, "stack_based.modulous"),
+    "Movesum": Language("Movesum", interpreter="register_based.movesum", split=True),
+    "Nevermind": Language("Nevermind", _generate.nevermind, "other.nevermind", True),
+    "NoComment": Language("NoComment", _generate.nocomment),
+    "Painfuck": Language("Painfuck", _generate.painfuck),
+    "Polynomial": Language(
+        "Polynomial", _generate.polynomial, "register_based.polynomial"
+    ),
+    "Qoibl": Language("Qoibl", _generate.qoibl, "register_based.qoibl", True),
+    "RAM0": Language("RAM0", interpreter="register_based.RAM0"),
+    "Sophie": Language("Sophie", _generate.sophie, "register_based.sophie"),
+    "Suffolk": Language(
+        "Suffolk", _generate.suffolk, "tape_based.suffolk", kwargs=_kw(limit=1)
+    ),
+    "Temporary": Language("Temporary", _generate.temporary, "stack_based.temporary"),
+    "Unsquare": Language("Unsquare", _generate.unsquare),
+    "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", True),
+    "ZTOALC": Language("ZTOALC", _generate.ztoalc, "other.ztoalc", True),
+}
+
+# Display name -> generator function, for languages that have one.
+GENERATORS: dict = {
+    name: lang.generator for name, lang in LANGUAGES.items() if lang.generator
+}
+
+# Generator function name -> Language, so tests can look a generator up by
+# the name of its function (e.g. ``six_five`` for "6-5").
+BY_FUNCTION: dict = {
+    lang.generator.__name__: lang
+    for lang in LANGUAGES.values()
+    if lang.generator is not None
+}
+
+# Display name -> (interpreter module, split lines, run() keyword arguments).
+RUNNERS: dict = {
+    name: (lang.interpreter, lang.split, dict(lang.kwargs))
+    for name, lang in LANGUAGES.items()
+    if lang.interpreter
+}
