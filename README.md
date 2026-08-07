@@ -1,6 +1,6 @@
 # Esolang Interpreters
 
-[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Coverage](coverage-badge.svg)](coverage-badge.svg)
 
@@ -72,10 +72,26 @@ This writes the generated assembly to `output.asm`.
 python -m esolangs.interpreters.tape_based.brainif hello_world.bf
 ```
 
-Alternatively, the `esolangs` command runs any module:
+### The `esolangs` Command
+
+The installed `esolangs` command provides friendly subcommands:
 
 ```bash
-esolangs esolangs.interpreters.tape_based.brainif hello_world.bf
+esolangs list                          # list the supported languages
+esolangs generate CircleFuck "Hello"   # print a program that outputs "Hello"
+esolangs run CircleFuck program.txt    # run a program through its interpreter
+```
+
+## Public API
+
+The package exposes a small typed API:
+
+```python
+import esolangs
+
+program = esolangs.generate("CircleFuck", "Hello, World!")
+output = esolangs.run("CircleFuck", program)
+esolangs.list_languages()   # every supported language
 ```
 
 ## Implemented Languages
@@ -210,12 +226,14 @@ python -m esolangs.tools.binary 0111   # 2-input OR gate
 The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import brainif, modulous, nevermind, sophie
+from esolangs.tools.boolean import brainif, circlefuck, modulous, nevermind, sophie
 
-sophie("0110", 2)      # 2-input XOR in Sophie
-modulous("0110", 2)    # the same truth table in Modulous
-brainif("0110", 2)     # and in BrainIf
-nevermind("0110", 2)   # and in Nevermind
+sophie("0110", 2)        # 2-input XOR in Sophie
+modulous("0110", 2)      # the same truth table in Modulous
+brainif("0110", 2)       # and in BrainIf
+nevermind("0110", 2)     # and in Nevermind
+circlefuck("0110", 2)    # and in CircleFuck
+circlefuck_byte(table)   # arbitrary byte-valued functions
 ```
 
 ### Program Generator
@@ -234,13 +252,16 @@ The `generate.py` program outputs programs which output a given string in differ
 - Dotlang
 - Eval
 - EXCON
+- CircleFuck
 - Forþ (Forth)
+- Home Row
 - huf
 - LaserFuck
 - Magnitude
 - MAMMALIAN
 - Minifuck
 - Modulous
+- NoComment
 - Nevermind
 - Painfuck
 - Polynomial
@@ -248,6 +269,7 @@ The `generate.py` program outputs programs which output a given string in differ
 - Sophie
 - Suffolk
 - Temporary Stack
+- Unsquare
 - WII2D
 - ZTOALC
 - 123
