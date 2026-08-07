@@ -46,9 +46,7 @@ def test_random_programs_terminate(module):
     run = importlib.import_module("esolangs.interpreters." + module).run
     signal.signal(signal.SIGALRM, _on_alarm)
     for _ in range(25):
-        program = "".join(
-            random.choice(alphabet) for _ in range(random.randint(1, 24))
-        )
+        program = "".join(random.choice(alphabet) for _ in range(random.randint(1, 24)))
         signal.alarm(3)
         try:
             with patch("builtins.input", return_value="0"):

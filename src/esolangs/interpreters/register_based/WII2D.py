@@ -8,16 +8,16 @@ Pointer moves on a 2D grid with wrap-around behavior and an accumulator.
 import copy
 import secrets
 import sys
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
 
 
-def init(code: List[str]) -> Callable[[int, int, int], Tuple[int, int]]:
+def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
     """Initialize movement function for WII2D grid navigation."""
     n = len(code)
     m = len(code[0])
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # North, South, West, East
 
-    def move(x: int, y: int, vel: int) -> Tuple[int, int]:
+    def move(x: int, y: int, vel: int) -> tuple[int, int]:
         dx, dy = directions[vel]
         x = (x + dx) % n
         y = (y + dy) % m
@@ -26,13 +26,13 @@ def init(code: List[str]) -> Callable[[int, int, int], Tuple[int, int]]:
     return move
 
 
-def close(code: List[str]) -> Callable[[int, int], Optional[Tuple[int, int]]]:
+def close(code: list[str]) -> Callable[[int, int], tuple[int, int] | None]:
     """Create a function to find the closest @ command for jump operations."""
 
-    def start(x: int, y: int) -> Callable[[Tuple[int, int]], int]:
+    def start(x: int, y: int) -> Callable[[tuple[int, int]], int]:
         """Create a distance function for sorting @ positions."""
 
-        def dist(c: Tuple[int, int]) -> int:
+        def dist(c: tuple[int, int]) -> int:
             return abs(c[0] - x) + abs(c[1] - y)
 
         return dist
@@ -44,7 +44,7 @@ def close(code: List[str]) -> Callable[[int, int], Optional[Tuple[int, int]]]:
             if row_idx > 0 and char == "@":
                 at_positions.append((row_idx, col_idx))
 
-    def find(x: int, y: int) -> Optional[Tuple[int, int]]:
+    def find(x: int, y: int) -> tuple[int, int] | None:
         """Find the closest @ position to the given coordinates."""
         positions = copy.deepcopy(at_positions)
         positions.sort(key=start(x, y))
@@ -75,7 +75,7 @@ def update(op: str, acc: int) -> int:
     return acc
 
 
-def run(code: List[str]) -> None:
+def run(code: list[str]) -> None:
     """Execute a WII2D program."""
     # Find the start marker (!)
     for row_idx, row in enumerate(code):

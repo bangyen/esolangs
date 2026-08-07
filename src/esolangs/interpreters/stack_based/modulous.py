@@ -1,8 +1,8 @@
 import re
 import secrets
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
 
 
 @dataclass
@@ -13,7 +13,7 @@ class State:
     ind: int = 0
 
 
-def _jmp(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _jmp(state: State, mod: str, arg: list[str]) -> str | None:
     cond = True
     val = state.stk[-1] if state.stk else 0
 
@@ -30,22 +30,22 @@ def _jmp(state: State, mod: str, arg: List[str]) -> Optional[str]:
     return None
 
 
-def _add(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _add(state: State, mod: str, arg: list[str]) -> str | None:
     state.stk[-1] += int(arg[1])
     return None
 
 
-def _sub(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _sub(state: State, mod: str, arg: list[str]) -> str | None:
     state.stk[-1] -= int(arg[1])
     return None
 
 
-def _rst(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _rst(state: State, mod: str, arg: list[str]) -> str | None:
     state.ind = -1
     return None
 
 
-def _psh(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _psh(state: State, mod: str, arg: list[str]) -> str | None:
     if "INT" in mod:
         state.stk.append(int(arg[2]))
     elif "STR" in mod:
@@ -56,17 +56,17 @@ def _psh(state: State, mod: str, arg: List[str]) -> Optional[str]:
     return None
 
 
-def _pop(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _pop(state: State, mod: str, arg: list[str]) -> str | None:
     state.stk.pop()
     return None
 
 
-def _swp(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _swp(state: State, mod: str, arg: list[str]) -> str | None:
     state.stk.append(state.stk.pop(-2))
     return None
 
 
-def _prt(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _prt(state: State, mod: str, arg: list[str]) -> str | None:
     n = state.var[arg[1]] if "VAR" in mod else state.stk.pop()
 
     if "INT" in mod:
@@ -77,7 +77,7 @@ def _prt(state: State, mod: str, arg: List[str]) -> Optional[str]:
     return None
 
 
-def _inp(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _inp(state: State, mod: str, arg: list[str]) -> str | None:
     input_str: str = input("\nInput: "[state.new :])
     state.new = 1
 
@@ -88,16 +88,16 @@ def _inp(state: State, mod: str, arg: List[str]) -> Optional[str]:
     return None
 
 
-def _end(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _end(state: State, mod: str, arg: list[str]) -> str | None:
     return "halt"
 
 
-def _dup(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _dup(state: State, mod: str, arg: list[str]) -> str | None:
     state.stk.append(state.stk[-1])
     return None
 
 
-def _rnd(state: State, mod: str, arg: List[str]) -> Optional[str]:
+def _rnd(state: State, mod: str, arg: list[str]) -> str | None:
     state.stk.append(secrets.randbelow(int(arg[1])))
     return None
 
@@ -111,7 +111,7 @@ def _var_arith(state: State, mod: str) -> None:
         state.var[lhs] -= int(rhs)
 
 
-_DISPATCH: dict[str, Callable[[State, str, List[str]], Optional[str]]] = {
+_DISPATCH: dict[str, Callable[[State, str, list[str]], str | None]] = {
     "JMP": _jmp,
     "ADD": _add,
     "SUB": _sub,

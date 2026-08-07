@@ -12,12 +12,12 @@ import sys
 class Dot:
     """Represents a dot (instruction pointer) in the Dotlang programming language."""
 
-    DIRS = [
+    DIRS = (
         (-1, 0),
         (0, 1),
         (1, 0),
         (0, -1),
-    ]  # Direction vectors: up, right, down, left
+    )  # Direction vectors: up, right, down, left
     mx = my = 0  # Maximum x and y coordinates of the code grid
     code = ""  # The 2D code grid as a list of strings
 

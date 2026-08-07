@@ -134,7 +134,7 @@ def comp(code):
         res += "\nright:\n" + s + "\tret\n"
     if func["k"][1]:
         b = func["k"][2]
-        b_int = int(b) if isinstance(b, (int, float)) else 0
+        b_int = int(b) if isinstance(b, int | float) else 0
         res += (
             "\nprint:\n" + "\tpush eax\n" * b_int + "\tmov eax, 4\n"
             "\tmov ebx, 1\n"

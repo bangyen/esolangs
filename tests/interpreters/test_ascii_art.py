@@ -3,7 +3,6 @@
 import importlib
 import io
 from contextlib import redirect_stdout
-from typing import List, Optional
 from unittest.mock import patch
 
 ascii_art = importlib.import_module("esolangs.interpreters.tape_based.ascii-art")
@@ -23,11 +22,10 @@ def program(*blocks: str) -> str:
     return "\n\n".join(blocks)
 
 
-def run_and_capture(code: str, inputs: Optional[List[str]] = None) -> str:
+def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []):
-        with redirect_stdout(buffer):
-            ascii_art.run(code)
+    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
+        ascii_art.run(code)
     return buffer.getvalue()
 
 

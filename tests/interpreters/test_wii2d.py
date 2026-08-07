@@ -1,5 +1,4 @@
-"""
-Unit tests for WII2D (Why Is It 2D?) interpreter.
+"""Unit tests for WII2D (Why Is It 2D?) interpreter.
 
 Tests cover all WII2D commands, edge cases, and example programs from esolangs.org.
 Includes timeout protection to prevent hanging tests.
@@ -7,8 +6,9 @@ Includes timeout protection to prevent hanging tests.
 
 import io
 import signal
+from collections.abc import Callable
 from contextlib import redirect_stdout
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
@@ -25,8 +25,7 @@ def timeout_handler(signum: int, frame: Any) -> None:
 
 
 def run_with_timeout(func: Callable, timeout_seconds: int = 5) -> Any:
-    """
-    Run a function with timeout protection.
+    """Run a function with timeout protection.
 
     Args:
         func: Function to execute
@@ -37,6 +36,7 @@ def run_with_timeout(func: Callable, timeout_seconds: int = 5) -> Any:
 
     Raises:
         TimeoutError: If function exceeds timeout
+
     """
     # Set up signal handler for timeout
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
@@ -200,9 +200,8 @@ class TestWII2DControlFlow:
         with patch(
             "esolangs.interpreters.register_based.WII2D.secrets.randbelow",
             side_effect=[3, 0],
-        ):
-            with redirect_stdout(io.StringIO()) as f:
-                run(code)
+        ), redirect_stdout(io.StringIO()) as f:
+            run(code)
         assert f.getvalue() == ""
 
 

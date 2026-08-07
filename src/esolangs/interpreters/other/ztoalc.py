@@ -19,7 +19,7 @@ def run(code):
             return s
         elif exp in var:
             return var.get(exp)
-        elif exp.isnumeric() or exp[0] == "-" and exp[1:].isnumeric():
+        elif exp.isnumeric() or (exp[0] == "-" and exp[1:].isnumeric()):
             return int(exp)
         elif exp[0] == "[":
             return [0] * val(state, exp[1:-1])

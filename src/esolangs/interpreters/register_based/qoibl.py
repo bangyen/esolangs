@@ -38,14 +38,8 @@ def run(code):
             x = parse(state, expr[:beg])
             y = parse(state, expr[beg + 3 :])
 
-            if num == "ee":
-                return x == y
-            elif num == "ey":
-                return x > y
-            elif num == "ye":
-                return x < y
-            elif num == "yy":
-                return x != y
+            if num in {"ee", "ey", "ye", "yy"}:
+                return {"ee": x == y, "ey": x > y, "ye": x < y, "yy": x != y}[num]
         elif "ry" in expr:
             beg = expr.index("ry")
             num = expr[beg + 1]

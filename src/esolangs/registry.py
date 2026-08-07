@@ -6,8 +6,8 @@ public API, the tools, and the test suite all derive from this table, so
 adding a language is a one-place change.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
 
 from esolangs.tools import generate as _generate
 
@@ -25,8 +25,8 @@ class Language:
     """
 
     name: str
-    generator: Optional[Callable[[str], str]] = None
-    interpreter: Optional[str] = None
+    generator: Callable[[str], str] | None = None
+    interpreter: str | None = None
     split: bool = False
     kwargs: tuple = ()
 

@@ -42,7 +42,7 @@ def run(code):
         elif ins == ".":
             n = int(inp[0])
             acc = (acc | 1) - 1 + n
-            inp = inp[1:] + [inp[0]]
+            inp = [*inp[1:], inp[0]]
         elif ins == ";":
             out.append(str(acc % 2))
         elif ins == "S":

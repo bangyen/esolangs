@@ -104,9 +104,8 @@ class TestGeneratorRoundTrips:
         with patch(
             "esolangs.tools.generate._mammalian_walk",
             return_value=[{} for _ in range(256)],
-        ):
-            with pytest.raises(ValueError, match="cannot build"):
-                gen.mammalian("H")
+        ), pytest.raises(ValueError, match="cannot build"):
+            gen.mammalian("H")
 
     def test_huf(self) -> None:
         """Each # + inc >@ segment prints one character."""
@@ -122,7 +121,7 @@ class TestGeneratorRoundTrips:
         assert gen.eval("") == ""
 
     def test_eval_backtick(self) -> None:
-        """eval cannot output a literal backtick."""
+        """Eval cannot output a literal backtick."""
         with pytest.raises(ValueError, match="backtick"):
             gen.eval("a`b")
 
@@ -143,7 +142,7 @@ class TestGeneratorRoundTrips:
             gen.dotlang("a`b")
 
     def test_nevermind(self) -> None:
-        """print joins its arguments; nevermind always adds a trailing newline."""
+        """Print joins its arguments; nevermind always adds a trailing newline."""
         assert roundtrip(nevermind_run, gen.nevermind("Hi").splitlines()) == "Hi\n"
         assert roundtrip(nevermind_run, gen.nevermind("a,b").splitlines()) == "a,b\n"
         assert (
@@ -153,12 +152,12 @@ class TestGeneratorRoundTrips:
         assert roundtrip(nevermind_run, gen.nevermind("١٢٣").splitlines()) == "١٢٣\n"
 
     def test_nevermind_unsupported(self) -> None:
-        """nevermind cannot print multiline text or a leading $."""
-        with pytest.raises(ValueError):
+        """Nevermind cannot print multiline text or a leading $."""
+        with pytest.raises(ValueError, match="single line"):
             gen.nevermind("a\nb")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="single line"):
             gen.nevermind("a\x0bb")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="single line"):
             gen.nevermind("$abc")
 
     def test_dig_unsupported(self) -> None:
@@ -303,9 +302,8 @@ class TestGeneratorRoundTrips:
         import pytest
 
         buffer = io.StringIO()
-        with pytest.raises(SystemExit):
-            with contextlib.redirect_stdout(buffer):
-                container_run(gen.container("Hi").splitlines())
+        with pytest.raises(SystemExit), contextlib.redirect_stdout(buffer):
+            container_run(gen.container("Hi").splitlines())
         assert buffer.getvalue() == "Hi"
 
 
@@ -389,9 +387,8 @@ class TestGeneratorBranches:
         assert "--- WII2D ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
-        with patch("sys.argv", ["esolangs.tools.generate"]):
-            with pytest.raises(SystemExit):
-                gen.main()
+        with patch("sys.argv", ["esolangs.tools.generate"]), pytest.raises(SystemExit):
+            gen.main()
         out = capsys.readouterr().out
         assert "usage: python -m esolangs.tools.generate" in out
 
@@ -447,7 +444,7 @@ class TestGeneratorBranches:
         gen.painfuck("H$")
 
     def test_module_entry_point(self) -> None:
-        """python -m esolangs.tools.generate runs as a script."""
+        """Python -m esolangs.tools.generate runs as a script."""
         import subprocess
         import sys
 

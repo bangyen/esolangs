@@ -41,9 +41,8 @@ class TestContainer:
     def test_hello_world(self) -> None:
         """Hello, World! program from esolangs.org."""
         buffer = io.StringIO()
-        with pytest.raises(SystemExit) as exc:
-            with redirect_stdout(buffer):
-                run(HELLO_WORLD)
+        with pytest.raises(SystemExit) as exc, redirect_stdout(buffer):
+            run(HELLO_WORLD)
         assert exc.value.code == 0
         assert buffer.getvalue() == "Hello, world!"
 
@@ -61,8 +60,10 @@ class TestContainer:
         from unittest.mock import patch
 
         code = [":", "+1 A>=0", "", "A:", "+1 EXIT>=1", "", "EXIT=1:", "-1 A>=0"]
-        with patch("builtins.input", return_value="Z"):
-            with pytest.raises(SystemExit) as exc:
-                with redirect_stdout(io.StringIO()):
-                    run(code)
+        with (
+            patch("builtins.input", return_value="Z"),
+            pytest.raises(SystemExit) as exc,
+            redirect_stdout(io.StringIO()),
+        ):
+            run(code)
         assert exc.value.code == 0

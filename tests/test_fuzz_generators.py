@@ -10,7 +10,7 @@ import importlib
 import io
 import random
 import string
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
 from esolangs.registry import BY_FUNCTION
@@ -69,10 +69,9 @@ def test_extra_language_generators_do_not_crash():
     for _ in range(25):
         text = _random_text()
         for _fn, fn in NO_INTERPRETER.items():
-            try:
+            # a generator may still document an unsupported case
+            with suppress(ValueError):
                 fn(text)
-            except ValueError:
-                pass  # a generator may still document an unsupported case
 
 
 def test_boolean_generators_random_tables():
@@ -93,9 +92,10 @@ def test_boolean_generators_random_tables():
                 for combo in range(2**n):
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     buffer = io.StringIO()
-                    with patch("builtins.input", side_effect=bits):
-                        with redirect_stdout(buffer):
-                            run(program.splitlines() if split else program)
+                    with patch("builtins.input", side_effect=bits), redirect_stdout(
+                        buffer
+                    ):
+                        run(program.splitlines() if split else program)
                     assert buffer.getvalue() == str(int(table[combo])) + suffix
 
 
@@ -109,9 +109,8 @@ def test_byte_function_generator_random_tables():
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 buffer = io.StringIO()
-                with patch("builtins.input", side_effect=bits):
-                    with redirect_stdout(buffer):
-                        run(program)
+                with patch("builtins.input", side_effect=bits), redirect_stdout(buffer):
+                    run(program)
                 assert buffer.getvalue() == chr(table[combo])
 
 
@@ -133,7 +132,8 @@ def test_binary_generator_random_tables():
             for combo in range(2**n):
                 inputs = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 buffer = io.StringIO()
-                with patch("builtins.input", side_effect=inputs):
-                    with redirect_stdout(buffer):
-                        run(program.splitlines())
+                with patch("builtins.input", side_effect=inputs), redirect_stdout(
+                    buffer
+                ):
+                    run(program.splitlines())
                 assert buffer.getvalue() == str(int(table[combo]))
