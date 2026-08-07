@@ -24,7 +24,7 @@ CASES = [
 ]
 
 
-def main(argv: list[str]) -> int:
+def main() -> int:
     failures = 0
     for name, path, generator in CASES:
         binary = assemble(path)
@@ -37,4 +37,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())
