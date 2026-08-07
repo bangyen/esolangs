@@ -253,28 +253,21 @@ bf_program = esolangs.transpile("NoComment", "BF", program)
 
 Utility programs that work with the esoteric languages.
 
-### Binary Function Generator
-
-The `binary.py` program implements a given boolean function in Dig. The function is given as a truth table string (LSB-order output bits):
-
-```bash
-python -m esolangs.tools.binary 0111   # 2-input OR gate
-```
-
 ### Boolean Function Generator
 
 The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import brainif, circlefuck, modulous, nevermind, sophie, taglate
+from esolangs.tools.boolean import brainif, circlefuck, dig, modulous, nevermind, sophie, taglate
 
-sophie("0110", 2)        # 2-input XOR in Sophie
-modulous("0110", 2)      # the same truth table in Modulous
-brainif("0110", 2)       # and in BrainIf
-nevermind("0110", 2)     # and in Nevermind
-circlefuck("0110", 2)    # and in CircleFuck
-circlefuck_byte(table)   # arbitrary byte-valued functions
-taglate("0110", 2)       # 2-input XOR in Taglate (up to n = 2)
+dig("0110", 2)            # 2-input XOR in Dig
+sophie("0110", 2)         # the same truth table in Sophie
+modulous("0110", 2)       # and in Modulous
+brainif("0110", 2)        # and in BrainIf
+nevermind("0110", 2)      # and in Nevermind
+circlefuck("0110", 2)     # and in CircleFuck
+circlefuck_byte(table)    # arbitrary byte-valued functions
+taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
 ```
 
 ### Program Generator

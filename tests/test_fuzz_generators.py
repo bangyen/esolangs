@@ -2,7 +2,7 @@
 
 Random text must produce programs that round-trip through their interpreters
 (where one exists) or at least generate without crashing, and random truth
-tables must produce correct programs from the boolean and binary generators.
+tables must produce correct programs from the boolean generator.
 Fixed seeds keep the tests deterministic.
 """
 
@@ -14,7 +14,7 @@ from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
 from esolangs.registry import BY_FUNCTION
-from esolangs.tools import binary, boolean
+from esolangs.tools import boolean
 
 # generator function name -> trailing output appended after the printed text
 _TRAILING = {"nevermind": "\n"}
@@ -123,15 +123,7 @@ def test_binary_generator_random_tables() -> None:
     for n in (1, 2, 3, 4):
         for _ in range(3):
             table = "".join(random.choice("01") for _ in range(2**n))
-            bits = [int(c) for c in table]
-
-            def fn(*args: str, bits: list[int] = bits) -> int:
-                index = 0
-                for a in args:
-                    index = index * 2 + int(a)
-                return bits[index]
-
-            program = binary.convert(fn, n)
+            program = boolean.dig(table, n)
             for combo in range(2**n):
                 inputs = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 buffer = io.StringIO()

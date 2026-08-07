@@ -1,12 +1,16 @@
 """Generate programs that compute a boolean function from a truth table.
 
-Like tools/binary.py (which targets Dig), each generator builds a program
-that reads n boolean inputs and prints the truth-table result for the
-combination it is given.
+Each generator builds a program that reads n boolean inputs and prints the
+truth-table result for the combination it is given.
 """
 
 from collections.abc import Sequence
 from typing import cast
+
+# Dig blocks for one level of the decision tree.
+_DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
+_DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own block
+_DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
 
 # Arithmetic suffixes (found by search, verified against the interpreter) that
 # evaluate each two-input truth table from the ``t``-extraction queue
@@ -297,3 +301,44 @@ def taglate(truth_table: str, n: int) -> str:
             "000001\n" + setup + "t" + extract + _TAGLATE_TWO_SUFFIX[truth_table] + "i"
         )
     raise ValueError("the Taglate boolean generator supports n == 2 only")
+
+
+def dig(truth_table: str, n: int) -> str:
+    """Build a Dig program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The tree is laid out so the mole starts in the top-left corner (``'``)
+    facing down into the root.  Each branch block reads one input bit:
+    ``~`` inputs it, ``;`` stores it in the grid, and ``#`` turns the mole
+    down or up on that bit.  The two children of a node keep facing right
+    into the next level's branch, and the leaves print the function's value
+    for the input combination they stand for.
+    """
+    total = 2 ** (n + 1) - 1
+    lines = ["" for _ in range(total)]
+    rows = [total // 2]
+
+    for level in range(n + 1):
+        if level < n:
+            step = 2 ** (n - level - 1)
+            children = [row + step for row in rows] + [row - step for row in rows]
+            for row in range(total):
+                if row in rows:
+                    block = _DIG_BRANCH
+                elif row in children:
+                    # the mole arrives here vertically from the parent's "#";
+                    # right-justify the turn so the ">" sits under that "#"
+                    block = _DIG_CONTINUE.rjust(len(_DIG_BRANCH))
+                else:
+                    block = " " * len(_DIG_BRANCH)
+                lines[row] += block
+            rows = children
+        else:
+            for k in range(2**n):
+                lines[2 * k] += _DIG_LEAF.format(int(truth_table[k]))
+
+    # the mole starts at the top-left corner facing down into the root
+    lines[0] = "'" + lines[0][1:]
+    return "\n".join(lines)
