@@ -4,7 +4,7 @@ COL = [1, 0, -1, 0]
 ROW = [0, 1, 0, -1]
 
 
-def move(x, y, r, code, acc):
+def move(x: int, y: int, r: int, code: list[str], acc: int) -> tuple[int, int, int, str, int]:
     o = code[y][x]
     c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
 
@@ -16,14 +16,14 @@ def move(x, y, r, code, acc):
     return x, y, r, o, b
 
 
-def run(code):
+def run(code: list[str]) -> None:
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
     x = y = r = 0
-    cont = True
+    cont = 1
 
-    inp = []
-    out = []
+    inp: list[str] = []
+    out: list[str] = []
     acc = 0
 
     if "." in "".join(code):
