@@ -159,6 +159,19 @@ disallow_untyped_defs = false
 ignore_missing_imports = true  # For external dependencies
 explicit_package_bases = true  # Handle duplicate module names
 
+# Fully typed legacy modules: listed after the wildcard above so the stricter
+# setting wins, keeping the typing work visible and incremental.
+[[tool.mypy.overrides]]
+module = [
+    "esolangs.interpreters.stack_based.bfstack",
+    "esolangs.interpreters.tape_based.excon",
+    "esolangs.interpreters.register_based.bio",
+    "esolangs.interpreters.tape_based.suffolk",
+    "esolangs.interpreters.tape_based.minifuck",
+    "esolangs.interpreters.register_based.huf",
+]
+disallow_untyped_defs = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
