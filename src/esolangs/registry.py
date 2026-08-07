@@ -78,6 +78,7 @@ LANGUAGES: dict[str, Language] = {
         "Suffolk", _generate.suffolk, "tape_based.suffolk", kwargs=_kw(limit=1)
     ),
     "Temporary": Language("Temporary", _generate.temporary, "stack_based.temporary"),
+    "Taglate": Language("Taglate", _generate.taglate, "other.taglate", True),
     "Unsquare": Language("Unsquare", _generate.unsquare),
     "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", True),
     "ZTOALC": Language("ZTOALC", _generate.ztoalc, "other.ztoalc", True),

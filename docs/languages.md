@@ -43,6 +43,7 @@ hand.
 | RAM0 |  | yes |  | yes |  |
 | Sophie | yes | yes | yes |  | hello |
 | Suffolk | yes | yes |  | yes | hello |
+| Taglate | yes | yes |  |  | hello |
 | Temporary | yes | yes |  |  | hello |
 | Unsquare | yes |  |  | yes |  |
 | WII2D | yes | yes |  |  | hello |
