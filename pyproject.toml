@@ -193,6 +193,8 @@ module = [
     "esolangs.interpreters.tape_based.mammalian",
     "esolangs.interpreters.register_based.qoibl",
     "esolangs.interpreters.other.ztoalc",
+    "esolangs.interpreters.stack_based.eval",
+    "esolangs.interpreters.other.nevermind",
 ]
 disallow_untyped_defs = true
 

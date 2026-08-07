@@ -4,7 +4,9 @@ COL = [1, 0, -1, 0]
 ROW = [0, 1, 0, -1]
 
 
-def move(x: int, y: int, r: int, code: list[str], acc: int) -> tuple[int, int, int, str, int]:
+def move(
+    x: int, y: int, r: int, code: list[str], acc: int
+) -> tuple[int, int, int, str, int]:
     o = code[y][x]
     c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
 
