@@ -191,6 +191,8 @@ module = [
     "esolangs.interpreters.register_based.dsdlai",
     "esolangs.interpreters.register_based.dotlang",
     "esolangs.interpreters.tape_based.mammalian",
+    "esolangs.interpreters.register_based.qoibl",
+    "esolangs.interpreters.other.ztoalc",
 ]
 disallow_untyped_defs = true
 
