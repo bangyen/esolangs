@@ -192,3 +192,44 @@ def circlefuck(truth_table, n):
 
     build(n - 1, 0)
     return "".join(prog)
+
+
+def circlefuck_byte(truth_table, n):
+    """Build a CircleFuck program computing a byte-valued function.
+
+    ``truth_table`` is a sequence of ``2**n`` byte values (0-255) indexed by
+    the inputs (most significant first), and ``n`` is the number of bit
+    inputs.  This is the boolean generator generalized to arbitrary byte
+    outputs: each leaf prints ``chr(value)`` instead of ``chr(48 + bit)``.
+    """
+
+    def emit(c):
+        prog.append(c)
+
+    prog: list = []
+    for _ in range(n):
+        emit(",")
+        prog.extend("-" * 48)
+        emit(">")
+    prog.pop()  # the trailing ">" would leave the pointer past the last input
+
+    def build(k, row):
+        if k < 0:
+            value = truth_table[row]
+            if value:
+                prog.extend("+" * value)
+            emit(".")
+            emit("@")
+            return
+        emit("[")
+        emit("[-]")
+        if k:
+            emit("<")
+        build(k - 1, row + 2 ** (n - 1 - k))
+        emit("]")
+        if k:
+            emit("<")
+        build(k - 1, row)
+
+    build(n - 1, 0)
+    return "".join(prog)
