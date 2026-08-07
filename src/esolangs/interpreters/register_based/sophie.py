@@ -9,7 +9,7 @@ import re
 import sys
 
 
-def find(code, ind):
+def find(code: str, ind: int) -> int:
     """Find the matching closing bracket for a given opening bracket."""
     opr = code[ind]
     end = chr(ord(opr) + 2)
@@ -26,11 +26,11 @@ def find(code, ind):
     return ind
 
 
-def run(code):
+def run(code: str) -> None:
     """Execute Sophie program code."""
     acc = ind = 0
     skp = False
-    stk = []
+    stk: list[int] = []
     new = 1
 
     while ind < len(code):
