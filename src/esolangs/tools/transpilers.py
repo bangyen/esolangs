@@ -8,9 +8,11 @@ verified end-to-end: the source runs on its interpreter, the target on its
 own, and the outputs must agree.
 """
 
+import importlib
 from collections.abc import Callable
+from typing import cast
 
-__all__ = ["TRANSPILERS", "bf_to_ascii_art"]
+__all__ = ["TRANSPILERS", "ascii_art_to_bf", "bf_to_ascii_art"]
 
 # The eight brainfuck commands -> their ASCII-art blocks.  This is the
 # single source of truth for the art alphabet; ``ascii-art.parse`` decodes
@@ -38,6 +40,22 @@ def bf_to_ascii_art(program: str) -> str:
     )
 
 
+def ascii_art_to_bf(program: str) -> str:
+    """Rewrite an ASCII-art program back to brainfuck.
+
+    This is the ASCII-art interpreter's own decoder: ``ascii-art.parse``
+    maps the art blocks to brainfuck commands, so the translation runs
+    identically by construction.  Unknown blocks are ignored and the empty
+    program stays empty.
+    """
+    parse = cast(
+        Callable[[str], str],
+        importlib.import_module("esolangs.interpreters.tape_based.ascii-art").parse,
+    )
+    return parse(program)
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[[str], str]] = {
     ("BF", "ASCII art"): bf_to_ascii_art,
+    ("ASCII art", "BF"): ascii_art_to_bf,
 }

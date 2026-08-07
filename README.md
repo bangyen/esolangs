@@ -221,14 +221,16 @@ Compilers that translate esoteric languages to other target languages.
 
 Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
 
-- [BF](https://esolangs.org/wiki/Brainfuck) -> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block.
+- [BF](https://esolangs.org/wiki/Brainfuck) <-> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block, and vice versa.
 
 ```bash
-esolangs transpile BF "ASCII art" program.bf   # print the art
+esolangs transpile BF "ASCII art" program.bf    # print the art
+esolangs transpile "ASCII art" BF program.txt   # print the brainfuck
 ```
 
 ```python
-art = esolangs.transpile("BF", "ASCII art", program)  # or via the API
+art = esolangs.transpile("BF", "ASCII art", program)     # or via the API
+program = esolangs.transpile("ASCII art", "BF", art)
 ```
 
 ## Tools
