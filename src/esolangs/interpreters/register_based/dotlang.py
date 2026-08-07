@@ -128,7 +128,8 @@ def run(code: list[str]) -> None:
                 dest = dot.find(name, True)
                 if not dest:
                     return
-                assert isinstance(dest, Dot)
+                if not isinstance(dest, Dot):
+                    raise RuntimeError("warp destination not found")
                 dots.append(dest)
             else:
                 match = 1

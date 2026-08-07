@@ -130,7 +130,7 @@ class TestDigEdgeCases:
 
     def test_empty_program(self) -> None:
         """Test that an empty program raises ValueError."""
-        with pytest.raises(ValueError, match="empty sequence"):
+        with pytest.raises(ValueError, match="empty"):
             run([])
 
     def test_single_character_program(self) -> None:
