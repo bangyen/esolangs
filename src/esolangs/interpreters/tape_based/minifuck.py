@@ -1,8 +1,8 @@
 import sys
 
 
-def run(code):
-    tape = [0] * 8
+def run(code: str) -> None:
+    tape: list[int] = [0] * 8
     ptr = ind = 0
     inp = 1
 

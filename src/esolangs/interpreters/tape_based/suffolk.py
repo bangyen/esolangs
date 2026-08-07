@@ -1,8 +1,8 @@
 import sys
 
 
-def run(code, limit=10):
-    tape = [0]
+def run(code: str, limit: int = 10) -> None:
+    tape: list[int] = [0]
     num = ind = 0
     ptr = acc = 0
     new = 1

@@ -1,8 +1,9 @@
 import sys
 
 
-def run(code):
-    pool, cell = ([0] * 8, 7)
+def run(code: str) -> None:
+    pool: list[int] = [0] * 8
+    cell = 7
 
     for sym in code:
         if sym == ":":
