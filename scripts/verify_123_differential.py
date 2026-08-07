@@ -20,7 +20,7 @@ from x86_elf_runner import run_elf as run_x86
 from esolangs.tools.generate import _123
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     with open(argv[1], "rb") as f:
         rv_binary = f.read()
     x86_binary = assemble("extra/assembly/123.asm")

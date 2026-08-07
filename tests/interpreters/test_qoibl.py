@@ -96,9 +96,10 @@ class TestQoiblBasicOperations:
             "we y we et we",
             "tt qe y qe tt",
         ]  # input -> var[1], print var[1]
-        with patch("builtins.input", return_value="A"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="A"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == "A"
 
@@ -256,9 +257,10 @@ class TestQoiblExamples:
 
         # Test 2 + 3 = 5
         def run_adder():
-            with patch("builtins.input", side_effect=["2", "3"]), redirect_stdout(
-                io.StringIO()
-            ) as f:
+            with (
+                patch("builtins.input", side_effect=["2", "3"]),
+                redirect_stdout(io.StringIO()) as f,
+            ):
                 run(code)
             return f.getvalue()
 

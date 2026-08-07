@@ -15,8 +15,9 @@ class TestMain:
         assert "usage: python -m esolangs.tools.binary" in capsys.readouterr().out
 
     def test_bad_length(self, capsys: pytest.CaptureFixture) -> None:
-        with patch("sys.argv", ["esolangs.tools.binary", "011"]), pytest.raises(
-            SystemExit
+        with (
+            patch("sys.argv", ["esolangs.tools.binary", "011"]),
+            pytest.raises(SystemExit),
         ):
             binary.main()
         assert "must be a power of 2" in capsys.readouterr().out
@@ -87,8 +88,9 @@ class TestRoundTrip:
         for a in (0, 1):
             for b in (0, 1):
                 buffer = io.StringIO()
-                with patch(
-                    "builtins.input", side_effect=[str(a), str(b)]
-                ), redirect_stdout(buffer):
+                with (
+                    patch("builtins.input", side_effect=[str(a), str(b)]),
+                    redirect_stdout(buffer),
+                ):
                     run(program)
                 assert buffer.getvalue() == str(xor(a, b))

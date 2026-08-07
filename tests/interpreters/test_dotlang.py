@@ -140,8 +140,9 @@ class TestBasicCommands:
     def test_input_command(self):
         """Test the input command (~)."""
         code = ["•~#"]
-        with patch("builtins.print") as mock_print, patch(
-            "builtins.input", return_value="test input"
+        with (
+            patch("builtins.print") as mock_print,
+            patch("builtins.input", return_value="test input"),
         ):
             run(code)
             mock_print.assert_called_with("test input", end="")
@@ -241,8 +242,9 @@ class TestWarps:
     def test_dynamic_warp_input(self):
         """Test dynamic warp with user input (W~)."""
         code = ["•W~", "Wtest`s#42#", "Wother`s#`hello`#"]
-        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout, patch(
-            "builtins.input", return_value="test"
+        with (
+            patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+            patch("builtins.input", return_value="test"),
         ):
             run(code)
             assert mock_stdout.getvalue() == "42"
@@ -250,8 +252,9 @@ class TestWarps:
     def test_dynamic_warp_input_missing_destination(self):
         """Test that a warp to a nonexistent destination halts."""
         code = ["•W~", "Wother`s#42#"]
-        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout, patch(
-            "builtins.input", return_value="test"
+        with (
+            patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+            patch("builtins.input", return_value="test"),
         ):
             run(code)
             assert mock_stdout.getvalue() == ""
@@ -261,15 +264,17 @@ class TestWarps:
         code = ["•W~", "W0`s#0#", "W1`s#1>#<"]
 
         # Test input 0
-        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout, patch(
-            "builtins.input", return_value="0"
+        with (
+            patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+            patch("builtins.input", return_value="0"),
         ):
             run(code)
             assert mock_stdout.getvalue() == "0"
 
         # Test input 1 (infinite loop - we'll test just the first iteration)
-        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout, patch(
-            "builtins.input", return_value="1"
+        with (
+            patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+            patch("builtins.input", return_value="1"),
         ):
             # We can't easily test infinite loops, so we'll just verify it starts
             # This is a limitation of unit testing infinite programs
@@ -353,8 +358,9 @@ class TestComplexPrograms:
         # The cat program might hang, so we'll test a simpler version
         # that just echoes input without the complex loop
         simple_cat = ["•~#"]
-        with patch("builtins.print") as mock_print, patch(
-            "builtins.input", return_value="hello"
+        with (
+            patch("builtins.print") as mock_print,
+            patch("builtins.input", return_value="hello"),
         ):
             run(simple_cat)
             mock_print.assert_called_with("hello", end="")
@@ -387,8 +393,9 @@ class TestIntegration:
     def test_input_output_chain(self):
         """Test chaining input and output operations."""
         code = ["•~>#"]
-        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout, patch(
-            "builtins.input", return_value="test"
+        with (
+            patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
+            patch("builtins.input", return_value="test"),
         ):
             run(code)
             assert mock_stdout.getvalue() == "test"

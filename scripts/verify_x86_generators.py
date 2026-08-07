@@ -24,7 +24,7 @@ CASES = [
 ]
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     failures = 0
     for name, path, generator in CASES:
         binary = assemble(path)

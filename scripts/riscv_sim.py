@@ -11,12 +11,12 @@ MEM = bytearray(2 * 1024 * 1024)
 SP = 1000000  # stack pointer base
 
 
-def sign_extend(val, bits):
+def sign_extend(val: int, bits: int) -> int:
     sign = 1 << (bits - 1)
     return (val & (sign - 1)) - (val & sign)
 
 
-def disassemble_and_run(binary, stdin):
+def disassemble_and_run(binary: bytes, stdin: bytes) -> bytes:
     # find the .text section and entry point from the ELF
     entry = struct.unpack_from("<Q", binary, 0x18)[0]
     text_off = text_addr = text_size = 0
@@ -43,8 +43,8 @@ def disassemble_and_run(binary, stdin):
     inp_pos = 0
     out = bytearray()
 
-    def load(pc):
-        return struct.unpack_from("<I", mem, pc)[0]
+    def load(pc: int) -> int:
+        return int(struct.unpack_from("<I", mem, pc)[0])
 
     steps = 0
     while steps < 5000000:
