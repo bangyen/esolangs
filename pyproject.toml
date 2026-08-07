@@ -182,6 +182,9 @@ module = [
     "esolangs.interpreters.stack_based.modulous",
     "esolangs.interpreters.register_based.movesum",
     "esolangs.interpreters.register_based.sophie",
+    "esolangs.interpreters.other.clockwise",
+    "esolangs.interpreters.register_based.minsky-swap",
+    "esolangs.interpreters.stack_based.temporary",
 ]
 disallow_untyped_defs = true
 

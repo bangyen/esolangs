@@ -5,18 +5,18 @@ from dataclasses import dataclass, field
 
 @dataclass
 class State:
-    stk: list = field(default_factory=list)
+    stk: list[int] = field(default_factory=list)
     num: bool = True
     new: bool = False
     ptr: int = 0
     comm: int = 0
 
 
-def run(code):
-    code = code.split()
+def run(source: str) -> None:
+    code = source.split()
     state = State()
 
-    def parse(state, char):
+    def parse(state: State, char: str) -> None:
         rest = code[state.ptr][1:]
 
         if char == "@":
