@@ -51,6 +51,14 @@ def test_transpile_round_trips() -> None:
     assert esolangs.run("ASCII art", art) == "Hi"
 
 
+def test_transpile_reverse_round_trips() -> None:
+    program = esolangs.generate("BF", "Hi")
+    art = esolangs.transpile("BF", "ASCII art", program)
+    recovered = esolangs.transpile("ASCII art", "BF", art)
+    assert recovered == program
+    assert esolangs.run("BF", recovered) == "Hi"
+
+
 def test_transpile_unsupported_pair_raises() -> None:
     with pytest.raises(UnsupportedTranspilationError):
         esolangs.transpile("BF", "CircleFuck", "x")

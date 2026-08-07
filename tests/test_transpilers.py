@@ -70,6 +70,39 @@ def test_parse_recovers_source(program: str, stdin: str) -> None:
     assert ascii_art.parse(art) == _filter(program)
 
 
+@pytest.mark.parametrize(("program", "stdin"), BATTERY)
+def test_reverse_transpiler_recovers_source(program: str, stdin: str) -> None:
+    """ASCII art -> BF inverts BF -> ASCII art for well-formed art."""
+    art = esolangs.transpile("BF", "ASCII art", program)
+    assert esolangs.transpile("ASCII art", "BF", art) == _filter(program)
+
+
+@pytest.mark.parametrize(("program", "stdin"), BATTERY)
+def test_reverse_transpiled_output_matches_source(program: str, stdin: str) -> None:
+    art = esolangs.transpile("BF", "ASCII art", program)
+    bf_program = esolangs.transpile("ASCII art", "BF", art)
+    assert esolangs.run("BF", bf_program, stdin) == esolangs.run(
+        "ASCII art", art, stdin
+    )
+
+
+def test_reverse_round_trips_art() -> None:
+    """Re-encoding recovered art reproduces it byte for byte."""
+    for program, _ in BATTERY:
+        art = esolangs.transpile("BF", "ASCII art", program)
+        assert (
+            esolangs.transpile(
+                "BF", "ASCII art", esolangs.transpile("ASCII art", "BF", art)
+            )
+            == art
+        )
+
+
+def test_reverse_empty_program() -> None:
+    assert esolangs.transpile("ASCII art", "BF", "") == ""
+    assert esolangs.transpile("BF", "ASCII art", "") == ""
+
+
 @pytest.mark.parametrize("text", ["Hello, World!", "Hi", "\x00\x01"])
 def test_generator_is_transpiled_generator(text: str) -> None:
     """The ASCII-art generator is exactly the BF generator, transpiled."""
@@ -77,6 +110,13 @@ def test_generator_is_transpiled_generator(text: str) -> None:
     art = esolangs.transpile("BF", "ASCII art", bf_program)
     assert esolangs.generate("ASCII art", text) == art
     assert esolangs.run("ASCII art", art) == text
+
+
+@pytest.mark.parametrize("text", ["Hello, World!", "Hi"])
+def test_generator_inverse(text: str) -> None:
+    """The reverse transpiler recovers the BF generator's program."""
+    art = esolangs.generate("ASCII art", text)
+    assert esolangs.transpile("ASCII art", "BF", art) == esolangs.generate("BF", text)
 
 
 def test_empty_program_stays_empty() -> None:
@@ -87,9 +127,9 @@ def test_empty_program_stays_empty() -> None:
 
 def test_unsupported_pair_raises() -> None:
     with pytest.raises(UnsupportedTranspilationError):
-        esolangs.transpile("ASCII art", "BF", "x")
-    with pytest.raises(UnsupportedTranspilationError):
         esolangs.transpile("BF", "CircleFuck", "x")
+    with pytest.raises(UnsupportedTranspilationError):
+        esolangs.transpile("Sophie", "Modulous", "x")
     assert issubclass(UnsupportedTranspilationError, EsolangError)
     assert issubclass(UnsupportedTranspilationError, ValueError)
 
