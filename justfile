@@ -5,7 +5,7 @@ PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python
 
 # Tool paths
 HOMEBREW_BIN := "/opt/homebrew/bin"
-LLVM_BIN := "/opt/homebrew/Cellar/llvm/21.1.1/bin"
+LLVM_BIN := `command -v brew >/dev/null 2>&1 && echo "$(brew --prefix llvm)/bin" || echo ""`
 CARGO_BIN := "$HOME/.cargo/bin"
 RUBY_BIN := "/opt/homebrew/opt/ruby/bin:/opt/homebrew/lib/ruby/gems/3.4.0/bin"
 
