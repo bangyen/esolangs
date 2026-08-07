@@ -171,6 +171,13 @@ module = [
     "esolangs.interpreters.register_based.huf",
     "esolangs.interpreters.tape_based.circlefuck",
     "esolangs.interpreters.other.bitdeque",
+    "esolangs.interpreters.tape_based.6-5",
+    "esolangs.interpreters.register_based.RAM0",
+    "esolangs.interpreters.other.keys",
+    "esolangs.interpreters.register_based.WII2D",
+    "esolangs.interpreters.tape_based.back",
+    "esolangs.interpreters.tape_based.ascii-art",
+    "esolangs.interpreters.register_based.lightlang",
 ]
 disallow_untyped_defs = true
 

@@ -1,10 +1,11 @@
 import re
 import sys
+from collections.abc import Callable
 
 
-def parse(code):
+def parse(code: str) -> str:
     code = re.sub(" +\n", "\n", code)
-    code = code.split("\n\n")
+    blocks = code.split("\n\n")
     res = ""
     sym = {
         (0, "-"): "-",
@@ -17,17 +18,17 @@ def parse(code):
         (5, "|"): "]",
     }
 
-    for c in code:
+    for c in blocks:
         t = (c.count("\n"), c[-1])
         if t in sym:
             res += sym[t]
     return res
 
 
-def init(code, tape):
-    stk = []
+def init(code: str, tape: list[int]) -> Callable[[int, int], int | None]:
+    stk: list[int] = []
 
-    def find(ind, ptr):
+    def find(ind: int, ptr: int) -> int | None:
         if code[ind] == "[":
             if tape[ptr]:
                 stk.append(ind)
@@ -36,7 +37,7 @@ def init(code, tape):
             while match:
                 ind += 1
                 if ind == len(code):
-                    return
+                    return None
                 elif code[ind] == "[":
                     match += 1
                 elif code[ind] == "]":
@@ -51,8 +52,8 @@ def init(code, tape):
     return find
 
 
-def run(code):
-    tape = [0]
+def run(code: str) -> None:
+    tape: list[int] = [0]
     code = parse(code)
     find = init(code, tape)
 
