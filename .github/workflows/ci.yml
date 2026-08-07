@@ -168,6 +168,10 @@ jobs:
         [ "$(/tmp/kak /tmp/empty.txt)" = "0" ]
         echo "All extra/ C++ smoke tests passed"
 
+    - name: Verify generator-only languages against the C++ references
+      run: |
+        PYTHONPATH=src python3 scripts/verify_extra_generators.py
+
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -185,6 +189,10 @@ jobs:
         ./extra/rust/target/debug/laserfuck /tmp/empty.txt
         ./extra/rust/target/debug/unsquare /tmp/empty.txt
         echo "All extra/ Rust smoke tests passed"
+
+    - name: Verify generator-only languages against the Rust references
+      run: |
+        PYTHONPATH=src python3 scripts/verify_extra_generators.py
 
   extra-languages:
     runs-on: ubuntu-latest

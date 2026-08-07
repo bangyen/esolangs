@@ -30,6 +30,10 @@ STEPS = [
         "x86 reference generators (unicorn)",
         [sys.executable, "scripts/verify_x86_generators.py"],
     ),
+    (
+        "extra reference generators",
+        [sys.executable, "scripts/verify_extra_generators.py"],
+    ),
 ]
 
 
