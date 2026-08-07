@@ -172,11 +172,11 @@ def minifuck(text: str) -> str:
     tape = [0] * 8
     ptr = 0
 
-    def ensure(index):
+    def ensure(index: int) -> None:
         while len(tape) <= index:
             tape.append(0)
 
-    def flip(position):
+    def flip(position: int) -> None:
         nonlocal ptr
         ptr = position + 1
         ensure(ptr + 1)

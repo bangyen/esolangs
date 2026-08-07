@@ -179,7 +179,7 @@ def comp(code: str) -> str:
                 res += f".sub{n}:\n"
             res += f"\tcall sub{n}\n" "\tret\n"
 
-    def end(opr):
+    def end(opr: str) -> str:
         if subr[opr][2]:
             mul = (
                 "\tdec esi\n"
