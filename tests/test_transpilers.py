@@ -50,20 +50,21 @@ PINNED = {
     "+++++++++++++++++++++++++++++++++++++++++++++++++.": ("", "1"),
 }
 
-# (brainfuck program, stdin, tape size); each program keeps its pointer in
-# [0, size) so it is in the CircleFuck transpiler's supported class.
+# (brainfuck program, stdin) pairs; each program keeps its pointer in
+# [0, size) for the auto-sized bound, so it is in the CircleFuck
+# transpiler's supported class.
 CIRCLEFUCK_BATTERY = (
-    ("++.", "", 4),
-    ("+[>+<-]>.", "", 4),
-    ("+++[>++<-]>+++.", "", 4),
-    (",>,<.>.", "a\nb", 4),
-    (",[.-]", "a", 4),
-    ("++[>++[>+<-]<-]>+++.", "", 4),
-    ("+++++++++++++++++++++++++++++++++++++++++++++++++.", "", 4),
-    (">.<.", "", 2),
-    (">++>+++<.>.<.", "", 3),
-    ("[-]+++++++[-]++++++++++++++++++++++++++++++++++++++++++++++++.", "", 1),
-    ("", "", 4),
+    ("++.", ""),
+    ("+[>+<-]>.", ""),
+    ("+++[>++<-]>+++.", ""),
+    (",>,<.>.", "a\nb"),
+    (",[.-]", "a"),
+    ("++[>++[>+<-]<-]>+++.", ""),
+    ("+++++++++++++++++++++++++++++++++++++++++++++++++.", ""),
+    (">.<.", ""),
+    (">++>+++<.>.<.", ""),
+    ("[-]+++++++[-]++++++++++++++++++++++++++++++++++++++++++++++++.", ""),
+    ("", ""),
 )
 
 
@@ -163,11 +164,18 @@ def test_listed_transpilers_are_known_languages() -> None:
         assert target in known
 
 
-@pytest.mark.parametrize(("program", "stdin", "size"), CIRCLEFUCK_BATTERY)
-def test_circlefuck_transpiled_output_matches_source(
-    program: str, stdin: str, size: int
-) -> None:
-    circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=size)
+@pytest.mark.parametrize(("program", "stdin"), CIRCLEFUCK_BATTERY)
+def test_circlefuck_transpiled_output_matches_source(program: str, stdin: str) -> None:
+    circlefuck = esolangs.transpile("BF", "CircleFuck", program)
+    assert esolangs.run("BF", program, stdin) == esolangs.run(
+        "CircleFuck", circlefuck, stdin
+    )
+
+
+@pytest.mark.parametrize(("program", "stdin"), CIRCLEFUCK_BATTERY)
+def test_circlefuck_explicit_size(program: str, stdin: str) -> None:
+    """An explicit size is a larger-but-still-valid data region."""
+    circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)
     assert esolangs.run("BF", program, stdin) == esolangs.run(
         "CircleFuck", circlefuck, stdin
     )
@@ -191,6 +199,31 @@ def test_circlefuck_left_edge_is_out_of_class() -> None:
     program = ">+<<."  # reads cell 1, then moves below cell 0
     circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=4)
     assert esolangs.run("BF", program) != esolangs.run("CircleFuck", circlefuck)
+
+
+def test_circlefuck_auto_size_rejects_below_zero() -> None:
+    """Programs that dip below cell 0 are rejected rather than mistranslated."""
+    with pytest.raises(ValueError, match="below cell 0"):
+        esolangs.transpile("BF", "CircleFuck", ">+<<.")
+
+
+def test_circlefuck_auto_size_rejects_drifting_loop() -> None:
+    """Loops that drift the pointer unboundedly cannot be auto-sized."""
+    with pytest.raises(ValueError, match="drift"):
+        esolangs.transpile("BF", "CircleFuck", "+[>+]")
+
+
+def test_circlefuck_auto_size_rejects_nested_drifting_loop() -> None:
+    """Drift detected inside a nested loop is propagated out."""
+    with pytest.raises(ValueError, match="drift"):
+        esolangs.transpile("BF", "CircleFuck", "++[+[>+]]")
+
+
+def test_circlefuck_unmatched_bracket_tolerated() -> None:
+    """An unmatched bracket halts on both interpreters, so it is in class."""
+    program = "["
+    circlefuck = esolangs.transpile("BF", "CircleFuck", program)
+    assert esolangs.run("BF", program) == esolangs.run("CircleFuck", circlefuck) == ""
 
 
 def test_circlefuck_size_must_be_positive() -> None:
@@ -223,5 +256,5 @@ def test_circlefuck_fuzz_bounded_programs() -> None:
             else:
                 parts.append("[-]")
         program = "".join(parts)
-        circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=size)
+        circlefuck = esolangs.transpile("BF", "CircleFuck", program)
         assert esolangs.run("BF", program) == esolangs.run("CircleFuck", circlefuck)
