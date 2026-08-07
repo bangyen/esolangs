@@ -139,6 +139,7 @@ strict_equality = true
 module = [
     "esolangs.compilers.*",
     "esolangs.tools.generate",
+    "esolangs.tools.generators.*",
     "esolangs.tools.boolean",
     "esolangs.tools._polynomial",
     "esolangs.tools._ztoalc",

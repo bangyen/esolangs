@@ -28,6 +28,7 @@ from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
+from esolangs.tools.generators import other
 
 
 def roundtrip(interpreter, program):
@@ -102,7 +103,7 @@ class TestGeneratorRoundTrips:
     def test_mammalian_unreachable(self) -> None:
         """Report a character when no SEED/SPRINT walk can reach a value."""
         with patch(
-            "esolangs.tools.generate._mammalian_walk",
+            "esolangs.tools.generators.tape._mammalian_walk",
             return_value=[{} for _ in range(256)],
         ), pytest.raises(ValueError, match="cannot build"):
             gen.mammalian("H")
@@ -270,7 +271,7 @@ class TestGeneratorRoundTrips:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A length missing from the table falls back to a dynamic search."""
-        monkeypatch.setattr(gen, "STARTS", {1: 2, 3: 8})
+        monkeypatch.setattr(other, "STARTS", {1: 2, 3: 8})
         monkeypatch.setattr(zt, "_ZTOALC_TABLE_LIMIT", 2)
         monkeypatch.setattr(zt, "_ZTOALC_MAX_LIMIT", 100)
         program = gen.ztoalc("ab")
@@ -279,7 +280,7 @@ class TestGeneratorRoundTrips:
 
     def test_ztoalc_search_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Text longer than any trajectory in the search range is rejected."""
-        monkeypatch.setattr(gen, "STARTS", {1: 2})
+        monkeypatch.setattr(other, "STARTS", {1: 2})
         monkeypatch.setattr(zt, "_ZTOALC_TABLE_LIMIT", 2)
         monkeypatch.setattr(zt, "_ZTOALC_MAX_LIMIT", 2)
         with pytest.raises(ValueError, match="no Collatz start"):
