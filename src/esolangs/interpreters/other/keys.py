@@ -2,7 +2,7 @@ import re
 import sys
 
 
-def run(code):
+def run(code: list[str]) -> None:
     x = code[0].strip()
     y = code[1].strip()
     r = re.compile(r"(-_|_-|\\-|/" r"_|[^\\/\-_])")
