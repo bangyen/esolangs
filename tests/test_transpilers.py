@@ -272,3 +272,64 @@ def test_nocomment_comments_are_dropped() -> None:
     program = "xyz " + "c" + "i" * 72 + "o" + " qwerty"
     bf_program = esolangs.transpile("NoComment", "BF", program)
     assert esolangs.run("BF", bf_program) == "H"
+
+
+# (BFStack program, stdin) pairs; every program pushes before it reads the
+# stack and terminates.
+BFSTACK_BATTERY = (
+    (">.", ""),
+    (">+.", ""),
+    (">+++.", ""),
+    (">++[>+<-].", ""),
+    (">++[>+<-]>.<.", ""),
+    (">[-].", ""),
+    (">+[>+<-].", ""),
+    (">>+<>.", ""),
+    (",.", "Z"),
+    (">,.", "a"),
+    (">>,<>.", "p\nq"),
+    (">", ""),
+)
+
+
+@pytest.mark.parametrize(("program", "stdin"), BFSTACK_BATTERY)
+def test_bfstack_transpiles_to_brainfuck(program: str, stdin: str) -> None:
+    bf_program = esolangs.transpile("BFStack", "BF", program)
+    assert esolangs.run("BFStack", program, stdin) == esolangs.run(
+        "BF", bf_program, stdin
+    )
+
+
+@pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123"])
+def test_bfstack_transpiles_generated_program(text: str) -> None:
+    """The BFStack generator's output prints the same text as brainfuck."""
+    program = esolangs.generate("BFStack", text)
+    bf_program = esolangs.transpile("BFStack", "BF", program)
+    assert esolangs.run("BF", bf_program) == text
+
+
+def test_bfstack_fuzz_stack_programs() -> None:
+    """Random well-formed stack programs (tracked depth, safe loops) agree."""
+    rng = random.Random(7)
+    for _ in range(60):
+        parts: list[str] = [">"]
+        depth = 1
+        for _ in range(rng.randint(3, 10)):
+            kind = rng.choice(("push", "pop", "inc", "dec", "print", "zero"))
+            if kind == "push":
+                parts.append(">")
+                depth += 1
+            elif kind == "pop" and depth > 1:
+                parts.append("<")
+                depth -= 1
+            elif kind == "inc":
+                parts.append("+" * rng.randint(1, 6))
+            elif kind == "dec":
+                parts.append("-" * rng.randint(1, 6))
+            elif kind == "print":
+                parts.append(".")
+            else:
+                parts.append("[-]")
+        program = "".join(parts)
+        bf_program = esolangs.transpile("BFStack", "BF", program)
+        assert esolangs.run("BFStack", program) == esolangs.run("BF", bf_program)
