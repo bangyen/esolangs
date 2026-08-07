@@ -258,3 +258,17 @@ def test_circlefuck_fuzz_bounded_programs() -> None:
         program = "".join(parts)
         circlefuck = esolangs.transpile("BF", "CircleFuck", program)
         assert esolangs.run("BF", program) == esolangs.run("CircleFuck", circlefuck)
+
+
+@pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123", "\x00\x01"])
+def test_nocomment_transpiles_to_brainfuck(text: str) -> None:
+    """NoComment programs print the same text through the BF interpreter."""
+    program = esolangs.generate("NoComment", text)
+    bf_program = esolangs.transpile("NoComment", "BF", program)
+    assert esolangs.run("NoComment", program) == esolangs.run("BF", bf_program) == text
+
+
+def test_nocomment_comments_are_dropped() -> None:
+    program = "xyz " + "c" + "i" * 72 + "o" + " qwerty"
+    bf_program = esolangs.transpile("NoComment", "BF", program)
+    assert esolangs.run("BF", bf_program) == "H"

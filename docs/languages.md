@@ -36,7 +36,7 @@ hand.
 | Modulous | yes | yes | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |
 | Nevermind | yes | yes | yes |  | hello cat |
-| NoComment | yes |  |  |  |  |
+| NoComment | yes | yes |  |  | hello |
 | Painfuck | yes |  |  |  |  |
 | Polynomial | yes | yes |  |  | hello |
 | Qoibl | yes | yes |  |  | hello |
