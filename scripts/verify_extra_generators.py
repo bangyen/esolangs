@@ -73,7 +73,7 @@ def main() -> int:
 
     cxx = {name: _build_cxx(name) for name in ("forþ", "painfuck")}
     rust_bin_dir = _build_rust()
-    rust = {"laserfuck": None, "unsquare": None}
+    rust: dict[str, Path | None] = {"laserfuck": None, "unsquare": None}
     if rust_bin_dir is not None:
         rust = {
             "laserfuck": rust_bin_dir / "laserfuck",

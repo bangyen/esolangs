@@ -266,12 +266,7 @@ jobs:
         printf '\xff' | python3 scripts/x86_elf_runner.py extra/assembly/2b1b.asm >/dev/null
         echo "All extra/ assembly interpreters ran under unicorn"
 
-    - name: Run the x86 assembly compilers under unicorn
+    - name: Run the x86 compilers and reference interpreters under unicorn
       run: |
-        PYTHONPATH=src python3 scripts/verify_asm_compilers.py
-        echo "All assembly compilers round-tripped under unicorn"
-
-    - name: Run the x86 reference generators under unicorn
-      run: |
-        PYTHONPATH=src python3 scripts/verify_x86_generators.py
-        echo "All x86 reference generators round-tripped under unicorn"
+        PYTHONPATH=src python3 scripts/verify_x86_unicorn.py
+        echo "All x86 compilers and references round-tripped under unicorn"
