@@ -258,7 +258,7 @@ Utility programs that work with the esoteric languages.
 The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import brainif, circlefuck, dig, modulous, nevermind, sophie, taglate
+from esolangs.tools.boolean import ascii_art, brainif, circlefuck, dig, modulous, nevermind, qoibl, six_five, sophie, taglate
 
 dig("0110", 2)            # 2-input XOR in Dig
 sophie("0110", 2)         # the same truth table in Sophie
@@ -267,6 +267,9 @@ brainif("0110", 2)        # and in BrainIf
 nevermind("0110", 2)      # and in Nevermind
 circlefuck("0110", 2)     # and in CircleFuck
 circlefuck_byte(table)    # arbitrary byte-valued functions
+ascii_art("0110", 2)      # and in ASCII art
+six_five("0110", 2)       # and in 6-5
+qoibl("0110", 2)          # and in Qoibl
 taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
 ```
 

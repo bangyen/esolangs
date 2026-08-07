@@ -29,7 +29,7 @@ def run(code: str) -> None:
             tape[cell] -= int(c) % 6 + 3
         elif c == "8":
             val = num(code[ind + 1])
-            reg = f"([^4]*4){val}"
+            reg = f"([^4]*4){{{val}}}"
             if m := re.match(reg, code):
                 ind = m.end() - 1
         elif c == "7":
