@@ -1,13 +1,13 @@
 import sys
 
 
-def run(code):
+def run(code: list[str]) -> None:
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
-    x, y = 0, 0
+    x = y = 0
     a, b = 0, 1
-    tape = [0]
+    tape: list[int] = [0]
     cell = 0
 
     while True:

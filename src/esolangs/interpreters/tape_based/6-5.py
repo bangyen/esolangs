@@ -2,18 +2,18 @@ import re
 import sys
 
 
-def num(char):
+def num(char: str) -> int:
     if char.isdigit():
         return int(char)
     return ord(char.upper()) - 55
 
 
-def run(code):
+def run(code: str) -> None:
     code = f" {code}"
     code = re.sub("([^78])C[^\n]*", "\1", code)
 
     cell = ind = 0
-    tape = [0]
+    tape: list[int] = [0]
     line = 1
 
     while ind < len(code):
@@ -42,8 +42,8 @@ def run(code):
             print(chr(tape[cell]), end="")
             line = 0
         elif c == "B":
-            val = input("\nInput: "[line:])
-            tape[cell] = ord(val[0])
+            inp = input("\nInput: "[line:])
+            tape[cell] = ord(inp[0])
             line = 1
 
         ind += 1

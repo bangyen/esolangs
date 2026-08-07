@@ -9,7 +9,7 @@ import re
 import sys
 
 
-def output(z, n, ram):
+def output(z: int, n: int, ram: dict) -> None:
     """Print the current state of all registers and RAM memory."""
     res = f"z: {z}\n" f"n: {n}\n" "ram: {"
 
@@ -20,7 +20,7 @@ def output(z, n, ram):
     print(res + "}")
 
 
-def change(z, n, ram, op):
+def change(z: int, n: int, ram: dict, op: str) -> tuple[int, int, bool]:
     """Execute a single RAM0 command and return the updated registers."""
     if op == "Z":
         z = 0
@@ -35,16 +35,16 @@ def change(z, n, ram, op):
     return z, n, not z
 
 
-def run(code):
+def run(code: str) -> None:
     """Execute a RAM0 program by parsing commands and running them sequentially."""
     expr = r"([ZANCLS]|[1-9]\d*)"
-    code = re.findall(expr, code)
+    tokens = re.findall(expr, code)
     z = n = 0
     ram: dict = {}
     ind = 0
 
-    while ind < len(code):
-        c = code[ind]
+    while ind < len(tokens):
+        c = tokens[ind]
         z, n, skip = change(z, n, ram, c)
         if c == "C" and skip:
             ind += 1
