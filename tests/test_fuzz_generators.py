@@ -13,47 +13,25 @@ import string
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-import esolangs.tools.generate as gen
+from esolangs.registry import BY_FUNCTION
 from esolangs.tools import binary, boolean
 
-# generator -> (interpreter module, split lines, extra kwargs, trailing output)
+# generator function name -> trailing output appended after the printed text
+_TRAILING = {"nevermind": "\n"}
+
+# generator function name -> Language metadata, restricted to the generators
+# whose interpreter lives in-repo (so their programs round-trip).
 ROUND_TRIP = {
-    "six_five": ("tape_based.6-5", False, {}, ""),
-    "ascii_art": ("tape_based.ascii-art", False, {}, ""),
-    "bfstack": ("stack_based.bfstack", False, {}, ""),
-    "bio": ("register_based.bio", False, {}, ""),
-    "brainif": ("tape_based.brainif", True, {}, ""),
-    "circlefuck": ("tape_based.circlefuck", False, {}, ""),
-    "clockwise": ("other.clockwise", True, {}, ""),
-    "container": ("other.container", True, {}, ""),
-    "dig": ("register_based.dig", True, {}, ""),
-    "dotlang": ("register_based.dotlang", True, {}, ""),
-    "eval": ("stack_based.eval", False, {}, ""),
-    "excon": ("tape_based.excon", False, {}, ""),
-    "huf": ("register_based.huf", False, {}, ""),
-    "mammalian": ("tape_based.mammalian", False, {}, ""),
-    "minifuck": ("tape_based.minifuck", False, {}, ""),
-    "modulous": ("stack_based.modulous", False, {}, ""),
-    "nevermind": ("other.nevermind", True, {}, "\n"),
-    "polynomial": ("register_based.polynomial", False, {}, ""),
-    "qoibl": ("register_based.qoibl", True, {}, ""),
-    "sophie": ("register_based.sophie", False, {}, ""),
-    "suffolk": ("tape_based.suffolk", False, {"limit": 1}, ""),
-    "temporary": ("stack_based.temporary", False, {}, ""),
-    "wii2d": ("register_based.WII2D", True, {}, ""),
-    "ztoalc": ("other.ztoalc", True, {}, ""),
+    name: (lang.interpreter, lang.split, dict(lang.kwargs), _TRAILING.get(name, ""))
+    for name, lang in BY_FUNCTION.items()
+    if lang.interpreter
 }
 
 # generators whose interpreters live in extra/: no round-trip, just no crash
 NO_INTERPRETER = {
-    "forth": gen.forth,
-    "laserfuck": gen.laserfuck,
-    "magnitude": gen.magnitude,
-    "painfuck": gen.painfuck,
-    "_123": gen._123,
-    "nocomment": gen.nocomment,
-    "unsquare": gen.unsquare,
-    "home_row": gen.home_row,
+    name: lang.generator
+    for name, lang in BY_FUNCTION.items()
+    if lang.generator and not lang.interpreter
 }
 
 
@@ -69,7 +47,7 @@ def test_text_generators_round_trip():
         text = _random_text()
         for name, (module, split, kwargs, suffix) in ROUND_TRIP.items():
             try:
-                program = getattr(gen, name)(text)
+                program = BY_FUNCTION[name].generator(text)
             except ValueError:
                 assert (
                     name != "mammalian"
