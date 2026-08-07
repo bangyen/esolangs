@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+import esolangs
 from esolangs.cli import main
 
 
@@ -34,6 +35,35 @@ class TestCLI:
         result = run_cli("esolangs.interpreters.tape_based.excon", str(program))
         assert result.returncode == 0
         assert result.stdout == "A"
+
+
+class TestCLISubcommands:
+    def test_list(self) -> None:
+        result = run_cli("list")
+        assert result.returncode == 0
+        assert "Sophie" in result.stdout
+
+    def test_generate(self) -> None:
+        result = run_cli("generate", "Sophie", "Hi")
+        assert result.returncode == 0
+        assert esolangs.run("Sophie", result.stdout) == "Hi"
+
+    def test_generate_unknown_language(self) -> None:
+        result = run_cli("generate", "NoSuchLanguage", "x")
+        assert result.returncode == 2
+        assert "unknown language" in result.stderr
+
+    def test_run(self, tmp_path: Path) -> None:
+        program = tmp_path / "prog.soph"
+        program.write_text(esolangs.generate("Sophie", "Hi"))
+        result = run_cli("run", "Sophie", str(program))
+        assert result.returncode == 0
+        assert result.stdout == "Hi"
+
+    def test_run_missing_file(self) -> None:
+        result = run_cli("run", "Sophie", "/no/such/file")
+        assert result.returncode == 2
+        assert "cannot read" in result.stderr
 
 
 class TestCLIInProcess:
