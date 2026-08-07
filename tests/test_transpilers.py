@@ -1,14 +1,17 @@
-"""Verify the BF -> ASCII-art transpiler.
+"""Verify the transpilers.
 
-The transpiler's contract is that a brainfuck program and its ASCII-art
-translation are interchangeable: each brainfuck command becomes an art
-block, ``ascii-art.parse`` recovers the original commands, and both programs
-run to identical output through their respective interpreters.  A battery
-of programs exercises loops, nested loops, input, pointer movement, cell
-wrapping, and comment-stripping.
+The contract is that a brainfuck program and its translation are
+interchangeable: the translation runs to identical output through the
+target interpreter.  The ASCII-art transpilers are alphabet swaps whose
+translation also recovers the source program exactly.  The CircleFuck
+transpiler is a real program transformation (its tape is the program
+itself), so it targets the class of brainfuck programs whose data pointer
+stays within ``[0, size)``; a battery plus a fuzz of bounded, terminating
+programs verifies that class.
 """
 
 import importlib
+import random
 
 import pytest
 
@@ -46,6 +49,22 @@ PINNED = {
     "+++>+++<.>.": ("", "\x03\x03"),
     "+++++++++++++++++++++++++++++++++++++++++++++++++.": ("", "1"),
 }
+
+# (brainfuck program, stdin, tape size); each program keeps its pointer in
+# [0, size) so it is in the CircleFuck transpiler's supported class.
+CIRCLEFUCK_BATTERY = (
+    ("++.", "", 4),
+    ("+[>+<-]>.", "", 4),
+    ("+++[>++<-]>+++.", "", 4),
+    (",>,<.>.", "a\nb", 4),
+    (",[.-]", "a", 4),
+    ("++[>++[>+<-]<-]>+++.", "", 4),
+    ("+++++++++++++++++++++++++++++++++++++++++++++++++.", "", 4),
+    (">.<.", "", 2),
+    (">++>+++<.>.<.", "", 3),
+    ("[-]+++++++[-]++++++++++++++++++++++++++++++++++++++++++++++++.", "", 1),
+    ("", "", 4),
+)
 
 
 def _filter(program: str) -> str:
@@ -127,7 +146,7 @@ def test_empty_program_stays_empty() -> None:
 
 def test_unsupported_pair_raises() -> None:
     with pytest.raises(UnsupportedTranspilationError):
-        esolangs.transpile("BF", "CircleFuck", "x")
+        esolangs.transpile("BF", "Unsquare", "x")
     with pytest.raises(UnsupportedTranspilationError):
         esolangs.transpile("Sophie", "Modulous", "x")
     assert issubclass(UnsupportedTranspilationError, EsolangError)
@@ -142,3 +161,67 @@ def test_listed_transpilers_are_known_languages() -> None:
     for source, target in TRANSPILERS:
         assert source in known
         assert target in known
+
+
+@pytest.mark.parametrize(("program", "stdin", "size"), CIRCLEFUCK_BATTERY)
+def test_circlefuck_transpiled_output_matches_source(
+    program: str, stdin: str, size: int
+) -> None:
+    circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=size)
+    assert esolangs.run("BF", program, stdin) == esolangs.run(
+        "CircleFuck", circlefuck, stdin
+    )
+
+
+@pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123"])
+def test_circlefuck_transpiles_generated_program(text: str) -> None:
+    """The BF generator's output (single cell) transpiles and prints the text."""
+    program = esolangs.generate("BF", text)
+    circlefuck = esolangs.transpile("BF", "CircleFuck", program)
+    assert esolangs.run("CircleFuck", circlefuck) == text
+
+
+def test_circlefuck_left_edge_is_out_of_class() -> None:
+    """Moving below cell 0 is outside the supported class.
+
+    Brainfuck clamps ``<`` at the left edge; CircleFuck's pointer wraps to
+    the end of the program, so the transpiler only guarantees equivalence
+    for programs that stay in ``[0, size)``.
+    """
+    program = ">+<<."  # reads cell 1, then moves below cell 0
+    circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=4)
+    assert esolangs.run("BF", program) != esolangs.run("CircleFuck", circlefuck)
+
+
+def test_circlefuck_size_must_be_positive() -> None:
+    with pytest.raises(ValueError, match="size must be positive"):
+        esolangs.transpile("BF", "CircleFuck", "+.", size=0)
+
+
+def test_circlefuck_fuzz_bounded_programs() -> None:
+    """Random in-class programs (pointer in [0, size), terminating) agree."""
+    rng = random.Random(5)
+    for _ in range(60):
+        size = rng.randint(1, 4)
+        parts: list[str] = []
+        ptr = 0
+        for _ in range(rng.randint(3, 10)):
+            kind = rng.choice(("inc", "dec", "print", "zero", "jump"))
+            if kind == "jump":
+                target = rng.randrange(size)
+                if target >= ptr:
+                    parts.append(">" * (target - ptr))
+                else:
+                    parts.append("<" * (ptr - target))
+                ptr = target
+            elif kind == "inc":
+                parts.append("+" * rng.randint(1, 6))
+            elif kind == "dec":
+                parts.append("-" * rng.randint(1, 6))
+            elif kind == "print":
+                parts.append(".")
+            else:
+                parts.append("[-]")
+        program = "".join(parts)
+        circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=size)
+        assert esolangs.run("BF", program) == esolangs.run("CircleFuck", circlefuck)

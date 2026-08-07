@@ -145,7 +145,7 @@ class TestInProcess:
         program = tmp_path / "prog.bf"
         program.write_text("x")
         with pytest.raises(SystemExit) as exc:
-            call_main(["transpile", "BF", "CircleFuck", str(program)], capsys)
+            call_main(["transpile", "BF", "Unsquare", str(program)], capsys)
         assert exc.value.code == 2
         assert "no transpiler" in capsys.readouterr().err
 
