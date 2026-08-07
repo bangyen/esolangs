@@ -2,16 +2,16 @@ import sys
 
 
 class Con:
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.rules = []
+        self.rules: list[tuple[int, str]] = []
 
-    def add(self, cond):
+    def add(self, cond: str) -> None:
         n, c = cond.split()
         self.rules.append((int(n), c))
 
-    def update(self, var):
-        def val(s):
+    def update(self, var: dict[str, int]) -> int:
+        def val(s: str) -> int:
             if s in var:
                 return var[s]
             return int(s)
@@ -33,12 +33,12 @@ class Con:
         return res
 
 
-def run(code):
-    queue: list = []
-    inp = False
-    obj = []
-    var = {}
-    new = {}
+def run(code: list[str]) -> None:
+    queue: list[str] = []
+    inp = 0
+    obj: list[Con] = []
+    var: dict[str, int] = {}
+    new: dict[str, int] = {}
 
     for raw in code:
         line = raw.strip()
@@ -63,7 +63,7 @@ def run(code):
 
         if "PRINT" in var and var["PRINT"] == 0 and bool(new["PRINT"]) and "OUT" in var:
             print(chr(new["OUT"] % (1 << 7)), end="")
-            inp = True
+            inp = 1
         if "" in var and var[""] == 0 and bool(new[""]):
             while not queue:
                 s = input("\n" * inp + "Input: ")
@@ -71,7 +71,7 @@ def run(code):
 
             new["INPUT"] = ord(queue[0])
             queue = queue[1:]
-            inp = True
+            inp = 1
         if "EXIT" in var and var["EXIT"] != new["EXIT"]:
             sys.exit(new["EXIT"])
 
