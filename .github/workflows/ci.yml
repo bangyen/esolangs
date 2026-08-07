@@ -94,6 +94,15 @@ jobs:
           exit 1
         fi
 
+    - name: Regenerate the language capabilities doc
+      run: |
+        uv run python scripts/make_languages_doc.py
+        if ! git diff --exit-code docs/languages.md; then
+          echo "docs/languages.md is out of date. Run:"
+          echo "  uv run python scripts/make_languages_doc.py"
+          exit 1
+        fi
+
   security:
     runs-on: ubuntu-latest
     steps:
