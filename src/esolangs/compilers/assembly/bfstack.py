@@ -3,50 +3,48 @@ import re
 import sys
 
 
-def parse(code):
-    def con(*s):
+def parse(code: str) -> list[tuple[str, int]]:
+    def con(*s: str) -> tuple[str, int]:
         if s[0] in "+-":
             x = s.count("+")
             y = s.count("-")
             return "+", x - y
         return s[0], len(s)
 
-    def key(v):
+    def key(v: str) -> str:
         if v in "+-":
             return "+"
         return v
 
-    code = re.sub(r"[^><+-.,\][]", "", code)
+    filtered = re.sub(r"[^><+-.,\][]", "", code)
 
-    while re.search(r"(>[+-]*<|\+-|-\+)", code):
-        code = re.sub(">[+-]*<", "", code)
-        code = code.replace("+-", "").replace("-+", "")
+    while re.search(r"(>[+-]*<|\+-|-\+)", filtered):
+        filtered = re.sub(">[+-]*<", "", filtered)
+        filtered = filtered.replace("+-", "").replace("-+", "")
 
-    while m := re.search(r"[>\]]\[", code):
+    while m := re.search(r"[>\]]\[", filtered):
         ind = m.start() + 1
         mat = 1
 
         while mat:
             ind += 1
-            if ind == len(code):
+            if ind == len(filtered):
                 return []
-            elif (c := code[ind]) == "[":
+            elif (c := filtered[ind]) == "[":
                 mat += 1
             elif c == "]":
                 mat -= 1
 
-        code = code[: m.start() + 1] + code[ind + 1 :]
+        filtered = filtered[: m.start() + 1] + filtered[ind + 1 :]
 
-    code = re.sub(r"[+-]*\[[+-]]", "0", code)
-    code = re.sub("[+-]+<", "<", code)
-    code = itertools.groupby(code, key=key)
-    code = [con(*g) for _, g in code]
-
-    return code
+    filtered = re.sub(r"[+-]*\[[+-]]", "0", filtered)
+    filtered = re.sub("[+-]+<", "<", filtered)
+    grouped = itertools.groupby(filtered, key=key)
+    return [con(*g) for _, g in grouped]
 
 
-def comp(code):
-    code = parse(code)
+def comp(code: str) -> str:
+    tokens = parse(code)
     jump = 0
     arr = []
     res = (
@@ -64,7 +62,7 @@ def comp(code):
         ",": ["input", False, False],
     }
 
-    for char, num in code:
+    for char, num in tokens:
         if char == "+":
             if num > 1:
                 res += f"\tadd byte [ecx], {num}\n"
