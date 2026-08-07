@@ -227,6 +227,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 - [BF](https://esolangs.org/wiki/Brainfuck) -> [CircleFuck](https://esolangs.org/wiki/Circlefuck): sets up a clean data region inside the program-as-tape and emits the brainfuck commands unchanged. The data region is sized automatically from the program (the smallest bound that contains its data pointer), so `transpile("BF", "CircleFuck", program)` just works for programs with bounded, non-drifting loops; pass `size` explicitly to cover programs that stay within `[0, size)`.
 - [NoComment](https://esolangs.org/wiki/NoComment) -> [BF](https://esolangs.org/wiki/Brainfuck): NoComment is a strict subset of brainfuck, so the transpiler is a table lookup (`c` = `[-]`, `i` = `+`, `o` = `.`).
 - [BFStack](https://esolangs.org/wiki/BFStack) -> [BF](https://esolangs.org/wiki/Brainfuck): BFStack is a stack modelled on brainfuck's tape, so the transpiler is a table lookup (`>` pushes a cell, `<` pops and clears it (`[-]<`), `,` reads and pushes (`>,`)).
+- [BIO](https://esolangs.org/wiki/BIO) -> [BF](https://esolangs.org/wiki/Brainfuck): BIO's three registers live in the first three brainfuck cells; each command moves the pointer to its register, acts, and returns to cell 0. Registers must stay within `[0, 255]`.
 
 ```bash
 esolangs transpile BF "ASCII art" program.bf    # print the art
@@ -234,6 +235,7 @@ esolangs transpile "ASCII art" BF program.txt   # print the brainfuck
 esolangs transpile BF CircleFuck program.bf     # print the CircleFuck
 esolangs transpile NoComment BF program.nocom   # print the brainfuck
 esolangs transpile BFStack BF program.bstk      # print the brainfuck
+esolangs transpile BIO BF program.bio           # print the brainfuck
 ```
 
 ```python

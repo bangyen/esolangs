@@ -333,3 +333,79 @@ def test_bfstack_fuzz_stack_programs() -> None:
         program = "".join(parts)
         bf_program = esolangs.transpile("BFStack", "BF", program)
         assert esolangs.run("BFStack", program) == esolangs.run("BF", bf_program)
+
+
+# (BIO program, stdin) pairs; every program terminates and its registers
+# stay inside [0, 255], so it is in the transpiler's supported class.
+BIO_BATTERY = (
+    ("0ox1ix", ""),
+    ("0oy1iy", ""),
+    ("0oz1iz", ""),
+    ("1ix", ""),
+    ("0ox0ox1ix", ""),
+    ("0ox0oy0ix1iy1ox}", ""),
+    ("0ox0oy0oz0iy1iz1oy}", ""),
+    ("1ix1ix", ""),
+    ("0ox0oz0iz1ix1oz}", ""),
+    ("0ox0oy0ox0iy1iy1oy1ix1ox}", ""),
+)
+
+
+@pytest.mark.parametrize(("program", "stdin"), BIO_BATTERY)
+def test_bio_transpiles_to_brainfuck(program: str, stdin: str) -> None:
+    bf_program = esolangs.transpile("BIO", "BF", program)
+    assert esolangs.run("BIO", program, stdin) == esolangs.run("BF", bf_program, stdin)
+
+
+@pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123"])
+def test_bio_transpiles_generated_program(text: str) -> None:
+    """The BIO generator's output prints the same text as brainfuck."""
+    program = esolangs.generate("BIO", text)
+    bf_program = esolangs.transpile("BIO", "BF", program)
+    assert esolangs.run("BF", bf_program) == text
+
+
+def test_bio_comments_are_ignored() -> None:
+    program = "hello there 0ox 1ix ok"
+    bf_program = esolangs.transpile("BIO", "BF", program)
+    assert esolangs.run("BIO", program) == esolangs.run("BF", bf_program) == "\x01"
+
+
+def test_bio_register_wrap_is_out_of_class() -> None:
+    """A register reaching a nonzero multiple of 256 is outside the class.
+
+    BIO's registers are unbounded, so 256 is truthy for a loop condition;
+    brainfuck cells wrap, so the same register reads as 0.
+    """
+    program = "0ox" * 256 + "0ix1ix1ox}"
+    bf_program = esolangs.transpile("BIO", "BF", program)
+    assert esolangs.run("BIO", program) != esolangs.run("BF", bf_program)
+
+
+def test_bio_fuzz_register_programs() -> None:
+    """Random programs (tracked registers, terminating loops) agree."""
+    rng = random.Random(11)
+    for _ in range(60):
+        parts: list[str] = []
+        reg = [0, 0, 0]
+        for _ in range(rng.randint(3, 10)):
+            r = rng.randrange(3)
+            kind = rng.choice(("inc", "dec", "out", "loop"))
+            if kind == "inc":
+                parts.append("0o" + "xyz"[r])
+                reg[r] += 1
+            elif kind == "dec":
+                parts.append("1o" + "xyz"[r])
+                reg[r] -= 1
+            elif kind == "out":
+                parts.append("1i" + "xyz"[r])
+            else:
+                move = "1o" if reg[r] > 0 else "0o" if reg[r] < 0 else ""
+                body = move + "xyz"[r]
+                if move and rng.random() < 0.5:
+                    body += "1i" + "xyz"[rng.randrange(3)]
+                parts.append("0i" + "xyz"[r] + body + "}")
+                reg[r] = 0
+        program = "".join(parts)
+        bf_program = esolangs.transpile("BIO", "BF", program)
+        assert esolangs.run("BIO", program) == esolangs.run("BF", bf_program)
