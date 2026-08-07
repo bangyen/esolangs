@@ -1,5 +1,6 @@
 import sys
 from inspect import signature
+from typing import Callable, Optional
 
 # Dig blocks for one level of the decision tree.
 BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
@@ -7,7 +8,7 @@ CONTINUE = "> "  # a child of a branch: keep facing right into its own block
 LEAF = ">$3{}:@"  # set the mole to the result and print it
 
 
-def convert(func, num=None):
+def convert(func: Callable[..., int], num: Optional[int] = None) -> str:
     """Build a Dig decision tree that computes ``func`` over ``num`` inputs.
 
     The tree is laid out so the mole starts in the top-left corner (``'``)
