@@ -1,4 +1,9 @@
-"""Unit tests for the esolangs command-line interface."""
+"""Unit tests for the esolangs command-line interface.
+
+The subprocess tests exercise the real ``python -m esolangs.cli`` entry
+point; the in-process tests exercise every branch of ``main`` so the CLI is
+fully covered by the suite (subprocesses do not contribute to coverage).
+"""
 
 import subprocess
 import sys
@@ -7,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
+import esolangs
 from esolangs.cli import main
 
 
@@ -18,52 +24,121 @@ def run_cli(*args: str) -> subprocess.CompletedProcess:
     )
 
 
-class TestCLI:
-    def test_unknown_module(self) -> None:
-        result = run_cli("no.such.module")
-        assert result.returncode == 2
-        assert "unknown module" in result.stderr
+class _FakeStdin:
+    def __init__(self, data: str) -> None:
+        self.data = data
 
-    def test_missing_argument(self) -> None:
-        result = run_cli()
-        assert result.returncode == 2
+    def isatty(self) -> bool:
+        return False
 
-    def test_run_interpreter(self, tmp_path: Path) -> None:
-        program = tmp_path / "prog.exc"
-        program.write_text("^<<<<<<^!")
-        result = run_cli("esolangs.interpreters.tape_based.excon", str(program))
+    def read(self) -> str:
+        return self.data
+
+
+def call_main(args: list, capsys: pytest.CaptureFixture, stdin: str = "") -> str:
+    with (
+        patch.object(sys, "argv", ["esolangs", *args]),
+        patch.object(sys, "stdin", _FakeStdin(stdin)),
+    ):
+        main()
+    return str(capsys.readouterr().out)
+
+
+class TestSubprocess:
+    def test_list(self) -> None:
+        result = run_cli("list")
         assert result.returncode == 0
-        assert result.stdout == "A"
+        assert "Sophie" in result.stdout
+
+    def test_generate(self) -> None:
+        result = run_cli("generate", "Sophie", "Hi")
+        assert result.returncode == 0
+        assert esolangs.run("Sophie", result.stdout) == "Hi"
+
+    def test_run(self, tmp_path: Path) -> None:
+        program = tmp_path / "prog.soph"
+        program.write_text(esolangs.generate("Sophie", "Hi"))
+        result = run_cli("run", "Sophie", str(program))
+        assert result.returncode == 0
+        assert result.stdout == "Hi"
 
 
-class TestCLIInProcess:
-    def test_run_interpreter_in_process(
+class TestInProcess:
+    def test_list(self, capsys: pytest.CaptureFixture) -> None:
+        out = call_main(["list"], capsys)
+        assert "Sophie" in out
+
+    def test_generate(self, capsys: pytest.CaptureFixture) -> None:
+        out = call_main(["generate", "Sophie", "Hi"], capsys)
+        assert esolangs.run("Sophie", out) == "Hi"
+
+    def test_generate_unknown_language(self, capsys: pytest.CaptureFixture) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "NoSuchLanguage", "x"], capsys)
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
+
+    def test_generate_missing_args(self, capsys: pytest.CaptureFixture) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "Sophie"], capsys)
+        assert exc.value.code == 2
+
+    def test_run(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+        program = tmp_path / "prog.soph"
+        program.write_text(esolangs.generate("Sophie", "Hi"))
+        out = call_main(["run", "Sophie", str(program)], capsys)
+        assert out == "Hi"
+
+    def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture
     ) -> None:
-        program = tmp_path / "prog.exc"
-        program.write_text("^<<<<<<^!")
-        args = ["esolangs", "esolangs.interpreters.tape_based.excon", str(program)]
-        with patch.object(sys, "argv", args):
-            main()
-        assert capsys.readouterr().out == "A"
+        from esolangs.tools import boolean
 
-    def test_unknown_module_in_process(self, capsys: pytest.CaptureFixture) -> None:
-        with patch.object(sys, "argv", ["esolangs", "no.such.module"]):
-            with pytest.raises(SystemExit) as exc:
-                main()
+        program = tmp_path / "prog.txt"
+        program.write_text(boolean.circlefuck("1101", 2))
+        out = call_main(["run", "CircleFuck", str(program)], capsys, stdin="1\n0\n")
+        assert out == "0"
+
+    def test_run_missing_file(self, capsys: pytest.CaptureFixture) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "Sophie", "/no/such/file"], capsys)
         assert exc.value.code == 2
-        assert "unknown module" in capsys.readouterr().err
+        assert "cannot read" in capsys.readouterr().err
+
+    def test_run_missing_args(self, capsys: pytest.CaptureFixture) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "Sophie"], capsys)
+        assert exc.value.code == 2
+
+    def test_run_unknown_language(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture
+    ) -> None:
+        program = tmp_path / "prog.txt"
+        program.write_text("anything")
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "NoSuchLanguage", str(program)], capsys)
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
+
+    def test_unknown_command(self, capsys: pytest.CaptureFixture) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["no.such.command"], capsys)
+        assert exc.value.code == 2
+        assert "unknown command" in capsys.readouterr().err
+
+    def test_no_arguments(self, capsys: pytest.CaptureFixture) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main([], capsys)
+        assert exc.value.code == 2
 
 
 class TestPackageEntryPoint:
     """python -m esolangs dispatches to the CLI via esolangs/__main__.py."""
 
-    def test_run_as_main(self, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_run_as_main(self, capsys: pytest.CaptureFixture) -> None:
         import runpy
 
-        program = tmp_path / "prog.exc"
-        program.write_text("^<<<<<<^!")
-        args = ["esolangs", "esolangs.interpreters.tape_based.excon", str(program)]
-        with patch.object(sys, "argv", args):
+        with patch.object(sys, "argv", ["esolangs", "generate", "Sophie", "Hi"]):
             runpy.run_module("esolangs", run_name="__main__")
-        assert capsys.readouterr().out == "A"
+        out = capsys.readouterr().out
+        assert esolangs.run("Sophie", out) == "Hi"

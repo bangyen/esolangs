@@ -1,5 +1,4 @@
-"""
-Unit tests for Polynomial interpreter.
+"""Unit tests for Polynomial interpreter.
 
 Tests cover polynomial parsing, helper functions, and basic validation.
 Polynomial is an esoteric language where programs are polynomial functions and
@@ -86,7 +85,6 @@ class TestPolynomialValidation:
 
     def test_valid_format_acceptance(self) -> None:
         """Test that valid format is accepted."""
-
         # This should not raise an error, but we won't execute it to avoid hanging
         try:
             # Just test that the format is accepted
@@ -241,7 +239,7 @@ class TestPolynomialExecution:
         assert buffer.getvalue() == ""
 
     def test_if_enters_when_condition_met(self) -> None:
-        """if reg==0 { output } executes the body when reg is 0."""
+        """If reg==0 { output } executes the body when reg is 0."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run("f(x) = x^3 - 16x^2 + 25x - 400")
@@ -255,7 +253,7 @@ class TestPolynomialExecution:
         assert buffer.getvalue() == ""
 
     def test_while_loop(self) -> None:
-        """add 3, while reg>0 { reg-=1 }, output decrements three times."""
+        """Add 3, while reg>0 { reg-=1 }, output decrements three times."""
         program = (
             "f(x) = x^8 - 117900x^7 + 29532615x^6 - 319727030x^5 + 22630555713x^4 "
             "- 146042691700x^3 + 2538566894185x^2 - 13198909291370x + 28151242605486"

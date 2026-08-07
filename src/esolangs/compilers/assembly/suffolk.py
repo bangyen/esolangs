@@ -2,7 +2,7 @@ import sys
 from re import sub
 
 
-def count(code, ind):
+def count(code: str, ind: int) -> int:
     char = code[ind]
     code += " "
     num = 0
@@ -14,7 +14,7 @@ def count(code, ind):
     return num
 
 
-def comp(code, num):
+def comp(code: str, num: int) -> str:
     code = sub("[^><.,!]", "", code)
     res = (
         "global _start\n"
@@ -132,10 +132,7 @@ def comp(code, num):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 2:
-        loop = int(sys.argv[2])
-    else:
-        loop = 1
+    loop = int(sys.argv[2]) if len(sys.argv) > 2 else 1
 
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as f:

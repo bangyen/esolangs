@@ -15,10 +15,9 @@ The language features:
 
 import re
 import sys
-from typing import Dict, List
 
 
-def run(code: List[str]) -> None:
+def run(code: list[str]) -> None:
     """Execute a Movesum program with move and sum instructions."""
     if not code:
         raise ValueError("Movesum program cannot be empty")
@@ -28,7 +27,7 @@ def run(code: List[str]) -> None:
             "Movesum program must have at least initialization and one instruction"
         )
     reg: re.Pattern[str] = re.compile(r"(\d+) *= *(\d+)")
-    arr: Dict[int, int] = dict.fromkeys(range(5), 0)
+    arr: dict[int, int] = dict.fromkeys(range(5), 0)
     num: int = 0
     ind: int = 0
     new: int = 1
@@ -45,7 +44,7 @@ def run(code: List[str]) -> None:
 
     code = code[1:]
     while num < 2:
-        copy: Dict[int, int] = arr.copy()
+        copy: dict[int, int] = arr.copy()
         expr: str = r"(move *(-?\d+)" r" *(-?\d+)|sum)"
 
         match_result = re.search(expr, code[ind])
@@ -54,22 +53,21 @@ def run(code: List[str]) -> None:
                 arr[0] = arr[1]
                 for k in range(2, 5):
                     arr[0] += arr[k]
-            else:
-                if match_result[2].isdigit():
-                    src_idx: int = int(match_result[2])
-                    n: int = arr.get(src_idx, 0)
+            elif match_result[2].isdigit():
+                src_idx: int = int(match_result[2])
+                n: int = arr.get(src_idx, 0)
 
-                    if match_result[3].isdigit():
-                        dst_idx: int = int(match_result[3])
-                        arr[dst_idx] = n
-                    else:
-                        print(n, end=" ")
-                        new = 0
-                elif match_result[3].isdigit():
-                    input_dst_idx: int = int(match_result[3])
-                    input_str: str = input("\nInput: "[new:])
-                    arr[input_dst_idx] = int(input_str) if input_str else 0
-                    new = 1
+                if match_result[3].isdigit():
+                    dst_idx: int = int(match_result[3])
+                    arr[dst_idx] = n
+                else:
+                    print(n, end=" ")
+                    new = 0
+            elif match_result[3].isdigit():
+                input_dst_idx: int = int(match_result[3])
+                input_str: str = input("\nInput: "[new:])
+                arr[input_dst_idx] = int(input_str) if input_str else 0
+                new = 1
 
         num = (num + 1) * (arr == copy)
         ind = (ind + 1) % len(code)

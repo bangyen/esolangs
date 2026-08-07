@@ -2,7 +2,7 @@ import re
 import sys
 
 
-def parse(code):
+def parse(code: str) -> list[int]:
     reg = r"\\(?:\d\d\d|" r"[\dA-F](?:$|[^\d]))"
     exp = r"((^|[^\\]) |\\( )|(\\)o)"
 
@@ -16,13 +16,12 @@ def parse(code):
 
     code = re.sub(exp, r"\2\3\4", code)
     code = "".join(c for c in code if 31 < ord(c) < 127)
-    code = bytes(code, "utf-8")
-    code = code.decode("unicode_escape")
+    code = bytes(code, "utf-8").decode("unicode_escape")
 
     return [ord(c) for c in code]
 
 
-def find(code, ind, ptr):
+def find(code: list[int], ind: int, ptr: int) -> int:
     char = chr(code[ind])
     if char == "[":
         if code[ptr]:
@@ -49,30 +48,30 @@ def find(code, ind, ptr):
     return ind
 
 
-def run(code):
-    code = parse(code)
+def run(code: str) -> None:
+    cells: list[int] = parse(code)
     ind = ptr = 0
     new = 1
 
     while True:
-        if (char := chr(code[ind])) == ">":
-            ptr = (ptr + 1) % len(code)
+        if (char := chr(cells[ind])) == ">":
+            ptr = (ptr + 1) % len(cells)
         elif char == "<":
-            ptr = (ptr - 1) % len(code)
+            ptr = (ptr - 1) % len(cells)
         elif char == "+":
-            code[ptr] = (code[ptr] + 1) % 256
+            cells[ptr] = (cells[ptr] + 1) % 256
         elif char == "-":
-            code[ptr] = (code[ptr] - 1) % 256
+            cells[ptr] = (cells[ptr] - 1) % 256
         elif char == ",":
             val = input("\nInput: "[new:])
-            code[ptr] = ord(val[0])
+            cells[ptr] = ord(val[0])
             new = 1
         elif char in "[]":
-            ind = find(code, ind, ptr)
+            ind = find(cells, ind, ptr)
             if ind == -1:
                 return
         elif char == ".":
-            val = chr(code[ptr])
+            val = chr(cells[ptr])
             print(val, end="")
             new = 0
         elif char == "@":
@@ -80,12 +79,12 @@ def run(code):
         elif char == "#":
             ind += 1
         elif char == "{":
-            code.insert(ptr, 0)
+            cells.insert(ptr, 0)
             ind += 1
         elif char == "}":
-            code.pop(ptr)
+            cells.pop(ptr)
 
-        ind = (ind + 1) % len(code)
+        ind = (ind + 1) % len(cells)
 
 
 if __name__ == "__main__":

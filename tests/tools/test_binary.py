@@ -10,15 +10,16 @@ from esolangs.tools.binary import convert
 
 class TestMain:
     def test_usage(self, capsys: pytest.CaptureFixture) -> None:
-        with patch("sys.argv", ["esolangs.tools.binary"]):
-            with pytest.raises(SystemExit):
-                binary.main()
+        with patch("sys.argv", ["esolangs.tools.binary"]), pytest.raises(SystemExit):
+            binary.main()
         assert "usage: python -m esolangs.tools.binary" in capsys.readouterr().out
 
     def test_bad_length(self, capsys: pytest.CaptureFixture) -> None:
-        with patch("sys.argv", ["esolangs.tools.binary", "011"]):
-            with pytest.raises(SystemExit):
-                binary.main()
+        with (
+            patch("sys.argv", ["esolangs.tools.binary", "011"]),
+            pytest.raises(SystemExit),
+        ):
+            binary.main()
         assert "must be a power of 2" in capsys.readouterr().out
 
     def test_valid_table(self, capsys: pytest.CaptureFixture) -> None:
@@ -38,20 +39,20 @@ class TestMain:
 
 
 class TestConvert:
-    def test_xor_matches_wiki(self) -> None:
-        """The XOR gate output matches the example on esolangs.org."""
+    def test_xor_layout(self) -> None:
+        """The XOR gate produces the standard two-level decision tree."""
 
         def xor(a, b):
             return a ^ b
 
         expected = (
-            "'           >  $30:@\n"
-            "     >  2$~;#@\n"
-            "            >  $31:@\n"
+            "'           > >$30:@\n"
+            "     > >2$~;#@\n"
+            "            > >$31:@\n"
             ">2$~;#@       \n"
-            "            >  $31:@\n"
-            "     >  2$~;#@\n"
-            "            >  $30:@"
+            "            > >$31:@\n"
+            "     > >2$~;#@\n"
+            "            > >$30:@"
         )
         assert convert(xor) == expected
 
@@ -69,3 +70,27 @@ class TestConvert:
 
         program = convert(fn, num=2)
         assert program.startswith("'")
+
+
+class TestRoundTrip:
+    def test_xor_truth_table(self) -> None:
+        """The generated Dig program computes the function on the interpreter."""
+        import io
+        from contextlib import redirect_stdout
+        from unittest.mock import patch
+
+        from esolangs.interpreters.register_based.dig import run
+
+        def xor(a, b):
+            return a ^ b
+
+        program = convert(xor).splitlines()
+        for a in (0, 1):
+            for b in (0, 1):
+                buffer = io.StringIO()
+                with (
+                    patch("builtins.input", side_effect=[str(a), str(b)]),
+                    redirect_stdout(buffer),
+                ):
+                    run(program)
+                assert buffer.getvalue() == str(xor(a, b))

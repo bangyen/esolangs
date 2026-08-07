@@ -2,7 +2,7 @@ import sys
 from re import sub
 
 
-def count(code, ind):
+def count(code: str, ind: int) -> tuple[int, int]:
     code += " "
     num = 0
 
@@ -21,7 +21,7 @@ def count(code, ind):
     return num, ind
 
 
-def comp(code):
+def comp(code: str) -> str:
     res = ""
 
     func = {
@@ -134,7 +134,7 @@ def comp(code):
         res += "\nright:\n" + s + "\tret\n"
     if func["k"][1]:
         b = func["k"][2]
-        b_int = int(b) if isinstance(b, (int, float)) else 0
+        b_int = int(b) if isinstance(b, int | float) else 0
         res += (
             "\nprint:\n" + "\tpush eax\n" * b_int + "\tmov eax, 4\n"
             "\tmov ebx, 1\n"
@@ -160,6 +160,15 @@ def comp(code):
         "global _start\n"
         "_start:\n"
         "\tlea esp, [esp - 100]\n"
+        "\tmov ecx, esp\n"
+        # the spec's 5x5 grid initializes to zero
+        "\txor eax, eax\n"
+        "\tmov edi, 25\n"
+        ".zero_grid:\n"
+        "\tmov [ecx], eax\n"
+        "\tadd ecx, 4\n"
+        "\tdec edi\n"
+        "\tjnz .zero_grid\n"
         "\tmov ecx, esp\n"
         "\txor edi, edi\n"
         "\txor esi, esi\n"

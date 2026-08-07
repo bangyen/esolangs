@@ -37,7 +37,6 @@ class TestSuffolk:
     def test_input(self) -> None:
         """, reads input into the accumulator."""
         buffer = io.StringIO()
-        with patch("builtins.input", return_value="B"):
-            with redirect_stdout(buffer):
-                run(",.", 1)
+        with patch("builtins.input", return_value="B"), redirect_stdout(buffer):
+            run(",.", 1)
         assert buffer.getvalue() == "A"
