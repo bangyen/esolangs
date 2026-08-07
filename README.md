@@ -228,6 +228,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 - [NoComment](https://esolangs.org/wiki/NoComment) -> [BF](https://esolangs.org/wiki/Brainfuck): NoComment is a strict subset of brainfuck, so the transpiler is a table lookup (`c` = `[-]`, `i` = `+`, `o` = `.`).
 - [BFStack](https://esolangs.org/wiki/BFStack) -> [BF](https://esolangs.org/wiki/Brainfuck): BFStack is a stack modelled on brainfuck's tape, so the transpiler is a table lookup (`>` pushes a cell, `<` pops and clears it (`[-]<`), `,` reads and pushes (`>,`)).
 - [BIO](https://esolangs.org/wiki/BIO) -> [BF](https://esolangs.org/wiki/Brainfuck): BIO's three registers live in the first three brainfuck cells; each command moves the pointer to its register, acts, and returns to cell 0. Registers must stay within `[0, 255]`.
+- [huf](https://esolangs.org/wiki/Huf) -> [BF](https://esolangs.org/wiki/Brainfuck): huf's `num`/`mul` live in cells 0 and 1; `!` multiplies by copying `num` to a temp cell that each loop iteration adds to `num` and refreshes from a running accumulator.
 
 ```bash
 esolangs transpile BF "ASCII art" program.bf    # print the art
@@ -236,6 +237,7 @@ esolangs transpile BF CircleFuck program.bf     # print the CircleFuck
 esolangs transpile NoComment BF program.nocom   # print the brainfuck
 esolangs transpile BFStack BF program.bstk      # print the brainfuck
 esolangs transpile BIO BF program.bio           # print the brainfuck
+esolangs transpile huf BF program.huf           # print the brainfuck
 ```
 
 ```python
