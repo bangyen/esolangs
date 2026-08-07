@@ -60,7 +60,66 @@ def ascii_art_to_bf(program: str) -> str:
     return parse(program)
 
 
-def bf_to_circlefuck(program: str, size: int = 32) -> str:
+def _auto_size(ops: list[str]) -> int:
+    """Compute the smallest data region that contains the program's pointer.
+
+    Walks the filtered commands tracking the pointer's minimum and maximum
+    reach.  A loop whose body returns to its entry pointer (net-zero
+    displacement) can never drift the pointer, so its reach is bounded by
+    the body's own excursions regardless of how many times it runs.  The
+    empty program needs one cell.
+    """
+    stack: list[int] = []
+    match: dict[int, int] = {}
+    for i, c in enumerate(ops):
+        if c == "[":
+            stack.append(i)
+        elif c == "]" and stack:
+            j = stack.pop()
+            match[i] = j
+            match[j] = i
+
+    def scan(i: int, end: int, p: int) -> tuple[int, int, int, bool]:
+        lo = hi = p
+        while i < end:
+            c = ops[i]
+            if c == ">":
+                p += 1
+                hi = max(hi, p)
+            elif c == "<":
+                p -= 1
+                lo = min(lo, p)
+            elif c == "[":
+                j = match.get(i)
+                if j is None or j >= end:
+                    break  # unmatched bracket: CircleFuck halts on it
+                blo, bhi, bend, ok = scan(i + 1, j, p)
+                if not ok:
+                    return (lo, hi, p, False)
+                hi = max(hi, bhi)
+                lo = min(lo, blo)
+                if bend != p:
+                    return (lo, hi, p, False)
+                i = j + 1
+                continue
+            i += 1
+        return (lo, hi, p, True)
+
+    lo, hi, _, ok = scan(0, len(ops), 0)
+    if lo < 0:
+        raise ValueError(
+            "the program moves its data pointer below cell 0, where brainfuck "
+            "clamps but CircleFuck's tape wraps around"
+        )
+    if not ok:
+        raise ValueError(
+            "the program has a loop that drifts the data pointer without bound; "
+            "pass size explicitly if the program stays within [0, size)"
+        )
+    return hi + 1
+
+
+def bf_to_circlefuck(program: str, size: int | None = None) -> str:
     """Rewrite a brainfuck program into CircleFuck.
 
     CircleFuck's tape is the program itself, so a clean data region must be
@@ -72,15 +131,20 @@ def bf_to_circlefuck(program: str, size: int = 32) -> str:
     brainfuck commands then follow unchanged: CircleFuck's ``[``/``]``
     already test the cell at the data pointer.  ``@`` halts.
 
-    The source program must keep its data pointer within ``[0, size)``:
-    moving below cell 0 wraps around to the end of the program (where
-    brainfuck clamps), and moving past cell ``size - 1`` enters the setup
-    code.  Most programs use a handful of cells; pass ``size`` explicitly
-    when a program uses more.
+    The data pointer must stay within ``[0, size)``: moving below cell 0
+    wraps around to the end of the program (where brainfuck clamps), and
+    moving past cell ``size - 1`` enters the setup code.  When ``size`` is
+    omitted it is computed from the program: the smallest bound that holds
+    for every loop whose body has net-zero pointer displacement.  Programs
+    with loops that drift the pointer, or that move below cell 0, are
+    rejected rather than silently mistranslated; pass ``size`` explicitly to
+    cover a program you know stays in bounds.
     """
+    ops = [c for c in program if c in "+-<>.,[]"]
+    if size is None:
+        size = _auto_size(ops)
     if size < 1:
         raise ValueError(f"size must be positive, got {size}")
-    ops = [c for c in program if c in "+-<>.,[]"]
     setup = ">" * size + ("<" + "-" * 62) * size
     return setup + "".join(ops) + "@"
 
