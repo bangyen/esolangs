@@ -1,9 +1,9 @@
 import sys
 
 
-def run(code):
-    stk = []
-    lst = []
+def run(code: str) -> None:
+    stk: list[int] = []
+    lst: list[int] = []
     new = 1
     ind = 0
 
