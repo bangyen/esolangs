@@ -23,12 +23,8 @@ STEPS = [
     ("pre-commit", [sys.executable, "-m", "pre_commit", "run", "--all-files"]),
     ("pytest", [sys.executable, "-m", "pytest", "-q"]),
     (
-        "assembly compilers (unicorn)",
-        [sys.executable, "scripts/verify_asm_compilers.py"],
-    ),
-    (
-        "x86 reference generators (unicorn)",
-        [sys.executable, "scripts/verify_x86_generators.py"],
+        "x86 assembly under unicorn (compilers + references)",
+        [sys.executable, "scripts/verify_x86_unicorn.py"],
     ),
     (
         "extra reference generators",
