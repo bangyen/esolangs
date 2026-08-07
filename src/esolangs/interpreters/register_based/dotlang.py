@@ -129,7 +129,7 @@ def run(code: list[str]) -> None:
                 if not dest:
                     return
                 if not isinstance(dest, Dot):
-                    raise RuntimeError("warp destination not found")
+                    raise RuntimeError("warp destination not found")  # pragma: no cover
                 dots.append(dest)
             else:
                 match = 1

@@ -2,6 +2,7 @@
 
 import importlib
 from collections.abc import Callable
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -32,7 +33,7 @@ from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.tools.generators import other
 
 
-def roundtrip(interpreter: Callable, program: str | list[str]) -> str:
+def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
     import io
     from contextlib import redirect_stdout
 
@@ -364,7 +365,7 @@ class TestGeneratorBranches:
         """A NUL is pushed and printed with an explicit dot."""
         assert gen.forth("a\x00b") == "0F6*7+.0.F6*8+."
 
-    def test_main_prints_all(self, capsys: pytest.CaptureFixture) -> None:
+    def test_main_prints_all(self, capsys: pytest.CaptureFixture[str]) -> None:
         with patch("sys.argv", ["esolangs.tools.generate", "Hi"]):
             gen.main()
         out = capsys.readouterr().out
@@ -391,7 +392,7 @@ class TestGeneratorBranches:
         assert "--- Polynomial ---" in out
         assert "--- WII2D ---" in out
 
-    def test_main_usage(self, capsys: pytest.CaptureFixture) -> None:
+    def test_main_usage(self, capsys: pytest.CaptureFixture[str]) -> None:
         with patch("sys.argv", ["esolangs.tools.generate"]), pytest.raises(SystemExit):
             gen.main()
         out = capsys.readouterr().out

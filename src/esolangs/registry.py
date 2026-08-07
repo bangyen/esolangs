@@ -28,14 +28,14 @@ class Language:
     generator: Callable[[str], str] | None = None
     interpreter: str | None = None
     split: bool = False
-    kwargs: tuple = ()
+    kwargs: tuple[tuple[str, int], ...] = ()
 
 
-def _kw(**kwargs: int) -> tuple:
+def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
     return tuple(kwargs.items())
 
 
-LANGUAGES: dict = {
+LANGUAGES: dict[str, Language] = {
     "123": Language("123", _generate._123),
     "6-5": Language("6-5", _generate.six_five, "tape_based.6-5"),
     "ASCII art": Language("ASCII art", _generate.ascii_art, "tape_based.ascii-art"),
@@ -83,20 +83,20 @@ LANGUAGES: dict = {
 }
 
 # Display name -> generator function, for languages that have one.
-GENERATORS: dict = {
+GENERATORS: dict[str, Callable[[str], str]] = {
     name: lang.generator for name, lang in LANGUAGES.items() if lang.generator
 }
 
 # Generator function name -> Language, so tests can look a generator up by
 # the name of its function (e.g. ``six_five`` for "6-5").
-BY_FUNCTION: dict = {
+BY_FUNCTION: dict[str, Language] = {
     lang.generator.__name__: lang
     for lang in LANGUAGES.values()
     if lang.generator is not None
 }
 
 # Display name -> (interpreter module, split lines, run() keyword arguments).
-RUNNERS: dict = {
+RUNNERS: dict[str, tuple[str, bool, dict[str, int]]] = {
     name: (lang.interpreter, lang.split, dict(lang.kwargs))
     for name, lang in LANGUAGES.items()
     if lang.interpreter

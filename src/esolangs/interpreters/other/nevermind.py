@@ -2,7 +2,7 @@ import sys
 from typing import cast
 
 
-def find(code: list, ind: int) -> int:
+def find(code: list[list[str | int | float]], ind: int) -> int:
     if "end" in (op := str(code[ind][0])):
         match = op[3:]
         move = -1
