@@ -1,8 +1,8 @@
 import sys
 
 
-def run(code):
-    tape = [0] * 8
+def run(code: str) -> None:
+    tape: list[int] = [0] * 8
     ptr = ind = 0
     inp = 1
 
@@ -24,12 +24,11 @@ def run(code):
                 else:
                     val = input("\nInput: "[inp:])
                     val = bin(ord(val[0]))[2:].zfill(8)
-                    tape = [*map(int, val)] + tape[8:]
+                    tape = [*map(int, val), *tape[8:]]
                     inp = 1
-            else:
-                if not tape[ptr]:
-                    tape[ptr + 1] ^= 1
-                    ind += 1
+            elif not tape[ptr]:
+                tape[ptr + 1] ^= 1
+                ind += 1
 
         ind += 1
 

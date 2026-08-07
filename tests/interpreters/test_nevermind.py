@@ -2,17 +2,15 @@
 
 import io
 from contextlib import redirect_stdout
-from typing import List, Optional
 from unittest.mock import patch
 
 from esolangs.interpreters.other.nevermind import run
 
 
-def run_and_capture(code: List[str], inputs: Optional[List[str]] = None) -> str:
+def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []):
-        with redirect_stdout(buffer):
-            run(code)
+    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
+        run(code)
     return buffer.getvalue()
 
 
@@ -22,6 +20,11 @@ class TestNevermind:
 
     def test_print_comma_escape(self) -> None:
         assert run_and_capture(["print,Hello*44 World!"]) == "Hello, World!\n"
+
+    def test_print_unicode_digits(self) -> None:
+        """Non-ASCII digits stay strings instead of being converted to int."""
+        assert run_and_capture(["print,²"]) == "²\n"
+        assert run_and_capture(["print,١٢٣"]) == "١٢٣\n"
 
     def test_make_and_print_variable(self) -> None:
         assert run_and_capture(["make,x,5", "print,$x"]) == "5\n"
@@ -55,7 +58,7 @@ class TestNevermind:
         assert run_and_capture(code) == "15\n"
 
     def test_input_command(self) -> None:
-        """input stores a value in the answer variable."""
+        """Input stores a value in the answer variable."""
         assert (
             run_and_capture(["input,prompt", "print,$answer"], inputs=["hi"]) == "hi\n"
         )

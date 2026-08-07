@@ -1,41 +1,73 @@
-"""Command-line interface for running esolang interpreters and compilers.
+"""Command-line interface for the esolangs package.
 
-The ``esolangs`` command runs any interpreter or compiler module the same way
-``python -m <module>`` would, so all modules keep a single entry point.
+Subcommands:
+    esolangs list                        list the supported languages
+    esolangs generate <language> <text>  print a program that outputs text
+    esolangs run <language> <file>       run a program through its interpreter
+
+For anything else (compilers, tools), invoke the module directly with
+``python -m``, e.g. ``python -m esolangs.compilers.assembly.unsquare``.
 """
 
-import argparse
-import importlib.util
-import runpy
 import sys
+
+from esolangs import generate, list_languages, run
+
+USAGE = """usage: esolangs <command> [...]
+
+commands:
+  list                        list the supported languages
+  generate <language> <text>  print a program that outputs text
+  run <language> <file>       run a program through its interpreter
+
+examples:
+  esolangs list
+  esolangs generate CircleFuck "Hello, World!"
+  esolangs run CircleFuck hello.txt
+"""
+
+
+def _fail(message: str) -> None:
+    sys.stderr.write(message + "\n")
+    sys.exit(2)
 
 
 def main() -> None:
-    """Parse arguments and execute the requested module as ``__main__``."""
-    parser = argparse.ArgumentParser(
-        prog="esolangs",
-        description="Run an esolang interpreter or compiler on a program file.",
-    )
-    parser.add_argument(
-        "module",
-        help="dotted module path, e.g. esolangs.interpreters.tape_based.brainif",
-    )
-    parser.add_argument(
-        "args",
-        nargs=argparse.REMAINDER,
-        help="arguments passed to the interpreter (typically a program file)",
-    )
-    args = parser.parse_args()
+    """Dispatch the ``esolangs`` subcommands."""
+    argv = sys.argv[1:]
+    if not argv:
+        sys.stderr.write(USAGE)
+        sys.exit(2)
 
-    try:
-        spec = importlib.util.find_spec(args.module)
-    except (ModuleNotFoundError, ImportError):
-        spec = None
-    if spec is None:
-        parser.error(f"unknown module: {args.module}")
-
-    sys.argv = [args.module, *args.args]
-    runpy.run_module(args.module, run_name="__main__")
+    cmd, rest = argv[0], argv[1:]
+    if cmd == "list":
+        for name in list_languages():
+            print(name)
+    elif cmd == "generate":
+        if len(rest) < 2:
+            _fail("usage: esolangs generate <language> <text>")
+        try:
+            program = generate(rest[0], rest[1])
+        except ValueError as exc:
+            _fail(str(exc))
+        print(program)
+    elif cmd == "run":
+        if len(rest) < 2:
+            _fail("usage: esolangs run <language> <program-file>")
+        language, path = rest[0], rest[1]
+        try:
+            with open(path) as f:
+                program = f.read()
+        except OSError as exc:
+            _fail(f"cannot read {path}: {exc}")
+        stdin = "" if sys.stdin.isatty() else sys.stdin.read()
+        try:
+            output = run(language, program, stdin)
+        except ValueError as exc:
+            _fail(str(exc))
+        sys.stdout.write(output)
+    else:
+        _fail(f"unknown command: {cmd}\n\n{USAGE}")
 
 
 if __name__ == "__main__":

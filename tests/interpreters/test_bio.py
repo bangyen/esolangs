@@ -1,5 +1,4 @@
-"""
-Unit tests for BIO (Binary IO) interpreter.
+"""Unit tests for BIO (Binary IO) interpreter.
 
 Tests cover all BIO commands, edge cases, and example programs from esolangs.org.
 """

@@ -1,5 +1,4 @@
-"""
-Unit tests for RAM0 interpreter.
+"""Unit tests for RAM0 interpreter.
 
 Tests cover all RAM0 commands, control flow, memory operations, and edge cases
 from the esolangs.org specification. Includes timeout protection to prevent
@@ -8,8 +7,9 @@ hanging tests from infinite loops.
 
 import io
 import signal
+from collections.abc import Callable
 from contextlib import redirect_stdout
-from typing import Any, Callable
+from typing import Any
 
 import pytest
 
@@ -26,8 +26,7 @@ def timeout_handler(signum: int, frame: Any) -> None:
 
 
 def run_with_timeout(func: Callable, timeout_seconds: int = 5) -> Any:
-    """
-    Run a function with a timeout to prevent hanging tests.
+    """Run a function with a timeout to prevent hanging tests.
 
     Args:
         func: Function to execute
@@ -38,6 +37,7 @@ def run_with_timeout(func: Callable, timeout_seconds: int = 5) -> Any:
 
     Raises:
         TimeoutError: If the function doesn't complete within the timeout
+
     """
     # Set up signal handler for timeout
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)

@@ -2,16 +2,16 @@ import sys
 
 
 class Con:
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.rules = []
+        self.rules: list[tuple[int, str]] = []
 
-    def add(self, cond):
+    def add(self, cond: str) -> None:
         n, c = cond.split()
         self.rules.append((int(n), c))
 
-    def update(self, var):
-        def val(s):
+    def update(self, var: dict[str, int]) -> int:
+        def val(s: str) -> int:
             if s in var:
                 return var[s]
             return int(s)
@@ -28,21 +28,20 @@ class Con:
             if b:
                 res += n
 
-        if res < 0:
-            res = 0
+        res = max(res, 0)
 
         return res
 
 
-def run(code):
-    queue: list = []
-    inp = False
-    obj = []
-    var = {}
-    new = {}
+def run(code: list[str]) -> None:
+    queue: list[str] = []
+    inp = 0
+    obj: list[Con] = []
+    var: dict[str, int] = {}
+    new: dict[str, int] = {}
 
-    for line in code:
-        line = line.strip()
+    for raw in code:
+        line = raw.strip()
         if ":" in line:
             line = line[:-1]
             if "=" in line:
@@ -55,27 +54,26 @@ def run(code):
         elif line:
             obj[-1].add(line)
 
+    if not obj:
+        return  # nothing to evaluate: an empty program halts immediately
+
     while True:
         for o in obj:
             new[o.name] = o.update(var)
 
-        if "PRINT" in var:
-            if var["PRINT"] == 0 and bool(new["PRINT"]):
-                if "OUT" in var:
-                    print(chr(new["OUT"] % (1 << 7)), end="")
-                    inp = True
-        if "" in var:
-            if var[""] == 0 and bool(new[""]):
-                while not queue:
-                    s = input("\n" * inp + "Input: ")
-                    queue += list(s)
+        if "PRINT" in var and var["PRINT"] == 0 and bool(new["PRINT"]) and "OUT" in var:
+            print(chr(new["OUT"] % (1 << 7)), end="")
+            inp = 1
+        if "" in var and var[""] == 0 and bool(new[""]):
+            while not queue:
+                s = input("\n" * inp + "Input: ")
+                queue += list(s)
 
-                new["INPUT"] = ord(queue[0])
-                queue = queue[1:]
-                inp = True
-        if "EXIT" in var:
-            if var["EXIT"] != new["EXIT"]:
-                exit(new["EXIT"])
+            new["INPUT"] = ord(queue[0])
+            queue = queue[1:]
+            inp = 1
+        if "EXIT" in var and var["EXIT"] != new["EXIT"]:
+            sys.exit(new["EXIT"])
 
         var = new.copy()
 

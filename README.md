@@ -205,20 +205,52 @@ The `binary.py` program implements a given boolean function in Dig. The function
 python -m esolangs.tools.binary 0111   # 2-input OR gate
 ```
 
+### Boolean Function Generator
+
+The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
+
+```python
+from esolangs.tools.boolean import brainif, modulous, nevermind, sophie
+
+sophie("0110", 2)      # 2-input XOR in Sophie
+modulous("0110", 2)    # the same truth table in Modulous
+brainif("0110", 2)     # and in BrainIf
+nevermind("0110", 2)   # and in Nevermind
+```
+
 ### Program Generator
 
 The `generate.py` program outputs programs which output a given string in different languages.
 
 **Supported languages:**
+- 6-5
+- ASCII art
 - BFStack
+- BIO
 - BrainIf
+- Clockwise
 - Container
+- Dig
+- Dotlang
+- Eval
+- EXCON
 - Forþ (Forth)
+- huf
 - LaserFuck
+- Magnitude
+- MAMMALIAN
+- Minifuck
+- Modulous
+- Nevermind
 - Painfuck
+- Polynomial
+- Qoibl
+- Sophie
 - Suffolk
+- Temporary Stack
+- WII2D
+- ZTOALC
 - 123
-- %^2^-1 (Magnitude)
 
 ```bash
 python -m esolangs.tools.generate "Hello, World!"

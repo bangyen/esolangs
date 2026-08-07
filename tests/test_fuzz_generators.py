@@ -1,0 +1,141 @@
+"""Fuzz the program generators.
+
+Random text must produce programs that round-trip through their interpreters
+(where one exists) or at least generate without crashing, and random truth
+tables must produce correct programs from the boolean and binary generators.
+Fixed seeds keep the tests deterministic.
+"""
+
+import importlib
+import io
+import random
+import string
+from contextlib import redirect_stdout, suppress
+from unittest.mock import patch
+
+from esolangs.registry import BY_FUNCTION
+from esolangs.tools import binary, boolean
+
+# generator function name -> trailing output appended after the printed text
+_TRAILING = {"nevermind": "\n"}
+
+# generator function name -> Language metadata, restricted to the generators
+# whose interpreter lives in-repo (so their programs round-trip).
+ROUND_TRIP = {
+    name: (lang.interpreter, lang.split, dict(lang.kwargs), _TRAILING.get(name, ""))
+    for name, lang in BY_FUNCTION.items()
+    if lang.interpreter
+}
+
+# generators whose interpreters live in extra/: no round-trip, just no crash
+NO_INTERPRETER = {
+    name: lang.generator
+    for name, lang in BY_FUNCTION.items()
+    if lang.generator and not lang.interpreter
+}
+
+
+def _random_text():
+    return "".join(
+        random.choice(string.printable) for _ in range(random.randint(1, 12))
+    )
+
+
+def test_text_generators_round_trip():
+    random.seed(0)
+    for _ in range(25):
+        text = _random_text()
+        for name, (module, split, kwargs, suffix) in ROUND_TRIP.items():
+            try:
+                program = BY_FUNCTION[name].generator(text)
+            except ValueError:
+                assert (
+                    name != "mammalian"
+                )  # never rejects; everything else documents limits
+                continue
+            run = importlib.import_module("esolangs.interpreters." + module).run
+            argument = program.splitlines() if split else program
+            buffer = io.StringIO()
+            try:
+                with redirect_stdout(buffer):
+                    run(argument, **kwargs)
+            except SystemExit:
+                assert name == "container"
+            assert buffer.getvalue() == text + suffix
+
+
+def test_extra_language_generators_do_not_crash():
+    random.seed(1)
+    for _ in range(25):
+        text = _random_text()
+        for _fn, fn in NO_INTERPRETER.items():
+            # a generator may still document an unsupported case
+            with suppress(ValueError):
+                fn(text)
+
+
+def test_boolean_generators_random_tables():
+    random.seed(2)
+    runners = [
+        (boolean.sophie, "register_based.sophie", False, ""),
+        (boolean.modulous, "stack_based.modulous", False, ""),
+        (boolean.brainif, "tape_based.brainif", True, ""),
+        (boolean.nevermind, "other.nevermind", True, "\n"),
+        (boolean.circlefuck, "tape_based.circlefuck", False, ""),
+    ]
+    for n in (1, 2, 3, 4):
+        for _ in range(3):
+            table = "".join(random.choice("01") for _ in range(2**n))
+            for builder, module, split, suffix in runners:
+                program = builder(table, n)
+                run = importlib.import_module("esolangs.interpreters." + module).run
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    buffer = io.StringIO()
+                    with (
+                        patch("builtins.input", side_effect=bits),
+                        redirect_stdout(buffer),
+                    ):
+                        run(program.splitlines() if split else program)
+                    assert buffer.getvalue() == str(int(table[combo])) + suffix
+
+
+def test_byte_function_generator_random_tables():
+    random.seed(4)
+    run = importlib.import_module("esolangs.interpreters.tape_based.circlefuck").run
+    for n in (1, 2, 3):
+        for _ in range(3):
+            table = [random.randint(0, 255) for _ in range(2**n)]
+            program = boolean.circlefuck_byte(table, n)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                buffer = io.StringIO()
+                with patch("builtins.input", side_effect=bits), redirect_stdout(buffer):
+                    run(program)
+                assert buffer.getvalue() == chr(table[combo])
+
+
+def test_binary_generator_random_tables():
+    random.seed(3)
+    run = importlib.import_module("esolangs.interpreters.register_based.dig").run
+    for n in (1, 2, 3, 4):
+        for _ in range(3):
+            table = "".join(random.choice("01") for _ in range(2**n))
+            bits = [int(c) for c in table]
+
+            def fn(*args, bits=bits):
+                index = 0
+                for a in args:
+                    index = index * 2 + int(a)
+                return bits[index]
+
+            program = binary.convert(fn, n)
+            for combo in range(2**n):
+                inputs = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                buffer = io.StringIO()
+                with (
+                    patch("builtins.input", side_effect=inputs),
+                    redirect_stdout(buffer),
+                ):
+                    run(program.splitlines())
+                assert buffer.getvalue() == str(int(table[combo]))
