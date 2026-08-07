@@ -8,6 +8,28 @@ combination it is given.
 from collections.abc import Sequence
 from typing import cast
 
+# Arithmetic suffixes (found by search, verified against the interpreter) that
+# evaluate each two-input truth table from the ``t``-extraction queue
+# ``[0, d0, 0, d1, 0, 1]``.
+_TAGLATE_TWO_SUFFIX = {
+    "0000": "a",
+    "0001": "bbefca",
+    "0010": "bdefcb",
+    "0011": "e",
+    "0100": "aafedb",
+    "0101": "ae",
+    "0110": "dbefbeja",
+    "0111": "ddfecb",
+    "1000": "ddefca",
+    "1001": "dbfebejb",
+    "1010": "ffbfa",
+    "1011": "aaefda",
+    "1100": "baeaa",
+    "1101": "bdfeca",
+    "1110": "bbfecb",
+    "1111": "aae",
+}
+
 
 def sophie(truth_table: str, n: int) -> str:
     """Build a Sophie program computing the given truth table.
@@ -249,17 +271,29 @@ def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
 def taglate(truth_table: str, n: int) -> str:
     """Build a Taglate program computing the given truth table.
 
-    Only ``n == 1`` is supported: the output is the affine combination
-    ``base + bit * coeff`` of the single normalized input, so each of the
-    four one-input truth tables needs no branching.  General ``n`` requires
-    duplicating each input bit for use across the truth table's monomials;
-    Taglate's ``t`` command can do that (a bit encodes as ``%00``/``%11``,
-    whose digit pairs are copies), but assembling it into a general
-    generator is an open problem.
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    ``n == 1`` reads the single input with ``h`` and computes the affine
+    combination ``base + bit * coeff``, so each one-input table needs no
+    branching.
+
+    ``n == 2`` normalizes both inputs to 0/1 with ``h``/``e``/``b``, turns
+    the pair into a Google Translate URL with ``t`` (a bit encodes as
+    ``%00``/``%01``), and strips the URL down to ``[0, d0, 0, d1, 0, 1]``
+    with ``f``/``e``.  A short arithmetic suffix then evaluates the truth
+    table (found by search and verified against the interpreter); larger
+    ``n`` is an open problem.
     """
-    if n != 1:
-        raise ValueError("the Taglate boolean generator supports n == 1 only")
-    base = 48 + int(truth_table[0])
-    coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
-    seed = "0" + chr(coeff) + chr(base)
-    return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
+    if n == 1:
+        base = 48 + int(truth_table[0])
+        coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
+        seed = "0" + chr(coeff) + chr(base)
+        return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
+    if n == 2:
+        setup = "h" + "e" * 6 + "b" + "h" + "e" * 6 + "b" + "f" * 2
+        extract = "f" * 47 + "ee" + "f" + "ee" + "f" + "ee" + "f" * 13 + "ee"
+        return (
+            "000001\n" + setup + "t" + extract + _TAGLATE_TWO_SUFFIX[truth_table] + "i"
+        )
+    raise ValueError("the Taglate boolean generator supports n == 2 only")
