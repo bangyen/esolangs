@@ -197,13 +197,6 @@ jobs:
       run: |
         Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) parse(f)'
 
-    - name: Assemble extra/ assembly programs
-      run: |
-        for f in extra/assembly/*.asm; do
-          nasm -f elf32 -o /dev/null "$f"
-          echo "Assembled $f"
-        done
-
     - name: Build and natively run the x86 reference interpreters
       run: |
         set -e

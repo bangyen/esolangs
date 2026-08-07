@@ -51,19 +51,6 @@ RUNNERS = {
     "ZTOALC": ("other.ztoalc", True, {}),
 }
 
-# Languages with a generator but no in-repo interpreter (extra/ or a
-# compiler provides the executable).
-_NO_INTERPRETER = {
-    "123",
-    "Forþ",
-    "Home Row",
-    "LaserFuck",
-    "Magnitude",
-    "NoComment",
-    "Painfuck",
-    "Unsquare",
-}
-
 
 def generate(language: str, text: str) -> str:
     """Return a program in ``language`` that prints ``text``."""
