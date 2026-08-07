@@ -43,7 +43,9 @@ class TestNoComment:
 
     def test_generator_round_trips(self) -> None:
         for text in ("Hello, World!", "Hi", "\x00\x01"):
-            assert esolangs.run("NoComment", esolangs.generate("NoComment", text)) == text
+            assert (
+                esolangs.run("NoComment", esolangs.generate("NoComment", text)) == text
+            )
 
     def test_parity_with_transpiled_brainfuck(self) -> None:
         """A NoComment program and its brainfuck translation agree."""
