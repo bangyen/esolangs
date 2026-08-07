@@ -20,6 +20,7 @@ __all__ = [
     "bf_to_circlefuck",
     "bfstack_to_bf",
     "bio_to_bf",
+    "huf_to_bf",
     "nocomment_to_bf",
 ]
 
@@ -226,6 +227,49 @@ def bio_to_bf(program: str) -> str:
     return "".join(res)
 
 
+_HUF_MUL = (
+    ">>>[-]<<<"  # zero the refresh cell
+    ">>[-]<<"  # zero the temp cell
+    ">-<"  # mul -= 1
+    "[->>+<<]"  # num -> temp
+    ">"
+    "[->[-<<+>>>+<]>[-<+>]<<]"  # add temp to num, mul-1 times, refreshing it
+    "<"
+)
+
+
+def huf_to_bf(program: str) -> str:
+    """Rewrite a Huf program into brainfuck.
+
+    Huf's variables live in cells 0 (num) and 1 (mul).  ``#`` resets both,
+    ``>`` prints ``chr(num)`` and clears it, ``|`` sets mul to 1, and ``+``
+    increments num or mul depending on whether mul is set -- since Huf is
+    straight line, the transpiler tracks which.  ``!`` multiplies num by
+    ``mul - 1``: the multiplier is copied to a temp cell that each loop
+    iteration adds to num and refreshes from a running accumulator, so the
+    loop can run ``mul - 1`` times without destroying the multiplicand.
+    Anything outside a ``#...#@`` segment is a comment.
+    """
+    syms = "".join(re.findall(r"#[^#@]+@", program))
+    res: list[str] = []
+    mul = False
+    for sym in syms:
+        if sym == "#":
+            res.append("[-]>[-]<")
+            mul = False
+        elif sym == ">":
+            res.append(".[-]")
+        elif sym == "+":
+            res.append(">+<" if mul else "+")
+        elif sym == "|":
+            res.append(">[-]+<")
+            mul = True
+        else:  # "!"
+            res.append(_HUF_MUL)
+            mul = False
+    return "".join(res)
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BF", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "BF"): ascii_art_to_bf,
@@ -233,4 +277,5 @@ TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("NoComment", "BF"): nocomment_to_bf,
     ("BFStack", "BF"): bfstack_to_bf,
     ("BIO", "BF"): bio_to_bf,
+    ("huf", "BF"): huf_to_bf,
 }
