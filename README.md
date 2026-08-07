@@ -238,45 +238,13 @@ circlefuck_byte(table)   # arbitrary byte-valued functions
 
 ### Program Generator
 
-The `generate.py` program outputs programs which output a given string in different languages.
-
-**Supported languages:**
-- 6-5
-- ASCII art
-- BFStack
-- BIO
-- BrainIf
-- Clockwise
-- Container
-- Dig
-- Dotlang
-- Eval
-- EXCON
-- CircleFuck
-- Forþ (Forth)
-- Home Row
-- huf
-- LaserFuck
-- Magnitude
-- MAMMALIAN
-- Minifuck
-- Modulous
-- NoComment
-- Nevermind
-- Painfuck
-- Polynomial
-- Qoibl
-- Sophie
-- Suffolk
-- Temporary Stack
-- Unsquare
-- WII2D
-- ZTOALC
-- 123
+The `generate.py` program outputs programs which output a given string in different languages:
 
 ```bash
 python -m esolangs.tools.generate "Hello, World!"
 ```
+
+Every generator is also available through `esolangs list` and `esolangs generate` (see above); run `esolangs list` for the full set.
 
 ## Notes
 
