@@ -154,6 +154,7 @@ omit = [
     "*/ENV/*",
     "*/env.bak/*",
     "*/venv.bak/*",
+    "*/_template.py",
 ]
 
 [tool.coverage.report]
