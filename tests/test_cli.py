@@ -36,8 +36,9 @@ class _FakeStdin:
 
 
 def call_main(args: list, capsys: pytest.CaptureFixture, stdin: str = "") -> str:
-    with patch.object(sys, "argv", ["esolangs", *args]), patch.object(
-        sys, "stdin", _FakeStdin(stdin)
+    with (
+        patch.object(sys, "argv", ["esolangs", *args]),
+        patch.object(sys, "stdin", _FakeStdin(stdin)),
     ):
         main()
     return str(capsys.readouterr().out)

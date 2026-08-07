@@ -57,9 +57,12 @@ where = ["src"]
 include = ["esolangs*"]
 exclude = ["tests*", "examples*", "docs*"]
 
+[tool.setuptools.package-data]
+esolangs = ["py.typed"]
+
 [tool.black]
 line-length = 88
-target-version = ['py38']
+target-version = ['py310']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -157,16 +160,6 @@ module = [
     "esolangs.tools._polynomial",
     "esolangs.tools._ztoalc",
     "tests.*",
-    "make_coverage_badge",
-    "make_ztoalc_table",
-    "riscv_elf_runner",
-    "riscv_sim",
-    "verify",
-    "verify_123_differential",
-    "verify_123_unicorn",
-    "verify_asm_compilers",
-    "verify_x86_generators",
-    "x86_elf_runner",
 ]
 disallow_untyped_defs = false
 ignore_missing_imports = true  # For external dependencies

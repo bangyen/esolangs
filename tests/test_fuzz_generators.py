@@ -92,8 +92,9 @@ def test_boolean_generators_random_tables():
                 for combo in range(2**n):
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     buffer = io.StringIO()
-                    with patch("builtins.input", side_effect=bits), redirect_stdout(
-                        buffer
+                    with (
+                        patch("builtins.input", side_effect=bits),
+                        redirect_stdout(buffer),
                     ):
                         run(program.splitlines() if split else program)
                     assert buffer.getvalue() == str(int(table[combo])) + suffix
@@ -132,8 +133,9 @@ def test_binary_generator_random_tables():
             for combo in range(2**n):
                 inputs = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 buffer = io.StringIO()
-                with patch("builtins.input", side_effect=inputs), redirect_stdout(
-                    buffer
+                with (
+                    patch("builtins.input", side_effect=inputs),
+                    redirect_stdout(buffer),
                 ):
                     run(program.splitlines())
                 assert buffer.getvalue() == str(int(table[combo]))

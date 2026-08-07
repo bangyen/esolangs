@@ -55,17 +55,19 @@ class TestSophieBasicCommands:
 
     def test_input_number(self, timeout_protection: None) -> None:
         """Test : command inputs number to accumulator."""
-        with patch("builtins.input", return_value="123"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="123"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(":.&")
         assert f.getvalue() == "123"
 
     def test_input_char(self, timeout_protection: None) -> None:
         """Test ; command inputs character to accumulator."""
-        with patch("builtins.input", return_value="X"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="X"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(";,&")
         assert f.getvalue() == "X"
 
@@ -175,27 +177,30 @@ class TestSophieInputHandling:
 
     def test_invalid_number_input(self, timeout_protection: None) -> None:
         """Test invalid number input leaves accumulator unchanged."""
-        with patch("builtins.input", return_value="not_a_number"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="not_a_number"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run("#$42:.&")
         # Accumulator should remain 42
         assert f.getvalue() == "42"
 
     def test_empty_char_input(self, timeout_protection: None) -> None:
         """Test empty character input."""
-        with patch("builtins.input", return_value=""), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value=""),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run("#$42;.&")
         # Accumulator should remain 42
         assert f.getvalue() == "42"
 
     def test_multiple_inputs(self, timeout_protection: None) -> None:
         """Test multiple input commands."""
-        with patch("builtins.input", side_effect=["65", "B"]), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", side_effect=["65", "B"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(":;,&")
         assert f.getvalue() == "B"
 
@@ -242,57 +247,64 @@ class TestSophieExamples:
 
     def test_truth_machine_zero(self, timeout_protection: None) -> None:
         """Test Truth Machine with input 0."""
-        with patch("builtins.input", return_value="0"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="0"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(";@1{[,]}{,&}")
         assert f.getvalue() == "0"
 
     def test_cat_program_empty(self, timeout_protection: None) -> None:
         """Test Cat program with empty input."""
-        with patch("builtins.input", return_value=""), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value=""),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run("[;@$0{&}{,}]")
         assert f.getvalue() == ""
 
     def test_cat_program_with_input(self, timeout_protection: None) -> None:
         """Test Cat program with input."""
-        with patch("builtins.input", return_value="H"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="H"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(";@$0{&}{,}&")
         assert f.getvalue() == "H"
 
     def test_xor_program_0_0(self, timeout_protection: None) -> None:
         """Test Xor program with inputs 0, 0."""
-        with patch("builtins.input", side_effect=["0", "0"]), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", side_effect=["0", "0"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&")
         assert f.getvalue() == "0"
 
     def test_xor_program_0_1(self, timeout_protection: None) -> None:
         """Test Xor program with inputs 0, 1."""
-        with patch("builtins.input", side_effect=["0", "1"]), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", side_effect=["0", "1"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&")
         assert f.getvalue() == "1"
 
     def test_xor_program_1_0(self, timeout_protection: None) -> None:
         """Test Xor program with inputs 1, 0."""
-        with patch("builtins.input", side_effect=["1", "0"]), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", side_effect=["1", "0"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&")
         assert f.getvalue() == "1"
 
     def test_xor_program_1_1(self, timeout_protection: None) -> None:
         """Test Xor program with inputs 1, 1."""
-        with patch("builtins.input", side_effect=["1", "1"]), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", side_effect=["1", "1"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&")
         assert f.getvalue() == "0"
 

@@ -197,10 +197,13 @@ class TestWII2DControlFlow:
         # ? forced east runs the pointer into | (reverses it west); then ? forced
         # north wraps the pointer down to the halt.
         code = [" ?|.", " !  ", " .  "]
-        with patch(
-            "esolangs.interpreters.register_based.WII2D.secrets.randbelow",
-            side_effect=[3, 0],
-        ), redirect_stdout(io.StringIO()) as f:
+        with (
+            patch(
+                "esolangs.interpreters.register_based.WII2D.secrets.randbelow",
+                side_effect=[3, 0],
+            ),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == ""
 

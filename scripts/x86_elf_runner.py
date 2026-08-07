@@ -22,6 +22,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+from typing import Any
 
 try:
     from unicorn import UC_ARCH_X86, UC_HOOK_INTR, UC_MODE_32, Uc
@@ -48,7 +49,7 @@ STACK_TOP = 0x800000
 STACK_SIZE = 0x2000
 
 
-def assemble(path):
+def assemble(path: str) -> bytes:
     fd, tmp = tempfile.mkstemp(suffix=".o")
     os.close(fd)
     try:
@@ -59,7 +60,7 @@ def assemble(path):
         os.unlink(tmp)
 
 
-def assemble_source(assembly):
+def assemble_source(assembly: str) -> bytes:
     """Assemble a nasm source string directly, returning the ELF32 object."""
     fd, tmp = tempfile.mkstemp(suffix=".asm")
     try:
@@ -70,7 +71,7 @@ def assemble_source(assembly):
         os.unlink(tmp)
 
 
-def load_text(binary):
+def load_text(binary: bytes) -> bytes:
     """Return the SHT_PROGBITS (.text) section from a 32-bit ELF object."""
     if binary[:4] != b"\x7fELF" or binary[4] != 1:  # ELFCLASS32
         raise ValueError("expected a 32-bit ELF object")
@@ -86,7 +87,7 @@ def load_text(binary):
     raise ValueError("no .text section found")
 
 
-def run_elf(binary, stdin=b""):
+def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
     text = load_text(binary)
     mu = Uc(UC_ARCH_X86, UC_MODE_32)
     mu.mem_map(CODE_BASE, PAGE)
@@ -104,7 +105,7 @@ def run_elf(binary, stdin=b""):
     exit_code = [0]
     halted = [False]
 
-    def on_int(uc, intno, user_data):
+    def on_int(uc: Uc, intno: int, user_data: Any) -> None:
         nonlocal inp_pos, out
         if intno != 0x80:
             return
@@ -139,7 +140,7 @@ def run_elf(binary, stdin=b""):
     return bytes(out), exit_code[0]
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     with open(argv[1], "rb") as f:
         data = f.read()
     binary = data if data[:4] == b"\x7fELF" else assemble(argv[1])

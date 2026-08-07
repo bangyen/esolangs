@@ -102,10 +102,13 @@ class TestGeneratorRoundTrips:
 
     def test_mammalian_unreachable(self) -> None:
         """Report a character when no SEED/SPRINT walk can reach a value."""
-        with patch(
-            "esolangs.tools.generators.tape._mammalian_walk",
-            return_value=[{} for _ in range(256)],
-        ), pytest.raises(ValueError, match="cannot build"):
+        with (
+            patch(
+                "esolangs.tools.generators.tape._mammalian_walk",
+                return_value=[{} for _ in range(256)],
+            ),
+            pytest.raises(ValueError, match="cannot build"),
+        ):
             gen.mammalian("H")
 
     def test_huf(self) -> None:
