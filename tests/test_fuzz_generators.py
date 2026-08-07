@@ -35,13 +35,13 @@ NO_INTERPRETER = {
 }
 
 
-def _random_text():
+def _random_text() -> str:
     return "".join(
         random.choice(string.printable) for _ in range(random.randint(1, 12))
     )
 
 
-def test_text_generators_round_trip():
+def test_text_generators_round_trip() -> None:
     random.seed(0)
     for _ in range(25):
         text = _random_text()
@@ -64,7 +64,7 @@ def test_text_generators_round_trip():
             assert buffer.getvalue() == text + suffix
 
 
-def test_extra_language_generators_do_not_crash():
+def test_extra_language_generators_do_not_crash() -> None:
     random.seed(1)
     for _ in range(25):
         text = _random_text()
@@ -74,7 +74,7 @@ def test_extra_language_generators_do_not_crash():
                 fn(text)
 
 
-def test_boolean_generators_random_tables():
+def test_boolean_generators_random_tables() -> None:
     random.seed(2)
     runners = [
         (boolean.sophie, "register_based.sophie", False, ""),
@@ -100,7 +100,7 @@ def test_boolean_generators_random_tables():
                     assert buffer.getvalue() == str(int(table[combo])) + suffix
 
 
-def test_byte_function_generator_random_tables():
+def test_byte_function_generator_random_tables() -> None:
     random.seed(4)
     run = importlib.import_module("esolangs.interpreters.tape_based.circlefuck").run
     for n in (1, 2, 3):
@@ -115,7 +115,7 @@ def test_byte_function_generator_random_tables():
                 assert buffer.getvalue() == chr(table[combo])
 
 
-def test_binary_generator_random_tables():
+def test_binary_generator_random_tables() -> None:
     random.seed(3)
     run = importlib.import_module("esolangs.interpreters.register_based.dig").run
     for n in (1, 2, 3, 4):
@@ -123,7 +123,7 @@ def test_binary_generator_random_tables():
             table = "".join(random.choice("01") for _ in range(2**n))
             bits = [int(c) for c in table]
 
-            def fn(*args, bits=bits):
+            def fn(*args: str, bits: list[int] = bits) -> int:
                 index = 0
                 for a in args:
                     index = index * 2 + int(a)

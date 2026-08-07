@@ -8,6 +8,7 @@ deterministic.
 import importlib
 import io
 import random
+from collections.abc import Callable
 from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
@@ -28,30 +29,30 @@ minsky_run = importlib.import_module(
 ).run
 
 
-def run_safely(fn, program):
+def run_safely(fn: Callable, program: str | list[str]) -> None:
     """Run a program, asserting it raises nothing unexpected."""
     buffer = io.StringIO()
     with patch("builtins.input", return_value="0"), redirect_stdout(buffer):
         fn(program)
 
 
-def _random_string(alphabet, max_len):
+def _random_string(alphabet: str, max_len: int) -> str:
     return "".join(random.choice(alphabet) for _ in range(random.randint(1, max_len)))
 
 
-def test_excon_random():
+def test_excon_random() -> None:
     random.seed(0)
     for _ in range(50):
         run_safely(excon_run, _random_string(":^!<", 30))
 
 
-def test_minifuck_random():
+def test_minifuck_random() -> None:
     random.seed(1)
     for _ in range(50):
         run_safely(minifuck_run, _random_string("<.[", 30))
 
 
-def test_mammalian_random():
+def test_mammalian_random() -> None:
     random.seed(2)
     words = [
         "SEED",
@@ -70,7 +71,7 @@ def test_mammalian_random():
         run_safely(mammalian_run, code)
 
 
-def test_brainif_random():
+def test_brainif_random() -> None:
     random.seed(3)
     for _ in range(50):
         lines = [
@@ -83,7 +84,7 @@ def test_brainif_random():
         run_safely(brainif_run, lines)
 
 
-def test_keys_random():
+def test_keys_random() -> None:
     random.seed(4)
     for _ in range(50):
         a = _random_string("\\/-_", 10)
@@ -91,7 +92,7 @@ def test_keys_random():
         run_safely(keys_run, [a, b])
 
 
-def test_bitdeque_random():
+def test_bitdeque_random() -> None:
     random.seed(5)
     words = ["PUSH", "POP", "EJECT", "INJECT", "INVERT"]
     for _ in range(50):
@@ -99,7 +100,7 @@ def test_bitdeque_random():
         run_safely(bitdeque_run, code)
 
 
-def test_bfstack_random():
+def test_bfstack_random() -> None:
     random.seed(6)
     for _ in range(50):
         code = _random_string("><+-.", 30)
@@ -108,7 +109,7 @@ def test_bfstack_random():
             run_safely(bfstack_run, code)
 
 
-def test_bio_random():
+def test_bio_random() -> None:
     random.seed(7)
     for _ in range(50):
         # pop from an empty stack is an accepted outcome
@@ -116,19 +117,19 @@ def test_bio_random():
             run_safely(bio_run, _random_string("0O1Ixyz;{}", 30))
 
 
-def test_huf_random():
+def test_huf_random() -> None:
     random.seed(8)
     for _ in range(50):
         run_safely(huf_run, _random_string("#@-*0123456789", 30))
 
 
-def test_minsky_random():
+def test_minsky_random() -> None:
     random.seed(9)
     for _ in range(50):
         run_safely(minsky_run, _random_string("+*~", 30))
 
 
-def test_qoibl_random():
+def test_qoibl_random() -> None:
     random.seed(10)
     for _ in range(50):
         run_safely(
@@ -136,7 +137,7 @@ def test_qoibl_random():
         )
 
 
-def test_eval_random():
+def test_eval_random() -> None:
     random.seed(11)
     for _ in range(50):
         # empty-stack pop / evaluating a non-string are accepted

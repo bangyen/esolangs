@@ -58,7 +58,7 @@ class TestRAM0BasicCommands:
     def test_z_command_zero_register(self) -> None:
         """Test Z command sets z register to 0."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A A Z")  # Increment z to 3, then zero it
             return f.getvalue()
@@ -69,7 +69,7 @@ class TestRAM0BasicCommands:
     def test_a_command_increment(self) -> None:
         """Test A command increments z register."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A A")  # Increment z three times
             return f.getvalue()
@@ -80,7 +80,7 @@ class TestRAM0BasicCommands:
     def test_n_command_copy_z_to_n(self) -> None:
         """Test N command copies z register to n register."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A A N")  # z=3, then copy to n
             return f.getvalue()
@@ -92,7 +92,7 @@ class TestRAM0BasicCommands:
     def test_l_command_load_from_memory(self) -> None:
         """Test L command loads value from RAM at address z."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run(
                     "A A N A A A S A A L"
@@ -106,7 +106,7 @@ class TestRAM0BasicCommands:
     def test_s_command_store_to_memory(self) -> None:
         """Test S command stores z register value to RAM at address n."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A N A A A S")  # Store 5 at address 2
             return f.getvalue()
@@ -117,7 +117,7 @@ class TestRAM0BasicCommands:
     def test_c_command_conditional_skip(self) -> None:
         """Test C command skips next instruction when z is zero."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("C A")  # Skip A if z is zero (it is)
             return f.getvalue()
@@ -128,7 +128,7 @@ class TestRAM0BasicCommands:
     def test_c_command_no_skip_when_nonzero(self) -> None:
         """Test C command does not skip when z is nonzero."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A C A")  # z=1, then conditionally skip A (should not skip)
             return f.getvalue()
@@ -143,7 +143,7 @@ class TestRAM0ControlFlow:
     def test_goto_command_jump(self) -> None:
         """Test goto command jumps to specified instruction."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A 3 A A")  # Jump to instruction 3, skipping second A
             return f.getvalue()
@@ -160,7 +160,7 @@ class TestRAM0MemoryOperations:
     def test_memory_read_write_cycle(self) -> None:
         """Test complete memory read/write cycle."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run(
                     "A A N A A A S A A L"
@@ -174,7 +174,7 @@ class TestRAM0MemoryOperations:
     def test_multiple_memory_locations(self) -> None:
         """Test storing values at multiple memory locations."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A N A S A A N A A S")  # Store 2 at address 1, 6 at address 4
             return f.getvalue()
@@ -186,7 +186,7 @@ class TestRAM0MemoryOperations:
     def test_memory_overwrite(self) -> None:
         """Test overwriting memory locations."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run(
                     "A N A S A A A N S"
@@ -200,7 +200,7 @@ class TestRAM0MemoryOperations:
     def test_load_from_uninitialized_memory(self) -> None:
         """Test loading from uninitialized memory returns 0."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A A L")  # Load from address 3 (uninitialized)
             return f.getvalue()
@@ -215,7 +215,7 @@ class TestRAM0RegisterInteractions:
     def test_register_independence(self) -> None:
         """Test that z and n registers are independent."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A A N A A")  # z=5, n=3
             return f.getvalue()
@@ -227,7 +227,7 @@ class TestRAM0RegisterInteractions:
     def test_n_register_preserves_z(self) -> None:
         """Test that N command preserves z register value."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A A N A")  # z=4, n=3
             return f.getvalue()
@@ -239,7 +239,7 @@ class TestRAM0RegisterInteractions:
     def test_store_using_n_register(self) -> None:
         """Test storing using n register as address."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A N A A A S")  # Store 5 at address 2 (n register)
             return f.getvalue()
@@ -254,7 +254,7 @@ class TestRAM0EdgeCases:
     def test_empty_program(self) -> None:
         """Test that empty program produces no output."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("")
             return f.getvalue()
@@ -266,7 +266,7 @@ class TestRAM0EdgeCases:
     def test_whitespace_only(self) -> None:
         """Test that whitespace-only program produces default output."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("   \n\t  ")
             return f.getvalue()
@@ -278,7 +278,7 @@ class TestRAM0EdgeCases:
     def test_invalid_commands_ignored(self) -> None:
         """Test that invalid commands are ignored by regex."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A invalid B C D E F G H I J K L M O P Q R T U V W X Y Z")
             return f.getvalue()
@@ -291,7 +291,7 @@ class TestRAM0EdgeCases:
     def test_comments_in_code(self) -> None:
         """Test that comments are properly ignored."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A /* comment */ A // another comment A")
             return f.getvalue()
@@ -302,7 +302,7 @@ class TestRAM0EdgeCases:
     def test_zero_goto_command(self) -> None:
         """Test that goto to instruction 0 terminates program."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A A 0 A")  # Should terminate before last A
             return f.getvalue()
@@ -313,7 +313,7 @@ class TestRAM0EdgeCases:
     def test_large_goto_number(self) -> None:
         """Test goto with large instruction numbers."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run("A 999 A")  # Jump to non-existent instruction
             return f.getvalue()
@@ -328,7 +328,7 @@ class TestRAM0MathematicalOperations:
     def test_addition_algorithm(self) -> None:
         """Test addition using RAM0 commands."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 # Store 5 at address 2, then load from address 7
                 run(
@@ -342,7 +342,7 @@ class TestRAM0MathematicalOperations:
     def test_counter_pattern(self) -> None:
         """Test counter pattern using memory."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 # Create a counter that counts to 3
                 run(
@@ -358,7 +358,7 @@ class TestRAM0MathematicalOperations:
     def test_register_swap_pattern(self) -> None:
         """Test swapping values between registers using memory."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 # z=5, n=5, then store 8 at address 5, then load from address 13
                 run("A A A A A N A A A S A A A A A N L")
@@ -375,7 +375,7 @@ class TestRAM0Integration:
     def test_complex_program(self) -> None:
         """Test a complex RAM0 program with multiple operations."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 # Complex program: store values, load them, perform operations
                 run("A A N A A A S A A A N A A A A S A A L A A A L")
@@ -389,7 +389,7 @@ class TestRAM0Integration:
     def test_memory_initialization_pattern(self) -> None:
         """Test pattern for initializing multiple memory locations."""
 
-        def test_func():
+        def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 # Initialize memory locations with values
                 run("A N S A A N S A A A N S A A A A N S A A A A A N S")

@@ -8,25 +8,25 @@ from esolangs.tools import boolean
 
 
 @pytest.mark.parametrize("language", ["Sophie", "CircleFuck", "BFStack", "huf"])
-def test_generate_round_trips(language):
+def test_generate_round_trips(language: str) -> None:
     program = esolangs.generate(language, "Hi")
     assert esolangs.run(language, program) == "Hi"
 
 
-def test_run_feeds_stdin():
+def test_run_feeds_stdin() -> None:
     program = boolean.circlefuck("1101", 2)
     assert esolangs.run("CircleFuck", program, stdin="1\n0\n") == "0"
     assert esolangs.run("CircleFuck", program, stdin="0\n1\n") == "1"
 
 
-def test_list_languages():
+def test_list_languages() -> None:
     names = esolangs.list_languages()
     assert "Sophie" in names
     assert "CircleFuck" in names
     assert names == sorted(names)
 
 
-def test_unknown_language_raises():
+def test_unknown_language_raises() -> None:
     with pytest.raises(UnknownLanguageError):
         esolangs.generate("NoSuchLanguage", "x")
     with pytest.raises(UnknownLanguageError):
@@ -35,7 +35,7 @@ def test_unknown_language_raises():
     assert issubclass(UnknownLanguageError, ValueError)
 
 
-def test_run_eof_when_input_runs_out():
+def test_run_eof_when_input_runs_out() -> None:
     program = boolean.circlefuck("10", 1)  # reads one input bit
     with pytest.raises(EOFError):
         esolangs.run("CircleFuck", program, stdin="")

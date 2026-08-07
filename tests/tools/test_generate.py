@@ -1,6 +1,7 @@
 """Unit tests for the program generator tool."""
 
 import importlib
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
@@ -31,7 +32,7 @@ from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.tools.generators import other
 
 
-def roundtrip(interpreter, program):
+def roundtrip(interpreter: Callable, program: str | list[str]) -> str:
     import io
     from contextlib import redirect_stdout
 
