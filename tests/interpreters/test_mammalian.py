@@ -24,5 +24,5 @@ class TestMammalian:
 
     def test_hello_world(self) -> None:
         """Hello World program from the language docs."""
-        program = Path(__file__).parents[2] / "docs/mammalian.txt"
+        program = Path(__file__).parents[2] / "tests/fixtures/mammalian.txt"
         assert run_and_capture(program.read_text()) == "Hello, world!\n"
