@@ -187,6 +187,9 @@ module = [
     "esolangs.interpreters.stack_based.temporary",
     "esolangs.interpreters.register_based.dig",
     "esolangs.interpreters.register_based.polynomial",
+    "esolangs.interpreters.other.container",
+    "esolangs.interpreters.register_based.dsdlai",
+    "esolangs.interpreters.register_based.dotlang",
 ]
 disallow_untyped_defs = true
 

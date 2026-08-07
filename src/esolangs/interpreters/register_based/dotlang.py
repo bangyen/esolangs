@@ -5,6 +5,8 @@ Dotlang interpreter implementation.
 Each dot can carry values and execute commands based on its position.
 """
 
+from __future__ import annotations
+
 import re
 import sys
 
@@ -12,30 +14,30 @@ import sys
 class Dot:
     """Represents a dot (instruction pointer) in the Dotlang programming language."""
 
-    DIRS = (
+    DIRS: tuple[tuple[int, int], ...] = (
         (-1, 0),
         (0, 1),
         (1, 0),
         (0, -1),
     )  # Direction vectors: up, right, down, left
     mx = my = 0  # Maximum x and y coordinates of the code grid
-    code = ""  # The 2D code grid as a list of strings
+    code: list[str] = []  # The 2D code grid as a list of strings
 
-    def __init__(self, x, y, d):
+    def __init__(self, x: int, y: int, d: int) -> None:
         """Initialize a new dot at the specified position and direction."""
-        self.val = None  # The value carried by this dot (int, float, or string)
-        self.dir = d  # Current direction of movement
-        self.x = x  # Current x-coordinate
-        self.y = y  # Current y-coordinate
+        self.val: int | float | str | None = None  # value carried by this dot
+        self.dir: int = d  # Current direction of movement
+        self.x: int = x  # Current x-coordinate
+        self.y: int = y  # Current y-coordinate
 
     @staticmethod
-    def set(code):
+    def set(code: list[str]) -> None:
         """Set the global code grid and calculate its dimensions."""
         Dot.code = code
         Dot.mx = len(code)
         Dot.my = len(code[0])
 
-    def new(self, val):
+    def new(self, val: str) -> None:
         """Set the dot's value, automatically determining the appropriate type."""
         if re.match(r"\d+\.\d+", val):
             self.val = float(val)
@@ -44,7 +46,7 @@ class Dot:
         else:
             self.val = val
 
-    def move(self):
+    def move(self) -> bool:
         """Move the dot one step in its current direction."""
         x, y = Dot.DIRS[self.dir]
         self.x += x
@@ -53,12 +55,12 @@ class Dot:
             return 0 <= self.x < Dot.mx
         return 0 <= self.y < Dot.my
 
-    def match(self, regex):
+    def match(self, regex: str) -> re.Match[str] | None:
         """Check if the current position matches a regular expression pattern."""
         line = Dot.code[self.x][self.y :]
         return re.match(regex, line)
 
-    def find(self, warp, ret=False):
+    def find(self, warp: str, ret: bool = False) -> Dot | bool:
         """Find a warp destination in the code grid."""
         for num, val in enumerate(Dot.code):
             if warp in val:
@@ -73,7 +75,7 @@ class Dot:
         return False
 
 
-def run(code):
+def run(code: list[str]) -> None:
     """Execute a Dotlang program with 2D dot movement and command execution."""
     if code == [" "]:
         print(" ", end="")
@@ -81,8 +83,8 @@ def run(code):
 
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
-    line = False
-    dots = []
+    line = 0
+    dots: list[Dot] = []
     curr = 0
 
     for num, val in enumerate(code):
@@ -113,18 +115,20 @@ def run(code):
                     dot.y += len(g[0]) - 1
             elif dot.val is not None:
                 print(dot.val, end="")
-                line = True
+                line = 1
             else:
                 return
         elif val == "~":
             dot.new(input("\n" * line + "Input: "))
-            line = False
+            line = 0
         elif val == "(":
             if g := dot.match(r"\(`\w+"):
                 name = ")" + g[0][1:]
-                if not (d := dot.find(name, True)):
+                dest = dot.find(name, True)
+                if not dest:
                     return
-                dots.append(d)
+                assert isinstance(dest, Dot)
+                dots.append(dest)
             else:
                 match = 1
                 x, y = dot.x, dot.y
