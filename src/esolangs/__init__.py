@@ -51,13 +51,17 @@ def run(language: str, program: str, stdin: str = "") -> str:
     return buffer.getvalue()
 
 
-def transpile(source: str, target: str, program: str) -> str:
-    """Rewrite a ``program`` in ``source`` into an equivalent one in ``target``."""
+def transpile(source: str, target: str, program: str, **kwargs: int) -> str:
+    """Rewrite a ``program`` in ``source`` into an equivalent one in ``target``.
+
+    Transpilers with extra options accept them as keyword arguments (for
+    example ``size`` when targeting CircleFuck).
+    """
     try:
         fn = TRANSPILERS[(source, target)]
     except KeyError:
         raise UnsupportedTranspilationError(source, target) from None
-    return fn(program)
+    return fn(program, **kwargs)
 
 
 def list_languages() -> list[str]:

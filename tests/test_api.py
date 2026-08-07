@@ -61,6 +61,12 @@ def test_transpile_reverse_round_trips() -> None:
 
 def test_transpile_unsupported_pair_raises() -> None:
     with pytest.raises(UnsupportedTranspilationError):
-        esolangs.transpile("BF", "CircleFuck", "x")
+        esolangs.transpile("BF", "Unsquare", "x")
     assert issubclass(UnsupportedTranspilationError, EsolangError)
     assert issubclass(UnsupportedTranspilationError, ValueError)
+
+
+def test_transpile_to_circlefuck() -> None:
+    program = esolangs.generate("BF", "Hi")
+    circlefuck = esolangs.transpile("BF", "CircleFuck", program)
+    assert esolangs.run("CircleFuck", circlefuck) == "Hi"

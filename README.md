@@ -222,15 +222,19 @@ Compilers that translate esoteric languages to other target languages.
 Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
 
 - [BF](https://esolangs.org/wiki/Brainfuck) <-> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block, and vice versa.
+- [BF](https://esolangs.org/wiki/Brainfuck) -> [CircleFuck](https://esolangs.org/wiki/Circlefuck): sets up a clean data region inside the program-as-tape and emits the brainfuck commands unchanged. The source program must keep its data pointer within `[0, size)`; pass `size` when a program uses more than the default 32 cells.
 
 ```bash
 esolangs transpile BF "ASCII art" program.bf    # print the art
 esolangs transpile "ASCII art" BF program.txt   # print the brainfuck
+esolangs transpile BF CircleFuck program.bf     # print the CircleFuck
 ```
 
 ```python
-art = esolangs.transpile("BF", "ASCII art", program)     # or via the API
+art = esolangs.transpile("BF", "ASCII art", program)            # or via the API
 program = esolangs.transpile("ASCII art", "BF", art)
+circlefuck = esolangs.transpile("BF", "CircleFuck", program)    # size=32 by default
+circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)
 ```
 
 ## Tools
