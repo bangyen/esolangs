@@ -7,10 +7,24 @@ truth-table result for the combination it is given.
 from collections.abc import Sequence
 from typing import cast
 
+from esolangs.tools.transpilers import bf_to_ascii_art
+
 # Dig blocks for one level of the decision tree.
 _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
 _DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own block
 _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
+
+# 6-5 +5/+6 paths for a delta's remainder modulo 6 (the quotient is a run of
+# sixes).  Leaf deltas (48 + value - 8/9) are always positive, so only
+# additions are needed.
+_SIX_FIVE_PLUS = {0: "", 1: "62", 2: "6622", 3: "55599", 4: "559", 5: "5"}
+
+# 6-5 jump labels: ``8n`` jumps to the nth 4 marker, so the branch instruction
+# ``78n`` needs n as a letter/digit.  The label char is executed on the
+# ``7n`` fall-through (cell == n), so it must be a no-op: digits and A/B are
+# commands, so use letters C..Z (values 12..35) and pad the marker count with
+# 11 leading ``4``s so the first real marker is the 12th.
+_SIX_FIVE_LABELS = [chr(ord("C") + i) for i in range(24)]
 
 # Arithmetic suffixes (found by search, verified against the interpreter) that
 # evaluate each two-input truth table from the ``t``-extraction queue
@@ -342,3 +356,219 @@ def dig(truth_table: str, n: int) -> str:
     # the mole starts at the top-left corner facing down into the root
     lines[0] = "'" + lines[0][1:]
     return "\n".join(lines)
+
+
+def _six_five_delta(delta: int) -> str:
+    """6-5 additions that move a cell by a positive ``delta``."""
+    q, r = divmod(delta, 6)
+    return "6" * q + _SIX_FIVE_PLUS[r]
+
+
+def six_five(truth_table: str, n: int) -> str:
+    """Build a 6-5 program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Each input is read with ``B`` and normalized to 8/9 (subtracting 40 with
+    eight ``2``s).  ``78n`` branches: the ``7`` compares the cell to 8, so a
+    zero bit skips the ``8n`` jump and falls into the left subtree, while a
+    one bit takes the jump to the n-th ``4`` marker holding the right
+    subtree.  The marker count is padded with leading ``4``s so every label
+    lands on a no-op letter (C..Z).  A leaf adds ``48 + value - base`` (8 for
+    a left path, 9 for a right path), prints with ``A``, and halts with ``0``.
+    """
+    labels = iter(_SIX_FIVE_LABELS)
+
+    def build(rows: list[int], bit: int, base: int) -> str:
+        if len(rows) == 1:
+            return _six_five_delta(48 + int(truth_table[rows[0]]) - base) + "A0"
+        g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
+        g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
+        sub0 = build(g0, bit + 1, 8)
+        label = next(labels)
+        sub1 = build(g1, bit + 1, 9)
+        return "B" + "2" * 8 + "78" + label + sub0 + "4" + sub1
+
+    return "4" * 11 + build(list(range(2**n)), 1, 0)
+
+
+def _qoibl_enc(n: int) -> str:
+    """Qoibl binary literal for ``n`` (e is 0, y is 1)."""
+    return bin(n)[2:].replace("0", "e").replace("1", "y")
+
+
+def qoibl(truth_table: str, n: int) -> str:
+    """Build a Qoibl program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Each input is read with ``et`` and normalized to 0/1 (``ry ey ry 48``),
+    and each one's complement ``1 - bit`` is stored too.  The function is then
+    evaluated as the sum over its minterms: every ``1`` row contributes the
+    product of the bits (or complements) that select it, accumulated into a
+    sum variable, and ``tt`` prints ``48 + sum``.  Qoibl's ``ry`` chains parse
+    right-associatively from the leftmost ``ry``, so each minterm is a chain
+    of plain ``qe`` reads (no operator inside a factor).
+    """
+    lines = []
+    for i in range(n):
+        lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(48)} we")
+    for i in range(n):
+        lines.append(
+            f"we {_qoibl_enc(n + i)} we {_qoibl_enc(1)} ry ey ry qe {_qoibl_enc(i)} qe we"
+        )
+    lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
+    for k in range(2**n):
+        if truth_table[k] == "0":
+            continue
+        factors = []
+        for i in range(n):
+            var = i if ((k >> (n - 1 - i)) & 1) else n + i
+            factors.append(f"qe {_qoibl_enc(var)} qe")
+        product = factors[0]
+        for factor in factors[1:]:
+            product = f"{product} ry ye ry {factor}"
+        lines.append(f"we {_qoibl_enc(2 * n + 1)} we {product} we")
+        lines.append(
+            f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we"
+        )
+    lines.append(f"tt qe {_qoibl_enc(2 * n)} qe ry ee ry {_qoibl_enc(48)} tt")
+    return "\n".join(lines)
+
+
+def _bf_minterm(truth_table: str, n: int) -> str:
+    """A brainfuck program that evaluates ``truth_table`` via its minterms.
+
+    The output is ``48 + sum_k tt[k] * M_k`` where ``M_k`` is the product of
+    the input bits (or their complements) that select row ``k``.  BF has no
+    branching that would let leaves skip siblings, so a branch-free sum of
+    minterms (each computed with 0/1 copies and ANDs) is used instead.
+    Cells: inputs at 1..n, the running sum at n+1, and fresh scratch cells
+    allocated above that.
+    """
+
+    class _Cell:
+        def __init__(self, n: int) -> None:
+            self.n = n
+            self.inputs = list(range(1, n + 1))
+            self.sum = n + 1
+            self.next_cell = n + 2
+            self.code: list[str] = []
+            self.ptr = 0
+
+        def alloc(self) -> int:
+            cell = self.next_cell
+            self.next_cell += 1
+            return cell
+
+        def move(self, dst: int) -> None:
+            delta = dst - self.ptr
+            self.code.append(">" * delta if delta >= 0 else "<" * -delta)
+            self.ptr = dst
+
+        def zero(self, cell: int) -> None:
+            self.move(cell)
+            self.code.append("[-]")
+
+        def copy(self, src: int, dst: int) -> None:
+            """Copy ``src`` to ``dst`` preserving ``src`` (two scratch cells)."""
+            a, b = self.alloc(), self.alloc()
+            self.zero(a)
+            self.zero(b)
+            self.move(src)
+            self.code.append("[")
+            self.move(a)
+            self.code.append("+")
+            self.move(b)
+            self.code.append("+")
+            self.move(src)
+            self.code.append("-]")
+            self.move(a)
+            self.code.append("[")
+            self.move(src)
+            self.code.append("+")
+            self.move(a)
+            self.code.append("-]")
+            self.move(b)
+            self.code.append("[")
+            self.move(dst)
+            self.code.append("+")
+            self.move(b)
+            self.code.append("-]")
+            self.move(dst)
+
+    cell = _Cell(n)
+    for i in cell.inputs:
+        cell.move(i)
+        cell.code.append(",")
+        cell.code.append("-" * 48)
+    cell.zero(cell.sum)
+    for k in range(2**n):
+        if truth_table[k] == "0":
+            continue
+        factors: list[int] = []
+        for i in range(n):
+            f = cell.alloc()
+            cell.zero(f)
+            if (k >> (n - 1 - i)) & 1:
+                cell.copy(cell.inputs[i], f)
+            else:
+                cell.move(f)
+                cell.code.append("[-]+")
+                tmp = cell.alloc()
+                cell.copy(cell.inputs[i], tmp)
+                cell.move(tmp)
+                cell.code.append("[")
+                cell.move(f)
+                cell.code.append("-")
+                cell.move(tmp)
+                cell.code.append("-]")
+            factors.append(f)
+        prod = factors[0]
+        for factor in factors[1:]:
+            newp = cell.alloc()
+            cell.zero(newp)
+            t1 = cell.alloc()
+            cell.zero(t1)
+            cell.copy(prod, t1)
+            t2 = cell.alloc()
+            cell.zero(t2)
+            cell.copy(factor, t2)
+            cell.move(t1)
+            cell.code.append("[")
+            cell.move(t2)
+            cell.code.append("[")
+            cell.move(newp)
+            cell.code.append("+")
+            cell.move(t2)
+            cell.code.append("-]")
+            cell.move(t1)
+            cell.code.append("-]")
+            prod = newp
+        tmp = cell.alloc()
+        cell.zero(tmp)
+        cell.copy(prod, tmp)
+        cell.move(tmp)
+        cell.code.append("[")
+        cell.move(cell.sum)
+        cell.code.append("+")
+        cell.move(tmp)
+        cell.code.append("-]")
+    cell.move(cell.sum)
+    cell.code.append("+" * 48)
+    cell.code.append(".")
+    return "".join(cell.code)
+
+
+def ascii_art(truth_table: str, n: int) -> str:
+    """Build an ASCII-art program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    ASCII art is brainfuck with an art alphabet, so the program is the
+    ``_bf_minterm`` brainfuck program rendered as art blocks.
+    """
+    return bf_to_ascii_art(_bf_minterm(truth_table, n))

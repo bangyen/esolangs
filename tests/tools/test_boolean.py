@@ -18,6 +18,121 @@ def run_dig(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_six_five(program: str, inputs: list[str]) -> str:
+    import importlib
+
+    run = importlib.import_module("esolangs.interpreters.tape_based.6-5").run
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program)
+    return buffer.getvalue()
+
+
+class TestSixFive:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.six_five(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_six_five(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_branch_structure(self) -> None:
+        """Each level reads a bit and branches to a 4 marker."""
+        program = boolean.six_five("0110", 2)
+        assert program.startswith("4" * 11)
+        assert "B" + "2" * 8 in program
+        assert "78" in program
+        assert program.endswith("A0")
+
+
+def run_qoibl(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.qoibl import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines())
+    return buffer.getvalue()
+
+
+class TestQoibl:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.qoibl(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_qoibl(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_minterm_structure(self) -> None:
+        """An AND function stores the minterm product and prints 48 + sum."""
+        program = boolean.qoibl("0001", 2)
+        assert program.startswith("we e we et")
+        assert "ry ye ry" in program  # a minterm product
+        assert program.endswith("tt")
+
+    def test_empty_truth_table(self) -> None:
+        """A constant-zero function skips all minterms."""
+        program = boolean.qoibl("0000", 2)
+        assert "ry ye ry" not in program
+
+
+def run_ascii_art(program: str, inputs: list[str]) -> str:
+    import importlib
+
+    run = importlib.import_module("esolangs.interpreters.tape_based.ascii-art").run
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program)
+    return buffer.getvalue()
+
+
+class TestAsciiArt:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.ascii_art(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_ascii_art(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_is_art(self) -> None:
+        """The program is ASCII art, not raw brainfuck."""
+        program = boolean.ascii_art("0110", 2)
+        assert "[" not in program
+        assert "|" in program
+
+
 class TestDig:
     @pytest.mark.parametrize(
         ("table", "n"),
