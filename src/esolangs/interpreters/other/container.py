@@ -54,6 +54,9 @@ def run(code):
         elif line:
             obj[-1].add(line)
 
+    if not obj:
+        return  # nothing to evaluate: an empty program halts immediately
+
     while True:
         for o in obj:
             new[o.name] = o.update(var)
