@@ -190,6 +190,7 @@ module = [
     "esolangs.interpreters.other.container",
     "esolangs.interpreters.register_based.dsdlai",
     "esolangs.interpreters.register_based.dotlang",
+    "esolangs.interpreters.tape_based.mammalian",
 ]
 disallow_untyped_defs = true
 
