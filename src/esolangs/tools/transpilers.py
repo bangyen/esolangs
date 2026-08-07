@@ -17,6 +17,7 @@ __all__ = [
     "ascii_art_to_bf",
     "bf_to_ascii_art",
     "bf_to_circlefuck",
+    "nocomment_to_bf",
 ]
 
 # The eight brainfuck commands -> their ASCII-art blocks.  This is the
@@ -149,8 +150,22 @@ def bf_to_circlefuck(program: str, size: int | None = None) -> str:
     return setup + "".join(ops) + "@"
 
 
+_NOCOMMENT_TO_BF = {"c": "[-]", "i": "+", "o": "."}
+
+
+def nocomment_to_bf(program: str) -> str:
+    """Rewrite a NoComment program into brainfuck.
+
+    NoComment is a strict subset of brainfuck: ``c`` clears the current
+    cell (``[-]``), ``i`` increments it (``+``), and ``o`` prints it as a
+    byte (``.``).  Anything else is a comment and is dropped.
+    """
+    return "".join(_NOCOMMENT_TO_BF[c] for c in program if c in _NOCOMMENT_TO_BF)
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BF", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "BF"): ascii_art_to_bf,
     ("BF", "CircleFuck"): bf_to_circlefuck,
+    ("NoComment", "BF"): nocomment_to_bf,
 }

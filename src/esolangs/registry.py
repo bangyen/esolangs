@@ -66,7 +66,7 @@ LANGUAGES: dict[str, Language] = {
     "Modulous": Language("Modulous", _generate.modulous, "stack_based.modulous"),
     "Movesum": Language("Movesum", interpreter="register_based.movesum", split=True),
     "Nevermind": Language("Nevermind", _generate.nevermind, "other.nevermind", True),
-    "NoComment": Language("NoComment", _generate.nocomment),
+    "NoComment": Language("NoComment", _generate.nocomment, "tape_based.nocomment"),
     "Painfuck": Language("Painfuck", _generate.painfuck),
     "Polynomial": Language(
         "Polynomial", _generate.polynomial, "register_based.polynomial"
