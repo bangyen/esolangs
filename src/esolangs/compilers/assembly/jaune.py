@@ -1,9 +1,10 @@
 import sys
 from re import findall, sub
+from typing import cast
 
 
-def count(code, ind):
-    def check(k, s):
+def count(code: str, ind: int) -> tuple[int | str, int]:
+    def check(k: int, s: str) -> bool:
         ch = code[k]
         return ch.isnumeric() or ch in s
 
@@ -15,7 +16,7 @@ def count(code, ind):
         if (n := code[ind - 1]).isnumeric():
             num = int(start + code[ind - 1])
             while check(ind, "+-"):
-                x, y = code[ind : ind + 2]
+                x, y = code[ind], code[ind + 1]
                 if x.isnumeric() and y in "+-":
                     num += int(y + x)
                 ind += 1
@@ -32,16 +33,16 @@ def count(code, ind):
     return num, ind
 
 
-def prep(code):
-    def rep(sym):
+def prep(code: str) -> tuple[str, list[int], list[int]]:
+    def rep(sym: str) -> str:
         return sub(r"\d[?!]", "", sym)
 
     code = sub(r"[^^v><\d+\-#&:?!.$@;%]", "", code)
     code = sub("([#.;%])\1+", "\1", code)
     code = sub("v[:$]", "", code)
 
-    jump: list = []
-    rout: list = []
+    jump: list[int] = []
+    rout: list[int] = []
 
     for c in ":$":
         esc = "\\$" if c == "$" else c
@@ -74,9 +75,9 @@ def prep(code):
     return code, jump, rout
 
 
-def comp(code):
-    def add(m):
-        return m + 1 if m else ""
+def comp(code: str) -> str:
+    def add(m: int) -> str:
+        return str(m + 1) if m else ""
 
     code, jump, rout = prep(code)
     inp = [False, False]
@@ -102,19 +103,19 @@ def comp(code):
         num, new = count(code, ind)
 
         if c in "^v<":
-            if num > 1:
+            if cast(int, num) > 1:
                 res += f"\tmov esi, {num}\n"
                 subr[c][2] = True
             res += f"\tcall {subr[c][0]}\n"
             subr[c][1] = True
         elif c == "&":
-            if num > 1:
+            if cast(int, num) > 1:
                 res += f"\tmov esi, {num}\n" f"\tcall {subr[c][0]}\n"
                 subr[c][1] = subr[c][2] = True
             else:
                 res += "\tadd [ecx], edi\n"
         elif c == ">":
-            res += f"\tsub ecx, {4 * num}\n"
+            res += f"\tsub ecx, {4 * cast(int, num)}\n"
         elif c in "+-":
             if num:
                 if isinstance(num, int):
@@ -133,21 +134,21 @@ def comp(code):
         elif c == "#":
             res += "\tmov edi, [ecx]\n"
         elif c == ":":
-            res += f".label{add(num)}:\n"
+            res += f".label{add(cast(int, num))}:\n"
         elif c in "?!":
             res += "\tcmp dword [ecx], 0\n" f'\tj{"n" if c == "?" else ""}e '
-            if num >= 0:
-                res += f".label{add(num)}\n"
+            if cast(int, num) >= 0:
+                res += f".label{add(cast(int, num))}\n"
             else:
                 res += ".switch\n"
                 inp[0] = True
         elif c == ".":
             res += "\n\tmov eax, 1\n" "\txor ebx, ebx\n" "\tint 80h\n"
         elif c == "$":
-            res += f"sub{add(num)}:\n"
+            res += f"sub{add(cast(int, num))}:\n"
         elif c == "@":
-            if num >= 0:
-                res += f"\tcall sub{add(num)}\n"
+            if cast(int, num) >= 0:
+                res += f"\tcall sub{add(cast(int, num))}\n"
             else:
                 res += "\tcall switch\n"
                 inp[1] = True
