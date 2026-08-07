@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 
 @dataclass
 class State:
-    stk: list = field(default_factory=list)
-    var: dict = field(default_factory=dict)
+    stk: list[int] = field(default_factory=list)
+    var: dict[str, int] = field(default_factory=dict)
     new: int = 1
     ind: int = 0
 
@@ -127,13 +127,13 @@ _DISPATCH: dict[str, Callable[[State, str, list[str]], str | None]] = {
 }
 
 
-def run(code):
+def run(code: str) -> None:
     reg = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
-    code = [k[0] for k in reg.findall(code)]
+    tokens = [k[0] for k in reg.findall(code)]
     state = State(var={f"VAR{k}": 0 for k in range(1, 5)})
 
-    while state.ind < len(code):
-        mod = code[state.ind]
+    while state.ind < len(tokens):
+        mod = tokens[state.ind]
         arg = mod.split()
         state.ind += 1
 

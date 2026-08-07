@@ -178,6 +178,10 @@ module = [
     "esolangs.interpreters.tape_based.back",
     "esolangs.interpreters.tape_based.ascii-art",
     "esolangs.interpreters.register_based.lightlang",
+    "esolangs.interpreters.tape_based.brainif",
+    "esolangs.interpreters.stack_based.modulous",
+    "esolangs.interpreters.register_based.movesum",
+    "esolangs.interpreters.register_based.sophie",
 ]
 disallow_untyped_defs = true
 

@@ -1,8 +1,8 @@
 import sys
 
 
-def run(code):
-    cells = [0]
+def run(code: list[str]) -> None:
+    cells: list[int] = [0]
     ind = ptr = 0
     inp = False
 
