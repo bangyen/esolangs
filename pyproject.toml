@@ -137,7 +137,6 @@ strict_equality = true
 # public API, tools, tests, and any new code. Annotate them incrementally.
 [[tool.mypy.overrides]]
 module = [
-    "esolangs.interpreters.*",
     "esolangs.compilers.*",
     "esolangs.tools.generate",
     "esolangs.tools.boolean",

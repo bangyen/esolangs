@@ -26,7 +26,7 @@ value branching -- a truth-table generator in ``tools/boolean.py``.
 import sys
 
 
-def run(code):
+def run(code: str) -> None:
     data = 0
     new = 1
     ind = 0
