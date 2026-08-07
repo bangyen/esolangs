@@ -60,17 +60,17 @@ def update(op: str, acc: int) -> int:
     """Update the accumulator based on the current operation."""
     if op.isdigit():
         return int(op)
-    elif op == "+":
+    if op == "+":
         return acc + 1
-    elif op == "-":
+    if op == "-":
         return acc - 1
-    elif op == "*":
+    if op == "*":
         return acc * 2
-    elif op == "/":
+    if op == "/":
         return acc // 2
-    elif op == "s":
+    if op == "s":
         return acc**2
-    elif op == "~":
+    if op == "~":
         print(chr(acc), end="")
     return acc
 

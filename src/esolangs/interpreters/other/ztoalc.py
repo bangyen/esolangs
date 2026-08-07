@@ -18,18 +18,17 @@ def run(code: list[str]) -> None:
             s = ord(input("\n" * state.inp + "Input: ")[0])
             state.inp = False
             return s
-        elif exp in var:
+        if exp in var:
             return var[exp]
-        elif exp.isnumeric() or (exp[0] == "-" and exp[1:].isnumeric()):
+        if exp.isnumeric() or (exp[0] == "-" and exp[1:].isnumeric()):
             return int(exp)
-        elif exp[0] == "[":
+        if exp[0] == "[":
             return [0] * cast(int, val(state, exp[1:-1]))
-        else:
-            arg = exp[:-1].split("[")
-            arr = var[arg[0]]
-            if not isinstance(arr, list):
-                raise ValueError("array variable expected")  # pragma: no cover
-            return arr[cast(int, val(state, arg[1]))]
+        arg = exp[:-1].split("[")
+        arr = var[arg[0]]
+        if not isinstance(arr, list):
+            raise ValueError("array variable expected")  # pragma: no cover
+        return arr[cast(int, val(state, arg[1]))]
 
     while p := ptr - 1:
         ins = code[p] if p < len(code) else ""

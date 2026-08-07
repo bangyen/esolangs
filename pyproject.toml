@@ -96,6 +96,7 @@ select = [
     "RUF", # ruff-specific
     "PT",  # flake8-pytest-style
     "D",   # pydocstyle
+    "RET", # flake8-return
 ]
 ignore = [
     "E501",  # line too long, handled by black
@@ -128,7 +129,7 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
-disallow_untyped_decorators = false  # Relaxed for existing codebase
+disallow_untyped_decorators = false  # pytest's decorators are untyped
 no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true

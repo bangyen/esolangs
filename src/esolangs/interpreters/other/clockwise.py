@@ -37,7 +37,7 @@ def run(code: list[str]) -> None:
         x, y, r, ins, cont = move(x, y, r, code, acc)
         if ins in "R?!":
             continue
-        elif ins == "+":
+        if ins == "+":
             acc += 1
         elif ins == "-":
             acc -= 1

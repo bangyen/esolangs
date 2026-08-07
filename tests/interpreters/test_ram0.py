@@ -44,8 +44,7 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
     signal.alarm(timeout_seconds)
 
     try:
-        result = func()
-        return result
+        return func()
     finally:
         # Restore original signal handler and cancel alarm
         signal.alarm(0)

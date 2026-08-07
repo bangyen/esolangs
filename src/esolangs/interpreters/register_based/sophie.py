@@ -19,7 +19,7 @@ def find(code: str, ind: int) -> int:
         ind += 1
         if ind == len(code):
             break
-        elif (c := code[ind]) == opr:
+        if (c := code[ind]) == opr:
             match += 1
         elif c == end:
             match -= 1
