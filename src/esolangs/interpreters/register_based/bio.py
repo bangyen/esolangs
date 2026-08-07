@@ -43,12 +43,11 @@ def run(code: str) -> None:
                 ind += 1
                 if ind == len(commands):
                     break
-                else:
-                    c = commands[ind][:2]
-                    if c == "0i":
-                        mat += 1
-                    elif c == "}":
-                        mat -= 1
+                c = commands[ind][:2]
+                if c == "0i":
+                    mat += 1
+                elif c == "}":
+                    mat -= 1
         ind += 1
 
 

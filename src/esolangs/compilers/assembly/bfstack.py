@@ -31,7 +31,7 @@ def parse(code: str) -> list[tuple[str, int]]:
             ind += 1
             if ind == len(filtered):
                 return []
-            elif (c := filtered[ind]) == "[":
+            if (c := filtered[ind]) == "[":
                 mat += 1
             elif c == "]":
                 mat -= 1

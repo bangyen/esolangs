@@ -28,9 +28,7 @@ class Con:
             if b:
                 res += n
 
-        res = max(res, 0)
-
-        return res
+        return max(res, 0)
 
 
 def run(code: list[str]) -> None:

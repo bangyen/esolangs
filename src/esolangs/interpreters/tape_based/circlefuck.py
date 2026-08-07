@@ -41,7 +41,7 @@ def find(code: list[int], ind: int, ptr: int) -> int:
         sym = chr(code[ind])
         if ind == start:
             return -1
-        elif sym == "[":
+        if sym == "[":
             match += 1
         elif sym == "]":
             match -= 1

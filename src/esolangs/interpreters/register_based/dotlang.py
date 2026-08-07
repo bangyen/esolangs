@@ -70,9 +70,8 @@ class Dot:
                     y += len(warp) - 1
                 if ret:
                     return Dot(x, y, self.dir)
-                else:
-                    self.x, self.y = x, y
-                    return True
+                self.x, self.y = x, y
+                return True
         return False
 
 
