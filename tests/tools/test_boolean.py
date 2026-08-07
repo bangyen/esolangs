@@ -9,6 +9,48 @@ import pytest
 from esolangs.tools import boolean
 
 
+def run_dig(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.dig import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines())
+    return buffer.getvalue()
+
+
+class TestDig:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.dig(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_dig(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_xor_layout(self) -> None:
+        """The XOR gate produces the standard two-level decision tree."""
+        expected = (
+            "'           > >$30:@\n"
+            "     > >2$~;#@\n"
+            "            > >$31:@\n"
+            ">2$~;#@       \n"
+            "            > >$31:@\n"
+            "     > >2$~;#@\n"
+            "            > >$30:@"
+        )
+        assert boolean.dig("0110", 2) == expected
+
+
 def run_sophie(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.sophie import run
 
