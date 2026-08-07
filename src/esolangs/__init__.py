@@ -9,6 +9,7 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from esolangs.exceptions import UnknownLanguageError
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
 
 
@@ -17,7 +18,7 @@ def generate(language: str, text: str) -> str:
     try:
         fn = GENERATORS[language]
     except KeyError:
-        raise ValueError(f"unknown language: {language}") from None
+        raise UnknownLanguageError(language) from None
     return str(fn(text))
 
 
@@ -29,7 +30,7 @@ def run(language: str, program: str, stdin: str = "") -> str:
     try:
         module, split, kwargs = RUNNERS[language]
     except KeyError:
-        raise ValueError(f"unknown language: {language}") from None
+        raise UnknownLanguageError(language) from None
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     lines = iter(stdin.splitlines())
 

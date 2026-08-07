@@ -3,6 +3,7 @@
 import pytest
 
 import esolangs
+from esolangs.exceptions import EsolangError, UnknownLanguageError
 from esolangs.tools import boolean
 
 
@@ -26,10 +27,12 @@ def test_list_languages():
 
 
 def test_unknown_language_raises():
-    with pytest.raises(ValueError, match="unknown language"):
+    with pytest.raises(UnknownLanguageError):
         esolangs.generate("NoSuchLanguage", "x")
-    with pytest.raises(ValueError, match="unknown language"):
+    with pytest.raises(UnknownLanguageError):
         esolangs.run("NoSuchLanguage", "x")
+    assert issubclass(UnknownLanguageError, EsolangError)
+    assert issubclass(UnknownLanguageError, ValueError)
 
 
 def test_run_eof_when_input_runs_out():
