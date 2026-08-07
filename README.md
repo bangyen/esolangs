@@ -274,7 +274,7 @@ brainif("0110", 2)       # and in BrainIf
 nevermind("0110", 2)     # and in Nevermind
 circlefuck("0110", 2)    # and in CircleFuck
 circlefuck_byte(table)   # arbitrary byte-valued functions
-taglate("10", 1)         # one-input NOT in Taglate (n > 1 is open)
+taglate("0110", 2)       # 2-input XOR in Taglate (up to n = 2)
 ```
 
 ### Program Generator

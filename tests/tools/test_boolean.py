@@ -156,7 +156,15 @@ def run_taglate(program: str, inputs: list[str]) -> str:
 class TestTaglate:
     @pytest.mark.parametrize(
         ("table", "n"),
-        [("00", 1), ("01", 1), ("10", 1), ("11", 1)],
+        [
+            ("00", 1),
+            ("01", 1),
+            ("10", 1),
+            ("11", 1),
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("1110", 2),  # NAND
+        ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
@@ -166,6 +174,15 @@ class TestTaglate:
             got = run_taglate(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_only_supports_one_input(self) -> None:
-        with pytest.raises(ValueError, match="n == 1"):
-            boolean.taglate("0110", 2)
+    def test_all_two_input_tables(self) -> None:
+        """Every two-input truth table produces the right result."""
+        for table in range(16):
+            tt = format(table, "04b")
+            for combo in range(4):
+                bits = [(combo >> 1) & 1, combo & 1]
+                got = run_taglate(boolean.taglate(tt, 2), [str(b) for b in bits])
+                assert got == tt[combo], f"{tt} inputs {bits}"
+
+    def test_only_supports_two_inputs(self) -> None:
+        with pytest.raises(ValueError, match="n == 2"):
+            boolean.taglate("11111110", 3)
