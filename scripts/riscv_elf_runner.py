@@ -18,6 +18,7 @@ Requires: pip install unicorn
 
 import struct
 import sys
+from typing import Any
 
 try:
     from unicorn import UC_ARCH_RISCV, UC_HOOK_INTR, UC_MODE_RISCV64, Uc
@@ -49,15 +50,15 @@ HEAP_SIZE = 0x1000000
 STACK_SIZE = 0x2000
 
 
-def _align_down(x, a):
+def _align_down(x: int, a: int) -> int:
     return x & ~(a - 1)
 
 
-def _align_up(x, a):
+def _align_up(x: int, a: int) -> int:
     return _align_down(x + a - 1, a)
 
 
-def load_segments(binary):
+def load_segments(binary: bytes) -> tuple[int, list[tuple[int, bytearray]]]:
     """Return (entry, [(vaddr, data), ...]) from the ELF's PT_LOAD headers."""
     if binary[:4] != b"\x7fELF" or binary[4] != 2:  # 64-bit little-endian
         raise ValueError("expected a 64-bit ELF")
@@ -81,7 +82,7 @@ def load_segments(binary):
     return entry, segments
 
 
-def run_elf(binary, stdin=b""):
+def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
     entry, segments = load_segments(binary)
     lo = _align_down(min(v for v, _ in segments), PAGE)
     hi = _align_up(max(v + len(d) for v, d in segments), PAGE)
@@ -106,7 +107,7 @@ def run_elf(binary, stdin=b""):
     halted = [False]
     heap_cur = [heap_base]
 
-    def on_ecall(uc, intno, user_data):
+    def on_ecall(uc: Uc, intno: int, user_data: Any) -> None:
         nonlocal inp_pos, out
         a7 = uc.reg_read(UC_RISCV_REG_A7)
         if a7 == SYS_READ:
@@ -150,7 +151,7 @@ def run_elf(binary, stdin=b""):
     return bytes(out), exit_code[0]
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     with open(argv[1], "rb") as f:
         binary = f.read()
     out, code = run_elf(binary, sys.stdin.buffer.read())

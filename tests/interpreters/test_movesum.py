@@ -41,9 +41,10 @@ class TestMovesumBasicCommands:
     def test_move_command_input(self) -> None:
         """Test move command with negative first argument reads input."""
         code = ["0=0", "move -1 0", "move 0 -1"]
-        with patch("builtins.input", return_value="42"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="42"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == "42 "
 
@@ -64,36 +65,40 @@ class TestMovesumBasicCommands:
     def test_initialization_with_42_key(self) -> None:
         """Test initialization with 42 as key (user input)."""
         code = ["42=5", "move 10 -1", "move 0 0"]
-        with patch("builtins.input", return_value="10"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="10"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == "5 "
 
     def test_initialization_with_42_value(self) -> None:
         """Test initialization with 42 as value (user input)."""
         code = ["0=42", "move 0 -1", "move 0 0"]
-        with patch("builtins.input", return_value="99"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="99"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == "99 "
 
     def test_initialization_with_42_both(self) -> None:
         """Test initialization with 42 as both key and value."""
         code = ["42=42", "move 5 -1", "move 0 0"]
-        with patch("builtins.input", side_effect=["5", "7"]), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", side_effect=["5", "7"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == "7 "
 
     def test_empty_input_handling(self) -> None:
         """Test handling of empty input (EOF)."""
         code = ["0=42", "move 0 -1", "move 0 0"]
-        with patch("builtins.input", return_value=""), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value=""),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == "0 "
 
@@ -168,18 +173,20 @@ class TestMovesumExamples:
     def test_add_two_inputs(self) -> None:
         """Test program that adds two inputs."""
         code = ["1=42 2=42", "sum", "move 0 -1", "move 0 0"]
-        with patch("builtins.input", side_effect=["5", "3"]), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", side_effect=["5", "3"]),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == "8 "
 
     def test_truth_machine_zero(self) -> None:
         """Test truth machine with input 0."""
         code = ["0=42", "move 0 -1", "move 0 1", "move 2 1"]
-        with patch("builtins.input", return_value="0"), redirect_stdout(
-            io.StringIO()
-        ) as f:
+        with (
+            patch("builtins.input", return_value="0"),
+            redirect_stdout(io.StringIO()) as f,
+        ):
             run(code)
         assert f.getvalue() == "0 "
 

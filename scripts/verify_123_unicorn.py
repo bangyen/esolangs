@@ -16,7 +16,7 @@ from riscv_elf_runner import run_elf
 from esolangs.tools.generate import _123
 
 
-def main(argv):
+def main(argv: list[str]) -> int:
     with open(argv[1], "rb") as f:
         binary = f.read()
     failures = 0

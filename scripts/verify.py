@@ -33,7 +33,7 @@ STEPS = [
 ]
 
 
-def _build_riscv_123():
+def _build_riscv_123() -> str | None:
     if shutil.which("riscv64-elf-gcc") is None:
         return None
     if shutil.which("nasm") is None:
@@ -54,7 +54,7 @@ def _build_riscv_123():
     return "/tmp/123-riscv" if rv.returncode == 0 else None
 
 
-def main():
+def main() -> int:
     import importlib.util
     import os
 

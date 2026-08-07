@@ -14,7 +14,7 @@ from esolangs.tools._ztoalc import _ZTOALC_TABLE_LIMIT, _collatz_length_table
 OUT = Path(__file__).resolve().parent.parent / "src/esolangs/tools/ztoalc_starts.py"
 
 
-def best_starts(lengths):
+def best_starts(lengths: list[int]) -> dict[int, int]:
     best: dict = {}
     for start in range(2, len(lengths)):
         running = 0
@@ -28,7 +28,7 @@ def best_starts(lengths):
     return {n: start for n, (size, start) in best.items()}
 
 
-def write_module(starts):
+def write_module(starts: dict[int, int]) -> None:
     lines = [
         '"""Precomputed best Collatz start for each text length."""',
         "",
