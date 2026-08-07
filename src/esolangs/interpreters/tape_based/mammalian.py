@@ -4,10 +4,10 @@ import re
 import sys
 
 
-def total(op, lst):
+def total(op: int, lst: list[list[int]]) -> None:
     if op:
         size = list(map(len, lst))
-        flat: list = functools.reduce(operator.iadd, lst, [])
+        flat: list[int] = functools.reduce(operator.iadd, lst, [])
         m = len(flat)
 
         for k in range(m // 2):
@@ -33,7 +33,7 @@ def total(op, lst):
                 lst[num][0] %= 256
 
 
-def partial(op, curr, acc):
+def partial(op: int, curr: list[int], acc: int) -> int:
     if op == 2:
         curr.append(acc % 256)
         acc = 0
@@ -55,7 +55,7 @@ def partial(op, curr, acc):
     return acc
 
 
-def run(code):
+def run(code: str) -> None:
     ins = (
         "SEED",
         "CONFLAGRATE",
@@ -69,13 +69,13 @@ def run(code):
         "PRONOUNCE",
     )
 
-    code = re.findall(f'({"|".join(ins)})', code)
-    lst = [[0] for _ in range(23)]
+    tokens = re.findall(f'({"|".join(ins)})', code)
+    lst: list[list[int]] = [[0] for _ in range(23)]
     ind = ptr = acc = 0
     new = 1
 
-    while ind < len(code):
-        n = ins.index(code[ind])
+    while ind < len(tokens):
+        n = ins.index(tokens[ind])
         curr = lst[ptr]
         if n < 2:
             total(n, lst)
