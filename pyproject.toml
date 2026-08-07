@@ -138,8 +138,11 @@ strict_equality = true
 [[tool.mypy.overrides]]
 module = [
     "esolangs.compilers.*",
-    "esolangs.tools.generate",
-    "esolangs.tools.generators.*",
+    "esolangs.tools.generators.tape",
+    "esolangs.tools.generators.helpers",
+    "esolangs.tools.generators.register",
+    "esolangs.tools.generators.stack",
+    "esolangs.tools.generators.other",
     "esolangs.tools.boolean",
     "esolangs.tools._polynomial",
     "esolangs.tools._ztoalc",

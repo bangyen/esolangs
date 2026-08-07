@@ -2,8 +2,20 @@
 
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
 
-__all__ = ['bio', 'dig', 'dotlang', 'eval', 'huf', 'polynomial', 'qoibl', 'sophie', 'wii2d']
-def bio(text):
+__all__ = [
+    "bio",
+    "dig",
+    "dotlang",
+    "eval",
+    "huf",
+    "polynomial",
+    "qoibl",
+    "sophie",
+    "wii2d",
+]
+
+
+def bio(text: str) -> str:
     res = []
     prev = 0
     for c in text:
@@ -17,13 +29,13 @@ def bio(text):
     return "".join(res)
 
 
-def sophie(text):
+def sophie(text: str) -> str:
     # "$" would be taken as the numeric marker by "#$", so it uses the
     # numeric form like a newline does.
     return "".join(f"#${ord(c)}," if c in "\n$" else f"#{c}," for c in text)
 
 
-def dig(text):
+def dig(text: str) -> str:
     if not all(c == " " or c in ".,!?" or c.isalnum() for c in text):
         raise ValueError("Dig can only output letters, digits, spaces and .,!?")
     # Each "$" reads a single-digit count from the row below, so a segment can
@@ -63,7 +75,7 @@ def dig(text):
     return "\n".join([r0, "".join(r1)])
 
 
-def polynomial(text):
+def polynomial(text: str) -> str:
     instrs = []
     prev = 0
     for c in text:
@@ -79,16 +91,16 @@ def polynomial(text):
     for (a, b), p in zip(instrs, primes(len(instrs)), strict=True):
         coeffs = multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
 
-    return format_coeffs(coeffs)
+    return str(format_coeffs(coeffs))
 
 
-def qoibl(text):
+def qoibl(text: str) -> str:
     return "\n".join(
         f"tt {bin(ord(c))[2:].replace('0', 'e').replace('1', 'y')} tt" for c in text
     )
 
 
-def wii2d(text):
+def wii2d(text: str) -> str:
     def build(target):
         best = (float("inf"), "")
         for cost, digit, value, ops in [
@@ -110,7 +122,7 @@ def wii2d(text):
     return "\n".join([prog, "!"])
 
 
-def dotlang(text):
+def dotlang(text: str) -> str:
     """A single dot that prints one backtick-wrapped string literal.
 
     The interpreter's backtick match is greedy, so the text must fit on one
@@ -122,7 +134,7 @@ def dotlang(text):
     return "\u2022#" + "`" + text + "`#"
 
 
-def huf(text):
+def huf(text: str) -> str:
     """Each character is ``#`` plus ``ord(c)`` increments, then ``>@``.
 
     ``#`` resets the value, ``+`` increments it, ``>`` prints it as a
@@ -131,7 +143,7 @@ def huf(text):
     return "".join("#" + "+" * ord(c) + ">@" for c in text)
 
 
-def eval(text):
+def eval(text: str) -> str:
     """A string literal that the ``.`` instruction prints.
 
     A double quote inside the text would end the literal early, so it is
@@ -142,5 +154,3 @@ def eval(text):
     if not text:
         return ""
     return '"' + text.replace('"', "`") + '".'
-
-
