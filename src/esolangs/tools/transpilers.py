@@ -17,6 +17,7 @@ __all__ = [
     "ascii_art_to_bf",
     "bf_to_ascii_art",
     "bf_to_circlefuck",
+    "bfstack_to_bf",
     "nocomment_to_bf",
 ]
 
@@ -163,9 +164,35 @@ def nocomment_to_bf(program: str) -> str:
     return "".join(_NOCOMMENT_TO_BF[c] for c in program if c in _NOCOMMENT_TO_BF)
 
 
+_BFSTACK_TO_BF = {
+    ">": ">",
+    "<": "[-]<",
+    "+": "+",
+    "-": "-",
+    ".": ".",
+    ",": ">,",
+    "[": "[",
+    "]": "]",
+}
+
+
+def bfstack_to_bf(program: str) -> str:
+    """Rewrite a BFStack program into brainfuck.
+
+    BFStack is a stack, modelled on brainfuck's tape with the top of the
+    stack at the current cell.  ``>`` pushes a fresh zero cell and stays a
+    ``>``; ``<`` pops, but must first clear the cell (``[-]<``) so a later
+    push lands on a fresh zero again; ``,`` reads a byte and pushes, so it
+    becomes ``>,``.  The remaining commands map directly.  Anything else is
+    a comment and is dropped.
+    """
+    return "".join(_BFSTACK_TO_BF[c] for c in program if c in _BFSTACK_TO_BF)
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BF", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "BF"): ascii_art_to_bf,
     ("BF", "CircleFuck"): bf_to_circlefuck,
     ("NoComment", "BF"): nocomment_to_bf,
+    ("BFStack", "BF"): bfstack_to_bf,
 }
