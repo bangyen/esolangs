@@ -6,14 +6,15 @@ enough and has the smallest maximum visited value.
 """
 
 from array import array
+from typing import Any
 
 _ZTOALC_TABLE_LIMIT = 1_000_000
 _ZTOALC_MAX_LIMIT = 10_000_000
 _length_table_cache: dict = {}
 
 
-def _collatz_prefix(start, n):
-    values = []
+def _collatz_prefix(start: int, n: int) -> list[int]:
+    values: list[int] = []
     value = start
     for _ in range(n):
         values.append(value)
@@ -21,7 +22,7 @@ def _collatz_prefix(start, n):
     return values
 
 
-def _collatz_length_table(limit):
+def _collatz_length_table(limit: int) -> Any:
     """Stopping times for every start up to ``limit``, as unsigned shorts.
 
     Index ``value`` holds the number of Collatz steps from ``value`` to 1;
@@ -51,7 +52,7 @@ def _collatz_length_table(limit):
     return lengths
 
 
-def _collatz_lengths(limit):
+def _collatz_lengths(limit: int) -> Any:
     if limit not in _length_table_cache:
         _length_table_cache[limit] = _collatz_length_table(limit)
     return _length_table_cache[limit]

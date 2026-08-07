@@ -46,7 +46,7 @@ def dig(text: str) -> str:
     row1 = [" "]
     seg: list = []
 
-    def flush():
+    def flush() -> None:
         if not seg:
             return
         pad = 1 if seg[0][0].isdigit() else 0
@@ -101,7 +101,7 @@ def qoibl(text: str) -> str:
 
 
 def wii2d(text: str) -> str:
-    def build(target):
+    def build(target: int) -> str:
         best = (float("inf"), "")
         for cost, digit, value, ops in [
             (1, min(target, 9), lambda d: d, lambda d: f"{d}"),
