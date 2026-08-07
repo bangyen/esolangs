@@ -38,16 +38,15 @@ def init(code: str, tape: list[int]) -> Callable[[int, int], int | None]:
                 ind += 1
                 if ind == len(code):
                     return None
-                elif code[ind] == "[":
+                if code[ind] == "[":
                     match += 1
                 elif code[ind] == "]":
                     match -= 1
             return ind + 1
-        else:
-            if tape[ptr]:
-                return stk[-1]
-            stk.pop()
-            return ind + 1
+        if tape[ptr]:
+            return stk[-1]
+        stk.pop()
+        return ind + 1
 
     return find
 

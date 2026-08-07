@@ -48,11 +48,11 @@ def run(code: list[str]) -> None:
 
             if num == "ee":
                 return x + y
-            elif num == "ey":
+            if num == "ey":
                 return x - y
-            elif num == "ye":
+            if num == "ye":
                 return x * y
-            elif num == "yy":
+            if num == "yy":
                 return x // y
         elif op == "qe":
             return var.get(parse(state, expr[1:-1]), 0)
