@@ -1,5 +1,4 @@
-"""
-Unit tests for Huf interpreter.
+"""Unit tests for Huf interpreter.
 
 Tests cover all Huf commands, code segment extraction, and example programs.
 Huf is a register-based esoteric language that processes code segments enclosed

@@ -151,7 +151,8 @@ def run_elf(binary, stdin=b""):
 
 
 def main(argv):
-    binary = open(argv[1], "rb").read()
+    with open(argv[1], "rb") as f:
+        binary = f.read()
     out, code = run_elf(binary, sys.stdin.buffer.read())
     sys.stdout.buffer.write(out)
     return code

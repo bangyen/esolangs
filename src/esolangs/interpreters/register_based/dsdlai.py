@@ -7,7 +7,7 @@ Random chance (20-90%) that mole dies during dig operations.
 
 import secrets as s
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 from . import dig
 

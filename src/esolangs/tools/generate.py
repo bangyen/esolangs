@@ -463,7 +463,7 @@ def ztoalc(text):
     lines = [""] * size
     lines[0] = str(start)
 
-    for value, char in zip(values, text):
+    for value, char in zip(values, text, strict=False):
         lines[value - 1] = f"print {ord(char)}"
 
     return "\n".join(lines)
@@ -769,7 +769,7 @@ def polynomial(text):
         prev = ord(c)
 
     coeffs = [1]
-    for (a, b), p in zip(instrs, primes(len(instrs))):
+    for (a, b), p in zip(instrs, primes(len(instrs)), strict=True):
         coeffs = multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
 
     return format_coeffs(coeffs)
@@ -802,7 +802,7 @@ def clockwise(text):
     ring += [(0, i) for i in range(n - 2, 0, -1)]
 
     grid = [[" "] * n for _ in range(n)]
-    for (x, y), ch in zip(ring, prog):
+    for (x, y), ch in zip(ring, prog, strict=False):
         grid[y][x] = ch
     grid[0][n - 1] = "R"
     grid[n - 1][n - 1] = "R"

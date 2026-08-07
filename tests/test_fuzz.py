@@ -8,7 +8,7 @@ deterministic.
 import importlib
 import io
 import random
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
 from esolangs.interpreters.other.bitdeque import run as bitdeque_run
@@ -31,9 +31,8 @@ minsky_run = importlib.import_module(
 def run_safely(fn, program):
     """Run a program, asserting it raises nothing unexpected."""
     buffer = io.StringIO()
-    with patch("builtins.input", return_value="0"):
-        with redirect_stdout(buffer):
-            fn(program)
+    with patch("builtins.input", return_value="0"), redirect_stdout(buffer):
+        fn(program)
 
 
 def _random_string(alphabet, max_len):
@@ -104,19 +103,17 @@ def test_bfstack_random():
     random.seed(6)
     for _ in range(50):
         code = _random_string("><+-.", 30)
-        try:
+        # '.' on an empty stack is an accepted outcome
+        with suppress(IndexError):
             run_safely(bfstack_run, code)
-        except IndexError:
-            pass  # '.' on an empty stack is an accepted outcome
 
 
 def test_bio_random():
     random.seed(7)
     for _ in range(50):
-        try:
+        # pop from an empty stack is an accepted outcome
+        with suppress(IndexError):
             run_safely(bio_run, _random_string("0O1Ixyz;{}", 30))
-        except IndexError:
-            pass  # pop from an empty stack is an accepted outcome
 
 
 def test_huf_random():
@@ -142,7 +139,6 @@ def test_qoibl_random():
 def test_eval_random():
     random.seed(11)
     for _ in range(50):
-        try:
+        # empty-stack pop / evaluating a non-string are accepted
+        with suppress(IndexError, TypeError):
             run_safely(eval_run, _random_string("0+-.=~^`;*?!", 30))
-        except (IndexError, TypeError):
-            pass  # empty-stack pop / evaluating a non-string are accepted

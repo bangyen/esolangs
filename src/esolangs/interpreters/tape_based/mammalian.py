@@ -1,3 +1,5 @@
+import functools
+import operator
 import re
 import sys
 
@@ -5,7 +7,7 @@ import sys
 def total(op, lst):
     if op:
         size = list(map(len, lst))
-        flat: list = sum(lst, [])
+        flat: list = functools.reduce(operator.iadd, lst, [])
         m = len(flat)
 
         for k in range(m // 2):

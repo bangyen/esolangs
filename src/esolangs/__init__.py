@@ -41,9 +41,8 @@ def run(language: str, program: str, stdin: str = "") -> str:
             raise EOFError from None
 
     buffer = io.StringIO()
-    with patch("builtins.input", read_input):
-        with redirect_stdout(buffer):
-            run_fn(program.splitlines() if split else program, **kwargs)
+    with patch("builtins.input", read_input), redirect_stdout(buffer):
+        run_fn(program.splitlines() if split else program, **kwargs)
     return buffer.getvalue()
 
 

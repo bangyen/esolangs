@@ -6,7 +6,6 @@ enough and has the smallest maximum visited value.
 """
 
 from array import array
-from typing import Optional, Tuple
 
 _ZTOALC_TABLE_LIMIT = 1_000_000
 _ZTOALC_MAX_LIMIT = 10_000_000
@@ -60,7 +59,7 @@ def _collatz_lengths(limit):
 
 def _search_start(n: int) -> int:
     """Best start for a text length the committed table does not cover."""
-    best: Optional[Tuple[int, int]] = None
+    best: tuple[int, int] | None = None
     limit = _ZTOALC_TABLE_LIMIT
     lengths = _collatz_lengths(limit)
     candidate = _ZTOALC_TABLE_LIMIT

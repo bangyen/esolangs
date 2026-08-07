@@ -1,5 +1,4 @@
-"""
-Unit tests for Qoibl interpreter.
+"""Unit tests for Qoibl interpreter.
 
 Tests cover all Qoibl operations including printing, assignment, conditionals,
 math operations, loops, and binary number parsing. Includes timeout protection
@@ -8,8 +7,9 @@ to prevent hanging tests from infinite loops.
 
 import io
 import signal
+from collections.abc import Callable
 from contextlib import redirect_stdout
-from typing import Any, Callable
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -27,8 +27,7 @@ def timeout_handler(signum: int, frame: Any) -> None:
 
 
 def run_with_timeout(func: Callable, timeout_seconds: int = 2) -> Any:
-    """
-    Run a function with timeout protection.
+    """Run a function with timeout protection.
 
     Args:
         func: Function to execute
@@ -39,6 +38,7 @@ def run_with_timeout(func: Callable, timeout_seconds: int = 2) -> Any:
 
     Raises:
         TimeoutError: If function exceeds timeout
+
     """
     signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
@@ -96,9 +96,10 @@ class TestQoiblBasicOperations:
             "we y we et we",
             "tt qe y qe tt",
         ]  # input -> var[1], print var[1]
-        with patch("builtins.input", return_value="A"):
-            with redirect_stdout(io.StringIO()) as f:
-                run(code)
+        with patch("builtins.input", return_value="A"), redirect_stdout(
+            io.StringIO()
+        ) as f:
+            run(code)
         assert f.getvalue() == "A"
 
 
@@ -255,9 +256,10 @@ class TestQoiblExamples:
 
         # Test 2 + 3 = 5
         def run_adder():
-            with patch("builtins.input", side_effect=["2", "3"]):
-                with redirect_stdout(io.StringIO()) as f:
-                    run(code)
+            with patch("builtins.input", side_effect=["2", "3"]), redirect_stdout(
+                io.StringIO()
+            ) as f:
+                run(code)
             return f.getvalue()
 
         result = run_with_timeout(run_adder, timeout_seconds=2)

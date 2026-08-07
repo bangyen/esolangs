@@ -13,9 +13,8 @@ def run_sophie(program: str, inputs: list) -> str:
     from esolangs.interpreters.register_based.sophie import run
 
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs):
-        with redirect_stdout(buffer):
-            run(program)
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program)
     return buffer.getvalue()
 
 
@@ -47,9 +46,8 @@ def run_modulous(program: str, inputs: list) -> str:
     from esolangs.interpreters.stack_based.modulous import run
 
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs):
-        with redirect_stdout(buffer):
-            run(program)
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program)
     return buffer.getvalue()
 
 
@@ -82,9 +80,8 @@ def run_brainif(program: str, inputs: list) -> str:
     from esolangs.interpreters.tape_based.brainif import run
 
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs):
-        with redirect_stdout(buffer):
-            run(program.splitlines())
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines())
     return buffer.getvalue()
 
 
@@ -92,9 +89,8 @@ def run_nevermind(program: str, inputs: list) -> str:
     from esolangs.interpreters.other.nevermind import run
 
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs):
-        with redirect_stdout(buffer):
-            run(program.splitlines())
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines())
     return buffer.getvalue()
 
 

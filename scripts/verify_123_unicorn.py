@@ -17,7 +17,8 @@ from esolangs.tools.generate import _123
 
 
 def main(argv):
-    binary = open(argv[1], "rb").read()
+    with open(argv[1], "rb") as f:
+        binary = f.read()
     failures = 0
     for text in argv[2:]:
         out, _ = run_elf(binary, _123(text).encode())

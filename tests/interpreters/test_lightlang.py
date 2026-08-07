@@ -1,5 +1,4 @@
-"""
-Unit tests for Lightlang interpreter.
+"""Unit tests for Lightlang interpreter.
 
 Tests cover all Lightlang commands, program flow control, and example programs.
 Lightlang is a minimal esoteric language that uses only 1 bit as memory.

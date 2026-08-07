@@ -6,7 +6,7 @@ Movement commands work overground, work commands function underground.
 """
 
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 
 def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:

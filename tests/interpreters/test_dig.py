@@ -1,5 +1,4 @@
-"""
-Unit tests for Dig interpreter.
+"""Unit tests for Dig interpreter.
 
 Tests cover Dig commands and example programs from esolangs.org.
 Dig is a 2D esoteric programming language with a mole (pointer) that moves on a
@@ -10,7 +9,6 @@ is the first digit adjacent to the command (up, right, down, left).
 
 import io
 from contextlib import redirect_stdout
-from typing import List, Optional
 from unittest.mock import patch
 
 import pytest
@@ -18,12 +16,11 @@ import pytest
 from esolangs.interpreters.register_based.dig import run
 
 
-def run_and_capture(code: List[str], inputs: Optional[List[str]] = None) -> str:
+def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     """Run a Dig program (patching input) and return its stdout."""
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []):
-        with redirect_stdout(buffer):
-            run(code)
+    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
+        run(code)
     return buffer.getvalue()
 
 
@@ -133,7 +130,7 @@ class TestDigEdgeCases:
 
     def test_empty_program(self) -> None:
         """Test that an empty program raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="empty sequence"):
             run([])
 
     def test_single_character_program(self) -> None:
