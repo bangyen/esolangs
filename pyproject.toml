@@ -169,6 +169,8 @@ module = [
     "esolangs.interpreters.tape_based.suffolk",
     "esolangs.interpreters.tape_based.minifuck",
     "esolangs.interpreters.register_based.huf",
+    "esolangs.interpreters.tape_based.circlefuck",
+    "esolangs.interpreters.other.bitdeque",
 ]
 disallow_untyped_defs = true
 

@@ -2,16 +2,16 @@ import re
 import sys
 
 
-def run(code):
+def run(code: str) -> None:
     lst = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", r"GOTO *(\d+)")
 
     join = f'({"|".join(lst)})'
-    code = re.findall(join, code)
+    tokens = re.findall(join, code)
     ind = reg = 0
-    deq = []
+    deq: list[int] = []
 
-    while ind < len(code):
-        sym = code[ind][0]
+    while ind < len(tokens):
+        sym = tokens[ind][0]
         if sym == "PUSH":
             deq.append(reg)
         elif sym == "INJECT":
