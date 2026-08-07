@@ -2,8 +2,26 @@
 
 import math
 
-__all__ = ['_ASCII_ART_BLOCKS', '_MAMMALIAN_WALK', '_MINUS_REM', '_PLUS_REM', '_mammalian_walk', '_six_five_path', 'ascii_art', 'bfstack', 'brainif', 'circlefuck', 'excon', 'mammalian', 'minifuck', 'six_five', 'suffolk']
-def _six_five_path(src, dst):
+__all__ = [
+    "_ASCII_ART_BLOCKS",
+    "_MAMMALIAN_WALK",
+    "_MINUS_REM",
+    "_PLUS_REM",
+    "_mammalian_walk",
+    "_six_five_path",
+    "ascii_art",
+    "bfstack",
+    "brainif",
+    "circlefuck",
+    "excon",
+    "mammalian",
+    "minifuck",
+    "six_five",
+    "suffolk",
+]
+
+
+def _six_five_path(src: int, dst: int) -> str:
     """Shortest sequence of 5/6 additions and 2/9 subtractions from src to dst.
 
     The delta is built from a run of sixes (or fives) plus a short remainder
@@ -24,7 +42,7 @@ def _six_five_path(src, dst):
     return p6 if len(p6) <= len(p5) else p5
 
 
-def _mammalian_walk(ptr):
+def _mammalian_walk(ptr: int) -> list[dict[int, int]]:
     """SPRINT paths from ``ptr`` for every possible SEED count mod 256.
 
     SEED gives array ``i`` the first value ``(i + 1) * K``, so a SPRINT from
@@ -45,7 +63,6 @@ def _mammalian_walk(ptr):
     return _MAMMALIAN_WALK[ptr]
 
 
-
 _PLUS_REM = ["", "62", "6622", "55599", "559", "5"]  # +5/+6 paths for remainders
 _MINUS_REM = ["", "95", "9955", "999555", "262", "2"]  # -5/-6 paths
 
@@ -61,7 +78,8 @@ _ASCII_ART_BLOCKS = {
 
 _MAMMALIAN_WALK: dict[int, list[dict[int, int]]] = {}
 
-def bfstack(text):
+
+def bfstack(text: str) -> str:
     res = ">\n"
     acc = 0
 
@@ -78,7 +96,7 @@ def bfstack(text):
     return res
 
 
-def brainif(text):
+def brainif(text: str) -> str:
     res = ""
     acc = 0
 
@@ -98,7 +116,7 @@ def brainif(text):
     return res.strip()
 
 
-def suffolk(text):
+def suffolk(text: str) -> str:
     if not text:
         return ""
     # Cell 2 is a persistent helper large enough that ``!`` (which computes
@@ -113,7 +131,7 @@ def suffolk(text):
     return ">>!" * big + "\n" + "\n".join(res)
 
 
-def excon(text):
+def excon(text: str) -> str:
     res = ""
 
     for c in text:
@@ -129,7 +147,7 @@ def excon(text):
     return res
 
 
-def six_five(text):
+def six_five(text: str) -> str:
     cur = 0
     res = []
     for c in text:
@@ -139,7 +157,7 @@ def six_five(text):
     return "".join(res)
 
 
-def ascii_art(text):
+def ascii_art(text: str) -> str:
     # An empty program still needs a cell; the "+" block is a no-op.
     if not text:
         return _ASCII_ART_BLOCKS["+"]
@@ -147,7 +165,7 @@ def ascii_art(text):
     return "\n\n".join(_ASCII_ART_BLOCKS[ch] for ch in bf)
 
 
-def minifuck(text):
+def minifuck(text: str) -> str:
     if "\x00" in text:
         raise ValueError("Minifuck cannot output the NUL character")
     res = []
@@ -195,7 +213,7 @@ def minifuck(text):
     return "".join(res)
 
 
-def circlefuck(text):
+def circlefuck(text: str) -> str:
     """Generate a CircleFuck program that outputs ``text``.
 
     CircleFuck's tape is the program itself, so each cell starts out holding
@@ -233,7 +251,7 @@ def circlefuck(text):
     return "".join(prog)
 
 
-def mammalian(text):
+def mammalian(text: str) -> str:
     """A SEED/SPRINT walk that reaches the array whose value is the character.
 
     SEED once so every array's first value is ``(i + 1) * K`` for the running
@@ -300,5 +318,3 @@ def mammalian(text):
         extras[ptr].append(t % 256)
 
     return "\n".join(prog)
-
-
