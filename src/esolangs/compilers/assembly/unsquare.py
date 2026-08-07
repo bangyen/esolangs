@@ -2,7 +2,7 @@ import sys
 from re import sub
 
 
-def count(code, ind):
+def count(code: str, ind: int) -> tuple[int, int]:
     code += "  "
     num = 0
 
@@ -35,7 +35,7 @@ def count(code, ind):
     return num, ind
 
 
-def prep(code):
+def prep(code: str) -> str:
     code = sub(r"[^OIAS+\-xPoi><]", "", code)
     ind = 0
 
@@ -60,7 +60,7 @@ def prep(code):
     return code.replace("SS", "")
 
 
-def comp(code):
+def comp(code: str) -> str:
     res = (
         "global _start\n"
         "_start:\n"

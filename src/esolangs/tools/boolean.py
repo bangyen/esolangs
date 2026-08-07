@@ -5,8 +5,10 @@ that reads n boolean inputs and prints the truth-table result for the
 combination it is given.
 """
 
+from collections.abc import Sequence
 
-def sophie(truth_table, n):
+
+def sophie(truth_table: str, n: int) -> str:
     """Build a Sophie program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
@@ -18,7 +20,7 @@ def sophie(truth_table, n):
     result with ``#$48``/``#$49`` and prints it before halting.
     """
 
-    def build(path):
+    def build(path: list[int]) -> str:
         depth = len(path)
         if depth == n:
             row = 0
@@ -30,7 +32,7 @@ def sophie(truth_table, n):
     return build([])
 
 
-def modulous(truth_table, n):
+def modulous(truth_table: str, n: int) -> str:
     """Build a Modulous program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
@@ -42,7 +44,7 @@ def modulous(truth_table, n):
     result with ``[PSH INT]`` and prints it.
     """
 
-    def build(S, k):
+    def build(S: list[int], k: int) -> str:
         if len(S) == 1:
             return f"[PSH INT {truth_table[S[0]]}][PRT INT][END]"
         g0 = [r for r in S if ((r >> (n - k)) & 1) == 0]
@@ -55,7 +57,7 @@ def modulous(truth_table, n):
     return "[INP INT]" * n + build(list(range(2**n)), n)
 
 
-def brainif(truth_table, n):
+def brainif(truth_table: str, n: int) -> str:
     """Build a BrainIf program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
@@ -123,7 +125,7 @@ def brainif(truth_table, n):
     return "\n".join(lines)
 
 
-def nevermind(truth_table, n):
+def nevermind(truth_table: str, n: int) -> str:
     """Build a Nevermind program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
@@ -138,7 +140,7 @@ def nevermind(truth_table, n):
         lines.append("input,?")
         lines.append(f"make,{chr(ord('a') + i)},$answer")
 
-    def build(k, row):
+    def build(k: int, row: int) -> None:
         if k == n:
             lines.append(f"print,{truth_table[row]}")
             return
@@ -151,7 +153,7 @@ def nevermind(truth_table, n):
     return "\n".join(lines)
 
 
-def circlefuck(truth_table, n):
+def circlefuck(truth_table: str, n: int) -> str:
     """Build a CircleFuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
@@ -164,17 +166,17 @@ def circlefuck(truth_table, n):
     tree never needs to skip the sibling branch.
     """
 
-    def emit(c):
+    def emit(c: str) -> None:
         prog.append(c)
 
-    prog: list = []
+    prog: list[str] = []
     for _ in range(n):
         emit(",")
         prog.extend("-" * 48)
         emit(">")
     prog.pop()  # the trailing ">" would leave the pointer past the last input
 
-    def build(k, row):
+    def build(k: int, row: int) -> None:
         if k < 0:
             prog.extend("+" * (48 + int(truth_table[row])))
             emit(".")
@@ -194,7 +196,7 @@ def circlefuck(truth_table, n):
     return "".join(prog)
 
 
-def circlefuck_byte(truth_table, n):
+def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
     """Build a CircleFuck program computing a byte-valued function.
 
     ``truth_table`` is a sequence of ``2**n`` byte values (0-255) indexed by
@@ -203,17 +205,18 @@ def circlefuck_byte(truth_table, n):
     outputs: each leaf prints ``chr(value)`` instead of ``chr(48 + bit)``.
     """
 
-    def emit(c):
+    prog: list[str] = []
+
+    def emit(c: str) -> None:
         prog.append(c)
 
-    prog: list = []
     for _ in range(n):
         emit(",")
         prog.extend("-" * 48)
         emit(">")
     prog.pop()  # the trailing ">" would leave the pointer past the last input
 
-    def build(k, row):
+    def build(k: int, row: int) -> None:
         if k < 0:
             value = truth_table[row]
             if value:

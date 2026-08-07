@@ -2,7 +2,7 @@ import sys
 from re import sub
 
 
-def count(code, ind):
+def count(code: str, ind: int) -> int:
     char = code[ind]
     code += " "
     num = 0
@@ -14,7 +14,7 @@ def count(code, ind):
     return num
 
 
-def comp(code, num):
+def comp(code: str, num: int) -> str:
     code = sub("[^><.,!]", "", code)
     res = (
         "global _start\n"
