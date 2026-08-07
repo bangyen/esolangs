@@ -29,6 +29,7 @@ from esolangs.tools.generators.register import (
 from esolangs.tools.generators.stack import modulous, temporary
 from esolangs.tools.generators.tape import (
     ascii_art,
+    bf,
     bfstack,
     brainif,
     circlefuck,
@@ -43,6 +44,7 @@ __all__ = [
     "_123",
     "_ilog",
     "ascii_art",
+    "bf",
     "bfstack",
     "bio",
     "brainif",

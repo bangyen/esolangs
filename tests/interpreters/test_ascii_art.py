@@ -66,9 +66,44 @@ class TestASCIIArt:
             == ""
         )
 
+    def test_nested_loop_iterates(self) -> None:
+        """+++[>++[>+<-]<-] runs the inner loop on every outer iteration."""
+        assert (
+            run_and_capture(
+                program(
+                    PLUS,
+                    PLUS,
+                    PLUS,
+                    LOOP_OPEN,
+                    RIGHT,
+                    PLUS,
+                    PLUS,
+                    LOOP_OPEN,
+                    RIGHT,
+                    PLUS,
+                    LEFT,
+                    MINUS,
+                    LOOP_CLOSE,
+                    LEFT,
+                    MINUS,
+                    LOOP_CLOSE,
+                    RIGHT,
+                    PLUS,
+                    PLUS,
+                    PLUS,
+                    DOT,
+                )
+            )
+            == "\x03"
+        )
+
     def test_unmatched_open_bracket(self) -> None:
         """An unmatched [ with a zero cell halts cleanly."""
         assert run_and_capture(program(LOOP_OPEN)) == ""
+
+    def test_unmatched_close_bracket_with_nonzero_cell(self) -> None:
+        """An unmatched ] with a nonzero cell halts cleanly."""
+        assert run_and_capture(program(PLUS, LOOP_CLOSE)) == ""
 
     def test_nested_open_brackets(self) -> None:
         """Nested [ brackets are counted during the skip."""
