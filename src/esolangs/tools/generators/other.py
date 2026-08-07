@@ -6,8 +6,23 @@ import re
 from esolangs.tools._ztoalc import _collatz_prefix, _search_start
 from esolangs.tools.ztoalc_starts import STARTS
 
-__all__ = ['_123', 'clockwise', 'container', 'forth', 'home_row', 'laserfuck', 'magnitude', 'nevermind', 'nocomment', 'painfuck', 'unsquare', 'ztoalc']
-def clockwise(text):
+__all__ = [
+    "_123",
+    "clockwise",
+    "container",
+    "forth",
+    "home_row",
+    "laserfuck",
+    "magnitude",
+    "nevermind",
+    "nocomment",
+    "painfuck",
+    "unsquare",
+    "ztoalc",
+]
+
+
+def clockwise(text: str) -> str:
     """A 1D parity program wrapped around the perimeter of a square.
 
     The turtle walks the ring clockwise, executing one instruction per cell.
@@ -42,10 +57,11 @@ def clockwise(text):
 
     return "\n".join("".join(row) for row in grid)
 
+
 from esolangs.tools.generators.helpers import _ilog
 
 
-def container(text):
+def container(text: str) -> str:
     ind = last = 0
     if text:
         res = (
@@ -72,7 +88,7 @@ def container(text):
     return res
 
 
-def nevermind(text):
+def nevermind(text: str) -> str:
     """A ``print`` command whose arguments are joined without a separator.
 
     Commas separate arguments, so a comma in the text is encoded as ``*44``,
@@ -104,7 +120,7 @@ def nevermind(text):
     return "print," + ",".join(args)
 
 
-def ztoalc(text):
+def ztoalc(text: str) -> str:
     n = len(text)
     if not text:
         return "2"
@@ -125,7 +141,7 @@ def ztoalc(text):
     return "\n".join(lines)
 
 
-def forth(text):
+def forth(text: str) -> str:
     """Each character is built as ``m * 15**n + p`` and printed with ``.``.
 
     ``F`` pushes 15 (the largest digit), ``*`` and ``+`` do arithmetic, and
@@ -150,7 +166,7 @@ def forth(text):
     return "0" + "".join(build(c) for c in text[::-1]) + "[.]"
 
 
-def laserfuck(text):
+def laserfuck(text: str) -> str:
     """Build a LaserFuck program that outputs ``text``.
 
     Phase 1 generates a brainfuck-style program: each pass picks a base about
@@ -283,7 +299,7 @@ def laserfuck(text):
     return "\n".join(grid)
 
 
-def magnitude(text):
+def magnitude(text: str) -> str:
     def close(val, start):
         if start > val:
             return 0
@@ -342,7 +358,7 @@ def magnitude(text):
     return prog
 
 
-def painfuck(text):
+def painfuck(text: str) -> str:
     def add(val):
         return (val // 2) * "p" + (val % 2) * "ps"
 
@@ -418,7 +434,7 @@ def painfuck(text):
     return shifted
 
 
-def _123(text):
+def _123(text: str) -> str:
     """A 1/2 program per character, terminated by a trailing 1.
 
     ``edi`` carries the running XOR of the characters, so each segment only
@@ -451,7 +467,7 @@ def _123(text):
     return res + "1"
 
 
-def nocomment(text):
+def nocomment(text: str) -> str:
     """Generate a NoComment program that outputs ``text``.
 
     NoComment's ``c`` zeroes the current cell, ``i`` increments it, and ``o``
@@ -461,7 +477,7 @@ def nocomment(text):
     return "".join("c" + "i" * ord(c) + "o" for c in text)
 
 
-def unsquare(text):
+def unsquare(text: str) -> str:
     """Generate an Unsquare program that outputs ``text``.
 
     ``OA``/``IA`` build 0/1 in the register and each following ``+`` adds 2,
@@ -477,7 +493,7 @@ def unsquare(text):
     return "".join(build(ord(c)) + "Po" for c in text)
 
 
-def home_row(text):
+def home_row(text: str) -> str:
     """Generate a Home Row program that outputs ``text``.
 
     ``a`` increments the current cell and ``k`` prints it as a byte, resetting
@@ -491,5 +507,3 @@ def home_row(text):
         else:
             res.append("a" * ord(c) + "k")
     return "".join(res) + ";"
-
-
