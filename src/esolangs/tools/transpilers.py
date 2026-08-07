@@ -9,6 +9,7 @@ own, and the outputs must agree.
 """
 
 import importlib
+import re
 from collections.abc import Callable
 from typing import cast
 
@@ -18,6 +19,7 @@ __all__ = [
     "bf_to_ascii_art",
     "bf_to_circlefuck",
     "bfstack_to_bf",
+    "bio_to_bf",
     "nocomment_to_bf",
 ]
 
@@ -189,10 +191,46 @@ def bfstack_to_bf(program: str) -> str:
     return "".join(_BFSTACK_TO_BF[c] for c in program if c in _BFSTACK_TO_BF)
 
 
+_BIO_INC = {"0o": "+", "1o": "-"}
+
+
+def bio_to_bf(program: str) -> str:
+    """Rewrite a BIO program into brainfuck.
+
+    BIO's three registers x/y/z live in the first three brainfuck cells.
+    Every command is prefixed by a move to its register and suffixed by a
+    move back to cell 0, because brainfuck has no absolute addressing; the
+    loop close ``}`` must expand to the register of the ``0i`` it closes, so
+    the command stack is tracked.  BIO's registers are unbounded while
+    brainfuck's cells wrap mod 256, so the transpiler targets programs whose
+    registers never reach a nonzero multiple of 256: output already agrees
+    (``1i`` prints ``reg % 256``), and loop conditions agree exactly on that
+    class.
+    """
+    cmds = [c.lower() for c in re.findall(r"([01][oOiI][xXyYzZ]|})", program)]
+    res: list[str] = []
+    loops: list[int] = []
+    for cmd in cmds:
+        reg = "xyz".find(cmd[-1])
+        op = cmd[:2]
+        if op in _BIO_INC:
+            res.append(">" * reg + _BIO_INC[op] + "<" * reg)
+        elif op == "1i":
+            res.append(">" * reg + "." + "<" * reg)
+        elif op == "0i":
+            res.append(">" * reg + "[" + "<" * reg)
+            loops.append(reg)
+        else:  # "}"
+            reg = loops.pop()
+            res.append(">" * reg + "]" + "<" * reg)
+    return "".join(res)
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BF", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "BF"): ascii_art_to_bf,
     ("BF", "CircleFuck"): bf_to_circlefuck,
     ("NoComment", "BF"): nocomment_to_bf,
     ("BFStack", "BF"): bfstack_to_bf,
+    ("BIO", "BF"): bio_to_bf,
 }
