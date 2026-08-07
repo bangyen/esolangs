@@ -9,7 +9,7 @@ description = "A comprehensive collection of esoteric programming language inter
 authors = [{name = "Bangyen Pham", email = "bangyenp@gmail.com"}]
 license = "GPL-3.0-or-later"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -30,14 +30,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=9.0.3; python_version >= '3.10'",
-    "pytest>=7.0.0; python_version < '3.10'",
+    "pytest>=9.0.3",
     "pytest-cov>=4.0.0",
-    "black==26.3.1; python_version >= '3.10'",
-    "black==24.10.0; python_version < '3.10'",
-    "click>=8.3.3; python_version >= '3.10'",
-    "pygments>=2.20.0; python_version >= '3.10'",
-    "urllib3>=2.7.0; python_version >= '3.10'",
+    "black==26.3.1",
+    "click>=8.3.3",
+    "pygments>=2.20.0",
+    "urllib3>=2.7.0",
     "unicorn>=2.1.4",
     "ruff>=0.0.280",
     "mypy>=1.0.0",
@@ -104,7 +102,7 @@ ignore = [
 "**/__main__.py" = ["E402"]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 files = ["src"]
 exclude = ["\\.venv/", "build/", "dist/"]
 warn_return_any = true
