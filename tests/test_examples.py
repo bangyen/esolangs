@@ -17,34 +17,21 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.registry import LANGUAGES
+
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples" / "hello-world"
 
-# name -> (interpreter module under esolangs.interpreters, split lines, kwargs)
+
+def _file_name(display_name: str) -> str:
+    return display_name.lower().replace(" ", "-")
+
+
+# example file stem -> (interpreter module, split lines, kwargs), derived
+# from the language registry.
 EXAMPLES = {
-    "6-5": ("tape_based.6-5", False, {}),
-    "ascii-art": ("tape_based.ascii-art", False, {}),
-    "bfstack": ("stack_based.bfstack", False, {}),
-    "bio": ("register_based.bio", False, {}),
-    "brainif": ("tape_based.brainif", True, {}),
-    "circlefuck": ("tape_based.circlefuck", False, {}),
-    "clockwise": ("other.clockwise", True, {}),
-    "container": ("other.container", True, {}),
-    "dig": ("register_based.dig", True, {}),
-    "dotlang": ("register_based.dotlang", True, {}),
-    "eval": ("stack_based.eval", False, {}),
-    "excon": ("tape_based.excon", False, {}),
-    "huf": ("register_based.huf", False, {}),
-    "mammalian": ("tape_based.mammalian", False, {}),
-    "minifuck": ("tape_based.minifuck", False, {}),
-    "modulous": ("stack_based.modulous", False, {}),
-    "nevermind": ("other.nevermind", True, {}),
-    "polynomial": ("register_based.polynomial", False, {}),
-    "qoibl": ("register_based.qoibl", True, {}),
-    "sophie": ("register_based.sophie", False, {}),
-    "suffolk": ("tape_based.suffolk", False, {"limit": 1}),
-    "temporary": ("stack_based.temporary", False, {}),
-    "wii2d": ("register_based.WII2D", True, {}),
-    "ztoalc": ("other.ztoalc", True, {}),
+    _file_name(lang.name): (lang.interpreter, lang.split, dict(lang.kwargs))
+    for lang in LANGUAGES.values()
+    if lang.generator and lang.interpreter
 }
 
 # container halts by calling sys.exit(0)
@@ -74,33 +61,10 @@ def test_hello_world_example(name: str) -> None:
 
 def test_example_files_match_generator() -> None:
     """The committed examples are exactly what the generators produce today."""
-    import esolangs.tools.generate as gen
-
     generators = {
-        "6-5": gen.six_five,
-        "ascii-art": gen.ascii_art,
-        "bfstack": gen.bfstack,
-        "bio": gen.bio,
-        "brainif": gen.brainif,
-        "circlefuck": gen.circlefuck,
-        "clockwise": gen.clockwise,
-        "container": gen.container,
-        "dig": gen.dig,
-        "dotlang": gen.dotlang,
-        "eval": gen.eval,
-        "excon": gen.excon,
-        "huf": gen.huf,
-        "mammalian": gen.mammalian,
-        "minifuck": gen.minifuck,
-        "modulous": gen.modulous,
-        "nevermind": gen.nevermind,
-        "polynomial": gen.polynomial,
-        "qoibl": gen.qoibl,
-        "sophie": gen.sophie,
-        "suffolk": gen.suffolk,
-        "temporary": gen.temporary,
-        "wii2d": gen.wii2d,
-        "ztoalc": gen.ztoalc,
+        _file_name(lang.name): lang.generator
+        for lang in LANGUAGES.values()
+        if lang.generator and lang.interpreter
     }
     for name, generator in generators.items():
         path = EXAMPLES_DIR / f"{name}.txt"

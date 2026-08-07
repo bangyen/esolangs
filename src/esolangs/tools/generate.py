@@ -970,51 +970,17 @@ def nevermind(text):
     return "print," + ",".join(args)
 
 
-_GENERATORS = {
-    "6-5": six_five,
-    "ASCII art": ascii_art,
-    "BFStack": bfstack,
-    "BIO": bio,
-    "BrainIf": brainif,
-    "Clockwise": clockwise,
-    "CircleFuck": circlefuck,
-    "Container": container,
-    "Dig": dig,
-    "Dotlang": dotlang,
-    "Eval": eval,
-    "EXCON": excon,
-    "Forþ": forth,
-    "Home Row": home_row,
-    "huf": huf,
-    "LaserFuck": laserfuck,
-    "Magnitude": magnitude,
-    "MAMMALIAN": mammalian,
-    "Minifuck": minifuck,
-    "Modulous": modulous,
-    "Nevermind": nevermind,
-    "NoComment": nocomment,
-    "Painfuck": painfuck,
-    "Polynomial": polynomial,
-    "Qoibl": qoibl,
-    "Sophie": sophie,
-    "Suffolk": suffolk,
-    "Temporary": temporary,
-    "Unsquare": unsquare,
-    "WII2D": wii2d,
-    "ZTOALC": ztoalc,
-    "123": _123,
-}
-
-
 def main() -> None:
     """Generate a program that outputs the given text for each supported language."""
+    from esolangs.registry import GENERATORS  # local import avoids a cycle
+
     if len(sys.argv) < 2:
         print("usage: python -m esolangs.tools.generate <text>")
         print('example: python -m esolangs.tools.generate "Hello, World!"')
         sys.exit(1)
 
     text = sys.argv[1]
-    for name, gen in _GENERATORS.items():
+    for name, gen in GENERATORS.items():
         print(f"--- {name} ---")
         print(gen(text))
 
