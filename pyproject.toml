@@ -185,6 +185,8 @@ module = [
     "esolangs.interpreters.other.clockwise",
     "esolangs.interpreters.register_based.minsky-swap",
     "esolangs.interpreters.stack_based.temporary",
+    "esolangs.interpreters.register_based.dig",
+    "esolangs.interpreters.register_based.polynomial",
 ]
 disallow_untyped_defs = true
 
