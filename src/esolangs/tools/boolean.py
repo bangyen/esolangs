@@ -244,3 +244,22 @@ def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
 
     build(n - 1, 0)
     return "".join(prog)
+
+
+def taglate(truth_table: str, n: int) -> str:
+    """Build a Taglate program computing the given truth table.
+
+    Only ``n == 1`` is supported: the output is the affine combination
+    ``base + bit * coeff`` of the single normalized input, so each of the
+    four one-input truth tables needs no branching.  General ``n`` requires
+    duplicating each input bit for use across the truth table's monomials;
+    Taglate's ``t`` command can do that (a bit encodes as ``%00``/``%11``,
+    whose digit pairs are copies), but assembling it into a general
+    generator is an open problem.
+    """
+    if n != 1:
+        raise ValueError("the Taglate boolean generator supports n == 1 only")
+    base = 48 + int(truth_table[0])
+    coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
+    seed = "0" + chr(coeff) + chr(base)
+    return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"

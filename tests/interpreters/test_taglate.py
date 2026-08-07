@@ -11,7 +11,6 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import esolangs
-
 from esolangs.interpreters.other.taglate import run
 
 
