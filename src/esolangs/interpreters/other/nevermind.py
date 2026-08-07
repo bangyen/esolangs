@@ -1,8 +1,9 @@
 import sys
+from typing import cast
 
 
-def find(code, ind):
-    if "end" in (op := code[ind][0]):
+def find(code: list, ind: int) -> int:
+    if "end" in (op := str(code[ind][0])):
         match = op[3:]
         move = -1
     else:
@@ -23,15 +24,15 @@ def find(code, ind):
     return ind - 1
 
 
-def run(code):
+def run(lines: list[str]) -> None:
     ind = 0
-    var: dict = {}
+    var: dict[str, int | float | str] = {}
     skip = False
+    code: list[list[str | int | float]] = []
 
-    for num, raw in enumerate(code):
+    for raw in lines:
         line = raw.lstrip().rstrip("\n").split(",")
-
-        code[num] = [v.replace("*44", ",") for v in line if v]
+        code.append([v.replace("*44", ",") for v in line if v])
 
     while ind < len(code):
         if (c := code[ind]) and not skip:
@@ -39,43 +40,40 @@ def run(code):
                 if isinstance(y, str):
                     if y[0] == "$":
                         c[x + 1] = var[y[1:].strip()]
-                    if (
-                        isinstance(c[x + 1], str)
-                        and c[x + 1].isascii()
-                        and c[x + 1].isdigit()
-                    ):
-                        c[x + 1] = int(c[x + 1])
+                    nxt = c[x + 1]
+                    if isinstance(nxt, str) and nxt.isascii() and nxt.isdigit():
+                        c[x + 1] = int(nxt)
 
             if (op := c[0]) == "print":
                 print(*c[1:], sep="")
             elif op == "input":
-                var["answer"] = input(c[1])
+                var["answer"] = input(cast(str, c[1]))
             elif op == "make":
                 if len(c) == 5:
                     if (o := c[3]) == "+":
-                        v = c[2] + c[4]
+                        v = cast(int | float, c[2]) + cast(int | float, c[4])
                     elif o == "-":
-                        v = c[2] - c[4]
+                        v = cast(int | float, c[2]) - cast(int | float, c[4])
                     elif o == "*":
-                        v = c[2] * c[4]
+                        v = cast(int | float, c[2]) * cast(int | float, c[4])
                     else:
-                        v = c[2] / c[4]
-                    var[c[1]] = v
+                        v = cast(int | float, c[2]) / cast(int | float, c[4])
+                    var[cast(str, c[1])] = v
                 else:
-                    var[c[1]] = c[2]
+                    var[cast(str, c[1])] = c[2]
             elif op == "if":
-                x, o, y = c[1:4]
-                if o == ">":
-                    b = x > y
-                elif o == "<":
-                    b = x < y
+                lhs, cmp_op, rhs = c[1:4]
+                if cmp_op == ">":
+                    b = cast(int | float, lhs) > cast(int | float, rhs)
+                elif cmp_op == "<":
+                    b = cast(int | float, lhs) < cast(int | float, rhs)
                 else:
-                    b = x == y
+                    b = lhs == rhs
                 if not b:
                     ind = find(code, ind)
             elif op == "loop":
                 if c[1]:
-                    c[1] -= 1
+                    c[1] = cast(int | float, c[1]) - 1
                 else:
                     ind = find(code, ind)
                     skip = True
