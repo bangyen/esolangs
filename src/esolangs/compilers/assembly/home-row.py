@@ -2,7 +2,7 @@ import sys
 from re import sub
 
 
-def count(code, ind):
+def count(code: str, ind: int) -> tuple[int, int]:
     code += " "
     num = 0
 
@@ -21,7 +21,7 @@ def count(code, ind):
     return num, ind
 
 
-def comp(code):
+def comp(code: str) -> str:
     res = ""
 
     func = {
