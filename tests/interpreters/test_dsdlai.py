@@ -1,5 +1,4 @@
-"""
-Unit tests for DSDLAI (Dig straight down like an idiot) interpreter.
+"""Unit tests for DSDLAI (Dig straight down like an idiot) interpreter.
 
 Tests cover DSDLAI's probabilistic death mechanism and example programs.
 DSDLAI is a variant of Dig where there is a 20% to 90% chance for the program

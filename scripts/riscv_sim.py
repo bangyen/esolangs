@@ -150,7 +150,8 @@ if __name__ == "__main__":
 
     from esolangs.tools.generate import _123
 
-    binary = open(sys.argv[1], "rb").read()
+    with open(sys.argv[1], "rb") as f:
+        binary = f.read()
     text = sys.argv[2]
     program = _123(text)
     out = disassemble_and_run(binary, program.encode())

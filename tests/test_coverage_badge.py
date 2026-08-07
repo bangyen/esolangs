@@ -21,7 +21,7 @@ def load_script() -> object:
     return module
 
 
-@pytest.fixture()
+@pytest.fixture
 def badge_module() -> object:
     return load_script()
 

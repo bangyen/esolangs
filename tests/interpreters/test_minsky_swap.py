@@ -1,5 +1,4 @@
-"""
-Unit tests for Minsky Swap interpreter.
+"""Unit tests for Minsky Swap interpreter.
 
 Tests cover all Minsky Swap commands, program flow control, and both compact and readable notation.
 Minsky Swap is a Turing-complete esoteric language based on Minsky machines with two registers.

@@ -7,7 +7,6 @@ Uses commands in format [0|1][O|I][x|y|z] for increment/decrement, loops, and ou
 
 import re
 import sys
-from typing import List
 
 
 def run(code: str) -> None:
@@ -17,8 +16,8 @@ def run(code: str) -> None:
     commands = re.findall(lang, code)
     commands = [k.lower() for k in commands]
 
-    reg: List[int] = [0] * 3
-    stk: List[int] = []
+    reg: list[int] = [0] * 3
+    stk: list[int] = []
     ind = 0
 
     while ind < len(commands):

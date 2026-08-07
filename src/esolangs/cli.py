@@ -33,6 +33,7 @@ def _fail(message: str) -> None:
 
 
 def main() -> None:
+    """Dispatch the ``esolangs`` subcommands."""
     argv = sys.argv[1:]
     if not argv:
         sys.stderr.write(USAGE)

@@ -2,17 +2,15 @@
 
 import io
 from contextlib import redirect_stdout
-from typing import List, Optional
 from unittest.mock import patch
 
 from esolangs.interpreters.tape_based.brainif import run
 
 
-def run_and_capture(code: List[str], inputs: Optional[List[str]] = None) -> str:
+def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs or []):
-        with redirect_stdout(buffer):
-            run(code)
+    with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
+        run(code)
     return buffer.getvalue()
 
 
@@ -51,6 +49,6 @@ class TestBrainIfGeneratedHelloWorld:
         assert run_and_capture(["if 0 output", "if 0 frobnicate"]) == "\x00"
 
     def test_goto(self) -> None:
-        """goto jumps to the given line number."""
+        """Goto jumps to the given line number."""
         code = ["if 0 goto 3", "if 0 output", "if 0 increment", "if 1 output"]
         assert run_and_capture(code) == "\x01"

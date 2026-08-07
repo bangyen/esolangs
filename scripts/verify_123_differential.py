@@ -21,7 +21,8 @@ from esolangs.tools.generate import _123
 
 
 def main(argv):
-    rv_binary = open(argv[1], "rb").read()
+    with open(argv[1], "rb") as f:
+        rv_binary = f.read()
     x86_binary = assemble("extra/assembly/123.asm")
     failures = 0
     for text in argv[2:]:

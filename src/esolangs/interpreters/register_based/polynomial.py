@@ -16,7 +16,7 @@ The language features:
 
 import re
 import sys
-from typing import Any, List
+from typing import Any
 
 import numpy as np
 
@@ -28,7 +28,7 @@ def prime(number: int) -> bool:
     return all(number % val for val in range(2, int(np.sqrt(number)) + 1))
 
 
-def brackets(string: List[List[int]], pointer: int) -> int:
+def brackets(string: list[list[int]], pointer: int) -> int:
     """Find matching bracket for control flow statements."""
     length = len(string[pointer]) == 1
     end = string[pointer][0] in [2, 6]
@@ -46,14 +46,14 @@ def brackets(string: List[List[int]], pointer: int) -> int:
     return pointer
 
 
-def convert(pre: List[complex]) -> List[List[int]]:
+def convert(pre: list[complex]) -> list[list[int]]:
     """Convert polynomial roots to instruction codes using prime encoding."""
     rounded_roots = [np.round(k) for k in pre]
     # Sort by imaginary part, then by real part
     sorted_roots = sorted(
         rounded_roots, key=lambda x: (float(np.imag(x)), float(np.real(x)))
     )
-    post: List[List[int]] = []
+    post: list[list[int]] = []
     num = 2
 
     # A prime power p**v (v >= 1) is always >= p, so once num exceeds the
@@ -84,7 +84,7 @@ def convert(pre: List[complex]) -> List[List[int]]:
     return post
 
 
-def sanitize(code: str) -> List[int]:
+def sanitize(code: str) -> list[int]:
     """Parse polynomial string into coefficient list."""
     # Remove "f(x) = " prefix (with or without surrounding spaces)
     match = re.match(r"f\(x\)\s*=\s*(.*)", code)
@@ -157,7 +157,7 @@ def run(code: str) -> None:
     ind = reg = 0
     new = 1
     # Use Any to avoid complex type checking issues with mixed lambda types
-    sym: List[Any] = [
+    sym: list[Any] = [
         lambda r, a: r + a,  # +=
         lambda r, a: r - a,  # -=
         lambda r, a: r * a,  # *=
@@ -179,7 +179,7 @@ def run(code: str) -> None:
         one = instruction[0]
         rest = instruction[1:] if len(instruction) > 1 else []
 
-        if two := (rest + [0])[0]:
+        if two := ([*rest, 0])[0]:
             if one:
                 reg = sym[two - 1](reg, one)
             elif two - 1:

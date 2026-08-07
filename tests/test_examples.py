@@ -99,9 +99,8 @@ def run_with_input(name: str, subdir: str) -> None:
     argument = program.splitlines() if splitlines else program
 
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs):
-        with redirect_stdout(buffer):
-            run(argument)
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(argument)
     assert buffer.getvalue() == expected
 
 
