@@ -12,6 +12,7 @@ from esolangs.tools.generators.other import (
     nevermind,
     nocomment,
     painfuck,
+    taglate,
     unsquare,
     ztoalc,
 )
@@ -71,6 +72,7 @@ __all__ = [
     "six_five",
     "sophie",
     "suffolk",
+    "taglate",
     "temporary",
     "unsquare",
     "wii2d",

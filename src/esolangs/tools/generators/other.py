@@ -507,3 +507,15 @@ def home_row(text: str) -> str:
         else:
             res.append("a" * ord(c) + "k")
     return "".join(res) + ";"
+
+
+def taglate(text: str) -> str:
+    """Generate a Taglate program that outputs ``text``.
+
+    The first line seeds the queue with the text itself, and one ``i`` per
+    character pops and prints it.  A newline cannot appear in the text
+    because it would split the queue line.
+    """
+    if any(c in "\n\r" for c in text):
+        raise ValueError("Taglate cannot output a newline (the queue is one line)")
+    return text + "\n" + "i" * len(text)

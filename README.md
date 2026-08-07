@@ -152,6 +152,7 @@ Languages that don't fit into the above categories.
 - [Container](https://esolangs.org/wiki/Container)
 - [Keys](https://esolangs.org/wiki/Keys)
 - [Nevermind](https://esolangs.org/wiki/Nevermind)
+- [Taglate](https://esolangs.org/wiki/Taglate)
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)
 
 ## Extra Implementations
