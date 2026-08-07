@@ -26,13 +26,13 @@ class _Timeout(Exception):
     """Raised by the alarm handler when an interpreter does not terminate."""
 
 
-def _on_alarm(signum, frame):
+def _on_alarm(signum: int, frame: object) -> None:
     raise _Timeout("interpreter did not terminate on the empty program")
 
 
 @pytest.mark.skipif(os.name != "posix", reason="signal.alarm is POSIX-only")
 @pytest.mark.parametrize("module", MODULES)
-def test_empty_program_terminates(module):
+def test_empty_program_terminates(module: str) -> None:
     run = importlib.import_module(module).run
     signal.signal(signal.SIGALRM, _on_alarm)
     signal.alarm(3)

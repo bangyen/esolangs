@@ -42,7 +42,7 @@ class TestConvert:
     def test_xor_layout(self) -> None:
         """The XOR gate produces the standard two-level decision tree."""
 
-        def xor(a, b):
+        def xor(a: int, b: int) -> int:
             return a ^ b
 
         expected = (
@@ -57,7 +57,7 @@ class TestConvert:
         assert convert(xor) == expected
 
     def test_single_argument(self) -> None:
-        def not_gate(a):
+        def not_gate(a: int) -> int:
             return 1 - a
 
         program = convert(not_gate)
@@ -65,8 +65,8 @@ class TestConvert:
         assert "$3" in program
 
     def test_explicit_argument_count(self) -> None:
-        def fn(*args):
-            return args[0] and args[1]
+        def fn(*args: str) -> int:
+            return 1 if args[0] and args[1] else 0
 
         program = convert(fn, num=2)
         assert program.startswith("'")
@@ -81,7 +81,7 @@ class TestRoundTrip:
 
         from esolangs.interpreters.register_based.dig import run
 
-        def xor(a, b):
+        def xor(a: int, b: int) -> int:
             return a ^ b
 
         program = convert(xor).splitlines()
