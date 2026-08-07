@@ -1,6 +1,7 @@
 import itertools
 import re
 import sys
+from typing import cast
 
 
 def parse(code: str) -> list[tuple[str, int]]:
@@ -93,7 +94,7 @@ def comp(code: str) -> str:
 
     res += "\n\tmov eax, 1\n" "\txor ebx, ebx\n" "\tint 80h\n"
 
-    def end(s, mul):
+    def end(s: str, mul: bool) -> str:
         return (
             mul * ("\tdec esi\n" "\tcmp esi, 0\n" f"\tjg {s}\n" "\tinc esi\n")
             + "\tret\n"
@@ -103,7 +104,7 @@ def comp(code: str) -> str:
         res += (
             "\nright:\n"
             "\tdec ecx\n"
-            "\tmov byte [ecx], 0\n" + end("right", ins[">"][2])
+            "\tmov byte [ecx], 0\n" + end("right", cast(bool, ins[">"][2]))
         )
     if ins["<"][1]:
         res += (
@@ -121,7 +122,7 @@ def comp(code: str) -> str:
             "\noutput:\n"
             "\tmov eax, 4\n"
             "\tmov ebx, 1\n"
-            "\tint 80h\n" + end("output", ins["."][2])
+            "\tint 80h\n" + end("output", cast(bool, ins["."][2]))
         )
     if ins[","][1]:
         res += (
@@ -129,7 +130,7 @@ def comp(code: str) -> str:
             "\tmov eax, 3\n"
             "\txor ebx, ebx\n"
             "\tdec ecx\n"
-            "\tint 80h\n" + end("input", ins[","][2])
+            "\tint 80h\n" + end("input", cast(bool, ins[","][2]))
         )
 
     return res

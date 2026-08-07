@@ -113,7 +113,7 @@ def comp(code: str) -> str:
 
     res += "\n\tmov eax, 1\n" "\txor ebx, ebx\n" "\tint 80h\n\n"
 
-    def end(opr):
+    def end(opr: str) -> str:
         if func[opr][2]:
             mul = (
                 "\tdec esi\n"

@@ -99,7 +99,7 @@ def comp(code: str) -> str:
             end = False
         ind = new
 
-    def cell(r):
+    def cell(r: str) -> str:
         return (
             "\tmov eax, 20\n"
             f"\tmul {r}\n"

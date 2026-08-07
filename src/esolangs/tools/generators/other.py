@@ -152,7 +152,7 @@ def forth(text: str) -> str:
     """
     s = "0123456789ABCDEF"
 
-    def build(c):
+    def build(c: str) -> str:
         o = ord(c)
         if o == 0:
             return "0"
@@ -180,7 +180,7 @@ def laserfuck(text: str) -> str:
     code = ""
     linear = "".join(">" + "+" * ord(c) for c in text).rstrip(">")
 
-    def chunks(base):
+    def chunks(base: int) -> str:
         # one '>' then '+' per value's base-chunk, ending back at the left
         return "".join(">" + "+" * (n // base) for n in values).rstrip(">")
 
@@ -300,7 +300,7 @@ def laserfuck(text: str) -> str:
 
 
 def magnitude(text: str) -> str:
-    def close(val, start):
+    def close(val: int, start: int) -> int:
         if start > val:
             return 0
 
@@ -359,10 +359,10 @@ def magnitude(text: str) -> str:
 
 
 def painfuck(text: str) -> str:
-    def add(val):
+    def add(val: int) -> str:
         return (val // 2) * "p" + (val % 2) * "ps"
 
-    def close(val, s, op):
+    def close(val: int, s: str, op: str) -> tuple[int, str]:
         if val > 7:
             pwr = _ilog(7, val)
             s += pwr * "c" + op
@@ -377,7 +377,7 @@ def painfuck(text: str) -> str:
 
         return val, s
 
-    def loop(val, s, op):
+    def loop(val: int, s: str, op: str) -> tuple[int, str]:
         sqr = math.isqrt(val)
 
         if sqr > 3:
@@ -485,7 +485,7 @@ def unsquare(text: str) -> str:
     register to the stack and ``o`` prints the top byte.
     """
 
-    def build(v):
+    def build(v: int) -> str:
         if v % 2:
             return "IA" + "+" * ((v - 1) // 2)
         return "OA" + "+" * (v // 2)

@@ -7,8 +7,8 @@ stay integers.
 """
 
 
-def primes(count):
-    primes: list = []
+def primes(count: int) -> list[int]:
+    primes: list[int] = []
     candidate = 2
     while len(primes) < count:
         if all(candidate % p for p in primes):
@@ -17,16 +17,16 @@ def primes(count):
     return primes
 
 
-def multiply(a, b):
-    result = [0] * (len(a) + len(b) - 1)
+def multiply(a: list[int], b: list[int]) -> list[int]:
+    result: list[int] = [0] * (len(a) + len(b) - 1)
     for i, ai in enumerate(a):
         for j, bj in enumerate(b):
             result[i + j] += ai * bj
     return result
 
 
-def format_coeffs(coeffs):
-    terms = []
+def format_coeffs(coeffs: list[int]) -> str:
+    terms: list[str] = []
     degree = len(coeffs) - 1
     for i, coeff in enumerate(coeffs):
         d = degree - i
