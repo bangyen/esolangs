@@ -30,3 +30,9 @@ def test_unknown_language_raises():
         esolangs.generate("NoSuchLanguage", "x")
     with pytest.raises(ValueError, match="unknown language"):
         esolangs.run("NoSuchLanguage", "x")
+
+
+def test_run_eof_when_input_runs_out():
+    program = boolean.circlefuck("10", 1)  # reads one input bit
+    with pytest.raises(EOFError):
+        esolangs.run("CircleFuck", program, stdin="")

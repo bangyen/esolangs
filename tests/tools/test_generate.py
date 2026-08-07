@@ -214,7 +214,13 @@ class TestGeneratorRoundTrips:
             == "Hello, World!"
         )
         assert roundtrip(circlefuck_run, gen.circlefuck("+~")) == "+~"
+        assert roundtrip(circlefuck_run, gen.circlefuck("+-")) == "+-"
         assert roundtrip(circlefuck_run, gen.circlefuck("")) == ""
+
+    def test_home_row_nul(self) -> None:
+        """NUL uses an as (net zero) prefix so adjacent ks do not collapse."""
+        assert gen.home_row("\x00") == "ask;"
+        assert gen.home_row("a\x00b").count("ask") == 1
 
     def test_minifuck_carries_tape(self) -> None:
         """The tape carries between characters; a matching character is a bare dot."""
