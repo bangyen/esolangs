@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import sys
+from typing import ClassVar
 
 
 class Dot:
@@ -21,7 +22,7 @@ class Dot:
         (0, -1),
     )  # Direction vectors: up, right, down, left
     mx = my = 0  # Maximum x and y coordinates of the code grid
-    code: list[str] = []  # The 2D code grid as a list of strings
+    code: ClassVar[list[str]] = []  # The 2D code grid as a list of strings
 
     def __init__(self, x: int, y: int, d: int) -> None:
         """Initialize a new dot at the specified position and direction."""
