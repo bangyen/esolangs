@@ -327,10 +327,12 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
         + "e" * ahead + "f" * pairs
         + "gy" + "e" * (total + 2) + "gz"
     )
-    # Pop both inputs: they are at the tail after even-reduce, so
-    # rotate them to the front first.
-    pop_rot = qlen - pairs - 2  # tail position after f^pairs
-    return "e" * rot + zero + swap + bring + er + "e" * pop_rot + "ff"
+    # Pop: bring the two consumed inputs to the front
+    pop_rot = qlen - pairs - total  # position of the first leftover input
+    return (
+        "e" * rot + zero + swap + bring + er + "e" * pop_rot + "ff"
+        + "gy" + "e" * (ahead + 2) + "gz"
+    )
 
 
 def taglate(truth_table: str, n: int) -> str:
@@ -382,23 +384,16 @@ def taglate(truth_table: str, n: int) -> str:
     )
 
     select_parts = []
-    rem = n_eff  # remaining inputs (decreases when odd_reduce pops)
-    pairs = 2**rem
-    sel_offset = 0  # inputs already selected in the current rem-scope
     for level in range(n_eff - 1):
-        if level % 2 == 0:
-            # Even reduction: select half, keep all inputs
-            select_parts.append(_even_reduce(pairs, sel_offset, rem))
-            sel_offset += 1
-        else:
-            # Odd reduction: zero prev, swap, even-reduce, pop both
-            select_parts.append(_odd_reduce(pairs, sel_offset, rem))
-            rem -= 2        # two inputs popped
-            sel_offset = 0  # reset for new scope
-        pairs //= 2
+        pairs = 2 ** (n_eff - level)
+        select_parts.append(_even_reduce(pairs, level, n_eff))
 
-    # After alternating even/odd reductions, the queue is always 8 cells
-    # [0, v0, 0, v1, 48, 48, prev, curr] — exactly what _SEL1_N2 expects.
+    if n_eff > 2:
+        # Drop the first n_eff-2 already-used inputs, then rotate the
+        # remaining two inputs so the queue matches the 8-cell [0, w0, 0,
+        # w1, 48, 48, prev, curr] layout that the committed n=2 odd
+        # selector (_SEL1_N2) expects.
+        select_parts.append("e" * 6 + "f" * (n_eff - 2) + "e" * 2)
     select_parts.append(_SEL1_N2)
 
     return seed + "\n" + prefix + "".join(select_parts)
