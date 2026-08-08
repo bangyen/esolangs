@@ -26,28 +26,6 @@ _SIX_FIVE_PLUS = {0: "", 1: "62", 2: "6622", 3: "55599", 4: "559", 5: "5"}
 # 11 leading ``4``s so the first real marker is the 12th.
 _SIX_FIVE_LABELS = [chr(ord("C") + i) for i in range(24)]
 
-# Arithmetic suffixes (found by search, verified against the interpreter) that
-# evaluate each two-input truth table from the ``t``-extraction queue
-# ``[0, d0, 0, d1, 0, 1]``.
-_TAGLATE_TWO_SUFFIX = {
-    "0000": "a",
-    "0001": "bbefca",
-    "0010": "bdefcb",
-    "0011": "e",
-    "0100": "aafedb",
-    "0101": "ae",
-    "0110": "dbefbeja",
-    "0111": "ddfecb",
-    "1000": "ddefca",
-    "1001": "dbfebejb",
-    "1010": "ffbfa",
-    "1011": "aaefda",
-    "1100": "baeaa",
-    "1101": "bdfeca",
-    "1110": "bbfecb",
-    "1111": "aae",
-}
-
 
 def sophie(truth_table: str, n: int) -> str:
     """Build a Sophie program computing the given truth table.
@@ -296,12 +274,14 @@ def taglate(truth_table: str, n: int) -> str:
     combination ``base + bit * coeff``, so each one-input table needs no
     branching.
 
-    ``n == 2`` normalizes both inputs to 0/1 with ``h``/``e``/``b``, turns
-    the pair into a Google Translate URL with ``t`` (a bit encodes as
-    ``%00``/``%01``), and strips the URL down to ``[0, d0, 0, d1, 0, 1]``
-    with ``f``/``e``.  A short arithmetic suffix then evaluates the truth
-    table (found by search and verified against the interpreter); larger
-    ``n`` is an open problem.
+    ``n == 2`` seeds ``1 0...0 1`` and pushes both input characters, then a
+    prefix of ``h``/``e``/``b``/``d``/``j`` shrinks the queue into the
+    selection layout ``[0, t10, 0, t11, 0, t00, 0, t01, 48, 48, a, b]`` with
+    the inputs normalized to 0/1 bits.  A fixed command block then walks the
+    first input's two table halves and, inside each, the second input's two
+    entries, discarding the two unselected values, and finally adds the
+    selected 0/1 to the ``'0'`` character to print it.  No searching and no
+    ``t`` URL trick; larger ``n`` is an open problem.
     """
     if n == 1:
         base = 48 + int(truth_table[0])
@@ -309,11 +289,39 @@ def taglate(truth_table: str, n: int) -> str:
         seed = "0" + chr(coeff) + chr(base)
         return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
     if n == 2:
-        setup = "h" + "e" * 6 + "b" + "h" + "e" * 6 + "b" + "f" * 2
-        extract = "f" * 47 + "ee" + "f" + "ee" + "f" + "ee" + "f" * 13 + "ee"
-        return (
-            "000001\n" + setup + "t" + extract + _TAGLATE_TWO_SUFFIX[truth_table] + "i"
+        t00, t01, t10, t11 = map(int, truth_table)
+        selectors = "".join("d" if bit else "b" for bit in (t10, t11, t00, t01))
+        seed = "1" + "0" * 18 + "1"
+        prefix = "hehb" + "b".join(selectors) + "eebb" + "e" * 10 + "jj"
+        # e10 gy e4 gz eef4 gy e4 gz e7 gy e3 gz e3 gy e3 gz ff gy e4 gz e a e4 i
+        select = (
+            "e" * 10
+            + "gy"
+            + "e" * 4
+            + "gz"
+            + "ee"
+            + "f" * 4
+            + "gy"
+            + "e" * 4
+            + "gz"
+            + "e" * 7
+            + "gy"
+            + "e" * 3
+            + "gz"
+            + "e" * 3
+            + "gy"
+            + "e" * 3
+            + "gz"
+            + "ff"
+            + "gy"
+            + "e" * 4
+            + "gz"
+            + "e"
+            + "a"
+            + "e" * 4
+            + "i"
         )
+        return seed + "\n" + prefix + select
     raise ValueError("the Taglate boolean generator supports n == 2 only")
 
 
