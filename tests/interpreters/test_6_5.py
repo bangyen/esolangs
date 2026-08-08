@@ -74,4 +74,4 @@ class TestSixFive:
 
     def test_skip_when_equal(self) -> None:
         """7n skips the next instruction when the cell equals n."""
-        assert run_and_capture("55A7A5A0") == "\n\x0f"
+        assert run_and_capture("55A7A5A0") == "\n\n"
