@@ -290,13 +290,18 @@ _SEL1_N2 = (
 
 def _build_padded_tt(truth_table: str, n_effective: int) -> str:
     """Pad truth table for ghost-scheme: ghost=1 entries are all zero."""
-    orig = [int(c) for c in truth_table]
-    padded = [0] * (2**n_effective)
-    # fake=0 entries (index < 2^(n_effective-1)) = original
     half = 2 ** (n_effective - 1)
-    for i in range(half):
-        padded[i] = orig[i % 2 ** (n_effective - 1)]
-    return "".join(str(b) for b in padded)
+    return truth_table.ljust(half * 2, "0")
+
+
+def _validate_tt(truth_table: str, n: int) -> None:
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}"
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
 
 
 def taglate(truth_table: str, n: int) -> str:
@@ -310,16 +315,19 @@ def taglate(truth_table: str, n: int) -> str:
 
     For ``n >= 2`` the queue is seeded and a prefix of ``h``/``e``/``b``/
     ``d``/``j`` builds the selection layout.  Odd ``n`` prepends a fake
-    zero input (ghost digit) so that every even-reduce stride lands on
-    a zero-separator cell.  ``(n - 1)`` even-reduction blocks walk the
+    zero input (ghost digit) so the ghost level (always 0) avoids the
+    even-reduce stride.  ``(n - 1)`` even-reduction blocks walk the
     real inputs; the final odd-reduction block reuses the proven ``n==2``
     pattern and prints the result.
     """
     if n == 1:
+        _validate_tt(truth_table, n)
         base = 48 + int(truth_table[0])
         coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
         seed = "0" + chr(coeff) + chr(base)
         return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
+
+    _validate_tt(truth_table, n)
 
     # For odd n, prepend a fake zero-input (ghost) to make the stride land
     # on a separator.  n_effective is the number of h-reads and levels.
@@ -349,6 +357,10 @@ def taglate(truth_table: str, n: int) -> str:
         select_parts.append(_even_reduce(pairs, level, n_eff))
 
     if n_eff > 2:
+        # Drop the first n_eff-2 already-used inputs, then rotate the
+        # remaining two inputs so the queue matches the 8-cell [0, w0, 0,
+        # w1, 48, 48, prev, curr] layout that the committed n=2 odd
+        # selector (_SEL1_N2) expects.
         select_parts.append("e" * 6 + "f" * (n_eff - 2) + "e" * 2)
     select_parts.append(_SEL1_N2)
 
