@@ -305,9 +305,13 @@ def _validate_tt(truth_table: str, n: int) -> None:
 
 
 def _odd_reduce(pairs: int, level: int, n: int) -> str:
-    """Odd-reduction: zero prev, swap, even-reduce.  Does NOT pop."""
+    """Odd-reduction: zero prev, swap, even-reduce.  Does NOT pop.
+
+    The ZS adds an extra ghost cell at the front, so the even-reduce
+    inside uses ``ahead = n - level + 1`` instead of ``n - level``.
+    """
     processed = level
-    ahead = n - level
+    ahead = n - level + 1  # +1 for the ghost cell added by the swap
     total = n
     qlen = 2 * pairs + 2 + total
     rot = 2 * pairs + 2 + (processed - 1) if processed > 0 else 0
