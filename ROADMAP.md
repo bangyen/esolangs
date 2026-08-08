@@ -26,3 +26,12 @@ generators already produce), and verified exactly like every other
 transpiler — the source and target must agree on every input. It needs a
 design decision first: how to detect or take `n` (the input count) and how
 to reject programs outside the class loudly.
+
+### Brainfuck boolean generator via the BF-to-6-5 transpiler
+A boolean generator for brainfuck, composed with the new BF-to-6-5
+transpiler, would give 6-5 truth-table programs for arbitrary `n`.  The
+roadblock is loop count: each bf `[`/`]` pair costs two 6-5 `4` markers,
+and the transpiler's labels (0..9, A..Z) cap at 18 loops.  A decision-tree
+generator needs `2**n - 1` branches, so it only helps up to about 5 inputs;
+an arithmetic generator with a constant number of loops would be the
+extensible version but has not been designed yet.

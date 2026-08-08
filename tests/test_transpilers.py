@@ -488,3 +488,44 @@ def test_huf_fuzz_segments() -> None:
         program = "".join(parts)
         bf_program = esolangs.transpile("huf", "BF", program)
         assert esolangs.run("huf", program) == esolangs.run("BF", bf_program)
+
+
+# (brainfuck program, stdin) pairs; every program terminates.
+SIX_FIVE_BATTERY = (
+    ("+[>+<-]>.", ""),
+    ("+++[>++<-]>++.", ""),
+    ("+++[>++[>+<-]<-]>+++.", ""),
+    (">+<<.", ""),
+    (",>,<.>.", "a\nb"),
+    (",[.-]", "a"),
+    ("+++>+++<.>.", ""),
+    ("+++++++++++++++++++++++++++++++++++++++++++++++++.", ""),
+    (",", "a"),
+    ("", ""),
+    ("xx+++xx.xx", ""),
+)
+
+
+@pytest.mark.parametrize(("program", "stdin"), SIX_FIVE_BATTERY)
+def test_six_five_transpiled_output_matches_source(program: str, stdin: str) -> None:
+    six_five = esolangs.transpile("BF", "6-5", program)
+    assert esolangs.run("BF", program, stdin) == esolangs.run("6-5", six_five, stdin)
+
+
+def test_six_five_transpiles_generated_program() -> None:
+    """The BF generator's output (single cell) transpiles and prints the text."""
+    text = "Hello, World!"
+    program = esolangs.generate("BF", text)
+    six_five = esolangs.transpile("BF", "6-5", program)
+    assert esolangs.run("6-5", six_five) == text
+
+
+def test_six_five_loop_cap() -> None:
+    """More than 18 loops (36 markers) cannot be labelled."""
+    with pytest.raises(ValueError, match="18 loops"):
+        esolangs.transpile("BF", "6-5", "[-]" * 19)
+
+
+def test_six_five_unbalanced_brackets_rejected() -> None:
+    with pytest.raises(ValueError, match="unbalanced"):
+        esolangs.transpile("BF", "6-5", "+[")
