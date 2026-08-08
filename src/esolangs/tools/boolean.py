@@ -416,7 +416,17 @@ def qoibl(truth_table: str, n: int) -> str:
     sum variable, and ``tt`` prints ``48 + sum``.  Qoibl's ``ry`` chains parse
     right-associatively from the leftmost ``ry``, so each minterm is a chain
     of plain ``qe`` reads (no operator inside a factor).
+
+    When the table has more ``1``s than ``0``s the complement is evaluated
+    instead (fewer minterms) and ``49 - sum`` is printed, keeping the program
+    under the size of the sparser half.
     """
+    use_complement = truth_table.count("1") > 2**n // 2
+    table = (
+        truth_table
+        if not use_complement
+        else "".join("1" if c == "0" else "0" for c in truth_table)
+    )
     lines = []
     for i in range(n):
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(48)} we")
@@ -426,7 +436,7 @@ def qoibl(truth_table: str, n: int) -> str:
         )
     lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
     for k in range(2**n):
-        if truth_table[k] == "0":
+        if table[k] == "0":
             continue
         factors = []
         for i in range(n):
@@ -439,7 +449,10 @@ def qoibl(truth_table: str, n: int) -> str:
         lines.append(
             f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we"
         )
-    lines.append(f"tt qe {_qoibl_enc(2 * n)} qe ry ee ry {_qoibl_enc(48)} tt")
+    if use_complement:
+        lines.append(f"tt {_qoibl_enc(49)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt")
+    else:
+        lines.append(f"tt qe {_qoibl_enc(2 * n)} qe ry ee ry {_qoibl_enc(48)} tt")
     return "\n".join(lines)
 
 
@@ -452,7 +465,16 @@ def _bf_minterm(truth_table: str, n: int) -> str:
     minterms (each computed with 0/1 copies and ANDs) is used instead.
     Cells: inputs at 1..n, the running sum at n+1, and fresh scratch cells
     allocated above that.
+
+    When the table has more ``1``s than ``0``s the complement is evaluated
+    instead (fewer minterms) and ``49 - sum`` is printed.
     """
+    use_complement = truth_table.count("1") > 2**n // 2
+    table = (
+        truth_table
+        if not use_complement
+        else "".join("1" if c == "0" else "0" for c in truth_table)
+    )
 
     class _Cell:
         def __init__(self, n: int) -> None:
@@ -511,7 +533,7 @@ def _bf_minterm(truth_table: str, n: int) -> str:
         cell.code.append("-" * 48)
     cell.zero(cell.sum)
     for k in range(2**n):
-        if truth_table[k] == "0":
+        if table[k] == "0":
             continue
         factors: list[int] = []
         for i in range(n):
@@ -562,8 +584,13 @@ def _bf_minterm(truth_table: str, n: int) -> str:
         cell.move(tmp)
         cell.code.append("-]")
     cell.move(cell.sum)
-    cell.code.append("+" * 48)
-    cell.code.append(".")
+    if use_complement:
+        # The sum holds 0/1 for the complement; print 49 - sum via a fresh
+        # cell to the right (cleared, set to 49, decremented by the sum).
+        cell.code.append(">[-]" + "+" * 49 + "<[>-<-]>.")
+    else:
+        cell.code.append("+" * 48)
+        cell.code.append(".")
     return "".join(cell.code)
 
 
