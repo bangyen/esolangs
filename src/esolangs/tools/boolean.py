@@ -257,6 +257,48 @@ def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
     return "".join(prog)
 
 
+def _reorder_tt(tt: str, n: int) -> str:
+    """Reorder truth table entries for the even/odd selection scheme.
+
+    Even-reduce levels (0 .. n-2) put the 1-group first; the final
+    odd-reduce level puts the 0-group first.  Sorting by
+    ``(-(i >> 1), i & 1)`` satisfies both.
+    """
+    indices = sorted(range(2**n), key=lambda i: (-(i >> 1), i & 1))
+    return "".join(tt[i] for i in indices)
+
+
+def _even_reduce(pairs: int, level: int, n: int) -> str:
+    """Even-reduction block: select half the value pairs, keep all inputs."""
+    processed = level
+    ahead = n - level
+    total = n
+    rot = 2 * pairs + 2 + processed
+    return (
+        "e" * rot + "gy" + "e" * pairs + "gz"
+        + "e" * ahead + "f" * pairs
+        + "gy" + "e" * (total + 2) + "gz"
+    )
+
+
+# Odd-reduce block for the final two-value selection (committed n=2 pattern).
+_SEL1_N2 = (
+    "e" * 7 + "gy" + "e" * 3 + "gz" + "e" * 3 + "gy" + "e" * 3 + "gz"
+    + "ff" + "gy" + "e" * 4 + "gz" + "e" + "a" + "e" * 4 + "i"
+)
+
+
+def _build_padded_tt(truth_table: str, n_effective: int) -> str:
+    """Pad truth table for ghost-scheme: ghost=1 entries are all zero."""
+    orig = [int(c) for c in truth_table]
+    padded = [0] * (2**n_effective)
+    # fake=0 entries (index < 2^(n_effective-1)) = original
+    half = 2 ** (n_effective - 1)
+    for i in range(half):
+        padded[i] = orig[i % 2 ** (n_effective - 1)]
+    return "".join(str(b) for b in padded)
+
+
 def taglate(truth_table: str, n: int) -> str:
     """Build a Taglate program computing the given truth table.
 
@@ -264,58 +306,53 @@ def taglate(truth_table: str, n: int) -> str:
     inputs (most significant first), and ``n`` is the number of inputs.
 
     ``n == 1`` reads the single input with ``h`` and computes the affine
-    combination ``base + bit * coeff``, so each one-input table needs no
-    branching.
+    combination ``base + bit * coeff``.
 
-    ``n == 2`` seeds ``1 0...0 1`` and pushes both input characters, then a
-    prefix of ``h``/``e``/``b``/``d``/``j`` shrinks the queue into the
-    selection layout ``[0, t10, 0, t11, 0, t00, 0, t01, 48, 48, a, b]`` with
-    the inputs normalized to 0/1 bits.  A fixed command block then walks the
-    first input's two table halves and, inside each, the second input's two
-    entries, discarding the two unselected values, and finally adds the
-    selected 0/1 to the ``'0'`` character to print it.  No searching and no
-    ``t`` URL trick; larger ``n`` is an open problem.
+    For ``n >= 2`` the queue is seeded and a prefix of ``h``/``e``/``b``/
+    ``d``/``j`` builds the selection layout.  Odd ``n`` prepends a fake
+    zero input (ghost digit) so that every even-reduce stride lands on
+    a zero-separator cell.  ``(n - 1)`` even-reduction blocks walk the
+    real inputs; the final odd-reduction block reuses the proven ``n==2``
+    pattern and prints the result.
     """
     if n == 1:
         base = 48 + int(truth_table[0])
         coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
         seed = "0" + chr(coeff) + chr(base)
         return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
-    if n == 2:
-        t00, t01, t10, t11 = map(int, truth_table)
-        selectors = "".join("d" if bit else "b" for bit in (t10, t11, t00, t01))
-        seed = "1" + "0" * 18 + "1"
-        prefix = "hehb" + "b".join(selectors) + "eebb" + "e" * 10 + "jj"
-        # e10 gy e4 gz eef4 gy e4 gz e7 gy e3 gz e3 gy e3 gz ff gy e4 gz e a e4 i
-        select = (
-            "e" * 10
-            + "gy"
-            + "e" * 4
-            + "gz"
-            + "ee"
-            + "f" * 4
-            + "gy"
-            + "e" * 4
-            + "gz"
-            + "e" * 7
-            + "gy"
-            + "e" * 3
-            + "gz"
-            + "e" * 3
-            + "gy"
-            + "e" * 3
-            + "gz"
-            + "ff"
-            + "gy"
-            + "e" * 4
-            + "gz"
-            + "e"
-            + "a"
-            + "e" * 4
-            + "i"
-        )
-        return seed + "\n" + prefix + select
-    raise ValueError("the Taglate boolean generator supports n == 2 only")
+
+    # For odd n, prepend a fake zero-input (ghost) to make the stride land
+    # on a separator.  n_effective is the number of h-reads and levels.
+    if n % 2 == 1 and n > 1:
+        n_eff = n + 1
+        full_tt = _build_padded_tt(truth_table, n_eff)
+    else:
+        n_eff = n
+        full_tt = truth_table
+
+    seed = "1" * (n_eff - 1) + "0" * (2 ** (n_eff + 2) + 2) + "1"
+
+    ordered = _reorder_tt(full_tt, n_eff)
+    selectors = "".join("bd" if c == "1" else "bb" for c in ordered)
+
+    prefix = (
+        "he" * (n_eff - 1) + "h"
+        + selectors
+        + "ee" + "b" * n_eff
+        + "e" * (2 ** (n_eff + 1) + 2)
+        + "j" * n_eff
+    )
+
+    select_parts = []
+    for level in range(n_eff - 1):
+        pairs = 2 ** (n_eff - level)
+        select_parts.append(_even_reduce(pairs, level, n_eff))
+
+    if n_eff > 2:
+        select_parts.append("e" * 6 + "f" * (n_eff - 2) + "e" * 2)
+    select_parts.append(_SEL1_N2)
+
+    return seed + "\n" + prefix + "".join(select_parts)
 
 
 def dig(truth_table: str, n: int) -> str:
