@@ -10,8 +10,12 @@ its text.
 Decisions for gaps in the wiki spec (documented):
 - division by zero pushes 0;
 - an empty queue reads as 0 for loop conditions;
-- ``t`` keeps ASCII letters, digits, and ``-_.~``, encoding everything else
-  as ``%XX`` (uppercase hex, more digits for values above 255).
+- ``t`` keeps ASCII letters, digits, and ``-_.~`` (the RFC 3986 unreserved
+  set), encoding everything else as ``%XX`` (uppercase hex, more digits for
+  values above 255).  This is a deliberate conservative choice: the real
+  translate page also leaves ``!$'()*,/:;?@`` literal and uses ``+`` for
+  spaces, but the wiki spec only requires URL-safe characters to survive, so
+  encoding the extra characters too is safe and simpler.
 """
 
 import sys
