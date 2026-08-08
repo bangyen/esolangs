@@ -94,6 +94,15 @@ jobs:
           exit 1
         fi
 
+    - name: Regenerate the language capabilities doc
+      run: |
+        uv run python scripts/make_languages_doc.py
+        if ! git diff --exit-code docs/languages.md; then
+          echo "docs/languages.md is out of date. Run:"
+          echo "  uv run python scripts/make_languages_doc.py"
+          exit 1
+        fi
+
   security:
     runs-on: ubuntu-latest
     steps:
@@ -159,6 +168,10 @@ jobs:
         [ "$(/tmp/kak /tmp/empty.txt)" = "0" ]
         echo "All extra/ C++ smoke tests passed"
 
+    - name: Verify generator-only languages against the C++ references
+      run: |
+        PYTHONPATH=src python3 scripts/verify_extra_generators.py
+
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -176,6 +189,10 @@ jobs:
         ./extra/rust/target/debug/laserfuck /tmp/empty.txt
         ./extra/rust/target/debug/unsquare /tmp/empty.txt
         echo "All extra/ Rust smoke tests passed"
+
+    - name: Verify generator-only languages against the Rust references
+      run: |
+        PYTHONPATH=src python3 scripts/verify_extra_generators.py
 
   extra-languages:
     runs-on: ubuntu-latest
@@ -249,12 +266,7 @@ jobs:
         printf '\xff' | python3 scripts/x86_elf_runner.py extra/assembly/2b1b.asm >/dev/null
         echo "All extra/ assembly interpreters ran under unicorn"
 
-    - name: Run the x86 assembly compilers under unicorn
+    - name: Run the x86 compilers and reference interpreters under unicorn
       run: |
-        PYTHONPATH=src python3 scripts/verify_asm_compilers.py
-        echo "All assembly compilers round-tripped under unicorn"
-
-    - name: Run the x86 reference generators under unicorn
-      run: |
-        PYTHONPATH=src python3 scripts/verify_x86_generators.py
-        echo "All x86 reference generators round-tripped under unicorn"
+        PYTHONPATH=src python3 scripts/verify_x86_unicorn.py
+        echo "All x86 compilers and references round-tripped under unicorn"

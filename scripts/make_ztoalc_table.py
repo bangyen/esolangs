@@ -15,7 +15,7 @@ OUT = Path(__file__).resolve().parent.parent / "src/esolangs/tools/ztoalc_starts
 
 
 def best_starts(lengths: list[int]) -> dict[int, int]:
-    best: dict = {}
+    best: dict[int, tuple[int, int]] = {}
     for start in range(2, len(lengths)):
         running = 0
         value = start

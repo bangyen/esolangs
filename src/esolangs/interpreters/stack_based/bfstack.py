@@ -32,7 +32,7 @@ def run(code: str) -> None:
                     ind += 1
                     if ind == len(code):
                         break
-                    elif (o := code[ind]) == "[":
+                    if (o := code[ind]) == "[":
                         match += 1
                     elif o == "]":
                         match -= 1

@@ -1,9 +1,10 @@
 import re
 import sys
-from collections.abc import Callable
 
 
 def parse(code: str) -> str:
+    if not code:
+        return ""
     code = re.sub(" +\n", "\n", code)
     blocks = code.split("\n\n")
     res = ""
@@ -25,37 +26,24 @@ def parse(code: str) -> str:
     return res
 
 
-def init(code: str, tape: list[int]) -> Callable[[int, int], int | None]:
-    stk: list[int] = []
-
-    def find(ind: int, ptr: int) -> int | None:
-        if code[ind] == "[":
-            if tape[ptr]:
-                stk.append(ind)
-                return ind + 1
-            match = 1
-            while match:
-                ind += 1
-                if ind == len(code):
-                    return None
-                elif code[ind] == "[":
-                    match += 1
-                elif code[ind] == "]":
-                    match -= 1
-            return ind + 1
-        else:
-            if tape[ptr]:
-                return stk[-1]
-            stk.pop()
-            return ind + 1
-
-    return find
+def matches(code: str) -> dict[int, int]:
+    """Map each bracket to its partner, ``{open: close, close: open}``."""
+    stack: list[int] = []
+    res: dict[int, int] = {}
+    for i, char in enumerate(code):
+        if char == "[":
+            stack.append(i)
+        elif char == "]" and stack:
+            open_i = stack.pop()
+            res[open_i] = i
+            res[i] = open_i
+    return res
 
 
 def run(code: str) -> None:
     tape: list[int] = [0]
     code = parse(code)
-    find = init(code, tape)
+    m = matches(code)
 
     ind = ptr = 0
     new = 1
@@ -79,12 +67,16 @@ def run(code: str) -> None:
             val = input("\nInput: "[:new])
             tape[ptr] = ord(val[0])
             new = 1
-        elif char in "[]":
-            new_ind = find(ind, ptr)
-            if new_ind is None:
-                return
-            ind = new_ind
-            continue  # Skip the increment since ind was updated by find()
+        elif char == "[" and tape[ptr] == 0:
+            partner = m.get(ind)
+            if partner is None:
+                return  # unmatched "[": halt
+            ind = partner
+        elif char == "]" and tape[ptr] != 0:
+            partner = m.get(ind)
+            if partner is None:
+                return  # unmatched "]": halt
+            ind = partner
 
         ind += 1
 

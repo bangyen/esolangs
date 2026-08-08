@@ -133,9 +133,7 @@ def sanitize(code: str) -> list[int]:
 
     # Build coefficient list from highest to lowest degree
     max_degree = max(terms.keys())
-    coefficients = [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
-
-    return coefficients
+    return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
 
 
 def run(code: str) -> None:

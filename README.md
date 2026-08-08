@@ -1,6 +1,6 @@
 # Esolang Interpreters
 
-[![Python](https://img.shields.io/badge/Python-3.x-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Coverage](coverage-badge.svg)](coverage-badge.svg)
 
@@ -17,7 +17,9 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
   - [Other Languages](#other-languages)
 - [Extra Implementations](#extra-implementations)
 - [Compilers](#compilers)
+- [Transpilers](#transpilers)
 - [Tools](#tools)
+- [Roadmap](ROADMAP.md)
 - [Notes](#notes)
 
 ## About
@@ -72,10 +74,28 @@ This writes the generated assembly to `output.asm`.
 python -m esolangs.interpreters.tape_based.brainif hello_world.bf
 ```
 
-Alternatively, the `esolangs` command runs any module:
+### The `esolangs` Command
+
+The installed `esolangs` command provides friendly subcommands:
 
 ```bash
-esolangs esolangs.interpreters.tape_based.brainif hello_world.bf
+esolangs list                          # list the supported languages
+esolangs generate CircleFuck "Hello"   # print a program that outputs "Hello"
+esolangs run CircleFuck program.txt    # run a program through its interpreter
+esolangs transpile BF "ASCII art" hello.bf   # rewrite a program as ASCII art
+```
+
+## Public API
+
+The package exposes a small typed API:
+
+```python
+import esolangs
+
+program = esolangs.generate("CircleFuck", "Hello, World!")
+output = esolangs.run("CircleFuck", program)
+esolangs.list_languages()   # every supported language
+art = esolangs.transpile("BF", "ASCII art", program)   # rewrite between languages
 ```
 
 ## Implemented Languages
@@ -104,10 +124,12 @@ Languages that operate on a tape (similar to Turing machines).
 
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
 - [Back](https://esolangs.org/wiki/Back)
+- [Brainfuck](https://esolangs.org/wiki/Brainfuck)
 - [BrainIf](https://esolangs.org/wiki/BrainIf)
 - [circlefuck](https://esolangs.org/wiki/Circlefuck)
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [Minifuck](https://esolangs.org/wiki/Minifuck)
+- [NoComment](https://esolangs.org/wiki/NoComment)
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)
 - [6-5](https://esolangs.org/wiki/6-5)
@@ -130,6 +152,7 @@ Languages that don't fit into the above categories.
 - [Container](https://esolangs.org/wiki/Container)
 - [Keys](https://esolangs.org/wiki/Keys)
 - [Nevermind](https://esolangs.org/wiki/Nevermind)
+- [Taglate](https://esolangs.org/wiki/Taglate)
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)
 
 ## Extra Implementations
@@ -162,6 +185,10 @@ Implementations written in languages other than Python.
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 
+### R Implementations
+
+- [EXCON](https://esolangs.org/wiki/EXCON)
+
 ### Ruby Implementations
 
 - [bit~](https://esolangs.org/wiki/Bit~)
@@ -193,68 +220,70 @@ Compilers that translate esoteric languages to other target languages.
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [RAM0](https://esolangs.org/wiki/RAM0)
 
+## Transpilers
+
+Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
+
+- [BF](https://esolangs.org/wiki/Brainfuck) <-> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block, and vice versa.
+- [BF](https://esolangs.org/wiki/Brainfuck) -> [CircleFuck](https://esolangs.org/wiki/Circlefuck): sets up a clean data region inside the program-as-tape and emits the brainfuck commands unchanged. The data region is sized automatically from the program (the smallest bound that contains its data pointer), so `transpile("BF", "CircleFuck", program)` just works for programs with bounded, non-drifting loops; pass `size` explicitly to cover programs that stay within `[0, size)`.
+- [NoComment](https://esolangs.org/wiki/NoComment) -> [BF](https://esolangs.org/wiki/Brainfuck): NoComment is a strict subset of brainfuck, so the transpiler is a table lookup (`c` = `[-]`, `i` = `+`, `o` = `.`).
+- [BFStack](https://esolangs.org/wiki/BFStack) -> [BF](https://esolangs.org/wiki/Brainfuck): BFStack is a stack modelled on brainfuck's tape, so the transpiler is a table lookup (`>` pushes a cell, `<` pops and clears it (`[-]<`), `,` reads and pushes (`>,`)).
+- [BIO](https://esolangs.org/wiki/BIO) -> [BF](https://esolangs.org/wiki/Brainfuck): BIO's three registers live in the first three brainfuck cells; each command moves the pointer to its register, acts, and returns to cell 0. Registers must stay within `[0, 255]`.
+- [huf](https://esolangs.org/wiki/Huf) -> [BF](https://esolangs.org/wiki/Brainfuck): huf's `num`/`mul` live in cells 0 and 1; `!` multiplies by copying `num` to a temp cell that each loop iteration adds to `num` and refreshes from a running accumulator.
+
+```bash
+esolangs transpile BF "ASCII art" program.bf    # print the art
+esolangs transpile "ASCII art" BF program.txt   # print the brainfuck
+esolangs transpile BF CircleFuck program.bf     # print the CircleFuck
+esolangs transpile NoComment BF program.nocom   # print the brainfuck
+esolangs transpile BFStack BF program.bstk      # print the brainfuck
+esolangs transpile BIO BF program.bio           # print the brainfuck
+esolangs transpile huf BF program.huf           # print the brainfuck
+```
+
+```python
+art = esolangs.transpile("BF", "ASCII art", program)          # or via the API
+program = esolangs.transpile("ASCII art", "BF", art)
+circlefuck = esolangs.transpile("BF", "CircleFuck", program)  # auto-sized
+circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)
+bf_program = esolangs.transpile("NoComment", "BF", program)
+```
+
 ## Tools
 
 Utility programs that work with the esoteric languages.
-
-### Binary Function Generator
-
-The `binary.py` program implements a given boolean function in Dig. The function is given as a truth table string (LSB-order output bits):
-
-```bash
-python -m esolangs.tools.binary 0111   # 2-input OR gate
-```
 
 ### Boolean Function Generator
 
 The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import brainif, modulous, nevermind, sophie
+from esolangs.tools.boolean import ascii_art, bfstack, brainif, circlefuck, dig, modulous, nevermind, polynomial, qoibl, six_five, sophie, taglate
 
-sophie("0110", 2)      # 2-input XOR in Sophie
-modulous("0110", 2)    # the same truth table in Modulous
-brainif("0110", 2)     # and in BrainIf
-nevermind("0110", 2)   # and in Nevermind
+dig("0110", 2)            # 2-input XOR in Dig
+sophie("0110", 2)         # the same truth table in Sophie
+modulous("0110", 2)       # and in Modulous
+brainif("0110", 2)        # and in BrainIf
+nevermind("0110", 2)      # and in Nevermind
+circlefuck("0110", 2)     # and in CircleFuck
+circlefuck_byte(table)    # arbitrary byte-valued functions
+ascii_art("0110", 2)      # and in ASCII art
+six_five("0110", 2)       # and in 6-5
+qoibl("0110", 2)          # and in Qoibl
+polynomial("0110", 2)     # and in Polynomial (up to n = 2)
+taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
+bfstack("0110", 2)        # and in BFStack
 ```
 
 ### Program Generator
 
-The `generate.py` program outputs programs which output a given string in different languages.
-
-**Supported languages:**
-- 6-5
-- ASCII art
-- BFStack
-- BIO
-- BrainIf
-- Clockwise
-- Container
-- Dig
-- Dotlang
-- Eval
-- EXCON
-- Forþ (Forth)
-- huf
-- LaserFuck
-- Magnitude
-- MAMMALIAN
-- Minifuck
-- Modulous
-- Nevermind
-- Painfuck
-- Polynomial
-- Qoibl
-- Sophie
-- Suffolk
-- Temporary Stack
-- WII2D
-- ZTOALC
-- 123
+The `generate.py` program outputs programs which output a given string in different languages:
 
 ```bash
 python -m esolangs.tools.generate "Hello, World!"
 ```
+
+Every generator is also available through `esolangs list` and `esolangs generate` (see above); run `esolangs list` for the full set.
 
 ## Notes
 

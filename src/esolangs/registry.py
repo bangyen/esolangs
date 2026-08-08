@@ -28,18 +28,19 @@ class Language:
     generator: Callable[[str], str] | None = None
     interpreter: str | None = None
     split: bool = False
-    kwargs: tuple = ()
+    kwargs: tuple[tuple[str, int], ...] = ()
 
 
-def _kw(**kwargs: int) -> tuple:
+def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
     return tuple(kwargs.items())
 
 
-LANGUAGES: dict = {
+LANGUAGES: dict[str, Language] = {
     "123": Language("123", _generate._123),
     "6-5": Language("6-5", _generate.six_five, "tape_based.6-5"),
     "ASCII art": Language("ASCII art", _generate.ascii_art, "tape_based.ascii-art"),
     "Back": Language("Back", interpreter="tape_based.back", split=True),
+    "BF": Language("BF", _generate.bf, "tape_based.bf"),
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
     "BIO": Language("BIO", _generate.bio, "register_based.bio"),
     "BitDeque": Language("BitDeque", interpreter="other.bitdeque"),
@@ -65,7 +66,7 @@ LANGUAGES: dict = {
     "Modulous": Language("Modulous", _generate.modulous, "stack_based.modulous"),
     "Movesum": Language("Movesum", interpreter="register_based.movesum", split=True),
     "Nevermind": Language("Nevermind", _generate.nevermind, "other.nevermind", True),
-    "NoComment": Language("NoComment", _generate.nocomment),
+    "NoComment": Language("NoComment", _generate.nocomment, "tape_based.nocomment"),
     "Painfuck": Language("Painfuck", _generate.painfuck),
     "Polynomial": Language(
         "Polynomial", _generate.polynomial, "register_based.polynomial"
@@ -77,26 +78,27 @@ LANGUAGES: dict = {
         "Suffolk", _generate.suffolk, "tape_based.suffolk", kwargs=_kw(limit=1)
     ),
     "Temporary": Language("Temporary", _generate.temporary, "stack_based.temporary"),
+    "Taglate": Language("Taglate", _generate.taglate, "other.taglate", True),
     "Unsquare": Language("Unsquare", _generate.unsquare),
     "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", True),
     "ZTOALC": Language("ZTOALC", _generate.ztoalc, "other.ztoalc", True),
 }
 
 # Display name -> generator function, for languages that have one.
-GENERATORS: dict = {
+GENERATORS: dict[str, Callable[[str], str]] = {
     name: lang.generator for name, lang in LANGUAGES.items() if lang.generator
 }
 
 # Generator function name -> Language, so tests can look a generator up by
 # the name of its function (e.g. ``six_five`` for "6-5").
-BY_FUNCTION: dict = {
+BY_FUNCTION: dict[str, Language] = {
     lang.generator.__name__: lang
     for lang in LANGUAGES.values()
     if lang.generator is not None
 }
 
 # Display name -> (interpreter module, split lines, run() keyword arguments).
-RUNNERS: dict = {
+RUNNERS: dict[str, tuple[str, bool, dict[str, int]]] = {
     name: (lang.interpreter, lang.split, dict(lang.kwargs))
     for name, lang in LANGUAGES.items()
     if lang.interpreter
