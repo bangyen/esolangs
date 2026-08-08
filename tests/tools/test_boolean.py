@@ -142,6 +142,15 @@ def run_polynomial(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_bfstack(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.stack_based.bfstack import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program)
+    return buffer.getvalue()
+
+
 class TestPolynomial:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -166,6 +175,34 @@ class TestPolynomial:
     def test_only_supports_two_inputs(self) -> None:
         with pytest.raises(ValueError, match="n == 2"):
             boolean.polynomial("11111110", 3)
+
+
+class TestBfstack:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.bfstack(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_bfstack(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_encode_decode_structure(self) -> None:
+        """The program encodes the inputs then tests the zero rows."""
+        program = boolean.bfstack("0110", 2)
+        assert program.startswith(">>+,")  # result cell, accumulator, first input
+        assert program.count(",") == 2  # one read per input
+        assert program.endswith("+" * 48 + ".")  # print 48 + result
 
 
 class TestDig:
