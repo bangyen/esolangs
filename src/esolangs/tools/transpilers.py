@@ -18,6 +18,7 @@ __all__ = [
     "ascii_art_to_bf",
     "bf_to_ascii_art",
     "bf_to_circlefuck",
+    "bf_to_six_five",
     "bfstack_to_bf",
     "bio_to_bf",
     "huf_to_bf",
@@ -270,10 +271,81 @@ def huf_to_bf(program: str) -> str:
     return "".join(res)
 
 
+def bf_to_six_five(program: str) -> str:
+    """Rewrite a brainfuck program into 6-5.
+
+    Brainfuck's commands map to fixed 6-5 runs: ``+``/``-`` are ``62``/``59``
+    (each nets +1/-1), ``>``/``<`` are ``13``/``3``, and ``,``/``.`` are
+    ``B``/``A``.  A ``[`` emits ``8n4`` and its ``]`` emits ``4708(n-1)``:
+    entering jumps to the n-th ``4`` marker (the ``]``'s), where ``70`` skips
+    the ``8(n-1)`` jump back if the cell is zero, else takes it -- so the
+    body runs while the cell is nonzero, exactly like brainfuck.  Each loop
+    consumes two ``4`` markers, and the marker labels are the digits 0..9
+    then A..Z, so a program is limited to 18 loops (36 markers total).
+    """
+    markers = 0
+    res: list[str] = []
+
+    def build(s: str) -> str:
+        nonlocal markers
+        out: list[str] = []
+        i = 0
+        while i < len(s):
+            c = s[i]
+            if c == ">":
+                out.append("13")
+            elif c == "<":
+                out.append("3")
+            elif c == "+":
+                out.append("62")
+            elif c == "-":
+                out.append("59")
+            elif c == ",":
+                out.append("B")
+            elif c == ".":
+                out.append("A")
+            elif c == "[":
+                if markers + 2 > 36:
+                    raise ValueError(
+                        "the BF-to-6-5 transpiler supports 18 loops at most"
+                    )
+                depth = 1
+                j = i + 1
+                while j < len(s) and depth:
+                    if s[j] == "[":
+                        depth += 1
+                    elif s[j] == "]":
+                        depth -= 1
+                    j += 1
+                if depth:
+                    raise ValueError("unbalanced brackets cannot be transpiled")
+                start = markers + 1  # the ['s 4 marker
+                markers += 1
+                body = build(s[i + 1 : j - 1])
+                end = markers + 1  # the ]'s 4 marker
+                markers += 1
+                out.append(f"8{_six_five_label(end)}4")
+                out.append(body)
+                out.append(f"4708{_six_five_label(start)}")
+                i = j
+                continue
+            i += 1  # anything else is a comment or a plain command
+        return "".join(out)
+
+    res.append(build(program))
+    return "".join(res)
+
+
+def _six_five_label(value: int) -> str:
+    """The single character 6-5 reads as ``value`` for a 7n/8n operand."""
+    return str(value) if value < 10 else chr(value + 55)
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BF", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "BF"): ascii_art_to_bf,
     ("BF", "CircleFuck"): bf_to_circlefuck,
+    ("BF", "6-5"): bf_to_six_five,
     ("NoComment", "BF"): nocomment_to_bf,
     ("BFStack", "BF"): bfstack_to_bf,
     ("BIO", "BF"): bio_to_bf,
