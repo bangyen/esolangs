@@ -2,6 +2,7 @@
 
 import math
 import re
+from functools import cache
 
 from esolangs.tools._ztoalc import _collatz_prefix, _search_start
 from esolangs.tools.ztoalc_starts import STARTS
@@ -480,17 +481,30 @@ def nocomment(text: str) -> str:
 def unsquare(text: str) -> str:
     """Generate an Unsquare program that outputs ``text``.
 
-    ``OA``/``IA`` build 0/1 in the register and each following ``+`` adds 2,
-    so an even value uses ``OA`` and an odd one ``IA``; ``P`` pushes the
-    register to the stack and ``o`` prints the top byte.
+    ``OA``/``IA`` push 0/1 and ``A`` loads it into the accumulator, ``+``
+    adds 2, and ``x`` doubles, so each character is built from a parity seed
+    (``O`` for even, ``I`` for odd) followed by the shortest ``+``/``x``
+    program to the code: doubling makes even values O(log n), with ``+`` runs
+    covering the rest.  ``P`` pushes the accumulator and ``o`` prints it.
     """
 
-    def build(v: int) -> str:
-        if v % 2:
-            return "IA" + "+" * ((v - 1) // 2)
-        return "OA" + "+" * (v // 2)
+    @cache
+    def build(start: int, v: int) -> str:
+        if v == start:
+            return ""
+        if v < start:
+            return ""
+        options = [build(start, v - 2) + "+"]
+        if v % 2 == 0:
+            options.append(build(start, v // 2) + "x")
+        return min(options, key=len)
 
-    return "".join(build(ord(c)) + "Po" for c in text)
+    def seg(v: int) -> str:
+        init = "I" if v % 2 else "O"
+        start = v % 2
+        return init + "A" + build(start, v)
+
+    return "".join(seg(ord(c)) + "Po" for c in text)
 
 
 def home_row(text: str) -> str:
