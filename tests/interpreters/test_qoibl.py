@@ -26,7 +26,7 @@ def timeout_handler(signum: int, frame: Any) -> None:
     raise TimeoutError("Test timed out")
 
 
-def run_with_timeout(func: Callable, timeout_seconds: int = 2) -> Any:
+def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
     """Run a function with timeout protection.
 
     Args:
@@ -256,7 +256,7 @@ class TestQoiblExamples:
         ]
 
         # Test 2 + 3 = 5
-        def run_adder():
+        def run_adder() -> str:
             with (
                 patch("builtins.input", side_effect=["2", "3"]),
                 redirect_stdout(io.StringIO()) as f,

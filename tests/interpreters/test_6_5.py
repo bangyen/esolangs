@@ -66,11 +66,11 @@ class TestSixFive:
 
     def test_jump_to_four(self) -> None:
         """8n jumps to the nth 4 marker."""
-        assert run_and_capture("81A4A0") == "\x00\x00"
+        assert run_and_capture("81A4A0") == "\x00"
 
-    def test_jump_fires_with_matching_digit(self) -> None:
-        """8n matches a 4 followed by the digit n."""
-        assert run_and_capture("8441A0") == "\x00"
+    def test_jump_to_second_four(self) -> None:
+        """8n jumps past the nth 4, skipping code before it."""
+        assert run_and_capture("825A46A4A0") == "\x00"
 
     def test_skip_when_equal(self) -> None:
         """7n skips the next instruction when the cell equals n."""

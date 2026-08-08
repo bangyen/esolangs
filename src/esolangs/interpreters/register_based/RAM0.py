@@ -9,7 +9,7 @@ import re
 import sys
 
 
-def output(z: int, n: int, ram: dict) -> None:
+def output(z: int, n: int, ram: dict[int, int]) -> None:
     """Print the current state of all registers and RAM memory."""
     res = f"z: {z}\n" f"n: {n}\n" "ram: {"
 
@@ -20,7 +20,7 @@ def output(z: int, n: int, ram: dict) -> None:
     print(res + "}")
 
 
-def change(z: int, n: int, ram: dict, op: str) -> tuple[int, int, bool]:
+def change(z: int, n: int, ram: dict[int, int], op: str) -> tuple[int, int, bool]:
     """Execute a single RAM0 command and return the updated registers."""
     if op == "Z":
         z = 0
@@ -40,7 +40,7 @@ def run(code: str) -> None:
     expr = r"([ZANCLS]|[1-9]\d*)"
     tokens = re.findall(expr, code)
     z = n = 0
-    ram: dict = {}
+    ram: dict[int, int] = {}
     ind = 0
 
     while ind < len(tokens):

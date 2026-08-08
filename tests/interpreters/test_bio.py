@@ -16,22 +16,27 @@ class TestBIOBasicCommands:
 
     def test_increment_commands(self) -> None:
         """Test 0O[xyz] increment commands."""
-        with redirect_stdout(io.StringIO()) as _:
-            run("0ox;")
+        with redirect_stdout(io.StringIO()) as f:
+            run("0ox1ix")
+        assert f.getvalue() == "\x01"
 
-        with redirect_stdout(io.StringIO()) as _:
-            run("0oy;0oy;0oy;")
+        with redirect_stdout(io.StringIO()) as f:
+            run("0oy;0oy;0oy;1iy")
+        assert f.getvalue() == "\x03"
 
-        with redirect_stdout(io.StringIO()) as _:
-            run("0oz;")
+        with redirect_stdout(io.StringIO()) as f:
+            run("0oz1iz")
+        assert f.getvalue() == "\x01"
 
     def test_decrement_commands(self) -> None:
         """Test 1O[xyz] decrement commands."""
-        with redirect_stdout(io.StringIO()) as _:
-            run("1ox;")
+        with redirect_stdout(io.StringIO()) as f:
+            run("1ox1ix")
+        assert f.getvalue() == "\xff"
 
-        with redirect_stdout(io.StringIO()) as _:
-            run("1oy;1oy;1oy;")
+        with redirect_stdout(io.StringIO()) as f:
+            run("0ox1ox1ix")
+        assert f.getvalue() == "\x00"
 
     def test_output_commands(self) -> None:
         """Test 1I[xyz] output commands."""
@@ -192,12 +197,10 @@ class TestBIOEdgeCases:
         assert f.getvalue() == chr(300 % 256)
 
     def test_unmatched_while_loop(self) -> None:
-        """Test behavior with unmatched while loop (missing closing brace)."""
-        # This should not crash, but may have unexpected behavior
-        with redirect_stdout(io.StringIO()) as _:
+        """A loop without its closing brace is scanned to the end cleanly."""
+        with redirect_stdout(io.StringIO()) as f:
             run("0ox;0ix{0oy;")  # Missing closing brace
-        # The program should still run, but the loop won't terminate properly
-        # This is expected behavior for malformed BIO code
+        assert f.getvalue() == ""
 
     def test_empty_while_loop(self) -> None:
         """Test empty while loop that doesn't execute."""
@@ -207,9 +210,9 @@ class TestBIOEdgeCases:
 
     def test_unclosed_loop_skipped(self) -> None:
         """A loop skipped when its register is zero with no closer halts cleanly."""
-        with redirect_stdout(io.StringIO()):
+        with redirect_stdout(io.StringIO()) as f:
             run("0iy{0ox;")
-        # Should skip to the end without crashing
+        assert f.getvalue() == ""
 
     def test_while_loop_with_zero_register(self) -> None:
         """Test while loop when register is already zero."""

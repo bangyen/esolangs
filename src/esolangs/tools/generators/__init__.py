@@ -12,6 +12,7 @@ from esolangs.tools.generators.other import (
     nevermind,
     nocomment,
     painfuck,
+    taglate,
     unsquare,
     ztoalc,
 )
@@ -29,6 +30,7 @@ from esolangs.tools.generators.register import (
 from esolangs.tools.generators.stack import modulous, temporary
 from esolangs.tools.generators.tape import (
     ascii_art,
+    bf,
     bfstack,
     brainif,
     circlefuck,
@@ -43,6 +45,7 @@ __all__ = [
     "_123",
     "_ilog",
     "ascii_art",
+    "bf",
     "bfstack",
     "bio",
     "brainif",
@@ -69,6 +72,7 @@ __all__ = [
     "six_five",
     "sophie",
     "suffolk",
+    "taglate",
     "temporary",
     "unsquare",
     "wii2d",

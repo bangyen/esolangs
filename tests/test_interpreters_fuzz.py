@@ -34,13 +34,13 @@ class _Timeout(Exception):
     """Raised by the alarm handler when a random program does not terminate."""
 
 
-def _on_alarm(signum, frame):
+def _on_alarm(signum: int, frame: object) -> None:
     raise _Timeout("interpreter did not terminate on a random program")
 
 
 @pytest.mark.skipif(os.name != "posix", reason="signal.alarm is POSIX-only")
 @pytest.mark.parametrize("module", sorted(FUZZ))
-def test_random_programs_terminate(module):
+def test_random_programs_terminate(module: str) -> None:
     random.seed(sum(map(ord, module)))
     alphabet = FUZZ[module]
     run = importlib.import_module("esolangs.interpreters." + module).run

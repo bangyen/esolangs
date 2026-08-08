@@ -70,9 +70,8 @@ class Dot:
                     y += len(warp) - 1
                 if ret:
                     return Dot(x, y, self.dir)
-                else:
-                    self.x, self.y = x, y
-                    return True
+                self.x, self.y = x, y
+                return True
         return False
 
 
@@ -128,7 +127,8 @@ def run(code: list[str]) -> None:
                 dest = dot.find(name, True)
                 if not dest:
                     return
-                assert isinstance(dest, Dot)
+                if not isinstance(dest, Dot):
+                    raise RuntimeError("warp destination not found")  # pragma: no cover
                 dots.append(dest)
             else:
                 match = 1
