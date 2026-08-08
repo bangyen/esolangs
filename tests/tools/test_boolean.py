@@ -50,15 +50,14 @@ class TestSixFive:
     def test_branch_structure(self) -> None:
         """Each level reads a bit and branches to a 4 marker."""
         program = boolean.six_five("0110", 2)
-        assert program.startswith("4" * 11)
-        assert "B" + "2" * 8 in program
+        assert program.startswith("B" + "2" * 8)
         assert "78" in program
         assert program.endswith("A0")
 
     def test_label_cap(self) -> None:
-        """More than 24 branch labels (C..Z) would silently corrupt jumps."""
-        with pytest.raises(ValueError, match="n <= 4"):
-            boolean.six_five("0" * 31 + "1", 5)
+        """More than 35 branch labels (1..Z) would silently corrupt jumps."""
+        with pytest.raises(ValueError, match="n <= 5"):
+            boolean.six_five("0" * 63 + "1", 6)
 
 
 def run_qoibl(program: str, inputs: list[str]) -> str:

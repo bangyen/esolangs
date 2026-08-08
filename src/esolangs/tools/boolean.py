@@ -7,7 +7,7 @@ truth-table result for the combination it is given.
 from collections.abc import Sequence
 from typing import cast
 
-from esolangs.tools.transpilers import bf_to_ascii_art
+from esolangs.tools.transpilers import _six_five_label, bf_to_ascii_art
 
 # Dig blocks for one level of the decision tree.
 _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
@@ -15,10 +15,9 @@ _DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own bloc
 _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
 
 # 6-5 jump labels: ``8n`` jumps to the n-th ``4`` marker counted from the
-# program start, and the 11 leading ``4``s pad the count so the first real
-# marker is the 12th.  The label character is consumed as the ``8n`` operand,
-# so it must not be a command: ``chr(67 + k)`` yields the letters C..Z
-# (values 12..35) for the k-th marker.
+# program start.  The label character is consumed as the ``8n`` operand, so it
+# must not be a command: the digits 0..9 then A..Z (values 1..35) provide the
+# k-th marker's label via ``_six_five_label``.
 
 
 def sophie(truth_table: str, n: int) -> str:
@@ -374,13 +373,12 @@ def six_five(truth_table: str, n: int) -> str:
     right path) with a run of sixes plus ``62`` pairs (each ``6`` then ``2``
     nets ``+6 - 5 = +1``), prints with ``A``, and halts with ``0``.
 
-    Only the letters C..Z are usable as branch labels: their ``num`` values
-    12..35 match the padded marker counts and they are never executed (a
-    ``7n`` skip or ``8n`` jump consumes them as operands).  That caps the
-    generator at n == 4 (15 internal nodes).
+    The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
+    as ``8n`` operands), one per internal node, so the generator caps at
+    n == 5 (31 internal nodes).
     """
-    if 2**n - 1 > 24:
-        raise ValueError("the 6-5 boolean generator supports n <= 4 only")
+    if 2**n - 1 > 35:
+        raise ValueError("the 6-5 boolean generator supports n <= 5 only")
     marker = 0
 
     def build(rows: list[int], bit: int, base: int) -> str:
@@ -392,12 +390,12 @@ def six_five(truth_table: str, n: int) -> str:
         g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
         g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
         sub0 = build(g0, bit + 1, 8)
-        label = chr(67 + marker)
+        label = marker + 1
         marker += 1
         sub1 = build(g1, bit + 1, 9)
-        return "B" + "2" * 8 + "78" + "8" + label + sub0 + "4" + sub1
+        return "B" + "2" * 8 + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
 
-    return "4" * 11 + build(list(range(2**n)), 1, 0)
+    return build(list(range(2**n)), 1, 0)
 
 
 def _qoibl_enc(n: int) -> str:
