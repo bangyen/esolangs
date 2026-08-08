@@ -305,34 +305,22 @@ def _validate_tt(truth_table: str, n: int) -> None:
 
 
 def _odd_reduce(pairs: int, level: int, n: int) -> str:
-    """Odd-reduction block: zero prev, swap, even-reduce, pop both.
-
-    The swap encodes the current input's value into the (zeroed) previous
-    input, so that the even-reduce can test a zero-separator-guarded cell.
-    """
+    """Odd-reduction: zero prev, swap, even-reduce.  Does NOT pop."""
     processed = level
     ahead = n - level
     total = n
     qlen = 2 * pairs + 2 + total
-    # Rotation to bring the *previous* input to the front
     rot = 2 * pairs + 2 + (processed - 1) if processed > 0 else 0
     zero = "gy" + "j" + "e" * (qlen - 1) + "gz"
-    # Swap: encodes current input into prev
     swap = "e" + "gy" + "j" + "e" * (qlen - 2) + "j" + "gz"
-    # Bring ghost (now carrying the current input's value) to front
     bring = "e" * (qlen - 1)
-    # Even-reduce on ghost (no initial rotation — ghost is already at front)
     er = (
         "gy" + "e" * pairs + "gz"
         + "e" * ahead + "f" * pairs
+        + "e" * (pairs - 1)
         + "gy" + "e" * (total + 2) + "gz"
     )
-    # Pop: bring the two consumed inputs to the front
-    pop_rot = qlen - pairs - total  # position of the first leftover input
-    return (
-        "e" * rot + zero + swap + bring + er + "e" * pop_rot + "ff"
-        + "gy" + "e" * (ahead + 2) + "gz"
-    )
+    return "e" * rot + zero + swap + bring + er
 
 
 def taglate(truth_table: str, n: int) -> str:
