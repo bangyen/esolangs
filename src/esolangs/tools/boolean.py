@@ -327,7 +327,10 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
         + "e" * ahead + "f" * pairs
         + "gy" + "e" * (total + 2) + "gz"
     )
-    return "e" * rot + zero + swap + bring + er + "ff"
+    # Pop both inputs: they are at the tail after even-reduce, so
+    # rotate them to the front first.
+    pop_rot = qlen - pairs - 2  # tail position after f^pairs
+    return "e" * rot + zero + swap + bring + er + "e" * pop_rot + "ff"
 
 
 def taglate(truth_table: str, n: int) -> str:
