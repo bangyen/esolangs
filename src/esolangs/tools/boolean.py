@@ -14,11 +14,6 @@ _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
 _DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own block
 _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
 
-# 6-5 +5/+6 paths for a delta's remainder modulo 6 (the quotient is a run of
-# sixes).  Leaf deltas (48 + value - 8/9) are always positive, so only
-# additions are needed.
-_SIX_FIVE_PLUS = {0: "", 1: "62", 2: "6622", 3: "55599", 4: "559", 5: "5"}
-
 # 6-5 jump labels: ``8n`` jumps to the nth 4 marker, so the branch instruction
 # ``78n`` needs n as a letter/digit.  The label char is executed on the
 # ``7n`` fall-through (cell == n), so it must be a no-op: digits and A/B are
@@ -367,9 +362,13 @@ def dig(truth_table: str, n: int) -> str:
 
 
 def _six_five_delta(delta: int) -> str:
-    """6-5 additions that move a cell by a positive ``delta``."""
+    """6-5 additions that move a cell by a positive ``delta``.
+
+    A run of sixes covers the quotient of ``delta / 6``; the remainder is
+    added with ``62`` pairs (each ``6`` then ``2`` nets ``+6 - 5 = +1``).
+    """
     q, r = divmod(delta, 6)
-    return "6" * q + _SIX_FIVE_PLUS[r]
+    return "6" * q + "62" * r
 
 
 def six_five(truth_table: str, n: int) -> str:
