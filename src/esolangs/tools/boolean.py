@@ -588,7 +588,12 @@ def polynomial(truth_table: str, n: int) -> str:
     tree exceed ``numpy``'s float64 range.
     """
     if n > 2:
-        raise ValueError("the Polynomial boolean generator supports n == 2 only")
+        raise ValueError(
+            "the Polynomial boolean generator supports n == 2 only: "
+            "each instruction consumes a fresh prime, so the expanded "
+            "coefficients of a deeper tree overflow the interpreter's "
+            "float root-finder"
+        )
 
     from esolangs.tools._polynomial import format_coeffs, multiply, primes
 
