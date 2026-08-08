@@ -572,3 +572,57 @@ def ascii_art(truth_table: str, n: int) -> str:
     ``_bf_minterm`` brainfuck program rendered as art blocks.
     """
     return bf_to_ascii_art(_bf_minterm(truth_table, n))
+
+
+def polynomial(truth_table: str, n: int) -> str:
+    """Build a Polynomial program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Polynomial programs are polynomials whose roots encode instructions, so
+    the generator builds a decision tree of complex ``[a, b]`` (arithmetic,
+    input, output) and real ``[val]`` (if/endif) roots and expands them into
+    ``f(x) = ...``.  ``n > 2`` overflows the interpreter's float root-finder:
+    each instruction consumes a fresh prime, so the coefficients of a deeper
+    tree exceed ``numpy``'s float64 range.
+    """
+    if n > 2:
+        raise ValueError("the Polynomial boolean generator supports n == 2 only")
+
+    from esolangs.tools._polynomial import format_coeffs, multiply, primes
+
+    instrs: list[list[int]] = []
+
+    def emit_delta(delta: int) -> None:
+        if delta > 0:
+            instrs.append([delta, 1])
+        elif delta < 0:
+            instrs.append([-delta, 2])
+
+    def build(rows: list[int], bit: int, last: int) -> None:
+        if len(rows) == 1:
+            v = int(truth_table[rows[0]])
+            emit_delta(48 + v - last)
+            instrs.append([0, 1])  # output
+            emit_delta(1 - (48 + v))  # restore reg to nonzero so the else skips
+            return
+        instrs.extend([[0, 2], [48, 2]])  # input; -= 48
+        g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
+        g0 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 0]
+        instrs.append([1])  # if reg > 0 -> the one-bit subtree
+        build(g1, bit + 1, 1)
+        instrs.append([2])
+        instrs.append([4])  # if reg == 0 -> the zero-bit subtree
+        build(g0, bit + 1, 0)
+        instrs.append([2])
+
+    build(list(range(2**n)), 0, 0)
+    coeffs = [1]
+    for instr, p in zip(instrs, primes(len(instrs)), strict=True):
+        if len(instr) == 2:
+            a, b = instr
+            coeffs = multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
+        else:
+            coeffs = multiply(coeffs, [1, -(p ** instr[0])])
+    return str(format_coeffs(coeffs))
