@@ -321,7 +321,6 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     er = (
         "gy" + "e" * pairs + "gz"
         + "e" * ahead + "f" * pairs
-        + "e" * (pairs - 1)
         + "gy" + "e" * (total + 2) + "gz"
     )
     return "e" * rot + zero + swap + bring + er
