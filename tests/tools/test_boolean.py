@@ -55,6 +55,11 @@ class TestSixFive:
         assert "78" in program
         assert program.endswith("A0")
 
+    def test_label_cap(self) -> None:
+        """More than 24 branch labels (C..Z) would silently corrupt jumps."""
+        with pytest.raises(ValueError, match="n <= 4"):
+            boolean.six_five("0" * 31 + "1", 5)
+
 
 def run_qoibl(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.qoibl import run

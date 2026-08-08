@@ -14,12 +14,11 @@ _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
 _DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own block
 _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
 
-# 6-5 jump labels: ``8n`` jumps to the nth 4 marker, so the branch instruction
-# ``78n`` needs n as a letter/digit.  The label char is executed on the
-# ``7n`` fall-through (cell == n), so it must be a no-op: digits and A/B are
-# commands, so use letters C..Z (values 12..35) and pad the marker count with
-# 11 leading ``4``s so the first real marker is the 12th.
-_SIX_FIVE_LABELS = [chr(ord("C") + i) for i in range(24)]
+# 6-5 jump labels: ``8n`` jumps to the n-th ``4`` marker counted from the
+# program start, and the 11 leading ``4``s pad the count so the first real
+# marker is the 12th.  The label character is skipped as a no-op when the
+# ``7n`` fall-through runs, so it must not be a command: ``chr(67 + k)``
+# yields the letters C..Z (values 12..35) for the k-th marker.
 
 
 def sophie(truth_table: str, n: int) -> str:
@@ -361,16 +360,6 @@ def dig(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
-def _six_five_delta(delta: int) -> str:
-    """6-5 additions that move a cell by a positive ``delta``.
-
-    A run of sixes covers the quotient of ``delta / 6``; the remainder is
-    added with ``62`` pairs (each ``6`` then ``2`` nets ``+6 - 5 = +1``).
-    """
-    q, r = divmod(delta, 6)
-    return "6" * q + "62" * r
-
-
 def six_five(truth_table: str, n: int) -> str:
     """Build a 6-5 program computing the given truth table.
 
@@ -381,19 +370,29 @@ def six_five(truth_table: str, n: int) -> str:
     eight ``2``s).  ``78n`` branches: the ``7`` compares the cell to 8, so a
     zero bit skips the ``8n`` jump and falls into the left subtree, while a
     one bit takes the jump to the n-th ``4`` marker holding the right
-    subtree.  The marker count is padded with leading ``4``s so every label
-    lands on a no-op letter (C..Z).  A leaf adds ``48 + value - base`` (8 for
-    a left path, 9 for a right path), prints with ``A``, and halts with ``0``.
+    subtree.  A leaf adds ``48 + value - base`` (8 for a left path, 9 for a
+    right path) with a run of sixes plus ``62`` pairs (each ``6`` then ``2``
+    nets ``+6 - 5 = +1``), prints with ``A``, and halts with ``0``.
+
+    Only the letters C..Z are usable as branch labels: they are no-ops on the
+    ``7n`` fall-through and their ``num`` values 12..35 match the padded
+    marker counts.  That caps the generator at n == 4 (15 internal nodes).
     """
-    labels = iter(_SIX_FIVE_LABELS)
+    if 2**n - 1 > 24:
+        raise ValueError("the 6-5 boolean generator supports n <= 4 only")
+    marker = 0
 
     def build(rows: list[int], bit: int, base: int) -> str:
+        nonlocal marker
         if len(rows) == 1:
-            return _six_five_delta(48 + int(truth_table[rows[0]]) - base) + "A0"
+            delta = 48 + int(truth_table[rows[0]]) - base
+            q, r = divmod(delta, 6)
+            return "6" * q + "62" * r + "A0"
         g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
         g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
         sub0 = build(g0, bit + 1, 8)
-        label = next(labels)
+        label = chr(67 + marker)
+        marker += 1
         sub1 = build(g1, bit + 1, 9)
         return "B" + "2" * 8 + "78" + label + sub0 + "4" + sub1
 
