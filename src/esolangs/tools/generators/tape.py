@@ -6,8 +6,6 @@ from esolangs.tools.transpilers import bf_to_ascii_art
 
 __all__ = [
     "_MAMMALIAN_WALK",
-    "_MINUS_REM",
-    "_PLUS_REM",
     "_mammalian_walk",
     "_six_five_path",
     "ascii_art",
@@ -24,24 +22,18 @@ __all__ = [
 
 
 def _six_five_path(src: int, dst: int) -> str:
-    """Shortest sequence of 5/6 additions and 2/9 subtractions from src to dst.
+    """Sequence of 6/2 additions and 9/5 subtractions from src to dst.
 
-    The delta is built from a run of sixes (or fives) plus a short remainder
-    pattern, choosing whichever base yields the shorter program.
+    The delta is covered by a run of sixes (moving up) or nines (moving down)
+    plus ``62``/``95`` pairs for the remainder: each ``62`` nets ``+6 - 5 =
+    +1`` and each ``95`` nets ``-6 + 5 = -1``.
     """
     delta = dst - src
-    if delta < 0:
-        delta = -delta
-        q6, r6 = divmod(delta, 6)
-        q5, r5 = divmod(delta, 5)
-        p6 = "9" * q6 + _MINUS_REM[r6]
-        p5 = "2" * q5 + _MINUS_REM[r5]
-        return p6 if len(p6) <= len(p5) else p5
-    q6, r6 = divmod(delta, 6)
-    q5, r5 = divmod(delta, 5)
-    p6 = "6" * q6 + _PLUS_REM[r6]
-    p5 = "5" * q5 + _PLUS_REM[r5]
-    return p6 if len(p6) <= len(p5) else p5
+    if delta >= 0:
+        q, r = divmod(delta, 6)
+        return "6" * q + "62" * r
+    q, r = divmod(-delta, 6)
+    return "9" * q + "95" * r
 
 
 def _mammalian_walk(ptr: int) -> list[dict[int, int]]:
@@ -66,10 +58,6 @@ def _mammalian_walk(ptr: int) -> list[dict[int, int]]:
 
 
 _MAMMALIAN_WALK: dict[int, list[dict[int, int]]] = {}
-
-
-_PLUS_REM = ["", "62", "6622", "55599", "559", "5"]  # +5/+6 paths for remainders
-_MINUS_REM = ["", "95", "9955", "999555", "262", "2"]  # -5/-6 paths
 
 
 def bf(text: str) -> str:
