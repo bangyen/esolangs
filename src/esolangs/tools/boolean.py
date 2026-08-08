@@ -304,6 +304,32 @@ def _validate_tt(truth_table: str, n: int) -> None:
         raise ValueError("truth table must contain only '0' and '1'")
 
 
+def _odd_reduce(pairs: int, level: int, n: int) -> str:
+    """Odd-reduction block: zero prev, swap, even-reduce, pop both.
+
+    The swap encodes the current input's value into the (zeroed) previous
+    input, so that the even-reduce can test a zero-separator-guarded cell.
+    """
+    processed = level
+    ahead = n - level
+    total = n
+    qlen = 2 * pairs + 2 + total
+    # Rotation to bring the *previous* input to the front
+    rot = 2 * pairs + 2 + (processed - 1) if processed > 0 else 0
+    zero = "gy" + "j" + "e" * (qlen - 1) + "gz"
+    # Swap: encodes current input into prev
+    swap = "e" + "gy" + "j" + "e" * (qlen - 2) + "j" + "gz"
+    # Bring ghost (now carrying the current input's value) to front
+    bring = "e" * (qlen - 1)
+    # Even-reduce on ghost (no initial rotation — ghost is already at front)
+    er = (
+        "gy" + "e" * pairs + "gz"
+        + "e" * ahead + "f" * pairs
+        + "gy" + "e" * (total + 2) + "gz"
+    )
+    return "e" * rot + zero + swap + bring + er + "ff"
+
+
 def taglate(truth_table: str, n: int) -> str:
     """Build a Taglate program computing the given truth table.
 
@@ -315,10 +341,11 @@ def taglate(truth_table: str, n: int) -> str:
 
     For ``n >= 2`` the queue is seeded and a prefix of ``h``/``e``/``b``/
     ``d``/``j`` builds the selection layout.  Odd ``n`` prepends a fake
-    zero input (ghost digit) so the ghost level (always 0) avoids the
-    even-reduce stride.  ``(n - 1)`` even-reduction blocks walk the
-    real inputs; the final odd-reduction block reuses the proven ``n==2``
-    pattern and prints the result.
+    zero input (ghost digit).  Even levels use even-reduce (select half,
+    keep all inputs); odd levels zero the previous input, swap, even-
+    reduce on the ghost-encoded value, and pop both inputs.  The final
+    odd-reduction block reuses the proven ``n==2`` pattern and prints
+    the result.
     """
     if n == 1:
         _validate_tt(truth_table, n)
@@ -352,16 +379,23 @@ def taglate(truth_table: str, n: int) -> str:
     )
 
     select_parts = []
+    rem = n_eff  # remaining inputs (decreases when odd_reduce pops)
+    pairs = 2**rem
+    sel_offset = 0  # inputs already selected in the current rem-scope
     for level in range(n_eff - 1):
-        pairs = 2 ** (n_eff - level)
-        select_parts.append(_even_reduce(pairs, level, n_eff))
+        if level % 2 == 0:
+            # Even reduction: select half, keep all inputs
+            select_parts.append(_even_reduce(pairs, sel_offset, rem))
+            sel_offset += 1
+        else:
+            # Odd reduction: zero prev, swap, even-reduce, pop both
+            select_parts.append(_odd_reduce(pairs, sel_offset, rem))
+            rem -= 2        # two inputs popped
+            sel_offset = 0  # reset for new scope
+        pairs //= 2
 
-    if n_eff > 2:
-        # Drop the first n_eff-2 already-used inputs, then rotate the
-        # remaining two inputs so the queue matches the 8-cell [0, w0, 0,
-        # w1, 48, 48, prev, curr] layout that the committed n=2 odd
-        # selector (_SEL1_N2) expects.
-        select_parts.append("e" * 6 + "f" * (n_eff - 2) + "e" * 2)
+    # After alternating even/odd reductions, the queue is always 8 cells
+    # [0, v0, 0, v1, 48, 48, prev, curr] — exactly what _SEL1_N2 expects.
     select_parts.append(_SEL1_N2)
 
     return seed + "\n" + prefix + "".join(select_parts)
