@@ -133,6 +133,41 @@ class TestAsciiArt:
         assert "|" in program
 
 
+def run_polynomial(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.polynomial import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program)
+    return buffer.getvalue()
+
+
+class TestPolynomial:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.polynomial(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_is_polynomial(self) -> None:
+        """The program is a polynomial function."""
+        assert boolean.polynomial("0110", 2).startswith("f(x) = ")
+
+    def test_only_supports_two_inputs(self) -> None:
+        with pytest.raises(ValueError, match="n == 2"):
+            boolean.polynomial("11111110", 3)
+
+
 class TestDig:
     @pytest.mark.parametrize(
         ("table", "n"),
