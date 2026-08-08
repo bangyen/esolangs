@@ -397,6 +397,8 @@ class TestTaglate:
             ("0001", 2),  # AND
             ("0110", 2),  # XOR
             ("1110", 2),  # NAND
+            ("00000001", 3),  # majority
+            ("0000000000000001", 4),  # 4-AND
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -404,7 +406,9 @@ class TestTaglate:
         program = boolean.taglate(table, n)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_taglate(program, [str(b) for b in bits])
+            # Odd n > 1 uses a ghost digit (fake zero first input)
+            inputs = ["0"] + [str(b) for b in bits] if n % 2 == 1 and n > 1 else [str(b) for b in bits]
+            got = run_taglate(program, inputs)
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_all_two_input_tables(self) -> None:
@@ -415,7 +419,3 @@ class TestTaglate:
                 bits = [(combo >> 1) & 1, combo & 1]
                 got = run_taglate(boolean.taglate(tt, 2), [str(b) for b in bits])
                 assert got == tt[combo], f"{tt} inputs {bits}"
-
-    def test_only_supports_two_inputs(self) -> None:
-        with pytest.raises(ValueError, match="n == 2"):
-            boolean.taglate("11111110", 3)
