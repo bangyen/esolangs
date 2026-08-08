@@ -140,12 +140,28 @@ def dotlang(text: str) -> str:
 
 
 def huf(text: str) -> str:
-    """Each character is ``#`` plus ``ord(c)`` increments, then ``>@``.
+    """Each character is a multiply segment ``# +*a | +*b ! +*r >@``.
 
-    ``#`` resets the value, ``+`` increments it, ``>`` prints it as a
-    character and ``@`` closes the segment the interpreter extracts.
+    ``#`` resets num and mul, a run of ``a`` increments num, ``|`` starts the
+    multiplier, a run of ``b`` increments it to ``b + 1``, and ``!`` multiplies
+    num by ``mul - 1`` so it becomes ``a * b``; a final run of ``r`` tops it
+    up to the character code, then ``>@`` prints it and closes the segment.
+    ``a`` is searched near ``sqrt(ord)`` so the program is O(sqrt) rather than
+    O(ord).
     """
-    return "".join("#" + "+" * ord(c) + ">@" for c in text)
+    return "".join(_huf_segment(ord(c)) for c in text)
+
+
+def _huf_segment(value: int) -> str:
+    best = min(
+        (
+            (a + b + r, a, b, r)
+            for a in range(1, int(value**0.5) + 2)
+            for b, r in (divmod(value, a),)
+        )
+    )
+    _, a, b, r = best
+    return "#" + "+" * a + "|" + "+" * b + "!" + "+" * r + ">@"
 
 
 def eval(text: str) -> str:
