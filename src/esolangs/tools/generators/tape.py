@@ -60,14 +60,48 @@ def _mammalian_walk(ptr: int) -> list[dict[int, int]]:
 _MAMMALIAN_WALK: dict[int, list[dict[int, int]]] = {}
 
 
+def _bf_set(value: int) -> str:
+    """Brainfuck that sets the next cell to ``value`` and prints it.
+
+    The current cell is assumed to be zero.  A run of ``a`` plus signs makes
+    it ``a``, a loop moves that many copies of ``b`` into the next cell, and
+    a final run tops the product up to ``value`` with the remainder ``r``;
+    the pointer is left on the printed cell.  ``a`` is searched near
+    ``sqrt(value)`` so the program is O(sqrt) rather than O(value).
+    """
+    best = min(
+        (
+            (a + b + r, a, b, r)
+            for a in range(1, int(value**0.5) + 2)
+            for b, r in (divmod(value, a),)
+        )
+    )
+    _, a, b, r = best
+    return "+" * a + "[>" + "+" * b + "<-]" + ">" + "+" * r + "."
+
+
 def bf(text: str) -> str:
     """Generate a brainfuck program that outputs ``text``.
 
-    ``[-]`` zeroes the current cell (so each character starts from a known
-    state), a run of ``+``s sets it to the target value, and ``.`` prints
-    it.
+    The pointer walks right one cell per character.  A cell is reused when
+    the next character is close enough that its delta is shorter than
+    rebuilding it: the program emits the +/- run and prints in place.
+    Otherwise the cell is zeroed with ``[-]`` and rebuilt with a multiply
+    loop (``_bf_set``), so large values cost O(sqrt) instead of O(value).
     """
-    return "".join("[-]" + "+" * ord(c) + "." for c in text)
+    res: list[str] = []
+    cur = 0
+    for c in text:
+        v = ord(c)
+        delta = v - cur
+        inc = "+" * delta if delta >= 0 else "-" * -delta
+        if len(inc) + 1 <= len(_bf_set(v)) + 3:
+            res.append(inc + ".")
+            cur = v
+        else:
+            res.append("[-]" + _bf_set(v))
+            cur = v
+    return "".join(res)
 
 
 def ascii_art(text: str) -> str:
