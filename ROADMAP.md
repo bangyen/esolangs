@@ -27,11 +27,14 @@ transpiler — the source and target must agree on every input. It needs a
 design decision first: how to detect or take `n` (the input count) and how
 to reject programs outside the class loudly.
 
-### Brainfuck boolean generator via the BF-to-6-5 transpiler
-A boolean generator for brainfuck, composed with the new BF-to-6-5
-transpiler, would give 6-5 truth-table programs for arbitrary `n`.  The
-roadblock is loop count: each bf `[`/`]` pair costs two 6-5 `4` markers,
-and the transpiler's labels (0..9, A..Z) cap at 18 loops.  A decision-tree
-generator needs `2**n - 1` branches, so it only helps up to about 5 inputs;
-an arithmetic generator with a constant number of loops would be the
-extensible version but has not been designed yet.
+### Constant-loop boolean generator for arbitrary n
+The boolean generators cover every table up to a small input count: 6-5 and
+CircleFuck build decision trees capped at about 5 inputs (35 branch labels
+for 6-5, n <= 5), Taglate is closed-form for n == 2, and the brainfuck
+generator handles any n but is branch-free and grows with the minterm count.
+Extending any of them to arbitrary `n` needs an arithmetic generator whose
+program size and loop count are constant in `n` (e.g. encode the inputs as
+one number and decode the table entry arithmetically); the BFStack encoder
+hints at the shape but no such generator has been designed yet.  The
+BF-to-6-5 transpiler cannot provide it: the brainfuck generator's loop count
+already exceeds the transpiler's 18-loop cap at n == 2.
