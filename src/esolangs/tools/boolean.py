@@ -16,9 +16,9 @@ _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
 
 # 6-5 jump labels: ``8n`` jumps to the n-th ``4`` marker counted from the
 # program start, and the 11 leading ``4``s pad the count so the first real
-# marker is the 12th.  The label character is skipped as a no-op when the
-# ``7n`` fall-through runs, so it must not be a command: ``chr(67 + k)``
-# yields the letters C..Z (values 12..35) for the k-th marker.
+# marker is the 12th.  The label character is consumed as the ``8n`` operand,
+# so it must not be a command: ``chr(67 + k)`` yields the letters C..Z
+# (values 12..35) for the k-th marker.
 
 
 def sophie(truth_table: str, n: int) -> str:
@@ -367,16 +367,17 @@ def six_five(truth_table: str, n: int) -> str:
     inputs (most significant first), and ``n`` is the number of inputs.
 
     Each input is read with ``B`` and normalized to 8/9 (subtracting 40 with
-    eight ``2``s).  ``78n`` branches: the ``7`` compares the cell to 8, so a
-    zero bit skips the ``8n`` jump and falls into the left subtree, while a
-    one bit takes the jump to the n-th ``4`` marker holding the right
+    eight ``2``s).  ``78`` branches: the ``7`` compares the cell to 8, so a
+    zero bit skips the following ``8n`` jump and falls into the left subtree,
+    while a one bit takes the jump to the n-th ``4`` marker holding the right
     subtree.  A leaf adds ``48 + value - base`` (8 for a left path, 9 for a
     right path) with a run of sixes plus ``62`` pairs (each ``6`` then ``2``
     nets ``+6 - 5 = +1``), prints with ``A``, and halts with ``0``.
 
-    Only the letters C..Z are usable as branch labels: they are no-ops on the
-    ``7n`` fall-through and their ``num`` values 12..35 match the padded
-    marker counts.  That caps the generator at n == 4 (15 internal nodes).
+    Only the letters C..Z are usable as branch labels: their ``num`` values
+    12..35 match the padded marker counts and they are never executed (a
+    ``7n`` skip or ``8n`` jump consumes them as operands).  That caps the
+    generator at n == 4 (15 internal nodes).
     """
     if 2**n - 1 > 24:
         raise ValueError("the 6-5 boolean generator supports n <= 4 only")
@@ -394,7 +395,7 @@ def six_five(truth_table: str, n: int) -> str:
         label = chr(67 + marker)
         marker += 1
         sub1 = build(g1, bit + 1, 9)
-        return "B" + "2" * 8 + "78" + label + sub0 + "4" + sub1
+        return "B" + "2" * 8 + "78" + "8" + label + sub0 + "4" + sub1
 
     return "4" * 11 + build(list(range(2**n)), 1, 0)
 
