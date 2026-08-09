@@ -99,13 +99,21 @@ class TestASCIIArt:
         )
 
     def test_unmatched_open_bracket(self) -> None:
-        """An unmatched [ with a zero cell halts cleanly."""
-        assert run_and_capture(program(LOOP_OPEN)) == ""
+        """Unbalanced brackets are a malformed program, not a halt."""
+        import pytest
+
+        with pytest.raises(ValueError):
+            run_and_capture(program(LOOP_OPEN))
 
     def test_unmatched_close_bracket_with_nonzero_cell(self) -> None:
-        """An unmatched ] with a nonzero cell halts cleanly."""
-        assert run_and_capture(program(PLUS, LOOP_CLOSE)) == ""
+        """Unbalanced brackets are a malformed program, not a halt."""
+        import pytest
+
+        with pytest.raises(ValueError):
+            run_and_capture(program(PLUS, LOOP_CLOSE))
 
     def test_nested_open_brackets(self) -> None:
         """Nested [ brackets are counted during the skip."""
-        assert run_and_capture(program(LOOP_OPEN, LOOP_OPEN)) == ""
+        assert (
+            run_and_capture(program(LOOP_OPEN, LOOP_OPEN, LOOP_CLOSE, LOOP_CLOSE)) == ""
+        )

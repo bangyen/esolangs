@@ -98,7 +98,7 @@ def _auto_size(ops: list[str]) -> int:
             elif c == "[":
                 j = match.get(i)
                 if j is None or j >= end:
-                    break  # unmatched bracket: CircleFuck halts on it
+                    raise ValueError("unbalanced brackets cannot be transpiled")
                 blo, bhi, bend, ok = scan(i + 1, j, p)
                 if not ok:
                     return (lo, hi, p, False)
