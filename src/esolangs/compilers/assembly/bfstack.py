@@ -1,3 +1,5 @@
+"""Compiler that turns BFStack programs into x86 Linux assembly."""
+
 import itertools
 import re
 import sys
@@ -5,6 +7,13 @@ from typing import cast
 
 
 def parse(code: str) -> list[tuple[str, int]]:
+    """Normalize a BFStack program into ``(command, count)`` tokens.
+
+    Filters to the command alphabet, cancels adjacent opposite increments,
+    drops loops that are removed by a skip, and collapses zeroing and runs of
+    identical commands.
+    """
+
     def con(*s: str) -> tuple[str, int]:
         if s[0] in "+-":
             x = s.count("+")
@@ -45,6 +54,7 @@ def parse(code: str) -> list[tuple[str, int]]:
 
 
 def comp(code: str) -> str:
+    """Compile a BFStack program to x86 assembly with syscall I/O."""
     tokens = parse(code)
     jump = 0
     arr = []

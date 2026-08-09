@@ -1,9 +1,17 @@
+"""Compiler that turns Jaune programs into x86 Linux assembly."""
+
 import sys
 from re import findall, sub
 from typing import cast
 
 
 def count(code: str, ind: int) -> tuple[int | str, int]:
+    """Return the operand value at ``ind`` and the next index.
+
+    Handles run-lengths, signed ``+``/``-`` operands, and the marker commands
+    ``: $ @ ? !`` whose operand is the preceding character.
+    """
+
     def check(k: int, s: str) -> bool:
         ch = code[k]
         return ch.isnumeric() or ch in s
@@ -34,6 +42,8 @@ def count(code: str, ind: int) -> tuple[int | str, int]:
 
 
 def prep(code: str) -> tuple[str, list[int], list[int]]:
+    """Filter to the command alphabet and assign labels to jumps/routines."""
+
     def rep(sym: str) -> str:
         return sub(r"\d[?!]", "", sym)
 
@@ -76,6 +86,8 @@ def prep(code: str) -> tuple[str, list[int], list[int]]:
 
 
 def comp(code: str) -> str:
+    """Compile a Jaune program to x86 assembly with decimal output."""
+
     def add(m: int) -> str:
         return str(m + 1) if m else ""
 
