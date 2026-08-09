@@ -6,6 +6,7 @@ from array import array
 from functools import cache
 from typing import Any
 
+from esolangs.tools.generators.helpers import _ilog
 from esolangs.tools.ztoalc_starts import STARTS
 
 __all__ = [
@@ -58,9 +59,6 @@ def clockwise(text: str) -> str:
     grid[n - 1][0] = "R"
 
     return "\n".join("".join(row) for row in grid)
-
-
-from esolangs.tools.generators.helpers import _ilog
 
 
 def container(text: str) -> str:

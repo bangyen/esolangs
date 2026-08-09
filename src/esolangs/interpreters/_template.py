@@ -8,9 +8,10 @@ name (lowercase, hyphens allowed).
 Every interpreter follows the same conventions:
 
 * Expose ``run(code, io)`` taking the program as a string (or a list of
-  lines for grid/line-based languages) and a required :class:`~esolangs.interpreters.io.IO`
-  instance.  The library passes a ``ScriptedIO`` to feed a string as input
-  and capture output; the ``__main__`` block passes a plain ``IO()`` for
+  lines for grid/line-based languages) and a required
+  :class:`~esolangs.interpreters.io.IO` instance.  The library passes a
+  ``ScriptedIO`` to feed a string as input and capture output; the
+  ``__main__`` block passes a plain ``IO()`` for
   real stdin/stdout.
 * Take ``code: str`` for flat programs and ``code: list[str]`` for grid or
   line-based ones; in the latter case the registry entry sets ``split=True``
