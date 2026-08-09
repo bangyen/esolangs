@@ -19,17 +19,24 @@ Every interpreter follows the same conventions:
   with ``io.input_str``/``io.input_char``/``io.input_num`` instead of calling
   ``print``/``input`` directly.  The IO object owns the newline flag, so
   interpreters never track ``new`` themselves.
-* Halt by ``return`` instead of raising on runtime conditions (unmatched
-  brackets, bad jumps, running off the grid).  Interpreters must terminate
-  by construction -- the fuzz and robustness suites feed random and empty
-  programs and assert they never crash.  A ``ValueError`` is only
-  appropriate for input that is fundamentally not a program at all.
+* Terminate by ``return`` when the language's own rules stop the program
+  (bad jumps, running off the grid).  Distinguish the cases where the
+  program did something invalid:
+  * raise :class:`~esolangs.exceptions.ValueError` for a structurally
+    malformed program -- input that cannot be a valid program at all, such
+    as unbalanced brackets or an empty program (see ``bf.py``);
+  * raise :class:`~esolangs.exceptions.HaltError` for a mathematically or
+    structurally invalid operation at runtime, such as division by zero or
+    popping an empty stack -- the interpreter must not invent a result the
+    language does not define (see ``taglate.py``).
+  Interpreters must terminate by construction -- the fuzz and robustness
+  suites feed random and empty programs and assert they never crash.
 * Guard input lines before indexing them (``if val:``) when the language
   reads a character: the library raises ``EOFError`` when input runs out and
   an empty line is legal, so ``val[0]`` can fail without a guard.
-* Document decisions for gaps in the language's wiki spec in the module
-  docstring rather than choosing silently (see ``bf.py``, ``6-5.py``, or
-  ``taglate.py`` for the style).
+* Document decisions for genuinely neutral gaps in the language's wiki spec
+  in the module docstring rather than choosing silently (see ``6-5.py`` for
+  the style); do not use this to define away invalid operations.
 * Provide a ``__main__`` block that reads a program file and calls
   ``run(data, IO())``.
 

@@ -11,6 +11,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import esolangs
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.other.taglate import run
 from esolangs.interpreters.io import IO
 
@@ -40,8 +41,12 @@ class TestTaglate:
     def test_divide(self) -> None:
         assert run_and_capture(["93", "di"]) == chr(57 // 51)
 
-    def test_divide_by_zero_pushes_zero(self) -> None:
-        assert run_and_capture(["\x001", "di"]) == "\x00"
+    def test_divide_by_zero_halts(self) -> None:
+        """Division by zero is invalid, so the interpreter halts on it."""
+        import pytest
+
+        with pytest.raises(HaltError):
+            run_and_capture(["1\x00", "di"])
 
     def test_rotate(self) -> None:
         assert run_and_capture(["12", "ei"]) == "2"
