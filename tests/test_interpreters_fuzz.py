@@ -36,7 +36,7 @@ class _TimeoutError(Exception):
     """Raised by the alarm handler when a random program does not terminate."""
 
 
-def _on_alarm(signum: int, frame: object) -> None:
+def _on_alarm(_signum: int, _frame: object) -> None:
     raise _TimeoutError("interpreter did not terminate on a random program")
 
 

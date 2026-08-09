@@ -16,13 +16,13 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.WII2D import run
 
 
-class TimeoutError(Exception):
+class _TestTimeoutError(Exception):
     """Custom timeout exception for test protection."""
 
 
-def timeout_handler(signum: int, frame: Any) -> None:
+def timeout_handler(_signum: int, _frame: Any) -> None:
     """Signal handler for timeout protection."""
-    raise TimeoutError("Test execution timed out")
+    raise _TestTimeoutError("Test execution timed out")
 
 
 def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
@@ -36,7 +36,7 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
         Function result
 
     Raises:
-        TimeoutError: If function exceeds timeout
+        _TestTimeoutError: If function exceeds timeout
 
     """
     # Set up signal handler for timeout

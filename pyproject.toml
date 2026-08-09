@@ -99,6 +99,9 @@ select = [
     "RET", # flake8-return
     "N",   # pep8-naming
     "FBT", # flake8-boolean-trap
+    "A",   # builtin shadowing
+    "ARG", # unused arguments
+    "SLF", # private member access
 ]
 ignore = [
     "C901",  # too complex
@@ -118,6 +121,9 @@ ignore = [
 # Test files are exempt from docstring requirements: test method and class
 # names are self-documenting, so the D rules would only add boilerplate.
 "tests/**/*.py" = ["D", "N802"]
+# Parametrized tests share a (program, stdin) battery; some tests only use
+# program, but pytest requires the parameter to be declared.
+"tests/test_transpilers.py" = ["ARG001"]
 
 [tool.mypy]
 strict = true
