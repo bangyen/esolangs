@@ -111,7 +111,7 @@ def run(code: list[str]) -> None:
                     return
                 ind = partner
         elif tok == "h":
-            val = input("\nInput: "[:new])
+            val = input("\nInput: "[new:])
             queue.append(ord(val[0]))
             new = 1
         elif tok == "i":
