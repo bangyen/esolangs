@@ -2,6 +2,9 @@ r"""Interpreter for Keys.
 
 The first two lines are compared; the program prints "Accept." when they are
 equal and contain none of the characters ``- _ / \\``, otherwise "Reject."
+
+A program with fewer than two lines leaks an :class:`IndexError` rather than
+reporting a malformed program; the wiki is silent on this case.
 """
 
 import re

@@ -3,8 +3,9 @@
 The first line declares rules: ``name = initial`` or a bare ``name``, and
 following indented lines attach conditional deltas (``n cond``) to the most
 recent container.  Each tick updates every container by its satisfied rules;
-PRINT outputs OUT as a byte when it turns on, INPUT reads a line into the
-queue when the empty-named container fires, and EXIT halts the program.
+PRINT outputs OUT as a byte when it turns on, the empty-named container reads
+a line of input into the IN container when it fires, and EXIT halts the
+program.
 """
 
 import sys
@@ -83,7 +84,7 @@ def run(code: list[str], io: IO) -> None:
                 s = io.input_str()
                 queue += list(s)
 
-            new["INPUT"] = ord(queue[0])
+            new["IN"] = ord(queue[0])
             queue = queue[1:]
         if "EXIT" in var and var["EXIT"] != new["EXIT"]:
             sys.exit(new["EXIT"])

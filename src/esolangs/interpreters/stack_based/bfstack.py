@@ -3,6 +3,10 @@
 Brainfuck-style commands on a stack: > pushes 0, < pops, + and - adjust the
 top, . prints it, , pushes a byte of input, and [ ] loop while the top is
 nonzero.  A pop or output on an empty stack is invalid and halts the program.
+
+The wiki does not specify the cell width for ``+``/``-``; this interpreter
+wraps at 8 bits (mod 256).  It also raises :class:`EOFError` on exhausted
+input and :class:`HaltError` on an unmatched ``]``.
 """
 
 import sys

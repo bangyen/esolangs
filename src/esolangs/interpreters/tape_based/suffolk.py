@@ -4,6 +4,11 @@
 pointer, ! zeroes a cell computed from the accumulator, , reads a byte of
 input, and . prints the accumulator minus one.  Execution loops until the
 step limit is reached.
+
+The wiki describes ``,`` as reading one character, with EOF setting the
+accumulator to zero; this interpreter reads a whole line (using only its
+first byte) and raises :class:`EOFError` on exhausted input instead.  The
+wiki's infinite rerun is capped at 10 passes so programs terminate.
 """
 
 import sys

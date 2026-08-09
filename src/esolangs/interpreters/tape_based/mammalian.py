@@ -3,6 +3,11 @@
 SEED/CONFLAGRATE operate on all 23 arrays, EXCRETE/CONSUME/FISSION/DIGEST on
 the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads a byte
 of input, and PRONOUNCE prints the accumulator as a byte.
+
+The wiki's CONFLAGRATE description has the ``a[i] > a[n-i]`` branch add the
+truncated quotient to the mirror cell; this interpreter instead sets the
+mirror cell to ``a[i] + quotient`` (matching the reference implementation the
+wiki's examples were verified against).  Arithmetic wraps mod 256.
 """
 
 import functools
