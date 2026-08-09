@@ -1,9 +1,18 @@
+"""Interpreter for Suffolk.
+
+> moves right, < sums the current cell into the accumulator and rewinds the
+pointer, ! zeroes a cell computed from the accumulator, , reads a byte of
+input, and . prints the accumulator minus one.  Execution loops until the
+step limit is reached.
+"""
+
 import sys
 
 from esolangs.interpreters.io import IO
 
 
 def run(code: str, io: IO, limit: int = 10) -> None:
+    """Run a Suffolk program, looping at most ``limit`` times."""
     tape: list[int] = [0]
     num = ind = 0
     ptr = acc = 0

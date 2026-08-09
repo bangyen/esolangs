@@ -14,6 +14,7 @@ from esolangs.interpreters.io import IO
 
 
 def run(code: str, io: IO) -> None:
+    """Run a NoComment program."""
     cell = 0
     for char in code:
         if char == "c":

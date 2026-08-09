@@ -1,3 +1,10 @@
+"""Interpreter for BFStack.
+
+Brainfuck-style commands on a stack: > pushes 0, < pops, + and - adjust the
+top, . prints it, , pushes a byte of input, and [ ] loop while the top is
+nonzero.  A pop or output on an empty stack is invalid and halts the program.
+"""
+
 import sys
 
 from esolangs.exceptions import HaltError
@@ -5,6 +12,7 @@ from esolangs.interpreters.io import IO
 
 
 def run(code: str, io: IO) -> None:
+    """Run a BFStack program, halting on an invalid empty-stack operation."""
     stk: list[int] = []
     lst: list[int] = []
     ind = 0

@@ -1,9 +1,17 @@
+"""Interpreter for Minifuck.
+
+A binary tape where [ skips the next instruction when the flipped bit is 0
+and . prints the first eight cells as a binary byte (reading a byte of input
+instead when the pool is zero).  < moves the pointer left.
+"""
+
 import sys
 
 from esolangs.interpreters.io import IO
 
 
 def run(code: str, io: IO) -> None:
+    """Run a Minifuck program."""
     tape: list[int] = [0] * 8
     ptr = ind = 0
 

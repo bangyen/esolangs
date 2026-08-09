@@ -1,3 +1,11 @@
+"""Interpreter for Clockwise.
+
+A pointer walks clockwise around a square ring, turning at R cells (or at ?
+when the accumulator is nonzero, or ! when it is zero).  ; outputs the
+accumulator parity, . reads an input bit, S zeroes the accumulator, and seven
+parity bits are grouped into one printed byte.
+"""
+
 import sys
 
 from esolangs.interpreters.io import IO
@@ -9,6 +17,7 @@ ROW = [0, 1, 0, -1]
 def move(
     x: int, y: int, r: int, code: list[str], acc: int
 ) -> tuple[int, int, int, str, int]:
+    """Step the pointer one cell, returning position, direction, and the cell."""
     o = code[y][x]
     c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
 
@@ -21,6 +30,7 @@ def move(
 
 
 def run(code: list[str], io: IO) -> None:
+    """Run a Clockwise program, reading input bits when the ring reads ``.``."""
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
     x = y = r = 0

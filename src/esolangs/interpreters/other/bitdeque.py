@@ -1,3 +1,10 @@
+"""Interpreter for BitDeque.
+
+PUSH/INJECT append a register value to the deque, POP/EJECT pop it (0 when
+empty), INVERT flips the register, and GOTO jumps to a numbered command when
+the register is nonzero.  The deque contents are printed at the end.
+"""
+
 import re
 import sys
 
@@ -5,6 +12,7 @@ from esolangs.interpreters.io import IO
 
 
 def run(code: str, io: IO) -> None:
+    """Run a BitDeque program and print the deque at the end."""
     lst = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", r"GOTO *(\d+)")
 
     join = f'({"|".join(lst)})'

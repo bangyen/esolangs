@@ -1,5 +1,4 @@
-"""
-Polynomial interpreter implementation.
+"""Polynomial interpreter implementation.
 
 Polynomial is an esoteric programming language by User:Maedhros777 where each program
 is a polynomial function. Language statements are executed based on the zeroes of the

@@ -1,5 +1,4 @@
-"""
-RAM0 interpreter implementation.
+"""RAM0 interpreter implementation.
 
 Computational model with two registers (z, n) and unbounded RAM.
 Seven commands: Z, A, N, C, L, S, and goto.

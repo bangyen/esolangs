@@ -78,6 +78,7 @@ def _google_url(queue: list[int]) -> str:
 
 
 def run(code: list[str], io: IO) -> None:
+    """Run a Taglate program seeded by the first line's queue."""
     if not code:
         return
     queue = [ord(c) for c in code[0]]

@@ -1,3 +1,11 @@
+r"""Interpreter for Eval.
+
+Commands manipulate two stacks: 0 pushes 0, \\ pushes the current stack index,
+^ duplicates, + and - adjust the top, = moves a value to the other stack, ;
+pops, ~ switches stacks, * reverses, ? skips the next command on a zero pop,
+and ! evaluates the popped string as a program.
+"""
+
 import re
 import sys
 from collections.abc import Callable
@@ -10,11 +18,14 @@ from esolangs.interpreters.io import IO
 
 @dataclass
 class State:
+    """Two stacks with an index choosing the active one."""
+
     ptr: int = 0
     stk: list[list[int | str]] = field(default_factory=lambda: [[], []])
 
 
 def run(code: str, io: IO) -> None:
+    """Run an Eval program."""
     state = State()
 
     def top() -> int | str:
