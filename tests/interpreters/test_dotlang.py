@@ -9,6 +9,7 @@ import io
 from unittest.mock import patch
 
 from esolangs.interpreters.register_based.dotlang import Dot, run
+from esolangs.interpreters.io import IO
 
 
 class TestDot:
@@ -106,14 +107,14 @@ class TestBasicCommands:
     def test_quine_program(self) -> None:
         """Test the special quine case (single space)."""
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run([" "])
+            run([" "], io=IO())
             assert mock_stdout.getvalue() == " "
 
     def test_hello_world(self) -> None:
         """Test the hello world program from the official examples."""
         code = ["•#`Hello, world!`#"]
         with patch("builtins.print") as mock_print:
-            run(code)
+            run(code, IO())
             # Check that print was called with the expected value
             mock_print.assert_called_with("Hello, world!", end="")
 
@@ -122,19 +123,19 @@ class TestBasicCommands:
         # Test integer output
         code = ["•#42#"]
         with patch("builtins.print") as mock_print:
-            run(code)
+            run(code, IO())
             mock_print.assert_called_with(42, end="")
 
         # Test float output
         code = ["•#3.14#"]
         with patch("builtins.print") as mock_print:
-            run(code)
+            run(code, IO())
             mock_print.assert_called_with(3.14, end="")
 
         # Test string output
         code = ["•#`test string`#"]
         with patch("builtins.print") as mock_print:
-            run(code)
+            run(code, IO())
             mock_print.assert_called_with("test string", end="")
 
     def test_input_command(self) -> None:
@@ -144,7 +145,7 @@ class TestBasicCommands:
             patch("builtins.print") as mock_print,
             patch("builtins.input", return_value="test input"),
         ):
-            run(code)
+            run(code, IO())
             mock_print.assert_called_with("test input", end="")
 
     def test_direction_commands(self) -> None:
@@ -152,20 +153,20 @@ class TestBasicCommands:
         # Test initial direction setting - dot moves right to hit #
         code = [">•#42#"]
         with patch("builtins.print") as mock_print:
-            run(code)
+            run(code, IO())
             mock_print.assert_called_with(42, end="")
 
         # Test direction change during execution
         code = ["•>#42#"]
         with patch("builtins.print") as mock_print:
-            run(code)
+            run(code, IO())
             mock_print.assert_called_with(42, end="")
 
     def test_multiple_outputs(self) -> None:
         """Test programs with multiple output commands."""
         code = ["•#42#>#`hello`#"]
         with patch("builtins.print") as mock_print:
-            run(code)
+            run(code, IO())
             # Should be called twice: once for 42, once for hello
             assert mock_print.call_count == 2
             mock_print.assert_any_call(42, end="")
@@ -180,52 +181,52 @@ class TestControlFlow:
         # 42 is an int, so : turns the dot up to the print on the row above
         code = ["    #", "•#42:"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "42"
 
     def test_type_checking_float_no_turn(self) -> None:
         """Test that ? does not turn a dot carrying an int."""
         code = ["•#42?"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == ""
 
     def test_type_checking_str_command(self) -> None:
         """Test that ! turns a dot carrying a string."""
         code = ["      #", "•#`hi`!"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "hi"
 
     def test_type_checking_no_turn_on_mismatch(self) -> None:
         """Test that type-checking commands ignore mismatched types."""
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(["•#42!"])
+            run(["•#42!"], io=IO())
             assert mock_stdout.getvalue() == ""
 
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(["•#`hi`:"])
+            run(["•#`hi`:"], io=IO())
             assert mock_stdout.getvalue() == ""
 
     def test_unnamed_parentheses(self) -> None:
         """Test that ( spawns a new dot at the matching )."""
         code = ["•#1(#2#)"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "2"
 
     def test_named_parentheses(self) -> None:
         """Test that a named ( with backtick pairs with the matching )."""
         code = ["•#1(`x`#2#)`x"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "2"
 
     def test_nested_parentheses(self) -> None:
         """Test nested parentheses with multiple dots."""
         code = ["•#1((#2#))"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "2"
 
 
@@ -236,7 +237,7 @@ class TestWarps:
         """Test named warp functionality."""
         code = ["•Wtest`s", "Wtest`e#42#"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "42"
 
     def test_dynamic_warp_input(self) -> None:
@@ -246,7 +247,7 @@ class TestWarps:
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
             patch("builtins.input", return_value="test"),
         ):
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "42"
 
     def test_dynamic_warp_input_missing_destination(self) -> None:
@@ -256,7 +257,7 @@ class TestWarps:
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
             patch("builtins.input", return_value="test"),
         ):
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == ""
 
     def test_truth_machine(self) -> None:
@@ -268,7 +269,7 @@ class TestWarps:
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
             patch("builtins.input", return_value="0"),
         ):
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "0"
 
         # Test input 1 (infinite loop - we'll test just the first iteration)
@@ -288,7 +289,7 @@ class TestEdgeCases:
         """Test program with no initial dot (•)."""
         code = ["#42#"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == ""
 
     def test_output_without_value(self) -> None:
@@ -296,7 +297,7 @@ class TestEdgeCases:
         code = ["•#"]
         # This should cause the program to halt without output
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == ""
 
     def test_unmatched_parentheses(self) -> None:
@@ -304,25 +305,25 @@ class TestEdgeCases:
         code = ["•(`test#42#"]
         # This should cause the program to halt
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == ""
 
     def test_unclosed_paren_scan_halts(self) -> None:
         """An unclosed ( whose scan reaches the edge halts cleanly."""
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(["•#1(2#"])
+            run(["•#1(2#"], io=IO())
             assert mock_stdout.getvalue() == ""
 
     def test_vertical_paren_scan(self) -> None:
         """A down-moving dot's ( scan reaches the grid bottom."""
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(["v• ", " (2#"])
+            run(["v• ", " (2#"], io=IO())
             assert mock_stdout.getvalue() == ""
 
     def test_vertical_type_check(self) -> None:
         """A type-check on a vertically moving dot turns it."""
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(["v• ", " #42", " :  "])
+            run(["v• ", " #42", " :  "], io=IO())
             assert mock_stdout.getvalue() == ""
 
     def test_invalid_warp(self) -> None:
@@ -330,7 +331,7 @@ class TestEdgeCases:
         code = ["•Wtest`s"]
         # This should cause the program to halt
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == ""
 
     def test_dot_moves_out_of_bounds(self) -> None:
@@ -338,7 +339,7 @@ class TestEdgeCases:
         code = ["•>"]
         # Dot should be removed when it moves out of bounds
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == ""
 
     def test_dot_moves_to_space(self) -> None:
@@ -346,7 +347,7 @@ class TestEdgeCases:
         code = ["•> #42#"]
         # Dot should be removed when it hits a space
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == ""
 
 
@@ -362,28 +363,28 @@ class TestComplexPrograms:
             patch("builtins.print") as mock_print,
             patch("builtins.input", return_value="hello"),
         ):
-            run(simple_cat)
+            run(simple_cat, io=IO())
             mock_print.assert_called_with("hello", end="")
 
     def test_multiple_dots(self) -> None:
         """Test that parentheses create multiple dots that all execute."""
         code = ["•#1(#2#)#3#"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "233"
 
     def test_direction_changes_with_type_checking(self) -> None:
         """Test type checking rotates the dot's direction."""
         code = ["    #", "•#42:"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "42"
 
     def test_warp_with_multiple_destinations(self) -> None:
         """Test that a dot warps to the matching warp destination."""
         code = ["•Wstart`s", "Wstart`e#`go`#"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "go"
 
 
@@ -397,19 +398,19 @@ class TestIntegration:
             patch("sys.stdout", new_callable=io.StringIO) as mock_stdout,
             patch("builtins.input", return_value="test"),
         ):
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "test"
 
     def test_warp_skips_commands(self) -> None:
         """Test that a dot warps to the destination, skipping commands en route."""
         code = ["•#1Wgo`s#2#", "Wgo`e#3#"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "3"
 
     def test_warps_with_multiple_dots(self) -> None:
         """Test that a dot warps to the first matching destination."""
         code = ["•#1Wgo`s", "Wgo`e#2#", "Wgo`e#3#"]
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
-            run(code)
+            run(code, IO())
             assert mock_stdout.getvalue() == "2"

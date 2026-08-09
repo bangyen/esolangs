@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from esolangs.interpreters.io import IO
+
 INTERPRETER_DIR = Path(__file__).parents[1] / "src" / "esolangs" / "interpreters"
 
 MODULES = []
@@ -37,7 +39,7 @@ def test_empty_program_terminates(module: str) -> None:
     signal.signal(signal.SIGALRM, _on_alarm)
     signal.alarm(3)
     try:
-        run("")
+        run("", io=IO())
     except _Timeout:
         pytest.fail(f"{module} hangs on the empty program")
     except Exception:

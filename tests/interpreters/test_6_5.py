@@ -6,12 +6,13 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 sixfive = importlib.import_module("esolangs.interpreters.tape_based.6-5")
+from esolangs.interpreters.io import IO
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        sixfive.run(code)
+        sixfive.run(code, IO())
     return buffer.getvalue()
 
 

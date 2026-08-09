@@ -10,8 +10,10 @@ is a table lookup and is verified end to end.
 
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: str) -> None:
+
+def run(code: str, io: IO) -> None:
     cell = 0
     for char in code:
         if char == "c":
@@ -19,10 +21,10 @@ def run(code: str) -> None:
         elif char == "i":
             cell = (cell + 1) % 256
         elif char == "o":
-            print(chr(cell), end="")
+            io.print_char(chr(cell))
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
-            run(file.read())
+            run(file.read(), IO())

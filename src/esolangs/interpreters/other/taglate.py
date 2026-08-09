@@ -20,6 +20,8 @@ Decisions for gaps in the wiki spec (documented):
 
 import sys
 
+from esolangs.interpreters.io import IO
+
 _SINGLE = frozenset("abcdefhijt")
 
 
@@ -73,7 +75,7 @@ def _google_url(queue: list[int]) -> str:
     return "".join(parts)
 
 
-def run(code: list[str]) -> None:
+def run(code: list[str], io: IO) -> None:
     if not code:
         return
     queue = [ord(c) for c in code[0]]
@@ -81,7 +83,6 @@ def run(code: list[str]) -> None:
     match = _match(tokens)
 
     ind = 0
-    new = 1
     while ind < len(tokens):
         tok = tokens[ind]
         if tok == "a":
@@ -111,12 +112,9 @@ def run(code: list[str]) -> None:
                     return
                 ind = partner
         elif tok == "h":
-            val = input("\nInput: "[new:])
-            queue.append(ord(val[0]))
-            new = 1
+            queue.append(io.input_char())
         elif tok == "i":
-            print(chr(queue.pop(0)), end="")
-            new = 0
+            io.print_char(chr(queue.pop(0)))
         elif tok == "j":
             value = queue.pop(0)
             queue.append((value - 1) % 65536 if value else 1)
@@ -129,4 +127,4 @@ def run(code: list[str]) -> None:
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
-            run(file.readlines())
+            run(file.readlines(), IO())

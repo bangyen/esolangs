@@ -14,6 +14,7 @@ from typing import cast
 from unittest.mock import patch
 
 from esolangs.interpreters.register_based.dsdlai import rand, run
+from esolangs.interpreters.io import IO
 
 
 class TestDSDLARandomDeath:
@@ -77,13 +78,13 @@ class TestDSDLABasicPrograms:
     def test_halt_without_dig(self) -> None:
         """Test that programs without dig commands work normally."""
         with redirect_stdout(io.StringIO()) as f:
-            run(["@"])
+            run(["@"], io=IO())
         assert f.getvalue() == ""
 
     def test_simple_movement(self) -> None:
         """Test simple movement without dig commands."""
         with redirect_stdout(io.StringIO()) as f:
-            run(["@ "])
+            run(["@ "], io=IO())
         assert f.getvalue() == ""
 
     def test_program_with_dig_risk(self) -> None:
@@ -92,7 +93,7 @@ class TestDSDLABasicPrograms:
         with patch("esolangs.interpreters.register_based.dsdlai.rand") as mock_rand:
             mock_rand.return_value = lambda: False
             with redirect_stdout(io.StringIO()) as f:
-                run(["$1@"])
+                run(["$1@"], io=IO())
         assert f.getvalue() == ""
 
 
@@ -106,7 +107,7 @@ class TestDSDLAHelloWorld:
 
         # Test that the program can be parsed without syntax errors
         with redirect_stdout(io.StringIO()) as f:
-            run(hello_world_code)
+            run(hello_world_code, io=IO())
         assert f.getvalue() == ""
 
     def test_hello_world_with_deterministic_death(self) -> None:
@@ -119,7 +120,7 @@ class TestDSDLAHelloWorld:
             mock_rand.return_value = lambda: False
 
             with redirect_stdout(io.StringIO()) as captured_output:
-                run(hello_world_code)
+                run(hello_world_code, io=IO())
 
             # Should complete without death message
             output = captured_output.getvalue()
@@ -161,7 +162,7 @@ class TestDSDLAProbabilisticBehavior:
         for _ in range(50):
             try:
                 with redirect_stdout(io.StringIO()):
-                    run(simple_dig_code)
+                    run(simple_dig_code, io=IO())
                 survival_count += 1
             except SystemExit:
                 death_count += 1
@@ -183,7 +184,7 @@ class TestDSDLAProbabilisticBehavior:
         for _ in range(total_runs):
             try:
                 with redirect_stdout(io.StringIO()):
-                    run(simple_dig_code)
+                    run(simple_dig_code, io=IO())
             except SystemExit:
                 death_count += 1
 
@@ -206,7 +207,7 @@ class TestDSDLAIntegration:
         code = [">@"]
 
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == ""
 
     def test_program_with_multiple_dig_commands(self) -> None:
@@ -218,7 +219,7 @@ class TestDSDLAIntegration:
         with patch("esolangs.interpreters.register_based.dsdlai.rand") as mock_rand:
             mock_rand.return_value = lambda: False
             with redirect_stdout(io.StringIO()) as f:
-                run(code)
+                run(code, IO())
         assert f.getvalue() == ""
 
     def test_complex_program_structure(self) -> None:
@@ -228,5 +229,5 @@ class TestDSDLAIntegration:
 
         # This should complete normally
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == ""

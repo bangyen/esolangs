@@ -20,6 +20,8 @@ from typing import Any
 
 import numpy as np
 
+from esolangs.interpreters.io import IO
+
 
 def prime(number: int) -> bool:
     """Check if a number is prime."""
@@ -136,7 +138,7 @@ def sanitize(code: str) -> list[int]:
     return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     """Execute a Polynomial program by finding and processing its zeroes."""
     # Clean the input code
     cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
@@ -153,7 +155,6 @@ def run(code: str) -> None:
     instructions = convert(roots)
 
     ind = reg = 0
-    new = 1
     # Use Any to avoid complex type checking issues with mixed lambda types
     sym: list[Any] = [
         lambda r, a: r + a,  # +=
@@ -181,12 +182,10 @@ def run(code: str) -> None:
             if one:
                 reg = sym[two - 1](reg, one)
             elif two - 1:
-                val = input("\nInput: "[new:]) + chr(0)
+                val = io.input_str() + chr(0)
                 reg = ord(val[0]) or -1
-                new = 1
             else:
-                print(chr(max(0, reg)), end="")
-                new = 0
+                io.print_char(chr(max(0, reg)))
         elif one in [2, 6]:
             beg = instructions[brackets(instructions, ind)][0]
             if beg > 4 and sym[(beg - 1) % 4 + 6]():
@@ -201,4 +200,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

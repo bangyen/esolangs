@@ -1,6 +1,8 @@
 import re
 import sys
 
+from esolangs.interpreters.io import IO
+
 
 def parse(code: str) -> list[int]:
     reg = r"\\(?:\d\d\d|" r"[\dA-F](?:$|[^\d]))"
@@ -48,10 +50,9 @@ def find(code: list[int], ind: int, ptr: int) -> int:
     return ind
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     cells: list[int] = parse(code)
     ind = ptr = 0
-    new = 1
 
     while True:
         if (char := chr(cells[ind])) == ">":
@@ -63,17 +64,14 @@ def run(code: str) -> None:
         elif char == "-":
             cells[ptr] = (cells[ptr] - 1) % 256
         elif char == ",":
-            val = input("\nInput: "[new:])
-            cells[ptr] = ord(val[0])
-            new = 1
+            cells[ptr] = io.input_char()
         elif char in "[]":
             ind = find(cells, ind, ptr)
             if ind == -1:
                 return
         elif char == ".":
             val = chr(cells[ptr])
-            print(val, end="")
-            new = 0
+            io.print_char(val)
         elif char == "@":
             return
         elif char == "#":
@@ -91,4 +89,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

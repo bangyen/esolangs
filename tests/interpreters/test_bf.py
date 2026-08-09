@@ -13,6 +13,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import esolangs
+from esolangs.interpreters.io import IO
 
 bf = importlib.import_module("esolangs.interpreters.tape_based.bf")
 
@@ -20,7 +21,7 @@ bf = importlib.import_module("esolangs.interpreters.tape_based.bf")
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        bf.run(code)
+        bf.run(code, IO())
     return buffer.getvalue()
 
 

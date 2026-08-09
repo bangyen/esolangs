@@ -14,13 +14,14 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.register_based.dig import run
+from esolangs.interpreters.io import IO
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     """Run a Dig program (patching input) and return its stdout."""
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code)
+        run(code, io=IO())
     return buffer.getvalue()
 
 
@@ -131,7 +132,7 @@ class TestDigEdgeCases:
     def test_empty_program(self) -> None:
         """Test that an empty program raises ValueError."""
         with pytest.raises(ValueError, match="empty"):
-            run([])
+            run([], io=IO())
 
     def test_single_character_program(self) -> None:
         """Test a program containing only a halt command."""

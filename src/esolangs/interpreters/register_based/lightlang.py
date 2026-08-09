@@ -9,23 +9,23 @@ import secrets
 import sys
 import time
 
+from esolangs.interpreters.io import IO
 
-def run(code: str) -> None:
+
+def run(code: str, io: IO) -> None:
     """Execute Lightlang code using a single bit of memory."""
     bit = ind = 0
-    vel = new = 1
+    vel = 1
 
     while ind < len(code):
         sym = code[ind]
         if sym == "^":
             bit ^= 1
         elif sym == "!":
-            print(bit, end="")
-            new = 0
+            io.print_num(bit)
         elif sym == "?":
-            val = input("\nInput: "[new:])
+            val = io.input_str()
             bit = (not val) + 0
-            new = 1
         elif sym == "@":
             bit = secrets.randbelow(2)
         elif sym == "&" and bit:
@@ -46,4 +46,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

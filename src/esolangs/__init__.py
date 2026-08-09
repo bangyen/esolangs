@@ -6,14 +6,12 @@ program between languages), and ``list_languages``.
 """
 
 import importlib
-import io
-from contextlib import redirect_stdout
-from unittest.mock import patch
 
 from esolangs.exceptions import (
     UnknownLanguageError,
     UnsupportedTranspilationError,
 )
+from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
 from esolangs.tools.transpilers import TRANSPILERS
 
@@ -37,18 +35,9 @@ def run(language: str, program: str, stdin: str = "") -> str:
     except KeyError:
         raise UnknownLanguageError(language) from None
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
-    lines = iter(stdin.splitlines())
-
-    def read_input(_prompt: str = "") -> str:
-        try:
-            return next(lines)
-        except StopIteration:
-            raise EOFError from None
-
-    buffer = io.StringIO()
-    with patch("builtins.input", read_input), redirect_stdout(buffer):
-        run_fn(program.splitlines() if split else program, **kwargs)
-    return buffer.getvalue()
+    io_obj = ScriptedIO(stdin)
+    run_fn(program.splitlines() if split else program, io=io_obj, **kwargs)
+    return io_obj.getvalue()
 
 
 def transpile(source: str, target: str, program: str, **kwargs: int) -> str:

@@ -1,6 +1,8 @@
 import sys
 from typing import cast
 
+from esolangs.interpreters.io import IO
+
 
 def find(code: list[list[str | int | float]], ind: int) -> int:
     if "end" in (op := str(code[ind][0])):
@@ -24,7 +26,7 @@ def find(code: list[list[str | int | float]], ind: int) -> int:
     return ind - 1
 
 
-def run(lines: list[str]) -> None:
+def run(lines: list[str], io: IO) -> None:
     ind = 0
     var: dict[str, int | float | str] = {}
     skip = False
@@ -45,9 +47,9 @@ def run(lines: list[str]) -> None:
                         c[x + 1] = int(nxt)
 
             if (op := c[0]) == "print":
-                print(*c[1:], sep="")
+                io.print_line("".join(map(str, c[1:])))
             elif op == "input":
-                var["answer"] = input(cast(str, c[1]))
+                var["answer"] = io.input_str(cast(str, c[1]))
             elif op == "make":
                 if len(c) == 5:
                     if (o := c[3]) == "+":
@@ -86,4 +88,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

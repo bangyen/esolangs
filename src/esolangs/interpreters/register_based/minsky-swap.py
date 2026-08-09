@@ -8,8 +8,10 @@ Uses two unbounded registers with a register pointer that can be swapped.
 import re
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: str) -> None:
+
+def run(code: str, io: IO) -> None:
     """Execute a Minsky Swap program."""
     ind = ptr = val = 0
     reg = [0, 0]
@@ -52,11 +54,11 @@ def run(code: str) -> None:
             ptr ^= 1
 
         ind += 1
-    print(*reg)
+    io.print_line(" ".join(map(str, reg)))
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

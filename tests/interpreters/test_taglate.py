@@ -12,12 +12,13 @@ from unittest.mock import patch
 
 import esolangs
 from esolangs.interpreters.other.taglate import run
+from esolangs.interpreters.io import IO
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 

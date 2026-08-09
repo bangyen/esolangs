@@ -13,6 +13,7 @@ from contextlib import redirect_stdout, suppress
 from typing import Any
 from unittest.mock import patch
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.bitdeque import run as bitdeque_run
 from esolangs.interpreters.other.keys import run as keys_run
 from esolangs.interpreters.register_based.bio import run as bio_run
@@ -34,7 +35,7 @@ def run_safely(fn: Callable[..., Any], program: str | list[str]) -> None:
     """Run a program, asserting it raises nothing unexpected."""
     buffer = io.StringIO()
     with patch("builtins.input", return_value="0"), redirect_stdout(buffer):
-        fn(program)
+        fn(program, io=IO())
 
 
 def _random_string(alphabet: str, max_len: int) -> str:

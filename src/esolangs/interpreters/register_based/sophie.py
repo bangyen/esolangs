@@ -8,6 +8,8 @@ Single accumulator with basic control flow operations.
 import re
 import sys
 
+from esolangs.interpreters.io import IO
+
 
 def find(code: str, ind: int) -> int:
     """Find the matching closing bracket for a given opening bracket."""
@@ -26,12 +28,11 @@ def find(code: str, ind: int) -> int:
     return ind
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     """Execute Sophie program code."""
     acc = ind = 0
     skp = False
     stk: list[int] = []
-    new = 1
 
     while ind < len(code):
         if (c := code[ind]) == "[":
@@ -44,19 +45,15 @@ def run(code: str) -> None:
             if c == "*":
                 skp = True
         elif c == ".":
-            print(acc, end="")
-            new = 0
+            io.print_num(acc)
         elif c == ":":
-            num = input("\nInput: "[new:])
-            new = 1
+            num = io.input_str()
             if num.isdigit():
                 acc = int(num)
         elif c == ",":
-            print(chr(acc), end="")
-            new = 0
+            io.print_char(chr(acc))
         elif c == ";":
-            val = input("\nInput: "[new:])
-            new = 1
+            val = io.input_str()
             if val:
                 acc = ord(val[0])
         elif c == "{":
@@ -91,4 +88,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())
