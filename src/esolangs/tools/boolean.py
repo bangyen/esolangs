@@ -258,18 +258,30 @@ def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
 
 
 def _reorder_tt(tt: str, n: int) -> str:
-    """Reorder truth table entries for the even/odd selection scheme.
+    """Reorder truth table entries into the slot order the reduces expect.
 
-    Even-reduce levels (0 .. n-2) put the 1-group first; the final
-    odd-reduce level puts the 0-group first.  Sorting by
-    ``(-(i >> 1), i & 1)`` satisfies both.
+    Each entry sits in a value slot ``[0, s_i, 0, s_j, ...]``; an even
+    reduce must be able to drop an entire contiguous run of slots without
+    splitting a pair.  Sorting the input index ``i`` by ``(-(i >> 1),
+    i & 1)`` puts the 1-group of the current input first, then the 0-group,
+    with the two sub-cases of the next input adjacent inside each group.
+    Odd-reduce levels (which branch the other way) then re-apply the same
+    ordering, so the sort key serves both.
     """
     indices = sorted(range(2**n), key=lambda i: (-(i >> 1), i & 1))
     return "".join(tt[i] for i in indices)
 
 
 def _even_reduce(pairs: int, level: int, n: int) -> str:
-    """Even-reduction block: select half the value pairs, keep all inputs."""
+    """Even-reduction block: select half the value pairs, keep all inputs.
+
+    The queue holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then
+    two 48s, then the ``n`` input chars.  The ``rot`` rotation brings the
+    next input to the front; ``gy ... gz`` branches on it so the ``e^pairs``
+    strides past the half of the value slots the input rejects; ``e^ahead``
+    skips the untouched half and ``f^pairs`` drops it.  Every input stays on
+    the queue, so the level that follows still sees all ``n`` of them.
+    """
     processed = level
     ahead = n - level
     total = n
@@ -287,7 +299,11 @@ def _even_reduce(pairs: int, level: int, n: int) -> str:
     )
 
 
-# Odd-reduce block for the final two-value selection (committed n=2 pattern).
+# Final odd-reduce block: the committed n==2 pattern.  Given the 8-cell
+# queue [0, v0, 0, v1, 48, 48, prev, curr] (v0/v1 the two candidate values,
+# prev/curr the two remaining inputs), it rotates curr and prev to the front,
+# drops the candidate the inputs reject, adds the surviving value to one of
+# the two 48s (48 + bit), and prints it with ``i``.
 _SEL1_N2: str = (
     "e" * 7
     + "gy"
@@ -309,7 +325,13 @@ _SEL1_N2: str = (
 
 
 def _build_padded_tt(truth_table: str, n_effective: int) -> str:
-    """Pad truth table for ghost-scheme: ghost=1 entries are all zero."""
+    """Pad a ``2**(n_effective - 1)``-entry truth table to ``n_effective`` bits.
+
+    Odd ``n`` is computed with ``n_effective = n + 1`` inputs whose leading
+    (ghost) digit is always 0.  The real table covers the ghost=0 half; the
+    entries the ghost=1 would select are padded with 0 so the never-taken
+    rows stay harmless.
+    """
     half = 2 ** (n_effective - 1)
     return truth_table.ljust(half * 2, "0")
 
@@ -325,10 +347,22 @@ def _validate_tt(truth_table: str, n: int) -> None:
 
 
 def _odd_reduce(pairs: int, level: int, n: int) -> str:
-    """Odd-reduction: zero prev, swap, even-reduce.  Does NOT pop.
+    """Odd-reduction block: retire one input, reduce, keep the rest.
 
-    The ZS adds an extra ghost cell at the front, so the even-reduce
-    inside uses ``ahead = n - level + 1`` instead of ``n - level``.
+    ``level`` is the 0-based reduce level (odd here: 1, 3, ...).  The queue
+    holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then two 48s,
+    then the ``n`` input chars.  Unlike the even reduce, the odd level
+    branches on a *retired* (previous) input whose bit has already been
+    used, so ``e^rot`` brings that input to the front and the block runs
+    ``zero`` (``gy j e^(qlen-1) gz``) to fold it away, ``swap`` (``e gy j
+    e^(qlen-2) j gz``) to encode the current input as the ghost cell the
+    even-reduce branches on, and ``bring`` (``e^(qlen-1)``) to put the
+    value slots back at the front before ``er`` runs the even-reduce body.
+
+    The ZS adds an extra ghost cell at the front, so the even-reduce body
+    uses ``ahead = n - level + 1`` instead of ``n - level``.  No input is
+    popped; the final ``f^pairs`` in ``er`` drops only the rejected value
+    slots.
     """
     processed = level
     ahead = n - level + 1  # +1 for the ghost cell added by the swap
@@ -358,15 +392,25 @@ def taglate(truth_table: str, n: int) -> str:
     inputs (most significant first), and ``n`` is the number of inputs.
 
     ``n == 1`` reads the single input with ``h`` and computes the affine
-    combination ``base + bit * coeff``.
+    combination ``base + bit * coeff`` with the ``b``/``c``/``a`` queue
+    arithmetic, then prints it.
 
-    For ``n >= 2`` the queue is seeded and a prefix of ``h``/``e``/``b``/
-    ``d``/``j`` builds the selection layout.  Odd ``n`` prepends a fake
-    zero input (ghost digit).  Even levels use even-reduce (select half,
-    keep all inputs); odd levels zero the previous input, swap, even-
-    reduce on the ghost-encoded value, and pop both inputs.  The final
-    odd-reduction block reuses the proven ``n==2`` pattern and prints
-    the result.
+    For ``n >= 2`` the program is ``seed\\n<commands>``.  The seed holds
+    ``n_effective`` literal ``'1'``s (``n_effective - 1`` leading, one
+    trailing) around a run of ``'0'``s; the prefix of ``h``/``e``/``b``/
+    ``d``/``j`` commands reads ``n_effective`` inputs and interleaves the
+    (reordered) truth-table bits into ``[0, s0, 0, s1, 0, s2, ...]`` value
+    slots, followed by two 48s and the inputs.  Odd ``n`` prepends a fake
+    zero input (ghost digit) so the slot stride lands on a separator, and
+    pads the table to ``n_effective = n + 1`` inputs.
+
+    The command list alternates even-reduce blocks (select half the
+    value slots on an input bit, keep all inputs) and odd-reduce blocks
+    (retire the previous input, swap the current one in, even-reduce).
+    Neither reduce pops inputs; ``e^6 f^(n_effective - 2) e^2`` reshapes
+    the queue into the 8-cell ``[0, v0, 0, v1, 48, 48, prev, curr]``
+    layout, and ``_SEL1_N2`` selects between the last two candidate
+    values on the two remaining inputs and prints ``48 + bit``.
     """
     if n == 1:
         _validate_tt(truth_table, n)
