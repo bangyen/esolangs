@@ -15,6 +15,7 @@ OUT = Path(__file__).resolve().parent.parent / "src/esolangs/tools/ztoalc_starts
 
 
 def best_starts(lengths: list[int]) -> dict[int, int]:
+    """Choose the smallest-peak start for each trajectory length."""
     best: dict[int, tuple[int, int]] = {}
     for start in range(2, len(lengths)):
         running = 0
@@ -29,6 +30,7 @@ def best_starts(lengths: list[int]) -> dict[int, int]:
 
 
 def write_module(starts: dict[int, int]) -> None:
+    """Write the ``ztoalc_starts`` Python module to stdout."""
     lines = [
         '"""Precomputed best Collatz start for each text length."""',
         "",
