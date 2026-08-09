@@ -110,10 +110,8 @@ ignore = [
 # The badge is a single multi-line SVG template string; its long lines are
 # part of the generated markup and cannot be wrapped without changing it.
 "scripts/make_coverage_badge.py" = ["E501"]
-# Docstring presence is enforced on the public modules; the legacy esolang
-# implementations and the tests are exempt so they can be documented
-# incrementally.
-"src/esolangs/compilers/**/*.py" = ["D"]
+# Docstring presence is enforced on the public modules; the tests and scripts
+# are exempt so they can be documented incrementally.
 "tests/**/*.py" = ["D"]
 "scripts/*.py" = ["D"]
 

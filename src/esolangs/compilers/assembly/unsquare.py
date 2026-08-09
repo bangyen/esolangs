@@ -1,8 +1,11 @@
+"""Compiler that turns Unsquare programs into x86 Linux assembly."""
+
 import sys
 from re import sub
 
 
 def count(code: str, ind: int) -> tuple[int, int]:
+    """Return the run length (or OI arithmetic value) at ``ind``."""
     code += "  "
     num = 0
 
@@ -36,6 +39,7 @@ def count(code: str, ind: int) -> tuple[int, int]:
 
 
 def prep(code: str) -> str:
+    """Filter to the command alphabet and simplify the OI arithmetic."""
     code = sub(r"[^OIAS+\-xPoi><]", "", code)
     ind = 0
 
@@ -61,6 +65,7 @@ def prep(code: str) -> str:
 
 
 def comp(code: str) -> str:
+    """Compile an Unsquare program to x86 assembly with a data stack."""
     res = (
         "global _start\n"
         "_start:\n"
