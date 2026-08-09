@@ -2,6 +2,9 @@
 
 Qoibl is an esoteric programming language with 8 instructions and a 256-variable list.
 It uses only the characters 'e', 'r', 't', 'w', 'q', 'y' for programming constructs.
+
+The wiki specifies a 256-entry variable list; this interpreter uses an
+unbounded dictionary and does not enforce the cap.
 """
 
 import re

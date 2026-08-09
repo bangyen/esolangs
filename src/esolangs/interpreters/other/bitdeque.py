@@ -3,6 +3,10 @@
 PUSH/INJECT append a register value to the deque, POP/EJECT pop it (0 when
 empty), INVERT flips the register, and GOTO jumps to a numbered command when
 the register is nonzero.  The deque contents are printed at the end.
+
+The wiki says GOTO goes to the Nth operation but does not pin down the
+indexing; this interpreter treats N as 0-based (GOTO 2 lands on the third
+command, skipping the GOTO itself), matching its reference test.
 """
 
 import re

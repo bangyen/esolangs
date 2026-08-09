@@ -57,8 +57,9 @@ class TestMinskySwapBasicCommands:
         assert f.getvalue().strip() == "0 0"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("~\n1", io=IO())
-        assert f.getvalue().strip() == "0 0"
+            run("~+\n2", io=IO())
+        # ~ jumps to command 2 (the +) since the register is zero
+        assert f.getvalue().strip() == "1 0"
 
     def test_jump_targets(self) -> None:
         """Test jump targets from the jump line."""
@@ -105,7 +106,7 @@ class TestMinskySwapReadableNotation:
         assert f.getvalue().strip() == "0 0"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("decnz(1); inc();", io=IO())
+            run("decnz(2); inc();", io=IO())
         assert f.getvalue().strip() == "1 0"
 
     def test_mixed_notation(self) -> None:

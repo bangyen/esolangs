@@ -3,6 +3,10 @@
 An 8-cell bit pool with a pointer: : resets the pool and pointer, ^ flips the
 current bit, < decrements the pointer, and ! prints the pool as a binary byte
 (MSB first).  The language is straight-line with no control flow.
+
+The wiki calls moving the pointer more than 8 steps left a fault; this
+interpreter instead wraps the pointer around the pool (Python's negative
+indexing reaches the rightmost bits) and keeps running.
 """
 
 import sys

@@ -2,6 +2,9 @@
 
 2D esoteric language with a mole that moves on a grid and can dig underground.
 Movement commands work overground, work commands function underground.
+
+The wiki only lists ``@`` as a halt; this interpreter also stops the program
+(without error) when the mole walks off the grid.
 """
 
 import sys
