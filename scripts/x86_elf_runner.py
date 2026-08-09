@@ -50,6 +50,7 @@ STACK_SIZE = 0x2000
 
 
 def assemble(path: str) -> bytes:
+    """Assemble the file at ``path`` and return its object bytes."""
     fd, tmp = tempfile.mkstemp(suffix=".o")
     os.close(fd)
     try:
@@ -88,6 +89,7 @@ def load_text(binary: bytes) -> bytes:
 
 
 def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
+    """Run an x86 ELF and return ``(stdout, exit_code)``."""
     text = load_text(binary)
     mu = Uc(UC_ARCH_X86, UC_MODE_32)
     mu.mem_map(CODE_BASE, PAGE)
@@ -141,6 +143,7 @@ def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
 
 
 def main(argv: list[str]) -> int:
+    """Run the ELF in ``argv[1]`` and print its exit code."""
     with open(argv[1], "rb") as f:
         data = f.read()
     binary = data if data[:4] == b"\x7fELF" else assemble(argv[1])

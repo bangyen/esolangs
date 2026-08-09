@@ -69,6 +69,7 @@ def _build_rust() -> Path | None:
 
 
 def main() -> int:
+    """Verify the extra generators round-trip, reporting failures."""
     failures = 0
 
     cxx = {name: _build_cxx(name) for name in ("forþ", "painfuck")}

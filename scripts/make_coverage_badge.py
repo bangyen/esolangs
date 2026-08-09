@@ -19,6 +19,7 @@ RED = "#e05d44"
 
 
 def color_for(percent: float) -> str:
+    """Return the badge color for a coverage percentage."""
     if percent >= 95:
         return GREEN
     if percent >= 90:
@@ -29,6 +30,7 @@ def color_for(percent: float) -> str:
 
 
 def make_badge(percent: float) -> str:
+    """Return an SVG badge showing a coverage percentage."""
     label = "coverage"
     value = f"{percent:.0f}%"
     left_w = 8 * len(label) + 10
@@ -58,6 +60,7 @@ def make_badge(percent: float) -> str:
 
 
 def main() -> None:
+    """Read coverage.xml and write the badge SVG to stdout."""
     xml_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("coverage.xml")
     out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("coverage-badge.svg")
 

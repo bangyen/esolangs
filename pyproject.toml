@@ -110,10 +110,9 @@ ignore = [
 # The badge is a single multi-line SVG template string; its long lines are
 # part of the generated markup and cannot be wrapped without changing it.
 "scripts/make_coverage_badge.py" = ["E501"]
-# Docstring presence is enforced on the public modules; the tests and scripts
-# are exempt so they can be documented incrementally.
+# Test files are exempt from docstring requirements: test method and class
+# names are self-documenting, so the D rules would only add boilerplate.
 "tests/**/*.py" = ["D"]
-"scripts/*.py" = ["D"]
 
 [tool.mypy]
 strict = true

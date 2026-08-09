@@ -40,6 +40,7 @@ def _capabilities(name: str) -> dict[str, bool]:
 
 
 def render() -> str:
+    """Render the languages documentation table as Markdown."""
     lines = [
         "# Language capabilities",
         "",

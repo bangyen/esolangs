@@ -55,6 +55,7 @@ def _build_riscv_123() -> str | None:
 
 
 def main() -> int:
+    """Compile and run every example, reporting failures."""
     import importlib.util
     import os
 
