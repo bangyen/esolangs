@@ -36,7 +36,7 @@ def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
 
 
 LANGUAGES: dict[str, Language] = {
-    "123": Language("123", _generate._123),
+    "123": Language("123", _generate._123),  # noqa: SLF001 - "123" is a language name
     "6-5": Language("6-5", _generate.six_five, "tape_based.6-5"),
     "ASCII art": Language("ASCII art", _generate.ascii_art, "tape_based.ascii-art"),
     "Back": Language("Back", interpreter="tape_based.back", split=True),

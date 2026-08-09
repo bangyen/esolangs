@@ -18,13 +18,13 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.qoibl import run
 
 
-class TimeoutError(Exception):
+class _TestTimeoutError(Exception):
     """Custom timeout exception for test protection."""
 
 
-def timeout_handler(signum: int, frame: Any) -> None:
+def timeout_handler(_signum: int, _frame: Any) -> None:
     """Signal handler for timeout protection."""
-    raise TimeoutError("Test timed out")
+    raise _TestTimeoutError("Test timed out")
 
 
 def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
@@ -38,7 +38,7 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
         Result of function execution
 
     Raises:
-        TimeoutError: If function exceeds timeout
+        _TestTimeoutError: If function exceeds timeout
 
     """
     signal.signal(signal.SIGALRM, timeout_handler)
@@ -47,7 +47,7 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
         result = func()
         signal.alarm(0)
         return result
-    except TimeoutError:
+    except _TestTimeoutError:
         signal.alarm(0)
         raise
 

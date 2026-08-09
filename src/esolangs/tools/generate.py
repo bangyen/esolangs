@@ -27,7 +27,7 @@ from esolangs.tools.generators.register import (
     bio,
     dig,
     dotlang,
-    eval,
+    eval,  # noqa: A004 - the language is named "Eval"
     huf,
     polynomial,
     qoibl,
