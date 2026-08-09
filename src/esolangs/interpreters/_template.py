@@ -36,8 +36,18 @@ Every interpreter follows the same conventions:
   reads a character: the library raises ``EOFError`` when input runs out and
   an empty line is legal, so ``val[0]`` can fail without a guard.
 * Document decisions for genuinely neutral gaps in the language's wiki spec
-  in the module docstring rather than choosing silently (see ``6-5.py`` for
-  the style); do not use this to define away invalid operations.
+  in the module docstring rather than choosing silently; do not use this to
+  define away invalid operations.  Two precedents:
+  * ``6-5.py`` shows a *faithful-spec* note -- how the interpreter pins down
+    a spec detail (merging ``7``/``8`` with their operand) to match the wiki;
+  * ``suffolk.py`` shows a *spec-gap* note -- where the wiki is silent and
+    the interpreter picks a behavior (a step cap on the wiki's infinite
+    rerun).  A gap note reads like::
+
+        The wiki does not define <behavior>; this interpreter <decision>
+        instead.  It raises :class:`~esolangs.exceptions.ValueError` for a
+        malformed program and :class:`~esolangs.exceptions.HaltError` for an
+        invalid runtime operation.
 * Provide a ``__main__`` block that reads a program file and calls
   ``run(data, IO())``.
 
