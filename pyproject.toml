@@ -37,7 +37,7 @@ dev = [
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
     "unicorn>=2.1.4",
-    "ruff>=0.0.280",
+    "ruff==0.16.2",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
     "types-requests",
