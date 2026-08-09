@@ -1,3 +1,10 @@
+"""Interpreter for ASCII art (brainfuck with an art alphabet).
+
+Art blocks decode to the eight brainfuck commands plus . / , / < / > / + / [
+and ].  The tape, clamping, wrapping, and bracket semantics deliberately match
+the plain brainfuck interpreter so the two are interchangeable.
+"""
+
 import re
 import sys
 
@@ -5,6 +12,7 @@ from esolangs.interpreters.io import IO
 
 
 def parse(code: str) -> str:
+    """Decode ASCII-art blocks into their brainfuck command characters."""
     if not code:
         return ""
     code = re.sub(" +\n", "\n", code)
@@ -51,6 +59,7 @@ def matches(code: str) -> dict[int, int]:
 
 
 def run(code: str, io: IO) -> None:
+    """Run an ASCII-art program after decoding it to brainfuck."""
     tape: list[int] = [0]
     code = parse(code)
     m = matches(code)

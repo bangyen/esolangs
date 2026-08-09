@@ -1,5 +1,4 @@
-"""
-DSDLAI interpreter implementation.
+"""DSDLAI interpreter implementation.
 
 Dig variant with probabilistic death risk when using dig commands.
 Random chance (20-90%) that mole dies during dig operations.

@@ -1,18 +1,33 @@
+"""Interpreter for Container.
+
+The first line declares rules: ``name = initial`` or a bare ``name``, and
+following indented lines attach conditional deltas (``n cond``) to the most
+recent container.  Each tick updates every container by its satisfied rules;
+PRINT outputs OUT as a byte when it turns on, INPUT reads a line into the
+queue when the empty-named container fires, and EXIT halts the program.
+"""
+
 import sys
 
 from esolangs.interpreters.io import IO
 
 
 class Con:
+    """A named container whose rules add deltas to its value each tick."""
+
     def __init__(self, name: str) -> None:
+        """Create a container with the given ``name`` and no rules."""
         self.name = name
         self.rules: list[tuple[int, str]] = []
 
     def add(self, cond: str) -> None:
+        """Append a rule ``n cond`` that adds ``n`` when ``cond`` holds."""
         n, c = cond.split()
         self.rules.append((int(n), c))
 
     def update(self, var: dict[str, int]) -> int:
+        """Return the value after applying every satisfied rule."""
+
         def val(s: str) -> int:
             if s in var:
                 return var[s]
@@ -34,6 +49,7 @@ class Con:
 
 
 def run(code: list[str], io: IO) -> None:
+    """Run a Container program by ticking its rules until EXIT fires."""
     queue: list[str] = []
     obj: list[Con] = []
     var: dict[str, int] = {}

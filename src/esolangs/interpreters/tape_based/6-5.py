@@ -14,6 +14,7 @@ from esolangs.interpreters.io import IO
 
 
 def num(char: str) -> int:
+    """Decode a 6-5 operand digit: 0-9 literal, A-F hexadecimal."""
     if char.isdigit():
         return int(char)
     return ord(char.upper()) - 55
@@ -39,6 +40,7 @@ def _tokens(code: str) -> list[str]:
 
 
 def run(code: str, io: IO) -> None:
+    """Run a 6-5 program."""
     toks = _tokens(code)
     cell = ind = 0
     tape: list[int] = [0]

@@ -1,5 +1,4 @@
-"""
-Movesum interpreter implementation.
+"""Movesum interpreter implementation.
 
 Movesum is an esoteric programming language by User:PythonshellDebugwindow where
 the only instructions are 'move' and 'sum'. Programs operate on a right-unbounded

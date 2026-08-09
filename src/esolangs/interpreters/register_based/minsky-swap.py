@@ -1,5 +1,4 @@
-"""
-Minsky Swap interpreter implementation.
+"""Minsky Swap interpreter implementation.
 
 Turing-complete language based on Minsky machines.
 Uses two unbounded registers with a register pointer that can be swapped.

@@ -1,5 +1,4 @@
-"""
-WII2D (Why Is It 2D?) interpreter implementation.
+"""WII2D (Why Is It 2D?) interpreter implementation.
 
 2D esoteric language inspired by Befunge.
 Pointer moves on a 2D grid with wrap-around behavior and an accumulator.

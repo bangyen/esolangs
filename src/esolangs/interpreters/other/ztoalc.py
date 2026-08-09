@@ -1,3 +1,11 @@
+"""Interpreter for ZTOALC.
+
+Programs are a list of lines; line 1 holds the initial pointer.  Execution
+visits line ``v`` when the Collatz step equals ``v``, halting when the value
+reaches 1.  Commands print, jump, assign, add, and subtract using the current
+value as an expression.
+"""
+
 import sys
 from dataclasses import dataclass
 from typing import cast
@@ -7,10 +15,11 @@ from esolangs.interpreters.io import IO
 
 @dataclass
 class State:
-    pass
+    """Per-run state for a ZTOALC interpreter."""
 
 
 def run(code: list[str], io: IO) -> None:
+    """Run a ZTOALC program, following the Collatz trajectory of line 1."""
     ptr = int(code[0])
     state = State()
     var: dict[str, int | list[int]] = {}

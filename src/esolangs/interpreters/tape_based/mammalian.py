@@ -1,3 +1,10 @@
+"""Interpreter for MAMMALIAN.
+
+SEED/CONFLAGRATE operate on all 23 arrays, EXCRETE/CONSUME/FISSION/DIGEST on
+the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads a byte
+of input, and PRONOUNCE prints the accumulator as a byte.
+"""
+
 import functools
 import operator
 import re
@@ -7,6 +14,7 @@ from esolangs.interpreters.io import IO
 
 
 def total(op: int, lst: list[list[int]]) -> None:
+    """Apply SEED (``op == 0``) or CONFLAGRATE to all 23 arrays."""
     if op:
         size = list(map(len, lst))
         flat: list[int] = functools.reduce(operator.iadd, lst, [])
@@ -36,6 +44,7 @@ def total(op: int, lst: list[list[int]]) -> None:
 
 
 def partial(op: int, curr: list[int], acc: int) -> int:
+    """Apply an EXCRETE/CONSUME/FISSION/DIGEST op to the current array."""
     if op == 2:
         curr.append(acc % 256)
         acc = 0
@@ -58,6 +67,7 @@ def partial(op: int, curr: list[int], acc: int) -> int:
 
 
 def run(code: str, io: IO) -> None:
+    """Run a MAMMALIAN program."""
     ins = (
         "SEED",
         "CONFLAGRATE",

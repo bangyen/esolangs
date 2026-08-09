@@ -1,5 +1,4 @@
-"""
-Sophie interpreter implementation.
+"""Sophie interpreter implementation.
 
 Esoteric language equivalent to a Finite State Automaton.
 Single accumulator with basic control flow operations.

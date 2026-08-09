@@ -1,3 +1,11 @@
+r"""Interpreter for Temporary.
+
+A single stack with two output modes (numeric/byte).  @ reads a line of input
+as byte codes, v pushes an integer, * pushes a string, + duplicates, : loops
+while the stack is unchanged, \\ loops while it is nonempty, and a draining
+loop prints values while the average of the tail exceeds the head.
+"""
+
 import secrets
 import sys
 from dataclasses import dataclass, field
@@ -7,6 +15,8 @@ from esolangs.interpreters.io import IO
 
 @dataclass
 class State:
+    """Stack, output mode, and counters for a Temporary run."""
+
     stk: list[int] = field(default_factory=list)
     num: bool = True
     ptr: int = 0
@@ -14,6 +24,7 @@ class State:
 
 
 def run(source: str, io: IO) -> None:
+    """Run a Temporary program."""
     code = source.split()
     state = State()
 

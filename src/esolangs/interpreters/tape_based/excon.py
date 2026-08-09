@@ -1,9 +1,17 @@
+"""Interpreter for EXCON.
+
+An 8-cell bit pool with a pointer: : resets the pool and pointer, ^ flips the
+current bit, < decrements the pointer, and ! prints the pool as a binary byte
+(MSB first).  The language is straight-line with no control flow.
+"""
+
 import sys
 
 from esolangs.interpreters.io import IO
 
 
 def run(code: str, io: IO) -> None:
+    """Run an EXCON program, printing each pool as a byte."""
     pool: list[int] = [0] * 8
     cell = 7
 
