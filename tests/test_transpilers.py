@@ -219,11 +219,11 @@ def test_circlefuck_auto_size_rejects_nested_drifting_loop() -> None:
         esolangs.transpile("BF", "CircleFuck", "++[+[>+]]")
 
 
-def test_circlefuck_unmatched_bracket_tolerated() -> None:
-    """An unmatched bracket halts on both interpreters, so it is in class."""
-    program = "["
-    circlefuck = esolangs.transpile("BF", "CircleFuck", program)
-    assert esolangs.run("BF", program) == esolangs.run("CircleFuck", circlefuck) == ""
+def test_circlefuck_unmatched_bracket_rejected() -> None:
+    """Unbalanced brackets are malformed and rejected by both the source
+    interpreter and the transpiler."""
+    with pytest.raises(ValueError):
+        esolangs.transpile("BF", "CircleFuck", "[")
 
 
 def test_circlefuck_size_must_be_positive() -> None:

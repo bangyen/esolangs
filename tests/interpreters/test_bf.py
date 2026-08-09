@@ -63,10 +63,16 @@ class TestBrainfuck:
         """A doubly-nested loop leaves a known value in the printed cell."""
         assert run_and_capture("+++[>++[>+<-]<-]>+++.") == "\x03"
 
-    def test_unmatched_bracket_halts(self) -> None:
-        assert run_and_capture("[") == ""
-        assert run_and_capture("]") == ""
-        assert run_and_capture("+]") == ""
+    def test_unmatched_bracket_rejected(self) -> None:
+        """Unbalanced brackets are a malformed program, not a halt."""
+        import pytest
+
+        with pytest.raises(ValueError):
+            run_and_capture("[")
+        with pytest.raises(ValueError):
+            run_and_capture("]")
+        with pytest.raises(ValueError):
+            run_and_capture("+]")
 
     def test_parity_with_ascii_art(self) -> None:
         """A program and its ASCII-art translation behave identically."""
