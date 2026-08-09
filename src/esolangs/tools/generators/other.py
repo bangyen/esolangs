@@ -26,7 +26,7 @@ __all__ = [
 
 
 def clockwise(text: str) -> str:
-    """A 1D parity program wrapped around the perimeter of a square.
+    """Build a 1D parity program wrapped around a square's perimeter.
 
     The turtle walks the ring clockwise, executing one instruction per cell.
     Three corner ``R`` cells turn it, and the final cell walks it back to the
@@ -62,6 +62,14 @@ def clockwise(text: str) -> str:
 
 
 def container(text: str) -> str:
+    """Build a Container program that outputs ``text``.
+
+    The program encodes each character as a signed delta from the previous
+    one.  Rules ``A>=i`` and ``A>=i+1`` split the delta: a positive difference
+    is built by ``+d`` then the two half-rules fire in sequence, and a
+    negative one symmetrically, so each character prints through the ``OUT``
+    rule once the accumulator crosses it.
+    """
     ind = last = 0
     if text:
         res = (
@@ -89,7 +97,7 @@ def container(text: str) -> str:
 
 
 def nevermind(text: str) -> str:
-    """A ``print`` command whose arguments are joined without a separator.
+    """Build a program whose ``print`` joins its arguments without a separator.
 
     Commas separate arguments, so a comma in the text is encoded as ``*44``,
     which the interpreter expands back; a literal ``*44`` is split across two
@@ -121,6 +129,14 @@ def nevermind(text: str) -> str:
 
 
 def ztoalc(text: str) -> str:
+    """Build a ZTOALC program that outputs ``text``.
+
+    The interpreter runs lines in Collatz-trajectory order from the initial
+    value on line 1, so each character is placed on the line its trajectory
+    step visits.  A ``start`` whose trajectory has at least ``len(text)``
+    steps is chosen (from the committed table, or by search), and the program
+    is ``start`` on line 1 plus a ``print <code>`` on each visited line.
+    """
     n = len(text)
     if not text:
         return "2"
@@ -160,7 +176,7 @@ def _collatz_prefix(start: int, n: int) -> list[int]:
 
 
 def _collatz_length_table(limit: int) -> Any:
-    """Stopping times for every start up to ``limit``, as unsigned shorts.
+    """Compute stopping times for every start up to ``limit``, as unsigned shorts.
 
     Index ``value`` holds the number of Collatz steps from ``value`` to 1;
     index 1 is 0 and a zero elsewhere means "not yet computed". Chain values
@@ -381,6 +397,14 @@ def laserfuck(text: str) -> str:
 
 
 def magnitude(text: str) -> str:
+    """Build a Magnitude program that outputs ``text``.
+
+    Each character is produced as a delta from the previous one.  ``s`` and
+    ``i`` scale toward powers of 2 and 3, ``p`` flips the sign, ``e`` prints
+    the accumulated magnitude as a byte, and a leading ``'`` resets to an
+    absolute (non-delta) encoding when the delta would overshoot the target.
+    """
+
     def close(val: int, start: int) -> int:
         if start > val:
             return 0
@@ -440,6 +464,14 @@ def magnitude(text: str) -> str:
 
 
 def painfuck(text: str) -> str:
+    """Build a Painfuck program that outputs ``text``.
+
+    Each character is built as a signed delta from the previous one.  ``p``
+    and ``s`` push and scale toward the target value on a wrapping tape,
+    ``c``/``t``/``rl`` handle the arithmetic in bases 7 and 3 with a pointer
+    loop, and ``u`` prints the current cell as a byte.
+    """
+
     def add(val: int) -> str:
         return (val // 2) * "p" + (val % 2) * "ps"
 
@@ -516,7 +548,7 @@ def painfuck(text: str) -> str:
 
 
 def _123(text: str) -> str:
-    """A 1/2 program per character, terminated by a trailing 1.
+    """Build a 1/2 program per character, terminated by a trailing 1.
 
     ``edi`` carries the running XOR of the characters, so each segment only
     emits the difference from the previous character.  ``esi`` walks down the

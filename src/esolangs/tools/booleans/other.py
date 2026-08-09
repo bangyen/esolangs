@@ -158,7 +158,7 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
 
 
 def taglate(truth_table: str, n: int) -> str:
-    """Build a Taglate program computing the given truth table.
+    r"""Build a Taglate program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.

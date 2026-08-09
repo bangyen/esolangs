@@ -18,7 +18,6 @@ def brainif(truth_table: str, n: int) -> str:
     candidate). Each leaf moves to a fresh cell, increments it to 48+r, and
     outputs it.
     """
-
     entries: list[tuple[object, ...]] = []
     for i in range(n):
         entries.append(("cmd", "if 0 input"))
@@ -132,7 +131,6 @@ def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
     inputs.  This is the boolean generator generalized to arbitrary byte
     outputs: each leaf prints ``chr(value)`` instead of ``chr(48 + bit)``.
     """
-
     prog: list[str] = []
 
     def emit(c: str) -> None:
@@ -206,7 +204,7 @@ def six_five(truth_table: str, n: int) -> str:
 
 
 def _bf_minterm(truth_table: str, n: int) -> str:
-    """A brainfuck program that evaluates ``truth_table`` via its minterms.
+    """Build a brainfuck program evaluating ``truth_table`` via its minterms.
 
     The output is ``48 + sum_k tt[k] * M_k`` where ``M_k`` is the product of
     the input bits (or their complements) that select row ``k``.  BF has no
