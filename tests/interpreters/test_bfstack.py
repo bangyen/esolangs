@@ -4,6 +4,7 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.stack_based.bfstack import run
 from esolangs.interpreters.io import IO
 
@@ -49,5 +50,5 @@ class TestBFStack:
     def test_output_on_empty_stack_raises(self) -> None:
         import pytest
 
-        with pytest.raises(IndexError):
+        with pytest.raises(HaltError):
             run_and_capture(".")
