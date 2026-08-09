@@ -25,7 +25,7 @@ def run(code: list[str], io: IO) -> None:
 
     if len(code) < 2:
         raise ValueError(
-            "Movesum program must have at least initialization and one instruction"
+            "Movesum program must have at least initialization and one instruction",
         )
     reg: re.Pattern[str] = re.compile(r"(\d+) *= *(\d+)")
     arr: dict[int, int] = dict.fromkeys(range(5), 0)
@@ -39,7 +39,7 @@ def run(code: list[str], io: IO) -> None:
             x = io.input_str("Key: ")
         if y == "42":
             y = io.input_str("Value: ")
-            y = y if y else "0"
+            y = y or "0"
         arr[int(x)] = int(y)
 
     code = code[1:]

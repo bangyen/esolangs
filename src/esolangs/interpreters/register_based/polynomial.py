@@ -52,7 +52,8 @@ def convert(pre: list[complex]) -> list[list[int]]:
     rounded_roots = [np.round(k) for k in pre]
     # Sort by imaginary part, then by real part
     sorted_roots = sorted(
-        rounded_roots, key=lambda x: (float(np.imag(x)), float(np.real(x)))
+        rounded_roots,
+        key=lambda x: (float(np.imag(x)), float(np.real(x))),
     )
     post: list[list[int]] = []
     num = 2

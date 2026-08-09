@@ -74,7 +74,7 @@ def _bf_set(value: int) -> str:
             (a + b + r, a, b, r)
             for a in range(1, int(value**0.5) + 2)
             for b, r in (divmod(value, a),)
-        )
+        ),
     )
     _, a, b, r = best
     return "+" * a + "[>" + "+" * b + "<-]" + ">" + "+" * r + "."

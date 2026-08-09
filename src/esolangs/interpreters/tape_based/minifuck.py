@@ -30,7 +30,7 @@ def run(code: str, io: IO) -> None:
                 if n := int("".join(lst), 2):
                     io.print_char(chr(n))
                 else:
-                    val = bin(io.input_char())[2:].zfill(8)
+                    val = f"{io.input_char():08b}"
                     tape = [*map(int, val), *tape[8:]]
             elif not tape[ptr]:
                 tape[ptr + 1] ^= 1

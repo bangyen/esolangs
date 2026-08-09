@@ -44,12 +44,18 @@ LANGUAGES: dict[str, Language] = {
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
     "BIO": Language("BIO", _generate.bio, "register_based.bio"),
     "BitDeque": Language("BitDeque", interpreter="other.bitdeque"),
-    "BrainIf": Language("BrainIf", _generate.brainif, "tape_based.brainif", True),
+    "BrainIf": Language("BrainIf", _generate.brainif, "tape_based.brainif", split=True),
     "CircleFuck": Language("CircleFuck", _generate.circlefuck, "tape_based.circlefuck"),
-    "Clockwise": Language("Clockwise", _generate.clockwise, "other.clockwise", True),
-    "Container": Language("Container", _generate.container, "other.container", True),
-    "Dig": Language("Dig", _generate.dig, "register_based.dig", True),
-    "Dotlang": Language("Dotlang", _generate.dotlang, "register_based.dotlang", True),
+    "Clockwise": Language(
+        "Clockwise", _generate.clockwise, "other.clockwise", split=True
+    ),
+    "Container": Language(
+        "Container", _generate.container, "other.container", split=True
+    ),
+    "Dig": Language("Dig", _generate.dig, "register_based.dig", split=True),
+    "Dotlang": Language(
+        "Dotlang", _generate.dotlang, "register_based.dotlang", split=True
+    ),
     "DSDLAI": Language("DSDLAI", interpreter="register_based.dsdlai", split=True),
     "Eval": Language("Eval", _generate.eval, "stack_based.eval"),
     "EXCON": Language("EXCON", _generate.excon, "tape_based.excon"),
@@ -65,23 +71,30 @@ LANGUAGES: dict[str, Language] = {
     "Minsky Swap": Language("Minsky Swap", interpreter="register_based.minsky-swap"),
     "Modulous": Language("Modulous", _generate.modulous, "stack_based.modulous"),
     "Movesum": Language("Movesum", interpreter="register_based.movesum", split=True),
-    "Nevermind": Language("Nevermind", _generate.nevermind, "other.nevermind", True),
+    "Nevermind": Language(
+        "Nevermind", _generate.nevermind, "other.nevermind", split=True
+    ),
     "NoComment": Language("NoComment", _generate.nocomment, "tape_based.nocomment"),
     "Painfuck": Language("Painfuck", _generate.painfuck),
     "Polynomial": Language(
-        "Polynomial", _generate.polynomial, "register_based.polynomial"
+        "Polynomial",
+        _generate.polynomial,
+        "register_based.polynomial",
     ),
-    "Qoibl": Language("Qoibl", _generate.qoibl, "register_based.qoibl", True),
+    "Qoibl": Language("Qoibl", _generate.qoibl, "register_based.qoibl", split=True),
     "RAM0": Language("RAM0", interpreter="register_based.RAM0"),
     "Sophie": Language("Sophie", _generate.sophie, "register_based.sophie"),
     "Suffolk": Language(
-        "Suffolk", _generate.suffolk, "tape_based.suffolk", kwargs=_kw(limit=1)
+        "Suffolk",
+        _generate.suffolk,
+        "tape_based.suffolk",
+        kwargs=_kw(limit=1),
     ),
     "Temporary": Language("Temporary", _generate.temporary, "stack_based.temporary"),
-    "Taglate": Language("Taglate", _generate.taglate, "other.taglate", True),
+    "Taglate": Language("Taglate", _generate.taglate, "other.taglate", split=True),
     "Unsquare": Language("Unsquare", _generate.unsquare),
-    "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", True),
-    "ZTOALC": Language("ZTOALC", _generate.ztoalc, "other.ztoalc", True),
+    "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", split=True),
+    "ZTOALC": Language("ZTOALC", _generate.ztoalc, "other.ztoalc", split=True),
 }
 
 # Display name -> generator function, for languages that have one.

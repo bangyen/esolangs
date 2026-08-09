@@ -73,7 +73,7 @@ def dig(truth_table: str, n: int) -> str:
 
 def _qoibl_enc(n: int) -> str:
     """Qoibl binary literal for ``n`` (e is 0, y is 1)."""
-    return bin(n)[2:].replace("0", "e").replace("1", "y")
+    return f"{n:b}".replace("0", "e").replace("1", "y")
 
 
 def qoibl(truth_table: str, n: int) -> str:
@@ -106,7 +106,7 @@ def qoibl(truth_table: str, n: int) -> str:
     for i in range(n):
         lines.append(
             f"we {_qoibl_enc(n + i)} we {_qoibl_enc(1)} "
-            f"ry ey ry qe {_qoibl_enc(i)} qe we"
+            f"ry ey ry qe {_qoibl_enc(i)} qe we",
         )
     lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
     for k in range(2**n):
@@ -122,7 +122,7 @@ def qoibl(truth_table: str, n: int) -> str:
         lines.append(f"we {_qoibl_enc(2 * n + 1)} we {product} we")
         lines.append(
             f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} "
-            f"qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we"
+            f"qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we",
         )
     if use_complement:
         lines.append(f"tt {_qoibl_enc(49)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt")
@@ -149,7 +149,7 @@ def polynomial(truth_table: str, n: int) -> str:
             "the Polynomial boolean generator supports n == 2 only: "
             "each instruction consumes a fresh prime, so the expanded "
             "coefficients of a deeper tree overflow the interpreter's "
-            "float root-finder"
+            "float root-finder",
         )
 
     from esolangs.tools._polynomial import format_coeffs, multiply, primes
