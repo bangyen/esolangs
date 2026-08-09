@@ -34,3 +34,13 @@ Requires [elan](https://github.com/leanprover/elan) and mathlib:
 cd extra/lean/mammalian
 lake build
 ```
+
+## Ported Lean 3 interpreters
+
+The four Lean 3 ``#eval`` interpreters that used to live in ``extra/lean``
+have been ported to Lean 4 and now compile as modules in this project
+(``LeanMammalian/Excon.lean``, ``Albabet.lean``, ``bfpda.lean``,
+``seventy_four.lean``).  Each is a faithful port of the original: the
+recursive iterator walk, the stack/tape semantics, and the ``#eval`` driver
+reading ``test.txt``.  EXCON's output was cross-checked against the in-repo
+Python interpreter.
