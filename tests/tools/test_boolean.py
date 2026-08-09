@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.interpreters.io import IO
 from esolangs.tools import boolean
 
 
@@ -14,7 +15,7 @@ def run_dig(program: str, inputs: list[str]) -> str:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines())
+        run(program.splitlines(), io=IO())
     return buffer.getvalue()
 
 
@@ -24,7 +25,7 @@ def run_six_five(program: str, inputs: list[str]) -> str:
     run = importlib.import_module("esolangs.interpreters.tape_based.6-5").run
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program)
+        run(program, io=IO())
     return buffer.getvalue()
 
 
@@ -65,7 +66,7 @@ def run_qoibl(program: str, inputs: list[str]) -> str:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines())
+        run(program.splitlines(), io=IO())
     return buffer.getvalue()
 
 
@@ -107,7 +108,7 @@ def run_ascii_art(program: str, inputs: list[str]) -> str:
     run = importlib.import_module("esolangs.interpreters.tape_based.ascii-art").run
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program)
+        run(program, io=IO())
     return buffer.getvalue()
 
 
@@ -142,7 +143,7 @@ def run_polynomial(program: str, inputs: list[str]) -> str:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program)
+        run(program, io=IO())
     return buffer.getvalue()
 
 
@@ -151,7 +152,7 @@ def run_bfstack(program: str, inputs: list[str]) -> str:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program)
+        run(program, io=IO())
     return buffer.getvalue()
 
 
@@ -247,7 +248,7 @@ def run_sophie(program: str, inputs: list[str]) -> str:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program)
+        run(program, io=IO())
     return buffer.getvalue()
 
 
@@ -280,7 +281,7 @@ def run_modulous(program: str, inputs: list[str]) -> str:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program)
+        run(program, io=IO())
     return buffer.getvalue()
 
 
@@ -314,7 +315,7 @@ def run_brainif(program: str, inputs: list[str]) -> str:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines())
+        run(program.splitlines(), io=IO())
     return buffer.getvalue()
 
 
@@ -323,7 +324,7 @@ def run_nevermind(program: str, inputs: list[str]) -> str:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines())
+        run(program.splitlines(), io=IO())
     return buffer.getvalue()
 
 

@@ -2,22 +2,22 @@ import sys
 from dataclasses import dataclass
 from typing import cast
 
+from esolangs.interpreters.io import IO
+
 
 @dataclass
 class State:
-    inp: bool = False
+    pass
 
 
-def run(code: list[str]) -> None:
+def run(code: list[str], io: IO) -> None:
     ptr = int(code[0])
     state = State()
     var: dict[str, int | list[int]] = {}
 
     def val(state: State, exp: str) -> int | list[int]:
         if exp == "input":
-            s = ord(input("\n" * state.inp + "Input: ")[0])
-            state.inp = False
-            return s
+            return io.input_char()
         if exp in var:
             return var[exp]
         if exp.isnumeric() or (exp[0] == "-" and exp[1:].isnumeric()):
@@ -35,8 +35,7 @@ def run(code: list[str]) -> None:
         lst = ins.split()
 
         if "print" in ins:
-            print(chr(cast(int, val(state, lst[1]))), end="")
-            state.inp = True
+            io.print_char(chr(cast(int, val(state, lst[1]))))
         elif "jump" in ins:
             if val(state, lst[2]):
                 ptr += 1
@@ -58,4 +57,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

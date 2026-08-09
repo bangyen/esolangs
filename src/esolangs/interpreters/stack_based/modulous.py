@@ -4,13 +4,15 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from esolangs.interpreters.io import IO
+
 
 @dataclass
 class State:
     stk: list[int] = field(default_factory=list)
     var: dict[str, int] = field(default_factory=dict)
-    new: int = 1
     ind: int = 0
+    io: IO = field(default_factory=IO)
 
 
 def _jmp(state: State, mod: str, arg: list[str]) -> str | None:
@@ -70,16 +72,14 @@ def _prt(state: State, mod: str, arg: list[str]) -> str | None:
     n = state.var[arg[1]] if "VAR" in mod else state.stk.pop()
 
     if "INT" in mod:
-        print(n, end="")
+        state.io.print_num(n)
     else:
-        print(chr(n), end="")
-    state.new = 0
+        state.io.print_char(chr(n))
     return None
 
 
 def _inp(state: State, mod: str, arg: list[str]) -> str | None:
-    input_str: str = input("\nInput: "[state.new :])
-    state.new = 1
+    input_str: str = state.io.input_str()
 
     if "INT" in mod and input_str:
         state.stk.append(int(input_str))
@@ -127,10 +127,10 @@ _DISPATCH: dict[str, Callable[[State, str, list[str]], str | None]] = {
 }
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     reg = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
     tokens = [k[0] for k in reg.findall(code)]
-    state = State(var={f"VAR{k}": 0 for k in range(1, 5)})
+    state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
 
     while state.ind < len(tokens):
         mod = tokens[state.ind]
@@ -149,4 +149,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

@@ -10,6 +10,8 @@ rather than reading the next character on the fly.
 import re
 import sys
 
+from esolangs.interpreters.io import IO
+
 
 def num(char: str) -> int:
     if char.isdigit():
@@ -36,11 +38,10 @@ def _tokens(code: str) -> list[str]:
     return toks
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     toks = _tokens(code)
     cell = ind = 0
     tape: list[int] = [0]
-    line = 1
 
     while ind < len(toks):
         tok = toks[ind]
@@ -70,12 +71,9 @@ def run(code: str) -> None:
         elif tok == "0":
             return
         elif tok == "A":
-            print(chr(tape[cell]), end="")
-            line = 0
+            io.print_char(chr(tape[cell]))
         elif tok == "B":
-            inp = input("\nInput: "[:line])
-            tape[cell] = ord(inp[0])
-            line = 1
+            tape[cell] = io.input_char()
 
         ind += 1
 
@@ -84,4 +82,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES
 
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples" / "hello-world"
@@ -47,7 +48,7 @@ def run_example(name: str) -> str:
     buffer = io.StringIO()
     try:
         with redirect_stdout(buffer):
-            run(argument, **kwargs)
+            run(argument, io=IO(), **kwargs)
     except SystemExit:
         assert name in EXITS, f"{name} exited unexpectedly"
     return buffer.getvalue()
@@ -100,7 +101,7 @@ def run_with_input(name: str, subdir: str) -> None:
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(argument)
+        run(argument, io=IO())
     assert buffer.getvalue() == expected
 
 

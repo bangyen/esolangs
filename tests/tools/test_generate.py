@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs.tools.generate as gen
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
@@ -38,7 +39,7 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
 
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        interpreter(program)
+        interpreter(program, io=IO())
     return buffer.getvalue()
 
 
@@ -308,7 +309,7 @@ class TestGeneratorRoundTrips:
 
         buffer = io.StringIO()
         with pytest.raises(SystemExit), contextlib.redirect_stdout(buffer):
-            container_run(gen.container("Hi").splitlines())
+            container_run(gen.container("Hi").splitlines(), io=IO())
         assert buffer.getvalue() == "Hi"
 
 
@@ -351,7 +352,7 @@ class TestGeneratorBranches:
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            suffolk_run(gen.suffolk("Hi"), limit=1)
+            suffolk_run(gen.suffolk("Hi"), limit=1, io=IO())
         assert buffer.getvalue() == "Hi"
 
     def test_suffolk_empty(self) -> None:

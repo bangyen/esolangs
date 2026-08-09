@@ -13,6 +13,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.register_based.sophie import find, run
+from esolangs.interpreters.io import IO
 
 
 class TimeoutError(Exception):
@@ -44,13 +45,13 @@ class TestSophieBasicCommands:
     def test_output_number(self, timeout_protection: None) -> None:
         """Test . command outputs accumulator as number."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#$42.&")
+            run("#$42.&", io=IO())
         assert f.getvalue() == "42"
 
     def test_output_char(self, timeout_protection: None) -> None:
         """Test , command outputs accumulator as character."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A,&")
+            run("#A,&", io=IO())
         assert f.getvalue() == "A"
 
     def test_input_number(self, timeout_protection: None) -> None:
@@ -59,7 +60,7 @@ class TestSophieBasicCommands:
             patch("builtins.input", return_value="123"),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(":.&")
+            run(":.&", io=IO())
         assert f.getvalue() == "123"
 
     def test_input_char(self, timeout_protection: None) -> None:
@@ -68,25 +69,25 @@ class TestSophieBasicCommands:
             patch("builtins.input", return_value="X"),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(";,&")
+            run(";,&", io=IO())
         assert f.getvalue() == "X"
 
     def test_load_char_constant(self, timeout_protection: None) -> None:
         """Test #c command loads character constant into accumulator."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#H,&")
+            run("#H,&", io=IO())
         assert f.getvalue() == "H"
 
     def test_load_number_constant(self, timeout_protection: None) -> None:
         """Test #$n command loads number constant into accumulator."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#$65,&")
+            run("#$65,&", io=IO())
         assert f.getvalue() == "A"
 
     def test_halt_command(self, timeout_protection: None) -> None:
         """Test & command halts the program."""
         with redirect_stdout(io.StringIO()) as f:
-            run("&.")
+            run("&.", io=IO())
         # Program halts before reaching output
         assert f.getvalue() == ""
 
@@ -97,37 +98,37 @@ class TestSophieConditionals:
     def test_char_conditional_true(self, timeout_protection: None) -> None:
         """Test @c{} conditional when accumulator matches character."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A@A{,#C,}&")
+            run("#A@A{,#C,}&", io=IO())
         assert f.getvalue() == "AC"
 
     def test_char_conditional_false(self, timeout_protection: None) -> None:
         """Test @c{} conditional when accumulator doesn't match character."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A@B{.,}{#C,}&")
+            run("#A@B{.,}{#C,}&", io=IO())
         assert f.getvalue() == "C"
 
     def test_number_conditional_true(self, timeout_protection: None) -> None:
         """Test @$n{} conditional when accumulator matches number."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#$65@$65{,#C,}&")
+            run("#$65@$65{,#C,}&", io=IO())
         assert f.getvalue() == "AC"
 
     def test_number_conditional_false(self, timeout_protection: None) -> None:
         """Test @$n{} conditional when accumulator doesn't match number."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#$65@$66{.,}{#C,}&")
+            run("#$65@$66{.,}{#C,}&", io=IO())
         assert f.getvalue() == "C"
 
     def test_conditional_without_else(self, timeout_protection: None) -> None:
         """Test conditional without else block."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A@A{,&")
+            run("#A@A{,&", io=IO())
         assert f.getvalue() == "A"
 
     def test_nested_conditionals(self, timeout_protection: None) -> None:
         """Test nested conditional statements."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A@A{@$65{,#B,}}{#C,}&")
+            run("#A@A{@$65{,#B,}}{#C,}&", io=IO())
         assert f.getvalue() == "AB"
 
 
@@ -137,21 +138,21 @@ class TestSophieLoops:
     def test_simple_loop(self, timeout_protection: None) -> None:
         """Test basic loop structure."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#$3[.*]&")
+            run("#$3[.*]&", io=IO())
         # Should print 3 then break
         assert f.getvalue() == "3"
 
     def test_loop_with_break(self, timeout_protection: None) -> None:
         """Test loop with break statement."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#$1[.*]&")
+            run("#$1[.*]&", io=IO())
         # Should print 1 then break
         assert f.getvalue() == "1"
 
     def test_nested_loops(self, timeout_protection: None) -> None:
         """Test nested loop structures."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A[#B[.*]]&")
+            run("#A[#B[.*]]&", io=IO())
         # Should print A, then B's ASCII value (66), then break
         assert f.getvalue() == "66"
 
@@ -162,13 +163,13 @@ class TestSophieComments:
     def test_comment_block(self, timeout_protection: None) -> None:
         """Test comment blocks are ignored."""
         with redirect_stdout(io.StringIO()) as f:
-            run("{This is a comment}#A,&")
+            run("{This is a comment}#A,&", io=IO())
         assert f.getvalue() == "A"
 
     def test_nested_comments(self, timeout_protection: None) -> None:
         """Test nested comment blocks."""
         with redirect_stdout(io.StringIO()) as f:
-            run("{Outer{Inner}comment}#A,&")
+            run("{Outer{Inner}comment}#A,&", io=IO())
         assert f.getvalue() == "A"
 
 
@@ -181,7 +182,7 @@ class TestSophieInputHandling:
             patch("builtins.input", return_value="not_a_number"),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run("#$42:.&")
+            run("#$42:.&", io=IO())
         # Accumulator should remain 42
         assert f.getvalue() == "42"
 
@@ -191,7 +192,7 @@ class TestSophieInputHandling:
             patch("builtins.input", return_value=""),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run("#$42;.&")
+            run("#$42;.&", io=IO())
         # Accumulator should remain 42
         assert f.getvalue() == "42"
 
@@ -201,7 +202,7 @@ class TestSophieInputHandling:
             patch("builtins.input", side_effect=["65", "B"]),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(":;,&")
+            run(":;,&", io=IO())
         assert f.getvalue() == "B"
 
 
@@ -211,27 +212,27 @@ class TestSophieEdgeCases:
     def test_empty_program(self, timeout_protection: None) -> None:
         """Test that empty program produces no output."""
         with redirect_stdout(io.StringIO()) as f:
-            run("")
+            run("", io=IO())
         assert f.getvalue() == ""
 
     def test_unmatched_brackets(self, timeout_protection: None) -> None:
         """Test program with unmatched brackets."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A{&")
+            run("#A{&", io=IO())
         # Should handle gracefully
         assert f.getvalue() == ""
 
     def test_invalid_commands_ignored(self, timeout_protection: None) -> None:
         """Test that invalid commands are ignored."""
         with redirect_stdout(io.StringIO()) as f:
-            run("xyz#A,&")
+            run("xyz#A,&", io=IO())
         # Only valid commands should execute
         assert f.getvalue() == "A"
 
     def test_whitespace_ignored(self, timeout_protection: None) -> None:
         """Test that whitespace is ignored."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A,&")
+            run("#A,&", io=IO())
         # Only valid commands should execute
         assert f.getvalue() == "A"
 
@@ -242,7 +243,7 @@ class TestSophieExamples:
     def test_hello_world(self, timeout_protection: None) -> None:
         """Test Hello World program from Sophie wiki."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#H,#e,#l,,#o,#,,# ,#W,#o,#r,#l,#d,#!,&")
+            run("#H,#e,#l,,#o,#,,# ,#W,#o,#r,#l,#d,#!,&", io=IO())
         assert f.getvalue() == "Hello, World!"
 
     def test_truth_machine_zero(self, timeout_protection: None) -> None:
@@ -251,7 +252,7 @@ class TestSophieExamples:
             patch("builtins.input", return_value="0"),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(";@1{[,]}{,&}")
+            run(";@1{[,]}{,&}", io=IO())
         assert f.getvalue() == "0"
 
     def test_cat_program_empty(self, timeout_protection: None) -> None:
@@ -260,7 +261,7 @@ class TestSophieExamples:
             patch("builtins.input", return_value=""),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run("[;@$0{&}{,}]")
+            run("[;@$0{&}{,}]", io=IO())
         assert f.getvalue() == ""
 
     def test_cat_program_with_input(self, timeout_protection: None) -> None:
@@ -269,7 +270,7 @@ class TestSophieExamples:
             patch("builtins.input", return_value="H"),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(";@$0{&}{,}&")
+            run(";@$0{&}{,}&", io=IO())
         assert f.getvalue() == "H"
 
     def test_xor_program_0_0(self, timeout_protection: None) -> None:
@@ -278,7 +279,7 @@ class TestSophieExamples:
             patch("builtins.input", side_effect=["0", "0"]),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&")
+            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
         assert f.getvalue() == "0"
 
     def test_xor_program_0_1(self, timeout_protection: None) -> None:
@@ -287,7 +288,7 @@ class TestSophieExamples:
             patch("builtins.input", side_effect=["0", "1"]),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&")
+            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
         assert f.getvalue() == "1"
 
     def test_xor_program_1_0(self, timeout_protection: None) -> None:
@@ -296,7 +297,7 @@ class TestSophieExamples:
             patch("builtins.input", side_effect=["1", "0"]),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&")
+            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
         assert f.getvalue() == "1"
 
     def test_xor_program_1_1(self, timeout_protection: None) -> None:
@@ -305,7 +306,7 @@ class TestSophieExamples:
             patch("builtins.input", side_effect=["1", "1"]),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&")
+            run(":@$0{:@$0{#0,}{#1,}}{:@$0{#1,}{#0,}}&", io=IO())
         assert f.getvalue() == "0"
 
 
@@ -315,21 +316,21 @@ class TestSophieComplexPrograms:
     def test_counter_program(self, timeout_protection: None) -> None:
         """Test a simple counter program."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#$5[.*]&")
+            run("#$5[.*]&", io=IO())
         # Should print 5 then break
         assert f.getvalue() == "5"
 
     def test_conditional_loop(self, timeout_protection: None) -> None:
         """Test loop with conditional break."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#$3[.@$3{*}{}]&")
+            run("#$3[.@$3{*}{}]&", io=IO())
         # Should print 3 then break
         assert f.getvalue() == "3"
 
     def test_character_arithmetic(self, timeout_protection: None) -> None:
         """Test character operations."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A,#B,&")
+            run("#A,#B,&", io=IO())
         # Should print A then B
         assert f.getvalue() == "AB"
 

@@ -8,8 +8,10 @@ Seven commands: Z, A, N, C, L, S, and goto.
 import re
 import sys
 
+from esolangs.interpreters.io import IO
 
-def output(z: int, n: int, ram: dict[int, int]) -> None:
+
+def output(z: int, n: int, ram: dict[int, int], io: IO) -> None:
     """Print the current state of all registers and RAM memory."""
     res = f"z: {z}\n" f"n: {n}\n" "ram: {"
 
@@ -17,7 +19,7 @@ def output(z: int, n: int, ram: dict[int, int]) -> None:
         res += f"\n    {x}: {y},"
     if ram:
         res = res[:-1] + "\n"
-    print(res + "}")
+    io.print_line(res + "}")
 
 
 def change(z: int, n: int, ram: dict[int, int], op: str) -> tuple[int, int, bool]:
@@ -35,7 +37,7 @@ def change(z: int, n: int, ram: dict[int, int], op: str) -> tuple[int, int, bool
     return z, n, not z
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     """Execute a RAM0 program by parsing commands and running them sequentially."""
     expr = r"([ZANCLS]|[1-9]\d*)"
     tokens = re.findall(expr, code)
@@ -52,11 +54,11 @@ def run(code: str) -> None:
             ind = int(c) - 2
         ind += 1
 
-    output(z, n, ram)
+    output(z, n, ram, io)
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

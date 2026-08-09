@@ -8,14 +8,20 @@ Movement commands work overground, work commands function underground.
 import sys
 from collections.abc import Callable
 
+from esolangs.interpreters.io import IO
 
-def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
+
+def run(
+    code: list[str],
+    io: IO,
+    func: Callable[[], bool] = lambda: False,
+) -> None:
     """Execute a Dig program with mole movement and underground work commands."""
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
     direct = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-    line = mole = num = x = y = 0
+    mole = num = x = y = 0
     move = 1
 
     def value() -> int:
@@ -37,17 +43,15 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
                 elif n == 0:
                     mole = 32
             elif char in "=~":
-                temp = input("\n" * line + "Input: ")
-                line = False
+                temp = io.input_str()
 
                 mole = ord(temp[0]) if char == "=" else int(temp[0])
             elif char == ":":
                 if mole < 10:
-                    print(mole, end="")
+                    io.print_num(mole)
                 else:
-                    print(chr(mole), end="")
+                    io.print_char(chr(mole))
 
-                line = True
                 mole = 0
             elif char == "+":
                 mole += value()
@@ -91,4 +95,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

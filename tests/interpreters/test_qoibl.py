@@ -15,6 +15,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.register_based.qoibl import run
+from esolangs.interpreters.io import IO
 
 
 class TimeoutError(Exception):
@@ -58,7 +59,7 @@ class TestQoiblBasicOperations:
         """Test tt instruction for printing characters."""
         code: list[str] = ["tt yeeyeee tt"]  # 'H' in binary
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == "H"
 
     def test_print_hello_world(self) -> None:
@@ -77,7 +78,7 @@ class TestQoiblBasicOperations:
             "tt yyeyyee tt",  # l
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(hello_world_code)
+            run(hello_world_code, io=IO())
         assert f.getvalue() == "Hello, worl"
 
     def test_assignment_and_access(self) -> None:
@@ -87,7 +88,7 @@ class TestQoiblBasicOperations:
             "tt qe y qe tt",  # print var[1]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(48)  # '0'
 
     def test_input_operation(self) -> None:
@@ -100,7 +101,7 @@ class TestQoiblBasicOperations:
             patch("builtins.input", return_value="A"),
             redirect_stdout(io.StringIO()) as f,
         ):
-            run(code)
+            run(code, IO())
         assert f.getvalue() == "A"
 
 
@@ -111,14 +112,14 @@ class TestQoiblBinaryNumbers:
         """Test binary number 'e' (0)."""
         code: list[str] = ["tt e tt"]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(0)
 
     def test_binary_one(self) -> None:
         """Test binary number 'y' (1)."""
         code: list[str] = ["tt y tt"]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(1)
 
     def test_binary_numbers(self) -> None:
@@ -141,7 +142,7 @@ class TestQoiblBinaryNumbers:
         for binary_str, expected in test_cases:
             code: list[str] = [f"tt {binary_str} tt"]
             with redirect_stdout(io.StringIO()) as f:
-                run(code)
+                run(code, IO())
             assert f.getvalue() == chr(expected), f"Failed for {binary_str}"
 
 
@@ -156,7 +157,7 @@ class TestQoiblConditionals:
             "tt qe y qe yr ee yr qe ye qe tt",  # print var[1] == var[2]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(1)  # True
 
     def test_greater_than_condition(self) -> None:
@@ -167,7 +168,7 @@ class TestQoiblConditionals:
             "tt qe y qe yr ey yr qe ye qe tt",  # print var[1] > var[2]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(1)  # True
 
     def test_less_than_condition(self) -> None:
@@ -178,7 +179,7 @@ class TestQoiblConditionals:
             "tt qe y qe yr ye yr qe ye qe tt",  # print var[1] < var[2]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(1)  # True
 
     def test_not_equal_condition(self) -> None:
@@ -189,7 +190,7 @@ class TestQoiblConditionals:
             "tt qe y qe yr yy yr qe ye qe tt",  # print var[1] != var[2]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(1)  # True
 
 
@@ -204,7 +205,7 @@ class TestQoiblMathOperations:
             "tt qe y qe ry ee ry qe ye qe tt",  # print var[1] + var[2]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(6)
 
     def test_subtraction(self) -> None:
@@ -215,7 +216,7 @@ class TestQoiblMathOperations:
             "tt qe y qe ry ey ry qe ye qe tt",  # print var[1] - var[2]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(4)
 
     def test_multiplication(self) -> None:
@@ -226,7 +227,7 @@ class TestQoiblMathOperations:
             "tt qe y qe ry ye ry qe ye qe tt",  # print var[1] * var[2]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(9)
 
     def test_division(self) -> None:
@@ -237,7 +238,7 @@ class TestQoiblMathOperations:
             "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(2)  # 7 // 3 = 2
 
 
@@ -261,7 +262,7 @@ class TestQoiblExamples:
                 patch("builtins.input", side_effect=["2", "3"]),
                 redirect_stdout(io.StringIO()) as f,
             ):
-                run(code)
+                run(code, IO())
             return f.getvalue()
 
         result = run_with_timeout(run_adder, timeout_seconds=2)
@@ -275,7 +276,7 @@ class TestQoiblExamples:
             "tt qe y qe tt",  # print var[1]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(1)  # decremented 3 -> 1
 
 
@@ -286,14 +287,14 @@ class TestQoiblEdgeCases:
         """Test running an empty program."""
         code: list[str] = []
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == ""
 
     def test_undefined_variable_access(self) -> None:
         """Test accessing undefined variables (should return 0)."""
         code: list[str] = ["tt qe yyy qe tt"]  # print var[7] (undefined)
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(0)
 
     def test_division_by_zero(self) -> None:
@@ -304,7 +305,7 @@ class TestQoiblEdgeCases:
             "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2]
         ]
         with pytest.raises(ZeroDivisionError):
-            run(code)
+            run(code, IO())
 
     def test_nested_expressions(self) -> None:
         """Test nested expressions and complex operations."""
@@ -315,5 +316,5 @@ class TestQoiblEdgeCases:
             "tt qe yyy qe tt",  # print var[3]
         ]
         with redirect_stdout(io.StringIO()) as f:
-            run(code)
+            run(code, IO())
         assert f.getvalue() == chr(6)

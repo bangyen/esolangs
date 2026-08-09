@@ -15,6 +15,8 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.interpreters.io import IO
+
 # interpreter module -> instruction alphabet. lightlang's "_" (sleep) is
 # left out so the fuzz stays fast, and input is mocked below.
 FUZZ = {
@@ -50,7 +52,7 @@ def test_random_programs_terminate(module: str) -> None:
         signal.alarm(3)
         try:
             with patch("builtins.input", return_value="0"):
-                run(program)
+                run(program, io=IO())
         except _Timeout:
             pytest.fail(f"{module} hung on a random program")
         except Exception:

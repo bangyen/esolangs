@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 from esolangs.interpreters.register_based.RAM0 import run
+from esolangs.interpreters.io import IO
 
 
 class TimeoutError(Exception):
@@ -59,7 +60,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A Z")  # Increment z to 3, then zero it
+                run("A A A Z", io=IO())  # Increment z to 3, then zero it
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -70,7 +71,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A")  # Increment z three times
+                run("A A A", io=IO())  # Increment z three times
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -81,7 +82,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A N")  # z=3, then copy to n
+                run("A A A N", io=IO())  # z=3, then copy to n
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -94,7 +95,7 @@ class TestRAM0BasicCommands:
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run(
-                    "A A N A A A S A A L"
+                    "A A N A A A S A A L", io=IO()
                 )  # Store 5 at address 2, then load from address 7 (uninitialized)
             return f.getvalue()
 
@@ -107,7 +108,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A N A A A S")  # Store 5 at address 2
+                run("A A N A A A S", io=IO())  # Store 5 at address 2
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -118,7 +119,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("C A")  # Skip A if z is zero (it is)
+                run("C A", io=IO())  # Skip A if z is zero (it is)
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -129,7 +130,9 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A C A")  # z=1, then conditionally skip A (should not skip)
+                run(
+                    "A C A", io=IO()
+                )  # z=1, then conditionally skip A (should not skip)
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -144,7 +147,7 @@ class TestRAM0ControlFlow:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A 3 A A")  # Jump to instruction 3, skipping second A
+                run("A 3 A A", io=IO())  # Jump to instruction 3, skipping second A
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -162,7 +165,7 @@ class TestRAM0MemoryOperations:
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run(
-                    "A A N A A A S A A L"
+                    "A A N A A A S A A L", io=IO()
                 )  # Store 5 at address 2, then load from address 7
             return f.getvalue()
 
@@ -175,7 +178,9 @@ class TestRAM0MemoryOperations:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A N A S A A N A A S")  # Store 2 at address 1, 6 at address 4
+                run(
+                    "A N A S A A N A A S", io=IO()
+                )  # Store 2 at address 1, 6 at address 4
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -188,7 +193,7 @@ class TestRAM0MemoryOperations:
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 run(
-                    "A N A S A A A N S"
+                    "A N A S A A A N S", io=IO()
                 )  # Store 2 at address 1, then store 5 at address 5
             return f.getvalue()
 
@@ -201,7 +206,7 @@ class TestRAM0MemoryOperations:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A L")  # Load from address 3 (uninitialized)
+                run("A A A L", io=IO())  # Load from address 3 (uninitialized)
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -216,7 +221,7 @@ class TestRAM0RegisterInteractions:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A N A A")  # z=5, n=3
+                run("A A A N A A", io=IO())  # z=5, n=3
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -228,7 +233,7 @@ class TestRAM0RegisterInteractions:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A N A")  # z=4, n=3
+                run("A A A N A", io=IO())  # z=4, n=3
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -240,7 +245,7 @@ class TestRAM0RegisterInteractions:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A N A A A S")  # Store 5 at address 2 (n register)
+                run("A A N A A A S", io=IO())  # Store 5 at address 2 (n register)
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -255,7 +260,7 @@ class TestRAM0EdgeCases:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("")
+                run("", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -267,7 +272,7 @@ class TestRAM0EdgeCases:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("   \n\t  ")
+                run("   \n\t  ", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -279,7 +284,7 @@ class TestRAM0EdgeCases:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A invalid B C D E F G H I J K L M O P Q R T U V W X Y Z")
+                run("A invalid B C D E F G H I J K L M O P Q R T U V W X Y Z", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -292,7 +297,7 @@ class TestRAM0EdgeCases:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A /* comment */ A // another comment A")
+                run("A /* comment */ A // another comment A", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -303,7 +308,7 @@ class TestRAM0EdgeCases:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A 0 A")  # Should terminate before last A
+                run("A A 0 A", io=IO())  # Should terminate before last A
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -314,7 +319,7 @@ class TestRAM0EdgeCases:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A 999 A")  # Jump to non-existent instruction
+                run("A 999 A", io=IO())  # Jump to non-existent instruction
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -331,7 +336,7 @@ class TestRAM0MathematicalOperations:
             with redirect_stdout(io.StringIO()) as f:
                 # Store 5 at address 2, then load from address 7
                 run(
-                    "A A N A A A S A A L"
+                    "A A N A A A S A A L", io=IO()
                 )  # Store 5 at address 2, then load from uninitialized address
             return f.getvalue()
 
@@ -345,7 +350,7 @@ class TestRAM0MathematicalOperations:
             with redirect_stdout(io.StringIO()) as f:
                 # Create a counter that counts to 3
                 run(
-                    "A A A N S A A A N S A A A N S"
+                    "A A A N S A A A N S A A A N S", io=IO()
                 )  # Store 3, 6, 9 at addresses 3, 6, 9
             return f.getvalue()
 
@@ -360,7 +365,7 @@ class TestRAM0MathematicalOperations:
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 # z=5, n=5, then store 8 at address 5, then load from address 13
-                run("A A A A A N A A A S A A A A A N L")
+                run("A A A A A N A A A S A A A A A N L", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -377,7 +382,7 @@ class TestRAM0Integration:
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 # Complex program: store values, load them, perform operations
-                run("A A N A A A S A A A N A A A A S A A L A A A L")
+                run("A A N A A A S A A A N A A A A S A A L A A A L", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -391,7 +396,7 @@ class TestRAM0Integration:
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
                 # Initialize memory locations with values
-                run("A N S A A N S A A A N S A A A A N S A A A A A N S")
+                run("A N S A A N S A A A N S A A A A N S A A A A A N S", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)

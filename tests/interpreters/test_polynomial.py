@@ -10,6 +10,7 @@ from contextlib import redirect_stdout
 
 import pytest
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.polynomial import (
     brackets,
     convert,
@@ -72,7 +73,7 @@ class TestPolynomialValidation:
         with pytest.raises(
             ValueError, match=r"Polynomial program must start with 'f\(x\) = '"
         ):
-            run("")
+            run("", io=IO())
 
     def test_invalid_format_validation(self) -> None:
         """Test that invalid format raises ValueError."""
@@ -81,7 +82,7 @@ class TestPolynomialValidation:
         with pytest.raises(
             ValueError, match=r"Polynomial program must start with 'f\(x\) = '"
         ):
-            run("invalid program")
+            run("invalid program", io=IO())
 
     def test_valid_format_acceptance(self) -> None:
         """Test that valid format is accepted."""
@@ -206,7 +207,7 @@ class TestPolynomialExecution:
         """A root of 2i encodes an output instruction (reg starts at 0)."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run("f(x) = x^2+4")
+            run("f(x) = x^2+4", io=IO())
         assert buffer.getvalue() == "\x00"
 
     def test_arithmetic_then_output(self) -> None:
@@ -214,42 +215,42 @@ class TestPolynomialExecution:
         program = "f(x) = x^4 - 130x^3 + 4238x^2 - 1170x + 38061"
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(program)
+            run(program, io=IO())
         assert buffer.getvalue() == "A"
 
     def test_no_roots_no_output(self) -> None:
         for program in ["f(x) = 0", "f(x) = 1", "f(x) = x+1"]:
             buffer = io.StringIO()
             with redirect_stdout(buffer):
-                run(program)
+                run(program, io=IO())
             assert buffer.getvalue() == ""
 
     def test_run_without_spaces(self) -> None:
         """The no-space form produced by run's sanitizer still executes."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run("f(x)=x^2+4")
+            run("f(x)=x^2+4", io=IO())
         assert buffer.getvalue() == "\x00"
 
     def test_control_flow_roots(self) -> None:
         """Real roots 2 and 4 encode an if-statement pair (reg is 0)."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run("f(x) = x^2 - 6x + 8")
+            run("f(x) = x^2 - 6x + 8", io=IO())
         assert buffer.getvalue() == ""
 
     def test_if_enters_when_condition_met(self) -> None:
         """If reg==0 { output } executes the body when reg is 0."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run("f(x) = x^3 - 16x^2 + 25x - 400")
+            run("f(x) = x^3 - 16x^2 + 25x - 400", io=IO())
         assert buffer.getvalue() == "\x00"
 
     def test_if_skipped_when_condition_not_met(self) -> None:
         """The spec example: if reg>0 { output } skips the body when reg is 0."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run("f(x) = x^4 - 27x^3 + 59x^2 - 243x + 450")
+            run("f(x) = x^4 - 27x^3 + 59x^2 - 243x + 450", io=IO())
         assert buffer.getvalue() == ""
 
     def test_while_loop(self) -> None:
@@ -260,14 +261,14 @@ class TestPolynomialExecution:
         )
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(program)
+            run(program, io=IO())
         assert buffer.getvalue() == "\x00"
 
     def test_unmatched_bracket_does_not_crash(self) -> None:
         """A lone endif with no matching opener is handled gracefully."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run("f(x) = x - 4")
+            run("f(x) = x - 4", io=IO())
         assert buffer.getvalue() == ""
 
     def test_input_instruction(self) -> None:
@@ -275,7 +276,7 @@ class TestPolynomialExecution:
         import unittest.mock
 
         with unittest.mock.patch("builtins.input", return_value="A"):
-            run("f(x) = x^2+16")  # does not crash; reg stores the input
+            run("f(x) = x^2+16", io=IO())  # does not crash; reg stores the input
 
 
 class TestConvertRealRoots:

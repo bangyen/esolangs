@@ -1,5 +1,7 @@
 import sys
 
+from esolangs.interpreters.io import IO
+
 
 class Con:
     def __init__(self, name: str) -> None:
@@ -31,9 +33,8 @@ class Con:
         return max(res, 0)
 
 
-def run(code: list[str]) -> None:
+def run(code: list[str], io: IO) -> None:
     queue: list[str] = []
-    inp = 0
     obj: list[Con] = []
     var: dict[str, int] = {}
     new: dict[str, int] = {}
@@ -60,16 +61,14 @@ def run(code: list[str]) -> None:
             new[o.name] = o.update(var)
 
         if "PRINT" in var and var["PRINT"] == 0 and bool(new["PRINT"]) and "OUT" in var:
-            print(chr(new["OUT"] % (1 << 7)), end="")
-            inp = 1
+            io.print_char(chr(new["OUT"] % (1 << 7)))
         if "" in var and var[""] == 0 and bool(new[""]):
             while not queue:
-                s = input("\n" * inp + "Input: ")
+                s = io.input_str()
                 queue += list(s)
 
             new["INPUT"] = ord(queue[0])
             queue = queue[1:]
-            inp = 1
         if "EXIT" in var and var["EXIT"] != new["EXIT"]:
             sys.exit(new["EXIT"])
 
@@ -80,4 +79,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())
