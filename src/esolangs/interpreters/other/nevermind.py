@@ -38,13 +38,13 @@ def run(lines: list[str], io: IO) -> None:
 
     while ind < len(code):
         if (c := code[ind]) and not skip:
-            for x, y in enumerate(c[1:]):
-                if isinstance(y, str):
-                    if y[0] == "$":
-                        c[x + 1] = var[y[1:].strip()]
-                    nxt = c[x + 1]
+            for i, val in enumerate(c[1:]):
+                if isinstance(val, str):
+                    if val[0] == "$":
+                        c[i + 1] = var[val[1:].strip()]
+                    nxt = c[i + 1]
                     if isinstance(nxt, str) and nxt.isascii() and nxt.isdigit():
-                        c[x + 1] = int(nxt)
+                        c[i + 1] = int(nxt)
 
             if (op := c[0]) == "print":
                 io.print_line("".join(map(str, c[1:])))
