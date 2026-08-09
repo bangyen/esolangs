@@ -62,14 +62,19 @@ class Dot:
         line = Dot.code[self.x][self.y :]
         return re.match(regex, line)
 
-    def find(self, warp: str, ret: bool = False) -> Dot | bool:
-        """Find a warp destination in the code grid."""
+    def find(self, warp: str, *, return_dot: bool = False) -> Dot | bool:
+        """Find a warp destination, moving this dot or returning a new one.
+
+        With ``return_dot`` true, a new :class:`Dot` at the destination is
+        returned; otherwise the destination is followed in place and ``True``
+        is returned on success.
+        """
         for num, val in enumerate(Dot.code):
             if warp in val:
                 x, y = num, val.find(warp)
                 if self.dir == 1:
                     y += len(warp) - 1
-                if ret:
+                if return_dot:
                     return Dot(x, y, self.dir)
                 self.x, self.y = x, y
                 return True
@@ -122,7 +127,7 @@ def run(code: list[str], io: IO) -> None:
         elif val == "(":
             if g := dot.match(r"\(`\w+"):
                 name = ")" + g[0][1:]
-                dest = dot.find(name, True)
+                dest = dot.find(name, return_dot=True)
                 if not dest:
                     return
                 if not isinstance(dest, Dot):

@@ -95,7 +95,7 @@ class TestDot:
 
         # Test finding and returning new dot
         dot = Dot(0, 0, 1)
-        new_dot = dot.find("Wtest`e", ret=True)
+        new_dot = dot.find("Wtest`e", return_dot=True)
         assert isinstance(new_dot, Dot)
         assert new_dot.x == 2
         assert new_dot.y == 6

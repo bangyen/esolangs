@@ -59,7 +59,7 @@ def _match(tokens: list[str]) -> dict[int, int]:
 
 
 _URL_SAFE = frozenset(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~",
 )
 _PREFIX = "https://translate.google.com/?sl=en&tl=es&text="
 _SUFFIX = "&op=translate"

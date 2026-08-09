@@ -24,12 +24,12 @@ for category in ("tape_based", "stack_based", "register_based", "other"):
         MODULES.append(f"esolangs.interpreters.{category}.{path.stem}")
 
 
-class _Timeout(Exception):
+class _TimeoutError(Exception):
     """Raised by the alarm handler when an interpreter does not terminate."""
 
 
 def _on_alarm(signum: int, frame: object) -> None:
-    raise _Timeout("interpreter did not terminate on the empty program")
+    raise _TimeoutError("interpreter did not terminate on the empty program")
 
 
 @pytest.mark.skipif(os.name != "posix", reason="signal.alarm is POSIX-only")
@@ -40,7 +40,7 @@ def test_empty_program_terminates(module: str) -> None:
     signal.alarm(3)
     try:
         run("", io=IO())
-    except _Timeout:
+    except _TimeoutError:
         pytest.fail(f"{module} hangs on the empty program")
     except Exception:
         pass  # rejecting the empty program is a valid termination

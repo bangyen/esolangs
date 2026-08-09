@@ -97,6 +97,8 @@ select = [
     "PT",  # flake8-pytest-style
     "D",   # pydocstyle
     "RET", # flake8-return
+    "N",   # pep8-naming
+    "FBT", # flake8-boolean-trap
 ]
 ignore = [
     "C901",  # too complex
@@ -110,9 +112,12 @@ ignore = [
 # The badge is a single multi-line SVG template string; its long lines are
 # part of the generated markup and cannot be wrapped without changing it.
 "scripts/make_coverage_badge.py" = ["E501"]
+# Module filenames match the esolang names and are referenced by the registry.
+"src/esolangs/interpreters/**/*.py" = ["N999"]
+"src/esolangs/compilers/**/*.py" = ["N999"]
 # Test files are exempt from docstring requirements: test method and class
 # names are self-documenting, so the D rules would only add boilerplate.
-"tests/**/*.py" = ["D"]
+"tests/**/*.py" = ["D", "N802"]
 
 [tool.mypy]
 strict = true
