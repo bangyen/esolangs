@@ -12,8 +12,8 @@ from typing import Any
 
 import pytest
 
-from esolangs.interpreters.register_based.WII2D import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.register_based.WII2D import run
 
 
 class TimeoutError(Exception):

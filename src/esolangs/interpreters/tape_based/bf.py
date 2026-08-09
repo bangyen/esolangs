@@ -61,9 +61,7 @@ def run(code: str, io: IO) -> None:
             io.print_char(chr(tape[ptr]))
         elif char == ",":
             tape[ptr] = io.input_char()
-        elif char == "[" and tape[ptr] == 0:
-            ind = m[ind]
-        elif char == "]" and tape[ptr] != 0:
+        elif (char == "[" and tape[ptr] == 0) or (char == "]" and tape[ptr] != 0):
             ind = m[ind]
 
         ind += 1

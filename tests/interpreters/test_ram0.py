@@ -13,8 +13,8 @@ from typing import Any
 
 import pytest
 
-from esolangs.interpreters.register_based.RAM0 import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.register_based.RAM0 import run
 
 
 class TimeoutError(Exception):

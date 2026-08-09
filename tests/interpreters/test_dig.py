@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.interpreters.register_based.dig import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.register_based.dig import run
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:

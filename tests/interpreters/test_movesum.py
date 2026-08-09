@@ -11,8 +11,8 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.interpreters.register_based.movesum import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.register_based.movesum import run
 
 
 class TestMovesumBasicCommands:

@@ -222,7 +222,7 @@ def test_circlefuck_auto_size_rejects_nested_drifting_loop() -> None:
 def test_circlefuck_unmatched_bracket_rejected() -> None:
     """Unbalanced brackets are malformed and rejected by both the source
     interpreter and the transpiler."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="unbalanced brackets"):
         esolangs.transpile("BF", "CircleFuck", "[")
 
 

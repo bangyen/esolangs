@@ -12,8 +12,8 @@ from unittest.mock import patch
 
 import esolangs
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.other.taglate import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other.taglate import run
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:

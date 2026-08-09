@@ -10,6 +10,8 @@ import sys
 from contextlib import redirect_stdout
 from pathlib import Path
 
+from esolangs.interpreters.io import IO
+
 spec = importlib.util.spec_from_file_location(
     "minsky_swap",
     Path(__file__).parents[2]
@@ -21,7 +23,6 @@ sys.modules["minsky_swap"] = minsky_swap
 assert spec.loader is not None, "Module spec has no loader"
 spec.loader.exec_module(minsky_swap)
 run = minsky_swap.run
-from esolangs.interpreters.io import IO
 
 
 class TestMinskySwapBasicCommands:

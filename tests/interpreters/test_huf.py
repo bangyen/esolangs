@@ -10,8 +10,8 @@ from contextlib import redirect_stdout
 
 import pytest
 
-from esolangs.interpreters.register_based.huf import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.register_based.huf import run
 
 
 class TestHufCodeExtraction:
