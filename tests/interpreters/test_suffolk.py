@@ -4,8 +4,8 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from esolangs.interpreters.tape_based.suffolk import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.tape_based.suffolk import run
 
 
 def run_and_capture(code: str, limit: int = 1) -> str:

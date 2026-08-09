@@ -102,14 +102,14 @@ class TestASCIIArt:
         """Unbalanced brackets are a malformed program, not a halt."""
         import pytest
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unmatched"):
             run_and_capture(program(LOOP_OPEN))
 
     def test_unmatched_close_bracket_with_nonzero_cell(self) -> None:
         """Unbalanced brackets are a malformed program, not a halt."""
         import pytest
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unmatched"):
             run_and_capture(program(PLUS, LOOP_CLOSE))
 
     def test_nested_open_brackets(self) -> None:

@@ -8,8 +8,8 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from esolangs.interpreters.other.ztoalc import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other.ztoalc import run
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
