@@ -300,7 +300,8 @@ class TestLightlangComplexPrograms:
         """Test complex control flow with multiple commands."""
         with redirect_stdout(io.StringIO()) as f:
             run("^&^!^&!", io=IO())
-        # ^ sets bit to 1, & skips next ^, ! prints 1, ^ toggles to 0, & does nothing, ! prints 0
+        # ^ sets bit to 1, & skips next ^, ! prints 1, ^ toggles to 0,
+        # & does nothing, ! prints 0
         assert f.getvalue() == "10"
 
     def test_direction_reversal_with_skips(self) -> None:

@@ -295,7 +295,7 @@ class TestWII2DEdgeCases:
             run_with_timeout(lambda: run(code, IO()))
         assert (
             f.getvalue() == "\x05"
-        )  # The program outputs 255 as a character, but 255 is processed as 2 then 5 then 5
+        )  # 255 outputs as 2 then 5 then 5, so the character is 0x05
 
     def test_division_by_zero_equivalent(self) -> None:
         """Test division when accumulator is 1 (results in 0)."""
