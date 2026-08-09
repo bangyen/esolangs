@@ -108,7 +108,7 @@ def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
     halted = [False]
     heap_cur = [heap_base]
 
-    def on_ecall(uc: Uc, intno: int, user_data: Any) -> None:
+    def on_ecall(uc: Uc, _intno: int, _user_data: Any) -> None:
         nonlocal inp_pos, out
         a7 = uc.reg_read(UC_RISCV_REG_A7)
         if a7 == SYS_READ:

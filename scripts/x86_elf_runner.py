@@ -107,7 +107,7 @@ def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
     exit_code = [0]
     halted = [False]
 
-    def on_int(uc: Uc, intno: int, user_data: Any) -> None:
+    def on_int(uc: Uc, intno: int, _user_data: Any) -> None:
         nonlocal inp_pos, out
         if intno != 0x80:
             return

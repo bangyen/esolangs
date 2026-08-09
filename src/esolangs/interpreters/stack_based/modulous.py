@@ -42,17 +42,17 @@ def _jmp(state: State, mod: str, arg: list[str]) -> str | None:
     return None
 
 
-def _add(state: State, mod: str, arg: list[str]) -> str | None:
+def _add(state: State, _mod: str, arg: list[str]) -> str | None:
     state.stk[-1] += int(arg[1])
     return None
 
 
-def _sub(state: State, mod: str, arg: list[str]) -> str | None:
+def _sub(state: State, _mod: str, arg: list[str]) -> str | None:
     state.stk[-1] -= int(arg[1])
     return None
 
 
-def _rst(state: State, mod: str, arg: list[str]) -> str | None:
+def _rst(state: State, _mod: str, _arg: list[str]) -> str | None:
     state.ind = -1
     return None
 
@@ -68,12 +68,12 @@ def _psh(state: State, mod: str, arg: list[str]) -> str | None:
     return None
 
 
-def _pop(state: State, mod: str, arg: list[str]) -> str | None:
+def _pop(state: State, _mod: str, _arg: list[str]) -> str | None:
     state.stk.pop()
     return None
 
 
-def _swp(state: State, mod: str, arg: list[str]) -> str | None:
+def _swp(state: State, _mod: str, _arg: list[str]) -> str | None:
     state.stk.append(state.stk.pop(-2))
     return None
 
@@ -88,7 +88,7 @@ def _prt(state: State, mod: str, arg: list[str]) -> str | None:
     return None
 
 
-def _inp(state: State, mod: str, arg: list[str]) -> str | None:
+def _inp(state: State, mod: str, _arg: list[str]) -> str | None:
     input_str: str = state.io.input_str()
 
     if "INT" in mod and input_str:
@@ -98,16 +98,16 @@ def _inp(state: State, mod: str, arg: list[str]) -> str | None:
     return None
 
 
-def _end(state: State, mod: str, arg: list[str]) -> str | None:
+def _end(_state: State, _mod: str, _arg: list[str]) -> str | None:
     return "halt"
 
 
-def _dup(state: State, mod: str, arg: list[str]) -> str | None:
+def _dup(state: State, _mod: str, _arg: list[str]) -> str | None:
     state.stk.append(state.stk[-1])
     return None
 
 
-def _rnd(state: State, mod: str, arg: list[str]) -> str | None:
+def _rnd(state: State, _mod: str, arg: list[str]) -> str | None:
     state.stk.append(secrets.randbelow(int(arg[1])))
     return None
 

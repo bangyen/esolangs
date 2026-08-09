@@ -110,7 +110,7 @@ class ScriptedIO(IO):
         self._lines = iter(stdin.splitlines())
         self._buffer = _stdlib_io.StringIO()
 
-    def _read(self, prompt: str) -> str:
+    def _read(self, _prompt: str) -> str:
         try:
             return next(self._lines)
         except StopIteration:

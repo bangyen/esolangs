@@ -208,7 +208,7 @@ def _huf_segment(value: int) -> str:
     return "#" + "+" * a + "|" + "+" * b + "!" + "+" * r + ">@"
 
 
-def eval(text: str) -> str:
+def eval(text: str) -> str:  # noqa: A001 - the language is named "Eval"
     """Build a program that prints ``text`` as one string literal.
 
     A double quote inside the text would end the literal early, so it is
