@@ -6,12 +6,13 @@ class EsolangError(Exception):
 
 
 class HaltError(EsolangError):
-    """An interpreter halted on a runtime condition.
+    """An interpreter halted on an invalid operation.
 
-    Some languages terminate on conditions that would otherwise surface as
-    incidental Python errors (e.g. popping an empty stack).  Raising
-    ``HaltError`` makes the halt explicit so the fuzz suite can treat it as
-    a normal outcome rather than a crash.
+    A program that performs a mathematically or structurally invalid
+    operation (e.g. division by zero, popping an empty stack) has no defined
+    result, so the interpreter halts rather than inventing one.  Raising
+    ``HaltError`` makes that halt explicit instead of leaking an incidental
+    Python error.
     """
 
 

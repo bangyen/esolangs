@@ -8,7 +8,8 @@ queue arithmetic (``a``-``d``), rotate and discard (``e``/``f``), loops
 its text.
 
 Decisions for gaps in the wiki spec (documented):
-- division by zero pushes 0;
+- division by zero halts the program (it is an invalid operation, so the
+  interpreter does not invent a result for it);
 - an empty queue reads as 0 for loop conditions;
 - ``t`` keeps ASCII letters, digits, and ``-_.~`` (the RFC 3986 unreserved
   set), encoding everything else as ``%XX`` (uppercase hex, more digits for
@@ -20,6 +21,7 @@ Decisions for gaps in the wiki spec (documented):
 
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 _SINGLE = frozenset("abcdefhijt")
@@ -94,7 +96,9 @@ def run(code: list[str], io: IO) -> None:
             queue.append((queue.pop(0) * queue.pop(0)) % 65536)
         elif tok == "d":
             x, y = queue.pop(0), queue.pop(0)
-            queue.append((x // y) if y else 0)
+            if not y:
+                raise HaltError
+            queue.append(x // y)
         elif tok == "e":
             queue.append(queue.pop(0))
         elif tok == "f":
