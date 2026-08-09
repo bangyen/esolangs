@@ -264,7 +264,8 @@ class TestMovesumValidation:
         """Test that code with only initialization raises ValueError."""
         with pytest.raises(
             ValueError,
-            match="Movesum program must have at least initialization and one instruction",
+            match="Movesum program must have at least initialization and "
+            "one instruction",
         ):
             run(["0=1"], io=IO())
 
