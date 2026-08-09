@@ -6,8 +6,6 @@ from esolangs.tools.transpilers import bf_to_ascii_art
 
 __all__ = [
     "_MAMMALIAN_WALK",
-    "_MINUS_REM",
-    "_PLUS_REM",
     "_mammalian_walk",
     "_six_five_path",
     "ascii_art",
@@ -24,24 +22,18 @@ __all__ = [
 
 
 def _six_five_path(src: int, dst: int) -> str:
-    """Shortest sequence of 5/6 additions and 2/9 subtractions from src to dst.
+    """Sequence of 6/2 additions and 9/5 subtractions from src to dst.
 
-    The delta is built from a run of sixes (or fives) plus a short remainder
-    pattern, choosing whichever base yields the shorter program.
+    The delta is covered by a run of sixes (moving up) or nines (moving down)
+    plus ``62``/``95`` pairs for the remainder: each ``62`` nets ``+6 - 5 =
+    +1`` and each ``95`` nets ``-6 + 5 = -1``.
     """
     delta = dst - src
-    if delta < 0:
-        delta = -delta
-        q6, r6 = divmod(delta, 6)
-        q5, r5 = divmod(delta, 5)
-        p6 = "9" * q6 + _MINUS_REM[r6]
-        p5 = "2" * q5 + _MINUS_REM[r5]
-        return p6 if len(p6) <= len(p5) else p5
-    q6, r6 = divmod(delta, 6)
-    q5, r5 = divmod(delta, 5)
-    p6 = "6" * q6 + _PLUS_REM[r6]
-    p5 = "5" * q5 + _PLUS_REM[r5]
-    return p6 if len(p6) <= len(p5) else p5
+    if delta >= 0:
+        q, r = divmod(delta, 6)
+        return "6" * q + "62" * r
+    q, r = divmod(-delta, 6)
+    return "9" * q + "95" * r
 
 
 def _mammalian_walk(ptr: int) -> list[dict[int, int]]:
@@ -68,18 +60,48 @@ def _mammalian_walk(ptr: int) -> list[dict[int, int]]:
 _MAMMALIAN_WALK: dict[int, list[dict[int, int]]] = {}
 
 
-_PLUS_REM = ["", "62", "6622", "55599", "559", "5"]  # +5/+6 paths for remainders
-_MINUS_REM = ["", "95", "9955", "999555", "262", "2"]  # -5/-6 paths
+def _bf_set(value: int) -> str:
+    """Brainfuck that sets the next cell to ``value`` and prints it.
+
+    The current cell is assumed to be zero.  A run of ``a`` plus signs makes
+    it ``a``, a loop moves that many copies of ``b`` into the next cell, and
+    a final run tops the product up to ``value`` with the remainder ``r``;
+    the pointer is left on the printed cell.  ``a`` is searched near
+    ``sqrt(value)`` so the program is O(sqrt) rather than O(value).
+    """
+    best = min(
+        (
+            (a + b + r, a, b, r)
+            for a in range(1, int(value**0.5) + 2)
+            for b, r in (divmod(value, a),)
+        )
+    )
+    _, a, b, r = best
+    return "+" * a + "[>" + "+" * b + "<-]" + ">" + "+" * r + "."
 
 
 def bf(text: str) -> str:
     """Generate a brainfuck program that outputs ``text``.
 
-    ``[-]`` zeroes the current cell (so each character starts from a known
-    state), a run of ``+``s sets it to the target value, and ``.`` prints
-    it.
+    The pointer walks right one cell per character.  A cell is reused when
+    the next character is close enough that its delta is shorter than
+    rebuilding it: the program emits the +/- run and prints in place.
+    Otherwise the cell is zeroed with ``[-]`` and rebuilt with a multiply
+    loop (``_bf_set``), so large values cost O(sqrt) instead of O(value).
     """
-    return "".join("[-]" + "+" * ord(c) + "." for c in text)
+    res: list[str] = []
+    cur = 0
+    for c in text:
+        v = ord(c)
+        delta = v - cur
+        inc = "+" * delta if delta >= 0 else "-" * -delta
+        if len(inc) + 1 <= len(_bf_set(v)) + 3:
+            res.append(inc + ".")
+            cur = v
+        else:
+            res.append("[-]" + _bf_set(v))
+            cur = v
+    return "".join(res)
 
 
 def ascii_art(text: str) -> str:

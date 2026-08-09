@@ -26,3 +26,15 @@ generators already produce), and verified exactly like every other
 transpiler — the source and target must agree on every input. It needs a
 design decision first: how to detect or take `n` (the input count) and how
 to reject programs outside the class loudly.
+
+### Constant-loop boolean generator for arbitrary n
+The boolean generators cover every table up to a small input count: 6-5 and
+CircleFuck build decision trees capped at about 5 inputs (35 branch labels
+for 6-5, n <= 5), Taglate is closed-form for n == 2, and the brainfuck
+generator handles any n but is branch-free and grows with the minterm count.
+Extending any of them to arbitrary `n` needs an arithmetic generator whose
+program size and loop count are constant in `n` (e.g. encode the inputs as
+one number and decode the table entry arithmetically); the BFStack encoder
+hints at the shape but no such generator has been designed yet.  The
+BF-to-6-5 transpiler cannot provide it: the brainfuck generator's loop count
+already exceeds the transpiler's 18-loop cap at n == 2.
