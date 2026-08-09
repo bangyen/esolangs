@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 import pytest
 
-import esolangs.tools._ztoalc as zt
 import esolangs.tools.generate as gen
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
@@ -277,8 +276,8 @@ class TestGeneratorRoundTrips:
     ) -> None:
         """A length missing from the table falls back to a dynamic search."""
         monkeypatch.setattr(other, "STARTS", {1: 2, 3: 8})
-        monkeypatch.setattr(zt, "_ZTOALC_TABLE_LIMIT", 2)
-        monkeypatch.setattr(zt, "_ZTOALC_MAX_LIMIT", 100)
+        monkeypatch.setattr(other, "_ZTOALC_TABLE_LIMIT", 2)
+        monkeypatch.setattr(other, "_ZTOALC_MAX_LIMIT", 100)
         program = gen.ztoalc("ab")
         assert program.splitlines() == ["4", "print 98", "", "print 97"]
         assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
@@ -286,8 +285,8 @@ class TestGeneratorRoundTrips:
     def test_ztoalc_search_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Text longer than any trajectory in the search range is rejected."""
         monkeypatch.setattr(other, "STARTS", {1: 2})
-        monkeypatch.setattr(zt, "_ZTOALC_TABLE_LIMIT", 2)
-        monkeypatch.setattr(zt, "_ZTOALC_MAX_LIMIT", 2)
+        monkeypatch.setattr(other, "_ZTOALC_TABLE_LIMIT", 2)
+        monkeypatch.setattr(other, "_ZTOALC_MAX_LIMIT", 2)
         with pytest.raises(ValueError, match="no Collatz start"):
             gen.ztoalc("abcde")
 
