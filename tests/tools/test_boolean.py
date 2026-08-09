@@ -50,10 +50,14 @@ class TestSixFive:
     def test_branch_structure(self) -> None:
         """Each level reads a bit and branches to a 4 marker."""
         program = boolean.six_five("0110", 2)
-        assert program.startswith("4" * 11)
-        assert "B" + "2" * 8 in program
+        assert program.startswith("B" + "2" * 8)
         assert "78" in program
         assert program.endswith("A0")
+
+    def test_label_cap(self) -> None:
+        """More than 35 branch labels (1..Z) would silently corrupt jumps."""
+        with pytest.raises(ValueError, match="n <= 5"):
+            boolean.six_five("0" * 63 + "1", 6)
 
 
 def run_qoibl(program: str, inputs: list[str]) -> str:
@@ -393,6 +397,8 @@ class TestTaglate:
             ("0001", 2),  # AND
             ("0110", 2),  # XOR
             ("1110", 2),  # NAND
+            ("00000001", 3),  # majority
+            ("0000000000000001", 4),  # 4-AND
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -400,7 +406,13 @@ class TestTaglate:
         program = boolean.taglate(table, n)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_taglate(program, [str(b) for b in bits])
+            # Odd n > 1 uses a ghost digit (fake zero first input)
+            inputs = (
+                ["0"] + [str(b) for b in bits]
+                if n % 2 == 1 and n > 1
+                else [str(b) for b in bits]
+            )
+            got = run_taglate(program, inputs)
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_all_two_input_tables(self) -> None:
@@ -412,6 +424,20 @@ class TestTaglate:
                 got = run_taglate(boolean.taglate(tt, 2), [str(b) for b in bits])
                 assert got == tt[combo], f"{tt} inputs {bits}"
 
-    def test_only_supports_two_inputs(self) -> None:
-        with pytest.raises(ValueError, match="n == 2"):
-            boolean.taglate("11111110", 3)
+    def test_all_three_input_tables(self) -> None:
+        """Every three-input truth table produces the right result."""
+        failures = 0
+        for table in range(256):
+            tt = format(table, "08b")
+            program = boolean.taglate(tt, 3)
+            for combo in range(8):
+                bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+                inputs = ["0"] + [str(b) for b in bits]  # ghost digit
+                got = run_taglate(program, inputs)
+                if got != tt[combo]:
+                    failures += 1
+                    if failures <= 3:
+                        print(
+                            f"  FAIL {tt} inputs {bits}: got {got!r} expected {tt[combo]!r}"
+                        )
+        assert failures == 0, f"{failures} failures out of 2048 combos"

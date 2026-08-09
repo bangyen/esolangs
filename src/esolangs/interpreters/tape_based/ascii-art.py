@@ -64,7 +64,7 @@ def run(code: str) -> None:
             print(chr(tape[ptr]), end="")
             new = 0
         elif char == ",":
-            val = input("\nInput: "[:new])
+            val = input("\nInput: "[new:])
             tape[ptr] = ord(val[0])
             new = 1
         elif char == "[" and tape[ptr] == 0:
