@@ -4,6 +4,10 @@ Programs are a list of lines; line 1 holds the initial pointer.  Execution
 visits line ``v`` when the Collatz step equals ``v``, halting when the value
 reaches 1.  Commands print, jump, assign, add, and subtract using the current
 value as an expression.
+
+The wiki allows array elements as general expressions; this interpreter only
+handles a plain variable name as the array (no nested or compound indexing),
+so arrays-of-arrays are not supported.
 """
 
 import sys

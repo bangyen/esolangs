@@ -218,6 +218,17 @@ class TestPolynomialExecution:
             run(program, io=IO())
         assert buffer.getvalue() == "A"
 
+    def test_division_keeps_register_integer(self) -> None:
+        """reg /= a is integer division: 65 // 5 = 13, output as a char."""
+        program = (
+            "f(x) = 1x^6 - 140x^5 + 5819x^4 - 80080x^3 "
+            "+ 1240639x^2 - 709380x + 10695141"
+        )
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(program, io=IO())
+        assert buffer.getvalue() == "\r"
+
     def test_no_roots_no_output(self) -> None:
         for program in ["f(x) = 0", "f(x) = 1", "f(x) = x+1"]:
             buffer = io.StringIO()

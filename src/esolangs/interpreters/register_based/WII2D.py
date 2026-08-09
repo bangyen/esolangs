@@ -2,6 +2,10 @@
 
 2D esoteric language inspired by Befunge.
 Pointer moves on a 2D grid with wrap-around behavior and an accumulator.
+
+The wiki requires exactly one ``!`` start marker; this interpreter silently
+uses the first one (and no-ops when there are none) instead of rejecting
+programs that violate the constraint.
 """
 
 import copy

@@ -2,8 +2,11 @@
 
 Commands are written as ``[OP arg]`` tokens.  PSH pushes an integer, string,
 or variable value; POP/SWP/DUP reshape the stack; PRT prints the top as an
-integer or byte; INP reads a line; JMP/IF conditionally jump; RST resets;
-and END halts.
+integer or byte; INP reads a line; JMP/IF conditionally jump; RST resets the
+pointer to the start of the program; and END halts.
+
+The wiki declares four variables (VAR1-VAR4); the interpreter initializes
+those but accepts any ``VARn`` name rather than enforcing the limit.
 """
 
 import re
@@ -53,7 +56,7 @@ def _sub(state: State, _mod: str, arg: list[str]) -> str | None:
 
 
 def _rst(state: State, _mod: str, _arg: list[str]) -> str | None:
-    state.ind = -1
+    state.ind = 0
     return None
 
 

@@ -10,6 +10,11 @@ The brainfuck spec defines ``[``/``]`` only for matched pairs; a program
 with unbalanced brackets is malformed, so the interpreter rejects it with a
 :class:`ValueError` rather than inventing a halt the language does not
 specify.
+
+The spec leaves EOF undefined for ``,`` (returning zero or leaving the cell
+unchanged are both suggested); this interpreter instead raises
+:class:`EOFError` when input is exhausted, so the classic `,[.,]` cat
+program terminates with an error rather than a graceful halt.
 """
 
 import sys

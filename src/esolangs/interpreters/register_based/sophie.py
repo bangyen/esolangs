@@ -2,6 +2,11 @@
 
 Esoteric language equivalent to a Finite State Automaton.
 Single accumulator with basic control flow operations.
+
+`*` breaks out of the whole enclosing loop nest (and later loops run
+normally); a single-branch `@c{}` skips its block cleanly when the condition
+fails.  `&` halts, and unbalanced brackets are tolerated as a graceful
+end-of-program.
 """
 
 import re
@@ -37,6 +42,8 @@ def run(code: str, io: IO) -> None:
         if (c := code[ind]) == "[":
             if skp:
                 ind = find(code, ind)
+                if not stk:
+                    skp = False
             else:
                 stk.append(ind)
         elif c in "]*":
@@ -66,13 +73,21 @@ def run(code: str, io: IO) -> None:
                 if acc == int(m[1]):
                     ind += n
                 else:
-                    ind = find(code, ind + n) + 1
+                    end = find(code, ind + n)
+                    if end + 1 < len(code) and code[end + 1] == "{":
+                        ind = end + 1
+                    else:
+                        ind = end
             elif m := re.match(r"@\$?(.){", val):
                 n = m.end() - 1
                 if acc == ord(m[1]):
                     ind += n
                 else:
-                    ind = find(code, ind + n) + 1
+                    end = find(code, ind + n)
+                    if end + 1 < len(code) and code[end + 1] == "{":
+                        ind = end + 1
+                    else:
+                        ind = end
             elif m := re.match(r"#\$(\d+)", val):
                 acc = int(m[1])
                 ind += m.end() - 1

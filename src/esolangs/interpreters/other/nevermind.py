@@ -1,8 +1,9 @@
 """Interpreter for Nevermind.
 
 Line-based commands: ``print`` joins its arguments, ``input`` stores a line in
-the answer variable, ``make`` computes arithmetic, and ``if``/``loop``/
-``endloop`` branch on comparisons.  ``$name`` references a variable.
+the answer variable, ``make`` computes arithmetic (``+ - * /`` on numbers,
+``++`` concatenating strings), and ``if``/``loop``/``endloop`` branch on
+comparisons.  ``$name`` references a variable.
 """
 
 import sys
@@ -61,12 +62,15 @@ def run(lines: list[str], io: IO) -> None:
                 var["answer"] = io.input_str(cast(str, c[1]))
             elif op == "make":
                 if len(c) == 5:
+                    v: int | float | str
                     if (o := c[3]) == "+":
                         v = cast(int | float, c[2]) + cast(int | float, c[4])
                     elif o == "-":
                         v = cast(int | float, c[2]) - cast(int | float, c[4])
                     elif o == "*":
                         v = cast(int | float, c[2]) * cast(int | float, c[4])
+                    elif o == "++":
+                        v = str(c[2]) + str(c[4])
                     else:
                         v = cast(int | float, c[2]) / cast(int | float, c[4])
                     var[cast(str, c[1])] = v
@@ -90,6 +94,7 @@ def run(lines: list[str], io: IO) -> None:
                     skip = True
             elif op == "endloop":
                 ind = find(code, ind) + 1
+        skip = False
         ind += 1
 
 

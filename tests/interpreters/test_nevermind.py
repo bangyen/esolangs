@@ -45,6 +45,21 @@ class TestNevermind:
     def test_loop(self) -> None:
         assert run_and_capture(["loop,3", "print,x", "endloop"]) == "x\nx\nx\n"
 
+    def test_loop_exit_resumes_after_body(self) -> None:
+        """Code after a finished loop still runs (skip flag must reset)."""
+        code = ["loop,1", "print,inside", "endloop", "print,after"]
+        assert run_and_capture(code) == "inside\nafter\n"
+
+    def test_zero_loop_skips_body(self) -> None:
+        """A loop of zero iterations runs nothing but continues after it."""
+        code = ["loop,0", "print,x", "endloop", "print,after"]
+        assert run_and_capture(code) == "after\n"
+
+    def test_make_string_concatenation(self) -> None:
+        """The ++ operator concatenates strings."""
+        code = ["make,x,hello", "make,y,world", "make,z,$x,++,$y", "print,$z"]
+        assert run_and_capture(code) == "helloworld\n"
+
     def test_calculator_addition(self) -> None:
         """The calculator example from esolangs.org."""
         code = [

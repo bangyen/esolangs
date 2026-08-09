@@ -11,6 +11,11 @@ The language features:
 - Complex zeroes for register operations (arithmetic, I/O)
 - Special encoding using ascending primes for execution order
 - Single integer register for all operations
+
+The wiki's cat program notes that output ignores negative register values;
+this interpreter clamps them to zero (printing a NUL) instead, and it raises
+:class:`EOFError` on exhausted input rather than halting with -1.  A
+10000-step cap guards non-terminating programs.
 """
 
 import re
@@ -160,7 +165,7 @@ def run(code: str, io: IO) -> None:
         lambda r, a: r + a,  # +=
         lambda r, a: r - a,  # -=
         lambda r, a: r * a,  # *=
-        lambda r, a: r / a,  # /=
+        lambda r, a: r // a,  # /=
         lambda r, a: r % a,  # %=
         lambda r, a: r**a,  # ^
         lambda: reg > 0,  # if > 0

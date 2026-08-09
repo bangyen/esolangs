@@ -67,8 +67,15 @@ class TestModulous:
         assert run_and_capture("[PSH INT 5][POP][PSH INT 7][PRT INT][END]") == "7"
 
     def test_reset(self) -> None:
-        """RST restarts the module pointer, so output never happens."""
-        assert run_and_capture("[RST][PRT INT][END]") == ""
+        """RST restarts from the first module, re-reading input."""
+        # After RST the pointer returns to the start, so the second input
+        # line is read; then JMP F 2 IF 0 jumps over RST to PRT/END.
+        assert (
+            run_and_capture(
+                "[INP INT][JMP F 2 IF 0][RST][PRT INT][END]", inputs=["5", "0"]
+            )
+            == "0"
+        )
 
     def test_push_variable(self) -> None:
         """PSH VAR stores the top of the stack in a variable."""
