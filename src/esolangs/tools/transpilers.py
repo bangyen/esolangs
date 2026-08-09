@@ -337,7 +337,7 @@ def bf_to_six_five(program: str) -> str:
 
 
 def _six_five_label(value: int) -> str:
-    """The single character 6-5 reads as ``value`` for a 7n/8n operand."""
+    """Return the single character 6-5 reads as ``value`` for a 7n/8n operand."""
     return str(value) if value < 10 else chr(value + 55)
 
 

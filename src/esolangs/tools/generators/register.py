@@ -18,6 +18,12 @@ __all__ = [
 
 
 def bio(text: str) -> str:
+    """Build a BIO program that outputs ``text``.
+
+    The x register is driven from the previous character's value to the next
+    one with ``0ox``/``1ox`` runs (increment/decrement), then printed with
+    ``1ix``.
+    """
     res = []
     prev = 0
     for c in text:
@@ -32,12 +38,26 @@ def bio(text: str) -> str:
 
 
 def sophie(text: str) -> str:
+    """Build a Sophie program that outputs ``text``.
+
+    Each ``#<char>,`` sets the accumulator to the character's code and prints
+    it.  ``$`` would be read as the numeric marker by ``#$``, so a literal
+    ``$`` (like a newline) uses the numeric form ``#$<code>,``.
+    """
     # "$" would be taken as the numeric marker by "#$", so it uses the
     # numeric form like a newline does.
     return "".join(f"#${ord(c)}," if c in "\n$" else f"#{c}," for c in text)
 
 
 def dig(text: str) -> str:
+    """Build a Dig program that outputs ``text``.
+
+    Each character is a work segment: ``<char>:`` prints the mole's value as
+    the character (``%:`` for a space, which reads 0 from the row below).
+    ``$`` reads a single-digit segment length from the row below, so a
+    segment is flushed every four characters; a segment starting with a digit
+    gets one padding cell so it is not read as the count.
+    """
     if not all(c == " " or c in ".,!?" or c.isalnum() for c in text):
         raise ValueError("Dig can only output letters, digits, spaces and .,!?")
     # Each "$" reads a single-digit count from the row below, so a segment can
@@ -78,6 +98,14 @@ def dig(text: str) -> str:
 
 
 def polynomial(text: str) -> str:
+    """Build a Polynomial program that outputs ``text``.
+
+    Each character is produced by a ``+=``/``-=`` delta from the previous
+    one followed by an output instruction.  The instruction stream is
+    encoded as the roots of a polynomial whose zeroes are the instruction
+    primes ``p**(2*b)`` shifted by the deltas, so evaluating the polynomial
+    at the right roots runs them in order.
+    """
     instrs = []
     prev = 0
     for c in text:
@@ -97,12 +125,26 @@ def polynomial(text: str) -> str:
 
 
 def qoibl(text: str) -> str:
+    """Build a Qoibl program that outputs ``text``.
+
+    Each ``tt <bits> tt`` prints the value whose bits encode the character:
+    the binary digits are written as ``y`` (1) and ``e`` (0).
+    """
     return "\n".join(
         f"tt {bin(ord(c))[2:].replace('0', 'e').replace('1', 'y')} tt" for c in text
     )
 
 
 def wii2d(text: str) -> str:
+    """Build a WII2D program that outputs ``text``.
+
+    For each character, the program moves right to a fresh cell, builds the
+    character's code with the cheapest strategy (literal digit, square,
+    double, or a combination), prints it with ``~``, and halts with ``.``
+    after the last one.  The ``!`` marker on line 2 sets the starting
+    direction.
+    """
+
     def build(target: int) -> str:
         best = (float("inf"), "")
         strategies: list[
@@ -128,7 +170,7 @@ def wii2d(text: str) -> str:
 
 
 def dotlang(text: str) -> str:
-    """A single dot that prints one backtick-wrapped string literal.
+    """Build a single-dot program that prints one backtick-wrapped string.
 
     The interpreter's backtick match is greedy, so the text must fit on one
     grid row; line-break characters would split the program into rows and a
@@ -165,7 +207,7 @@ def _huf_segment(value: int) -> str:
 
 
 def eval(text: str) -> str:
-    """A string literal that the ``.`` instruction prints.
+    """Build a program that prints ``text`` as one string literal.
 
     A double quote inside the text would end the literal early, so it is
     encoded as a backtick, which the interpreter expands back to a quote.

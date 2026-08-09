@@ -111,11 +111,10 @@ ignore = [
 # part of the generated markup and cannot be wrapped without changing it.
 "scripts/make_coverage_badge.py" = ["E501"]
 # Docstring presence is enforced on the public modules; the legacy esolang
-# implementations, the tests, and the scripts are exempt so they can be
-# documented incrementally.
+# implementations and the tests are exempt so they can be documented
+# incrementally.
 "src/esolangs/interpreters/**/*.py" = ["D"]
 "src/esolangs/compilers/**/*.py" = ["D"]
-"src/esolangs/tools/*.py" = ["D"]
 "tests/**/*.py" = ["D"]
 "scripts/*.py" = ["D"]
 

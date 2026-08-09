@@ -114,6 +114,12 @@ def ascii_art(text: str) -> str:
 
 
 def bfstack(text: str) -> str:
+    """Build a BFStack program that outputs ``text``.
+
+    The top of the stack is driven from the previous character's value; a
+    small delta uses ``+``/``-`` and a large one zeroes the cell with
+    ``[-]`` and builds the code from scratch, printing each with ``.``.
+    """
     res = ">\n"
     acc = 0
 
@@ -131,6 +137,13 @@ def bfstack(text: str) -> str:
 
 
 def brainif(text: str) -> str:
+    """Build a BrainIf program that outputs ``text``.
+
+    Each character is built by incrementing the cell from the previous
+    character's value to the new one, guarded by ``if <k> increment`` lines
+    that run only while the cell equals ``k``; a decreasing value first moves
+    right to a fresh cell.  ``if <n> output`` prints the character.
+    """
     res = ""
     acc = 0
 
@@ -151,6 +164,14 @@ def brainif(text: str) -> str:
 
 
 def suffolk(text: str) -> str:
+    """Build a Suffolk program that outputs ``text``.
+
+    Each character is factored as ``n = a * b + r`` with ``a`` near
+    ``sqrt(n)``; ``!`` computes ``max(0, cell + 1 - acc)`` so the multiplier
+    ``a`` is built into a helper cell and the remainder ``r`` is added by
+    repeated ``>!`` moves, then ``.`` prints.  Cell 2 is sized so ``!``
+    zeroes the working cells and they can be reused per character.
+    """
     if not text:
         return ""
     # Cell 2 is a persistent helper large enough that ``!`` (which computes
@@ -166,6 +187,12 @@ def suffolk(text: str) -> str:
 
 
 def excon(text: str) -> str:
+    """Build an EXCON program that outputs ``text``.
+
+    For each character, ``:`` resets the 8-cell pool, ``^`` flips the bits
+    that are 1 in the character's binary representation (moving left to the
+    next set bit with ``<``), and ``!`` prints the pool as a byte.
+    """
     res = ""
 
     for c in text:
@@ -182,6 +209,12 @@ def excon(text: str) -> str:
 
 
 def six_five(text: str) -> str:
+    """Build a 6-5 program that outputs ``text``.
+
+    Each character is reached from the previous one by a ``_six_five_path``
+    of arithmetic tokens that moves the cell from ``cur`` to ``ord(c)``,
+    followed by ``A`` to print it.
+    """
     cur = 0
     res = []
     for c in text:
@@ -192,6 +225,13 @@ def six_five(text: str) -> str:
 
 
 def minifuck(text: str) -> str:
+    """Build a Minifuck program that outputs ``text``.
+
+    The 8-bit pool is kept in the tape and the pointer is tracked so that
+    ``[x`` toggles drive the bits toward the next character.  The pool is
+    printed with ``.`` only when it holds a nonzero byte (a zero pool would
+    be read as input), and the NUL character cannot be emitted at all.
+    """
     if "\x00" in text:
         raise ValueError("Minifuck cannot output the NUL character")
     res = []
@@ -278,7 +318,7 @@ def circlefuck(text: str) -> str:
 
 
 def mammalian(text: str) -> str:
-    """A SEED/SPRINT walk that reaches the array whose value is the character.
+    """Build a SEED/SPRINT walk that reaches the array whose value is the character.
 
     SEED once so every array's first value is ``(i + 1) * K`` for the running
     SEED count K, letting SPRINT move.  For each character, a run of SEEDs is
