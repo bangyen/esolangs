@@ -140,3 +140,6 @@ compile_commands.json
 
 # macOS
 .DS_Store
+
+# Lean 4 build artifacts (extra/lean/mammalian)
+.lake/
