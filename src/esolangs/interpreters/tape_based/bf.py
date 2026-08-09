@@ -9,6 +9,8 @@ be verified end-to-end.
 
 import sys
 
+from esolangs.interpreters.io import IO
+
 
 def matches(code: str) -> dict[int, int]:
     """Map each bracket to its partner, ``{open: close, close: open}``."""
@@ -24,12 +26,11 @@ def matches(code: str) -> dict[int, int]:
     return res
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     tape: list[int] = [0]
     m = matches(code)
 
     ind = ptr = 0
-    new = 1
 
     while ind < len(code):
         char = code[ind]
@@ -44,12 +45,9 @@ def run(code: str) -> None:
         elif char == "-":
             tape[ptr] = (tape[ptr] - 1) % 256
         elif char == ".":
-            print(chr(tape[ptr]), end="")
-            new = 0
+            io.print_char(chr(tape[ptr]))
         elif char == ",":
-            val = input("\nInput: "[new:])
-            tape[ptr] = ord(val[0])
-            new = 1
+            tape[ptr] = io.input_char()
         elif char == "[" and tape[ptr] == 0:
             partner = m.get(ind)
             if partner is None:
@@ -67,4 +65,4 @@ def run(code: str) -> None:
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
-            run(file.read())
+            run(file.read(), IO())

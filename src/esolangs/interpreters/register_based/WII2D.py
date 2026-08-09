@@ -10,6 +10,8 @@ import secrets
 import sys
 from collections.abc import Callable
 
+from esolangs.interpreters.io import IO
+
 
 def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
     """Initialize movement function for WII2D grid navigation."""
@@ -56,7 +58,7 @@ def close(code: list[str]) -> Callable[[int, int], tuple[int, int] | None]:
     return find
 
 
-def update(op: str, acc: int) -> int:
+def update(op: str, acc: int, io: IO) -> int:
     """Update the accumulator based on the current operation."""
     if op.isdigit():
         return int(op)
@@ -71,11 +73,11 @@ def update(op: str, acc: int) -> int:
     if op == "s":
         return acc**2
     if op == "~":
-        print(chr(acc), end="")
+        io.print_char(chr(acc))
     return acc
 
 
-def run(code: list[str]) -> None:
+def run(code: list[str], io: IO) -> None:
     """Execute a WII2D program."""
     # Find the start marker (!)
     for row_idx, row in enumerate(code):
@@ -124,7 +126,7 @@ def run(code: list[str]) -> None:
             return
 
         # Update accumulator and move
-        acc = update(op, acc)
+        acc = update(op, acc, io)
         x, y = move_pointer(x, y, vel)
 
 
@@ -132,4 +134,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

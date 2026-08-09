@@ -1,10 +1,11 @@
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: list[str]) -> None:
+
+def run(code: list[str], io: IO) -> None:
     cells: list[int] = [0]
     ind = ptr = 0
-    inp = False
 
     while ind < len(code):
         line = code[ind].strip()
@@ -25,13 +26,11 @@ def run(code: list[str]) -> None:
                 s = ""
 
                 while not s:
-                    s = input("\n" * inp + "Input: ")
+                    s = io.input_str()
 
                 cells[ptr] = ord(s[0])
-                inp = False
             elif "output" in line:
-                print(chr(cells[ptr]), end="")
-                inp = True
+                io.print_char(chr(cells[ptr]))
 
         ind += 1
 
@@ -40,4 +39,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

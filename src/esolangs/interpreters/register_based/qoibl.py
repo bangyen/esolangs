@@ -9,13 +9,15 @@ import re
 import sys
 from dataclasses import dataclass
 
+from esolangs.interpreters.io import IO
+
 
 @dataclass
 class State:
-    line: bool = False
+    pass
 
 
-def run(code: list[str]) -> None:
+def run(code: list[str], io: IO) -> None:
     """Execute Qoibl program code."""
     var: dict[int, int] = {}
     state = State()
@@ -23,8 +25,7 @@ def run(code: list[str]) -> None:
     def parse(state: State, expr: str | list[str]) -> int:
         """Parse and execute a single Qoibl expression."""
         if (op := expr[0]) == "tt":
-            print(chr(parse(state, expr[1:-1])), end="")
-            state.line = True
+            io.print_char(chr(parse(state, expr[1:-1])))
         elif op == "we":
             ind = expr.index("we", 1)
             var[parse(state, expr[1:ind])] = parse(state, expr[ind + 1 : -1])
@@ -57,9 +58,7 @@ def run(code: list[str]) -> None:
         elif op == "qe":
             return var.get(parse(state, expr[1:-1]), 0)
         elif op == "et":
-            n = input("\n" * state.line + "Input: ")
-            state.line = False
-            return ord(n[0])
+            return io.input_char()
         elif re.fullmatch("[ey]+", op):
             op = op.replace("e", "0").replace("y", "1")
             return int(op, 2)
@@ -73,4 +72,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

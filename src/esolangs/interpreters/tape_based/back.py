@@ -1,7 +1,9 @@
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: list[str]) -> None:
+
+def run(code: list[str], io: IO) -> None:
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
@@ -32,11 +34,11 @@ def run(code: list[str]) -> None:
         x = (x + a) % len(code)
         y = (y + b) % size
 
-    print(*tape)
+    io.print_line(" ".join(map(str, tape)))
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

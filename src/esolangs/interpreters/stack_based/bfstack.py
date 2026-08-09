@@ -1,10 +1,11 @@
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: str) -> None:
+
+def run(code: str, io: IO) -> None:
     stk: list[int] = []
     lst: list[int] = []
-    new = 1
     ind = 0
 
     while ind < len(code):
@@ -17,12 +18,9 @@ def run(code: str) -> None:
         elif char == "-":
             stk[-1] = (stk[-1] - 1) % 256
         elif char == ".":
-            print(chr(stk[-1]), end="")
-            new = 0
+            io.print_char(chr(stk[-1]))
         elif char == ",":
-            val = input("\nInput: "[new:])
-            stk.append(ord(val[0]))
-            new = 1
+            stk.append(io.input_char())
         elif char == "[":
             if stk[-1]:
                 lst.append(ind)
@@ -46,4 +44,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

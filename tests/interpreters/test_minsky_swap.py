@@ -21,6 +21,7 @@ sys.modules["minsky_swap"] = minsky_swap
 assert spec.loader is not None, "Module spec has no loader"
 spec.loader.exec_module(minsky_swap)
 run = minsky_swap.run
+from esolangs.interpreters.io import IO
 
 
 class TestMinskySwapBasicCommands:
@@ -29,49 +30,49 @@ class TestMinskySwapBasicCommands:
     def test_increment_command(self) -> None:
         """Test + command increments the current register."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+")
+            run("+", io=IO())
         assert f.getvalue().strip() == "1 0"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("++")
+            run("++", io=IO())
         assert f.getvalue().strip() == "2 0"
 
     def test_swap_command(self) -> None:
         """Test * command swaps the register pointer."""
         with redirect_stdout(io.StringIO()) as f:
-            run("*+")
+            run("*+", io=IO())
         assert f.getvalue().strip() == "0 1"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("+*+")
+            run("+*+", io=IO())
         assert f.getvalue().strip() == "1 1"
 
     def test_decrement_jump_command(self) -> None:
         """Test ~ command decrements if nonzero, jumps if zero."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+~\n1")
+            run("+~\n1", io=IO())
         assert f.getvalue().strip() == "0 0"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("~\n1")
+            run("~\n1", io=IO())
         assert f.getvalue().strip() == "0 0"
 
     def test_jump_targets(self) -> None:
         """Test jump targets from the jump line."""
         with redirect_stdout(io.StringIO()) as f:
-            run("~+~\n2 1")
+            run("~+~\n2 1", io=IO())
         assert f.getvalue().strip() == "0 0"
 
     def test_empty_program(self) -> None:
         """Test empty program outputs zeros."""
         with redirect_stdout(io.StringIO()) as f:
-            run("")
+            run("", io=IO())
         assert f.getvalue().strip() == "0 0"
 
     def test_whitespace_ignored(self) -> None:
         """Test that whitespace and non-command characters are ignored."""
         with redirect_stdout(io.StringIO()) as f:
-            run("  +  \n  ")
+            run("  +  \n  ", io=IO())
         assert f.getvalue().strip() == "1 0"
 
 
@@ -81,33 +82,33 @@ class TestMinskySwapReadableNotation:
     def test_inc_command(self) -> None:
         """Test inc() command in readable notation."""
         with redirect_stdout(io.StringIO()) as f:
-            run("inc();")
+            run("inc();", io=IO())
         assert f.getvalue().strip() == "1 0"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("inc(); inc();")
+            run("inc(); inc();", io=IO())
         assert f.getvalue().strip() == "2 0"
 
     def test_swap_command_readable(self) -> None:
         """Test swap() command in readable notation."""
         with redirect_stdout(io.StringIO()) as f:
-            run("swap(); inc();")
+            run("swap(); inc();", io=IO())
         assert f.getvalue().strip() == "0 1"
 
     def test_decnz_command(self) -> None:
         """Test decnz() command in readable notation."""
         with redirect_stdout(io.StringIO()) as f:
-            run("inc(); decnz(1);")
+            run("inc(); decnz(1);", io=IO())
         assert f.getvalue().strip() == "0 0"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("decnz(1); inc();")
+            run("decnz(1); inc();", io=IO())
         assert f.getvalue().strip() == "1 0"
 
     def test_mixed_notation(self) -> None:
         """Test mixing compact and readable notation."""
         with redirect_stdout(io.StringIO()) as f:
-            run("inc(); +")
+            run("inc(); +", io=IO())
         assert f.getvalue().strip() == "2 0"
 
 
@@ -117,25 +118,25 @@ class TestMinskySwapProgramFlow:
     def test_simple_loop(self) -> None:
         """Test a simple counting loop."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+++~\n1")
+            run("+++~\n1", io=IO())
         assert f.getvalue().strip() == "2 0"
 
     def test_register_swapping_loop(self) -> None:
         """Test program that swaps between registers."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+*+*+")
+            run("+*+*+", io=IO())
         assert f.getvalue().strip() == "2 1"
 
     def test_conditional_jump(self) -> None:
         """Test conditional jump based on register value."""
         with redirect_stdout(io.StringIO()) as f:
-            run("++~+~\n2 1")
+            run("++~+~\n2 1", io=IO())
         assert f.getvalue().strip() == "1 0"
 
     def test_complex_program(self) -> None:
         """Test a more complex program with multiple operations."""
         with redirect_stdout(io.StringIO()) as f:
-            run("++*++*+++")
+            run("++*++*+++", io=IO())
         assert f.getvalue().strip() == "5 2"
 
 
@@ -145,31 +146,31 @@ class TestMinskySwapEdgeCases:
     def test_no_jump_line(self) -> None:
         """Test program with no jump line."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+")
+            run("+", io=IO())
         assert f.getvalue().strip() == "1 0"
 
     def test_empty_jump_line(self) -> None:
         """Test program with empty jump line."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+\n")
+            run("+\n", io=IO())
         assert f.getvalue().strip() == "1 0"
 
     def test_invalid_jump_target(self) -> None:
         """Test program with invalid jump target (should not crash)."""
         with redirect_stdout(io.StringIO()) as f:
-            run("~\n999")
+            run("~\n999", io=IO())
         assert f.getvalue().strip() == "0 0"
 
     def test_multiple_tildes(self) -> None:
         """Test program with multiple tildes and jump targets."""
         with redirect_stdout(io.StringIO()) as f:
-            run("~+~+~\n3 2 1")
+            run("~+~+~\n3 2 1", io=IO())
         assert f.getvalue().strip() == "0 0"
 
     def test_register_overflow_simulation(self) -> None:
         """Test that registers can handle large values."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+" * 1000)
+            run("+" * 1000, io=IO())
         assert f.getvalue().strip() == "1000 0"
 
 
@@ -179,13 +180,13 @@ class TestMinskySwapExamples:
     def test_hello_world_pattern(self) -> None:
         """Test a simple pattern that could be used for output."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+++*+++")
+            run("+++*+++", io=IO())
         assert f.getvalue().strip() == "3 3"
 
     def test_register_copy_pattern(self) -> None:
         """Test copying value between registers."""
         with redirect_stdout(io.StringIO()) as f:
-            run("+++*+++*~+~\n2 1")
+            run("+++*+++*~+~\n2 1", io=IO())
         assert f.getvalue().strip() == "2 3"
 
     def test_readable_notation_example(self) -> None:
@@ -199,5 +200,5 @@ class TestMinskySwapExamples:
         decnz(1);
         """
         with redirect_stdout(io.StringIO()) as f:
-            run(program)
+            run(program, io=IO())
         assert f.getvalue().strip() == "0 2"

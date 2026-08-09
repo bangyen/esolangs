@@ -8,8 +8,10 @@ Uses commands in format [0|1][O|I][x|y|z] for increment/decrement, loops, and ou
 import re
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: str) -> None:
+
+def run(code: str, io: IO) -> None:
     """Execute BIO code and produce output."""
     # Parse BIO commands using regex
     lang = "([01][oOiI][xXyYzZ]|})"
@@ -31,7 +33,7 @@ def run(code: str) -> None:
         elif c == "1i":
             # Handle negative values by converting to unsigned 8-bit
             char_code = reg[r] % 256
-            print(chr(char_code), end="")
+            io.print_char(chr(char_code))
         elif c == "}":
             ind = stk.pop() - 1
         elif reg[r]:
@@ -55,4 +57,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

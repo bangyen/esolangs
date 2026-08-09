@@ -2,17 +2,18 @@ import secrets
 import sys
 from dataclasses import dataclass, field
 
+from esolangs.interpreters.io import IO
+
 
 @dataclass
 class State:
     stk: list[int] = field(default_factory=list)
     num: bool = True
-    new: bool = False
     ptr: int = 0
     comm: int = 0
 
 
-def run(source: str) -> None:
+def run(source: str, io: IO) -> None:
     code = source.split()
     state = State()
 
@@ -20,9 +21,8 @@ def run(source: str) -> None:
         rest = code[state.ptr][1:]
 
         if char == "@":
-            s = input("\n" * state.new + "Input: ")
+            s = io.input_str()
             state.stk.extend(ord(c) for c in s)
-            state.new = False
         elif char == "v":
             state.stk.append(int(rest))
         elif char == "*":
@@ -44,9 +44,8 @@ def run(source: str) -> None:
             parse(state, secrets.choice("@v*oO+:\\"))
 
         while state.stk and sum(state.stk[1:]) / 2 > state.stk[0]:
-            state.new = True
             n = state.stk.pop(0) - 1
-            print(n if state.num else chr(n), end="")
+            io.print_value(n if state.num else chr(n))
 
         state.comm += 1
         if state.comm % 15 == 0:
@@ -61,4 +60,4 @@ if __name__ == "__main__":
     with open(sys.argv[1], encoding="utf-8") as f:
         data = f.read()
 
-    run(data)
+    run(data, IO())

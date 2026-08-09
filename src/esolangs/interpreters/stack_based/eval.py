@@ -4,6 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
+from esolangs.interpreters.io import IO
+
 
 @dataclass
 class State:
@@ -11,7 +13,7 @@ class State:
     stk: list[list[int | str]] = field(default_factory=lambda: [[], []])
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     state = State()
 
     dct: dict[str, Callable[[], object]] = {
@@ -24,7 +26,7 @@ def run(code: str) -> None:
         "-": lambda: state.stk[state.ptr].append(
             cast(int, state.stk[state.ptr].pop()) - 1
         ),
-        ".": lambda: print(state.stk[state.ptr].pop(), end=""),
+        ".": lambda: io.print_value(state.stk[state.ptr].pop()),
         "=": lambda: state.stk[1 - state.ptr].append(state.stk[state.ptr].pop()),
         ";": lambda: state.stk[state.ptr].pop(),
     }
@@ -62,4 +64,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

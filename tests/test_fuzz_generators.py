@@ -10,6 +10,8 @@ import importlib
 import io
 import random
 import string
+
+from esolangs.interpreters.io import IO
 from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
@@ -60,7 +62,7 @@ def test_text_generators_round_trip() -> None:
             buffer = io.StringIO()
             try:
                 with redirect_stdout(buffer):
-                    run(argument, **kwargs)
+                    run(argument, io=IO(), **kwargs)
             except SystemExit:
                 assert name == "container"
             assert buffer.getvalue() == text + suffix
@@ -98,7 +100,7 @@ def test_boolean_generators_random_tables() -> None:
                         patch("builtins.input", side_effect=bits),
                         redirect_stdout(buffer),
                     ):
-                        run(program.splitlines() if split else program)
+                        run(program.splitlines() if split else program, io=IO())
                     assert buffer.getvalue() == str(int(table[combo])) + suffix
 
 
@@ -113,7 +115,7 @@ def test_byte_function_generator_random_tables() -> None:
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 buffer = io.StringIO()
                 with patch("builtins.input", side_effect=bits), redirect_stdout(buffer):
-                    run(program)
+                    run(program, io=IO())
                 assert buffer.getvalue() == chr(table[combo])
 
 
@@ -131,5 +133,5 @@ def test_binary_generator_random_tables() -> None:
                     patch("builtins.input", side_effect=inputs),
                     redirect_stdout(buffer),
                 ):
-                    run(program.splitlines())
+                    run(program.splitlines(), io=IO())
                 assert buffer.getvalue() == str(int(table[combo]))

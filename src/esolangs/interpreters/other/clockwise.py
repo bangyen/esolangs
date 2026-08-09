@@ -1,5 +1,7 @@
 import sys
 
+from esolangs.interpreters.io import IO
+
 COL = [1, 0, -1, 0]
 ROW = [0, 1, 0, -1]
 
@@ -18,7 +20,7 @@ def move(
     return x, y, r, o, b
 
 
-def run(code: list[str]) -> None:
+def run(code: list[str], io: IO) -> None:
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
     x = y = r = 0
@@ -29,7 +31,7 @@ def run(code: list[str]) -> None:
     acc = 0
 
     if "." in "".join(code):
-        for k in input("Input: "):
+        for k in io.input_str():
             val = bin(ord(k))[2:]
             inp += list(val.zfill(7))
 
@@ -52,7 +54,7 @@ def run(code: list[str]) -> None:
 
         if len(out) == 7:
             char_val: int = int("".join(out), 2)
-            print(chr(char_val), end="")
+            io.print_char(chr(char_val))
             out = []
 
 
@@ -60,4 +62,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

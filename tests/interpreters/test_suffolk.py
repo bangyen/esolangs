@@ -5,12 +5,13 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from esolangs.interpreters.tape_based.suffolk import run
+from esolangs.interpreters.io import IO
 
 
 def run_and_capture(code: str, limit: int = 1) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        run(code, limit)
+        run(code, limit=limit, io=IO())
     return buffer.getvalue()
 
 
@@ -38,5 +39,5 @@ class TestSuffolk:
         """, reads input into the accumulator."""
         buffer = io.StringIO()
         with patch("builtins.input", return_value="B"), redirect_stdout(buffer):
-            run(",.", 1)
+            run(",.", limit=1, io=IO())
         assert buffer.getvalue() == "A"

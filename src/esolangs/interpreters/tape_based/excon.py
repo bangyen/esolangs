@@ -1,7 +1,9 @@
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: str) -> None:
+
+def run(code: str, io: IO) -> None:
     pool: list[int] = [0] * 8
     cell = 7
 
@@ -12,7 +14,7 @@ def run(code: str) -> None:
             pool[cell] ^= 1
         elif sym == "!":
             num = "".join(map(str, pool))
-            print(chr(int(num, 2)), end="")
+            io.print_char(chr(int(num, 2)))
         elif sym == "<":
             cell -= 1
 
@@ -21,4 +23,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())
