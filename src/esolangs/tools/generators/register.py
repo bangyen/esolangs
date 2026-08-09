@@ -130,9 +130,11 @@ def qoibl(text: str) -> str:
     Each ``tt <bits> tt`` prints the value whose bits encode the character:
     the binary digits are written as ``y`` (1) and ``e`` (0).
     """
-    return "\n".join(
-        f"tt {bin(ord(c))[2:].replace('0', 'e').replace('1', 'y')} tt" for c in text
-    )
+
+    def bits(n: int) -> str:
+        return f"{n:b}".replace("0", "e").replace("1", "y")
+
+    return "\n".join(f"tt {bits(ord(c))} tt" for c in text)
 
 
 def wii2d(text: str) -> str:
@@ -166,7 +168,7 @@ def wii2d(text: str) -> str:
         return best[1]
 
     prog = ">" + "".join(build(ord(c)) + "~" for c in text) + "."
-    return "\n".join([prog, "!"])
+    return f"{prog}\n!"
 
 
 def dotlang(text: str) -> str:
@@ -200,7 +202,7 @@ def _huf_segment(value: int) -> str:
             (a + b + r, a, b, r)
             for a in range(1, int(value**0.5) + 2)
             for b, r in (divmod(value, a),)
-        )
+        ),
     )
     _, a, b, r = best
     return "#" + "+" * a + "|" + "+" * b + "!" + "+" * r + ">@"

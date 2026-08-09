@@ -32,12 +32,12 @@ FUZZ = {
 # "terminates" invariant does not apply to them.
 
 
-class _Timeout(Exception):
+class _TimeoutError(Exception):
     """Raised by the alarm handler when a random program does not terminate."""
 
 
 def _on_alarm(signum: int, frame: object) -> None:
-    raise _Timeout("interpreter did not terminate on a random program")
+    raise _TimeoutError("interpreter did not terminate on a random program")
 
 
 @pytest.mark.skipif(os.name != "posix", reason="signal.alarm is POSIX-only")
@@ -53,7 +53,7 @@ def test_random_programs_terminate(module: str) -> None:
         try:
             with patch("builtins.input", return_value="0"):
                 run(program, io=IO())
-        except _Timeout:
+        except _TimeoutError:
             pytest.fail(f"{module} hung on a random program")
         except Exception:
             pass  # rejecting a random program is a valid termination

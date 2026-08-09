@@ -15,7 +15,11 @@ ROW = [0, 1, 0, -1]
 
 
 def move(
-    x: int, y: int, r: int, code: list[str], acc: int
+    x: int,
+    y: int,
+    r: int,
+    code: list[str],
+    acc: int,
 ) -> tuple[int, int, int, str, int]:
     """Step the pointer one cell, returning position, direction, and the cell."""
     o = code[y][x]
@@ -42,7 +46,7 @@ def run(code: list[str], io: IO) -> None:
 
     if "." in "".join(code):
         for k in io.input_str():
-            val = bin(ord(k))[2:]
+            val = f"{ord(k):07b}"
             inp += list(val.zfill(7))
 
     while cont:

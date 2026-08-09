@@ -74,7 +74,7 @@ def run(code: str, io: IO) -> None:
                 tape.append(0)
         elif char == "<" and ptr:
             ptr -= 1
-        elif char in "+":
+        elif char == "+":
             tape[ptr] = (tape[ptr] + 1) % 256
         elif char == "-":
             tape[ptr] = (tape[ptr] - 1) % 256

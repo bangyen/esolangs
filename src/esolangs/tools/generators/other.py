@@ -36,7 +36,7 @@ def clockwise(text: str) -> str:
     prog = ""
     parity = 0
     for c in text:
-        for bit in bin(ord(c))[2:].zfill(7):
+        for bit in f"{ord(c):07b}":
             if parity != int(bit):
                 prog += "+"
                 parity = int(bit)
@@ -233,7 +233,7 @@ def _search_start(n: int) -> int:
 
     if best is None:
         raise ValueError(
-            f"no Collatz start with a trajectory of length {n} within the search limit"
+            f"no Collatz start with a trajectory of length {n} within the search limit",
         )
     return best[1]
 

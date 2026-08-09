@@ -13,11 +13,11 @@ def modulous(truth_table: str, n: int) -> str:
     result with ``[PSH INT]`` and prints it.
     """
 
-    def build(S: list[int], k: int) -> str:
-        if len(S) == 1:
-            return f"[PSH INT {truth_table[S[0]]}][PRT INT][END]"
-        g0 = [r for r in S if ((r >> (n - k)) & 1) == 0]
-        g1 = [r for r in S if ((r >> (n - k)) & 1) == 1]
+    def build(rows: list[int], k: int) -> str:
+        if len(rows) == 1:
+            return f"[PSH INT {truth_table[rows[0]]}][PRT INT][END]"
+        g0 = [r for r in rows if ((r >> (n - k)) & 1) == 0]
+        g1 = [r for r in rows if ((r >> (n - k)) & 1) == 1]
         sub0 = build(g0, k - 1)
         sub1 = build(g1, k - 1)
         d = 2 + sub0.count("[")
