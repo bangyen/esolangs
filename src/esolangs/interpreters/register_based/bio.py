@@ -8,6 +8,7 @@ Uses commands in format [0|1][O|I][x|y|z] for increment/decrement, loops, and ou
 import re
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -35,6 +36,8 @@ def run(code: str, io: IO) -> None:
             char_code = reg[r] % 256
             io.print_char(chr(char_code))
         elif c == "}":
+            if not stk:
+                raise HaltError
             ind = stk.pop() - 1
         elif reg[r]:
             stk.append(ind)

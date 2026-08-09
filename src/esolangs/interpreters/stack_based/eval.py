@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import cast
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -16,19 +17,25 @@ class State:
 def run(code: str, io: IO) -> None:
     state = State()
 
+    def top() -> int | str:
+        if not state.stk[state.ptr]:
+            raise HaltError
+        return state.stk[state.ptr][-1]
+
+    def pop() -> int | str:
+        if not state.stk[state.ptr]:
+            raise HaltError
+        return state.stk[state.ptr].pop()
+
     dct: dict[str, Callable[[], object]] = {
         "`": lambda: state.stk[state.ptr].append(1 - state.ptr),
-        "^": lambda: state.stk[state.ptr].append(state.stk[state.ptr][-1]),
+        "^": lambda: state.stk[state.ptr].append(top()),
         "0": lambda: state.stk[state.ptr].append(0),
-        "+": lambda: state.stk[state.ptr].append(
-            cast(int, state.stk[state.ptr].pop()) + 1
-        ),
-        "-": lambda: state.stk[state.ptr].append(
-            cast(int, state.stk[state.ptr].pop()) - 1
-        ),
-        ".": lambda: io.print_value(state.stk[state.ptr].pop()),
-        "=": lambda: state.stk[1 - state.ptr].append(state.stk[state.ptr].pop()),
-        ";": lambda: state.stk[state.ptr].pop(),
+        "+": lambda: state.stk[state.ptr].append(cast(int, pop()) + 1),
+        "-": lambda: state.stk[state.ptr].append(cast(int, pop()) - 1),
+        ".": lambda: io.print_value(pop()),
+        "=": lambda: state.stk[1 - state.ptr].append(pop()),
+        ";": lambda: pop(),
     }
 
     def ins(sym: str) -> None:
@@ -42,10 +49,13 @@ def run(code: str, io: IO) -> None:
             elif char == "*":
                 state.stk[state.ptr] = state.stk[state.ptr][::-1]
             elif char == "?":
-                if not state.stk[state.ptr].pop():
+                if not pop():
                     ind += 1
             elif char == "!":
-                ins(cast(str, state.stk[state.ptr].pop()))
+                val = pop()
+                if not isinstance(val, str):
+                    raise HaltError
+                ins(val)
             elif char in "\"'":
                 match = re.match('[^"]*', sym[ind + 1 :])
                 s = match[0].replace("`", '"') if match else ""

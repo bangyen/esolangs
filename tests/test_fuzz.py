@@ -13,6 +13,7 @@ from contextlib import redirect_stdout, suppress
 from typing import Any
 from unittest.mock import patch
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.bitdeque import run as bitdeque_run
 from esolangs.interpreters.other.keys import run as keys_run
@@ -107,7 +108,7 @@ def test_bfstack_random() -> None:
     for _ in range(50):
         code = _random_string("><+-.", 30)
         # '.' on an empty stack is an accepted outcome
-        with suppress(IndexError):
+        with suppress(HaltError):
             run_safely(bfstack_run, code)
 
 
@@ -115,7 +116,7 @@ def test_bio_random() -> None:
     random.seed(7)
     for _ in range(50):
         # pop from an empty stack is an accepted outcome
-        with suppress(IndexError):
+        with suppress(HaltError):
             run_safely(bio_run, _random_string("0O1Ixyz;{}", 30))
 
 
@@ -143,5 +144,5 @@ def test_eval_random() -> None:
     random.seed(11)
     for _ in range(50):
         # empty-stack pop / evaluating a non-string are accepted
-        with suppress(IndexError, TypeError):
+        with suppress(HaltError):
             run_safely(eval_run, _random_string("0+-.=~^`;*?!", 30))

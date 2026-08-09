@@ -5,6 +5,16 @@ class EsolangError(Exception):
     """Base class for errors from the esolangs package."""
 
 
+class HaltError(EsolangError):
+    """An interpreter halted on a runtime condition.
+
+    Some languages terminate on conditions that would otherwise surface as
+    incidental Python errors (e.g. popping an empty stack).  Raising
+    ``HaltError`` makes the halt explicit so the fuzz suite can treat it as
+    a normal outcome rather than a crash.
+    """
+
+
 class UnknownLanguageError(EsolangError, ValueError):
     """A language name was not in the registry."""
 
