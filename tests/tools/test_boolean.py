@@ -419,3 +419,19 @@ class TestTaglate:
                 bits = [(combo >> 1) & 1, combo & 1]
                 got = run_taglate(boolean.taglate(tt, 2), [str(b) for b in bits])
                 assert got == tt[combo], f"{tt} inputs {bits}"
+
+    def test_all_three_input_tables(self) -> None:
+        """Every three-input truth table produces the right result."""
+        failures = 0
+        for table in range(256):
+            tt = format(table, "08b")
+            program = boolean.taglate(tt, 3)
+            for combo in range(8):
+                bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+                inputs = ["0"] + [str(b) for b in bits]  # ghost digit
+                got = run_taglate(program, inputs)
+                if got != tt[combo]:
+                    failures += 1
+                    if failures <= 3:
+                        print(f"  FAIL {tt} inputs {bits}: got {got!r} expected {tt[combo]!r}")
+        assert failures == 0, f"{failures} failures out of 2048 combos"
