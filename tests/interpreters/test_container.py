@@ -5,8 +5,8 @@ from contextlib import redirect_stdout
 
 import pytest
 
-from esolangs.interpreters.other.container import run
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other.container import run
 
 HELLO_WORLD = [
     "A:",

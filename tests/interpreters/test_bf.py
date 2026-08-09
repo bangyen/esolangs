@@ -67,11 +67,11 @@ class TestBrainfuck:
         """Unbalanced brackets are a malformed program, not a halt."""
         import pytest
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("[")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("]")
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("+]")
 
     def test_parity_with_ascii_art(self) -> None:
