@@ -275,16 +275,36 @@ def _even_reduce(pairs: int, level: int, n: int) -> str:
     total = n
     rot = 2 * pairs + 2 + processed
     return (
-        "e" * rot + "gy" + "e" * pairs + "gz"
-        + "e" * ahead + "f" * pairs
-        + "gy" + "e" * (total + 2) + "gz"
+        "e" * rot
+        + "gy"
+        + "e" * pairs
+        + "gz"
+        + "e" * ahead
+        + "f" * pairs
+        + "gy"
+        + "e" * (total + 2)
+        + "gz"
     )
 
 
 # Odd-reduce block for the final two-value selection (committed n=2 pattern).
-_SEL1_N2 = (
-    "e" * 7 + "gy" + "e" * 3 + "gz" + "e" * 3 + "gy" + "e" * 3 + "gz"
-    + "ff" + "gy" + "e" * 4 + "gz" + "e" + "a" + "e" * 4 + "i"
+_SEL1_N2: str = (
+    "e" * 7
+    + "gy"
+    + "e" * 3
+    + "gz"
+    + "e" * 3
+    + "gy"
+    + "e" * 3
+    + "gz"
+    + "ff"
+    + "gy"
+    + "e" * 4
+    + "gz"
+    + "e"
+    + "a"
+    + "e" * 4
+    + "i"
 )
 
 
@@ -319,9 +339,14 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     swap = "e" + "gy" + "j" + "e" * (qlen - 2) + "j" + "gz"
     bring = "e" * (qlen - 1)
     er = (
-        "gy" + "e" * pairs + "gz"
-        + "e" * ahead + "f" * pairs
-        + "gy" + "e" * (total + 2) + "gz"
+        "gy"
+        + "e" * pairs
+        + "gz"
+        + "e" * ahead
+        + "f" * pairs
+        + "gy"
+        + "e" * (total + 2)
+        + "gz"
     )
     return "e" * rot + zero + swap + bring + er
 
@@ -367,14 +392,16 @@ def taglate(truth_table: str, n: int) -> str:
     selectors = "".join("bd" if c == "1" else "bb" for c in ordered)
 
     prefix = (
-        "he" * (n_eff - 1) + "h"
+        "he" * (n_eff - 1)
+        + "h"
         + selectors
-        + "ee" + "b" * n_eff
+        + "ee"
+        + "b" * n_eff
         + "e" * (2 ** (n_eff + 1) + 2)
         + "j" * n_eff
     )
 
-    select_parts = []
+    select_parts: list[str] = []
     for level in range(n_eff - 1):
         pairs = 2 ** (n_eff - level)
         if level % 2 == 0:
@@ -390,7 +417,8 @@ def taglate(truth_table: str, n: int) -> str:
         select_parts.append("e" * 6 + "f" * (n_eff - 2) + "e" * 2)
     select_parts.append(_SEL1_N2)
 
-    return seed + "\n" + prefix + "".join(select_parts)
+    result: str = seed + "\n" + prefix + "".join(select_parts)
+    return result
 
 
 def dig(truth_table: str, n: int) -> str:
