@@ -1,5 +1,6 @@
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -12,16 +13,26 @@ def run(code: str, io: IO) -> None:
         if (char := code[ind]) == ">":
             stk.append(0)
         elif char == "<":
+            if not stk:
+                raise HaltError
             stk.pop()
         elif char == "+":
+            if not stk:
+                raise HaltError
             stk[-1] = (stk[-1] + 1) % 256
         elif char == "-":
+            if not stk:
+                raise HaltError
             stk[-1] = (stk[-1] - 1) % 256
         elif char == ".":
+            if not stk:
+                raise HaltError
             io.print_char(chr(stk[-1]))
         elif char == ",":
             stk.append(io.input_char())
         elif char == "[":
+            if not stk:
+                raise HaltError
             if stk[-1]:
                 lst.append(ind)
             else:
@@ -35,6 +46,8 @@ def run(code: str, io: IO) -> None:
                     elif o == "]":
                         match -= 1
         elif char == "]":
+            if not lst:
+                raise HaltError
             ind = lst.pop() - 1
 
         ind += 1
