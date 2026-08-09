@@ -377,7 +377,10 @@ def taglate(truth_table: str, n: int) -> str:
     select_parts = []
     for level in range(n_eff - 1):
         pairs = 2 ** (n_eff - level)
-        select_parts.append(_even_reduce(pairs, level, n_eff))
+        if level % 2 == 0:
+            select_parts.append(_even_reduce(pairs, level, n_eff))
+        else:
+            select_parts.append(_odd_reduce(pairs, level, n_eff))
 
     if n_eff > 2:
         # Drop the first n_eff-2 already-used inputs, then rotate the
