@@ -105,7 +105,8 @@ def qoibl(truth_table: str, n: int) -> str:
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(48)} we")
     for i in range(n):
         lines.append(
-            f"we {_qoibl_enc(n + i)} we {_qoibl_enc(1)} ry ey ry qe {_qoibl_enc(i)} qe we"
+            f"we {_qoibl_enc(n + i)} we {_qoibl_enc(1)} "
+            f"ry ey ry qe {_qoibl_enc(i)} qe we"
         )
     lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
     for k in range(2**n):
@@ -120,7 +121,8 @@ def qoibl(truth_table: str, n: int) -> str:
             product = f"{product} ry ye ry {factor}"
         lines.append(f"we {_qoibl_enc(2 * n + 1)} we {product} we")
         lines.append(
-            f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we"
+            f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} "
+            f"qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we"
         )
     if use_complement:
         lines.append(f"tt {_qoibl_enc(49)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt")
