@@ -407,7 +407,11 @@ class TestTaglate:
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             # Odd n > 1 uses a ghost digit (fake zero first input)
-            inputs = ["0"] + [str(b) for b in bits] if n % 2 == 1 and n > 1 else [str(b) for b in bits]
+            inputs = (
+                ["0"] + [str(b) for b in bits]
+                if n % 2 == 1 and n > 1
+                else [str(b) for b in bits]
+            )
             got = run_taglate(program, inputs)
             assert got == str(int(table[combo])), f"inputs {bits}"
 
@@ -433,5 +437,7 @@ class TestTaglate:
                 if got != tt[combo]:
                     failures += 1
                     if failures <= 3:
-                        print(f"  FAIL {tt} inputs {bits}: got {got!r} expected {tt[combo]!r}")
+                        print(
+                            f"  FAIL {tt} inputs {bits}: got {got!r} expected {tt[combo]!r}"
+                        )
         assert failures == 0, f"{failures} failures out of 2048 combos"
