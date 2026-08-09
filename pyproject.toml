@@ -99,9 +99,7 @@ select = [
     "RET", # flake8-return
 ]
 ignore = [
-    "E501",  # line too long, handled by black
     "C901",  # too complex
-    "E402",  # module level import not at top of file (for __main__ blocks)
     "D203",  # conflicts with D211 (blank line before class)
     "D213",  # conflicts with D212 (multi-line summary placement)
 ]
@@ -109,6 +107,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "**/__main__.py" = ["E402"]
+# The badge is a single multi-line SVG template string; its long lines are
+# part of the generated markup and cannot be wrapped without changing it.
+"scripts/make_coverage_badge.py" = ["E501"]
 # Docstring presence is enforced on the public modules; the legacy esolang
 # implementations, the tests, and the scripts are exempt so they can be
 # documented incrementally.

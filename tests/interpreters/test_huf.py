@@ -319,7 +319,7 @@ class TestHufIntegration:
         assert f.getvalue() == "\x03\x04"
 
     def test_register_state_persistence(self) -> None:
-        """Test that register state persists within segments but resets between segments."""
+        """Register state persists within segments but resets between them."""
         with redirect_stdout(io.StringIO()) as f:
             run("#+++|+!+++>@", io=IO())  # Single segment: state persists
         assert f.getvalue() == "\x06"  # 3*1 + 3 = 6

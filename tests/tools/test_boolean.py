@@ -439,6 +439,7 @@ class TestTaglate:
                     failures += 1
                     if failures <= 3:
                         print(
-                            f"  FAIL {tt} inputs {bits}: got {got!r} expected {tt[combo]!r}"
+                            f"  FAIL {tt} inputs {bits}: "
+                            f"got {got!r} expected {tt[combo]!r}"
                         )
         assert failures == 0, f"{failures} failures out of 2048 combos"

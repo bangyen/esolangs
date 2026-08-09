@@ -116,7 +116,8 @@ class TestBIOMathematicalOperations:
         )  # 2 + 1 = 3 (this is actually addition, not subtraction)
 
     def test_multiplication(self) -> None:
-        """Test multiplication: 0ox; 0ox; 0ox; 0ox; 0ox; 0ix{ 1ox; 0oy; 0oy; 0oy; 0oy; 0oy; }; 1iy;"""
+        """Test multiplication: 0ox; 0ox; 0ox; 0ox; 0ox;
+        0ix{ 1ox; 0oy; 0oy; 0oy; 0oy; 0oy; }; 1iy;"""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;" * 5 + "0ix{1ox;" + "0oy;" * 5 + "};1iy;", io=IO())
         assert f.getvalue() == "\x19"  # 5 * 5 = 25
