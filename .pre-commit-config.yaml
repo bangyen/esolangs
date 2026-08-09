@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         exclude: ^examples/  # Generated programs match the generator exactly
@@ -18,7 +18,7 @@ repos:
       - id: check-docstring-first
 
   - repo: https://github.com/psf/black
-    rev: 26.3.1
+    rev: 26.5.1
     hooks:
       - id: black
         language_version: python3
@@ -31,7 +31,7 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.0
+    rev: v2.3.0
     hooks:
       - id: mypy
         additional_dependencies: [types-requests, types-setuptools]
