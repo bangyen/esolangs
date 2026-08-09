@@ -1,5 +1,4 @@
-"""
-Huf interpreter implementation.
+"""Huf interpreter implementation.
 
 Register-based language with two variables: num and mul.
 Processes code segments enclosed in #...#@ patterns.

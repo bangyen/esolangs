@@ -1,3 +1,11 @@
+"""Interpreter for Modulous.
+
+Commands are written as ``[OP arg]`` tokens.  PSH pushes an integer, string,
+or variable value; POP/SWP/DUP reshape the stack; PRT prints the top as an
+integer or byte; INP reads a line; JMP/IF conditionally jump; RST resets;
+and END halts.
+"""
+
 import re
 import secrets
 import sys
@@ -9,6 +17,8 @@ from esolangs.interpreters.io import IO
 
 @dataclass
 class State:
+    """Stack, variables, and instruction pointer for a Modulous run."""
+
     stk: list[int] = field(default_factory=list)
     var: dict[str, int] = field(default_factory=dict)
     ind: int = 0
@@ -128,6 +138,7 @@ _DISPATCH: dict[str, Callable[[State, str, list[str]], str | None]] = {
 
 
 def run(code: str, io: IO) -> None:
+    """Run a Modulous program."""
     reg = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
     tokens = [k[0] for k in reg.findall(code)]
     state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)

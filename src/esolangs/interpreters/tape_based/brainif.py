@@ -1,9 +1,17 @@
+"""Interpreter for BrainIf.
+
+Line-based: each ``if <value> <command>`` runs only when the cell equals
+<value>.  Commands increment, move right/left, goto a line, read a byte of
+input, or output the current cell.
+"""
+
 import sys
 
 from esolangs.interpreters.io import IO
 
 
 def run(code: list[str], io: IO) -> None:
+    """Run a BrainIf program."""
     cells: list[int] = [0]
     ind = ptr = 0
 

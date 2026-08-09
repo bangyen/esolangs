@@ -40,6 +40,7 @@ def matches(code: str) -> dict[int, int]:
 
 
 def run(code: str, io: IO) -> None:
+    """Run a Brainfuck program."""
     tape: list[int] = [0]
     m = matches(code)
 

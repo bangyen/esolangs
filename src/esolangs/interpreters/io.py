@@ -1,4 +1,4 @@
-"""Shared I/O for interpreters.
+r"""Shared I/O for interpreters.
 
 Every interpreter routes its output and input through an :class:`IO`
 instance instead of calling ``input``/``print`` directly.  This centralizes
@@ -38,6 +38,7 @@ class IO:
     """
 
     def __init__(self) -> None:
+        """Create an IO with no pending prompt newline."""
         self._newline = False
 
     # -- low-level seam: override in subclasses -----------------------
@@ -104,6 +105,7 @@ class ScriptedIO(IO):
     """
 
     def __init__(self, stdin: str = "") -> None:
+        """Read input from ``stdin`` and capture all output internally."""
         super().__init__()
         self._lines = iter(stdin.splitlines())
         self._buffer = _stdlib_io.StringIO()

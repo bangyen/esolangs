@@ -1,5 +1,4 @@
-"""
-Dig interpreter implementation.
+"""Dig interpreter implementation.
 
 2D esoteric language with a mole that moves on a grid and can dig underground.
 Movement commands work overground, work commands function underground.

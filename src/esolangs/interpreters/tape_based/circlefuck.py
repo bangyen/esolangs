@@ -1,3 +1,11 @@
+"""Interpreter for CircleFuck.
+
+The tape is the program itself: cells wrap, + and - adjust the current cell,
+, reads input, . outputs, [ and ] jump to matching brackets reading the cell,
+@ halts, { and } insert and remove cells, and the pointer moves around the
+circular tape.
+"""
+
 import re
 import sys
 
@@ -5,6 +13,7 @@ from esolangs.interpreters.io import IO
 
 
 def parse(code: str) -> list[int]:
+    """Decode CircleFuck's escape sequences and keep printable commands only."""
     reg = r"\\(?:\d\d\d|" r"[\dA-F](?:$|[^\d]))"
     exp = r"((^|[^\\]) |\\( )|(\\)o)"
 
@@ -24,6 +33,7 @@ def parse(code: str) -> list[int]:
 
 
 def find(code: list[int], ind: int, ptr: int) -> int:
+    """Return the matching bracket for ``ind``, or -1 if unmatched."""
     char = chr(code[ind])
     if char == "[":
         if code[ptr]:
@@ -51,6 +61,7 @@ def find(code: list[int], ind: int, ptr: int) -> int:
 
 
 def run(code: str, io: IO) -> None:
+    """Run a CircleFuck program."""
     cells: list[int] = parse(code)
     ind = ptr = 0
 

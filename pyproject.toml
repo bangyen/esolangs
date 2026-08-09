@@ -113,7 +113,6 @@ ignore = [
 # Docstring presence is enforced on the public modules; the legacy esolang
 # implementations and the tests are exempt so they can be documented
 # incrementally.
-"src/esolangs/interpreters/**/*.py" = ["D"]
 "src/esolangs/compilers/**/*.py" = ["D"]
 "tests/**/*.py" = ["D"]
 "scripts/*.py" = ["D"]

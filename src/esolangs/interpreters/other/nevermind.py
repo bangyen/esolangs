@@ -1,3 +1,10 @@
+"""Interpreter for Nevermind.
+
+Line-based commands: ``print`` joins its arguments, ``input`` stores a line in
+the answer variable, ``make`` computes arithmetic, and ``if``/``loop``/
+``endloop`` branch on comparisons.  ``$name`` references a variable.
+"""
+
 import sys
 from typing import cast
 
@@ -5,6 +12,7 @@ from esolangs.interpreters.io import IO
 
 
 def find(code: list[list[str | int | float]], ind: int) -> int:
+    """Return the index of the matching ``if``/``loop`` partner for ``ind``."""
     if "end" in (op := str(code[ind][0])):
         match = op[3:]
         move = -1
@@ -27,6 +35,7 @@ def find(code: list[list[str | int | float]], ind: int) -> int:
 
 
 def run(lines: list[str], io: IO) -> None:
+    """Run a Nevermind program given its comma-separated command lines."""
     ind = 0
     var: dict[str, int | float | str] = {}
     skip = False
