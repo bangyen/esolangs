@@ -270,3 +270,27 @@ jobs:
       run: |
         PYTHONPATH=src python3 scripts/verify_x86_unicorn.py
         echo "All x86 compilers and references round-tripped under unicorn"
+
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install elan
+      run: |
+        curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+          -o /tmp/elan-init.sh
+        sh /tmp/elan-init.sh -y --default-toolchain none
+        echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+    - name: Cache mathlib build
+      uses: actions/cache@v4
+      with:
+        path: extra/lean/mammalian/.lake
+        key: lean-mammalian-${{ hashFiles('extra/lean/mammalian/lake-manifest.json') }}
+
+    - name: Build the Lean interpreters and MAMMALIAN proof
+      run: |
+        cd extra/lean/mammalian
+        lake build
+        echo "Lean interpreters and MAMMALIAN proof built"
