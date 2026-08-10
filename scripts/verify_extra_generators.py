@@ -144,24 +144,34 @@ def main() -> int:
             failures += not ok
             print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
 
-    # Boolean generators: 3x computes the n == 1 truth tables.
+    # Boolean generators: 3x computes truth tables for n = 1..3 via a
+    # variable decision tree, verified against the Ruby reference.
     boolean_refs: list[tuple[str, Callable[[str, int], str], list[str] | None]] = [
         ("3x", boolean.three_x, _ruby_reference("3x.rb")),
     ]
+    tables = {
+        1: ("00", "01", "10", "11"),
+        2: ("0001", "0110", "1110"),
+        3: ("00000001", "11111110"),
+    }
     for name, builder, cmd in boolean_refs:
         if cmd is None:
             print(f"[skip] {name} boolean: reference toolchain not available")
             continue
-        for table in ("01", "10"):
-            program = builder(table, 1)
-            for combo in (0, 1):
-                out = _run_boolean(cmd, program, f"{combo}\n")
-                ok = out == table[combo].encode()
-                failures += not ok
-                print(
-                    f"{name} boolean {table!r} bit {combo}: "
-                    f"{'ok' if ok else 'FAIL'} -> {out!r}"
-                )
+        for n, group in tables.items():
+            for table in group:
+                program = builder(table, n)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    out = _run_boolean(cmd, program, "\n".join(map(str, bits)) + "\n")
+                    ok = out == table[combo].encode()
+                    failures += not ok
+                    if not ok:
+                        print(
+                            f"{name} boolean {table!r} n={n} combo {bits}: "
+                            f"FAIL -> {out!r}"
+                        )
+        print(f"{name} boolean: verified tables for n = 1..3")
 
     return 1 if failures else 0
 

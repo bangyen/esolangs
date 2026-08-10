@@ -456,25 +456,30 @@ class TestTaglate:
 
 
 class TestThreeX:
-    def test_identity(self) -> None:
-        """The 01 table reads a bit and prints it back."""
-        assert boolean.three_x("01", 1) == "? !"
-
-    def test_not(self) -> None:
-        """The 10 table computes 1 - b using the constant-1 encoding."""
-        assert boolean.three_x("10", 1) == "3333x3x ? 3333x3x x !"
-
-    def test_only_supports_one_input(self) -> None:
-        """3x boolean generation is closed-form only for n == 1."""
-        with pytest.raises(ValueError, match="n == 1"):
-            boolean.three_x("0001", 2)
+    def test_identity_program_structure(self) -> None:
+        """The 01 table reads a bit and stores it before printing."""
+        program = boolean.three_x("01", 1)
+        assert program.startswith("?")
+        assert program.endswith("!")
 
     def test_wrong_length_truth_table_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
-        with pytest.raises(ValueError, match="2 entries"):
+        with pytest.raises(ValueError, match="entries"):
             boolean.three_x("011", 1)
 
     def test_invalid_truth_table_chars_rejected(self) -> None:
         """A truth table with non-0/1 characters is malformed."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.three_x("02", 1)
+
+    def test_uses_input_variables(self) -> None:
+        """Each input bit is read into a distinct variable."""
+        program = boolean.three_x("0001", 2)
+        assert program.count("?") == 2
+        assert "333x" in program  # the constant-0 encoding appears
+        assert "3333x3x" in program  # the constant-1 encoding appears
+
+    def test_unsupported_constant_rejected(self) -> None:
+        """Variable names beyond the built-in constants are rejected."""
+        with pytest.raises(ValueError, match="constant for 6"):
+            boolean.three_x("0" * (2**7), 7)
