@@ -280,6 +280,18 @@ class TestGeneratorRoundTrips:
         )
         assert gen.bit_tilde("\xff") == "~>~>~>~>~>~>~>~" + "<" * 7 + "("
 
+    def test_three_x(self) -> None:
+        """A [literal] prints the text up to the closing bracket."""
+        assert gen.three_x("Hi") == "[Hi]"
+        assert gen.three_x("") == "[]"
+
+    def test_three_x_unsupported(self) -> None:
+        """'?' or ']' in the text would be read as input or end the literal."""
+        with pytest.raises(ValueError, match="re-executes"):
+            gen.three_x("a]b")
+        with pytest.raises(ValueError, match="re-executes"):
+            gen.three_x("a?b")
+
     def test_byte_generators_reject_unicode(self) -> None:
         """Byte-oriented generators reject codepoints above 255 loudly."""
         for _name, fn in (

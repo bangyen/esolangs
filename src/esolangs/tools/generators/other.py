@@ -25,6 +25,7 @@ __all__ = [
     "nocomment",
     "painfuck",
     "pct_squared_minus_one",
+    "three_x",
     "two_d_fish",
     "unsquare",
     "ztoalc",
@@ -760,3 +761,16 @@ def bit_tilde(text: str) -> str:
                 res.append(">")
         res.append("<" * 7 + "(")
     return "".join(res)
+
+
+def three_x(text: str) -> str:
+    """Build a 3x program that outputs ``text``.
+
+    ``[`` prints the literal up to the next ``]``, so the program is
+    ``[text]``.  A ``?`` or ``]`` in the text would be read as input or end
+    the literal early (the reference re-executes the printed characters), so
+    both are rejected.
+    """
+    if any(c in "?]" for c in text):
+        raise ValueError("3x cannot output '?' or ']' (the literal re-executes)")
+    return "[" + text + "]"
