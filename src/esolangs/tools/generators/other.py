@@ -7,7 +7,7 @@ from collections import deque
 from functools import cache
 from typing import Any
 
-from esolangs.tools.generators.helpers import _ilog, _require_bytes
+from esolangs.tools.generators.helpers import _ilog, _require_ascii, _require_bytes
 from esolangs.tools.ztoalc_starts import STARTS
 
 __all__ = [
@@ -39,6 +39,7 @@ def clockwise(text: str) -> str:
     origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
     ``+`` is emitted only when the accumulator's parity needs to flip.
     """
+    _require_ascii(text, "Clockwise")
     prog = ""
     parity = 0
     for c in text:
@@ -76,6 +77,7 @@ def container(text: str) -> str:
     negative one symmetrically, so each character prints through the ``OUT``
     rule once the accumulator crosses it.
     """
+    _require_ascii(text, "Container")
     ind = last = 0
     if text:
         res = (
@@ -253,6 +255,7 @@ def forth(text: str) -> str:
     would stop that loop, so text containing one is printed with an explicit
     ``.`` per character instead.
     """
+    _require_bytes(text, "Forþ")
     s = "0123456789ABCDEF"
 
     def build(c: str) -> str:
@@ -279,6 +282,7 @@ def laserfuck(text: str) -> str:
     body wrapped around a serpentine track on the edges so the laser travels
     around it.
     """
+    _require_bytes(text, "LaserFuck")
     values = [ord(c) for c in text]
     code = ""
     linear = "".join(">" + "+" * ord(c) for c in text).rstrip(">")
@@ -410,6 +414,7 @@ def magnitude(text: str) -> str:
     the accumulated magnitude as a byte, and a leading ``'`` resets to an
     absolute (non-delta) encoding when the delta would overshoot the target.
     """
+    _require_bytes(text, "Magnitude")
 
     def close(val: int, start: int) -> int:
         if start > val:
@@ -477,6 +482,7 @@ def painfuck(text: str) -> str:
     ``c``/``t``/``rl`` handle the arithmetic in bases 7 and 3 with a pointer
     loop, and ``u`` prints the current cell as a byte.
     """
+    _require_bytes(text, "Painfuck")
 
     def add(val: int) -> str:
         return (val // 2) * "p" + (val % 2) * "ps"
@@ -564,6 +570,7 @@ def _123(text: str) -> str:
     final ``1`` leaves ``esi`` above 128 so the program halts at the
     terminator.
     """
+    _require_bytes(text, "123")
     res = ""
     last = 0
 
@@ -593,6 +600,7 @@ def nocomment(text: str) -> str:
     prints it as a byte, so each character becomes a fixed ``c`` + ``i``*N + ``o``
     run.
     """
+    _require_bytes(text, "NoComment")
     return "".join("c" + "i" * ord(c) + "o" for c in text)
 
 
@@ -605,6 +613,7 @@ def unsquare(text: str) -> str:
     program to the code: doubling makes even values O(log n), with ``+`` runs
     covering the rest.  ``P`` pushes the accumulator and ``o`` prints it.
     """
+    _require_bytes(text, "Unsquare")
 
     @cache
     def build(start: int, v: int) -> str:
@@ -632,6 +641,7 @@ def home_row(text: str) -> str:
     it to zero (the spec's 5x5 grid initializes at zero). A leading ``as``
     (net zero) keeps NUL characters from collapsing the adjacent ``k``s.
     """
+    _require_bytes(text, "Home Row")
     res = []
     for c in text:
         if ord(c) == 0:

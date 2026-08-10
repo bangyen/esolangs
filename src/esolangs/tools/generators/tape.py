@@ -2,6 +2,7 @@
 
 import math
 
+from esolangs.tools.generators.helpers import _require_ascii, _require_bytes
 from esolangs.tools.transpilers import bf_to_ascii_art
 
 __all__ = [
@@ -89,6 +90,7 @@ def bf(text: str) -> str:
     Otherwise the cell is zeroed with ``[-]`` and rebuilt with a multiply
     loop (``_bf_set``), so large values cost O(sqrt) instead of O(value).
     """
+    _require_bytes(text, "Brainfuck")
     res: list[str] = []
     cur = 0
     for c in text:
@@ -110,6 +112,7 @@ def ascii_art(text: str) -> str:
     ASCII art is brainfuck with an art alphabet, so the program is exactly
     the brainfuck program for ``text`` rendered as art blocks.
     """
+    _require_bytes(text, "ASCII art")
     return bf_to_ascii_art(bf(text))
 
 
@@ -120,6 +123,7 @@ def bfstack(text: str) -> str:
     small delta uses ``+``/``-`` and a large one zeroes the cell with
     ``[-]`` and builds the code from scratch, printing each with ``.``.
     """
+    _require_bytes(text, "BFStack")
     res = ">\n"
     acc = 0
 
@@ -193,6 +197,7 @@ def excon(text: str) -> str:
     that are 1 in the character's binary representation (moving left to the
     next set bit with ``<``), and ``!`` prints the pool as a byte.
     """
+    _require_bytes(text, "EXCON")
     res = ""
 
     for c in text:
@@ -232,6 +237,7 @@ def minifuck(text: str) -> str:
     printed with ``.`` only when it holds a nonzero byte (a zero pool would
     be read as input), and the NUL character cannot be emitted at all.
     """
+    _require_ascii(text, "Minifuck")
     if "\x00" in text:
         raise ValueError("Minifuck cannot output the NUL character")
     res = []
@@ -289,6 +295,7 @@ def circlefuck(text: str) -> str:
     cell's base off the program text built so far), then ``.`` to print and
     ``>`` to advance, ending with ``@``.
     """
+    _require_bytes(text, "CircleFuck")
     if not text:
         return "@"
     prog: list[str] = []
@@ -334,6 +341,7 @@ def mammalian(text: str) -> str:
     (pointer, SEED count, character) state with no extras, plus random states
     with extras, without ever failing.
     """
+    _require_bytes(text, "MAMMALIAN")
     if not text:
         return ""
     k = 1

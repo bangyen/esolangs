@@ -3,6 +3,7 @@
 from collections.abc import Callable
 
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
+from esolangs.tools.generators.helpers import _require_bytes
 
 __all__ = [
     "bio",
@@ -24,6 +25,7 @@ def bio(text: str) -> str:
     one with ``0ox``/``1ox`` runs (increment/decrement), then printed with
     ``1ix``.
     """
+    _require_bytes(text, "BIO")
     res = []
     prev = 0
     for c in text:

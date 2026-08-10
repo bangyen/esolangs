@@ -315,6 +315,8 @@ Important information about specific language implementations.
 
 - **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 
+- **polynomial**: The generator reliably outputs byte-range text and short texts generally, but the interpreter's float64 root-finding (`numpy.roots`) loses precision when a polynomial's roots span a wide magnitude range, which happens when consecutive characters differ by large codepoint amounts (e.g. an ASCII character directly followed by a CJK character). Such text can silently corrupt. The fuzzers exercise it on byte-range and small-unicode text accordingly.
+
 ### Usage Notes
 
 - **Jaune**: Only one character can be input at a time.
