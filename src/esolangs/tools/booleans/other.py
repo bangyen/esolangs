@@ -40,10 +40,11 @@ def three_x(truth_table: str, n: int) -> str:
     3x reads an integer with ``?`` and has no direct boolean literals or
     conditionals, so the generator builds a decision tree with variables:
 
-    - each ``?`` reads one input bit and stores it in a variable (0..n-1);
+    - each ``?`` reads one input bit and stores it in a variable (the
+      cheapest names after 0 and 3);
     - a ``( ... )`` loop runs while its guard is nonzero: the guard value is
-      popped into a trash variable (``n``), the body stores the table entry
-      into the result variable (``n+1``), and a sentinel zero exits the loop.
+      popped into a trash variable (0), the body stores the table entry into
+      the result variable (3), and a sentinel zero exits the loop.
 
     The result variable defaults to the all-zeros row and each matching
     input combination overrides it.  The ``( ... )`` loop's guard leaves the
@@ -57,9 +58,19 @@ def three_x(truth_table: str, n: int) -> str:
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
 
-    # Variables 0..n-1 hold the inputs, n is the loop-trash, n+1 the result.
-    trash = _const(n) + "#v"  # pop the stack top into variable n
-    result = n + 1
+    # Variable allocation: var 0 is the loop-trash (its constant, 333x, is
+    # short and emitted twice per guard), var 3 is the result (its constant
+    # is the single char `3`, emitted once per table entry), and the inputs
+    # live in the cheapest remaining variable names (1, 2, 4, 5, ...).
+    trash = _const(0) + "#v"  # pop the stack top into variable 0
+    result = 3
+    used = {0, 3}
+    input_vars: list[int] = []
+    name = 0
+    while len(input_vars) < n:
+        if name not in used:
+            input_vars.append(name)
+        name += 1
 
     def store(var: int) -> str:
         return _const(var) + "#v"  # var = stack top, stack ends empty
@@ -78,14 +89,18 @@ def three_x(truth_table: str, n: int) -> str:
         """If bit i is 0, run ``body``; leaves the stack balanced."""
         return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
 
-    prog = "".join("?" + store(i) for i in range(n))
+    prog = "".join("?" + store(v) for v in input_vars)
     prog += (_ONE if truth_table[0] == "1" else _ZERO) + store(result)
 
     for combo in range(1, 2**n):
         bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
         body = (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
         for i in range(n - 1, -1, -1):
-            body = guard(i, body) if bits[i] else guard_not(i, body)
+            body = (
+                guard(input_vars[i], body)
+                if bits[i]
+                else guard_not(input_vars[i], body)
+            )
         prog += body
 
     prog += read(result) + "!"
