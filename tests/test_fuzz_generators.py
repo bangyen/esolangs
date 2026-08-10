@@ -20,6 +20,12 @@ from esolangs.tools import boolean
 # generator function name -> trailing output appended after the printed text
 _TRAILING = {"nevermind": "\n"}
 
+# characters that push generators beyond their byte/ASCII range, so the
+# byte- and ASCII-oriented generators exercise their documented rejections.
+# é (233) sits above ASCII but in the byte range; Ā (256) and Ǆ (452) sit
+# above the byte range.
+_UNICODE = "\u00e9\u0100\u01c4"  # é, Ā, Ǆ
+
 # generator function name -> Language metadata, restricted to the generators
 # whose interpreter lives in-repo (so their programs round-trip).
 ROUND_TRIP = {
@@ -37,9 +43,8 @@ NO_INTERPRETER = {
 
 
 def _random_text() -> str:
-    return "".join(
-        random.choice(string.printable) for _ in range(random.randint(1, 12))
-    )
+    pool = string.printable + _UNICODE
+    return "".join(random.choice(pool) for _ in range(random.randint(1, 12)))
 
 
 def test_text_generators_round_trip() -> None:
@@ -52,9 +57,11 @@ def test_text_generators_round_trip() -> None:
                 assert generator is not None
                 program = generator(text)
             except ValueError:
-                assert (
-                    name != "mammalian"
-                )  # never rejects; everything else documents limits
+                # every generator may document limits; the mammalian search
+                # itself is proven total, so it may only reject for non-byte
+                # characters (which _UNICODE includes)
+                if name == "mammalian":
+                    assert any(ord(c) > 255 for c in text)
                 continue
             run = importlib.import_module("esolangs.interpreters." + module).run
             argument = program.splitlines() if split else program

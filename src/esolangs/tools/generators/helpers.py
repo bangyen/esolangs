@@ -18,3 +18,13 @@ def _require_bytes(text: str, name: str) -> None:
     """
     if any(ord(c) > 255 for c in text):
         raise ValueError(f"{name} can only output bytes 0-255")
+
+
+def _require_ascii(text: str, name: str) -> None:
+    """Reject any character outside the 0-127 ASCII range.
+
+    Some interpreters keep a 7-bit accumulator or parity, so values above 127
+    wrap and would be printed as the wrong byte.  Fail loudly instead.
+    """
+    if any(ord(c) > 127 for c in text):
+        raise ValueError(f"{name} can only output ASCII (0-127)")

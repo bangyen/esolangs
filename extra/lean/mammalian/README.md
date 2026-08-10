@@ -1,9 +1,11 @@
 # MAMMALIAN generator totality (Lean 4)
 
 A Lean 4 + mathlib proof that the MAMMALIAN text generator
-(`src/esolangs/tools/generators/tape.py::mammalian`) is total: for every
-text it emits a program that prints it, and the per-character search never
-fails.
+(`src/esolangs/tools/generators/tape.py::mammalian`) is total over the byte
+range: for every byte-range text it emits a program that prints it, and the
+per-character search never fails.  (Like the other byte-oriented generators,
+`mammalian` rejects codepoints above 255 with a documented `ValueError`
+before the search runs.)
 
 ## The two structural facts
 
