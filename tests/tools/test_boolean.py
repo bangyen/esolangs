@@ -443,3 +443,13 @@ class TestTaglate:
                             f"got {got!r} expected {tt[combo]!r}"
                         )
         assert failures == 0, f"{failures} failures out of 2048 combos"
+
+    def test_wrong_length_truth_table_rejected(self) -> None:
+        """A truth table of the wrong length is malformed."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.taglate("011", 2)
+
+    def test_invalid_truth_table_chars_rejected(self) -> None:
+        """A truth table with non-0/1 characters is malformed."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.taglate("0120", 2)
