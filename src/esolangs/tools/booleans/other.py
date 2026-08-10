@@ -46,8 +46,10 @@ def three_x(truth_table: str, n: int) -> str:
       popped into a trash variable (0), the body stores the table entry into
       the result variable (3), and a sentinel zero exits the loop.
 
-    The result variable defaults to the all-zeros row and each matching
-    input combination overrides it.  The ``( ... )`` loop's guard leaves the
+    The result variable defaults to the majority table value (so the
+    ``( ... )`` loop emits no override at all when every row matches), and
+    only the input combinations whose table entry differs from the default
+    get an override block.  Each override's ``( ... )`` guard leaves the
     stack balanced via the trash pop, so arbitrary ``n`` works.
     """
     if len(truth_table) != 2**n:
@@ -90,9 +92,15 @@ def three_x(truth_table: str, n: int) -> str:
         return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
 
     prog = "".join("?" + store(v) for v in input_vars)
-    prog += (_ONE if truth_table[0] == "1" else _ZERO) + store(result)
 
-    for combo in range(1, 2**n):
+    # Default the result to the majority value so only the minority rows
+    # need an override block (combos matching the default are skipped).
+    default = "1" if truth_table.count("1") >= truth_table.count("0") else "0"
+    prog += (_ONE if default == "1" else _ZERO) + store(result)
+
+    for combo in range(2**n):
+        if truth_table[combo] == default:
+            continue
         bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
         body = (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
         for i in range(n - 1, -1, -1):
