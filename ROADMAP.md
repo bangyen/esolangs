@@ -50,15 +50,22 @@ heuristic guard is *not* viable: OK and FAIL cases overlap in both coefficient
 magnitude and max delta, and even the same delta passes or fails depending on
 the surrounding pattern.
 
-The natural-seeming fix is a higher-precision root finder, but `mpmath` does
-not work: its `polyroots` (Durand-Kerner) fails to converge even on
-`'Hello, World!'` — a program `numpy.roots` handles correctly in ~0.5ms —
-and times out at `maxsteps` even at 50-80 digits of precision.  The roots
-span several orders of magnitude, which is exactly the geometry the
-Durand-Kerner iteration struggles with.  A practical fix needs a
-companion-matrix solver in arbitrary precision (e.g. `mpmath.eig` on the
-companion matrix, or `sympy`, or a hand-rolled high-precision
-companion/eigenvalue routine), not a drop-in `polyroots` swap.
+Higher-precision replacements have been tried and ruled out empirically:
+
+- `mpmath.polyroots` (Durand-Kerner): fails to converge even on
+  `'Hello, World!'` — a program `numpy.roots` handles correctly in ~0.5ms —
+  at any tested precision (30-80 digits) or `maxsteps`.
+- `sympy.nroots` (also Durand-Kerner based): recovers short inputs correctly,
+  but fails to converge on a random 20-character ASCII text (degree ~80), and
+  is ~10,000x slower than numpy on `'Hello, World!'`.
+- Companion matrix + `mpmath.eig` (Hessenberg + QR): recovers `Hi`, but still
+  corrupts the wide-spread roots (imaginary parts 71/115 instead of 5/17/121)
+  and precision increases do not help.
+
+The root geometry — roots spanning several orders of magnitude — defeats
+every Durand-Kerner/QR variant tried.  A working fix would need a custom
+arbitrary-precision companion-matrix eigenvalue solver (high-precision QR) or
+a fundamentally different algorithm, not a drop-in library swap.
 
 The same fix would lift the boolean generator's `n > 2` cap
 (`src/esolangs/tools/booleans/register.py`): a depth-`n` decision tree emits
