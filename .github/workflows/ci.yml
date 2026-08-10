@@ -284,10 +284,12 @@ jobs:
         echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
     - name: Cache mathlib build
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: extra/lean/mammalian/.lake
-        key: lean-mammalian-${{ hashFiles('extra/lean/mammalian/lake-manifest.json') }}
+        key: lean-mammalian-${{ hashFiles('extra/lean/mammalian/lake-manifest.json') }}-${{ hashFiles('extra/lean/mammalian/lean-toolchain') }}
+        restore-keys: |
+          lean-mammalian-
 
     - name: Build the Lean interpreters and MAMMALIAN proof
       run: |
