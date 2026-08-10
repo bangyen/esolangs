@@ -356,12 +356,12 @@ class TestGeneratorRoundTrips:
         assert len(program.splitlines()) < 100
         assert roundtrip(ztoalc_run, program.splitlines()) == "Hello, World!"
 
-    def test_ztoalc_extends_search(self) -> None:
-        """Longer text uses a precomputed start far beyond the base search limit."""
+    def test_ztoalc_uses_record_holder(self) -> None:
+        """Longer text uses the best record-holder covering its length."""
         text = "a" * 200
         program = gen.ztoalc(text)
-        assert int(program.splitlines()[0]) > 20000
-        assert len(program.splitlines()) < 100000
+        assert int(program.splitlines()[0]) == 2919  # covers n <= 216
+        assert len(program.splitlines()) < 300000
         assert roundtrip(ztoalc_run, program.splitlines()) == text
 
     def test_ztoalc_long_text(self) -> None:
@@ -370,29 +370,26 @@ class TestGeneratorRoundTrips:
         program = gen.ztoalc(text)
         assert roundtrip(ztoalc_run, program.splitlines()) == text
 
-    def test_ztoalc_searches_beyond_table(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A length missing from the table falls back to a dynamic search."""
-        monkeypatch.setattr(other, "STARTS", {1: 2, 3: 8})
-        monkeypatch.setattr(other, "_ZTOALC_TABLE_LIMIT", 2)
-        monkeypatch.setattr(other, "_ZTOALC_MAX_LIMIT", 100)
+    def test_ztoalc_anchor_lookup(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A length rounds up to the first anchor whose interval covers it."""
+        monkeypatch.setattr(other, "ANCHORS", [(1, 2), (8, 6), (20, 18)])
+        assert other._anchor_for(1) == 2  # noqa: SLF001
+        assert other._anchor_for(8) == 6  # noqa: SLF001
+        assert other._anchor_for(9) == 18  # noqa: SLF001
+        assert other._anchor_for(20) == 18  # noqa: SLF001
         program = gen.ztoalc("ab")
-        assert program.splitlines() == ["4", "print 98", "", "print 97"]
+        assert program.splitlines() == ["6", "", "print 98", "", "", "print 97"]
         assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
 
-    def test_ztoalc_search_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Text longer than any trajectory in the search range is rejected."""
-        monkeypatch.setattr(other, "STARTS", {1: 2})
-        monkeypatch.setattr(other, "_ZTOALC_TABLE_LIMIT", 2)
-        monkeypatch.setattr(other, "_ZTOALC_MAX_LIMIT", 2)
+    def test_ztoalc_too_long_rejected(self) -> None:
+        """Text longer than the longest known record is rejected."""
         with pytest.raises(ValueError, match="no Collatz start"):
-            gen.ztoalc("abcde")
+            gen.ztoalc("a" * 1133)
 
     def test_ztoalc_program_structure(self) -> None:
         """The initial pointer is the chosen start and each char sits on its line."""
         lines = gen.ztoalc("ab").splitlines()
-        assert lines[0] == "4"
+        assert lines[0] == "6"
         assert "print 98" in lines
         assert "print 97" in lines
 
