@@ -33,7 +33,7 @@ the same zero failures.
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
 
 ```
-cd extra/lean/mammalian
+cd extra/lean/esolangs
 lake build
 ```
 
@@ -41,8 +41,22 @@ lake build
 
 The four Lean 3 ``#eval`` interpreters that used to live in ``extra/lean``
 have been ported to Lean 4 and now compile as modules in this project
-(``LeanMammalian/Excon.lean``, ``Albabet.lean``, ``bfpda.lean``,
+(``Esolangs/Excon.lean``, ``Albabet.lean``, ``bfpda.lean``,
 ``seventy_four.lean``).  Each is a faithful port of the original: the
-recursive iterator walk, the stack/tape semantics, and the ``#eval`` driver
-reading ``test.txt``.  EXCON's output was cross-checked against the in-repo
-Python interpreter.
+recursive iterator walk and the stack/tape semantics.  Each is also exposed
+as a ``lean_exe`` (via a thin ``*Main.lean`` wrapper), so the interpreters
+read their program from a text file at runtime like every other interpreter
+in the repo:
+
+```
+lake build
+.lake/build/bin/albabet program.txt
+.lake/build/bin/excon program.txt
+.lake/build/bin/bfpda program.txt
+.lake/build/bin/seventy_four program.txt
+```
+
+No file is read at build time — the original Lean 3 ``#eval`` drivers read
+``test.txt`` during compilation, which broke ``lake build``, so the drivers
+became runtime executables instead.  EXCON's output was cross-checked against
+the in-repo Python interpreter.

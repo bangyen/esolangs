@@ -290,13 +290,27 @@ jobs:
     - name: Cache mathlib build
       uses: actions/cache@v6
       with:
-        path: extra/lean/mammalian/.lake
-        key: lean-mammalian-${{ hashFiles('extra/lean/mammalian/lake-manifest.json') }}-${{ hashFiles('extra/lean/mammalian/lean-toolchain') }}
+        path: extra/lean/esolangs/.lake
+        key: lean-esolangs-${{ hashFiles('extra/lean/esolangs/lake-manifest.json') }}-${{ hashFiles('extra/lean/esolangs/lean-toolchain') }}
         restore-keys: |
-          lean-mammalian-
+          lean-esolangs-
 
     - name: Build the Lean interpreters and MAMMALIAN proof
       run: |
-        cd extra/lean/mammalian
+        cd extra/lean/esolangs
         lake build
         echo "Lean interpreters and MAMMALIAN proof built"
+
+    - name: Smoke test the Lean interpreters
+      run: |
+        set -e
+        cd extra/lean/esolangs
+        printf 'aaai' > /tmp/albabet.txt
+        printf ':^:^:^:^:^:^:^:^!' > /tmp/excon.txt
+        printf '<@<@.' > /tmp/bfpda.txt
+        printf '1H' > /tmp/74.txt
+        [ "$(.lake/build/bin/albabet /tmp/albabet.txt | od -An -tuC | tr -d ' ')" = "3" ]
+        [ "$(.lake/build/bin/excon /tmp/excon.txt | od -An -tuC | tr -d ' ')" = "1" ]
+        [ "$(.lake/build/bin/bfpda /tmp/bfpda.txt)" = "1" ]
+        [ "$(.lake/build/bin/seventy_four /tmp/74.txt)" = "1" ]
+        echo "All Lean interpreters ran on text files"
