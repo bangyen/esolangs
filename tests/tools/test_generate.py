@@ -232,6 +232,45 @@ class TestGeneratorRoundTrips:
         assert gen.minifuck("A") == "[x[x<[x[x[x[x[x[x<[x."
         assert gen.minifuck("AA") == "[x[x<[x[x[x[x[x[x<[x.."
 
+    def test_dimensional(self) -> None:
+        """Each =HEX. segment sets the current cell and prints it as a byte."""
+        assert gen.dimensional("Hi") == "=48.=69."
+        assert gen.dimensional("\x00\x7f\xff") == "=0.=7f.=ff."
+
+    def test_two_d_fish(self) -> None:
+        """i/d walk the accumulator to each byte and a prints it."""
+        assert gen.two_d_fish("A") == "/" + "i" * 65 + "a@"
+        assert gen.two_d_fish("AA") == "/" + "i" * 65 + "a" + "a@"
+        assert gen.two_d_fish("A\x00") == "/" + "i" * 65 + "a" + "d" * 65 + "a@"
+
+    def test_pct_squared_minus_one(self) -> None:
+        """Each 'path e resets the accumulator, builds the byte, and prints it."""
+        assert gen.pct_squared_minus_one("") == ""
+        assert gen.pct_squared_minus_one("\x00") == "'e"
+        assert gen.pct_squared_minus_one("H") == "'iiimmmp" + "e"
+
+    def test_pct_squared_minus_one_unreachable(self) -> None:
+        """A codepoint above a byte is rejected rather than corrupted."""
+        with pytest.raises(ValueError, match="cannot reach byte"):
+            gen.pct_squared_minus_one("😀")
+
+    def test_basicfuck(self) -> None:
+        """A variable walks to each byte with +=/-= and write prints it."""
+        assert gen.basicfuck("A") == (
+            "#basicfuck t=1 r=0~255 o=nearest\n"
+            "#allocate a\n"
+            "a += 65;\n"
+            "write <- a ;\n"
+        )
+
+    def test_bit_tilde(self) -> None:
+        """Bits are toggled only where they differ; ( prints the 8-bit window."""
+        assert gen.bit_tilde("\x00") == ">>>>>>>" + "<" * 7 + "("
+        assert gen.bit_tilde("\x00\x00") == (
+            ">>>>>>>" + "<" * 7 + "(" + ">>>>>>>" + "<" * 7 + "("
+        )
+        assert gen.bit_tilde("\xff") == "~>~>~>~>~>~>~>~" + "<" * 7 + "("
+
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""
         assert roundtrip(ztoalc_run, gen.ztoalc("Hi").splitlines()) == "Hi"
