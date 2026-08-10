@@ -9,6 +9,7 @@ hand.
 | %^2^-1 | yes |  |  |  |  |
 | 123 | yes |  |  |  |  |
 | 2dFish | yes |  |  |  |  |
+| 3x | yes |  |  |  |  |
 | 6-5 | yes | yes |  |  | hello cat |
 | ASCII art | yes | yes |  |  | hello |
 | BF | yes | yes |  |  | hello |

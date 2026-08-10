@@ -2,8 +2,8 @@
 
 Forþ, Painfuck, Dimensional, 2dFish, %^2^-1, and Basicfuck have C++
 references in ``extra/c++``, LaserFuck and Unsquare have Rust references in
-``extra/rust``, EXCON has an R reference in ``extra/r``, and Unsquare and
-bit~ have Ruby references in ``extra/ruby``.  This script builds whatever
+``extra/rust``, EXCON has an R reference in ``extra/r``, and Unsquare, bit~,
+and 3x have Ruby references in ``extra/ruby``.  This script builds whatever
 references it can (g++ for C++, cargo for Rust) and round-trips each
 language's generator: a generated program must reproduce its text when run
 through the reference implementation.
@@ -16,7 +16,7 @@ Usage:
     PYTHONPATH=src python scripts/verify_extra_generators.py
 
 Requires: g++ (for the C++ references), cargo (for laserfuck/unsquare),
-Rscript (for EXCON), and/or ruby (for unsquare and bit~).
+Rscript (for EXCON), and/or ruby (for unsquare, bit~, and 3x).
 """
 
 import shutil
@@ -111,6 +111,7 @@ def main() -> int:
         ("Unsquare", gen.unsquare, rust["unsquare"]),
         ("Unsquare", gen.unsquare, _ruby_reference("unsquare.rb")),
         ("bit~", gen.bit_tilde, _ruby_reference("bit.rb")),
+        ("3x", gen.three_x, _ruby_reference("3x.rb")),
         ("EXCON", gen.excon, _r_reference()),
     ]
 
