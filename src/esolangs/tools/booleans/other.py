@@ -1,81 +1,42 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-from collections import deque
-
 __all__ = ["nevermind", "taglate", "three_x"]
 
+# Closed-form 3x constant encodings.  Every integer is built from the literal
+# 3 with the ``x`` op (which replaces the top three items ``a, b, c``, c on
+# top, with ``(c-b)//a``).  The three base-3 digits are:
 _ZERO = "333x"  # (3-3)//3 = 0
 _ONE = "3333x3x"  # (3-0)//3 = 1
+_TWO = _ONE + _ONE + "3x"  # (3-1)//1 = 2
 
-# Minimal 3x programs pushing each small integer onto a clean stack, found by
-# a breadth-first search over the operations {3, x, #} (see _fill_minimal).
-# Seeded with the hand-verified 0/1/3 encodings; _const() extends the search
-# lazily and falls back to a general recurrence for integers it cannot reach.
-_CONST: dict[int, str] = {0: _ZERO, 1: _ONE, 3: "3"}
-
-# BFS safety bounds: programs are explored only to this length and through
-# stacks of at most this depth holding values of at most this magnitude.  The
-# search is monotone in these caps (verified: widening them does not shorten
-# any encoding), so within the bounds the results are genuinely minimal.
-_BFS_LEN, _BFS_DEPTH, _BFS_VALUE = 52, 8, 100
-_BFS_DONE = False
-
-
-def _fill_minimal() -> None:
-    """Populate ``_CONST`` with the shortest clean-stack encodings reachable.
-
-    A program over ``{3, x, #}`` is a stack machine: ``3`` pushes 3, ``x``
-    replaces the top three items ``a, b, c`` (c on top) with ``(c-b)//a``,
-    and ``#`` swaps the top two.  BFS from the empty stack finds, in length
-    order, every single-value state ``(n,)``; the first time one is reached
-    is its shortest program.  Runs at most once per process.
-    """
-    global _BFS_DONE
-    if _BFS_DONE:
-        return
-    _BFS_DONE = True
-    queue: deque[tuple[tuple[int, ...], str]] = deque([((), "")])
-    seen: set[tuple[int, ...]] = {()}
-    while queue:
-        state, prog = queue.popleft()
-        if len(state) == 1:
-            _CONST.setdefault(state[0], prog)
-        if len(prog) >= _BFS_LEN:
-            continue
-        pushed = (*state, 3)
-        if len(pushed) <= _BFS_DEPTH and pushed not in seen:
-            seen.add(pushed)
-            queue.append((pushed, prog + "3"))
-        if len(state) >= 2:
-            swapped = (*state[:-2], state[-1], state[-2])
-            if swapped not in seen:
-                seen.add(swapped)
-                queue.append((swapped, prog + "#"))
-        if len(state) >= 3:
-            a, b, c = state[-3], state[-2], state[-1]
-            if a and (c - b) % a == 0:
-                reduced = (*state[:-3], (c - b) // a)
-                if abs(reduced[-1]) <= _BFS_VALUE and reduced not in seen:
-                    seen.add(reduced)
-                    queue.append((reduced, prog + "x"))
+# From [v], ``push X # push Y x`` leaves [(Y-v)//X], so with X=-1/3 and
+# Y=-d/3 it maps v -> (-d/3 - v)/(-1/3) = 3v + d.  These are the two fixed
+# rationals (and the d=0 case, which is just 0):
+_NEG_THIRD = "3" + _ONE + _ZERO + "x"  # (0-1)//3 = -1/3
+_NEG_TWO_THIRDS = "33" + _ONE + "x"  # (1-3)//3 = -2/3
+_DIGIT = (_ZERO, _ONE, _TWO)
+_NEG_DIGIT = (_ZERO, _NEG_THIRD, _NEG_TWO_THIRDS)
 
 
 def _const(n: int) -> str:
     """3x code pushing ``n`` on a clean stack, for any integer ``n``.
 
-    Small integers use the BFS-minimal program from ``_CONST``; integers the
-    search cannot reach (or would only reach through values outside the BFS
-    bounds) are built from the smaller ``n-3``: all nonnegative integers are
-    reachable from 3 and 0 via ``(A-B)//C``, as ``n = (3 - (-(n-3))) // 1``,
-    where ``-(n-3) = (0 - (n-3)) // 1``.
+    ``n`` is written in base 3 and its digits are processed most significant
+    first: ``v`` starts as the leading digit and each following digit ``d``
+    applies the affine map ``v -> 3v + d`` via one ``x`` (see ``_NEG_THIRD``).
+    The result is a closed-form program of ``O(log_3 n)`` length that leaves
+    exactly ``[n]`` on the stack.
     """
-    if n not in _CONST:
-        _fill_minimal()
-        if n not in _CONST:
-            _CONST[n] = (
-                _const(n - 3) + _ONE + "#" + _ZERO + "x" + _ONE + "#" + "3" + "x"
-            )
-    return _CONST[n]
+    if n <= 2:
+        return _DIGIT[n]
+    digits = []
+    while n:
+        digits.append(n % 3)
+        n //= 3
+    prog = _DIGIT[digits[-1]]
+    for d in reversed(digits[:-1]):
+        prog += _NEG_THIRD + "#" + _NEG_DIGIT[d] + "x"
+    return prog
 
 
 def three_x(truth_table: str, n: int) -> str:
@@ -111,9 +72,9 @@ def three_x(truth_table: str, n: int) -> str:
     # short and emitted twice per guard), var 3 is the result (its constant
     # is the single char `3`, emitted once per table entry), and the inputs
     # live in the cheapest remaining names by actual constant length (the
-    # encodings are non-monotonic: 6 is cheaper than 5).  Every input is read
-    # once per override block, so any assignment of the n cheapest names to
-    # the inputs costs the same.
+    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  Every
+    # input is read once per override block, so any assignment of the n
+    # cheapest names to the inputs costs the same.
     trash = _const(0) + "#v"  # pop the stack top into variable 0
     result = 3
     used = {0, 3}
