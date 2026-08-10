@@ -248,19 +248,25 @@ class TestWII2DEdgeCases:
     """Test WII2D edge cases and error conditions."""
 
     def test_empty_program(self) -> None:
-        """Test that empty program produces no output."""
+        """Test that an empty program is rejected."""
         code: list[str] = []
 
-        with redirect_stdout(io.StringIO()) as f:
+        with pytest.raises(ValueError, match="start marker"):
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == ""
 
     def test_program_without_start_marker(self) -> None:
         """Test program without ! start marker."""
         code = ["~.", "  "]
 
-        # Should return immediately without error
-        run_with_timeout(lambda: run(code, IO()))
+        with pytest.raises(ValueError, match="start marker"):
+            run_with_timeout(lambda: run(code, IO()))
+
+    def test_multiple_start_markers(self) -> None:
+        """Test program with more than one ! start marker."""
+        code = ["~.", "!", "!"]
+
+        with pytest.raises(ValueError, match="start marker"):
+            run_with_timeout(lambda: run(code, IO()))
 
     def test_single_line_program(self) -> None:
         """Test single line program with start marker."""
