@@ -15,7 +15,7 @@ ptr = []
 stk = []
 var = {}
 ind = 0
-var.default = 3
+var.default = Rational(3)
 
 def find(str, sym)
   num = 1
