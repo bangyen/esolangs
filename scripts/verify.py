@@ -23,6 +23,10 @@ STEPS = [
     ("pre-commit", [sys.executable, "-m", "pre_commit", "run", "--all-files"]),
     ("pytest", [sys.executable, "-m", "pytest", "-q"]),
     (
+        "ztoalc anchor table is reproducible",
+        [sys.executable, "scripts/make_ztoalc_table.py", "--check"],
+    ),
+    (
         "x86 assembly under unicorn (compilers + references)",
         [sys.executable, "scripts/verify_x86_unicorn.py"],
     ),
