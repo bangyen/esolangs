@@ -28,6 +28,7 @@ from pathlib import Path
 
 from esolangs.tools import boolean
 from esolangs.tools import generate as gen
+from esolangs.tools.booleans import other as other_bools
 
 ROOT = Path(__file__).parents[1]
 EXTRA_CXX = ROOT / "extra" / "c++"
@@ -173,6 +174,27 @@ def main() -> int:
                             f"FAIL -> {out!r}"
                         )
         print(f"{name} boolean: verified tables for n = 1..4")
+
+    # 3x constants: the closed-form _const must push its value on a clean
+    # stack for a wide range of n (the tables above only reach names <= 6).
+    three_x_cmd = _ruby_reference("3x.rb")
+    if three_x_cmd is not None:
+        for n in range(256):
+            program = other_bools._const(n) + "!"  # noqa: SLF001
+            with tempfile.NamedTemporaryFile("w", delete=False) as f:
+                f.write(program)
+                path = f.name
+            try:
+                got = subprocess.run(
+                    [*three_x_cmd, path], capture_output=True
+                ).stdout.decode()
+            finally:
+                Path(path).unlink()
+            ok = got.strip() == str(n)
+            failures += not ok
+            if not ok:
+                print(f"3x const {n}: FAIL -> {got!r}")
+        print("3x const: verified closed-form encodings for n = 0..255")
 
     return 1 if failures else 0
 
