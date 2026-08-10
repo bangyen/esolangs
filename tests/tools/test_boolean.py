@@ -479,6 +479,17 @@ class TestThreeX:
         assert "333x" in program  # the constant-0 encoding appears
         assert "3333x3x" in program  # the constant-1 encoding appears
 
+    def test_constant_table_has_no_override_blocks(self) -> None:
+        """When every row equals the default, no ( ... ) guards are emitted."""
+        assert "(" not in boolean.three_x("0" * 4, 2)
+        assert "(" not in boolean.three_x("1" * 4, 2)
+
+    def test_majority_default_handles_zero_row(self) -> None:
+        """A zero row differing from a majority-1 default still overrides it."""
+        program = boolean.three_x("0110", 2)  # XOR: two 1s, two 0s
+        assert program.startswith("?") and program.endswith("!")
+        assert "(" in program  # the zero row needs an override block
+
     def test_scales_to_more_inputs(self) -> None:
         """The generator handles n beyond the built-in constants."""
         program = boolean.three_x("0" * (2**7), 7)
