@@ -11,13 +11,15 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import esolangs
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.taglate import run
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 
@@ -39,8 +41,12 @@ class TestTaglate:
     def test_divide(self) -> None:
         assert run_and_capture(["93", "di"]) == chr(57 // 51)
 
-    def test_divide_by_zero_pushes_zero(self) -> None:
-        assert run_and_capture(["\x001", "di"]) == "\x00"
+    def test_divide_by_zero_halts(self) -> None:
+        """Division by zero is invalid, so the interpreter halts on it."""
+        import pytest
+
+        with pytest.raises(HaltError):
+            run_and_capture(["1\x00", "di"])
 
     def test_rotate(self) -> None:
         assert run_and_capture(["12", "ei"]) == "2"
@@ -90,6 +96,22 @@ class TestTaglate:
     def test_lone_g_is_ignored(self) -> None:
         assert run_and_capture(["1", "gi"]) == "1"
 
-    def test_unmatched_loop_markers_halt(self) -> None:
-        assert run_and_capture(["\x001", "gy"]) == ""
-        assert run_and_capture(["1", "gz"]) == ""
+    def test_unmatched_loop_markers_rejected(self) -> None:
+        """An unmatched gy/gz is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(["\x001", "gy"])
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(["1", "gz"])
+
+    def test_empty_queue_pop_halts(self) -> None:
+        """Popping an empty queue in arithmetic is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["", "a"])
+        with pytest.raises(HaltError):
+            run_and_capture(["", "i"])

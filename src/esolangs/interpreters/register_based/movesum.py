@@ -1,5 +1,4 @@
-"""
-Movesum interpreter implementation.
+"""Movesum interpreter implementation.
 
 Movesum is an esoteric programming language by User:PythonshellDebugwindow where
 the only instructions are 'move' and 'sum'. Programs operate on a right-unbounded
@@ -16,30 +15,31 @@ The language features:
 import re
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: list[str]) -> None:
+
+def run(code: list[str], io: IO) -> None:
     """Execute a Movesum program with move and sum instructions."""
     if not code:
         raise ValueError("Movesum program cannot be empty")
 
     if len(code) < 2:
         raise ValueError(
-            "Movesum program must have at least initialization and one instruction"
+            "Movesum program must have at least initialization and one instruction",
         )
     reg: re.Pattern[str] = re.compile(r"(\d+) *= *(\d+)")
     arr: dict[int, int] = dict.fromkeys(range(5), 0)
     num: int = 0
     ind: int = 0
-    new: int = 1
 
     for m in reg.finditer(code[0]):
         x: str = m[1]
         y: str = m[2]
         if x == "42":
-            x = input("Key: ")
+            x = io.input_str("Key: ")
         if y == "42":
-            y = input("Value: ")
-            y = y if y else "0"
+            y = io.input_str("Value: ")
+            y = y or "0"
         arr[int(x)] = int(y)
 
     code = code[1:]
@@ -61,13 +61,11 @@ def run(code: list[str]) -> None:
                     dst_idx: int = int(match_result[3])
                     arr[dst_idx] = n
                 else:
-                    print(n, end=" ")
-                    new = 0
+                    io.print_str(f"{n} ")
             elif match_result[3].isdigit():
                 input_dst_idx: int = int(match_result[3])
-                input_str: str = input("\nInput: "[new:])
+                input_str: str = io.input_str()
                 arr[input_dst_idx] = int(input_str) if input_str else 0
-                new = 1
 
         num = (num + 1) * (arr == copy)
         ind = (ind + 1) % len(code)
@@ -77,4 +75,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

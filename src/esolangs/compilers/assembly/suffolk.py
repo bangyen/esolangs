@@ -1,8 +1,11 @@
+"""Compiler that turns Suffolk programs into x86 Linux assembly."""
+
 import sys
 from re import sub
 
 
 def count(code: str, ind: int) -> int:
+    """Return the run length of the command at ``ind``."""
     char = code[ind]
     code += " "
     num = 0
@@ -15,6 +18,7 @@ def count(code: str, ind: int) -> int:
 
 
 def comp(code: str, num: int) -> str:
+    """Compile a Suffolk program to x86 assembly, looping ``num`` times."""
     code = sub("[^><.,!]", "", code)
     res = (
         "global _start\n"

@@ -5,13 +5,15 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from esolangs.interpreters.io import IO
+
 sixfive = importlib.import_module("esolangs.interpreters.tape_based.6-5")
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        sixfive.run(code)
+        sixfive.run(code, IO())
     return buffer.getvalue()
 
 
@@ -75,3 +77,12 @@ class TestSixFive:
     def test_skip_when_equal(self) -> None:
         """7n skips the next instruction when the cell equals n."""
         assert run_and_capture("55A7A5A0") == "\n\n"
+
+    def test_negative_cell_output_halts(self) -> None:
+        """Outputting a negative cell value is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture("2A")

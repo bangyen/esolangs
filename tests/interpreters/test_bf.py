@@ -13,6 +13,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import esolangs
+from esolangs.interpreters.io import IO
 
 bf = importlib.import_module("esolangs.interpreters.tape_based.bf")
 
@@ -20,7 +21,7 @@ bf = importlib.import_module("esolangs.interpreters.tape_based.bf")
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        bf.run(code)
+        bf.run(code, IO())
     return buffer.getvalue()
 
 
@@ -62,10 +63,16 @@ class TestBrainfuck:
         """A doubly-nested loop leaves a known value in the printed cell."""
         assert run_and_capture("+++[>++[>+<-]<-]>+++.") == "\x03"
 
-    def test_unmatched_bracket_halts(self) -> None:
-        assert run_and_capture("[") == ""
-        assert run_and_capture("]") == ""
-        assert run_and_capture("+]") == ""
+    def test_unmatched_bracket_rejected(self) -> None:
+        """Unbalanced brackets are a malformed program, not a halt."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture("[")
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture("]")
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture("+]")
 
     def test_parity_with_ascii_art(self) -> None:
         """A program and its ASCII-art translation behave identically."""

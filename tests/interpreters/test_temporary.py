@@ -4,13 +4,14 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.stack_based.temporary import run
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 
@@ -67,3 +68,28 @@ class TestTemporaryStack:
             return_value="o",
         ):
             assert run_and_capture("€ v66") == ""
+
+    def test_duplicate_on_empty_stack_halts(self) -> None:
+        """Duplicating an empty stack is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture("+")
+
+    def test_squish_negative_char_halts(self) -> None:
+        """Squishing a negative value in byte mode is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture("o v0 v1")
+
+    def test_repeat_without_following_instruction_rejected(self) -> None:
+        """A : with no instruction after it is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="following instruction"):
+            run_and_capture("v1 :")

@@ -112,7 +112,7 @@ def _validate_tt(truth_table: str, n: int) -> None:
     if len(truth_table) != 2**n:
         raise ValueError(
             f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}"
+            f"got {len(truth_table)}",
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
@@ -158,7 +158,7 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
 
 
 def taglate(truth_table: str, n: int) -> str:
-    """Build a Taglate program computing the given truth table.
+    r"""Build a Taglate program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.

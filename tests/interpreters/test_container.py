@@ -5,6 +5,7 @@ from contextlib import redirect_stdout
 
 import pytest
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run
 
 HELLO_WORLD = [
@@ -42,7 +43,7 @@ class TestContainer:
         """Hello, World! program from esolangs.org."""
         buffer = io.StringIO()
         with pytest.raises(SystemExit) as exc, redirect_stdout(buffer):
-            run(HELLO_WORLD)
+            run(HELLO_WORLD, io=IO())
         assert exc.value.code == 0
         assert buffer.getvalue() == "Hello, world!"
 
@@ -65,5 +66,14 @@ class TestContainer:
             pytest.raises(SystemExit) as exc,
             redirect_stdout(io.StringIO()),
         ):
-            run(code)
+            run(code, IO())
         assert exc.value.code == 0
+
+    def test_rule_before_declaration_rejected(self) -> None:
+        """A rule line before any container declaration is malformed."""
+        with pytest.raises(ValueError, match="before any container"):
+            run(["+1 A>=0"], IO())
+
+    def test_empty_program_halts(self) -> None:
+        """An empty program halts immediately with no output."""
+        run([], IO())

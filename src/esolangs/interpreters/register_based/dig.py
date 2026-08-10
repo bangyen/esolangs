@@ -1,21 +1,36 @@
-"""
-Dig interpreter implementation.
+"""Dig interpreter implementation.
 
 2D esoteric language with a mole that moves on a grid and can dig underground.
 Movement commands work overground, work commands function underground.
+
+The wiki only lists ``@`` as a halt; this interpreter also stops the program
+(without error) when the mole walks off the grid.  A work command that needs a
+digit from an adjacent cell but finds none, or divides by an adjacent zero, is
+an invalid runtime operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`; an empty program is malformed and
+rejected with :class:`ValueError`.
 """
 
 import sys
 from collections.abc import Callable
 
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import IO
 
-def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
+
+def run(
+    code: list[str],
+    io: IO,
+    func: Callable[[], bool] = lambda: False,
+) -> None:
     """Execute a Dig program with mole movement and underground work commands."""
+    if not code:
+        raise ValueError("Dig program cannot be empty")
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
     direct = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-    line = mole = num = x = y = 0
+    mole = num = x = y = 0
     move = 1
 
     def value() -> int:
@@ -26,6 +41,8 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
                 val = code[x + i][y + j]
                 if val.isdigit():
                     lst.append(int(val))
+        if not lst:
+            raise HaltError
         return lst[0]
 
     while True:
@@ -37,17 +54,20 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
                 elif n == 0:
                     mole = 32
             elif char in "=~":
-                temp = input("\n" * line + "Input: ")
-                line = False
+                temp = io.input_str()
 
-                mole = ord(temp[0]) if char == "=" else int(temp[0])
+                if not temp:
+                    mole = 0
+                elif char == "=":
+                    mole = ord(temp[0])
+                else:
+                    mole = int(temp[0])
             elif char == ":":
                 if mole < 10:
-                    print(mole, end="")
+                    io.print_num(mole)
                 else:
-                    print(chr(mole), end="")
+                    io.print_char(chr(mole))
 
-                line = True
                 mole = 0
             elif char == "+":
                 mole += value()
@@ -56,7 +76,10 @@ def run(code: list[str], func: Callable[[], bool] = lambda: False) -> None:
             elif char == "*":
                 mole *= value()
             elif char == "/":
-                mole //= value()
+                n = value()
+                if n == 0:
+                    raise HaltError
+                mole //= n
             elif char == ";":
                 code[x] = code[x][:y] + str(mole) + code[x][y + 1 :]
             elif char.isdigit():
@@ -91,4 +114,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

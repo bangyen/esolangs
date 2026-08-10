@@ -44,6 +44,7 @@ COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
 
 
 def main() -> int:
+    """Verify the x86 compilers under Unicorn, reporting failures."""
     failures = 0
     for name, path, generator in GENERATOR_CASES:
         binary = assemble(path)

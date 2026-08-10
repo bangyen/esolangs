@@ -1,10 +1,25 @@
+"""Interpreter for MAMMALIAN.
+
+SEED/CONFLAGRATE operate on all 23 arrays, EXCRETE/CONSUME/FISSION/DIGEST on
+the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads a byte
+of input, and PRONOUNCE prints the accumulator as a byte.
+
+The wiki defines SPRINT with a too-large ``x`` as a NOP (it does nothing when
+the array has fewer than ``x`` variables), which this interpreter follows;
+LEAPFROG with a negative jump target is undefined by the wiki, so the
+interpreter halts instead of jumping.
+"""
+
 import functools
 import operator
 import re
 import sys
 
+from esolangs.interpreters.io import IO
+
 
 def total(op: int, lst: list[list[int]]) -> None:
+    """Apply SEED (``op == 0``) or CONFLAGRATE to all 23 arrays."""
     if op:
         size = list(map(len, lst))
         flat: list[int] = functools.reduce(operator.iadd, lst, [])
@@ -17,7 +32,7 @@ def total(op: int, lst: list[list[int]]) -> None:
             if x > y and y:
                 num = x // y
                 flat[k] -= num
-                flat[n] = (x + num) % 256
+                flat[n] = (y + num) % 256
             elif x < y and x:
                 num = y % x
                 flat[k] += num
@@ -34,6 +49,7 @@ def total(op: int, lst: list[list[int]]) -> None:
 
 
 def partial(op: int, curr: list[int], acc: int) -> int:
+    """Apply an EXCRETE/CONSUME/FISSION/DIGEST op to the current array."""
     if op == 2:
         curr.append(acc % 256)
         acc = 0
@@ -55,7 +71,8 @@ def partial(op: int, curr: list[int], acc: int) -> int:
     return acc
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
+    """Run a MAMMALIAN program."""
     ins = (
         "SEED",
         "CONFLAGRATE",
@@ -72,7 +89,6 @@ def run(code: str) -> None:
     tokens = re.findall(f'({"|".join(ins)})', code)
     lst: list[list[int]] = [[0] for _ in range(23)]
     ind = ptr = acc = 0
-    new = 1
 
     while ind < len(tokens):
         n = ins.index(tokens[ind])
@@ -88,14 +104,12 @@ def run(code: str) -> None:
             if ind < 0:
                 break
         elif n == 8:
-            val = input("\nInput: "[new:])
-            new = 1
+            val = io.input_str()
             if val:
                 m = ord(val[0]) ^ acc
                 lst[0].append(m % 256)
         elif n == 9:
-            print(chr(acc % 256), end="")
-            new = 0
+            io.print_char(chr(acc % 256))
 
         ind += 1
 
@@ -104,4 +118,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

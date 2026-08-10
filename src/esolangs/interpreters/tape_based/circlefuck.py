@@ -1,8 +1,25 @@
+"""Interpreter for CircleFuck.
+
+The tape is the program itself: cells wrap, + and - adjust the current cell,
+, reads input, . outputs, [ and ] jump to matching brackets reading the cell,
+@ halts, { and } insert and remove cells, and the pointer moves around the
+circular tape.
+
+A program with no instructions is malformed and is rejected with
+:class:`ValueError`, as is one with unmatched ``[``/``]`` brackets; deleting
+the last cell (``}``) is an invalid operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`.
+"""
+
 import re
 import sys
 
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import IO
+
 
 def parse(code: str) -> list[int]:
+    """Decode CircleFuck's escape sequences and keep printable commands only."""
     reg = r"\\(?:\d\d\d|" r"[\dA-F](?:$|[^\d]))"
     exp = r"((^|[^\\]) |\\( )|(\\)o)"
 
@@ -22,6 +39,12 @@ def parse(code: str) -> list[int]:
 
 
 def find(code: list[int], ind: int, ptr: int) -> int:
+    """Return the matching bracket for ``ind``.
+
+    Raises :class:`ValueError` if the brackets are unbalanced: the wiki
+    defines ``[``/``]`` only for matched pairs, so an unmatched bracket is a
+    malformed program.
+    """
     char = chr(code[ind])
     if char == "[":
         if code[ptr]:
@@ -40,7 +63,7 @@ def find(code: list[int], ind: int, ptr: int) -> int:
         ind = (ind + mode) % num
         sym = chr(code[ind])
         if ind == start:
-            return -1
+            raise ValueError("unmatched bracket")
         if sym == "[":
             match += 1
         elif sym == "]":
@@ -48,10 +71,12 @@ def find(code: list[int], ind: int, ptr: int) -> int:
     return ind
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
+    """Run a CircleFuck program."""
     cells: list[int] = parse(code)
+    if not cells:
+        raise ValueError("CircleFuck program cannot be empty")
     ind = ptr = 0
-    new = 1
 
     while True:
         if (char := chr(cells[ind])) == ">":
@@ -63,17 +88,12 @@ def run(code: str) -> None:
         elif char == "-":
             cells[ptr] = (cells[ptr] - 1) % 256
         elif char == ",":
-            val = input("\nInput: "[new:])
-            cells[ptr] = ord(val[0])
-            new = 1
+            cells[ptr] = io.input_char()
         elif char in "[]":
             ind = find(cells, ind, ptr)
-            if ind == -1:
-                return
         elif char == ".":
             val = chr(cells[ptr])
-            print(val, end="")
-            new = 0
+            io.print_char(val)
         elif char == "@":
             return
         elif char == "#":
@@ -82,6 +102,8 @@ def run(code: str) -> None:
             cells.insert(ptr, 0)
             ind += 1
         elif char == "}":
+            if len(cells) == 1:
+                raise HaltError
             cells.pop(ptr)
 
         ind = (ind + 1) % len(cells)
@@ -91,4 +113,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

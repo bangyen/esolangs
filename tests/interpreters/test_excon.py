@@ -3,13 +3,14 @@
 import io
 from contextlib import redirect_stdout
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.excon import run
 
 
 def run_and_capture(code: str) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 
@@ -32,3 +33,12 @@ class TestEXCON:
 
     def test_all_bits(self) -> None:
         assert run_and_capture("^<^<^<^<^<^<^<^!") == "\xff"
+
+    def test_pointer_fault_halts(self) -> None:
+        """Moving the pointer more than 8 steps left is a fault."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture("^" + "<" * 8 + "^!")

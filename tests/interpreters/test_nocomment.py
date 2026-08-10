@@ -11,6 +11,7 @@ import io
 from contextlib import redirect_stdout
 
 import esolangs
+from esolangs.interpreters.io import IO
 
 nocomment = importlib.import_module("esolangs.interpreters.tape_based.nocomment")
 
@@ -18,7 +19,7 @@ nocomment = importlib.import_module("esolangs.interpreters.tape_based.nocomment"
 def run_and_capture(code: str) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        nocomment.run(code)
+        nocomment.run(code, IO())
     return buffer.getvalue()
 
 
