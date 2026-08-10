@@ -199,10 +199,11 @@ class TestBIOEdgeCases:
         assert f.getvalue() == chr(300 % 256)
 
     def test_unmatched_while_loop(self) -> None:
-        """A loop without its closing brace is scanned to the end cleanly."""
-        with redirect_stdout(io.StringIO()) as f:
-            run("0ox;0ix{0oy;", io=IO())  # Missing closing brace
-        assert f.getvalue() == ""
+        """A loop without its closing brace is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run("0iy{0ox;", io=IO())  # Missing closing brace
 
     def test_empty_while_loop(self) -> None:
         """Test empty while loop that doesn't execute."""
@@ -211,10 +212,11 @@ class TestBIOEdgeCases:
         assert f.getvalue() == "\x00"
 
     def test_unclosed_loop_skipped(self) -> None:
-        """A loop skipped when its register is zero with no closer halts cleanly."""
-        with redirect_stdout(io.StringIO()) as f:
+        """A loop skipped when its register is zero with no closer is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
             run("0iy{0ox;", io=IO())
-        assert f.getvalue() == ""
 
     def test_while_loop_with_zero_register(self) -> None:
         """Test while loop when register is already zero."""

@@ -275,12 +275,12 @@ class TestPolynomialExecution:
             run(program, io=IO())
         assert buffer.getvalue() == "\x00"
 
-    def test_unmatched_bracket_does_not_crash(self) -> None:
-        """A lone endif with no matching opener is handled gracefully."""
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
+    def test_unmatched_bracket_rejected(self) -> None:
+        """A control-flow bracket with no partner is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
             run("f(x) = x - 4", io=IO())
-        assert buffer.getvalue() == ""
 
     def test_input_instruction(self) -> None:
         """A root of 4i encodes an input instruction (value stored in reg)."""

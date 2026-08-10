@@ -33,3 +33,12 @@ class TestEXCON:
 
     def test_all_bits(self) -> None:
         assert run_and_capture("^<^<^<^<^<^<^<^!") == "\xff"
+
+    def test_pointer_fault_halts(self) -> None:
+        """Moving the pointer more than 8 steps left is a fault."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture("^" + "<" * 8 + "^!")

@@ -25,3 +25,17 @@ class TestClockwise:
         """Truth-machine with input 0 halts after outputting '0'."""
         code = ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"]
         assert run_and_capture(code, inputs=["0"]) == "0"
+
+    def test_empty_program_rejected(self) -> None:
+        """An empty program is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="empty"):
+            run_and_capture([])
+
+    def test_unclosed_ring_rejected(self) -> None:
+        """A pointer that walks off the ring is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="not closed"):
+            run_and_capture(["+;S"])

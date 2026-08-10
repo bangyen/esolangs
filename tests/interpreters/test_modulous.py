@@ -4,6 +4,9 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+import pytest
+
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.stack_based.modulous import run
 
@@ -90,3 +93,61 @@ class TestModulous:
 
     def test_variable_subtract(self) -> None:
         assert run_and_capture("[VAR1-3][PRT VAR1 INT][END]") == "-3"
+
+    def test_add_on_empty_stack_halts(self) -> None:
+        """Arithmetic on an empty stack is an invalid operation."""
+        with pytest.raises(HaltError):
+            run("[ADD 1]", IO())
+
+    def test_sub_on_empty_stack_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[SUB 1]", IO())
+
+    def test_pop_on_empty_stack_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[POP]", IO())
+
+    def test_swap_on_short_stack_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[SWP]", IO())
+
+    def test_dup_on_empty_stack_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[DUP]", IO())
+
+    def test_print_on_empty_stack_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[PRT INT]", IO())
+
+    def test_print_undefined_variable_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[PRT VAR9 INT]", IO())
+
+    def test_arithmetic_undefined_variable_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[VAR9+3]", IO())
+
+    def test_subtract_undefined_variable_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[VAR9-3]", IO())
+
+    def test_random_zero_bound_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run("[RND 0]", IO())
+
+    def test_missing_jump_operand_rejected(self) -> None:
+        """A command missing a required operand is malformed."""
+        with pytest.raises(ValueError, match="missing operand"):
+            run("[JMP]", IO())
+
+    def test_missing_add_operand_rejected(self) -> None:
+        with pytest.raises(ValueError, match="missing operand"):
+            run("[ADD]", IO())
+
+    def test_missing_push_operand_rejected(self) -> None:
+        with pytest.raises(ValueError, match="missing operand"):
+            run("[PSH INT]", IO())
+
+    def test_missing_random_operand_rejected(self) -> None:
+        with pytest.raises(ValueError, match="missing operand"):
+            run("[RND]", IO())

@@ -118,3 +118,10 @@ class TestASCIIArt:
         assert (
             run_and_capture(program(LOOP_OPEN, LOOP_OPEN, LOOP_CLOSE, LOOP_CLOSE)) == ""
         )
+
+    def test_trailing_empty_block_rejected(self) -> None:
+        """A program ending with an empty block is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="empty block"):
+            run_and_capture(DOT + "\n\n")

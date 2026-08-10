@@ -215,6 +215,15 @@ class TestHufEdgeCases:
         # Python's chr() function accepts values up to 0x10FFFF
         assert f.getvalue() == chr(300)
 
+    def test_negative_register_output_halts(self) -> None:
+        """Outputting a negative register value is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run("#+!>@", io=IO())
+
 
 class TestHufMultiplicationMode:
     """Test Huf's multiplication mode in detail."""
