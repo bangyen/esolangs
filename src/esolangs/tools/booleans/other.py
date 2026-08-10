@@ -12,32 +12,23 @@ _CONST: dict[int, str] = {}
 
 
 def _const(n: int) -> str:
-    """3x code pushing ``n`` on a clean stack (for n in 0..5)."""
-    if n not in _CONST:
-        raise ValueError(f"3x boolean generator needs a constant for {n}")
-    return _CONST[n]
+    """3x code pushing ``n`` on a clean stack, for any integer ``n``.
 
-
-def _init_consts() -> None:
-    neg1 = "3" + "3" + _ZERO + "x"  # (0-3)//3 = -1
-    neg3 = _ONE + "3" + _ZERO + "x"  # (0-3)//1 = -3
-    six = _ONE + neg3 + "3" + "x"  # (3-(-3))//1 = 6
-    _CONST[0] = _ZERO
-    _CONST[1] = _ONE
-    _CONST[2] = _ONE + _ONE + "3x"  # (3-1)//1 = 2
-    _CONST[3] = "3"
-    _CONST[4] = _ONE + neg1 + "3" + "x"  # (3-(-1))//1 = 4
-    _CONST[5] = _ONE + _ONE + six + "x"  # (6-1)//1 = 5
-
-
-_init_consts()
-
-# Trash variable and result variable, chosen to avoid the input variables
-# 0..n-1 and the loop-trash variable 4.  Variables 0..n-1 hold the inputs,
-# variable 5 the result, and variable 4 is the ``v``-trash that the guard
-# loops discard into.  Constants for 4 and 5 are verified above.
-_TRASH = _const(4) + "#v"  # pop the stack top into variable 4
-_RESULT = 5
+    Builds ``n`` from the smaller ``n-3`` (all nonnegative integers are
+    reachable from 3 and 0 via ``(A-B)//C``): ``n = (3 - (-(n-3))) // 1``,
+    where ``-(n-3) = (0 - (n-3)) // 1``.
+    """
+    if n == 0:
+        return _ZERO
+    if n == 1:
+        return _ONE
+    if n == 2:
+        return _ONE + _ONE + "3x"  # (3-1)//1
+    if n == 3:
+        return "3"
+    # [n-3] -> push 1, swap, push 0, x  => [-(n-3)]
+    # then push 1, swap, push 3, x      => [(3-(-(n-3)))//1] = [n]
+    return _const(n - 3) + _ONE + "#" + _ZERO + "x" + _ONE + "#" + "3" + "x"
 
 
 def three_x(truth_table: str, n: int) -> str:
@@ -49,10 +40,10 @@ def three_x(truth_table: str, n: int) -> str:
     3x reads an integer with ``?`` and has no direct boolean literals or
     conditionals, so the generator builds a decision tree with variables:
 
-    - each ``?`` reads one input bit and stores it in a variable;
+    - each ``?`` reads one input bit and stores it in a variable (0..n-1);
     - a ``( ... )`` loop runs while its guard is nonzero: the guard value is
-      popped into a trash variable (``4#v``), the body stores the table
-      entry into the result variable, and a sentinel zero exits the loop.
+      popped into a trash variable (``n``), the body stores the table entry
+      into the result variable (``n+1``), and a sentinel zero exits the loop.
 
     The result variable defaults to the all-zeros row and each matching
     input combination overrides it.  The ``( ... )`` loop's guard leaves the
@@ -66,6 +57,10 @@ def three_x(truth_table: str, n: int) -> str:
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
 
+    # Variables 0..n-1 hold the inputs, n is the loop-trash, n+1 the result.
+    trash = _const(n) + "#v"  # pop the stack top into variable n
+    result = n + 1
+
     def store(var: int) -> str:
         return _const(var) + "#v"  # var = stack top, stack ends empty
 
@@ -77,23 +72,23 @@ def three_x(truth_table: str, n: int) -> str:
 
     def guard(i: int, body: str) -> str:
         """If bit i is 1, run ``body``; leaves the stack balanced."""
-        return read(i) + "(" + _TRASH + body + _ZERO + ")" + _TRASH
+        return read(i) + "(" + trash + body + _ZERO + ")" + trash
 
     def guard_not(i: int, body: str) -> str:
         """If bit i is 0, run ``body``; leaves the stack balanced."""
-        return read(i) + not_bit() + "(" + _TRASH + body + _ZERO + ")" + _TRASH
+        return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
 
     prog = "".join("?" + store(i) for i in range(n))
-    prog += (_ONE if truth_table[0] == "1" else _ZERO) + store(_RESULT)
+    prog += (_ONE if truth_table[0] == "1" else _ZERO) + store(result)
 
     for combo in range(1, 2**n):
         bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-        body = (_ONE if truth_table[combo] == "1" else _ZERO) + store(_RESULT)
+        body = (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
         for i in range(n - 1, -1, -1):
             body = guard(i, body) if bits[i] else guard_not(i, body)
         prog += body
 
-    prog += read(_RESULT) + "!"
+    prog += read(result) + "!"
     return prog
 
 
