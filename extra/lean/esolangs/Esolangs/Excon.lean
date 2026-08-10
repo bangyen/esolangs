@@ -12,11 +12,6 @@ interpreter). -/
 
 namespace Excon
 
-def file_name : String := "test.txt"
-
-def read_file : IO String := do
-  IO.FS.readFile file_name
-
 def empty_list : List ℕ := List.replicate 8 0
 
 def gets (l : List ℕ) (n : ℕ) : ℕ :=
@@ -44,7 +39,4 @@ def run (m : ℕ) (i : String.Legacy.Iterator) (c : Char)
   else
     run (m - 1) i.next i.next.curr l n s
 
-#eval do
-  let c ← read_file
-  run c.length (String.Legacy.mkIterator c) c.front empty_list 7 ""
 end Excon

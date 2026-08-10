@@ -12,13 +12,8 @@ count so the ``#eval`` always terminates. -/
 
 namespace Bfpda
 
-def file_name : String := "test.txt"
-  -- name of the file containing the BF-PDA program
 def limit : ℕ := 100
   -- max number of commands
-
-def read_file : IO String := do
-  IO.FS.readFile file_name
 
 def list.pop (l : List ℕ) : List ℕ := l.reverse.tail.reverse
 def list.top (l : List ℕ) : ℕ := l.reverse.head!
@@ -68,7 +63,4 @@ def run (i : String.Legacy.Iterator) (c : Char) (m : ℕ)
   else
     run i.next i.next.curr (m - 1) l s
 
-#eval do
-  let c ← read_file
-  run (String.Legacy.mkIterator c) c.front limit [] ""
 end Bfpda

@@ -11,11 +11,6 @@ accumulator as a character. -/
 
 namespace Albabet
 
-def file_name : String := "test.txt"
-
-def read_file : IO String := do
-  IO.FS.readFile file_name
-
 def run (n : ℕ) (i : String.Legacy.Iterator) (c : Char)
     (x y : ℕ) (s : String) : IO Unit :=
   if n = 0 then
@@ -41,7 +36,4 @@ def run (n : ℕ) (i : String.Legacy.Iterator) (c : Char)
   else
     run (n - 1) i.next i.next.curr x y s
 
-#eval do
-  let c ← read_file
-  run c.length (String.Legacy.mkIterator c) c.front 0 0 ""
 end Albabet
