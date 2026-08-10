@@ -496,26 +496,29 @@ class TestThreeX:
         program = boolean.three_x("0" * (2**7), 7)
         assert program.count("?") == 7
 
-    def test_minimal_constant_encodings(self) -> None:
-        """Small constants use the BFS-shortest clean-stack programs."""
+    def test_digit_constant_encodings(self) -> None:
+        """The base-3 digit seeds are the closed-form minimal programs."""
         from esolangs.tools.booleans import other
 
-        assert len(other._const(4)) == 16  # noqa: SLF001
-        assert len(other._const(6)) == 22  # noqa: SLF001 - cheaper than name 5
-        assert len(other._const(13)) == 44  # noqa: SLF001
+        assert other._const(0) == "333x"  # noqa: SLF001
+        assert other._const(1) == "3333x3x"  # noqa: SLF001
+        assert other._const(2) == "3333x3x3333x3x3x"  # noqa: SLF001
 
-    def test_const_beyond_bfs_uses_recurrence(self) -> None:
-        """Integers past the BFS reach fall back to the general recurrence."""
+    def test_base_three_digits_accumulate(self) -> None:
+        """Each base-3 digit past the first appends the 3v+d affine step."""
         from esolangs.tools.booleans import other
 
-        prog = other._const(14)  # noqa: SLF001 - unreachable within BFS bounds
-        assert prog.startswith(other._const(11))  # noqa: SLF001 - n = (3-(-(n-3)))//1
-        assert len(prog) > len(other._const(13))  # noqa: SLF001
+        # 12 is "110" in base 3: seed 1, then d=1, then d=0.  Each transform
+        # adds exactly one `#` (the swap before the `x`), and no seed has one.
+        twelve = other._const(12)  # noqa: SLF001
+        assert twelve.startswith(other._const(1))  # noqa: SLF001
+        assert twelve.count("#") == 2
 
-    def test_bfs_fill_runs_once(self) -> None:
-        """Repeated fills short-circuit instead of re-searching."""
+    def test_formula_scales_logarithmically(self) -> None:
+        """The closed form grows with the digit count, not the value."""
         from esolangs.tools.booleans import other
 
-        before = dict(other._CONST)  # noqa: SLF001
-        other._fill_minimal()  # noqa: SLF001
-        assert before == other._CONST  # noqa: SLF001
+        small, large = other._const(100), other._const(1_000_000)  # noqa: SLF001
+        assert len(small) < 120  # 100 is "10201": 5 digits
+        assert len(large) < 350  # 1_000_000 is 13 base-3 digits
+        assert len(large) < len(small) * 4
