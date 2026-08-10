@@ -5,11 +5,16 @@ this file only tracks what is still on the table.
 
 ## Planned
 
-### PyPI trusted-publishing release pipeline
-Publish `esolangs` to PyPI using trusted publishing (an OIDC workflow rather
-than a token). The package, public API, CLI, and typing are already in shape
-for distribution; this is the remaining step to make it installable by
-others.
+### Shared decision tree for the 3x boolean generator
+The 3x generator (`src/esolangs/tools/booleans/other.py`) emits one
+independent nested guard chain per table row that differs from the majority
+default, and each chain's scaffolding (`read + ( + trash + sentinel + ) +
+trash`, ~19 chars) is duplicated across rows.  Grouping rows by common bit
+prefixes into a shared tree would amortize that scaffolding, roughly halving
+program size for `n >= 4`; a sibling idea is pre-negating the stored input
+bits to halve the `not_bit` cost on tables where one bit value dominates.
+Both are structural rewrites of the generator, still verified against the
+Ruby reference.
 
 ### Boolean-table transpiler bridge
 A dynamic transpiler across the boolean-capable languages — Sophie, Modulous,
