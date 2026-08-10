@@ -1,11 +1,12 @@
 """Verify the generator-only languages against their extra/ references.
 
-Forþ and Painfuck have C++ references in ``extra/c++``, LaserFuck and
-Unsquare have Rust references in ``extra/rust``, EXCON has an R reference in
-``extra/r``, and Unsquare also has a Ruby reference in ``extra/ruby``.  This
-script builds whatever references it can (g++ for C++, cargo for Rust) and
-round-trips each language's generator: a generated program must reproduce its
-text when run through the reference implementation.
+Forþ, Painfuck, Dimensional, 2dFish, %^2^-1, and Basicfuck have C++
+references in ``extra/c++``, LaserFuck and Unsquare have Rust references in
+``extra/rust``, EXCON has an R reference in ``extra/r``, and Unsquare and
+bit~ have Ruby references in ``extra/ruby``.  This script builds whatever
+references it can (g++ for C++, cargo for Rust) and round-trips each
+language's generator: a generated program must reproduce its text when run
+through the reference implementation.
 
 It is called from CI's ``cxx``, ``rust``, and ``extra-languages`` jobs (which
 provide g++, cargo, and R/Ruby respectively) and from ``verify.py`` locally.
@@ -14,8 +15,8 @@ References whose toolchain is missing are skipped, not failed.
 Usage:
     PYTHONPATH=src python scripts/verify_extra_generators.py
 
-Requires: g++ (for forþ/painfuck), cargo (for laserfuck/unsquare), Rscript
-(for EXCON), and/or ruby (for unsquare).
+Requires: g++ (for the C++ references), cargo (for laserfuck/unsquare),
+Rscript (for EXCON), and/or ruby (for unsquare and bit~).
 """
 
 import shutil
@@ -53,7 +54,7 @@ def _build_cxx(name: str) -> list[str] | None:
     """Compile the C++ reference for ``name``, or None if g++ is missing."""
     if shutil.which("g++") is None:
         return None
-    binary = Path("/tmp") / name
+    binary = Path("/tmp") / f"verify-{name}"
     rv = subprocess.run(
         ["g++", "-std=c++11", str(EXTRA_CXX / f"{name}.cpp"), "-o", str(binary)],
         capture_output=True,
@@ -79,18 +80,19 @@ def _r_reference() -> list[str] | None:
     return ["Rscript", str(EXTRA_R / "excon.r")]
 
 
-def _ruby_reference() -> list[str] | None:
-    """Return the Ruby command prefix for unsquare, or None if ruby is missing."""
+def _ruby_reference(name: str) -> list[str] | None:
+    """Return the Ruby command prefix for ``name``, or None if ruby is missing."""
     if shutil.which("ruby") is None:
         return None
-    return ["ruby", str(EXTRA_RUBY / "unsquare.rb")]
+    return ["ruby", str(EXTRA_RUBY / name)]
 
 
 def main() -> int:
     """Verify the extra generators round-trip, reporting failures."""
     failures = 0
 
-    cxx = {name: _build_cxx(name) for name in ("forþ", "painfuck")}
+    cxx_names = ("forþ", "painfuck", "dimensional", "2dFish", "%^2^-1", "basicfuck")
+    cxx = {name: _build_cxx(name) for name in cxx_names}
     rust = dict.fromkeys(("laserfuck", "unsquare"))
     if _build_rust():
         rust = {
@@ -101,9 +103,14 @@ def main() -> int:
     references: list[tuple[str, Callable[[str], str], list[str] | None]] = [
         ("Forþ", gen.forth, cxx["forþ"]),
         ("Painfuck", gen.painfuck, cxx["painfuck"]),
+        ("Dimensional", gen.dimensional, cxx["dimensional"]),
+        ("2dFish", gen.two_d_fish, cxx["2dFish"]),
+        ("%^2^-1", gen.pct_squared_minus_one, cxx["%^2^-1"]),
+        ("Basicfuck", gen.basicfuck, cxx["basicfuck"]),
         ("LaserFuck", gen.laserfuck, rust["laserfuck"]),
         ("Unsquare", gen.unsquare, rust["unsquare"]),
-        ("Unsquare", gen.unsquare, _ruby_reference()),
+        ("Unsquare", gen.unsquare, _ruby_reference("unsquare.rb")),
+        ("bit~", gen.bit_tilde, _ruby_reference("bit.rb")),
         ("EXCON", gen.excon, _r_reference()),
     ]
 
