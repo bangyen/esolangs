@@ -6,7 +6,9 @@ hand.
 
 | Language | Text generator | Interpreter | Boolean | Compiler | Examples |
 | --- | :---: | :---: | :---: | :---: | :---: |
+| %^2^-1 | yes |  |  |  |  |
 | 123 | yes |  |  |  |  |
+| 2dFish | yes |  |  |  |  |
 | 6-5 | yes | yes |  |  | hello cat |
 | ASCII art | yes | yes |  |  | hello |
 | BF | yes | yes |  |  | hello |
@@ -14,6 +16,7 @@ hand.
 | BFStack | yes | yes |  | yes | hello |
 | BIO | yes | yes |  |  | hello |
 | Back |  | yes |  |  |  |
+| Basicfuck | yes |  |  |  |  |
 | BitDeque |  | yes |  |  |  |
 | BrainIf | yes | yes | yes |  | hello truth-machine |
 | CircleFuck | yes | yes | yes |  | hello truth-machine |
@@ -21,6 +24,7 @@ hand.
 | Container | yes | yes |  |  | hello |
 | DSDLAI |  | yes |  |  |  |
 | Dig | yes | yes |  |  | hello |
+| Dimensional | yes |  |  |  |  |
 | Dotlang | yes | yes |  |  | hello |
 | EXCON | yes | yes |  | yes | hello |
 | Eval | yes | yes |  |  | hello |
@@ -48,6 +52,7 @@ hand.
 | Unsquare | yes |  |  | yes |  |
 | WII2D | yes | yes |  |  | hello |
 | ZTOALC | yes | yes |  |  | hello |
+| bit~ | yes |  |  |  |  |
 | huf | yes | yes |  |  | hello |
 
 The `esolangs` command lists the same languages:

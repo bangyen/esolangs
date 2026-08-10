@@ -37,12 +37,16 @@ def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
 
 LANGUAGES: dict[str, Language] = {
     "123": Language("123", _generate._123),  # noqa: SLF001 - "123" is a language name
+    "2dFish": Language("2dFish", _generate.two_d_fish),
     "6-5": Language("6-5", _generate.six_five, "tape_based.6-5"),
+    "%^2^-1": Language("%^2^-1", _generate.pct_squared_minus_one),
     "ASCII art": Language("ASCII art", _generate.ascii_art, "tape_based.ascii-art"),
     "Back": Language("Back", interpreter="tape_based.back", split=True),
+    "Basicfuck": Language("Basicfuck", _generate.basicfuck),
     "BF": Language("BF", _generate.bf, "tape_based.bf"),
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
     "BIO": Language("BIO", _generate.bio, "register_based.bio"),
+    "bit~": Language("bit~", _generate.bit_tilde),
     "BitDeque": Language("BitDeque", interpreter="other.bitdeque"),
     "BrainIf": Language("BrainIf", _generate.brainif, "tape_based.brainif", split=True),
     "CircleFuck": Language("CircleFuck", _generate.circlefuck, "tape_based.circlefuck"),
@@ -53,6 +57,7 @@ LANGUAGES: dict[str, Language] = {
         "Container", _generate.container, "other.container", split=True
     ),
     "Dig": Language("Dig", _generate.dig, "register_based.dig", split=True),
+    "Dimensional": Language("Dimensional", _generate.dimensional),
     "Dotlang": Language(
         "Dotlang", _generate.dotlang, "register_based.dotlang", split=True
     ),
