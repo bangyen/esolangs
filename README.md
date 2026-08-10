@@ -168,7 +168,7 @@ Languages that don't fit into the above categories.
 Implementations written in languages other than Python.
 
 Note: the generators for Forþ, Painfuck, Dimensional, 2dFish, %^2^-1,
-Basicfuck, LaserFuck, Unsquare, bit~, EXCON, 123, and NoComment are
+Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON, 123, and NoComment are
 round-trip verified against their native references (C++, Rust, R, Ruby, or
 x86/RISC-V assembly) in CI.
 
@@ -205,6 +205,7 @@ x86/RISC-V assembly) in CI.
 ### Ruby Implementations
 
 - [bit~](https://esolangs.org/wiki/Bit~)
+- [3x](https://esolangs.org/wiki/3x)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 - [3x](https://esolangs.org/wiki/3x)
