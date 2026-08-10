@@ -173,6 +173,13 @@ round-trip verified against their native references (C++, Rust, R, Ruby, or
 x86/RISC-V assembly) in CI, and 3x's n = 1 boolean generator is verified the
 same way.
 
+The remaining extra implementations (Kak, Trash, Number Seventy-Four, 2 Bits
+1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA) are kept as
+self-contained interpreters but do not have round-trip-verified generators:
+their output classes are too narrow for text (e.g. Kak prints only tape bits,
+Trash only primes, Number Seventy-Four only `0`/`1`/`H`), or they lack a
+file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
+
 ### C++ Implementations
 
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
@@ -209,7 +216,6 @@ same way.
 - [3x](https://esolangs.org/wiki/3x)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
-- [3x](https://esolangs.org/wiki/3x)
 
 ### Rust Implementations
 
