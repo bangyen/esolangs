@@ -170,7 +170,8 @@ Implementations written in languages other than Python.
 Note: the generators for Forþ, Painfuck, Dimensional, 2dFish, %^2^-1,
 Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON, 123, and NoComment are
 round-trip verified against their native references (C++, Rust, R, Ruby, or
-x86/RISC-V assembly) in CI.
+x86/RISC-V assembly) in CI, and 3x's n = 1 boolean generator is verified the
+same way.
 
 ### C++ Implementations
 

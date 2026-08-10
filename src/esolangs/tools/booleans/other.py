@@ -1,5 +1,31 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
+__all__ = ["nevermind", "taglate", "three_x"]
+
+
+def three_x(truth_table: str, n: int) -> str:
+    """Build a 3x program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    3x reads an integer with ``?``; the n == 1 case is closed-form.  For the
+    table ``01`` (identity) the program is ``?!`` (read the bit, print it);
+    for ``10`` (NOT) it computes ``1 - b`` using the constant-1 encoding
+    ``3333x3x`` (``(3-0)/3``) and the ``(A-B)/C`` op: ``1 b 1 x !``.
+    """
+    if n != 1:
+        raise ValueError("the 3x boolean generator supports n == 1 only")
+    if len(truth_table) != 2:
+        raise ValueError(
+            f"truth table must have 2 entries for 1 input, got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+    if truth_table == "10":  # NOT: print 1 - b
+        return "3333x3x ? 3333x3x x !"
+    return "? !"  # identity: print the input bit
+
 
 def nevermind(truth_table: str, n: int) -> str:
     """Build a Nevermind program computing the given truth table.

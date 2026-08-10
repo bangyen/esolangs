@@ -26,6 +26,7 @@ import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from esolangs.tools import boolean
 from esolangs.tools import generate as gen
 
 ROOT = Path(__file__).parents[1]
@@ -48,6 +49,24 @@ def _run(cmd: Sequence[str], program: str) -> bytes:
     finally:
         Path(path).unlink()
     return out
+
+
+def _run_boolean(cmd: Sequence[str], program: str, inputs: str) -> bytes:
+    """Run ``program`` through ``cmd`` with ``inputs`` on stdin.
+
+    3x prints an ``Input: `` prompt before each read, so the output is
+    filtered to the digits the program itself printed.
+    """
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        out = subprocess.run(
+            [*cmd, path], input=inputs, capture_output=True, text=True
+        ).stdout
+    finally:
+        Path(path).unlink()
+    return "".join(ch for ch in out if ch in "01").encode()
 
 
 def _build_cxx(name: str) -> list[str] | None:
@@ -124,6 +143,25 @@ def main() -> int:
             ok = out == text.encode()
             failures += not ok
             print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
+
+    # Boolean generators: 3x computes the n == 1 truth tables.
+    boolean_refs: list[tuple[str, Callable[[str, int], str], list[str] | None]] = [
+        ("3x", boolean.three_x, _ruby_reference("3x.rb")),
+    ]
+    for name, builder, cmd in boolean_refs:
+        if cmd is None:
+            print(f"[skip] {name} boolean: reference toolchain not available")
+            continue
+        for table in ("01", "10"):
+            program = builder(table, 1)
+            for combo in (0, 1):
+                out = _run_boolean(cmd, program, f"{combo}\n")
+                ok = out == table[combo].encode()
+                failures += not ok
+                print(
+                    f"{name} boolean {table!r} bit {combo}: "
+                    f"{'ok' if ok else 'FAIL'} -> {out!r}"
+                )
 
     return 1 if failures else 0
 
