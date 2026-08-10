@@ -261,7 +261,32 @@ class TestGeneratorRoundTrips:
         """Each 'path e resets the accumulator, builds the byte, and prints it."""
         assert gen.pct_squared_minus_one("") == ""
         assert gen.pct_squared_minus_one("\x00") == "'e"
-        assert gen.pct_squared_minus_one("H") == "'iiimmmp" + "e"
+        assert (
+            gen.pct_squared_minus_one("H")
+            == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+        )
+
+    def test_pct_path_formula(self) -> None:
+        """_pct_path is a closed form: final p, halve-when-even greedy, bounds."""
+        from esolangs.tools.generators.other import _pct_path
+
+        assert _pct_path(0) == ""
+        assert _pct_path(1) == "ips"
+        assert _pct_path(8) == "ssmp"
+        for byte in range(256):
+            path = _pct_path(byte)
+            acc = 0
+            for op in path:
+                if op == "s":
+                    acc -= 2
+                elif op == "i":
+                    acc -= 3
+                elif op == "m":
+                    acc *= 2
+                elif op == "p":
+                    acc = -acc
+                assert abs(acc) <= 3003  # within the interpreter's reset
+            assert acc == byte
 
     def test_basicfuck(self) -> None:
         """A variable walks to each byte with +=/-= and write prints it."""
