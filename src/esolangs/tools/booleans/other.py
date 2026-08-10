@@ -1,34 +1,81 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
+from collections import deque
+
 __all__ = ["nevermind", "taglate", "three_x"]
 
 _ZERO = "333x"  # (3-3)//3 = 0
 _ONE = "3333x3x"  # (3-0)//3 = 1
 
-# Small integer constants, each verified to leave exactly that value on a
-# clean stack.  They are built from ``3`` and the ``(A-B)//C`` op; used for
-# variable names in the boolean generator below.
-_CONST: dict[int, str] = {}
+# Minimal 3x programs pushing each small integer onto a clean stack, found by
+# a breadth-first search over the operations {3, x, #} (see _fill_minimal).
+# Seeded with the hand-verified 0/1/3 encodings; _const() extends the search
+# lazily and falls back to a general recurrence for integers it cannot reach.
+_CONST: dict[int, str] = {0: _ZERO, 1: _ONE, 3: "3"}
+
+# BFS safety bounds: programs are explored only to this length and through
+# stacks of at most this depth holding values of at most this magnitude.  The
+# search is monotone in these caps (verified: widening them does not shorten
+# any encoding), so within the bounds the results are genuinely minimal.
+_BFS_LEN, _BFS_DEPTH, _BFS_VALUE = 52, 8, 100
+_BFS_DONE = False
+
+
+def _fill_minimal() -> None:
+    """Populate ``_CONST`` with the shortest clean-stack encodings reachable.
+
+    A program over ``{3, x, #}`` is a stack machine: ``3`` pushes 3, ``x``
+    replaces the top three items ``a, b, c`` (c on top) with ``(c-b)//a``,
+    and ``#`` swaps the top two.  BFS from the empty stack finds, in length
+    order, every single-value state ``(n,)``; the first time one is reached
+    is its shortest program.  Runs at most once per process.
+    """
+    global _BFS_DONE
+    if _BFS_DONE:
+        return
+    _BFS_DONE = True
+    queue: deque[tuple[tuple[int, ...], str]] = deque([((), "")])
+    seen: set[tuple[int, ...]] = {()}
+    while queue:
+        state, prog = queue.popleft()
+        if len(state) == 1:
+            _CONST.setdefault(state[0], prog)
+        if len(prog) >= _BFS_LEN:
+            continue
+        pushed = (*state, 3)
+        if len(pushed) <= _BFS_DEPTH and pushed not in seen:
+            seen.add(pushed)
+            queue.append((pushed, prog + "3"))
+        if len(state) >= 2:
+            swapped = (*state[:-2], state[-1], state[-2])
+            if swapped not in seen:
+                seen.add(swapped)
+                queue.append((swapped, prog + "#"))
+        if len(state) >= 3:
+            a, b, c = state[-3], state[-2], state[-1]
+            if a and (c - b) % a == 0:
+                reduced = (*state[:-3], (c - b) // a)
+                if abs(reduced[-1]) <= _BFS_VALUE and reduced not in seen:
+                    seen.add(reduced)
+                    queue.append((reduced, prog + "x"))
 
 
 def _const(n: int) -> str:
     """3x code pushing ``n`` on a clean stack, for any integer ``n``.
 
-    Builds ``n`` from the smaller ``n-3`` (all nonnegative integers are
-    reachable from 3 and 0 via ``(A-B)//C``): ``n = (3 - (-(n-3))) // 1``,
+    Small integers use the BFS-minimal program from ``_CONST``; integers the
+    search cannot reach (or would only reach through values outside the BFS
+    bounds) are built from the smaller ``n-3``: all nonnegative integers are
+    reachable from 3 and 0 via ``(A-B)//C``, as ``n = (3 - (-(n-3))) // 1``,
     where ``-(n-3) = (0 - (n-3)) // 1``.
     """
-    if n == 0:
-        return _ZERO
-    if n == 1:
-        return _ONE
-    if n == 2:
-        return _ONE + _ONE + "3x"  # (3-1)//1
-    if n == 3:
-        return "3"
-    # [n-3] -> push 1, swap, push 0, x  => [-(n-3)]
-    # then push 1, swap, push 3, x      => [(3-(-(n-3)))//1] = [n]
-    return _const(n - 3) + _ONE + "#" + _ZERO + "x" + _ONE + "#" + "3" + "x"
+    if n not in _CONST:
+        _fill_minimal()
+        if n not in _CONST:
+            _CONST[n] = (
+                _const(n - 3) + _ONE + "#" + _ZERO + "x" + _ONE + "#" + "3" + "x"
+            )
+    return _CONST[n]
 
 
 def three_x(truth_table: str, n: int) -> str:
@@ -63,16 +110,17 @@ def three_x(truth_table: str, n: int) -> str:
     # Variable allocation: var 0 is the loop-trash (its constant, 333x, is
     # short and emitted twice per guard), var 3 is the result (its constant
     # is the single char `3`, emitted once per table entry), and the inputs
-    # live in the cheapest remaining variable names (1, 2, 4, 5, ...).
+    # live in the cheapest remaining names by actual constant length (the
+    # encodings are non-monotonic: 6 is cheaper than 5).  Every input is read
+    # once per override block, so any assignment of the n cheapest names to
+    # the inputs costs the same.
     trash = _const(0) + "#v"  # pop the stack top into variable 0
     result = 3
     used = {0, 3}
-    input_vars: list[int] = []
-    name = 0
-    while len(input_vars) < n:
-        if name not in used:
-            input_vars.append(name)
-        name += 1
+    input_vars = sorted(
+        (v for v in range(3 + n) if v not in used),
+        key=lambda v: len(_const(v)),
+    )[:n]
 
     def store(var: int) -> str:
         return _const(var) + "#v"  # var = stack top, stack ends empty
