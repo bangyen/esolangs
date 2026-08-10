@@ -45,19 +45,34 @@ interpreter finds roots with `numpy.roots`, whose float64 companion-matrix
 computation loses the small imaginary parts when the roots span a wide
 magnitude range.  That happens when consecutive characters differ by large
 codepoint amounts (e.g. ASCII immediately followed by a CJK character), so
-such text silently corrupts (documented under README "Known Issues").  The
-natural fix is a higher-precision root finder (e.g. `mpmath.polyroots`) in
-`src/esolangs/interpreters/register_based/polynomial.py`, which recovers the
-exact-integer roots reliably.  A heuristic guard is *not* viable: OK and
-FAIL cases overlap in both coefficient magnitude and max delta, and even the
-same delta passes or fails depending on the surrounding pattern.
+such text silently corrupts (documented under README "Known Issues").  A
+heuristic guard is *not* viable: OK and FAIL cases overlap in both coefficient
+magnitude and max delta, and even the same delta passes or fails depending on
+the surrounding pattern.
 
-The same fix lifts the boolean generator's `n > 2` cap
+The natural-seeming fix is a higher-precision root finder, but `mpmath` does
+not work: its `polyroots` (Durand-Kerner) fails to converge even on
+`'Hello, World!'` — a program `numpy.roots` handles correctly in ~0.5ms —
+and times out at `maxsteps` even at 50-80 digits of precision.  The roots
+span several orders of magnitude, which is exactly the geometry the
+Durand-Kerner iteration struggles with.  A practical fix needs a
+companion-matrix solver in arbitrary precision (e.g. `mpmath.eig` on the
+companion matrix, or `sympy`, or a hand-rolled high-precision
+companion/eigenvalue routine), not a drop-in `polyroots` swap.
+
+The same fix would lift the boolean generator's `n > 2` cap
 (`src/esolangs/tools/booleans/register.py`): a depth-`n` decision tree emits
 `2*2**n + ...` instructions, each consuming a fresh prime, so the expanded
 coefficients grow to ~10**90 at n == 3 (1196 bits) and ~10**4900 at n == 6
 (16309 bits) — far beyond float64's range, which is why the boolean generator
 currently rejects `n > 2`.  Arbitrary-precision roots handle both the
 precision loss and the range overflow, so this is one interpreter change with
-two payoffs.  It needs a dependency decision (adding mpmath) and a focused
-interpreter change with its own tests.
+two payoffs.
+
+Dependency note: `numpy` is the *only* third-party import in the whole
+package, and it is used solely by the polynomial interpreter for root
+finding.  Any replacement should remove it in favour of the new solver, and
+as a hard dependency, not an optional fallback: an optional numpy fallback
+would keep the buggy float64 path alive for anyone without the new solver and
+split the interpreter's behavior across environments (plus leave a branch
+untested against the 100% coverage rule).
