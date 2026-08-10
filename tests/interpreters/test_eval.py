@@ -3,6 +3,9 @@
 import io
 from contextlib import redirect_stdout
 
+import pytest
+
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.stack_based.eval import run
 
@@ -38,3 +41,12 @@ class TestEval:
 
     def test_truth_machine(self) -> None:
         assert run_and_capture('"0+.^!"^0?!0.') == "0"
+
+    def test_eval_string_halts_on_non_string(self) -> None:
+        """! on a non-string value is an invalid operation."""
+        with pytest.raises(HaltError):
+            run("0!", IO())
+
+    def test_eval_string_evaluates_program(self) -> None:
+        """! evaluates a pushed string as a program."""
+        assert run_and_capture('"0+."!') == "1"

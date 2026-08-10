@@ -4,6 +4,8 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+import pytest
+
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.stack_based.bfstack import run
@@ -48,7 +50,15 @@ class TestBFStack:
         assert run_and_capture(">[") == ""
 
     def test_output_on_empty_stack_raises(self) -> None:
-        import pytest
-
         with pytest.raises(HaltError):
             run_and_capture(".")
+
+    def test_loop_on_empty_stack_raises(self) -> None:
+        """[ on an empty stack is an invalid operation."""
+        with pytest.raises(HaltError):
+            run_and_capture("[")
+
+    def test_unmatched_closing_bracket_raises(self) -> None:
+        """] with no matching [ is an invalid operation."""
+        with pytest.raises(HaltError):
+            run_and_capture(">]")
