@@ -89,6 +89,15 @@ class TestZTOALCVariables:
         with pytest.raises(HaltError):
             run_and_capture(["3", "jump y 0", "y = x[1]", "print y"])
 
+    def test_indexing_non_array_halts(self) -> None:
+        """Indexing a variable that is not an array is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump y 0", "x = 5", "print y", "y = x[1]"])
+
     def test_out_of_range_index_halts(self) -> None:
         """Indexing past the end of an array is an invalid operation."""
         import pytest
