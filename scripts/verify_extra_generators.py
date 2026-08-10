@@ -153,6 +153,7 @@ def main() -> int:
         1: ("00", "01", "10", "11"),
         2: ("0001", "0110", "1110"),
         3: ("00000001", "11111110"),
+        4: ("1111111100000000", "0000000011111111"),
     }
     for name, builder, cmd in boolean_refs:
         if cmd is None:
@@ -171,7 +172,7 @@ def main() -> int:
                             f"{name} boolean {table!r} n={n} combo {bits}: "
                             f"FAIL -> {out!r}"
                         )
-        print(f"{name} boolean: verified tables for n = 1..3")
+        print(f"{name} boolean: verified tables for n = 1..4")
 
     return 1 if failures else 0
 

@@ -479,7 +479,7 @@ class TestThreeX:
         assert "333x" in program  # the constant-0 encoding appears
         assert "3333x3x" in program  # the constant-1 encoding appears
 
-    def test_unsupported_constant_rejected(self) -> None:
-        """Variable names beyond the built-in constants are rejected."""
-        with pytest.raises(ValueError, match="constant for 6"):
-            boolean.three_x("0" * (2**7), 7)
+    def test_scales_to_more_inputs(self) -> None:
+        """The generator handles n beyond the built-in constants."""
+        program = boolean.three_x("0" * (2**7), 7)
+        assert program.count("?") == 7
