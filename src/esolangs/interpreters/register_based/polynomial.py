@@ -35,7 +35,12 @@ def prime(number: int) -> bool:
 
 
 def brackets(string: list[list[int]], pointer: int) -> int:
-    """Find matching bracket for control flow statements."""
+    """Find matching bracket for control flow statements.
+
+    Raises :class:`ValueError` if the bracket has no partner: the wiki defines
+    control-flow brackets only for matched pairs, so an unmatched one is a
+    malformed program.
+    """
     length = len(string[pointer]) == 1
     end = string[pointer][0] in [2, 6]
     direct = (1, -1)[length and end]
@@ -43,7 +48,7 @@ def brackets(string: list[list[int]], pointer: int) -> int:
     while count:
         pointer += direct
         if pointer < 0 or pointer >= len(string):
-            return max(0, min(pointer, len(string) - 1))
+            raise ValueError("unmatched control-flow bracket")
         if len(string[pointer]) == 1:
             if string[pointer][0] in [2, 6]:
                 count -= 1

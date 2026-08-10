@@ -4,13 +4,18 @@ Qoibl is an esoteric programming language with 8 instructions and a 256-variable
 It uses only the characters 'e', 'r', 't', 'w', 'q', 'y' for programming constructs.
 
 The wiki specifies a 256-entry variable list; this interpreter uses an
-unbounded dictionary and does not enforce the cap.
+unbounded dictionary and does not enforce the cap.  Division by zero is an
+invalid operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`; a comparison or arithmetic expression
+with an unrecognized operator is a malformed program and is rejected with
+:class:`ValueError`.
 """
 
 import re
 import sys
 from dataclasses import dataclass
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -41,8 +46,15 @@ def run(code: list[str], io: IO) -> None:
             x = parse(state, expr[:beg])
             y = parse(state, expr[beg + 3 :])
 
-            if num in {"ee", "ey", "ye", "yy"}:
-                return {"ee": x == y, "ey": x > y, "ye": x < y, "yy": x != y}[num]
+            if num == "ee":
+                return x == y
+            if num == "ey":
+                return x > y
+            if num == "ye":
+                return x < y
+            if num == "yy":
+                return x != y
+            raise ValueError("unrecognized comparison operator")
         elif "ry" in expr:
             beg = expr.index("ry")
             num = expr[beg + 1]
@@ -56,7 +68,10 @@ def run(code: list[str], io: IO) -> None:
             if num == "ye":
                 return x * y
             if num == "yy":
+                if y == 0:
+                    raise HaltError
                 return x // y
+            raise ValueError("unrecognized arithmetic operator")
         elif op == "qe":
             return var.get(parse(state, expr[1:-1]), 0)
         elif op == "et":

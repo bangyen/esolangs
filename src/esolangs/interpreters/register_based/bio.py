@@ -2,6 +2,10 @@
 
 Register-based esoteric language with three memory blocks (x, y, z).
 Uses commands in format [0|1][O|I][x|y|z] for increment/decrement, loops, and output.
+
+A loop ``{`` with no matching closer is a malformed program and is rejected
+with :class:`ValueError`; popping an empty loop stack is an invalid operation
+and halts the program with :class:`~esolangs.exceptions.HaltError`.
 """
 
 import re
@@ -46,7 +50,7 @@ def run(code: str, io: IO) -> None:
             while mat:
                 ind += 1
                 if ind == len(commands):
-                    break
+                    raise ValueError("unmatched '{'")
                 c = commands[ind][:2]
                 if c == "0i":
                     mat += 1

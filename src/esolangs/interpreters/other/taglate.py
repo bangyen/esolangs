@@ -11,6 +11,11 @@ Decisions for gaps in the wiki spec (documented):
 - division by zero halts the program (it is an invalid operation, so the
   interpreter does not invent a result for it);
 - an empty queue reads as 0 for loop conditions;
+- popping an empty queue in an arithmetic or I/O command is an invalid
+  operation and halts the program with
+  :class:`~esolangs.exceptions.HaltError`;
+- an unmatched ``gy``/``gz`` is a malformed program and is rejected with
+  :class:`ValueError`;
 - ``t`` keeps ASCII letters, digits, and ``-_.~`` (the RFC 3986 unreserved
   set), encoding everything else as ``%XX`` (uppercase hex, more digits for
   values above 255).  This is a deliberate conservative choice: the real
@@ -85,43 +90,49 @@ def run(code: list[str], io: IO) -> None:
     tokens = _tokens("".join(code[1:]))
     match = _match(tokens)
 
+    def pop() -> int:
+        """Pop the front of the queue, halting when it is empty."""
+        if not queue:
+            raise HaltError
+        return queue.pop(0)
+
     ind = 0
     while ind < len(tokens):
         tok = tokens[ind]
         if tok == "a":
-            queue.append((queue.pop(0) + queue.pop(0)) % 65536)
+            queue.append((pop() + pop()) % 65536)
         elif tok == "b":
-            x, y = queue.pop(0), queue.pop(0)
+            x, y = pop(), pop()
             queue.append((x - y) % 65536)
         elif tok == "c":
-            queue.append((queue.pop(0) * queue.pop(0)) % 65536)
+            queue.append((pop() * pop()) % 65536)
         elif tok == "d":
-            x, y = queue.pop(0), queue.pop(0)
+            x, y = pop(), pop()
             if not y:
                 raise HaltError
             queue.append(x // y)
         elif tok == "e":
-            queue.append(queue.pop(0))
+            queue.append(pop())
         elif tok == "f":
-            queue.pop(0)
+            pop()
         elif tok == "gy":
             if not queue or queue[0] == 0:
                 partner = match.get(ind)
                 if partner is None:
-                    return
+                    raise ValueError("unmatched 'gy'")
                 ind = partner
         elif tok == "gz":
             if queue and queue[0] != 0:
                 partner = match.get(ind)
                 if partner is None:
-                    return
+                    raise ValueError("unmatched 'gz'")
                 ind = partner
         elif tok == "h":
             queue.append(io.input_char())
         elif tok == "i":
-            io.print_char(chr(queue.pop(0)))
+            io.print_char(chr(pop()))
         elif tok == "j":
-            value = queue.pop(0)
+            value = pop()
             queue.append((value - 1) % 65536 if value else 1)
         else:  # "t"
             queue = [ord(c) for c in _google_url(queue)]
