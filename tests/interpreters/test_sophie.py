@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.sophie import find, run
 
@@ -134,7 +135,7 @@ class TestSophieConditionals:
     def test_conditional_without_else(self) -> None:
         """Test conditional without else block."""
         with redirect_stdout(io.StringIO()) as f:
-            run("#A@A{,&", io=IO())
+            run("#A@A{,&}", io=IO())
         assert f.getvalue() == "A"
 
     @pytest.mark.usefixtures("timeout_protection")
@@ -240,9 +241,53 @@ class TestSophieEdgeCases:
     @pytest.mark.usefixtures("timeout_protection")
     def test_unmatched_brackets(self) -> None:
         """Test program with unmatched brackets."""
-        with redirect_stdout(io.StringIO()) as f:
+        with pytest.raises(ValueError, match="unmatched"):
             run("#A{&", io=IO())
-        # Should handle gracefully
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_unmatched_square_brackets(self) -> None:
+        """Test program with an unmatched loop bracket."""
+        with pytest.raises(ValueError, match="unmatched"):
+            run("#A[.*", io=IO())
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_unmatched_closing_brace(self) -> None:
+        """Test program with an unmatched closing brace."""
+        with pytest.raises(ValueError, match="unmatched"):
+            run("#A}", io=IO())
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_break_outside_loop_halts(self) -> None:
+        """Test a break with no enclosing loop."""
+        with pytest.raises(HaltError):
+            run("*&", io=IO())
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_braces_loaded_as_data(self) -> None:
+        """Brackets loaded as ``#`` data are not treated as structure."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("#{,", io=IO())
+        assert f.getvalue() == "{"
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_dollar_char_loaded_as_data(self) -> None:
+        """A ``#$<char>`` load skips the character as data."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("#$A,", io=IO())
+        assert f.getvalue() == "A"
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_conditional_number_no_else(self) -> None:
+        """A number conditional that fails and has no else block."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("#$65@$66{,#C,}", io=IO())
+        assert f.getvalue() == ""
+
+    @pytest.mark.usefixtures("timeout_protection")
+    def test_conditional_char_no_else(self) -> None:
+        """A char conditional that fails and has no else block."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("#A@B{,#C,}", io=IO())
         assert f.getvalue() == ""
 
     @pytest.mark.usefixtures("timeout_protection")

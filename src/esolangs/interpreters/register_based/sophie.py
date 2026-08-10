@@ -5,14 +5,55 @@ Single accumulator with basic control flow operations.
 
 `*` breaks out of the whole enclosing loop nest (and later loops run
 normally); a single-branch `@c{}` skips its block cleanly when the condition
-fails.  `&` halts, and unbalanced brackets are tolerated as a graceful
-end-of-program.
+fails.  `&` halts.  Unbalanced brackets are a malformed program and are
+rejected with :class:`ValueError`; a `*` break with no enclosing loop is an
+invalid operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`.
 """
 
 import re
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+
+
+def matches(code: str) -> None:
+    """Raise :class:`ValueError` if ``[]`` or ``{}`` brackets are unbalanced.
+
+    The wiki defines ``[``/``]`` loops and ``{``/``}`` blocks (conditionals
+    and comments) only for matched pairs; a program with unbalanced brackets
+    is malformed, so the interpreter rejects it rather than inventing a halt.
+    A ``#`` load consumes one data character (``#$`` an optional marker plus
+    digits or a character), so a bracket loaded that way is data, not
+    structure.
+    """
+    for opr, end in (("[", "]"), ("{", "}")):
+        depth = 0
+        i = 0
+        while i < len(code):
+            char = code[i]
+            if char == "#":
+                i += 1
+                if i < len(code) and code[i] == "$":
+                    i += 1
+                    if i < len(code) and code[i].isdigit():
+                        while i < len(code) and code[i].isdigit():
+                            i += 1
+                    elif i < len(code):
+                        i += 1  # #$<char>: the optional marker plus one char
+                elif i < len(code):
+                    i += 1  # the loaded character
+                continue
+            if char == opr:
+                depth += 1
+            elif char == end:
+                if depth == 0:
+                    raise ValueError(f"unmatched '{end}' at position {i}")
+                depth -= 1
+            i += 1
+        if depth:
+            raise ValueError(f"unmatched '{opr}'")
 
 
 def find(code: str, ind: int) -> int:
@@ -34,6 +75,7 @@ def find(code: str, ind: int) -> int:
 
 def run(code: str, io: IO) -> None:
     """Execute Sophie program code."""
+    matches(code)
     acc = ind = 0
     skp = False
     stk: list[int] = []
@@ -47,6 +89,8 @@ def run(code: str, io: IO) -> None:
             else:
                 stk.append(ind)
         elif c in "]*":
+            if not stk:
+                raise HaltError
             ind = stk.pop() - 1
             if c == "*":
                 skp = True
