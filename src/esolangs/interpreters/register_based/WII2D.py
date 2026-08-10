@@ -3,9 +3,8 @@
 2D esoteric language inspired by Befunge.
 Pointer moves on a 2D grid with wrap-around behavior and an accumulator.
 
-The wiki requires exactly one ``!`` start marker; this interpreter silently
-uses the first one (and no-ops when there are none) instead of rejecting
-programs that violate the constraint.
+The wiki requires exactly one ``!`` start marker; this interpreter rejects
+programs that violate that constraint instead of silently tolerating them.
 """
 
 import copy
@@ -83,12 +82,10 @@ def update(op: str, acc: int, io: IO) -> int:
 def run(code: list[str], io: IO) -> None:
     """Execute a WII2D program."""
     # Find the start marker (!)
-    for row_idx, row in enumerate(code):
-        if "!" in row:
-            x, y = row_idx, row.find("!")
-            break
-    else:
-        return  # No start marker found
+    starts = [(r, row.find("!")) for r, row in enumerate(code) if "!" in row]
+    if len(starts) != 1:
+        raise ValueError("WII2D program must contain exactly one '!' start marker")
+    x, y = starts[0]
 
     # Normalize code grid to uniform width
     max_width = max(len(row) for row in code)
