@@ -2,12 +2,10 @@
 
 import math
 import re
-from array import array
 from functools import cache
-from typing import Any
 
 from esolangs.tools.generators.helpers import _ilog, _require_ascii, _require_bytes
-from esolangs.tools.ztoalc_starts import STARTS
+from esolangs.tools.ztoalc_starts import ANCHORS
 
 __all__ = [
     "_123",
@@ -136,23 +134,37 @@ def nevermind(text: str) -> str:
     return "print," + ",".join(args)
 
 
+def _anchor_for(n: int) -> int:
+    """Collatz start covering a text of length ``n``.
+
+    The committed ``ANCHORS`` table maps length intervals to the record-holder
+    with the smallest trajectory peak for every length in the interval, so a
+    length is a plain lookup (no search).
+    """
+    for end, start in ANCHORS:
+        if end >= n:
+            return start
+    raise ValueError(
+        f"no Collatz start with a trajectory of {n} steps "
+        f"(the longest committed record reaches {ANCHORS[-1][0]})",
+    )
+
+
 def ztoalc(text: str) -> str:
     """Build a ZTOALC program that outputs ``text``.
 
     The interpreter runs lines in Collatz-trajectory order from the initial
     value on line 1, so each character is placed on the line its trajectory
     step visits.  A ``start`` whose trajectory has at least ``len(text)``
-    steps is chosen (from the committed table, or by search), and the program
-    is ``start`` on line 1 plus a ``print <code>`` on each visited line.
+    steps is taken from the committed anchor table (covering lengths up to
+    the longest known record), and the program is ``start`` on line 1 plus a
+    ``print <code>`` on each visited line.
     """
     n = len(text)
     if not text:
         return "2"
 
-    start = STARTS.get(n)
-    if start is None:
-        start = _search_start(n)
-
+    start = _anchor_for(n)
     values = _collatz_prefix(start, n)
     size = max(values)
 
@@ -165,15 +177,6 @@ def ztoalc(text: str) -> str:
     return "\n".join(lines)
 
 
-# Collatz support for ``ztoalc``.  The committed ``ztoalc_starts`` table
-# covers most text lengths; for lengths it misses, the search helpers below
-# find a start whose Collatz trajectory is long enough and has the smallest
-# maximum visited value.
-_ZTOALC_TABLE_LIMIT = 1_000_000
-_ZTOALC_MAX_LIMIT = 10_000_000
-_length_table_cache: dict[int, Any] = {}
-
-
 def _collatz_prefix(start: int, n: int) -> list[int]:
     values: list[int] = []
     value = start
@@ -181,69 +184,6 @@ def _collatz_prefix(start: int, n: int) -> list[int]:
         values.append(value)
         value = value // 2 if value % 2 == 0 else 3 * value + 1
     return values
-
-
-def _collatz_length_table(limit: int) -> Any:
-    """Compute stopping times for every start up to ``limit``, as unsigned shorts.
-
-    Index ``value`` holds the number of Collatz steps from ``value`` to 1;
-    index 1 is 0 and a zero elsewhere means "not yet computed". Chain values
-    above ``limit`` are walked through without being stored, keeping the
-    table bounded at two bytes per entry.
-    """
-    lengths = array("H", [0]) * (limit + 1)
-    lengths[1] = 0
-
-    for start in range(2, limit + 1):
-        if lengths[start]:
-            continue
-
-        path = []
-        value = start
-        while value > 1 and (value > limit or not lengths[value]):
-            path.append(value)
-            value = value // 2 if value % 2 == 0 else 3 * value + 1
-
-        length = lengths[value] if value <= limit else 0
-        for value in reversed(path):
-            length += 1
-            if value <= limit:
-                lengths[value] = length
-
-    return lengths
-
-
-def _collatz_lengths(limit: int) -> Any:
-    if limit not in _length_table_cache:
-        _length_table_cache[limit] = _collatz_length_table(limit)
-    return _length_table_cache[limit]
-
-
-def _search_start(n: int) -> int:
-    """Best start for a text length the committed table does not cover."""
-    best: tuple[int, int] | None = None
-    limit = _ZTOALC_TABLE_LIMIT
-    lengths = _collatz_lengths(limit)
-    candidate = _ZTOALC_TABLE_LIMIT
-
-    while candidate <= _ZTOALC_MAX_LIMIT:
-        if candidate > limit:
-            limit = min(limit * 2, _ZTOALC_MAX_LIMIT)
-            lengths = _collatz_lengths(limit)
-            continue
-        if best is not None and candidate >= best[0]:
-            break
-        if lengths[candidate] >= n:
-            cand_size = max(_collatz_prefix(candidate, n))
-            if best is None or cand_size < best[0]:
-                best = (cand_size, candidate)
-        candidate += 1
-
-    if best is None:
-        raise ValueError(
-            f"no Collatz start with a trajectory of length {n} within the search limit",
-        )
-    return best[1]
 
 
 def forth(text: str) -> str:

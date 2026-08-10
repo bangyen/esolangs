@@ -1,47 +1,162 @@
-"""Regenerate the precomputed ZTOALC start table.
+"""Regenerate the committed ZTOALC anchor table.
 
-Computes, for every text length reachable within the search limit, the
-Collatz start whose trajectory is long enough and has the smallest maximum
-visited value, and writes the mapping to ztoalc_starts.py.
+The ``ztoalc`` generator needs, for each text length, a Collatz start whose
+trajectory is long enough.  This script derives the committed table
+deterministically so the table is reproducible:
 
-Usage: python scripts/make_ztoalc_table.py
+1. a stopping-time sieve up to 10**7 yields every Collatz record-holder
+   (numbers whose total stopping time sets a record);
+2. a greedy interval cover assigns each length the record-holder with the
+   smallest trajectory peak (the exact optimum among record-holders), so
+   generation is a plain lookup;
+3. the three known record-holders beyond the sieve (which the sieve cannot
+   reach) are verified by walking their trajectories and appended, extending
+   coverage to the longest documented total stopping time below 10**10.
+
+Usage:
+    python scripts/make_ztoalc_table.py          # rewrite ztoalc_starts.py
+    python scripts/make_ztoalc_table.py --check  # verify it matches the file
 """
 
+import sys
 from pathlib import Path
-
-from esolangs.tools._ztoalc import _ZTOALC_TABLE_LIMIT, _collatz_length_table
 
 OUT = Path(__file__).resolve().parent.parent / "src/esolangs/tools/ztoalc_starts.py"
 
+SIEVE_LIMIT = 10_000_000
 
-def best_starts(lengths: list[int]) -> dict[int, int]:
-    """Choose the smallest-peak start for each trajectory length."""
-    best: dict[int, tuple[int, int]] = {}
-    for start in range(2, len(lengths)):
-        running = 0
+# Known record-holders beyond the sieve, as (total stopping time, start), in
+# ascending order.  Their trajectories are verified below; they are the
+# documented Collatz records below 10**10 (9780657630 reaches 1132 steps).
+HIGH = [(949, 63728127), (986, 670617279), (1132, 9780657630)]
+
+
+def collatz_length_table(limit: int) -> list[int]:
+    """Compute stopping times for every start up to ``limit`` (zero unknown)."""
+    lengths = [0] * (limit + 1)
+    lengths[1] = 0
+
+    for start in range(2, limit + 1):
+        if lengths[start]:
+            continue
+
+        path = []
         value = start
-        for n in range(1, lengths[start] + 1):
-            running = max(running, value)
-            entry = best.get(n)
-            if entry is None or running < entry[0]:
-                best[n] = (running, start)
+        while value > 1 and (value > limit or not lengths[value]):
+            path.append(value)
             value = value // 2 if value % 2 == 0 else 3 * value + 1
-    return {n: start for n, (size, start) in best.items()}
+
+        length = lengths[value] if value <= limit else 0
+        for value in reversed(path):
+            length += 1
+            if value <= limit:
+                lengths[value] = length
+
+    return lengths
 
 
-def write_module(starts: dict[int, int]) -> None:
-    """Write the ``ztoalc_starts`` Python module to stdout."""
+def stopping_time(start: int) -> int:
+    """Count steps from ``start`` down to 1 (walked, no table needed)."""
+    steps = 0
+    value = start
+    while value != 1:
+        value = value // 2 if value % 2 == 0 else 3 * value + 1
+        steps += 1
+    return steps
+
+
+def prefix_peaks(start: int, n: int) -> list[int]:
+    """``peaks[i]`` = the largest value among the first ``i+1`` steps of ``start``."""
+    peaks = []
+    peak = 0
+    value = start
+    for _ in range(n):
+        peak = max(peak, value)
+        peaks.append(peak)
+        value = value // 2 if value % 2 == 0 else 3 * value + 1
+    return peaks
+
+
+def anchors() -> list[tuple[int, int]]:
+    """Derive the length-interval start table from the sieve."""
+    lengths = collatz_length_table(SIEVE_LIMIT)
+
+    records = []
+    best = -1
+    for start in range(1, SIEVE_LIMIT + 1):
+        if lengths[start] > best:
+            best = lengths[start]
+            records.append(start)
+
+    max_stop = max(lengths[r] for r in records)
+    peaks = {r: prefix_peaks(r, lengths[r]) for r in records}
+
+    # the best record-holder for each length, then cover 1..max_stop greedily
+    true_min = {}
+    for n in range(1, max_stop + 1):
+        true_min[n] = min(peaks[r][n - 1] for r in records if lengths[r] >= n)
+
+    segments = []
+    pos = 0
+    while pos < max_stop:
+        best_ext, best_start = pos, None
+        for r in records:
+            if lengths[r] <= pos:
+                continue
+            ext = pos
+            n = pos + 1
+            while n <= lengths[r] and n <= max_stop and peaks[r][n - 1] == true_min[n]:
+                ext = n
+                n += 1
+            if ext > best_ext:
+                best_ext, best_start = ext, r
+        assert best_start is not None  # the last segment always extends
+        segments.append((best_ext, best_start))
+        pos = best_ext
+
+    for end, start in HIGH:
+        assert stopping_time(start) >= end, f"record {start} too short for {end}"
+    return segments + HIGH
+
+
+def write_module(table: list[tuple[int, int]]) -> None:
+    """Write ``ztoalc_starts.py``."""
     lines = [
-        '"""Precomputed best Collatz start for each text length."""',
+        '"""Collatz start for each ZTOALC text-length interval.',
         "",
-        "STARTS = {",
+        "Each entry ``(end, start)`` covers every text length up to ``end``: for a",
+        "length ``n`` the generator uses the first ``start`` whose ``end >= n``.  The",
+        "sieve-derived entries are the record-holders under 10**7 that achieve the",
+        "smallest trajectory peak for every length in their interval; the final three",
+        "are the known record-holders beyond the sieve (their trajectories are",
+        "verified by ``scripts/make_ztoalc_table.py``).",
+        "",
+        "Regenerated by ``scripts/make_ztoalc_table.py``; do not edit by hand.",
+        '"""',
+        "",
+        "ANCHORS: list[tuple[int, int]] = [",
     ]
-    for n in sorted(starts):
-        lines.append(f"    {n}: {starts[n]},")
-    lines.append("}")
+    for end, start in table:
+        lines.append(f"    ({end}, {start}),")
+    lines.append("]")
     OUT.write_text("\n".join(lines) + "\n")
-    print(f"wrote {OUT} with {len(starts)} entries")
+    print(f"wrote {OUT} with {len(table)} anchors")
+
+
+def main() -> int:
+    """Regenerate the table, or verify it is current with ``--check``."""
+    table = anchors()
+    if "--check" in sys.argv:
+        namespace: dict[str, object] = {}
+        exec(OUT.read_text(), namespace)
+        if namespace["ANCHORS"] != table:
+            print(f"[FAIL] {OUT} is stale: regenerate with {Path(sys.argv[0]).name}")
+            return 1
+        print(f"[ok] {OUT} matches the derived anchors ({len(table)} entries)")
+        return 0
+    write_module(table)
+    return 0
 
 
 if __name__ == "__main__":
-    write_module(best_starts(_collatz_length_table(_ZTOALC_TABLE_LIMIT)))
+    sys.exit(main())
