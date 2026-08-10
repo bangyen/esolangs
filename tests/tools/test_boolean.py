@@ -487,10 +487,35 @@ class TestThreeX:
     def test_majority_default_handles_zero_row(self) -> None:
         """A zero row differing from a majority-1 default still overrides it."""
         program = boolean.three_x("0110", 2)  # XOR: two 1s, two 0s
-        assert program.startswith("?") and program.endswith("!")
+        assert program.startswith("?")
+        assert program.endswith("!")
         assert "(" in program  # the zero row needs an override block
 
     def test_scales_to_more_inputs(self) -> None:
         """The generator handles n beyond the built-in constants."""
         program = boolean.three_x("0" * (2**7), 7)
         assert program.count("?") == 7
+
+    def test_minimal_constant_encodings(self) -> None:
+        """Small constants use the BFS-shortest clean-stack programs."""
+        from esolangs.tools.booleans import other
+
+        assert len(other._const(4)) == 16  # noqa: SLF001
+        assert len(other._const(6)) == 22  # noqa: SLF001 - cheaper than name 5
+        assert len(other._const(13)) == 44  # noqa: SLF001
+
+    def test_const_beyond_bfs_uses_recurrence(self) -> None:
+        """Integers past the BFS reach fall back to the general recurrence."""
+        from esolangs.tools.booleans import other
+
+        prog = other._const(14)  # noqa: SLF001 - unreachable within BFS bounds
+        assert prog.startswith(other._const(11))  # noqa: SLF001 - n = (3-(-(n-3)))//1
+        assert len(prog) > len(other._const(13))  # noqa: SLF001
+
+    def test_bfs_fill_runs_once(self) -> None:
+        """Repeated fills short-circuit instead of re-searching."""
+        from esolangs.tools.booleans import other
+
+        before = dict(other._CONST)  # noqa: SLF001
+        other._fill_minimal()  # noqa: SLF001
+        assert before == other._CONST  # noqa: SLF001
