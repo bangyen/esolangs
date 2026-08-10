@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from esolangs.interpreters.io import IO
+
 INTERPRETER_DIR = Path(__file__).parents[1] / "src" / "esolangs" / "interpreters"
 
 MODULES = []
@@ -22,12 +24,12 @@ for category in ("tape_based", "stack_based", "register_based", "other"):
         MODULES.append(f"esolangs.interpreters.{category}.{path.stem}")
 
 
-class _Timeout(Exception):
+class _TimeoutError(Exception):
     """Raised by the alarm handler when an interpreter does not terminate."""
 
 
-def _on_alarm(signum: int, frame: object) -> None:
-    raise _Timeout("interpreter did not terminate on the empty program")
+def _on_alarm(_signum: int, _frame: object) -> None:
+    raise _TimeoutError("interpreter did not terminate on the empty program")
 
 
 @pytest.mark.skipif(os.name != "posix", reason="signal.alarm is POSIX-only")
@@ -37,8 +39,8 @@ def test_empty_program_terminates(module: str) -> None:
     signal.signal(signal.SIGALRM, _on_alarm)
     signal.alarm(3)
     try:
-        run("")
-    except _Timeout:
+        run("", io=IO())
+    except _TimeoutError:
         pytest.fail(f"{module} hangs on the empty program")
     except Exception:
         pass  # rejecting the empty program is a valid termination

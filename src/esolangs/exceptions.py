@@ -5,6 +5,17 @@ class EsolangError(Exception):
     """Base class for errors from the esolangs package."""
 
 
+class HaltError(EsolangError):
+    """An interpreter halted on an invalid operation.
+
+    A program that performs a mathematically or structurally invalid
+    operation (e.g. division by zero, popping an empty stack) has no defined
+    result, so the interpreter halts rather than inventing one.  Raising
+    ``HaltError`` makes that halt explicit instead of leaking an incidental
+    Python error.
+    """
+
+
 class UnknownLanguageError(EsolangError, ValueError):
     """A language name was not in the registry."""
 

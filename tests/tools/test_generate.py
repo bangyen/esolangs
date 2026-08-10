@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 
 import esolangs.tools.generate as gen
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
@@ -38,7 +39,7 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
 
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        interpreter(program)
+        interpreter(program, io=IO())
     return buffer.getvalue()
 
 
@@ -308,7 +309,7 @@ class TestGeneratorRoundTrips:
 
         buffer = io.StringIO()
         with pytest.raises(SystemExit), contextlib.redirect_stdout(buffer):
-            container_run(gen.container("Hi").splitlines())
+            container_run(gen.container("Hi").splitlines(), io=IO())
         assert buffer.getvalue() == "Hi"
 
 
@@ -321,7 +322,7 @@ class TestGeneratorProducesOutput:
             gen.magnitude,
             gen.painfuck,
             gen.suffolk,
-            gen._123,
+            gen._123,  # noqa: SLF001 - public generator
         ]
         for gen_fn in generators:
             assert gen_fn("Hi"), gen_fn.__name__
@@ -351,14 +352,14 @@ class TestGeneratorBranches:
 
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            suffolk_run(gen.suffolk("Hi"), limit=1)
+            suffolk_run(gen.suffolk("Hi"), limit=1, io=IO())
         assert buffer.getvalue() == "Hi"
 
     def test_suffolk_empty(self) -> None:
         assert gen.suffolk("") == ""
 
     def test_123_empty(self) -> None:
-        assert gen._123("") == "1"
+        assert gen._123("") == "1"  # noqa: SLF001 - public generator
 
     def test_forth_nul(self) -> None:
         """A NUL is pushed and printed with an explicit dot."""
@@ -437,8 +438,8 @@ class TestGeneratorBranches:
 
     def test_control_character_123(self) -> None:
         """The 123 generator must not crash on control characters."""
-        gen._123("\x00")
-        gen._123("".join(chr(k) for k in range(1, 20)))
+        gen._123("\x00")  # noqa: SLF001 - public generator
+        gen._123("".join(chr(k) for k in range(1, 20)))  # noqa: SLF001
 
     def test_laserfuck_zero_loop(self) -> None:
         """A small value makes laserfuck's loop end with no tail."""

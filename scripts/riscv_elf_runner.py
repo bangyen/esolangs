@@ -83,6 +83,7 @@ def load_segments(binary: bytes) -> tuple[int, list[tuple[int, bytearray]]]:
 
 
 def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
+    """Run a RISC-V ELF and return ``(stdout, exit_code)``."""
     entry, segments = load_segments(binary)
     lo = _align_down(min(v for v, _ in segments), PAGE)
     hi = _align_up(max(v + len(d) for v, d in segments), PAGE)
@@ -107,7 +108,7 @@ def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
     halted = [False]
     heap_cur = [heap_base]
 
-    def on_ecall(uc: Uc, intno: int, user_data: Any) -> None:
+    def on_ecall(uc: Uc, _intno: int, _user_data: Any) -> None:
         nonlocal inp_pos, out
         a7 = uc.reg_read(UC_RISCV_REG_A7)
         if a7 == SYS_READ:
@@ -152,6 +153,7 @@ def run_elf(binary: bytes, stdin: bytes = b"") -> tuple[bytes, int]:
 
 
 def main(argv: list[str]) -> int:
+    """Run the ELF in ``argv[1]`` and print its exit code."""
     with open(argv[1], "rb") as f:
         binary = f.read()
     out, code = run_elf(binary, sys.stdin.buffer.read())

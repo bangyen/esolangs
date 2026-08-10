@@ -12,11 +12,13 @@ SP = 1000000  # stack pointer base
 
 
 def sign_extend(val: int, bits: int) -> int:
+    """Sign-extend a ``bits``-wide value to a Python int."""
     sign = 1 << (bits - 1)
     return (val & (sign - 1)) - (val & sign)
 
 
 def disassemble_and_run(binary: bytes, stdin: bytes) -> bytes:
+    """Disassemble and run the ELF in ``binary``, returning its output."""
     # find the .text section and entry point from the ELF
     entry = struct.unpack_from("<Q", binary, 0x18)[0]
     text_off = text_addr = text_size = 0

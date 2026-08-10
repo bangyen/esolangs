@@ -1,8 +1,18 @@
+"""Interpreter for ASCII art (brainfuck with an art alphabet).
+
+Art blocks decode to the eight brainfuck commands plus . / , / < / > / + / [
+and ].  The tape, clamping, wrapping, and bracket semantics deliberately match
+the plain brainfuck interpreter so the two are interchangeable.
+"""
+
 import re
 import sys
 
+from esolangs.interpreters.io import IO
+
 
 def parse(code: str) -> str:
+    """Decode ASCII-art blocks into their brainfuck command characters."""
     if not code:
         return ""
     code = re.sub(" +\n", "\n", code)
@@ -20,6 +30,8 @@ def parse(code: str) -> str:
     }
 
     for c in blocks:
+        if not c:
+            raise ValueError("ASCII-art program has an empty block")
         t = (c.count("\n"), c[-1])
         if t in sym:
             res += sym[t]
@@ -27,26 +39,34 @@ def parse(code: str) -> str:
 
 
 def matches(code: str) -> dict[int, int]:
-    """Map each bracket to its partner, ``{open: close, close: open}``."""
+    """Map each bracket to its partner, ``{open: close, close: open}``.
+
+    Raises :class:`ValueError` if the brackets are unbalanced: the spec
+    defines ``[``/``]`` only for matched pairs.
+    """
     stack: list[int] = []
     res: dict[int, int] = {}
     for i, char in enumerate(code):
         if char == "[":
             stack.append(i)
-        elif char == "]" and stack:
+        elif char == "]":
+            if not stack:
+                raise ValueError(f"unmatched ']' at position {i}")
             open_i = stack.pop()
             res[open_i] = i
             res[i] = open_i
+    if stack:
+        raise ValueError(f"unmatched '[' at position {stack[-1]}")
     return res
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
+    """Run an ASCII-art program after decoding it to brainfuck."""
     tape: list[int] = [0]
     code = parse(code)
     m = matches(code)
 
     ind = ptr = 0
-    new = 1
 
     while ind < len(code):
         char = code[ind]
@@ -56,27 +76,16 @@ def run(code: str) -> None:
                 tape.append(0)
         elif char == "<" and ptr:
             ptr -= 1
-        elif char in "+":
+        elif char == "+":
             tape[ptr] = (tape[ptr] + 1) % 256
         elif char == "-":
             tape[ptr] = (tape[ptr] - 1) % 256
         elif char == ".":
-            print(chr(tape[ptr]), end="")
-            new = 0
+            io.print_char(chr(tape[ptr]))
         elif char == ",":
-            val = input("\nInput: "[new:])
-            tape[ptr] = ord(val[0])
-            new = 1
-        elif char == "[" and tape[ptr] == 0:
-            partner = m.get(ind)
-            if partner is None:
-                return  # unmatched "[": halt
-            ind = partner
-        elif char == "]" and tape[ptr] != 0:
-            partner = m.get(ind)
-            if partner is None:
-                return  # unmatched "]": halt
-            ind = partner
+            tape[ptr] = io.input_char()
+        elif (char == "[" and tape[ptr] == 0) or (char == "]" and tape[ptr] != 0):
+            ind = m[ind]
 
         ind += 1
 
@@ -85,4 +94,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

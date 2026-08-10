@@ -21,6 +21,7 @@ from esolangs.tools.generate import _123
 
 
 def main(argv: list[str]) -> int:
+    """Differential-test the 1/2 compiler against its interpreter."""
     with open(argv[1], "rb") as f:
         rv_binary = f.read()
     x86_binary = assemble("extra/assembly/123.asm")

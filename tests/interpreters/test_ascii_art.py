@@ -5,6 +5,8 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from esolangs.interpreters.io import IO
+
 ascii_art = importlib.import_module("esolangs.interpreters.tape_based.ascii-art")
 
 # ASCII-art blocks mapping to brainfuck commands:
@@ -25,7 +27,7 @@ def program(*blocks: str) -> str:
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        ascii_art.run(code)
+        ascii_art.run(code, IO())
     return buffer.getvalue()
 
 
@@ -98,13 +100,28 @@ class TestASCIIArt:
         )
 
     def test_unmatched_open_bracket(self) -> None:
-        """An unmatched [ with a zero cell halts cleanly."""
-        assert run_and_capture(program(LOOP_OPEN)) == ""
+        """Unbalanced brackets are a malformed program, not a halt."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(program(LOOP_OPEN))
 
     def test_unmatched_close_bracket_with_nonzero_cell(self) -> None:
-        """An unmatched ] with a nonzero cell halts cleanly."""
-        assert run_and_capture(program(PLUS, LOOP_CLOSE)) == ""
+        """Unbalanced brackets are a malformed program, not a halt."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(program(PLUS, LOOP_CLOSE))
 
     def test_nested_open_brackets(self) -> None:
         """Nested [ brackets are counted during the skip."""
-        assert run_and_capture(program(LOOP_OPEN, LOOP_OPEN)) == ""
+        assert (
+            run_and_capture(program(LOOP_OPEN, LOOP_OPEN, LOOP_CLOSE, LOOP_CLOSE)) == ""
+        )
+
+    def test_trailing_empty_block_rejected(self) -> None:
+        """A program ending with an empty block is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="empty block"):
+            run_and_capture(DOT + "\n\n")

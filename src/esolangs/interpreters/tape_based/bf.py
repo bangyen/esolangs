@@ -5,31 +5,51 @@ brainfuck with an art alphabet) so that the two are interchangeable: an
 8-bit wrapping tape, rightward growth, ``<`` clamped at the left edge, and
 matching-bracket loops.  This is what lets the BF-to-ASCII-art transpiler
 be verified end-to-end.
+
+The brainfuck spec defines ``[``/``]`` only for matched pairs; a program
+with unbalanced brackets is malformed, so the interpreter rejects it with a
+:class:`ValueError` rather than inventing a halt the language does not
+specify.
+
+The spec leaves EOF undefined for ``,`` (returning zero or leaving the cell
+unchanged are both suggested); this interpreter instead raises
+:class:`EOFError` when input is exhausted, so the classic `,[.,]` cat
+program terminates with an error rather than a graceful halt.
 """
 
 import sys
 
+from esolangs.interpreters.io import IO
+
 
 def matches(code: str) -> dict[int, int]:
-    """Map each bracket to its partner, ``{open: close, close: open}``."""
+    """Map each bracket to its partner, ``{open: close, close: open}``.
+
+    Raises :class:`ValueError` if the brackets are unbalanced: the spec
+    defines ``[``/``]`` only for matched pairs.
+    """
     stack: list[int] = []
     res: dict[int, int] = {}
     for i, char in enumerate(code):
         if char == "[":
             stack.append(i)
-        elif char == "]" and stack:
+        elif char == "]":
+            if not stack:
+                raise ValueError(f"unmatched ']' at position {i}")
             open_i = stack.pop()
             res[open_i] = i
             res[i] = open_i
+    if stack:
+        raise ValueError(f"unmatched '[' at position {stack[-1]}")
     return res
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
+    """Run a Brainfuck program."""
     tape: list[int] = [0]
     m = matches(code)
 
     ind = ptr = 0
-    new = 1
 
     while ind < len(code):
         char = code[ind]
@@ -44,22 +64,11 @@ def run(code: str) -> None:
         elif char == "-":
             tape[ptr] = (tape[ptr] - 1) % 256
         elif char == ".":
-            print(chr(tape[ptr]), end="")
-            new = 0
+            io.print_char(chr(tape[ptr]))
         elif char == ",":
-            val = input("\nInput: "[new:])
-            tape[ptr] = ord(val[0])
-            new = 1
-        elif char == "[" and tape[ptr] == 0:
-            partner = m.get(ind)
-            if partner is None:
-                return  # unmatched "[": halt
-            ind = partner
-        elif char == "]" and tape[ptr] != 0:
-            partner = m.get(ind)
-            if partner is None:
-                return  # unmatched "]": halt
-            ind = partner
+            tape[ptr] = io.input_char()
+        elif (char == "[" and tape[ptr] == 0) or (char == "]" and tape[ptr] != 0):
+            ind = m[ind]
 
         ind += 1
 
@@ -67,4 +76,4 @@ def run(code: str) -> None:
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
-            run(file.read())
+            run(file.read(), IO())

@@ -13,6 +13,8 @@ from contextlib import redirect_stdout, suppress
 from typing import Any
 from unittest.mock import patch
 
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.bitdeque import run as bitdeque_run
 from esolangs.interpreters.other.keys import run as keys_run
 from esolangs.interpreters.register_based.bio import run as bio_run
@@ -34,7 +36,7 @@ def run_safely(fn: Callable[..., Any], program: str | list[str]) -> None:
     """Run a program, asserting it raises nothing unexpected."""
     buffer = io.StringIO()
     with patch("builtins.input", return_value="0"), redirect_stdout(buffer):
-        fn(program)
+        fn(program, io=IO())
 
 
 def _random_string(alphabet: str, max_len: int) -> str:
@@ -44,7 +46,9 @@ def _random_string(alphabet: str, max_len: int) -> str:
 def test_excon_random() -> None:
     random.seed(0)
     for _ in range(50):
-        run_safely(excon_run, _random_string(":^!<", 30))
+        # a pointer fault (too many <) is a valid HaltError outcome
+        with suppress(HaltError):
+            run_safely(excon_run, _random_string(":^!<", 30))
 
 
 def test_minifuck_random() -> None:
@@ -106,7 +110,7 @@ def test_bfstack_random() -> None:
     for _ in range(50):
         code = _random_string("><+-.", 30)
         # '.' on an empty stack is an accepted outcome
-        with suppress(IndexError):
+        with suppress(HaltError):
             run_safely(bfstack_run, code)
 
 
@@ -114,7 +118,7 @@ def test_bio_random() -> None:
     random.seed(7)
     for _ in range(50):
         # pop from an empty stack is an accepted outcome
-        with suppress(IndexError):
+        with suppress(HaltError):
             run_safely(bio_run, _random_string("0O1Ixyz;{}", 30))
 
 
@@ -127,7 +131,10 @@ def test_huf_random() -> None:
 def test_minsky_random() -> None:
     random.seed(9)
     for _ in range(50):
-        run_safely(minsky_run, _random_string("+*~", 30))
+        code = _random_string("+*~", 30)
+        # every ~ needs a matching number on the jump line; jump targets past
+        # the end terminate instead of self-looping
+        run_safely(minsky_run, code + "\n" + " ".join(["99"] * code.count("~")))
 
 
 def test_qoibl_random() -> None:
@@ -142,5 +149,5 @@ def test_eval_random() -> None:
     random.seed(11)
     for _ in range(50):
         # empty-stack pop / evaluating a non-string are accepted
-        with suppress(IndexError, TypeError):
+        with suppress(HaltError):
             run_safely(eval_run, _random_string("0+-.=~^`;*?!", 30))

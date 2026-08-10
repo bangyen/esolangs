@@ -1,3 +1,5 @@
+"""Compiler that turns BFStack programs into x86 Linux assembly."""
+
 import itertools
 import re
 import sys
@@ -5,6 +7,13 @@ from typing import cast
 
 
 def parse(code: str) -> list[tuple[str, int]]:
+    """Normalize a BFStack program into ``(command, count)`` tokens.
+
+    Filters to the command alphabet, cancels adjacent opposite increments,
+    drops loops that are removed by a skip, and collapses zeroing and runs of
+    identical commands.
+    """
+
     def con(*s: str) -> tuple[str, int]:
         if s[0] in "+-":
             x = s.count("+")
@@ -45,6 +54,7 @@ def parse(code: str) -> list[tuple[str, int]]:
 
 
 def comp(code: str) -> str:
+    """Compile a BFStack program to x86 assembly with syscall I/O."""
     tokens = parse(code)
     jump = 0
     arr = []
@@ -94,7 +104,7 @@ def comp(code: str) -> str:
 
     res += "\n\tmov eax, 1\n" "\txor ebx, ebx\n" "\tint 80h\n"
 
-    def end(s: str, mul: bool) -> str:
+    def end(s: str, *, mul: bool) -> str:
         return (
             mul * ("\tdec esi\n" "\tcmp esi, 0\n" f"\tjg {s}\n" "\tinc esi\n")
             + "\tret\n"
@@ -104,7 +114,7 @@ def comp(code: str) -> str:
         res += (
             "\nright:\n"
             "\tdec ecx\n"
-            "\tmov byte [ecx], 0\n" + end("right", cast(bool, ins[">"][2]))
+            "\tmov byte [ecx], 0\n" + end("right", mul=cast(bool, ins[">"][2]))
         )
     if ins["<"][1]:
         res += (
@@ -122,7 +132,7 @@ def comp(code: str) -> str:
             "\noutput:\n"
             "\tmov eax, 4\n"
             "\tmov ebx, 1\n"
-            "\tint 80h\n" + end("output", cast(bool, ins["."][2]))
+            "\tint 80h\n" + end("output", mul=cast(bool, ins["."][2]))
         )
     if ins[","][1]:
         res += (
@@ -130,7 +140,7 @@ def comp(code: str) -> str:
             "\tmov eax, 3\n"
             "\txor ebx, ebx\n"
             "\tdec ecx\n"
-            "\tint 80h\n" + end("input", cast(bool, ins[","][2]))
+            "\tint 80h\n" + end("input", mul=cast(bool, ins[","][2]))
         )
 
     return res

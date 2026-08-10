@@ -5,13 +5,21 @@ cell equals ``n`` (the value is a parameter, never executed), and ``8n`` is a
 two-character token that jumps to the n-th ``4`` marker.  To get this right
 the program is tokenized first, merging each ``7``/``8`` with its operand,
 rather than reading the next character on the fly.
+
+Outputting a cell value outside the valid character range is an invalid
+operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`.
 """
 
 import re
 import sys
 
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import IO
+
 
 def num(char: str) -> int:
+    """Decode a 6-5 operand digit: 0-9 literal, A-F hexadecimal."""
     if char.isdigit():
         return int(char)
     return ord(char.upper()) - 55
@@ -36,11 +44,11 @@ def _tokens(code: str) -> list[str]:
     return toks
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
+    """Run a 6-5 program."""
     toks = _tokens(code)
     cell = ind = 0
     tape: list[int] = [0]
-    line = 1
 
     while ind < len(toks):
         tok = toks[ind]
@@ -70,12 +78,11 @@ def run(code: str) -> None:
         elif tok == "0":
             return
         elif tok == "A":
-            print(chr(tape[cell]), end="")
-            line = 0
+            if not 0 <= tape[cell] <= 0x10FFFF:
+                raise HaltError
+            io.print_char(chr(tape[cell]))
         elif tok == "B":
-            inp = input("\nInput: "[:line])
-            tape[cell] = ord(inp[0])
-            line = 1
+            tape[cell] = io.input_char()
 
         ind += 1
 
@@ -84,4 +91,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

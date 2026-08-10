@@ -8,13 +8,14 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.ztoalc import run
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 
@@ -57,3 +58,60 @@ class TestZTOALCVariables:
         """A jump with a nonzero condition increments the pointer."""
         code = ["3", "print 105", "jump if 1", "print 104"]
         assert run_and_capture(code) == "hi"
+
+    def test_empty_program_rejected(self) -> None:
+        """An empty program is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="empty"):
+            run([], IO())
+
+    def test_missing_print_operand_rejected(self) -> None:
+        """A print with no operand is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="operand"):
+            run_and_capture(["2", "print"])
+
+    def test_missing_jump_operand_rejected(self) -> None:
+        """A jump with no condition is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="operand"):
+            run_and_capture(["2", "jump"])
+
+    def test_undefined_array_halts(self) -> None:
+        """Indexing an undefined array is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump y 0", "y = x[1]", "print y"])
+
+    def test_indexing_non_array_halts(self) -> None:
+        """Indexing a variable that is not an array is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump y 0", "x = 5", "print y", "y = x[1]"])
+
+    def test_out_of_range_index_halts(self) -> None:
+        """Indexing past the end of an array is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump y 0", "x = [2]", "y = x[5]"])
+
+    def test_negative_pointer_halts(self) -> None:
+        """A negative pointer is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["-2", "print 65"])

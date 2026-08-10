@@ -4,13 +4,17 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+import pytest
+
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.stack_based.bfstack import run
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 
@@ -42,11 +46,20 @@ class TestBFStack:
         assert run_and_capture(">[[-]]") == ""
 
     def test_loop_skip_unmatched(self) -> None:
-        """A skipped [ with no closing ] halts cleanly."""
-        assert run_and_capture(">[") == ""
+        """A skipped [ with no closing ] is a malformed program."""
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(">[")
 
     def test_output_on_empty_stack_raises(self) -> None:
-        import pytest
-
-        with pytest.raises(IndexError):
+        with pytest.raises(HaltError):
             run_and_capture(".")
+
+    def test_loop_on_empty_stack_raises(self) -> None:
+        """[ on an empty stack is an invalid operation."""
+        with pytest.raises(HaltError):
+            run_and_capture("[")
+
+    def test_unmatched_closing_bracket_raises(self) -> None:
+        """] with no matching [ is an invalid operation."""
+        with pytest.raises(HaltError):
+            run_and_capture(">]")

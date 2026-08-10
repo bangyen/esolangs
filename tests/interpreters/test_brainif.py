@@ -4,13 +4,14 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.brainif import run
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 
@@ -52,3 +53,17 @@ class TestBrainIfGeneratedHelloWorld:
         """Goto jumps to the given line number."""
         code = ["if 0 goto 3", "if 0 output", "if 0 increment", "if 1 output"]
         assert run_and_capture(code) == "\x01"
+
+    def test_missing_value_rejected(self) -> None:
+        """A line without a value operand is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="malformed"):
+            run_and_capture(["if"])
+
+    def test_goto_missing_target_rejected(self) -> None:
+        """A goto without a target line is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="goto requires"):
+            run_and_capture(["if 0 goto"])

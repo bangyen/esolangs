@@ -1,5 +1,4 @@
-"""
-Dotlang interpreter implementation.
+"""Dotlang interpreter implementation.
 
 2D esoteric language where dots (instruction pointers) move through a grid.
 Each dot can carry values and execute commands based on its position.
@@ -10,6 +9,8 @@ from __future__ import annotations
 import re
 import sys
 from typing import ClassVar
+
+from esolangs.interpreters.io import IO
 
 
 class Dot:
@@ -61,29 +62,33 @@ class Dot:
         line = Dot.code[self.x][self.y :]
         return re.match(regex, line)
 
-    def find(self, warp: str, ret: bool = False) -> Dot | bool:
-        """Find a warp destination in the code grid."""
+    def find(self, warp: str, *, return_dot: bool = False) -> Dot | bool:
+        """Find a warp destination, moving this dot or returning a new one.
+
+        With ``return_dot`` true, a new :class:`Dot` at the destination is
+        returned; otherwise the destination is followed in place and ``True``
+        is returned on success.
+        """
         for num, val in enumerate(Dot.code):
             if warp in val:
                 x, y = num, val.find(warp)
                 if self.dir == 1:
                     y += len(warp) - 1
-                if ret:
+                if return_dot:
                     return Dot(x, y, self.dir)
                 self.x, self.y = x, y
                 return True
         return False
 
 
-def run(code: list[str]) -> None:
+def run(code: list[str], io: IO) -> None:
     """Execute a Dotlang program with 2D dot movement and command execution."""
     if code == [" "]:
-        print(" ", end="")
+        io.print_str(" ")
         return
 
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
-    line = 0
     dots: list[Dot] = []
     curr = 0
 
@@ -114,17 +119,15 @@ def run(code: list[str]) -> None:
                 if dot.dir == 1:
                     dot.y += len(g[0]) - 1
             elif dot.val is not None:
-                print(dot.val, end="")
-                line = 1
+                io.print_value(dot.val)
             else:
                 return
         elif val == "~":
-            dot.new(input("\n" * line + "Input: "))
-            line = 0
+            dot.new(io.input_str())
         elif val == "(":
             if g := dot.match(r"\(`\w+"):
                 name = ")" + g[0][1:]
-                dest = dot.find(name, True)
+                dest = dot.find(name, return_dot=True)
                 if not dest:
                     return
                 if not isinstance(dest, Dot):
@@ -149,10 +152,9 @@ def run(code: list[str]) -> None:
                 dots.append(Dot(x, y, dot.dir))
         elif val == "W":
             if dot.match("W~"):
-                warp = input("\n" * line + "Warp: ")
+                warp = io.input_str("Warp: ")
                 if not dot.find(f"W{warp}`s"):
                     return
-                line = False
             elif g := dot.match(r"W\w+`s"):
                 warp = g[0][:-1] + "e"
                 if not dot.find(warp):
@@ -177,4 +179,4 @@ if __name__ == "__main__":
     with open(sys.argv[1], encoding="utf-8") as f:
         data = f.readlines()
 
-    run(data)
+    run(data, IO())

@@ -1,21 +1,30 @@
-"""
-Qoibl (Qwerty oriented impractical bicharacter language) interpreter.
+"""Qoibl (Qwerty oriented impractical bicharacter language) interpreter.
 
 Qoibl is an esoteric programming language with 8 instructions and a 256-variable list.
 It uses only the characters 'e', 'r', 't', 'w', 'q', 'y' for programming constructs.
+
+The wiki specifies a 256-entry variable list; this interpreter uses an
+unbounded dictionary and does not enforce the cap.  Division by zero is an
+invalid operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`; a comparison or arithmetic expression
+with an unrecognized operator is a malformed program and is rejected with
+:class:`ValueError`.
 """
 
 import re
 import sys
 from dataclasses import dataclass
 
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import IO
+
 
 @dataclass
 class State:
-    line: bool = False
+    """Per-run state for a Qoibl interpreter."""
 
 
-def run(code: list[str]) -> None:
+def run(code: list[str], io: IO) -> None:
     """Execute Qoibl program code."""
     var: dict[int, int] = {}
     state = State()
@@ -23,8 +32,7 @@ def run(code: list[str]) -> None:
     def parse(state: State, expr: str | list[str]) -> int:
         """Parse and execute a single Qoibl expression."""
         if (op := expr[0]) == "tt":
-            print(chr(parse(state, expr[1:-1])), end="")
-            state.line = True
+            io.print_char(chr(parse(state, expr[1:-1])))
         elif op == "we":
             ind = expr.index("we", 1)
             var[parse(state, expr[1:ind])] = parse(state, expr[ind + 1 : -1])
@@ -38,8 +46,15 @@ def run(code: list[str]) -> None:
             x = parse(state, expr[:beg])
             y = parse(state, expr[beg + 3 :])
 
-            if num in {"ee", "ey", "ye", "yy"}:
-                return {"ee": x == y, "ey": x > y, "ye": x < y, "yy": x != y}[num]
+            if num == "ee":
+                return x == y
+            if num == "ey":
+                return x > y
+            if num == "ye":
+                return x < y
+            if num == "yy":
+                return x != y
+            raise ValueError("unrecognized comparison operator")
         elif "ry" in expr:
             beg = expr.index("ry")
             num = expr[beg + 1]
@@ -53,13 +68,14 @@ def run(code: list[str]) -> None:
             if num == "ye":
                 return x * y
             if num == "yy":
+                if y == 0:
+                    raise HaltError
                 return x // y
+            raise ValueError("unrecognized arithmetic operator")
         elif op == "qe":
             return var.get(parse(state, expr[1:-1]), 0)
         elif op == "et":
-            n = input("\n" * state.line + "Input: ")
-            state.line = False
-            return ord(n[0])
+            return io.input_char()
         elif re.fullmatch("[ey]+", op):
             op = op.replace("e", "0").replace("y", "1")
             return int(op, 2)
@@ -73,4 +89,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

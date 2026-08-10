@@ -3,13 +3,14 @@
 import io
 from contextlib import redirect_stdout
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.tape_based.back import run
 
 
 def run_and_capture(code: list[str]) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 

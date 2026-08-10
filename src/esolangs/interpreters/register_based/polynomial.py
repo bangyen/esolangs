@@ -1,5 +1,4 @@
-"""
-Polynomial interpreter implementation.
+"""Polynomial interpreter implementation.
 
 Polynomial is an esoteric programming language by User:Maedhros777 where each program
 is a polynomial function. Language statements are executed based on the zeroes of the
@@ -12,6 +11,11 @@ The language features:
 - Complex zeroes for register operations (arithmetic, I/O)
 - Special encoding using ascending primes for execution order
 - Single integer register for all operations
+
+The wiki's cat program notes that output ignores negative register values;
+this interpreter clamps them to zero (printing a NUL) instead, and it raises
+:class:`EOFError` on exhausted input rather than halting with -1.  A
+10000-step cap guards non-terminating programs.
 """
 
 import re
@@ -19,6 +23,8 @@ import sys
 from typing import Any
 
 import numpy as np
+
+from esolangs.interpreters.io import IO
 
 
 def prime(number: int) -> bool:
@@ -29,7 +35,12 @@ def prime(number: int) -> bool:
 
 
 def brackets(string: list[list[int]], pointer: int) -> int:
-    """Find matching bracket for control flow statements."""
+    """Find matching bracket for control flow statements.
+
+    Raises :class:`ValueError` if the bracket has no partner: the wiki defines
+    control-flow brackets only for matched pairs, so an unmatched one is a
+    malformed program.
+    """
     length = len(string[pointer]) == 1
     end = string[pointer][0] in [2, 6]
     direct = (1, -1)[length and end]
@@ -37,7 +48,7 @@ def brackets(string: list[list[int]], pointer: int) -> int:
     while count:
         pointer += direct
         if pointer < 0 or pointer >= len(string):
-            return max(0, min(pointer, len(string) - 1))
+            raise ValueError("unmatched control-flow bracket")
         if len(string[pointer]) == 1:
             if string[pointer][0] in [2, 6]:
                 count -= 1
@@ -51,7 +62,8 @@ def convert(pre: list[complex]) -> list[list[int]]:
     rounded_roots = [np.round(k) for k in pre]
     # Sort by imaginary part, then by real part
     sorted_roots = sorted(
-        rounded_roots, key=lambda x: (float(np.imag(x)), float(np.real(x)))
+        rounded_roots,
+        key=lambda x: (float(np.imag(x)), float(np.real(x))),
     )
     post: list[list[int]] = []
     num = 2
@@ -136,7 +148,7 @@ def sanitize(code: str) -> list[int]:
     return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
 
 
-def run(code: str) -> None:
+def run(code: str, io: IO) -> None:
     """Execute a Polynomial program by finding and processing its zeroes."""
     # Clean the input code
     cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
@@ -153,13 +165,12 @@ def run(code: str) -> None:
     instructions = convert(roots)
 
     ind = reg = 0
-    new = 1
     # Use Any to avoid complex type checking issues with mixed lambda types
     sym: list[Any] = [
         lambda r, a: r + a,  # +=
         lambda r, a: r - a,  # -=
         lambda r, a: r * a,  # *=
-        lambda r, a: r / a,  # /=
+        lambda r, a: r // a,  # /=
         lambda r, a: r % a,  # %=
         lambda r, a: r**a,  # ^
         lambda: reg > 0,  # if > 0
@@ -181,12 +192,10 @@ def run(code: str) -> None:
             if one:
                 reg = sym[two - 1](reg, one)
             elif two - 1:
-                val = input("\nInput: "[new:]) + chr(0)
+                val = io.input_str() + chr(0)
                 reg = ord(val[0]) or -1
-                new = 1
             else:
-                print(chr(max(0, reg)), end="")
-                new = 0
+                io.print_char(chr(max(0, reg)))
         elif one in [2, 6]:
             beg = instructions[brackets(instructions, ind)][0]
             if beg > 4 and sym[(beg - 1) % 4 + 6]():
@@ -201,4 +210,4 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.read()
-            run(data)
+            run(data, IO())

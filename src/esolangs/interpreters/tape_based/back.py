@@ -1,7 +1,17 @@
+r"""Interpreter for Back.
+
+A beam bounces across a grid at right angles: \\ and / reflect its direction,
+< and > move the tape pointer, - flips the current bit, + steps the beam
+forward when the current bit is 0, and * halts, printing the tape.
+"""
+
 import sys
 
+from esolangs.interpreters.io import IO
 
-def run(code: list[str]) -> None:
+
+def run(code: list[str], io: IO) -> None:
+    """Run a Back program and print the tape when it halts."""
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
@@ -32,11 +42,11 @@ def run(code: list[str]) -> None:
         x = (x + a) % len(code)
         y = (y + b) % size
 
-    print(*tape)
+    io.print_line(" ".join(map(str, tape)))
 
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         with open(sys.argv[1]) as file:
             data = file.readlines()
-            run(data)
+            run(data, IO())

@@ -1,8 +1,11 @@
+"""Compiler that turns Home Row programs into x86 Linux assembly."""
+
 import sys
 from re import sub
 
 
 def count(code: str, ind: int) -> tuple[int, int]:
+    """Return the run length of the command at ``ind`` and the next index."""
     code += " "
     num = 0
 
@@ -22,6 +25,7 @@ def count(code: str, ind: int) -> tuple[int, int]:
 
 
 def comp(code: str) -> str:
+    """Compile a Home Row program to x86 assembly on a 5x5 zeroed grid."""
     res = ""
 
     func = {

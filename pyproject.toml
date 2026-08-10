@@ -32,13 +32,13 @@ dependencies = [
 dev = [
     "pytest>=9.0.3",
     "pytest-cov>=4.0.0",
-    "black==26.3.1",
+    "black==26.5.1",
     "click>=8.3.3",
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
     "unicorn>=2.1.4",
-    "ruff>=0.0.280",
-    "mypy>=1.0.0",
+    "ruff==0.16.2",
+    "mypy==2.3.0",
     "pre-commit>=3.0.0",
     "types-requests",
     "types-setuptools",
@@ -97,12 +97,14 @@ select = [
     "PT",  # flake8-pytest-style
     "D",   # pydocstyle
     "RET", # flake8-return
+    "N",   # pep8-naming
+    "FBT", # flake8-boolean-trap
+    "A",   # builtin shadowing
+    "ARG", # unused arguments
+    "SLF", # private member access
 ]
 ignore = [
-    "E501",  # line too long, handled by black
-    "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
-    "E402",  # module level import not at top of file (for __main__ blocks)
     "D203",  # conflicts with D211 (blank line before class)
     "D213",  # conflicts with D212 (multi-line summary placement)
 ]
@@ -110,14 +112,18 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "**/__main__.py" = ["E402"]
-# Docstring presence is enforced on the public modules; the legacy esolang
-# implementations, the tests, and the scripts are exempt so they can be
-# documented incrementally.
-"src/esolangs/interpreters/**/*.py" = ["D"]
-"src/esolangs/compilers/**/*.py" = ["D"]
-"src/esolangs/tools/*.py" = ["D"]
-"tests/**/*.py" = ["D"]
-"scripts/*.py" = ["D"]
+# The badge is a single multi-line SVG template string; its long lines are
+# part of the generated markup and cannot be wrapped without changing it.
+"scripts/make_coverage_badge.py" = ["E501"]
+# Module filenames match the esolang names and are referenced by the registry.
+"src/esolangs/interpreters/**/*.py" = ["N999"]
+"src/esolangs/compilers/**/*.py" = ["N999"]
+# Test files are exempt from docstring requirements: test method and class
+# names are self-documenting, so the D rules would only add boilerplate.
+"tests/**/*.py" = ["D", "N802"]
+# Parametrized tests share a (program, stdin) battery; some tests only use
+# program, but pytest requires the parameter to be declared.
+"tests/test_transpilers.py" = ["ARG001"]
 
 [tool.mypy]
 strict = true
@@ -136,10 +142,6 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-
-[[tool.mypy.overrides]]
-module = ["riscv_elf_runner", "x86_elf_runner"]
-disable_error_code = ["no-untyped-call", "attr-defined"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

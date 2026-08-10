@@ -15,6 +15,8 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.interpreters.io import IO
+
 # interpreter module -> instruction alphabet. lightlang's "_" (sleep) is
 # left out so the fuzz stays fast, and input is mocked below.
 FUZZ = {
@@ -30,12 +32,12 @@ FUZZ = {
 # "terminates" invariant does not apply to them.
 
 
-class _Timeout(Exception):
+class _TimeoutError(Exception):
     """Raised by the alarm handler when a random program does not terminate."""
 
 
-def _on_alarm(signum: int, frame: object) -> None:
-    raise _Timeout("interpreter did not terminate on a random program")
+def _on_alarm(_signum: int, _frame: object) -> None:
+    raise _TimeoutError("interpreter did not terminate on a random program")
 
 
 @pytest.mark.skipif(os.name != "posix", reason="signal.alarm is POSIX-only")
@@ -50,8 +52,8 @@ def test_random_programs_terminate(module: str) -> None:
         signal.alarm(3)
         try:
             with patch("builtins.input", return_value="0"):
-                run(program)
-        except _Timeout:
+                run(program, io=IO())
+        except _TimeoutError:
             pytest.fail(f"{module} hung on a random program")
         except Exception:
             pass  # rejecting a random program is a valid termination

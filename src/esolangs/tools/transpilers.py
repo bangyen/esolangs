@@ -98,7 +98,7 @@ def _auto_size(ops: list[str]) -> int:
             elif c == "[":
                 j = match.get(i)
                 if j is None or j >= end:
-                    break  # unmatched bracket: CircleFuck halts on it
+                    raise ValueError("unbalanced brackets cannot be transpiled")
                 blo, bhi, bend, ok = scan(i + 1, j, p)
                 if not ok:
                     return (lo, hi, p, False)
@@ -115,12 +115,12 @@ def _auto_size(ops: list[str]) -> int:
     if lo < 0:
         raise ValueError(
             "the program moves its data pointer below cell 0, where brainfuck "
-            "clamps but CircleFuck's tape wraps around"
+            "clamps but CircleFuck's tape wraps around",
         )
     if not ok:
         raise ValueError(
             "the program has a loop that drifts the data pointer without bound; "
-            "pass size explicitly if the program stays within [0, size)"
+            "pass size explicitly if the program stays within [0, size)",
         )
     return hi + 1
 
@@ -307,7 +307,7 @@ def bf_to_six_five(program: str) -> str:
             elif c == "[":
                 if markers + 2 > 36:
                     raise ValueError(
-                        "the BF-to-6-5 transpiler supports 18 loops at most"
+                        "the BF-to-6-5 transpiler supports 18 loops at most",
                     )
                 depth = 1
                 j = i + 1
@@ -337,7 +337,7 @@ def bf_to_six_five(program: str) -> str:
 
 
 def _six_five_label(value: int) -> str:
-    """The single character 6-5 reads as ``value`` for a 7n/8n operand."""
+    """Return the single character 6-5 reads as ``value`` for a 7n/8n operand."""
     return str(value) if value < 10 else chr(value + 55)
 
 

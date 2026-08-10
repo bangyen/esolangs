@@ -4,13 +4,14 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.nevermind import run
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs or []), redirect_stdout(buffer):
-        run(code)
+        run(code, IO())
     return buffer.getvalue()
 
 
@@ -43,6 +44,21 @@ class TestNevermind:
 
     def test_loop(self) -> None:
         assert run_and_capture(["loop,3", "print,x", "endloop"]) == "x\nx\nx\n"
+
+    def test_loop_exit_resumes_after_body(self) -> None:
+        """Code after a finished loop still runs (skip flag must reset)."""
+        code = ["loop,1", "print,inside", "endloop", "print,after"]
+        assert run_and_capture(code) == "inside\nafter\n"
+
+    def test_zero_loop_skips_body(self) -> None:
+        """A loop of zero iterations runs nothing but continues after it."""
+        code = ["loop,0", "print,x", "endloop", "print,after"]
+        assert run_and_capture(code) == "after\n"
+
+    def test_make_string_concatenation(self) -> None:
+        """The ++ operator concatenates strings."""
+        code = ["make,x,hello", "make,y,world", "make,z,$x,++,$y", "print,$z"]
+        assert run_and_capture(code) == "helloworld\n"
 
     def test_calculator_addition(self) -> None:
         """The calculator example from esolangs.org."""
@@ -85,9 +101,44 @@ class TestNevermind:
         assert run_and_capture(code) == "done\n"
 
     def test_unmatched_if_scans_off_end(self) -> None:
-        """A false if with no matching endif halts cleanly."""
-        assert run_and_capture(["if,5,<,3", "print,x"]) == ""
+        """A false if with no matching endif is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(["if,5,<,3", "print,x"])
 
     def test_loop_with_nested_if(self) -> None:
         code = ["loop,2", "if,1,>,0", "print,x", "endif", "endloop"]
         assert run_and_capture(code) == "x\nx\n"
+
+    def test_unmatched_endloop_rejected(self) -> None:
+        """An endloop with no matching loop is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(["endloop"])
+
+    def test_divide_by_zero_halts(self) -> None:
+        """Division by zero is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["make,x,1", "make,y,0", "make,z,$x,/,$y"])
+
+    def test_undefined_variable_halts(self) -> None:
+        """Referencing an undefined $name is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["print,$nope"])
+
+    def test_input_without_prompt_rejected(self) -> None:
+        """input with no prompt is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="prompt"):
+            run_and_capture(["input"])
