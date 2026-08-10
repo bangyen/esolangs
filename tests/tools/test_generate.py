@@ -249,11 +249,6 @@ class TestGeneratorRoundTrips:
         assert gen.pct_squared_minus_one("\x00") == "'e"
         assert gen.pct_squared_minus_one("H") == "'iiimmmp" + "e"
 
-    def test_pct_squared_minus_one_unreachable(self) -> None:
-        """A codepoint above a byte is rejected rather than corrupted."""
-        with pytest.raises(ValueError, match="cannot reach byte"):
-            gen.pct_squared_minus_one("😀")
-
     def test_basicfuck(self) -> None:
         """A variable walks to each byte with +=/-= and write prints it."""
         assert gen.basicfuck("A") == (
@@ -270,6 +265,19 @@ class TestGeneratorRoundTrips:
             ">>>>>>>" + "<" * 7 + "(" + ">>>>>>>" + "<" * 7 + "("
         )
         assert gen.bit_tilde("\xff") == "~>~>~>~>~>~>~>~" + "<" * 7 + "("
+
+    def test_byte_generators_reject_unicode(self) -> None:
+        """Byte-oriented generators reject codepoints above 255 loudly."""
+        for _name, fn in (
+            ("dimensional", gen.dimensional),
+            ("two_d_fish", gen.two_d_fish),
+            ("pct_squared_minus_one", gen.pct_squared_minus_one),
+            ("basicfuck", gen.basicfuck),
+            ("bit_tilde", gen.bit_tilde),
+        ):
+            with pytest.raises(ValueError, match="only output bytes"):
+                fn("😀")
+            assert fn("é") != ""  # 233 fits in a byte
 
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""

@@ -7,7 +7,7 @@ from collections import deque
 from functools import cache
 from typing import Any
 
-from esolangs.tools.generators.helpers import _ilog
+from esolangs.tools.generators.helpers import _ilog, _require_bytes
 from esolangs.tools.ztoalc_starts import STARTS
 
 __all__ = [
@@ -660,6 +660,7 @@ def dimensional(text: str) -> str:
     as a byte, so each character is a two-part run.  The pointer stays at the
     first cell throughout.
     """
+    _require_bytes(text, "Dimensional")
     return "".join(f"={ord(c):x}." for c in text)
 
 
@@ -669,6 +670,7 @@ def two_d_fish(text: str) -> str:
     A single row heading right (``/``) carries an accumulator: ``i`` and ``d``
     move it toward each character and ``a`` prints it as a byte.  ``@`` halts.
     """
+    _require_bytes(text, "2dFish")
     acc = 0
     res = ["/"]
     for c in text:
@@ -704,14 +706,9 @@ def pct_squared_minus_one(text: str) -> str:
     and ``e`` prints it as a character.  The reference reaches every byte
     within the interpreter's ``acc > 3003`` bound.
     """
+    _require_bytes(text, "%^2^-1")
     paths = _pct_paths()
-    res = []
-    for c in text:
-        o = ord(c)
-        if o not in paths:
-            raise ValueError(f"%^2^-1 cannot reach byte {o}")
-        res.append("'" + paths[o] + "e")
-    return "".join(res)
+    return "".join("'" + paths[ord(c)] + "e" for c in text)
 
 
 def basicfuck(text: str) -> str:
@@ -721,6 +718,7 @@ def basicfuck(text: str) -> str:
     character (within the declared ``0..255`` range) and ``write <- a ;``
     prints it.  ``o=nearest`` pins any accidental overshoot back to the range.
     """
+    _require_bytes(text, "Basicfuck")
     res = ["#basicfuck t=1 r=0~255 o=nearest", "#allocate a"]
     cur = 0
     for c in text:
@@ -739,6 +737,7 @@ def bit_tilde(text: str) -> str:
     ``(`` prints the 8-bit window as a byte.  The generator tracks the tape so
     it only toggles bits that must change, and walks back to cell 0 to print.
     """
+    _require_bytes(text, "bit~")
     res = []
     tape = [0] * 8
     for c in text:
