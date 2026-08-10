@@ -1,5 +1,13 @@
 # frozen_string_literal: true
 
+# 3x interpreter.
+#
+# Per the esolangs wiki, stack items can be any rational number: ``3`` pushes
+# the rational 3, ``x`` computes the exact rational ``(A-B)/C``, and ``?``
+# reads a number (integer, decimal, or fraction like ``1/3``).  Variables are
+# named by arbitrary rationals (Ruby hashes keep distinct keys for e.g. 1 and
+# 1/2), so no truncation happens anywhere.
+
 code = File.read(ARGV[0])
 ARGV.clear
 line = ''
@@ -25,7 +33,7 @@ end
 while (c = code[ind])
   case c
   when '3'
-    stk.push(3)
+    stk.push(Rational(3))
   when 'x'
     x = stk.pop
     y = stk.pop
@@ -34,10 +42,11 @@ while (c = code[ind])
     stk.push(n)
   when '?'
     print "#{line}Input: "
-    stk.push(gets.to_i)
+    stk.push(Rational(gets.strip))
     line = ''
   when '!'
-    print stk.pop
+    n = stk.pop
+    print n.denominator == 1 ? n.to_i : n
     line = 10.chr
   when 'v'
     n = stk.pop
