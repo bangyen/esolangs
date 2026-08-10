@@ -178,6 +178,20 @@ class TestGeneratorRoundTrips:
         assert roundtrip(polynomial_run, gen.polynomial("ba")) == "ba"
         assert gen.polynomial("").startswith("f(x) = ")
 
+    def test_polynomial_byte_range(self) -> None:
+        """Codepoints up to 255 round-trip within a reasonable text length."""
+        text = "".join(chr(n) for n in range(0, 256, 16))
+        assert roundtrip(polynomial_run, gen.polynomial(text)) == text
+
+    def test_polynomial_precision_limit(self) -> None:
+        """Large codepoint deltas exceed float64 root precision (documented).
+
+        numpy.roots cannot recover the instruction roots when consecutive
+        characters differ by thousands, so the output corrupts silently.
+        See README "Known Issues".
+        """
+        assert roundtrip(polynomial_run, gen.polynomial("a日a日")) != "a日a日"
+
     def test_polynomial_format(self) -> None:
         """Zero coefficients are omitted from the formatted polynomial."""
         from esolangs.tools._polynomial import format_coeffs
