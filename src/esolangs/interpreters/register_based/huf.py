@@ -2,11 +2,16 @@
 
 Register-based language with two variables: num and mul.
 Processes code segments enclosed in #...#@ patterns.
+
+Outputting a register value outside the valid character range is an invalid
+operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`.
 """
 
 import re
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -20,6 +25,8 @@ def run(code: str, io: IO) -> None:
         if sym == "#":
             num = mul = 0
         elif sym == ">":
+            if not 0 <= num <= 0x10FFFF:
+                raise HaltError
             val = chr(num)
             io.print_char(val)
             num = 0

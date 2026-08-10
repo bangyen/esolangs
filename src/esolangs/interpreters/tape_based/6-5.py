@@ -5,11 +5,16 @@ cell equals ``n`` (the value is a parameter, never executed), and ``8n`` is a
 two-character token that jumps to the n-th ``4`` marker.  To get this right
 the program is tokenized first, merging each ``7``/``8`` with its operand,
 rather than reading the next character on the fly.
+
+Outputting a cell value outside the valid character range is an invalid
+operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`.
 """
 
 import re
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -73,6 +78,8 @@ def run(code: str, io: IO) -> None:
         elif tok == "0":
             return
         elif tok == "A":
+            if not 0 <= tape[cell] <= 0x10FFFF:
+                raise HaltError
             io.print_char(chr(tape[cell]))
         elif tok == "B":
             tape[cell] = io.input_char()

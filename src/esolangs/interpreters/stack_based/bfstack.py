@@ -6,7 +6,8 @@ nonzero.  A pop or output on an empty stack is invalid and halts the program.
 
 The wiki does not specify the cell width for ``+``/``-``; this interpreter
 wraps at 8 bits (mod 256).  It also raises :class:`EOFError` on exhausted
-input and :class:`HaltError` on an unmatched ``]``.
+input, :class:`HaltError` on an invalid empty-stack operation, and
+:class:`ValueError` on an unmatched ``[``.
 """
 
 import sys
@@ -52,7 +53,7 @@ def run(code: str, io: IO) -> None:
                 while match:
                     ind += 1
                     if ind == len(code):
-                        break
+                        raise ValueError("unmatched '['")
                     if (o := code[ind]) == "[":
                         match += 1
                     elif o == "]":

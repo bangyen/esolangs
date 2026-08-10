@@ -5,12 +5,13 @@ current bit, < decrements the pointer, and ! prints the pool as a binary byte
 (MSB first).  The language is straight-line with no control flow.
 
 The wiki calls moving the pointer more than 8 steps left a fault; this
-interpreter instead wraps the pointer around the pool (Python's negative
-indexing reaches the rightmost bits) and keeps running.
+interpreter treats it as an invalid operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`.
 """
 
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -29,6 +30,8 @@ def run(code: str, io: IO) -> None:
             io.print_char(chr(int(num, 2)))
         elif sym == "<":
             cell -= 1
+            if cell < 0:
+                raise HaltError
 
 
 if __name__ == "__main__":

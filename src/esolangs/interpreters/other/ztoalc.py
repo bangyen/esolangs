@@ -7,13 +7,18 @@ value as an expression.
 
 The wiki allows array elements as general expressions; this interpreter only
 handles a plain variable name as the array (no nested or compound indexing),
-so arrays-of-arrays are not supported.
+so arrays-of-arrays are not supported.  A command missing a required operand
+is a malformed program and is rejected with :class:`ValueError`; referencing
+an undefined variable, indexing out of range, or reaching a negative pointer
+are invalid operations that halt the program with
+:class:`~esolangs.exceptions.HaltError`.
 """
 
 import sys
 from dataclasses import dataclass
 from typing import cast
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -24,6 +29,8 @@ class State:
 
 def run(code: list[str], io: IO) -> None:
     """Run a ZTOALC program, following the Collatz trajectory of line 1."""
+    if not code:
+        raise ValueError("ZTOALC program cannot be empty")
     ptr = int(code[0])
     state = State()
     var: dict[str, int | list[int]] = {}
@@ -38,27 +45,44 @@ def run(code: list[str], io: IO) -> None:
         if exp[0] == "[":
             return [0] * cast(int, val(state, exp[1:-1]))
         arg = exp[:-1].split("[")
+        if arg[0] not in var:
+            raise HaltError
         arr = var[arg[0]]
         if not isinstance(arr, list):
-            raise ValueError("array variable expected")  # pragma: no cover
-        return arr[cast(int, val(state, arg[1]))]
+            raise HaltError
+        idx = cast(int, val(state, arg[1]))
+        if idx < 0 or idx >= len(arr):
+            raise HaltError
+        return arr[idx]
+
+    def operand(lst: list[str], n: int) -> str:
+        """Return the ``n``-th token of a command, rejecting a missing one."""
+        if n >= len(lst):
+            raise ValueError("missing operand in " + " ".join(lst))
+        return lst[n]
 
     while p := ptr - 1:
+        if p < 0:
+            raise HaltError
         ins = code[p] if p < len(code) else ""
         lst = ins.split()
 
         if "print" in ins:
-            io.print_char(chr(cast(int, val(state, lst[1]))))
+            io.print_char(chr(cast(int, val(state, operand(lst, 1)))))
         elif "jump" in ins:
-            if val(state, lst[2]):
+            if val(state, operand(lst, 2)):
                 ptr += 1
                 continue
         elif " =" in ins:
-            var[lst[0]] = val(state, lst[2])
+            var[operand(lst, 0)] = val(state, operand(lst, 2))
         elif "+" in ins:
-            var[lst[0]] = cast(int, var[lst[0]]) + cast(int, val(state, lst[2]))
+            var[operand(lst, 0)] = cast(int, var[operand(lst, 0)]) + cast(
+                int, val(state, operand(lst, 2))
+            )
         elif "-" in ins:
-            var[lst[0]] = cast(int, var[lst[0]]) - cast(int, val(state, lst[2]))
+            var[operand(lst, 0)] = cast(int, var[operand(lst, 0)]) - cast(
+                int, val(state, operand(lst, 2))
+            )
 
         if ptr % 2:
             ptr = 3 * ptr + 1

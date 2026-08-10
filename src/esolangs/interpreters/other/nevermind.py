@@ -4,16 +4,28 @@ Line-based commands: ``print`` joins its arguments, ``input`` stores a line in
 the answer variable, ``make`` computes arithmetic (``+ - * /`` on numbers,
 ``++`` concatenating strings), and ``if``/``loop``/``endloop`` branch on
 comparisons.  ``$name`` references a variable.
+
+An ``if``/``loop``/``endloop`` with no matching partner is a structurally
+malformed program and is rejected with :class:`ValueError`; dividing by zero,
+referencing an undefined ``$name``, or ``input`` with no prompt are invalid
+operations that halt the program with :class:`~esolangs.exceptions.HaltError`
+(or, for the missing prompt, :class:`ValueError`).
 """
 
 import sys
 from typing import cast
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
 def find(code: list[list[str | int | float]], ind: int) -> int:
-    """Return the index of the matching ``if``/``loop`` partner for ``ind``."""
+    """Return the index of the matching ``if``/``loop`` partner for ``ind``.
+
+    Raises :class:`ValueError` when the partner is missing: the wiki defines
+    ``if``/``endif`` and ``loop``/``endloop`` only for matched pairs, so an
+    unmatched marker is a malformed program.
+    """
     if "end" in (op := str(code[ind][0])):
         match = op[3:]
         move = -1
@@ -25,8 +37,8 @@ def find(code: list[list[str | int | float]], ind: int) -> int:
     ind += move
 
     while num:
-        if ind == len(code):
-            return ind
+        if not 0 <= ind < len(code):
+            raise ValueError(f"unmatched {op}")
         if code[ind][0] == op:
             num += move
         elif code[ind][0] == match:
@@ -51,7 +63,10 @@ def run(lines: list[str], io: IO) -> None:
             for i, val in enumerate(c[1:]):
                 if isinstance(val, str):
                     if val[0] == "$":
-                        c[i + 1] = var[val[1:].strip()]
+                        name = val[1:].strip()
+                        if name not in var:
+                            raise HaltError
+                        c[i + 1] = var[name]
                     nxt = c[i + 1]
                     if isinstance(nxt, str) and nxt.isascii() and nxt.isdigit():
                         c[i + 1] = int(nxt)
@@ -59,6 +74,8 @@ def run(lines: list[str], io: IO) -> None:
             if (op := c[0]) == "print":
                 io.print_line("".join(map(str, c[1:])))
             elif op == "input":
+                if len(c) < 2:
+                    raise ValueError("input requires a prompt")
                 var["answer"] = io.input_str(cast(str, c[1]))
             elif op == "make":
                 if len(c) == 5:
@@ -72,7 +89,10 @@ def run(lines: list[str], io: IO) -> None:
                     elif o == "++":
                         v = str(c[2]) + str(c[4])
                     else:
-                        v = cast(int | float, c[2]) / cast(int | float, c[4])
+                        n = cast(int | float, c[4])
+                        if n == 0:
+                            raise HaltError
+                        v = cast(int | float, c[2]) / n
                     var[cast(str, c[1])] = v
                 else:
                     var[cast(str, c[1])] = c[2]

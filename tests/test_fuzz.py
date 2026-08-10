@@ -46,7 +46,9 @@ def _random_string(alphabet: str, max_len: int) -> str:
 def test_excon_random() -> None:
     random.seed(0)
     for _ in range(50):
-        run_safely(excon_run, _random_string(":^!<", 30))
+        # a pointer fault (too many <) is a valid HaltError outcome
+        with suppress(HaltError):
+            run_safely(excon_run, _random_string(":^!<", 30))
 
 
 def test_minifuck_random() -> None:
@@ -129,7 +131,10 @@ def test_huf_random() -> None:
 def test_minsky_random() -> None:
     random.seed(9)
     for _ in range(50):
-        run_safely(minsky_run, _random_string("+*~", 30))
+        code = _random_string("+*~", 30)
+        # every ~ needs a matching number on the jump line; jump targets past
+        # the end terminate instead of self-looping
+        run_safely(minsky_run, code + "\n" + " ".join(["99"] * code.count("~")))
 
 
 def test_qoibl_random() -> None:

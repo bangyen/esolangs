@@ -30,6 +30,8 @@ def parse(code: str) -> str:
     }
 
     for c in blocks:
+        if not c:
+            raise ValueError("ASCII-art program has an empty block")
         t = (c.count("\n"), c[-1])
         if t in sym:
             res += sym[t]

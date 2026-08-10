@@ -4,6 +4,11 @@ A pointer walks clockwise around a square ring, turning at R cells (or at ?
 when the accumulator is nonzero, or ! when it is zero).  ; outputs the
 accumulator parity, . reads an input bit, S zeroes the accumulator, and seven
 parity bits are grouped into one printed byte.
+
+The wiki defines the program as a closed ring; a pointer that walks off the
+edge is a malformed program and is rejected with :class:`ValueError`.  Input
+bits are read once at the start and then rotated, so a program that consumes
+more than 7 bits re-reads them rather than halting on exhausted input.
 """
 
 import sys
@@ -22,6 +27,8 @@ def move(
     acc: int,
 ) -> tuple[int, int, int, str, int]:
     """Step the pointer one cell, returning position, direction, and the cell."""
+    if not 0 <= y < len(code) or not 0 <= x < len(code[y]):
+        raise ValueError("Clockwise ring is not closed")
     o = code[y][x]
     c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
 
@@ -35,6 +42,8 @@ def move(
 
 def run(code: list[str], io: IO) -> None:
     """Run a Clockwise program, reading input bits when the ring reads ``.``."""
+    if not code:
+        raise ValueError("Clockwise program cannot be empty")
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
     x = y = r = 0
