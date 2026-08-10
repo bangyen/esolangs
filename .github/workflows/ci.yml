@@ -214,6 +214,10 @@ jobs:
       run: |
         Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) parse(f)'
 
+    - name: Verify generator round-trips against the R and Ruby references
+      run: |
+        PYTHONPATH=src python3 scripts/verify_extra_generators.py
+
     - name: Build and natively run the x86 reference interpreters
       run: |
         set -e
