@@ -167,9 +167,10 @@ Languages that don't fit into the above categories.
 
 Implementations written in languages other than Python.
 
-Note: the generators for Forþ, Painfuck, LaserFuck, Unsquare, EXCON, 123, and
-NoComment are round-trip verified against their native references (C++, Rust,
-R, Ruby, or x86/RISC-V assembly) in CI.
+Note: the generators for Forþ, Painfuck, Dimensional, 2dFish, %^2^-1,
+Basicfuck, LaserFuck, Unsquare, bit~, EXCON, 123, and NoComment are
+round-trip verified against their native references (C++, Rust, R, Ruby, or
+x86/RISC-V assembly) in CI.
 
 ### C++ Implementations
 

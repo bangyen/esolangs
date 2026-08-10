@@ -3,6 +3,7 @@
 import math
 import re
 from array import array
+from collections import deque
 from functools import cache
 from typing import Any
 
@@ -11,8 +12,11 @@ from esolangs.tools.ztoalc_starts import STARTS
 
 __all__ = [
     "_123",
+    "basicfuck",
+    "bit_tilde",
     "clockwise",
     "container",
+    "dimensional",
     "forth",
     "home_row",
     "laserfuck",
@@ -20,6 +24,8 @@ __all__ = [
     "nevermind",
     "nocomment",
     "painfuck",
+    "pct_squared_minus_one",
+    "two_d_fish",
     "unsquare",
     "ztoalc",
 ]
@@ -645,3 +651,103 @@ def taglate(text: str) -> str:
     if any(c in "\n\r" for c in text):
         raise ValueError("Taglate cannot output a newline (the queue is one line)")
     return text + "\n" + "i" * len(text)
+
+
+def dimensional(text: str) -> str:
+    """Build a Dimensional program that outputs ``text``.
+
+    ``=`` sets the current cell to a hexadecimal literal and ``.`` prints it
+    as a byte, so each character is a two-part run.  The pointer stays at the
+    first cell throughout.
+    """
+    return "".join(f"={ord(c):x}." for c in text)
+
+
+def two_d_fish(text: str) -> str:
+    """Build a 2dFish program that outputs ``text``.
+
+    A single row heading right (``/``) carries an accumulator: ``i`` and ``d``
+    move it toward each character and ``a`` prints it as a byte.  ``@`` halts.
+    """
+    acc = 0
+    res = ["/"]
+    for c in text:
+        t = ord(c)
+        res.append("i" * (t - acc) if t >= acc else "d" * (acc - t))
+        res.append("a")
+        acc = t
+    return "".join(res) + "@"
+
+
+@cache
+def _pct_paths() -> dict[int, str]:
+    """Shortest programs from ``'`` (acc = 0) to each byte for %^2^-1.
+
+    BFS over the four ops (``s`` -= 2, ``i`` -= 3, ``m`` *= 2, ``p`` = -acc),
+    bounded by the interpreter's ``acc > 3003`` reset.
+    """
+    paths = {0: ""}
+    q = deque([0])
+    while q:
+        v = q.popleft()
+        for op, nv in [("s", v - 2), ("i", v - 3), ("m", v * 2), ("p", -v)]:
+            if -3003 <= nv <= 3003 and nv not in paths:
+                paths[nv] = paths[v] + op
+                q.append(nv)
+    return paths
+
+
+def pct_squared_minus_one(text: str) -> str:
+    """Build a %^2^-1 program that outputs ``text``.
+
+    ``'`` resets the accumulator to zero, the BFS paths move it to each byte,
+    and ``e`` prints it as a character.  The reference reaches every byte
+    within the interpreter's ``acc > 3003`` bound.
+    """
+    paths = _pct_paths()
+    res = []
+    for c in text:
+        o = ord(c)
+        if o not in paths:
+            raise ValueError(f"%^2^-1 cannot reach byte {o}")
+        res.append("'" + paths[o] + "e")
+    return "".join(res)
+
+
+def basicfuck(text: str) -> str:
+    """Build a Basicfuck program that outputs ``text``.
+
+    One variable ``a`` tracks the current byte: ``+=``/``-=`` walk it to each
+    character (within the declared ``0..255`` range) and ``write <- a ;``
+    prints it.  ``o=nearest`` pins any accidental overshoot back to the range.
+    """
+    res = ["#basicfuck t=1 r=0~255 o=nearest", "#allocate a"]
+    cur = 0
+    for c in text:
+        t = ord(c)
+        delta = t - cur
+        res.append(f"a += {delta};" if delta >= 0 else f"a -= {-delta};")
+        res.append("write <- a ;")
+        cur = t
+    return "\n".join(res) + "\n"
+
+
+def bit_tilde(text: str) -> str:
+    """Build a bit~ program that outputs ``text``.
+
+    The tape holds bits: ``~`` flips the current bit, ``>`` moves right, and
+    ``(`` prints the 8-bit window as a byte.  The generator tracks the tape so
+    it only toggles bits that must change, and walks back to cell 0 to print.
+    """
+    res = []
+    tape = [0] * 8
+    for c in text:
+        bits = [int(b) for b in format(ord(c), "08b")]
+        for i in range(8):
+            if tape[i] != bits[i]:
+                res.append("~")
+                tape[i] = bits[i]
+            if i < 7:
+                res.append(">")
+        res.append("<" * 7 + "(")
+    return "".join(res)
