@@ -6,6 +6,9 @@ recent container.  Each tick updates every container by its satisfied rules;
 PRINT outputs OUT as a byte when it turns on, the empty-named container reads
 a line of input into the IN container when it fires, and EXIT halts the
 program.
+
+A rule line before any container declaration is a malformed program and is
+rejected with :class:`ValueError`; an empty program halts immediately.
 """
 
 import sys
@@ -68,6 +71,8 @@ def run(code: list[str], io: IO) -> None:
                 var[line] = 0
                 obj.append(Con(line))
         elif line:
+            if not obj:
+                raise ValueError("rule line before any container declaration")
             obj[-1].add(line)
 
     if not obj:

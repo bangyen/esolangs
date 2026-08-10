@@ -4,11 +4,17 @@ The tape is the program itself: cells wrap, + and - adjust the current cell,
 , reads input, . outputs, [ and ] jump to matching brackets reading the cell,
 @ halts, { and } insert and remove cells, and the pointer moves around the
 circular tape.
+
+A program with no instructions is malformed and is rejected with
+:class:`ValueError`, as is one with unmatched ``[``/``]`` brackets; deleting
+the last cell (``}``) is an invalid operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`.
 """
 
 import re
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -33,7 +39,12 @@ def parse(code: str) -> list[int]:
 
 
 def find(code: list[int], ind: int, ptr: int) -> int:
-    """Return the matching bracket for ``ind``, or -1 if unmatched."""
+    """Return the matching bracket for ``ind``.
+
+    Raises :class:`ValueError` if the brackets are unbalanced: the wiki
+    defines ``[``/``]`` only for matched pairs, so an unmatched bracket is a
+    malformed program.
+    """
     char = chr(code[ind])
     if char == "[":
         if code[ptr]:
@@ -52,7 +63,7 @@ def find(code: list[int], ind: int, ptr: int) -> int:
         ind = (ind + mode) % num
         sym = chr(code[ind])
         if ind == start:
-            return -1
+            raise ValueError("unmatched bracket")
         if sym == "[":
             match += 1
         elif sym == "]":
@@ -63,6 +74,8 @@ def find(code: list[int], ind: int, ptr: int) -> int:
 def run(code: str, io: IO) -> None:
     """Run a CircleFuck program."""
     cells: list[int] = parse(code)
+    if not cells:
+        raise ValueError("CircleFuck program cannot be empty")
     ind = ptr = 0
 
     while True:
@@ -78,8 +91,6 @@ def run(code: str, io: IO) -> None:
             cells[ptr] = io.input_char()
         elif char in "[]":
             ind = find(cells, ind, ptr)
-            if ind == -1:
-                return
         elif char == ".":
             val = chr(cells[ptr])
             io.print_char(val)
@@ -91,6 +102,8 @@ def run(code: str, io: IO) -> None:
             cells.insert(ptr, 0)
             ind += 1
         elif char == "}":
+            if len(cells) == 1:
+                raise HaltError
             cells.pop(ptr)
 
         ind = (ind + 1) % len(cells)

@@ -3,6 +3,11 @@
 SEED/CONFLAGRATE operate on all 23 arrays, EXCRETE/CONSUME/FISSION/DIGEST on
 the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads a byte
 of input, and PRONOUNCE prints the accumulator as a byte.
+
+The wiki defines SPRINT with a too-large ``x`` as a NOP (it does nothing when
+the array has fewer than ``x`` variables), which this interpreter follows;
+LEAPFROG with a negative jump target is undefined by the wiki, so the
+interpreter halts instead of jumping.
 """
 
 import functools

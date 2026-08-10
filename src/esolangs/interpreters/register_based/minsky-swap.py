@@ -7,6 +7,9 @@ Jump targets are 1-based and fixed by the tilde's position in the code line:
 the Nth ``~`` jumps to the Nth number on the jump line, so ``decnz(N)`` (and
 its compact ``~``) restarts execution at line N.  The wiki describes targets
 as 1-based ("line N"), which this interpreter follows.
+
+A ``~`` with no corresponding jump number is a malformed program and is
+rejected with :class:`ValueError`.
 """
 
 import re
@@ -51,7 +54,9 @@ def run(code: str, io: IO) -> None:
     targets: dict[int, int] = {}
     for i, ch in enumerate(prog):
         if ch == "~":
-            targets[i] = nums[len(targets)] if len(targets) < len(nums) else 0
+            if len(targets) >= len(nums):
+                raise ValueError("unmatched '~' with no jump target")
+            targets[i] = nums[len(targets)]
 
     while ind < len(prog):
         if (op := prog[ind]) == "+":

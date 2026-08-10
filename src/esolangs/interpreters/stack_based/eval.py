@@ -4,13 +4,15 @@ Commands manipulate two stacks: 0 pushes 0, \\ pushes the current stack index,
 ^ duplicates, + and - adjust the top, = moves a value to the other stack, ;
 pops, ~ switches stacks, * reverses, ? skips the next command on a zero pop,
 and ! evaluates the popped string as a program.
+
+Arithmetic on a non-numeric top, or ``!`` on a non-string value, is an invalid
+operation and halts the program with :class:`~esolangs.exceptions.HaltError`.
 """
 
 import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -38,12 +40,19 @@ def run(code: str, io: IO) -> None:
             raise HaltError
         return state.stk[state.ptr].pop()
 
+    def bump(delta: int) -> None:
+        """Add ``delta`` to the top, halting when the top is not a number."""
+        val = pop()
+        if not isinstance(val, int):
+            raise HaltError
+        state.stk[state.ptr].append(val + delta)
+
     dct: dict[str, Callable[[], object]] = {
         "`": lambda: state.stk[state.ptr].append(1 - state.ptr),
         "^": lambda: state.stk[state.ptr].append(top()),
         "0": lambda: state.stk[state.ptr].append(0),
-        "+": lambda: state.stk[state.ptr].append(cast(int, pop()) + 1),
-        "-": lambda: state.stk[state.ptr].append(cast(int, pop()) - 1),
+        "+": lambda: bump(1),
+        "-": lambda: bump(-1),
         ".": lambda: io.print_value(pop()),
         "=": lambda: state.stk[1 - state.ptr].append(pop()),
         ";": lambda: pop(),
