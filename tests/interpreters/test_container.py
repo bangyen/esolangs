@@ -68,3 +68,12 @@ class TestContainer:
         ):
             run(code, IO())
         assert exc.value.code == 0
+
+    def test_rule_before_declaration_rejected(self) -> None:
+        """A rule line before any container declaration is malformed."""
+        with pytest.raises(ValueError, match="before any container"):
+            run(["+1 A>=0"], IO())
+
+    def test_empty_program_halts(self) -> None:
+        """An empty program halts immediately with no output."""
+        run([], IO())

@@ -50,3 +50,8 @@ class TestEval:
     def test_eval_string_evaluates_program(self) -> None:
         """! evaluates a pushed string as a program."""
         assert run_and_capture('"0+."!') == "1"
+
+    def test_arithmetic_on_string_halts(self) -> None:
+        """+ on a non-numeric top is an invalid operation."""
+        with pytest.raises(HaltError):
+            run('"abc"+', IO())

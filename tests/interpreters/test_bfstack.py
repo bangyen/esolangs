@@ -46,8 +46,9 @@ class TestBFStack:
         assert run_and_capture(">[[-]]") == ""
 
     def test_loop_skip_unmatched(self) -> None:
-        """A skipped [ with no closing ] halts cleanly."""
-        assert run_and_capture(">[") == ""
+        """A skipped [ with no closing ] is a malformed program."""
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(">[")
 
     def test_output_on_empty_stack_raises(self) -> None:
         with pytest.raises(HaltError):
