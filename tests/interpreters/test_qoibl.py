@@ -299,12 +299,26 @@ class TestQoiblEdgeCases:
 
     def test_division_by_zero(self) -> None:
         """Test division by zero behavior."""
+        from esolangs.exceptions import HaltError
+
         code: list[str] = [
             "we y we yyy we",  # var[1] = 7
             "we ye we e we",  # var[2] = 0
             "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2]
         ]
-        with pytest.raises(ZeroDivisionError):
+        with pytest.raises(HaltError):
+            run(code, IO())
+
+    def test_unrecognized_operator_rejected(self) -> None:
+        """An unrecognized arithmetic operator is a malformed program."""
+        code: list[str] = ["tt y ry qe y y tt"]
+        with pytest.raises(ValueError, match="operator"):
+            run(code, IO())
+
+    def test_unrecognized_comparison_rejected(self) -> None:
+        """An unrecognized comparison operator is a malformed program."""
+        code: list[str] = ["tt y yr qe y y tt"]
+        with pytest.raises(ValueError, match="operator"):
             run(code, IO())
 
     def test_nested_expressions(self) -> None:

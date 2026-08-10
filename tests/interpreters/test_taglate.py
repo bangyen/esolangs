@@ -96,6 +96,22 @@ class TestTaglate:
     def test_lone_g_is_ignored(self) -> None:
         assert run_and_capture(["1", "gi"]) == "1"
 
-    def test_unmatched_loop_markers_halt(self) -> None:
-        assert run_and_capture(["\x001", "gy"]) == ""
-        assert run_and_capture(["1", "gz"]) == ""
+    def test_unmatched_loop_markers_rejected(self) -> None:
+        """An unmatched gy/gz is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(["\x001", "gy"])
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture(["1", "gz"])
+
+    def test_empty_queue_pop_halts(self) -> None:
+        """Popping an empty queue in arithmetic is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["", "a"])
+        with pytest.raises(HaltError):
+            run_and_capture(["", "i"])

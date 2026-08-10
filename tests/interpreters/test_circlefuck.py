@@ -60,10 +60,33 @@ class TestCirclefuck:
 
     def test_loop_skipped_when_cell_zero(self) -> None:
         """[ skips its body when the current cell is zero."""
-        assert run_and_capture("\\0[.@") == ""
+        assert run_and_capture("\\0[.].@") == "\x00"
+
+    def test_unmatched_bracket_rejected(self) -> None:
+        """An unmatched [ is a malformed program."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run_and_capture("\\0[.@")
 
     def test_loop_skip_finds_matching_bracket(self) -> None:
         assert run_and_capture("\\0[.]@") == ""
 
     def test_decrement(self) -> None:
         assert run_and_capture("-@") == ""
+
+    def test_empty_program_rejected(self) -> None:
+        """A program with no instructions is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="empty"):
+            run_and_capture("")
+
+    def test_delete_last_cell_halts(self) -> None:
+        """Deleting the last cell is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture("}")

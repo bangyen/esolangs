@@ -41,3 +41,10 @@ class TestSuffolk:
         with patch("builtins.input", return_value="B"), redirect_stdout(buffer):
             run(",.", limit=1, io=IO())
         assert buffer.getvalue() == "A"
+
+    def test_empty_program_rejected(self) -> None:
+        """An empty program is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="empty"):
+            run("", IO())

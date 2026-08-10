@@ -137,3 +137,21 @@ class TestDigEdgeCases:
     def test_single_character_program(self) -> None:
         """Test a program containing only a halt command."""
         assert run_and_capture(["@"]) == ""
+
+    def test_no_adjacent_digit_halts(self) -> None:
+        """A work command with no adjacent digit is an invalid operation."""
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run([">$+:", "    "], io=IO())
+
+    def test_divide_by_zero_halts(self) -> None:
+        """Dividing by an adjacent zero is an invalid operation."""
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run([">$/", " 10"], io=IO())
+
+    def test_empty_input_line_reads_zero(self) -> None:
+        """An empty input line stores 0 in the mole."""
+        assert run_and_capture([">$=:", " 2 "], inputs=[""]) == "0"

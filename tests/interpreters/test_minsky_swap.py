@@ -165,6 +165,13 @@ class TestMinskySwapEdgeCases:
             run("~\n999", io=IO())
         assert f.getvalue().strip() == "0 0"
 
+    def test_tilde_without_target_rejected(self) -> None:
+        """A ~ with no matching jump-line number is malformed."""
+        import pytest
+
+        with pytest.raises(ValueError, match="jump target"):
+            run("~~\n1", io=IO())
+
     def test_multiple_tildes(self) -> None:
         """Test program with multiple tildes and jump targets."""
         with redirect_stdout(io.StringIO()) as f:
