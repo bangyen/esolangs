@@ -100,6 +100,9 @@ art = esolangs.transpile("BF", "ASCII art", program)   # rewrite between languag
 
 ## Implemented Languages
 
+<details>
+<summary>Show all</summary>
+
 ### Register-based Languages
 
 Languages that use registers to store and manipulate data.
@@ -155,7 +158,12 @@ Languages that don't fit into the above categories.
 - [Taglate](https://esolangs.org/wiki/Taglate)
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)
 
+</details>
+
 ## Extra Implementations
+
+<details>
+<summary>Show all</summary>
 
 Implementations written in languages other than Python.
 
@@ -201,7 +209,12 @@ Implementations written in languages other than Python.
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 
+</details>
+
 ## Compilers
+
+<details>
+<summary>Show all</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
@@ -219,6 +232,8 @@ Compilers that translate esoteric languages to other target languages.
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [RAM0](https://esolangs.org/wiki/RAM0)
+
+</details>
 
 ## Transpilers
 
