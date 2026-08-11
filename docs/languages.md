@@ -12,7 +12,7 @@ hand.
 | 3x | yes |  | yes |  |  |
 | 6-5 | yes | yes | yes |  | hello cat |
 | ASCII art | yes | yes | yes |  | hello |
-| BF | yes | yes |  |  | hello |
+| BF | yes | yes | yes |  | hello |
 | BF-PDA |  |  |  | yes |  |
 | BFStack | yes | yes | yes | yes | hello |
 | BIO | yes | yes |  |  | hello |
@@ -25,7 +25,7 @@ hand.
 | Container | yes | yes |  |  | hello |
 | DSDLAI |  | yes |  |  |  |
 | Dig | yes | yes | yes |  | hello |
-| Dimensional | yes | yes | yes |  |  |
+| Dimensional | yes | yes | yes |  | hello |
 | Dotlang | yes | yes |  |  | hello |
 | EXCON | yes | yes |  | yes | hello |
 | Eval | yes | yes |  |  | hello |
