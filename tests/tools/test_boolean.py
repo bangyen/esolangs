@@ -734,10 +734,21 @@ class TestZtoalc:
         assert any("jump" in line for line in lines)
         assert any(line.strip().startswith("print") for line in lines)
 
-    def test_dense_n4_raises(self) -> None:
-        """Dense n=4 trees collide with their own tails; rejected loudly."""
+    def test_xor4_linear_fallback(self) -> None:
+        """Dense symmetric tables fall back to a huge linear program."""
+        program = boolean.ztoalc_boolean("0110100110010110", 4)  # XOR4 = parity
+        assert len(program.splitlines()) > 100_000  # linear, not the small tree
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            got = run_ztoalc(program, [str(b) for b in bits])
+            assert got == str(int("0110100110010110"[combo])), f"inputs {bits}"
+
+    def test_dense_non_symmetric_raises(self) -> None:
+        """A dense non-symmetric n=4 tree cannot be placed and is rejected."""
         with pytest.raises(ValueError, match="no collision-free placement"):
-            boolean.ztoalc_boolean("0110100110010110", 4)  # XOR4
+            # tree fails, and the table is not popcount-symmetric, so the
+            # linear fallback cannot help either
+            boolean.ztoalc_boolean("1010001000011000", 4)
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
