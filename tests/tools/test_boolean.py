@@ -687,6 +687,69 @@ def run_clockwise(program: str, inputs: list[str]) -> str:
     return esolangs.run("Clockwise", program, stdin="".join(inputs))
 
 
+def run_ztoalc(program: str, inputs: list[str]) -> str:
+    import esolangs
+
+    return esolangs.run("ZTOALC", program, stdin="\n".join(inputs))
+
+
+class TestZtoalc:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("00000001", 3),  # AND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.ztoalc_boolean(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_ztoalc(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to two inputs produces the right result."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.ztoalc_boolean(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                assert run_ztoalc(program, [str(b) for b in bits]) == table[combo]
+
+    def test_structure(self) -> None:
+        """The program rides a Collatz descent with jumps and prints."""
+        program = boolean.ztoalc_boolean("0110", 2)
+        lines = program.splitlines()
+        assert lines[0].strip().isdigit()  # line 1 is the starting value
+        assert any("jump" in line for line in lines)
+        assert any(line.strip().startswith("print") for line in lines)
+
+    def test_dense_n4_raises(self) -> None:
+        """Dense n=4 trees collide with their own tails; rejected loudly."""
+        with pytest.raises(ValueError, match="no collision-free placement"):
+            boolean.ztoalc_boolean("0110100110010110", 4)  # XOR4
+
+    def test_wrong_length_rejected(self) -> None:
+        """A truth table of the wrong length is malformed."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.ztoalc_boolean("011", 1)
+
+    def test_invalid_chars_rejected(self) -> None:
+        """A truth table with non-0/1 characters is malformed."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.ztoalc_boolean("02", 1)
+
+
 class TestClockwise:
     @pytest.mark.parametrize(
         ("table", "n"),
