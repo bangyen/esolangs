@@ -52,28 +52,25 @@ generator needs a **general BF-to-LaserFuck layout compiler**:
 A working generator is not yet achieved; the loop-ring geometry (entry
 check, return lane, exit routing) is still under construction.
 
-### Dimensional v3 migration (in progress: Python interpreter first)
+### Dimensional v3 migration (done: Python interpreter; deferred: C++ reference)
 The wiki now documents Dimensional **v3.0** (an n-slot/n-pointer model with
-`$AXIS`, `d`, `x`), while the reference in `extra/c++/dimensional.cpp`
+`$AXIS`, `d`, `x`), while the old reference in `extra/c++/dimensional.cpp`
 implements **v1.0** (a single pointer over a product-of-primes tape).  The
 two are incompatible dialects, and the v1.0 reference's 32-bit `int` cell
-addresses overflow past ~30 cells — which is why the boolean generator
-(`src/esolangs/tools/booleans/tape.py`) used a fixed `2n + 6`-cell layout
-and refused `n > 12`.
+addresses overflow past ~30 cells — which is why the boolean generator's
+verification used to be capped at `n > 12`.
 
-The plan, decided: **replace v1.0 with v3.0**, migrating the text and boolean
-generators (whose outputs — `=hex.` and `>0`/`<0`/`,+ -[].` — are valid in
-both dialects) to be verified against the new implementation.
+The Python migration is **complete**: a first-class Python v3.0 interpreter
+(`src/esolangs/interpreters/tape_based/dimensional.py`) is registered and
+verified by 24 unit tests covering the interpreter semantics, plus text
+round-trips (`Hi`, `Hello, World!`, `\x00\x7f\xff`) and boolean truth-table
+round-trips through real execution.  The generator itself never had an
+`n` cap (it generates random tables at `n = 16`), so the `n > 12` limit was
+a verification constraint of the old reference; Python `int`s make cell
+addresses unbounded and retire it.  Defaults and ambiguities the v3.0 wiki
+leaves open (default pointer axis, the descent model, `d`/`x` reading from
+input) are resolved pragmatically and documented in the interpreter.
 
-- **Doing now: a first-class Python v3.0 interpreter.**  It goes in
-  `src/esolangs/interpreters/tape_based/dimensional.py`, joins the registry,
-  and verifies the generators by real execution in unit tests (the standard
-  lane for the BF-family tape languages).  Python `int`s make cell addresses
-  unbounded, retiring the `n > 12` cap.  Defaults and ambiguities the v3.0
-  wiki leaves open (default pointer axis, the descent model, `d`/`x` reading
-  from input) are resolved pragmatically and documented in the interpreter.
-  The v1.0 C++ reference leaves the verification pipeline (the generator
-  round-trips it used to gate now run through the Python interpreter).
 - **Deferred: a v3.0 C++ reference.**  With the Python interpreter as the
   only implementation, generator verification is circular (same author,
   same codebase, shared reading of the under-specified spec).  A fresh
