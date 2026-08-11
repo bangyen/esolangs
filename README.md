@@ -19,7 +19,8 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
 - [Compilers](#compilers)
 - [Transpilers](#transpilers)
 - [Tools](#tools)
-- [Roadmap](ROADMAP.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Limitations](docs/limitations.md)
 - [Notes](#notes)
 
 ## About
