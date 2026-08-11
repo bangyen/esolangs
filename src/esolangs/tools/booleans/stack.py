@@ -36,13 +36,14 @@ def forth(truth_table: str, n: int) -> str:
     program prints ``'0'`` or ``'1'``.
 
     Forþ reads a line with ``,`` and has no clean pop, so the generator
-    builds a decision tree out of functions: ``{ scope }`` stores a scope in
+    builds a decision tree out of functions:     ``{ scope }`` stores a scope in
     the function table, and an internal node dispatches with ``base + ;``,
     which pops the top bit and calls ``table[base + bit]``.  Each input is
     read and normalized to 0/1 with ``,68*-``, the root dispatches with
     ``1+;``, and a leaf pushes ``48 + result`` which the final ``.`` prints.
-    The definition indices are left on the stack below the result, satisfying
-    the ``{ }`` scope's requirement of at least two items.
+    The definition indices are left on the stack below the result; the
+    ``{ }`` construct reads (but does not pop) the top index, and ``;`` pops
+    it, so the stale indices never get in the way of the dispatch arithmetic.
     """
     prog = []
     for m in range(1, 2 ** (n + 1) - 1):
