@@ -14,6 +14,7 @@ from esolangs.tools.booleans.other import (
     nevermind,
     taglate,
     three_x,
+    ztoalc_boolean,
 )
 from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
 from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
@@ -52,4 +53,5 @@ __all__ = [
     "taglate",
     "three_x",
     "unsquare",
+    "ztoalc_boolean",
 ]

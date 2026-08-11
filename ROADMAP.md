@@ -99,34 +99,25 @@ which collapses the 7..11 displacement.  A generator is therefore limited
 to 0-preserving tables with n <= 3 at most, and not to arbitrary boolean
 functions.
 
-### ZTOALC boolean generator (assessed: viable, constructive via p*2^k)
-ZTOALC's control flow is the Collatz trajectory of line 1, and the existing
-text generator (`ztoalc`) already computes trajectories and picks good
-starts (the `ztoalc_starts` anchor table), so the routing foundation exists.
-The boolean primitives work through the interpreter: `input` reads a byte,
-`jump X Y` advances the pointer by one when `Y` is nonzero (skipping the
-Collatz step), `=`/`+`/`-` do variable arithmetic, and `print` outputs.  A
-raw input byte (48/49) is always truthy, so it must be normalized to 0/1
-with `x - 48`.
+### ZTOALC boolean generator (resolved: generator built, n <= 3 exhaustive)
+ZTOALC's control flow is the Collatz trajectory of line 1, so the generator
+(`ztoalc_boolean`, `src/esolangs/tools/booleans/other.py`) lays out a
+decision tree on `p * 2**k` descents: branching at an even root lets a zero
+bit continue the descent (the Collatz step halves it) while a one bit jumps
+to `root + 1`, whose Collatz step lands on `4 * q` — so every branch gets a
+predictable, non-revisiting path.  Reads and normalizations ride the initial
+`b1 * 4**n` descent, leaves print on disjoint trajectory prefixes, and a
+small `b1` is searched until a fast simulator confirms every input prints
+exactly its table entry once with no command line revisited.
 
-Branching is *constructive*, not searched, using `p * 2**k` descents.  From
-an even `p * 2**k`, the Collatz step divides by two, so the trajectory
-descends cleanly through `p * 2**(k-1), ..., p` (each line visited exactly
-once).  Branching there: bit 0 continues the descent, and bit 1 jumps to
-`p * 2**k + 1`, whose Collatz step lands on `4 * q` (a structured two-step
-descent) — so both branches get predictable, non-revisiting paths.  A
-program is laid out by computing all `2**n` trajectories and placing each
-leaf's `print` on a prefix that is disjoint from the others.  Verified
-through the interpreter: a 1-bit branch and a full 2-bit AND, all four
-inputs correct (reads and normalizes ride the initial `3 * 2**k` descent,
-branches at `768`/`384`/`2308`, leaves on four disjoint prefixes).
-
-The cost is program size: an n-bit tree needs a start large enough that the
-initial descent carries the reads plus branches, and large starts mean long
-programs (the 2-bit AND uses start 12288).  The generator must also check,
-per input, that no line is re-visited, since all trajectories eventually
-converge to the `16, 8, 4, 2, 1` tail.  Tractable and demonstrably working;
-a real project, but far better than a blind search.
+Verified exhaustively for every table at `n <= 3` and for structured tables
+at `n == 4` (top-half, AND4); all tests run the real interpreter.  The
+built-in text generator's trajectory machinery was not needed for the
+routing — the `p * 2**k` descent replaces it.  The limitation: all
+trajectories converge to the `16, 8, 4, 2, 1` tail, so a dense full tree
+like XOR4 has every leaf's tail sweep through another leaf and no `b1`
+works; the generator raises `ValueError` for those.  Program size is O(b1)
+lines (thousands for n <= 4).
 
 ### MAMMALIAN boolean generator (assessed: viable in principle, hard)
 MAMMALIAN has the three primitives a decision tree needs, and they are

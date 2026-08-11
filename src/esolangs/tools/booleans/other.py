@@ -1,6 +1,13 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-__all__ = ["clockwise", "container", "nevermind", "taglate", "three_x"]
+__all__ = [
+    "clockwise",
+    "container",
+    "nevermind",
+    "taglate",
+    "three_x",
+    "ztoalc_boolean",
+]
 
 # Closed-form 3x constant encodings.  Every integer is built from the literal
 # 3 with the ``x`` op (which replaces the top three items ``a, b, c``, c on
@@ -135,6 +142,123 @@ def three_x(truth_table: str, n: int) -> str:
 
     prog += read(result) + "!"
     return prog
+
+
+def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> bool:
+    """Fast ZTOALC simulator: True iff ``inputs`` prints ``expected`` once.
+
+    Mirrors the interpreter's semantics exactly: the pointer follows the
+    Collatz step (halving evens, ``3n+1`` odds) unless a ``jump`` fires,
+    which advances the pointer by one.  A command line visited twice would
+    re-execute (re-read, re-branch, or re-print), so any such revisit fails.
+    """
+    try:
+        ptr = int(lines[0])
+    except (KeyError, ValueError):
+        return False
+    var = [0] * n
+    inp = list(inputs)
+    out: list[str] = []
+    visited: set[int] = set()
+    steps = 0
+    while ptr != 1:
+        steps += 1
+        if steps > 10**6:
+            return False
+        index = ptr - 1
+        ins = lines.get(index, "")
+        if ins:
+            if index in visited:
+                return False
+            visited.add(index)
+            if ins.startswith("print"):
+                out.append(chr(int(ins.split()[1])))
+                if len(out) > 1:
+                    return False
+            elif ins.startswith("jump"):
+                if var[int(ins.split()[2][1])] != 0:
+                    ptr += 1
+                    continue
+            elif "=" in ins:
+                if not inp:
+                    return False
+                var[int(ins.split()[0][1])] = ord(inp.pop(0))
+            elif "-" in ins:
+                var[int(ins.split()[0][1])] -= int(ins.split()[2])
+        ptr = ptr // 2 if ptr % 2 == 0 else 3 * ptr + 1
+    return len(out) == 1 and out[0] == expected
+
+
+def _ztoalc_lines(table: str, n: int, b1: int) -> dict[int, str]:
+    """Place the reads, normalizes, branches, and leaves for ``table``."""
+    start = b1 * 4**n
+    lines: dict[int, str] = {0: str(start)}
+    for i in range(n):
+        lines[start // 2 ** (2 * i) - 1] = f"x{i} = input"
+        lines[start // 2 ** (2 * i + 1) - 1] = f"x{i} - 48"
+
+    def build(combos: list[int], root: int, depth: int) -> None:
+        results = {table[c] for c in combos}
+        if len(results) == 1:
+            lines[root - 1] = f"print {48 + int(results.pop())}"
+            return
+        lines[root - 1] = f"jump a x{depth}"
+        bit = n - 1 - depth
+        zero = [c for c in combos if not (c >> bit) & 1]
+        one = [c for c in combos if (c >> bit) & 1]
+        build(zero, root // 2, depth + 1)
+        build(one, 3 * root + 4, depth + 1)
+
+    build(list(range(2**n)), b1, 0)
+    return lines
+
+
+def ztoalc_boolean(truth_table: str, n: int) -> str:
+    """Build a ZTOALC program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    ZTOALC's control flow is the Collatz trajectory of line 1, so the
+    generator lays out a decision tree on `p * 2**k` descents: branching at
+    an even root lets a zero bit continue the descent (the Collatz step
+    halves it) while a one bit jumps to `root + 1`, whose Collatz step lands
+    on `4 * q` — so every branch gets a predictable, non-revisiting path.
+    The reads and normalizations ride the initial `b1 * 4**n` descent.  A
+    small ``b1`` is searched until the placement verifies against a fast
+    simulator (each input must print exactly its table entry once, with no
+    command line revisited).
+
+    Verified exhaustively for every table at ``n <= 3`` and for structured
+    tables at ``n == 4``.  The limit is that all trajectories eventually
+    converge to the ``16, 8, 4, 2, 1`` tail, so for dense ``n == 4`` tables
+    (like XOR4) every branch's leaves collide with another path's tail and
+    no ``b1`` works; the generator then raises :class:`ValueError`.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+    for b1 in range(max(4, 2**n * 4), 4000, 4):
+        lines = _ztoalc_lines(truth_table, n, b1)
+        if all(
+            _ztoalc_ok(
+                lines,
+                n,
+                "".join(str((c >> (n - 1 - i)) & 1) for i in range(n)),
+                truth_table[c],
+            )
+            for c in range(2**n)
+        ):
+            size = max(lines) + 1
+            return "\n".join(lines.get(i, "") for i in range(size))
+    raise ValueError(
+        "the ZTOALC boolean generator found no collision-free placement for "
+        f"this table at n == {n}",
+    )
 
 
 def nevermind(truth_table: str, n: int) -> str:
