@@ -68,37 +68,59 @@ only).  Measured at n = 4 the tree runs ~46,000x faster and generates
 programs 13x smaller than the kernel for the same table, so the kernel's
 role is strictly to cover the region the tree's labels cannot.
 
-### Minifuck boolean generator (assessed: viable for n <= 2, one n == 3 example, general n open)
+### Minifuck boolean generator (assessed: 0-preserving functions only, n <= 3)
 `[` followed by `<` is a conditional pointer move: `[` moves right, flips
 that bit, and skips the following instruction *and* flips the next bit only
 when the flipped bit is zero, so after `[<` one input state executes `<`
 while the other skips it.  The tested bit's value thus survives in the
-*pointer displacement* while the pool can be re-zeroed for another read —
-a genuine branch primitive.
+*pointer displacement* while the pool can be re-zeroed for another read.
 
-A two-input XOR is verified against the interpreter
-(`<[<.[<[<[<[<[<[<[<.<.`), along with AND, OR, and several other
-two-input tables: `<[<.` reads the first byte, a `[<` run walks the pointer
-right while clearing the 8-cell pool, the next `.` reads the second byte,
-and the pointer ends at 8 or 7 depending on the first bit — so the first
-bit is carried in the pointer position while the second sits in the pool.
-A 49-char three-input function (`b3 XOR (b1 AND b2)`,
-`<[<.[<[<[<[<[<[<[<.<<<<<<<[<[<[<[<[<[<[<[<[<[<.<.`) is also verified.
+Every working program fits one read-prefix plus a tiny decode suffix.
+The shared n == 2 prefix `<[<.[<[<[<[<[<[<[<` reads b1 (`<[<.`), then a
+`[<` run walks the pointer right while clearing the pool, and the next
+`.` reads b2; the pointer ends at 8 (b1 == 0) or 7 (b1 == 1).  Exhaustive
+suffix search over `{<,.[}` reaches *exactly* the 0-preserving two-input
+tables (f(0, 0) == 0): AND, OR, XOR, both echoes, and const-0 — 8 of 16.
+A three-input function reuses the same prefix, adds a second walker, and
+uses the same `<.` suffix (`b3 XOR (b1 AND b2)`, verified 49 chars).
 
-But the analysis's further hope — that exhaustive search over short `{<,[}`
-sequences would yield composable primitives for arbitrary n — is not
-supported.  Primitive searches through length 13 find no universal
-pool-zeroer (required before every `.` read), no repeatable bank-bit-into-
-scratch cycle (cells 8+ survive reads, so this would make arbitrary n
-trivial), and no clean conditional pointer-move that restores the tested
-bit.  The walker's pointer encoding also saturates: an n == 4 stage needs
-8 distinct end positions but only 7 are reachable.  So the decision tree
-stops being reliably constructible around n == 4; whether any n == 4
-function exists is open, and a generator would need a primitive that the
-searches so far say does not exist.
+The limitation is structural: the decode suffix flips the pool LSB only
+when the pointer sits at cell 7 (the `.` after one `<` from cell 6 flips
+the LSB, from cell 7 it flips a scratch cell instead), and `[`'s skip
+always maps bit 0 to the higher pointer position.  So the pointer
+orientation is fixed and the genuinely two-input functions are forced to
+f(0, 0) == 0: XNOR, NAND, NOR, and NOT-b2 are unreachable — no
+complemented read-prefix exists (searched to length 11) and full-program
+search to length 14 finds none.  (NOT-b1 and const-1 are reachable but
+degenerate, reading only the first input or none.)  The n == 4 walker
+stage additionally cannot reach the 8 distinct pointer positions a third
+bit needs: re-zeroing the pool requires the pointer to return to cell <= 1,
+which collapses the 7..11 displacement.  A generator is therefore limited
+to 0-preserving tables with n <= 3 at most, and not to arbitrary boolean
+functions.
 
-### Dotlang boolean generator (assessed: not viable)
-Dotlang's only input-dependent branch is the `W~` warp, which reads a line
+### MAMMALIAN boolean generator (assessed: viable in principle, hard)
+MAMMALIAN has the three primitives a decision tree needs, and they are
+confirmed working through the interpreter: `ACCEPT` reads a byte into array
+0, `PRONOUNCE` prints the accumulator, and `LEAPFROG` is a *data-dependent*
+jump (`ind = acc - curr[0] - 1` when the current array's last element is
+nonzero, then the interpreter's trailing `ind += 1` makes the effective
+target `acc - curr[0]`).  A 2-way branch is demonstrable: `ACCEPT DIGEST`
+folds the input byte into the accumulator (48 for '0', 49 for '1'), and
+`LEAPFROG` then dispatches to instructions 48/49 (the two values differ by
+one), verified to route '0' and '1' to different code.
+
+The difficulty is the assembly, not the primitives.  The effective jump
+target is an *absolute instruction index*, so every tree node must be
+back-patched into the instruction stream; the accumulator does not stay
+clean across reads (each `ACCEPT` XORs with the current `acc` and each
+`DIGEST` XORs the running array sum, so node targets depend on prior
+state); the 23 arrays are shared and `SEED`/`CONFLAGRATE` mutate every
+array at once; and there is no halt command, so leaves must terminate by
+falling off the program or jumping to a negative target.  Building a
+verified generator here is a real project, not a quick win.
+
+### Dotlang boolean generator (assessed: not viable)Dotlang's only input-dependent branch is the `W~` warp, which reads a line
 and teleports the dot to the *first* `W<bit>`s` marker in the grid (the
 interpreter's `find` scans rows top-to-bottom).  A single-bit program works
 (a `W~` sends the dot to the `W0`s`/`W1`s` marker that prints the result),
