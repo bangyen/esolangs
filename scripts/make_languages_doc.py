@@ -21,6 +21,7 @@ BOOLEAN = {
     "3x",
     "6-5",
     "ASCII art",
+    "Basicfuck",
     "BFStack",
     "BrainIf",
     "CircleFuck",

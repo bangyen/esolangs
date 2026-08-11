@@ -17,7 +17,7 @@ hand.
 | BFStack | yes | yes | yes | yes | hello |
 | BIO | yes | yes |  |  | hello |
 | Back |  | yes |  |  |  |
-| Basicfuck | yes |  |  |  |  |
+| Basicfuck | yes |  | yes |  |  |
 | BitDeque |  | yes |  |  |  |
 | BrainIf | yes | yes | yes |  | hello truth-machine |
 | CircleFuck | yes | yes | yes |  | hello truth-machine |

@@ -512,3 +512,53 @@ def dimensional(truth_table: str, n: int) -> str:
         cell.code.append("+" * 48)
     cell.code.append(".")
     return "".join(cell.code)
+
+
+def basicfuck(truth_table: str, n: int) -> str:
+    """Build a Basicfuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Basicfuck's named variables behave like BF cells with an explicit
+    arithmetic, so the program is a decision tree: each input is read with
+    ``read -> a_i ;`` and normalized to 0/1 with ``a_i -= 48 ;``, then every
+    internal node emits ``if (a_k) { ... }`` next to ``if ! (a_k) { ... }``
+    (the reference spells negation ``if !``, not ``if (!``).  A failed
+    ``if`` falls through to its neighbour, so exactly one subtree runs per
+    input combination.  Each leaf adds ``48 + entry`` to the ``out``
+    variable (which starts at 0 and is touched by exactly one leaf) and
+    prints it with ``write <- out ;``.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    lines = ["#basicfuck t=unbounded r=0~255 o=wrap"]
+    lines.append("#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out")
+    for i in range(1, n + 1):
+        lines.append(f"read -> a{i} ;")
+        lines.append(f"a{i} -= 48 ;")
+
+    def build(rows: list[int], k: int) -> str:
+        if len(rows) == 1:
+            value = int(truth_table[rows[0]])
+            return f"out += {48 + value} ;\nwrite <- out ;\n"
+        g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
+        g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
+        var = f"a{k}"
+        return (
+            f"if ({var}) {{\n"
+            + build(g1, k + 1)
+            + "}\n"
+            + f"if ! ({var}) {{\n"
+            + build(g0, k + 1)
+            + "}\n"
+        )
+
+    lines.append(build(list(range(2**n)), 1))
+    return "\n".join(lines)

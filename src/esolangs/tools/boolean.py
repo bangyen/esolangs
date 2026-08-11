@@ -13,6 +13,7 @@ from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
 from esolangs.tools.booleans.stack import bfstack, forth, modulous
 from esolangs.tools.booleans.tape import (
     ascii_art,
+    basicfuck,
     brainif,
     circlefuck,
     circlefuck_byte,
@@ -22,6 +23,7 @@ from esolangs.tools.booleans.tape import (
 
 __all__ = [
     "ascii_art",
+    "basicfuck",
     "bfstack",
     "brainif",
     "circlefuck",
