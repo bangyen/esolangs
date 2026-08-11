@@ -768,6 +768,71 @@ def run_ztoalc(program: str, inputs: list[str]) -> str:
     return esolangs.run("ZTOALC", program, stdin="\n".join(inputs))
 
 
+class TestParameterizedBIO:
+    """Input-by-substitution generators for the no-input language BIO."""
+
+    def run_bio(self, prog: str, bits: list[int]) -> str:
+        import importlib
+
+        from esolangs.interpreters.io import IO
+
+        run = importlib.import_module("esolangs.interpreters.register_based.bio").run
+        buffer = io.StringIO()
+        with (
+            patch("builtins.input", side_effect=[str(b) for b in bits]),
+            redirect_stdout(buffer),
+        ):
+            run(prog, io=IO())
+        return buffer.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "0ox" * b,
+            lambda _i, _b: "0oy0ix1oy1ox}",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bio(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_bio(self.instantiate(template, bits), bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi}/{Ci} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bio("0110", 2)
+        assert "{X0}" in template
+        assert "{X1}" in template
+        assert "{C0}" in template
+
+    def test_runtime_complement(self) -> None:
+        """The {Ci} placeholder computes 1 - x in the program, not a constant."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bio("10", 1)
+        assert "0ix" in template  # the complement computation is emitted, not a literal
+
+
 class TestZtoalc:
     @pytest.mark.parametrize(
         ("table", "n"),

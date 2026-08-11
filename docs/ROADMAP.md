@@ -6,6 +6,25 @@ the commit history.  This file only tracks what is still on the table.
 
 ## Planned
 
+### Parameterized boolean generators (in progress: framework + BIO done)
+The no-input languages (NoComment, BIO, Back, BitDeque, DSDLAI, EXCON, Eval,
+huf, Keys, Minsky Swap, RAM0, WII2D) cannot read input, but a survey found
+six of them (Back, RAM0, Minsky Swap, BIO, BitDeque, Eval) still have enough
+computation power — output, constant construction, and a value-testable
+branch — to evaluate a boolean function from *embedded* constants.  For
+those, a parameterized generator emits a **template** with `{Xi}`/`{Ci}`
+placeholders; the harness instantiates it per input (substituting the bit
+and its runtime-computed complement) and runs it.
+
+The framework (`src/esolangs/tools/booleans/parameterized.py`) and the BIO
+generator are complete: a decision tree where each node reloads its raw bit,
+computes the complement in-program (`y = 1 - x`), tests both sides, and every
+leaf clears the test registers so the loops unwind.  Verified exhaustively
+for every table at n <= 3 and sampled at n = 4 through the BIO interpreter.
+The remaining languages are not yet built; Eval proved infeasible for nested
+trees (its string parser converts *every* backtick to a quote, so nested
+`!`-evaluated subtrees cannot be escaped — see docs/limitations.md).
+
 ### Decision-tree brainfuck boolean generator (resolved: bf_tree)
 The brainfuck generator previously had only the branch-free `bf` minterm
 evaluator, which grows with the minterm count (XOR-n measured 1.4K, 7.3K,
