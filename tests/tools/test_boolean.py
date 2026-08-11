@@ -29,6 +29,15 @@ def run_six_five(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_dimensional(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.dimensional import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -291,20 +300,25 @@ class TestDimensional:
             ("1111111111111111", 4),  # constant one
         ],
     )
-    def test_program_shape(self, table: str, n: int) -> None:
-        """The program reads n inputs and uses only dimension-0 moves."""
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
         program = boolean.dimensional(table, n)
-        assert all(c in ",+-0<>[]." for c in program)
-        assert ">" not in program.replace(">0", "")
-        assert "<" not in program.replace("<0", "")
-        assert program.count(",") == n  # one read per input
-        assert program.endswith(".")
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_dimensional(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_moves_are_pinned_to_dimension_zero(self) -> None:
         """A bare >/< would take its dimension from the cell's value."""
         program = boolean.dimensional("0110", 2)
         assert program.startswith(">0,")  # first input read
         assert program.count(">0") == program.count("<0")
+
+    def test_scales_beyond_the_old_reference_cap(self) -> None:
+        """The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
+        program = boolean.dimensional("0" * 4095 + "1", 12)
+        got = run_dimensional(program, ["1"] * 12)
+        assert got == "1"
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
@@ -315,11 +329,6 @@ class TestDimensional:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.dimensional("02", 1)
-
-    def test_rejects_many_inputs(self) -> None:
-        """The reference's 32-bit cell addresses cap the generator at n <= 12."""
-        with pytest.raises(ValueError, match="n <= 12"):
-            boolean.dimensional("0" * 8192, 13)
 
 
 class TestBasicfuck:

@@ -249,7 +249,7 @@ class TestGeneratorRoundTrips:
     def test_dimensional(self) -> None:
         """Each =HEX. segment sets the current cell and prints it as a byte."""
         assert gen.dimensional("Hi") == "=48.=69."
-        assert gen.dimensional("\x00\x7f\xff") == "=0.=7f.=ff."
+        assert gen.dimensional("\x00\x7f\xff") == "=00.=7f.=ff."
 
     def test_two_d_fish(self) -> None:
         """i/d walk the accumulator to each byte and a prints it."""

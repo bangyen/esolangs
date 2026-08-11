@@ -25,7 +25,7 @@ hand.
 | Container | yes | yes |  |  | hello |
 | DSDLAI |  | yes |  |  |  |
 | Dig | yes | yes | yes |  | hello |
-| Dimensional | yes |  | yes |  |  |
+| Dimensional | yes | yes | yes |  |  |
 | Dotlang | yes | yes |  |  | hello |
 | EXCON | yes | yes |  | yes | hello |
 | Eval | yes | yes |  |  | hello |
