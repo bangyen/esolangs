@@ -62,25 +62,28 @@ table for n = 1, 2, 3):
   `r2 -= 2; T += 1`), so the quotient is written back into `T`.  Only
   equality tests are needed because the loop bound is `!= 0` or `!= 1`;
 - **outer repetition**: `while x != 0: halve T; x -= 1` (one loop);
-- **build x**: each input bit is normalized to 8/9 and a `78`-branch adds
-  its place value to `x` (branches, not loops);
+- **build x**: a read loop folds each normalized 8/9 bit with
+  `x = 2x + (b - 8)` using a doubling loop and a copy-back loop (constant
+  markers, so the generator is *not* label-capped — verified at n = 16);
 - **output**: one final parity pass sets the cell to 48+p for `A`.
 
 The generator now lives in-tree as `six_five_arithmetic`
 (`src/esolangs/tools/booleans/tape.py`) and `six_five` dispatches to it
 when the decision tree runs out of labels: the tree for `2**n - 1 <= 35`
 (n <= 5), the arithmetic kernel otherwise.  Every truth table for n <= 3
-was verified through the interpreter, and n = 6..8 fall back for tables
-whose ones sit at low indices (the AND-n table, `T == 2**(2**n - 1)`, is
-rejected by the `T <= 2**20` guard as the pathological worst case).
+was verified through the interpreter, and the fallback works for n up to
+at least 16 for tables whose ones sit at low indices (the AND-n table,
+`T == 2**(2**n - 1)`, is rejected by the `T <= 2**20` guard as the
+pathological worst case).
 
 Two honest caveats keep it from beating the decision tree on every axis.
 The table constant `T` is set by `62` runs, so the setup is about
 `T / 6 ~ 2**(2**n) / 6` instructions — double-exponential, practical only
 to n <= 4 (n = 4 worst case ~131 KB, and even that is a regression against
-the tree's O(2**n) size at n <= 5).  Runtime is O(x*T), which the loop-count
-cap does not constrain.  Its genuine wins: the loop count is constant (~5)
-and the marker budget (2n + 19, under 35 through n = 8) no longer caps n at 5.
+the tree's O(2**n) size at n <= 5).  Runtime is O(x*T), so even a tiny-T
+table becomes too slow once n climbs past ~20.  Its genuine win: the loop
+count (8 constructs) and marker count (27) are both constant in n, so
+labels no longer cap the input count at all.
 
 ### Minifuck boolean generator (assessed: not viable)
 Minifuck's tape is an 8-cell I/O register that every right move (`.`, `[`)
