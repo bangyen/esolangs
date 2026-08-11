@@ -73,10 +73,34 @@ class TestSixFive:
         assert "78" in program
         assert program.endswith("A0")
 
-    def test_label_cap(self) -> None:
-        """More than 35 branch labels (1..Z) would silently corrupt jumps."""
-        with pytest.raises(ValueError, match="n <= 5"):
-            boolean.six_five("0" * 63 + "1", 6)
+    def test_arithmetic_fallback_path(self) -> None:
+        """n > 5 falls back to the arithmetic kernel instead of the tree."""
+        program = boolean.six_five("1" + "0" * 63, 6)  # f(x) = (x == 0): T == 1
+        assert "8" in program  # loops use 8n jumps
+        assert "70" in program  # loop conditionals
+        assert program.count("4") <= 35  # within the label budget
+
+    @pytest.mark.parametrize("n", [6, 7, 8])
+    @pytest.mark.parametrize("table", ["10", "1100"])
+    def test_arithmetic_fallback_table(self, n: int, table: str) -> None:
+        """The fallback computes every combination for small-T tables."""
+        table = table + "0" * (2**n - len(table))  # ones only at low indices
+        program = boolean.six_five(table, n)
+        assert len(program) < 2000  # the small-T setup stays short
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_six_five(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_arithmetic_fallback_marker_cap(self) -> None:
+        """The kernel's marker budget 2n + 19 caps the fallback at n == 8."""
+        with pytest.raises(ValueError, match="n <= 8"):
+            boolean.six_five("1" + "0" * 511, 9)
+
+    def test_arithmetic_fallback_refuses_large_t(self) -> None:
+        """AND-n is the worst case: T == 2**(2**n - 1) blows up the setup."""
+        with pytest.raises(ValueError, match="2\\*\\*20"):
+            boolean.six_five("0" * 63 + "1", 6)  # AND6: T == 2**63
 
 
 def run_qoibl(program: str, inputs: list[str]) -> str:
