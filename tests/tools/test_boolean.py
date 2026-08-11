@@ -827,6 +827,13 @@ class TestThreeX:
         program = boolean.three_x("0" * (2**7), 7)
         assert program.count("?") == 7
 
+    def test_shared_tree_prefix_sharing(self) -> None:
+        """Differing combos share prefix guards instead of repeating them."""
+        # top-half n=5: 16 zero-rows all share MSB=0.  A full tree has
+        # 31 guard nodes; independent chains would emit 16 * 5 = 80.
+        program = boolean.three_x("0" * 16 + "1" * 16, 5)
+        assert program.count("(") < 40
+
     def test_digit_constant_encodings(self) -> None:
         """The base-3 digit seeds are the closed-form minimal programs."""
         from esolangs.tools.booleans import other

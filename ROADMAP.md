@@ -5,16 +5,26 @@ this file only tracks what is still on the table.
 
 ## Planned
 
-### Shared decision tree for the 3x boolean generator
-The 3x generator (`src/esolangs/tools/booleans/other.py`) emits one
-independent nested guard chain per table row that differs from the majority
-default, and each chain's scaffolding (`read + ( + trash + sentinel + ) +
-trash`, ~19 chars) is duplicated across rows.  Grouping rows by common bit
-prefixes into a shared tree would amortize that scaffolding, roughly halving
-program size for `n >= 4`; a sibling idea is pre-negating the stored input
-bits to halve the `not_bit` cost on tables where one bit value dominates.
-Both are structural rewrites of the generator, still verified against the
-Ruby reference.
+### Shared decision tree for the 3x boolean generator (resolved)
+The 3x generator (`src/esolangs/tools/booleans/other.py`) now builds one
+decision tree: rows that share a bit prefix share the prefix's guards,
+amortizing the ~19-char scaffolding (`read + ( + trash + sentinel + ) +
+trash`) instead of emitting an independent nested chain per row that
+differs from the majority default.  Verified against the Ruby reference
+for every table at n <= 3 and sampled at n = 4, 5.  Measured size
+(old -> shared tree):
+
+- XOR-n (all combos differ, little prefix structure): 81% (n=4), 70% (n=5), 61% (n=6);
+- top-half table (rows cluster by MSB): 62% (n=4), 51% (n=5), 44% (n=6);
+- AND-n (single differing row): unchanged (no prefix to share).
+
+So the win tracks the table's prefix structure and roughly halves
+structured tables at n >= 5, and is never worse.  A constant-bit guard
+skip was considered but is not safe: a guard also separates differing
+rows from default rows that share the prefix, so a "redundant" bit test
+cannot be dropped without checking the default rows too.  The sibling
+idea (pre-negating stored input bits to halve `not_bit`) remains open but
+is marginal.
 
 ### Constant-loop boolean generator for arbitrary n (resolved: 6-5)
 The boolean generators cover every table up to a small input count: 6-5 and
@@ -58,7 +68,7 @@ only).  Measured at n = 4 the tree runs ~46,000x faster and generates
 programs 13x smaller than the kernel for the same table, so the kernel's
 role is strictly to cover the region the tree's labels cannot.
 
-### Minifuck boolean generator (assessed: viable for n == 2, n >= 3 open)
+### Minifuck boolean generator (assessed: viable for n <= 2, one n == 3 example, general n open)
 `[` followed by `<` is a conditional pointer move: `[` moves right, flips
 that bit, and skips the following instruction *and* flips the next bit only
 when the flipped bit is zero, so after `[<` one input state executes `<`
@@ -72,11 +82,20 @@ two-input tables: `<[<.` reads the first byte, a `[<` run walks the pointer
 right while clearing the 8-cell pool, the next `.` reads the second byte,
 and the pointer ends at 8 or 7 depending on the first bit — so the first
 bit is carried in the pointer position while the second sits in the pool.
-The walker doubles the reachable positions per read.
+A 49-char three-input function (`b3 XOR (b1 AND b2)`,
+`<[<.[<[<[<[<[<[<[<.<<<<<<<[<[<[<[<[<[<[<[<[<[<.<.`) is also verified.
 
-Open question: whether the pointer displacement composes to n == 3 (a
-second walker would need 4 distinct end positions to carry two prior bits)
-and beyond, up to the n <= 4 verification bar.
+But the analysis's further hope — that exhaustive search over short `{<,[}`
+sequences would yield composable primitives for arbitrary n — is not
+supported.  Primitive searches through length 13 find no universal
+pool-zeroer (required before every `.` read), no repeatable bank-bit-into-
+scratch cycle (cells 8+ survive reads, so this would make arbitrary n
+trivial), and no clean conditional pointer-move that restores the tested
+bit.  The walker's pointer encoding also saturates: an n == 4 stage needs
+8 distinct end positions but only 7 are reachable.  So the decision tree
+stops being reliably constructible around n == 4; whether any n == 4
+function exists is open, and a generator would need a primitive that the
+searches so far say does not exist.
 
 ### Dotlang boolean generator (assessed: not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line

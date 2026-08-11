@@ -107,18 +107,31 @@ def three_x(truth_table: str, n: int) -> str:
     default = "1" if truth_table.count("1") >= truth_table.count("0") else "0"
     prog += (_ONE if default == "1" else _ZERO) + store(result)
 
-    for combo in range(2**n):
-        if truth_table[combo] == default:
-            continue
-        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-        body = (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
-        for i in range(n - 1, -1, -1):
-            body = (
-                guard(input_vars[i], body)
-                if bits[i]
-                else guard_not(input_vars[i], body)
-            )
-        prog += body
+    # One decision tree instead of an independent guard chain per differing
+    # combo: rows that share a bit prefix share the guards for that prefix,
+    # amortizing the ~19-char guard scaffolding across them.  Each guard
+    # leaves the stack balanced, so both branches concatenate safely inside
+    # their parent's body, and whole subtrees that match the default are
+    # pruned.
+    def override(combo: int) -> str:
+        return (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
+
+    def build(rows: list[int], depth: int) -> str:
+        if not rows:
+            return ""
+        if depth == n:
+            return override(rows[0])  # rows are pruned, so it differs from default
+        bit = n - 1 - depth
+        rows1 = [r for r in rows if (r >> bit) & 1]
+        rows0 = [r for r in rows if not (r >> bit) & 1]
+        sub1 = build(rows1, depth + 1)
+        sub0 = build(rows0, depth + 1)
+        return (guard(input_vars[depth], sub1) if sub1 else "") + (
+            guard_not(input_vars[depth], sub0) if sub0 else ""
+        )
+
+    differing = [c for c in range(2**n) if truth_table[c] != default]
+    prog += build(differing, 0)
 
     prog += read(result) + "!"
     return prog
