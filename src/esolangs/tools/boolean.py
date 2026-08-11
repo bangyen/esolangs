@@ -10,7 +10,7 @@ for compatibility.
 
 from esolangs.tools.booleans.other import clockwise, nevermind, taglate, three_x
 from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
-from esolangs.tools.booleans.stack import bfstack, modulous
+from esolangs.tools.booleans.stack import bfstack, forth, modulous
 from esolangs.tools.booleans.tape import (
     ascii_art,
     brainif,
@@ -27,6 +27,7 @@ __all__ = [
     "circlefuck_byte",
     "clockwise",
     "dig",
+    "forth",
     "modulous",
     "nevermind",
     "polynomial",
