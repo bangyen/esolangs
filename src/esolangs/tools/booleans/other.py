@@ -242,7 +242,7 @@ def ztoalc_boolean(truth_table: str, n: int) -> str:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
-    for b1 in range(max(4, 2**n * 4), 4000, 4):
+    for b1 in range(2 ** (n + 1), 4000, 4):
         lines = _ztoalc_lines(truth_table, n, b1)
         if all(
             _ztoalc_ok(
