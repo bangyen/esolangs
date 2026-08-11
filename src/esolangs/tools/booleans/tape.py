@@ -353,6 +353,30 @@ def ascii_art(truth_table: str, n: int) -> str:
     return bf_to_ascii_art(_bf_minterm(truth_table, n))
 
 
+def bf(truth_table: str, n: int) -> str:
+    """Build a brainfuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Brainfuck's loops are while-loops, so a decision tree would need leaves
+    to skip their siblings, which the language cannot express.  Instead the
+    program is the branch-free ``_bf_minterm`` evaluator: each input is read
+    and normalized to 0/1, and the result is ``48 + sum_k tt[k] * M_k`` where
+    ``M_k`` is the product of the input bits (or complements) selecting row
+    ``k``, computed with 0/1 copies and ANDs.  When the table has more ``1``s
+    than ``0``s the complement is evaluated and ``49 - sum`` is printed.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+    return _bf_minterm(truth_table, n)
+
+
 class _Dimensional:
     """Emits Dimensional code on dimension 0 with a fixed cell layout.
 

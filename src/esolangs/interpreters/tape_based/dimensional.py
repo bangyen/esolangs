@@ -49,12 +49,12 @@ class _Level:
         self.pos: dict[int, int] = {}
         self.slots: dict[tuple[tuple[int, int], ...], object] = {}
 
-    def _key(self) -> tuple[tuple[int, int], ...]:
+    def key(self) -> tuple[tuple[int, int], ...]:
         return tuple(sorted((k, v) for k, v in self.pos.items() if v))
 
     def child(self) -> object:
-        """The structure at the current position (fresh if first visit)."""
-        key = self._key()
+        """Return the structure at the current position (fresh if first visit)."""
+        key = self.key()
         child = self.slots.get(key)
         if child is None:
             child = _Level(self.level - 1) if self.level > 2 else 0
@@ -70,7 +70,7 @@ class _Machine:
         self.top = _Level(2)
 
     def node_at(self, level: int) -> _Level:
-        """The level-``level`` pointer on the current path (growing the top)."""
+        """Return the level-``level`` pointer on the current path (growing the top)."""
         while self.top.level < level:
             old = self.top
             env = _Level(old.level + 1)
@@ -86,7 +86,7 @@ class _Machine:
 
     def set_value(self, value: int) -> None:
         node = self.node_at(2)
-        node.slots[node._key()] = value % 256
+        node.slots[node.key()] = value % 256
 
     def move(self, dim: int, delta: int) -> None:
         node = self.node_at(self.axis)
