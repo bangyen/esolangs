@@ -387,6 +387,44 @@ def run_taglate(program: str, inputs: list[str]) -> str:
     return esolangs.run("Taglate", program, stdin="\n".join(inputs))
 
 
+def run_clockwise(program: str, inputs: list[str]) -> str:
+    import esolangs
+
+    # Clockwise reads the whole input as one line (7 bits per char)
+    return esolangs.run("Clockwise", program, stdin="".join(inputs))
+
+
+class TestClockwise:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),
+            ("10", 1),
+            ("00", 1),
+            ("11", 1),
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("00000001", 3),  # AND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination prints the result bit seven times."""
+        program = boolean.clockwise(table, n)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_clockwise(program, bits)
+            assert got == chr(127 * int(table[combo])), f"inputs {bits}"
+
+    def test_ring_starts_at_origin(self) -> None:
+        """The program is a closed ring whose pointer starts at (0, 0)."""
+        program = boolean.clockwise("0110", 2)
+        lines = program.splitlines()
+        assert lines[0][0] == " "
+        assert run_clockwise(program, ["1", "0"]) == "\x7f"
+
+
 class TestTaglate:
     @pytest.mark.parametrize(
         ("table", "n"),
