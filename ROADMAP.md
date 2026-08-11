@@ -99,6 +99,28 @@ which collapses the 7..11 displacement.  A generator is therefore limited
 to 0-preserving tables with n <= 3 at most, and not to arbitrary boolean
 functions.
 
+### ZTOALC boolean generator (assessed: viable, branch placement is hard)
+ZTOALC's control flow is the Collatz trajectory of line 1, and the existing
+text generator (`ztoalc`) already computes trajectories and picks good
+starts (the `ztoalc_starts` anchor table), so the routing foundation exists.
+The boolean primitives work through the interpreter: `input` reads a byte,
+`jump X Y` advances the pointer by one when `Y` is nonzero (skipping the
+Collatz step), `=`/`+`/`-` do variable arithmetic, and `print` outputs.  A
+raw input byte (48/49) is always truthy, so it must be normalized to 0/1
+with `x - 48`, and then `jump` reroutes the trajectory.
+
+A clean 1-bit branch is demonstrable: searching small line placements turns
+up several working configurations (e.g. read at 24, normalize at 12, branch
+at 6, outputs on the distinct prefixes of `Collatz(6)` and `Collatz(7)`),
+each printing exactly one char for both inputs.  The difficulty is that the
+two branches' Collatz trajectories *merge* and revisit earlier lines (the
+jumped path re-enters the branch line and re-prints), so every branch needs
+a start and placement where the outputs fire once before any merge.  That
+placement is not derivable, it has to be searched, and the search space
+grows with each extra input level — an n-bit tree compounds the
+revisit/merge bookkeeping.  Viable, but a real project and harder than the
+straight-line text generator.
+
 ### MAMMALIAN boolean generator (assessed: viable in principle, hard)
 MAMMALIAN has the three primitives a decision tree needs, and they are
 confirmed working through the interpreter: `ACCEPT` reads a byte into array
