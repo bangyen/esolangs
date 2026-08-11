@@ -8,7 +8,7 @@ The generators live in ``esolangs.tools.booleans``, split by language family
 for compatibility.
 """
 
-from esolangs.tools.booleans.other import nevermind, taglate, three_x
+from esolangs.tools.booleans.other import clockwise, nevermind, taglate, three_x
 from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
 from esolangs.tools.booleans.stack import bfstack, modulous
 from esolangs.tools.booleans.tape import (
@@ -25,6 +25,7 @@ __all__ = [
     "brainif",
     "circlefuck",
     "circlefuck_byte",
+    "clockwise",
     "dig",
     "modulous",
     "nevermind",
