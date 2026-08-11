@@ -553,12 +553,15 @@ def bf(truth_table: str, n: int) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.
 
-    This is the branch-free ``_bf_minterm`` evaluator: each input is read
-    and normalized to 0/1, and the result is ``48 + sum_k tt[k] * M_k`` where
-    ``M_k`` is the product of the input bits (or complements) selecting row
-    ``k``, computed with 0/1 copies and ANDs.  It is dense-table-heavy
-    (evaluates every minterm); :func:`bf_tree` is a decision-tree alternative
-    that shares the bit tests and is ~1000x smaller for dense tables.
+    Two generators exist with complementary strengths, and ``bf`` returns
+    the shorter of the two for the given table:
+
+    - ``_bf_minterm``: a branch-free sum of minterms (each input read and
+      normalized to 0/1, the result ``48 + sum_k tt[k] * M_k``).  Best for
+      sparse tables (few one-rows) — an all-zeros table is ~450 chars even
+      at n == 8.
+    - :func:`bf_tree`: a decision tree sharing the bit tests.  Best for
+      dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
     """
     if len(truth_table) != 2**n:
         raise ValueError(
@@ -567,7 +570,7 @@ def bf(truth_table: str, n: int) -> str:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
-    return _bf_minterm(truth_table, n)
+    return min((_bf_minterm(truth_table, n), bf_tree(truth_table, n)), key=len)
 
 
 def bf_tree(truth_table: str, n: int) -> str:
