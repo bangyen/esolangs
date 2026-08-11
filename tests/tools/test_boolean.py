@@ -200,6 +200,31 @@ class TestPolynomial:
             boolean.polynomial("11111110", 3)
 
 
+class TestUnsquare:
+    def test_program_shape(self) -> None:
+        """The program reads n inputs and prints once."""
+        program = boolean.unsquare("0110", 2)
+        assert program.startswith("iA>-<P" * 2)
+        assert program.count("iA>-<P") == 2  # one read per input
+        assert program.endswith("o")
+
+    def test_decision_tree(self) -> None:
+        """Each internal node branches on a bit with the flip primitive."""
+        program = boolean.unsquare("0110", 2)
+        assert "x->IA<" in program  # the stack-clean flip
+        assert program.count("x>") >= 3  # one guard per branch
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.unsquare("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.unsquare("02", 1)
+
+
 class TestBfstack:
     @pytest.mark.parametrize(
         ("table", "n"),
