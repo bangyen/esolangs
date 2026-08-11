@@ -120,7 +120,8 @@ array at once; and there is no halt command, so leaves must terminate by
 falling off the program or jumping to a negative target.  Building a
 verified generator here is a real project, not a quick win.
 
-### Dotlang boolean generator (assessed: not viable)Dotlang's only input-dependent branch is the `W~` warp, which reads a line
+### Dotlang boolean generator (assessed: not viable)
+Dotlang's only input-dependent branch is the `W~` warp, which reads a line
 and teleports the dot to the *first* `W<bit>`s` marker in the grid (the
 interpreter's `find` scans rows top-to-bottom).  A single-bit program works
 (a `W~` sends the dot to the `W0`s`/`W1`s` marker that prints the result),
