@@ -16,6 +16,7 @@ from esolangs.tools.booleans.tape import (
     brainif,
     circlefuck,
     circlefuck_byte,
+    dimensional,
     six_five,
 )
 
@@ -27,6 +28,7 @@ __all__ = [
     "circlefuck_byte",
     "clockwise",
     "dig",
+    "dimensional",
     "forth",
     "modulous",
     "nevermind",
