@@ -179,28 +179,172 @@ def six_five(truth_table: str, n: int) -> str:
     nets ``+6 - 5 = +1``), prints with ``A``, and halts with ``0``.
 
     The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
-    as ``8n`` operands), one per internal node, so the generator caps at
-    n == 5 (31 internal nodes).
+    as ``8n`` operands), one per internal node, so the decision tree caps at
+    n == 5 (31 internal nodes).  For larger ``n`` the generator falls back
+    to :func:`six_five_arithmetic`, which packs the inputs and the table
+    into single cells and decodes the table entry arithmetically with a
+    constant number of loop constructs.
     """
-    if 2**n - 1 > 35:
-        raise ValueError("the 6-5 boolean generator supports n <= 5 only")
-    marker = 0
+    if 2**n - 1 <= 35:
+        marker = 0
 
-    def build(rows: list[int], bit: int, base: int) -> str:
-        nonlocal marker
-        if len(rows) == 1:
-            delta = 48 + int(truth_table[rows[0]]) - base
-            q, r = divmod(delta, 6)
-            return "6" * q + "62" * r + "A0"
-        g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
-        g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
-        sub0 = build(g0, bit + 1, 8)
-        label = marker + 1
-        marker += 1
-        sub1 = build(g1, bit + 1, 9)
-        return "B" + "2" * 8 + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
+        def build(rows: list[int], bit: int, base: int) -> str:
+            nonlocal marker
+            if len(rows) == 1:
+                delta = 48 + int(truth_table[rows[0]]) - base
+                q, r = divmod(delta, 6)
+                return "6" * q + "62" * r + "A0"
+            g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
+            g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
+            sub0 = build(g0, bit + 1, 8)
+            label = marker + 1
+            marker += 1
+            sub1 = build(g1, bit + 1, 9)
+            return (
+                "B" + "2" * 8 + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
+            )  # noqa: E501
 
-    return build(list(range(2**n)), 1, 0)
+        return build(list(range(2**n)), 1, 0)
+    return six_five_arithmetic(truth_table, n)
+
+
+class _SixFiveAsm:
+    """Tiny 6-5 assembler: raw text, named ``4`` markers, named ``8n`` jumps."""
+
+    def __init__(self) -> None:
+        self._ops: list[tuple[str, str]] = []
+
+    def raw(self, text: str) -> "_SixFiveAsm":
+        self._ops.append(("raw", text))
+        return self
+
+    def m(self, name: str) -> "_SixFiveAsm":
+        self._ops.append(("marker", name))
+        return self
+
+    def j(self, name: str) -> "_SixFiveAsm":
+        self._ops.append(("jump", name))
+        return self
+
+    def build(self) -> str:
+        """Resolve ``8n`` labels against the n-th ``4`` in the stream."""
+        ordinals: dict[str, int] = {}
+        stream: list[tuple[str, str] | str] = []
+        count4 = 0
+        for op, value in self._ops:
+            if op == "marker":
+                count4 += 1
+                ordinals[value] = count4
+                stream.append("4")
+            elif op == "jump":
+                stream.append(("J", value))
+            else:
+                stream.append(value)
+        out: list[str] = []
+        for token in stream:
+            if isinstance(token, tuple):
+                out.append("8" + _six_five_label(ordinals[token[1]]))
+            else:
+                out.append(token)
+        return "".join(out)
+
+
+def _six_five_nav(src: int, dst: int) -> str:
+    """Pointer moves from cell ``src`` to ``dst`` (``1`` is +2, ``3`` is -1)."""
+    if dst == src:
+        return ""
+    if dst < src:
+        return "3" * (src - dst)
+    delta = dst - src
+    ups = (delta + 1) // 2
+    return "1" * ups + "3" * (2 * ups - delta)
+
+
+def six_five_arithmetic(truth_table: str, n: int) -> str:
+    """Build a 6-5 program computing ``truth_table`` arithmetically.
+
+    This is the fallback generator for ``n > 5``, where the decision tree's
+    35 branch labels run out.  The inputs are packed into one cell ``x`` and
+    the truth table into one cell ``T = sum table[i] * 2**i``, then
+    ``f(x) = (T >> x) & 1`` is computed by halving ``T`` ``x`` times and
+    reading the final parity.  The halving needs only equality tests: a
+    parity pass (a copy loop that toggles a flag once per unit) selects an
+    even loop (``while r2 != 0``) or an odd loop (``while r2 != 1``), both
+    doing ``r2 -= 2; T += 1`` so the quotient is written back into ``T``.
+    The whole kernel uses five loop constructs.
+
+    The branch labels are 0..9 then A..Z, and the marker budget is ``2n + 19``
+    (two per input bit plus nineteen), so the generator caps at n == 8.  The
+    table constant ``T`` is built with ``62`` runs, making the program about
+    ``2 * T`` characters; a table whose high bits are set grows
+    double-exponentially with ``n``, so the generator refuses ``T > 2**20``.
+    """
+    if 2 * n + 19 > 35:
+        raise ValueError("the 6-5 arithmetic fallback supports n <= 8 only")
+    value = int(truth_table[::-1], 2)  # bit i of value is table[i] (combo i)
+    if value > 2**20:
+        raise ValueError(
+            "the 6-5 arithmetic fallback needs the table value T <= 2**20, "
+            f"got T == {value}",
+        )
+    a = _SixFiveAsm()
+    a.raw(_six_five_nav(0, 1) + "62" * value)  # T at cell 1
+
+    # build x at cell 0: bits (normalized to 8/9) add their place value
+    for i in range(n):
+        place = 2 ** (n - 1 - i)
+        a.raw((_six_five_nav(1, 6) if i == 0 else "") + "B" + "2" * 8)
+        a.raw("78").j(f"ADD{i}")  # b == 8: skip the add
+        a.j(f"NEXT{i}")
+        a.m(f"ADD{i}").raw(_six_five_nav(6, 0) + "62" * place + _six_five_nav(0, 6))
+        a.m(f"NEXT{i}")
+    a.raw(_six_five_nav(6, 0))
+
+    def reset(name: str) -> None:
+        # r2 and p hold only 0/1 here, so "71 8name 95 4" zeroes them
+        a.raw("71").j(name).raw("95").m(name)
+
+    # outer loop: while x != 0: halve T; x -= 1
+    a.j("O_END").m("O_START")
+    a.raw(_six_five_nav(0, 1))
+    a.raw(_six_five_nav(1, 4))
+    reset("RS_R2")
+    a.raw(_six_five_nav(4, 5))
+    reset("RS_P")
+    a.raw(_six_five_nav(5, 1))
+    # parity pass: copy T -> r2 while toggling p
+    a.j("C_END").m("C_START")
+    a.raw("95" + _six_five_nav(1, 4) + "62" + _six_five_nav(4, 5))
+    a.raw("70").j("P_TO1")
+    a.raw("62").j("P_DONE").m("P_TO1").raw("95").m("P_DONE")
+    a.raw(_six_five_nav(5, 1))
+    a.m("C_END").raw("70").j("C_START")
+    # branch on the parity: even halves to 0, odd to 1
+    a.raw(_six_five_nav(1, 5)).raw("70").j("ODD")
+    a.raw(_six_five_nav(5, 4)).j("E_END").m("E_START")
+    a.raw("9595" + _six_five_nav(4, 1) + "62" + _six_five_nav(1, 4))
+    a.m("E_END").raw("70").j("E_START")
+    a.j("E_DONE")
+    a.m("ODD").raw(_six_five_nav(5, 4)).j("O_END2").m("O_START2")
+    a.raw("9595" + _six_five_nav(4, 1) + "62" + _six_five_nav(1, 4))
+    a.m("O_END2").raw("71").j("O_START2")
+    a.m("E_DONE").raw(_six_five_nav(4, 0))
+    a.raw("95")  # x -= 1
+    a.m("O_END").raw("70").j("O_START")
+
+    # final parity pass and output 48 + p
+    a.raw(_six_five_nav(0, 1))
+    a.raw(_six_five_nav(1, 5))
+    reset("RS_P2")
+    a.raw(_six_five_nav(5, 1))
+    a.j("F_END").m("F_START")
+    a.raw("95" + _six_five_nav(1, 5))
+    a.raw("70").j("P2_TO1")
+    a.raw("62").j("P2_DONE").m("P2_TO1").raw("95").m("P2_DONE")
+    a.raw(_six_five_nav(5, 1))
+    a.m("F_END").raw("70").j("F_START")
+    a.raw(_six_five_nav(1, 5) + "62" * 48 + "A0")
+    return a.build()
 
 
 def _bf_minterm(truth_table: str, n: int) -> str:
