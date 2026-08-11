@@ -8,24 +8,30 @@ The generators live in ``esolangs.tools.booleans``, split by language family
 for compatibility.
 """
 
-from esolangs.tools.booleans.other import nevermind, taglate
+from esolangs.tools.booleans.other import clockwise, nevermind, taglate, three_x
 from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
-from esolangs.tools.booleans.stack import bfstack, modulous
+from esolangs.tools.booleans.stack import bfstack, forth, modulous
 from esolangs.tools.booleans.tape import (
     ascii_art,
+    basicfuck,
     brainif,
     circlefuck,
     circlefuck_byte,
+    dimensional,
     six_five,
 )
 
 __all__ = [
     "ascii_art",
+    "basicfuck",
     "bfstack",
     "brainif",
     "circlefuck",
     "circlefuck_byte",
+    "clockwise",
     "dig",
+    "dimensional",
+    "forth",
     "modulous",
     "nevermind",
     "polynomial",
@@ -33,4 +39,5 @@ __all__ = [
     "six_five",
     "sophie",
     "taglate",
+    "three_x",
 ]

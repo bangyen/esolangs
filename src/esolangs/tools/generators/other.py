@@ -2,17 +2,18 @@
 
 import math
 import re
-from array import array
 from functools import cache
-from typing import Any
 
-from esolangs.tools.generators.helpers import _ilog
-from esolangs.tools.ztoalc_starts import STARTS
+from esolangs.tools.generators.helpers import _ilog, _require_ascii, _require_bytes
+from esolangs.tools.ztoalc_starts import ANCHORS
 
 __all__ = [
     "_123",
+    "basicfuck",
+    "bit_tilde",
     "clockwise",
     "container",
+    "dimensional",
     "forth",
     "home_row",
     "laserfuck",
@@ -20,6 +21,9 @@ __all__ = [
     "nevermind",
     "nocomment",
     "painfuck",
+    "pct_squared_minus_one",
+    "three_x",
+    "two_d_fish",
     "unsquare",
     "ztoalc",
 ]
@@ -33,6 +37,7 @@ def clockwise(text: str) -> str:
     origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
     ``+`` is emitted only when the accumulator's parity needs to flip.
     """
+    _require_ascii(text, "Clockwise")
     prog = ""
     parity = 0
     for c in text:
@@ -70,6 +75,7 @@ def container(text: str) -> str:
     negative one symmetrically, so each character prints through the ``OUT``
     rule once the accumulator crosses it.
     """
+    _require_ascii(text, "Container")
     ind = last = 0
     if text:
         res = (
@@ -128,23 +134,37 @@ def nevermind(text: str) -> str:
     return "print," + ",".join(args)
 
 
+def _anchor_for(n: int) -> int:
+    """Collatz start covering a text of length ``n``.
+
+    The committed ``ANCHORS`` table maps length intervals to the record-holder
+    with the smallest trajectory peak for every length in the interval, so a
+    length is a plain lookup (no search).
+    """
+    for end, start in ANCHORS:
+        if end >= n:
+            return start
+    raise ValueError(
+        f"no Collatz start with a trajectory of {n} steps "
+        f"(the longest committed record reaches {ANCHORS[-1][0]})",
+    )
+
+
 def ztoalc(text: str) -> str:
     """Build a ZTOALC program that outputs ``text``.
 
     The interpreter runs lines in Collatz-trajectory order from the initial
     value on line 1, so each character is placed on the line its trajectory
     step visits.  A ``start`` whose trajectory has at least ``len(text)``
-    steps is chosen (from the committed table, or by search), and the program
-    is ``start`` on line 1 plus a ``print <code>`` on each visited line.
+    steps is taken from the committed anchor table (covering lengths up to
+    the longest known record), and the program is ``start`` on line 1 plus a
+    ``print <code>`` on each visited line.
     """
     n = len(text)
     if not text:
         return "2"
 
-    start = STARTS.get(n)
-    if start is None:
-        start = _search_start(n)
-
+    start = _anchor_for(n)
     values = _collatz_prefix(start, n)
     size = max(values)
 
@@ -157,15 +177,6 @@ def ztoalc(text: str) -> str:
     return "\n".join(lines)
 
 
-# Collatz support for ``ztoalc``.  The committed ``ztoalc_starts`` table
-# covers most text lengths; for lengths it misses, the search helpers below
-# find a start whose Collatz trajectory is long enough and has the smallest
-# maximum visited value.
-_ZTOALC_TABLE_LIMIT = 1_000_000
-_ZTOALC_MAX_LIMIT = 10_000_000
-_length_table_cache: dict[int, Any] = {}
-
-
 def _collatz_prefix(start: int, n: int) -> list[int]:
     values: list[int] = []
     value = start
@@ -173,69 +184,6 @@ def _collatz_prefix(start: int, n: int) -> list[int]:
         values.append(value)
         value = value // 2 if value % 2 == 0 else 3 * value + 1
     return values
-
-
-def _collatz_length_table(limit: int) -> Any:
-    """Compute stopping times for every start up to ``limit``, as unsigned shorts.
-
-    Index ``value`` holds the number of Collatz steps from ``value`` to 1;
-    index 1 is 0 and a zero elsewhere means "not yet computed". Chain values
-    above ``limit`` are walked through without being stored, keeping the
-    table bounded at two bytes per entry.
-    """
-    lengths = array("H", [0]) * (limit + 1)
-    lengths[1] = 0
-
-    for start in range(2, limit + 1):
-        if lengths[start]:
-            continue
-
-        path = []
-        value = start
-        while value > 1 and (value > limit or not lengths[value]):
-            path.append(value)
-            value = value // 2 if value % 2 == 0 else 3 * value + 1
-
-        length = lengths[value] if value <= limit else 0
-        for value in reversed(path):
-            length += 1
-            if value <= limit:
-                lengths[value] = length
-
-    return lengths
-
-
-def _collatz_lengths(limit: int) -> Any:
-    if limit not in _length_table_cache:
-        _length_table_cache[limit] = _collatz_length_table(limit)
-    return _length_table_cache[limit]
-
-
-def _search_start(n: int) -> int:
-    """Best start for a text length the committed table does not cover."""
-    best: tuple[int, int] | None = None
-    limit = _ZTOALC_TABLE_LIMIT
-    lengths = _collatz_lengths(limit)
-    candidate = _ZTOALC_TABLE_LIMIT
-
-    while candidate <= _ZTOALC_MAX_LIMIT:
-        if candidate > limit:
-            limit = min(limit * 2, _ZTOALC_MAX_LIMIT)
-            lengths = _collatz_lengths(limit)
-            continue
-        if best is not None and candidate >= best[0]:
-            break
-        if lengths[candidate] >= n:
-            cand_size = max(_collatz_prefix(candidate, n))
-            if best is None or cand_size < best[0]:
-                best = (cand_size, candidate)
-        candidate += 1
-
-    if best is None:
-        raise ValueError(
-            f"no Collatz start with a trajectory of length {n} within the search limit",
-        )
-    return best[1]
 
 
 def forth(text: str) -> str:
@@ -247,6 +195,7 @@ def forth(text: str) -> str:
     would stop that loop, so text containing one is printed with an explicit
     ``.`` per character instead.
     """
+    _require_bytes(text, "Forþ")
     s = "0123456789ABCDEF"
 
     def build(c: str) -> str:
@@ -273,6 +222,7 @@ def laserfuck(text: str) -> str:
     body wrapped around a serpentine track on the edges so the laser travels
     around it.
     """
+    _require_bytes(text, "LaserFuck")
     values = [ord(c) for c in text]
     code = ""
     linear = "".join(">" + "+" * ord(c) for c in text).rstrip(">")
@@ -404,6 +354,7 @@ def magnitude(text: str) -> str:
     the accumulated magnitude as a byte, and a leading ``'`` resets to an
     absolute (non-delta) encoding when the delta would overshoot the target.
     """
+    _require_bytes(text, "Magnitude")
 
     def close(val: int, start: int) -> int:
         if start > val:
@@ -471,6 +422,7 @@ def painfuck(text: str) -> str:
     ``c``/``t``/``rl`` handle the arithmetic in bases 7 and 3 with a pointer
     loop, and ``u`` prints the current cell as a byte.
     """
+    _require_bytes(text, "Painfuck")
 
     def add(val: int) -> str:
         return (val // 2) * "p" + (val % 2) * "ps"
@@ -558,6 +510,7 @@ def _123(text: str) -> str:
     final ``1`` leaves ``esi`` above 128 so the program halts at the
     terminator.
     """
+    _require_bytes(text, "123")
     res = ""
     last = 0
 
@@ -587,6 +540,7 @@ def nocomment(text: str) -> str:
     prints it as a byte, so each character becomes a fixed ``c`` + ``i``*N + ``o``
     run.
     """
+    _require_bytes(text, "NoComment")
     return "".join("c" + "i" * ord(c) + "o" for c in text)
 
 
@@ -599,6 +553,7 @@ def unsquare(text: str) -> str:
     program to the code: doubling makes even values O(log n), with ``+`` runs
     covering the rest.  ``P`` pushes the accumulator and ``o`` prints it.
     """
+    _require_bytes(text, "Unsquare")
 
     @cache
     def build(start: int, v: int) -> str:
@@ -626,6 +581,7 @@ def home_row(text: str) -> str:
     it to zero (the spec's 5x5 grid initializes at zero). A leading ``as``
     (net zero) keeps NUL characters from collapsing the adjacent ``k``s.
     """
+    _require_bytes(text, "Home Row")
     res = []
     for c in text:
         if ord(c) == 0:
@@ -645,3 +601,125 @@ def taglate(text: str) -> str:
     if any(c in "\n\r" for c in text):
         raise ValueError("Taglate cannot output a newline (the queue is one line)")
     return text + "\n" + "i" * len(text)
+
+
+def dimensional(text: str) -> str:
+    """Build a Dimensional program that outputs ``text``.
+
+    ``=`` sets the current cell to a hexadecimal literal and ``.`` prints it
+    as a byte, so each character is a two-part run.  The pointer stays at the
+    first cell throughout.
+    """
+    _require_bytes(text, "Dimensional")
+    return "".join(f"={ord(c):x}." for c in text)
+
+
+def two_d_fish(text: str) -> str:
+    """Build a 2dFish program that outputs ``text``.
+
+    A single row heading right (``/``) carries an accumulator: ``i`` and ``d``
+    move it toward each character and ``a`` prints it as a byte.  ``@`` halts.
+    """
+    _require_bytes(text, "2dFish")
+    acc = 0
+    res = ["/"]
+    for c in text:
+        t = ord(c)
+        res.append("i" * (t - acc) if t >= acc else "d" * (acc - t))
+        res.append("a")
+        acc = t
+    return "".join(res) + "@"
+
+
+def _pct_path(byte: int) -> str:
+    """%^2^-1 program from ``'`` (acc = 0) to ``byte``.
+
+    Reverse ``s`` (acc -= 2), ``i`` (acc -= 3), ``m`` (acc *= 2) to reduce the
+    byte to 0: halve when even (biggest reduction), otherwise subtract 2 or 3,
+    then a final ``p`` flips the accumulated negative to the byte.  Byte 1 is
+    the one value the +2/+3/*2 ops cannot build (it needs the ``p`` negate
+    mid-way) and is a fixed 3-op constant.  The greedy is within 3 ops of the
+    shortest program for every byte and keeps the accumulator bounded well
+    under the interpreter's ``acc > 3003`` reset.
+    """
+    if byte == 0:
+        return ""
+    if byte == 1:
+        return "ips"
+    build = []
+    while byte > 0:
+        if byte % 2 == 0 and byte > 4:
+            build.append("m")
+            byte //= 2
+        elif byte % 2 == 0:
+            build.append("s")
+            byte -= 2
+        else:
+            build.append("i")
+            byte -= 3
+    return "".join(reversed(build)) + "p"
+
+
+def pct_squared_minus_one(text: str) -> str:
+    """Build a %^2^-1 program that outputs ``text``.
+
+    ``'`` resets the accumulator to zero, ``_pct_path`` moves it to each byte,
+    and ``e`` prints it as a character.  Every byte's path stays within the
+    interpreter's ``acc > 3003`` bound.
+    """
+    _require_bytes(text, "%^2^-1")
+    return "".join("'" + _pct_path(ord(c)) + "e" for c in text)
+
+
+def basicfuck(text: str) -> str:
+    """Build a Basicfuck program that outputs ``text``.
+
+    One variable ``a`` tracks the current byte: ``+=``/``-=`` walk it to each
+    character (within the declared ``0..255`` range) and ``write <- a ;``
+    prints it.  ``o=nearest`` pins any accidental overshoot back to the range.
+    """
+    _require_bytes(text, "Basicfuck")
+    res = ["#basicfuck t=1 r=0~255 o=nearest", "#allocate a"]
+    cur = 0
+    for c in text:
+        t = ord(c)
+        delta = t - cur
+        res.append(f"a += {delta};" if delta >= 0 else f"a -= {-delta};")
+        res.append("write <- a ;")
+        cur = t
+    return "\n".join(res) + "\n"
+
+
+def bit_tilde(text: str) -> str:
+    """Build a bit~ program that outputs ``text``.
+
+    The tape holds bits: ``~`` flips the current bit, ``>`` moves right, and
+    ``(`` prints the 8-bit window as a byte.  The generator tracks the tape so
+    it only toggles bits that must change, and walks back to cell 0 to print.
+    """
+    _require_bytes(text, "bit~")
+    res = []
+    tape = [0] * 8
+    for c in text:
+        bits = [int(b) for b in format(ord(c), "08b")]
+        for i in range(8):
+            if tape[i] != bits[i]:
+                res.append("~")
+                tape[i] = bits[i]
+            if i < 7:
+                res.append(">")
+        res.append("<" * 7 + "(")
+    return "".join(res)
+
+
+def three_x(text: str) -> str:
+    """Build a 3x program that outputs ``text``.
+
+    ``[`` prints the literal up to the next ``]``, so the program is
+    ``[text]``.  A ``?`` or ``]`` in the text would be read as input or end
+    the literal early (the reference re-executes the printed characters), so
+    both are rejected.
+    """
+    if any(c in "?]" for c in text):
+        raise ValueError("3x cannot output '?' or ']' (the literal re-executes)")
+    return "[" + text + "]"

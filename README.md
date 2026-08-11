@@ -167,6 +167,19 @@ Languages that don't fit into the above categories.
 
 Implementations written in languages other than Python.
 
+Note: the generators for Forþ, Painfuck, Dimensional, 2dFish, %^2^-1,
+Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON, 123, and NoComment are
+round-trip verified against their native references (C++, Rust, R, Ruby, or
+x86/RISC-V assembly) in CI, and 3x's boolean generator (n = 1..3) is
+verified the same way.
+
+The remaining extra implementations (Kak, Trash, Number Seventy-Four, 2 Bits
+1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA) are kept as
+self-contained interpreters but do not have round-trip-verified generators:
+their output classes are too narrow for text (e.g. Kak prints only tape bits,
+Trash only primes, Number Seventy-Four only `0`/`1`/`H`), or they lack a
+file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
+
 ### C++ Implementations
 
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
@@ -200,9 +213,9 @@ Implementations written in languages other than Python.
 ### Ruby Implementations
 
 - [bit~](https://esolangs.org/wiki/Bit~)
+- [3x](https://esolangs.org/wiki/3x)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
-- [3x](https://esolangs.org/wiki/3x)
 
 ### Rust Implementations
 
@@ -309,6 +322,8 @@ Important information about specific language implementations.
 - **circlefuck**: The `narcissist` program doesn't work — it hangs regardless of input. The `ThisIsAQuine` quine also outputs its source incorrectly; the `{>[.>]@` quine works correctly.
 
 - **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
+
+- **polynomial**: The generator reliably outputs byte-range text and short texts generally, but the interpreter's float64 root-finding (`numpy.roots`) loses precision when a polynomial's roots span a wide magnitude range, which happens when consecutive characters differ by large codepoint amounts (e.g. an ASCII character directly followed by a CJK character). Such text can silently corrupt. The fuzzers exercise it on byte-range and small-unicode text accordingly.
 
 ### Usage Notes
 
