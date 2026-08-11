@@ -18,9 +18,10 @@ Ruby reference.
 
 ### Boolean-table transpiler bridge
 A dynamic transpiler across the boolean-capable languages — Sophie, Modulous,
-BrainIf, Nevermind, CircleFuck, and Clockwise. These are genuinely different
-machines, but each has a verified generator that builds a program for any
-truth table, so a transpiler can lift a program from one to another:
+BrainIf, Nevermind, CircleFuck, Clockwise, and Dimensional. These are
+genuinely different machines, but each has a verified generator that builds a
+program for any truth table, so a transpiler can lift a program from one to
+another:
 
 1. run the source program on all `2**n` inputs to extract its truth table;
 2. regenerate in the target with its boolean generator.

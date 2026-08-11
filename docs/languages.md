@@ -9,27 +9,27 @@ hand.
 | %^2^-1 | yes |  |  |  |  |
 | 123 | yes |  |  |  |  |
 | 2dFish | yes |  |  |  |  |
-| 3x | yes |  |  |  |  |
-| 6-5 | yes | yes |  |  | hello cat |
-| ASCII art | yes | yes |  |  | hello |
+| 3x | yes |  | yes |  |  |
+| 6-5 | yes | yes | yes |  | hello cat |
+| ASCII art | yes | yes | yes |  | hello |
 | BF | yes | yes |  |  | hello |
 | BF-PDA |  |  |  | yes |  |
-| BFStack | yes | yes |  | yes | hello |
+| BFStack | yes | yes | yes | yes | hello |
 | BIO | yes | yes |  |  | hello |
 | Back |  | yes |  |  |  |
 | Basicfuck | yes |  |  |  |  |
 | BitDeque |  | yes |  |  |  |
 | BrainIf | yes | yes | yes |  | hello truth-machine |
 | CircleFuck | yes | yes | yes |  | hello truth-machine |
-| Clockwise | yes | yes |  |  | hello |
+| Clockwise | yes | yes | yes |  | hello |
 | Container | yes | yes |  |  | hello |
 | DSDLAI |  | yes |  |  |  |
-| Dig | yes | yes |  |  | hello |
-| Dimensional | yes |  |  |  |  |
+| Dig | yes | yes | yes |  | hello |
+| Dimensional | yes |  | yes |  |  |
 | Dotlang | yes | yes |  |  | hello |
 | EXCON | yes | yes |  | yes | hello |
 | Eval | yes | yes |  |  | hello |
-| Forþ | yes |  |  |  |  |
+| Forþ | yes |  | yes |  |  |
 | Home Row | yes |  |  | yes |  |
 | Keys |  | yes |  |  |  |
 | LaserFuck | yes |  |  |  |  |
@@ -43,12 +43,12 @@ hand.
 | Nevermind | yes | yes | yes |  | hello cat |
 | NoComment | yes | yes |  |  | hello |
 | Painfuck | yes |  |  |  |  |
-| Polynomial | yes | yes |  |  | hello |
-| Qoibl | yes | yes |  |  | hello |
+| Polynomial | yes | yes | yes |  | hello |
+| Qoibl | yes | yes | yes |  | hello |
 | RAM0 |  | yes |  | yes |  |
 | Sophie | yes | yes | yes |  | hello |
 | Suffolk | yes | yes |  | yes | hello |
-| Taglate | yes | yes |  |  | hello |
+| Taglate | yes | yes | yes |  | hello |
 | Temporary | yes | yes |  |  | hello |
 | Unsquare | yes |  |  | yes |  |
 | WII2D | yes | yes |  |  | hello |

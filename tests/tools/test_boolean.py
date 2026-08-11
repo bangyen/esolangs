@@ -280,6 +280,48 @@ class TestForth:
         assert len(_forth_const(300)) > len(_forth_const(48))
 
 
+class TestDimensional:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_program_shape(self, table: str, n: int) -> None:
+        """The program reads n inputs and uses only dimension-0 moves."""
+        program = boolean.dimensional(table, n)
+        assert all(c in ",+-0<>[]." for c in program)
+        assert ">" not in program.replace(">0", "")
+        assert "<" not in program.replace("<0", "")
+        assert program.count(",") == n  # one read per input
+        assert program.endswith(".")
+
+    def test_moves_are_pinned_to_dimension_zero(self) -> None:
+        """A bare >/< would take its dimension from the cell's value."""
+        program = boolean.dimensional("0110", 2)
+        assert program.startswith(">0,")  # first input read
+        assert program.count(">0") == program.count("<0")
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.dimensional("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.dimensional("02", 1)
+
+    def test_rejects_many_inputs(self) -> None:
+        """The reference's 32-bit cell addresses cap the generator at n <= 12."""
+        with pytest.raises(ValueError, match="n <= 12"):
+            boolean.dimensional("0" * 8192, 13)
+
+
 class TestSophie:
     @pytest.mark.parametrize(
         ("table", "n"),
