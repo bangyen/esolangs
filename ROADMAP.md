@@ -18,10 +18,10 @@ Ruby reference.
 
 ### Boolean-table transpiler bridge
 A dynamic transpiler across the boolean-capable languages — Sophie, Modulous,
-BrainIf, Nevermind, CircleFuck, Clockwise, and Dimensional. These are
-genuinely different machines, but each has a verified generator that builds a
-program for any truth table, so a transpiler can lift a program from one to
-another:
+BrainIf, Nevermind, CircleFuck, Clockwise, Dimensional, and Basicfuck. These
+are genuinely different machines, but each has a verified generator that
+builds a program for any truth table, so a transpiler can lift a program from
+one to another:
 
 1. run the source program on all `2**n` inputs to extract its truth table;
 2. regenerate in the target with its boolean generator.
@@ -54,6 +54,38 @@ crosses and a second input read overwrites the first.  The `[` conditional
 skips one instruction with a side-effect toggle.  There is no way to keep
 the input bits intact, so a decision tree is not expressible; no hidden
 primitive equivalent to Clockwise's three-`R` turn exists.
+
+### Dimensional reference cell limit (assessed: cap at n == 12)
+The C++ reference (`extra/c++/dimensional.cpp`) addresses a cell as the
+product of `prime[k]**ptr[k]` over dimensions, computed in a signed 32-bit
+`int` via `(int)pow(...)`.  That overflows past cell 30 (address `2**31`),
+so any program touching more than ~30 cells silently collides addresses —
+which is why the boolean generator
+(`src/esolangs/tools/booleans/tape.py`) uses a fixed `2n + 6`-cell layout
+and refuses `n > 12`.  The text generator is unaffected (it stays on cell
+0), and the cap is loud (a `ValueError`), never a wrong answer.
+
+The overflow is an implementation artifact, not a designed limit: the
+prime-product tape clearly intends an unbounded address space.  Options,
+in value order:
+
+- **A first-class Python interpreter.**  No Dimensional interpreter lives in
+  `src/esolangs/interpreters/` today (verification goes through the C++
+  subprocess).  A mod-256 interpreter is observably identical to the
+  reference (signed vs unsigned `char` differ only in internal
+  representation; `[`/`]` conditions and byte output agree), and Python
+  `int`s make cell addresses unbounded, removing the cap entirely.  It would
+  also let the boolean generator be verified by real execution in unit tests
+  (like `TestBfstack`) instead of the structural checks it has now, and it
+  matches how every other tape language in the registry is packaged.
+- **A minimal 64-bit patch to the reference.**  Changing the address to
+  `long long` lifts the cap to `n <= 28` (`2n + 6 <= 62`) but stays
+  overflow-prone: multi-dimensional products exceed 64 bits quickly and
+  `pow`'s double loses precision past `2**53`, so it merely postpones the
+  same bug and does nothing for testability.
+- **Leave as-is.**  The `n <= 12` cap is documented and the generator
+  refuses loudly.  Even a correct interpreter would not make large `n`
+  practical: the survivor scheme's program size is `O(2**n * n)`.
 
 ### Polynomial float64 root precision
 The Polynomial generators emit exact integer polynomials, but the
