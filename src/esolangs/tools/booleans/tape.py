@@ -274,11 +274,20 @@ def six_five_arithmetic(truth_table: str, n: int) -> str:
 
     ``x`` is built by a loop (read, double into a scratch cell, add the bit,
     copy back), not unrolled per bit, so the marker count is constant in
-    ``n`` and the generator is not label-capped.  The practical limits are
-    the table setup and the runtime: ``T`` is built with ``62`` runs, making
-    the program about ``2 * T`` characters (double-exponential in ``n`` for
-    dense tables, so the generator refuses ``T > 2**20``), and the halving
-    runs ``O(x * T)`` steps with ``x`` up to ``2**n``.
+    ``n`` and the generator is not label-capped.  The table, however, must
+    be a single integer ``T``: 6-5 has no way to index an array by a
+    computed offset (a loop's ``70`` check reads a fixed-position cell, so
+    the pointer can never net-advance through the tape), so ``T`` is the
+    only representation the halving arithmetic can address.  Setting an
+    integer constant costs ``O(value)`` instructions with the ``+5/+6/-5/-6``
+    cell ops, so the setup is about ``2 * T`` characters: ``T`` ranges up to
+    ``2**(2**n)``, and a dense table (whose bits at high indices are set)
+    would need an unbuildable program.  The generator therefore refuses
+    ``T > 2**20`` (about 2 MB) rather than try to materialize an exabyte
+    string; the rejection covers only tables with ``n > 5`` *and* a large
+    value, since the decision tree already handles every table for
+    ``n <= 5``.  The remaining practical limit is the runtime, which scales
+    as ``O(x * T)`` with ``x`` up to ``2**n``.
     """
     value = int(truth_table[::-1], 2)  # bit i of value is table[i] (combo i)
     if value > 2**20:
