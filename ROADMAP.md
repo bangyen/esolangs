@@ -33,83 +33,67 @@ transpiler — the source and target must agree on every input. It needs a
 design decision first: how to detect or take `n` (the input count) and how
 to reject programs outside the class loudly.
 
-### Constant-loop boolean generator for arbitrary n
+### Constant-loop boolean generator for arbitrary n (resolved: 6-5)
 The boolean generators cover every table up to a small input count: 6-5 and
 CircleFuck build decision trees capped at about 5 inputs (35 branch labels
 for 6-5, n <= 5), Taglate is closed-form for n == 2, the brainfuck
 generator handles any n but is branch-free and grows with the minterm count,
-and Clockwise builds an uncapped decision-tree ring (three `R` in an L
-pattern provide the counter-clockwise turn that closes it).  A generator
-whose program size and loop count are *constant* in `n` (e.g. encode the
-inputs as one number and decode the table entry arithmetically) is still
-open; the BFStack encoder hints at the shape but no such generator has been
-designed yet.  The BF-to-6-5 transpiler cannot provide it: the brainfuck
-generator's loop count already exceeds the transpiler's 18-loop cap at
-n == 2.
+and Clockwise builds an uncapped decision-tree ring.  The open goal was a
+generator whose program size and loop count are constant in n (encode the
+inputs as one number and decode the table entry arithmetically).
 
-**6-5 arithmetic-kernel generator (proven, ~5 loops).**  6-5 *can* do the
-arithmetic decode with a constant number of loop constructs: encode the
-inputs as `x`, the table as `T = sum table[i] * 2**i`, and compute
-`f(x) = (T >> x) & 1` by halving `T` x times and reading the parity.  The
-+5/+6/-5/-6 cell ops, the `7n` equality-skip, and the `8n` marker jump
-express every piece with 5 loop constructs (verified exhaustively: every
-table for n = 1, 2, 3):
+**6-5 closes the loop-count half.**  `six_five_arithmetic`
+(`src/esolangs/tools/booleans/tape.py`) packs the inputs into `x` and the
+table into `T = sum table[i] * 2**i`, then computes `f(x) = (T >> x) & 1`
+by halving `T` x times and reading the final parity.  The kernel uses 8
+loop constructs and 27 markers, both constant in n, so the 35-label cap no
+longer bounds the input count (verified exhaustively for every table at
+n <= 3 and sampled through n = 16).  `x` is built by a read loop that folds
+each normalized 8/9 bit with `x = 2x + (b - 8)`; each halving is a parity
+pass (a copy loop toggling a flag once per unit) that selects a
+`while r2 != 0` or `while r2 != 1` count-down loop writing the quotient
+back into `T`.
 
-- **parity / mod-2**: copy `T` to a scratch cell in a loop that toggles a
-  parity cell once per unit (a copy loop + a `70`/`71` toggle);
-- **halve / divide-by-2**: after the parity pass, branch on the parity and
-  run one of two count-down loops (`while r2 != 0` / `while r2 != 1`,
-  `r2 -= 2; T += 1`), so the quotient is written back into `T`.  Only
-  equality tests are needed because the loop bound is `!= 0` or `!= 1`;
-- **outer repetition**: `while x != 0: halve T; x -= 1` (one loop);
-- **build x**: a read loop folds each normalized 8/9 bit with
-  `x = 2x + (b - 8)` using a doubling loop and a copy-back loop (constant
-  markers, so the generator is *not* label-capped — verified at n = 16);
-- **output**: one final parity pass sets the cell to 48+p for `A`.
+Two optimizations keep programs small: the table constant is built with
+`+6` runs (~`T/6` chars, 12x under the old `62` pairs), and when the
+table's complement `T' = 2**(2**n) - 1 - T` is cheaper the complement is
+evaluated with the output inverted, so mostly-ones tables are generated
+instead of rejected.
 
-The generator now lives in-tree as `six_five_arithmetic`
-(`src/esolangs/tools/booleans/tape.py`) and `six_five` dispatches to it
-when the decision tree runs out of labels: the tree for `2**n - 1 <= 35`
-(n <= 5), the arithmetic kernel otherwise.  Every truth table for n <= 3
-was verified through the interpreter, and the fallback works for n up to
-at least 16 for tables whose ones sit at low indices.
+**Constant program size stays impossible.**  A program that must work for
+any table has to embed the table, and the single-integer representation
+6-5 requires (the pointer cannot net-advance, so there is no computed array
+indexing) costs O(`2**(2**n)`) characters for dense tables.  A ~2 MB setup
+guard therefore rejects the `n > 5` and large-T region (AND-n is the
+pathological case), and runtime is O(x*T) — microseconds for tiny-T tables
+up to ~2 s at n = 16, but minutes at the size guard.
 
-Two optimizations shrink the kernel's programs.  The table constant is
-built with `+6` runs instead of `62` pairs, cutting the setup from ~`2T`
-to ~`T/6` characters (12x smaller).  And when the table's *complement*
-`T' = (2**(2**n) - 1) - T` is cheaper than `T`, the complement table is
-evaluated and the output inverted, so "mostly-ones" tables (zeros at low
-indices) are no longer rejected; only the region where both `T` and `T'`
-are large remains excluded.
+The decision tree stays, and the two are not in competition: for n <= 5 the
+tree generates every table with no rejection, ~µs runtime, and a flat
+44-914 chars, while the kernel is the fallback for n > 5 (small-T tables
+only).  Measured at n = 4 the tree runs ~46,000x faster and generates
+programs 13x smaller than the kernel for the same table, so the kernel's
+role is strictly to cover the region the tree's labels cannot.
 
-The length guard is not a preference but a crash guard.  The table must
-be one integer `T`, because 6-5 cannot index an array by a computed
-offset (a loop's `70` check reads a fixed-position cell, so the pointer
-can never net-advance through the tape), and integer constants cost
-O(value) instructions with the `+5/+6/-5/-6` ops.  So `T` up to `2**(2**n)`
-means a dense table would need an O(`2**(2**n)`) program — for AND6 alone
-(`T == 2**63`) that is an exabyte-scale string, so the generator refuses
-a setup longer than ~2 MB rather than try to build it.  The rejection
-therefore only excludes the `n > 5` *and* large-`T` region: the decision
-tree already covers every table for n <= 5, and AND-n is the pathological
-worst case (its complement is the equally-large NOR of the top row).
+### Minifuck boolean generator (assessed: viable for n == 2, n >= 3 open)
+`[` followed by `<` is a conditional pointer move: `[` moves right, flips
+that bit, and skips the following instruction *and* flips the next bit only
+when the flipped bit is zero, so after `[<` one input state executes `<`
+while the other skips it.  The tested bit's value thus survives in the
+*pointer displacement* while the pool can be re-zeroed for another read —
+a genuine branch primitive.
 
-Two honest caveats keep it from beating the decision tree on every axis.
-The table constant `T` is set by `+6` runs, so the setup is about
-`T / 6 ~ 2**(2**n) / 6` instructions — double-exponential, practical only
-to n <= 4 (n = 4 worst case ~11 KB, still a regression against
-the tree's O(2**n) size at n <= 5).  Runtime is O(x*T), so even a tiny-T
-table becomes too slow once n climbs past ~20.  Its genuine win: the loop
-count (8 constructs) and marker count (27) are both constant in n, so
-labels no longer cap the input count at all.
+A two-input XOR is verified against the interpreter
+(`<[<.[<[<[<[<[<[<[<.<.`), along with AND, OR, and several other
+two-input tables: `<[<.` reads the first byte, a `[<` run walks the pointer
+right while clearing the 8-cell pool, the next `.` reads the second byte,
+and the pointer ends at 8 or 7 depending on the first bit — so the first
+bit is carried in the pointer position while the second sits in the pool.
+The walker doubles the reachable positions per read.
 
-### Minifuck boolean generator (assessed: not viable)
-Minifuck's tape is an 8-cell I/O register that every right move (`.`, `[`)
-toggles on the way past, so positioning the pointer mangles the data it
-crosses and a second input read overwrites the first.  The `[` conditional
-skips one instruction with a side-effect toggle.  There is no way to keep
-the input bits intact, so a decision tree is not expressible; no hidden
-primitive equivalent to Clockwise's three-`R` turn exists.
+Open question: whether the pointer displacement composes to n == 3 (a
+second walker would need 4 distinct end positions to carry two prior bits)
+and beyond, up to the n <= 4 verification bar.
 
 ### Dotlang boolean generator (assessed: not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line
