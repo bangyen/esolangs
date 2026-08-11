@@ -213,6 +213,47 @@ def _ztoalc_lines(table: str, n: int, b1: int) -> dict[int, str]:
     return lines
 
 
+def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
+    """Build a branch-free linear program for a popcount-symmetric table.
+
+    If ``table[c]`` depends only on ``popcount(c)``, the result is computable
+    without a decision tree: sum the normalized input bits into ``s``, look
+    the result up in a small ``n + 1``-entry table, and print it.  Every
+    line sits on the pure power-of-two descent from ``2**L``, so the
+    trajectory never revisits a line and no placement search is needed.
+    The program is ``2**L`` lines (``L`` commands), so it is huge but
+    collision-free; returns ``None`` for non-symmetric tables.
+    """
+    value: dict[int, str] = {}
+    for combo in range(2**n):
+        count = bin(combo).count("1")
+        if count in value and value[count] != table[combo]:
+            return None
+        value[count] = table[combo]
+    cmds: list[str] = []
+    for i in range(n):
+        cmds.append(f"x{i} = input")
+        cmds.append(f"x{i} - 48")
+    cmds.append("s = 0")
+    for i in range(n):
+        cmds.append(f"s += x{i}")
+    cmds.append(f"t = [{n + 1}]")
+    for count in range(n + 1):
+        if value.get(count, "0") == "1":
+            cmds.append(f"t[{count}] = 1")
+    cmds.append("r = t[s]")
+    cmds.append("r + 48")
+    cmds.append("print r")
+    size = 2 ** len(cmds)
+    if size > 2**22:
+        return None  # too large to materialize
+    prog = [""] * size
+    prog[0] = str(size)
+    for j, cmd in enumerate(cmds):
+        prog[2 ** (len(cmds) - j) - 1] = cmd
+    return prog
+
+
 def ztoalc_boolean(truth_table: str, n: int) -> str:
     """Build a ZTOALC program computing the given truth table.
 
@@ -229,11 +270,16 @@ def ztoalc_boolean(truth_table: str, n: int) -> str:
     simulator (each input must print exactly its table entry once, with no
     command line revisited).
 
+    When the tree search finds no collision-free placement (dense tables
+    like XOR4), a branch-free *linear* program is tried instead for
+    popcount-symmetric tables: sum the bits and look the result up in a
+    small table.  That program is guaranteed collision-free (a pure
+    power-of-two descent) but huge (``2**L`` lines), so it is gated by a
+    size limit and the generator raises :class:`ValueError` only for dense,
+    non-symmetric tables past ``n == 3``.
+
     Verified exhaustively for every table at ``n <= 3`` and for structured
-    tables at ``n == 4``.  The limit is that all trajectories eventually
-    converge to the ``16, 8, 4, 2, 1`` tail, so for dense ``n == 4`` tables
-    (like XOR4) every branch's leaves collide with another path's tail and
-    no ``b1`` works; the generator then raises :class:`ValueError`.
+    and symmetric tables at ``n == 4``; all tests run the real interpreter.
     """
     if len(truth_table) != 2**n:
         raise ValueError(
@@ -255,6 +301,9 @@ def ztoalc_boolean(truth_table: str, n: int) -> str:
         ):
             size = max(lines) + 1
             return "\n".join(lines.get(i, "") for i in range(size))
+    linear = _ztoalc_symmetric(truth_table, n)
+    if linear is not None:
+        return "\n".join(linear)
     raise ValueError(
         "the ZTOALC boolean generator found no collision-free placement for "
         f"this table at n == {n}",

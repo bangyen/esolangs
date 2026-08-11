@@ -120,24 +120,21 @@ lines rather than the 16384 the earlier search start found.
 
 The limitation: all trajectories converge to the `16, 8, 4, 2, 1` tail, so
 a dense full tree like XOR4 has every leaf's tail sweep through another
-leaf — a single value's Collatz tail is shared with the rest of the tree,
-so no `b1` works; the generator raises `ValueError` for those.  This is
-structural: ZTOALC offers no arithmetic dispatch (no multiplication or
-shift), so the physical decision tree is the only routing, and its leaves'
-tails cannot be kept disjoint past a full 4-level tree.
+leaf, and no `b1` works.  For **popcount-symmetric** tables (XOR = parity,
+AND, majority) the generator now falls back to a branch-free *linear*
+program: sum the normalized input bits with `s += x_i`, look the result up
+in a small `n + 1`-entry table, and print.  Every line sits on the pure
+power-of-two descent from `2**L`, so the trajectory never revisits a line
+and the program is guaranteed collision-free — but it is `2**L` lines
+(XOR4 is 524,288; gated at `2**22`).  Only dense, non-symmetric tables
+past `n == 3` still raise `ValueError`; those need a full `2**n` result
+table, which would be `2**(2**n)` lines and cannot be materialized.
 
 The interpreter was also brought in line with the wiki spec: `lhs = rhs` /
 `+=` / `-=` now write an `array[index]` element instead of a variable named
-literally `"arr[i]"` (previously `par[1] = 1` created a phantom variable,
-invisible to a runtime-indexed read `par[x]`).  With the fix, runtime-
-indexed tables work, so mod-2 (a parity table) and bounded multiplication
-(a product table) are expressible as small primitives — verified: a
-`par[1] = 1; r = par[x]` parity table computes `x mod 2`.  This does not
-rescue dense-n4, though: a linear (branch-free) table computation puts
-every line on the single shared descent, forcing `S = 2**(lines)` — XOR4's
-~22-line parity program would need a ~4-million-line program, and a general
-result table is 2**n lines.  So the fix is a spec-compliance improvement
-that adds mod-2/multiply as primitives, not a boolean-generator win.
+literally `"arr[i]"`.  With the fix, runtime-indexed tables work, which is
+what makes the linear fallback (and mod-2 as a small parity-table
+primitive) possible.
 
 ### MAMMALIAN boolean generator (assessed: viable in principle, hard)
 MAMMALIAN has the three primitives a decision tree needs, and they are
