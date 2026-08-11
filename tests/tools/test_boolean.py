@@ -345,12 +345,12 @@ class TestBasicfuck:
         assert program.count("write <- out ;") == 2**n  # one leaf per row
 
     def test_decision_tree(self) -> None:
-        """Each internal node branches both ways with the reference's if!."""
+        """Each internal node branches both ways with the wiki's if!(...)."""
         program = boolean.basicfuck("0110", 2)
         assert program.count("if (a1) {") == 1
-        assert program.count("if ! (a1) {") == 1
+        assert program.count("if !(a1) {") == 1
         assert program.count("if (a2) {") == 2
-        assert program.count("if ! (a2) {") == 2
+        assert program.count("if !(a2) {") == 2
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
