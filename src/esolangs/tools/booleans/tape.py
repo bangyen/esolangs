@@ -202,7 +202,7 @@ def six_five(truth_table: str, n: int) -> str:
             sub1 = build(g1, bit + 1, 9)
             return (
                 "B" + "2" * 8 + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
-            )  # noqa: E501
+            )
 
         return build(list(range(2**n)), 1, 0)
     return six_five_arithmetic(truth_table, n)
@@ -271,16 +271,15 @@ def six_five_arithmetic(truth_table: str, n: int) -> str:
     parity pass (a copy loop that toggles a flag once per unit) selects an
     even loop (``while r2 != 0``) or an odd loop (``while r2 != 1``), both
     doing ``r2 -= 2; T += 1`` so the quotient is written back into ``T``.
-    The whole kernel uses five loop constructs.
 
-    The branch labels are 0..9 then A..Z, and the marker budget is ``2n + 19``
-    (two per input bit plus nineteen), so the generator caps at n == 8.  The
-    table constant ``T`` is built with ``62`` runs, making the program about
-    ``2 * T`` characters; a table whose high bits are set grows
-    double-exponentially with ``n``, so the generator refuses ``T > 2**20``.
+    ``x`` is built by a loop (read, double into a scratch cell, add the bit,
+    copy back), not unrolled per bit, so the marker count is constant in
+    ``n`` and the generator is not label-capped.  The practical limits are
+    the table setup and the runtime: ``T`` is built with ``62`` runs, making
+    the program about ``2 * T`` characters (double-exponential in ``n`` for
+    dense tables, so the generator refuses ``T > 2**20``), and the halving
+    runs ``O(x * T)`` steps with ``x`` up to ``2**n``.
     """
-    if 2 * n + 19 > 35:
-        raise ValueError("the 6-5 arithmetic fallback supports n <= 8 only")
     value = int(truth_table[::-1], 2)  # bit i of value is table[i] (combo i)
     if value > 2**20:
         raise ValueError(
@@ -289,16 +288,25 @@ def six_five_arithmetic(truth_table: str, n: int) -> str:
         )
     a = _SixFiveAsm()
     a.raw(_six_five_nav(0, 1) + "62" * value)  # T at cell 1
+    a.raw(_six_five_nav(1, 7) + "62" * n)  # N = n (bits left to read) at cell 7
 
-    # build x at cell 0: bits (normalized to 8/9) add their place value
-    for i in range(n):
-        place = 2 ** (n - 1 - i)
-        a.raw((_six_five_nav(1, 6) if i == 0 else "") + "B" + "2" * 8)
-        a.raw("78").j(f"ADD{i}")  # b == 8: skip the add
-        a.j(f"NEXT{i}")
-        a.m(f"ADD{i}").raw(_six_five_nav(6, 0) + "62" * place + _six_five_nav(0, 6))
-        a.m(f"NEXT{i}")
+    # read loop (control cell 7): fold each bit into x = 2x + (b - 8)
+    a.j("R_END").m("R_START")
+    a.raw(_six_five_nav(7, 6) + "B" + "2" * 8)  # read at cell 6 -> 8/9
     a.raw(_six_five_nav(6, 0))
+    a.j("D_END").m("D_START")  # double x into x2 (cell 8)
+    a.raw("95" + _six_five_nav(0, 8) + "6262" + _six_five_nav(8, 0))
+    a.m("D_END").raw("70").j("D_START")
+    a.raw(_six_five_nav(0, 6))
+    a.raw("79").j("SKIP_ADD")  # b == 9: add 1 to x2
+    a.raw(_six_five_nav(6, 8) + "62").j("ADD_DONE")
+    a.m("SKIP_ADD").raw(_six_five_nav(6, 8)).m("ADD_DONE")
+    a.j("B_END").m("B_START")  # copy x2 back into x
+    a.raw("95" + _six_five_nav(8, 0) + "62" + _six_five_nav(0, 8))
+    a.m("B_END").raw("70").j("B_START")
+    a.raw(_six_five_nav(8, 7) + "95")  # N -= 1
+    a.m("R_END").raw("70").j("R_START")
+    a.raw(_six_five_nav(7, 0))
 
     def reset(name: str) -> None:
         # r2 and p hold only 0/1 here, so "71 8name 95 4" zeroes them

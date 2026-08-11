@@ -80,7 +80,7 @@ class TestSixFive:
         assert "70" in program  # loop conditionals
         assert program.count("4") <= 35  # within the label budget
 
-    @pytest.mark.parametrize("n", [6, 7, 8])
+    @pytest.mark.parametrize("n", [6, 7, 8, 9])
     @pytest.mark.parametrize("table", ["10", "1100"])
     def test_arithmetic_fallback_table(self, n: int, table: str) -> None:
         """The fallback computes every combination for small-T tables."""
@@ -92,10 +92,14 @@ class TestSixFive:
             got = run_six_five(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_arithmetic_fallback_marker_cap(self) -> None:
-        """The kernel's marker budget 2n + 19 caps the fallback at n == 8."""
-        with pytest.raises(ValueError, match="n <= 8"):
-            boolean.six_five("1" + "0" * 511, 9)
+    def test_arithmetic_fallback_constant_markers(self) -> None:
+        """A loop-based x build keeps the marker count constant in n."""
+        markers = {
+            n: boolean.six_five("1" + "0" * (2**n - 1), n).count("4")
+            for n in (6, 9, 12, 16)
+        }
+        assert markers == {6: markers[6], 9: markers[6], 12: markers[6], 16: markers[6]}
+        assert markers[6] <= 35  # well within the label budget
 
     def test_arithmetic_fallback_refuses_large_t(self) -> None:
         """AND-n is the worst case: T == 2**(2**n - 1) blows up the setup."""
