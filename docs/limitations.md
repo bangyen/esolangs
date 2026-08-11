@@ -94,18 +94,34 @@ walker stage additionally cannot reach the 8 distinct pointer positions a
 third bit needs.  A generator is therefore limited to 0-preserving tables
 with n <= 3 at most, and not to arbitrary boolean functions.
 
-## MAMMALIAN (viable in principle, hard)
-MAMMALIAN has the three primitives a decision tree needs, confirmed working
-through the interpreter: `ACCEPT` reads a byte into array 0, `PRONOUNCE`
-prints the accumulator, and `LEAPFROG` is a *data-dependent* jump whose
-effective target is `acc - curr[0]` (verified to route '0' and '1' to
-different code).  The difficulty is the assembly: the jump target is an
-*absolute instruction index* needing back-patched layout; the accumulator
-does not stay clean across reads (each `ACCEPT` XORs with the current `acc`
-and each `DIGEST` XORs the running array sum); the 23 arrays are shared and
-`SEED`/`CONFLAGRATE` mutate every array at once; and there is no halt
-command.  A verified generator is a real project, not a quick win, and none
-has been built.
+## MAMMALIAN (viable in principle, but the dispatch layout is hard)
+MAMMALIAN has the primitives a decision tree needs, confirmed through the
+interpreter: `ACCEPT` reads a byte, `PRONOUNCE` prints the accumulator, and
+`LEAPFROG` is a *data-dependent* jump (`ind = acc - curr[0] - 1` when the
+current array's last element is nonzero).  A deeper assessment verified the
+concrete mechanics:
+
+- Normalizing an input to a clean 0/1 bit works: `48 SEEDs` then
+  `DIGEST ACCEPT DIGEST` makes `acc = ord(bit) ^ 48` in `{0, 1}` (48 is
+  special because `48^48 = 0` and `48^49 = 1`).
+- `LEAPFROG` then branches: bit 0 falls through linearly, bit 1 takes the
+  computed jump.  Constants are created with `SEEDs + DIGEST` (~1 token per
+  unit), and halting works by making the jump target negative.
+- A clean 1-bit *identity* program is ~55 tokens (normalization + one
+  print + halt).
+
+The assembly barrier is the jump target.  From the natural state after
+normalization (`acc = 48`, `lst[0][0] = 1` for a one bit) the bit-1 target
+is `48 - 1 - 1 = 46`, which is *backward* into the normalization stream;
+a forward dispatch needs `lst[0][0] = acc - T < 0`, which the cell ops
+cannot easily produce.  So every subtree must be interleaved into the
+shared normalization code with back-patched absolute targets, the halt
+mechanism (negative target) conflicts with forward dispatch, the 23 arrays
+are shared and `SEED` mutates every array at once, and the accumulator does
+not stay clean across reads.  Each bit costs ~50 tokens to normalize and
+each leaf ~50 to emit, so the size is brainif-like.  A verified generator
+is a multi-session assembly project, harder than ZTOALC's (which had the
+clean `p * 2**k` descent); none has been built.
 
 ## Dotlang (not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line
