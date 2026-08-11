@@ -66,11 +66,13 @@ table for n = 1, 2, 3):
   its place value to `x` (branches, not loops);
 - **output**: one final parity pass sets the cell to 48+p for `A`.
 
-A reference implementation (a small 6-5 assembler plus the kernel builder)
-was used to verify every truth table for n <= 3 through the interpreter;
-the ~10-line kernel is reproducible from the description above and can be
-ported into `src/esolangs/tools/booleans/tape.py` if a second 6-5 generator
-is wanted.
+The generator now lives in-tree as `six_five_arithmetic`
+(`src/esolangs/tools/booleans/tape.py`) and `six_five` dispatches to it
+when the decision tree runs out of labels: the tree for `2**n - 1 <= 35`
+(n <= 5), the arithmetic kernel otherwise.  Every truth table for n <= 3
+was verified through the interpreter, and n = 6..8 fall back for tables
+whose ones sit at low indices (the AND-n table, `T == 2**(2**n - 1)`, is
+rejected by the `T <= 2**20` guard as the pathological worst case).
 
 Two honest caveats keep it from beating the decision tree on every axis.
 The table constant `T` is set by `62` runs, so the setup is about
