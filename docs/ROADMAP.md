@@ -6,20 +6,20 @@ the commit history.  This file only tracks what is still on the table.
 
 ## Planned
 
-### Decision-tree brainfuck boolean generator (planned: big dense-table win)
-The brainfuck generator (`src/esolangs/tools/booleans/tape.py`) is
-branch-free: it evaluates every minterm and sums the results, so dense
-tables explode with the minterm count (XOR-n measures 1.4K, 7.3K, 40K,
-222K, 1.2M characters at n = 2..6, growing ~5.5x per input).  The
-docstring claims BF "has no branching that would let leaves skip
-siblings", but BF's `[`..`]` loop *is* a conditional skip (the body runs
-only while the current cell is nonzero), so a decision tree that skips
-the non-matching subtree at each bit is expressible.  A tree with
-majority-default pruning would share the bit tests and shrink dense
-tables dramatically; the risk is that the `[`/`]` skip keeps running its
-body on a zero cell (it re-checks), so the subtree must clear the guard
-cell to terminate.  Bounded, structural, verified against the BF
-interpreter.
+### Decision-tree brainfuck boolean generator (resolved: bf_tree)
+The brainfuck generator previously had only the branch-free `bf` minterm
+evaluator, which grows with the minterm count (XOR-n measured 1.4K, 7.3K,
+40K, 222K, 1.2M characters at n = 2..6).  The old docstring claimed BF "has
+no branching that would let leaves skip siblings", but BF's `[`..`]` loop
+*is* a conditional skip.  The new `bf_tree` generator builds a decision
+tree: bit `i` lives at cell `2i` with its complement at `2i + 1`, a node
+tests `[bit]` for the one-side and `[1 - bit]` for the zero-side (the
+complements naturally exclude the sibling), each branch clears its guard
+cell before its `]`, and a fired leaf clears the result cell so every `]`
+on the way out sees zero.  It is total and O(2**n) characters — XOR-n
+measures 225, 485, 910, 1.6K, 3.0K, 5.6K at n = 1..6, ~1000x smaller than
+`bf` on dense tables.  Verified exhaustively for every table at n <= 3 and
+sampled at n = 4..6.
 
 ### LaserFuck boolean generator (in progress: general BF layout compiler)
 LaserFuck is brainfuck on a 2D grid: a laser (with a random initial heading)
