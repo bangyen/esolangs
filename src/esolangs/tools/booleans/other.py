@@ -1,6 +1,6 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-__all__ = ["nevermind", "taglate", "three_x"]
+__all__ = ["clockwise", "nevermind", "taglate", "three_x"]
 
 # Closed-form 3x constant encodings.  Every integer is built from the literal
 # 3 with the ``x`` op (which replaces the top three items ``a, b, c``, c on
@@ -358,3 +358,75 @@ def taglate(truth_table: str, n: int) -> str:
 
     result: str = seed + "\n" + prefix + "".join(select_parts)
     return result
+
+
+def clockwise(truth_table: str, n: int) -> str:
+    """Build a Clockwise program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.  The
+    program prints the result bit seven times, as ``chr(127 * result)``.
+
+    The program is a decision tree in a closed ring.  ``S`` zeroes the
+    accumulator and seven ``.`` reads consume a ``0``/``1`` input char's seven
+    bits, leaving its value bit in the accumulator.  At each node a ``?``
+    turns the pointer by ``acc`` quarter-turns, so a zero bit continues down
+    the spine while a one bit turns right (cw) into a column; three ``R`` in
+    an L pattern turn it back down into the next column, at a ``2**(n-k)``
+    displacement so each input combination reaches a unique leaf column.  A
+    leaf prints ``S [,+] ;x7``, then a ``?`` (with acc reset to 1) turns it
+    left onto a shared bottom row; an ``S`` after each exit keeps passing
+    paths at acc=0 so they do not turn on another leaf's exit.  The row
+    funnels left to the corner ``R`` and up column 0 to halt.
+    """
+    _validate_tt(truth_table, n)
+    cells: dict[tuple[int, int], str] = {}
+    root = 2 ** (n + 2) + 8
+
+    def place(node: tuple[int, int], ch: str) -> None:
+        cells[node] = ch
+
+    def build(bit: int, x: int, y: int, combo: int) -> None:
+        if bit == n:
+            leaf(x, y, combo)
+            return
+        place((x, y), "S")
+        for i in range(7):
+            place((x, y + 1 + i), ".")
+        place((x, y + 8), "?")
+        build(bit + 1, x, y + 9, combo << 1)  # b=0: continue down
+        # b=1: '?' turns right (cw from down) then three R's turn left->down
+        xn = x - 2 ** (n - bit)
+        place((xn, y + 8), " ")
+        place((xn - 1, y + 8), "R")
+        place((xn - 1, y + 7), "R")
+        place((xn, y + 7), "R")
+        build(bit + 1, xn, y + 9, (combo << 1) | 1)
+
+    def leaf(x: int, y: int, combo: int) -> None:
+        result = int(truth_table[combo])
+        place((x, y), "S")
+        place((x, y + 1), "+" if result else " ")
+        for i in range(7):
+            place((x, y + 2 + i), ";")
+        # '?' turns by acc quarter-turns; acc must be exactly 1 to turn left
+        # onto the bottom row, so add one increment only when the result is 0
+        place((x, y + 9), "+" if not result else " ")
+        place((x, y + 10), "?")
+
+    build(0, root, 1, 0)
+
+    bottom = 1 + 9 * n + 10
+    for (x, y), ch in list(cells.items()):
+        if ch == "?" and y == bottom:
+            place((x - 1, bottom), "S")
+    place((0, bottom), "R")
+    place((root, 0), "R")
+
+    height = bottom + 1
+    width = max(x for (x, y) in cells) + 1
+    grid = [[" "] * width for _ in range(height)]
+    for (x, y), ch in cells.items():
+        if 0 <= x < width and 0 <= y < height:
+            grid[y][x] = ch
+    return "\n".join("".join(row) for row in grid)
