@@ -27,6 +27,7 @@ BOOLEAN = {
     "BrainIf",
     "CircleFuck",
     "Clockwise",
+    "Container",
     "Dig",
     "Dimensional",
     "Forþ",

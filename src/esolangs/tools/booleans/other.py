@@ -1,6 +1,6 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-__all__ = ["clockwise", "nevermind", "taglate", "three_x"]
+__all__ = ["clockwise", "container", "nevermind", "taglate", "three_x"]
 
 # Closed-form 3x constant encodings.  Every integer is built from the literal
 # 3 with the ``x`` op (which replaces the top three items ``a, b, c``, c on
@@ -430,3 +430,77 @@ def clockwise(truth_table: str, n: int) -> str:
         if 0 <= x < width and 0 <= y < height:
             grid[y][x] = ch
     return "\n".join("".join(row) for row in grid)
+
+
+def container(truth_table: str, n: int) -> str:
+    """Build a Container program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Container is a synchronous rule system: every tick each container's value
+    becomes ``max(old + sum of deltas of satisfied ``X>=Y``/``X<=Y`` rules,
+    0)``, the empty-named container reads a line of input into ``IN`` when it
+    turns on, ``PRINT`` outputs ``OUT`` when it turns on, and ``EXIT`` halts
+    when its value changes.  There is no per-tick conditional, so the
+    generator timestamps everything with the tick counter ``T``:
+
+    * The empty container pulses on even ticks ``0..2(n-1)`` (``+1 T>=2k``,
+      ``-2 T>=2k+1``, ``+1 T>=2k+2``), reading one bit per pulse.
+    * For each bit ``k``, an armed gate ``A_k`` (65, dipping to 49) and
+      ``B_k`` (47, dipping to 48) make ``IN>=A_k`` and ``IN<=B_k`` hold for
+      exactly the tick the bit is in ``IN``, testing bit ``k`` once.
+    * A survivor per row (initial 1) is killed by ``-1 IN>=A_k`` or
+      ``-1 IN<=B_k`` when the corresponding bit mismatches, so exactly the
+      matching row's survivor stays 1.
+    * At tick ``2n`` a gate ``Gout`` dips to 1, so ``+1 S_r>=Gout`` adds the
+      table entry of the surviving row to ``OUT``; ``PRINT`` fires and
+      ``EXIT`` halts.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    lines = ["T:", "+1 T>=T"]
+    lines.append(":")  # the empty-named container reads input
+    lines.append("+1 T>=0")
+    lines.append("-2 T>=1")
+    for k in range(1, n):
+        lines.append(f"+2 T>={2 * k}")
+        lines.append(f"-2 T>={2 * k + 1}")
+    lines.append(f"+1 T>={2 * n}")
+    lines.append("IN=50:")  # a value no real byte matches
+    for k in range(n):
+        lines.append(f"A{k}=65:")
+        lines.append(f"-16 T>={2 * k}")
+        lines.append(f"+32 T>={2 * k + 1}")
+        lines.append(f"-16 T>={2 * k + 2}")
+        lines.append(f"B{k}=47:")
+        lines.append(f"+1 T>={2 * k}")
+        lines.append(f"-2 T>={2 * k + 1}")
+        lines.append(f"+1 T>={2 * k + 2}")
+    for row in range(2**n):
+        lines.append(f"S{row}=1:")
+        for k in range(n):
+            if (row >> (n - 1 - k)) & 1:
+                lines.append(f"-1 IN<=B{k}")
+            else:
+                lines.append(f"-1 IN>=A{k}")
+    lines.append("Gout=2:")
+    lines.append(f"-1 T>={2 * n - 1}")
+    lines.append(f"+1 T>={2 * n}")
+    lines.append("OUT:")
+    lines.append(f"+48 T>={2 * n}")
+    lines.append(f"-48 T>={2 * n + 1}")
+    for row in range(2**n):
+        if truth_table[row] == "1":
+            lines.append(f"+1 S{row}>=Gout")
+    lines.append("PRINT:")
+    lines.append(f"+1 T>={2 * n}")
+    lines.append("EXIT=1:")
+    lines.append(f"-1 T>={2 * n + 1}")
+    return "\n".join(lines)

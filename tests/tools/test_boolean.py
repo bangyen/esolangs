@@ -1,7 +1,7 @@
 """Unit tests for the boolean-function program generators."""
 
 import io
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
 import pytest
@@ -494,6 +494,19 @@ def run_nevermind(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_container(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.container import run
+
+    buffer = io.StringIO()
+    with (
+        patch("builtins.input", side_effect=inputs),
+        redirect_stdout(buffer),
+        suppress(SystemExit),  # EXIT halts via sys.exit
+    ):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
 class TestNevermind:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -519,6 +532,45 @@ class TestNevermind:
         assert program.startswith("input,?")
         assert "if,$a,==,0" in program
         assert program.count("endif") == 2
+
+
+class TestContainer:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # NOT
+            ("10", 1),
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.container(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_container(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_structure(self) -> None:
+        """The program reads n inputs and keeps one survivor per row."""
+        program = boolean.container("0110", 2)
+        assert program.startswith("T:\n+1 T>=T")
+        assert ":" in program.splitlines()[:4]  # the empty-named reader
+        assert program.count("S") >= 4  # a survivor per row
+        assert program.count("PRINT:") == 1
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.container("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.container("02", 1)
 
 
 class TestBrainIf:
