@@ -14,6 +14,7 @@ from esolangs.tools.booleans.stack import bfstack, forth, modulous
 from esolangs.tools.booleans.tape import (
     ascii_art,
     basicfuck,
+    bf,
     brainif,
     circlefuck,
     circlefuck_byte,
@@ -24,6 +25,7 @@ from esolangs.tools.booleans.tape import (
 __all__ = [
     "ascii_art",
     "basicfuck",
+    "bf",
     "bfstack",
     "brainif",
     "circlefuck",
