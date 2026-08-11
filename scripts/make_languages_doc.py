@@ -15,8 +15,26 @@ HELLO = EXAMPLES / "hello-world"
 CAT = EXAMPLES / "cat"
 TRUTH = EXAMPLES / "truth-machine"
 
-# boolean.py functions that build a truth-table program, mapped to display names
-BOOLEAN = {"Sophie", "Modulous", "BrainIf", "Nevermind", "CircleFuck"}
+# Languages with a boolean generator in esolangs.tools.booleans, mapped to
+# display names.
+BOOLEAN = {
+    "3x",
+    "6-5",
+    "ASCII art",
+    "BFStack",
+    "BrainIf",
+    "CircleFuck",
+    "Clockwise",
+    "Dig",
+    "Dimensional",
+    "Forþ",
+    "Modulous",
+    "Nevermind",
+    "Polynomial",
+    "Qoibl",
+    "Sophie",
+    "Taglate",
+}
 ASSEMBLY_COMPILERS = {"BFStack", "Home Row", "Jaune", "Suffolk", "Unsquare"}
 C_COMPILERS = {"BF-PDA", "BFStack", "EXCON", "RAM0"}
 
