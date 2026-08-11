@@ -322,6 +322,47 @@ class TestDimensional:
             boolean.dimensional("0" * 8192, 13)
 
 
+class TestBasicfuck:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_program_shape(self, table: str, n: int) -> None:
+        """The program declares its cells, reads n inputs, and prints once."""
+        program = boolean.basicfuck(table, n)
+        assert program.startswith("#basicfuck t=unbounded r=0~255 o=wrap")
+        assert (
+            program.splitlines()[1]
+            == "#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out"
+        )
+        assert program.count("read ->") == n  # one read per input
+        assert program.count("write <- out ;") == 2**n  # one leaf per row
+
+    def test_decision_tree(self) -> None:
+        """Each internal node branches both ways with the reference's if!."""
+        program = boolean.basicfuck("0110", 2)
+        assert program.count("if (a1) {") == 1
+        assert program.count("if ! (a1) {") == 1
+        assert program.count("if (a2) {") == 2
+        assert program.count("if ! (a2) {") == 2
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.basicfuck("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.basicfuck("02", 1)
+
+
 class TestSophie:
     @pytest.mark.parametrize(
         ("table", "n"),
