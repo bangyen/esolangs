@@ -69,6 +69,37 @@ direction-routing trick (each bit selects the dot's heading through the
 shared markers) could express more, and it caps at three inputs before the
 eight (marker, heading) states run out, below the `n <= 4` verification bar.
 
+### LaserFuck boolean generator (in progress: general BF layout compiler)
+LaserFuck is brainfuck on a 2D grid: a laser (with a random initial heading)
+travels the grid, `>`, `<`, `+`, `-`, `,` work on the tape, ``(``/``)`` and
+``_``/``|`` bounce the laser when the tape cell is nonzero (or always), and
+the whole tape is printed at the end.  A faithful emulator exists
+(`scripts/laserfuck_emu.py` in the boolean-generator scratch work).
+
+The existing text generator's loop layout (`src/esolangs/tools/generators/
+other.py`) is a fragile special case: it lays out exactly one `+[>+...+<-]`
+loop on a two-track serpentine and falls back to a *linear* layout (loops
+ignored) for short bodies like `[-]`, multiple loops, or nested loops.  The
+branch-free `_bf_minterm` evaluator has many nested loops, so a boolean
+generator needs a **general BF-to-LaserFuck layout compiler**:
+
+- Linear commands lay out fine on a single right-going track (verified in
+  the emulator, robust to all four random headings).
+- The output mode (first grid char `\xff`) prints every touched nonnegative
+  cell as a byte; inputs normalized to 0/1 and scratch cells fall out of the
+  verify harness's `01` filter, leaving only the 48/49 result cell — so the
+  result survives the whole-tape dump.
+- Loops need a physical ring: a ``)`` cell bounces the laser back through a
+  return lane while the tape cell is nonzero.  The `[-]`, copy, NOT, and sum
+  loops of `_bf_minterm` are do-while safe (their bodies are identity modulo
+  256 when rerun on a zero cell), but the AND `t1[ t2[ newp+ t2- ] t1- ]` is
+  not, so the loop entry must check the tape before entering the body.
+- The reference's random initial heading and `*` spawns make verification
+  require every generated grid to behave identically under all four headings.
+
+A working generator is not yet achieved; the loop-ring geometry (entry
+check, return lane, exit routing) is still under construction.
+
 ### Dimensional v3 migration (in progress: Python interpreter first)
 The wiki now documents Dimensional **v3.0** (an n-slot/n-pointer model with
 `$AXIS`, `d`, `x`), while the reference in `extra/c++/dimensional.cpp`
