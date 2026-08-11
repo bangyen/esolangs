@@ -55,6 +55,20 @@ skips one instruction with a side-effect toggle.  There is no way to keep
 the input bits intact, so a decision tree is not expressible; no hidden
 primitive equivalent to Clockwise's three-`R` turn exists.
 
+### Dotlang boolean generator (assessed: not viable)
+Dotlang's only input-dependent branch is the `W~` warp, which reads a line
+and teleports the dot to the *first* `W<bit>`s` marker in the grid (the
+interpreter's `find` scans rows top-to-bottom).  A single-bit program works
+(a `W~` sends the dot to the `W0`s`/`W1`s` marker that prints the result),
+but every deeper level of a decision tree re-enters those same first-match
+markers, so the branch history is lost: the second `W~` lands back on the
+first `W0`s`/`W1`s` and loops.  The type conditionals (`!?:`) cannot help —
+input digits are converted to `int` 0/1 by `dot.new`, so both bits share the
+same type — and there is no value comparison or arithmetic.  Only a fragile
+direction-routing trick (each bit selects the dot's heading through the
+shared markers) could express more, and it caps at three inputs before the
+eight (marker, heading) states run out, below the `n <= 4` verification bar.
+
 ### Dimensional v3 migration (in progress: Python interpreter first)
 The wiki now documents Dimensional **v3.0** (an n-slot/n-pointer model with
 `$AXIS`, `d`, `x`), while the reference in `extra/c++/dimensional.cpp`
