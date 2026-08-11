@@ -126,6 +126,19 @@ structural: ZTOALC offers no arithmetic dispatch (no multiplication or
 shift), so the physical decision tree is the only routing, and its leaves'
 tails cannot be kept disjoint past a full 4-level tree.
 
+The interpreter was also brought in line with the wiki spec: `lhs = rhs` /
+`+=` / `-=` now write an `array[index]` element instead of a variable named
+literally `"arr[i]"` (previously `par[1] = 1` created a phantom variable,
+invisible to a runtime-indexed read `par[x]`).  With the fix, runtime-
+indexed tables work, so mod-2 (a parity table) and bounded multiplication
+(a product table) are expressible as small primitives — verified: a
+`par[1] = 1; r = par[x]` parity table computes `x mod 2`.  This does not
+rescue dense-n4, though: a linear (branch-free) table computation puts
+every line on the single shared descent, forcing `S = 2**(lines)` — XOR4's
+~22-line parity program would need a ~4-million-line program, and a general
+result table is 2**n lines.  So the fix is a spec-compliance improvement
+that adds mod-2/multiply as primitives, not a boolean-generator win.
+
 ### MAMMALIAN boolean generator (assessed: viable in principle, hard)
 MAMMALIAN has the three primitives a decision tree needs, and they are
 confirmed working through the interpreter: `ACCEPT` reads a byte into array

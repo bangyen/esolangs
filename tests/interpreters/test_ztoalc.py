@@ -49,6 +49,38 @@ class TestZTOALCVariables:
         code = ["3", "jump y 0", "x = [3]", "print y", "y = x[1]"]
         assert run_and_capture(code) == "\x00"
 
+    def test_array_element_write(self) -> None:
+        """x[1] = 5 writes into the array (per the wiki spec)."""
+        code = [
+            "3",
+            "jump y 0",
+            "x = [3]",
+            "print y",
+            "y = x[1]",
+            "",
+            "",
+            "",
+            "",
+            "x[1] = 5",
+        ]
+        assert run_and_capture(code) == "\x05"
+
+    def test_runtime_indexed_array_write(self) -> None:
+        """x[i] = v with a runtime index writes the indexed element."""
+        code = [
+            "6",
+            "jump y 0",
+            "x = [3]",
+            "print y",
+            "y = x[i]",
+            "i = 2",
+            "",
+            "",
+            "",
+            "x[i] = 7",
+        ]
+        assert run_and_capture(code) == "\x07"
+
     def test_negative_literal(self) -> None:
         """X = -5 then x + 8 gives 3."""
         code = ["3", "jump x 0", "x = -5", "print x", "x + 8"]
