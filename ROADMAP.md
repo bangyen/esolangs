@@ -47,6 +47,39 @@ designed yet.  The BF-to-6-5 transpiler cannot provide it: the brainfuck
 generator's loop count already exceeds the transpiler's 18-loop cap at
 n == 2.
 
+**6-5 arithmetic-kernel generator (proven, ~5 loops).**  6-5 *can* do the
+arithmetic decode with a constant number of loop constructs: encode the
+inputs as `x`, the table as `T = sum table[i] * 2**i`, and compute
+`f(x) = (T >> x) & 1` by halving `T` x times and reading the parity.  The
++5/+6/-5/-6 cell ops, the `7n` equality-skip, and the `8n` marker jump
+express every piece with 5 loop constructs (verified exhaustively: every
+table for n = 1, 2, 3):
+
+- **parity / mod-2**: copy `T` to a scratch cell in a loop that toggles a
+  parity cell once per unit (a copy loop + a `70`/`71` toggle);
+- **halve / divide-by-2**: after the parity pass, branch on the parity and
+  run one of two count-down loops (`while r2 != 0` / `while r2 != 1`,
+  `r2 -= 2; T += 1`), so the quotient is written back into `T`.  Only
+  equality tests are needed because the loop bound is `!= 0` or `!= 1`;
+- **outer repetition**: `while x != 0: halve T; x -= 1` (one loop);
+- **build x**: each input bit is normalized to 8/9 and a `78`-branch adds
+  its place value to `x` (branches, not loops);
+- **output**: one final parity pass sets the cell to 48+p for `A`.
+
+A reference implementation (a small 6-5 assembler plus the kernel builder)
+was used to verify every truth table for n <= 3 through the interpreter;
+the ~10-line kernel is reproducible from the description above and can be
+ported into `src/esolangs/tools/booleans/tape.py` if a second 6-5 generator
+is wanted.
+
+Two honest caveats keep it from beating the decision tree on every axis.
+The table constant `T` is set by `62` runs, so the setup is about
+`T / 6 ~ 2**(2**n) / 6` instructions — double-exponential, practical only
+to n <= 4 (n = 4 worst case ~131 KB, and even that is a regression against
+the tree's O(2**n) size at n <= 5).  Runtime is O(x*T), which the loop-count
+cap does not constrain.  Its genuine wins: the loop count is constant (~5)
+and the marker budget (2n + 19, under 35 through n = 8) no longer caps n at 5.
+
 ### Minifuck boolean generator (assessed: not viable)
 Minifuck's tape is an 8-cell I/O register that every right move (`.`, `[`)
 toggles on the way past, so positioning the pointer mangles the data it
