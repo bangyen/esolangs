@@ -103,8 +103,30 @@ class TestSixFive:
 
     def test_arithmetic_fallback_refuses_large_t(self) -> None:
         """AND-n is the worst case: T == 2**(2**n - 1) blows up the setup."""
-        with pytest.raises(ValueError, match="2\\*\\*20"):
+        with pytest.raises(ValueError, match="~2 MB setup"):
             boolean.six_five("0" * 63 + "1", 6)  # AND6: T == 2**63
+
+    @pytest.mark.parametrize("n", [6, 8, 10])
+    def test_arithmetic_fallback_complement(self, n: int) -> None:
+        """Tables whose complement is cheap use it instead of a huge T."""
+        table = "00" + "1" * (2**n - 2)  # zeros only at indices 0,1: T' == 3
+        program = boolean.six_five(table, n)
+        assert len(program) < 2000
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_six_five(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_arithmetic_fallback_compact_setup(self) -> None:
+        """+6 runs make the setup ~T/6, far below the naive 2T pairs."""
+        program = boolean.six_five("1" * 20 + "0" * 44, 6)  # T == 2**20 - 1
+        assert len(program) < 500_000  # ~T/6, not ~2T
+        assert program[:32].count("6") > program[:32].count("62")  # uses +6 runs
+
+    def test_arithmetic_fallback_complement_marker_budget(self) -> None:
+        """The complement output branch stays inside the label budget."""
+        program = boolean.six_five("00" + "1" * 62, 6)
+        assert program.count("4") <= 35
 
 
 def run_qoibl(program: str, inputs: list[str]) -> str:
