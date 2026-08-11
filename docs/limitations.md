@@ -26,6 +26,13 @@ kernel is the fallback for `n > 5` (small-`T` tables only).  Measured at
 for the same table.  (The `T <= 2**20` guard and the complement fallback
 for mostly-ones tables are part of the kernel's design.)
 
+This closes the "constant-loop boolean generator" goal entirely: the
+constant *loop-count* half is met (8 loops, 27 markers, both constant in
+`n`), the constant *size* half is impossible (any table needs its `2**n`
+bits embedded), and no other language needs the design to lift a cap —
+CircleFuck's decision tree is total (verified exhaustively to n = 3,
+sampled to n = 16), so the label-cap motivation is gone.
+
 ## ZTOALC (built; dense non-symmetric n > 3 wall)
 The generator (`ztoalc_boolean`) lays a decision tree on `p * 2**k`
 descents: branching at an even root lets a zero bit continue the descent
