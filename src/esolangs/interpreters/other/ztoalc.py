@@ -5,9 +5,9 @@ visits line ``v`` when the Collatz step equals ``v``, halting when the value
 reaches 1.  Commands print, jump, assign, add, and subtract using the current
 value as an expression.
 
-The wiki allows array elements as general expressions; this interpreter only
-handles a plain variable name as the array (no nested or compound indexing),
-so arrays-of-arrays are not supported.  A command missing a required operand
+The wiki allows array elements as general expressions; this interpreter
+supports reading and writing ``array[index]`` but not nested or compound
+indexing (no arrays-of-arrays).  A command missing a required operand
 is a malformed program and is rejected with :class:`ValueError`; referencing
 an undefined variable, indexing out of range, or reaching a negative pointer
 are invalid operations that halt the program with
@@ -61,6 +61,20 @@ def run(code: list[str], io: IO) -> None:
             raise ValueError("missing operand in " + " ".join(lst))
         return lst[n]
 
+    def store(state: State, lhs: str, value: int | list[int]) -> None:
+        """Assign ``value`` to ``lhs`` (a variable or an ``array[index]``)."""
+        if "[" in lhs:
+            name, idx_exp = lhs[:-1].split("[")
+            if name not in var or not isinstance(var[name], list):
+                raise HaltError
+            arr = var[name]
+            idx = cast(int, val(state, idx_exp))
+            if idx < 0 or idx >= len(arr):
+                raise HaltError
+            arr[idx] = value
+        else:
+            var[lhs] = value
+
     while p := ptr - 1:
         if p < 0:
             raise HaltError
@@ -74,14 +88,20 @@ def run(code: list[str], io: IO) -> None:
                 ptr += 1
                 continue
         elif " =" in ins:
-            var[operand(lst, 0)] = val(state, operand(lst, 2))
+            store(state, operand(lst, 0), val(state, operand(lst, 2)))
         elif "+" in ins:
-            var[operand(lst, 0)] = cast(int, var[operand(lst, 0)]) + cast(
-                int, val(state, operand(lst, 2))
+            store(
+                state,
+                operand(lst, 0),
+                cast(int, val(state, operand(lst, 0)))
+                + cast(int, val(state, operand(lst, 2))),
             )
         elif "-" in ins:
-            var[operand(lst, 0)] = cast(int, var[operand(lst, 0)]) - cast(
-                int, val(state, operand(lst, 2))
+            store(
+                state,
+                operand(lst, 0),
+                cast(int, val(state, operand(lst, 0)))
+                - cast(int, val(state, operand(lst, 2))),
             )
 
         if ptr % 2:
