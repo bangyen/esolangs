@@ -1,12 +1,14 @@
 """Verify the generator-only languages against their extra/ references.
 
-Forþ, Painfuck, Dimensional, 2dFish, %^2^-1, and Basicfuck have C++
-references in ``extra/c++``, LaserFuck and Unsquare have Rust references in
-``extra/rust``, EXCON has an R reference in ``extra/r``, and Unsquare, bit~,
-and 3x have Ruby references in ``extra/ruby``.  This script builds whatever
+Forþ, Painfuck, 2dFish, %^2^-1, and Basicfuck have C++ references in
+``extra/c++``, LaserFuck and Unsquare have Rust references in ``extra/rust``,
+EXCON has an R reference in ``extra/r``, and Unsquare, bit~, and 3x have
+Ruby references in ``extra/ruby``.  This script builds whatever
 references it can (g++ for C++, cargo for Rust) and round-trips each
 language's generator: a generated program must reproduce its text when run
-through the reference implementation.
+through the reference implementation.  Dimensional moved to its in-package
+v3.0 interpreter (``esolangs.interpreters.tape_based.dimensional``) and is
+verified by unit tests instead.
 
 It is called from CI's ``cxx``, ``rust``, and ``extra-languages`` jobs (which
 provide g++, cargo, and R/Ruby respectively) and from ``verify.py`` locally.
@@ -111,7 +113,7 @@ def main() -> int:
     """Verify the extra generators round-trip, reporting failures."""
     failures = 0
 
-    cxx_names = ("forþ", "painfuck", "dimensional", "2dFish", "%^2^-1", "basicfuck")
+    cxx_names = ("forþ", "painfuck", "2dFish", "%^2^-1", "basicfuck")
     cxx = {name: _build_cxx(name) for name in cxx_names}
     rust = dict.fromkeys(("laserfuck", "unsquare"))
     if _build_rust():
@@ -123,7 +125,6 @@ def main() -> int:
     references: list[tuple[str, Callable[[str], str], list[str] | None]] = [
         ("Forþ", gen.forth, cxx["forþ"]),
         ("Painfuck", gen.painfuck, cxx["painfuck"]),
-        ("Dimensional", gen.dimensional, cxx["dimensional"]),
         ("2dFish", gen.two_d_fish, cxx["2dFish"]),
         ("%^2^-1", gen.pct_squared_minus_one, cxx["%^2^-1"]),
         ("Basicfuck", gen.basicfuck, cxx["basicfuck"]),
@@ -146,13 +147,12 @@ def main() -> int:
             print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
 
     # Boolean generators: 3x computes truth tables via a variable decision
-    # tree (verified against Ruby), Forþ via a function-dispatch tree and
-    # Dimensional via a branch-free survivor scheme (both verified against
-    # C++), and Basicfuck via an if/if-not decision tree (C++).
+    # tree (verified against Ruby), Forþ via a function-dispatch tree
+    # (C++), and Basicfuck via an if/if-not decision tree (C++).  Dimensional
+    # is verified against its in-package v3.0 interpreter instead.
     boolean_refs: list[tuple[str, Callable[[str, int], str], list[str] | None]] = [
         ("3x", boolean.three_x, _ruby_reference("3x.rb")),
         ("Forþ", boolean.forth, cxx["forþ"]),
-        ("Dimensional", boolean.dimensional, cxx["dimensional"]),
         ("Basicfuck", boolean.basicfuck, cxx["basicfuck"]),
     ]
     tables = {

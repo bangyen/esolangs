@@ -606,12 +606,12 @@ def taglate(text: str) -> str:
 def dimensional(text: str) -> str:
     """Build a Dimensional program that outputs ``text``.
 
-    ``=`` sets the current cell to a hexadecimal literal and ``.`` prints it
-    as a byte, so each character is a two-part run.  The pointer stays at the
-    first cell throughout.
+    ``=`` sets the current cell to a two-digit hexadecimal literal and ``.``
+    prints it as a byte, so each character is a two-part run.  The pointer
+    stays at the first cell throughout.
     """
     _require_bytes(text, "Dimensional")
-    return "".join(f"={ord(c):x}." for c in text)
+    return "".join(f"={ord(c):02x}." for c in text)
 
 
 def two_d_fish(text: str) -> str:
