@@ -46,13 +46,13 @@ designed yet.  The BF-to-6-5 transpiler cannot provide it: the brainfuck
 generator's loop count already exceeds the transpiler's 18-loop cap at
 n == 2.
 
-### Minifuck boolean generator
-Minifuck is the one remaining surveyed language with a genuine conditional
-(`[` toggles a bit and skips the next instruction when it is zero) plus
-input and output.  The lesson from Clockwise is that the "impossible" ones
-hide a primitive (there, the three-`R` L-pattern and `?` turning by the
-accumulator), so the first step is to probe whether Minifuck's skip can
-express a guard before committing to a scheme.
+### Minifuck boolean generator (assessed: not viable)
+Minifuck's tape is an 8-cell I/O register that every right move (`.`, `[`)
+toggles on the way past, so positioning the pointer mangles the data it
+crosses and a second input read overwrites the first.  The `[` conditional
+skips one instruction with a side-effect toggle.  There is no way to keep
+the input bits intact, so a decision tree is not expressible; no hidden
+primitive equivalent to Clockwise's three-`R` turn exists.
 
 ### Polynomial float64 root precision
 The Polynomial generators emit exact integer polynomials, but the
