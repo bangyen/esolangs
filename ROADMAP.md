@@ -113,11 +113,18 @@ exactly its table entry once with no command line revisited.
 Verified exhaustively for every table at `n <= 3` and for structured tables
 at `n == 4` (top-half, AND4); all tests run the real interpreter.  The
 built-in text generator's trajectory machinery was not needed for the
-routing — the `p * 2**k` descent replaces it.  The limitation: all
-trajectories converge to the `16, 8, 4, 2, 1` tail, so a dense full tree
-like XOR4 has every leaf's tail sweep through another leaf and no `b1`
-works; the generator raises `ValueError` for those.  Program size is O(b1)
-lines (thousands for n <= 4).
+routing — the `p * 2**k` descent replaces it.  Program size is O(b1) lines:
+the `b1` search starts at the minimum `2**(n+1)` (the all-zeros leaf needs
+`b1 / 2**n >= 2`), so the n=4 structured tables use `b1 = 36` and 9216
+lines rather than the 16384 the earlier search start found.
+
+The limitation: all trajectories converge to the `16, 8, 4, 2, 1` tail, so
+a dense full tree like XOR4 has every leaf's tail sweep through another
+leaf — a single value's Collatz tail is shared with the rest of the tree,
+so no `b1` works; the generator raises `ValueError` for those.  This is
+structural: ZTOALC offers no arithmetic dispatch (no multiplication or
+shift), so the physical decision tree is the only routing, and its leaves'
+tails cannot be kept disjoint past a full 4-level tree.
 
 ### MAMMALIAN boolean generator (assessed: viable in principle, hard)
 MAMMALIAN has the three primitives a decision tree needs, and they are
