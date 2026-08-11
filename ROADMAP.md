@@ -74,21 +74,30 @@ when the decision tree runs out of labels: the tree for `2**n - 1 <= 35`
 was verified through the interpreter, and the fallback works for n up to
 at least 16 for tables whose ones sit at low indices.
 
-The `T <= 2**20` guard is not a preference but a crash guard.  The table
-must be one integer `T`, because 6-5 cannot index an array by a computed
+Two optimizations shrink the kernel's programs.  The table constant is
+built with `+6` runs instead of `62` pairs, cutting the setup from ~`2T`
+to ~`T/6` characters (12x smaller).  And when the table's *complement*
+`T' = (2**(2**n) - 1) - T` is cheaper than `T`, the complement table is
+evaluated and the output inverted, so "mostly-ones" tables (zeros at low
+indices) are no longer rejected; only the region where both `T` and `T'`
+are large remains excluded.
+
+The length guard is not a preference but a crash guard.  The table must
+be one integer `T`, because 6-5 cannot index an array by a computed
 offset (a loop's `70` check reads a fixed-position cell, so the pointer
 can never net-advance through the tape), and integer constants cost
 O(value) instructions with the `+5/+6/-5/-6` ops.  So `T` up to `2**(2**n)`
 means a dense table would need an O(`2**(2**n)`) program — for AND6 alone
 (`T == 2**63`) that is an exabyte-scale string, so the generator refuses
-rather than try to build it.  The rejection therefore only excludes the
-`n > 5` *and* large-`T` region: the decision tree already covers every
-table for n <= 5, and the AND-n table is the pathological worst case.
+a setup longer than ~2 MB rather than try to build it.  The rejection
+therefore only excludes the `n > 5` *and* large-`T` region: the decision
+tree already covers every table for n <= 5, and AND-n is the pathological
+worst case (its complement is the equally-large NOR of the top row).
 
 Two honest caveats keep it from beating the decision tree on every axis.
-The table constant `T` is set by `62` runs, so the setup is about
+The table constant `T` is set by `+6` runs, so the setup is about
 `T / 6 ~ 2**(2**n) / 6` instructions — double-exponential, practical only
-to n <= 4 (n = 4 worst case ~131 KB, and even that is a regression against
+to n <= 4 (n = 4 worst case ~11 KB, still a regression against
 the tree's O(2**n) size at n <= 5).  Runtime is O(x*T), so even a tiny-T
 table becomes too slow once n climbs past ~20.  Its genuine win: the loop
 count (8 constructs) and marker count (27) are both constant in n, so

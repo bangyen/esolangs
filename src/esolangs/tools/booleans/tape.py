@@ -260,6 +260,19 @@ def _six_five_nav(src: int, dst: int) -> str:
     return "1" * ups + "3" * (2 * ups - delta)
 
 
+def _six_five_const(value: int) -> str:
+    """Instructions adding ``value`` to the current cell.
+
+    The ``+5/+6/-5/-6`` cell ops add at most 6 per instruction, so the
+    shortest run is mostly ``6`` (one per unit) with a small tail: the old
+    ``62`` pair encoding cost ``2 * value`` characters, this is ~``value / 6``.
+    """
+    q, r = divmod(value, 6)
+    if r == 5:
+        return "6" * q + "5"  # one +5 beats five +1 pairs
+    return "6" * q + "62" * r
+
+
 def six_five_arithmetic(truth_table: str, n: int) -> str:
     """Build a 6-5 program computing ``truth_table`` arithmetically.
 
@@ -280,24 +293,37 @@ def six_five_arithmetic(truth_table: str, n: int) -> str:
     the pointer can never net-advance through the tape), so ``T`` is the
     only representation the halving arithmetic can address.  Setting an
     integer constant costs ``O(value)`` instructions with the ``+5/+6/-5/-6``
-    cell ops, so the setup is about ``2 * T`` characters: ``T`` ranges up to
-    ``2**(2**n)``, and a dense table (whose bits at high indices are set)
-    would need an unbuildable program.  The generator therefore refuses
-    ``T > 2**20`` (about 2 MB) rather than try to materialize an exabyte
-    string; the rejection covers only tables with ``n > 5`` *and* a large
-    value, since the decision tree already handles every table for
-    ``n <= 5``.  The remaining practical limit is the runtime, which scales
-    as ``O(x * T)`` with ``x`` up to ``2**n``.
+    cell ops, so the setup is about ``value / 6`` characters (via
+    :func:`_six_five_const`): ``T`` ranges up to ``2**(2**n)``, and a dense
+    table (whose bits at high indices are set) would need an unbuildable
+    program.  The generator therefore refuses a setup longer than about
+    2 MB (raised from the old ``T <= 2**20``, since the compact encoding is
+    ~12x shorter) rather than try to materialize an exabyte string.
+
+    Tables whose *complement* is cheap are supported too: if
+    ``T' = (2**(2**n) - 1) - T`` is smaller than ``T``, the complement
+    table is evaluated and the output is inverted, so "mostly-ones" tables
+    (e.g. NAND-n) no longer need rejection.  What remains excluded is the
+    region where both ``T`` and ``T'`` are large (``AND-n`` and friends),
+    which no table-as-integer encoding can represent compactly.  The
+    remaining practical limit is the runtime, which scales as ``O(x * T)``
+    with ``x`` up to ``2**n``.
     """
     value = int(truth_table[::-1], 2)  # bit i of value is table[i] (combo i)
-    if value > 2**20:
+    invert = (2 ** (2**n) - 1 - value) < value
+    if invert:
+        value = 2 ** (2**n) - 1 - value
+    q, r = divmod(value, 6)
+    if q + (1 if r == 5 else 2 * r) > 2**21:  # ~2 MB of setup is impractical
         raise ValueError(
-            "the 6-5 arithmetic fallback needs the table value T <= 2**20, "
-            f"got T == {value}",
+            "the 6-5 arithmetic fallback needs the table value T (or its "
+            f"complement) small enough for a ~2 MB setup, got T == "
+            f"{int(truth_table[::-1], 2)} at n == {n}",
         )
+    setup = _six_five_const(value)
     a = _SixFiveAsm()
-    a.raw(_six_five_nav(0, 1) + "62" * value)  # T at cell 1
-    a.raw(_six_five_nav(1, 7) + "62" * n)  # N = n (bits left to read) at cell 7
+    a.raw(_six_five_nav(0, 1) + setup)  # T at cell 1
+    a.raw(_six_five_nav(1, 7) + _six_five_const(n))  # N = n (bits left) at cell 7
 
     # read loop (control cell 7): fold each bit into x = 2x + (b - 8)
     a.j("R_END").m("R_START")
@@ -360,7 +386,14 @@ def six_five_arithmetic(truth_table: str, n: int) -> str:
     a.raw("62").j("P2_DONE").m("P2_TO1").raw("95").m("P2_DONE")
     a.raw(_six_five_nav(5, 1))
     a.m("F_END").raw("70").j("F_START")
-    a.raw(_six_five_nav(1, 5) + "62" * 48 + "A0")
+    if invert:
+        # complement table: output 49 - p, so p == 0 prints '1' and p == 1 prints '0'
+        a.raw(_six_five_nav(1, 5))
+        a.raw("70").j("OUT_48")
+        a.raw(_six_five_nav(5, 2) + "62" * 49 + "A0")
+        a.m("OUT_48").raw(_six_five_nav(5, 2) + "62" * 48 + "A0")
+    else:
+        a.raw(_six_five_nav(1, 5) + "62" * 48 + "A0")
     return a.build()
 
 
