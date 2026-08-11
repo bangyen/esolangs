@@ -358,9 +358,7 @@ class _Dimensional:
 
     A bare ``>``/``<`` takes its dimension from the current cell's value
     (usually nonzero mid-program), so every move is pinned with an explicit
-    ``>0``/``<0``.  The reference addresses cells as ``2**ptr`` in a signed
-    32-bit ``int``, which overflows past cell 30, so the layout must stay
-    below that and the generator caps ``n`` accordingly.
+    ``>0``/``<0``.
 
     Cells: 0 = result, 1..n = inputs (0/1), n+1..2n = NOT of each input,
     2n+1 = survivor, then four shared scratch cells (a, b, c, d).
@@ -427,18 +425,15 @@ def dimensional(truth_table: str, n: int) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.
 
-    Dimensional is brainfuck on a multidimensional tape, but its reference
-    addresses cells as ``2**ptr`` in a signed 32-bit ``int`` (overflow past
-    cell 30) and has no halt command, so the generator cannot port the
-    minterm evaluator's fresh-cell allocation or CircleFuck's halt-at-leaf
-    tree.  Instead each input is read and normalized to 0/1, the NOT of each
-    bit is precomputed, and every row whose table entry is one is tested by
-    a survivor cell (``S``): for each bit a copy of the bit (or its NOT) is
-    ANDed into ``S``, and the survivor survives only the row that matches
+    Dimensional is brainfuck on a multidimensional tape and has no halt
+    command, so the generator cannot port CircleFuck's halt-at-leaf tree
+    directly.  Instead each input is read and normalized to 0/1, the NOT of
+    each bit is precomputed, and every row whose table entry is one is tested
+    by a survivor cell (``S``): for each bit a copy of the bit (or its NOT)
+    is ANDed into ``S``, and the survivor survives only the row that matches
     every bit.  The survivors of all one-rows sum into the result cell,
-    which is printed as ``48 + sum`` (or ``49 - sum`` when the table's
-    zeros are cheaper, like the minterm evaluator).  The fixed layout keeps
-    every cell below index 30, so ``n`` caps at 12.
+    which is printed as ``48 + sum`` (or ``49 - sum`` when the table's zeros
+    are cheaper, like the minterm evaluator).
     """
     if len(truth_table) != 2**n:
         raise ValueError(
@@ -447,8 +442,6 @@ def dimensional(truth_table: str, n: int) -> str:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
-    if n > 12:
-        raise ValueError("the Dimensional boolean generator supports n <= 12 only")
 
     use_complement = truth_table.count("1") > 2**n // 2
     table = (

@@ -55,37 +55,35 @@ skips one instruction with a side-effect toggle.  There is no way to keep
 the input bits intact, so a decision tree is not expressible; no hidden
 primitive equivalent to Clockwise's three-`R` turn exists.
 
-### Dimensional reference cell limit (assessed: cap at n == 12)
-The C++ reference (`extra/c++/dimensional.cpp`) addresses a cell as the
-product of `prime[k]**ptr[k]` over dimensions, computed in a signed 32-bit
-`int` via `(int)pow(...)`.  That overflows past cell 30 (address `2**31`),
-so any program touching more than ~30 cells silently collides addresses —
-which is why the boolean generator
-(`src/esolangs/tools/booleans/tape.py`) uses a fixed `2n + 6`-cell layout
-and refuses `n > 12`.  The text generator is unaffected (it stays on cell
-0), and the cap is loud (a `ValueError`), never a wrong answer.
+### Dimensional v3 migration (in progress: Python interpreter first)
+The wiki now documents Dimensional **v3.0** (an n-slot/n-pointer model with
+`$AXIS`, `d`, `x`), while the reference in `extra/c++/dimensional.cpp`
+implements **v1.0** (a single pointer over a product-of-primes tape).  The
+two are incompatible dialects, and the v1.0 reference's 32-bit `int` cell
+addresses overflow past ~30 cells — which is why the boolean generator
+(`src/esolangs/tools/booleans/tape.py`) used a fixed `2n + 6`-cell layout
+and refused `n > 12`.
 
-The overflow is an implementation artifact, not a designed limit: the
-prime-product tape clearly intends an unbounded address space.  Options,
-in value order:
+The plan, decided: **replace v1.0 with v3.0**, migrating the text and boolean
+generators (whose outputs — `=hex.` and `>0`/`<0`/`,+ -[].` — are valid in
+both dialects) to be verified against the new implementation.
 
-- **A first-class Python interpreter.**  No Dimensional interpreter lives in
-  `src/esolangs/interpreters/` today (verification goes through the C++
-  subprocess).  A mod-256 interpreter is observably identical to the
-  reference (signed vs unsigned `char` differ only in internal
-  representation; `[`/`]` conditions and byte output agree), and Python
-  `int`s make cell addresses unbounded, removing the cap entirely.  It would
-  also let the boolean generator be verified by real execution in unit tests
-  (like `TestBfstack`) instead of the structural checks it has now, and it
-  matches how every other tape language in the registry is packaged.
-- **A minimal 64-bit patch to the reference.**  Changing the address to
-  `long long` lifts the cap to `n <= 28` (`2n + 6 <= 62`) but stays
-  overflow-prone: multi-dimensional products exceed 64 bits quickly and
-  `pow`'s double loses precision past `2**53`, so it merely postpones the
-  same bug and does nothing for testability.
-- **Leave as-is.**  The `n <= 12` cap is documented and the generator
-  refuses loudly.  Even a correct interpreter would not make large `n`
-  practical: the survivor scheme's program size is `O(2**n * n)`.
+- **Doing now: a first-class Python v3.0 interpreter.**  It goes in
+  `src/esolangs/interpreters/tape_based/dimensional.py`, joins the registry,
+  and verifies the generators by real execution in unit tests (the standard
+  lane for the BF-family tape languages).  Python `int`s make cell addresses
+  unbounded, retiring the `n > 12` cap.  Defaults and ambiguities the v3.0
+  wiki leaves open (default pointer axis, the descent model, `d`/`x` reading
+  from input) are resolved pragmatically and documented in the interpreter.
+  The v1.0 C++ reference leaves the verification pipeline (the generator
+  round-trips it used to gate now run through the Python interpreter).
+- **Deferred: a v3.0 C++ reference.**  With the Python interpreter as the
+  only implementation, generator verification is circular (same author,
+  same codebase, shared reading of the under-specified spec).  A fresh
+  `extra/c++/dimensional.cpp` implementing v3.0 would restore the independent
+  differential cross-check and keep Dimensional in the C++ reference family.
+  It must handle the addressing itself (a `long long` key covers `n <= 28`; a
+  small bignum for unbounded) — the very overflow that motivates the change.
 
 ### Polynomial float64 root precision
 The Polynomial generators emit exact integer polynomials, but the

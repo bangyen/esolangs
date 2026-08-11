@@ -57,7 +57,9 @@ LANGUAGES: dict[str, Language] = {
         "Container", _generate.container, "other.container", split=True
     ),
     "Dig": Language("Dig", _generate.dig, "register_based.dig", split=True),
-    "Dimensional": Language("Dimensional", _generate.dimensional),
+    "Dimensional": Language(
+        "Dimensional", _generate.dimensional, "tape_based.dimensional"
+    ),
     "Dotlang": Language(
         "Dotlang", _generate.dotlang, "register_based.dotlang", split=True
     ),
