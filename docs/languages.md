@@ -50,7 +50,7 @@ hand.
 | Suffolk | yes | yes |  | yes | hello |
 | Taglate | yes | yes | yes |  | hello |
 | Temporary | yes | yes |  |  | hello |
-| Unsquare | yes |  |  | yes |  |
+| Unsquare | yes |  | yes | yes |  |
 | WII2D | yes | yes |  |  | hello |
 | ZTOALC | yes | yes |  |  | hello |
 | bit~ | yes |  |  |  |  |

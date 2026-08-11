@@ -148,12 +148,14 @@ def main() -> int:
 
     # Boolean generators: 3x computes truth tables via a variable decision
     # tree (verified against Ruby), Forþ via a function-dispatch tree
-    # (C++), and Basicfuck via an if/if-not decision tree (C++).  Dimensional
-    # is verified against its in-package v3.0 interpreter instead.
+    # (C++), Basicfuck via an if/if-not decision tree (C++), and Unsquare
+    # via an accumulator decision tree (Ruby).  Dimensional and Container are
+    # verified against their in-package interpreters instead.
     boolean_refs: list[tuple[str, Callable[[str, int], str], list[str] | None]] = [
         ("3x", boolean.three_x, _ruby_reference("3x.rb")),
         ("Forþ", boolean.forth, cxx["forþ"]),
         ("Basicfuck", boolean.basicfuck, cxx["basicfuck"]),
+        ("Unsquare", boolean.unsquare, _ruby_reference("unsquare.rb")),
     ]
     tables = {
         1: ("00", "01", "10", "11"),

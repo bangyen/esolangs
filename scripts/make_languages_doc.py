@@ -37,6 +37,7 @@ BOOLEAN = {
     "Qoibl",
     "Sophie",
     "Taglate",
+    "Unsquare",
 }
 ASSEMBLY_COMPILERS = {"BFStack", "Home Row", "Jaune", "Suffolk", "Unsquare"}
 C_COMPILERS = {"BF-PDA", "BFStack", "EXCON", "RAM0"}

@@ -134,3 +134,43 @@ def bfstack(truth_table: str, n: int) -> str:
     number is not one of the table's zero rows.
     """
     return _bfstack_encoder(n) + _bfstack_decoder(truth_table) + "<" + "+" * 48 + "."
+
+
+def unsquare(truth_table: str, n: int) -> str:
+    """Build an Unsquare program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Unsquare's ``>``/``<`` loop runs while the accumulator is neither 0 nor 1,
+    so a 0/1 bit is turned into a loop condition by ``x`` (0 stays 0, 1
+    becomes 2) and its negation by a stack-clean flip ``x->IA<`` (``0`` swaps
+    to 1, ``1`` to 0).  Each input is read and reduced to 0/1 by ``>-<``
+    (subtracting 2 until parity) and pushed; the decision tree then pops bits
+    from the stack top (the last input first) and branches.  A branch that
+    runs ends with ``IA`` (leaving acc = 1 so the sibling's ``FLIP x > <``
+    guard skips), and each leaf pushes ``48 + entry`` and leaves acc = 0, so
+    the final ``o`` prints exactly the matching row's entry.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    flip = "x->IA<"
+
+    def leaf(row: int) -> str:
+        value = 48 + int(truth_table[row])
+        return ("IA" if value == 49 else "OA") + "+" * 24 + "P" + "OA"
+
+    def build(rows: list[int], k: int) -> str:
+        if len(rows) == 1:
+            return leaf(rows[0])
+        g1 = [row for row in rows if ((row >> k) & 1) == 1]
+        g0 = [row for row in rows if ((row >> k) & 1) == 0]
+        return f"Ax>{build(g1, k + 1)}IA<{flip}x>{build(g0, k + 1)}OA<"
+
+    return "iA>-<P" * n + build(list(range(2**n)), 0) + "o"
