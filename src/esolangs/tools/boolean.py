@@ -16,7 +16,7 @@ from esolangs.tools.booleans.other import (
     three_x,
 )
 from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
-from esolangs.tools.booleans.stack import bfstack, forth, modulous
+from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
 from esolangs.tools.booleans.tape import (
     ascii_art,
     basicfuck,
@@ -49,4 +49,5 @@ __all__ = [
     "sophie",
     "taglate",
     "three_x",
+    "unsquare",
 ]
