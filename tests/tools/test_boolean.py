@@ -435,11 +435,15 @@ class TestBf:
             got = run_bf(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_branch_free(self) -> None:
-        """The program reads n inputs and prints a single byte."""
-        program = boolean.bf("0110", 2)
-        assert program.count(",") == 2
-        assert program.endswith(".")
+    def test_bf_sparse_uses_the_minterm(self) -> None:
+        """bf picks the minterm for sparse tables (shorter than the tree)."""
+        program = boolean.bf("0" * 15 + "1", 4)  # AND4: one one-row
+        assert len(program) < len(boolean.bf_tree("0" * 15 + "1", 4))
+
+    def test_bf_dense_uses_the_tree(self) -> None:
+        """bf picks the decision tree for dense tables."""
+        xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
+        assert boolean.bf(xor6, 6) == boolean.bf_tree(xor6, 6)
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
@@ -474,12 +478,10 @@ class TestBfTree:
             got = run_bf(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_beats_minterm_on_dense_tables(self) -> None:
-        """The tree shares bit tests, so dense tables shrink drastically."""
+    def test_tree_small_on_dense_tables(self) -> None:
+        """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        tree = boolean.bf_tree(xor6, 6)
-        minterm = boolean.bf(xor6, 6)
-        assert len(tree) < len(minterm) // 100
+        assert len(boolean.bf_tree(xor6, 6)) < 10_000  # vs the minterm's ~1.2M
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""

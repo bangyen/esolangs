@@ -19,7 +19,10 @@ cell before its `]`, and a fired leaf clears the result cell so every `]`
 on the way out sees zero.  It is total and O(2**n) characters — XOR-n
 measures 225, 485, 910, 1.6K, 3.0K, 5.6K at n = 1..6, ~1000x smaller than
 `bf` on dense tables.  Verified exhaustively for every table at n <= 3 and
-sampled at n = 4..6.
+sampled at n = 4..6.  The two generators are complementary — the minterm
+wins on sparse tables (an all-zeros table is ~450 chars at n == 8, vs the
+tree's 20K) — so `bf` returns whichever of `_bf_minterm` and `bf_tree` is
+shorter for the given table.
 
 ### LaserFuck boolean generator (in progress: general BF layout compiler)
 LaserFuck is brainfuck on a 2D grid: a laser (with a random initial heading)
