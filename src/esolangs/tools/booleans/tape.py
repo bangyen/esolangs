@@ -523,10 +523,10 @@ def basicfuck(truth_table: str, n: int) -> str:
     Basicfuck's named variables behave like BF cells with an explicit
     arithmetic, so the program is a decision tree: each input is read with
     ``read -> a_i ;`` and normalized to 0/1 with ``a_i -= 48 ;``, then every
-    internal node emits ``if (a_k) { ... }`` next to ``if ! (a_k) { ... }``
-    (the reference spells negation ``if !``, not ``if (!``).  A failed
-    ``if`` falls through to its neighbour, so exactly one subtree runs per
-    input combination.  Each leaf adds ``48 + entry`` to the ``out``
+    internal node emits ``if (a_k) { ... }`` next to ``if !(a_k) { ... }``
+    (the wiki spells negation ``!(<X>)``, with the bang before the parens).  A
+    failed ``if`` falls through to its neighbour, so exactly one subtree runs
+    per input combination.  Each leaf adds ``48 + entry`` to the ``out``
     variable (which starts at 0 and is touched by exactly one leaf) and
     prints it with ``write <- out ;``.
     """
@@ -555,7 +555,7 @@ def basicfuck(truth_table: str, n: int) -> str:
             f"if ({var}) {{\n"
             + build(g1, k + 1)
             + "}\n"
-            + f"if ! ({var}) {{\n"
+            + f"if !({var}) {{\n"
             + build(g0, k + 1)
             + "}\n"
         )
