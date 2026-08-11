@@ -24,6 +24,13 @@ wins on sparse tables (an all-zeros table is ~450 chars at n == 8, vs the
 tree's 20K) — so `bf` returns whichever of `_bf_minterm` and `bf_tree` is
 shorter for the given table.
 
+The same decision-tree construction was ported to Dimensional
+(`dimensional_tree`), which is brainfuck on a multidimensional tape and
+also lacks a halt command: identical structure with every move pinned
+`>0`/`<0`.  `dimensional` dispatches the same way — the survivor evaluator
+wins on sparse tables (~4.4K for AND-8), the tree wins on dense (XOR-8 ~8x
+smaller).
+
 ### LaserFuck boolean generator (in progress: general BF layout compiler)
 LaserFuck is brainfuck on a 2D grid: a laser (with a random initial heading)
 travels the grid, `>`, `<`, `+`, `-`, `,` work on the tape, ``(``/``)`` and

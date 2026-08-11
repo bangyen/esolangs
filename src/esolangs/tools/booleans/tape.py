@@ -760,14 +760,17 @@ def dimensional(truth_table: str, n: int) -> str:
     inputs (most significant first), and ``n`` is the number of inputs.
 
     Dimensional is brainfuck on a multidimensional tape and has no halt
-    command, so the generator cannot port CircleFuck's halt-at-leaf tree
-    directly.  Instead each input is read and normalized to 0/1, the NOT of
-    each bit is precomputed, and every row whose table entry is one is tested
-    by a survivor cell (``S``): for each bit a copy of the bit (or its NOT)
-    is ANDed into ``S``, and the survivor survives only the row that matches
-    every bit.  The survivors of all one-rows sum into the result cell,
-    which is printed as ``48 + sum`` (or ``49 - sum`` when the table's zeros
-    are cheaper, like the minterm evaluator).
+    command, so a decision tree cannot rely on halting at the leaf.  Two
+    generators exist with complementary strengths, and ``dimensional``
+    returns the shorter of the two for the given table:
+
+    - the survivor evaluator: each input is read and normalized to 0/1, the
+      NOT of each bit is precomputed, and every row whose table entry is one
+      is tested by a survivor cell (``S``), summed into the result cell, and
+      printed as ``48 + sum`` (or ``49 - sum`` when the table's zeros are
+      cheaper).  Best for sparse tables — an AND-8 is ~4.4K characters.
+    - :func:`dimensional_tree`: a decision tree sharing the bit tests.
+      Best for dense tables — XOR-8 is ~8x smaller than the survivor.
     """
     if len(truth_table) != 2**n:
         raise ValueError(
@@ -776,7 +779,14 @@ def dimensional(truth_table: str, n: int) -> str:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
+    return min(
+        (_dimensional_survivor(truth_table, n), dimensional_tree(truth_table, n)),
+        key=len,
+    )
 
+
+def _dimensional_survivor(truth_table: str, n: int) -> str:
+    """Build the survivor-cell evaluator for the given truth table."""
     use_complement = truth_table.count("1") > 2**n // 2
     table = (
         truth_table
@@ -839,6 +849,113 @@ def dimensional(truth_table: str, n: int) -> str:
         cell.code.append("+" * 48)
     cell.code.append(".")
     return "".join(cell.code)
+
+
+def dimensional_tree(truth_table: str, n: int) -> str:
+    """Build a decision-tree Dimensional program for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The same construction as :func:`bf_tree`, ported to Dimensional's tape:
+    bit ``i`` lives at cell ``2i``, its complement at ``2i + 1``, a node
+    tests ``[bit]`` for the one-side and ``[1 - bit]`` for the zero-side
+    (complements naturally exclude the sibling), each branch clears its
+    guard cell before its ``]``, and a fired leaf clears the result cell so
+    every ``]`` on the way out sees zero.  Every move is pinned ``>0``/``<0``
+    (a bare move would take the cell value as the dimension).  The tree is
+    O(2**n) characters and wins on dense tables; the survivor evaluator
+    (``_dimensional_survivor``) wins on sparse ones.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    cells: list[str] = []
+    pos = 0
+
+    def move(target: int) -> None:
+        nonlocal pos
+        delta = target - pos
+        cells.append(">0" * delta if delta >= 0 else "<0" * -delta)
+        pos = target
+
+    for i in range(n):
+        cells.append(",")
+        cells.extend("-" * 48)
+        if i < n - 1:
+            move(pos + 2)
+
+    # complements nb_i = 1 - b_i at cell 2i+1 (t1, t2 at 2n, 2n+1)
+    for i in range(n):
+        move(2 * n)
+        cells.append("[-]")
+        move(2 * n + 1)
+        cells.append("[-]")
+        move(2 * i)
+        cells.append("[")
+        move(2 * n)
+        cells.append("+")
+        move(2 * n + 1)
+        cells.append("+")
+        move(2 * i)
+        cells.append("-")
+        cells.append("]")  # b -> t1, t2
+        move(2 * i + 1)
+        cells.append("+")  # nb = 1
+        move(2 * n + 1)
+        cells.append("[")
+        move(2 * i + 1)
+        cells.append("-")
+        move(2 * n + 1)
+        cells.append("-")
+        cells.append("]")  # nb -= t2
+        move(2 * n)
+        cells.append("[")
+        move(2 * i)
+        cells.append("+")
+        move(2 * n)
+        cells.append("-")
+        cells.append("]")  # restore b from t1
+
+    # decision tree: node i entered at cell 2i, exits at cell 2i+1
+    result = 2 * n + 2
+
+    def leaf(value: str) -> None:
+        cells.extend("+" * (48 + int(value)))
+        cells.append(".")
+        cells.append("[-]")  # clear the result so every ] on the way out sees zero
+
+    def node(i: int, combo: int) -> None:
+        bit = 2 * i
+        nxt = result if i == n - 1 else bit + 2
+        move(bit)
+        cells.append("[")  # one-side: if b_i
+        move(nxt)
+        if i == n - 1:
+            leaf(truth_table[combo | (1 << (n - 1 - i))])
+        else:
+            node(i + 1, combo | (1 << (n - 1 - i)))
+        move(bit)
+        cells.append("[-]")  # clear b_i so this ] exits
+        cells.append("]")
+        move(bit + 1)
+        cells.append("[")  # zero-side: if 1 - b_i
+        move(nxt)
+        if i == n - 1:
+            leaf(truth_table[combo])
+        else:
+            node(i + 1, combo)
+        move(bit + 1)
+        cells.append("[-]")  # clear the complement so this ] exits
+        cells.append("]")
+
+    node(0, 0)
+    return "".join(cells)
 
 
 def basicfuck(truth_table: str, n: int) -> str:

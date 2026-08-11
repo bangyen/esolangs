@@ -27,6 +27,7 @@ from esolangs.tools.booleans.tape import (
     circlefuck,
     circlefuck_byte,
     dimensional,
+    dimensional_tree,
     six_five,
     six_five_arithmetic,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "container",
     "dig",
     "dimensional",
+    "dimensional_tree",
     "forth",
     "modulous",
     "nevermind",
