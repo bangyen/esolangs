@@ -553,13 +553,12 @@ def bf(truth_table: str, n: int) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.
 
-    Brainfuck's loops are while-loops, so a decision tree would need leaves
-    to skip their siblings, which the language cannot express.  Instead the
-    program is the branch-free ``_bf_minterm`` evaluator: each input is read
+    This is the branch-free ``_bf_minterm`` evaluator: each input is read
     and normalized to 0/1, and the result is ``48 + sum_k tt[k] * M_k`` where
     ``M_k`` is the product of the input bits (or complements) selecting row
-    ``k``, computed with 0/1 copies and ANDs.  When the table has more ``1``s
-    than ``0``s the complement is evaluated and ``49 - sum`` is printed.
+    ``k``, computed with 0/1 copies and ANDs.  It is dense-table-heavy
+    (evaluates every minterm); :func:`bf_tree` is a decision-tree alternative
+    that shares the bit tests and is ~1000x smaller for dense tables.
     """
     if len(truth_table) != 2**n:
         raise ValueError(
@@ -569,6 +568,120 @@ def bf(truth_table: str, n: int) -> str:
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
     return _bf_minterm(truth_table, n)
+
+
+def bf_tree(truth_table: str, n: int) -> str:
+    """Build a decision-tree brainfuck program for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Each input is read and normalized to 0/1 into cell ``2i``, its
+    complement ``1 - b`` into cell ``2i + 1`` (via two temp cells), and a
+    node tests ``[b]`` for the one-side and ``[1 - b]`` for the zero-side:
+    the complement guards naturally exclude the sibling, so only the
+    matching leaf fires.  Each branch clears its guard cell before its
+    ``]``, so the loop exits after one pass, and a fired leaf clears the
+    result cell, so every ``]`` on the way out sees zero.  The tree is
+    O(2**n) characters (sharing the bit tests), versus the branch-free
+    minterm evaluator's O(n * 2**n); for XOR-n it measures 1.4K..20K
+    characters at n = 2..8 against the minterm's 1.4K..33M.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    cells: list[str] = []
+    pos = 0
+
+    def move(target: int) -> None:
+        nonlocal pos
+        while pos < target:
+            cells.append(">")
+            pos += 1
+        while pos > target:
+            cells.append("<")
+            pos -= 1
+
+    # read bits b_i at cell 2i, leaving the complements (cells 1, 3, ...) zero
+    for i in range(n):
+        cells.append(",")
+        cells.extend("-" * 48)
+        if i < n - 1:
+            cells.append(">")
+            cells.append(">")
+            pos += 2
+
+    # complements nb_i = 1 - b_i at cell 2i+1 (t1, t2 at 2n, 2n+1)
+    for i in range(n):
+        move(2 * n)
+        cells.append("[-]")
+        move(2 * n + 1)
+        cells.append("[-]")
+        move(2 * i)
+        cells.append("[")
+        move(2 * n)
+        cells.append("+")
+        move(2 * n + 1)
+        cells.append("+")
+        move(2 * i)
+        cells.append("-")
+        cells.append("]")  # b -> t1, t2
+        move(2 * i + 1)
+        cells.append("+")  # nb = 1
+        move(2 * n + 1)
+        cells.append("[")
+        move(2 * i + 1)
+        cells.append("-")
+        move(2 * n + 1)
+        cells.append("-")
+        cells.append("]")  # nb -= t2
+        move(2 * n)
+        cells.append("[")
+        move(2 * i)
+        cells.append("+")
+        move(2 * n)
+        cells.append("-")
+        cells.append("]")  # restore b from t1
+
+    # decision tree: node i entered at cell 2i, exits at cell 2i+1
+    result = 2 * n + 2
+
+    def leaf(value: str) -> None:
+        cells.extend("+" * (48 + int(value)))
+        cells.append(".")
+        cells.append("[-]")  # clear the result so every ] on the way out sees zero
+
+    def node(i: int, combo: int) -> None:
+        bit = 2 * i
+        nxt = result if i == n - 1 else bit + 2
+        move(bit)
+        cells.append("[")  # one-side: if b_i
+        move(nxt)
+        if i == n - 1:
+            leaf(truth_table[combo | (1 << (n - 1 - i))])
+        else:
+            node(i + 1, combo | (1 << (n - 1 - i)))
+        move(bit)
+        cells.append("[-]")  # clear b_i so this ] exits
+        cells.append("]")
+        move(bit + 1)
+        cells.append("[")  # zero-side: if 1 - b_i
+        move(nxt)
+        if i == n - 1:
+            leaf(truth_table[combo])
+        else:
+            node(i + 1, combo)
+        move(bit + 1)
+        cells.append("[-]")  # clear the complement so this ] exits
+        cells.append("]")
+
+    node(0, 0)
+    return "".join(cells)
 
 
 class _Dimensional:

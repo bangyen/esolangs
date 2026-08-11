@@ -452,6 +452,46 @@ class TestBf:
             boolean.bf("02", 1)
 
 
+class TestBfTree:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.bf_tree(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_bf(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_beats_minterm_on_dense_tables(self) -> None:
+        """The tree shares bit tests, so dense tables shrink drastically."""
+        xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
+        tree = boolean.bf_tree(xor6, 6)
+        minterm = boolean.bf(xor6, 6)
+        assert len(tree) < len(minterm) // 100
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.bf_tree("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.bf_tree("02", 1)
+
+
 class TestBasicfuck:
     @pytest.mark.parametrize(
         ("table", "n"),
