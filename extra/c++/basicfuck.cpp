@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
                    "( o=(wrap|halt|n"
                    "earest))?\\s*");
 
-    std::regex all("#allocate(?: " name ",?)*\\s*");
+    std::regex all("#allocate(?:\\s*" name ",?)*\\s*");
 
     std::ifstream file = std::ifstream(argv[1]);
 
@@ -303,7 +303,7 @@ int main(int argc, char *argv[]) {
 
     getline(file, prog);
     if (std::regex_match(prog, m, all)) {
-      std::regex id("( " name ",?)[^]*");
+      std::regex id("(\\s*" name ",?)[^]*");
       prog = prog.substr(9);
 
       while (std::regex_match(prog, m, id)) {
