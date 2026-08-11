@@ -252,6 +252,34 @@ def run_sophie(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+class TestForth:
+    def test_program_structure(self) -> None:
+        """The program defines one function per tree node and reads n bits."""
+        program = boolean.forth("0001", 2)
+        assert program.endswith("1+;.")
+        assert program.count("{") == program.count("}") == 6  # 6 nodes
+        assert program.count(",68*-") == 2  # read and normalize 2 inputs
+
+    def test_leaf_results_are_the_byte(self) -> None:
+        """Each leaf pushes 48 + its table entry."""
+        program = boolean.forth("0001", 2)
+        assert "3F*3+" in program  # '0' leaves push 48 = 3*15+3
+        assert "3F*4+" in program  # the '1' leaf pushes 49 = 3*15+4
+
+    def test_scales(self) -> None:
+        """More inputs mean more tree functions."""
+        program = boolean.forth("0" * 16 + "1" * 16, 5)
+        assert program.count("{") == 2 ** (5 + 1) - 2
+        assert program.count(",68*-") == 5
+
+    def test_const_large(self) -> None:
+        """Constants above 225 need multiple base-15 digits."""
+        from esolangs.tools.booleans.stack import _forth_const
+
+        assert _forth_const(0) == "0"
+        assert len(_forth_const(300)) > len(_forth_const(48))
+
+
 class TestSophie:
     @pytest.mark.parametrize(
         ("table", "n"),

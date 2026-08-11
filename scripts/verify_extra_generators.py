@@ -145,10 +145,12 @@ def main() -> int:
             failures += not ok
             print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
 
-    # Boolean generators: 3x computes truth tables for n = 1..3 via a
-    # variable decision tree, verified against the Ruby reference.
+    # Boolean generators: 3x computes truth tables via a variable decision
+    # tree (verified against Ruby), Forþ via a function-dispatch tree
+    # (verified against C++).
     boolean_refs: list[tuple[str, Callable[[str, int], str], list[str] | None]] = [
         ("3x", boolean.three_x, _ruby_reference("3x.rb")),
+        ("Forþ", boolean.forth, cxx["forþ"]),
     ]
     tables = {
         1: ("00", "01", "10", "11"),

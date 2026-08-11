@@ -1,6 +1,62 @@
 """Boolean-function generators for stack-based languages."""
 
 
+def _forth_const(value: int) -> str:
+    """Forþ code pushing ``value`` (base-15 digits built with Horner's rule)."""
+    digits = "0123456789ABCDEF"
+    if value == 0:
+        return "0"
+    ds: list[int] = []
+    v = value
+    while v:
+        ds.append(v % 15)
+        v //= 15
+    ds.reverse()
+    prog = digits[ds[0]]
+    for d in ds[1:]:
+        prog += "F*" + digits[d] + "+"
+    return prog
+
+
+def _forth_combo(m: int) -> int:
+    """Combo index of the leaf at heap position ``m`` (odd = left child)."""
+    path = []
+    while m > 0:
+        path.append(0 if m % 2 else 1)
+        m = (m - 1) // 2
+    path.reverse()
+    return sum(b << i for i, b in enumerate(path))
+
+
+def forth(truth_table: str, n: int) -> str:
+    """Build a Forþ program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.  The
+    program prints ``'0'`` or ``'1'``.
+
+    Forþ reads a line with ``,`` and has no clean pop, so the generator
+    builds a decision tree out of functions: ``{ scope }`` stores a scope in
+    the function table, and an internal node dispatches with ``base + ;``,
+    which pops the top bit and calls ``table[base + bit]``.  Each input is
+    read and normalized to 0/1 with ``,68*-``, the root dispatches with
+    ``1+;``, and a leaf pushes ``48 + result`` which the final ``.`` prints.
+    The definition indices are left on the stack below the result, satisfying
+    the ``{ }`` scope's requirement of at least two items.
+    """
+    prog = []
+    for m in range(1, 2 ** (n + 1) - 1):
+        if m <= 2**n - 2:  # internal node: dispatch on the top bit
+            body = _forth_const(2 * m + 1) + "+;"
+        else:  # leaf: push the result byte
+            result = int(truth_table[_forth_combo(m)])
+            body = _forth_const(48 + result)
+        prog.append(_forth_const(m) + "{" + body + "}")
+    prog.append(",68*-" * n)  # read and normalize each input
+    prog.append("1+;.")  # root dispatch, then print the result
+    return "".join(prog)
+
+
 def modulous(truth_table: str, n: int) -> str:
     """Build a Modulous program computing the given truth table.
 
