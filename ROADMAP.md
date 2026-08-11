@@ -26,10 +26,25 @@ cannot be dropped without checking the default rows too.  The sibling
 idea (pre-negating stored input bits to halve `not_bit`) remains open but
 is marginal.
 
+### Decision-tree brainfuck boolean generator (planned: big dense-table win)
+The brainfuck generator (`src/esolangs/tools/booleans/tape.py`) is
+branch-free: it evaluates every minterm and sums the results, so dense
+tables explode with the minterm count (XOR-n measures 1.4K, 7.3K, 40K,
+222K, 1.2M characters at n = 2..6, growing ~5.5x per input).  The
+docstring claims BF "has no branching that would let leaves skip
+siblings", but BF's `[`..`]` loop *is* a conditional skip (the body runs
+only while the current cell is nonzero), so a decision tree that skips
+the non-matching subtree at each bit is expressible.  A tree with
+majority-default pruning would share the bit tests and shrink dense
+tables dramatically; the risk is that the `[`/`]` skip keeps running its
+body on a zero cell (it re-checks), so the subtree must clear the guard
+cell to terminate.  Bounded, structural, verified against the BF
+interpreter.
+
 ### Constant-loop boolean generator for arbitrary n (resolved: 6-5)
-The boolean generators cover every table up to a small input count: 6-5 and
-CircleFuck build decision trees capped at about 5 inputs (35 branch labels
-for 6-5, n <= 5), Taglate is closed-form for n == 2, the brainfuck
+The boolean generators cover every table up to a small input count: 6-5
+builds a decision tree capped at about 5 inputs (35 branch labels for 6-5,
+n <= 5), Taglate is closed-form for n == 2, the brainfuck
 generator handles any n but is branch-free and grows with the minterm count,
 and Clockwise builds an uncapped decision-tree ring.  The open goal was a
 generator whose program size and loop count are constant in n (encode the
@@ -135,6 +150,11 @@ The interpreter was also brought in line with the wiki spec: `lhs = rhs` /
 literally `"arr[i]"`.  With the fix, runtime-indexed tables work, which is
 what makes the linear fallback (and mod-2 as a small parity-table
 primitive) possible.
+
+Further ZTOALC optimization is marginal: the tree's `b1` search and the
+linear fallback's command count are both near their structural minimums,
+and the linear program's size is set by the branch-free descent
+(`2**L` lines), which is inherent.
 
 ### MAMMALIAN boolean generator (assessed: viable in principle, hard)
 MAMMALIAN has the three primitives a decision tree needs, and they are
