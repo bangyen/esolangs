@@ -1,5 +1,128 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
+__all__ = ["clockwise", "nevermind", "taglate", "three_x"]
+
+# Closed-form 3x constant encodings.  Every integer is built from the literal
+# 3 with the ``x`` op (which replaces the top three items ``a, b, c``, c on
+# top, with ``(c-b)//a``).  The three base-3 digits are:
+_ZERO = "333x"  # (3-3)//3 = 0
+_ONE = "3333x3x"  # (3-0)//3 = 1
+_TWO = _ONE + _ONE + "3x"  # (3-1)//1 = 2
+
+# From [v], ``push X # push Y x`` leaves [(Y-v)//X], so with X=-1/3 and
+# Y=-d/3 it maps v -> (-d/3 - v)/(-1/3) = 3v + d.  These are the two fixed
+# rationals (and the d=0 case, which is just 0):
+_NEG_THIRD = "3" + _ONE + _ZERO + "x"  # (0-1)//3 = -1/3
+_NEG_TWO_THIRDS = "33" + _ONE + "x"  # (1-3)//3 = -2/3
+_DIGIT = (_ZERO, _ONE, _TWO)
+_NEG_DIGIT = (_ZERO, _NEG_THIRD, _NEG_TWO_THIRDS)
+
+
+def _const(n: int) -> str:
+    """3x code pushing ``n`` on a clean stack, for any integer ``n``.
+
+    ``n`` is written in base 3 and its digits are processed most significant
+    first: ``v`` starts as the leading digit and each following digit ``d``
+    applies the affine map ``v -> 3v + d`` via one ``x`` (see ``_NEG_THIRD``).
+    The result is a closed-form program of ``O(log_3 n)`` length that leaves
+    exactly ``[n]`` on the stack.
+    """
+    if n <= 2:
+        return _DIGIT[n]
+    digits = []
+    while n:
+        digits.append(n % 3)
+        n //= 3
+    prog = _DIGIT[digits[-1]]
+    for d in reversed(digits[:-1]):
+        prog += _NEG_THIRD + "#" + _NEG_DIGIT[d] + "x"
+    return prog
+
+
+def three_x(truth_table: str, n: int) -> str:
+    """Build a 3x program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    3x reads an integer with ``?`` and has no direct boolean literals or
+    conditionals, so the generator builds a decision tree with variables:
+
+    - each ``?`` reads one input bit and stores it in a variable (the
+      cheapest names after 0 and 3);
+    - a ``( ... )`` loop runs while its guard is nonzero: the guard value is
+      popped into a trash variable (0), the body stores the table entry into
+      the result variable (3), and a sentinel zero exits the loop.
+
+    The result variable defaults to the majority table value (so the
+    ``( ... )`` loop emits no override at all when every row matches), and
+    only the input combinations whose table entry differs from the default
+    get an override block.  Each override's ``( ... )`` guard leaves the
+    stack balanced via the trash pop, so arbitrary ``n`` works.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    # Variable allocation: var 0 is the loop-trash (its constant, 333x, is
+    # short and emitted twice per guard), var 3 is the result (its constant
+    # is the single char `3`, emitted once per table entry), and the inputs
+    # live in the cheapest remaining names by actual constant length (the
+    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  Every
+    # input is read once per override block, so any assignment of the n
+    # cheapest names to the inputs costs the same.
+    trash = _const(0) + "#v"  # pop the stack top into variable 0
+    result = 3
+    used = {0, 3}
+    input_vars = sorted(
+        (v for v in range(3 + n) if v not in used),
+        key=lambda v: len(_const(v)),
+    )[:n]
+
+    def store(var: int) -> str:
+        return _const(var) + "#v"  # var = stack top, stack ends empty
+
+    def read(var: int) -> str:
+        return _const(var) + "^"
+
+    def not_bit() -> str:
+        return _ONE + "#" + _ONE + "x"  # from [b] leave [1-b]
+
+    def guard(i: int, body: str) -> str:
+        """If bit i is 1, run ``body``; leaves the stack balanced."""
+        return read(i) + "(" + trash + body + _ZERO + ")" + trash
+
+    def guard_not(i: int, body: str) -> str:
+        """If bit i is 0, run ``body``; leaves the stack balanced."""
+        return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
+
+    prog = "".join("?" + store(v) for v in input_vars)
+
+    # Default the result to the majority value so only the minority rows
+    # need an override block (combos matching the default are skipped).
+    default = "1" if truth_table.count("1") >= truth_table.count("0") else "0"
+    prog += (_ONE if default == "1" else _ZERO) + store(result)
+
+    for combo in range(2**n):
+        if truth_table[combo] == default:
+            continue
+        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+        body = (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
+        for i in range(n - 1, -1, -1):
+            body = (
+                guard(input_vars[i], body)
+                if bits[i]
+                else guard_not(input_vars[i], body)
+            )
+        prog += body
+
+    prog += read(result) + "!"
+    return prog
+
 
 def nevermind(truth_table: str, n: int) -> str:
     """Build a Nevermind program computing the given truth table.
@@ -235,3 +358,75 @@ def taglate(truth_table: str, n: int) -> str:
 
     result: str = seed + "\n" + prefix + "".join(select_parts)
     return result
+
+
+def clockwise(truth_table: str, n: int) -> str:
+    """Build a Clockwise program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.  The
+    program prints the result bit seven times, as ``chr(127 * result)``.
+
+    The program is a decision tree in a closed ring.  ``S`` zeroes the
+    accumulator and seven ``.`` reads consume a ``0``/``1`` input char's seven
+    bits, leaving its value bit in the accumulator.  At each node a ``?``
+    turns the pointer by ``acc`` quarter-turns, so a zero bit continues down
+    the spine while a one bit turns right (cw) into a column; three ``R`` in
+    an L pattern turn it back down into the next column, at a ``2**(n-k)``
+    displacement so each input combination reaches a unique leaf column.  A
+    leaf prints ``S [,+] ;x7``, then a ``?`` (with acc reset to 1) turns it
+    left onto a shared bottom row; an ``S`` after each exit keeps passing
+    paths at acc=0 so they do not turn on another leaf's exit.  The row
+    funnels left to the corner ``R`` and up column 0 to halt.
+    """
+    _validate_tt(truth_table, n)
+    cells: dict[tuple[int, int], str] = {}
+    root = 2 ** (n + 2) + 8
+
+    def place(node: tuple[int, int], ch: str) -> None:
+        cells[node] = ch
+
+    def build(bit: int, x: int, y: int, combo: int) -> None:
+        if bit == n:
+            leaf(x, y, combo)
+            return
+        place((x, y), "S")
+        for i in range(7):
+            place((x, y + 1 + i), ".")
+        place((x, y + 8), "?")
+        build(bit + 1, x, y + 9, combo << 1)  # b=0: continue down
+        # b=1: '?' turns right (cw from down) then three R's turn left->down
+        xn = x - 2 ** (n - bit)
+        place((xn, y + 8), " ")
+        place((xn - 1, y + 8), "R")
+        place((xn - 1, y + 7), "R")
+        place((xn, y + 7), "R")
+        build(bit + 1, xn, y + 9, (combo << 1) | 1)
+
+    def leaf(x: int, y: int, combo: int) -> None:
+        result = int(truth_table[combo])
+        place((x, y), "S")
+        place((x, y + 1), "+" if result else " ")
+        for i in range(7):
+            place((x, y + 2 + i), ";")
+        # '?' turns by acc quarter-turns; acc must be exactly 1 to turn left
+        # onto the bottom row, so add one increment only when the result is 0
+        place((x, y + 9), "+" if not result else " ")
+        place((x, y + 10), "?")
+
+    build(0, root, 1, 0)
+
+    bottom = 1 + 9 * n + 10
+    for (x, y), ch in list(cells.items()):
+        if ch == "?" and y == bottom:
+            place((x - 1, bottom), "S")
+    place((0, bottom), "R")
+    place((root, 0), "R")
+
+    height = bottom + 1
+    width = max(x for (x, y) in cells) + 1
+    grid = [[" "] * width for _ in range(height)]
+    for (x, y), ch in cells.items():
+        if 0 <= x < width and 0 <= y < height:
+            grid[y][x] = ch
+    return "\n".join("".join(row) for row in grid)

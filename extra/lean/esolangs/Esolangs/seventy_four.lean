@@ -12,13 +12,8 @@ instruction count so the ``#eval`` always terminates. -/
 
 namespace SeventyFour
 
-def file_name : String := "test.txt"
-  -- name of the file containing the 74 program
 def limit : ℕ := 100
   -- max number of commands
-
-def read_file : IO String := do
-  IO.FS.readFile file_name
 
 def run (i : String.Legacy.Iterator) (c : Char) (b : Bool)
     (n : ℕ) (s : String) : IO Unit :=
@@ -36,7 +31,4 @@ def run (i : String.Legacy.Iterator) (c : Char) (b : Bool)
   else
     run i.next i.next.curr i.hasNext (n - 1) s
 
-#eval do
-  let c ← read_file
-  run (String.Legacy.mkIterator c) c.front true limit ""
 end SeventyFour

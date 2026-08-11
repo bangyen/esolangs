@@ -178,6 +178,20 @@ class TestGeneratorRoundTrips:
         assert roundtrip(polynomial_run, gen.polynomial("ba")) == "ba"
         assert gen.polynomial("").startswith("f(x) = ")
 
+    def test_polynomial_byte_range(self) -> None:
+        """Codepoints up to 255 round-trip within a reasonable text length."""
+        text = "".join(chr(n) for n in range(0, 256, 16))
+        assert roundtrip(polynomial_run, gen.polynomial(text)) == text
+
+    def test_polynomial_precision_limit(self) -> None:
+        """Large codepoint deltas exceed float64 root precision (documented).
+
+        numpy.roots cannot recover the instruction roots when consecutive
+        characters differ by thousands, so the output corrupts silently.
+        See README "Known Issues".
+        """
+        assert roundtrip(polynomial_run, gen.polynomial("a日a日")) != "a日a日"
+
     def test_polynomial_format(self) -> None:
         """Zero coefficients are omitted from the formatted polynomial."""
         from esolangs.tools._polynomial import format_coeffs
@@ -232,6 +246,90 @@ class TestGeneratorRoundTrips:
         assert gen.minifuck("A") == "[x[x<[x[x[x[x[x[x<[x."
         assert gen.minifuck("AA") == "[x[x<[x[x[x[x[x[x<[x.."
 
+    def test_dimensional(self) -> None:
+        """Each =HEX. segment sets the current cell and prints it as a byte."""
+        assert gen.dimensional("Hi") == "=48.=69."
+        assert gen.dimensional("\x00\x7f\xff") == "=0.=7f.=ff."
+
+    def test_two_d_fish(self) -> None:
+        """i/d walk the accumulator to each byte and a prints it."""
+        assert gen.two_d_fish("A") == "/" + "i" * 65 + "a@"
+        assert gen.two_d_fish("AA") == "/" + "i" * 65 + "a" + "a@"
+        assert gen.two_d_fish("A\x00") == "/" + "i" * 65 + "a" + "d" * 65 + "a@"
+
+    def test_pct_squared_minus_one(self) -> None:
+        """Each 'path e resets the accumulator, builds the byte, and prints it."""
+        assert gen.pct_squared_minus_one("") == ""
+        assert gen.pct_squared_minus_one("\x00") == "'e"
+        assert (
+            gen.pct_squared_minus_one("H")
+            == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+        )
+
+    def test_pct_path_formula(self) -> None:
+        """_pct_path is a closed form: final p, halve-when-even greedy, bounds."""
+        from esolangs.tools.generators.other import _pct_path
+
+        assert _pct_path(0) == ""
+        assert _pct_path(1) == "ips"
+        assert _pct_path(8) == "ssmp"
+        for byte in range(256):
+            path = _pct_path(byte)
+            acc = 0
+            for op in path:
+                if op == "s":
+                    acc -= 2
+                elif op == "i":
+                    acc -= 3
+                elif op == "m":
+                    acc *= 2
+                elif op == "p":
+                    acc = -acc
+                assert abs(acc) <= 3003  # within the interpreter's reset
+            assert acc == byte
+
+    def test_basicfuck(self) -> None:
+        """A variable walks to each byte with +=/-= and write prints it."""
+        assert gen.basicfuck("A") == (
+            "#basicfuck t=1 r=0~255 o=nearest\n"
+            "#allocate a\n"
+            "a += 65;\n"
+            "write <- a ;\n"
+        )
+
+    def test_bit_tilde(self) -> None:
+        """Bits are toggled only where they differ; ( prints the 8-bit window."""
+        assert gen.bit_tilde("\x00") == ">>>>>>>" + "<" * 7 + "("
+        assert gen.bit_tilde("\x00\x00") == (
+            ">>>>>>>" + "<" * 7 + "(" + ">>>>>>>" + "<" * 7 + "("
+        )
+        assert gen.bit_tilde("\xff") == "~>~>~>~>~>~>~>~" + "<" * 7 + "("
+
+    def test_three_x(self) -> None:
+        """A [literal] prints the text up to the closing bracket."""
+        assert gen.three_x("Hi") == "[Hi]"
+        assert gen.three_x("") == "[]"
+
+    def test_three_x_unsupported(self) -> None:
+        """'?' or ']' in the text would be read as input or end the literal."""
+        with pytest.raises(ValueError, match="re-executes"):
+            gen.three_x("a]b")
+        with pytest.raises(ValueError, match="re-executes"):
+            gen.three_x("a?b")
+
+    def test_byte_generators_reject_unicode(self) -> None:
+        """Byte-oriented generators reject codepoints above 255 loudly."""
+        for _name, fn in (
+            ("dimensional", gen.dimensional),
+            ("two_d_fish", gen.two_d_fish),
+            ("pct_squared_minus_one", gen.pct_squared_minus_one),
+            ("basicfuck", gen.basicfuck),
+            ("bit_tilde", gen.bit_tilde),
+        ):
+            with pytest.raises(ValueError, match="only output bytes"):
+                fn("😀")
+            assert fn("é") != ""  # 233 fits in a byte
+
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""
         assert roundtrip(ztoalc_run, gen.ztoalc("Hi").splitlines()) == "Hi"
@@ -258,12 +356,12 @@ class TestGeneratorRoundTrips:
         assert len(program.splitlines()) < 100
         assert roundtrip(ztoalc_run, program.splitlines()) == "Hello, World!"
 
-    def test_ztoalc_extends_search(self) -> None:
-        """Longer text uses a precomputed start far beyond the base search limit."""
+    def test_ztoalc_uses_record_holder(self) -> None:
+        """Longer text uses the best record-holder covering its length."""
         text = "a" * 200
         program = gen.ztoalc(text)
-        assert int(program.splitlines()[0]) > 20000
-        assert len(program.splitlines()) < 100000
+        assert int(program.splitlines()[0]) == 2919  # covers n <= 216
+        assert len(program.splitlines()) < 300000
         assert roundtrip(ztoalc_run, program.splitlines()) == text
 
     def test_ztoalc_long_text(self) -> None:
@@ -272,29 +370,26 @@ class TestGeneratorRoundTrips:
         program = gen.ztoalc(text)
         assert roundtrip(ztoalc_run, program.splitlines()) == text
 
-    def test_ztoalc_searches_beyond_table(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A length missing from the table falls back to a dynamic search."""
-        monkeypatch.setattr(other, "STARTS", {1: 2, 3: 8})
-        monkeypatch.setattr(other, "_ZTOALC_TABLE_LIMIT", 2)
-        monkeypatch.setattr(other, "_ZTOALC_MAX_LIMIT", 100)
+    def test_ztoalc_anchor_lookup(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A length rounds up to the first anchor whose interval covers it."""
+        monkeypatch.setattr(other, "ANCHORS", [(1, 2), (8, 6), (20, 18)])
+        assert other._anchor_for(1) == 2  # noqa: SLF001
+        assert other._anchor_for(8) == 6  # noqa: SLF001
+        assert other._anchor_for(9) == 18  # noqa: SLF001
+        assert other._anchor_for(20) == 18  # noqa: SLF001
         program = gen.ztoalc("ab")
-        assert program.splitlines() == ["4", "print 98", "", "print 97"]
+        assert program.splitlines() == ["6", "", "print 98", "", "", "print 97"]
         assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
 
-    def test_ztoalc_search_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Text longer than any trajectory in the search range is rejected."""
-        monkeypatch.setattr(other, "STARTS", {1: 2})
-        monkeypatch.setattr(other, "_ZTOALC_TABLE_LIMIT", 2)
-        monkeypatch.setattr(other, "_ZTOALC_MAX_LIMIT", 2)
+    def test_ztoalc_too_long_rejected(self) -> None:
+        """Text longer than the longest known record is rejected."""
         with pytest.raises(ValueError, match="no Collatz start"):
-            gen.ztoalc("abcde")
+            gen.ztoalc("a" * 1133)
 
     def test_ztoalc_program_structure(self) -> None:
         """The initial pointer is the chosen start and each char sits on its line."""
         lines = gen.ztoalc("ab").splitlines()
-        assert lines[0] == "4"
+        assert lines[0] == "6"
         assert "print 98" in lines
         assert "print 97" in lines
 

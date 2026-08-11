@@ -1,9 +1,9 @@
 import Mathlib
 
-import LeanMammalian.Albabet
-import LeanMammalian.Excon
-import LeanMammalian.bfpda
-import LeanMammalian.seventy_four
+import Esolangs.Albabet
+import Esolangs.Excon
+import Esolangs.bfpda
+import Esolangs.seventy_four
 
 /-!
 # MAMMALIAN generator totality
