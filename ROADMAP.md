@@ -16,23 +16,6 @@ bits to halve the `not_bit` cost on tables where one bit value dominates.
 Both are structural rewrites of the generator, still verified against the
 Ruby reference.
 
-### Boolean-table transpiler bridge
-A dynamic transpiler across the boolean-capable languages — Sophie, Modulous,
-BrainIf, Nevermind, CircleFuck, Clockwise, Dimensional, and Basicfuck. These
-are genuinely different machines, but each has a verified generator that
-builds a program for any truth table, so a transpiler can lift a program from
-one to another:
-
-1. run the source program on all `2**n` inputs to extract its truth table;
-2. regenerate in the target with its boolean generator.
-
-It is nontrivial (a real transformation between machines, with the truth
-table as the intermediate), bounded (the boolean-program class the
-generators already produce), and verified exactly like every other
-transpiler — the source and target must agree on every input. It needs a
-design decision first: how to detect or take `n` (the input count) and how
-to reject programs outside the class loudly.
-
 ### Constant-loop boolean generator for arbitrary n (resolved: 6-5)
 The boolean generators cover every table up to a small input count: 6-5 and
 CircleFuck build decision trees capped at about 5 inputs (35 branch labels
