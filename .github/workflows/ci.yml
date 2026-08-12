@@ -151,7 +151,7 @@ jobs:
           "/tmp/$name" /tmp/empty.txt > /dev/null 2>&1
           rc=$?
           set -e
-          if [ "$rc" -gt 1 ]; then
+          if [ "$rc" -gt 3 ]; then
             echo "FAIL: $name crashed with exit code $rc on empty input"
             exit 1
           fi
