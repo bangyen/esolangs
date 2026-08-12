@@ -12,7 +12,7 @@ hand.
 | 3x | yes |  | yes |  |  |
 | 6-5 | yes | yes | yes |  | hello cat |
 | ASCII art | yes | yes | yes |  | hello |
-| BF | yes | yes |  |  | hello |
+| BF | yes | yes | yes |  | hello |
 | BF-PDA |  |  |  | yes |  |
 | BFStack | yes | yes | yes | yes | hello |
 | BIO | yes | yes |  |  | hello |
@@ -22,17 +22,17 @@ hand.
 | BrainIf | yes | yes | yes |  | hello truth-machine |
 | CircleFuck | yes | yes | yes |  | hello truth-machine |
 | Clockwise | yes | yes | yes |  | hello |
-| Container | yes | yes |  |  | hello |
+| Container | yes | yes | yes |  | hello |
 | DSDLAI |  | yes |  |  |  |
 | Dig | yes | yes | yes |  | hello |
-| Dimensional | yes |  | yes |  |  |
+| Dimensional | yes | yes | yes |  | hello |
 | Dotlang | yes | yes |  |  | hello |
 | EXCON | yes | yes |  | yes | hello |
 | Eval | yes | yes |  |  | hello |
 | Forþ | yes |  | yes |  |  |
 | Home Row | yes |  |  | yes |  |
 | Keys |  | yes |  |  |  |
-| LaserFuck | yes |  |  |  |  |
+| LaserFuck | yes |  | yes |  |  |
 | Lightlang |  | yes |  |  |  |
 | MAMMALIAN | yes | yes |  |  | hello |
 | Magnitude | yes |  |  |  |  |
@@ -50,7 +50,7 @@ hand.
 | Suffolk | yes | yes |  | yes | hello |
 | Taglate | yes | yes | yes |  | hello |
 | Temporary | yes | yes |  |  | hello |
-| Unsquare | yes |  |  | yes |  |
+| Unsquare | yes |  | yes | yes |  |
 | WII2D | yes | yes |  |  | hello |
 | ZTOALC | yes | yes |  |  | hello |
 | bit~ | yes |  |  |  |  |

@@ -22,19 +22,23 @@ BOOLEAN = {
     "6-5",
     "ASCII art",
     "Basicfuck",
+    "BF",
     "BFStack",
     "BrainIf",
     "CircleFuck",
     "Clockwise",
+    "Container",
     "Dig",
     "Dimensional",
     "Forþ",
+    "LaserFuck",
     "Modulous",
     "Nevermind",
     "Polynomial",
     "Qoibl",
     "Sophie",
     "Taglate",
+    "Unsquare",
 }
 ASSEMBLY_COMPILERS = {"BFStack", "Home Row", "Jaune", "Suffolk", "Unsquare"}
 C_COMPILERS = {"BF-PDA", "BFStack", "EXCON", "RAM0"}

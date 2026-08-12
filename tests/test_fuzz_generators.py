@@ -92,6 +92,9 @@ def test_boolean_generators_random_tables() -> None:
         (boolean.brainif, "tape_based.brainif", True, ""),
         (boolean.nevermind, "other.nevermind", True, "\n"),
         (boolean.circlefuck, "tape_based.circlefuck", False, ""),
+        (boolean.dimensional, "tape_based.dimensional", False, ""),
+        (boolean.bf, "tape_based.bf", False, ""),
+        (boolean.container, "other.container", True, ""),
     ]
     for n in (1, 2, 3, 4):
         for _ in range(3):
@@ -105,6 +108,7 @@ def test_boolean_generators_random_tables() -> None:
                     with (
                         patch("builtins.input", side_effect=bits),
                         redirect_stdout(buffer),
+                        suppress(SystemExit),
                     ):
                         run(program.splitlines() if split else program, io=IO())
                     assert buffer.getvalue() == str(int(table[combo])) + suffix

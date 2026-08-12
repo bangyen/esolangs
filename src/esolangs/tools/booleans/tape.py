@@ -179,28 +179,222 @@ def six_five(truth_table: str, n: int) -> str:
     nets ``+6 - 5 = +1``), prints with ``A``, and halts with ``0``.
 
     The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
-    as ``8n`` operands), one per internal node, so the generator caps at
-    n == 5 (31 internal nodes).
+    as ``8n`` operands), one per internal node, so the decision tree caps at
+    n == 5 (31 internal nodes).  For larger ``n`` the generator falls back
+    to :func:`six_five_arithmetic`, which packs the inputs and the table
+    into single cells and decodes the table entry arithmetically with a
+    constant number of loop constructs.
     """
-    if 2**n - 1 > 35:
-        raise ValueError("the 6-5 boolean generator supports n <= 5 only")
-    marker = 0
+    if 2**n - 1 <= 35:
+        marker = 0
 
-    def build(rows: list[int], bit: int, base: int) -> str:
-        nonlocal marker
-        if len(rows) == 1:
-            delta = 48 + int(truth_table[rows[0]]) - base
-            q, r = divmod(delta, 6)
-            return "6" * q + "62" * r + "A0"
-        g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
-        g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
-        sub0 = build(g0, bit + 1, 8)
-        label = marker + 1
-        marker += 1
-        sub1 = build(g1, bit + 1, 9)
-        return "B" + "2" * 8 + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
+        def build(rows: list[int], bit: int, base: int) -> str:
+            nonlocal marker
+            if len(rows) == 1:
+                delta = 48 + int(truth_table[rows[0]]) - base
+                q, r = divmod(delta, 6)
+                return "6" * q + "62" * r + "A0"
+            g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
+            g1 = [r for r in rows if ((r >> (n - bit)) & 1) == 1]
+            sub0 = build(g0, bit + 1, 8)
+            label = marker + 1
+            marker += 1
+            sub1 = build(g1, bit + 1, 9)
+            return (
+                "B" + "2" * 8 + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
+            )
 
-    return build(list(range(2**n)), 1, 0)
+        return build(list(range(2**n)), 1, 0)
+    return six_five_arithmetic(truth_table, n)
+
+
+class _SixFiveAsm:
+    """Tiny 6-5 assembler: raw text, named ``4`` markers, named ``8n`` jumps."""
+
+    def __init__(self) -> None:
+        self._ops: list[tuple[str, str]] = []
+
+    def raw(self, text: str) -> "_SixFiveAsm":
+        self._ops.append(("raw", text))
+        return self
+
+    def m(self, name: str) -> "_SixFiveAsm":
+        self._ops.append(("marker", name))
+        return self
+
+    def j(self, name: str) -> "_SixFiveAsm":
+        self._ops.append(("jump", name))
+        return self
+
+    def build(self) -> str:
+        """Resolve ``8n`` labels against the n-th ``4`` in the stream."""
+        ordinals: dict[str, int] = {}
+        stream: list[tuple[str, str] | str] = []
+        count4 = 0
+        for op, value in self._ops:
+            if op == "marker":
+                count4 += 1
+                ordinals[value] = count4
+                stream.append("4")
+            elif op == "jump":
+                stream.append(("J", value))
+            else:
+                stream.append(value)
+        out: list[str] = []
+        for token in stream:
+            if isinstance(token, tuple):
+                out.append("8" + _six_five_label(ordinals[token[1]]))
+            else:
+                out.append(token)
+        return "".join(out)
+
+
+def _six_five_nav(src: int, dst: int) -> str:
+    """Pointer moves from cell ``src`` to ``dst`` (``1`` is +2, ``3`` is -1)."""
+    if dst == src:
+        return ""
+    if dst < src:
+        return "3" * (src - dst)
+    delta = dst - src
+    ups = (delta + 1) // 2
+    return "1" * ups + "3" * (2 * ups - delta)
+
+
+def _six_five_const(value: int) -> str:
+    """Instructions adding ``value`` to the current cell.
+
+    The ``+5/+6/-5/-6`` cell ops add at most 6 per instruction, so the
+    shortest run is mostly ``6`` (one per unit) with a small tail: the old
+    ``62`` pair encoding cost ``2 * value`` characters, this is ~``value / 6``.
+    """
+    q, r = divmod(value, 6)
+    if r == 5:
+        return "6" * q + "5"  # one +5 beats five +1 pairs
+    return "6" * q + "62" * r
+
+
+def six_five_arithmetic(truth_table: str, n: int) -> str:
+    """Build a 6-5 program computing ``truth_table`` arithmetically.
+
+    This is the fallback generator for ``n > 5``, where the decision tree's
+    35 branch labels run out.  The inputs are packed into one cell ``x`` and
+    the truth table into one cell ``T = sum table[i] * 2**i``, then
+    ``f(x) = (T >> x) & 1`` is computed by halving ``T`` ``x`` times and
+    reading the final parity.  The halving needs only equality tests: a
+    parity pass (a copy loop that toggles a flag once per unit) selects an
+    even loop (``while r2 != 0``) or an odd loop (``while r2 != 1``), both
+    doing ``r2 -= 2; T += 1`` so the quotient is written back into ``T``.
+
+    ``x`` is built by a loop (read, double into a scratch cell, add the bit,
+    copy back), not unrolled per bit, so the marker count is constant in
+    ``n`` and the generator is not label-capped.  The table, however, must
+    be a single integer ``T``: 6-5 has no way to index an array by a
+    computed offset (a loop's ``70`` check reads a fixed-position cell, so
+    the pointer can never net-advance through the tape), so ``T`` is the
+    only representation the halving arithmetic can address.  Setting an
+    integer constant costs ``O(value)`` instructions with the ``+5/+6/-5/-6``
+    cell ops, so the setup is about ``value / 6`` characters (via
+    :func:`_six_five_const`): ``T`` ranges up to ``2**(2**n)``, and a dense
+    table (whose bits at high indices are set) would need an unbuildable
+    program.  The generator therefore refuses a setup longer than about
+    2 MB (raised from the old ``T <= 2**20``, since the compact encoding is
+    ~12x shorter) rather than try to materialize an exabyte string.
+
+    Tables whose *complement* is cheap are supported too: if
+    ``T' = (2**(2**n) - 1) - T`` is smaller than ``T``, the complement
+    table is evaluated and the output is inverted, so "mostly-ones" tables
+    (e.g. NAND-n) no longer need rejection.  What remains excluded is the
+    region where both ``T`` and ``T'`` are large (``AND-n`` and friends),
+    which no table-as-integer encoding can represent compactly.  The
+    remaining practical limit is the runtime, which scales as ``O(x * T)``
+    with ``x`` up to ``2**n``.
+    """
+    value = int(truth_table[::-1], 2)  # bit i of value is table[i] (combo i)
+    invert = (2 ** (2**n) - 1 - value) < value
+    if invert:
+        value = 2 ** (2**n) - 1 - value
+    q, r = divmod(value, 6)
+    if q + (1 if r == 5 else 2 * r) > 2**21:  # ~2 MB of setup is impractical
+        raise ValueError(
+            "the 6-5 arithmetic fallback needs the table value T (or its "
+            f"complement) small enough for a ~2 MB setup, got T == "
+            f"{int(truth_table[::-1], 2)} at n == {n}",
+        )
+    setup = _six_five_const(value)
+    a = _SixFiveAsm()
+    a.raw(_six_five_nav(0, 1) + setup)  # T at cell 1
+    a.raw(_six_five_nav(1, 7) + _six_five_const(n))  # N = n (bits left) at cell 7
+
+    # read loop (control cell 7): fold each bit into x = 2x + (b - 8)
+    a.j("R_END").m("R_START")
+    a.raw(_six_five_nav(7, 6) + "B" + "2" * 8)  # read at cell 6 -> 8/9
+    a.raw(_six_five_nav(6, 0))
+    a.j("D_END").m("D_START")  # double x into x2 (cell 8)
+    a.raw("95" + _six_five_nav(0, 8) + "6262" + _six_five_nav(8, 0))
+    a.m("D_END").raw("70").j("D_START")
+    a.raw(_six_five_nav(0, 6))
+    a.raw("79").j("SKIP_ADD")  # b == 9: add 1 to x2
+    a.raw(_six_five_nav(6, 8) + "62").j("ADD_DONE")
+    a.m("SKIP_ADD").raw(_six_five_nav(6, 8)).m("ADD_DONE")
+    a.j("B_END").m("B_START")  # copy x2 back into x
+    a.raw("95" + _six_five_nav(8, 0) + "62" + _six_five_nav(0, 8))
+    a.m("B_END").raw("70").j("B_START")
+    a.raw(_six_five_nav(8, 7) + "95")  # N -= 1
+    a.m("R_END").raw("70").j("R_START")
+    a.raw(_six_five_nav(7, 0))
+
+    def reset(name: str) -> None:
+        # r2 and p hold only 0/1 here, so "71 8name 95 4" zeroes them
+        a.raw("71").j(name).raw("95").m(name)
+
+    # outer loop: while x != 0: halve T; x -= 1
+    a.j("O_END").m("O_START")
+    a.raw(_six_five_nav(0, 1))
+    a.raw(_six_five_nav(1, 4))
+    reset("RS_R2")
+    a.raw(_six_five_nav(4, 5))
+    reset("RS_P")
+    a.raw(_six_five_nav(5, 1))
+    # parity pass: copy T -> r2 while toggling p
+    a.j("C_END").m("C_START")
+    a.raw("95" + _six_five_nav(1, 4) + "62" + _six_five_nav(4, 5))
+    a.raw("70").j("P_TO1")
+    a.raw("62").j("P_DONE").m("P_TO1").raw("95").m("P_DONE")
+    a.raw(_six_five_nav(5, 1))
+    a.m("C_END").raw("70").j("C_START")
+    # branch on the parity: even halves to 0, odd to 1
+    a.raw(_six_five_nav(1, 5)).raw("70").j("ODD")
+    a.raw(_six_five_nav(5, 4)).j("E_END").m("E_START")
+    a.raw("9595" + _six_five_nav(4, 1) + "62" + _six_five_nav(1, 4))
+    a.m("E_END").raw("70").j("E_START")
+    a.j("E_DONE")
+    a.m("ODD").raw(_six_five_nav(5, 4)).j("O_END2").m("O_START2")
+    a.raw("9595" + _six_five_nav(4, 1) + "62" + _six_five_nav(1, 4))
+    a.m("O_END2").raw("71").j("O_START2")
+    a.m("E_DONE").raw(_six_five_nav(4, 0))
+    a.raw("95")  # x -= 1
+    a.m("O_END").raw("70").j("O_START")
+
+    # final parity pass and output 48 + p
+    a.raw(_six_five_nav(0, 1))
+    a.raw(_six_five_nav(1, 5))
+    reset("RS_P2")
+    a.raw(_six_five_nav(5, 1))
+    a.j("F_END").m("F_START")
+    a.raw("95" + _six_five_nav(1, 5))
+    a.raw("70").j("P2_TO1")
+    a.raw("62").j("P2_DONE").m("P2_TO1").raw("95").m("P2_DONE")
+    a.raw(_six_five_nav(5, 1))
+    a.m("F_END").raw("70").j("F_START")
+    if invert:
+        # complement table: output 49 - p, so p == 0 prints '1' and p == 1 prints '0'
+        a.raw(_six_five_nav(1, 5))
+        a.raw("70").j("OUT_48")
+        a.raw(_six_five_nav(5, 2) + "62" * 49 + "A0")
+        a.m("OUT_48").raw(_six_five_nav(5, 2) + "62" * 48 + "A0")
+    else:
+        a.raw(_six_five_nav(1, 5) + "62" * 48 + "A0")
+    return a.build()
 
 
 def _bf_minterm(truth_table: str, n: int) -> str:
@@ -353,14 +547,152 @@ def ascii_art(truth_table: str, n: int) -> str:
     return bf_to_ascii_art(_bf_minterm(truth_table, n))
 
 
+def bf(truth_table: str, n: int) -> str:
+    """Build a brainfuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Two generators exist with complementary strengths, and ``bf`` returns
+    the shorter of the two for the given table:
+
+    - ``_bf_minterm``: a branch-free sum of minterms (each input read and
+      normalized to 0/1, the result ``48 + sum_k tt[k] * M_k``).  Best for
+      sparse tables (few one-rows) — an all-zeros table is ~450 chars even
+      at n == 8.
+    - :func:`bf_tree`: a decision tree sharing the bit tests.  Best for
+      dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+    return min((_bf_minterm(truth_table, n), bf_tree(truth_table, n)), key=len)
+
+
+def bf_tree(truth_table: str, n: int) -> str:
+    """Build a decision-tree brainfuck program for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Each input is read and normalized to 0/1 into cell ``2i``, its
+    complement ``1 - b`` into cell ``2i + 1`` (via two temp cells), and a
+    node tests ``[b]`` for the one-side and ``[1 - b]`` for the zero-side:
+    the complement guards naturally exclude the sibling, so only the
+    matching leaf fires.  Each branch clears its guard cell before its
+    ``]``, so the loop exits after one pass, and a fired leaf clears the
+    result cell, so every ``]`` on the way out sees zero.  The tree is
+    O(2**n) characters (sharing the bit tests), versus the branch-free
+    minterm evaluator's O(n * 2**n); for XOR-n it measures 1.4K..20K
+    characters at n = 2..8 against the minterm's 1.4K..33M.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    cells: list[str] = []
+    pos = 0
+
+    def move(target: int) -> None:
+        nonlocal pos
+        while pos < target:
+            cells.append(">")
+            pos += 1
+        while pos > target:
+            cells.append("<")
+            pos -= 1
+
+    # read bits b_i at cell 2i, leaving the complements (cells 1, 3, ...) zero
+    for i in range(n):
+        cells.append(",")
+        cells.extend("-" * 48)
+        if i < n - 1:
+            cells.append(">")
+            cells.append(">")
+            pos += 2
+
+    # complements nb_i = 1 - b_i at cell 2i+1 (t1, t2 at 2n, 2n+1)
+    for i in range(n):
+        move(2 * n)
+        cells.append("[-]")
+        move(2 * n + 1)
+        cells.append("[-]")
+        move(2 * i)
+        cells.append("[")
+        move(2 * n)
+        cells.append("+")
+        move(2 * n + 1)
+        cells.append("+")
+        move(2 * i)
+        cells.append("-")
+        cells.append("]")  # b -> t1, t2
+        move(2 * i + 1)
+        cells.append("+")  # nb = 1
+        move(2 * n + 1)
+        cells.append("[")
+        move(2 * i + 1)
+        cells.append("-")
+        move(2 * n + 1)
+        cells.append("-")
+        cells.append("]")  # nb -= t2
+        move(2 * n)
+        cells.append("[")
+        move(2 * i)
+        cells.append("+")
+        move(2 * n)
+        cells.append("-")
+        cells.append("]")  # restore b from t1
+
+    # decision tree: node i entered at cell 2i, exits at cell 2i+1
+    result = 2 * n + 2
+
+    def leaf(value: str) -> None:
+        cells.extend("+" * (48 + int(value)))
+        cells.append(".")
+        cells.append("[-]")  # clear the result so every ] on the way out sees zero
+
+    def node(i: int, combo: int) -> None:
+        bit = 2 * i
+        nxt = result if i == n - 1 else bit + 2
+        move(bit)
+        cells.append("[")  # one-side: if b_i
+        move(nxt)
+        if i == n - 1:
+            leaf(truth_table[combo | (1 << (n - 1 - i))])
+        else:
+            node(i + 1, combo | (1 << (n - 1 - i)))
+        move(bit)
+        cells.append("[-]")  # clear b_i so this ] exits
+        cells.append("]")
+        move(bit + 1)
+        cells.append("[")  # zero-side: if 1 - b_i
+        move(nxt)
+        if i == n - 1:
+            leaf(truth_table[combo])
+        else:
+            node(i + 1, combo)
+        move(bit + 1)
+        cells.append("[-]")  # clear the complement so this ] exits
+        cells.append("]")
+
+    node(0, 0)
+    return "".join(cells)
+
+
 class _Dimensional:
     """Emits Dimensional code on dimension 0 with a fixed cell layout.
 
     A bare ``>``/``<`` takes its dimension from the current cell's value
     (usually nonzero mid-program), so every move is pinned with an explicit
-    ``>0``/``<0``.  The reference addresses cells as ``2**ptr`` in a signed
-    32-bit ``int``, which overflows past cell 30, so the layout must stay
-    below that and the generator caps ``n`` accordingly.
+    ``>0``/``<0``.
 
     Cells: 0 = result, 1..n = inputs (0/1), n+1..2n = NOT of each input,
     2n+1 = survivor, then four shared scratch cells (a, b, c, d).
@@ -427,18 +759,18 @@ def dimensional(truth_table: str, n: int) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.
 
-    Dimensional is brainfuck on a multidimensional tape, but its reference
-    addresses cells as ``2**ptr`` in a signed 32-bit ``int`` (overflow past
-    cell 30) and has no halt command, so the generator cannot port the
-    minterm evaluator's fresh-cell allocation or CircleFuck's halt-at-leaf
-    tree.  Instead each input is read and normalized to 0/1, the NOT of each
-    bit is precomputed, and every row whose table entry is one is tested by
-    a survivor cell (``S``): for each bit a copy of the bit (or its NOT) is
-    ANDed into ``S``, and the survivor survives only the row that matches
-    every bit.  The survivors of all one-rows sum into the result cell,
-    which is printed as ``48 + sum`` (or ``49 - sum`` when the table's
-    zeros are cheaper, like the minterm evaluator).  The fixed layout keeps
-    every cell below index 30, so ``n`` caps at 12.
+    Dimensional is brainfuck on a multidimensional tape and has no halt
+    command, so a decision tree cannot rely on halting at the leaf.  Two
+    generators exist with complementary strengths, and ``dimensional``
+    returns the shorter of the two for the given table:
+
+    - the survivor evaluator: each input is read and normalized to 0/1, the
+      NOT of each bit is precomputed, and every row whose table entry is one
+      is tested by a survivor cell (``S``), summed into the result cell, and
+      printed as ``48 + sum`` (or ``49 - sum`` when the table's zeros are
+      cheaper).  Best for sparse tables — an AND-8 is ~4.4K characters.
+    - :func:`dimensional_tree`: a decision tree sharing the bit tests.
+      Best for dense tables — XOR-8 is ~8x smaller than the survivor.
     """
     if len(truth_table) != 2**n:
         raise ValueError(
@@ -447,9 +779,14 @@ def dimensional(truth_table: str, n: int) -> str:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
-    if n > 12:
-        raise ValueError("the Dimensional boolean generator supports n <= 12 only")
+    return min(
+        (_dimensional_survivor(truth_table, n), dimensional_tree(truth_table, n)),
+        key=len,
+    )
 
+
+def _dimensional_survivor(truth_table: str, n: int) -> str:
+    """Build the survivor-cell evaluator for the given truth table."""
     use_complement = truth_table.count("1") > 2**n // 2
     table = (
         truth_table
@@ -514,6 +851,113 @@ def dimensional(truth_table: str, n: int) -> str:
     return "".join(cell.code)
 
 
+def dimensional_tree(truth_table: str, n: int) -> str:
+    """Build a decision-tree Dimensional program for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The same construction as :func:`bf_tree`, ported to Dimensional's tape:
+    bit ``i`` lives at cell ``2i``, its complement at ``2i + 1``, a node
+    tests ``[bit]`` for the one-side and ``[1 - bit]`` for the zero-side
+    (complements naturally exclude the sibling), each branch clears its
+    guard cell before its ``]``, and a fired leaf clears the result cell so
+    every ``]`` on the way out sees zero.  Every move is pinned ``>0``/``<0``
+    (a bare move would take the cell value as the dimension).  The tree is
+    O(2**n) characters and wins on dense tables; the survivor evaluator
+    (``_dimensional_survivor``) wins on sparse ones.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    cells: list[str] = []
+    pos = 0
+
+    def move(target: int) -> None:
+        nonlocal pos
+        delta = target - pos
+        cells.append(">0" * delta if delta >= 0 else "<0" * -delta)
+        pos = target
+
+    for i in range(n):
+        cells.append(",")
+        cells.extend("-" * 48)
+        if i < n - 1:
+            move(pos + 2)
+
+    # complements nb_i = 1 - b_i at cell 2i+1 (t1, t2 at 2n, 2n+1)
+    for i in range(n):
+        move(2 * n)
+        cells.append("[-]")
+        move(2 * n + 1)
+        cells.append("[-]")
+        move(2 * i)
+        cells.append("[")
+        move(2 * n)
+        cells.append("+")
+        move(2 * n + 1)
+        cells.append("+")
+        move(2 * i)
+        cells.append("-")
+        cells.append("]")  # b -> t1, t2
+        move(2 * i + 1)
+        cells.append("+")  # nb = 1
+        move(2 * n + 1)
+        cells.append("[")
+        move(2 * i + 1)
+        cells.append("-")
+        move(2 * n + 1)
+        cells.append("-")
+        cells.append("]")  # nb -= t2
+        move(2 * n)
+        cells.append("[")
+        move(2 * i)
+        cells.append("+")
+        move(2 * n)
+        cells.append("-")
+        cells.append("]")  # restore b from t1
+
+    # decision tree: node i entered at cell 2i, exits at cell 2i+1
+    result = 2 * n + 2
+
+    def leaf(value: str) -> None:
+        cells.extend("+" * (48 + int(value)))
+        cells.append(".")
+        cells.append("[-]")  # clear the result so every ] on the way out sees zero
+
+    def node(i: int, combo: int) -> None:
+        bit = 2 * i
+        nxt = result if i == n - 1 else bit + 2
+        move(bit)
+        cells.append("[")  # one-side: if b_i
+        move(nxt)
+        if i == n - 1:
+            leaf(truth_table[combo | (1 << (n - 1 - i))])
+        else:
+            node(i + 1, combo | (1 << (n - 1 - i)))
+        move(bit)
+        cells.append("[-]")  # clear b_i so this ] exits
+        cells.append("]")
+        move(bit + 1)
+        cells.append("[")  # zero-side: if 1 - b_i
+        move(nxt)
+        if i == n - 1:
+            leaf(truth_table[combo])
+        else:
+            node(i + 1, combo)
+        move(bit + 1)
+        cells.append("[-]")  # clear the complement so this ] exits
+        cells.append("]")
+
+    node(0, 0)
+    return "".join(cells)
+
+
 def basicfuck(truth_table: str, n: int) -> str:
     """Build a Basicfuck program computing the given truth table.
 
@@ -523,10 +967,10 @@ def basicfuck(truth_table: str, n: int) -> str:
     Basicfuck's named variables behave like BF cells with an explicit
     arithmetic, so the program is a decision tree: each input is read with
     ``read -> a_i ;`` and normalized to 0/1 with ``a_i -= 48 ;``, then every
-    internal node emits ``if (a_k) { ... }`` next to ``if ! (a_k) { ... }``
-    (the reference spells negation ``if !``, not ``if (!``).  A failed
-    ``if`` falls through to its neighbour, so exactly one subtree runs per
-    input combination.  Each leaf adds ``48 + entry`` to the ``out``
+    internal node emits ``if (a_k) { ... }`` next to ``if !(a_k) { ... }``
+    (the wiki spells negation ``!(<X>)``, with the bang before the parens).  A
+    failed ``if`` falls through to its neighbour, so exactly one subtree runs
+    per input combination.  Each leaf adds ``48 + entry`` to the ``out``
     variable (which starts at 0 and is touched by exactly one leaf) and
     prints it with ``write <- out ;``.
     """
@@ -555,7 +999,7 @@ def basicfuck(truth_table: str, n: int) -> str:
             f"if ({var}) {{\n"
             + build(g1, k + 1)
             + "}\n"
-            + f"if ! ({var}) {{\n"
+            + f"if !({var}) {{\n"
             + build(g0, k + 1)
             + "}\n"
         )
