@@ -10,7 +10,10 @@
 // top two.
 //
 // Error handling: popping an empty stack, a stack too small for `c`, or an
-// unterminated bracket exits with EXIT_FAILURE (an invalid operation).
+// unterminated bracket exits with status 3 (an invalid runtime operation, the
+// Python HaltError analog; the cross-check convention is 0 = success, 2 =
+// malformed program, 3 = invalid operation, 1 = unclassified).  A missing or
+// unreadable program file exits with status 1 (unclassified).
 //
 // Invocation: `forþ <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `,` reads from stdin.
@@ -28,7 +31,7 @@ int run(std::string &s, std::vector<int> &stack,
     if (stack.size())
       return stack.back();
 
-    exit(EXIT_FAILURE);
+    exit(3);
   };
 
   auto push = [&stack](int n) { stack.push_back(n); };
@@ -78,7 +81,7 @@ int run(std::string &s, std::vector<int> &stack,
       }
     } else if (c == 'c') {
       if (stack.size() < 3)
-        return EXIT_FAILURE;
+        return 3;
 
       push(stack[stack.size() - 3]);
       stack.erase(stack.end() - 4);
@@ -90,7 +93,7 @@ int run(std::string &s, std::vector<int> &stack,
         c = s[++k];
 
         if (c == 0)
-          return EXIT_FAILURE;
+          return 3;
         else if (c == add)
           match++;
         else if (c == sub)
@@ -109,7 +112,7 @@ int run(std::string &s, std::vector<int> &stack,
         table[top()] = scope;
     } else {
       if (stack.size() < 2)
-        return EXIT_FAILURE;
+        return 3;
 
       int two = pop();
       int one = pop();
@@ -126,13 +129,13 @@ int run(std::string &s, std::vector<int> &stack,
         break;
       case '/':
         if (two == 0)
-          return EXIT_FAILURE;
+          return 3;
 
         push(one / two);
         break;
       case '%':
         if (two == 0)
-          return EXIT_FAILURE;
+          return 3;
 
         push(one % two);
         break;
