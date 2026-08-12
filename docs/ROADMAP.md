@@ -86,6 +86,18 @@ input) are resolved pragmatically and documented in the interpreter.
   It must handle the addressing itself (a `long long` key covers `n <= 28`; a
   small bignum for unbounded) — the very overflow that motivates the change.
 
+### Differential fuzzing for the interpreter/native pairs
+The differential corpus (`scripts/verify_differential.py`) covers EXCON,
+LaserFuck, and NoComment with a hand-written set of programs per language.
+The corpora exercise every instruction plus known edge cases, but they are
+fixed — they only catch divergences that were thought of.  A seeded
+random-program fuzzer that feeds both the in-package interpreter and the
+native cross-check the same generated programs (restricted to terminating
+inputs) would catch the unexpected divergences, like the NoComment
+back-jump loop and the EXCON pointer-fault case the fixed corpora surfaced
+only by chance.  Where the native side is nondeterministic (LaserFuck's
+random heading), compare against its output set as the corpus already does.
+
 ### Polynomial float64 root precision
 The Polynomial generators emit exact integer polynomials, but the
 interpreter finds roots with `numpy.roots`, whose float64 companion-matrix
