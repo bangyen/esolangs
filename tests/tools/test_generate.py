@@ -29,6 +29,7 @@ from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
+from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.tools.generators import other
 
@@ -49,6 +50,12 @@ class TestGeneratorRoundTrips:
 
     def test_excon(self) -> None:
         assert roundtrip(excon_run, gen.excon("Hi")) == "Hi"
+
+    def test_sbleq(self) -> None:
+        """Each character is embedded as data and output via -3."""
+        assert roundtrip(sbleq_run, gen.sbleq("Hi")) == "Hi"
+        assert roundtrip(sbleq_run, gen.sbleq("a\nb")) == "a\nb"
+        assert roundtrip(sbleq_run, gen.sbleq("\x00\x7f\xff")) == "\x00\x7f\xff"
 
     def test_modulous(self) -> None:
         assert roundtrip(modulous_run, gen.modulous("Hi")) == "Hi"
