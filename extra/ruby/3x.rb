@@ -9,9 +9,9 @@
 # 1/2), so no truncation happens anywhere.
 #
 # Invocation: `ruby 3x.rb <program-file>`; program text from `ARGV[0]`.
-# Input: `?` reads from stdin.  There is no explicit error handling: a
-# program that uses a value from an empty stack or an undefined variable
-# hits Ruby's nil-arithmetic/KeyError and exits non-zero.
+# Input: `?` reads from stdin.  A command that pops an empty stack raises
+# `empty stack` and exits non-zero (the wiki leaves empty-stack behavior
+# undefined; this implementation treats it as an error).
 
 code = File.read(ARGV[0])
 ARGV.clear
@@ -21,6 +21,12 @@ stk = []
 var = {}
 ind = 0
 var.default = Rational(3)
+
+def pop(stk)
+  raise 'empty stack' if stk.empty?
+
+  stk.pop
+end
 
 def find(str, sym)
   num = 1
@@ -40,9 +46,9 @@ while (c = code[ind])
   when '3'
     stk.push(Rational(3))
   when 'x'
-    x = stk.pop
-    y = stk.pop
-    z = stk.pop
+    x = pop(stk)
+    y = pop(stk)
+    z = pop(stk)
     n = (x - y) / z
     stk.push(n)
   when '?'
@@ -50,17 +56,17 @@ while (c = code[ind])
     stk.push(Rational(gets.strip))
     line = ''
   when '!'
-    n = stk.pop
+    n = pop(stk)
     print n.denominator == 1 ? n.to_i : n
     line = 10.chr
   when 'v'
-    n = stk.pop
-    var[stk.pop] = n
+    n = pop(stk)
+    var[pop(stk)] = n
   when '^'
-    stk.push(var[stk.pop])
+    stk.push(var[pop(stk)])
   when '#'
-    x = stk.pop
-    y = stk.pop
+    x = pop(stk)
+    y = pop(stk)
     stk.push(x).push(y)
   when '('
     if stk[-1].nonzero?
