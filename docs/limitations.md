@@ -102,9 +102,10 @@ stream.  The parameterized template's bit setter has variable length (e.g.
 RAM0's `Z` for a zero bit vs `Z A` for a one bit; BitDeque's `INVERT` vs
 nothing), so substitution changes the token count and every jump target
 shifts — a fixed template cannot be correct for all instantiations.  Only
-Back avoids token-index jumps (its `+`-advance condition is positional), but
-its decision tree must be laid out on a 2D beam grid, a separate kind of
-complexity that has not been attempted.
+Back avoids token-index jumps (its `+`-advance condition is positional), and
+its decision tree was built as a mirror tree on the 2D beam grid
+(`booleans/parameterized.py`), so the template class is now complete: BIO
+and Back built, these three and Eval blocked.
 
 ## Eval (not viable for nested parameterized trees)
 Eval was surveyed as capable for input-by-substitution boolean generators
