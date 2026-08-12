@@ -14,16 +14,16 @@
 
 code = File.read(ARGV[0])
 tape = [cell = i = 0] * 8
-line = ''
+line = ""
 ARGV.clear
 
 def find(str, sym, dir)
   num = dir
   while num.nonzero?
     case str[sym += dir]
-    when '{'
+    when "{"
       num += 1
-    when '}'
+    when "}"
       num -= 1
     end
   end
@@ -32,31 +32,31 @@ end
 
 while (c = code[i])
   case c
-  when '~'
+  when "~"
     tape[cell] ^= 1
-  when '>'
+  when ">"
     cond = cell + 8 > tape.size
     tape.push(0) if cond
     cell += 1
-  when '<'
+  when "<"
     cell -= 1 if cell.nonzero?
-  when ')'
+  when ")"
     print "#{line}Input: "
     inp = gets
-    raise SystemExit.new(3, 'input exhausted') if inp.nil?
+    raise SystemExit.new(3, "input exhausted") if inp.nil?
 
-    val = '0' * 8 + inp[0].ord.to_s(2)
+    val = "0" * 8 + inp[0].ord.to_s(2)
     tape[cell..cell + 7] =
       val[-8..].chars.map(&:to_i)
-    line = ''
-  when '('
+    line = ""
+  when "("
     val = tape[cell..cell + 7]
     print val.join.to_i(2).chr
     line = 10.chr
-  when '{'
+  when "{"
     i = find(code, i, 1) \
     if tape[cell].zero?
-  when '}'
+  when "}"
     i = find(code, i, -1) \
     unless tape[cell].zero?
   end

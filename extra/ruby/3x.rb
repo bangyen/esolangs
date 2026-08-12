@@ -16,7 +16,7 @@
 
 code = File.read(ARGV[0])
 ARGV.clear
-line = ''
+line = ""
 ptr = []
 stk = []
 var = {}
@@ -24,7 +24,7 @@ ind = 0
 var.default = Rational(3)
 
 def pop(stk)
-  raise SystemExit.new(3, 'empty stack') if stk.empty?
+  raise SystemExit.new(3, "empty stack") if stk.empty?
 
   stk.pop
 end
@@ -33,9 +33,9 @@ def find(str, sym)
   num = 1
   while num.nonzero?
     case str[sym += 1]
-    when '('
+    when "("
       num += 1
-    when ')'
+    when ")"
       num -= 1
     end
   end
@@ -44,44 +44,44 @@ end
 
 while (c = code[ind])
   case c
-  when '3'
+  when "3"
     stk.push(Rational(3))
-  when 'x'
+  when "x"
     x = pop(stk)
     y = pop(stk)
     z = pop(stk)
     n = (x - y) / z
     stk.push(n)
-  when '?'
+  when "?"
     print "#{line}Input: "
     stk.push(Rational(gets.strip))
-    line = ''
-  when '!'
+    line = ""
+  when "!"
     n = pop(stk)
-    print n.denominator == 1 ? n.to_i : n
+    print (n.denominator == 1) ? n.to_i : n
     line = 10.chr
-  when 'v'
+  when "v"
     n = pop(stk)
     var[pop(stk)] = n
-  when '^'
+  when "^"
     stk.push(var[pop(stk)])
-  when '#'
+  when "#"
     x = pop(stk)
     y = pop(stk)
     stk.push(x).push(y)
-  when '('
+  when "("
     if stk[-1].nonzero?
       ptr.push(ind)
     else
       ind = find(code, ind)
     end
-  when ')'
+  when ")"
     if stk[-1].nonzero?
       ind = ptr[-1]
     else
       ptr.pop
     end
-  when '['
+  when "["
     s = code[ind..]
     print s[/\[([^\]]*)\]/, 1]
     line = 10.chr
