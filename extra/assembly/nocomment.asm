@@ -10,8 +10,11 @@
 ; the current cell as a byte.
 ;
 ; Per the wiki, errors are an unrecognized command, stack underflow, or a
-; jump outside the code; each exits non-zero.  The in-package Python
-; interpreter implements the same full language.
+; jump outside the code.  Exit codes follow the repo convention for the
+; cross-checks: 0 = success, 2 = malformed program (unrecognized command,
+; the Python ValueError analog), 3 = invalid runtime operation (stack
+; underflow or a jump out of range, the Python HaltError analog).  The
+; in-package Python interpreter implements the same full language.
 ;
 ; Invocation: `nocomment < stdin`; the program is read from stdin.
 ; Input: the program is read from stdin (the wiki has no input command);
@@ -63,17 +66,24 @@ _start:
 	je .output
 
 	cmp byte [edi], 0
-	jne .error
+	jne .error_malformed
 .final:
 	mov eax, 1
 	xor ebx, ebx
 	int 80h
 
-.error:
-	; unrecognized command, stack underflow, or a jump out of range: exit
-	; non-zero (the wiki requires errors to terminate with a failure status)
+.error_malformed:
+	; unrecognized command: a malformed program, exit 2 (the Python
+	; interpreter's ValueError analog)
 	mov eax, 1
-	mov ebx, 1
+	mov ebx, 2
+	int 80h
+
+.error_runtime:
+	; stack underflow or a jump out of range: an invalid operation, exit 3
+	; (the Python interpreter's HaltError analog)
+	mov eax, 1
+	mov ebx, 3
 	int 80h
 
 .up:
@@ -99,7 +109,7 @@ _start:
 	jmp .parse
 .off:
 	cmp edx, esi
-	je .error
+	je .error_runtime
 	mov al, [edx]
 	add edx, 2
 	mov [ecx], al
@@ -112,9 +122,9 @@ _start:
 	; the target (edi, before .parse's dec) must lie in [esi, esp-4]
 	lea eax, [esp - 4]
 	cmp edi, eax
-	jg .error
+	jg .error_runtime
 	cmp edi, esi
-	jl .error
+	jl .error_runtime
 	jmp .parse
 .back:
 	cmp byte [ecx], 0
@@ -123,9 +133,9 @@ _start:
 	add edi, eax
 	lea eax, [esp - 4]
 	cmp edi, eax
-	jg .error
+	jg .error_runtime
 	cmp edi, esi
-	jl .error
+	jl .error_runtime
 	jmp .parse
 .output:
 	push edx

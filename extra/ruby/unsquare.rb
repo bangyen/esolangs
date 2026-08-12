@@ -11,11 +11,12 @@
 # matching `<` when the accumulator is 0 or 1, and `<` jumps back to the
 # matching `>` when it is not 0 nor 1.
 #
-# Error handling: popping an empty stack or an unmatched `<` raises (and
-# exits non-zero), matching the Rust cross-check's panics; `i` re-prompts on
-# blank input and raises `input exhausted` at EOF.  `o` always treats the
-# top as a character, unlike the Rust cross-check which falls back to a
-# decimal value when it is not a valid character.
+# Error handling: popping an empty stack or an unmatched `<` exits with
+# status 3 (invalid operation, matching the Rust cross-check's panics and
+# the 0 = success / 2 = malformed / 3 = invalid-op convention); `i`
+# re-prompts on blank input and exits 3 at EOF.  `o` always treats the top
+# as a character, unlike the Rust cross-check which falls back to a decimal
+# value when it is not a valid character.
 #
 # Invocation: `ruby unsquare.rb <program-file>`; program text from `ARGV[0]`.
 # Input: the program file is `ARGV[0]`; `i` reads from stdin.
@@ -29,7 +30,7 @@ ptr = []
 stk = []
 
 def pop(stk)
-  raise 'empty stack' if stk.empty?
+  raise SystemExit.new(3, 'empty stack') if stk.empty?
 
   stk.pop
 end
@@ -68,19 +69,19 @@ while (c = code[ind])
   when 'P'
     stk.push(acc)
   when 'o'
-    raise 'empty stack' if stk.empty?
+    raise SystemExit.new(3, 'empty stack') if stk.empty?
 
     print stk[-1].chr
     line = 10.chr
   when 'i'
     print "#{line}Input: "
     val = gets
-    raise 'input exhausted' if val.nil?
+    raise SystemExit.new(3, 'input exhausted') if val.nil?
 
     while val.strip.empty?
       print "#{line}Input: "
       val = gets
-      raise 'input exhausted' if val.nil?
+    raise SystemExit.new(3, 'input exhausted') if val.nil?
     end
 
     stk.push(val[0].ord)
@@ -93,7 +94,7 @@ while (c = code[ind])
     end
   when '<'
     if acc.nonzero? && (acc != 1)
-      raise 'unmatched <' if ptr.empty?
+      raise SystemExit.new(3, 'unmatched <') if ptr.empty?
 
       ind = ptr[-1]
     else

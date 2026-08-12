@@ -145,15 +145,22 @@ NOCOMMENT_CORPUS = [
     "ciii" + "n" + "s" + "iii" + "o",  # s skips 3
     "c" + "i" * 3 + "n" + "r" + "i" + "o",  # cell 1 = 1
     "c" + "i" + "n" + "s" + "n" + "f" + "o",  # s then push/pop
-    "xyz",  # non-command: error in both
-    "f",  # stack underflow: error in both
-    "c" + "i" * 10 + "n" + "s" + "o",  # s out of range: error in both
-    "c" + "i" * 10 + "n" + "b" + "o",  # b out of range: error in both
+    # error categories: a non-command is malformed (exit 2); stack underflow
+    # and out-of-range jumps are invalid operations (exit 3) in both
+    "xyz",  # non-command: malformed, exit 2
+    "f",  # stack underflow: invalid op, exit 3
+    "c" + "i" * 10 + "n" + "s" + "o",  # s out of range: invalid op, exit 3
+    "c" + "i" * 10 + "n" + "b" + "o",  # b out of range: invalid op, exit 3
     "c" + "n" + "b" + "o",  # b with cell 0 does not jump
 ]
 
 
 def _run_nocomment_python(program: str) -> tuple[bytes, int]:
+    """Run the Python NoComment interpreter; return (output, exit code).
+
+    Exit codes follow the cross-check convention: 0 = success, 2 = malformed
+    program (ValueError), 3 = invalid operation (HaltError).
+    """
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.nocomment import run
@@ -167,9 +174,9 @@ def _run_nocomment_python(program: str) -> tuple[bytes, int]:
     try:
         run(program, _IO())
     except HaltError:
-        return buffer.getvalue(), 1
+        return buffer.getvalue(), 3
     except ValueError:
-        return buffer.getvalue(), 1
+        return buffer.getvalue(), 2
     return buffer.getvalue(), 0
 
 
@@ -308,7 +315,7 @@ def _verify_excon() -> bool:
     py_fault = _run_excon_fault()
     r = _run_native_code(r_ref, EXCON_FAULT)
     assert r is not None, "EXCON reference did not terminate on the fault program"
-    r_fault = (r[0].decode(errors="replace"), r[1] != 0)
+    r_fault = (r[0].decode(errors="replace"), r[1])
     if py_fault != r_fault:
         failures += 1
         print(f"EXCON fault: python {py_fault!r} vs R {r_fault!r}")
@@ -319,7 +326,11 @@ def _verify_excon() -> bool:
 
 
 def _run_excon_fault() -> tuple[str, int]:
-    """Run the pointer-fault program; return (output, exit_code)."""
+    """Run the pointer-fault program; return (output, exit_code).
+
+    The off-pool fault is an invalid operation, exit code 3 (the cross-check
+    convention for HaltError).
+    """
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.excon import run
@@ -333,7 +344,7 @@ def _run_excon_fault() -> tuple[str, int]:
     try:
         run(EXCON_FAULT, _IO())
     except HaltError:
-        return buffer.getvalue(), 1
+        return buffer.getvalue(), 3
     return buffer.getvalue(), 0
 
 
