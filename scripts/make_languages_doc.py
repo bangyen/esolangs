@@ -42,8 +42,38 @@ BOOLEAN = {
     "Taglate",
     "Unsquare",
 }
-ASSEMBLY_COMPILERS = {"BFStack", "Home Row", "Jaune", "Suffolk", "Unsquare"}
-C_COMPILERS = {"BF-PDA", "BFStack", "EXCON", "RAM0"}
+# Compiler source-file stem -> the language's display name.  A compiler file
+# without an entry here fails loudly rather than silently dropping out of
+# the docs.
+_COMPILER_NAMES = {
+    "bfstack": "BFStack",
+    "home-row": "Home Row",
+    "jaune": "Jaune",
+    "suffolk": "Suffolk",
+    "unsquare": "Unsquare",
+    "bf-pda": "BF-PDA",
+    "excon": "EXCON",
+    "RAM0": "RAM0",
+}
+
+_COMPILER_DIRS = {
+    "assembly": (ROOT / "src" / "esolangs" / "compilers" / "assembly", "*.py"),
+    "c": (ROOT / "src" / "esolangs" / "compilers" / "c", "*.c"),
+}
+
+
+def _compiler_set(kind: str) -> set[str]:
+    """Return the display names of the compilers in the given directory."""
+    directory, pattern = _COMPILER_DIRS[kind]
+    return {
+        _COMPILER_NAMES[path.stem]
+        for path in directory.glob(pattern)
+        if path.stem != "__init__"
+    }
+
+
+ASSEMBLY_COMPILERS = _compiler_set("assembly")
+C_COMPILERS = _compiler_set("c")
 
 # The README's Implemented Languages section, grouped by interpreter
 # category in this order, with its one-line descriptions.
@@ -84,6 +114,8 @@ _WIKI_PAGES = {
 
 _README_START = "<!-- IMPLEMENTED:START -->"
 _README_END = "<!-- IMPLEMENTED:END -->"
+_COMPILERS_START = "<!-- COMPILERS:START -->"
+_COMPILERS_END = "<!-- COMPILERS:END -->"
 
 
 def _wiki_name(name: str) -> str:
@@ -162,14 +194,31 @@ def render_languages_section() -> str:
     return "\n".join(out).rstrip()
 
 
+def render_compilers_section() -> str:
+    """Render the README's Compilers section between the markers."""
+    out: list[str] = []
+    for kind, heading in (("assembly", "x86 Assembly Compilers"), ("c", "C Compilers")):
+        out.append(f"### {heading}")
+        out.append("")
+        for name in sorted(_compiler_set(kind)):
+            out.append(
+                f"- [{name}](https://esolangs.org/wiki/{name.replace(' ', '_')})"
+            )
+        out.append("")
+    return "\n".join(out).rstrip()
+
+
 def update_readme() -> None:
-    """Rewrite the Implemented Languages section of README.md."""
+    """Rewrite the generated sections of README.md between their markers."""
     path = ROOT / "README.md"
     text = path.read_text()
-    block = _README_START + "\n\n" + render_languages_section() + "\n\n" + _README_END
-    start = text.index(_README_START)
-    end = text.index(_README_END) + len(_README_END)
-    path.write_text(text[:start] + block + text[end:])
+    for start, end, render in (
+        (_README_START, _README_END, render_languages_section),
+        (_COMPILERS_START, _COMPILERS_END, render_compilers_section),
+    ):
+        block = start + "\n\n" + render() + "\n\n" + end
+        text = text[: text.index(start)] + block + text[text.index(end) + len(end) :]
+    path.write_text(text)
 
 
 if __name__ == "__main__":
@@ -178,4 +227,4 @@ if __name__ == "__main__":
     out.write_text(render())
     print(f"wrote {out} ({len(set(LANGUAGES) | C_COMPILERS)} languages)")
     update_readme()
-    print(f"updated {ROOT / 'README.md'} Implemented Languages section")
+    print("updated the generated sections of README.md")
