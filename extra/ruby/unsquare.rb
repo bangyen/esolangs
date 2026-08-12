@@ -25,12 +25,12 @@ code = File.read(ARGV[0])
 ARGV.clear
 
 ind = acc = 0
-line = ''
+line = ""
 ptr = []
 stk = []
 
 def pop(stk)
-  raise SystemExit.new(3, 'empty stack') if stk.empty?
+  raise SystemExit.new(3, "empty stack") if stk.empty?
 
   stk.pop
 end
@@ -39,9 +39,9 @@ def find(str, sym)
   num = 1
   while num.nonzero?
     case str[sym += 1]
-    when '>'
+    when ">"
       num += 1
-    when '<'
+    when "<"
       num -= 1
     end
   end
@@ -50,51 +50,51 @@ end
 
 while (c = code[ind])
   case c
-  when 'O'
+  when "O"
     stk.push(0)
-  when 'I'
+  when "I"
     stk.push(1)
-  when 'A'
+  when "A"
     acc = pop(stk)
-  when 'S'
+  when "S"
     x = pop(stk)
     y = pop(stk)
     stk.push(x).push(y)
-  when '+'
+  when "+"
     acc += 2
-  when '-'
+  when "-"
     acc -= 2
-  when 'x'
+  when "x"
     acc *= 2
-  when 'P'
+  when "P"
     stk.push(acc)
-  when 'o'
-    raise SystemExit.new(3, 'empty stack') if stk.empty?
+  when "o"
+    raise SystemExit.new(3, "empty stack") if stk.empty?
 
     print stk[-1].chr
     line = 10.chr
-  when 'i'
+  when "i"
     print "#{line}Input: "
     val = gets
-    raise SystemExit.new(3, 'input exhausted') if val.nil?
+    raise SystemExit.new(3, "input exhausted") if val.nil?
 
     while val.strip.empty?
       print "#{line}Input: "
       val = gets
-    raise SystemExit.new(3, 'input exhausted') if val.nil?
+      raise SystemExit.new(3, "input exhausted") if val.nil?
     end
 
     stk.push(val[0].ord)
-    line = ''
-  when '>'
+    line = ""
+  when ">"
     if acc.nonzero? && (acc != 1)
       ptr.push(ind)
     else
       ind = find(code, ind)
     end
-  when '<'
+  when "<"
     if acc.nonzero? && (acc != 1)
-      raise SystemExit.new(3, 'unmatched <') if ptr.empty?
+      raise SystemExit.new(3, "unmatched <") if ptr.empty?
 
       ind = ptr[-1]
     else
