@@ -19,7 +19,8 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
 - [Compilers](#compilers)
 - [Transpilers](#transpilers)
 - [Tools](#tools)
-- [Roadmap](ROADMAP.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Limitations](docs/limitations.md)
 - [Notes](#notes)
 
 ## About
@@ -167,11 +168,15 @@ Languages that don't fit into the above categories.
 
 Implementations written in languages other than Python.
 
-Note: the generators for Forþ, Painfuck, Dimensional, 2dFish, %^2^-1,
-Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON, 123, and NoComment are
-round-trip verified against their native references (C++, Rust, R, Ruby, or
-x86/RISC-V assembly) in CI, and 3x's boolean generator (n = 1..3) is
-verified the same way.
+Note: these are cross-check implementations written in this repository (not
+upstream language-author code).  The generators for Forþ, Painfuck,
+Dimensional, 2dFish, %^2^-1, Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON,
+123, and NoComment are round-trip verified against the native implementations
+(C++, Rust, R, Ruby, or x86/RISC-V assembly) in CI, and 3x's boolean
+generator (n = 1..3) is verified the same way.  Because the Python
+interpreters and their native cross-checks share an author, the round-trip
+verifies transcription fidelity rather than an independent reading of the
+spec; see `docs/ROADMAP.md` for where a truly independent reference matters.
 
 The remaining extra implementations (Kak, Trash, Number Seventy-Four, 2 Bits
 1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA) are kept as
@@ -286,7 +291,7 @@ Utility programs that work with the esoteric languages.
 The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import ascii_art, bfstack, brainif, circlefuck, dig, modulous, nevermind, polynomial, qoibl, six_five, sophie, taglate
+from esolangs.tools.boolean import ascii_art, bfstack, brainif, circlefuck, dig, laserfuck, modulous, nevermind, polynomial, qoibl, six_five, sophie, taglate
 
 dig("0110", 2)            # 2-input XOR in Dig
 sophie("0110", 2)         # the same truth table in Sophie
@@ -301,6 +306,7 @@ qoibl("0110", 2)          # and in Qoibl
 polynomial("0110", 2)     # and in Polynomial (up to n = 2)
 taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
 bfstack("0110", 2)        # and in BFStack
+laserfuck("0110", 2)      # and in LaserFuck (random initial heading)
 ```
 
 ### Program Generator

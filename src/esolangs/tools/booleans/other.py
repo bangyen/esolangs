@@ -1,6 +1,14 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-__all__ = ["clockwise", "nevermind", "taglate", "three_x"]
+__all__ = [
+    "clockwise",
+    "container",
+    "laserfuck",
+    "nevermind",
+    "taglate",
+    "three_x",
+    "ztoalc_boolean",
+]
 
 # Closed-form 3x constant encodings.  Every integer is built from the literal
 # 3 with the ``x`` op (which replaces the top three items ``a, b, c``, c on
@@ -107,21 +115,200 @@ def three_x(truth_table: str, n: int) -> str:
     default = "1" if truth_table.count("1") >= truth_table.count("0") else "0"
     prog += (_ONE if default == "1" else _ZERO) + store(result)
 
-    for combo in range(2**n):
-        if truth_table[combo] == default:
-            continue
-        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-        body = (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
-        for i in range(n - 1, -1, -1):
-            body = (
-                guard(input_vars[i], body)
-                if bits[i]
-                else guard_not(input_vars[i], body)
-            )
-        prog += body
+    # One decision tree instead of an independent guard chain per differing
+    # combo: rows that share a bit prefix share the guards for that prefix,
+    # amortizing the ~19-char guard scaffolding across them.  Each guard
+    # leaves the stack balanced, so both branches concatenate safely inside
+    # their parent's body, and whole subtrees that match the default are
+    # pruned.
+    def override(combo: int) -> str:
+        return (_ONE if truth_table[combo] == "1" else _ZERO) + store(result)
+
+    def build(rows: list[int], depth: int) -> str:
+        if not rows:
+            return ""
+        if depth == n:
+            return override(rows[0])  # rows are pruned, so it differs from default
+        bit = n - 1 - depth
+        rows1 = [r for r in rows if (r >> bit) & 1]
+        rows0 = [r for r in rows if not (r >> bit) & 1]
+        sub1 = build(rows1, depth + 1)
+        sub0 = build(rows0, depth + 1)
+        return (guard(input_vars[depth], sub1) if sub1 else "") + (
+            guard_not(input_vars[depth], sub0) if sub0 else ""
+        )
+
+    differing = [c for c in range(2**n) if truth_table[c] != default]
+    prog += build(differing, 0)
 
     prog += read(result) + "!"
     return prog
+
+
+def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> bool:
+    """Fast ZTOALC simulator: True iff ``inputs`` prints ``expected`` once.
+
+    Mirrors the interpreter's semantics exactly: the pointer follows the
+    Collatz step (halving evens, ``3n+1`` odds) unless a ``jump`` fires,
+    which advances the pointer by one.  A command line visited twice would
+    re-execute (re-read, re-branch, or re-print), so any such revisit fails.
+    """
+    try:
+        ptr = int(lines[0])
+    except (KeyError, ValueError):
+        return False
+    var = [0] * n
+    inp = list(inputs)
+    out: list[str] = []
+    visited: set[int] = set()
+    steps = 0
+    while ptr != 1:
+        steps += 1
+        if steps > 10**6:
+            return False
+        index = ptr - 1
+        ins = lines.get(index, "")
+        if ins:
+            if index in visited:
+                return False
+            visited.add(index)
+            if ins.startswith("print"):
+                out.append(chr(int(ins.split()[1])))
+                if len(out) > 1:
+                    return False
+            elif ins.startswith("jump"):
+                if var[int(ins.split()[2][1])] != 0:
+                    ptr += 1
+                    continue
+            elif "=" in ins:
+                if not inp:
+                    return False
+                var[int(ins.split()[0][1])] = ord(inp.pop(0))
+            elif "-" in ins:
+                var[int(ins.split()[0][1])] -= int(ins.split()[2])
+        ptr = ptr // 2 if ptr % 2 == 0 else 3 * ptr + 1
+    return len(out) == 1 and out[0] == expected
+
+
+def _ztoalc_lines(table: str, n: int, b1: int) -> dict[int, str]:
+    """Place the reads, normalizes, branches, and leaves for ``table``."""
+    start = b1 * 4**n
+    lines: dict[int, str] = {0: str(start)}
+    for i in range(n):
+        lines[start // 2 ** (2 * i) - 1] = f"x{i} = input"
+        lines[start // 2 ** (2 * i + 1) - 1] = f"x{i} - 48"
+
+    def build(combos: list[int], root: int, depth: int) -> None:
+        results = {table[c] for c in combos}
+        if len(results) == 1:
+            lines[root - 1] = f"print {48 + int(results.pop())}"
+            return
+        lines[root - 1] = f"jump a x{depth}"
+        bit = n - 1 - depth
+        zero = [c for c in combos if not (c >> bit) & 1]
+        one = [c for c in combos if (c >> bit) & 1]
+        build(zero, root // 2, depth + 1)
+        build(one, 3 * root + 4, depth + 1)
+
+    build(list(range(2**n)), b1, 0)
+    return lines
+
+
+def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
+    """Build a branch-free linear program for a popcount-symmetric table.
+
+    If ``table[c]`` depends only on ``popcount(c)``, the result is computable
+    without a decision tree: sum the normalized input bits into ``s``, look
+    the result up in a small ``n + 1``-entry table, and print it.  Every
+    line sits on the pure power-of-two descent from ``2**L``, so the
+    trajectory never revisits a line and no placement search is needed.
+    The program is ``2**L`` lines (``L`` commands), so it is huge but
+    collision-free; returns ``None`` for non-symmetric tables.
+    """
+    value: dict[int, str] = {}
+    for combo in range(2**n):
+        count = bin(combo).count("1")
+        if count in value and value[count] != table[combo]:
+            return None
+        value[count] = table[combo]
+    cmds: list[str] = []
+    for i in range(n):
+        cmds.append(f"x{i} = input")
+        cmds.append(f"x{i} - 48")
+    cmds.append("s = 0")
+    for i in range(n):
+        cmds.append(f"s += x{i}")
+    cmds.append(f"t = [{n + 1}]")
+    for count in range(n + 1):
+        if value.get(count, "0") == "1":
+            cmds.append(f"t[{count}] = 1")
+    cmds.append("r = t[s]")
+    cmds.append("r + 48")
+    cmds.append("print r")
+    size = 2 ** len(cmds)
+    if size > 2**22:
+        return None  # too large to materialize
+    prog = [""] * size
+    prog[0] = str(size)
+    for j, cmd in enumerate(cmds):
+        prog[2 ** (len(cmds) - j) - 1] = cmd
+    return prog
+
+
+def ztoalc_boolean(truth_table: str, n: int) -> str:
+    """Build a ZTOALC program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    ZTOALC's control flow is the Collatz trajectory of line 1, so the
+    generator lays out a decision tree on `p * 2**k` descents: branching at
+    an even root lets a zero bit continue the descent (the Collatz step
+    halves it) while a one bit jumps to `root + 1`, whose Collatz step lands
+    on `4 * q` — so every branch gets a predictable, non-revisiting path.
+    The reads and normalizations ride the initial `b1 * 4**n` descent.  A
+    small ``b1`` is searched until the placement verifies against a fast
+    simulator (each input must print exactly its table entry once, with no
+    command line revisited).
+
+    When the tree search finds no collision-free placement (dense tables
+    like XOR4), a branch-free *linear* program is tried instead for
+    popcount-symmetric tables: sum the bits and look the result up in a
+    small table.  That program is guaranteed collision-free (a pure
+    power-of-two descent) but huge (``2**L`` lines), so it is gated by a
+    size limit and the generator raises :class:`ValueError` only for dense,
+    non-symmetric tables past ``n == 3``.
+
+    Verified exhaustively for every table at ``n <= 3`` and for structured
+    and symmetric tables at ``n == 4``; all tests run the real interpreter.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+    for b1 in range(2 ** (n + 1), 4000, 4):
+        lines = _ztoalc_lines(truth_table, n, b1)
+        if all(
+            _ztoalc_ok(
+                lines,
+                n,
+                "".join(str((c >> (n - 1 - i)) & 1) for i in range(n)),
+                truth_table[c],
+            )
+            for c in range(2**n)
+        ):
+            size = max(lines) + 1
+            return "\n".join(lines.get(i, "") for i in range(size))
+    linear = _ztoalc_symmetric(truth_table, n)
+    if linear is not None:
+        return "\n".join(linear)
+    raise ValueError(
+        "the ZTOALC boolean generator found no collision-free placement for "
+        f"this table at n == {n}",
+    )
 
 
 def nevermind(truth_table: str, n: int) -> str:
@@ -239,6 +426,114 @@ def _validate_tt(truth_table: str, n: int) -> None:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
+
+
+def laserfuck(truth_table: str, n: int) -> str:
+    r"""Build a LaserFuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The laser starts at ``o`` with a random heading, so a mirror funnel
+    (``|``/``^``/``_`` plus two ``}`` on the row above) sends every heading to
+    the top row moving right.  There it reads ``n`` bits into cells 0..n-1
+    (each ``,`` then 48 ``-`` normalizes ``'0'``/``'1'`` to 0/1) and enters a
+    decision tree.  Each node at level ``i`` moves the pointer to cell ``i``,
+    then lays down ``#`` ``v`` ``)`` ``\\``: the ``#`` skips the ``v`` on
+    approach, ``)`` routes a zero cell through to ``\\`` (down column c+3) and
+    a nonzero cell back to ``v`` (down column c+1); each child row's ``\\``
+    turns the beam right into the child.  Leaves (one per input combination,
+    at a dedicated high column so no ``+`` run crosses a descent column) move
+    the pointer to cell ``n``, set it to 48+result, and hit ``x`` to halt.
+
+    The first grid cell ``\\xff`` selects byte output mode: every touched
+    cell with a nonnegative value prints as a byte.  The input cells hold 0/1
+    (printed as NUL/SOH), so the verify harness's ``01`` filter leaves exactly
+    the 48/49 result cell.  The tree is loop-free, so no loop-ring geometry is
+    needed.
+    """
+    _validate_tt(truth_table, n)
+    rows: int = 2 ** (n + 1) - 1
+    total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2**n * 55 + 64
+    grid = [[" "] * total_cols for _ in range(rows)]
+
+    # the funnel: every heading ends up on row 0 moving right
+    grid[0][0] = "\u00ff"
+    grid[0][1] = "}"
+    grid[0][2] = "}"
+    grid[1][0] = "|"
+    grid[1][1] = "o"
+    grid[1][2] = "^"
+    grid[2][1] = "_"
+
+    # read n bits into cells 0..n-1 on row 0 (pointer ends at cell n-1)
+    col = 3
+    for i in range(n):
+        grid[0][col] = ","
+        col += 1
+        for _ in range(48):
+            grid[0][col] = "-"
+            col += 1
+        if i < n - 1:
+            grid[0][col] = ">"
+            col += 1
+
+    # node rows: breadth-first, root at row 0 and children on lower rows
+    def row(i: int, j: int) -> int:
+        return int(2**i + j - 1)
+
+    # internal-node columns (preorder); leaves get a dedicated high region
+    cols: dict[tuple[int, int], int] = {}
+    width = [col + 1 + n]  # room for the root's pointer-move cells
+
+    def assign_col(i: int, j: int) -> int:
+        if (i, j) in cols:
+            return cols[(i, j)]
+        c = width[0]
+        cols[(i, j)] = c
+        width[0] = c + 6
+        if i < n - 1:
+            assign_col(i + 1, 2 * j)
+            assign_col(i + 1, 2 * j + 1)
+        return c
+
+    assign_col(0, 0)
+    leaf_base = width[0] + 4  # past every internal column and descent column
+
+    # leaves: one per input combination, at (level n, row, high column)
+    for j in range(2**n):
+        r = row(n, j)
+        c = leaf_base + j * 55
+        # the beam arrives from the parent's descent column; it first moved the
+        # pointer to cell i (level i), so here it is at cell n-1
+        grid[r][c] = ">"
+        for k in range(48 + int(truth_table[j])):
+            grid[r][c + 1 + k] = "+"
+        grid[r][c + 1 + 48 + int(truth_table[j])] = "x"
+
+    # internal nodes: move the pointer to cell i, then '#','v',')','\\'
+    for i in range(n):
+        for j in range(2**i):
+            r = row(i, j)
+            c = cols[(i, j)]
+            # root arrives with the pointer at cell n-1; a child at level i
+            # arrives with it at cell i-1 (its parent tested bit i-1)
+            arrival = n - 1 if i == 0 else i - 1
+            moves = ">" * (i - arrival) if i >= arrival else "<" * (arrival - i)
+            cur = c - len(moves)
+            for ch in moves:
+                grid[r][cur] = ch
+                cur += 1
+            grid[r][c] = "#"
+            grid[r][c + 1] = "v"
+            grid[r][c + 2] = ")"
+            grid[r][c + 3] = "\\"
+            zero_r = row(i + 1, 2 * j)  # down column c+3
+            one_r = row(i + 1, 2 * j + 1)  # down column c+1
+            grid[zero_r][c + 3] = "\\"  # turn the down-beam right
+            grid[one_r][c + 1] = "\\"  # turn the down-beam right
+
+    return "\n".join("".join(ln).rstrip() for ln in grid)
 
 
 def _odd_reduce(pairs: int, level: int, n: int) -> str:
@@ -430,3 +725,77 @@ def clockwise(truth_table: str, n: int) -> str:
         if 0 <= x < width and 0 <= y < height:
             grid[y][x] = ch
     return "\n".join("".join(row) for row in grid)
+
+
+def container(truth_table: str, n: int) -> str:
+    """Build a Container program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Container is a synchronous rule system: every tick each container's value
+    becomes ``max(old + sum of deltas of satisfied ``X>=Y``/``X<=Y`` rules,
+    0)``, the empty-named container reads a line of input into ``IN`` when it
+    turns on, ``PRINT`` outputs ``OUT`` when it turns on, and ``EXIT`` halts
+    when its value changes.  There is no per-tick conditional, so the
+    generator timestamps everything with the tick counter ``T``:
+
+    * The empty container pulses on even ticks ``0..2(n-1)`` (``+1 T>=2k``,
+      ``-2 T>=2k+1``, ``+1 T>=2k+2``), reading one bit per pulse.
+    * For each bit ``k``, an armed gate ``A_k`` (65, dipping to 49) and
+      ``B_k`` (47, dipping to 48) make ``IN>=A_k`` and ``IN<=B_k`` hold for
+      exactly the tick the bit is in ``IN``, testing bit ``k`` once.
+    * A survivor per row (initial 1) is killed by ``-1 IN>=A_k`` or
+      ``-1 IN<=B_k`` when the corresponding bit mismatches, so exactly the
+      matching row's survivor stays 1.
+    * At tick ``2n`` a gate ``Gout`` dips to 1, so ``+1 S_r>=Gout`` adds the
+      table entry of the surviving row to ``OUT``; ``PRINT`` fires and
+      ``EXIT`` halts.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    lines = ["T:", "+1 T>=T"]
+    lines.append(":")  # the empty-named container reads input
+    lines.append("+1 T>=0")
+    lines.append("-2 T>=1")
+    for k in range(1, n):
+        lines.append(f"+2 T>={2 * k}")
+        lines.append(f"-2 T>={2 * k + 1}")
+    lines.append(f"+1 T>={2 * n}")
+    lines.append("IN=50:")  # a value no real byte matches
+    for k in range(n):
+        lines.append(f"A{k}=65:")
+        lines.append(f"-16 T>={2 * k}")
+        lines.append(f"+32 T>={2 * k + 1}")
+        lines.append(f"-16 T>={2 * k + 2}")
+        lines.append(f"B{k}=47:")
+        lines.append(f"+1 T>={2 * k}")
+        lines.append(f"-2 T>={2 * k + 1}")
+        lines.append(f"+1 T>={2 * k + 2}")
+    for row in range(2**n):
+        lines.append(f"S{row}=1:")
+        for k in range(n):
+            if (row >> (n - 1 - k)) & 1:
+                lines.append(f"-1 IN<=B{k}")
+            else:
+                lines.append(f"-1 IN>=A{k}")
+    lines.append("Gout=2:")
+    lines.append(f"-1 T>={2 * n - 1}")
+    lines.append(f"+1 T>={2 * n}")
+    lines.append("OUT:")
+    lines.append(f"+48 T>={2 * n}")
+    lines.append(f"-48 T>={2 * n + 1}")
+    for row in range(2**n):
+        if truth_table[row] == "1":
+            lines.append(f"+1 S{row}>=Gout")
+    lines.append("PRINT:")
+    lines.append(f"+1 T>={2 * n}")
+    lines.append("EXIT=1:")
+    lines.append(f"-1 T>={2 * n + 1}")
+    return "\n".join(lines)
