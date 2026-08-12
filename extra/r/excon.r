@@ -7,10 +7,11 @@
 #
 # Deviations: the pool is indexed 1..8 with the pointer starting at 8 and "<"
 # decrementing it; a program with more than 7 "<"s moves the pointer off the
-# pool and stops with an error (matching the Python interpreter's HaltError).
-# R's stdout cannot carry a NUL byte, so "!" of an all-zero pool prints
-# nothing rather than the NUL the Python interpreter writes.  "cat" is used
-# instead of a single output channel.
+# pool and exits with status 3 (invalid operation, the Python HaltError
+# analog; the cross-check convention is 0 = success, 2 = malformed program,
+# 3 = invalid operation).  R's stdout cannot carry a NUL byte, so "!" of an
+# all-zero pool prints nothing rather than the NUL the Python interpreter
+# writes.  "cat" is used instead of a single output channel.
 #
 # Invocation: `Rscript excon.r <program-file>`; program text from
 # `commandArgs[1]`.
@@ -47,7 +48,9 @@ for (char in syms) {
     cat(intToUtf8(num))
   } else if (char == "<") {
     cell <- cell - 1
-    if (cell < 1)
-      stop("pointer moved off the pool")
+    if (cell < 1) {
+      message("pointer moved off the pool")
+      q("no", status = 3)
+    }
   }
 }

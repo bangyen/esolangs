@@ -9,8 +9,8 @@
 # zero, `}` jumps back to the matching `{` when it is nonzero.
 #
 # Invocation: `ruby bit.rb <program-file>`; program text from `ARGV[0]`.
-# Input: the program file is `ARGV[0]`; `)` reads from stdin and raises
-# `input exhausted` at EOF (the wiki leaves EOF undefined).
+# Input: the program file is `ARGV[0]`; `)` reads from stdin and exits with
+# status 3 at EOF (invalid operation; the wiki leaves EOF undefined).
 
 code = File.read(ARGV[0])
 tape = [cell = i = 0] * 8
@@ -43,7 +43,7 @@ while (c = code[i])
   when ')'
     print "#{line}Input: "
     inp = gets
-    raise 'input exhausted' if inp.nil?
+    raise SystemExit.new(3, 'input exhausted') if inp.nil?
 
     val = '0' * 8 + inp[0].ord.to_s(2)
     tape[cell..cell + 7] =

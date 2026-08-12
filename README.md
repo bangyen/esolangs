@@ -178,6 +178,12 @@ interpreters and their native cross-checks share an author, the round-trip
 verifies transcription fidelity rather than an independent reading of the
 spec; see `docs/ROADMAP.md` for where a truly independent reference matters.
 
+The cross-checks share an exit-code convention mirroring the Python
+interpreters' error split: 0 = success, 2 = malformed program (the
+`ValueError` analog), 3 = invalid runtime operation (the `HaltError`
+analog).  Languages that cannot express distinct codes (e.g. Rust's panic)
+document their behavior in the file header instead.
+
 The in-package interpreters for EXCON and LaserFuck are additionally
 differential-tested against their native cross-checks on a full-surface
 corpus (`scripts/verify_differential.py`), and the Rust implementations
