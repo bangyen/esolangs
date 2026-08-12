@@ -231,6 +231,8 @@ class TestPolynomial:
             ("10", 1),  # NOT
             ("0110", 2),  # XOR
             ("0001", 2),  # AND
+            ("00000001", 3),  # AND-3
+            ("10000000", 3),  # OR-3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -245,9 +247,13 @@ class TestPolynomial:
         """The program is a polynomial function."""
         assert boolean.polynomial("0110", 2).startswith("f(x) = ")
 
-    def test_only_supports_two_inputs(self) -> None:
-        with pytest.raises(ValueError, match="n == 2"):
-            boolean.polynomial("11111110", 3)
+    def test_supports_three_inputs(self) -> None:
+        """A 3-input table is factored exactly by the interpreter."""
+        assert boolean.polynomial("00000001", 3).startswith("f(x) = ")
+
+    def test_five_inputs_rejected(self) -> None:
+        with pytest.raises(ValueError, match="n <= 4"):
+            boolean.polynomial("0" * 31 + "1", 5)
 
 
 class TestUnsquare:
