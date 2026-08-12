@@ -1,10 +1,20 @@
 ; NoComment interpreter (x86-32 Linux assembly cross-check; see README "Extra
 ; Implementations").
 ;
-; A strict subset of brainfuck with a single cell: `c` zeroes it, `i`
-; increments it, and `o` prints it as a byte; every other character is a
-; comment.  There is no input.  The program is read from stdin and printed
-; one byte per `o`.
+; A brainfuck-like tape language (bytes, wrapping) with a byte stack.  `i`/`d`
+; increment/decrement the current cell, `c` clears it, `l`/`r` move the
+; pointer, `n` pushes the current cell, `f` pops into it, `s`/`b` jump
+; forward/backward by the top-of-stack amount when the current cell is
+; nonzero, and `o` prints the current cell as a byte.  Every character must be
+; a command; anything else is an error.
+;
+; Note: the in-package Python interpreter implements only the `c`/`i`/`o`
+; subset (a single cell, no stack or jumps) for its text generator; this
+; assembly implements the full wiki command set.  Stack underflow, an
+; unrecognized command, or a jump out of range are errors.
+;
+; Input: the program is read from stdin (the wiki has no input command); the
+; tape is not printed.
 ;
 ; This is a direct syscall (int 80h) program with no libc; it is built with
 ; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.

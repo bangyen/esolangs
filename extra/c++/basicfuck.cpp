@@ -1,17 +1,20 @@
 // Basicfuck interpreter (C++ cross-check; see README "Extra Implementations").
 //
-// A register-based language: identifiers name registers, `#` allocates them
-// from the following comma-separated list, `+`/`-` increment/decrement the
-// current register, `~` reads an input byte into it, `>`/`<` move the
-// pointer, `{`/`}` start/end a block, `if`/`if!` branch on a register value,
-// `read ->` reads into a register, and `write <-` prints one.  `name->n`
-// indexes into a register.
+// A source-level language compiled to cells by the interpreter itself.  A
+// `#basicfuck t=.. r=.. o=..` directive sets the tape size, cell range, and
+// overflow behavior (`wrap`/`halt`/`nearest`), and `#allocate` names the
+// variables (plain `X` or array `X->n`).  `X += Y` / `X -= Y` add/subtract a
+// constant or another variable's value, `if`/`while (X) { ... }` branch and
+// loop (with an optional `!` negating the condition), `write <- X` prints X
+// as a character, `read -> X` stores the next input byte, and `X->n` indexes
+// into an allocated array.
 //
-// Error handling: a malformed program or an invalid operation (undefined
-// identifier, under/overflow, unbalanced block) prints a message and exits
-// with EXIT_FAILURE, via the `error` helper.
+// Error handling: an undefined identifier, a malformed token, an unbalanced
+// block, or an overflow that the directive marks `halt` prints a message and
+// exits with EXIT_FAILURE (via the `error` helper); `wrap`/`nearest` bound
+// the cell instead.
 //
-// Input: the program file is `argv[1]`; `~` and `read ->` read from stdin.
+// Input: the program file is `argv[1]`; `read ->` reads from stdin.
 
 #include <climits>
 #include <fstream>

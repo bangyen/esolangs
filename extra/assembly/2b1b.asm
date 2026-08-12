@@ -1,15 +1,18 @@
 ; 2 Bits, 1 Byte interpreter (x86-32 Linux assembly cross-check; see README
 ; "Extra Implementations").
 ;
-; Reads a single byte of input and interprets its 8 bits as 4 two-bit
-; commands: command 0 advances, command 1 applies a bitwise operation
-; (XOR with the addressed bit, or a shift-based combine for the second
-; operand), and command 2 reads an indexed bit.  The resulting byte is
-; printed and the program halts.
+; The program is a single byte whose 8 bits form four two-bit instructions,
+; executed in sequence with the instruction pointer wrapping: 00 = DON (do
+; nothing), 01 = ACT (apply a bitwise operation to the byte), 10 = JMP (jump,
+; honoring the wrap), and 11 = END (print the byte as a character and halt).
+;
+; The program byte is read from stdin (the language has no file-based I/O
+; protocol; see the README note).  The ACT instruction here is implemented
+; as bit toggles / shift-combines rather than the wiki's 00->11, 01->10,
+; 10->00, 11->01 value table.
 ;
 ; This is a direct syscall (int 80h) program with no libc; it is built with
 ; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
-; The input byte is read from stdin.
 
 global _start
 _start:

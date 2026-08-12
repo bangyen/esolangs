@@ -7,8 +7,9 @@
 # the stack into the accumulator, `S` swaps the top two, `+`/`-`/`x` add
 # 2/subtract 2/double the accumulator, `P` pushes it, `o` prints the top of
 # the stack as a byte, `i` reads a line of input pushing its first
-# character, and `>`/`<` are a loop bracket pair that jump forward/back to
-# the matching bracket when the accumulator is neither 0 nor 1.
+# character, and `>`/`<` are a loop bracket pair: `>` jumps forward to the
+# matching `<` when the accumulator is 0 or 1, and `<` jumps back to the
+# matching `>` when it is not 0 nor 1.
 #
 # Error handling: popping an empty stack or an unmatched `<` is an invalid
 # operation (nil arithmetic / nil indexing).  `o` always treats the top as a

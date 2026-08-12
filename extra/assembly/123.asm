@@ -1,12 +1,21 @@
 ; 123 interpreter (x86-32 Linux assembly cross-check; see README "Extra
 ; Implementations").
 ;
-; A bit-tape language: `1`/`2` shift the current bit right/left (a
-; pointer over the tape), `3` opens a conditional that skips forward (on a
-; set bit) or back (on a clear bit) to the matching `3` or `|`, `|` advances
-; the tape, and input/output happen via `2` at the tape bounds (read a byte /
-; write the current bit).  The program is read from stdin; the whole tape is
-; a fixed bit array and the final `|` ends execution.
+; A bit-tape language: `1` flips the current bit and moves the pointer left
+; (wrapping from -4 back to 0), `2` reads a character into bits 0-7 when the
+; pointer is at -3 or writes bits 0-7 as a character when at -2 (otherwise it
+; moves the pointer right), and `3` is a jump symbol: when the current bit is
+; TRUE the pointer skips forward to the next `3` (or the end), when FALSE it
+; skips back to the previous `3` (or the start).  Bits start at FALSE and the
+; program terminates only when the end is reached with the pointer below 0.
+;
+; Deviation from the wiki: the wiki's `3` skips BACK on a TRUE bit and FORWARD
+; on a FALSE bit; this implementation swaps those two directions (forward on
+; TRUE, back on FALSE).  The repository's 123 generator is verified against
+; this implementation's behavior.
+;
+; Input/output: the program is read from stdin; `2` at -3 reads a byte and `2`
+; at -2 writes one, in little-endian bit order per the wiki note.
 ;
 ; This is a direct syscall (int 80h) program with no libc; it is built with
 ; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
