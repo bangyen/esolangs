@@ -9,8 +9,11 @@
 // as a string.
 //
 // Spec decisions: the pointer starts at the top-left cell and the first cell
-// must set a direction, otherwise the program exits with EXIT_FAILURE (a
-// malformed program); moving off the grid is also EXIT_FAILURE.
+// must set a direction, otherwise the program exits with status 2 (a malformed
+// program, the Python ValueError analog; the cross-check convention is 0 =
+// success, 2 = malformed program, 3 = invalid operation, 1 = unclassified).
+// Moving off the grid is an invalid runtime operation, status 3.  A missing,
+// unreadable, or empty program file exits with status 1 (unclassified).
 //
 // Invocation: `2dFish <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `$`/`%` read from stdin.
@@ -30,7 +33,7 @@ void prompt(bool &out) {
 
 char get(std::vector<std::string> &prog, int x, int y) {
   if (y < 0 || x < 0 || y == prog.size() || x == prog[y].size())
-    exit(EXIT_FAILURE);
+    exit(3);
 
   return prog[y][x];
 }
@@ -82,10 +85,11 @@ int main(int argc, char *argv[]) {
   }
 
   direct(prog[0][0], x, y, dir);
-  c = get(prog, x, y);
 
   if (!dir)
-    return EXIT_FAILURE;
+    return 2;
+
+  c = get(prog, x, y);
 
   while (c != '@') {
     switch (c) {
@@ -137,7 +141,7 @@ int main(int argc, char *argv[]) {
         if (dir != '/')
           x = temp;
       } else {
-        return EXIT_FAILURE;
+        return 2;
       }
 
       break;
