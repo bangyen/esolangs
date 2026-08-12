@@ -139,6 +139,24 @@ class TestZTOALCVariables:
         with pytest.raises(HaltError):
             run_and_capture(["3", "jump y 0", "x = [2]", "y = x[5]"])
 
+    def test_store_to_scalar_halts(self) -> None:
+        """Writing an element of a scalar variable is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump x 0", "x = 5", "print 65", "x[0] = 7"])
+
+    def test_store_out_of_range_halts(self) -> None:
+        """Writing past the end of an array is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump x 0", "x = [2]", "print 65", "x[5] = 7"])
+
     def test_negative_pointer_halts(self) -> None:
         """A negative pointer is an invalid operation."""
         import pytest
