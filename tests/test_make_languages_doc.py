@@ -16,6 +16,8 @@ LANGUAGES_DOC = REPO_ROOT / "docs" / "languages.md"
 
 _README_START = "<!-- IMPLEMENTED:START -->"
 _README_END = "<!-- IMPLEMENTED:END -->"
+_COMPILERS_START = "<!-- COMPILERS:START -->"
+_COMPILERS_END = "<!-- COMPILERS:END -->"
 
 
 def load_script() -> object:
@@ -41,6 +43,41 @@ def test_readme_languages_section_is_in_sync() -> None:
         + _README_END
     )
     assert text[start:end] == expected
+
+
+def test_readme_compilers_section_is_in_sync() -> None:
+    """Regenerating the compilers section leaves it unchanged."""
+    module = load_script()
+    text = README.read_text()
+    start = text.index(_COMPILERS_START)
+    end = text.index(_COMPILERS_END) + len(_COMPILERS_END)
+    expected = (
+        _COMPILERS_START
+        + "\n\n"
+        + module.render_compilers_section()
+        + "\n\n"
+        + _COMPILERS_END
+    )
+    assert text[start:end] == expected
+
+
+def test_compiler_sets_match_the_compiler_modules() -> None:
+    """The compiler lists are derived from the compiler source files."""
+    module = load_script()
+    assert {
+        "BFStack",
+        "Home Row",
+        "Jaune",
+        "Suffolk",
+        "Unsquare",
+    } == module.ASSEMBLY_COMPILERS
+    assert {"BF-PDA", "BFStack", "EXCON", "RAM0"} == module.C_COMPILERS
+
+
+def test_boolean_set_names_are_registered() -> None:
+    """Every language marked boolean in the matrix is a registered language."""
+    module = load_script()
+    assert set(module.LANGUAGES) >= module.BOOLEAN
 
 
 def test_languages_doc_is_in_sync() -> None:
