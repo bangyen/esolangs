@@ -178,6 +178,12 @@ interpreters and their native cross-checks share an author, the round-trip
 verifies transcription fidelity rather than an independent reading of the
 spec; see `docs/ROADMAP.md` for where a truly independent reference matters.
 
+The in-package interpreters for EXCON and LaserFuck are additionally
+differential-tested against their native cross-checks on a full-surface
+corpus (`scripts/verify_differential.py`), and the Rust implementations
+(`extra/rust`) ship `cargo test` unit suites covering the individual
+instructions.
+
 The remaining extra implementations (Kak, Trash, Number Seventy-Four, 2 Bits
 1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA) are kept as
 self-contained interpreters but do not have round-trip-verified generators:

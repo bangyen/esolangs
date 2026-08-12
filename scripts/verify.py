@@ -34,6 +34,10 @@ STEPS = [
         "extra reference generators",
         [sys.executable, "scripts/verify_extra_generators.py"],
     ),
+    (
+        "interpreter vs native differential corpora",
+        [sys.executable, "scripts/verify_differential.py"],
+    ),
 ]
 
 

@@ -35,25 +35,25 @@ class TestLaserFuck:
         # cell, 'v' turns it down to the 'x' on the bottom row, where it dies.
         # Only the input cell is touched and prints as '1'.
 
-        class IO:
+        class TestIO(IO):
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self) -> str:
+            def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
                 return "1"
 
-            def print_char(self, c: str) -> None:
-                self.buf.write(c)
+            def print_char(self, char: str) -> None:
+                self.buf.write(char)
 
-            def print_line(self) -> None:
-                self.buf.write("\n")
+            def print_line(self, text: str = "") -> None:
+                self.buf.write(text + "\n")
 
-            def print_num(self, n: int) -> None:
-                self.buf.write(str(n))
+            def print_num(self, num: int) -> None:
+                self.buf.write(str(num))
 
         prog = ["\u00ff}},#v)x", "|o^", " _ x"]
         for heading in range(4):
-            io_obj = IO()
+            io_obj = TestIO()
             buffer = io.StringIO()
             with redirect_stdout(buffer):
                 run(prog, io_obj, heading=heading)
@@ -79,23 +79,23 @@ class TestLaserFuck:
     def test_input_reads_whole_line_first_char(self) -> None:
         prog = ["\u00ff}o,x\n   x"]
 
-        class IO:
+        class TestIO(IO):
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self) -> str:
+            def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
                 return "42"
 
-            def print_char(self, c: str) -> None:
-                self.buf.write(c)
+            def print_char(self, char: str) -> None:
+                self.buf.write(char)
 
-            def print_line(self) -> None:
-                self.buf.write("\n")
+            def print_line(self, text: str = "") -> None:
+                self.buf.write(text + "\n")
 
-            def print_num(self, n: int) -> None:
-                self.buf.write(str(n))
+            def print_num(self, num: int) -> None:
+                self.buf.write(str(num))
 
-        io_obj = IO()
+        io_obj = TestIO()
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(prog, io_obj, heading=3)

@@ -163,3 +163,106 @@ fn main() {
 
     run(text);
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    /// Run a grid through the real binary, feeding ``stdin``, several times.
+    ///
+    /// The reference picks a random initial heading, so a single run may or
+    /// may not touch a given cell; returning the set of outputs across runs
+    /// reflects the language's true (nondeterministic) semantics.
+    fn run_grid(grid: &str, stdin: &str, runs: usize) -> Vec<String> {
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let exe = std::env::current_exe()
+            .expect("current exe")
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("laserfuck");
+        let dir = std::env::temp_dir();
+        let mut outputs = Vec::new();
+        for _ in 0..runs {
+            let path = dir.join(format!(
+                "laserfuck-test-{}-{}.lsrf",
+                std::process::id(),
+                COUNTER.fetch_add(1, Ordering::SeqCst)
+            ));
+            std::fs::write(&path, grid).expect("write grid");
+            let mut child = Command::new(&exe)
+                .arg(&path)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("failed to spawn");
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(stdin.as_bytes())
+                .unwrap();
+            let out = child.wait_with_output().unwrap();
+            std::fs::remove_file(&path).ok();
+            outputs.push(String::from_utf8(out.stdout).expect("non-utf8 output"));
+        }
+        outputs
+    }
+
+    /// Assert that at least one run produced exactly ``expected``.
+    fn assert_any(grid: &str, stdin: &str, expected: &str) {
+        let outputs = run_grid(grid, stdin, 20);
+        assert!(
+            outputs.iter().any(|o| o == expected),
+            "grid {grid:?}: expected {expected:?} in {outputs:?}"
+        );
+    }
+
+    #[test]
+    fn plus_then_die() {
+        // \xff selects byte mode; + touches cell 0 -> prints \x01
+        assert_any("\u{ff}}o+x", "", "\u{1}");
+    }
+
+    #[test]
+    fn negative_cell_is_excluded() {
+        // '-' on zero makes -1, excluded from output
+        assert_any("\u{ff}}o-x", "", "");
+    }
+
+    #[test]
+    fn pointer_moves_right() {
+        // > moves the pointer, + writes cell 1 -> \x01
+        assert_any("\u{ff}}o>+x", "", "\u{1}");
+    }
+
+    #[test]
+    fn directional_cells() {
+        assert_any("\u{ff}}o^x", "", "");
+        assert_any("\u{ff}}ovx", "", "");
+        assert_any("\u{ff}}o}x", "", "");
+    }
+
+    #[test]
+    fn mirrors() {
+        assert_any("\u{ff}}o\\x", "", "");
+        assert_any("\u{ff}}o/x", "", "");
+        assert_any("\u{ff}}o_x", "", "");
+    }
+
+    #[test]
+    fn skip_next() {
+        // # skips the next command, so the + after it does not run
+        assert_any("\u{ff}}o#+x", "", "");
+    }
+
+    #[test]
+    fn read_input() {
+        // , reads a line's first char and prints it via byte mode; the
+        // "Input: " prompt is part of stdout
+        assert_any("\u{ff}}o,x", "7\n", "Input: 7");
+    }
+}
