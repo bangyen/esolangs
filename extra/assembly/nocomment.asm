@@ -1,20 +1,20 @@
 ; NoComment interpreter (x86-32 Linux assembly cross-check; see README "Extra
 ; Implementations").
 ;
-; A brainfuck-like tape language (bytes, wrapping) with a byte stack.  `i`/`d`
-; increment/decrement the current cell, `c` clears it, `l`/`r` move the
-; pointer, `n` pushes the current cell, `f` pops into it, `s`/`b` jump
+; The full wiki language: a byte tape with a movable pointer, plus a byte
+; stack.  `i`/`d` increment/decrement the current cell, `c` clears it,
+; `l`/`r` move the pointer (left is a no-op at cell 0, right extends the
+; tape), `n` pushes the current cell, `f` pops into it, `s`/`b` jump
 ; forward/backward by the top-of-stack amount when the current cell is
-; nonzero, and `o` prints the current cell as a byte.  Every character must be
-; a command; anything else is an error.
+; nonzero (`s` skips X instructions, `b` jumps back X-1), and `o` prints
+; the current cell as a byte.
 ;
-; Note: the in-package Python interpreter implements only the `c`/`i`/`o`
-; subset (a single cell, no stack or jumps) for its text generator; this
-; assembly implements the full wiki command set.  Stack underflow, an
-; unrecognized command, or a jump out of range are errors.
+; Per the wiki, errors are an unrecognized command, stack underflow, or a
+; jump outside the code; each exits non-zero.  The in-package Python
+; interpreter implements the same full language.
 ;
-; Input: the program is read from stdin (the wiki has no input command); the
-; tape is not printed.
+; Input: the program is read from stdin (the wiki has no input command);
+; the tape is not printed.
 ;
 ; This is a direct syscall (int 80h) program with no libc; it is built with
 ; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
@@ -62,10 +62,17 @@ _start:
 	je .output
 
 	cmp byte [edi], 0
-	jne .parse
+	jne .error
 .final:
 	mov eax, 1
 	xor ebx, ebx
+	int 80h
+
+.error:
+	; unrecognized command, stack underflow, or a jump out of range: exit
+	; non-zero (the wiki requires errors to terminate with a failure status)
+	mov eax, 1
+	mov ebx, 1
 	int 80h
 
 .up:
@@ -91,7 +98,7 @@ _start:
 	jmp .parse
 .off:
 	cmp edx, esi
-	je .parse
+	je .error
 	mov al, [edx]
 	add edx, 2
 	mov [ecx], al
@@ -101,12 +108,23 @@ _start:
 	je .parse
 	movzx eax, byte [edx]
 	sub edi, eax
+	; the target (edi, before .parse's dec) must lie in [esi, esp-4]
+	lea eax, [esp - 4]
+	cmp edi, eax
+	jg .error
+	cmp edi, esi
+	jl .error
 	jmp .parse
 .back:
 	cmp byte [ecx], 0
 	je .parse
 	movzx eax, byte [edx]
 	add edi, eax
+	lea eax, [esp - 4]
+	cmp edi, eax
+	jg .error
+	cmp edi, esi
+	jl .error
 	jmp .parse
 .output:
 	push edx
