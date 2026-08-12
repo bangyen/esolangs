@@ -168,11 +168,15 @@ Languages that don't fit into the above categories.
 
 Implementations written in languages other than Python.
 
-Note: the generators for Forþ, Painfuck, Dimensional, 2dFish, %^2^-1,
-Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON, 123, and NoComment are
-round-trip verified against their native references (C++, Rust, R, Ruby, or
-x86/RISC-V assembly) in CI, and 3x's boolean generator (n = 1..3) is
-verified the same way.
+Note: these are cross-check implementations written in this repository (not
+upstream language-author code).  The generators for Forþ, Painfuck,
+Dimensional, 2dFish, %^2^-1, Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON,
+123, and NoComment are round-trip verified against the native implementations
+(C++, Rust, R, Ruby, or x86/RISC-V assembly) in CI, and 3x's boolean
+generator (n = 1..3) is verified the same way.  Because the Python
+interpreters and their native cross-checks share an author, the round-trip
+verifies transcription fidelity rather than an independent reading of the
+spec; see `docs/ROADMAP.md` for where a truly independent reference matters.
 
 The remaining extra implementations (Kak, Trash, Number Seventy-Four, 2 Bits
 1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA) are kept as

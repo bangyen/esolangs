@@ -67,11 +67,13 @@ def run(code: list[str], io: IO) -> None:
             name, idx_exp = lhs[:-1].split("[")
             if name not in var or not isinstance(var[name], list):
                 raise HaltError
-            arr = var[name]
+            arr = cast(list[int], var[name])
             idx = cast(int, val(state, idx_exp))
             if idx < 0 or idx >= len(arr):
                 raise HaltError
-            arr[idx] = value
+            # arrays-of-arrays are unsupported (see module docstring), so an
+            # array element can only hold a scalar
+            arr[idx] = cast(int, value)
         else:
             var[lhs] = value
 

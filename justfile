@@ -28,6 +28,7 @@ help:
 # install tooling
 install-dev:
     #!/usr/bin/env bash
+    set -euo pipefail
     if command -v uv >/dev/null 2>&1; then
         echo "Using uv..."
         uv pip install -e ".[dev]"
@@ -43,89 +44,105 @@ lint-python:
     {{PYTHON}} -m ruff check .
     {{PYTHON}} -m mypy src
 
+# Lint helpers.  Each target fails loudly when its tool is present and the
+# code is unclean, and skips cleanly (exit 0) when the tool is missing, so a
+# local `just lint` degrades gracefully without silently swallowing failures.
+
 # lint c
 lint-c:
     #!/usr/bin/env bash
+    set -euo pipefail
     export PATH="{{HOMEBREW_BIN}}:{{LLVM_BIN}}:$PATH"
     if command -v clang-format >/dev/null 2>&1; then
-        find src/esolangs/compilers/c -name "*.c" -exec clang-format --dry-run --Werror {} \; || echo "Warning: clang-format found formatting issues. Run 'clang-format -i src/esolangs/compilers/c/*.c' to fix."
+        fail=0
+        while IFS= read -r f; do
+            clang-format --dry-run --Werror "$f" || fail=1
+        done < <(find src/esolangs/compilers/c -name "*.c")
+        exit $fail
     else
-        echo "Warning: clang-format not found. Install with: brew install clang-format"
-    fi
-    if command -v clang-tidy >/dev/null 2>&1; then
-        find src/esolangs/compilers/c -name "*.c" -exec clang-tidy --quiet --warnings-as-errors=* {} \; 2>/dev/null || echo "Note: clang-tidy found issues or missing compilation database (expected for standalone files)"
-    else
-        echo "Warning: clang-tidy not found. Install with: brew install llvm"
+        echo "skip: clang-format not found"
     fi
 
 # lint cpp
 lint-cpp:
     #!/usr/bin/env bash
+    set -euo pipefail
     export PATH="{{HOMEBREW_BIN}}:{{LLVM_BIN}}:$PATH"
     if command -v clang-format >/dev/null 2>&1; then
-        find extra/c++ -name "*.cpp" -exec clang-format --dry-run --Werror {} \; || echo "Warning: clang-format found formatting issues. Run 'clang-format -i extra/c++/*.cpp' to fix."
+        fail=0
+        while IFS= read -r f; do
+            clang-format --dry-run --Werror "$f" || fail=1
+        done < <(find extra/c++ -name "*.cpp")
+        exit $fail
     else
-        echo "Warning: clang-format not found. Install with: brew install clang-format"
-    fi
-    if command -v clang-tidy >/dev/null 2>&1; then
-        find extra/c++ -name "*.cpp" -exec clang-tidy --quiet --warnings-as-errors=* {} \; 2>/dev/null || echo "Note: clang-tidy found issues or missing compilation database (expected for standalone files)"
-    else
-        echo "Warning: clang-tidy not found. Install with: brew install llvm"
+        echo "skip: clang-format not found"
     fi
 
 # lint rust
 lint-rust:
     #!/usr/bin/env bash
+    set -euo pipefail
     export PATH="{{CARGO_BIN}}:$PATH"
     if command -v rustfmt >/dev/null 2>&1; then
-        find extra/rust -name "*.rs" -exec rustfmt --check {} \; || echo "Warning: rustfmt found formatting issues. Run 'rustfmt extra/rust/*.rs' to fix."
-    else
-        echo "Warning: rustfmt not found. Install Rust toolchain"
+        fail=0
+        while IFS= read -r f; do
+            rustfmt --check "$f" || fail=1
+        done < <(find extra/rust -name "*.rs")
+        exit $fail
     fi
     if command -v cargo >/dev/null 2>&1; then
-        (cd extra/rust && cargo clippy || true)
+        (cd extra/rust && cargo clippy)
     else
-        echo "Warning: cargo not found. Install Rust toolchain"
+        echo "skip: cargo not found"
     fi
 
 # lint ruby
 lint-ruby:
     #!/usr/bin/env bash
+    set -euo pipefail
     export PATH="{{RUBY_BIN}}:$PATH"
     if command -v rubocop >/dev/null 2>&1; then
-        rubocop extra/ruby/ || true
+        rubocop extra/ruby/
     else
-        echo "Warning: rubocop not found. Install with: brew install ruby && gem install rubocop"
+        echo "skip: rubocop not found"
     fi
 
 # lint lean
 lint-lean:
     #!/usr/bin/env bash
-    if command -v lean4 >/dev/null 2>&1; then
-        find extra/lean -name "*.lean" -exec lean4 --check {} \; || true
-    elif command -v lean >/dev/null 2>&1 && lean --version 2>&1 | grep -q "Lean 4" >/dev/null 2>&1; then
-        find extra/lean -name "*.lean" -exec lean --check {} \; || true
+    set -euo pipefail
+    if command -v lake >/dev/null 2>&1; then
+        (cd extra/lean/esolangs && lake build)
     else
-        echo "Warning: Lean 4 not found. Install Lean 4 with: elan toolchain install stable && elan default stable"
-        echo "Note: Current 'lean' command is LeanCloud CLI, not Lean theorem prover."
+        echo "skip: lake (Lean 4) not found"
     fi
 
 # lint r
 lint-r:
     #!/usr/bin/env bash
+    set -euo pipefail
     if command -v Rscript >/dev/null 2>&1; then
-        Rscript -e "if (!require('lintr', quietly=TRUE)) install.packages('lintr', repos='https://cran.rstudio.com/')" 2>/dev/null && Rscript -e "lintr::lint_dir('extra/r')" || true
+        if Rscript -e "if (!requireNamespace('lintr', quietly = TRUE)) quit(status = 1)"; then
+            Rscript -e "if (length(lintr::lint_dir('extra/r')) > 0) quit(status = 1)"
+        else
+            echo "skip: lintr not installed (install with install.packages('lintr'))"
+        fi
     else
-        echo "Warning: Rscript not found. Install R"
+        echo "skip: Rscript not found"
     fi
 
 # lint asm
 lint-asm:
     #!/usr/bin/env bash
+    set -euo pipefail
     if command -v nasm >/dev/null 2>&1; then
-        find extra/assembly -name "*.asm" -exec nasm -f elf64 -o /dev/null {} \; 2>/dev/null || echo "Note: Some assembly files may not be x86-64 compatible or have syntax issues."
+        fail=0
+        while IFS= read -r f; do
+            nasm -f elf32 -o /dev/null "$f" || fail=1
+        done < <(find extra/assembly -name "*.asm")
+        exit $fail
     else
-        echo "Warning: nasm not found. Install with: brew install nasm"
+        echo "skip: nasm not found"
     fi
 
 # lint all code
