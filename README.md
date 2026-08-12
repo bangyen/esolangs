@@ -122,7 +122,7 @@ Languages that use registers to store and manipulate data.
 - [RAM0](https://esolangs.org/wiki/RAM0)
 - [Sophie](https://esolangs.org/wiki/Sophie)
 - [WII2D](https://esolangs.org/wiki/WII2D)
-- [Huf](https://esolangs.org/wiki/Huf)
+- [huf](https://esolangs.org/wiki/huf)
 
 ### Tape-based Languages
 
@@ -130,7 +130,7 @@ Languages that operate on a tape (similar to Turing machines).
 
 - [6-5](https://esolangs.org/wiki/6-5)
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
-- [Brainfuck](https://esolangs.org/wiki/Brainfuck)
+- [brainfuck](https://esolangs.org/wiki/brainfuck)
 - [Back](https://esolangs.org/wiki/Back)
 - [BrainIf](https://esolangs.org/wiki/BrainIf)
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck)
@@ -282,12 +282,12 @@ Compilers that translate esoteric languages to other target languages.
 
 Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
 
-- [BF](https://esolangs.org/wiki/Brainfuck) <-> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block, and vice versa.
-- [BF](https://esolangs.org/wiki/Brainfuck) -> [CircleFuck](https://esolangs.org/wiki/Circlefuck): sets up a clean data region inside the program-as-tape and emits the brainfuck commands unchanged. The data region is sized automatically from the program (the smallest bound that contains its data pointer), so `transpile("BF", "CircleFuck", program)` just works for programs with bounded, non-drifting loops; pass `size` explicitly to cover programs that stay within `[0, size)`.
-- [NoComment](https://esolangs.org/wiki/NoComment) -> [BF](https://esolangs.org/wiki/Brainfuck): the transpiler handles the c/i/o subset of NoComment, mapping each to brainfuck (`c` = `[-]`, `i` = `+`, `o` = `.`). The full language (a tape, a stack, and s/b jumps) is implemented by the interpreter and the assembly cross-check but not by this transpiler.
-- [BFStack](https://esolangs.org/wiki/BFStack) -> [BF](https://esolangs.org/wiki/Brainfuck): BFStack is a stack modelled on brainfuck's tape, so the transpiler is a table lookup (`>` pushes a cell, `<` pops and clears it (`[-]<`), `,` reads and pushes (`>,`)).
-- [BIO](https://esolangs.org/wiki/BIO) -> [BF](https://esolangs.org/wiki/Brainfuck): BIO's three registers live in the first three brainfuck cells; each command moves the pointer to its register, acts, and returns to cell 0. Registers must stay within `[0, 255]`.
-- [huf](https://esolangs.org/wiki/Huf) -> [BF](https://esolangs.org/wiki/Brainfuck): huf's `num`/`mul` live in cells 0 and 1; `!` multiplies by copying `num` to a temp cell that each loop iteration adds to `num` and refreshes from a running accumulator.
+- [brainfuck](https://esolangs.org/wiki/Brainfuck) <-> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block, and vice versa.
+- [brainfuck](https://esolangs.org/wiki/Brainfuck) -> [Circlefuck](https://esolangs.org/wiki/Circlefuck): sets up a clean data region inside the program-as-tape and emits the brainfuck commands unchanged. The data region is sized automatically from the program (the smallest bound that contains its data pointer), so `transpile("BF", "CircleFuck", program)` just works for programs with bounded, non-drifting loops; pass `size` explicitly to cover programs that stay within `[0, size)`.
+- [NoComment](https://esolangs.org/wiki/NoComment) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): the transpiler handles the c/i/o subset of NoComment, mapping each to brainfuck (`c` = `[-]`, `i` = `+`, `o` = `.`). The full language (a tape, a stack, and s/b jumps) is implemented by the interpreter and the assembly cross-check but not by this transpiler.
+- [BFStack](https://esolangs.org/wiki/BFStack) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): BFStack is a stack modelled on brainfuck's tape, so the transpiler is a table lookup (`>` pushes a cell, `<` pops and clears it (`[-]<`), `,` reads and pushes (`>,`)).
+- [BIO](https://esolangs.org/wiki/BIO) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): BIO's three registers live in the first three brainfuck cells; each command moves the pointer to its register, acts, and returns to cell 0. Registers must stay within `[0, 255]`.
+- [huf](https://esolangs.org/wiki/huf) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): huf's `num`/`mul` live in cells 0 and 1; `!` multiplies by copying `num` to a temp cell that each loop iteration adds to `num` and refreshes from a running accumulator.
 
 ```bash
 esolangs transpile BF "ASCII art" program.bf    # print the art
