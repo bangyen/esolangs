@@ -86,17 +86,38 @@ input) are resolved pragmatically and documented in the interpreter.
   It must handle the addressing itself (a `long long` key covers `n <= 28`; a
   small bignum for unbounded) — the very overflow that motivates the change.
 
-### Differential fuzzing for the interpreter/native pairs
+### Differential fuzzing for the interpreter/native pairs (done: seeded fuzzers)
 The differential corpus (`scripts/verify_differential.py`) covers EXCON,
 LaserFuck, and NoComment with a hand-written set of programs per language.
 The corpora exercise every instruction plus known edge cases, but they are
-fixed — they only catch divergences that were thought of.  A seeded
-random-program fuzzer that feeds both the in-package interpreter and the
-native cross-check the same generated programs (restricted to terminating
-inputs) would catch the unexpected divergences, like the NoComment
-back-jump loop and the EXCON pointer-fault case the fixed corpora surfaced
-only by chance.  Where the native side is nondeterministic (LaserFuck's
-random heading), compare against its output set as the corpus already does.
+fixed — they only catch divergences that were thought of.  The script now
+also takes `--fuzz N --seed S`: a seeded random-program fuzzer that feeds
+both the in-package interpreter and the native cross-check the same
+generated programs and compares output **and error category** (exit code)
+and, for NoComment, the termination verdict itself.  The seed makes the
+explored programs reproducible, and CI runs it with a fixed seed.
+
+- **EXCON**: random straight-line programs over `:^<!` (the only fault is
+  the off-pool pointer, exit 3 on both sides).
+- **NoComment**: random programs over the full 10-command alphabet.  A
+  random `b`/`s` program may loop forever; both sides bound the run (the
+  assembly via its instruction-count cap and its fixed tape/stack region,
+  Python via SIGALRM) and a program that halts on one side but loops on the
+  other is a divergence.
+- **LaserFuck**: random truth tables through the boolean generator (raw
+  random grids would hang the reference), comparing Python's four headings
+  against the Rust output set as the corpus does.
+
+The fuzzers immediately caught two real NoComment divergences the fixed
+corpus had missed: the assembly's jump bounds check allowed a target on the
+null terminator or the uninitialized gap byte the input loop leaves after
+the last command (both fixed to reject targets outside the real command
+range, matching Python's `0 <= target < len`), and it performed an empty
+stack "jump" by reading the null as a zero amount (fixed to skip the jump
+entirely, matching Python's `if tape[ptr] and stack`).  The fuzzer's
+termination-mismatch logic re-checks a Python timeout with a longer budget
+before reporting a divergence, so a slow-but-terminating program is not a
+false positive.
 
 ### Polynomial float64 root precision
 The Polynomial generators emit exact integer polynomials, but the

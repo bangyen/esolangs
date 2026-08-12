@@ -117,24 +117,32 @@ _start:
 .fore:
 	cmp byte [ecx], 0
 	je .parse
+	cmp edx, esi
+	je .parse
 	movzx eax, byte [edx]
 	sub edi, eax
-	; the target (edi, before .parse's dec) must lie in [esi, esp-4]
+	; the target (edi, before .parse's dec) must lie in [esi+3, esp-4]: the
+	; last real command is at esi+2 (the input loop leaves a gap byte at
+	; esi+1 and the null at esi), matching Python's 0 <= target < len
 	lea eax, [esp - 4]
 	cmp edi, eax
 	jg .error_runtime
-	cmp edi, esi
+	lea eax, [esi + 3]
+	cmp edi, eax
 	jl .error_runtime
 	jmp .parse
 .back:
 	cmp byte [ecx], 0
+	je .parse
+	cmp edx, esi
 	je .parse
 	movzx eax, byte [edx]
 	add edi, eax
 	lea eax, [esp - 4]
 	cmp edi, eax
 	jg .error_runtime
-	cmp edi, esi
+	lea eax, [esi + 3]
+	cmp edi, eax
 	jl .error_runtime
 	jmp .parse
 .output:
