@@ -19,7 +19,7 @@ hand.
 | BIO | yes | yes |  |  | hello |
 | Back |  | yes |  |  |  |
 | Basicfuck | yes |  | yes |  |  |
-| Between | yes | yes |  |  | hello cat truth-machine |
+| Between | yes | yes | yes |  | hello cat truth-machine |
 | BitDeque |  | yes |  |  |  |
 | BrainIf | yes | yes | yes |  | hello truth-machine |
 | CircleFuck | yes | yes | yes |  | hello truth-machine |

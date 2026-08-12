@@ -351,6 +351,50 @@ def run_sophie(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_between(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.between import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
+class TestBetween:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.between(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_between(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_program_structure(self) -> None:
+        """One declare/read/normalize triplet per input, one branch per node."""
+        program = boolean.between("0110", 2)
+        lines = program.splitlines()
+        assert lines[:3] == ["'0'v.", "[0]i.", "[0]s|[0]c.|"]
+        assert lines.count(".x.") == 4  # one leaf per input combination
+
+    def test_mismatched_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="4 entries"):
+            boolean.between("011", 2)
+
+    def test_bad_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.between("0123", 2)
+
+
 class TestForth:
     def test_program_structure(self) -> None:
         """The program defines one function per tree node and reads n bits."""

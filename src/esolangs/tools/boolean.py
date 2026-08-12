@@ -9,6 +9,7 @@ for compatibility.
 """
 
 from esolangs.tools.booleans.other import (
+    between,
     clockwise,
     container,
     laserfuck,
@@ -36,6 +37,7 @@ from esolangs.tools.booleans.tape import (
 __all__ = [
     "ascii_art",
     "basicfuck",
+    "between",
     "bf",
     "bf_tree",
     "bfstack",
