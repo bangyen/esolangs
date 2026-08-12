@@ -31,36 +31,33 @@ also lacks a halt command: identical structure with every move pinned
 wins on sparse tables (~4.4K for AND-8), the tree wins on dense (XOR-8 ~8x
 smaller).
 
-### LaserFuck boolean generator (in progress: general BF layout compiler)
+### LaserFuck boolean generator (resolved: loop-free decision tree)
 LaserFuck is brainfuck on a 2D grid: a laser (with a random initial heading)
 travels the grid, `>`, `<`, `+`, `-`, `,` work on the tape, ``(``/``)`` and
 ``_``/``|`` bounce the laser when the tape cell is nonzero (or always), and
-the whole tape is printed at the end.  A faithful emulator exists
-(`scripts/laserfuck_emu.py` in the boolean-generator scratch work).
+the whole tape is printed at the end.
 
-The existing text generator's loop layout (`src/esolangs/tools/generators/
-other.py`) is a fragile special case: it lays out exactly one `+[>+...+<-]`
-loop on a two-track serpentine and falls back to a *linear* layout (loops
-ignored) for short bodies like `[-]`, multiple loops, or nested loops.  The
-branch-free `_bf_minterm` evaluator has many nested loops, so a boolean
-generator needs a **general BF-to-LaserFuck layout compiler**:
+The planned route was a general BF-to-LaserFuck layout compiler with loop
+rings, but the boolean generator (`laserfuck` in `booleans/other.py`) took a
+**loop-free** route instead: a mirror funnel (`|`/`^`/`_` plus two `}`)
+sends every heading to the top row moving right, reads and normalizes the
+inputs, and walks a decision tree.  Each node's `#` makes the following `v`
+a one-way gate (skipped on approach, active on reflection), so `)` routes a
+zero cell straight through to `\` (down one column) and a nonzero cell back
+to `v` (down another column); each child row's `\` turns the beam right into
+the child.  Leaves live at a dedicated high column so no `+` run crosses a
+descent column, move the pointer to cell `n`, set it to 48+result, and hit
+`x`.  No loops means no loop-ring geometry.  The output mode's whole-tape
+dump prints the 0/1 inputs as NUL/SOH, so the verify harness's `01` filter
+leaves exactly the result cell.
 
-- Linear commands lay out fine on a single right-going track (verified in
-  the emulator, robust to all four random headings).
-- The output mode (first grid char `\xff`) prints every touched nonnegative
-  cell as a byte; inputs normalized to 0/1 and scratch cells fall out of the
-  verify harness's `01` filter, leaving only the 48/49 result cell — so the
-  result survives the whole-tape dump.
-- Loops need a physical ring: a ``)`` cell bounces the laser back through a
-  return lane while the tape cell is nonzero.  The `[-]`, copy, NOT, and sum
-  loops of `_bf_minterm` are do-while safe (their bodies are identity modulo
-  256 when rerun on a zero cell), but the AND `t1[ t2[ newp+ t2- ] t1- ]` is
-  not, so the loop entry must check the tape before entering the body.
-- The reference's random initial heading and `*` spawns make verification
-  require every generated grid to behave identically under all four headings.
-
-A working generator is not yet achieved; the loop-ring geometry (entry
-check, return lane, exit routing) is still under construction.
+The generator verified exhaustively for every table at n <= 3 and sampled
+at n = 4..6 through a Python interpreter that was differential-tested
+against the Rust reference (`extra/rust/laserfuck.rs`) on structured
+programs and every generated boolean grid.  A Python interpreter
+(`interpreters/other/laserfuck.py`) was also added for the boolean tests; it
+is not registered as the global runner because the reference's random
+heading makes text-generator round-trips nondeterministic.
 
 ### Dimensional v3 migration (done: Python interpreter; deferred: C++ reference)
 The wiki now documents Dimensional **v3.0** (an n-slot/n-pointer model with

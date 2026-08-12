@@ -11,6 +11,7 @@ for compatibility.
 from esolangs.tools.booleans.other import (
     clockwise,
     container,
+    laserfuck,
     nevermind,
     taglate,
     three_x,
@@ -47,6 +48,7 @@ __all__ = [
     "dimensional",
     "dimensional_tree",
     "forth",
+    "laserfuck",
     "modulous",
     "nevermind",
     "polynomial",

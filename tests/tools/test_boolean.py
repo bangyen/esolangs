@@ -1161,3 +1161,100 @@ class TestThreeX:
         assert len(small) < 120  # 100 is "10201": 5 digits
         assert len(large) < 350  # 1_000_000 is 13 base-3 digits
         assert len(large) < len(small) * 4
+
+
+def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
+    import re
+
+    from esolangs.interpreters.other.laserfuck import run
+
+    buffer = io.StringIO()
+
+    class FakeIO:
+        def __init__(self, ins: list[str]) -> None:
+            self._ins = list(ins)
+
+        def input_str(self) -> str:
+            return self._ins.pop(0)
+
+        def print_char(self, c: str) -> None:
+            buffer.write(c)
+
+        def print_line(self) -> None:
+            buffer.write("\n")
+
+        def print_num(self, n: int) -> None:
+            buffer.write(str(n))
+
+    with redirect_stdout(buffer):
+        run(program.splitlines(), FakeIO(inputs), heading=heading)
+    # byte output mode prints every touched cell; the 0/1 input cells print as
+    # NUL/SOH, so filtering to '0'/'1' leaves exactly the 48/49 result cell
+    return re.sub("[^01]", "", buffer.getvalue())
+
+
+class TestLaserFuck:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("00000001", 3),  # AND3
+            ("1111111100000000", 4),  # top half
+            ("0110100110010110", 4),  # XOR4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.laserfuck(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            for heading in range(4):
+                got = run_laserfuck(program, [str(b) for b in bits], heading)
+                assert got == str(int(table[combo])), f"inputs {bits} heading {heading}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.laserfuck(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_laserfuck(program, [str(b) for b in bits], 3)
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_funnel_is_heading_independent(self) -> None:
+        """Every initial heading reaches the tree on the top row."""
+        program = boolean.laserfuck("0110", 2)
+        for heading in range(4):
+            assert run_laserfuck(program, ["1", "0"], heading) == "1"
+
+    def test_byte_output_mode(self) -> None:
+        """The first grid cell selects byte output (no separators)."""
+        program = boolean.laserfuck("10", 1)
+        assert program.splitlines()[0][0] == "\u00ff"
+
+    def test_loop_free_tree(self) -> None:
+        """The decision tree uses the #/)/\\ branch, not loop rings."""
+        program = boolean.laserfuck("0110", 2)
+        assert "#" in program
+        assert ")" in program
+        assert "\\" in program
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.laserfuck("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.laserfuck("02", 1)
