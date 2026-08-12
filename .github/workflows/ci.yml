@@ -131,7 +131,11 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install g++
-      run: sudo apt-get update && sudo apt-get install -y g++
+      run: sudo apt-get update && sudo apt-get install -y g++ clang-format
+
+    - name: Check extra/ C++ formatting
+      run: |
+        clang-format --dry-run --Werror extra/c++/*.cpp
 
     - name: Build extra/ C++ implementations
       run: |
@@ -211,16 +215,25 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y r-base nasm
+        gem install standardrb
+        Rscript -e 'install.packages("styler", repos="https://cloud.r-project.org", quiet=TRUE)'
 
-    - name: Check Ruby syntax
+    - name: Check Ruby syntax and formatting
       run: |
         for f in extra/ruby/*.rb; do
           ruby -c "$f"
         done
+        standardrb extra/ruby/*.rb
 
-    - name: Check R syntax
+    - name: Check R syntax and formatting
       run: |
         Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) parse(f)'
+        cp -r extra/r /tmp/r_orig
+        Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) styler::style_file(f)'
+        if ! diff -r extra/r /tmp/r_orig; then
+          echo "R files need formatting: run styler::style_file() on extra/r"
+          exit 1
+        fi
 
     - name: Verify generator round-trips against the R and Ruby references
       run: |
