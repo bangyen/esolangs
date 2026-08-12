@@ -1,34 +1,75 @@
 """Interpreter for NoComment.
 
-This interpreter implements a *subset* of NoComment for the text generator:
-``c`` clears the current cell, ``i`` increments it, and ``o`` prints it as a
-byte; every other character is treated as a comment and ignored.  The wiki
-spec defines the full language (``i d c l r n f s b o`` over a tape and
-stack, with non-command characters as errors), which the assembly
-cross-check implements; this Python interpreter deliberately omits the
-tape, the stack, and the jumps, and its comment-ignoring behavior differs
-from the wiki's error-on-non-command rule.  With a single cell and no
-input, the subset can only print a fixed text, which is exactly what the
-generator produces.  ``c``/``i``/``o`` map onto brainfuck's ``[-]``/``+``/
-``.``, so the NoComment-to-BF transpiler is a table lookup and is verified
-end to end.
+The full wiki language (not a subset): a byte tape with a movable pointer,
+plus a byte stack.  ``i``/``d`` increment/decrement the current cell, ``c``
+clears it, ``l``/``r`` move the pointer (``l`` is a no-op at cell 0, ``r``
+extends the tape), ``n`` pushes the current cell onto the stack, ``f`` pops
+the stack into the current cell, ``s``/``b`` jump forward/backward by a
+peeked stack value when the current cell is nonzero (``s`` skips X
+instructions, ``b`` jumps back X-1), and ``o`` prints the current cell as a
+byte.
+
+Per the wiki, any character that is not a command is an error (there are no
+comments), and popping an empty stack is an error.  A malformed program
+(unrecognized character) raises :class:`ValueError`; an invalid operation
+(stack underflow) raises :class:`~esolangs.exceptions.HaltError`.
 """
 
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+
+_COMMANDS = "idclrnfsbo"
 
 
 def run(code: str, io: IO) -> None:
     """Run a NoComment program."""
-    cell = 0
-    for char in code:
-        if char == "c":
-            cell = 0
-        elif char == "i":
-            cell = (cell + 1) % 256
-        elif char == "o":
-            io.print_char(chr(cell))
+    tape: list[int] = [0]
+    stack: list[int] = []
+    ptr = 0
+    ind = 0
+
+    while ind < len(code):
+        c = code[ind]
+        if c == "i":
+            tape[ptr] = (tape[ptr] + 1) % 256
+        elif c == "d":
+            tape[ptr] = (tape[ptr] - 1) % 256
+        elif c == "c":
+            tape[ptr] = 0
+        elif c == "l":
+            if ptr:
+                ptr -= 1
+        elif c == "r":
+            ptr += 1
+            if ptr == len(tape):
+                tape.append(0)
+        elif c == "n":
+            stack.append(tape[ptr])
+        elif c == "f":
+            if not stack:
+                raise HaltError
+            tape[ptr] = stack.pop()
+        elif c == "s":
+            if tape[ptr] and stack:
+                # skip X forward: the next command is at ind + X + 1
+                target = ind + stack[-1] + 1
+                if not 0 <= target < len(code):
+                    raise HaltError
+                ind += stack[-1]
+        elif c == "b":
+            if tape[ptr] and stack:
+                # jump back X-1: the next command is at ind - X + 1
+                target = ind - stack[-1] + 1
+                if not 0 <= target < len(code):
+                    raise HaltError
+                ind -= stack[-1]
+        elif c == "o":
+            io.print_char(chr(tape[ptr]))
+        else:
+            raise ValueError(f"unrecognized NoComment command {c!r}")
+        ind += 1
 
 
 if __name__ == "__main__":

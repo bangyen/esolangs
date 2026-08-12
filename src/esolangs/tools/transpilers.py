@@ -161,9 +161,13 @@ _NOCOMMENT_TO_BF = {"c": "[-]", "i": "+", "o": "."}
 def nocomment_to_bf(program: str) -> str:
     """Rewrite a NoComment program into brainfuck.
 
-    NoComment is a strict subset of brainfuck: ``c`` clears the current
-    cell (``[-]``), ``i`` increments it (``+``), and ``o`` prints it as a
-    byte (``.``).  Anything else is a comment and is dropped.
+    Handles the ``c``/``i``/``o`` subset of NoComment, which maps directly
+    onto brainfuck: ``c`` clears the current cell (``[-]``), ``i``
+    increments it (``+``), and ``o`` prints it as a byte (``.``).  Anything
+    else is dropped (the full language's tape, stack, and ``s``/``b`` jumps
+    have no brainfuck translation here).  Dropping characters also makes
+    this a lenient receiver: a program the interpreter would reject for a
+    non-command still transpiles by ignoring it.
     """
     return "".join(_NOCOMMENT_TO_BF[c] for c in program if c in _NOCOMMENT_TO_BF)
 
