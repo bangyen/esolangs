@@ -164,6 +164,42 @@ solve of the degree-104 polynomial does not converge in practical time.
 Lifting it would require a genuinely different seed strategy for the
 overflow case, not just higher precision.
 
+### Future direction: recover roots by factoring the integer polynomial
+The conditioning problem is inherent to *root finding*: the polynomial is so
+ill-conditioned that any floating-point solver (float64, mpmath Aberth, or
+high-precision QR) either converges to wrong roots or not at all.  But the
+interpreter does not need *approximate* roots — it needs the exact integer
+instruction values `a`, `p`, `b`.  Those are recoverable **exactly** by
+factoring the monic integer polynomial over `\mathbb{Z}` (Zassenhaus /
+sympy's `factor`), because every instruction contributes a known factor
+shape:
+
+- a complex instruction ``[a, b]`` is the quadratic ``(x-a)^2 + p^(2b)`` =
+  ``x^2 - 2a x + (a^2 + p^(2b))``, so the linear coefficient gives ``a``
+  and the constant term minus ``a^2`` is an exact square ``p^(2b)``;
+- a real instruction ``[v]`` is the linear factor ``x - p^v``.
+
+Verified on the two cases that defeat every numeric solver: the
+pathological text ``'aあbいcう' * 3`` (degree 72, 36 quadratics, ~0.6s,
+exact) and a boolean ``n == 3`` program (degree 88, coefficients ~10**285,
+58 instructions, ~1.2s).  This would fix both open gaps and replace the
+fragile seed+refine path entirely.
+
+Measured timing (sympy's `factor`): long text degree 104 -> ~1.7s; boolean
+``n == 3`` (degree 88) -> ~1.1s; boolean ``n == 4`` (degree 184,
+coefficients ~10**729) -> ~10.5s.  So the boolean cap could lift to ``n ==
+4`` at a cost, and even ``n == 5`` is not obviously impossible.
+
+Open questions before committing to it: sympy's import alone costs seconds
+(so it would need to be imported lazily, and it changes the package's
+dependency profile — numpy + mpmath + sympy); factorization cost grows with
+degree, so the timing at ``n >= 5`` and very long texts should be measured;
+and a hand-rolled factorer for just these two factor shapes (quadratic with
+a perfect-square constant, and linear) might avoid the sympy dependency
+entirely — the generator's polynomials are exactly products of those
+shapes, so a targeted square-free/divisor search could recover them without
+a general Zassenhaus implementation.
+
 Dependency note: `numpy` (for the seed) and `mpmath` (for the refine) are
 the only third-party imports, both hard dependencies used solely by the
 polynomial interpreter's root finding.
