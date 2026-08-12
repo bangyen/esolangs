@@ -144,8 +144,9 @@ def polynomial(truth_table: str, n: int) -> str:
     coefficients of a deeper tree grow quickly -- at ``n == 3`` they reach
     ~10**360 and at ``n == 4`` ~10**729.  The interpreter recovers roots by
     factoring the integer polynomial (exact, so the huge coefficients are no
-    obstacle); ``n == 3`` is verified to run in ~1s and ``n == 4`` in ~10s.
-    ``n > 4`` is rejected to keep the boolean tests tractable.
+    obstacle); ``n == 3`` runs in ~1s and ``n == 4`` in ~10s, while ``n ==
+    5`` (degree 376, coefficients ~10**1746) does not factor in practical
+    time.  ``n > 4`` is rejected.
     """
     if n > 4:
         raise ValueError(
