@@ -316,7 +316,7 @@ circlefuck_byte(table)    # arbitrary byte-valued functions
 ascii_art("0110", 2)      # and in ASCII art
 six_five("0110", 2)       # and in 6-5
 qoibl("0110", 2)          # and in Qoibl
-polynomial("0110", 2)     # and in Polynomial (up to n = 2)
+polynomial("0110", 2)     # and in Polynomial (up to n = 4)
 taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
 bfstack("0110", 2)        # and in BFStack
 laserfuck("0110", 2)      # and in LaserFuck (random initial heading)
@@ -342,12 +342,12 @@ Important information about specific language implementations.
 
 - **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 
-- **polynomial**: The interpreter finds roots by seeding numpy's fast result
-  into a high-precision mpmath refinement, so byte-range text and wide
-  codepoint deltas round-trip correctly.  A pathological program whose roots
-  span several orders of magnitude (e.g. the same wide codepoint delta
-  repeated several times) can still defeat the root-finder, which then
-  raises rather than silently corrupting.
+- **polynomial**: The interpreter recovers a program's instructions by
+  factoring its monic integer polynomial with sympy — every instruction is a
+  known factor shape (a quadratic `(x-a)^2 + p^(2b)` or a linear `x - p^v`)
+  — so the values come out exactly, with no floating-point root-finding.
+  Byte-range text, wide codepoint deltas (ASCII next to CJK/emoji), and even
+  pathological root spreads round-trip correctly.
 
 ### Usage Notes
 
