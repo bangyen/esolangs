@@ -1,11 +1,17 @@
 """Interpreter for NoComment.
 
-NoComment is a strict subset of brainfuck: ``c`` clears the current cell,
-``i`` increments it, and ``o`` prints it as a byte; every other character
-is a comment.  With a single cell and no input, a program can only print a
-fixed text, which is exactly what the generator produces.  ``c``/``i``/``o``
-map onto brainfuck's ``[-]``/``+``/``.``, so the NoComment-to-BF transpiler
-is a table lookup and is verified end to end.
+This interpreter implements a *subset* of NoComment for the text generator:
+``c`` clears the current cell, ``i`` increments it, and ``o`` prints it as a
+byte; every other character is treated as a comment and ignored.  The wiki
+spec defines the full language (``i d c l r n f s b o`` over a tape and
+stack, with non-command characters as errors), which the assembly
+cross-check implements; this Python interpreter deliberately omits the
+tape, the stack, and the jumps, and its comment-ignoring behavior differs
+from the wiki's error-on-non-command rule.  With a single cell and no
+input, the subset can only print a fixed text, which is exactly what the
+generator produces.  ``c``/``i``/``o`` map onto brainfuck's ``[-]``/``+``/
+``.``, so the NoComment-to-BF transpiler is a table lookup and is verified
+end to end.
 """
 
 import sys
