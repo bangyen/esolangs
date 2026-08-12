@@ -41,8 +41,10 @@
 
     python scripts/verify.py
 
-runs pre-commit, pytest, and the emulation checks locally. The native x86
-and qemu steps are CI-only (Linux).
+runs pre-commit, pytest, and the emulation checks locally. The script
+resolves the project interpreter itself (the local `.venv`, then `uv run
+python`, then the running interpreter), so it works regardless of which
+`python` is on the path. The native x86 and qemu steps are CI-only (Linux).
 
 ## Conventions
 
