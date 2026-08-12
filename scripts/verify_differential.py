@@ -68,9 +68,9 @@ EXCON_CORPUS = [
 ]
 
 # A program that moves the pointer 8 times left from cell 7 faults; the
-# Python interpreter raises HaltError.  The R reference has no bounds check
-# (the module docstring notes it matches the reference Python).  Exclude it
-# from the exact-match corpus and handle it separately.
+# Python interpreter raises HaltError and the R cross-check stops with an
+# error (both now agree).  Excluded from the exact-match corpus and checked
+# separately for the exit-code agreement.
 EXCON_FAULT = "<" * 8 + "!"
 
 
@@ -247,6 +247,22 @@ def _run_native(
     return out
 
 
+def _run_native_code(
+    cmd: list[str], program: str, timeout: float = 5
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through ``cmd``, returning ``(stdout, exit_code)``."""
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run([*cmd, path], capture_output=True, timeout=timeout)
+        return proc.stdout, proc.returncode
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
 def _run_excon_python(program: str) -> str:
     from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.excon import run
@@ -288,16 +304,37 @@ def _verify_excon() -> bool:
             failures += 1
             print(f"EXCON {program!r}: python {py!r} vs R {native!r}")
 
-    # the pointer-fault program: Python raises HaltError; the R reference has
-    # no bounds check, so it prints a byte instead — expected divergence
-    out = _run_native(r_ref, EXCON_FAULT)
-    assert out is not None, "EXCON reference did not terminate on the fault program"
-    native = out.decode(errors="replace")
-    print(f"EXCON fault: R prints {native!r} (Python raises HaltError)")
+    # the pointer-fault program: both implementations must fault
+    py_fault = _run_excon_fault()
+    r = _run_native_code(r_ref, EXCON_FAULT)
+    assert r is not None, "EXCON reference did not terminate on the fault program"
+    r_fault = (r[0].decode(errors="replace"), r[1] != 0)
+    if py_fault != r_fault:
+        failures += 1
+        print(f"EXCON fault: python {py_fault!r} vs R {r_fault!r}")
 
     if not failures:
         print(f"EXCON differential: {len(EXCON_CORPUS)} programs match")
     return failures == 0
+
+
+def _run_excon_fault() -> tuple[str, int]:
+    """Run the pointer-fault program; return (output, exit_code)."""
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.tape_based.excon import run
+
+    buffer = io.StringIO()
+
+    class _IO(IO):
+        def print_char(self, char: str) -> None:
+            buffer.write(char)
+
+    try:
+        run(EXCON_FAULT, _IO())
+    except HaltError:
+        return buffer.getvalue(), 1
+    return buffer.getvalue(), 0
 
 
 def _run_laserfuck_python(
