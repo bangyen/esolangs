@@ -31,6 +31,7 @@ BOOLEAN = {
     "Dig",
     "Dimensional",
     "Forþ",
+    "LaserFuck",
     "Modulous",
     "Nevermind",
     "Polynomial",

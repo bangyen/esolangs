@@ -3,6 +3,7 @@
 __all__ = [
     "clockwise",
     "container",
+    "laserfuck",
     "nevermind",
     "taglate",
     "three_x",
@@ -425,6 +426,114 @@ def _validate_tt(truth_table: str, n: int) -> None:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
+
+
+def laserfuck(truth_table: str, n: int) -> str:
+    r"""Build a LaserFuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The laser starts at ``o`` with a random heading, so a mirror funnel
+    (``|``/``^``/``_`` plus two ``}`` on the row above) sends every heading to
+    the top row moving right.  There it reads ``n`` bits into cells 0..n-1
+    (each ``,`` then 48 ``-`` normalizes ``'0'``/``'1'`` to 0/1) and enters a
+    decision tree.  Each node at level ``i`` moves the pointer to cell ``i``,
+    then lays down ``#`` ``v`` ``)`` ``\\``: the ``#`` skips the ``v`` on
+    approach, ``)`` routes a zero cell through to ``\\`` (down column c+3) and
+    a nonzero cell back to ``v`` (down column c+1); each child row's ``\\``
+    turns the beam right into the child.  Leaves (one per input combination,
+    at a dedicated high column so no ``+`` run crosses a descent column) move
+    the pointer to cell ``n``, set it to 48+result, and hit ``x`` to halt.
+
+    The first grid cell ``\\xff`` selects byte output mode: every touched
+    cell with a nonnegative value prints as a byte.  The input cells hold 0/1
+    (printed as NUL/SOH), so the verify harness's ``01`` filter leaves exactly
+    the 48/49 result cell.  The tree is loop-free, so no loop-ring geometry is
+    needed.
+    """
+    _validate_tt(truth_table, n)
+    rows = 2 ** (n + 1) - 1
+    total_cols = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2**n * 55 + 64
+    grid = [[" "] * total_cols for _ in range(rows)]
+
+    # the funnel: every heading ends up on row 0 moving right
+    grid[0][0] = "\u00ff"
+    grid[0][1] = "}"
+    grid[0][2] = "}"
+    grid[1][0] = "|"
+    grid[1][1] = "o"
+    grid[1][2] = "^"
+    grid[2][1] = "_"
+
+    # read n bits into cells 0..n-1 on row 0 (pointer ends at cell n-1)
+    col = 3
+    for i in range(n):
+        grid[0][col] = ","
+        col += 1
+        for _ in range(48):
+            grid[0][col] = "-"
+            col += 1
+        if i < n - 1:
+            grid[0][col] = ">"
+            col += 1
+
+    # node rows: breadth-first, root at row 0 and children on lower rows
+    def row(i: int, j: int) -> int:
+        return 2**i + j - 1
+
+    # internal-node columns (preorder); leaves get a dedicated high region
+    cols: dict[tuple[int, int], int] = {}
+    width = [col + 1 + n]  # room for the root's pointer-move cells
+
+    def assign_col(i: int, j: int) -> int:
+        if (i, j) in cols:
+            return cols[(i, j)]
+        c = width[0]
+        cols[(i, j)] = c
+        width[0] = c + 6
+        if i < n - 1:
+            assign_col(i + 1, 2 * j)
+            assign_col(i + 1, 2 * j + 1)
+        return c
+
+    assign_col(0, 0)
+    leaf_base = width[0] + 4  # past every internal column and descent column
+
+    # leaves: one per input combination, at (level n, row, high column)
+    for j in range(2**n):
+        r = row(n, j)
+        c = leaf_base + j * 55
+        # the beam arrives from the parent's descent column; it first moved the
+        # pointer to cell i (level i), so here it is at cell n-1
+        grid[r][c] = ">"
+        for k in range(48 + int(truth_table[j])):
+            grid[r][c + 1 + k] = "+"
+        grid[r][c + 1 + 48 + int(truth_table[j])] = "x"
+
+    # internal nodes: move the pointer to cell i, then '#','v',')','\\'
+    for i in range(n):
+        for j in range(2**i):
+            r = row(i, j)
+            c = cols[(i, j)]
+            # root arrives with the pointer at cell n-1; a child at level i
+            # arrives with it at cell i-1 (its parent tested bit i-1)
+            arrival = n - 1 if i == 0 else i - 1
+            moves = ">" * (i - arrival) if i >= arrival else "<" * (arrival - i)
+            cur = c - len(moves)
+            for ch in moves:
+                grid[r][cur] = ch
+                cur += 1
+            grid[r][c] = "#"
+            grid[r][c + 1] = "v"
+            grid[r][c + 2] = ")"
+            grid[r][c + 3] = "\\"
+            zero_r = row(i + 1, 2 * j)  # down column c+3
+            one_r = row(i + 1, 2 * j + 1)  # down column c+1
+            grid[zero_r][c + 3] = "\\"  # turn the down-beam right
+            grid[one_r][c + 1] = "\\"  # turn the down-beam right
+
+    return "\n".join("".join(ln).rstrip() for ln in grid)
 
 
 def _odd_reduce(pairs: int, level: int, n: int) -> str:

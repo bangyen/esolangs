@@ -32,7 +32,7 @@ hand.
 | Forþ | yes |  | yes |  |  |
 | Home Row | yes |  |  | yes |  |
 | Keys |  | yes |  |  |  |
-| LaserFuck | yes |  |  |  |  |
+| LaserFuck | yes |  | yes |  |  |
 | Lightlang |  | yes |  |  |  |
 | MAMMALIAN | yes | yes |  |  | hello |
 | Magnitude | yes |  |  |  |  |
