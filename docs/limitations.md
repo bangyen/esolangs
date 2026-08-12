@@ -1,10 +1,9 @@
 # Limitations and ruled-out ideas
 
-What the boolean generators cannot do, and the language assessments that
-concluded a generator is not viable (or only partially viable).  Completed
-work lives in the commit history; this file records the walls, the negative
-results, and the reasoning behind them.  Genuine future work is in
-`docs/ROADMAP.md`.
+What the generators cannot do, and the assessments that concluded an
+approach is not viable (or only partially viable).  Completed work lives in
+the commit history; this file records the walls, the negative results, and
+the reasoning behind them.  Genuine future work is in `docs/ROADMAP.md`.
 
 ## 6-5 (built; the decision tree stays primary)
 The arithmetic-kernel generator (`six_five_arithmetic`) was built: it packs
@@ -162,3 +161,30 @@ same type — and there is no value comparison or arithmetic.  Only a fragile
 direction-routing trick could express more, and it caps at three inputs
 before the eight (marker, heading) states run out, below the verification
 bar.
+
+## Polynomial numeric root-finding (ruled out; instruction recovery is exact)
+The Polynomial interpreter used to find a program's roots numerically, and
+every floating-point solver was defeated by the root geometry.  The
+generator emits exact integer polynomials whose coefficients far exceed
+float64's exact-integer range (2**53) once a few instructions accumulate —
+`'Hello, World!'` has coefficients up to 10**95 — so `numpy.roots` silently
+rounded them and solved a different polynomial, losing the small imaginary
+parts that encode instructions.  The interpreter now factors the monic
+integer polynomial over Z with sympy instead (every instruction is a known
+factor shape, so the values come out exactly, with no floating point); the
+numeric routes are recorded here as ruled out:
+
+- A pure high-precision `mp.polyroots` (Aberth) swap is correct but ~3000x
+  slower per program on the common path, and still does not converge on the
+  pathological root spreads.
+- A custom high-precision companion-matrix QR (`mp.eig`) produces garbage
+  even on `'Hello, World!'` (degree 50) and hangs on modest degrees, because
+  the companion matrix is badly scaled.
+- A change-of-variable scaling still solves the wrong (imprecise) polynomial.
+- A residual-based correctness gate cannot work: the ill-conditioning (~1e16)
+  makes even wildly wrong roots look right at any precision.
+
+The factor-based recovery also defines the boolean generator's practical
+bound: `n == 4` (degree 184, coefficients ~10**729) factors in ~10s, while
+`n == 5` (degree 376, ~10**1746) does not factor in practical time, so the
+boolean generator is capped at `n <= 4`.
