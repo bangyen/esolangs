@@ -9,9 +9,10 @@
 # 1/2), so no truncation happens anywhere.
 #
 # Invocation: `ruby 3x.rb <program-file>`; program text from `ARGV[0]`.
-# Input: `?` reads from stdin.  A command that pops an empty stack raises
-# `empty stack` and exits non-zero (the wiki leaves empty-stack behavior
-# undefined; this implementation treats it as an error).
+# Input: `?` reads from stdin.  A command that pops an empty stack exits
+# with status 3 (invalid operation; the cross-check convention is 0 =
+# success, 2 = malformed program, 3 = invalid operation).  The wiki leaves
+# empty-stack behavior undefined; this implementation treats it as an error.
 
 code = File.read(ARGV[0])
 ARGV.clear
@@ -23,7 +24,7 @@ ind = 0
 var.default = Rational(3)
 
 def pop(stk)
-  raise 'empty stack' if stk.empty?
+  raise SystemExit.new(3, 'empty stack') if stk.empty?
 
   stk.pop
 end
