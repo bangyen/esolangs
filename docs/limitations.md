@@ -98,13 +98,15 @@ with n <= 3 at most, and not to arbitrary boolean functions.
 Eval was surveyed as capable for input-by-substitution boolean generators
 (it has output, constant construction, and a `?` skip-if-zero branch), but
 building a decision tree requires nesting: each subtree must be a string
-evaluated with `!`, and the inner strings' quotes must be escaped as
-backticks.  Eval's string parser (`re.match('[^"]*', ...)`) converts *every*
-backtick to a quote at the level that reads the literal, so a backtick
-representing a deeper level's quote cannot be distinguished from this
-level's — two levels of escaping collapse, and nested `!`-evaluated trees
-fail.  Eval is therefore not viable for the parameterized class (a linear
-program is possible, but that is the degenerate constant-printer model).
+evaluated with `!`.  This is a **spec** limitation, not an interpreter bug
+(the interpreter matches the wiki exactly): the wiki defines stringmode as
+"the backquote character appends the `"` double quote character to res, the
+`"` double quote character exits stringmode", with no way to escape a
+backtick or include a literal one.  So a pushed string can never contain a
+backtick, and a nested `!`-evaluated subtree (whose own string-literal
+delimiters need escaping at multiple levels) cannot survive more than one
+wrap.  The wiki's examples only ever use single-level `!`.  Eval is
+therefore not viable for the parameterized class.
 
 ## MAMMALIAN (viable in principle, but the dispatch layout is hard)
 MAMMALIAN has the primitives a decision tree needs, confirmed through the
