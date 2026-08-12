@@ -89,6 +89,7 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Qoibl": Language("Qoibl", _generate.qoibl, "register_based.qoibl", split=True),
     "RAM0": Language("RAM0", interpreter="register_based.RAM0"),
+    "S*bleq": Language("S*bleq", interpreter="tape_based.sbleq"),
     "Sophie": Language("Sophie", _generate.sophie, "register_based.sophie"),
     "Suffolk": Language(
         "Suffolk",
