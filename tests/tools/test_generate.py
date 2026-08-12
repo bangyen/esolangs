@@ -415,7 +415,7 @@ class TestGeneratorProducesOutput:
         generators = [
             gen.forth,
             gen.laserfuck,
-            gen.magnitude,
+            gen.pct_squared_minus_one,
             gen.painfuck,
             gen.suffolk,
             gen._123,  # noqa: SLF001 - public generator
@@ -497,7 +497,7 @@ class TestGeneratorBranches:
     def test_edge_case_inputs(self) -> None:
         """Generators must not crash on edge-case inputs."""
         generators = [
-            gen.magnitude,
+            gen.pct_squared_minus_one,
             gen.painfuck,
             gen.laserfuck,
             gen.suffolk,
