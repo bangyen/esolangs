@@ -220,12 +220,12 @@ mod tests {
                 .stdout(Stdio::piped())
                 .spawn()
                 .expect("failed to spawn");
-            child
-                .stdin
-                .take()
-                .unwrap()
-                .write_all(stdin.as_bytes())
-                .unwrap();
+            let mut child_stdin = child.stdin.take().unwrap();
+            // The child may exit before reading all of stdin (it reads on
+            // demand), so a broken pipe here is fine; dropping the handle
+            // closes the pipe so the child still sees EOF.
+            let _ = child_stdin.write_all(stdin.as_bytes());
+            drop(child_stdin);
             let out = child.wait_with_output().unwrap();
             std::fs::remove_file(&path).ok();
             outputs.push(String::from_utf8(out.stdout).expect("non-utf8 output"));

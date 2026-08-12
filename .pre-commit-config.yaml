@@ -34,8 +34,12 @@ repos:
     rev: v2.3.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-requests, types-setuptools]
-        args: [--ignore-missing-imports]
+        # The mirror's default --ignore-missing-imports would suppress the
+        # sympy import-untyped error and trip warn_unused_ignores, so pass no
+        # extra flags and rely on the pyproject strict config, scoped to src/.
+        args: []
+        additional_dependencies: [types-requests, types-setuptools, sympy]
+        files: ^src/
 
   - repo: local
     hooks:
