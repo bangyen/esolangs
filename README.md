@@ -257,6 +257,8 @@ file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
 
 Compilers that translate esoteric languages to other target languages.
 
+<!-- COMPILERS:START -->
+
 ### x86 Assembly Compilers
 
 - [BFStack](https://esolangs.org/wiki/BFStack)
@@ -271,6 +273,8 @@ Compilers that translate esoteric languages to other target languages.
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [RAM0](https://esolangs.org/wiki/RAM0)
+
+<!-- COMPILERS:END -->
 
 </details>
 
