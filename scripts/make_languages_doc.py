@@ -103,10 +103,9 @@ _README_HEADINGS = [
 # Registry display name -> esolangs wiki page title, where the wiki names
 # the page differently from the registry's shorthand.
 _WIKI_PAGES = {
-    "BF": "Brainfuck",
+    "BF": "brainfuck",
     "BitDeque": "Bitdeque",
     "CircleFuck": "Circlefuck",
-    "huf": "Huf",
     "MAMMALIAN": "SLOW ACV MAMMALIAN",
     "Temporary": "The Temporary Stack",
     "ZTOALC": "ZTOALC L",
