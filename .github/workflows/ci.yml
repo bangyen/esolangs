@@ -200,7 +200,7 @@ jobs:
 
     - name: Differential-test the interpreters against the native cross-checks
       run: |
-        PYTHONPATH=src python3 scripts/verify_differential.py
+        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
 
   extra-languages:
     runs-on: ubuntu-latest
@@ -228,7 +228,7 @@ jobs:
 
     - name: Differential-test EXCON against the R cross-check
       run: |
-        PYTHONPATH=src python3 scripts/verify_differential.py
+        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
 
     - name: Build and natively run the x86 reference interpreters
       run: |
