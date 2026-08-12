@@ -429,9 +429,7 @@ def _run_laserfuck_python(
     return buffer.getvalue()
 
 
-def _check_laserfuck_boolean(
-    table: str, n: int, runs: int = 12
-) -> tuple[int, int]:
+def _check_laserfuck_boolean(table: str, n: int, runs: int = 12) -> tuple[int, int]:
     """Differentially check a LaserFuck boolean program for one truth table.
 
     Returns ``(checked, failures)``: one ``checked`` per input combination,
