@@ -74,12 +74,14 @@ def test_example_files_match_generator() -> None:
 
 # name -> (interpreter module, input lines, expected output, split lines)
 CAT_EXAMPLES = {
+    "between": ("other.between", ["hi"], "hi", True),
     "nevermind": ("other.nevermind", ["hi"], "hi\n", True),
     "6-5": ("tape_based.6-5", ["h"], "h", False),
     "modulous": ("stack_based.modulous", ["hi"], "hi", False),
 }
 
 TRUTH_MACHINE_EXAMPLES = {
+    "between": ("other.between", ["0"], "0", True),
     "modulous": ("stack_based.modulous", ["0"], "0", False),
     "brainif": ("tape_based.brainif", ["0"], "0", True),
     "circlefuck": ("tape_based.circlefuck", ["0"], "0", False),
