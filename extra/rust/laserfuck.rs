@@ -16,6 +16,7 @@
 //! matching the wiki, and `,` reads a whole line taking only its first byte
 //! (empty line -> 0).  A second `o` halts immediately.
 //!
+//! Invocation: `laserfuck <program-file>`; program text from `argv[1]`.
 //! Input: the program file is `argv[1]`; `,` reads from stdin.
 
 use rand::Rng;

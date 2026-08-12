@@ -12,6 +12,7 @@
 // `y` is intentionally nondeterministic (a random skip), so a single run's
 // output is not reproducible; the generators avoid it.
 //
+// Invocation: `painfuck <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `i`/`j` read from stdin.
 
 #include <ctime>

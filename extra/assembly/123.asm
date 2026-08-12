@@ -14,6 +14,7 @@
 ; BACK toward the start; the `3` branches match the wiki (back on TRUE,
 ; forward on FALSE).
 ;
+; Invocation: `123 < stdin`; the program is read from stdin.
 ; Input/output: the program is read from stdin; `2` at -3 reads a byte and `2`
 ; at -2 writes one, in little-endian bit order per the wiki note.
 ;

@@ -16,6 +16,7 @@
 # character, unlike the Rust cross-check which falls back to a decimal value
 # when it is not a valid character.
 #
+# Invocation: `ruby unsquare.rb <program-file>`; program text from `ARGV[0]`.
 # Input: the program file is `ARGV[0]`; `i` reads from stdin.
 
 code = File.read(ARGV[0])

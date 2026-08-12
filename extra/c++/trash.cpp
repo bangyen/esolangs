@@ -5,6 +5,7 @@
 // prime, the program prints the value advanced by that many primes; otherwise
 // it prints 0.  A program with no digits is malformed (EXIT_FAILURE).
 //
+// Invocation: `trash <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; the language has no input command.
 
 #include <fstream>

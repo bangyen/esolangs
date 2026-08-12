@@ -14,6 +14,7 @@
 // exits with EXIT_FAILURE (via the `error` helper); `wrap`/`nearest` bound
 // the cell instead.
 //
+// Invocation: `basicfuck <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `read ->` reads from stdin.
 
 #include <climits>

@@ -12,6 +12,7 @@
 // Error handling: popping an empty stack, a stack too small for `c`, or an
 // unterminated bracket exits with EXIT_FAILURE (an invalid operation).
 //
+// Invocation: `forþ <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `,` reads from stdin.
 
 #include <fstream>
