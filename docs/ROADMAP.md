@@ -119,47 +119,51 @@ termination-mismatch logic re-checks a Python timeout with a longer budget
 before reporting a divergence, so a slow-but-terminating program is not a
 false positive.
 
-### Polynomial float64 root precision
+### Polynomial float64 root precision (resolved: hybrid high-precision refine)
 The Polynomial generators emit exact integer polynomials, but the
-interpreter finds roots with `numpy.roots`, whose float64 companion-matrix
+interpreter found roots with `numpy.roots`, whose float64 companion-matrix
 computation loses the small imaginary parts when the roots span a wide
-magnitude range.  That happens when consecutive characters differ by large
-codepoint amounts (e.g. ASCII immediately followed by a CJK character), so
-such text silently corrupts (documented under README "Known Issues").  A
-heuristic guard is *not* viable: OK and FAIL cases overlap in both coefficient
-magnitude and max delta, and even the same delta passes or fails depending on
-the surrounding pattern.
+magnitude range.  The deeper cause is that the integer coefficients far
+exceed float64's exact-integer range (2**53): `'Hello, World!'` has
+coefficients up to 10**95, so numpy rounds them before building the
+companion matrix and solves a different polynomial.  Text whose consecutive
+characters differ by large codepoint amounts (e.g. ASCII immediately
+followed by a CJK character) silently corrupted.
 
-Higher-precision replacements have been tried and ruled out empirically:
+The interpreter now seeds numpy's fast result into a high-precision
+`mp.polyroots` (Aberth) refinement (`interpreters/register_based/polynomial.py`),
+with `extraprec` absorbing the coefficient magnitude.  This fixes the common
+corruption: a 500-program mixed-unicode fuzz that corrupted 14 under numpy
+is clean, and the previously-broken cases (`'😀t'`, `'a日a日'`, CJK
+adjacent to ASCII, ...) round-trip.  `numpy` remains as the cheap seed; it
+is never the final answer.
 
-- `mpmath.polyroots` (Durand-Kerner): fails to converge even on
-  `'Hello, World!'` — a program `numpy.roots` handles correctly in ~0.5ms —
-  at any tested precision (30-80 digits) or `maxsteps`.
-- `sympy.nroots` (also Durand-Kerner based): recovers short inputs correctly,
-  but fails to converge on a random 20-character ASCII text (degree ~80), and
-  is ~10,000x slower than numpy on `'Hello, World!'`.
-- Companion matrix + `mpmath.eig` (Hessenberg + QR): recovers `Hi`, but still
-  corrupts the wide-spread roots (imaginary parts 71/115 instead of 5/17/121)
-  and precision increases do not help.
+What does NOT work (verified empirically while implementing):
 
-The root geometry — roots spanning several orders of magnitude — defeats
-every Durand-Kerner/QR variant tried.  A working fix would need a custom
-arbitrary-precision companion-matrix eigenvalue solver (high-precision QR) or
-a fundamentally different algorithm, not a drop-in library swap.
+- A pure `mp.polyroots` swap is ~3000x slower per program (~0.7s vs
+  numpy's 0.24ms) because its default initial guesses converge slowly on
+  the wide-spread root sets.
+- A change-of-variable scaling does not help: the scaled coefficients are
+  still far beyond float64, and the rescaled roots of the (imprecise)
+  scaled solve are wrong roots of the original polynomial.
+- A residual-based gate cannot detect failure: because the polynomials are
+  ill-conditioned (condition number ~1e16), even wildly wrong roots have
+  tiny relative residuals (~1e-32) against the exact polynomial, at any
+  precision.  So the interpreter never tries to "verify" a converged
+  result — it trusts the seeded Aberth solve and lets `NoConvergence`
+  propagate as a loud error instead of silently corrupting.
 
-The same fix would lift the boolean generator's `n > 2` cap
-(`src/esolangs/tools/booleans/register.py`): a depth-`n` decision tree emits
-`2*2**n + ...` instructions, each consuming a fresh prime, so the expanded
-coefficients grow to ~10**90 at n == 3 (1196 bits) and ~10**4900 at n == 6
-(16309 bits) — far beyond float64's range, which is why the boolean generator
-currently rejects `n > 2`.  Arbitrary-precision roots handle both the
-precision loss and the range overflow, so this is one interpreter change with
-two payoffs.
+A pathological program whose roots span several orders of magnitude (e.g.
+the same wide codepoint delta repeated several times, like
+`'aあbいcう' * 3`) still defeats the Aberth solve and raises
+`NoConvergence`; this is strictly better than the old silent corruption.
 
-Dependency note: `numpy` is the *only* third-party import in the whole
-package, and it is used solely by the polynomial interpreter for root
-finding.  Any replacement should remove it in favour of the new solver, and
-as a hard dependency, not an optional fallback: an optional numpy fallback
-would keep the buggy float64 path alive for anyone without the new solver and
-split the interpreter's behavior across environments (plus leave a branch
-untested against the 100% coverage rule).
+The boolean generator's `n > 2` cap is **retained**: at `n == 3` the
+coefficients reach ~10**360, numpy overflows before seeding, and a seedless
+solve of the degree-104 polynomial does not converge in practical time.
+Lifting it would require a genuinely different seed strategy for the
+overflow case, not just higher precision.
+
+Dependency note: `numpy` (for the seed) and `mpmath` (for the refine) are
+the only third-party imports, both hard dependencies used solely by the
+polynomial interpreter's root finding.
