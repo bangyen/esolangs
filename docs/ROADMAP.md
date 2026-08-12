@@ -119,7 +119,7 @@ termination-mismatch logic re-checks a Python timeout with a longer budget
 before reporting a divergence, so a slow-but-terminating program is not a
 false positive.
 
-### Polynomial float64 root precision (resolved: hybrid high-precision refine)
+### Polynomial float64 root precision (resolved: factor the integer polynomial)
 The Polynomial generators emit exact integer polynomials, but the
 interpreter found roots with `numpy.roots`, whose float64 companion-matrix
 computation loses the small imaginary parts when the roots span a wide
@@ -130,76 +130,40 @@ companion matrix and solves a different polynomial.  Text whose consecutive
 characters differ by large codepoint amounts (e.g. ASCII immediately
 followed by a CJK character) silently corrupted.
 
-The interpreter now seeds numpy's fast result into a high-precision
-`mp.polyroots` (Aberth) refinement (`interpreters/register_based/polynomial.py`),
-with `extraprec` absorbing the coefficient magnitude.  This fixes the common
-corruption: a 500-program mixed-unicode fuzz that corrupted 14 under numpy
-is clean, and the previously-broken cases (`'😀t'`, `'a日a日'`, CJK
-adjacent to ASCII, ...) round-trip.  `numpy` remains as the cheap seed; it
-is never the final answer.
+The fix was to stop *finding* roots altogether.  A valid program's monic
+integer polynomial is a product of known factor shapes — every complex
+instruction ``[a, b]`` is the quadratic ``(x-a)^2 + p**(2*b)`` (linear
+coefficient ``-2a``, constant ``a^2 + p**(2*b)``), and every real
+instruction ``[v]`` is the linear factor ``x - p**v``.  The interpreter
+(`interpreters/register_based/polynomial.py`) factors the polynomial over
+`\mathbb{Z}` with sympy and reads the instruction values straight off the
+factors: ``a = -c1/2`` and ``p**(2*b) = c0 - a^2`` (an exact square).  No
+floating point is involved, so the wide root spreads and the conditioning
+problems that defeated every numeric solver are irrelevant.
 
-What does NOT work (verified empirically while implementing):
+This fixed everything: a 400-program mixed-unicode fuzz (0 failures, where
+numpy corrupted ~2-3%), the previously-broken cases (`'😀t'`, `'a日a日'`,
+CJK adjacent to ASCII, ...), and the pathological `'aあbいcう' * 3` (degree
+72) that neither Aberth nor QR could solve.  It also lifted the boolean
+generator's `n > 2` cap: `n == 3` (degree 88, coefficients ~10**360) runs
+in ~1s and `n == 4` (degree 184, ~10**729) in ~10s, so the cap is now
+`n <= 4`.
 
-- A pure `mp.polyroots` swap is ~3000x slower per program (~0.7s vs
-  numpy's 0.24ms) because its default initial guesses converge slowly on
-  the wide-spread root sets.
-- A change-of-variable scaling does not help: the scaled coefficients are
-  still far beyond float64, and the rescaled roots of the (imprecise)
-  scaled solve are wrong roots of the original polynomial.
-- A residual-based gate cannot detect failure: because the polynomials are
-  ill-conditioned (condition number ~1e16), even wildly wrong roots have
-  tiny relative residuals (~1e-32) against the exact polynomial, at any
-  precision.  So the interpreter never tries to "verify" a converged
-  result — it trusts the seeded Aberth solve and lets `NoConvergence`
-  propagate as a loud error instead of silently corrupting.
+What was tried and ruled out along the way (documented for completeness):
 
-A pathological program whose roots span several orders of magnitude (e.g.
-the same wide codepoint delta repeated several times, like
-`'aあbいcう' * 3`) still defeats the Aberth solve and raises
-`NoConvergence`; this is strictly better than the old silent corruption.
+- A pure high-precision `mp.polyroots` (Aberth) swap: correct but ~3000x
+  slower per program on the common path, and still does not converge on the
+  pathological root spreads.
+- A custom high-precision companion-matrix QR: `mp.eig` produces garbage
+  even on `'Hello, World!'` (degree 50) and hangs on modest degrees, because
+  the companion matrix is badly scaled.
+- A change-of-variable scaling and a residual-based correctness gate: the
+  former still solves the wrong (imprecise) polynomial; the latter cannot
+  work because the ill-conditioning (~1e16) makes even wildly wrong roots
+  look right at any precision.
 
-The boolean generator's `n > 2` cap is **retained**: at `n == 3` the
-coefficients reach ~10**360, numpy overflows before seeding, and a seedless
-solve of the degree-104 polynomial does not converge in practical time.
-Lifting it would require a genuinely different seed strategy for the
-overflow case, not just higher precision.
-
-### Future direction: recover roots by factoring the integer polynomial
-The conditioning problem is inherent to *root finding*: the polynomial is so
-ill-conditioned that any floating-point solver (float64, mpmath Aberth, or
-high-precision QR) either converges to wrong roots or not at all.  But the
-interpreter does not need *approximate* roots — it needs the exact integer
-instruction values `a`, `p`, `b`.  Those are recoverable **exactly** by
-factoring the monic integer polynomial over `\mathbb{Z}` (Zassenhaus /
-sympy's `factor`), because every instruction contributes a known factor
-shape:
-
-- a complex instruction ``[a, b]`` is the quadratic ``(x-a)^2 + p^(2b)`` =
-  ``x^2 - 2a x + (a^2 + p^(2b))``, so the linear coefficient gives ``a``
-  and the constant term minus ``a^2`` is an exact square ``p^(2b)``;
-- a real instruction ``[v]`` is the linear factor ``x - p^v``.
-
-Verified on the two cases that defeat every numeric solver: the
-pathological text ``'aあbいcう' * 3`` (degree 72, 36 quadratics, ~0.6s,
-exact) and a boolean ``n == 3`` program (degree 88, coefficients ~10**285,
-58 instructions, ~1.2s).  This would fix both open gaps and replace the
-fragile seed+refine path entirely.
-
-Measured timing (sympy's `factor`): long text degree 104 -> ~1.7s; boolean
-``n == 3`` (degree 88) -> ~1.1s; boolean ``n == 4`` (degree 184,
-coefficients ~10**729) -> ~10.5s.  So the boolean cap could lift to ``n ==
-4`` at a cost, and even ``n == 5`` is not obviously impossible.
-
-Open questions before committing to it: sympy's import alone costs seconds
-(so it would need to be imported lazily, and it changes the package's
-dependency profile — numpy + mpmath + sympy); factorization cost grows with
-degree, so the timing at ``n >= 5`` and very long texts should be measured;
-and a hand-rolled factorer for just these two factor shapes (quadratic with
-a perfect-square constant, and linear) might avoid the sympy dependency
-entirely — the generator's polynomials are exactly products of those
-shapes, so a targeted square-free/divisor search could recover them without
-a general Zassenhaus implementation.
-
-Dependency note: `numpy` (for the seed) and `mpmath` (for the refine) are
-the only third-party imports, both hard dependencies used solely by the
-polynomial interpreter's root finding.
+Dependency note: the polynomial interpreter now depends on `sympy` alone
+(the previous numpy + mpmath pair is gone; mpmath remains only as sympy's
+own internal dependency).  Like its predecessors, sympy is imported lazily
+(the package loads interpreters on demand), and it is the only third-party
+import used by the interpreter's instruction recovery.
