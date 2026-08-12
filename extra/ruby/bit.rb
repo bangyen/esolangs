@@ -8,6 +8,7 @@
 # bracket pair: `{` jumps forward to the matching `}` when the current bit is
 # zero, `}` jumps back to the matching `{` when it is nonzero.
 #
+# Invocation: `ruby bit.rb <program-file>`; program text from `ARGV[0]`.
 # Input: the program file is `ARGV[0]`; `)` reads from stdin.
 
 code = File.read(ARGV[0])

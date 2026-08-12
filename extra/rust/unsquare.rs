@@ -12,6 +12,7 @@
 //! Error handling: popping an empty stack or an unmatched `<` panics (an
 //! invalid operation).  `i` re-prompts until it reads a non-blank line.
 //!
+//! Invocation: `unsquare <program-file>`; program text from `argv[1]`.
 //! Input: the program file is `argv[1]`; `i` reads from stdin.
 
 use core::fmt::Display;

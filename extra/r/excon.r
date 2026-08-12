@@ -12,6 +12,8 @@
 # all-zero pool prints nothing rather than the NUL the Python interpreter
 # writes.  "cat" is used instead of a single output channel.
 #
+# Invocation: `Rscript excon.r <program-file>`; program text from
+# `commandArgs[1]`.
 # Input: the program file is the first command-line argument; the language
 # has no input command.
 

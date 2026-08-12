@@ -7,6 +7,11 @@
 # reads a number (integer, decimal, or fraction like ``1/3``).  Variables are
 # named by arbitrary rationals (Ruby hashes keep distinct keys for e.g. 1 and
 # 1/2), so no truncation happens anywhere.
+#
+# Invocation: `ruby 3x.rb <program-file>`; program text from `ARGV[0]`.
+# Input: `?` reads from stdin.  There is no explicit error handling: a
+# program that uses a value from an empty stack or an undefined variable
+# hits Ruby's nil-arithmetic/KeyError and exits non-zero.
 
 code = File.read(ARGV[0])
 ARGV.clear

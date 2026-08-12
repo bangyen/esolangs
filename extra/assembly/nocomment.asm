@@ -13,6 +13,7 @@
 ; jump outside the code; each exits non-zero.  The in-package Python
 ; interpreter implements the same full language.
 ;
+; Invocation: `nocomment < stdin`; the program is read from stdin.
 ; Input: the program is read from stdin (the wiki has no input command);
 ; the tape is not printed.
 ;
