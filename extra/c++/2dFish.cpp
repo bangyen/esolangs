@@ -1,3 +1,19 @@
+// 2dFish interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// A 2D grid language where a pointer moves in one of four directions set by
+// `/`, `\`, `v`, `^` and executes the command on the cell it lands on.  `i`
+// increments the accumulator, `d` decrements it, `s` squares it, `o` prints
+// it in decimal, `a` prints it as a character (or, inside `(`..`)`, as a
+// string), `$` reads a line of input, `%` reads a number, `*` prints the
+// collected string, and `@` halts.  `(`..`)` captures the text between them
+// as a string.
+//
+// Spec decisions: the pointer starts at the top-left cell and the first cell
+// must set a direction, otherwise the program exits with EXIT_FAILURE (a
+// malformed program); moving off the grid is also EXIT_FAILURE.
+//
+// Input: the program file is `argv[1]`; `$`/`%` read from stdin.
+
 #include <fstream>
 #include <iostream>
 #include <string>

@@ -1,3 +1,19 @@
+// Painfuck interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// A brainfuck-like tape language whose source is first translated through a
+// fixed substitution (the `trans` table maps each source character to a
+// program character).  `p`/`s` add 2/subtract 1, `r`/`l` move the pointer,
+// `i`/`j` read a number/byte, `o`/`u` print decimal/byte, `a`/`b` open/close
+// a loop, `k` squares, `z` zeroes, `h` halves, `w`/`q` copy from the
+// neighbor, `c` repeats the next command 7^r times, `y` conditionally skips
+// one command at random, `v` skips one command on a nonzero cell, `d` resets
+// the pointer, `t` repeats the previous command 3^r times, and `e` halts.
+//
+// `y` is intentionally nondeterministic (a random skip), so a single run's
+// output is not reproducible; the generators avoid it.
+//
+// Input: the program file is `argv[1]`; `i`/`j` read from stdin.
+
 #include <ctime>
 #include <fstream>
 #include <iostream>

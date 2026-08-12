@@ -1,3 +1,16 @@
+// Kak interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// A one-bit-tape language: `!` advances the pointer and flips the current
+// bit, `<` moves the pointer left, and `?` skips forward past the next
+// non-`!`/`?`/`<` command when the current bit is zero.  After the program is
+// read once, the whole tape is printed as a bit string, and execution
+// restarts from the beginning while the current bit is nonzero.
+//
+// Error handling: a missing/unreadable program file, or a `?` that runs off
+// the end of the program while skipping, exits with EXIT_FAILURE.
+//
+// Input: the program file is `argv[1]`; the language has no input command.
+
 #include <fstream>
 #include <iostream>
 #include <vector>

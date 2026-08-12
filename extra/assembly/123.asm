@@ -1,3 +1,16 @@
+; 123 interpreter (x86-32 Linux assembly cross-check; see README "Extra
+; Implementations").
+;
+; A bit-tape language: `1`/`2` shift the current bit right/left (a
+; pointer over the tape), `3` opens a conditional that skips forward (on a
+; set bit) or back (on a clear bit) to the matching `3` or `|`, `|` advances
+; the tape, and input/output happen via `2` at the tape bounds (read a byte /
+; write the current bit).  The program is read from stdin; the whole tape is
+; a fixed bit array and the final `|` ends execution.
+;
+; This is a direct syscall (int 80h) program with no libc; it is built with
+; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
+
 global _start
 _start:
 	lea ecx, [esp - 1]

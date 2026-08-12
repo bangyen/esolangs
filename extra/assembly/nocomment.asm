@@ -1,3 +1,14 @@
+; NoComment interpreter (x86-32 Linux assembly cross-check; see README "Extra
+; Implementations").
+;
+; A strict subset of brainfuck with a single cell: `c` zeroes it, `i`
+; increments it, and `o` prints it as a byte; every other character is a
+; comment.  There is no input.  The program is read from stdin and printed
+; one byte per `o`.
+;
+; This is a direct syscall (int 80h) program with no libc; it is built with
+; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
+
 global _start
 _start:
 	lea ecx, [esp - 5]
