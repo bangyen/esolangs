@@ -26,13 +26,13 @@ sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 verify_differential = importlib.import_module("scripts.verify_differential")
 
 
-@pytest.fixture()
+@pytest.fixture
 def rng() -> random.Random:
     return random.Random(1234)
 
 
 class TestExconFuzz:
-    def test_fuzz_is_seeded(self, capsys) -> None:
+    def test_fuzz_is_seeded(self) -> None:
         """The same seed always explores the same programs (pure RNG)."""
         first = random.Random(42)
         second = random.Random(42)
@@ -62,7 +62,7 @@ class TestDivergenceDetection:
     @pytest.mark.skipif(shutil.which("Rscript") is None, reason="Rscript not installed")
     def test_excon_catches_divergence(self, rng) -> None:
         """A tampered native result is reported as a failure."""
-        real_run = verify_differential._run_native_code
+        real_run = verify_differential._run_native_code  # noqa: SLF001
 
         def tampered(cmd, program, timeout=5):
             out, code = real_run(cmd, program, timeout)
@@ -71,7 +71,7 @@ class TestDivergenceDetection:
         with patch.object(
             verify_differential, "_run_native_code", side_effect=tampered
         ):
-            assert not verify_differential._fuzz_excon(rng, 20)
+            assert not verify_differential._fuzz_excon(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(shutil.which("nasm") is None, reason="nasm not installed")
     def test_nocomment_catches_divergence(self, rng) -> None:
@@ -84,4 +84,4 @@ class TestDivergenceDetection:
             return out + b"!", code
 
         with patch.object(x86_elf_runner, "run_elf", side_effect=tampered):
-            assert not verify_differential._fuzz_nocomment(rng, 20)
+            assert not verify_differential._fuzz_nocomment(rng, 20)  # noqa: SLF001

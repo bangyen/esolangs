@@ -183,7 +183,9 @@ def _run_nocomment_python(program: str) -> tuple[bytes, int]:
     return buffer.getvalue(), 0
 
 
-def _run_nocomment_python_limited(program: str, timeout: float) -> tuple[bytes, int] | None:
+def _run_nocomment_python_limited(
+    program: str, timeout: float
+) -> tuple[bytes, int] | None:
     """Run the Python NoComment interpreter with a wall-clock budget.
 
     Returns ``(output, exit_code)`` like :func:`_run_nocomment_python`, or
@@ -586,7 +588,8 @@ def _fuzz_excon(rng: random.Random, count: int) -> bool:
             failures += 1
             print(
                 f"EXCON fuzz {program!r}: python "
-                f"{(py_out.replace('\x00', ''), py_code)!r} vs R {(native_out, native_code)!r}"
+                f"{(py_out.replace(chr(0), ''), py_code)!r} "
+                f"vs R {(native_out, native_code)!r}"
             )
 
     print(
