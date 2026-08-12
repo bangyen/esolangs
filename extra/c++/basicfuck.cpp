@@ -11,11 +11,11 @@
 //
 // Error handling: an undefined identifier, a malformed token, an unbalanced
 // block, or an overflow that the directive marks `halt` prints a message and
-// exits.  Exit codes follow the cross-check convention: 0 = success, 2 =
-// malformed program (an undefined identifier, a bad token/syntax/directive,
-// or a tape too large for memory; the Python ValueError analog), 3 = invalid
-// runtime operation (a `halt` underflow/overflow, the Python HaltError
-// analog).  `wrap`/`nearest` bound the cell instead.
+// exits.  Exit codes follow the cross-check convention: EXIT_MALFORMED (an
+// undefined identifier, a bad token/syntax/directive, or a tape too large for
+// memory; the Python ValueError analog), EXIT_INVALID_OP (a `halt`
+// underflow/overflow, the Python HaltError analog).  `wrap`/`nearest` bound
+// the cell instead.
 //
 // Invocation: `basicfuck <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `read ->` reads from stdin.
@@ -25,6 +25,12 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+
+// Cross-check exit-code convention (see README "Extra Implementations"):
+// 0 = success, 2 = malformed program, 3 = invalid runtime operation, 1 =
+// unclassified failure.
+constexpr int EXIT_MALFORMED = 2;
+constexpr int EXIT_INVALID_OP = 3;
 
 #define name "([_a-zA-Z]\\w*)(?:->(\\d+))?"
 typedef std::vector<std::pair<std::string, int>> dict;
@@ -51,7 +57,7 @@ int index(std::string &key, dict &var) {
     else
       return ind;
 
-  error("Identifier is undefined.", 2);
+  error("Identifier is undefined.", EXIT_MALFORMED);
   return 0;
 }
 
@@ -92,7 +98,7 @@ int run(std::smatch pre, std::vector<int> &prog, std::vector<int> &tape,
 
       if (n < bot) {
         if (ver == 'h')
-          error("Underflow error.", 3);
+          error("Underflow error.", EXIT_INVALID_OP);
         if (ver == 'w')
           n = top;
         else
@@ -101,7 +107,7 @@ int run(std::smatch pre, std::vector<int> &prog, std::vector<int> &tape,
 
       if (n > top) {
         if (ver == 'h')
-          error("Overflow error.", 3);
+          error("Overflow error.", EXIT_INVALID_OP);
         if (ver == 'w')
           n = bot;
         else
@@ -168,7 +174,7 @@ std::vector<std::string> lexer(std::string prog) {
     if (std::regex_match(prog, m, reg))
       tokens.push_back(m[2]);
     else
-      error("Invalid token.", 2);
+      error("Invalid token.", EXIT_MALFORMED);
 
     prog = prog.substr(m.length(1));
   }
@@ -200,7 +206,7 @@ std::vector<int> parser(std::vector<std::string> &prog, dict &var) {
   std::vector<int> tokens;
   int pair = 0;
 
-  auto out = []() { error("Invalid syntax.", 2); };
+  auto out = []() { error("Invalid syntax.", EXIT_MALFORMED); };
 
   auto match = [](std::string str) {
     std::regex r(name);
@@ -313,14 +319,14 @@ int main(int argc, char *argv[]) {
         mode++;
 
       if (mode != 0 && pre[4] == "")
-        error("Missing overflow directive.", 2);
+        error("Missing overflow directive.", EXIT_MALFORMED);
       else if (mode != 2 && pre[5] == "wrap")
-        error("Invalid overflow directive.", 2);
+        error("Invalid overflow directive.", EXIT_MALFORMED);
 
       if (pre[1] != "unbounded")
         lim = stoi(pre[1]);
     } else {
-      error("Missing/Invalid directives.", 2);
+      error("Missing/Invalid directives.", EXIT_MALFORMED);
     }
 
     getline(file, prog);
@@ -336,13 +342,13 @@ int main(int argc, char *argv[]) {
 
         if (m[2] == "if" || m[2] == "while" || m[2] == "write" ||
             m[2] == "read")
-          error("Invalid identifier.", 2);
+          error("Invalid identifier.", EXIT_MALFORMED);
 
         var.push_back(std::make_pair(m[2], off));
         prog = prog.substr(len);
       }
     } else {
-      error("Missing/Invalid identifiers.", 2);
+      error("Missing/Invalid identifiers.", EXIT_MALFORMED);
     }
 
     std::stringstream buffer;
@@ -360,7 +366,7 @@ int main(int argc, char *argv[]) {
     lim--;
 
   if (lim != -1 && lim < tape.size())
-    error("Insufficient memory.", 2);
+    error("Insufficient memory.", EXIT_MALFORMED);
 
   std::vector<std::string> words = lexer(prog);
   ops = parser(words, var);
