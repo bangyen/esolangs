@@ -104,6 +104,35 @@ class TestSpecialAddresses:
         # no jump) -> ip3.  ip3: 0-0=0 -> jump to mem[5]=9 -> halt.
         assert run_bounded("-2 0 3 0 0 5 9", stdin="A") == ""
 
+    def test_input_eof_reads_zero(self) -> None:
+        """``-2`` on exhausted input reads as zero."""
+        # Same program with no input: the subtraction uses 0 in place of EOF.
+        assert run_bounded("-2 0 3 0 0 5 9", stdin="") == ""
+
+    def test_read_instruction_pointer(self) -> None:
+        """``-1`` as an operand reads the current instruction pointer."""
+        # ip0: a=2, b=-1 (the ip, currently 0): 2 - 0 = 2 > 0, falls through;
+        # ip3: 0-0=0 -> jump to mem[5]=9, past the end.
+        assert run_bounded("2 -1 3 0 0 5 9") == ""
+
+    def test_write_instruction_pointer(self) -> None:
+        """Storing to ``-1`` moves the instruction pointer."""
+        # ip0: a=-1: diff = ip(0) - mem[0](-1) = 1, written back to the ip;
+        # the positive result falls through and the program ends off the end.
+        assert run_bounded("-1 0 3 6 0 0 0") == ""
+
+    def test_write_past_end_extends_memory_and_breaks(self) -> None:
+        """Writing past the program end extends memory; a negative target
+        (here held in mem[3]) halts execution."""
+        assert run_bounded("10 0 3 -1 0 0 0") == ""
+
+    def test_invalid_address_rejected(self) -> None:
+        """An address below -3 is an invalid operation."""
+        import pytest
+
+        with pytest.raises(ValueError, match="invalid address"):
+            run_bounded("-4 0 3 0 0 5 9")
+
 
 class TestVariants:
     """The store-target variants (S*bl*q stores in a and b; Subl*q in b)."""
