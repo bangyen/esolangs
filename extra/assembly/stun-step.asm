@@ -8,6 +8,7 @@
 ; end of the program the machine halts if the current cell is 0 and otherwise
 ; loops back to the start.
 ;
+; Invocation: `stun-step < stdin`; the program is read from stdin.
 ; The wiki defines no I/O; this implementation reads the program from stdin
 ; and prints the marked cells as space-separated decimal values when the
 ; input is exhausted — an output decision, not a language rule.

@@ -8,6 +8,7 @@
 # starts with `H` the program prints it and halts.  A program whose output
 # never starts with `H` loops forever.
 #
+# Invocation: `ruby 74.rb <program-file>`; program text from `ARGV[0]`.
 # Input: the program file is `ARGV[0]`; the language has no input command.
 
 code = File.read(ARGV[0]).chars

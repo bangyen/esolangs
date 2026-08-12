@@ -11,6 +11,7 @@
 // the 10^x value, which is the workaround the wiki suggests for avoiding
 // huge numbers; the command semantics match the wiki exactly.
 //
+// Invocation: `%^2^-1 <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `n` reads from stdin.  A missing or
 // unreadable file exits with EXIT_FAILURE (a malformed program).
 

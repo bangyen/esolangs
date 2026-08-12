@@ -6,6 +6,7 @@
 ; nothing), 01 = ACT (apply a bitwise operation to the byte), 10 = JMP (jump,
 ; honoring the wrap), and 11 = END (print the byte as a character and halt).
 ;
+; Invocation: `2b1b < stdin`; the program byte is read from stdin.
 ; The program byte is read from stdin (the language has no file-based I/O
 ; protocol; see the README note).  ACT here is implemented as bit toggles /
 ; shift-combines driven by two 2-bit operands, matching the wiki's own

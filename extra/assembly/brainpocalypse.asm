@@ -6,6 +6,7 @@
 ; cell rewinds the instruction pointer to the start of the program (the
 ; wiki's flow-control rule).  Cells hold nonnegative integers.
 ;
+; Invocation: `brainpocalypse < stdin`; the program is read from stdin.
 ; The wiki defines no I/O; this implementation reads the program from stdin
 ; and prints the whole tape as space-separated decimal values when the input
 ; is exhausted — an output decision, not a language rule.

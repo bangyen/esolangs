@@ -12,6 +12,7 @@
 // must set a direction, otherwise the program exits with EXIT_FAILURE (a
 // malformed program); moving off the grid is also EXIT_FAILURE.
 //
+// Invocation: `2dFish <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `$`/`%` read from stdin.
 
 #include <fstream>

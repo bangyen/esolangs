@@ -9,6 +9,7 @@
 // Error handling: a missing/unreadable program file, or a `?` that runs off
 // the end of the program while skipping, exits with EXIT_FAILURE.
 //
+// Invocation: `kak <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; the language has no input command.
 
 #include <fstream>
