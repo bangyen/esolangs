@@ -21,6 +21,7 @@ __all__ = [
     "nocomment",
     "painfuck",
     "pct_squared_minus_one",
+    "sbleq",
     "three_x",
     "two_d_fish",
     "unsquare",
@@ -729,3 +730,24 @@ def three_x(text: str) -> str:
     if any(c in "?]" for c in text):
         raise ValueError("3x cannot output '?' or ']' (the literal re-executes)")
     return "[" + text + "]"
+
+
+def sbleq(text: str) -> str:
+    """Build an S*bleq program that outputs ``text``.
+
+    Each character becomes an output instruction ``-3 <data> 0`` that prints
+    the value stored at ``<data>``; the character values are embedded as data
+    at the end of the program, and a final ``0 0 <sentinel>`` halts by
+    jumping to a past-the-end address.  This mirrors the Subleq wiki's own
+    Hello World, which stores the output characters as literal data.
+    """
+    _require_bytes(text, "S*bleq")
+    n = len(text)
+    cells: list[int] = []
+    for i in range(n):
+        cells += [-3, 3 * n + 3 + i, 0]
+    sentinel_addr = 3 * n + 3 + n
+    cells += [0, 0, sentinel_addr]
+    cells += [ord(c) for c in text]
+    cells += [len(cells) + 1]
+    return " ".join(map(str, cells))
