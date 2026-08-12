@@ -80,8 +80,8 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
             else:
                 tape.insert(0, [0, 0])
         elif op == ",":
-            val = io.input_str()
-            tape[ptr] = [0 if val in ("\r\n", "\n") else ord(val[0]), 1]
+            line_val = io.input_str()
+            tape[ptr] = [0 if line_val in ("\r\n", "\n") else ord(line_val[0]), 1]
         elif op == "x":
             lsrs.pop(ind)
             if lsrs:

@@ -136,8 +136,8 @@ def back(truth_table: str, n: int) -> str:
     table entry is one and halts (``*``) printing the tape.
     """
     _validate(truth_table, n)
-    rows = 2 ** (n + 1) - 1
-    center = 2**n - 1
+    rows: int = 2 ** (n + 1) - 1
+    center: int = 2**n - 1
     # a full tree has 2**(n+1)-1 nodes, each taking two columns
     width = 2 * (2 ** (n + 1) - 1)
     grid = [[" "] * width for _ in range(rows)]
@@ -145,7 +145,7 @@ def back(truth_table: str, n: int) -> str:
     def row(i: int, j: int) -> int:
         # dig-style placement: a full binary tree of node rows, with the root
         # at row 0 so the beam starts on it
-        return ((2 * j + 1) * 2 ** (n - i) - 1 - center) % rows
+        return int(((2 * j + 1) * 2 ** (n - i) - 1 - center) % rows)
 
     # assign each node a column via a preorder walk: node, then the zero
     # subtree, then the one subtree.  Children sit to the right of their
