@@ -6,164 +6,20 @@ the commit history.  This file only tracks what is still on the table.
 
 ## Planned
 
-### Decision-tree brainfuck boolean generator (resolved: bf_tree)
-The brainfuck generator previously had only the branch-free `bf` minterm
-evaluator, which grows with the minterm count (XOR-n measured 1.4K, 7.3K,
-40K, 222K, 1.2M characters at n = 2..6).  The old docstring claimed BF "has
-no branching that would let leaves skip siblings", but BF's `[`..`]` loop
-*is* a conditional skip.  The new `bf_tree` generator builds a decision
-tree: bit `i` lives at cell `2i` with its complement at `2i + 1`, a node
-tests `[bit]` for the one-side and `[1 - bit]` for the zero-side (the
-complements naturally exclude the sibling), each branch clears its guard
-cell before its `]`, and a fired leaf clears the result cell so every `]`
-on the way out sees zero.  It is total and O(2**n) characters — XOR-n
-measures 225, 485, 910, 1.6K, 3.0K, 5.6K at n = 1..6, ~1000x smaller than
-`bf` on dense tables.  Verified exhaustively for every table at n <= 3 and
-sampled at n = 4..6.  The two generators are complementary — the minterm
-wins on sparse tables (an all-zeros table is ~450 chars at n == 8, vs the
-tree's 20K) — so `bf` returns whichever of `_bf_minterm` and `bf_tree` is
-shorter for the given table.
+### Dimensional v3.0 C++ reference
+The wiki documents Dimensional **v3.0** (an n-slot/n-pointer model with
+`$AXIS`, `d`, `x`), and the in-package Python interpreter
+(`src/esolangs/interpreters/tape_based/dimensional.py`) implements it and is
+registered.  The previous C++ reference (`extra/c++/dimensional.cpp`)
+implemented the incompatible **v1.0** dialect (a single pointer over a
+product-of-primes tape) and its 32-bit `int` cell addresses overflow past
+~30 cells — the very reason v3 exists — and it was removed when the v3.0
+Python interpreter landed.
 
-The same decision-tree construction was ported to Dimensional
-(`dimensional_tree`), which is brainfuck on a multidimensional tape and
-also lacks a halt command: identical structure with every move pinned
-`>0`/`<0`.  `dimensional` dispatches the same way — the survivor evaluator
-wins on sparse tables (~4.4K for AND-8), the tree wins on dense (XOR-8 ~8x
-smaller).
-
-### LaserFuck boolean generator (resolved: loop-free decision tree)
-LaserFuck is brainfuck on a 2D grid: a laser (with a random initial heading)
-travels the grid, `>`, `<`, `+`, `-`, `,` work on the tape, ``(``/``)`` and
-``_``/``|`` bounce the laser when the tape cell is nonzero (or always), and
-the whole tape is printed at the end.
-
-The planned route was a general BF-to-LaserFuck layout compiler with loop
-rings, but the boolean generator (`laserfuck` in `booleans/other.py`) took a
-**loop-free** route instead: a mirror funnel (`|`/`^`/`_` plus two `}`)
-sends every heading to the top row moving right, reads and normalizes the
-inputs, and walks a decision tree.  Each node's `#` makes the following `v`
-a one-way gate (skipped on approach, active on reflection), so `)` routes a
-zero cell straight through to `\` (down one column) and a nonzero cell back
-to `v` (down another column); each child row's `\` turns the beam right into
-the child.  Leaves live at a dedicated high column so no `+` run crosses a
-descent column, move the pointer to cell `n`, set it to 48+result, and hit
-`x`.  No loops means no loop-ring geometry.  The output mode's whole-tape
-dump prints the 0/1 inputs as NUL/SOH, so the verify harness's `01` filter
-leaves exactly the result cell.
-
-The generator verified exhaustively for every table at n <= 3 and sampled
-at n = 4..6 through a Python interpreter that was differential-tested
-against the Rust reference (`extra/rust/laserfuck.rs`) on structured
-programs and every generated boolean grid.  A Python interpreter
-(`interpreters/other/laserfuck.py`) was also added for the boolean tests; it
-is not registered as the global runner because the reference's random
-heading makes text-generator round-trips nondeterministic.
-
-### Dimensional v3 migration (done: Python interpreter; deferred: C++ reference)
-The wiki now documents Dimensional **v3.0** (an n-slot/n-pointer model with
-`$AXIS`, `d`, `x`), while the old reference in `extra/c++/dimensional.cpp`
-implements **v1.0** (a single pointer over a product-of-primes tape).  The
-two are incompatible dialects, and the v1.0 reference's 32-bit `int` cell
-addresses overflow past ~30 cells — which is why the boolean generator's
-verification used to be capped at `n > 12`.
-
-The Python migration is **complete**: a first-class Python v3.0 interpreter
-(`src/esolangs/interpreters/tape_based/dimensional.py`) is registered and
-verified by 24 unit tests covering the interpreter semantics, plus text
-round-trips (`Hi`, `Hello, World!`, `\x00\x7f\xff`) and boolean truth-table
-round-trips through real execution.  The generator itself never had an
-`n` cap (it generates random tables at `n = 16`), so the `n > 12` limit was
-a verification constraint of the old reference; Python `int`s make cell
-addresses unbounded and retire it.  Defaults and ambiguities the v3.0 wiki
-leaves open (default pointer axis, the descent model, `d`/`x` reading from
-input) are resolved pragmatically and documented in the interpreter.
-
-- **Deferred: a v3.0 C++ reference.**  With the Python interpreter as the
-  only implementation, generator verification is circular (same author,
-  same codebase, shared reading of the under-specified spec).  A fresh
-  `extra/c++/dimensional.cpp` implementing v3.0 would restore the independent
-  differential cross-check and keep Dimensional in the C++ reference family.
-  It must handle the addressing itself (a `long long` key covers `n <= 28`; a
-  small bignum for unbounded) — the very overflow that motivates the change.
-
-### Differential fuzzing for the interpreter/native pairs (done: seeded fuzzers)
-The differential corpus (`scripts/verify_differential.py`) covers EXCON,
-LaserFuck, and NoComment with a hand-written set of programs per language.
-The corpora exercise every instruction plus known edge cases, but they are
-fixed — they only catch divergences that were thought of.  The script now
-also takes `--fuzz N --seed S`: a seeded random-program fuzzer that feeds
-both the in-package interpreter and the native cross-check the same
-generated programs and compares output **and error category** (exit code)
-and, for NoComment, the termination verdict itself.  The seed makes the
-explored programs reproducible, and CI runs it with a fixed seed.
-
-- **EXCON**: random straight-line programs over `:^<!` (the only fault is
-  the off-pool pointer, exit 3 on both sides).
-- **NoComment**: random programs over the full 10-command alphabet.  A
-  random `b`/`s` program may loop forever; both sides bound the run (the
-  assembly via its instruction-count cap and its fixed tape/stack region,
-  Python via SIGALRM) and a program that halts on one side but loops on the
-  other is a divergence.
-- **LaserFuck**: random truth tables through the boolean generator (raw
-  random grids would hang the reference), comparing Python's four headings
-  against the Rust output set as the corpus does.
-
-The fuzzers immediately caught two real NoComment divergences the fixed
-corpus had missed: the assembly's jump bounds check allowed a target on the
-null terminator or the uninitialized gap byte the input loop leaves after
-the last command (both fixed to reject targets outside the real command
-range, matching Python's `0 <= target < len`), and it performed an empty
-stack "jump" by reading the null as a zero amount (fixed to skip the jump
-entirely, matching Python's `if tape[ptr] and stack`).  The fuzzer's
-termination-mismatch logic re-checks a Python timeout with a longer budget
-before reporting a divergence, so a slow-but-terminating program is not a
-false positive.
-
-### Polynomial float64 root precision (resolved: factor the integer polynomial)
-The Polynomial generators emit exact integer polynomials, but the
-interpreter found roots with `numpy.roots`, whose float64 companion-matrix
-computation loses the small imaginary parts when the roots span a wide
-magnitude range.  The deeper cause is that the integer coefficients far
-exceed float64's exact-integer range (2**53): `'Hello, World!'` has
-coefficients up to 10**95, so numpy rounds them before building the
-companion matrix and solves a different polynomial.  Text whose consecutive
-characters differ by large codepoint amounts (e.g. ASCII immediately
-followed by a CJK character) silently corrupted.
-
-The fix was to stop *finding* roots altogether.  A valid program's monic
-integer polynomial is a product of known factor shapes — every complex
-instruction ``[a, b]`` is the quadratic ``(x-a)^2 + p**(2*b)`` (linear
-coefficient ``-2a``, constant ``a^2 + p**(2*b)``), and every real
-instruction ``[v]`` is the linear factor ``x - p**v``.  The interpreter
-(`interpreters/register_based/polynomial.py`) factors the polynomial over
-`\mathbb{Z}` with sympy and reads the instruction values straight off the
-factors: ``a = -c1/2`` and ``p**(2*b) = c0 - a^2`` (an exact square).  No
-floating point is involved, so the wide root spreads and the conditioning
-problems that defeated every numeric solver are irrelevant.
-
-This fixed everything: a 400-program mixed-unicode fuzz (0 failures, where
-numpy corrupted ~2-3%), the previously-broken cases (`'😀t'`, `'a日a日'`,
-CJK adjacent to ASCII, ...), and the pathological `'aあbいcう' * 3` (degree
-72) that neither Aberth nor QR could solve.  It also lifted the boolean
-generator's `n > 2` cap: `n == 3` (degree 88, coefficients ~10**360) runs
-in ~1s and `n == 4` (degree 184, ~10**729) in ~10s, so the cap is now
-`n <= 4`.
-
-What was tried and ruled out along the way (documented for completeness):
-
-- A pure high-precision `mp.polyroots` (Aberth) swap: correct but ~3000x
-  slower per program on the common path, and still does not converge on the
-  pathological root spreads.
-- A custom high-precision companion-matrix QR: `mp.eig` produces garbage
-  even on `'Hello, World!'` (degree 50) and hangs on modest degrees, because
-  the companion matrix is badly scaled.
-- A change-of-variable scaling and a residual-based correctness gate: the
-  former still solves the wrong (imprecise) polynomial; the latter cannot
-  work because the ill-conditioning (~1e16) makes even wildly wrong roots
-  look right at any precision.
-
-Dependency note: the polynomial interpreter now depends on `sympy` alone
-(the previous numpy + mpmath pair is gone; mpmath remains only as sympy's
-own internal dependency).  Like its predecessors, sympy is imported lazily
-(the package loads interpreters on demand), and it is the only third-party
-import used by the interpreter's instruction recovery.
+With the Python interpreter as the only v3.0 implementation, generator
+verification is circular (same author, same codebase, shared reading of the
+under-specified spec).  A fresh `extra/c++/dimensional.cpp` implementing v3.0
+would restore the independent differential cross-check and keep Dimensional
+in the C++ reference family.  It must handle the addressing itself (a
+`long long` key covers `n <= 28`; a small bignum for unbounded) — the very
+overflow that motivates the change.
