@@ -1,4 +1,4 @@
-"""Boolean-function generators via input-by-substitution.
+r"""Boolean-function generators via input-by-substitution.
 
 A normal boolean generator produces one program that *reads* its inputs.
 Some languages have no input mechanism but still have enough computation
@@ -12,12 +12,15 @@ decision tree over constants rather than a reader of input.
 
 This is a separate class from the input-reading generators: it is useful
 exactly for the no-input languages, and it does not make them read input —
-the harness performs the injection.
+the harness performs the injection.  :func:`bio` replaces ``{Xi}`` with an
+increment that loads the raw bit into a register and ``{Ci}`` with a runtime
+complement computation; :func:`back` replaces ``{Xi}`` with a ``\\`` or
+``/`` mirror so the beam is reflected toward the correct subtree.
 """
 
 from collections.abc import Callable
 
-__all__ = ["bio", "instantiate"]
+__all__ = ["back", "bio", "instantiate"]
 
 SetBit = Callable[[int, int], str]
 SetComp = Callable[[int, int], str]
@@ -114,4 +117,79 @@ def bio(truth_table: str, n: int) -> str:
 
     return node(0, list(range(2**n)))
 
-    return node(0, list(range(2**n)))
+
+def back(truth_table: str, n: int) -> str:
+    r"""Build a Back template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Back is a no-input grid language: a beam bounces across a grid, ``\\``
+    and ``/`` reflect its direction, and ``*`` halts, printing the tape.  A
+    beam moving right hits ``\\`` and turns down (toward higher rows) or hits
+    ``/`` and turns up (toward lower rows, wrapping around).  The generator
+    turns that reflection into a decision tree: each ``{Xi}`` placeholder is
+    replaced by ``\\`` when bit ``i`` is one and by ``/`` when it is zero, so
+    the beam is sent *down* on a one and *up* on a zero.  A ``/`` or ``\\``
+    parked at each child row turns the beam back to moving right into that
+    child's own region, and each leaf sets the tape bit (``-``) when its
+    table entry is one and halts (``*``) printing the tape.
+    """
+    _validate(truth_table, n)
+    rows = 2 ** (n + 1) - 1
+    center = 2**n - 1
+    # a full tree has 2**(n+1)-1 nodes, each taking two columns
+    width = 2 * (2 ** (n + 1) - 1)
+    grid = [[" "] * width for _ in range(rows)]
+
+    def row(i: int, j: int) -> int:
+        # dig-style placement: a full binary tree of node rows, with the root
+        # at row 0 so the beam starts on it
+        return ((2 * j + 1) * 2 ** (n - i) - 1 - center) % rows
+
+    # assign each node a column via a preorder walk: node, then the zero
+    # subtree, then the one subtree.  Children sit to the right of their
+    # parent, so a beam turned right travels into a child through empty cells.
+    cols: dict[tuple[int, int], int] = {}
+
+    def assign_col(i: int, j: int) -> int:
+        if (i, j) in cols:
+            return cols[(i, j)]
+        c = len(cols) * 2
+        cols[(i, j)] = c
+        if i < n:
+            assign_col(i + 1, 2 * j)
+            assign_col(i + 1, 2 * j + 1)
+        return c
+
+    assign_col(0, 0)
+
+    def build(i: int, j: int) -> None:
+        r = row(i, j)
+        c = cols[(i, j)]
+        lo = j * 2 ** (n - i)
+        hi = lo + 2 ** (n - i)
+        results = {truth_table[k] for k in range(lo, hi)}
+        if i == n or len(results) == 1:
+            # leaf (or a constant subtree collapsed to a leaf)
+            value = results.pop() if i < n else truth_table[j]
+            if value == "1":
+                grid[r][c] = "-"
+                grid[r][c + 1] = "*"
+            else:
+                grid[r][c] = "*"
+            return
+        # internal node: the placeholder mirror reflects the beam down (one)
+        # or up (zero) into a child region
+        grid[r][c] = "{X" + str(i) + "}"
+        for child in (0, 1):
+            cr = row(i + 1, 2 * j + child)
+            # the child row turns the vertical beam back to moving right
+            grid[cr][c] = "\\" if child else "/"
+        build(i + 1, 2 * j)
+        build(i + 1, 2 * j + 1)
+
+    build(0, 0)
+
+    lines = ["".join(ln).rstrip() for ln in grid]
+    return "\n".join(lines)
