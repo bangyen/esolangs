@@ -184,13 +184,15 @@ class TestGeneratorRoundTrips:
         assert roundtrip(polynomial_run, gen.polynomial(text)) == text
 
     def test_polynomial_precision_limit(self) -> None:
-        """Large codepoint deltas exceed float64 root precision (documented).
+        """Large codepoint deltas round-trip despite float64 root limits.
 
-        numpy.roots cannot recover the instruction roots when consecutive
-        characters differ by thousands, so the output corrupts silently.
-        See README "Known Issues".
+        numpy.roots alone cannot recover the instruction roots when
+        consecutive characters differ by thousands (its float64 arithmetic
+        rounds the large integer coefficients).  The interpreter seeds
+        numpy's result into a high-precision mpmath refinement, so even wide
+        codepoint spans round-trip now.
         """
-        assert roundtrip(polynomial_run, gen.polynomial("a日a日")) != "a日a日"
+        assert roundtrip(polynomial_run, gen.polynomial("a日a日")) == "a日a日"
 
     def test_polynomial_format(self) -> None:
         """Zero coefficients are omitted from the formatted polynomial."""

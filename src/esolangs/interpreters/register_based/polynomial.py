@@ -16,12 +16,23 @@ The wiki's cat program notes that output ignores negative register values;
 this interpreter clamps them to zero (printing a NUL) instead, and it raises
 :class:`EOFError` on exhausted input rather than halting with -1.  A
 10000-step cap guards non-terminating programs.
+
+Root finding: the generator emits exact integer coefficients, but they far
+exceed float64's exact-integer range (2**53) once more than a few
+instructions accumulate -- numpy.roots silently rounds them and solves a
+different polynomial, losing the small imaginary parts that encode
+instructions.  The interpreter therefore seeds numpy's fast (but imprecise)
+companion-matrix result into a high-precision Aberth refinement
+(``mp.polyroots``), which recovers the roots to enough digits that they
+round back to the exact instruction values.
 """
 
+import math
 import re
 import sys
 from typing import Any
 
+import mpmath as mp  # type: ignore[import-untyped]
 import numpy as np
 
 from esolangs.interpreters.io import IO
@@ -148,6 +159,48 @@ def sanitize(code: str) -> list[int]:
     return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
 
 
+def _needed_precision(coefficients: list[int]) -> int:
+    """Decimal digits of precision for the root solve.
+
+    mpmath's ``extraprec`` already covers internal iteration error, so the
+    working precision mainly needs to distinguish roots that differ by small
+    integer amounts.  Coefficients far beyond float64 must still be
+    *represented*, which needs one digit per ~3.32 bits of the largest one;
+    scale ``dps`` with that, floored at a generous 30.
+    """
+    bits = max(abs(c) for c in coefficients).bit_length()
+    return max(30, math.ceil(bits / math.log2(10)) + 5)
+
+
+def _find_roots(coefficients: list[int]) -> list[complex]:
+    """Find the roots of an exact-integer polynomial.
+
+    numpy's companion-matrix eigenvalues are a good *starting point* but are
+    computed in float64, which cannot represent the large integer
+    coefficients exactly.  Seed them into ``mp.polyroots`` (high-precision
+    Aberth iteration) and return the refined roots, which round back to the
+    exact instruction values.
+    """
+    if len(coefficients) <= 1:
+        return []
+    dps = _needed_precision(coefficients)
+    with mp.workdps(dps):
+        # numpy raises OverflowError when a coefficient exceeds float64 range
+        try:
+            seeds = np.roots(coefficients)
+        except (OverflowError, FloatingPointError):
+            seeds = np.array([])
+        mp_coeffs = [mp.mpf(c) for c in coefficients]
+        if seeds.size:
+            init = [mp.mpc(float(r.real), float(r.imag)) for r in seeds]
+            roots = mp.polyroots(
+                mp_coeffs, roots_init=init, maxsteps=100, extraprec=100
+            )
+        else:
+            roots = mp.polyroots(mp_coeffs, maxsteps=1000, extraprec=100)
+    return [complex(r.real, r.imag) for r in roots]
+
+
 def run(code: str, io: IO) -> None:
     """Execute a Polynomial program by finding and processing its zeroes."""
     # Clean the input code
@@ -159,7 +212,7 @@ def run(code: str, io: IO) -> None:
     coefficients = sanitize(cleaned_code)
 
     # Find roots and filter for non-negative imaginary parts
-    roots = [k for k in np.roots(coefficients) if np.imag(k) >= 0]
+    roots = [k for k in _find_roots(coefficients) if np.imag(k) >= 0]
 
     # Convert roots to instruction codes
     instructions = convert(roots)

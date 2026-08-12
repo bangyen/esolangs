@@ -290,6 +290,32 @@ class TestPolynomialExecution:
             run("f(x) = x^2+16", io=IO())  # does not crash; reg stores the input
 
 
+class TestPolynomialHighPrecisionRoots:
+    """Wide codepoint deltas corrupt float64 root-finding (documented as a
+    known issue); the high-precision refine must recover them."""
+
+    def test_wide_codepoint_deltas_round_trip(self) -> None:
+        """ASCII followed by CJK/emoji spans several orders of magnitude."""
+        from esolangs.tools.generators.register import polynomial as gen
+
+        for text in ["😀t", "a中", "1😀+", "a日a日", "A中B"]:
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                run(gen(text), io=IO())
+            assert buffer.getvalue() == text
+
+    def test_repeated_wide_deltas_raise_instead_of_corrupting(self) -> None:
+        """A root spread that defeats the root-finder raises rather than
+        silently producing wrong output (the old numpy path corrupted)."""
+        from mpmath.libmp.libhyper import NoConvergence
+
+        from esolangs.tools.generators.register import polynomial as gen
+
+        program = gen("aあbいcう" * 3)
+        with pytest.raises(NoConvergence):
+            run(program, io=IO())
+
+
 class TestConvertRealRoots:
     """Real roots encode instructions reached through later primes."""
 

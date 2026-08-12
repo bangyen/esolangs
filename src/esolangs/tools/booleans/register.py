@@ -140,16 +140,19 @@ def polynomial(truth_table: str, n: int) -> str:
     Polynomial programs are polynomials whose roots encode instructions, so
     the generator builds a decision tree of complex ``[a, b]`` (arithmetic,
     input, output) and real ``[val]`` (if/endif) roots and expands them into
-    ``f(x) = ...``.  ``n > 2`` overflows the interpreter's float root-finder:
-    each instruction consumes a fresh prime, so the coefficients of a deeper
-    tree exceed ``numpy``'s float64 range.
+    ``f(x) = ...``.  Each instruction consumes a fresh prime, so the
+    coefficients of a deeper tree grow quickly -- at ``n == 3`` they reach
+    ~10**360, exceeding even the high-precision root-finder's practical
+    range (numpy overflows before seeding, and a seedless solve of the
+    degree-104 polynomial does not converge).  ``n > 2`` is therefore
+    rejected.
     """
     if n > 2:
         raise ValueError(
             "the Polynomial boolean generator supports n == 2 only: "
             "each instruction consumes a fresh prime, so the expanded "
-            "coefficients of a deeper tree overflow the interpreter's "
-            "float root-finder",
+            "coefficients of a deeper tree exceed what the interpreter's "
+            "root-finder can resolve",
         )
 
     from esolangs.tools._polynomial import format_coeffs, multiply, primes
