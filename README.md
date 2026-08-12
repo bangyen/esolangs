@@ -104,15 +104,16 @@ art = esolangs.transpile("BF", "ASCII art", program)   # rewrite between languag
 <details>
 <summary>Show all</summary>
 
+<!-- IMPLEMENTED:START -->
+
 ### Register-based Languages
 
 Languages that use registers to store and manipulate data.
 
 - [BIO](https://esolangs.org/wiki/BIO)
-- [Dig](https://esolangs.org/wiki/Dig)
-- [dotlang](https://esolangs.org/wiki/Dotlang)
 - [DSDLAI](https://esolangs.org/wiki/DSDLAI)
-- [huf](https://esolangs.org/wiki/Huf)
+- [Dig](https://esolangs.org/wiki/Dig)
+- [Dotlang](https://esolangs.org/wiki/Dotlang)
 - [Lightlang](https://esolangs.org/wiki/Lightlang)
 - [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap)
 - [Movesum](https://esolangs.org/wiki/Movesum)
@@ -121,22 +122,25 @@ Languages that use registers to store and manipulate data.
 - [RAM0](https://esolangs.org/wiki/RAM0)
 - [Sophie](https://esolangs.org/wiki/Sophie)
 - [WII2D](https://esolangs.org/wiki/WII2D)
+- [huf](https://esolangs.org/wiki/Huf)
 
 ### Tape-based Languages
 
 Languages that operate on a tape (similar to Turing machines).
 
+- [6-5](https://esolangs.org/wiki/6-5)
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
+- [BF](https://esolangs.org/wiki/Brainfuck)
 - [Back](https://esolangs.org/wiki/Back)
-- [Brainfuck](https://esolangs.org/wiki/Brainfuck)
 - [BrainIf](https://esolangs.org/wiki/BrainIf)
-- [circlefuck](https://esolangs.org/wiki/Circlefuck)
+- [CircleFuck](https://esolangs.org/wiki/Circlefuck)
+- [Dimensional](https://esolangs.org/wiki/Dimensional)
 - [EXCON](https://esolangs.org/wiki/EXCON)
+- [MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
 - [Minifuck](https://esolangs.org/wiki/Minifuck)
 - [NoComment](https://esolangs.org/wiki/NoComment)
-- [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
+- [S*bleq](https://esolangs.org/wiki/S*bleq)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)
-- [6-5](https://esolangs.org/wiki/6-5)
 
 ### Stack-based Languages
 
@@ -145,7 +149,7 @@ Languages that use a stack for data manipulation.
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [Eval](https://esolangs.org/wiki/Eval)
 - [Modulous](https://esolangs.org/wiki/Modulous)
-- [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
+- [Temporary](https://esolangs.org/wiki/The_Temporary_Stack)
 
 ### Other Languages
 
@@ -153,13 +157,15 @@ Languages that don't fit into the above categories.
 
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue)
 - [Between](https://esolangs.org/wiki/Between)
-- [Bitdeque](https://esolangs.org/wiki/Bitdeque)
+- [BitDeque](https://esolangs.org/wiki/Bitdeque)
 - [Clockwise](https://esolangs.org/wiki/Clockwise)
 - [Container](https://esolangs.org/wiki/Container)
 - [Keys](https://esolangs.org/wiki/Keys)
 - [Nevermind](https://esolangs.org/wiki/Nevermind)
 - [Taglate](https://esolangs.org/wiki/Taglate)
-- [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)
+- [ZTOALC](https://esolangs.org/wiki/ZTOALC_L)
+
+<!-- IMPLEMENTED:END -->
 
 </details>
 
