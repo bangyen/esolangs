@@ -29,9 +29,12 @@ toolchain is missing are skipped, not failed.
 
 Usage:
     PYTHONPATH=src python scripts/verify_differential.py
+    PYTHONPATH=src python scripts/verify_differential.py --fuzz 200 --seed 1
 """
 
+import argparse
 import io
+import random
 import re
 import shutil
 import signal
@@ -180,6 +183,56 @@ def _run_nocomment_python(program: str) -> tuple[bytes, int]:
     return buffer.getvalue(), 0
 
 
+def _run_nocomment_python_limited(program: str, timeout: float) -> tuple[bytes, int] | None:
+    """Run the Python NoComment interpreter with a wall-clock budget.
+
+    Returns ``(output, exit_code)`` like :func:`_run_nocomment_python`, or
+    None if the program did not terminate within ``timeout`` seconds (the
+    fuzzer's analog of the assembly's instruction-count cap).  The alarm is
+    only meaningful on POSIX; the interpreter is skipped (None) elsewhere.
+    """
+    import signal
+
+    if not hasattr(signal, "SIGALRM"):
+        return None
+
+    class _TimeoutError(Exception):
+        pass
+
+    def _alarm(_signum: int, _frame: object) -> None:
+        raise _TimeoutError
+
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(int(timeout))
+    try:
+        return _run_nocomment_python(program)
+    except _TimeoutError:
+        return None
+    finally:
+        signal.alarm(0)
+
+
+def _assemble_nocomment() -> bytes | None:
+    """Assemble the NoComment cross-check; None if the toolchain is missing."""
+    if shutil.which("nasm") is None:
+        print("[skip] NoComment differential: nasm not found")
+        return None
+    try:
+        import x86_elf_runner as r
+    except SystemExit:
+        print("[skip] NoComment differential: unicorn not installed")
+        return None
+
+    asm = (ROOT / "extra" / "assembly" / "nocomment.asm").read_text()
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(asm)
+        path = f.name
+    try:
+        return r.assemble(path)
+    finally:
+        Path(path).unlink()
+
+
 def _verify_nocomment() -> bool:
     """Compare the Python NoComment interpreter against the assembly cross-check.
 
@@ -188,23 +241,10 @@ def _verify_nocomment() -> bool:
     implementations error on non-commands, stack underflow, and out-of-range
     jumps, and must agree on the valid-program corpus.
     """
-    if shutil.which("nasm") is None:
-        print("[skip] NoComment differential: nasm not found")
+    binary = _assemble_nocomment()
+    if binary is None:
         return True
-    try:
-        import x86_elf_runner as r
-    except SystemExit:
-        print("[skip] NoComment differential: unicorn not installed")
-        return True
-
-    asm = (ROOT / "extra" / "assembly" / "nocomment.asm").read_text()
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(asm)
-        path = f.name
-    try:
-        binary = r.assemble(path)
-    finally:
-        Path(path).unlink()
+    import x86_elf_runner as r
 
     failures = 0
     for program in NOCOMMENT_CORPUS:
@@ -325,8 +365,8 @@ def _verify_excon() -> bool:
     return failures == 0
 
 
-def _run_excon_fault() -> tuple[str, int]:
-    """Run the pointer-fault program; return (output, exit_code).
+def _run_excon_python_code(program: str) -> tuple[str, int]:
+    """Run the Python EXCON interpreter; return (output, exit_code).
 
     The off-pool fault is an invalid operation, exit code 3 (the cross-check
     convention for HaltError).
@@ -342,10 +382,15 @@ def _run_excon_fault() -> tuple[str, int]:
             buffer.write(char)
 
     try:
-        run(EXCON_FAULT, _IO())
+        run(program, _IO())
     except HaltError:
         return buffer.getvalue(), 3
     return buffer.getvalue(), 0
+
+
+def _run_excon_fault() -> tuple[str, int]:
+    """Run the pointer-fault program; return (output, exit_code)."""
+    return _run_excon_python_code(EXCON_FAULT)
 
 
 def _run_laserfuck_python(
@@ -380,6 +425,65 @@ def _run_laserfuck_python(
     finally:
         signal.alarm(0)
     return buffer.getvalue()
+
+
+def _check_laserfuck_boolean(
+    table: str, n: int, runs: int = 12
+) -> tuple[int, int]:
+    """Differentially check a LaserFuck boolean program for one truth table.
+
+    Returns ``(checked, failures)``: one ``checked`` per input combination,
+    with ``failures`` counting the combos whose output did not match, plus
+    any Python heading that hung.  ``runs`` is how many times the Rust
+    reference samples the output set; the mirror funnel normalizes every
+    heading, so the set is effectively a singleton and a couple of runs are
+    enough to catch a divergence.
+    """
+    from esolangs.tools.booleans import other
+
+    program = other.laserfuck(table, n)
+    checked = 0
+    failures = 0
+    for combo in range(2**n):
+        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+        inputs = [str(b) for b in bits]
+        outputs: set[str] = set()
+        input_bytes = ("\n".join(inputs) + "\n").encode()
+        for _ in range(runs):
+            out = _run_native([str(RUST_BIN)], program, input_bytes=input_bytes)
+            if out is None:
+                print(
+                    f"LaserFuck boolean {table!r} combo {bits}: "
+                    "Rust reference does not terminate"
+                )
+                failures += 1
+                checked += 1
+                break
+            text = out.decode(errors="replace")
+            # the Rust reference writes an "Input: " prompt per read
+            while text.startswith("Input: "):
+                text = text[len("Input: ") :]
+            outputs.add(re.sub("[^01]", "", text))
+        else:
+            checked += 1
+            for heading in range(4):
+                try:
+                    py = _run_laserfuck_python(program, heading, inputs)
+                except TimeoutError:
+                    failures += 1
+                    print(
+                        f"LaserFuck boolean {table!r} combo {bits} heading {heading}: "
+                        "Python hangs"
+                    )
+                    continue
+                py = re.sub("[^01]", "", py)
+                if py not in outputs:
+                    failures += 1
+                    print(
+                        f"LaserFuck boolean {table!r} combo {bits} heading {heading}: "
+                        f"python {py!r} not in rust set {sorted(map(repr, outputs))}"
+                    )
+    return checked, failures
 
 
 def _verify_laserfuck() -> bool:
@@ -428,57 +532,194 @@ def _verify_laserfuck() -> bool:
         check(program)
 
     # boolean generator programs: read real inputs, exercise the tree
-    from esolangs.tools.booleans import other
-
     for table, n in LASERFUCK_BOOLEAN:
-        program = other.laserfuck(table, n)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            inputs = [str(b) for b in bits]
-            outputs: set[str] = set()
-            input_bytes = ("\n".join(inputs) + "\n").encode()
-            for _ in range(12):
-                out = _run_native([str(RUST_BIN)], program, input_bytes=input_bytes)
-                if out is None:
-                    print(
-                        f"LaserFuck boolean {table!r} combo {bits}: "
-                        "Rust reference does not terminate"
-                    )
-                    return False
-                text = out.decode(errors="replace")
-                # the Rust reference writes an "Input: " prompt per read
-                while text.startswith("Input: "):
-                    text = text[len("Input: ") :]
-                outputs.add(re.sub("[^01]", "", text))
-            checked += 1
-            for heading in range(4):
-                try:
-                    py = _run_laserfuck_python(program, heading, inputs)
-                except TimeoutError:
-                    failures += 1
-                    print(
-                        f"LaserFuck boolean {table!r} combo {bits} heading {heading}: "
-                        "Python hangs"
-                    )
-                    continue
-                py = re.sub("[^01]", "", py)
-                if py not in outputs:
-                    failures += 1
-                    print(
-                        f"LaserFuck boolean {table!r} combo {bits} heading {heading}: "
-                        f"python {py!r} not in rust set {sorted(map(repr, outputs))}"
-                    )
+        c, f = _check_laserfuck_boolean(table, n)
+        checked += c
+        failures += f
 
     if not failures:
         print(f"LaserFuck differential: {checked} programs match")
     return failures == 0
 
 
+# -- seeded differential fuzzing ------------------------------------------
+#
+# The corpora above are fixed: they only catch divergences that were thought
+# of.  The fuzzers draw random programs from each language's alphabet with a
+# seeded RNG, so the same seed always explores the same programs.  They
+# compare not only output but also the error category (exit code) and, for
+# NoComment, the termination verdict itself: a program that halts in one
+# implementation and loops in the other is exactly the class of divergence
+# the fixed corpora missed.
+#
+# Generators keep the fuzz surface terminating by construction:
+#
+# * EXCON: straight-line over ``:^<!`` — the only way to fault is the
+#   off-pool pointer, which both implementations agree is exit 3.
+# * NoComment: ``idclrnfsbo`` — ``b``/``s`` jump by a peeked stack value, so
+#   a random program may loop; both implementations bound the run (the
+#   assembly via its instruction-count cap, Python via SIGALRM), and a
+#   program that loops on one side but halts on the other is a failure.
+# * LaserFuck: random truth tables through the boolean generator, which
+#   produces terminating decision-tree grids (a random grid would hang the
+#   reference, so raw grids are not fuzzable).
+
+
+def _fuzz_excon(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz EXCON with random programs."""
+    if shutil.which("Rscript") is None:
+        print("[skip] EXCON fuzz: Rscript not found")
+        return True
+
+    r_ref = ["Rscript", str(EXTRA_R / "excon.r")]
+    alphabet = ":^<!"
+    failures = checked = 0
+    for _ in range(count):
+        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 40)))
+        native = _run_native_code(r_ref, program)
+        assert native is not None, f"EXCON reference did not terminate on {program!r}"
+        native_out = native[0].decode(errors="replace").replace("\x00", "")
+        native_code = native[1]
+        py_out, py_code = _run_excon_python_code(program)
+        checked += 1
+        if (native_out, native_code) != (py_out.replace("\x00", ""), py_code):
+            failures += 1
+            print(
+                f"EXCON fuzz {program!r}: python "
+                f"{(py_out.replace('\x00', ''), py_code)!r} vs R {(native_out, native_code)!r}"
+            )
+
+    print(
+        f"EXCON fuzz: {checked} programs match"
+        if not failures
+        else f"EXCON fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
+def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz NoComment with random programs.
+
+    A random ``b``/``s`` program may loop forever.  The assembly raises
+    ValueError when it exhausts its instruction-count cap, and Python times
+    out under SIGALRM; ``None`` means "did not terminate" on that side.  A
+    program that halts on one side but loops on the other is a divergence
+    (and the reason a seeded fuzzer is worth having).
+    """
+    binary = _assemble_nocomment()
+    if binary is None:
+        return True
+    import x86_elf_runner as r
+
+    # The assembly's tape and stack live in a fixed mapped region below the
+    # program buffer; a program that loops (or extends the tape) long enough
+    # writes past it and unicorn raises UcError.  That is a resource limit,
+    # the same class as the instruction-count cap's ValueError: both mean the
+    # assembly did not halt cleanly, and a matching Python loop is not a
+    # divergence.
+    from unicorn import UcError
+
+    alphabet = "idclrnfsbo"
+    failures = checked = loops = 0
+    for _ in range(count):
+        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
+        py = _run_nocomment_python_limited(program, timeout=3)
+        try:
+            asm = r.run_elf(binary, stdin=program.encode())
+        except (ValueError, UcError):
+            asm = None
+        if py is None and asm is None:
+            loops += 1
+            continue
+        if py is None and asm is not None:
+            # Python's 3s budget is a heuristic; the assembly is far faster,
+            # so confirm a genuinely-looping program with a longer budget
+            # before calling the termination mismatch a divergence.
+            py = _run_nocomment_python_limited(program, timeout=30)
+        if py is None or asm is None:
+            failures += 1
+            print(
+                f"NoComment fuzz {program!r}: termination mismatch "
+                f"(python {'loops' if py is None else 'halts'}, "
+                f"asm {'loops' if asm is None else 'halts'})"
+            )
+            continue
+        checked += 1
+        if py != asm:
+            failures += 1
+            print(f"NoComment fuzz {program!r}: asm={asm!r} py={py!r}")
+
+    print(
+        f"NoComment fuzz: {checked} programs match, {loops} consistent loops"
+        if not failures
+        else f"NoComment fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    )
+    return failures == 0
+
+
+def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz LaserFuck with random truth tables.
+
+    Raw random grids mostly hang the Rust reference (it has no step limit),
+    so the fuzzer instead draws random truth tables and runs them through the
+    boolean generator, which emits terminating decision-tree grids that
+    exercise the same mirror/conditional machinery.
+    """
+    if shutil.which("cargo") is None or not RUST_BIN.exists():
+        print("[skip] LaserFuck fuzz: Rust reference not built")
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        n = rng.randint(2, 3)
+        table = "".join(rng.choice("01") for _ in range(2**n))
+        # 4 runs: the funnel makes the output heading-independent, and the
+        # fuzzer draws many tables, so each needs to stay cheap
+        c, f = _check_laserfuck_boolean(table, n, runs=4)
+        checked += c
+        failures += f
+
+    print(
+        f"LaserFuck fuzz: {checked} checks match"
+        if not failures
+        else f"LaserFuck fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
 def main() -> int:
-    """Verify the differential corpora, reporting failures."""
+    """Verify the differential corpora, optionally fuzzing random programs."""
+    parser = argparse.ArgumentParser(
+        description="Differential-test the in-package interpreters against "
+        "their native cross-checks."
+    )
+    parser.add_argument(
+        "--fuzz",
+        type=int,
+        default=0,
+        metavar="N",
+        help="also fuzz N random programs per language with a seeded RNG "
+        "(default: 0, corpus only)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="seeded RNG for the fuzzers (default: 0)",
+    )
+    args = parser.parse_args()
+
     ok = _verify_excon()
     ok = _verify_laserfuck() and ok
     ok = _verify_nocomment() and ok
+    if args.fuzz:
+        rng = random.Random(args.seed)
+        ok = _fuzz_excon(rng, args.fuzz) and ok
+        ok = _fuzz_nocomment(rng, args.fuzz) and ok
+        # LaserFuck fuzz is far slower per iteration (each truth table needs
+        # 12 Rust runs per input combination), so it gets a tenth of the
+        # budget.
+        ok = _fuzz_laserfuck(rng, max(1, args.fuzz // 10)) and ok
     print("differential corpus: all ok" if ok else "differential corpus: FAILURES")
     return 0 if ok else 1
 
