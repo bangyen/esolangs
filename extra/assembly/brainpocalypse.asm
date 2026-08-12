@@ -1,15 +1,17 @@
 ; Brainpocalypse interpreter (x86-32 Linux assembly cross-check; see README
 ; "Extra Implementations").
 ;
-; A tape language where cells hold integers: `+`/`-` increment/decrement the
-; current cell, `>`/`<` move the pointer, and `-` on a zero cell restarts the
-; program from the beginning (the `.goto` path rewinds to the start of the
-; parsed input).  When the input is exhausted the whole tape is printed as
-; space-separated decimal values.
+; A brainfuck-like tape language (256 cells, wrapping): `+`/`-` increment/
+; decrement the current cell, `>`/`<` move the pointer, and `-` on a zero
+; cell rewinds the instruction pointer to the start of the program (the
+; wiki's flow-control rule).  Cells hold nonnegative integers.
+;
+; The wiki defines no I/O; this implementation reads the program from stdin
+; and prints the whole tape as space-separated decimal values when the input
+; is exhausted — an output decision, not a language rule.
 ;
 ; This is a direct syscall (int 80h) program with no libc; it is built with
 ; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
-; The program is read from stdin.
 
 global _start
 _start:

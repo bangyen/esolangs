@@ -7,8 +7,8 @@
 //! the stack as a byte (or a decimal value when it is not a valid
 //! character), `i` reads a line of input pushing its first character, and
 //! `>`/`<` are a loop bracket pair: `>` jumps forward to the matching `<`
-//! when the accumulator is 0 or 1, and `<` jumps back to the matching `>`.
-//!
+//! when the accumulator is 0 or 1, and `<` jumps back to the matching `>`
+//! when it is not 0 nor 1.
 //! Error handling: popping an empty stack or an unmatched `<` panics (an
 //! invalid operation).  `i` re-prompts until it reads a non-blank line.
 //!
