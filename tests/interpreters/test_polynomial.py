@@ -315,6 +315,36 @@ class TestPolynomialHighPrecisionRoots:
             run(gen(text), io=IO())
         assert buffer.getvalue() == text
 
+    def test_single_corrupted_delta_round_trip(self) -> None:
+        """A mixed program where float64 silently corrupted one delta (19977
+        -> 19971) is recovered exactly; the old numpy path emitted a wrong
+        character."""
+        from esolangs.tools.generators.register import polynomial as gen
+
+        text = "aWg{<$中Z一t"
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(gen(text), io=IO())
+        assert buffer.getvalue() == text
+
+    def test_non_prime_power_roots_produce_no_instruction(self) -> None:
+        """Roots that do not map to an instruction (not a prime power, or a
+        prime power with no matching bracket) are handled like the wiki
+        defines: they simply produce no executable instruction."""
+        for expr in ["x - 6", "x^2 + 2", "x^2 + 8", "x^3 - 1"]:
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                run("f(x) = " + expr, io=IO())
+            assert buffer.getvalue() == ""
+
+    def test_unmatched_bracket_still_raises(self) -> None:
+        """A real root that is a prime power but has no matching bracket is
+        still a malformed program (the factor path preserves the check)."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run("f(x) = x - 4", io=IO())
+
 
 class TestConvertRealRoots:
     """Real roots encode instructions reached through later primes."""
