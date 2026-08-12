@@ -9,11 +9,11 @@
 // as a string.
 //
 // Spec decisions: the pointer starts at the top-left cell and the first cell
-// must set a direction, otherwise the program exits with status 2 (a malformed
-// program, the Python ValueError analog; the cross-check convention is 0 =
-// success, 2 = malformed program, 3 = invalid operation, 1 = unclassified).
-// Moving off the grid is an invalid runtime operation, status 3.  A missing,
-// unreadable, or empty program file exits with status 1 (unclassified).
+// must set a direction, otherwise the program exits with EXIT_MALFORMED (a
+// malformed program, the Python ValueError analog).  Moving off the grid is
+// an invalid runtime operation, EXIT_INVALID_OP.  A missing, unreadable, or
+// empty program file exits with status 1 (unclassified).  The exit-code
+// convention is defined below.
 //
 // Invocation: `2dFish <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `$`/`%` read from stdin.
@@ -22,6 +22,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
+// Cross-check exit-code convention (see README "Extra Implementations"):
+// 0 = success, 2 = malformed program, 3 = invalid runtime operation, 1 =
+// unclassified failure.
+constexpr int EXIT_MALFORMED = 2;
+constexpr int EXIT_INVALID_OP = 3;
 
 void prompt(bool &out) {
   if (out)
@@ -33,7 +39,7 @@ void prompt(bool &out) {
 
 char get(std::vector<std::string> &prog, int x, int y) {
   if (y < 0 || x < 0 || y == prog.size() || x == prog[y].size())
-    exit(3);
+    exit(EXIT_INVALID_OP);
 
   return prog[y][x];
 }
@@ -87,7 +93,7 @@ int main(int argc, char *argv[]) {
   direct(prog[0][0], x, y, dir);
 
   if (!dir)
-    return 2;
+    return EXIT_MALFORMED;
 
   c = get(prog, x, y);
 
@@ -141,7 +147,7 @@ int main(int argc, char *argv[]) {
         if (dir != '/')
           x = temp;
       } else {
-        return 2;
+        return EXIT_MALFORMED;
       }
 
       break;
