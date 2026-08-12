@@ -453,8 +453,8 @@ def laserfuck(truth_table: str, n: int) -> str:
     needed.
     """
     _validate_tt(truth_table, n)
-    rows = 2 ** (n + 1) - 1
-    total_cols = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2**n * 55 + 64
+    rows: int = 2 ** (n + 1) - 1
+    total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2**n * 55 + 64
     grid = [[" "] * total_cols for _ in range(rows)]
 
     # the funnel: every heading ends up on row 0 moving right
@@ -480,7 +480,7 @@ def laserfuck(truth_table: str, n: int) -> str:
 
     # node rows: breadth-first, root at row 0 and children on lower rows
     def row(i: int, j: int) -> int:
-        return 2**i + j - 1
+        return int(2**i + j - 1)
 
     # internal-node columns (preorder); leaves get a dedicated high region
     cols: dict[tuple[int, int], int] = {}

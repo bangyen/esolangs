@@ -919,7 +919,6 @@ class TestParameterizedBack:
         assert "*" in template
 
 
-
 class TestZtoalc:
     @pytest.mark.parametrize(
         ("table", "n"),
