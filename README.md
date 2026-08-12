@@ -122,7 +122,7 @@ Languages that use registers to store and manipulate data.
 - [RAM0](https://esolangs.org/wiki/RAM0)
 - [Sophie](https://esolangs.org/wiki/Sophie)
 - [WII2D](https://esolangs.org/wiki/WII2D)
-- [huf](https://esolangs.org/wiki/Huf)
+- [Huf](https://esolangs.org/wiki/Huf)
 
 ### Tape-based Languages
 
@@ -130,13 +130,13 @@ Languages that operate on a tape (similar to Turing machines).
 
 - [6-5](https://esolangs.org/wiki/6-5)
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
-- [BF](https://esolangs.org/wiki/Brainfuck)
+- [Brainfuck](https://esolangs.org/wiki/Brainfuck)
 - [Back](https://esolangs.org/wiki/Back)
 - [BrainIf](https://esolangs.org/wiki/BrainIf)
-- [CircleFuck](https://esolangs.org/wiki/Circlefuck)
+- [Circlefuck](https://esolangs.org/wiki/Circlefuck)
 - [Dimensional](https://esolangs.org/wiki/Dimensional)
 - [EXCON](https://esolangs.org/wiki/EXCON)
-- [MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
+- [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
 - [Minifuck](https://esolangs.org/wiki/Minifuck)
 - [NoComment](https://esolangs.org/wiki/NoComment)
 - [S*bleq](https://esolangs.org/wiki/S*bleq)
@@ -149,7 +149,7 @@ Languages that use a stack for data manipulation.
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [Eval](https://esolangs.org/wiki/Eval)
 - [Modulous](https://esolangs.org/wiki/Modulous)
-- [Temporary](https://esolangs.org/wiki/The_Temporary_Stack)
+- [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
 
 ### Other Languages
 
@@ -157,13 +157,13 @@ Languages that don't fit into the above categories.
 
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue)
 - [Between](https://esolangs.org/wiki/Between)
-- [BitDeque](https://esolangs.org/wiki/Bitdeque)
+- [Bitdeque](https://esolangs.org/wiki/Bitdeque)
 - [Clockwise](https://esolangs.org/wiki/Clockwise)
 - [Container](https://esolangs.org/wiki/Container)
 - [Keys](https://esolangs.org/wiki/Keys)
 - [Nevermind](https://esolangs.org/wiki/Nevermind)
 - [Taglate](https://esolangs.org/wiki/Taglate)
-- [ZTOALC](https://esolangs.org/wiki/ZTOALC_L)
+- [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)
 
 <!-- IMPLEMENTED:END -->
 

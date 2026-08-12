@@ -70,24 +70,29 @@ _README_HEADINGS = [
     ),
 ]
 
-# Registry display name -> esolangs wiki page slug where the page name
-# differs from ``name.replace(" ", "_")``.
+# Registry display name -> esolangs wiki page title, where the wiki names
+# the page differently from the registry's shorthand.
 _WIKI_PAGES = {
     "BF": "Brainfuck",
     "BitDeque": "Bitdeque",
     "CircleFuck": "Circlefuck",
     "huf": "Huf",
-    "MAMMALIAN": "SLOW_ACV_MAMMALIAN",
-    "Temporary": "The_Temporary_Stack",
-    "ZTOALC": "ZTOALC_L",
+    "MAMMALIAN": "SLOW ACV MAMMALIAN",
+    "Temporary": "The Temporary Stack",
+    "ZTOALC": "ZTOALC L",
 }
 
 _README_START = "<!-- IMPLEMENTED:START -->"
 _README_END = "<!-- IMPLEMENTED:END -->"
 
 
+def _wiki_name(name: str) -> str:
+    """Return the esolangs wiki page title for the displayed language name."""
+    return _WIKI_PAGES.get(name, name)
+
+
 def _wiki_slug(name: str) -> str:
-    return _WIKI_PAGES.get(name, name.replace(" ", "_"))
+    return _wiki_name(name).replace(" ", "_")
 
 
 def _file_name(name: str) -> str:
@@ -150,7 +155,9 @@ def render_languages_section() -> str:
         out.append(description)
         out.append("")
         for name in sorted(groups[prefix]):
-            out.append(f"- [{name}](https://esolangs.org/wiki/{_wiki_slug(name)})")
+            out.append(
+                f"- [{_wiki_name(name)}](https://esolangs.org/wiki/{_wiki_slug(name)})"
+            )
         out.append("")
     return "\n".join(out).rstrip()
 
