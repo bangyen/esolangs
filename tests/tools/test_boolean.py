@@ -1165,25 +1165,26 @@ class TestThreeX:
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
     import re
 
+    from esolangs.interpreters.io import IO
     from esolangs.interpreters.other.laserfuck import run
 
     buffer = io.StringIO()
 
-    class FakeIO:
+    class FakeIO(IO):
         def __init__(self, ins: list[str]) -> None:
             self._ins = list(ins)
 
-        def input_str(self) -> str:
+        def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
             return self._ins.pop(0)
 
-        def print_char(self, c: str) -> None:
-            buffer.write(c)
+        def print_char(self, char: str) -> None:
+            buffer.write(char)
 
-        def print_line(self) -> None:
-            buffer.write("\n")
+        def print_line(self, text: str = "") -> None:
+            buffer.write(text + "\n")
 
-        def print_num(self, n: int) -> None:
-            buffer.write(str(n))
+        def print_num(self, num: int) -> None:
+            buffer.write(str(num))
 
     with redirect_stdout(buffer):
         run(program.splitlines(), FakeIO(inputs), heading=heading)

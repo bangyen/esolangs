@@ -88,3 +88,91 @@ fn main() {
 
     run(text);
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    fn run_program(program: &str, stdin: &str) -> String {
+        // the real binary reads its program from a file argument, like the CI
+        // round-trip harness does; the file name is unique per test (an atomic
+        // counter) so parallel tests do not clobber each other
+        use std::sync::atomic::{AtomicU64, Ordering};
+
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+        let exe = std::env::current_exe()
+            .expect("current exe")
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("unsquare");
+        let dir = std::env::temp_dir();
+        let path = dir.join(format!(
+            "unsquare-test-{}-{}.txt",
+            std::process::id(),
+            COUNTER.fetch_add(1, Ordering::SeqCst)
+        ));
+        std::fs::write(&path, program).expect("write program");
+        let mut child = Command::new(&exe)
+            .arg(&path)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("failed to spawn");
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(stdin.as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        std::fs::remove_file(&path).ok();
+        String::from_utf8(out.stdout).expect("non-utf8 output")
+    }
+
+    #[test]
+    fn push_and_print_digit() {
+        // I pushes 1, o prints the top of the stack as a byte (0x01)
+        assert_eq!(run_program("Io", ""), "\u{1}");
+    }
+
+    #[test]
+    fn accumulator_ops() {
+        // I pushes 1, + makes acc 2, P pushes acc (2), o prints 0x02
+        assert_eq!(run_program("I+Po", ""), "\u{2}");
+        // acc starts 0, + + makes acc 4
+        assert_eq!(run_program("++Po", ""), "\u{4}");
+        // - makes acc -2, printed as "-2"
+        assert_eq!(run_program("-Po", ""), "-2");
+        // x doubles acc (0 stays 0)
+        assert_eq!(run_program("xxPo", ""), "\u{0}");
+    }
+
+    #[test]
+    fn swap_orders_stack() {
+        // O pushes 0, I pushes 1, S swaps -> top is 0, o prints 0x00
+        assert_eq!(run_program("OISo", ""), "\u{0}");
+    }
+
+    #[test]
+    fn read_input_digit() {
+        // i reads a line and pushes its first char, P pushes acc (0), so o
+        // prints 0; the "Input: " prompt is part of stdout
+        assert_eq!(run_program("iPo", "7\n"), "Input: \u{0}");
+    }
+
+    #[test]
+    fn print_char_for_letter() {
+        // 32 '+' ops make acc 64, P pushes, o prints '@'
+        let plus = "+".repeat(32);
+        assert_eq!(run_program(&(plus + "Po"), ""), "@");
+    }
+
+    #[test]
+    fn loop_skips_when_acc_01() {
+        // O > I < : acc 0, > sees acc==0 so skips to <, I runs, terminates
+        assert_eq!(run_program("O>I<", ""), "");
+    }
+}
