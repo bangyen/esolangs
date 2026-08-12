@@ -833,6 +833,93 @@ class TestParameterizedBIO:
         assert "0ix" in template  # the complement computation is emitted, not a literal
 
 
+class TestParameterizedBack:
+    """Input-by-substitution generators for the no-input language Back."""
+
+    def run_back(self, prog: str) -> str:
+        from esolangs.interpreters.io import IO
+        from esolangs.interpreters.tape_based.back import run
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(prog.splitlines(), io=IO())
+        return buffer.getvalue().strip()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "\\" if b else "/",
+            lambda _i, _b: "/",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.back(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_back(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.booleans import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.back(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_back(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.back("0110", 2)
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_mirror_routing(self) -> None:
+        """Each node is a mirror: backslash for a one, slash for a zero."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.back("0110", 2)
+        # XOR has three internal nodes (X0, X1, X1)
+        assert template.count("{X0}") == 1
+        assert template.count("{X1}") == 2
+
+    def test_leaf_sets_tape_bit(self) -> None:
+        """A one-result leaf flips the tape bit; a zero-result leaf halts bare."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.back("0110", 2)
+        assert "-*" in template
+        assert "*" in template
+
+
+
 class TestZtoalc:
     @pytest.mark.parametrize(
         ("table", "n"),
