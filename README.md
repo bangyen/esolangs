@@ -342,13 +342,6 @@ Important information about specific language implementations.
 
 - **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
 
-- **polynomial**: The interpreter recovers a program's instructions by
-  factoring its monic integer polynomial with sympy — every instruction is a
-  known factor shape (a quadratic `(x-a)^2 + p^(2b)` or a linear `x - p^v`)
-  — so the values come out exactly, with no floating-point root-finding.
-  Byte-range text, wide codepoint deltas (ASCII next to CJK/emoji), and even
-  pathological root spreads round-trip correctly.
-
 ### Usage Notes
 
 - **Jaune**: Only one character can be input at a time.

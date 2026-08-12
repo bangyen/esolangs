@@ -84,6 +84,31 @@ def test_extra_language_generators_do_not_crash() -> None:
                 fn(text)
 
 
+def test_polynomial_wide_unicode_round_trip() -> None:
+    """Polynomial round-trips text with wide codepoint deltas.
+
+    The shared fuzz pool tops out at U+01C4 (delta ~450), well below the
+    range that used to corrupt float64 root-finding.  Polynomial now recovers
+    instructions by factoring the integer polynomial, so ASCII-adjacent CJK
+    and emoji (deltas in the thousands) must round-trip too.
+    """
+    random.seed(6)
+    run = importlib.import_module("esolangs.interpreters.register_based.polynomial").run
+    gen = BY_FUNCTION["polynomial"].generator
+    assert gen is not None
+    wide = "".join(
+        chr(c) for c in [0x4E2D, 0x4E00, 0x1F600, 0x3042, 0x3044, 0x00E9, 0x1F642]
+    )
+    pool = string.printable + wide
+    for _ in range(20):
+        text = "".join(random.choice(pool) for _ in range(random.randint(1, 10)))
+        program = gen(text)
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(program, io=IO())
+        assert buffer.getvalue() == text, text
+
+
 def test_boolean_generators_random_tables() -> None:
     random.seed(2)
     runners = [

@@ -291,8 +291,8 @@ class TestPolynomialExecution:
 
 
 class TestPolynomialHighPrecisionRoots:
-    """Wide codepoint deltas corrupt float64 root-finding (documented as a
-    known issue); factoring the integer polynomial recovers them exactly."""
+    """Wide codepoint deltas and pathological root spreads are recovered
+    exactly by factoring the integer polynomial (no floating point)."""
 
     def test_wide_codepoint_deltas_round_trip(self) -> None:
         """ASCII followed by CJK/emoji spans several orders of magnitude."""
