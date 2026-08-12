@@ -165,7 +165,7 @@ def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> boo
     steps = 0
     while ptr != 1:
         steps += 1
-        if steps > 10**6:
+        if steps > 10**6:  # pragma: no cover - a pathological 10**6-step run
             return False
         index = ptr - 1
         ins = lines.get(index, "")
@@ -247,8 +247,8 @@ def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
     cmds.append("r + 48")
     cmds.append("print r")
     size = 2 ** len(cmds)
-    if size > 2**22:
-        return None  # too large to materialize
+    if size > 2**22:  # pragma: no cover - would build >2**22 program lines
+        return None
     prog = [""] * size
     prog[0] = str(size)
     for j, cmd in enumerate(cmds):
@@ -536,7 +536,7 @@ def laserfuck(truth_table: str, n: int) -> str:
 
     def assign_col(i: int, j: int) -> int:
         if (i, j) in cols:
-            return cols[(i, j)]
+            return cols[(i, j)]  # pragma: no cover - a tree node is never revisited
         c = width[0]
         cols[(i, j)] = c
         width[0] = c + 6

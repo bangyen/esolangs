@@ -36,6 +36,14 @@ class TestPolynomialHelperFunctions:
         assert prime(10) is False
         assert prime(11) is True
 
+    def test_factor_skips_non_instruction_quadratic(self) -> None:
+        """A quadratic factor whose q is negative encodes no instruction."""
+        from esolangs.interpreters.register_based.polynomial import _factor_roots
+
+        # x^3 - 5x + 2 = (x - 2)(x^2 + 2x - 1); the quadratic has q = -2,
+        # so only the linear root survives.
+        assert _factor_roots((1, 0, -5, 2)) == (complex(2, 0),)
+
     def test_sanitize_simple_polynomial(self) -> None:
         """Test polynomial parsing for simple cases."""
         result = sanitize("f(x) = 3x^2 + x + 7")

@@ -100,3 +100,23 @@ class TestLaserFuck:
         with redirect_stdout(buffer):
             run(prog, io_obj, heading=3)
         assert io_obj.buf.getvalue() == "4"  # ord('4') = 52 = '4'
+
+    def test_steps_off_the_top(self) -> None:
+        # heading 0 (up) from the top row steps off the grid and dies
+        assert run_and_capture(["o"], heading=0) == ""
+
+    def test_move_left_below_cell_zero(self) -> None:
+        # '<' at cell 0 inserts a fresh cell to the left
+        assert run_and_capture(["o<x"]) == ""
+
+    def test_slash_reflects_up(self) -> None:
+        # '/' reflects right (3) to up (0), which steps off the top edge
+        assert run_and_capture(["o/"], heading=3) == ""
+
+    def test_star_duplicates_laser(self) -> None:
+        # '*' duplicates the laser perpendicularly; both copies die on 'x'
+        assert run_and_capture([" x ", "o*x", " x "], heading=3) == ""
+
+    def test_decimal_mode_multiple_values(self) -> None:
+        # two touched cells print one value per line in decimal mode
+        assert run_and_capture(["o+>+x"]) == "1\n1"

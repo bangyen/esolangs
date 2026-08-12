@@ -1308,3 +1308,46 @@ class TestLaserFuck:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.laserfuck("02", 1)
+
+
+class TestGeneratorEdgePaths:
+    """Coverage for validation and helper edge paths in the generators."""
+
+    def test_parameterized_validation(self) -> None:
+        """bio/back reject malformed truth tables."""
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="4 entries"):
+            parameterized.bio("011", 2)
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            parameterized.bio("0123", 2)
+        with pytest.raises(ValueError, match="4 entries"):
+            parameterized.back("011", 2)
+
+    def test_dimensional_tree_validation(self) -> None:
+        """The Dimensional decision-tree generator rejects bad truth tables."""
+        with pytest.raises(ValueError, match="4 entries"):
+            boolean.dimensional_tree("011", 2)
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.dimensional_tree("0123", 2)
+
+    def test_six_five_helper_edges(self) -> None:
+        """Same-cell navigation and the +5 tail of the constant encoder."""
+        from esolangs.tools.booleans.tape import _six_five_const, _six_five_nav
+
+        assert _six_five_nav(3, 3) == ""
+        assert _six_five_const(5) == "5"
+        assert _six_five_const(11) == "65"
+
+    def test_ztoalc_simulator_rejects_bad_program(self) -> None:
+        """An empty or non-numeric first line fails the fast simulator."""
+        from esolangs.tools.booleans.other import _ztoalc_ok
+
+        assert _ztoalc_ok({}, 0, "", "") is False
+        assert _ztoalc_ok({0: "not-a-number"}, 0, "", "") is False
+
+    def test_ztoalc_simulator_input_exhausted(self) -> None:
+        """A '=' instruction with no input left fails the fast simulator."""
+        from esolangs.tools.booleans.other import _ztoalc_ok
+
+        assert _ztoalc_ok({0: "2", 1: "a = 1"}, 1, "", "") is False
