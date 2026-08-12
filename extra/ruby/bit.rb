@@ -1,5 +1,15 @@
 # frozen_string_literal: true
 
+# bit~ interpreter (Ruby cross-check; see README "Extra Implementations").
+#
+# An 8-cell bit pool with a pointer: `~` flips the current bit, `>`/`<` move
+# the pointer (extending the pool on `>`), `)` reads a byte of input into the
+# pool as 8 bits, `(` prints the pool as a byte, and `{`/`}` are a loop
+# bracket pair: `{` jumps forward to the matching `}` when the current bit is
+# zero, `}` jumps back to the matching `{` when it is nonzero.
+#
+# Input: the program file is `ARGV[0]`; `)` reads from stdin.
+
 code = File.read(ARGV[0])
 tape = [cell = i = 0] * 8
 line = ''

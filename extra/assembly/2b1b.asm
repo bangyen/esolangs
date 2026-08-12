@@ -1,3 +1,16 @@
+; 2 Bits, 1 Byte interpreter (x86-32 Linux assembly cross-check; see README
+; "Extra Implementations").
+;
+; Reads a single byte of input and interprets its 8 bits as 4 two-bit
+; commands: command 0 advances, command 1 applies a bitwise operation
+; (XOR with the addressed bit, or a shift-based combine for the second
+; operand), and command 2 reads an indexed bit.  The resulting byte is
+; printed and the program halts.
+;
+; This is a direct syscall (int 80h) program with no libc; it is built with
+; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
+; The input byte is read from stdin.
+
 global _start
 _start:
 	mov eax, 3

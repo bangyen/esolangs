@@ -1,3 +1,23 @@
+//! LaserFuck interpreter (Rust cross-check; see README "Extra
+//! Implementations").
+//!
+//! A laser (starting at `o` with a *random* initial heading) travels a grid.
+//! `>`,`<`,`+`,`-`,`,` work on a brainfuck-style tape, `\`/`/` reflect the
+//! laser, `_`/`|` and `(`/`)` reflect it when the current cell is nonzero
+//! (or always for the unconditional forms), `^v{}` set the heading, `#`
+//! skips the next command, `x` deletes the laser, and `*` duplicates it in a
+//! random perpendicular direction.  Execution ends when no lasers remain;
+//! the tape is then printed, with a leading `\xff` selecting byte output
+//! (no separators) over the default decimal mode, and negative cells
+//! excluded.
+//!
+//! Deviations / decisions: the initial heading is uniformly random (so a
+//! single run is nondeterministic), the tape holds signed 32-bit cells
+//! matching the wiki, and `,` reads a whole line taking only its first byte
+//! (empty line -> 0).  A second `o` halts immediately.
+//!
+//! Input: the program file is `argv[1]`; `,` reads from stdin.
+
 use rand::Rng;
 use std::env;
 use std::fs;
