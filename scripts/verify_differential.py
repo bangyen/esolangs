@@ -16,6 +16,12 @@ Languages with both an in-package interpreter and a native cross-check:
   The Rust reference picks a random initial heading, so its output is a
   *set* across runs; the Python interpreter (which accepts a fixed heading)
   must produce a member of that set for each of the four headings.
+* **NoComment** — ``tape_based/nocomment.py`` vs
+  ``extra/assembly/nocomment.asm``.  Both implement the full wiki language
+  (10 commands over a tape and stack).  The assembly is run under unicorn
+  via ``x86_elf_runner`` and must agree with the Python interpreter on the
+  full corpus; both error on non-commands, stack underflow, and out-of-range
+  jumps.
 
 Called from CI's ``extra-languages`` and ``rust`` jobs (which provide
 Rscript and cargo) and from ``verify.py`` locally.  References whose
@@ -112,6 +118,104 @@ LASERFUCK_BOOLEAN = [
     ("0110", 2),
     ("11111110", 3),
 ]
+
+
+# -- NoComment corpus: the full 10-command wiki language ------------------
+
+# Every command over a byte tape and stack.  `s`/`b` jump by a peeked stack
+# value when the current cell is nonzero; programs using them must terminate
+# (a back-jump to a repeating point loops forever).
+NOCOMMENT_CORPUS = [
+    "",  # empty program
+    "o",  # print cell 0 (NUL)
+    "io",  # chr(1)
+    "i" * 255 + "o",  # wraps to 255
+    "do",  # -1 wraps to 255
+    "c" + "i" * 65 + "o",  # 'A'
+    "c" + "i" * 65 + "r" + "o",  # r to cell 1 (NUL)
+    "c" + "i" * 65 + "r" + "i" * 70 + "o",  # cell 1 = 70 'F'
+    "c" + "i" * 65 + "l" + "o",  # l at cell 0 is a no-op
+    "c" + "i" * 65 + "r" + "l" + "o",  # back to cell 0
+    "c" + "i" * 65 + "n" + "f" + "o",  # push then pop
+    "c" + "i" * 65 + "n" + "r" + "f" + "o",  # push, r, pop into cell 1
+    "c" + "i" * 65 + "n" + "n" + "f" + "f" + "o",  # two pushes, two pops
+    "c" + "i" * 65 + "n" + "r" + "c" + "f" + "o",  # pop overwrites cell 1
+    "cii" + "n" + "s" + "ii" + "o",  # s skips 2
+    "ci" + "n" + "s" + "i" + "o",  # s skips 1
+    "ciii" + "n" + "s" + "iii" + "o",  # s skips 3
+    "c" + "i" * 3 + "n" + "r" + "i" + "o",  # cell 1 = 1
+    "c" + "i" + "n" + "s" + "n" + "f" + "o",  # s then push/pop
+    "xyz",  # non-command: error in both
+    "f",  # stack underflow: error in both
+    "c" + "i" * 10 + "n" + "s" + "o",  # s out of range: error in both
+    "c" + "i" * 10 + "n" + "b" + "o",  # b out of range: error in both
+    "c" + "n" + "b" + "o",  # b with cell 0 does not jump
+]
+
+
+def _run_nocomment_python(program: str) -> tuple[bytes, int]:
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.tape_based.nocomment import run
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_char(self, char: str) -> None:
+            buffer.write(char.encode("latin1"))
+
+    try:
+        run(program, _IO())
+    except HaltError:
+        return buffer.getvalue(), 1
+    except ValueError:
+        return buffer.getvalue(), 1
+    return buffer.getvalue(), 0
+
+
+def _verify_nocomment() -> bool:
+    """Compare the Python NoComment interpreter against the assembly cross-check.
+
+    The assembly is run under unicorn (``x86_elf_runner``), which requires
+    unicorn and nasm; it is skipped when either is missing.  Both
+    implementations error on non-commands, stack underflow, and out-of-range
+    jumps, and must agree on the valid-program corpus.
+    """
+    if shutil.which("nasm") is None:
+        print("[skip] NoComment differential: nasm not found")
+        return True
+    try:
+        import x86_elf_runner as r
+    except SystemExit:
+        print("[skip] NoComment differential: unicorn not installed")
+        return True
+
+    asm = (ROOT / "extra" / "assembly" / "nocomment.asm").read_text()
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(asm)
+        path = f.name
+    try:
+        binary = r.assemble(path)
+    finally:
+        Path(path).unlink()
+
+    failures = 0
+    for program in NOCOMMENT_CORPUS:
+        try:
+            asm_out, asm_code = r.run_elf(binary, stdin=program.encode())
+        except ValueError:
+            asm_out, asm_code = b"", 1
+        py_out, py_code = _run_nocomment_python(program)
+        if (asm_out, asm_code) != (py_out, py_code):
+            failures += 1
+            print(
+                f"NoComment {program!r}: asm={(asm_out, asm_code)} "
+                f"py={(py_out, py_code)}"
+            )
+
+    if not failures:
+        print(f"NoComment differential: {len(NOCOMMENT_CORPUS)} programs match")
+    return failures == 0
 
 
 def _run_native(
@@ -326,6 +430,7 @@ def main() -> int:
     """Verify the differential corpora, reporting failures."""
     ok = _verify_excon()
     ok = _verify_laserfuck() and ok
+    ok = _verify_nocomment() and ok
     print("differential corpus: all ok" if ok else "differential corpus: FAILURES")
     return 0 if ok else 1
 
