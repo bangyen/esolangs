@@ -72,7 +72,6 @@ LANGUAGES: dict[str, Language] = {
     "Keys": Language("Keys", interpreter="other.keys", split=True),
     "LaserFuck": Language("LaserFuck", _generate.laserfuck),
     "Lightlang": Language("Lightlang", interpreter="register_based.lightlang"),
-    "Magnitude": Language("Magnitude", _generate.magnitude),
     "MAMMALIAN": Language("MAMMALIAN", _generate.mammalian, "tape_based.mammalian"),
     "Minifuck": Language("Minifuck", _generate.minifuck, "tape_based.minifuck"),
     "Minsky Swap": Language("Minsky Swap", interpreter="register_based.minsky-swap"),

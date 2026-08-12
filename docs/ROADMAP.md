@@ -23,13 +23,3 @@ would restore the independent differential cross-check and keep Dimensional
 in the C++ reference family.  It must handle the addressing itself (a
 `long long` key covers `n <= 28`; a small bignum for unbounded) — the very
 overflow that motivates the change.
-
-### Magnitude interpreter or reference
-Magnitude has a text generator (`tools/generators/other.py`) that is tested
-only for *producing* output — no in-package interpreter and no `extra/`
-reference, so nothing round-trips its programs.  It is the one generator-only
-language without any executable to verify against (Home Row, Jaune, etc. are
-compiled and checked by `verify_x86_unicorn.py`; the rest have `extra/`
-references).  A small interpreter (register-based, magnitudes over powers of
-2/3) or a native reference would let the generator's output be round-trip
-verified like every other generator-only language.
