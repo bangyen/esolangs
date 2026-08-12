@@ -94,6 +94,18 @@ walker stage additionally cannot reach the 8 distinct pointer positions a
 third bit needs.  A generator is therefore limited to 0-preserving tables
 with n <= 3 at most, and not to arbitrary boolean functions.
 
+## RAM0, BitDeque, Minsky Swap (not viable for the template model)
+These three have value-testable branches and clean setters, but their jumps
+are *absolute token indices*: RAM0's digit-`GOTO`, BitDeque's `GOTO N`, and
+Minsky Swap's `~` targets are all fixed positions in the token/command
+stream.  The parameterized template's bit setter has variable length (e.g.
+RAM0's `Z` for a zero bit vs `Z A` for a one bit; BitDeque's `INVERT` vs
+nothing), so substitution changes the token count and every jump target
+shifts — a fixed template cannot be correct for all instantiations.  Only
+Back avoids token-index jumps (its `+`-advance condition is positional), but
+its decision tree must be laid out on a 2D beam grid, a separate kind of
+complexity that has not been attempted.
+
 ## Eval (not viable for nested parameterized trees)
 Eval was surveyed as capable for input-by-substitution boolean generators
 (it has output, constant construction, and a `?` skip-if-zero branch), but

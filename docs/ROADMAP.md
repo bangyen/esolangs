@@ -21,9 +21,12 @@ generator are complete: a decision tree where each node reloads its raw bit,
 computes the complement in-program (`y = 1 - x`), tests both sides, and every
 leaf clears the test registers so the loops unwind.  Verified exhaustively
 for every table at n <= 3 and sampled at n = 4 through the BIO interpreter.
-The remaining languages are not yet built; Eval proved infeasible for nested
-trees (its string parser converts *every* backtick to a quote, so nested
-`!`-evaluated subtrees cannot be escaped — see docs/limitations.md).
+The remaining four languages are blocked by real obstacles (recorded in
+docs/limitations.md): RAM0's digit-`GOTO`s are absolute token indices, but
+its bit setter (`Z` vs `Z A`) has variable length, so substitution shifts
+every goto target; BitDeque and Minsky Swap have the same token-index
+problem; only Back lacks token gotos, but its 2D beam layout is a separate
+kind of complexity.  Eval is infeasible by spec (see docs/limitations.md).
 
 ### Decision-tree brainfuck boolean generator (resolved: bf_tree)
 The brainfuck generator previously had only the branch-free `bf` minterm
