@@ -9,6 +9,7 @@ import pytest
 
 import esolangs.tools.generate as gen
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
@@ -45,6 +46,19 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
 
 
 class TestGeneratorRoundTrips:
+    def test_between(self) -> None:
+        """p prints the whole text; apostrophes are doubled inside literals."""
+        assert roundtrip(between_run, gen.between("Hi").splitlines()) == "Hi"
+        assert (
+            roundtrip(between_run, gen.between("Hello, World!").splitlines())
+            == "Hello, World!"
+        )
+        assert roundtrip(between_run, gen.between("a'b").splitlines()) == "a'b"
+
+    def test_between_rejects_newline(self) -> None:
+        with pytest.raises(ValueError, match="newline"):
+            gen.between("a\nb")
+
     def test_bfstack(self) -> None:
         assert roundtrip(bfstack_run, gen.bfstack("Hi")) == "Hi"
 
@@ -420,6 +434,7 @@ class TestGeneratorProducesOutput:
     def test_supported_languages(self) -> None:
         """Every generator produces non-empty output for non-empty text."""
         generators = [
+            gen.between,
             gen.forth,
             gen.laserfuck,
             gen.pct_squared_minus_one,
@@ -473,6 +488,7 @@ class TestGeneratorBranches:
             gen.main()
         out = capsys.readouterr().out
         assert "--- BFStack ---" in out
+        assert "--- Between ---" in out
         assert "--- BrainIf ---" in out
         assert "--- Clockwise ---" in out
         assert "--- Container ---" in out
