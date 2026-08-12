@@ -35,7 +35,6 @@ hand.
 | LaserFuck | yes |  | yes |  |  |
 | Lightlang |  | yes |  |  |  |
 | MAMMALIAN | yes | yes |  |  | hello |
-| Magnitude | yes |  |  |  |  |
 | Minifuck | yes | yes |  |  | hello |
 | Minsky Swap |  | yes |  |  |  |
 | Modulous | yes | yes | yes |  | hello cat truth-machine |

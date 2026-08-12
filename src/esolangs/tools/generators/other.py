@@ -17,7 +17,6 @@ __all__ = [
     "forth",
     "home_row",
     "laserfuck",
-    "magnitude",
     "nevermind",
     "nocomment",
     "painfuck",
@@ -347,14 +346,14 @@ def laserfuck(text: str) -> str:
 
 
 def magnitude(text: str) -> str:
-    """Build a Magnitude program that outputs ``text``.
+    """Build a %^2^-1 program that outputs ``text`` (delta encoding).
 
     Each character is produced as a delta from the previous one.  ``s`` and
     ``i`` scale toward powers of 2 and 3, ``p`` flips the sign, ``e`` prints
     the accumulated magnitude as a byte, and a leading ``'`` resets to an
     absolute (non-delta) encoding when the delta would overshoot the target.
     """
-    _require_bytes(text, "Magnitude")
+    _require_bytes(text, "%^2^-1")
 
     def close(val: int, start: int) -> int:
         if start > val:
@@ -663,12 +662,19 @@ def _pct_path(byte: int) -> str:
 def pct_squared_minus_one(text: str) -> str:
     """Build a %^2^-1 program that outputs ``text``.
 
-    ``'`` resets the accumulator to zero, ``_pct_path`` moves it to each byte,
-    and ``e`` prints it as a character.  Every byte's path stays within the
-    interpreter's ``acc > 3003`` bound.
+    Two generators exist with complementary strengths, and the function
+    returns the shorter of the two for the given text:
+
+    - ``_pct_path``: each byte is built from ``'`` (reset) via a path that
+      scales and negates the accumulator to the byte value, then ``e`` prints
+      it.  Best for high-delta text (each byte is encoded independently).
+    - :func:`magnitude`: each character is a delta from the previous one, so
+      ``s``/``i`` scale toward powers of 2 and 3 and ``p`` flips the sign.
+      Best for low-delta, repetitive text.
     """
     _require_bytes(text, "%^2^-1")
-    return "".join("'" + _pct_path(ord(c)) + "e" for c in text)
+    absolute = "".join("'" + _pct_path(ord(c)) + "e" for c in text)
+    return min((absolute, magnitude(text)), key=len)
 
 
 def basicfuck(text: str) -> str:
