@@ -12,20 +12,20 @@
 # Input: the program file is `ARGV[0]`; the language has no input command.
 
 code = File.read(ARGV[0]).chars
-data = ''
+data = ""
 
 loop do
   code.each do |c|
     case c
-    when '0'
+    when "0"
       data = "0#{data}"
-    when '1'
+    when "1"
       data = "1#{data}"
-    when 'H'
-      data.gsub!(/^0/, 'H0')
+    when "H"
+      data.gsub!(/^0/, "H0")
     end
   end
-  break if data[0] == 'H'
+  break if data[0] == "H"
 end
 
 print data
