@@ -12,12 +12,14 @@ hand.
 | 3x | yes |  | yes |  |  |
 | 6-5 | yes | yes | yes |  | hello cat |
 | ASCII art | yes | yes | yes |  | hello |
+| ArrowQueue |  | yes |  |  |  |
 | BF | yes | yes | yes |  | hello |
 | BF-PDA |  |  |  | yes |  |
 | BFStack | yes | yes | yes | yes | hello |
 | BIO | yes | yes |  |  | hello |
 | Back |  | yes |  |  |  |
 | Basicfuck | yes |  | yes |  |  |
+| Between | yes | yes |  |  | hello cat truth-machine |
 | BitDeque |  | yes |  |  |  |
 | BrainIf | yes | yes | yes |  | hello truth-machine |
 | CircleFuck | yes | yes | yes |  | hello truth-machine |
@@ -45,7 +47,7 @@ hand.
 | Polynomial | yes | yes | yes |  | hello |
 | Qoibl | yes | yes | yes |  | hello |
 | RAM0 |  | yes |  | yes |  |
-| S*bleq | yes | yes |  |  |  |
+| S*bleq | yes | yes |  |  | hello |
 | Sophie | yes | yes | yes |  | hello |
 | Suffolk | yes | yes |  | yes | hello |
 | Taglate | yes | yes | yes |  | hello |

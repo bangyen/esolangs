@@ -10,6 +10,7 @@ from esolangs.tools.ztoalc_starts import ANCHORS
 __all__ = [
     "_123",
     "basicfuck",
+    "between",
     "bit_tilde",
     "clockwise",
     "container",
@@ -27,6 +28,18 @@ __all__ = [
     "unsquare",
     "ztoalc",
 ]
+
+
+def between(text: str) -> str:
+    """Generate a Between program that outputs ``text``.
+
+    One ``p`` prints the whole text as a string literal, then ``x`` exits.
+    Apostrophes are doubled (``''``) so they can appear inside the literal;
+    a newline cannot because each instruction occupies one line.
+    """
+    if any(c in "\n\r" for c in text):
+        raise ValueError("Between cannot output a newline (instructions are one line)")
+    return f"'{text.replace(chr(39), chr(39) * 2)}'p.\n.x."
 
 
 def clockwise(text: str) -> str:
