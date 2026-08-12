@@ -39,7 +39,10 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
             if c == "o":
                 if lsrs:
                     return  # a second start marker halts immediately
-                d = heading if heading is not None else random.randrange(4)
+                # The random heading is part of LaserFuck's spec, not a secret.
+                d = (
+                    heading if heading is not None else random.randrange(4)
+                )  # nosec B311
                 lsrs.append([x, y, d])
 
     ptr = 0
@@ -88,7 +91,7 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
                 ind %= len(lsrs)
             continue
         elif op == "*":
-            lsrs.append([x, y, 2 * (1 - d // 2) + random.randrange(2)])
+            lsrs.append([x, y, 2 * (1 - d // 2) + random.randrange(2)])  # nosec B311
         elif op in "_(":
             if d < 2 and (tape[ptr][0] != 0 or op == "_"):
                 d = 1 - d

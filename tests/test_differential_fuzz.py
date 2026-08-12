@@ -42,17 +42,13 @@ class TestExconFuzz:
 
     def test_program_alphabet(self, rng) -> None:
         """Fuzz programs stay within the EXCON instruction alphabet."""
-        program = "".join(
-            rng.choice(":^<!") for _ in range(rng.randint(0, 40))
-        )
+        program = "".join(rng.choice(":^<!") for _ in range(rng.randint(0, 40)))
         assert set(program) <= set(":^<!")
 
 
 class TestNoCommentFuzz:
     def test_program_alphabet(self, rng) -> None:
-        program = "".join(
-            rng.choice("idclrnfsbo") for _ in range(rng.randint(0, 30))
-        )
+        program = "".join(rng.choice("idclrnfsbo") for _ in range(rng.randint(0, 30)))
         assert set(program) <= set("idclrnfsbo")
 
 

@@ -110,7 +110,8 @@ def _parse_arg(line: str, i: int) -> tuple[Node, int]:
                 line.startswith(token, i + 1)
                 and line[i + 1 + len(token) : i + 2 + len(token)] == ")"
             ):
-                return ("cond", token == "True"), i + 2 + len(token)
+                # "True"/"False" are condition literals, not hardcoded secrets.
+                return ("cond", token == "True"), i + 2 + len(token)  # nosec B105
         return _parse_group(line, i)
     if c == ".":
         return ("none",), i + 1

@@ -215,8 +215,8 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y r-base nasm
-        gem install standardrb
-        Rscript -e 'install.packages("styler", repos="https://cloud.r-project.org", quiet=TRUE)'
+        sudo gem install standardrb
+        sudo Rscript -e 'install.packages("styler", repos="https://cloud.r-project.org", quiet=TRUE)'
 
     - name: Check Ruby syntax and formatting
       run: |
