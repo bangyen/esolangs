@@ -18,25 +18,48 @@ Usage:
 import shutil
 import subprocess
 import sys
+from pathlib import Path
+
+ROOT = Path(__file__).parents[1]
+
+
+def python_cmd() -> list[str]:
+    """Return the project's Python command.
+
+    ``verify.py`` may be run with the system interpreter (e.g. plain
+    ``python scripts/verify.py``), which does not have the project's dev
+    dependencies.  Prefer the local venv, then ``uv run python`` (the uv
+    workflow the justfile uses), and only fall back to the running
+    interpreter.
+    """
+    venv = ROOT / ".venv" / "bin" / "python"
+    if venv.exists():
+        return [str(venv)]
+    if shutil.which("uv") is not None:
+        return ["uv", "run", "python"]
+    return [sys.executable]
+
+
+PY = python_cmd()
 
 STEPS = [
-    ("pre-commit", [sys.executable, "-m", "pre_commit", "run", "--all-files"]),
-    ("pytest", [sys.executable, "-m", "pytest", "-q"]),
+    ("pre-commit", [*PY, "-m", "pre_commit", "run", "--all-files"]),
+    ("pytest", [*PY, "-m", "pytest", "-q"]),
     (
         "ztoalc anchor table is reproducible",
-        [sys.executable, "scripts/make_ztoalc_table.py", "--check"],
+        [*PY, "scripts/make_ztoalc_table.py", "--check"],
     ),
     (
         "x86 assembly under unicorn (compilers + references)",
-        [sys.executable, "scripts/verify_x86_unicorn.py"],
+        [*PY, "scripts/verify_x86_unicorn.py"],
     ),
     (
         "extra reference generators",
-        [sys.executable, "scripts/verify_extra_generators.py"],
+        [*PY, "scripts/verify_extra_generators.py"],
     ),
     (
         "interpreter vs native differential corpora",
-        [sys.executable, "scripts/verify_differential.py"],
+        [*PY, "scripts/verify_differential.py"],
     ),
 ]
 
@@ -67,7 +90,7 @@ def main() -> int:
     import importlib.util
     import os
 
-    env = dict(os.environ, PYTHONPATH="src")
+    env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     have_unicorn = importlib.util.find_spec("unicorn") is not None
     have_nasm = shutil.which("nasm") is not None
 
@@ -90,7 +113,7 @@ def main() -> int:
             print("[skip] 123 differential: riscv64-elf-gcc or build failed")
         else:
             cmd = [
-                sys.executable,
+                *PY,
                 "scripts/verify_123_differential.py",
                 rv,
                 "Hi",
