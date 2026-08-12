@@ -6,20 +6,14 @@ the commit history.  This file only tracks what is still on the table.
 
 ## Planned
 
-### Dimensional v3.0 C++ reference
-The wiki documents Dimensional **v3.0** (an n-slot/n-pointer model with
-`$AXIS`, `d`, `x`), and the in-package Python interpreter
-(`src/esolangs/interpreters/tape_based/dimensional.py`) implements it and is
-registered.  The previous C++ reference (`extra/c++/dimensional.cpp`)
-implemented the incompatible **v1.0** dialect (a single pointer over a
-product-of-primes tape) and its 32-bit `int` cell addresses overflow past
-~30 cells — the very reason v3 exists — and it was removed when the v3.0
-Python interpreter landed.
-
-With the Python interpreter as the only v3.0 implementation, generator
-verification is circular (same author, same codebase, shared reading of the
-under-specified spec).  A fresh `extra/c++/dimensional.cpp` implementing v3.0
-would restore the independent differential cross-check and keep Dimensional
-in the C++ reference family.  It must handle the addressing itself (a
-`long long` key covers `n <= 28`; a small bignum for unbounded) — the very
-overflow that motivates the change.
+### Classify the remaining cross-checks' exit codes
+The cross-check exit-code convention (0 = success, 2 = malformed, 3 =
+invalid runtime op, 1 = unclassified) is documented in the README and was
+applied to basicfuck, the Ruby/R extras, NoComment, and EXCON.  Most C++
+references (kak, trash, painfuck, forþ, 2dFish, %^2^-1) still use a generic
+`EXIT_FAILURE` (1) for every error.  That is conformant today — 1 is the
+reserved unclassified code — but these cross-checks have not been *classified*
+into the 2/3 split the convention describes, so a harness consuming the
+convention (e.g. the differential fuzzer) cannot distinguish their malformed
+from their runtime failures.  Classifying them is mechanical but touches
+every C++ reference; decide whether the consistency is worth it.
