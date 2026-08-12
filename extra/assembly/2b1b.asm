@@ -7,9 +7,12 @@
 ; honoring the wrap), and 11 = END (print the byte as a character and halt).
 ;
 ; The program byte is read from stdin (the language has no file-based I/O
-; protocol; see the README note).  The ACT instruction here is implemented
-; as bit toggles / shift-combines rather than the wiki's 00->11, 01->10,
-; 10->00, 11->01 value table.
+; protocol; see the README note).  ACT here is implemented as bit toggles /
+; shift-combines driven by two 2-bit operands, matching the wiki's own
+; disassembly example ("ACT 10b") rather than the wiki's command-table
+; description of a fixed value mapping (00->11, 01->10, 10->00, 11->01);
+; the wiki's two descriptions disagree, and this implementation follows the
+; example.
 ;
 ; This is a direct syscall (int 80h) program with no libc; it is built with
 ; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
