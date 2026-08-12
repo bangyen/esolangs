@@ -1,6 +1,7 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
 __all__ = [
+    "between",
     "clockwise",
     "container",
     "laserfuck",
@@ -426,6 +427,53 @@ def _validate_tt(truth_table: str, n: int) -> None:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
+
+
+def between(truth_table: str, n: int) -> str:
+    """Build a Between program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The program reads each input bit as a line, converts it to an integer
+    with ``c``, then walks a decision tree laid out linearly: every node
+    tests bit ``i`` and, when the bit is zero, jumps over the ``1`` subtree
+    to the ``0`` subtree; each leaf prints ``|0|``/``|1|`` and exits.  The
+    branch addresses are 0-indexed line numbers, so the size of each subtree
+    is computed ahead of the linear layout.
+    """
+    _validate_tt(truth_table, n)
+
+    def leaf_value(path: list[int]) -> int:
+        row = 0
+        for bit in path:
+            row = row * 2 + bit
+        return int(truth_table[row])
+
+    def size(path: list[int]) -> int:
+        if len(path) == n:
+            return 2
+        return 1 + size([*path, 1]) + size([*path, 0])
+
+    lines: list[str] = []
+    for bit in range(n):
+        lines.append(f"'{bit}'v.")
+        lines.append(f"[{bit}]i.")
+        lines.append(f"[{bit}]s|[{bit}]c.|")
+
+    def emit(path: list[int], offset: int) -> int:
+        if len(path) == n:
+            lines.append(f"|{leaf_value(path)}|p.")
+            lines.append(".x.")
+            return offset + 2
+        zero_addr = offset + 1 + size([*path, 1])
+        lines.append(f"|{zero_addr}|f([{len(path)}]=|0|)")
+        offset += 1
+        offset = emit([*path, 1], offset)
+        return emit([*path, 0], offset)
+
+    emit([], len(lines))
+    return "\n".join(lines)
 
 
 def laserfuck(truth_table: str, n: int) -> str:

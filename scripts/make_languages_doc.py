@@ -22,6 +22,7 @@ BOOLEAN = {
     "6-5",
     "ASCII art",
     "Basicfuck",
+    "Between",
     "BF",
     "BFStack",
     "BrainIf",
