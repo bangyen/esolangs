@@ -1,3 +1,12 @@
+// Trash interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// The program is a number: leading `t`s count how many prime steps to take,
+// and the remaining digits are the starting value.  If the starting value is
+// prime, the program prints the value advanced by that many primes; otherwise
+// it prints 0.  A program with no digits is malformed (EXIT_FAILURE).
+//
+// Input: the program file is `argv[1]`; the language has no input command.
+
 #include <fstream>
 #include <iostream>
 #include <math.h>

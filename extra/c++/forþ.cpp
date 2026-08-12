@@ -1,3 +1,17 @@
+// Forþ interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// A stack-based language with a dispatch table of named functions.  Digits
+// 0-9 and letters A-F push their value, `:` duplicates the top, `~` pushes
+// its bitwise complement, `.` prints the top as a character, `,` reads a line
+// of input pushing each byte, `;` calls the named function whose index is on
+// top of the stack, `o` rotates the stack, `c` copies the third element, and
+// `(`/`[`/`{`..`)`/`]`/`}` delimit loops or the dispatch table.
+//
+// Error handling: popping an empty stack, a stack too small for `c`, or an
+// unterminated bracket exits with EXIT_FAILURE (an invalid operation).
+//
+// Input: the program file is `argv[1]`; `,` reads from stdin.
+
 #include <fstream>
 #include <iostream>
 #include <sstream>

@@ -1,3 +1,14 @@
+// %^2^-1 interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// A single accumulator with six operations: `s`/`i` subtract 2/3, `m` doubles
+// it, `p` negates it, `'` resets it, `l`/`e` print it (decimal / as byte), `n`
+// reads one byte of input, and `t` rewinds to the start of the program when
+// the accumulator is nonzero.  The accumulator is reset to zero whenever it
+// exceeds 3003, matching the wiki's guard.
+//
+// Input: the program file is `argv[1]`; `n` reads from stdin.  A missing or
+// unreadable file exits with EXIT_FAILURE (a malformed program).
+
 #include <fstream>
 #include <iostream>
 

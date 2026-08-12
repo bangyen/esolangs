@@ -1,3 +1,16 @@
+; Stun Step interpreter (x86-32 Linux assembly cross-check; see README "Extra
+; Implementations").
+;
+; A tape language where cells hold integers: `+`/`-` increment/decrement the
+; current cell, `>`/`<` move the pointer, and a cell that would go below -1
+; (or a `-` on -1) stops the pointer and marks the cell for output.  When the
+; input is exhausted the marked cells are printed as space-separated decimal
+; values.
+;
+; This is a direct syscall (int 80h) program with no libc; it is built with
+; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
+; The program is read from stdin.
+
 global _start
 _start:
 	lea ecx, [esp - 20]

@@ -1,3 +1,18 @@
+// Basicfuck interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// A register-based language: identifiers name registers, `#` allocates them
+// from the following comma-separated list, `+`/`-` increment/decrement the
+// current register, `~` reads an input byte into it, `>`/`<` move the
+// pointer, `{`/`}` start/end a block, `if`/`if!` branch on a register value,
+// `read ->` reads into a register, and `write <-` prints one.  `name->n`
+// indexes into a register.
+//
+// Error handling: a malformed program or an invalid operation (undefined
+// identifier, under/overflow, unbalanced block) prints a message and exits
+// with EXIT_FAILURE, via the `error` helper.
+//
+// Input: the program file is `argv[1]`; `~` and `read ->` read from stdin.
+
 #include <climits>
 #include <fstream>
 #include <iostream>
