@@ -6,11 +6,11 @@
 # control flow.
 #
 # Deviations: the pool is indexed 1..8 with the pointer starting at 8 and "<"
-# decrementing it with no bounds check, so a program with more than 7 "<"s
-# runs off the pool rather than faulting (the Python interpreter raises
-# HaltError instead).  R's stdout cannot carry a NUL byte, so "!" of an
-# all-zero pool prints nothing rather than the NUL the Python interpreter
-# writes.  "cat" is used instead of a single output channel.
+# decrementing it; a program with more than 7 "<"s moves the pointer off the
+# pool and stops with an error (matching the Python interpreter's HaltError).
+# R's stdout cannot carry a NUL byte, so "!" of an all-zero pool prints
+# nothing rather than the NUL the Python interpreter writes.  "cat" is used
+# instead of a single output channel.
 #
 # Invocation: `Rscript excon.r <program-file>`; program text from
 # `commandArgs[1]`.
@@ -47,5 +47,7 @@ for (char in syms) {
     cat(intToUtf8(num))
   } else if (char == "<") {
     cell <- cell - 1
+    if (cell < 1)
+      stop("pointer moved off the pool")
   }
 }
