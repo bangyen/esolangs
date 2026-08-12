@@ -1,17 +1,15 @@
 // %^2^-1 interpreter (C++ cross-check; see README "Extra Implementations").
 //
-// A single accumulator with six operations: `s`/`i` subtract 2/3, `m` doubles
-// it, `p` negates it, `'` resets it to zero, `l`/`e` print it (decimal / as
-// byte), `n` reads one byte of input, and `t` rewinds to the start of the
-// program when the accumulator is nonzero.  The accumulator is reset to zero
-// whenever it exceeds 3003.
+// A single accumulator always of the form 10^x (x is the "magnitude"):
+// `s`/`i` subtract 2/3 from the magnitude (divide by 100/1000), `m` doubles
+// it (square), `p` negates it (reciprocate), `'` zeroes it (set to 1), `l`/`e`
+// print it (decimal / as byte), `n` reads one byte of input, and `t` rewinds
+// to the start of the program when the magnitude is nonzero.  The magnitude
+// is reset to zero whenever it exceeds 3003.
 //
-// Deviation from the wiki: the wiki's spec is "simplen't" (divide by 100 /
-// 1000, square, reciprocate, set to 1), but this implementation follows the
-// Deadfish-style variant the repository's generator targets: `s`/`i`/`m`/`p`
-// subtract/double/negate and `'` zeroes.  The accumulator resets to zero when
-// it exceeds 3003 (the wiki resets to one by magnitude; this implementation
-// uses a plain greater-than test against the raw value).
+// The accumulator is stored as its magnitude (the exponent x) rather than as
+// the 10^x value, which is the workaround the wiki suggests for avoiding
+// huge numbers; the command semantics match the wiki exactly.
 //
 // Input: the program file is `argv[1]`; `n` reads from stdin.  A missing or
 // unreadable file exits with EXIT_FAILURE (a malformed program).
