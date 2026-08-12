@@ -30,9 +30,11 @@ cell <- 8
 
 bin <- function(arr) {
   sum <- 0
-  for (k in c(1:8))
-  if (tape[k])
-    sum <- sum + 2 ^ (8 - k)
+  for (k in c(1:8)) {
+    if (tape[k]) {
+      sum <- sum + 2^(8 - k)
+    }
+  }
   sum
 }
 
