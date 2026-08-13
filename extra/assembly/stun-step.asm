@@ -1,3 +1,21 @@
+; Stun Step interpreter (x86-32 Linux assembly cross-check; see README "Extra
+; Implementations").
+;
+; A tape language with four commands: `+`/`-` increment/decrement the current
+; cell, and `>`/`<` move the pointer right/left only if the current cell is
+; nonzero.  Cells hold nonnegative integers initialized to 1, except the
+; cell the pointer starts on (0).  There is no explicit flow control: at the
+; end of the program the machine halts if the current cell is 0 and otherwise
+; loops back to the start.
+;
+; Invocation: `stun-step < stdin`; the program is read from stdin.
+; The wiki defines no I/O; this implementation reads the program from stdin
+; and prints the marked cells as space-separated decimal values when the
+; input is exhausted — an output decision, not a language rule.
+;
+; This is a direct syscall (int 80h) program with no libc; it is built with
+; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
+
 global _start
 _start:
 	lea ecx, [esp - 20]

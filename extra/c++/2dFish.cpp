@@ -1,7 +1,33 @@
+// 2dFish interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// A 2D grid language where a pointer moves in one of four directions set by
+// `/`, `\`, `v`, `^` and executes the command on the cell it lands on.  `i`
+// increments the accumulator, `d` decrements it, `s` squares it, `o` prints
+// it in decimal, `a` prints it as a character (or, inside `(`..`)`, as a
+// string), `$` reads a line of input, `%` reads a number, `*` prints the
+// collected string, and `@` halts.  `(`..`)` captures the text between them
+// as a string.
+//
+// Spec decisions: the pointer starts at the top-left cell and the first cell
+// must set a direction, otherwise the program exits with EXIT_MALFORMED (a
+// malformed program, the Python ValueError analog).  Moving off the grid is
+// an invalid runtime operation, EXIT_INVALID_OP.  A missing, unreadable, or
+// empty program file exits with status 1 (unclassified).  The exit-code
+// convention is defined below.
+//
+// Invocation: `2dFish <program-file>`; program text from `argv[1]`.
+// Input: the program file is `argv[1]`; `$`/`%` read from stdin.
+
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+
+// Cross-check exit-code convention (see README "Extra Implementations"):
+// 0 = success, 2 = malformed program, 3 = invalid runtime operation, 1 =
+// unclassified failure.
+constexpr int EXIT_MALFORMED = 2;
+constexpr int EXIT_INVALID_OP = 3;
 
 void prompt(bool &out) {
   if (out)
@@ -13,7 +39,7 @@ void prompt(bool &out) {
 
 char get(std::vector<std::string> &prog, int x, int y) {
   if (y < 0 || x < 0 || y == prog.size() || x == prog[y].size())
-    exit(EXIT_FAILURE);
+    exit(EXIT_INVALID_OP);
 
   return prog[y][x];
 }
@@ -65,10 +91,11 @@ int main(int argc, char *argv[]) {
   }
 
   direct(prog[0][0], x, y, dir);
-  c = get(prog, x, y);
 
   if (!dir)
-    return EXIT_FAILURE;
+    return EXIT_MALFORMED;
+
+  c = get(prog, x, y);
 
   while (c != '@') {
     switch (c) {
@@ -120,7 +147,7 @@ int main(int argc, char *argv[]) {
         if (dir != '/')
           x = temp;
       } else {
-        return EXIT_FAILURE;
+        return EXIT_MALFORMED;
       }
 
       break;

@@ -36,6 +36,14 @@ class TestPolynomialHelperFunctions:
         assert prime(10) is False
         assert prime(11) is True
 
+    def test_factor_skips_non_instruction_quadratic(self) -> None:
+        """A quadratic factor whose q is negative encodes no instruction."""
+        from esolangs.interpreters.register_based.polynomial import _factor_roots
+
+        # x^3 - 5x + 2 = (x - 2)(x^2 + 2x - 1); the quadratic has q = -2,
+        # so only the linear root survives.
+        assert _factor_roots((1, 0, -5, 2)) == (complex(2, 0),)
+
     def test_sanitize_simple_polynomial(self) -> None:
         """Test polynomial parsing for simple cases."""
         result = sanitize("f(x) = 3x^2 + x + 7")
@@ -288,6 +296,62 @@ class TestPolynomialExecution:
 
         with unittest.mock.patch("builtins.input", return_value="A"):
             run("f(x) = x^2+16", io=IO())  # does not crash; reg stores the input
+
+
+class TestPolynomialHighPrecisionRoots:
+    """Wide codepoint deltas and pathological root spreads are recovered
+    exactly by factoring the integer polynomial (no floating point)."""
+
+    def test_wide_codepoint_deltas_round_trip(self) -> None:
+        """ASCII followed by CJK/emoji spans several orders of magnitude."""
+        from esolangs.tools.generators.register import polynomial as gen
+
+        for text in ["😀t", "a中", "1😀+", "a日a日", "A中B"]:
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                run(gen(text), io=IO())
+            assert buffer.getvalue() == text
+
+    def test_repeated_wide_deltas_round_trip(self) -> None:
+        """The same wide delta repeated (a pathological root spread for any
+        numeric solver) is recovered exactly by factoring."""
+        from esolangs.tools.generators.register import polynomial as gen
+
+        text = "aあbいcう" * 3
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(gen(text), io=IO())
+        assert buffer.getvalue() == text
+
+    def test_single_corrupted_delta_round_trip(self) -> None:
+        """A mixed program where float64 silently corrupted one delta (19977
+        -> 19971) is recovered exactly; the old numpy path emitted a wrong
+        character."""
+        from esolangs.tools.generators.register import polynomial as gen
+
+        text = "aWg{<$中Z一t"
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(gen(text), io=IO())
+        assert buffer.getvalue() == text
+
+    def test_non_prime_power_roots_produce_no_instruction(self) -> None:
+        """Roots that do not map to an instruction (not a prime power, or a
+        prime power with no matching bracket) are handled like the wiki
+        defines: they simply produce no executable instruction."""
+        for expr in ["x - 6", "x^2 + 2", "x^2 + 8", "x^3 - 1"]:
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                run("f(x) = " + expr, io=IO())
+            assert buffer.getvalue() == ""
+
+    def test_unmatched_bracket_still_raises(self) -> None:
+        """A real root that is a prime power but has no matching bracket is
+        still a malformed program (the factor path preserves the check)."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unmatched"):
+            run("f(x) = x - 4", io=IO())
 
 
 class TestConvertRealRoots:

@@ -10,6 +10,7 @@ from esolangs.tools.ztoalc_starts import ANCHORS
 __all__ = [
     "_123",
     "basicfuck",
+    "between",
     "bit_tilde",
     "clockwise",
     "container",
@@ -17,16 +18,28 @@ __all__ = [
     "forth",
     "home_row",
     "laserfuck",
-    "magnitude",
     "nevermind",
     "nocomment",
     "painfuck",
     "pct_squared_minus_one",
+    "sbleq",
     "three_x",
     "two_d_fish",
     "unsquare",
     "ztoalc",
 ]
+
+
+def between(text: str) -> str:
+    """Generate a Between program that outputs ``text``.
+
+    One ``p`` prints the whole text as a string literal, then ``x`` exits.
+    Apostrophes are doubled (``''``) so they can appear inside the literal;
+    a newline cannot because each instruction occupies one line.
+    """
+    if any(c in "\n\r" for c in text):
+        raise ValueError("Between cannot output a newline (instructions are one line)")
+    return f"'{text.replace(chr(39), chr(39) * 2)}'p.\n.x."
 
 
 def clockwise(text: str) -> str:
@@ -347,14 +360,14 @@ def laserfuck(text: str) -> str:
 
 
 def magnitude(text: str) -> str:
-    """Build a Magnitude program that outputs ``text``.
+    """Build a %^2^-1 program that outputs ``text`` (delta encoding).
 
     Each character is produced as a delta from the previous one.  ``s`` and
     ``i`` scale toward powers of 2 and 3, ``p`` flips the sign, ``e`` prints
     the accumulated magnitude as a byte, and a leading ``'`` resets to an
     absolute (non-delta) encoding when the delta would overshoot the target.
     """
-    _require_bytes(text, "Magnitude")
+    _require_bytes(text, "%^2^-1")
 
     def close(val: int, start: int) -> int:
         if start > val:
@@ -509,6 +522,9 @@ def _123(text: str) -> str:
     512, where ``2`` outputs ``edi`` as a character and resets ``esi``.  The
     final ``1`` leaves ``esi`` above 128 so the program halts at the
     terminator.
+
+    Input to a 123 program is appended at the end of the program, separated
+    from it by a single ``|``.
     """
     _require_bytes(text, "123")
     res = ""
@@ -663,12 +679,19 @@ def _pct_path(byte: int) -> str:
 def pct_squared_minus_one(text: str) -> str:
     """Build a %^2^-1 program that outputs ``text``.
 
-    ``'`` resets the accumulator to zero, ``_pct_path`` moves it to each byte,
-    and ``e`` prints it as a character.  Every byte's path stays within the
-    interpreter's ``acc > 3003`` bound.
+    Two generators exist with complementary strengths, and the function
+    returns the shorter of the two for the given text:
+
+    - ``_pct_path``: each byte is built from ``'`` (reset) via a path that
+      scales and negates the accumulator to the byte value, then ``e`` prints
+      it.  Best for high-delta text (each byte is encoded independently).
+    - :func:`magnitude`: each character is a delta from the previous one, so
+      ``s``/``i`` scale toward powers of 2 and 3 and ``p`` flips the sign.
+      Best for low-delta, repetitive text.
     """
     _require_bytes(text, "%^2^-1")
-    return "".join("'" + _pct_path(ord(c)) + "e" for c in text)
+    absolute = "".join("'" + _pct_path(ord(c)) + "e" for c in text)
+    return min((absolute, magnitude(text)), key=len)
 
 
 def basicfuck(text: str) -> str:
@@ -723,3 +746,24 @@ def three_x(text: str) -> str:
     if any(c in "?]" for c in text):
         raise ValueError("3x cannot output '?' or ']' (the literal re-executes)")
     return "[" + text + "]"
+
+
+def sbleq(text: str) -> str:
+    """Build an S*bleq program that outputs ``text``.
+
+    Each character becomes an output instruction ``-3 <data> 0`` that prints
+    the value stored at ``<data>``; the character values are embedded as data
+    at the end of the program, and a final ``0 0 <sentinel>`` halts by
+    jumping to a past-the-end address.  This mirrors the Subleq wiki's own
+    Hello World, which stores the output characters as literal data.
+    """
+    _require_bytes(text, "S*bleq")
+    n = len(text)
+    cells: list[int] = []
+    for i in range(n):
+        cells += [-3, 3 * n + 3 + i, 0]
+    sentinel_addr = 3 * n + 3 + n
+    cells += [0, 0, sentinel_addr]
+    cells += [ord(c) for c in text]
+    cells += [len(cells) + 1]
+    return " ".join(map(str, cells))

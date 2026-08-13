@@ -35,25 +35,25 @@ class TestLaserFuck:
         # cell, 'v' turns it down to the 'x' on the bottom row, where it dies.
         # Only the input cell is touched and prints as '1'.
 
-        class IO:
+        class TestIO(IO):
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self) -> str:
+            def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
                 return "1"
 
-            def print_char(self, c: str) -> None:
-                self.buf.write(c)
+            def print_char(self, char: str) -> None:
+                self.buf.write(char)
 
-            def print_line(self) -> None:
-                self.buf.write("\n")
+            def print_line(self, text: str = "") -> None:
+                self.buf.write(text + "\n")
 
-            def print_num(self, n: int) -> None:
-                self.buf.write(str(n))
+            def print_num(self, num: int) -> None:
+                self.buf.write(str(num))
 
         prog = ["\u00ff}},#v)x", "|o^", " _ x"]
         for heading in range(4):
-            io_obj = IO()
+            io_obj = TestIO()
             buffer = io.StringIO()
             with redirect_stdout(buffer):
                 run(prog, io_obj, heading=heading)
@@ -79,24 +79,44 @@ class TestLaserFuck:
     def test_input_reads_whole_line_first_char(self) -> None:
         prog = ["\u00ff}o,x\n   x"]
 
-        class IO:
+        class TestIO(IO):
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self) -> str:
+            def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
                 return "42"
 
-            def print_char(self, c: str) -> None:
-                self.buf.write(c)
+            def print_char(self, char: str) -> None:
+                self.buf.write(char)
 
-            def print_line(self) -> None:
-                self.buf.write("\n")
+            def print_line(self, text: str = "") -> None:
+                self.buf.write(text + "\n")
 
-            def print_num(self, n: int) -> None:
-                self.buf.write(str(n))
+            def print_num(self, num: int) -> None:
+                self.buf.write(str(num))
 
-        io_obj = IO()
+        io_obj = TestIO()
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(prog, io_obj, heading=3)
         assert io_obj.buf.getvalue() == "4"  # ord('4') = 52 = '4'
+
+    def test_steps_off_the_top(self) -> None:
+        # heading 0 (up) from the top row steps off the grid and dies
+        assert run_and_capture(["o"], heading=0) == ""
+
+    def test_move_left_below_cell_zero(self) -> None:
+        # '<' at cell 0 inserts a fresh cell to the left
+        assert run_and_capture(["o<x"]) == ""
+
+    def test_slash_reflects_up(self) -> None:
+        # '/' reflects right (3) to up (0), which steps off the top edge
+        assert run_and_capture(["o/"], heading=3) == ""
+
+    def test_star_duplicates_laser(self) -> None:
+        # '*' duplicates the laser perpendicularly; both copies die on 'x'
+        assert run_and_capture([" x ", "o*x", " x "], heading=3) == ""
+
+    def test_decimal_mode_multiple_values(self) -> None:
+        # two touched cells print one value per line in decimal mode
+        assert run_and_capture(["o+>+x"]) == "1\n1"

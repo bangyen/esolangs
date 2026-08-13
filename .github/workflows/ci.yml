@@ -131,7 +131,11 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install g++
-      run: sudo apt-get update && sudo apt-get install -y g++
+      run: sudo apt-get update && sudo apt-get install -y g++ clang-format
+
+    - name: Check extra/ C++ formatting
+      run: |
+        clang-format --dry-run --Werror extra/c++/*.cpp
 
     - name: Build extra/ C++ implementations
       run: |
@@ -151,7 +155,7 @@ jobs:
           "/tmp/$name" /tmp/empty.txt > /dev/null 2>&1
           rc=$?
           set -e
-          if [ "$rc" -gt 1 ]; then
+          if [ "$rc" -gt 3 ]; then
             echo "FAIL: $name crashed with exit code $rc on empty input"
             exit 1
           fi
@@ -182,6 +186,10 @@ jobs:
         cargo build --manifest-path extra/rust/Cargo.toml
         cargo fmt --manifest-path extra/rust/Cargo.toml --check
 
+    - name: Run extra/ Rust unit tests
+      run: |
+        cargo test --manifest-path extra/rust/Cargo.toml
+
     - name: Smoke test extra/ Rust implementations
       run: |
         set -e
@@ -194,6 +202,10 @@ jobs:
       run: |
         PYTHONPATH=src python3 scripts/verify_extra_generators.py
 
+    - name: Differential-test the interpreters against the native cross-checks
+      run: |
+        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
+
   extra-languages:
     runs-on: ubuntu-latest
     steps:
@@ -203,20 +215,33 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y r-base nasm
+        sudo gem install standardrb
+        sudo Rscript -e 'install.packages("styler", repos="https://cloud.r-project.org", quiet=TRUE)'
 
-    - name: Check Ruby syntax
+    - name: Check Ruby syntax and formatting
       run: |
         for f in extra/ruby/*.rb; do
           ruby -c "$f"
         done
+        standardrb extra/ruby/*.rb
 
-    - name: Check R syntax
+    - name: Check R syntax and formatting
       run: |
         Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) parse(f)'
+        cp -r extra/r /tmp/r_orig
+        Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) styler::style_file(f)'
+        if ! diff -r extra/r /tmp/r_orig; then
+          echo "R files need formatting: run styler::style_file() on extra/r"
+          exit 1
+        fi
 
     - name: Verify generator round-trips against the R and Ruby references
       run: |
         PYTHONPATH=src python3 scripts/verify_extra_generators.py
+
+    - name: Differential-test EXCON against the R cross-check
+      run: |
+        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
 
     - name: Build and natively run the x86 reference interpreters
       run: |
