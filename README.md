@@ -316,7 +316,7 @@ between("0110", 2)        # the same truth table in Between
 polynomial("0110", 2)     # in Polynomial (up to n = 4)
 taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
 laserfuck("0110", 2)      # and in LaserFuck (random initial heading)
-circlefuck_byte(table)    # arbitrary byte-valued functions
+circlefuck_byte(table, n)  # arbitrary byte-valued functions
 ```
 
 Most languages in the suite have a matching generator; the rest differ only in the function name.
