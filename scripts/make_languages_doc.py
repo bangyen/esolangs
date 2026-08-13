@@ -124,12 +124,6 @@ _EXTRA_DIRS = [
         "Lean Implementations",
     ),
     (
-        ROOT / "extra" / "r",
-        "*.r",
-        {"excon": "EXCON"},
-        "R Implementations",
-    ),
-    (
         ROOT / "extra" / "ruby",
         "*.rb",
         {
@@ -149,7 +143,7 @@ _EXTRA_DIRS = [
 ]
 
 # Display names of the languages with a native implementation in extra/
-# (C++, Rust, Ruby, R, Lean, or x86 assembly).  These interpreters run as
+# (C++, Rust, Ruby, Lean, or x86 assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
 
@@ -247,7 +241,7 @@ def render() -> str:
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Native means an implementation in `extra/` that runs as a standalone",
-        "program (C++, Rust, Ruby, R, Lean, or x86 assembly).  The Boolean",
+        "program (C++, Rust, Ruby, Lean, or x86 assembly).  The Boolean",
         "column marks the boolean-function generators; Back, BIO, and",
         "NoComment's are parameterized (the harness substitutes input bits",
         "into a template) rather than the program reading input.",

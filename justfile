@@ -18,7 +18,6 @@ help:
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-ruby    - Lint Ruby files with rubocop"
     @echo "  lint-lean    - Lint Lean files with lean linter"
-    @echo "  lint-r       - Lint R files with lintr"
     @echo "  lint-asm     - Basic syntax check for Assembly files"
     @echo "  lint         - Run all linting targets"
     @echo "  test         - Run Python tests with pytest"
@@ -117,20 +116,6 @@ lint-lean:
         echo "skip: lake (Lean 4) not found"
     fi
 
-# lint r
-lint-r:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if command -v Rscript >/dev/null 2>&1; then
-        if Rscript -e "if (!requireNamespace('lintr', quietly = TRUE)) quit(status = 1)"; then
-            Rscript -e "if (length(lintr::lint_dir('extra/r')) > 0) quit(status = 1)"
-        else
-            echo "skip: lintr not installed (install with install.packages('lintr'))"
-        fi
-    else
-        echo "skip: Rscript not found"
-    fi
-
 # lint asm
 lint-asm:
     #!/usr/bin/env bash
@@ -146,7 +131,7 @@ lint-asm:
     fi
 
 # lint all code
-lint: lint-python lint-c lint-cpp lint-rust lint-ruby lint-lean lint-r lint-asm
+lint: lint-python lint-c lint-cpp lint-rust lint-ruby lint-lean lint-asm
     @echo "All lint checks completed!"
 
 # run tests
