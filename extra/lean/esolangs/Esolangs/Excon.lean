@@ -8,7 +8,13 @@ EXCON operates on an 8-cell bit pool plus a cell pointer.  ``:`` resets the
 pool to zero and the pointer to the last cell (7); ``^`` flips the current
 bit; ``!`` prints the pool as a binary number's character; ``<`` moves the
 pointer down (with no bounds check, matching the reference Python
-interpreter). -/
+interpreter).
+
+The Lean 3 original's ``to_s`` dropped ``pool[0]`` (the most significant
+bit), so ``!`` printed ``value mod 128`` for every byte >= 128.  The
+``128 * gets l 0`` term below restores it: the printed value is now
+``pool[0]*128 + pool[1]*64 + ... + pool[7]*1``, exactly the binary string
+the Python interpreter joins and reads. -/
 
 namespace Excon
 
@@ -21,7 +27,7 @@ def flips (l : List ℕ) (n : ℕ) : List ℕ :=
   l.set n ((gets l n + 1) % 2)
 
 def to_s : List ℕ → ℕ → ℕ → String
-  | l, 0, m => toString (Char.ofNat m)
+  | l, 0, m => toString (Char.ofNat (m + 128 * gets l 0))
   | l, n + 1, m => to_s l n (m + (2 ^ (6 - n)) * gets l (n + 1))
 
 def run (m : ℕ) (i : String.Legacy.Iterator) (c : Char)
