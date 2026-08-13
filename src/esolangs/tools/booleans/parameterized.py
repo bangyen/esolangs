@@ -269,13 +269,17 @@ def nocomment(truth_table: str, n: int) -> str:
     result_cell = n
     zlen_base = result_cell + 1
     dcell = zlen_base + m  # per-leaf chain cells after the zlen cells
-    numd = 4  # chain cells per leaf
-    rcell = dcell + k * numd  # node relay cells beyond the D cells
     maxrelay = 8  # relay cells per node
-    tree_start = dcell + k * numd - 1
+    # Chain cells per leaf.  A leaf's chain needs ceil(span/255) hops, so the
+    # count is sized per leaf from a skeleton pass; early leaves with long
+    # chains get more cells, keeping the address range (and the tree) small.
+    numd: dict[int, int] = {}
+    off_map: dict[int, int] = {}
+    rcell = 0
+    tree_start = 0
 
     def d_of(lid: int, h: int) -> int:
-        return dcell + lid * numd + h
+        return dcell + off_map[lid] + h
 
     def r_of(nid: int, j: int) -> int:
         return rcell + nid * maxrelay + j
@@ -337,36 +341,76 @@ def nocomment(truth_table: str, n: int) -> str:
         tests[a].append(len(commands))
         tree_emit(one, b)
 
-    # The tree starts where the setup leaves the pointer, on the last D cell,
-    # so the first move cancels out.
-    tree_emit(tree, tree_start)
-    commands.append("c")  # the END target every chain skips to
-
-    # Reserve interleaving gaps: the tree is otherwise dense, leaving no room
-    # for the per-leaf chains and node relays.  Insert PAD dead-space commands
-    # after each leaf's station.  These gaps are skipped over by every chain,
-    # so their content is never executed; stations are later placed inside.
+    # (Re)emit the tree and its reserved gaps for the current per-leaf cell
+    # counts.  Called once for a skeleton measurement and once for the real
+    # tree, since the D-cell addresses (and so the emitted moves) depend on
+    # ``numd``.
     pad = 16
-    for lid in sorted(range(k), reverse=True):
-        pos = leaf_sts[lid][0] + 1
-        commands[pos:pos] = ["c"] * pad
-        for sts in list(leaf_sts.values()) + list(node_sts.values()):
-            for j in range(len(sts)):
-                if sts[j] >= pos:
-                    sts[j] += pad
-        for nid in tests:
-            for j in range(2):
-                if tests[nid][j] >= pos:
-                    tests[nid][j] += pad
-        for lid2 in leaf_out:
-            if leaf_out[lid2] >= pos:
-                leaf_out[lid2] += pad
-        for j in range(len(node_regions)):
-            a, b = node_regions[j]
-            node_regions[j] = (a + pad if a >= pos else a, b + pad if b >= pos else b)
-        for j in range(len(relay_blocks)):
-            a, b = relay_blocks[j]
-            relay_blocks[j] = (a + pad if a >= pos else a, b + pad if b >= pos else b)
+
+    def build() -> None:
+        nonlocal rcell, tree_start
+        commands.clear()
+        node_level.clear()
+        tests.clear()
+        for lid in range(k):
+            leaf_sts[lid].clear()
+        leaf_out.clear()
+        for nid in range(m):
+            node_sts[nid].clear()
+        relay_blocks.clear()
+        node_regions.clear()
+        total = 0
+        o = 0
+        for lid in range(k):
+            off_map[lid] = o
+            o += numd[lid]
+        total = o
+        rcell = dcell + total  # node relay cells beyond the D cells
+        # The tree starts where the setup leaves the pointer, on the last D
+        # cell, so the first move cancels out.
+        tree_start = dcell + total - 1
+        tree_emit(tree, tree_start)
+        commands.append("c")  # the END target every chain skips to
+        # Reserve interleaving gaps: the tree is otherwise dense, leaving no
+        # room for the per-leaf chains and node relays.  Insert PAD dead-space
+        # commands after each leaf's station.  These gaps are skipped over by
+        # every chain, so their content is never executed; stations are later
+        # placed inside.
+        for lid in sorted(range(k), reverse=True):
+            pos = leaf_sts[lid][0] + 1
+            commands[pos:pos] = ["c"] * pad
+            for sts in list(leaf_sts.values()) + list(node_sts.values()):
+                for j in range(len(sts)):
+                    if sts[j] >= pos:
+                        sts[j] += pad
+            for nid in tests:
+                for j in range(2):
+                    if tests[nid][j] >= pos:
+                        tests[nid][j] += pad
+            for lid2 in leaf_out:
+                if leaf_out[lid2] >= pos:
+                    leaf_out[lid2] += pad
+            for j in range(len(node_regions)):
+                a, b = node_regions[j]
+                node_regions[j] = (
+                    a + pad if a >= pos else a,
+                    b + pad if b >= pos else b,
+                )
+            for j in range(len(relay_blocks)):
+                a, b = relay_blocks[j]
+                relay_blocks[j] = (
+                    a + pad if a >= pos else a,
+                    b + pad if b >= pos else b,
+                )
+
+    # Skeleton pass: size each leaf's cell block to the chain it will need.
+    numd = dict.fromkeys(range(k), 4)
+    build()
+    skeleton_end = len(commands) - 1
+    for lid in range(k):
+        chain = skeleton_end - leaf_sts[lid][0] - 1
+        numd[lid] = min(14, chain // 255 + 2)
+    build()
 
     # Inserted stations must not land inside any leaf's code, any node's test
     # code, or any already-placed station, otherwise they corrupt the moves.
@@ -423,7 +467,7 @@ def nocomment(truth_table: str, n: int) -> str:
                 last = leaf_sts[lid][-1]
                 if end - last - 1 > 255:
                     h = used[lid]
-                    if h >= numd:
+                    if h >= numd[lid]:
                         raise ValueError(_byte_limit)
                     used[lid] += 1
                     d = d_of(lid, h)
@@ -566,7 +610,7 @@ def nocomment(truth_table: str, n: int) -> str:
         for j in range(len(node_sts[nid])):
             cells.append((r_of(nid, j), zvals[("r", nid, j)]))
     for lid in range(k):
-        for h in range(numd):
+        for h in range(numd[lid]):
             value = chain_skips.get((lid, h), 0)
             if value:
                 cells.append((d_of(lid, h), value))
