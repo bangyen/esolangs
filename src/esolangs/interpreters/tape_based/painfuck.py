@@ -36,9 +36,6 @@ Documented divergences from the C++ cross-check:
   ``stoi`` of an empty token (``i``).
 - ``i`` parses the whole input line as an integer with ``int()``, so each
   line must be a single integer (the reference tokenizes with ``>>``).
-- A ``b`` whose loop stack is empty is an invalid operation (the reference
-  reads from an empty vector, which is undefined; it segfaults in
-  practice), so it raises :class:`HaltError`.
 - A ``t`` run that reaches the start of the program repeats a NUL in place
   of the command it walks before the program (the reference reads out of
   bounds there; in practice that read yields NUL and the program halts).

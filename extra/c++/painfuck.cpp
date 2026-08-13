@@ -15,11 +15,14 @@
 // Invocation: `painfuck <program-file>`; program text from `argv[1]`.
 // Input: the program file is `argv[1]`; `i`/`j` read from stdin.
 
+#include <cstdlib>
 #include <ctime>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+
+constexpr int EXIT_INVALID_OP = 3;
 
 void prompt(bool &out) {
   if (out) {
@@ -128,6 +131,11 @@ int main(int argc, char *argv[]) {
 
         break;
       case 'b':
+        if (loop.empty()) {
+          std::cerr << "unmatched b" << std::endl;
+          std::exit(EXIT_INVALID_OP);
+        }
+
         ind = loop.back();
         loop.pop_back();
         break;

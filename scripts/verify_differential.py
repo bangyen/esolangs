@@ -46,8 +46,8 @@ Languages with both an in-package interpreter and a native cross-check:
   Corpus programs are encoded into the source alphabet (the reference
   translates the source before running); the nondeterministic ``y`` is
   excluded.
-* **bit~** — ``other/bit_tilde.py`` vs ``extra/ruby/bit.rb``.  The corpus
-  uses ASCII input because the Ruby reference crashes on bytes above 127.
+* **bit~** — ``other/bit_tilde.py`` vs ``extra/ruby/bit.rb``.  Both write
+  bytes above 127 as raw bytes; unmatched brackets hang the Ruby reference.
 
 Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
 provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
@@ -1510,11 +1510,7 @@ def _build_painfuck() -> str | None:
 def _run_painfuck_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the C++ cross-check; return (stdout, exit code).
-
-    A negative exit code is a crash (the reference segfaults on an unmatched
-    ``b``), normalized to the cross-check's 3 for invalid operations.
-    """
+    """Run ``program`` through the C++ cross-check; return (stdout, exit code)."""
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(program)
         path = f.name
@@ -1523,8 +1519,7 @@ def _run_painfuck_native(
             [binary, path], capture_output=True, input=stdin, timeout=5
         )
         out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        code = 3 if proc.returncode < 0 else proc.returncode
-        return out, code
+        return out, proc.returncode
     except subprocess.TimeoutExpired:
         return None
     finally:
@@ -1610,8 +1605,7 @@ def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
 
 # -- bit~ corpus: every command plus the error categories ------------------
 
-# Input is ASCII: the Ruby reference crashes on bytes >= 0x80 (an encoding
-# error), and unmatched brackets hang it (the Python side raises instead).
+# Unmatched brackets hang the Ruby reference (the Python side raises instead).
 BIT_TILDE_CORPUS = [
     ("~(", b""),
     ("~>~(", b""),
@@ -1621,6 +1615,8 @@ BIT_TILDE_CORPUS = [
     (")((", b"a\n"),
     ("))(((", b"ab\ncd\n"),
     ("~)(", b"a\n"),
+    ("~)(", b"\xff\n"),
+    ("~)(", b"\x80\n"),
     ("{~}", b""),
     ("~{~}", b""),
     ("}~", b""),
