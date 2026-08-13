@@ -1057,8 +1057,8 @@ class TestParameterizedNoComment:
         return parameterized.instantiate(
             tpl,
             bits,
-            lambda i, b: "c" if b == 0 else "i",
-            lambda i, b: "c" if b == 1 else "i",
+            lambda _i, b: "c" if b == 0 else "i",
+            lambda _i, b: "c" if b == 1 else "i",
         )
 
     @pytest.mark.parametrize(
