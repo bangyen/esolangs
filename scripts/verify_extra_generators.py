@@ -25,6 +25,7 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Callable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from esolangs.tools import boolean
@@ -38,6 +39,16 @@ RUST_MANIFEST = ROOT / "extra" / "rust" / "Cargo.toml"
 RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
 
 TEXTS = ("Hi", "Hello, World!", "esolangs!")
+
+# The round-trips and truth-table checks each spawn a reference subprocess,
+# so threads (which just wait on the subprocess) scale well.
+_WORKERS = 8
+
+
+def _run_parallel(fn: Callable[..., bytes | None], tasks: Sequence) -> list:
+    """Run ``fn`` over ``tasks`` concurrently, returning results in order."""
+    with ThreadPoolExecutor(max_workers=_WORKERS) as executor:
+        return list(executor.map(fn, tasks))
 
 
 def _run(cmd: Sequence[str], program: str) -> bytes:
@@ -126,15 +137,21 @@ def main() -> int:
         ("3x", gen.three_x, _ruby_reference("3x.rb")),
     ]
 
+    text_tasks = []
     for name, generator, cmd in references:
         if cmd is None:
             print(f"[skip] {name}: reference toolchain not available or build failed")
             continue
         for text in TEXTS:
-            out = _run(cmd, generator(text))
-            ok = out == text.encode()
-            failures += not ok
-            print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
+            text_tasks.append((name, cmd, generator(text), text))
+    for (name, _cmd, _program, text), out in zip(
+        text_tasks,
+        _run_parallel(lambda t: _run(t[1], t[2]), text_tasks),
+        strict=True,
+    ):
+        ok = out == text.encode()
+        failures += not ok
+        print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
 
     # Boolean generators: 3x computes truth tables via a variable decision
     # tree (verified against Ruby), Forþ via a function-dispatch tree
@@ -153,6 +170,7 @@ def main() -> int:
         3: ("00000001", "11111110"),
         4: ("1111111100000000", "0000000011111111"),
     }
+    bool_tasks = []
     for name, builder, cmd in boolean_refs:
         if cmd is None:
             print(f"[skip] {name} boolean: reference toolchain not available")
@@ -162,35 +180,39 @@ def main() -> int:
                 program = builder(table, n)
                 for combo in range(2**n):
                     bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                    out = _run_boolean(cmd, program, "\n".join(map(str, bits)) + "\n")
-                    ok = out == table[combo].encode()
-                    failures += not ok
-                    if not ok:
-                        print(
-                            f"{name} boolean {table!r} n={n} combo {bits}: "
-                            f"FAIL -> {out!r}"
-                        )
+                    inputs = "\n".join(map(str, bits)) + "\n"
+                    bool_tasks.append(
+                        (name, cmd, program, inputs, table, n, bits, combo)
+                    )
+    for (name, _cmd, _program, _inputs, table, n, bits, combo), out in zip(
+        bool_tasks,
+        _run_parallel(lambda t: _run_boolean(t[1], t[2], t[3]), bool_tasks),
+        strict=True,
+    ):
+        ok = out == table[combo].encode()
+        failures += not ok
+        if not ok:
+            print(
+                f"{name} boolean {table!r} n={n} combo {bits}: "
+                f"FAIL -> {out!r}"
+            )
+    for name, _, _ in boolean_refs:
         print(f"{name} boolean: verified tables for n = 1..4")
 
     # 3x constants: the closed-form _const must push its value on a clean
     # stack for a wide range of n (the tables above only reach names <= 6).
     three_x_cmd = _ruby_reference("3x.rb")
     if three_x_cmd is not None:
-        for n in range(256):
-            program = other_bools._const(n) + "!"  # noqa: SLF001
-            with tempfile.NamedTemporaryFile("w", delete=False) as f:
-                f.write(program)
-                path = f.name
-            try:
-                got = subprocess.run(
-                    [*three_x_cmd, path], capture_output=True
-                ).stdout.decode()
-            finally:
-                Path(path).unlink()
-            ok = got.strip() == str(n)
+        const_programs = [other_bools._const(n) + "!" for n in range(256)]  # noqa: SLF001
+        for n, out in zip(
+            range(256),
+            _run_parallel(lambda prog: _run(three_x_cmd, prog), const_programs),
+            strict=True,
+        ):
+            ok = out.decode().strip() == str(n)
             failures += not ok
             if not ok:
-                print(f"3x const {n}: FAIL -> {got!r}")
+                print(f"3x const {n}: FAIL -> {out!r}")
         print("3x const: verified closed-form encodings for n = 0..255")
 
     return 1 if failures else 0
