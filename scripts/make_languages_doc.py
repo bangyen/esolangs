@@ -252,7 +252,8 @@ def render() -> str:
         "NoComment's are parameterized (the harness substitutes input bits",
         "into a template) rather than the program reading input.",
         "",
-        "| Language | Text generator | Python | Native | Boolean | Compiler | Examples |",  # noqa: E501
+        "| Language | Text generator | Python | Native | Boolean | "
+        "Compiler | Examples |",
         "| --- | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
     for name in sorted(set(LANGUAGES) | C_COMPILERS | NATIVE):
