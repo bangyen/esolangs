@@ -522,6 +522,9 @@ def _123(text: str) -> str:
     512, where ``2`` outputs ``edi`` as a character and resets ``esi``.  The
     final ``1`` leaves ``esi`` above 128 so the program halts at the
     terminator.
+
+    Input to a 123 program is appended at the end of the program, separated
+    from it by a single ``|``.
     """
     _require_bytes(text, "123")
     res = ""

@@ -21,7 +21,6 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
 - [Tools](#tools)
 - [Roadmap](docs/ROADMAP.md)
 - [Limitations](docs/limitations.md)
-- [Notes](#notes)
 
 ## About
 
@@ -344,16 +343,6 @@ python -m esolangs.tools.generate "Hello, World!"
 ```
 
 Every generator is also available through `esolangs list` and `esolangs generate` (see above); run `esolangs list` for the full set.
-
-## Notes
-
-Important information about specific language implementations.
-
-### Usage Notes
-
-- **Jaune**: Only one character can be input at a time.
-
-- **123**: Input is given at the end of the program. The two are separated by a single `|`.
 
 ## Contributing
 
