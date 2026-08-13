@@ -18,6 +18,8 @@ _README_START = "<!-- IMPLEMENTED:START -->"
 _README_END = "<!-- IMPLEMENTED:END -->"
 _COMPILERS_START = "<!-- COMPILERS:START -->"
 _COMPILERS_END = "<!-- COMPILERS:END -->"
+_EXTRA_START = "<!-- EXTRA:START -->"
+_EXTRA_END = "<!-- EXTRA:END -->"
 
 
 def load_script() -> object:
@@ -72,6 +74,18 @@ def test_compiler_sets_match_the_compiler_modules() -> None:
         "Unsquare",
     } == module.ASSEMBLY_COMPILERS
     assert {"BF-PDA", "BFStack", "EXCON", "RAM0"} == module.C_COMPILERS
+
+
+def test_readme_extra_section_is_in_sync() -> None:
+    """Regenerating the Extra Implementations section leaves it unchanged."""
+    module = load_script()
+    text = README.read_text()
+    start = text.index(_EXTRA_START)
+    end = text.index(_EXTRA_END) + len(_EXTRA_END)
+    expected = (
+        _EXTRA_START + "\n\n" + module.render_extra_section() + "\n\n" + _EXTRA_END
+    )
+    assert text[start:end] == expected
 
 
 def test_boolean_set_names_are_registered() -> None:
