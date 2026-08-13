@@ -24,6 +24,7 @@ from esolangs.interpreters.register_based.sophie import run as sophie_run
 from esolangs.interpreters.register_based.WII2D import run as wii2d_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
+from esolangs.interpreters.stack_based.forth import run as forth_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
@@ -56,6 +57,14 @@ class TestGeneratorRoundTrips:
         hello = gen._123("Hello, World!")  # noqa: SLF001 - public generator
         assert roundtrip(_run_123, hi) == "Hi"
         assert roundtrip(_run_123, hello) == "Hello, World!"
+
+    def test_forth(self) -> None:
+        """Each character is built from base-15 digits and printed by [.]."""
+        assert roundtrip(forth_run, gen.forth("Hi")) == "Hi"
+        assert roundtrip(forth_run, gen.forth("Hello, World!")) == "Hello, World!"
+        # single-digit values (< 15) and three-digit base-15 values (>= 241)
+        assert roundtrip(forth_run, gen.forth("\t\x0b")) == "\t\x0b"
+        assert roundtrip(forth_run, gen.forth("\xff\xf1")) == "\xff\xf1"
 
     def test_between(self) -> None:
         """p prints the whole text; apostrophes are doubled inside literals."""
@@ -497,7 +506,7 @@ class TestGeneratorBranches:
 
     def test_forth_nul(self) -> None:
         """A NUL is pushed and printed with an explicit dot."""
-        assert gen.forth("a\x00b") == "0F6*7+.0.F6*8+."
+        assert gen.forth("a\x00b") == "06F*7+.0.6F*8+."
 
     def test_main_prints_all(self, capsys: pytest.CaptureFixture[str]) -> None:
         with patch("sys.argv", ["esolangs.tools.generate", "Hi"]):

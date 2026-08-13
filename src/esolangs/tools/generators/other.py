@@ -224,10 +224,17 @@ def forth(text: str) -> str:
         o = ord(c)
         if o == 0:
             return "0"
-        n = _ilog(15, o)
-        m = o // (15**n)
-        p = o - m * 15**n
-        return n * "F" + (n - 1) * "*" + s[m] + "*" + s[p] + "+"
+        # base-15 digits, most significant first, folded by Horner's rule
+        ds: list[int] = []
+        v = o
+        while v:
+            ds.append(v % 15)
+            v //= 15
+        ds.reverse()
+        prog = s[ds[0]]
+        for d in ds[1:]:
+            prog += "F*" + s[d] + "+"
+        return prog
 
     if "\x00" in text:
         return "0" + "".join(build(c) + "." for c in text)

@@ -73,7 +73,7 @@ LANGUAGES: dict[str, Language] = {
     "Eval": Language("Eval", _generate.eval, "stack_based.eval"),
     "EXCON": Language("EXCON", _generate.excon, "tape_based.excon"),
     "Factor": Language("Factor", _generate.factor, "tape_based.factor"),
-    "Forþ": Language("Forþ", _generate.forth),
+    "Forþ": Language("Forþ", _generate.forth, "stack_based.forth"),
     "Home Row": Language("Home Row", _generate.home_row),
     "huf": Language("huf", _generate.huf, "register_based.huf"),
     "Keys": Language("Keys", interpreter="other.keys", split=True),
