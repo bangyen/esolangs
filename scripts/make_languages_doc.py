@@ -75,6 +75,84 @@ def _compiler_set(kind: str) -> set[str]:
 ASSEMBLY_COMPILERS = _compiler_set("assembly")
 C_COMPILERS = _compiler_set("c")
 
+# The README's Extra Implementations section: each entry is the extra/
+# subdirectory, its source pattern, the file-stem -> display-name map (an
+# unknown file fails loudly), and the heading.  The RISC-V 123 port is
+# excluded by matching only ``*.asm``.
+_EXTRA_DIRS = [
+    (
+        ROOT / "extra" / "c++",
+        "*.cpp",
+        {
+            "%^2^-1": "%^2^-1",
+            "2dFish": "2dFish",
+            "basicfuck": "Basicfuck",
+            "forþ": "Forþ",
+            "kak": "Kak",
+            "painfuck": "Painfuck",
+            "trash": "Trash",
+        },
+        "C++ Implementations",
+    ),
+    (
+        ROOT / "extra" / "assembly",
+        "*.asm",
+        {
+            "123": "123",
+            "2b1b": "2 Bits, 1 Byte",
+            "brainpocalypse": "Brainpocalypse",
+            "nocomment": "NoComment",
+            "stun-step": "Stun Step",
+        },
+        "x86 Assembly Implementations",
+    ),
+    (
+        ROOT / "extra" / "lean" / "esolangs",
+        "*Main.lean",
+        {
+            "AlbabetMain": "Albabet",
+            "BfpdaMain": "BF-PDA",
+            "ExconMain": "EXCON",
+            "SeventyFourMain": "Number Seventy-Four",
+        },
+        "Lean Implementations",
+    ),
+    (
+        ROOT / "extra" / "r",
+        "*.r",
+        {"excon": "EXCON"},
+        "R Implementations",
+    ),
+    (
+        ROOT / "extra" / "ruby",
+        "*.rb",
+        {
+            "3x": "3x",
+            "74": "Number Seventy-Four",
+            "bit": "bit~",
+            "unsquare": "Unsquare",
+        },
+        "Ruby Implementations",
+    ),
+    (
+        ROOT / "extra" / "rust",
+        "*.rs",
+        {"laserfuck": "LaserFuck", "unsquare": "Unsquare"},
+        "Rust Implementations",
+    ),
+]
+
+# Extra-implementation display name -> wiki slug, where the page name
+# differs from ``name.replace(" ", "_")`` (URL-encoded characters kept
+# literal as in the pre-existing hand-written list).
+_EXTRA_WIKI = {
+    "Forþ": "For%C3%BE",
+    "%^2^-1": "%25%5E2%5E-1",
+    "bit~": "Bit~",
+    "Number Seventy-Four": "Number_Seventy-Four",
+    "Stun Step": "Stun_Step",
+}
+
 # The README's Implemented Languages section, grouped by interpreter
 # category in this order, with its one-line descriptions.
 _README_HEADINGS = [
@@ -115,6 +193,8 @@ _README_START = "<!-- IMPLEMENTED:START -->"
 _README_END = "<!-- IMPLEMENTED:END -->"
 _COMPILERS_START = "<!-- COMPILERS:START -->"
 _COMPILERS_END = "<!-- COMPILERS:END -->"
+_EXTRA_START = "<!-- EXTRA:START -->"
+_EXTRA_END = "<!-- EXTRA:END -->"
 
 
 def _wiki_name(name: str) -> str:
@@ -207,6 +287,21 @@ def render_compilers_section() -> str:
     return "\n".join(out).rstrip()
 
 
+def render_extra_section() -> str:
+    """Render the README's Extra Implementations lists between the markers."""
+    out: list[str] = []
+    for directory, pattern, names, heading in _EXTRA_DIRS:
+        out.append(f"### {heading}")
+        out.append("")
+        for name in sorted(
+            {names[path.stem] for path in directory.glob(pattern)}, key=str.lower
+        ):
+            slug = _EXTRA_WIKI.get(name, name.replace(" ", "_"))
+            out.append(f"- [{name}](https://esolangs.org/wiki/{slug})")
+        out.append("")
+    return "\n".join(out).rstrip()
+
+
 def update_readme() -> None:
     """Rewrite the generated sections of README.md between their markers."""
     path = ROOT / "README.md"
@@ -214,6 +309,7 @@ def update_readme() -> None:
     for start, end, render in (
         (_README_START, _README_END, render_languages_section),
         (_COMPILERS_START, _COMPILERS_END, render_compilers_section),
+        (_EXTRA_START, _EXTRA_END, render_extra_section),
     ):
         block = start + "\n\n" + render() + "\n\n" + end
         text = text[: text.index(start)] + block + text[text.index(end) + len(end) :]

@@ -177,53 +177,34 @@ Languages that don't fit into the above categories.
 Implementations written in languages other than Python.
 
 Note: these are cross-check implementations written in this repository (not
-upstream language-author code).  The generators for Forþ, Painfuck,
-Dimensional, 2dFish, %^2^-1, Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON,
-123, and NoComment are round-trip verified against the native implementations
-(C++, Rust, R, Ruby, or x86/RISC-V assembly) in CI, and 3x's boolean
-generator (n = 1..3) is verified the same way.  Because the Python
-interpreters and their native cross-checks share an author, the round-trip
-verifies transcription fidelity rather than an independent reading of the
-spec; see `docs/ROADMAP.md` for where a truly independent reference matters.
-
+upstream language-author code).  Most generators are round-trip verified
+against these native references in CI; a few (Kak, Trash, Number
+Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA)
+are self-contained interpreters without generators, because their output
+classes are too narrow for text or they lack a file-based I/O protocol.
 The cross-checks share an exit-code convention mirroring the Python
-interpreters' error split: 0 = success, 2 = malformed program (the
-`ValueError` analog), 3 = invalid runtime operation (the `HaltError`
-analog).  Exit code 1 is reserved for unclassified failures that do not
-map to either category.  Languages that cannot express distinct codes
-(e.g. Rust's panic) document their behavior in the file header instead.
+interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime
+operation.
 
-The in-package interpreters for EXCON and LaserFuck are additionally
-differential-tested against their native cross-checks on a full-surface
-corpus (`scripts/verify_differential.py`), and the Rust implementations
-(`extra/rust`) ship `cargo test` unit suites covering the individual
-instructions.
-
-The remaining extra implementations (Kak, Trash, Number Seventy-Four, 2 Bits
-1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA) are kept as
-self-contained interpreters but do not have round-trip-verified generators:
-their output classes are too narrow for text (e.g. Kak prints only tape bits,
-Trash only primes, Number Seventy-Four only `0`/`1`/`H`), or they lack a
-file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
+<!-- EXTRA:START -->
 
 ### C++ Implementations
 
+- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
+- [2dFish](https://esolangs.org/wiki/2dFish)
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
-- [Dimensional](https://esolangs.org/wiki/Dimensional)
 - [Forþ](https://esolangs.org/wiki/For%C3%BE)
 - [Kak](https://esolangs.org/wiki/Kak)
 - [Painfuck](https://esolangs.org/wiki/Painfuck)
 - [Trash](https://esolangs.org/wiki/Trash)
-- [2dFish](https://esolangs.org/wiki/2dFish)
-- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
 
 ### x86 Assembly Implementations
 
+- [123](https://esolangs.org/wiki/123)
+- [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte)
 - [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse)
 - [NoComment](https://esolangs.org/wiki/NoComment)
 - [Stun Step](https://esolangs.org/wiki/Stun_Step)
-- [123](https://esolangs.org/wiki/123)
-- [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte)
 
 ### Lean Implementations
 
@@ -238,8 +219,8 @@ file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
 
 ### Ruby Implementations
 
-- [bit~](https://esolangs.org/wiki/Bit~)
 - [3x](https://esolangs.org/wiki/3x)
+- [bit~](https://esolangs.org/wiki/Bit~)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 
@@ -247,6 +228,8 @@ file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
 
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
+
+<!-- EXTRA:END -->
 
 </details>
 
@@ -282,12 +265,14 @@ Compilers that translate esoteric languages to other target languages.
 
 Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
 
-- [brainfuck](https://esolangs.org/wiki/Brainfuck) <-> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block, and vice versa.
-- [brainfuck](https://esolangs.org/wiki/Brainfuck) -> [Circlefuck](https://esolangs.org/wiki/Circlefuck): sets up a clean data region inside the program-as-tape and emits the brainfuck commands unchanged. The data region is sized automatically from the program (the smallest bound that contains its data pointer), so `transpile("BF", "CircleFuck", program)` just works for programs with bounded, non-drifting loops; pass `size` explicitly to cover programs that stay within `[0, size)`.
-- [NoComment](https://esolangs.org/wiki/NoComment) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): the transpiler handles the c/i/o subset of NoComment, mapping each to brainfuck (`c` = `[-]`, `i` = `+`, `o` = `.`). The full language (a tape, a stack, and s/b jumps) is implemented by the interpreter and the assembly cross-check but not by this transpiler.
-- [BFStack](https://esolangs.org/wiki/BFStack) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): BFStack is a stack modelled on brainfuck's tape, so the transpiler is a table lookup (`>` pushes a cell, `<` pops and clears it (`[-]<`), `,` reads and pushes (`>,`)).
-- [BIO](https://esolangs.org/wiki/BIO) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): BIO's three registers live in the first three brainfuck cells; each command moves the pointer to its register, acts, and returns to cell 0. Registers must stay within `[0, 255]`.
-- [huf](https://esolangs.org/wiki/huf) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): huf's `num`/`mul` live in cells 0 and 1; `!` multiplies by copying `num` to a temp cell that each loop iteration adds to `num` and refreshes from a running accumulator.
+- BF <-> ASCII art
+- BF -> CircleFuck
+- NoComment -> BF
+- BFStack -> BF
+- BIO -> BF
+- huf -> BF
+
+Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
 
 ```bash
 esolangs transpile BF "ASCII art" program.bf    # rewrite a program into another esolang
