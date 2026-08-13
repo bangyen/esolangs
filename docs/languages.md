@@ -16,7 +16,7 @@ into a template) rather than the program reading input.
 | %^2^-1 | yes | yes | yes |  |  | hello |
 | 123 | yes | yes | yes |  |  | hello |
 | 2 Bits, 1 Byte |  |  | yes |  |  |  |
-| 2dFish | yes |  | yes |  |  |  |
+| 2dFish | yes | yes | yes |  |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |
 | ASCII art | yes | yes |  | yes |  | hello |
@@ -56,7 +56,7 @@ into a template) rather than the program reading input.
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
 | Number Seventy-Four |  |  | yes |  |  |  |
-| Painfuck | yes |  | yes |  |  |  |
+| Painfuck | yes | yes | yes |  |  | hello |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes |  |  | yes |  |
@@ -70,7 +70,7 @@ into a template) rather than the program reading input.
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
 | ZTOALC | yes | yes |  |  |  | hello |
-| bit~ | yes |  | yes |  |  |  |
+| bit~ | yes | yes | yes |  |  | hello |
 | huf | yes | yes |  |  |  | hello |
 
 The `esolangs` command lists the languages with Python support:
