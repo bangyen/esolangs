@@ -27,6 +27,7 @@ from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.forth import run as forth_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
+from esolangs.interpreters.stack_based.unsquare import run as unsquare_run
 from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
@@ -66,6 +67,11 @@ class TestGeneratorRoundTrips:
         # single-digit values (< 15) and three-digit base-15 values (>= 241)
         assert roundtrip(forth_run, gen.forth("\t\x0b")) == "\t\x0b"
         assert roundtrip(forth_run, gen.forth("\xff\xf1")) == "\xff\xf1"
+
+    def test_unsquare(self) -> None:
+        """Each byte is built from a parity seed and +/x, printed by Po."""
+        assert roundtrip(unsquare_run, gen.unsquare("Hi")) == "Hi"
+        assert roundtrip(unsquare_run, gen.unsquare("Hello, World!")) == "Hello, World!"
 
     def test_between(self) -> None:
         """p prints the whole text; apostrophes are doubled inside literals."""
