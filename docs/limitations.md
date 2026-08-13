@@ -120,34 +120,34 @@ delimiters need escaping at multiple levels) cannot survive more than one
 wrap.  The wiki's examples only ever use single-level `!`.  Eval is
 therefore not viable for the parameterized class.
 
-## MAMMALIAN (viable in principle, but the dispatch layout is hard)
-MAMMALIAN has the primitives a decision tree needs, confirmed through the
-interpreter: `ACCEPT` reads a byte, `PRONOUNCE` prints the accumulator, and
-`LEAPFROG` is a *data-dependent* jump (`ind = acc - curr[0] - 1` when the
-current array's last element is nonzero).  A deeper assessment verified the
-concrete mechanics:
+## MAMMALIAN (branch-free core built; general n-bit functions open)
 
-- Normalizing an input to a clean 0/1 bit works: `48 SEEDs` then
-  `DIGEST ACCEPT DIGEST` makes `acc = ord(bit) ^ 48` in `{0, 1}` (48 is
+A *branch-free* approach works, verified against the real interpreter — no
+`LEAPFROG` needed.  `DIGEST` is `acc ^= sum(curr)`, a free XOR over GF(2),
+and `SPRINT` moves the pointer by `curr[acc]`, so a bit can index a cell.
+
+- Normalizing an input to a clean 0/1 bit: `48 SEEDs DIGEST ACCEPT DIGEST`
+  leaves `acc = ord(bit) ^ 48` in `{0, 1}` and `lst[0] = [48, m]` (48 is
   special because `48^48 = 0` and `48^49 = 1`).
-- `LEAPFROG` then branches: bit 0 falls through linearly, bit 1 takes the
-  computed jump.  Constants are created with `SEEDs + DIGEST` (~1 token per
-  unit), and halting works by making the jump target negative.
-- A clean 1-bit *identity* program is ~55 tokens (normalization + one
-  print + halt).
+- 1-bit identity (verified): `48 SEEDs DIGEST ACCEPT DIGEST CONSUME DIGEST
+  PRONOUNCE` — the `CONSUME DIGEST` tail turns `m` into `48 ^ m`.
+- 1-bit NOT (verified): `48 SEEDs DIGEST ACCEPT DIGEST SEED CONSUME DIGEST
+  PRONOUNCE` — `SEED CONSUME DIGEST` turns `m` into `49 ^ m`.
+- 2-bit XOR (verified): `48 SEEDs DIGEST ACCEPT DIGEST CONSUME CONSUME ACCEPT
+  CONSUME PRONOUNCE` — the second read normalizes against the running parity,
+  and the input byte itself carries the 48 base, so no branch fires.
+- AND gadget (derived, not yet integrated): `CONSUME SPRINT CONSUME` on
+  `lst[0] = [x, y]` computes `x AND y`; with the bits in separate arrays,
+  `SPRINT CONSUME` suffices.
 
-The assembly barrier is the jump target.  From the natural state after
-normalization (`acc = 48`, `lst[0][0] = 1` for a one bit) the bit-1 target
-is `48 - 1 - 1 = 46`, which is *backward* into the normalization stream;
-a forward dispatch needs `lst[0][0] = acc - T < 0`, which the cell ops
-cannot easily produce.  So every subtree must be interleaved into the
-shared normalization code with back-patched absolute targets, the halt
-mechanism (negative target) conflicts with forward dispatch, the 23 arrays
-are shared and `SEED` mutates every array at once, and the accumulator does
-not stay clean across reads.  Each bit costs ~50 tokens to normalize and
-each leaf ~50 to emit, so the size is brainif-like.  A verified generator
-is a multi-session assembly project, harder than ZTOALC's (which had the
-clean `p * 2**k` descent); none has been built.
+The old `LEAPFROG`-dispatch barrier (forward targets need negative cells) is
+real but moot: the promising path is arithmetic plus pointer selection, not
+control flow.  The open problem is the n-bit case: the 48 base that makes
+2-bit XOR work is consumed by the second read, so a third read cancels it —
+arbitrary functions need each bit in its own array (via `SPRINT`/`EXCRETE`
+plumbing) or a `SPRINT` pointer-selection tree over constant 48/49 leaves,
+both still unsolved.  A verified generator remains a multi-session project;
+the 1-bit and 2-bit pieces are proven.
 
 ## Dotlang (not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line
