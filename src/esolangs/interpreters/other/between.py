@@ -105,13 +105,13 @@ def _parse_arg(line: str, i: int) -> tuple[Node, int]:
             raise ValueError("unbalanced '['")
         return ("var", line[i + 1 : j]), j + 1
     if c == "(":
-        for token in ("True", "False"):
+        for literal in ("True", "False"):
             if (
-                line.startswith(token, i + 1)
-                and line[i + 1 + len(token) : i + 2 + len(token)] == ")"
+                line.startswith(literal, i + 1)
+                and line[i + 1 + len(literal) : i + 2 + len(literal)] == ")"
             ):
                 # "True"/"False" are condition literals, not hardcoded secrets.
-                return ("cond", token == "True"), i + 2 + len(token)  # nosec B105
+                return ("cond", literal == "True"), i + 2 + len(literal)
         return _parse_group(line, i)
     if c == ".":
         return ("none",), i + 1
