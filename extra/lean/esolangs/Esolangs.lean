@@ -1,6 +1,7 @@
 import Mathlib
 
 import Esolangs.Albabet
+import Esolangs.CircleFuckCorrect
 import Esolangs.Excon
 import Esolangs.ExconCorrect
 import Esolangs.bfpda
