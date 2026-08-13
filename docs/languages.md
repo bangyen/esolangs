@@ -47,7 +47,7 @@ hand.
 | Polynomial | yes | yes | yes |  | hello |
 | Qoibl | yes | yes | yes |  | hello |
 | RAM0 |  | yes |  | yes |  |
-| S*bleq | yes | yes |  |  | hello |
+| S*bleq | yes | yes | yes |  | hello |
 | Sophie | yes | yes | yes |  | hello |
 | Suffolk | yes | yes |  | yes | hello |
 | Taglate | yes | yes | yes |  | hello |
