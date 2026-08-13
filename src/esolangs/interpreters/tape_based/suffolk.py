@@ -10,6 +10,8 @@ accumulator to zero; this interpreter reads a whole line (using only its
 first byte) and raises :class:`EOFError` on exhausted input instead.  The
 wiki's infinite rerun is capped at 10 passes so programs terminate, and an
 empty program is a malformed program rejected with :class:`ValueError`.
+The loop cap can be overridden as a second command-line argument (or the
+``limit`` parameter to :func:`run`).
 """
 
 import sys

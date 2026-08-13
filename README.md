@@ -349,17 +349,9 @@ Every generator is also available through `esolangs list` and `esolangs generate
 
 Important information about specific language implementations.
 
-### Known Issues
-
-- **circlefuck**: The `narcissist` program doesn't work — it hangs regardless of input. The `ThisIsAQuine` quine also outputs its source incorrectly; the `{>[.>]@` quine works correctly.
-
-- **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
-
 ### Usage Notes
 
 - **Jaune**: Only one character can be input at a time.
-
-- **Suffolk**: Although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
 
 - **123**: Input is given at the end of the program. The two are separated by a single `|`.
 
