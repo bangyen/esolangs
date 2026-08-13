@@ -1,4 +1,8 @@
-"""Compiler that turns Jaune programs into x86 Linux assembly."""
+"""Compiler that turns Jaune programs into x86 Linux assembly.
+
+Compiled Jaune programs read one character per input operation, so a
+program can only input a single character at a time.
+"""
 
 import sys
 from re import findall, sub
