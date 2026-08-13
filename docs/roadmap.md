@@ -6,14 +6,6 @@ the commit history.  This file only tracks what is still on the table.
 
 ## Boolean generators (in priority order)
 
-### NoComment parameterized boolean generator
-NoComment has no input, but its `s`/`b` commands jump forward/backward by a
-peeked stack value when the current cell is nonzero, and setting a cell to 0
-or 1 is constant-length (`c` vs `i`), so the parameterized template class
-(BIO/Back) applies directly: the harness substitutes each input bit's
-constant and a decision tree routes on the cells.  It is the cleanest
-candidate for that class since the setter never shifts the jump distances.
-
 ### Minifuck partial boolean generator (low priority)
 The documented wall caps Minifuck at 0-preserving tables with `n <= 3`.  A
 generator for exactly that subset is possible but low value; the working

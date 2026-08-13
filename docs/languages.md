@@ -7,9 +7,9 @@ hand.
 Python means an in-repo interpreter under `esolangs.interpreters`;
 Native means an implementation in `extra/` that runs as a standalone
 program (C++, Rust, Ruby, R, Lean, or x86 assembly).  The Boolean
-column marks the boolean-function generators; BIO and Back's are
-parameterized (the harness substitutes input bits into a template)
-rather than the program reading input.
+column marks the boolean-function generators; Back, BIO, and
+NoComment's are parameterized (the harness substitutes input bits
+into a template) rather than the program reading input.
 
 | Language | Text generator | Python | Native | Boolean | Compiler | Examples |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -53,7 +53,7 @@ rather than the program reading input.
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |
 | Nevermind | yes | yes |  | yes |  | hello cat |
-| NoComment | yes | yes | yes |  |  | hello |
+| NoComment | yes | yes | yes | yes |  | hello |
 | Number Seventy-Four |  |  | yes |  |  |  |
 | Painfuck | yes |  | yes |  |  |  |
 | Polynomial | yes | yes |  | yes |  | hello |

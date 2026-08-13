@@ -20,7 +20,7 @@ from esolangs.tools.booleans.other import (
     three_x,
     ztoalc_boolean,
 )
-from esolangs.tools.booleans.parameterized import back, bio, instantiate
+from esolangs.tools.booleans.parameterized import back, bio, instantiate, nocomment
 from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
 from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
 from esolangs.tools.booleans.tape import (
@@ -60,6 +60,7 @@ __all__ = [
     "laserfuck",
     "modulous",
     "nevermind",
+    "nocomment",
     "polynomial",
     "qoibl",
     "sbleq",

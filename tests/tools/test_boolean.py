@@ -1039,6 +1039,97 @@ class TestParameterizedBack:
         assert "*" in template
 
 
+class TestParameterizedNoComment:
+    """Input-by-substitution boolean generator for the no-input language NoComment."""
+
+    def run_nocomment(self, prog: str) -> str:
+        from esolangs.interpreters.io import IO
+        from esolangs.interpreters.tape_based.nocomment import run
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(prog, IO())
+        return buffer.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda i, b: ("r" if i > 0 else "") + ("c" if b == 0 else "i"),
+            lambda _i, _b: "",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.nocomment(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_nocomment(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.booleans import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.nocomment(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_nocomment(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.nocomment("0110", 2)
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_program_structure(self) -> None:
+        """A one-bit template is a single node test, two leaves, and an END."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.nocomment("10", 1)
+        assert template.startswith("{X0}")
+        assert template.endswith("c")  # the trailing END target
+        assert template.count("o") == 2  # one output per leaf
+        assert template.count("s") == 3  # one node branch + two leaf skips
+
+    def test_cap_rejected(self) -> None:
+        """n > 3 exceeds the byte-cell skip range and is rejected."""
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="n <= 3"):
+            parameterized.nocomment("0" * 16, 4)
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="4 entries"):
+            parameterized.nocomment("011", 2)
+
+
 class TestZtoalc:
     @pytest.mark.parametrize(
         ("table", "n"),

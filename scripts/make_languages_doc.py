@@ -17,8 +17,9 @@ CAT = EXAMPLES / "cat"
 TRUTH = EXAMPLES / "truth-machine"
 
 # Languages with a boolean generator in esolangs.tools.booleans, mapped to
-# display names.  BIO and Back's generators are parameterized templates (the
-# harness substitutes the input bits) rather than input-reading programs.
+# display names.  Back, BIO, and NoComment's generators are parameterized
+# templates (the harness substitutes the input bits) rather than input-reading
+# programs.
 BOOLEAN = {
     "3x",
     "6-5",
@@ -39,6 +40,7 @@ BOOLEAN = {
     "LaserFuck",
     "Modulous",
     "Nevermind",
+    "NoComment",
     "Polynomial",
     "Qoibl",
     "S*bleq",
@@ -246,9 +248,9 @@ def render() -> str:
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Native means an implementation in `extra/` that runs as a standalone",
         "program (C++, Rust, Ruby, R, Lean, or x86 assembly).  The Boolean",
-        "column marks the boolean-function generators; BIO and Back's are",
-        "parameterized (the harness substitutes input bits into a template)",
-        "rather than the program reading input.",
+        "column marks the boolean-function generators; Back, BIO, and",
+        "NoComment's are parameterized (the harness substitutes input bits",
+        "into a template) rather than the program reading input.",
         "",
         "| Language | Text generator | Python | Native | Boolean | Compiler | Examples |",  # noqa: E501
         "| --- | :---: | :---: | :---: | :---: | :---: | :---: |",

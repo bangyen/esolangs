@@ -15,12 +15,19 @@ exactly for the no-input languages, and it does not make them read input —
 the harness performs the injection.  :func:`bio` replaces ``{Xi}`` with an
 increment that loads the raw bit into a register and ``{Ci}`` with a runtime
 complement computation; :func:`back` replaces ``{Xi}`` with a ``\\`` or
-``/`` mirror so the beam is reflected toward the correct subtree.
+``/`` mirror so the beam is reflected toward the correct subtree;
+:func:`nocomment` replaces ``{Xi}`` with a constant-length tape setter
+(``c``/``i``) and routes a decision tree with the ``s`` skip.
 """
 
 from collections.abc import Callable
+from typing import TypeAlias
 
-__all__ = ["back", "bio", "instantiate"]
+__all__ = ["back", "bio", "instantiate", "nocomment"]
+
+# A decision-tree node: ("leaf", leaf_id, value, None, None) or
+# ("node", node_id, level, zero_subtree, one_subtree).
+_Node: TypeAlias = "tuple[str, int, int, _Node | None, _Node | None]"
 
 SetBit = Callable[[int, int], str]
 SetComp = Callable[[int, int], str]
@@ -195,3 +202,112 @@ def back(truth_table: str, n: int) -> str:
 
     lines = ["".join(ln).rstrip() for ln in grid]
     return "\n".join(lines)
+
+
+def nocomment(truth_table: str, n: int) -> str:
+    """Build a NoComment template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    NoComment has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders become a constant-length bit setter
+    (``c`` for 0, ``i`` for 1, each prefixed by an ``r`` to reach the bit
+    cell), and the harness instantiates one program per input combination.
+
+    The program is a decision tree over the embedded bits.  A node moves to a
+    per-node skip cell, pushes the zero-subtree length, moves to the bit cell,
+    and ``s``-skips to the one-subtree when the bit is one (falling through to
+    the zero-subtree otherwise).  A leaf moves to its endskip cell, pushes it,
+    moves to the shared result cell (pre-set to 48), adds the table bit,
+    ``o``-prints it, and ``s``-skips to the trailing ``c``.  The ``l``/``r``
+    moves are emitted from each subtree's known start pointer (the parent's
+    bit cell), and the setup length cancels out of the skips, so every skip
+    value depends only on the tree layout.
+
+    NoComment cells hold bytes, so every skip value must stay below 256; the
+    tree for ``n == 4`` needs skips up to ~800, so the generator supports
+    ``n <= 3`` and raises :class:`ValueError` beyond that.
+    """
+    _validate(truth_table, n)
+    if n > 3:
+        raise ValueError("the NoComment boolean generator supports n <= 3")
+
+    # Tree shape: assign node/leaf ids; a constant subtree collapses to a leaf.
+    node_id = 0
+    leaf_id = 0
+
+    def shape(rows: list[int], level: int) -> _Node:
+        nonlocal node_id, leaf_id
+        results = {truth_table[r] for r in rows}
+        if len(results) == 1:
+            lid = leaf_id
+            leaf_id += 1
+            return ("leaf", lid, int(results.pop()), None, None)
+        nid = node_id
+        node_id += 1
+        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
+        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
+        return ("node", nid, level, shape(zero, level + 1), shape(one, level + 1))
+
+    tree = shape(list(range(2**n)), 0)
+    m = node_id
+    k = leaf_id
+    result_cell = n + m + k
+
+    # Emit the tree commands.  The setup leaves the pointer on the result
+    # cell; each subtree starts at its parent's bit cell (the ``s`` leaves
+    # the pointer there regardless of which way the branch went).
+    commands: list[str] = []
+    ptr = [result_cell]
+
+    def move(dst: int) -> None:
+        while ptr[0] < dst:
+            commands.append("r")
+            ptr[0] += 1
+        while ptr[0] > dst:
+            commands.append("l")
+            ptr[0] -= 1
+
+    zlens: dict[int, int] = {}
+    leaf_pos: dict[int, int] = {}
+
+    def emit(node: _Node, start: int) -> None:
+        ptr[0] = start
+        kind, a, b, zero, one = node
+        if kind == "leaf":
+            move(n + m + a)  # this leaf's endskip cell
+            commands.append("n")
+            move(result_cell)
+            if b:
+                commands.append("i")
+            commands.append("o")
+            leaf_pos[a] = len(commands)
+            commands.append("s")
+            return
+        move(n + a)  # this node's skip cell
+        commands.append("n")
+        move(b)  # the bit cell
+        commands.append("s")
+        zero_start = len(commands)
+        assert zero is not None
+        assert one is not None
+        emit(zero, b)
+        zlens[a] = len(commands) - zero_start
+        emit(one, b)
+
+    emit(tree, result_cell)
+    tree_len = len(commands)
+    # The setup length cancels out of the leaves' skips: skipping to the
+    # trailing END command is tree_len - leaf_pos - 1, independent of setup.
+    endskips = [tree_len - leaf_pos[lid] - 1 for lid in range(k)]
+
+    cells: list[str] = []
+    for value in [zlens[i] for i in range(m)] + endskips:
+        cells.append("r")
+        cells.extend("i" * value)
+    cells.append("r")  # to the shared result cell
+    cells.extend("i" * 48)
+
+    program = ["{X" + str(i) + "}" for i in range(n)] + cells + commands + ["c"]
+    return "".join(program)
