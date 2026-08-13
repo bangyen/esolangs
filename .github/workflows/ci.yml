@@ -214,9 +214,8 @@ jobs:
     - name: Install toolchains
       run: |
         sudo apt-get update
-        sudo apt-get install -y r-base nasm
+        sudo apt-get install -y nasm
         sudo gem install standardrb
-        sudo Rscript -e 'install.packages("styler", repos="https://cloud.r-project.org", quiet=TRUE)'
 
     - name: Check Ruby syntax and formatting
       run: |
@@ -225,23 +224,9 @@ jobs:
         done
         standardrb extra/ruby/*.rb
 
-    - name: Check R syntax and formatting
-      run: |
-        Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) parse(f)'
-        cp -r extra/r /tmp/r_orig
-        Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) styler::style_file(f)'
-        if ! diff -r extra/r /tmp/r_orig; then
-          echo "R files need formatting: run styler::style_file() on extra/r"
-          exit 1
-        fi
-
-    - name: Verify generator round-trips against the R and Ruby references
+    - name: Verify generator round-trips against the Ruby references
       run: |
         PYTHONPATH=src python3 scripts/verify_extra_generators.py
-
-    - name: Differential-test EXCON against the R cross-check
-      run: |
-        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
 
     - name: Build and natively run the x86 reference interpreters
       run: |

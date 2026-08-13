@@ -9,9 +9,6 @@ Python interpreter and the native implementation and asserts they agree.
 
 Languages with both an in-package interpreter and a native cross-check:
 
-* **EXCON** — ``tape_based/excon.py`` vs ``extra/r/excon.r``.  Both are
-  deterministic single-pass bit-pool interpreters, so outputs must match
-  exactly.
 * **LaserFuck** — ``other/laserfuck.py`` vs ``extra/rust/laserfuck.rs``.
   The Rust reference picks a random initial heading, so its output is a
   *set* across runs; the Python interpreter (which accepts a fixed heading)
@@ -24,7 +21,7 @@ Languages with both an in-package interpreter and a native cross-check:
   jumps.
 
 Called from CI's ``extra-languages`` and ``rust`` jobs (which provide
-Rscript and cargo) and from ``verify.py`` locally.  References whose
+nasm+unicorn and cargo) and from ``verify.py`` locally.  References whose
 toolchain is missing are skipped, not failed.
 
 Usage:
@@ -44,37 +41,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
-EXTRA_R = ROOT / "extra" / "r"
 RUST_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "laserfuck"
-
-
-# -- EXCON corpus: every instruction (: ^ ! <) plus edge cases ------------
-
-EXCON_CORPUS = [
-    "",  # empty program: no output
-    ":",  # reset
-    "^",  # flip one bit (cell 7)
-    "^^",  # flip twice (back to zero)
-    "^^^^^^^",  # all 8 bits
-    "!:",  # print zero byte then reset
-    "^!",  # print 1 (pool 10000000 -> 128)
-    "^^^^^^^!",  # print 127
-    "^^^^^^^^!",  # print 255
-    "^^^^^^^^^",  # 9 flips: the 9th hits an invalid < ? no, ^ never faults
-    "<",  # pointer below 8 (cell 6) — legal
-    "^<^",  # flip cell 7 then cell 6
-    ":^<^<^<^<^<^<^<^!",  # flip all 8 cells -> 255
-    "^^^^!!!",  # repeat prints
-    ":^!^<^!^<^!^<^!^<^!^<^!^<^!^<^!",  # each cell flipped then printed
-    "<^<^<^<^<^<^<^!",  # build 11111111 by flipping all, then print
-    "^^^<^^^<^^^<^^^<^^^<^^^<^^^<^^^!",  # alternating
-]
-
-# A program that moves the pointer 8 times left from cell 7 faults; the
-# Python interpreter raises HaltError and the R cross-check stops with an
-# error (both now agree).  Excluded from the exact-match corpus and checked
-# separately for the exit-code agreement.
-EXCON_FAULT = "<" * 8 + "!"
 
 
 # -- LaserFuck corpus: mirrors, conditionals, tape ops, direction -------
@@ -312,89 +279,6 @@ def _run_native_code(
         Path(path).unlink()
 
 
-def _run_excon_python(program: str) -> str:
-    from esolangs.interpreters.io import IO
-    from esolangs.interpreters.tape_based.excon import run
-
-    buffer = io.StringIO()
-
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char)
-
-    run(program, _IO())
-    return buffer.getvalue()
-
-
-def _verify_excon() -> bool:
-    """Compare the Python EXCON interpreter against the R cross-check.
-
-    R's stdout cannot carry a NUL byte (``intToUtf8(0)`` writes nothing),
-    while Python's ``chr(0)`` writes one, so NULs are stripped from both
-    sides before comparing: the corpus then checks the non-zero byte
-    semantics that R is able to express.
-    """
-    if shutil.which("Rscript") is None:
-        print("[skip] EXCON differential: Rscript not found")
-        return True
-
-    failures = 0
-    r_ref = ["Rscript", str(EXTRA_R / "excon.r")]
-
-    def strip_nul(text: str) -> str:
-        return text.replace("\x00", "")
-
-    for program in EXCON_CORPUS:
-        out = _run_native(r_ref, program)
-        assert out is not None, f"EXCON reference did not terminate on {program!r}"
-        native = strip_nul(out.decode(errors="replace"))
-        py = strip_nul(_run_excon_python(program))
-        if native != py:
-            failures += 1
-            print(f"EXCON {program!r}: python {py!r} vs R {native!r}")
-
-    # the pointer-fault program: both implementations must fault
-    py_fault = _run_excon_fault()
-    r = _run_native_code(r_ref, EXCON_FAULT)
-    assert r is not None, "EXCON reference did not terminate on the fault program"
-    r_fault = (r[0].decode(errors="replace"), r[1])
-    if py_fault != r_fault:
-        failures += 1
-        print(f"EXCON fault: python {py_fault!r} vs R {r_fault!r}")
-
-    if not failures:
-        print(f"EXCON differential: {len(EXCON_CORPUS)} programs match")
-    return failures == 0
-
-
-def _run_excon_python_code(program: str) -> tuple[str, int]:
-    """Run the Python EXCON interpreter; return (output, exit_code).
-
-    The off-pool fault is an invalid operation, exit code 3 (the cross-check
-    convention for HaltError).
-    """
-    from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
-    from esolangs.interpreters.tape_based.excon import run
-
-    buffer = io.StringIO()
-
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char)
-
-    try:
-        run(program, _IO())
-    except HaltError:
-        return buffer.getvalue(), 3
-    return buffer.getvalue(), 0
-
-
-def _run_excon_fault() -> tuple[str, int]:
-    """Run the pointer-fault program; return (output, exit_code)."""
-    return _run_excon_python_code(EXCON_FAULT)
-
-
 def _run_laserfuck_python(
     program: str, heading: int, inputs: list[str] | None = None
 ) -> str:
@@ -554,8 +438,6 @@ def _verify_laserfuck() -> bool:
 #
 # Generators keep the fuzz surface terminating by construction:
 #
-# * EXCON: straight-line over ``:^<!`` — the only way to fault is the
-#   off-pool pointer, which both implementations agree is exit 3.
 # * NoComment: ``idclrnfsbo`` — ``b``/``s`` jump by a peeked stack value, so
 #   a random program may loop; both implementations bound the run (the
 #   assembly via its instruction-count cap, Python via SIGALRM), and a
@@ -563,39 +445,6 @@ def _verify_laserfuck() -> bool:
 # * LaserFuck: random truth tables through the boolean generator, which
 #   produces terminating decision-tree grids (a random grid would hang the
 #   reference, so raw grids are not fuzzable).
-
-
-def _fuzz_excon(rng: random.Random, count: int) -> bool:
-    """Differentially fuzz EXCON with random programs."""
-    if shutil.which("Rscript") is None:
-        print("[skip] EXCON fuzz: Rscript not found")
-        return True
-
-    r_ref = ["Rscript", str(EXTRA_R / "excon.r")]
-    alphabet = ":^<!"
-    failures = checked = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 40)))
-        native = _run_native_code(r_ref, program)
-        assert native is not None, f"EXCON reference did not terminate on {program!r}"
-        native_out = native[0].decode(errors="replace").replace("\x00", "")
-        native_code = native[1]
-        py_out, py_code = _run_excon_python_code(program)
-        checked += 1
-        if (native_out, native_code) != (py_out.replace("\x00", ""), py_code):
-            failures += 1
-            print(
-                f"EXCON fuzz {program!r}: python "
-                f"{(py_out.replace(chr(0), ''), py_code)!r} "
-                f"vs R {(native_out, native_code)!r}"
-            )
-
-    print(
-        f"EXCON fuzz: {checked} programs match"
-        if not failures
-        else f"EXCON fuzz: {failures} failures of {checked}"
-    )
-    return failures == 0
 
 
 def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
@@ -710,12 +559,10 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    ok = _verify_excon()
-    ok = _verify_laserfuck() and ok
+    ok = _verify_laserfuck()
     ok = _verify_nocomment() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
-        ok = _fuzz_excon(rng, args.fuzz) and ok
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the

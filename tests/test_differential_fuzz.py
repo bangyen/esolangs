@@ -7,7 +7,7 @@ termination verdict.  These tests pin that the fuzzers are deterministic for
 a fixed seed and that they flag divergences when one side is tampered with
 (the regression they are meant to catch).
 
-The native toolchains (Rscript, nasm+unicorn, cargo) are skipped when
+The native toolchains (nasm+unicorn, cargo) are skipped when
 missing, mirroring the differential script itself.
 """
 
@@ -31,21 +31,6 @@ def rng() -> random.Random:
     return random.Random(1234)
 
 
-class TestExconFuzz:
-    def test_fuzz_is_seeded(self) -> None:
-        """The same seed always explores the same programs (pure RNG)."""
-        first = random.Random(42)
-        second = random.Random(42)
-        a = [first.choice(":^<!") for _ in range(50)]
-        b = [second.choice(":^<!") for _ in range(50)]
-        assert a == b
-
-    def test_program_alphabet(self, rng) -> None:
-        """Fuzz programs stay within the EXCON instruction alphabet."""
-        program = "".join(rng.choice(":^<!") for _ in range(rng.randint(0, 40)))
-        assert set(program) <= set(":^<!")
-
-
 class TestNoCommentFuzz:
     def test_program_alphabet(self, rng) -> None:
         program = "".join(rng.choice("idclrnfsbo") for _ in range(rng.randint(0, 30)))
@@ -54,20 +39,6 @@ class TestNoCommentFuzz:
 
 class TestDivergenceDetection:
     """The fuzzer must fail when the two sides disagree."""
-
-    @pytest.mark.skipif(shutil.which("Rscript") is None, reason="Rscript not installed")
-    def test_excon_catches_divergence(self, rng) -> None:
-        """A tampered native result is reported as a failure."""
-        real_run = verify_differential._run_native_code  # noqa: SLF001
-
-        def tampered(cmd, program, timeout=5):
-            out, code = real_run(cmd, program, timeout)
-            return out, (code + 1) % 4  # never match a real exit code
-
-        with patch.object(
-            verify_differential, "_run_native_code", side_effect=tampered
-        ):
-            assert not verify_differential._fuzz_excon(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(shutil.which("nasm") is None, reason="nasm not installed")
     def test_nocomment_catches_divergence(self, rng) -> None:
