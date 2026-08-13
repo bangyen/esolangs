@@ -31,6 +31,7 @@ from esolangs.tools.generators.other import (
     ztoalc,
 )
 from esolangs.tools.generators.register import (
+    albabet,
     bio,
     dig,
     dotlang,
@@ -59,6 +60,7 @@ from esolangs.tools.generators.tape import (
 __all__ = [
     "_123",
     "_ilog",
+    "albabet",
     "ascii_art",
     "basicfuck",
     "between",
