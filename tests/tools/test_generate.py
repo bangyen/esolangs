@@ -52,6 +52,9 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
 
 _run_123 = importlib.import_module("esolangs.interpreters.tape_based.123").run
 _run_pct = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
+_run_2dfish = importlib.import_module("esolangs.interpreters.other.2dfish").run
+_run_painfuck = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
+_run_bit_tilde = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
 
 
 class TestGeneratorRoundTrips:
@@ -312,6 +315,10 @@ class TestGeneratorRoundTrips:
         assert gen.two_d_fish("A") == "/" + "i" * 65 + "a@"
         assert gen.two_d_fish("AA") == "/" + "i" * 65 + "a" + "a@"
         assert gen.two_d_fish("A\x00") == "/" + "i" * 65 + "a" + "d" * 65 + "a@"
+        assert roundtrip(_run_2dfish, gen.two_d_fish("Hi")) == "Hi"
+        assert (
+            roundtrip(_run_2dfish, gen.two_d_fish("Hello, World!")) == "Hello, World!"
+        )
 
     def test_pct_squared_minus_one(self) -> None:
         """Each 'path e resets the accumulator, builds the byte, and prints it."""
@@ -369,6 +376,10 @@ class TestGeneratorRoundTrips:
             ">>>>>>>" + "<" * 7 + "(" + ">>>>>>>" + "<" * 7 + "("
         )
         assert gen.bit_tilde("\xff") == "~>~>~>~>~>~>~>~" + "<" * 7 + "("
+        assert roundtrip(_run_bit_tilde, gen.bit_tilde("Hi")) == "Hi"
+        assert (
+            roundtrip(_run_bit_tilde, gen.bit_tilde("Hello, World!")) == "Hello, World!"
+        )
 
     def test_three_x(self) -> None:
         """A [literal] prints the text up to the closing bracket."""
@@ -610,6 +621,13 @@ class TestGeneratorBranches:
     def test_painfuck_negative_loop(self) -> None:
         """A large negative delta exercises painfuck's subtract loop."""
         gen.painfuck("H$")
+
+    def test_painfuck_roundtrip(self) -> None:
+        """Generated programs round-trip through the interpreter."""
+        assert roundtrip(_run_painfuck, gen.painfuck("Hi")) == "Hi"
+        assert (
+            roundtrip(_run_painfuck, gen.painfuck("Hello, World!")) == "Hello, World!"
+        )
 
     def test_module_entry_point(self) -> None:
         """Python -m esolangs.tools.generate runs as a script."""

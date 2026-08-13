@@ -143,6 +143,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
 - [Minifuck](https://esolangs.org/wiki/Minifuck)
 - [NoComment](https://esolangs.org/wiki/NoComment)
+- [Painfuck](https://esolangs.org/wiki/Painfuck)
 - [S*bleq](https://esolangs.org/wiki/S*bleq)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)
 
@@ -161,6 +162,7 @@ Languages that use a stack for data manipulation.
 
 Languages that don't fit into the above categories.
 
+- [2dFish](https://esolangs.org/wiki/2dFish)
 - [3x](https://esolangs.org/wiki/3x)
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue)
 - [Between](https://esolangs.org/wiki/Between)
@@ -172,6 +174,7 @@ Languages that don't fit into the above categories.
 - [Nevermind](https://esolangs.org/wiki/Nevermind)
 - [Taglate](https://esolangs.org/wiki/Taglate)
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)
+- [bit~](https://esolangs.org/wiki/bit~)
 
 <!-- IMPLEMENTED:END -->
 
