@@ -3,7 +3,7 @@
 What the generators cannot do, and the assessments that concluded an
 approach is not viable (or only partially viable).  Completed work lives in
 the commit history; this file records the walls, the negative results, and
-the reasoning behind them.  Genuine future work is in `docs/ROADMAP.md`.
+the reasoning behind them.  Genuine future work is in `docs/roadmap.md`.
 
 ## 6-5 (built; the decision tree stays primary)
 The arithmetic-kernel generator (`six_five_arithmetic`) was built: it packs
