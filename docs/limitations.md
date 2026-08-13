@@ -212,6 +212,27 @@ numbers, Movesum prints `n ` (numbers with a trailing space), RAM0 prints a
 state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
 the single bit as a number.  None can spell arbitrary text.
 
+## Category:Unimplemented candidates that fell through
+Assessments of unimplemented languages from the wiki that did not make the
+roadmap.  The viable candidates are in `docs/roadmap.md`.
+
+- **Gravity**: particle-collision simulation whose evolution is in general
+  non-computable, so no interpreter can be verified against expected output.
+- **Earfuck**: a trivial brainfuck reskin that renames each instruction to a
+  pentatonic-scale note; too easy to be worth a dedicated interpreter.
+- **Conveyor**: multi-worker language with belts, stacks, and a hand, but no
+  input command and only stderr output, so it cannot support the repo's
+  file-based I/O protocol.
+- **Chainlang**: an AI-generated graph-based spec whose own author warns it is
+  unfinished ("don't expect it to be perfect").
+- **Binary ///**: a stub with no usable specification beyond "only uses `1`
+  and `0`".
+- **Fourfuck**: an incomplete language whose spec is a stub with only a couple
+  of core commands documented.
+- **Aaargh++**: a 4D work-in-progress with a partial spec.
+- **Bitwise Cyclic Teast**: a work-in-progress with a still-in-development
+  interpreter definition.
+
 ## Assessed boolean candidates that fell through
 - **Temporary**: the auto-drain is the only output, and it prints `front - 1`
   for the *oldest* stack element when `sum(rest) / 2 > front`.  An
