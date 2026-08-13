@@ -52,6 +52,35 @@ The proof is a bit-flip induction over the 8-cell pool:
 The main theorem `exec_correct` states that for every `List Char` text whose
 codes are below 256, `exec (textProg t) = String.ofList t`.
 
+## CircleFuck generator correctness
+
+A Lean 4 + mathlib proof (`Esolangs/CircleFuckCorrect.lean`) that the
+CircleFuck text generator (`src/esolangs/tools/generators/tape.py::circlefuck`)
+is *correct*.  CircleFuck's tape *is* the program text, so the generator reads
+the byte already sitting at each cell position and emits the shortest
+`+`/`-` run to the target value (mod 256).  The proof shows that running the
+generated program through a pure model of the interpreter
+(`runInstructions`) prints exactly the text.
+
+The proof has three parts:
+
+1. **The self-reference is consistent.**  The byte the generator reads at
+   position `i` (`prog[i]`) really is the value of cell `i` when the data
+   pointer first reaches it: blocks are appended rightward, each block's
+   instructions lie to the right of the cell they target, and the pointer
+   moves exactly one cell per block.  The main lemma `circle_aux` carries
+   the mutable cells explicitly, with an invariant tying them to the program
+   being constructed.
+2. **Delta arithmetic.**  With `delta = (target - base) mod 256`, a run of
+   `delta` `+`s (or `256 - delta` `-`s, or nothing when `delta = 0`) moves
+   the cell from `base` to `target`, including the wrap-around cases and the
+   fixed first-cell run.
+3. **The pointer never wraps**, so the interpreter's `>` is a plain `+1`.
+
+The main theorem `circle_correct` states that for every `List Char` text
+whose codes are below 256, the output of `runInstructions` on the generated
+program is exactly `String.ofList t`.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
