@@ -202,3 +202,29 @@ The factor-based recovery also defines the boolean generator's practical
 bound: `n == 4` (degree 184, coefficients ~10**729) factors in ~10s, while
 `n == 5` (degree 376, ~10**1746) does not factor in practical time, so the
 boolean generator is capped at `n <= 4`.
+
+## Text generators: exhausted
+Every language whose interpreter can emit arbitrary bytes already has a text
+generator.  The remaining interpreter-only languages cannot, so no text
+generator is possible for them: ArrowQueue has no output at all, Back prints
+the tape as a number list, BitDeque and Minsky Swap print their registers as
+numbers, Movesum prints `n ` (numbers with a trailing space), RAM0 prints a
+state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
+the single bit as a number.  None can spell arbitrary text.
+
+## Assessed boolean candidates that fell through
+- **Movesum**: only `move` (copy) and `sum` (add), with no conditional — the
+  loop repeats commands until the array stops changing.  The numeric output
+  (always a trailing space) and the addition-only arithmetic cannot express a
+  general boolean function.
+- **WII2D**: the accumulator never affects control flow (`^v<>` set the
+  direction, `@` jumps unconditionally to the closest `@`), so there is no
+  value-testable branch to route a decision tree on.
+- **EXCON / Huf**: straight-line with no input and no branch, so neither an
+  input-reading nor a parameterized generator can route on a bit.
+- **Lightlang**: `?` sets the bit to ``not line`` — every non-empty line,
+  including `'0'` and `'1'`, collapses to bit 0, so it cannot read bit values
+  at all; its only output is the bit as a number.
+- **DSDLAI**: a Dig variant whose dig commands carry a random 20-90% death
+  chance (printing "You died." and halting), so a generated program's output
+  is non-deterministic and cannot round-trip text or a truth table.
