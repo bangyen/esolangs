@@ -91,6 +91,44 @@ generator for exactly that subset is possible but low value; the working
 prefixes and the exact reachable table set are recorded in
 `docs/limitations.md`.
 
+## Lean proofs (in priority order)
+
+The MAMMALIAN generator totality proof (`extra/lean/esolangs/Esolangs.lean`)
+establishes the per-character search never fails.  The candidates below go
+beyond totality, in increasing payoff order.
+
+### EXCON generator-to-interpreter correctness (high priority)
+Prove that running the Lean EXCON interpreter port (`Esolangs/Excon.lean`) on
+the program from the `excon` generator (`tools/generators/tape.py`) prints the
+input text exactly: a bit-flip induction over the 8-cell pool, reconciling the
+generator's MSB-first flips with `to_s`'s bit order.  The first *correctness*
+(not totality) result, and it connects a generator proof to an interpreter
+proof already in the repo.
+
+### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
+`_factor_encode` (`tools/generators/tape.py`) searches for a prime with a given
+residue mod 11; totality needs mathlib's Dirichlet theorem
+(`exists_prime_modEq_of_coprime`).  The round-trip is the interesting half:
+prove decoding the prime factorization (exponents folding runs, residue mod 11
+identifying each instruction) recovers the original brainfuck program.
+
+### CircleFuck self-referential tape correctness (medium priority)
+The tape is the program text, so correctness is a fixpoint over the program's
+own encoding (`tools/generators/tape.py::circlefuck`): each cell's base is the
+instruction that occupies it, and the `% 256` shortest run must land each cell
+on its target.
+
+### Lean interpreter equivalence (medium priority)
+Prove the ported Lean interpreters match their Python references, starting
+with `bfpda`'s `find` bracket matching (`Esolangs/bfpda.lean`) — that the
+iterator walk terminates and lands on the matching bracket — and EXCON's
+output semantics.  Lifts the "faithful port" README claim into a proof.
+
+### `_bf_set` multiply loop (low priority)
+A Hoare-style invariant for `+a[>+b<-]>+r.` (`tools/generators/tape.py::_bf_set`):
+after the loop the printed cell holds `a*b + r = value`.  Genuine but generic
+brainfuck reasoning.
+
 ## Text generators: exhausted
 
 Every language whose interpreter can emit arbitrary bytes already has a text
