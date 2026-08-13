@@ -532,12 +532,10 @@ def nocomment(truth_table: str, n: int) -> str:
     # bit cell.  The non-zero cells are written in ascending-value order with
     # the stack carry, so only the deltas are incremented.
     cells: list[tuple[int, int]] = [(result_cell, 48)]
-    for nid in sorted(zvals):
-        if isinstance(nid, tuple):
-            nid2, j = nid[1], nid[2]
-            cells.append((r_of(nid2, j), zvals[nid]))
-        else:
-            cells.append((zlen_base + nid, zvals[nid]))
+    for nid in sorted(tests):
+        cells.append((zlen_base + nid, zvals[nid]))
+        for j in range(len(node_sts[nid])):
+            cells.append((r_of(nid, j), zvals[("r", nid, j)]))
     for lid in range(k):
         for h in range(numd):
             value = chain_skips.get((lid, h), 0)
