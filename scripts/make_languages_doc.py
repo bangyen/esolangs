@@ -38,6 +38,7 @@ BOOLEAN = {
     "Nevermind",
     "Polynomial",
     "Qoibl",
+    "S*bleq",
     "Sophie",
     "Taglate",
     "Unsquare",

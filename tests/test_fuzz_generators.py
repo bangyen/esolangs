@@ -119,6 +119,7 @@ def test_boolean_generators_random_tables() -> None:
         (boolean.circlefuck, "tape_based.circlefuck", False, ""),
         (boolean.dimensional, "tape_based.dimensional", False, ""),
         (boolean.bf, "tape_based.bf", False, ""),
+        (boolean.sbleq, "tape_based.sbleq", False, ""),
         (boolean.container, "other.container", True, ""),
     ]
     for n in (1, 2, 3, 4):
