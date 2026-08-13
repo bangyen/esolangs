@@ -5,6 +5,7 @@ import Esolangs.BfpdaCorrect
 import Esolangs.CircleFuckCorrect
 import Esolangs.Excon
 import Esolangs.ExconCorrect
+import Esolangs.ExconSemanticsCorrect
 import Esolangs.bfpda
 import Esolangs.seventy_four
 
