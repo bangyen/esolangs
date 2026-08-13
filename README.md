@@ -133,6 +133,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
 - [brainfuck](https://esolangs.org/wiki/brainfuck)
 - [Back](https://esolangs.org/wiki/Back)
+- [Basicfuck](https://esolangs.org/wiki/Basicfuck)
 - [BrainIf](https://esolangs.org/wiki/BrainIf)
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck)
 - [Dimensional](https://esolangs.org/wiki/Dimensional)
