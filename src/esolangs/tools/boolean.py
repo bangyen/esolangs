@@ -1,11 +1,13 @@
 """Boolean-function program generators (re-exported from the booleans package).
 
 Each generator builds a program that reads n boolean inputs and prints the
-truth-table result for the combination it is given.
+truth-table result for the combination it is given.  The parameterized
+generators (``bio``, ``back``) instead emit a template the harness
+instantiates per input combination, for the no-input languages.
 
 The generators live in ``esolangs.tools.booleans``, split by language family
-(``register``, ``stack``, ``tape``, ``other``); this module re-exports them
-for compatibility.
+(``register``, ``stack``, ``tape``, ``other``, ``parameterized``); this
+module re-exports them for compatibility.
 """
 
 from esolangs.tools.booleans.other import (
@@ -18,6 +20,7 @@ from esolangs.tools.booleans.other import (
     three_x,
     ztoalc_boolean,
 )
+from esolangs.tools.booleans.parameterized import back, bio, instantiate
 from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
 from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
 from esolangs.tools.booleans.tape import (
@@ -37,11 +40,13 @@ from esolangs.tools.booleans.tape import (
 
 __all__ = [
     "ascii_art",
+    "back",
     "basicfuck",
     "between",
     "bf",
     "bf_tree",
     "bfstack",
+    "bio",
     "brainif",
     "circlefuck",
     "circlefuck_byte",
@@ -51,6 +56,7 @@ __all__ = [
     "dimensional",
     "dimensional_tree",
     "forth",
+    "instantiate",
     "laserfuck",
     "modulous",
     "nevermind",
