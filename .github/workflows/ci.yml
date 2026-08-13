@@ -232,6 +232,10 @@ jobs:
       run: |
         PYTHONPATH=src python3 scripts/verify_extra_generators.py
 
+    - name: Differential-test 3x against the Ruby cross-check
+      run: |
+        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
+
     - name: Build and natively run the x86 reference interpreters
       run: |
         set -e

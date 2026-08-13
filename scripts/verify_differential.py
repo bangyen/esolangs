@@ -33,6 +33,9 @@ Languages with both an in-package interpreter and a native cross-check:
   prompts to stdout, which are stripped before comparing; both agree on the
   exit-code convention (3 = invalid operation) and write characters above
   127 as UTF-8, so the Python output is encoded the same way.
+* **3x** — ``other/three_x.py`` vs ``extra/ruby/3x.rb``.  Both compute over
+  exact rationals; the reference prints its ``Input: `` prompts to stdout
+  (stripped before comparing) and both agree on the exit-code convention.
 
 Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
 provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
@@ -57,6 +60,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 RUST_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "laserfuck"
 UNSQUARE_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "unsquare"
+THREE_X_RUBY = ROOT / "extra" / "ruby" / "3x.rb"
 FORTH_CXX = ROOT / "extra" / "c++" / "forþ.cpp"
 FORTH_BIN = Path("/tmp") / "verify-forþ"
 BASICFUCK_CXX = ROOT / "extra" / "c++" / "basicfuck.cpp"
@@ -1016,6 +1020,142 @@ def _fuzz_unsquare(rng: random.Random, count: int) -> bool:
     return failures == 0
 
 
+# -- 3x corpus: every command plus the error categories --------------------
+
+# (program, input).  Programs that read always provide enough input, since
+# the reference crashes on exhausted input.
+THREE_X_CORPUS = [
+    ("333x!", b""),  # 0
+    ("3333x3x!", b""),  # 1
+    ("3!", b""),  # 3
+    ("3333333x3xx!", b""),  # (1-3)/3 = -2/3 as a fraction
+    ("[Hi]", b""),  # literal
+    ("[Hello, World!]", b""),  # literal with command characters
+    ("[A]333x!", b""),  # literal skips past the bracket
+    ("333x3#!", b""),  # swap
+    ("3333xv3^!", b""),  # store and recall
+    ("3^!", b""),  # unassigned variable defaults to 3
+    ("33?x!", b"6\n"),  # read: (6-3)/3 = 1
+    ("?3v3^!", b"1/3\n"),  # fraction input
+    ("3333x3x(33x)!", b""),  # loop runs while the top is nonzero
+    ("333x(3)!", b""),  # loop skips when the top is zero
+    # invalid operations (exit 3)
+    ("x", b""),  # x with too few items
+    ("!", b""),  # pop an empty stack
+    ("#", b""),  # swap with too few items
+    ("(", b""),  # ( on an empty stack
+    (")", b""),  # ) on an empty stack
+    ("333x33x!", b""),  # division by zero
+    ("333x(", b""),  # unmatched (
+    ("33)", b""),  # ) with no pending (
+]
+
+
+def _run_three_x_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
+    """Run ``program`` through the Ruby cross-check; return (stdout, exit code).
+
+    The reference prints its ``Input: `` prompts to stdout, which are
+    stripped; invalid operations exit with status 3.
+    """
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            ["ruby", str(THREE_X_RUBY), path],
+            capture_output=True,
+            input=stdin,
+            timeout=5,
+        )
+        out = proc.stdout.replace(b"Input: ", b"")
+        return out, proc.returncode
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _run_three_x_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+    """Run ``program`` through the in-package interpreter."""
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.other.three_x import run
+
+    io = ScriptedIO(stdin.decode("utf-8"))
+    try:
+        run(program, io)
+    except HaltError:
+        return io.getvalue().encode("utf-8"), 3
+    return io.getvalue().encode("utf-8"), 0
+
+
+def _verify_three_x() -> bool:
+    """Compare the Python 3x interpreter against the Ruby cross-check."""
+    if shutil.which("ruby") is None:
+        print("[skip] 3x differential: ruby not found")
+        return True
+
+    failures = 0
+    for program, stdin in THREE_X_CORPUS:
+        native = _run_three_x_native(program, stdin)
+        if native is None:
+            print(f"3x {program!r}: Ruby reference did not terminate")
+            failures += 1
+            continue
+        py = _run_three_x_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"3x {program!r}: Ruby {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"3x differential: {len(THREE_X_CORPUS)} programs match")
+    return failures == 0
+
+
+def _fuzz_three_x(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz 3x with random truth tables.
+
+    The boolean generator emits terminating decision-tree programs (reads,
+    variable stores, and guarded loops); random programs would frequently
+    loop, so they are not fuzzed.
+    """
+    from esolangs.tools import boolean
+
+    if shutil.which("ruby") is None:
+        print("[skip] 3x fuzz: ruby not found")
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        n = rng.randint(1, 4)
+        table = "".join(rng.choice("01") for _ in range(2**n))
+        program = boolean.three_x(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            stdin = ("\n".join(map(str, bits)) + "\n").encode()
+            native = _run_three_x_native(program, stdin)
+            if native is None:
+                print(f"3x boolean {table!r}: Ruby reference did not terminate")
+                failures += 1
+                checked += 1
+                continue
+            py = _run_three_x_python(program, stdin)
+            checked += 1
+            if native != py:
+                failures += 1
+                print(
+                    f"3x boolean {table!r} combo {bits}: "
+                    f"Ruby {native!r} vs Python {py!r}"
+                )
+
+    print(
+        f"3x fuzz: {checked} checks match"
+        if not failures
+        else f"3x fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -1073,12 +1213,14 @@ def main() -> int:
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok
+    ok = _verify_three_x() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
         ok = _fuzz_forth(rng, args.fuzz) and ok
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok
+        ok = _fuzz_three_x(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.
