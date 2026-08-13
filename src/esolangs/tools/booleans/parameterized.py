@@ -218,16 +218,19 @@ def nocomment(truth_table: str, n: int) -> str:
     The program is a decision tree over the embedded bits.  A node moves to a
     per-node skip cell, pushes the zero-subtree length, moves to the bit cell,
     and ``s``-skips to the one-subtree when the bit is one (falling through to
-    the zero-subtree otherwise).  A leaf moves to its endskip cell, pushes it,
-    moves to the shared result cell (pre-set to 48), adds the table bit,
-    ``o``-prints it, and ``s``-skips to the trailing ``c``.  The ``l``/``r``
-    moves are emitted from each subtree's known start pointer (the parent's
-    bit cell), and the setup length cancels out of the skips, so every skip
-    value depends only on the tree layout.
+    the zero-subtree otherwise).  A leaf ``o``-prints the table bit added to
+    the shared result cell (pre-set to 48), then walks a per-leaf chain of
+    ``n i s d f`` stations that ``s``-skip over the other leaves' code to the
+    trailing ``c``.  The chains are interleaved through reserved gaps between
+    the leaf blocks, so each leaf's skips stay below the 256-cell byte limit
+    while never landing inside another leaf's code or a node test.  The
+    ``l``/``r`` moves are emitted from each subtree's known start pointer (the
+    parent's bit cell), and the setup length cancels out of the skips, so
+    every skip value depends only on the tree layout.
 
     NoComment cells hold bytes, so every skip value must stay below 256; the
-    tree for ``n == 4`` needs skips up to ~800, so the generator supports
-    ``n <= 3`` and raises :class:`ValueError` beyond that.
+    generator is verified for ``n <= 3`` and raises :class:`ValueError`
+    beyond that.
     """
     _validate(truth_table, n)
     if n > 3:
@@ -253,13 +256,21 @@ def nocomment(truth_table: str, n: int) -> str:
     tree = shape(list(range(2**n)), 0)
     m = node_id
     k = leaf_id
-    result_cell = n + m + k
+    # Bit cells 0..n-1 (the {Xi} placeholders sit on cell 0 and the harness
+    # moves right once per bit); the result cell sits just above the bits.
+    result_cell = n
+    zlen_base = result_cell + 1
+    dcell = zlen_base + m  # the per-leaf chain cells come after the zlen cells
+    numd = 6  # chain cells per leaf
 
-    # Emit the tree commands.  The setup leaves the pointer on the result
-    # cell; each subtree starts at its parent's bit cell (the ``s`` leaves
-    # the pointer there regardless of which way the branch went).
+    def d_of(lid: int, h: int) -> int:
+        return dcell + lid * numd + h
+
+    # Emit the tree commands.  Each subtree starts at its parent's bit cell
+    # (the ``s`` leaves the pointer there regardless of which way the branch
+    # went).
     commands: list[str] = []
-    ptr = [result_cell]
+    ptr = [0]
 
     def move(dst: int) -> None:
         while ptr[0] < dst:
@@ -269,45 +280,191 @@ def nocomment(truth_table: str, n: int) -> str:
             commands.append("l")
             ptr[0] -= 1
 
-    zlens: dict[int, int] = {}
-    leaf_pos: dict[int, int] = {}
+    tests: dict[int, list[int]] = {}  # node id -> [test s position, one start]
+    leaf_sts: dict[int, list[int]] = {lid: [] for lid in range(k)}
+    leaf_out: dict[int, tuple[int, int]] = {}
+    node_regions: list[tuple[int, int]] = []
 
-    def emit(node: _Node, start: int) -> None:
+    def leaf_emit(lid: int, value: int) -> None:
+        out_start = len(commands)
+        move(result_cell)
+        if value:
+            commands.append("i")
+        commands.append("o")
+        d = d_of(lid, 0)
+        ptr[0] = result_cell
+        move(d)
+        commands.append("n")
+        commands.append("i")
+        leaf_sts[lid].append(len(commands))
+        commands.append("s")
+        commands.append("d")
+        commands.append("f")
+        leaf_out[lid] = (out_start, len(commands))
+
+    def tree_emit(node: _Node, start: int) -> None:
         ptr[0] = start
         kind, a, b, zero, one = node
         if kind == "leaf":
-            move(n + m + a)  # this leaf's endskip cell
-            commands.append("n")
-            move(result_cell)
-            if b:
-                commands.append("i")
-            commands.append("o")
-            leaf_pos[a] = len(commands)
-            commands.append("s")
+            leaf_emit(a, b)
             return
-        move(n + a)  # this node's skip cell
+        c = zlen_base + a
+        nstart = len(commands)
+        move(c)
         commands.append("n")
         move(b)  # the bit cell
+        tests[a] = [len(commands)]
         commands.append("s")
-        zero_start = len(commands)
+        node_regions.append((nstart, len(commands)))
         assert zero is not None
         assert one is not None
-        emit(zero, b)
-        zlens[a] = len(commands) - zero_start
-        emit(one, b)
+        tree_emit(zero, b)
+        tests[a].append(len(commands))
+        tree_emit(one, b)
 
-    emit(tree, result_cell)
-    tree_len = len(commands)
-    # The setup length cancels out of the leaves' skips: skipping to the
-    # trailing END command is tree_len - leaf_pos - 1, independent of setup.
-    endskips = [tree_len - leaf_pos[lid] - 1 for lid in range(k)]
+    # The tree starts where the setup leaves the pointer, on the last chain
+    # cell, so the first move cancels out.
+    tree_emit(tree, dcell + k * numd - 1)
+    commands.append("c")  # the END target every chain skips to
 
-    cells: list[str] = []
-    for value in [zlens[i] for i in range(m)] + endskips:
-        cells.append("r")
-        cells.extend("i" * value)
-    cells.append("r")  # to the shared result cell
-    cells.extend("i" * 48)
+    # Reserve interleaving gaps: the tree is otherwise dense, leaving no room
+    # for the per-leaf chains.  Insert PAD dead-space commands after each
+    # leaf's station.  These gaps are skipped over by every leaf's hops, so
+    # their content is never executed; stations are later placed inside them.
+    pad = 16
+    for lid in sorted(range(k), reverse=True):
+        pos = leaf_out[lid][1]
+        commands[pos:pos] = ["c"] * pad
+        for sts in leaf_sts.values():
+            for j in range(len(sts)):
+                if sts[j] >= pos:
+                    sts[j] += pad
+        for nid in tests:
+            for j in range(2):
+                if tests[nid][j] >= pos:
+                    tests[nid][j] += pad
+        for lid2 in leaf_out:
+            a, b = leaf_out[lid2]
+            leaf_out[lid2] = (
+                a + pad if a >= pos else a,
+                b + pad if b >= pos else b,
+            )
+        for j in range(len(node_regions)):
+            a, b = node_regions[j]
+            node_regions[j] = (a + pad if a >= pos else a, b + pad if b >= pos else b)
 
-    program = ["{X" + str(i) + "}" for i in range(n)] + cells + commands + ["c"]
-    return "".join(program)
+    # A leaf's own code spans from its output through the end of its last
+    # station.  Inserted stations must not land inside any leaf's code or any
+    # node's test code, otherwise they corrupt the moves of that code.
+    def leaf_chain_blocked() -> list[tuple[int, int]]:
+        return [(leaf_out[lid][0], leaf_sts[lid][-1] + 3) for lid in range(k)]
+
+    def safe_pos(
+        target: int,
+        lo: int,
+        blocked: list[tuple[int, int]],
+    ) -> int | None:
+        i = max(target, lo)
+        while i < len(commands):
+            if not any(a <= i < b for a, b in blocked):
+                return i
+            i += 1
+        return None
+
+    used = dict.fromkeys(range(k), 1)
+    for _ in range(40):
+        end = len(commands) - 1
+        moved = False
+        for lid in range(k):
+            last = leaf_sts[lid][-1]
+            if end - last > 255:
+                h = used[lid]
+                used[lid] += 1
+                d = d_of(lid, h)
+                blocked = leaf_chain_blocked() + node_regions
+                pos = safe_pos(last + 130, last + 1, blocked)
+                if pos is None:
+                    moved = False
+                    break
+                prev = d_of(lid, h - 1)
+                mv = ["r"] * (d - prev) if d >= prev else ["l"] * (prev - d)
+                cmds = [*mv, "n", "i", "s", "d", "f"]
+                commands[pos:pos] = cmds
+                body_s = pos + len(mv) + 2
+                for sts in leaf_sts.values():
+                    for j in range(len(sts)):
+                        if sts[j] >= pos:
+                            sts[j] += len(cmds)
+                leaf_sts[lid].append(body_s)
+                for nid in tests:
+                    for j in range(2):
+                        if tests[nid][j] >= pos:
+                            tests[nid][j] += len(cmds)
+                for lid2 in leaf_out:
+                    a, b = leaf_out[lid2]
+                    leaf_out[lid2] = (
+                        a + len(cmds) if a >= pos else a,
+                        b + len(cmds) if b >= pos else b,
+                    )
+                for j in range(len(node_regions)):
+                    a, b = node_regions[j]
+                    node_regions[j] = (
+                        a + len(cmds) if a >= pos else a,
+                        b + len(cmds) if b >= pos else b,
+                    )
+                moved = True
+        if not moved:
+            break
+
+    # Every skip value must fit a byte.  The chain hops skip to the start of
+    # the next station (or END), and the node tests skip to their one-subtree.
+    end = len(commands) - 1
+    chain_skips: dict[tuple[int, int], int] = {}
+
+    def sstart(lid: int, h: int) -> int:
+        prev = d_of(lid, h - 1) if h > 0 else result_cell
+        mvlen = abs(d_of(lid, h) - prev)
+        return leaf_sts[lid][h] - 2 - mvlen
+
+    for lid, sts in leaf_sts.items():
+        for h in range(len(sts)):
+            nxt = sstart(lid, h + 1) if h + 1 < len(sts) else end
+            chain_skips[(lid, h)] = nxt - sts[h] - 1
+    if any(not 0 <= v < 256 for v in chain_skips.values()):
+        raise ValueError(
+            "this truth table needs a chain skip beyond the 256-cell byte limit",
+        )
+    for st, one in tests.values():
+        if not 0 < one - st - 1 < 256:
+            raise ValueError(
+                "this truth table needs a subtree skip beyond the "
+                "256-cell byte limit",
+            )
+
+    # The setup length cancels out of every skip, so it can be emitted here
+    # against the final tree layout.  The {Xi} placeholders all sit on cell 0;
+    # the harness moves right once per bit, leaving the pointer on the last
+    # bit cell.
+    setup: list[str] = ["{X" + str(i) + "}" for i in range(n)]
+    setup_ptr = [n - 1]
+
+    def setup_move(dst: int) -> None:
+        while setup_ptr[0] < dst:
+            setup.append("r")
+            setup_ptr[0] += 1
+        while setup_ptr[0] > dst:
+            setup.append("l")
+            setup_ptr[0] -= 1
+
+    setup_move(result_cell)
+    setup.extend(["i"] * 48)
+    for nid in sorted(tests):
+        setup_move(zlen_base + nid)
+        st, one = tests[nid]
+        setup.extend(["i"] * (one - st - 1))
+    for lid in range(k):
+        for h in range(numd):
+            setup_move(d_of(lid, h))
+            setup.extend(["i"] * chain_skips.get((lid, h), 0))
+
+    return "".join(setup + commands)
