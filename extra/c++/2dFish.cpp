@@ -127,12 +127,16 @@ int main(int argc, char *argv[]) {
       break;
     case '$':
       prompt(out);
-      getline(std::cin, str);
+      if (!getline(std::cin, str))
+        exit(EXIT_INVALID_OP);
+
       break;
     case '%':
       prompt(out);
       mode = false;
-      std::cin >> acc;
+      if (!(std::cin >> acc))
+        exit(EXIT_INVALID_OP);
+
       break;
     case '(':
       str = "";

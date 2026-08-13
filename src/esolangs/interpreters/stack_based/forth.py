@@ -19,7 +19,8 @@ Semantics match the C++ cross-check (``extra/c++/forþ.cpp``):
   bracket) abort only the innermost scope and are otherwise ignored -- the
   C++ reference returns an error code that nested calls discard;
 - ``,`` reads a whole line and raises :class:`EOFError` when input runs out
-  (like the other stack interpreters), where the reference reads nothing;
+  (like the other stack interpreters), where the references exit with
+  status 3;
 - ``,`` pushes each character's byte value (the reference's signed ``char``
   would push negative values for bytes above 127).
 """

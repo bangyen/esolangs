@@ -13,7 +13,7 @@ Semantics match the Ruby cross-check (``extra/ruby/3x.rb``):
   an empty stack, an unmatched ``(``, a ``)`` with no pending ``(``, or a
   division by zero raise :class:`HaltError`;
 - ``?`` raises :class:`EOFError` when input runs out, where the reference
-  crashes, and accepts decimal input that the reference rejects;
+  exits with status 3, and accepts decimal input that the reference rejects;
 - ``[`` with no closing ``]`` prints nothing.
 """
 

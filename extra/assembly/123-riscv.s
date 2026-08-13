@@ -81,6 +81,11 @@ _start:
     mv   a1, s3
     li   a2, 1
     ecall
+    bnez a0, .read_ok
+    li   a0, 3
+    li   a7, 93
+    ecall
+.read_ok:
     lbu  s0, 0(s3)           # data = read byte
     li   s1, 128
     j    .parse
