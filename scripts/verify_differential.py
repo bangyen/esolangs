@@ -28,6 +28,12 @@ Languages with both an in-package interpreter and a native cross-check:
   ``Input: `` prompts and error messages to stdout, which are stripped
   before comparing, and both agree on the exit-code convention (2 =
   malformed, 3 = invalid operation).
+* **Unsquare** — ``stack_based/unsquare.py`` vs
+  ``extra/rust/unsquare.rs``.  The Rust reference prints its ``Input: ``
+  prompts to stdout (stripped before comparing) and panics with exit code
+  101 on an invalid operation, which is normalized to the cross-check's 3.
+  The corpus is ASCII because the reference writes characters above 127 as
+  UTF-8 rather than bytes.
 
 Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
 provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
@@ -51,6 +57,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 RUST_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "laserfuck"
+UNSQUARE_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "unsquare"
 FORTH_CXX = ROOT / "extra" / "c++" / "forþ.cpp"
 FORTH_BIN = Path("/tmp") / "verify-forþ"
 BASICFUCK_CXX = ROOT / "extra" / "c++" / "basicfuck.cpp"
@@ -866,6 +873,145 @@ def _fuzz_basicfuck(rng: random.Random, count: int) -> bool:
     return failures == 0
 
 
+# -- Unsquare corpus: every command plus the error categories -------------
+
+# (program, input).  Programs that read always provide enough input, since
+# the Rust reference spins on EOF.  The corpus is ASCII: the reference
+# writes characters above 127 as UTF-8 rather than bytes.
+UNSQUARE_CORPUS = [
+    ("Io", b""),  # push 1 and print it
+    ("Oo", b""),  # push 0 and print it
+    ("Ooo", b""),  # o does not pop
+    ("I+Po", b""),  # acc 2
+    ("++Po", b""),  # acc 4
+    ("-Po", b""),  # -2 prints as a decimal value
+    ("xxPo", b""),  # doubling from 0
+    ("+" * 32 + "Po", b""),  # '@'
+    ("OISo", b""),  # swap
+    ("IPPP", b""),  # pushes without printing
+    ("IOA", b""),  # pop into acc
+    ("OAIA", b""),  # O, A, I, A
+    ("iPo", b"7\n"),  # read, then push acc (0)
+    ("iPo", b"hi\n"),  # read pushes only the first character
+    ("O>I<", b""),  # > skips when acc is 0
+    ("I>I<", b""),  # > skips when acc is 1
+    ("++>Po-<", b""),  # countdown loop: prints 4 then 2
+    ("iA>PoiA<", b"h\n\x00\n"),  # cat until a 0 byte
+    # invalid operations (exit 3): the reference panics with code 101
+    ("A", b""),  # empty-stack pop
+    ("o", b""),  # o on an empty stack
+    ("S", b""),  # swap with fewer than two
+    ("<", b""),  # unmatched <
+    (">", b""),  # > with no matching <
+]
+
+
+def _run_unsquare_native(
+    binary: str, program: str, stdin: bytes
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
+
+    The reference prints its ``Input: `` prompts to stdout, which are
+    stripped, and panics with exit code 101 on an invalid operation, which
+    is normalized to the cross-check convention's 3.
+    """
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            [binary, path], capture_output=True, input=stdin, timeout=5
+        )
+        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
+        code = 3 if proc.returncode == 101 else proc.returncode
+        return out, code
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _run_unsquare_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+    """Run ``program`` through the in-package interpreter."""
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.unsquare import run
+
+    io = ScriptedIO(stdin.decode("latin1"))
+    try:
+        run(program, io)
+    except HaltError:
+        return io.getvalue().encode("latin1"), 3
+    return io.getvalue().encode("latin1"), 0
+
+
+def _verify_unsquare() -> bool:
+    """Compare the Python Unsquare interpreter against the Rust cross-check."""
+    if not UNSQUARE_BIN.exists():
+        print("[skip] Unsquare differential: Rust reference not built")
+        return True
+
+    failures = 0
+    for program, stdin in UNSQUARE_CORPUS:
+        native = _run_unsquare_native(str(UNSQUARE_BIN), program, stdin)
+        if native is None:
+            print(f"Unsquare {program!r}: Rust reference did not terminate")
+            failures += 1
+            continue
+        py = _run_unsquare_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"Unsquare {program!r}: Rust {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"Unsquare differential: {len(UNSQUARE_CORPUS)} programs match")
+    return failures == 0
+
+
+def _fuzz_unsquare(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz Unsquare with random truth tables.
+
+    The boolean generator emits terminating decision-tree programs; random
+    instruction programs would frequently loop, and the Rust reference has
+    no loop bound, so they are not fuzzed.
+    """
+    from esolangs.tools import boolean
+
+    if not UNSQUARE_BIN.exists():
+        print("[skip] Unsquare fuzz: Rust reference not built")
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        n = rng.randint(1, 4)
+        table = "".join(rng.choice("01") for _ in range(2**n))
+        program = boolean.unsquare(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            stdin = ("\n".join(map(str, bits)) + "\n").encode()
+            native = _run_unsquare_native(str(UNSQUARE_BIN), program, stdin)
+            if native is None:
+                print(f"Unsquare boolean {table!r}: Rust reference did not terminate")
+                failures += 1
+                checked += 1
+                continue
+            py = _run_unsquare_python(program, stdin)
+            checked += 1
+            if native != py:
+                failures += 1
+                print(
+                    f"Unsquare boolean {table!r} combo {bits}: "
+                    f"Rust {native!r} vs Python {py!r}"
+                )
+
+    print(
+        f"Unsquare fuzz: {checked} checks match"
+        if not failures
+        else f"Unsquare fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -922,11 +1068,13 @@ def main() -> int:
     ok = _verify_nocomment() and ok
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
+    ok = _verify_unsquare() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
         ok = _fuzz_forth(rng, args.fuzz) and ok
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
+        ok = _fuzz_unsquare(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.

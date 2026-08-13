@@ -80,3 +80,19 @@ class TestDivergenceDetection:
             verify_differential, "_run_basicfuck_native", side_effect=tampered
         ):
             assert not verify_differential._fuzz_basicfuck(rng, 20)  # noqa: SLF001
+
+    _UNSQUARE_REF = Path(__file__).parents[1] / "extra/rust/target/debug/unsquare"
+
+    @pytest.mark.skipif(not _UNSQUARE_REF.exists(), reason="Rust reference not built")
+    def test_unsquare_catches_divergence(self, rng) -> None:
+        """A wrong output on the Rust side is reported as a failure."""
+        real_run = verify_differential._run_unsquare_native  # noqa: SLF001
+
+        def tampered(binary, program, stdin):
+            out, code = real_run(binary, program, stdin)
+            return out + b"!", code
+
+        with patch.object(
+            verify_differential, "_run_unsquare_native", side_effect=tampered
+        ):
+            assert not verify_differential._fuzz_unsquare(rng, 20)  # noqa: SLF001
