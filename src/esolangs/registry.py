@@ -68,6 +68,7 @@ LANGUAGES: dict[str, Language] = {
     "DSDLAI": Language("DSDLAI", interpreter="register_based.dsdlai", split=True),
     "Eval": Language("Eval", _generate.eval, "stack_based.eval"),
     "EXCON": Language("EXCON", _generate.excon, "tape_based.excon"),
+    "Factor": Language("Factor", _generate.factor, "tape_based.factor"),
     "Forþ": Language("Forþ", _generate.forth),
     "Home Row": Language("Home Row", _generate.home_row),
     "huf": Language("huf", _generate.huf, "register_based.huf"),

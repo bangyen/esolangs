@@ -15,6 +15,7 @@ __all__ = [
     "brainif",
     "circlefuck",
     "excon",
+    "factor",
     "mammalian",
     "minifuck",
     "six_five",
@@ -104,6 +105,48 @@ def bf(text: str) -> str:
             res.append("[-]" + _bf_set(v))
             cur = v
     return "".join(res)
+
+
+_BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
+
+
+def _factor_encode(code: str) -> int:
+    """Encode a brainfuck program as the Factor integer for it.
+
+    The decoder sorts the prime factors ascending, so the encoder walks
+    primes upward and hands each instruction the next prime with the right
+    residue modulo 11 (Dirichlet's theorem guarantees one always exists).  A
+    run of identical instructions is folded into one prime's exponent, which
+    keeps the integer small while decoding to the same run.
+    """
+    from sympy import isprime
+
+    number = 1
+    candidate = 2
+    i = 0
+    while i < len(code):
+        residue = _BF_RESIDUE[code[i]]
+        j = i
+        while j < len(code) and code[j] == code[i]:
+            j += 1
+        prime = candidate
+        while not (prime % 11 == residue and isprime(prime)):
+            prime += 1
+        number *= prime ** (j - i)
+        candidate = prime + 1
+        i = j
+    return number
+
+
+def factor(text: str) -> str:
+    """Generate a Factor program that outputs ``text``.
+
+    A Factor program is a single integer, so the output is the decimal form
+    of the integer whose prime factorization encodes a brainfuck program
+    (from :func:`bf`) that prints ``text``.
+    """
+    _require_bytes(text, "Factor")
+    return str(_factor_encode(bf(text)))
 
 
 def ascii_art(text: str) -> str:
