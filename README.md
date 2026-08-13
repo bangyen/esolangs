@@ -19,14 +19,15 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
 - [Compilers](#compilers)
 - [Transpilers](#transpilers)
 - [Tools](#tools)
-- [Roadmap](docs/ROADMAP.md)
-- [Limitations](docs/limitations.md)
 
 ## About
 
 Esoteric programming languages are designed to be difficult to program in, often as a form of art or humor. This repository provides working interpreters and compilers for a wide variety of these languages, making them accessible for experimentation and learning.
 
 Most interpreters work by reading the file specified by the first command line argument.
+
+Planned work is tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md); documented
+limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md).
 
 ## Usage
 
