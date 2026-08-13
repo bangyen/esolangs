@@ -69,8 +69,24 @@ Prove the ported Lean interpreters match their Python references.  BF-PDA's
 (`BfpdaCorrect.lean`, `ExconSemanticsCorrect.lean`): for programs where the
 reference interpreter does not halt (EXCON's `<` at cell 0 raises
 `HaltError`, which the port's `(n - 1) % 8` does not), both interpreters
-compute the same output and final state.  Remaining: the other ported
-interpreters.
+compute the same output and final state.  Remaining, in increasing payoff
+order: AlbaBet (the reference interpreter is in the repo and the port is
+total, so the proof is the EXCON one minus the underflow divergence),
+seventy_four (its `H`-restart loop makes it the most interesting of the
+three), and BF-PDA's full output semantics (a stack-and-loop proof building
+on the completed `find` bracket matching).
+
+### Simple text generator correctness proofs (medium priority)
+A correctness proof for the small generator/interpreter pairs, run through
+the interpreter's own transitions as in `AlbabetCorrect.lean`: Sophie
+(`#<char>,` loads the code into the accumulator and prints it), BIO (the
+generator emits only `0ox`/`1ox`/`1ix`, driving `x` from the previous value
+to the next — the AlbaBet proof with deltas instead of resets), 6-5
+(`_six_five_path`'s 6/2 and 9/5 runs with 62/95 pairs move the cell exactly;
+pure divmod arithmetic on one cell), and Qoibl (`tt y|e ... tt` prints the
+value the digits encode; a binary-decoding induction).  huf's
+`# +*a | +*b ! +*r >@` segments share the multiply-loop invariant with
+`_bf_set` below.
 
 ### `_bf_set` multiply loop (low priority)
 A Hoare-style invariant for `+a[>+b<-]>+r.` (`tools/generators/tape.py::_bf_set`):
