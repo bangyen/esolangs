@@ -142,14 +142,26 @@ and `SPRINT` moves the pointer by `curr[acc]`, so a bit can index a cell.
 
 The old `LEAPFROG`-dispatch barrier (forward targets need negative cells) is
 real but moot: the promising path is arithmetic plus pointer selection, not
-control flow.  The open problem is the n-bit case, and a `SPRINT`
-pointer-selection tree hits a concrete blocker: `ACCEPT` unconditionally
-appends the normalized bit to `lst[0]`, consuming that bit needs `ptr == 0`,
-but routing `SPRINT`s move the pointer to a node — so the bit cannot be both
-read and routed without a way to return the pointer to 0, and the per-bit
-"move it to its own array" gadget needs the very pointer routing it is trying
-to build.  A verified generator remains a multi-session project; the 1-bit
-and 2-bit pieces are proven.
+control flow.  The n-bit case, however, is blocked by three mutually
+conflicting constraints:
+
+- `ACCEPT` unconditionally appends the normalized bit to `lst[0]`, and
+  consuming that bit needs `ptr == 0`, but routing `SPRINT`s move the
+  pointer to a node — so the bit cannot be both read and routed without a
+  way to return the pointer to 0.
+- The read's clean normalization needs `lst[0][0] == 48` (the `^ 48` base),
+  and `SEED` skips empty arrays, so the only constant source is `K SEEDs
+  CONSUME` starting from `lst[0] = [0]` — which empties the array, so every
+  later constant **accumulates** on the previous one (`42 + 5 = 47`, never a
+  clean `5`).  The `[48, C, m]` triple a branch needs therefore cannot be
+  assembled in one array.
+- `DIGEST` normalizes by XORing the *sum* of `lst[ptr]`, so a bit buried
+  among previous bits is only recoverable as part of a sum, and `48 ^ (48 +
+  m1 + m2)` is not `m1 ^ m2` when both bits are set.
+
+A verified generator is thus a hard wall, not just a slow build; the 1-bit
+and 2-bit pieces are proven, and the AND gadget (`CONSUME SPRINT CONSUME`)
+works on clean separate arrays that the read flow cannot produce.
 
 ## Dotlang (not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line
