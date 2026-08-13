@@ -6,7 +6,10 @@ hand.
 
 Python means an in-repo interpreter under `esolangs.interpreters`;
 Native means an implementation in `extra/` that runs as a standalone
-program (C++, Rust, Ruby, R, Lean, or x86 assembly).
+program (C++, Rust, Ruby, R, Lean, or x86 assembly).  The Boolean
+column marks the boolean-function generators; BIO and Back's are
+parameterized (the harness substitutes input bits into a template)
+rather than the program reading input.
 
 | Language | Text generator | Python | Native | Boolean | Compiler | Examples |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -22,8 +25,8 @@ program (C++, Rust, Ruby, R, Lean, or x86 assembly).
 | BF | yes | yes |  | yes |  | hello |
 | BF-PDA |  |  | yes |  | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
-| BIO | yes | yes |  |  |  | hello |
-| Back |  | yes |  |  |  |  |
+| BIO | yes | yes |  | yes |  | hello |
+| Back |  | yes |  | yes |  |  |
 | Basicfuck | yes |  | yes | yes |  |  |
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
 | BitDeque |  | yes |  |  |  |  |
