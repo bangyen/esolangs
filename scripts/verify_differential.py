@@ -36,6 +36,10 @@ Languages with both an in-package interpreter and a native cross-check:
 * **3x** — ``other/three_x.py`` vs ``extra/ruby/3x.rb``.  Both compute over
   exact rationals; the reference prints its ``Input: `` prompts to stdout
   (stripped before comparing) and both agree on the exit-code convention.
+* **%^2^-1** — ``register_based/%^2^-1.py`` vs ``extra/c++/%^2^-1.cpp``.
+  Both track the accumulator as a signed magnitude with the 3003 reset; the
+  reference prints its ``Input: `` prompts to stdout, which are stripped
+  before comparing.
 
 Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
 provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
@@ -61,6 +65,8 @@ ROOT = Path(__file__).parents[1]
 RUST_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "laserfuck"
 UNSQUARE_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "unsquare"
 THREE_X_RUBY = ROOT / "extra" / "ruby" / "3x.rb"
+PCT_CXX = ROOT / "extra" / "c++" / "%^2^-1.cpp"
+PCT_BIN = Path("/tmp") / "verify-pct"
 FORTH_CXX = ROOT / "extra" / "c++" / "forþ.cpp"
 FORTH_BIN = Path("/tmp") / "verify-forþ"
 BASICFUCK_CXX = ROOT / "extra" / "c++" / "basicfuck.cpp"
@@ -1156,6 +1162,138 @@ def _fuzz_three_x(rng: random.Random, count: int) -> bool:
     return failures == 0
 
 
+# -- %^2^-1 corpus: every command plus the error categories ----------------
+
+# (program, input).  Programs that read always provide enough input, since
+# Python's EOFError has no C++ equivalent (the reference stores -1).
+PCT_CORPUS = [
+    ("'e", b""),  # reset then print 0
+    ("'ipe", b""),  # -3, p -> 3
+    ("'ipse", b""),  # the fixed three-op path for byte 1
+    ("'mse", b""),  # 0, *2, -2 -> -2 as a byte
+    ("'ie", b""),  # -3 as a byte
+    ("'l", b""),  # print the magnitude as a number
+    ("'sl", b""),  # negative magnitude
+    ("'me'l", b""),  # byte then number
+    ("'m" * 12 + "l", b""),  # the 3003 reset fires before the l
+    ("'te", b""),  # t with a zero magnitude does not rewind
+    ("ne", b"X\n"),  # read a byte and print it
+    ("nl", b"A\n"),  # read and print the value
+    ("nt", b"A\n\x00\n"),  # t rewinds until a 0 byte is read
+    ("n'ne", b"ab\ncd\n"),  # read, reset, read, print
+    ("'e" * 5, b""),  # repeated prints
+]
+
+
+def _build_pct() -> str | None:
+    """Compile the %^2^-1 C++ cross-check (once); None if g++ is missing."""
+    if shutil.which("g++") is None:
+        print("[skip] %^2^-1 differential: g++ not found")
+        return None
+    if PCT_BIN.exists():
+        return str(PCT_BIN)
+    rv = subprocess.run(
+        ["g++", "-std=c++11", str(PCT_CXX), "-o", str(PCT_BIN)],
+        capture_output=True,
+    )
+    return str(PCT_BIN) if rv.returncode == 0 else None
+
+
+def _run_pct_native(
+    binary: str, program: str, stdin: bytes
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through the C++ cross-check; return (stdout, exit code)."""
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            [binary, path], capture_output=True, input=stdin, timeout=5
+        )
+        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
+        return out, proc.returncode
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _run_pct_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+    """Run ``program`` through the in-package interpreter."""
+    import importlib
+
+    from esolangs.interpreters.io import ScriptedIO
+
+    run = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
+
+    io = ScriptedIO(stdin.decode("latin1"))
+    try:
+        run(program, io)
+    except EOFError:
+        return io.getvalue().encode("latin1"), 3
+    return io.getvalue().encode("latin1"), 0
+
+
+def _verify_pct() -> bool:
+    """Compare the Python %^2^-1 interpreter against the C++ cross-check."""
+    binary = _build_pct()
+    if binary is None:
+        return True
+
+    failures = 0
+    for program, stdin in PCT_CORPUS:
+        native = _run_pct_native(binary, program, stdin)
+        if native is None:
+            print(f"%^2^-1 {program!r}: C++ reference did not terminate")
+            failures += 1
+            continue
+        py = _run_pct_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"%^2^-1 {program!r}: C++ {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"%^2^-1 differential: {len(PCT_CORPUS)} programs match")
+    return failures == 0
+
+
+def _fuzz_pct(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz %^2^-1 with random byte text.
+
+    The language has no boolean generator, so the text generator's programs
+    are fuzzed instead: they are built per byte and always terminate, unlike
+    a hand-written ``t`` loop.
+    """
+    from esolangs.tools.generate import pct_squared_minus_one
+
+    binary = _build_pct()
+    if binary is None:
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
+        program = pct_squared_minus_one(text)
+        native = _run_pct_native(binary, program, b"")
+        if native is None:
+            print(f"%^2^-1 {text!r}: C++ reference did not terminate")
+            failures += 1
+            checked += 1
+            continue
+        py = _run_pct_python(program, b"")
+        checked += 1
+        if native != py:
+            failures += 1
+            print(f"%^2^-1 {text!r}: C++ {native!r} vs Python {py!r}")
+
+    print(
+        f"%^2^-1 fuzz: {checked} programs match"
+        if not failures
+        else f"%^2^-1 fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -1214,6 +1352,7 @@ def main() -> int:
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok
     ok = _verify_three_x() and ok
+    ok = _verify_pct() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
@@ -1221,6 +1360,7 @@ def main() -> int:
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok
         ok = _fuzz_three_x(rng, args.fuzz) and ok
+        ok = _fuzz_pct(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.
