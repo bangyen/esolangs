@@ -397,135 +397,167 @@ def nocomment(truth_table: str, n: int) -> str:
                     return cand
         return None
 
-    used = dict.fromkeys(range(k), 1)
-    for _ in range(80):
+    snapshot = (
+        commands[:],
+        {lid: sts[:] for lid, sts in leaf_sts.items()},
+        {nid: sts[:] for nid, sts in node_sts.items()},
+        {nid: [tests[nid][0], tests[nid][1]] for nid in tests},
+        dict(leaf_out),
+        node_regions[:],
+        relay_blocks[:],
+    )
+    def place(
+        gap: int,
+    ) -> tuple[dict[tuple[int, int], int], dict[object, int]]:
+        commands[:] = snapshot[0]
+        leaf_sts.update({lid: sts[:] for lid, sts in snapshot[1].items()})
+        node_sts.update({nid: sts[:] for nid, sts in snapshot[2].items()})
+        for nid in tests:
+            tests[nid] = [snapshot[3][nid][0], snapshot[3][nid][1]]
+        leaf_out.clear()
+        leaf_out.update(snapshot[4])
+        node_regions[:] = snapshot[5]
+        relay_blocks[:] = snapshot[6]
+        used = dict.fromkeys(range(k), 1)
+        for _ in range(80):
+            end = len(commands) - 1
+            moved = False
+            for lid in range(k):
+                last = leaf_sts[lid][-1]
+                if end - last - 1 > 254:
+                    h = used[lid]
+                    if h >= numd:
+                        raise ValueError(_byte_limit)
+                    used[lid] += 1
+                    d = d_of(lid, h)
+                    pos = safe_pos(last + gap, last + 1, last + 254)
+                    if pos is None:
+                        raise ValueError(_byte_limit)
+                    prev = d_of(lid, h - 1)
+                    mv = ["r"] * (d - prev) if d >= prev else ["l"] * (prev - d)
+                    cmds = [*mv, "n", "i", "s", "d", "f"]
+                    commands[pos:pos] = cmds
+                    body_s = pos + len(mv) + 2
+                    for sts in list(leaf_sts.values()) + list(node_sts.values()):
+                        for j in range(len(sts)):
+                            if sts[j] >= pos:
+                                sts[j] += len(cmds)
+                    leaf_sts[lid].append(body_s)
+                    for nid in tests:
+                        for j in range(2):
+                            if tests[nid][j] >= pos:
+                                tests[nid][j] += len(cmds)
+                    for lid2 in leaf_out:
+                        if leaf_out[lid2] >= pos:
+                            leaf_out[lid2] += len(cmds)
+                    for j in range(len(node_regions)):
+                        a, b = node_regions[j]
+                        node_regions[j] = (
+                            a + len(cmds) if a >= pos else a,
+                            b + len(cmds) if b >= pos else b,
+                        )
+                    for j in range(len(relay_blocks)):
+                        a, b = relay_blocks[j]
+                        relay_blocks[j] = (
+                            a + len(cmds) if a >= pos else a,
+                            b + len(cmds) if b >= pos else b,
+                        )
+                    moved = True
+            for nid in range(m):
+                st = tests[nid][0]
+                one = tests[nid][1]
+                last = node_sts[nid][-1] if node_sts[nid] else st
+                if one - last - 1 > 254:
+                    j = len(node_sts[nid])
+                    if j >= maxrelay:
+                        raise ValueError(_byte_limit)
+                    r = r_of(nid, j)
+                    pos = safe_pos(last + gap, last + 1, last + 254)
+                    if pos is None:
+                        raise ValueError(_byte_limit)
+                    bit = node_level[nid]
+                    mv = ["r"] * (r - bit) if r >= bit else ["l"] * (bit - r)
+                    back = ["l"] * (r - bit) if r >= bit else ["r"] * (bit - r)
+                    cmds = [*mv, "n", "i", *back, "s", "d", "f"]
+                    commands[pos:pos] = cmds
+                    body_s = pos + len(mv) + 2 + len(back)
+                    for sts in list(leaf_sts.values()) + list(node_sts.values()):
+                        for j2 in range(len(sts)):
+                            if sts[j2] >= pos:
+                                sts[j2] += len(cmds)
+                    node_sts[nid].append(body_s)
+                    for nid2 in tests:
+                        for j2 in range(2):
+                            if tests[nid2][j2] >= pos:
+                                tests[nid2][j2] += len(cmds)
+                    for lid in leaf_out:
+                        if leaf_out[lid] >= pos:
+                            leaf_out[lid] += len(cmds)
+                    for j2 in range(len(node_regions)):
+                        a, b = node_regions[j2]
+                        node_regions[j2] = (
+                            a + len(cmds) if a >= pos else a,
+                            b + len(cmds) if b >= pos else b,
+                        )
+                    for j2 in range(len(relay_blocks)):
+                        a, b = relay_blocks[j2]
+                        relay_blocks[j2] = (
+                            a + len(cmds) if a >= pos else a,
+                            b + len(cmds) if b >= pos else b,
+                        )
+                    relay_blocks.append((pos, pos + len(cmds)))
+                    moved = True
+            if not moved:
+                break
+
+        # Every skip value must fit a byte (<= 254 so the station's ``i`` never
+        # wraps).  A leaf chain hops from station to station toward the END; a node
+        # chain hops from the test through its relays to the one-subtree.
         end = len(commands) - 1
-        moved = False
-        for lid in range(k):
-            last = leaf_sts[lid][-1]
-            if end - last - 1 > 254:
-                h = used[lid]
-                if h >= numd:
-                    raise ValueError(_byte_limit)
-                used[lid] += 1
-                d = d_of(lid, h)
-                pos = safe_pos(last + 130, last + 1, last + 254)
-                if pos is None:
-                    raise ValueError(_byte_limit)
-                prev = d_of(lid, h - 1)
-                mv = ["r"] * (d - prev) if d >= prev else ["l"] * (prev - d)
-                cmds = [*mv, "n", "i", "s", "d", "f"]
-                commands[pos:pos] = cmds
-                body_s = pos + len(mv) + 2
-                for sts in list(leaf_sts.values()) + list(node_sts.values()):
-                    for j in range(len(sts)):
-                        if sts[j] >= pos:
-                            sts[j] += len(cmds)
-                leaf_sts[lid].append(body_s)
-                for nid in tests:
-                    for j in range(2):
-                        if tests[nid][j] >= pos:
-                            tests[nid][j] += len(cmds)
-                for lid2 in leaf_out:
-                    if leaf_out[lid2] >= pos:
-                        leaf_out[lid2] += len(cmds)
-                for j in range(len(node_regions)):
-                    a, b = node_regions[j]
-                    node_regions[j] = (
-                        a + len(cmds) if a >= pos else a,
-                        b + len(cmds) if b >= pos else b,
-                    )
-                for j in range(len(relay_blocks)):
-                    a, b = relay_blocks[j]
-                    relay_blocks[j] = (
-                        a + len(cmds) if a >= pos else a,
-                        b + len(cmds) if b >= pos else b,
-                    )
-                moved = True
-        for nid in range(m):
-            st = tests[nid][0]
-            one = tests[nid][1]
-            last = node_sts[nid][-1] if node_sts[nid] else st
-            if one - last - 1 > 254:
-                j = len(node_sts[nid])
-                if j >= maxrelay:
-                    raise ValueError(_byte_limit)
-                r = r_of(nid, j)
-                pos = safe_pos(last + 130, last + 1, last + 254)
-                if pos is None:
-                    raise ValueError(_byte_limit)
-                bit = node_level[nid]
-                mv = ["r"] * (r - bit) if r >= bit else ["l"] * (bit - r)
-                back = ["l"] * (r - bit) if r >= bit else ["r"] * (bit - r)
-                cmds = [*mv, "n", "i", *back, "s", "d", "f"]
-                commands[pos:pos] = cmds
-                body_s = pos + len(mv) + 2 + len(back)
-                for sts in list(leaf_sts.values()) + list(node_sts.values()):
-                    for j2 in range(len(sts)):
-                        if sts[j2] >= pos:
-                            sts[j2] += len(cmds)
-                node_sts[nid].append(body_s)
-                for nid2 in tests:
-                    for j2 in range(2):
-                        if tests[nid2][j2] >= pos:
-                            tests[nid2][j2] += len(cmds)
-                for lid in leaf_out:
-                    if leaf_out[lid] >= pos:
-                        leaf_out[lid] += len(cmds)
-                for j2 in range(len(node_regions)):
-                    a, b = node_regions[j2]
-                    node_regions[j2] = (
-                        a + len(cmds) if a >= pos else a,
-                        b + len(cmds) if b >= pos else b,
-                    )
-                for j2 in range(len(relay_blocks)):
-                    a, b = relay_blocks[j2]
-                    relay_blocks[j2] = (
-                        a + len(cmds) if a >= pos else a,
-                        b + len(cmds) if b >= pos else b,
-                    )
-                relay_blocks.append((pos, pos + len(cmds)))
-                moved = True
-        if not moved:
-            break
+        chain_skips: dict[tuple[int, int], int] = {}
 
-    # Every skip value must fit a byte (<= 254 so the station's ``i`` never
-    # wraps).  A leaf chain hops from station to station toward the END; a node
-    # chain hops from the test through its relays to the one-subtree.
-    end = len(commands) - 1
+        def sstart(lid: int, h: int) -> int:
+            prev = d_of(lid, h - 1) if h > 0 else result_cell
+            mvlen = abs(d_of(lid, h) - prev)
+            return leaf_sts[lid][h] - 2 - mvlen
+
+        for lid, sts in leaf_sts.items():
+            for h in range(len(sts)):
+                nxt = sstart(lid, h + 1) if h + 1 < len(sts) else end
+                chain_skips[(lid, h)] = nxt - sts[h] - 1
+        if any(not 0 <= v < 255 for v in chain_skips.values()):
+            raise ValueError(_byte_limit)
+
+        def rstart(nid: int, j: int) -> int:
+            bit = node_level[nid]
+            r = r_of(nid, j)
+            mvlen = abs(r - bit)
+            return node_sts[nid][j] - 2 - 2 * mvlen
+
+        zvals: dict[object, int] = {}
+        for nid in tests:
+            st, one = tests[nid]
+            if node_sts[nid]:
+                zvals[nid] = rstart(nid, 0) - st - 1
+                for j in range(len(node_sts[nid])):
+                    nxt = rstart(nid, j + 1) if j + 1 < len(node_sts[nid]) else one
+                    zvals[("r", nid, j)] = nxt - node_sts[nid][j] - 1
+            else:
+                zvals[nid] = one - st - 1
+        if any(not 0 < v < 255 for v in zvals.values()):
+            raise ValueError(_byte_limit)
+        return chain_skips, zvals
+
     chain_skips: dict[tuple[int, int], int] = {}
-
-    def sstart(lid: int, h: int) -> int:
-        prev = d_of(lid, h - 1) if h > 0 else result_cell
-        mvlen = abs(d_of(lid, h) - prev)
-        return leaf_sts[lid][h] - 2 - mvlen
-
-    for lid, sts in leaf_sts.items():
-        for h in range(len(sts)):
-            nxt = sstart(lid, h + 1) if h + 1 < len(sts) else end
-            chain_skips[(lid, h)] = nxt - sts[h] - 1
-    if any(not 0 <= v < 255 for v in chain_skips.values()):
-        raise ValueError(_byte_limit)
-
-    def rstart(nid: int, j: int) -> int:
-        bit = node_level[nid]
-        r = r_of(nid, j)
-        mvlen = abs(r - bit)
-        return node_sts[nid][j] - 2 - 2 * mvlen
-
     zvals: dict[object, int] = {}
-    for nid in tests:
-        st, one = tests[nid]
-        if node_sts[nid]:
-            zvals[nid] = rstart(nid, 0) - st - 1
-            for j in range(len(node_sts[nid])):
-                nxt = rstart(nid, j + 1) if j + 1 < len(node_sts[nid]) else one
-                zvals[("r", nid, j)] = nxt - node_sts[nid][j] - 1
-        else:
-            zvals[nid] = one - st - 1
-    if any(not 0 < v < 255 for v in zvals.values()):
+    for gap in (130, 110, 95, 80):
+        try:
+            chain_skips, zvals = place(gap)
+            break
+        except ValueError:
+            continue
+    else:
         raise ValueError(_byte_limit)
-
     # The setup length cancels out of every skip, so it can be emitted here
     # against the final tree layout.  The {Xi} placeholders all sit on cell 0;
     # the harness moves right once per bit, leaving the pointer on the last
