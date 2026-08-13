@@ -17,7 +17,8 @@ Semantics match the C++ cross-check (``extra/c++/basicfuck.cpp``):
 - an array access past the allocation reads or writes the following cells,
   matching the reference's flat tape (there is no out-of-bounds check);
 - ``,`` (read) stores the first byte of a line and raises
-  :class:`EOFError` when input runs out, where the reference stores -1.
+  :class:`EOFError` when input runs out, where the reference exits with
+  status 3.
 """
 
 import re

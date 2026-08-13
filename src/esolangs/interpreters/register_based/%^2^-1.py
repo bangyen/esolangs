@@ -11,7 +11,7 @@ reset to zero whenever it exceeds 3003 (before each command).
 Semantics match the C++ cross-check (``extra/c++/%^2^-1.cpp``):
 - ``e`` prints the low byte, and ``l`` prints the signed magnitude;
 - ``n`` raises :class:`EOFError` when input runs out, where the reference
-  stores -1;
+  exits with status 3;
 - ``t`` on a nonzero magnitude loops the program forever (the only loop).
 """
 

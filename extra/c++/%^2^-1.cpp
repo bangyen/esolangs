@@ -18,6 +18,8 @@
 #include <fstream>
 #include <iostream>
 
+constexpr int EXIT_INVALID_OP = 3;
+
 int main(int argc, char *argv[]) {
   std::ifstream file;
   bool out = false;
@@ -57,16 +59,21 @@ int main(int argc, char *argv[]) {
       std::cout << (char)acc;
       out = true;
       break;
-    case 'n':
+    case 'n': {
       if (out)
         std::cout << std::endl;
       std::cout << "Input: ";
       out = false;
 
-      acc = getchar();
+      int ch = getchar();
+      if (ch == EOF)
+        return EXIT_INVALID_OP;
+
+      acc = ch;
       while ((c = getchar()) != '\n' && c != EOF)
         ;
       break;
+    }
     case '\'':
       acc = 0;
       break;

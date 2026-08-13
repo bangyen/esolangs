@@ -32,8 +32,7 @@ Documented divergences from the C++ cross-check:
   takes the skip branch, so it always discards the next command.  The
   generator and the differential corpus never use it.
 - Reads at exhausted input raise :class:`EOFError` (the repo-wide
-  convention), where the reference would store -1 (``j``) or crash on
-  ``stoi`` of an empty token (``i``).
+  convention), where the reference exits with status 3.
 - ``i`` parses the whole input line as an integer with ``int()``, so each
   line must be a single integer (the reference tokenizes with ``>>``).
 - A ``t`` run that reaches the start of the program repeats a NUL in place

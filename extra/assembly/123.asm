@@ -89,9 +89,16 @@ _start:
 	int 80h
 	pop edx
 
+	test eax, eax
+	jz .eof
+
 	mov edi, [ecx]
 	mov esi, 128
 	jmp .parse
+.eof:
+	mov eax, 1
+	mov ebx, 3
+	int 80h
 .write:
 	mov [ecx], edi
 	push edx

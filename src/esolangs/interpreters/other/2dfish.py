@@ -34,7 +34,7 @@ cross-check at ``extra/c++/2dFish.cpp``:
 Documented divergences (the reference leaves these undefined or broken):
 
 - exhausted input raises :class:`EOFError` (repo-wide convention) instead of
-  the reference reading an empty line / leaving the accumulator unchanged;
+  the references exiting with status 3;
 - ``a`` in string mode with an empty string (which the C++ ``str[0]`` makes
   undefined) raises :class:`HaltError`;
 - ``a`` outside string mode writes the accumulator's low byte

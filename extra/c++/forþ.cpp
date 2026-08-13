@@ -72,7 +72,9 @@ int run(std::string &s, std::vector<int> &stack,
       out = false;
       std::string input;
       std::cout << "Input: ";
-      getline(std::cin, input);
+
+      if (!getline(std::cin, input))
+        return EXIT_INVALID_OP;
 
       for (char ch : input)
         push(ch);
