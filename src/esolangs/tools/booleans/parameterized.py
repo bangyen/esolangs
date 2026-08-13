@@ -226,7 +226,11 @@ def nocomment(truth_table: str, n: int) -> str:
     while never landing inside another leaf's code or a node test.  The
     ``l``/``r`` moves are emitted from each subtree's known start pointer (the
     parent's bit cell), and the setup length cancels out of the skips, so
-    every skip value depends only on the tree layout.
+    every skip value depends only on the tree layout.  The setup builds each
+    non-zero cell via the stack: ``n`` copies the previous cell's value and
+    ``f`` writes it into the next, so cells are written in ascending-value
+    order and only the deltas are incremented — the ``i`` runs shrink from the
+    sum of the values to their maximum.
 
     NoComment cells hold bytes, so every skip value must stay below 256; the
     generator is verified for ``n <= 3`` and raises :class:`ValueError`
@@ -445,6 +449,25 @@ def nocomment(truth_table: str, n: int) -> str:
     # against the final tree layout.  The {Xi} placeholders all sit on cell 0;
     # the harness moves right once per bit, leaving the pointer on the last
     # bit cell.
+    #
+    # Rather than incrementing every cell from zero (a long ``i`` run per
+    # cell), the nonzero cells are written in ascending-value order: ``n``
+    # copies the previous cell's value onto the stack, ``f`` pops it into the
+    # next cell, and only the delta is added with ``i``/``d``.  That reduces
+    # the increments from the sum of the values to their maximum.  The carry
+    # is stack-balanced (every ``n`` matched by an ``f``), and the unused D
+    # cells stay at zero untouched.
+    cells: list[tuple[int, int]] = [(result_cell, 48)]
+    for nid in sorted(tests):
+        st, one = tests[nid]
+        cells.append((zlen_base + nid, one - st - 1))
+    for lid in range(k):
+        for h in range(numd):
+            value = chain_skips.get((lid, h), 0)
+            if value:
+                cells.append((d_of(lid, h), value))
+    cells.sort(key=lambda cv: cv[1])
+
     setup: list[str] = ["{X" + str(i) + "}" for i in range(n)]
     setup_ptr = [n - 1]
 
@@ -456,15 +479,21 @@ def nocomment(truth_table: str, n: int) -> str:
             setup.append("l")
             setup_ptr[0] -= 1
 
-    setup_move(result_cell)
-    setup.extend(["i"] * 48)
-    for nid in sorted(tests):
-        setup_move(zlen_base + nid)
-        st, one = tests[nid]
-        setup.extend(["i"] * (one - st - 1))
-    for lid in range(k):
-        for h in range(numd):
-            setup_move(d_of(lid, h))
-            setup.extend(["i"] * chain_skips.get((lid, h), 0))
+    first_addr, first_value = cells[0]
+    setup_move(first_addr)
+    setup.extend(["i"] * first_value)
+    prev_value = first_value
+    for addr, value in cells[1:]:
+        setup.append("n")  # push the current cell's finalized value
+        setup_move(addr)
+        setup.append("f")  # write the carried value into this cell
+        diff = value - prev_value
+        if diff > 0:
+            setup.extend(["i"] * diff)
+        else:
+            setup.extend(["d"] * -diff)
+        prev_value = value
+    # the tree's first move starts from its start pointer, so park there
+    setup_move(dcell + k * numd - 1)
 
     return "".join(setup + commands)
