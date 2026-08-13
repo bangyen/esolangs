@@ -9,8 +9,11 @@
 //! `>`/`<` are a loop bracket pair: `>` jumps forward to the matching `<`
 //! when the accumulator is 0 or 1, and `<` jumps back to the matching `>`
 //! when it is not 0 nor 1.
-//! Error handling: popping an empty stack or an unmatched `<` panics (an
-//! invalid operation).  `i` re-prompts until it reads a non-blank line.
+//! Error handling: popping an empty stack, a swap with fewer than two
+//! elements, an `o` on an empty stack, an unmatched `<`, a `>` with no
+//! matching `<`, or an exhausted input exits with status 3 (an invalid
+//! operation, the cross-check convention; the Ruby and Python
+//! implementations agree).  `i` re-prompts until it reads a non-blank line.
 //!
 //! Invocation: `unsquare <program-file>`; program text from `argv[1]`.
 //! Input: the program file is `argv[1]`; `i` reads from stdin.
@@ -20,6 +23,19 @@ use std::char;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+use std::process;
+
+fn fail(message: &str) -> ! {
+    eprintln!("{message}");
+    process::exit(3);
+}
+
+fn pop_or_fail(stack: &mut Vec<i128>) -> i128 {
+    match stack.pop() {
+        Some(value) => value,
+        None => fail("empty stack"),
+    }
+}
 
 fn print<T: Display>(value: T) {
     print!("{}", value);
@@ -37,9 +53,12 @@ fn run(text: Vec<char>) {
         match text[ind] {
             'O' => stk.push(0),
             'I' => stk.push(1),
-            'A' => acc = stk.pop().expect("empty stack"),
+            'A' => acc = pop_or_fail(&mut stk),
             'S' => {
                 let n = stk.len();
+                if n < 2 {
+                    fail("swap needs two elements");
+                }
                 stk.swap(n - 1, n - 2);
             }
             '+' => acc += 2,
@@ -48,9 +67,12 @@ fn run(text: Vec<char>) {
             'P' => stk.push(acc),
             'o' => {
                 out = true;
-                let val = stk.last().expect("empty stack");
+                let val = match stk.last() {
+                    Some(value) => *value,
+                    None => fail("empty stack"),
+                };
 
-                if let Some(c) = char::from_u32(*val as u32) {
+                if let Some(c) = char::from_u32(val as u32) {
                     print(c);
                 } else {
                     print(val);
@@ -64,9 +86,15 @@ fn run(text: Vec<char>) {
                     out = false;
                 }
 
-                while val.trim() == "" {
+                loop {
+                    val.clear();
                     print("Input: ");
-                    io::stdin().read_line(&mut val).unwrap();
+                    if io::stdin().read_line(&mut val).unwrap() == 0 {
+                        fail("input exhausted");
+                    }
+                    if val.trim() != "" {
+                        break;
+                    }
                 }
 
                 stk.push(val.chars().next().unwrap() as i128);
@@ -78,6 +106,10 @@ fn run(text: Vec<char>) {
                     while num > 0 {
                         ind += 1;
 
+                        if ind >= text.len() {
+                            fail("unmatched >");
+                        }
+
                         match text[ind] {
                             '>' => num += 1,
                             '<' => num -= 1,
@@ -88,7 +120,13 @@ fn run(text: Vec<char>) {
                     jmp.push(ind - 1);
                 }
             }
-            '<' => ind = jmp.pop().expect("missing bracket"),
+            '<' => {
+                let target = match jmp.pop() {
+                    Some(value) => value,
+                    None => fail("unmatched <"),
+                };
+                ind = target;
+            }
             _ => (),
         }
 

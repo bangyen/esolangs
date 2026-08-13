@@ -30,10 +30,9 @@ Languages with both an in-package interpreter and a native cross-check:
   malformed, 3 = invalid operation).
 * **Unsquare** — ``stack_based/unsquare.py`` vs
   ``extra/rust/unsquare.rs``.  The Rust reference prints its ``Input: ``
-  prompts to stdout (stripped before comparing) and panics with exit code
-  101 on an invalid operation, which is normalized to the cross-check's 3.
-  The corpus is ASCII because the reference writes characters above 127 as
-  UTF-8 rather than bytes.
+  prompts to stdout, which are stripped before comparing; both agree on the
+  exit-code convention (3 = invalid operation) and write characters above
+  127 as UTF-8, so the Python output is encoded the same way.
 
 Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
 provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
@@ -876,8 +875,8 @@ def _fuzz_basicfuck(rng: random.Random, count: int) -> bool:
 # -- Unsquare corpus: every command plus the error categories -------------
 
 # (program, input).  Programs that read always provide enough input, since
-# the Rust reference spins on EOF.  The corpus is ASCII: the reference
-# writes characters above 127 as UTF-8 rather than bytes.
+# the references exit on exhausted input.  Characters above 127 are written
+# as UTF-8 by all three implementations.
 UNSQUARE_CORPUS = [
     ("Io", b""),  # push 1 and print it
     ("Oo", b""),  # push 0 and print it
@@ -887,6 +886,8 @@ UNSQUARE_CORPUS = [
     ("-Po", b""),  # -2 prints as a decimal value
     ("xxPo", b""),  # doubling from 0
     ("+" * 32 + "Po", b""),  # '@'
+    ("+" * 200 + "Po", b""),  # 200 -> 'è' (UTF-8, 2 bytes)
+    ("+" * 256 + "Po", b""),  # 256 -> 'Ā' (UTF-8, 2 bytes)
     ("OISo", b""),  # swap
     ("IPPP", b""),  # pushes without printing
     ("IOA", b""),  # pop into acc
@@ -897,11 +898,12 @@ UNSQUARE_CORPUS = [
     ("I>I<", b""),  # > skips when acc is 1
     ("++>Po-<", b""),  # countdown loop: prints 4 then 2
     ("iA>PoiA<", b"h\n\x00\n"),  # cat until a 0 byte
-    # invalid operations (exit 3): the reference panics with code 101
+    # invalid operations (exit 3)
     ("A", b""),  # empty-stack pop
     ("o", b""),  # o on an empty stack
     ("S", b""),  # swap with fewer than two
     ("<", b""),  # unmatched <
+    ("I<", b""),  # < with acc 0/1 and no pending >
     (">", b""),  # > with no matching <
 ]
 
@@ -912,8 +914,7 @@ def _run_unsquare_native(
     """Run ``program`` through the Rust cross-check; return (stdout, exit code).
 
     The reference prints its ``Input: `` prompts to stdout, which are
-    stripped, and panics with exit code 101 on an invalid operation, which
-    is normalized to the cross-check convention's 3.
+    stripped; invalid operations exit with status 3.
     """
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(program)
@@ -923,8 +924,7 @@ def _run_unsquare_native(
             [binary, path], capture_output=True, input=stdin, timeout=5
         )
         out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        code = 3 if proc.returncode == 101 else proc.returncode
-        return out, code
+        return out, proc.returncode
     except subprocess.TimeoutExpired:
         return None
     finally:
@@ -932,17 +932,21 @@ def _run_unsquare_native(
 
 
 def _run_unsquare_python(program: str, stdin: bytes) -> tuple[bytes, int]:
-    """Run ``program`` through the in-package interpreter."""
+    """Run ``program`` through the in-package interpreter.
+
+    The output is encoded as UTF-8 to match the references, which write
+    characters above 127 as UTF-8 rather than bytes.
+    """
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.stack_based.unsquare import run
 
-    io = ScriptedIO(stdin.decode("latin1"))
+    io = ScriptedIO(stdin.decode("utf-8"))
     try:
         run(program, io)
     except HaltError:
-        return io.getvalue().encode("latin1"), 3
-    return io.getvalue().encode("latin1"), 0
+        return io.getvalue().encode("utf-8"), 3
+    return io.getvalue().encode("utf-8"), 0
 
 
 def _verify_unsquare() -> bool:
