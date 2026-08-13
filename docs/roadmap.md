@@ -38,51 +38,6 @@ A grid-based ant language with conditional movement and unconditional painting
 has no I/O, so it can only be a self-contained interpreter (like the existing
 C++/Lean extras) without a generator.
 
-## Python interpreters for the extra/ languages (in priority order)
-
-Nine languages already have a native (C++/Ruby/Rust/assembly) implementation in
-`extra/` and a generator that is round-trip verified against it, but no Python
-interpreter.  An in-package interpreter completes the standard workflow
-(generator -> interpreter -> round-trip test in `tests/`) and makes
-`esolangs run <language>` work.  The remaining `extra/` languages (Kak, Trash,
-Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA)
-have no generator (narrow output classes / no file-based I/O) and are ruled
-out here.
-
-### 123 (high priority)
-An x86/RISC-V assembly reference (`esolangs.org/wiki/123`).  Its generator is
-already differentially verified across the x86 and RISC-V interpreters and
-`scripts/riscv_sim.py`, which implements the bytecode fetch/execute loop in
-Python — a natural starting point for the interpreter.
-
-### Forþ (high priority)
-A C++ reference (`esolangs.org/wiki/For%C3%BE`); both its text and boolean
-generators are verified against it.
-
-### Basicfuck (medium priority)
-A C++ reference (`esolangs.org/wiki/Basicfuck`); text and boolean generators
-verified.
-
-### 3x (medium priority)
-A Ruby reference (`esolangs.org/wiki/3x`); text and boolean generators
-verified.
-
-### Unsquare (medium priority)
-Ruby and Rust references (`esolangs.org/wiki/Unsquare`); text and boolean
-generators verified, plus x86 and C compilers.
-
-### %^2^-1 (medium priority)
-A C++ reference (`esolangs.org/wiki/%25%5E2%5E-1`); text generator verified.
-
-### 2dFish (medium priority)
-A C++ reference (`esolangs.org/wiki/2dFish`); text generator verified.
-
-### Painfuck (medium priority)
-A C++ reference (`esolangs.org/wiki/Painfuck`); text generator verified.
-
-### bit~ (low priority)
-A Ruby reference (`esolangs.org/wiki/Bit~`); text generator verified.
-
 ## Boolean generators (in priority order)
 
 ### Minifuck partial boolean generator (low priority)
