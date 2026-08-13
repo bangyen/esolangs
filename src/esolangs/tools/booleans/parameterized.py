@@ -204,7 +204,6 @@ def back(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
-
 _byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"
 
 
