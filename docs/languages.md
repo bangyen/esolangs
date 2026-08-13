@@ -14,7 +14,7 @@ into a template) rather than the program reading input.
 | Language | Text generator | Python | Native | Boolean | Compiler | Examples |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
 | %^2^-1 | yes |  | yes |  |  |  |
-| 123 | yes |  | yes |  |  |  |
+| 123 | yes | yes | yes |  |  | hello |
 | 2 Bits, 1 Byte |  |  | yes |  |  |  |
 | 2dFish | yes |  | yes |  |  |  |
 | 3x | yes |  | yes | yes |  |  |

@@ -128,6 +128,7 @@ Languages that use registers to store and manipulate data.
 
 Languages that operate on a tape (similar to Turing machines).
 
+- [123](https://esolangs.org/wiki/123)
 - [6-5](https://esolangs.org/wiki/6-5)
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
 - [brainfuck](https://esolangs.org/wiki/brainfuck)

@@ -46,7 +46,17 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
     return buffer.getvalue()
 
 
+_run_123 = importlib.import_module("esolangs.interpreters.tape_based.123").run
+
+
 class TestGeneratorRoundTrips:
+    def test_123(self) -> None:
+        """Each character is XOR-encoded into bits and marched to the output."""
+        hi = gen._123("Hi")  # noqa: SLF001 - public generator
+        hello = gen._123("Hello, World!")  # noqa: SLF001 - public generator
+        assert roundtrip(_run_123, hi) == "Hi"
+        assert roundtrip(_run_123, hello) == "Hello, World!"
+
     def test_between(self) -> None:
         """p prints the whole text; apostrophes are doubled inside literals."""
         assert roundtrip(between_run, gen.between("Hi").splitlines()) == "Hi"
