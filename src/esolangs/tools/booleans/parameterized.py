@@ -224,7 +224,7 @@ def nocomment(truth_table: str, n: int) -> str:
     and ``s``-skips to the one-subtree when the bit is one (falling through to
     the zero-subtree otherwise).  A leaf ``o``-prints the table bit added to
     the shared result cell (pre-set to 48), then walks a per-leaf chain of
-    ``n i s d f`` stations that ``s``-skip over the other leaves' code to the
+    ``n s`` stations that ``s``-skip over the other leaves' code to the
     trailing ``c``.  When a subtree is too long for one byte-sized jump, the
     node test instead skips to a chain of relay stations (each an ``n i s d f``
     that returns to the bit cell) spread through the reserved gaps, so a
@@ -237,7 +237,7 @@ def nocomment(truth_table: str, n: int) -> str:
     previous cell's value and ``f`` writes it into the next, so cells are
     written in ascending-value order and only the deltas are incremented.
 
-    NoComment cells hold bytes, so every skip value must stay below 256; the
+    NoComment cells hold bytes, so every skip value must fit a byte; the
     generator covers every table up to three inputs and any four-input table
     whose skip chains fit the byte limit, raising :class:`ValueError`
     otherwise.
@@ -312,11 +312,8 @@ def nocomment(truth_table: str, n: int) -> str:
         ptr[0] = result_cell
         move(d)
         commands.append("n")
-        commands.append("i")
         leaf_sts[lid].append(len(commands))
         commands.append("s")
-        commands.append("d")
-        commands.append("f")
         leaf_out[lid] = out_start
 
     def tree_emit(node: _Node, start: int) -> None:
@@ -351,7 +348,7 @@ def nocomment(truth_table: str, n: int) -> str:
     # so their content is never executed; stations are later placed inside.
     pad = 16
     for lid in sorted(range(k), reverse=True):
-        pos = leaf_sts[lid][0] + 3
+        pos = leaf_sts[lid][0] + 1
         commands[pos:pos] = ["c"] * pad
         for sts in list(leaf_sts.values()) + list(node_sts.values()):
             for j in range(len(sts)):
@@ -376,10 +373,10 @@ def nocomment(truth_table: str, n: int) -> str:
     def blocked_now() -> list[tuple[int, int]]:
         blocks = []
         for lid in range(k):
-            blocks.append((leaf_out[lid], leaf_sts[lid][0] + 3))
+            blocks.append((leaf_out[lid], leaf_sts[lid][0] + 1))
             for h in range(1, len(leaf_sts[lid])):
                 s = leaf_sts[lid][h]
-                blocks.append((s - 3, s + 2))
+                blocks.append((s - 2, s + 1))
         blocks += relay_blocks
         blocks += node_regions
         return blocks
@@ -424,20 +421,20 @@ def nocomment(truth_table: str, n: int) -> str:
             moved = False
             for lid in range(k):
                 last = leaf_sts[lid][-1]
-                if end - last - 1 > 254:
+                if end - last - 1 > 255:
                     h = used[lid]
                     if h >= numd:
                         raise ValueError(_byte_limit)
                     used[lid] += 1
                     d = d_of(lid, h)
-                    pos = safe_pos(last + gap, last + 1, last + 254)
+                    pos = safe_pos(last + gap, last + 1, last + 255)
                     if pos is None:
                         raise ValueError(_byte_limit)
                     prev = d_of(lid, h - 1)
                     mv = ["r"] * (d - prev) if d >= prev else ["l"] * (prev - d)
-                    cmds = [*mv, "n", "i", "s", "d", "f"]
+                    cmds = [*mv, "n", "s"]
                     commands[pos:pos] = cmds
-                    body_s = pos + len(mv) + 2
+                    body_s = pos + len(mv) + 1
                     for sts in list(leaf_sts.values()) + list(node_sts.values()):
                         for j in range(len(sts)):
                             if sts[j] >= pos:
@@ -467,20 +464,20 @@ def nocomment(truth_table: str, n: int) -> str:
                 st = tests[nid][0]
                 one = tests[nid][1]
                 last = node_sts[nid][-1] if node_sts[nid] else st
-                if one - last - 1 > 254:
+                if one - last - 1 > 255:
                     j = len(node_sts[nid])
                     if j >= maxrelay:
                         raise ValueError(_byte_limit)
                     r = r_of(nid, j)
-                    pos = safe_pos(last + gap, last + 1, last + 254)
+                    pos = safe_pos(last + gap, last + 1, last + 255)
                     if pos is None:
                         raise ValueError(_byte_limit)
                     bit = node_level[nid]
                     mv = ["r"] * (r - bit) if r >= bit else ["l"] * (bit - r)
                     back = ["l"] * (r - bit) if r >= bit else ["r"] * (bit - r)
-                    cmds = [*mv, "n", "i", *back, "s", "d", "f"]
+                    cmds = [*mv, "n", *back, "s"]
                     commands[pos:pos] = cmds
-                    body_s = pos + len(mv) + 2 + len(back)
+                    body_s = pos + len(mv) + 1 + len(back)
                     for sts in list(leaf_sts.values()) + list(node_sts.values()):
                         for j2 in range(len(sts)):
                             if sts[j2] >= pos:
@@ -519,20 +516,20 @@ def nocomment(truth_table: str, n: int) -> str:
         def sstart(lid: int, h: int) -> int:
             prev = d_of(lid, h - 1) if h > 0 else result_cell
             mvlen = abs(d_of(lid, h) - prev)
-            return leaf_sts[lid][h] - 2 - mvlen
+            return leaf_sts[lid][h] - 1 - mvlen
 
         for lid, sts in leaf_sts.items():
             for h in range(len(sts)):
                 nxt = sstart(lid, h + 1) if h + 1 < len(sts) else end
                 chain_skips[(lid, h)] = nxt - sts[h] - 1
-        if any(not 0 <= v < 255 for v in chain_skips.values()):
+        if any(not 0 <= v < 256 for v in chain_skips.values()):
             raise ValueError(_byte_limit)
 
         def rstart(nid: int, j: int) -> int:
             bit = node_level[nid]
             r = r_of(nid, j)
             mvlen = abs(r - bit)
-            return node_sts[nid][j] - 2 - 2 * mvlen
+            return node_sts[nid][j] - 1 - 2 * mvlen
 
         zvals: dict[object, int] = {}
         for nid in tests:
@@ -544,7 +541,7 @@ def nocomment(truth_table: str, n: int) -> str:
                     zvals[("r", nid, j)] = nxt - node_sts[nid][j] - 1
             else:
                 zvals[nid] = one - st - 1
-        if any(not 0 < v < 255 for v in zvals.values()):
+        if any(not 0 < v < 256 for v in zvals.values()):
             raise ValueError(_byte_limit)
         return chain_skips, zvals
 
