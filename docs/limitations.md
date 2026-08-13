@@ -142,12 +142,14 @@ and `SPRINT` moves the pointer by `curr[acc]`, so a bit can index a cell.
 
 The old `LEAPFROG`-dispatch barrier (forward targets need negative cells) is
 real but moot: the promising path is arithmetic plus pointer selection, not
-control flow.  The open problem is the n-bit case: the 48 base that makes
-2-bit XOR work is consumed by the second read, so a third read cancels it —
-arbitrary functions need each bit in its own array (via `SPRINT`/`EXCRETE`
-plumbing) or a `SPRINT` pointer-selection tree over constant 48/49 leaves,
-both still unsolved.  A verified generator remains a multi-session project;
-the 1-bit and 2-bit pieces are proven.
+control flow.  The open problem is the n-bit case, and a `SPRINT`
+pointer-selection tree hits a concrete blocker: `ACCEPT` unconditionally
+appends the normalized bit to `lst[0]`, consuming that bit needs `ptr == 0`,
+but routing `SPRINT`s move the pointer to a node — so the bit cannot be both
+read and routed without a way to return the pointer to 0, and the per-bit
+"move it to its own array" gadget needs the very pointer routing it is trying
+to build.  A verified generator remains a multi-session project; the 1-bit
+and 2-bit pieces are proven.
 
 ## Dotlang (not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line
