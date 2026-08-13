@@ -109,7 +109,7 @@ LANGUAGES: dict[str, Language] = {
     "Temporary": Language("Temporary", _generate.temporary, "stack_based.temporary"),
     "3x": Language("3x", _generate.three_x),
     "Taglate": Language("Taglate", _generate.taglate, "other.taglate", split=True),
-    "Unsquare": Language("Unsquare", _generate.unsquare),
+    "Unsquare": Language("Unsquare", _generate.unsquare, "stack_based.unsquare"),
     "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", split=True),
     "ZTOALC": Language("ZTOALC", _generate.ztoalc, "other.ztoalc", split=True),
 }

@@ -67,7 +67,7 @@ into a template) rather than the program reading input.
 | Taglate | yes | yes |  | yes |  | hello |
 | Temporary | yes | yes |  |  |  | hello |
 | Trash |  |  | yes |  |  |  |
-| Unsquare | yes |  | yes | yes | yes |  |
+| Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
 | ZTOALC | yes | yes |  |  |  | hello |
 | bit~ | yes |  | yes |  |  |  |
