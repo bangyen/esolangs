@@ -42,7 +42,7 @@ into a template) rather than the program reading input.
 | EXCON | yes | yes | yes |  | yes | hello |
 | Eval | yes | yes |  |  |  | hello |
 | Factor | yes | yes |  |  |  | hello truth-machine |
-| Forþ | yes |  | yes | yes |  |  |
+| Forþ | yes | yes | yes | yes |  | hello |
 | Home Row | yes |  |  |  | yes |  |
 | Kak |  |  | yes |  |  |  |
 | Keys |  | yes |  |  |  |  |

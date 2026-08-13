@@ -150,6 +150,7 @@ Languages that use a stack for data manipulation.
 
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [Eval](https://esolangs.org/wiki/Eval)
+- [Forþ](https://esolangs.org/wiki/Forþ)
 - [Modulous](https://esolangs.org/wiki/Modulous)
 - [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
 

@@ -19,10 +19,14 @@ Languages with both an in-package interpreter and a native cross-check:
   via ``x86_elf_runner`` and must agree with the Python interpreter on the
   full corpus; both error on non-commands, stack underflow, and out-of-range
   jumps.
+* **Forþ** — ``stack_based/forth.py`` vs ``extra/c++/forþ.cpp``.  The C++
+  reference writes its ``Input: `` prompt to stdout (the Python side routes
+  it through the IO layer), which is stripped before comparing; both agree
+  on the exit-code convention (3 = invalid operation).
 
-Called from CI's ``extra-languages`` and ``rust`` jobs (which provide
-nasm+unicorn and cargo) and from ``verify.py`` locally.  References whose
-toolchain is missing are skipped, not failed.
+Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
+provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
+References whose toolchain is missing are skipped, not failed.
 
 Usage:
     PYTHONPATH=src python scripts/verify_differential.py
@@ -42,6 +46,22 @@ from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
 RUST_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "laserfuck"
+FORTH_CXX = ROOT / "extra" / "c++" / "forþ.cpp"
+FORTH_BIN = Path("/tmp") / "verify-forþ"
+
+
+def _build_forth() -> str | None:
+    """Compile the Forþ C++ cross-check (once); None if g++ is missing."""
+    if shutil.which("g++") is None:
+        print("[skip] Forþ differential: g++ not found")
+        return None
+    if FORTH_BIN.exists():
+        return str(FORTH_BIN)
+    rv = subprocess.run(
+        ["g++", "-std=c++11", str(FORTH_CXX), "-o", str(FORTH_BIN)],
+        capture_output=True,
+    )
+    return str(FORTH_BIN) if rv.returncode == 0 else None
 
 
 # -- LaserFuck corpus: mirrors, conditionals, tape ops, direction -------
@@ -507,6 +527,151 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     return failures == 0
 
 
+# -- Forþ corpus: every command plus the error categories ------------------
+
+# (program, input).  Programs that `,` always provide enough input, since
+# Python's EOFError has no C++ equivalent.
+FORTH_CORPUS = [
+    ("", b""),  # empty program
+    ("5", b""),  # nothing printed
+    ("65.", b""),  # digits push and . prints
+    ("A.", b""),  # hex letters push
+    ("5:..", b""),  # duplicate
+    ("23+.", b""),  # addition
+    ("95-.", b""),  # subtraction
+    ("28*.", b""),  # multiplication
+    ("84/.", b""),  # division
+    ("85%.", b""),  # remainder
+    ("0~.", b""),  # complement
+    ("09/~.", b""),  # truncating division over negatives
+    ("65v..", b""),  # swap
+    ("123o...", b""),  # reverse
+    ("123c...", b""),  # rotate top 3
+    ("1(F4*5+.)", b""),  # branch on nonzero
+    ("0(F4*5+.)", b""),  # branch on zero
+    ("0F7*0+F4*C+[.]", b""),  # [.] loop over the 0 seed
+    ("1{65.}1;", b""),  # store and call
+    ("1{/}1;", b""),  # nested underflow is discarded (exit 0)
+    ("1{.};", b""),  # nested empty pop is fatal (exit 3)
+    (",..", b"hi"),  # read pushes the rightmost byte on top
+    (",68*-.", b"0"),  # read and normalize a bit
+    ("12c", b""),  # c with 2 elements: exit 3
+    ("50/", b""),  # division by zero: exit 3
+    ("50%", b""),  # modulo by zero: exit 3
+    ("9/", b""),  # binary op with 1 element: exit 3
+    ("a5.", b""),  # unknown char with 1 element: exit 3
+    ("(5", b""),  # unterminated bracket: exit 3
+    ("[", b""),  # unterminated bracket: exit 3
+    ("{5", b""),  # unterminated bracket: exit 3
+]
+
+
+def _run_forth_native(
+    binary: str, program: str, stdin: bytes
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through the C++ cross-check; return (stdout, exit code).
+
+    The C++ writes its ``Input: `` prompt to stdout, which is stripped (the
+    Python side routes the prompt through the IO layer instead).  Returns
+    None if the reference does not terminate within the timeout.
+    """
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            [binary, path], capture_output=True, input=stdin, timeout=5
+        )
+        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
+        return out, proc.returncode
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _run_forth_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+    """Run ``program`` through the in-package interpreter."""
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.forth import run
+
+    io = ScriptedIO(stdin.decode("latin1"))
+    try:
+        run(program, io)
+    except HaltError:
+        return io.getvalue().encode("latin1"), 3
+    return io.getvalue().encode("latin1"), 0
+
+
+def _verify_forth() -> bool:
+    """Compare the Python Forþ interpreter against the C++ cross-check."""
+    binary = _build_forth()
+    if binary is None:
+        return True
+
+    failures = 0
+    for program, stdin in FORTH_CORPUS:
+        native = _run_forth_native(binary, program, stdin)
+        if native is None:
+            print(f"Forþ {program!r}: C++ reference did not terminate")
+            failures += 1
+            continue
+        py = _run_forth_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"Forþ {program!r}: C++ {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"Forþ differential: {len(FORTH_CORPUS)} programs match")
+    return failures == 0
+
+
+def _fuzz_forth(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz Forþ with random truth tables.
+
+    The boolean generator emits terminating decision-tree programs that read
+    one bit per line and print the matching entry.  Random instruction
+    programs would frequently hang the C++ reference, which has no loop
+    bound, so they are not fuzzed.
+    """
+    from esolangs.tools import boolean
+
+    binary = _build_forth()
+    if binary is None:
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        n = rng.randint(1, 4)
+        table = "".join(rng.choice("01") for _ in range(2**n))
+        program = boolean.forth(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            stdin = ("\n".join(map(str, bits)) + "\n").encode()
+            native = _run_forth_native(binary, program, stdin)
+            if native is None:
+                print(f"Forþ boolean {table!r}: C++ reference did not terminate")
+                failures += 1
+                checked += 1
+                continue
+            py = _run_forth_python(program, stdin)
+            checked += 1
+            if native != py:
+                failures += 1
+                print(
+                    f"Forþ boolean {table!r} combo {bits}: "
+                    f"C++ {native!r} vs Python {py!r}"
+                )
+
+    print(
+        f"Forþ fuzz: {checked} checks match"
+        if not failures
+        else f"Forþ fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -561,9 +726,11 @@ def main() -> int:
 
     ok = _verify_laserfuck()
     ok = _verify_nocomment() and ok
+    ok = _verify_forth() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
+        ok = _fuzz_forth(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.
