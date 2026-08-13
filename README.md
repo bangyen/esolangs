@@ -289,21 +289,15 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 - [huf](https://esolangs.org/wiki/huf) -> [brainfuck](https://esolangs.org/wiki/Brainfuck): huf's `num`/`mul` live in cells 0 and 1; `!` multiplies by copying `num` to a temp cell that each loop iteration adds to `num` and refreshes from a running accumulator.
 
 ```bash
-esolangs transpile BF "ASCII art" program.bf    # print the art
-esolangs transpile "ASCII art" BF program.txt   # print the brainfuck
-esolangs transpile BF CircleFuck program.bf     # print the CircleFuck
-esolangs transpile NoComment BF program.nocom   # print the brainfuck
-esolangs transpile BFStack BF program.bstk      # print the brainfuck
-esolangs transpile BIO BF program.bio           # print the brainfuck
-esolangs transpile huf BF program.huf           # print the brainfuck
+esolangs transpile BF "ASCII art" program.bf    # rewrite a program into another esolang
+esolangs transpile "ASCII art" BF program.txt   # and back again
+esolangs transpile BF CircleFuck program.bf     # auto-sized data region
 ```
 
 ```python
-art = esolangs.transpile("BF", "ASCII art", program)          # or via the API
+art = esolangs.transpile("BF", "ASCII art", program)   # or via the API
 program = esolangs.transpile("ASCII art", "BF", art)
-circlefuck = esolangs.transpile("BF", "CircleFuck", program)  # auto-sized
-circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)
-bf_program = esolangs.transpile("NoComment", "BF", program)
+circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)  # explicit size
 ```
 
 ## Tools
@@ -315,24 +309,17 @@ Utility programs that work with the esoteric languages.
 The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import ascii_art, between, bfstack, brainif, circlefuck, dig, laserfuck, modulous, nevermind, polynomial, qoibl, six_five, sophie, taglate
+from esolangs.tools.boolean import between, circlefuck_byte, dig, laserfuck, polynomial, taglate
 
 dig("0110", 2)            # 2-input XOR in Dig
-sophie("0110", 2)         # the same truth table in Sophie
-between("0110", 2)        # and in Between
-modulous("0110", 2)       # and in Modulous
-brainif("0110", 2)        # and in BrainIf
-nevermind("0110", 2)      # and in Nevermind
-circlefuck("0110", 2)     # and in CircleFuck
-circlefuck_byte(table)    # arbitrary byte-valued functions
-ascii_art("0110", 2)      # and in ASCII art
-six_five("0110", 2)       # and in 6-5
-qoibl("0110", 2)          # and in Qoibl
-polynomial("0110", 2)     # and in Polynomial (up to n = 4)
+between("0110", 2)        # the same truth table in Between
+polynomial("0110", 2)     # in Polynomial (up to n = 4)
 taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
-bfstack("0110", 2)        # and in BFStack
 laserfuck("0110", 2)      # and in LaserFuck (random initial heading)
+circlefuck_byte(table)    # arbitrary byte-valued functions
 ```
+
+Most languages in the suite have a matching generator; the rest differ only in the function name.
 
 ### Program Generator
 
