@@ -847,4 +847,3 @@ theorem circle_correct (t : List Char) (ht : ∀ c ∈ t, c.toNat < 256) :
   have hresult := h (circleProgAux 0 [] t) "" hcells hlenc
   simpa using hresult
 end CircleFuckCorrect
-

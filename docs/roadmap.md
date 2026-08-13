@@ -74,10 +74,10 @@ instruction that occupies it, and the `% 256` shortest run must land each cell
 on its target.
 
 ### Lean interpreter equivalence (medium priority)
-Prove the ported Lean interpreters match their Python references, starting
-with `bfpda`'s `find` bracket matching (`Esolangs/bfpda.lean`) — that the
-iterator walk terminates and lands on the matching bracket — and EXCON's
-output semantics.  Lifts the "faithful port" README claim into a proof.
+Prove the ported Lean interpreters match their Python references.  BF-PDA's
+`find` bracket matching is done (`extra/lean/esolangs/Esolangs/BfpdaCorrect.lean`:
+the depth walk is correct for balanced programs, `match_forward`).  Remaining:
+EXCON's output semantics and the other ported interpreters.
 
 ### `_bf_set` multiply loop (low priority)
 A Hoare-style invariant for `+a[>+b<-]>+r.` (`tools/generators/tape.py::_bf_set`):

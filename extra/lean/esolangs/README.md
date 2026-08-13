@@ -81,6 +81,25 @@ The main theorem `circle_correct` states that for every `List Char` text
 whose codes are below 256, the output of `runInstructions` on the generated
 program is exactly `String.ofList t`.
 
+## BF-PDA bracket matching
+
+A Lean 4 + mathlib proof (`Esolangs/BfpdaCorrect.lean`) of the BF-PDA
+interpreter's `find` bracket matching (`Esolangs/bfpda.lean`): the walk that
+counts bracket depth (`[` adds 1, `]` subtracts 1, stopping at 0) is correct
+for balanced programs.  The depth walk is formalised purely over `List Char`
+(what `find`'s recursion over the string iterator does, character by
+character), with a `Balanced` grammar that admits non-bracket characters
+interspersed like real BF-PDA programs.
+
+The main theorem `match_forward` states that for a balanced `[ l ]` block,
+walking from the opening bracket the depth returns to zero *exactly* at the
+matching closing bracket — it is strictly positive at every position in
+between (so the walk never stops early) and reaches zero at the `]` itself
+(so the walk stops there, within the program).  The interpreter's bracket
+handling inherits a quirk from the Lean 3 original — `find` always returns
+the position after the bracket itself — so the certified property is the
+matching logic `find` computes, not the jump it returns.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
