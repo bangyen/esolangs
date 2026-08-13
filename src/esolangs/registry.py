@@ -43,7 +43,9 @@ LANGUAGES: dict[str, Language] = {
     ),
     "2dFish": Language("2dFish", _generate.two_d_fish),
     "6-5": Language("6-5", _generate.six_five, "tape_based.6-5"),
-    "%^2^-1": Language("%^2^-1", _generate.pct_squared_minus_one),
+    "%^2^-1": Language(
+        "%^2^-1", _generate.pct_squared_minus_one, "register_based.%^2^-1"
+    ),
     "ASCII art": Language("ASCII art", _generate.ascii_art, "tape_based.ascii-art"),
     "ArrowQueue": Language("ArrowQueue", interpreter="other.arrowqueue", split=True),
     "Back": Language("Back", interpreter="tape_based.back", split=True),

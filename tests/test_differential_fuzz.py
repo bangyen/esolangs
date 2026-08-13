@@ -110,3 +110,15 @@ class TestDivergenceDetection:
             verify_differential, "_run_three_x_native", side_effect=tampered
         ):
             assert not verify_differential._fuzz_three_x(rng, 20)  # noqa: SLF001
+
+    @pytest.mark.skipif(shutil.which("g++") is None, reason="g++ not installed")
+    def test_pct_catches_divergence(self, rng) -> None:
+        """A wrong output on the C++ side is reported as a failure."""
+        real_run = verify_differential._run_pct_native  # noqa: SLF001
+
+        def tampered(binary, program, stdin):
+            out, code = real_run(binary, program, stdin)
+            return out + b"!", code
+
+        with patch.object(verify_differential, "_run_pct_native", side_effect=tampered):
+            assert not verify_differential._fuzz_pct(rng, 20)  # noqa: SLF001

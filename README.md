@@ -110,6 +110,7 @@ art = esolangs.transpile("BF", "ASCII art", program)   # rewrite between languag
 
 Languages that use registers to store and manipulate data.
 
+- [%^2^-1](https://esolangs.org/wiki/%^2^-1)
 - [BIO](https://esolangs.org/wiki/BIO)
 - [DSDLAI](https://esolangs.org/wiki/DSDLAI)
 - [Dig](https://esolangs.org/wiki/Dig)

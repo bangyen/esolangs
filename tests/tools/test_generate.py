@@ -51,6 +51,7 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
 
 
 _run_123 = importlib.import_module("esolangs.interpreters.tape_based.123").run
+_run_pct = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
 
 
 class TestGeneratorRoundTrips:
@@ -319,6 +320,11 @@ class TestGeneratorRoundTrips:
         assert (
             gen.pct_squared_minus_one("H")
             == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+        )
+        assert roundtrip(_run_pct, gen.pct_squared_minus_one("Hi")) == "Hi"
+        assert (
+            roundtrip(_run_pct, gen.pct_squared_minus_one("Hello, World!"))
+            == "Hello, World!"
         )
 
     def test_pct_path_formula(self) -> None:
