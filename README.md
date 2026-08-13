@@ -213,10 +213,6 @@ operation.
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 
-### R Implementations
-
-- [EXCON](https://esolangs.org/wiki/EXCON)
-
 ### Ruby Implementations
 
 - [3x](https://esolangs.org/wiki/3x)

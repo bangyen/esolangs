@@ -2,23 +2,22 @@
 
 Forþ, Painfuck, 2dFish, %^2^-1, and Basicfuck have C++ references in
 ``extra/c++``, LaserFuck and Unsquare have Rust references in ``extra/rust``,
-EXCON has an R reference in ``extra/r``, and Unsquare, bit~, and 3x have
-Ruby references in ``extra/ruby``.  This script builds whatever
-references it can (g++ for C++, cargo for Rust) and round-trips each
-language's generator: a generated program must reproduce its text when run
-through the reference implementation.  Dimensional moved to its in-package
-v3.0 interpreter (``esolangs.interpreters.tape_based.dimensional``) and is
-verified by unit tests instead.
+and Unsquare, bit~, and 3x have Ruby references in ``extra/ruby``.  This
+script builds whatever references it can (g++ for C++, cargo for Rust) and
+round-trips each language's generator: a generated program must reproduce
+its text when run through the reference implementation.  Dimensional moved
+to its in-package v3.0 interpreter (``esolangs.interpreters.tape_based.dimensional``)
+and is verified by unit tests instead.
 
 It is called from CI's ``cxx``, ``rust``, and ``extra-languages`` jobs (which
-provide g++, cargo, and R/Ruby respectively) and from ``verify.py`` locally.
+provide g++, cargo, and Ruby respectively) and from ``verify.py`` locally.
 References whose toolchain is missing are skipped, not failed.
 
 Usage:
     PYTHONPATH=src python scripts/verify_extra_generators.py
 
 Requires: g++ (for the C++ references), cargo (for laserfuck/unsquare),
-Rscript (for EXCON), and/or ruby (for unsquare, bit~, and 3x).
+and/or ruby (for unsquare, bit~, and 3x).
 """
 
 import shutil
@@ -34,7 +33,6 @@ from esolangs.tools.booleans import other as other_bools
 
 ROOT = Path(__file__).parents[1]
 EXTRA_CXX = ROOT / "extra" / "c++"
-EXTRA_R = ROOT / "extra" / "r"
 EXTRA_RUBY = ROOT / "extra" / "ruby"
 RUST_MANIFEST = ROOT / "extra" / "rust" / "Cargo.toml"
 RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
@@ -95,13 +93,6 @@ def _build_rust() -> bool:
     return rv.returncode == 0
 
 
-def _r_reference() -> list[str] | None:
-    """Return the R command prefix for EXCON, or None if Rscript is missing."""
-    if shutil.which("Rscript") is None:
-        return None
-    return ["Rscript", str(EXTRA_R / "excon.r")]
-
-
 def _ruby_reference(name: str) -> list[str] | None:
     """Return the Ruby command prefix for ``name``, or None if ruby is missing."""
     if shutil.which("ruby") is None:
@@ -133,7 +124,6 @@ def main() -> int:
         ("Unsquare", gen.unsquare, _ruby_reference("unsquare.rb")),
         ("bit~", gen.bit_tilde, _ruby_reference("bit.rb")),
         ("3x", gen.three_x, _ruby_reference("3x.rb")),
-        ("EXCON", gen.excon, _r_reference()),
     ]
 
     for name, generator, cmd in references:
