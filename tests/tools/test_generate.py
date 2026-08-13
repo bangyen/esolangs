@@ -29,6 +29,7 @@ from esolangs.interpreters.stack_based.temporary import run as temporary_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
+from esolangs.interpreters.tape_based.factor import run as factor_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
@@ -64,6 +65,11 @@ class TestGeneratorRoundTrips:
 
     def test_excon(self) -> None:
         assert roundtrip(excon_run, gen.excon("Hi")) == "Hi"
+
+    def test_factor(self) -> None:
+        """The integer's prime factors encode a brainfuck program."""
+        assert roundtrip(factor_run, gen.factor("Hi")) == "Hi"
+        assert roundtrip(factor_run, gen.factor("Hello, World!")) == "Hello, World!"
 
     def test_sbleq(self) -> None:
         """Each character is embedded as data and output via -3."""
