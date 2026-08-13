@@ -72,7 +72,9 @@ LANGUAGES: dict[str, Language] = {
     "Home Row": Language("Home Row", _generate.home_row),
     "huf": Language("huf", _generate.huf, "register_based.huf"),
     "Keys": Language("Keys", interpreter="other.keys", split=True),
-    "LaserFuck": Language("LaserFuck", _generate.laserfuck),
+    "LaserFuck": Language(
+        "LaserFuck", _generate.laserfuck, "other.laserfuck", split=True
+    ),
     "Lightlang": Language("Lightlang", interpreter="register_based.lightlang"),
     "MAMMALIAN": Language("MAMMALIAN", _generate.mammalian, "tape_based.mammalian"),
     "Minifuck": Language("Minifuck", _generate.minifuck, "tape_based.minifuck"),

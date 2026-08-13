@@ -45,7 +45,7 @@ into a template) rather than the program reading input.
 | Home Row | yes |  |  |  | yes |  |
 | Kak |  |  | yes |  |  |  |
 | Keys |  | yes |  |  |  |  |
-| LaserFuck | yes |  | yes | yes |  |  |
+| LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
 | MAMMALIAN | yes | yes |  |  |  | hello |
 | Minifuck | yes | yes |  |  |  | hello |
