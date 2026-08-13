@@ -27,6 +27,7 @@ from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.forth import run as forth_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
+from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
@@ -342,6 +343,10 @@ class TestGeneratorRoundTrips:
             "#allocate a\n"
             "a += 65;\n"
             "write <- a ;\n"
+        )
+        assert roundtrip(basicfuck_run, gen.basicfuck("Hi")) == "Hi"
+        assert (
+            roundtrip(basicfuck_run, gen.basicfuck("Hello, World!")) == "Hello, World!"
         )
 
     def test_bit_tilde(self) -> None:

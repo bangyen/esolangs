@@ -23,6 +23,11 @@ Languages with both an in-package interpreter and a native cross-check:
   reference writes its ``Input: `` prompt to stdout (the Python side routes
   it through the IO layer), which is stripped before comparing; both agree
   on the exit-code convention (3 = invalid operation).
+* **Basicfuck** — ``tape_based/basicfuck.py`` vs ``extra/c++/basicfuck.cpp``.
+  Both parse the same source-level dialect; the reference prints its
+  ``Input: `` prompts and error messages to stdout, which are stripped
+  before comparing, and both agree on the exit-code convention (2 =
+  malformed, 3 = invalid operation).
 
 Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
 provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
@@ -48,6 +53,24 @@ ROOT = Path(__file__).parents[1]
 RUST_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "laserfuck"
 FORTH_CXX = ROOT / "extra" / "c++" / "forþ.cpp"
 FORTH_BIN = Path("/tmp") / "verify-forþ"
+BASICFUCK_CXX = ROOT / "extra" / "c++" / "basicfuck.cpp"
+BASICFUCK_BIN = Path("/tmp") / "verify-basicfuck"
+
+# Error messages the C++ references print to stdout before exiting; stripped
+# so only the program's own output is compared.
+_CPP_ERRORS = (
+    "Identifier is undefined.",
+    "Invalid token.",
+    "Invalid syntax.",
+    "Invalid identifier.",
+    "Missing/Invalid directives.",
+    "Missing/Invalid identifiers.",
+    "Missing overflow directive.",
+    "Invalid overflow directive.",
+    "Insufficient memory.",
+    "Underflow error.",
+    "Overflow error.",
+)
 
 
 def _build_forth() -> str | None:
@@ -62,6 +85,20 @@ def _build_forth() -> str | None:
         capture_output=True,
     )
     return str(FORTH_BIN) if rv.returncode == 0 else None
+
+
+def _build_basicfuck() -> str | None:
+    """Compile the Basicfuck C++ cross-check (once); None if g++ is missing."""
+    if shutil.which("g++") is None:
+        print("[skip] Basicfuck differential: g++ not found")
+        return None
+    if BASICFUCK_BIN.exists():
+        return str(BASICFUCK_BIN)
+    rv = subprocess.run(
+        ["g++", "-std=c++11", str(BASICFUCK_CXX), "-o", str(BASICFUCK_BIN)],
+        capture_output=True,
+    )
+    return str(BASICFUCK_BIN) if rv.returncode == 0 else None
 
 
 # -- LaserFuck corpus: mirrors, conditionals, tape ops, direction -------
@@ -672,6 +709,163 @@ def _fuzz_forth(rng: random.Random, count: int) -> bool:
     return failures == 0
 
 
+# -- Basicfuck corpus: every construct plus the error categories -----------
+
+# (program, input).  Programs that read always provide enough input, since
+# Python's EOFError has no C++ equivalent (the reference stores -1 at EOF).
+_BF_N = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
+_BF_W = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\n"
+_BF_H = "#basicfuck t=1 r=0~255 o=halt\n#allocate a\n"
+_BF_U = "#basicfuck t=unbounded r=0~255 o=wrap\n#allocate "
+
+BASICFUCK_CORPUS = [
+    (_BF_N + "a += 65;\nwrite <- a ;", b""),
+    (_BF_W + "a += 65;\nwrite <- a ;", b""),
+    (_BF_N + "a += 5;\nwrite <- a ;", b""),
+    (_BF_H + "a += 256;", b""),
+    (_BF_H + "a -= 1;", b""),
+    (_BF_W + "a += 256;\nwrite <- a ;", b""),
+    (_BF_W + "a -= 1;\nwrite <- a ;", b""),
+    (_BF_N + "a += 300;\nwrite <- a ;", b""),
+    (_BF_N + "a -= 300;\nwrite <- a ;", b""),
+    (_BF_U + "a, b\na += 5;\nb += a;\nwrite <- b ;", b""),
+    (_BF_U + "a\nread -> a ;\nwrite <- a ;", b"X\n"),
+    (_BF_U + "a\nread -> a ;\na -= 48 ;\nwrite <- a ;", b"0\n"),
+    (_BF_U + "a\na += 1;\nif (a) { write <- a ; }", b""),
+    (_BF_U + "a\na += 0;\nif (a) { write <- a ; }", b""),
+    (_BF_U + "a\na += 0;\nif !(a) { write <- a ; }", b""),
+    (_BF_U + "a\na += 5;\nwhile (a) { a -= 1; }\nwrite <- a ;", b""),
+    (
+        _BF_U + "a->2\na->0 += 65;\nwrite <- a->0 ;\na->1 += 66;" "\nwrite <- a->1 ;",
+        b"",
+    ),
+    (_BF_U + "a\nread -> a ;\nwrite <- a ;\nread -> a ;\nwrite <- a ;", b"hi\nx\n"),
+    (_BF_N + "a += 65; // comment\nwrite <- a ;", b""),
+    # malformed programs (exit 2)
+    ("not a directive\n#allocate a\n", b""),
+    ("#basicfuck t=1 r=0~255 o=nearest\nbad alloc\n", b""),
+    (_BF_N + "z += 1;", b""),
+    (_BF_N + "a += ;", b""),
+    (_BF_N + "if (a) { write <- a ;", b""),
+    ("#basicfuck t=1 r=0~255 o=nearest\n#allocate a, b\n", b""),
+    ("#basicfuck t=1 r=0~255 o=nearest\n#allocate write\n", b""),
+    (_BF_N + "a += 1 @ 2;", b""),
+    ("#basicfuck t=1 r=0~255\n#allocate a\n", b""),
+]
+
+
+def _run_basicfuck_native(
+    binary: str, program: str, stdin: bytes
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through the C++ cross-check; return (stdout, exit code).
+
+    The reference prints its ``Input: `` prompts and error messages to
+    stdout, which are stripped before comparing.
+    """
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            [binary, path], capture_output=True, input=stdin, timeout=5
+        )
+        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
+        for message in _CPP_ERRORS:
+            out = out.replace((message + "\n").encode(), b"")
+        return out, proc.returncode
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _run_basicfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+    """Run ``program`` through the in-package interpreter."""
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.basicfuck import run
+
+    io = ScriptedIO(stdin.decode("latin1"))
+    try:
+        run(program, io)
+    except HaltError:
+        return io.getvalue().encode("latin1"), 3
+    except ValueError:
+        return io.getvalue().encode("latin1"), 2
+    return io.getvalue().encode("latin1"), 0
+
+
+def _verify_basicfuck() -> bool:
+    """Compare the Python Basicfuck interpreter against the C++ cross-check."""
+    binary = _build_basicfuck()
+    if binary is None:
+        return True
+
+    failures = 0
+    for program, stdin in BASICFUCK_CORPUS:
+        native = _run_basicfuck_native(binary, program, stdin)
+        if native is None:
+            print(f"Basicfuck {program.splitlines()[-1]!r}: C++ did not terminate")
+            failures += 1
+            continue
+        py = _run_basicfuck_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(
+                f"Basicfuck {program.splitlines()[-1]!r}: "
+                f"C++ {native!r} vs Python {py!r}"
+            )
+
+    if not failures:
+        print(f"Basicfuck differential: {len(BASICFUCK_CORPUS)} programs match")
+    return failures == 0
+
+
+def _fuzz_basicfuck(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz Basicfuck with random truth tables.
+
+    The boolean generator emits terminating decision-tree programs (reads,
+    normalization, and nested if/if! dispatch); random source programs would
+    frequently hang the C++ reference, which has no loop bound, so they are
+    not fuzzed.
+    """
+    from esolangs.tools import boolean
+
+    binary = _build_basicfuck()
+    if binary is None:
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        n = rng.randint(1, 4)
+        table = "".join(rng.choice("01") for _ in range(2**n))
+        program = boolean.basicfuck(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            stdin = ("\n".join(map(str, bits)) + "\n").encode()
+            native = _run_basicfuck_native(binary, program, stdin)
+            if native is None:
+                print(f"Basicfuck boolean {table!r}: C++ reference did not terminate")
+                failures += 1
+                checked += 1
+                continue
+            py = _run_basicfuck_python(program, stdin)
+            checked += 1
+            if native != py:
+                failures += 1
+                print(
+                    f"Basicfuck boolean {table!r} combo {bits}: "
+                    f"C++ {native!r} vs Python {py!r}"
+                )
+
+    print(
+        f"Basicfuck fuzz: {checked} checks match"
+        if not failures
+        else f"Basicfuck fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -727,10 +921,12 @@ def main() -> int:
     ok = _verify_laserfuck()
     ok = _verify_nocomment() and ok
     ok = _verify_forth() and ok
+    ok = _verify_basicfuck() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
         ok = _fuzz_forth(rng, args.fuzz) and ok
+        ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.
