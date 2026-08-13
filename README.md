@@ -136,6 +136,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck)
 - [Dimensional](https://esolangs.org/wiki/Dimensional)
 - [EXCON](https://esolangs.org/wiki/EXCON)
+- [Factor](https://esolangs.org/wiki/Factor)
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
 - [Minifuck](https://esolangs.org/wiki/Minifuck)
 - [NoComment](https://esolangs.org/wiki/NoComment)
