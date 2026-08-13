@@ -100,6 +100,26 @@ handling inherits a quirk from the Lean 3 original — `find` always returns
 the position after the bracket itself — so the certified property is the
 matching logic `find` computes, not the jump it returns.
 
+## EXCON interpreter equivalence
+
+A Lean 4 + mathlib proof (`Esolangs/ExconSemanticsCorrect.lean`) that the
+ported EXCON interpreter (`Esolangs/Excon.lean`) computes exactly the
+reference Python interpreter's output (`src/esolangs/interpreters/tape_based/excon.py`)
+for every program that does not walk the pointer off the pool.  The reference
+model (`pRun`) reuses the ported transitions (`flips`, `to_s` via `pyToS`),
+so the theorem certifies the port itself; `pyToS` expands `to_s` as the
+binary read `128*pool[0] + 64*pool[1] + ... + pool[7]` that the reference's
+`int("".join(pool), 2)` computes.
+
+The two interpreters agree on `:` (reset), `^` (flip), `!` (print), and on
+`<` within the valid pointer range.  The one divergence is the reference's
+error handling: when `<` runs at cell 0 the Python interpreter raises
+`HaltError`, while the port's `(n - 1) % 8` keeps the pointer at 0 and
+continues.  The theorem `output_eq` is therefore stated under the guard that
+the reference run succeeds — when it does not halt, both interpreters print
+exactly the same string (`output_eq_exec` states it from a reset pool, in
+terms of `exec`).
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
