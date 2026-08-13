@@ -20,8 +20,7 @@ Decisions for gaps in the wiki spec (documented):
 - ``,`` reads a whole input line and takes its first byte, raising
   :class:`EOFError` when input runs out (like the other tape interpreters);
 - a ``3`` with no next ``3`` skips to the end, where the normal loop-or-halt
-  check applies; the x86/RISC-V references instead run off the end of the
-  program into their I/O buffer, which is undefined behavior;
+  check applies;
 - a program with no ``1``/``2``/``3`` commands halts with no output (the
   spec would loop forever on the empty program).
 """

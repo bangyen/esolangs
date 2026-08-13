@@ -111,7 +111,12 @@ _start:
     addi s2, s2, -1
     lbu  t5, 0(s2)
     li   t4, '|'
-    beq  t5, t4, .parse
+    bne  t5, t4, .false_scan
+    li   t4, 128
+    blt  t4, s1, .final      # esi > 128: halt
+    addi s2, sp, 0           # else restart the program
+    j    .parse
+.false_scan:
     li   t4, '3'
     beq  t5, t4, .parse
     j    .false
