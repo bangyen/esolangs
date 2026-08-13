@@ -47,7 +47,7 @@ LANGUAGES: dict[str, Language] = {
     "ASCII art": Language("ASCII art", _generate.ascii_art, "tape_based.ascii-art"),
     "ArrowQueue": Language("ArrowQueue", interpreter="other.arrowqueue", split=True),
     "Back": Language("Back", interpreter="tape_based.back", split=True),
-    "Basicfuck": Language("Basicfuck", _generate.basicfuck),
+    "Basicfuck": Language("Basicfuck", _generate.basicfuck, "tape_based.basicfuck"),
     "Between": Language("Between", _generate.between, "other.between", split=True),
     "BF": Language("BF", _generate.bf, "tape_based.bf"),
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),

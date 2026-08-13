@@ -27,7 +27,7 @@ into a template) rather than the program reading input.
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
 | Back |  | yes |  | yes |  |  |
-| Basicfuck | yes |  | yes | yes |  |  |
+| Basicfuck | yes | yes | yes | yes |  | hello |
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
 | BitDeque |  | yes |  |  |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
