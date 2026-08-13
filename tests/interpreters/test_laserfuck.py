@@ -39,7 +39,7 @@ class TestLaserFuck:
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
+            def input_str(self, _prompt: str = "Input: ") -> str:
                 return "1"
 
             def print_char(self, char: str) -> None:
@@ -83,7 +83,7 @@ class TestLaserFuck:
             def __init__(self) -> None:
                 self.buf = io.StringIO()
 
-            def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
+            def input_str(self, _prompt: str = "Input: ") -> str:
                 return "42"
 
             def print_char(self, char: str) -> None:

@@ -414,7 +414,7 @@ def _run_laserfuck_python(
         def print_line(self, text: str = "") -> None:
             buffer.write(text + "\n")
 
-        def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
+        def input_str(self, _prompt: str = "Input: ") -> str:
             return reads.pop(0) if reads else "1"
 
     def _alarm(_signum: int, _frame: object) -> None:

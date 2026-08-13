@@ -33,7 +33,7 @@ import re
 import sys
 from typing import Any
 
-import sympy as sp  # type: ignore[import-untyped]
+import sympy as sp
 
 from esolangs.interpreters.io import IO
 
