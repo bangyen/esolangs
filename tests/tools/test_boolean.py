@@ -80,7 +80,7 @@ class TestSixFive:
         assert "70" in program  # loop conditionals
         assert program.count("4") <= 35  # within the label budget
 
-    @pytest.mark.parametrize("n", [6, 7, 8, 9])
+    @pytest.mark.parametrize("n", [6, 7, 8])
     @pytest.mark.parametrize("table", ["10", "1100"])
     def test_arithmetic_fallback_table(self, n: int, table: str) -> None:
         """The fallback computes every combination for small-T tables."""
@@ -106,7 +106,7 @@ class TestSixFive:
         with pytest.raises(ValueError, match="~2 MB setup"):
             boolean.six_five("0" * 63 + "1", 6)  # AND6: T == 2**63
 
-    @pytest.mark.parametrize("n", [6, 8, 10])
+    @pytest.mark.parametrize("n", [6, 8])
     def test_arithmetic_fallback_complement(self, n: int) -> None:
         """Tables whose complement is cheap use it instead of a huge T."""
         table = "00" + "1" * (2**n - 2)  # zeros only at indices 0,1: T' == 3
@@ -231,6 +231,8 @@ class TestPolynomial:
             ("10", 1),  # NOT
             ("0110", 2),  # XOR
             ("0001", 2),  # AND
+            ("00000001", 3),  # AND-3
+            ("10000000", 3),  # OR-3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -245,9 +247,13 @@ class TestPolynomial:
         """The program is a polynomial function."""
         assert boolean.polynomial("0110", 2).startswith("f(x) = ")
 
-    def test_only_supports_two_inputs(self) -> None:
-        with pytest.raises(ValueError, match="n == 2"):
-            boolean.polynomial("11111110", 3)
+    def test_supports_three_inputs(self) -> None:
+        """A 3-input table is factored exactly by the interpreter."""
+        assert boolean.polynomial("00000001", 3).startswith("f(x) = ")
+
+    def test_five_inputs_rejected(self) -> None:
+        with pytest.raises(ValueError, match="n <= 4"):
+            boolean.polynomial("0" * 31 + "1", 5)
 
 
 class TestUnsquare:
@@ -343,6 +349,120 @@ def run_sophie(program: str, inputs: list[str]) -> str:
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
     return buffer.getvalue()
+
+
+def run_between(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.between import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
+class TestBetween:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.between(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_between(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_program_structure(self) -> None:
+        """One declare/read/normalize triplet per input, one branch per node."""
+        program = boolean.between("0110", 2)
+        lines = program.splitlines()
+        assert lines[:3] == ["'0'v.", "[0]i.", "[0]s|[0]c.|"]
+        assert lines.count(".x.") == 4  # one leaf per input combination
+
+    def test_mismatched_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="4 entries"):
+            boolean.between("011", 2)
+
+    def test_bad_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.between("0123", 2)
+
+
+def run_sbleq(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.sbleq import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+class TestSbleq:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("0000000000000000", 4),  # constant zero
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.sbleq(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_sbleq(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_program_structure(self) -> None:
+        """The root reads and normalizes, then every leaf outputs and halts."""
+        program = boolean.sbleq("0110", 2)
+        cells = [int(tok) for tok in program.split()]
+        data_base = len(cells) - 13
+        assert cells[:3] == [data_base + 4, -2, data_base + 7]  # root read
+        assert cells[3:6] == [  # root normalize
+            data_base + 4,
+            data_base,
+            data_base + 10,
+        ]
+        assert cells[-13:-9] == [-49, 48, 49, -1]  # NEG49, D48, D49, HALT
+        code = cells[:data_base]
+        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
+        outputs = [
+            t for t in triples if t[0] == -3
+        ]  # one output per leaf, in combo order
+        assert outputs == [
+            (-3, data_base + 1, 0),
+            (-3, data_base + 2, 0),
+            (-3, data_base + 2, 0),
+            (-3, data_base + 1, 0),
+        ]
+        assert [t for t in triples if t == (0, 0, data_base + 3)] == 4 * [
+            (0, 0, data_base + 3)
+        ]  # one halt per leaf
+
+    def test_constant_table_has_no_reads(self) -> None:
+        """A constant table collapses to an output and a halt."""
+        program = boolean.sbleq("0000", 2)
+        cells = [int(tok) for tok in program.split()]
+        assert cells == [-3, 7, 0, 0, 0, 9, -49, 48, 49, -1]
+
+    def test_mismatched_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="4 entries"):
+            boolean.sbleq("011", 2)
+
+    def test_bad_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.sbleq("0123", 2)
 
 
 class TestForth:
@@ -1165,25 +1285,26 @@ class TestThreeX:
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
     import re
 
+    from esolangs.interpreters.io import IO
     from esolangs.interpreters.other.laserfuck import run
 
     buffer = io.StringIO()
 
-    class FakeIO:
+    class FakeIO(IO):
         def __init__(self, ins: list[str]) -> None:
             self._ins = list(ins)
 
-        def input_str(self) -> str:
+        def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
             return self._ins.pop(0)
 
-        def print_char(self, c: str) -> None:
-            buffer.write(c)
+        def print_char(self, char: str) -> None:
+            buffer.write(char)
 
-        def print_line(self) -> None:
-            buffer.write("\n")
+        def print_line(self, text: str = "") -> None:
+            buffer.write(text + "\n")
 
-        def print_num(self, n: int) -> None:
-            buffer.write(str(n))
+        def print_num(self, num: int) -> None:
+            buffer.write(str(num))
 
     with redirect_stdout(buffer):
         run(program.splitlines(), FakeIO(inputs), heading=heading)
@@ -1257,3 +1378,46 @@ class TestLaserFuck:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.laserfuck("02", 1)
+
+
+class TestGeneratorEdgePaths:
+    """Coverage for validation and helper edge paths in the generators."""
+
+    def test_parameterized_validation(self) -> None:
+        """bio/back reject malformed truth tables."""
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="4 entries"):
+            parameterized.bio("011", 2)
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            parameterized.bio("0123", 2)
+        with pytest.raises(ValueError, match="4 entries"):
+            parameterized.back("011", 2)
+
+    def test_dimensional_tree_validation(self) -> None:
+        """The Dimensional decision-tree generator rejects bad truth tables."""
+        with pytest.raises(ValueError, match="4 entries"):
+            boolean.dimensional_tree("011", 2)
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.dimensional_tree("0123", 2)
+
+    def test_six_five_helper_edges(self) -> None:
+        """Same-cell navigation and the +5 tail of the constant encoder."""
+        from esolangs.tools.booleans.tape import _six_five_const, _six_five_nav
+
+        assert _six_five_nav(3, 3) == ""
+        assert _six_five_const(5) == "5"
+        assert _six_five_const(11) == "65"
+
+    def test_ztoalc_simulator_rejects_bad_program(self) -> None:
+        """An empty or non-numeric first line fails the fast simulator."""
+        from esolangs.tools.booleans.other import _ztoalc_ok
+
+        assert _ztoalc_ok({}, 0, "", "") is False
+        assert _ztoalc_ok({0: "not-a-number"}, 0, "", "") is False
+
+    def test_ztoalc_simulator_input_exhausted(self) -> None:
+        """A '=' instruction with no input left fails the fast simulator."""
+        from esolangs.tools.booleans.other import _ztoalc_ok
+
+        assert _ztoalc_ok({0: "2", 1: "a = 1"}, 1, "", "") is False

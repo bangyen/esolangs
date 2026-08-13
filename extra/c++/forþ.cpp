@@ -1,3 +1,23 @@
+// Forþ interpreter (C++ cross-check; see README "Extra Implementations").
+//
+// A stack-based language with a dispatch table of named functions.  Digits
+// 0-9 and letters A-F push their value, `:` duplicates the top, `+`/`-`/`*`
+// `/`/`%` do the obvious arithmetic, `~` pushes the bitwise complement of the
+// top, `.` prints the top as a character, `,` reads a line of input pushing
+// each byte, `(`/`[` branch/loop while the top is nonzero, `{` stores a
+// function under the number atop the stack, `;` calls the named function, `o`
+// reverses the stack, `c` rotates the top three elements, and `v` swaps the
+// top two.
+//
+// Error handling: popping an empty stack, a stack too small for `c`, or an
+// unterminated bracket exits with EXIT_INVALID_OP (an invalid runtime
+// operation, the Python HaltError analog).  A missing or unreadable program
+// file exits with status 1 (unclassified).  The exit-code convention is
+// defined below.
+//
+// Invocation: `forþ <program-file>`; program text from `argv[1]`.
+// Input: the program file is `argv[1]`; `,` reads from stdin.
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -5,13 +25,19 @@
 #include <unordered_map>
 #include <vector>
 
+// Cross-check exit-code convention (see README "Extra Implementations"):
+// 0 = success, 2 = malformed program, 3 = invalid runtime operation, 1 =
+// unclassified failure.
+constexpr int EXIT_MALFORMED = 2;
+constexpr int EXIT_INVALID_OP = 3;
+
 int run(std::string &s, std::vector<int> &stack,
         std::unordered_map<int, std::string> &table, bool &out) {
   auto top = [&stack]() {
     if (stack.size())
       return stack.back();
 
-    exit(EXIT_FAILURE);
+    exit(EXIT_INVALID_OP);
   };
 
   auto push = [&stack](int n) { stack.push_back(n); };
@@ -61,7 +87,7 @@ int run(std::string &s, std::vector<int> &stack,
       }
     } else if (c == 'c') {
       if (stack.size() < 3)
-        return EXIT_FAILURE;
+        return EXIT_INVALID_OP;
 
       push(stack[stack.size() - 3]);
       stack.erase(stack.end() - 4);
@@ -73,7 +99,7 @@ int run(std::string &s, std::vector<int> &stack,
         c = s[++k];
 
         if (c == 0)
-          return EXIT_FAILURE;
+          return EXIT_INVALID_OP;
         else if (c == add)
           match++;
         else if (c == sub)
@@ -92,7 +118,7 @@ int run(std::string &s, std::vector<int> &stack,
         table[top()] = scope;
     } else {
       if (stack.size() < 2)
-        return EXIT_FAILURE;
+        return EXIT_INVALID_OP;
 
       int two = pop();
       int one = pop();
@@ -109,13 +135,13 @@ int run(std::string &s, std::vector<int> &stack,
         break;
       case '/':
         if (two == 0)
-          return EXIT_FAILURE;
+          return EXIT_INVALID_OP;
 
         push(one / two);
         break;
       case '%':
         if (two == 0)
-          return EXIT_FAILURE;
+          return EXIT_INVALID_OP;
 
         push(one % two);
         break;

@@ -2,6 +2,10 @@
 
 2D esoteric language where dots (instruction pointers) move through a grid.
 Each dot can carry values and execute commands based on its position.
+
+The interpreter skips over string and warp-name tokens after parsing them,
+so printing a string containing spaces works (the whole literal is consumed
+as one token).
 """
 
 from __future__ import annotations

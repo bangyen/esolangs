@@ -1006,3 +1006,93 @@ def basicfuck(truth_table: str, n: int) -> str:
 
     lines.append(build(list(range(2**n)), 1))
     return "\n".join(lines)
+
+
+def sbleq(truth_table: str, n: int) -> str:
+    """Build an S*bleq program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    S*bleq's instruction is ``a b c``: ``mem[a] -= mem[b]``, and when the
+    result is ``<= 0`` the pointer jumps to the address stored at ``c``.
+    The ``<= 0`` branch traps on zero, so a bit normalized to 0 would
+    branch the wrong way; the generator instead normalizes each input to
+    ``49 - byte`` (``'0'`` -> 1, ``'1'`` -> 0), which lands the two cases on
+    opposite sides of zero.  Every branch level is then just two
+    instructions:
+
+        v -2 NXT     # v = -byte (always jumps, so NXT points at the next)
+        v NEG49 ONE  # v = 49 - byte; a one jumps to ONE, a zero falls through
+
+    where ``NEG49`` is a constant cell holding -49 and ``v`` is that level's
+    value cell.  Leaves print ``-3 D 0`` (``D`` a constant 48/49 cell) and
+    halt with ``0 0 HALT`` (``HALT`` holds -1, a negative jump target).
+    Whole subtrees whose table entries are constant collapse to a leaf.
+
+    S*bleq's operands are addresses, so a cell holding a transient 0/1 is
+    misread as a jump target if any ``c`` references it.  The generator
+    therefore keeps *constant* cells (``NEG49``, ``D48``, ``D49``, ``HALT``,
+    and each node's ``NXT``/``ONE``, the only cells ever used as jump
+    targets) strictly separate from *value* cells (each node's ``v``, written
+    by the read and never used as a ``c`` operand).  Each node of the tree
+    allocates its own ``v``/``NXT``/``ONE`` triple, and the ``NXT``/``ONE``
+    values (the addresses of the node's normalize instruction and one-subtree)
+    are back-patched after the code layout is known.  The normalize subtracts
+    the constant in the ``b`` operand, which the ``store="b"``/``"ab"``
+    variants would overwrite, so this generator targets base S*bleq
+    (``store="a"``).
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    instructions: list[tuple[int, int, int]] = []
+    nodes: list[tuple[int, int, int]] = []  # (v offset, normalize addr, one addr)
+    counter = 0
+
+    def build(level: int, rows: list[int]) -> None:
+        nonlocal counter
+        results = {truth_table[r] for r in rows}
+        if len(results) == 1:
+            instructions.append((-3, 1 + int(results.pop()), 0))
+            instructions.append((0, 0, 3))
+            return
+        nid = counter
+        counter += 1
+        instructions.append((4 + nid, -2, 0))  # read; c patched to this node's NXT
+        normalize_addr = 3 * len(instructions)
+        instructions.append((4 + nid, 0, 0))  # normalize; b and c patched below
+        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
+        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
+        build(level + 1, zero)
+        one_addr = 3 * len(instructions)
+        build(level + 1, one)
+        nodes.append((nid, normalize_addr, one_addr))
+
+    build(0, list(range(2**n)))
+
+    m = len(nodes)
+    for nid, normalize_addr, _one_addr in nodes:
+        instructions[normalize_addr // 3 - 1] = (4 + nid, -2, 4 + m + nid)
+        instructions[normalize_addr // 3] = (4 + nid, 0, 4 + 2 * m + nid)
+
+    data_base = 3 * len(instructions)
+    cells: list[int] = []
+    for a, b, c in instructions:
+        if a == -3:  # output the constant at b
+            cells += [-3, data_base + b, 0]
+        elif a == 0 and b == 0:  # halt via the HALT constant at c
+            cells += [0, 0, data_base + c]
+        else:  # read/normalize: make every data-cell operand absolute
+            cells += [data_base + a, -2 if b == -2 else data_base + b, data_base + c]
+    data = [-49, 48, 49, -1] + [0] * (3 * m)
+    for nid, normalize_addr, one_addr in nodes:
+        data[4 + m + nid] = normalize_addr
+        data[4 + 2 * m + nid] = one_addr
+    cells += data
+    return " ".join(map(str, cells))

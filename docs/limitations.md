@@ -1,10 +1,9 @@
 # Limitations and ruled-out ideas
 
-What the boolean generators cannot do, and the language assessments that
-concluded a generator is not viable (or only partially viable).  Completed
-work lives in the commit history; this file records the walls, the negative
-results, and the reasoning behind them.  Genuine future work is in
-`docs/ROADMAP.md`.
+What the generators cannot do, and the assessments that concluded an
+approach is not viable (or only partially viable).  Completed work lives in
+the commit history; this file records the walls, the negative results, and
+the reasoning behind them.  Genuine future work is in `docs/roadmap.md`.
 
 ## 6-5 (built; the decision tree stays primary)
 The arithmetic-kernel generator (`six_five_arithmetic`) was built: it packs
@@ -121,34 +120,48 @@ delimiters need escaping at multiple levels) cannot survive more than one
 wrap.  The wiki's examples only ever use single-level `!`.  Eval is
 therefore not viable for the parameterized class.
 
-## MAMMALIAN (viable in principle, but the dispatch layout is hard)
-MAMMALIAN has the primitives a decision tree needs, confirmed through the
-interpreter: `ACCEPT` reads a byte, `PRONOUNCE` prints the accumulator, and
-`LEAPFROG` is a *data-dependent* jump (`ind = acc - curr[0] - 1` when the
-current array's last element is nonzero).  A deeper assessment verified the
-concrete mechanics:
+## MAMMALIAN (branch-free core built; general n-bit functions open)
 
-- Normalizing an input to a clean 0/1 bit works: `48 SEEDs` then
-  `DIGEST ACCEPT DIGEST` makes `acc = ord(bit) ^ 48` in `{0, 1}` (48 is
+A *branch-free* approach works, verified against the real interpreter — no
+`LEAPFROG` needed.  `DIGEST` is `acc ^= sum(curr)`, a free XOR over GF(2),
+and `SPRINT` moves the pointer by `curr[acc]`, so a bit can index a cell.
+
+- Normalizing an input to a clean 0/1 bit: `48 SEEDs DIGEST ACCEPT DIGEST`
+  leaves `acc = ord(bit) ^ 48` in `{0, 1}` and `lst[0] = [48, m]` (48 is
   special because `48^48 = 0` and `48^49 = 1`).
-- `LEAPFROG` then branches: bit 0 falls through linearly, bit 1 takes the
-  computed jump.  Constants are created with `SEEDs + DIGEST` (~1 token per
-  unit), and halting works by making the jump target negative.
-- A clean 1-bit *identity* program is ~55 tokens (normalization + one
-  print + halt).
+- 1-bit identity (verified): `48 SEEDs DIGEST ACCEPT DIGEST CONSUME DIGEST
+  PRONOUNCE` — the `CONSUME DIGEST` tail turns `m` into `48 ^ m`.
+- 1-bit NOT (verified): `48 SEEDs DIGEST ACCEPT DIGEST SEED CONSUME DIGEST
+  PRONOUNCE` — `SEED CONSUME DIGEST` turns `m` into `49 ^ m`.
+- 2-bit XOR (verified): `48 SEEDs DIGEST ACCEPT DIGEST CONSUME CONSUME ACCEPT
+  CONSUME PRONOUNCE` — the second read normalizes against the running parity,
+  and the input byte itself carries the 48 base, so no branch fires.
+- AND gadget (derived, not yet integrated): `CONSUME SPRINT CONSUME` on
+  `lst[0] = [x, y]` computes `x AND y`; with the bits in separate arrays,
+  `SPRINT CONSUME` suffices.
 
-The assembly barrier is the jump target.  From the natural state after
-normalization (`acc = 48`, `lst[0][0] = 1` for a one bit) the bit-1 target
-is `48 - 1 - 1 = 46`, which is *backward* into the normalization stream;
-a forward dispatch needs `lst[0][0] = acc - T < 0`, which the cell ops
-cannot easily produce.  So every subtree must be interleaved into the
-shared normalization code with back-patched absolute targets, the halt
-mechanism (negative target) conflicts with forward dispatch, the 23 arrays
-are shared and `SEED` mutates every array at once, and the accumulator does
-not stay clean across reads.  Each bit costs ~50 tokens to normalize and
-each leaf ~50 to emit, so the size is brainif-like.  A verified generator
-is a multi-session assembly project, harder than ZTOALC's (which had the
-clean `p * 2**k` descent); none has been built.
+The old `LEAPFROG`-dispatch barrier (forward targets need negative cells) is
+real but moot: the promising path is arithmetic plus pointer selection, not
+control flow.  The n-bit case, however, is blocked by three mutually
+conflicting constraints:
+
+- `ACCEPT` unconditionally appends the normalized bit to `lst[0]`, and
+  consuming that bit needs `ptr == 0`, but routing `SPRINT`s move the
+  pointer to a node — so the bit cannot be both read and routed without a
+  way to return the pointer to 0.
+- The read's clean normalization needs `lst[0][0] == 48` (the `^ 48` base),
+  and `SEED` skips empty arrays, so the only constant source is `K SEEDs
+  CONSUME` starting from `lst[0] = [0]` — which empties the array, so every
+  later constant **accumulates** on the previous one (`42 + 5 = 47`, never a
+  clean `5`).  The `[48, C, m]` triple a branch needs therefore cannot be
+  assembled in one array.
+- `DIGEST` normalizes by XORing the *sum* of `lst[ptr]`, so a bit buried
+  among previous bits is only recoverable as part of a sum, and `48 ^ (48 +
+  m1 + m2)` is not `m1 ^ m2` when both bits are set.
+
+A verified generator is thus a hard wall, not just a slow build; the 1-bit
+and 2-bit pieces are proven, and the AND gadget (`CONSUME SPRINT CONSUME`)
+works on clean separate arrays that the read flow cannot produce.
 
 ## Dotlang (not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line
@@ -162,3 +175,67 @@ same type — and there is no value comparison or arithmetic.  Only a fragile
 direction-routing trick could express more, and it caps at three inputs
 before the eight (marker, heading) states run out, below the verification
 bar.
+
+## Polynomial numeric root-finding (ruled out; instruction recovery is exact)
+The Polynomial interpreter used to find a program's roots numerically, and
+every floating-point solver was defeated by the root geometry.  The
+generator emits exact integer polynomials whose coefficients far exceed
+float64's exact-integer range (2**53) once a few instructions accumulate —
+`'Hello, World!'` has coefficients up to 10**95 — so `numpy.roots` silently
+rounded them and solved a different polynomial, losing the small imaginary
+parts that encode instructions.  The interpreter now factors the monic
+integer polynomial over Z with sympy instead (every instruction is a known
+factor shape, so the values come out exactly, with no floating point); the
+numeric routes are recorded here as ruled out:
+
+- A pure high-precision `mp.polyroots` (Aberth) swap is correct but ~3000x
+  slower per program on the common path, and still does not converge on the
+  pathological root spreads.
+- A custom high-precision companion-matrix QR (`mp.eig`) produces garbage
+  even on `'Hello, World!'` (degree 50) and hangs on modest degrees, because
+  the companion matrix is badly scaled.
+- A change-of-variable scaling still solves the wrong (imprecise) polynomial.
+- A residual-based correctness gate cannot work: the ill-conditioning (~1e16)
+  makes even wildly wrong roots look right at any precision.
+
+The factor-based recovery also defines the boolean generator's practical
+bound: `n == 4` (degree 184, coefficients ~10**729) factors in ~10s, while
+`n == 5` (degree 376, ~10**1746) does not factor in practical time, so the
+boolean generator is capped at `n <= 4`.
+
+## Text generators: exhausted
+Every language whose interpreter can emit arbitrary bytes already has a text
+generator.  The remaining interpreter-only languages cannot, so no text
+generator is possible for them: ArrowQueue has no output at all, Back prints
+the tape as a number list, BitDeque and Minsky Swap print their registers as
+numbers, Movesum prints `n ` (numbers with a trailing space), RAM0 prints a
+state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
+the single bit as a number.  None can spell arbitrary text.
+
+## Assessed boolean candidates that fell through
+- **Temporary**: the auto-drain is the only output, and it prints `front - 1`
+  for the *oldest* stack element when `sum(rest) / 2 > front`.  An
+  input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
+  select a 49/50 constant, but the only value-to-length conversion — the
+  front element popping — requires `front < input / 2 < 24`, so the front is
+  at most 24 and prints garbage (`chr(23)`/`"23"`), while the raw input at
+  the front prints `input - 1` (47/48).  Neither is a `'0'`/`'1'`.  Exhaustive
+  search to length 5 finds no identity or NOT program, and `\` (while
+  nonempty) never terminates except via the fixed 15-command stack reset, so
+  there is no input-dependent branch either.  A boolean generator is not
+  feasible for the standard harness.
+- **Movesum**: only `move` (copy) and `sum` (add), with no conditional — the
+  loop repeats commands until the array stops changing.  The numeric output
+  (always a trailing space) and the addition-only arithmetic cannot express a
+  general boolean function.
+- **WII2D**: the accumulator never affects control flow (`^v<>` set the
+  direction, `@` jumps unconditionally to the closest `@`), so there is no
+  value-testable branch to route a decision tree on.
+- **EXCON / Huf**: straight-line with no input and no branch, so neither an
+  input-reading nor a parameterized generator can route on a bit.
+- **Lightlang**: `?` sets the bit to ``not line`` — every non-empty line,
+  including `'0'` and `'1'`, collapses to bit 0, so it cannot read bit values
+  at all; its only output is the bit as a number.
+- **DSDLAI**: a Dig variant whose dig commands carry a random 20-90% death
+  chance (printing "You died." and halting), so a generated program's output
+  is non-deterministic and cannot round-trip text or a truth table.

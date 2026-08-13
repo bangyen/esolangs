@@ -25,7 +25,7 @@ classifiers = [
 ]
 keywords = ["esoteric", "programming", "languages", "interpreters", "compilers", "brainfuck", "esolangs"]
 dependencies = [
-    "numpy>=1.20.0",
+    "sympy>=1.12.0",
 ]
 
 [project.optional-dependencies]

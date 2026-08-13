@@ -1,3 +1,28 @@
+; NoComment interpreter (x86-32 Linux assembly cross-check; see README "Extra
+; Implementations").
+;
+; The full wiki language: a byte tape with a movable pointer, plus a byte
+; stack.  `i`/`d` increment/decrement the current cell, `c` clears it,
+; `l`/`r` move the pointer (left is a no-op at cell 0, right extends the
+; tape), `n` pushes the current cell, `f` pops into it, `s`/`b` jump
+; forward/backward by the top-of-stack amount when the current cell is
+; nonzero (`s` skips X instructions, `b` jumps back X-1), and `o` prints
+; the current cell as a byte.
+;
+; Per the wiki, errors are an unrecognized command, stack underflow, or a
+; jump outside the code.  Exit codes follow the repo convention for the
+; cross-checks: 0 = success, 2 = malformed program (unrecognized command,
+; the Python ValueError analog), 3 = invalid runtime operation (stack
+; underflow or a jump out of range, the Python HaltError analog).  The
+; in-package Python interpreter implements the same full language.
+;
+; Invocation: `nocomment < stdin`; the program is read from stdin.
+; Input: the program is read from stdin (the wiki has no input command);
+; the tape is not printed.
+;
+; This is a direct syscall (int 80h) program with no libc; it is built with
+; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
+
 global _start
 _start:
 	lea ecx, [esp - 5]
@@ -41,10 +66,24 @@ _start:
 	je .output
 
 	cmp byte [edi], 0
-	jne .parse
+	jne .error_malformed
 .final:
 	mov eax, 1
 	xor ebx, ebx
+	int 80h
+
+.error_malformed:
+	; unrecognized command: a malformed program, exit 2 (the Python
+	; interpreter's ValueError analog)
+	mov eax, 1
+	mov ebx, 2
+	int 80h
+
+.error_runtime:
+	; stack underflow or a jump out of range: an invalid operation, exit 3
+	; (the Python interpreter's HaltError analog)
+	mov eax, 1
+	mov ebx, 3
 	int 80h
 
 .up:
@@ -70,7 +109,7 @@ _start:
 	jmp .parse
 .off:
 	cmp edx, esi
-	je .parse
+	je .error_runtime
 	mov al, [edx]
 	add edx, 2
 	mov [ecx], al
@@ -78,14 +117,33 @@ _start:
 .fore:
 	cmp byte [ecx], 0
 	je .parse
+	cmp edx, esi
+	je .parse
 	movzx eax, byte [edx]
 	sub edi, eax
+	; the target (edi, before .parse's dec) must lie in [esi+3, esp-4]: the
+	; last real command is at esi+2 (the input loop leaves a gap byte at
+	; esi+1 and the null at esi), matching Python's 0 <= target < len
+	lea eax, [esp - 4]
+	cmp edi, eax
+	jg .error_runtime
+	lea eax, [esi + 3]
+	cmp edi, eax
+	jl .error_runtime
 	jmp .parse
 .back:
 	cmp byte [ecx], 0
 	je .parse
+	cmp edx, esi
+	je .parse
 	movzx eax, byte [edx]
 	add edi, eax
+	lea eax, [esp - 4]
+	cmp edi, eax
+	jg .error_runtime
+	lea eax, [esi + 3]
+	cmp edi, eax
+	jl .error_runtime
 	jmp .parse
 .output:
 	push edx

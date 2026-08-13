@@ -1,6 +1,7 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
 __all__ = [
+    "between",
     "clockwise",
     "container",
     "laserfuck",
@@ -164,7 +165,7 @@ def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> boo
     steps = 0
     while ptr != 1:
         steps += 1
-        if steps > 10**6:
+        if steps > 10**6:  # pragma: no cover - a pathological 10**6-step run
             return False
         index = ptr - 1
         ins = lines.get(index, "")
@@ -246,8 +247,8 @@ def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
     cmds.append("r + 48")
     cmds.append("print r")
     size = 2 ** len(cmds)
-    if size > 2**22:
-        return None  # too large to materialize
+    if size > 2**22:  # pragma: no cover - would build >2**22 program lines
+        return None
     prog = [""] * size
     prog[0] = str(size)
     for j, cmd in enumerate(cmds):
@@ -428,6 +429,53 @@ def _validate_tt(truth_table: str, n: int) -> None:
         raise ValueError("truth table must contain only '0' and '1'")
 
 
+def between(truth_table: str, n: int) -> str:
+    """Build a Between program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The program reads each input bit as a line, converts it to an integer
+    with ``c``, then walks a decision tree laid out linearly: every node
+    tests bit ``i`` and, when the bit is zero, jumps over the ``1`` subtree
+    to the ``0`` subtree; each leaf prints ``|0|``/``|1|`` and exits.  The
+    branch addresses are 0-indexed line numbers, so the size of each subtree
+    is computed ahead of the linear layout.
+    """
+    _validate_tt(truth_table, n)
+
+    def leaf_value(path: list[int]) -> int:
+        row = 0
+        for bit in path:
+            row = row * 2 + bit
+        return int(truth_table[row])
+
+    def size(path: list[int]) -> int:
+        if len(path) == n:
+            return 2
+        return 1 + size([*path, 1]) + size([*path, 0])
+
+    lines: list[str] = []
+    for bit in range(n):
+        lines.append(f"'{bit}'v.")
+        lines.append(f"[{bit}]i.")
+        lines.append(f"[{bit}]s|[{bit}]c.|")
+
+    def emit(path: list[int], offset: int) -> int:
+        if len(path) == n:
+            lines.append(f"|{leaf_value(path)}|p.")
+            lines.append(".x.")
+            return offset + 2
+        zero_addr = offset + 1 + size([*path, 1])
+        lines.append(f"|{zero_addr}|f([{len(path)}]=|0|)")
+        offset += 1
+        offset = emit([*path, 1], offset)
+        return emit([*path, 0], offset)
+
+    emit([], len(lines))
+    return "\n".join(lines)
+
+
 def laserfuck(truth_table: str, n: int) -> str:
     r"""Build a LaserFuck program computing the given truth table.
 
@@ -488,7 +536,7 @@ def laserfuck(truth_table: str, n: int) -> str:
 
     def assign_col(i: int, j: int) -> int:
         if (i, j) in cols:
-            return cols[(i, j)]
+            return cols[(i, j)]  # pragma: no cover - a tree node is never revisited
         c = width[0]
         cols[(i, j)] = c
         width[0] = c + 6

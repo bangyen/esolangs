@@ -1,3 +1,23 @@
+; 2 Bits, 1 Byte interpreter (x86-32 Linux assembly cross-check; see README
+; "Extra Implementations").
+;
+; The program is a single byte whose 8 bits form four two-bit instructions,
+; executed in sequence with the instruction pointer wrapping: 00 = DON (do
+; nothing), 01 = ACT (apply a bitwise operation to the byte), 10 = JMP (jump,
+; honoring the wrap), and 11 = END (print the byte as a character and halt).
+;
+; Invocation: `2b1b < stdin`; the program byte is read from stdin.
+; The program byte is read from stdin (the language has no file-based I/O
+; protocol; see the README note).  ACT here is implemented as bit toggles /
+; shift-combines driven by two 2-bit operands, matching the wiki's own
+; disassembly example ("ACT 10b") rather than the wiki's command-table
+; description of a fixed value mapping (00->11, 01->10, 10->00, 11->01);
+; the wiki's two descriptions disagree, and this implementation follows the
+; example.
+;
+; This is a direct syscall (int 80h) program with no libc; it is built with
+; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
+
 global _start
 _start:
 	mov eax, 3

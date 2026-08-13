@@ -19,15 +19,15 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
 - [Compilers](#compilers)
 - [Transpilers](#transpilers)
 - [Tools](#tools)
-- [Roadmap](docs/ROADMAP.md)
-- [Limitations](docs/limitations.md)
-- [Notes](#notes)
 
 ## About
 
 Esoteric programming languages are designed to be difficult to program in, often as a form of art or humor. This repository provides working interpreters and compilers for a wide variety of these languages, making them accessible for experimentation and learning.
 
 Most interpreters work by reading the file specified by the first command line argument.
+
+Planned work is tracked in [`docs/roadmap.md`](docs/roadmap.md); documented
+limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md).
 
 ## Usage
 
@@ -104,15 +104,16 @@ art = esolangs.transpile("BF", "ASCII art", program)   # rewrite between languag
 <details>
 <summary>Show all</summary>
 
+<!-- IMPLEMENTED:START -->
+
 ### Register-based Languages
 
 Languages that use registers to store and manipulate data.
 
 - [BIO](https://esolangs.org/wiki/BIO)
-- [Dig](https://esolangs.org/wiki/Dig)
-- [dotlang](https://esolangs.org/wiki/Dotlang)
 - [DSDLAI](https://esolangs.org/wiki/DSDLAI)
-- [huf](https://esolangs.org/wiki/Huf)
+- [Dig](https://esolangs.org/wiki/Dig)
+- [Dotlang](https://esolangs.org/wiki/Dotlang)
 - [Lightlang](https://esolangs.org/wiki/Lightlang)
 - [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap)
 - [Movesum](https://esolangs.org/wiki/Movesum)
@@ -121,22 +122,25 @@ Languages that use registers to store and manipulate data.
 - [RAM0](https://esolangs.org/wiki/RAM0)
 - [Sophie](https://esolangs.org/wiki/Sophie)
 - [WII2D](https://esolangs.org/wiki/WII2D)
+- [huf](https://esolangs.org/wiki/huf)
 
 ### Tape-based Languages
 
 Languages that operate on a tape (similar to Turing machines).
 
+- [6-5](https://esolangs.org/wiki/6-5)
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
+- [brainfuck](https://esolangs.org/wiki/brainfuck)
 - [Back](https://esolangs.org/wiki/Back)
-- [Brainfuck](https://esolangs.org/wiki/Brainfuck)
 - [BrainIf](https://esolangs.org/wiki/BrainIf)
-- [circlefuck](https://esolangs.org/wiki/Circlefuck)
+- [Circlefuck](https://esolangs.org/wiki/Circlefuck)
+- [Dimensional](https://esolangs.org/wiki/Dimensional)
 - [EXCON](https://esolangs.org/wiki/EXCON)
+- [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
 - [Minifuck](https://esolangs.org/wiki/Minifuck)
 - [NoComment](https://esolangs.org/wiki/NoComment)
-- [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
+- [S*bleq](https://esolangs.org/wiki/S*bleq)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)
-- [6-5](https://esolangs.org/wiki/6-5)
 
 ### Stack-based Languages
 
@@ -151,6 +155,8 @@ Languages that use a stack for data manipulation.
 
 Languages that don't fit into the above categories.
 
+- [ArrowQueue](https://esolangs.org/wiki/ArrowQueue)
+- [Between](https://esolangs.org/wiki/Between)
 - [Bitdeque](https://esolangs.org/wiki/Bitdeque)
 - [Clockwise](https://esolangs.org/wiki/Clockwise)
 - [Container](https://esolangs.org/wiki/Container)
@@ -158,6 +164,8 @@ Languages that don't fit into the above categories.
 - [Nevermind](https://esolangs.org/wiki/Nevermind)
 - [Taglate](https://esolangs.org/wiki/Taglate)
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)
+
+<!-- IMPLEMENTED:END -->
 
 </details>
 
@@ -169,40 +177,34 @@ Languages that don't fit into the above categories.
 Implementations written in languages other than Python.
 
 Note: these are cross-check implementations written in this repository (not
-upstream language-author code).  The generators for Forþ, Painfuck,
-Dimensional, 2dFish, %^2^-1, Basicfuck, LaserFuck, Unsquare, bit~, 3x, EXCON,
-123, and NoComment are round-trip verified against the native implementations
-(C++, Rust, R, Ruby, or x86/RISC-V assembly) in CI, and 3x's boolean
-generator (n = 1..3) is verified the same way.  Because the Python
-interpreters and their native cross-checks share an author, the round-trip
-verifies transcription fidelity rather than an independent reading of the
-spec; see `docs/ROADMAP.md` for where a truly independent reference matters.
+upstream language-author code).  Most generators are round-trip verified
+against these native references in CI; a few (Kak, Trash, Number
+Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA)
+are self-contained interpreters without generators, because their output
+classes are too narrow for text or they lack a file-based I/O protocol.
+The cross-checks share an exit-code convention mirroring the Python
+interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime
+operation.
 
-The remaining extra implementations (Kak, Trash, Number Seventy-Four, 2 Bits
-1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA) are kept as
-self-contained interpreters but do not have round-trip-verified generators:
-their output classes are too narrow for text (e.g. Kak prints only tape bits,
-Trash only primes, Number Seventy-Four only `0`/`1`/`H`), or they lack a
-file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
+<!-- EXTRA:START -->
 
 ### C++ Implementations
 
+- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
+- [2dFish](https://esolangs.org/wiki/2dFish)
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
-- [Dimensional](https://esolangs.org/wiki/Dimensional)
 - [Forþ](https://esolangs.org/wiki/For%C3%BE)
 - [Kak](https://esolangs.org/wiki/Kak)
 - [Painfuck](https://esolangs.org/wiki/Painfuck)
 - [Trash](https://esolangs.org/wiki/Trash)
-- [2dFish](https://esolangs.org/wiki/2dFish)
-- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
 
 ### x86 Assembly Implementations
 
+- [123](https://esolangs.org/wiki/123)
+- [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte)
 - [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse)
 - [NoComment](https://esolangs.org/wiki/NoComment)
 - [Stun Step](https://esolangs.org/wiki/Stun_Step)
-- [123](https://esolangs.org/wiki/123)
-- [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte)
 
 ### Lean Implementations
 
@@ -217,8 +219,8 @@ file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
 
 ### Ruby Implementations
 
-- [bit~](https://esolangs.org/wiki/Bit~)
 - [3x](https://esolangs.org/wiki/3x)
+- [bit~](https://esolangs.org/wiki/Bit~)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 
@@ -226,6 +228,8 @@ file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
 
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
+
+<!-- EXTRA:END -->
 
 </details>
 
@@ -235,6 +239,8 @@ file-based I/O protocol (2 Bits 1 Byte, Brainpocalypse, Stun Step).
 <summary>Show all</summary>
 
 Compilers that translate esoteric languages to other target languages.
+
+<!-- COMPILERS:START -->
 
 ### x86 Assembly Compilers
 
@@ -251,35 +257,33 @@ Compilers that translate esoteric languages to other target languages.
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [RAM0](https://esolangs.org/wiki/RAM0)
 
+<!-- COMPILERS:END -->
+
 </details>
 
 ## Transpilers
 
 Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
 
-- [BF](https://esolangs.org/wiki/Brainfuck) <-> [ASCII art](https://esolangs.org/wiki/ASCII_art): each brainfuck command becomes an art block, and vice versa.
-- [BF](https://esolangs.org/wiki/Brainfuck) -> [CircleFuck](https://esolangs.org/wiki/Circlefuck): sets up a clean data region inside the program-as-tape and emits the brainfuck commands unchanged. The data region is sized automatically from the program (the smallest bound that contains its data pointer), so `transpile("BF", "CircleFuck", program)` just works for programs with bounded, non-drifting loops; pass `size` explicitly to cover programs that stay within `[0, size)`.
-- [NoComment](https://esolangs.org/wiki/NoComment) -> [BF](https://esolangs.org/wiki/Brainfuck): NoComment is a strict subset of brainfuck, so the transpiler is a table lookup (`c` = `[-]`, `i` = `+`, `o` = `.`).
-- [BFStack](https://esolangs.org/wiki/BFStack) -> [BF](https://esolangs.org/wiki/Brainfuck): BFStack is a stack modelled on brainfuck's tape, so the transpiler is a table lookup (`>` pushes a cell, `<` pops and clears it (`[-]<`), `,` reads and pushes (`>,`)).
-- [BIO](https://esolangs.org/wiki/BIO) -> [BF](https://esolangs.org/wiki/Brainfuck): BIO's three registers live in the first three brainfuck cells; each command moves the pointer to its register, acts, and returns to cell 0. Registers must stay within `[0, 255]`.
-- [huf](https://esolangs.org/wiki/Huf) -> [BF](https://esolangs.org/wiki/Brainfuck): huf's `num`/`mul` live in cells 0 and 1; `!` multiplies by copying `num` to a temp cell that each loop iteration adds to `num` and refreshes from a running accumulator.
+- BF <-> ASCII art
+- BF -> CircleFuck
+- NoComment -> BF
+- BFStack -> BF
+- BIO -> BF
+- huf -> BF
+
+Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
 
 ```bash
-esolangs transpile BF "ASCII art" program.bf    # print the art
-esolangs transpile "ASCII art" BF program.txt   # print the brainfuck
-esolangs transpile BF CircleFuck program.bf     # print the CircleFuck
-esolangs transpile NoComment BF program.nocom   # print the brainfuck
-esolangs transpile BFStack BF program.bstk      # print the brainfuck
-esolangs transpile BIO BF program.bio           # print the brainfuck
-esolangs transpile huf BF program.huf           # print the brainfuck
+esolangs transpile BF "ASCII art" program.bf    # rewrite a program into another esolang
+esolangs transpile "ASCII art" BF program.txt   # and back again
+esolangs transpile BF CircleFuck program.bf     # auto-sized data region
 ```
 
 ```python
-art = esolangs.transpile("BF", "ASCII art", program)          # or via the API
+art = esolangs.transpile("BF", "ASCII art", program)   # or via the API
 program = esolangs.transpile("ASCII art", "BF", art)
-circlefuck = esolangs.transpile("BF", "CircleFuck", program)  # auto-sized
-circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)
-bf_program = esolangs.transpile("NoComment", "BF", program)
+circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)  # explicit size
 ```
 
 ## Tools
@@ -291,23 +295,17 @@ Utility programs that work with the esoteric languages.
 The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import ascii_art, bfstack, brainif, circlefuck, dig, laserfuck, modulous, nevermind, polynomial, qoibl, six_five, sophie, taglate
+from esolangs.tools.boolean import between, circlefuck_byte, dig, laserfuck, polynomial, taglate
 
 dig("0110", 2)            # 2-input XOR in Dig
-sophie("0110", 2)         # the same truth table in Sophie
-modulous("0110", 2)       # and in Modulous
-brainif("0110", 2)        # and in BrainIf
-nevermind("0110", 2)      # and in Nevermind
-circlefuck("0110", 2)     # and in CircleFuck
-circlefuck_byte(table)    # arbitrary byte-valued functions
-ascii_art("0110", 2)      # and in ASCII art
-six_five("0110", 2)       # and in 6-5
-qoibl("0110", 2)          # and in Qoibl
-polynomial("0110", 2)     # and in Polynomial (up to n = 2)
+between("0110", 2)        # the same truth table in Between
+polynomial("0110", 2)     # in Polynomial (up to n = 4)
 taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
-bfstack("0110", 2)        # and in BFStack
 laserfuck("0110", 2)      # and in LaserFuck (random initial heading)
+circlefuck_byte(table, n)  # arbitrary byte-valued functions
 ```
+
+Most languages in the suite have a matching generator; the rest differ only in the function name.
 
 ### Program Generator
 
@@ -318,26 +316,6 @@ python -m esolangs.tools.generate "Hello, World!"
 ```
 
 Every generator is also available through `esolangs list` and `esolangs generate` (see above); run `esolangs list` for the full set.
-
-## Notes
-
-Important information about specific language implementations.
-
-### Known Issues
-
-- **circlefuck**: The `narcissist` program doesn't work — it hangs regardless of input. The `ThisIsAQuine` quine also outputs its source incorrectly; the `{>[.>]@` quine works correctly.
-
-- **dotlang**: The interpreter skips over strings and warp names after parsing them, so printing a string with spaces is possible. If this additional feature seems to be a negative rather than a positive, feel free to create an issue.
-
-- **polynomial**: The generator reliably outputs byte-range text and short texts generally, but the interpreter's float64 root-finding (`numpy.roots`) loses precision when a polynomial's roots span a wide magnitude range, which happens when consecutive characters differ by large codepoint amounts (e.g. an ASCII character directly followed by a CJK character). Such text can silently corrupt. The fuzzers exercise it on byte-range and small-unicode text accordingly.
-
-### Usage Notes
-
-- **Jaune**: Only one character can be input at a time.
-
-- **Suffolk**: Although the language is specified to run on an infinite loop, a second command line argument may be given to set the number of loops. The default is `10`.
-
-- **123**: Input is given at the end of the program. The two are separated by a single `|`.
 
 ## Contributing
 

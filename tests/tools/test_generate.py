@@ -9,6 +9,7 @@ import pytest
 
 import esolangs.tools.generate as gen
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
@@ -29,6 +30,7 @@ from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
+from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.tools.generators import other
 
@@ -44,11 +46,30 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
 
 
 class TestGeneratorRoundTrips:
+    def test_between(self) -> None:
+        """p prints the whole text; apostrophes are doubled inside literals."""
+        assert roundtrip(between_run, gen.between("Hi").splitlines()) == "Hi"
+        assert (
+            roundtrip(between_run, gen.between("Hello, World!").splitlines())
+            == "Hello, World!"
+        )
+        assert roundtrip(between_run, gen.between("a'b").splitlines()) == "a'b"
+
+    def test_between_rejects_newline(self) -> None:
+        with pytest.raises(ValueError, match="newline"):
+            gen.between("a\nb")
+
     def test_bfstack(self) -> None:
         assert roundtrip(bfstack_run, gen.bfstack("Hi")) == "Hi"
 
     def test_excon(self) -> None:
         assert roundtrip(excon_run, gen.excon("Hi")) == "Hi"
+
+    def test_sbleq(self) -> None:
+        """Each character is embedded as data and output via -3."""
+        assert roundtrip(sbleq_run, gen.sbleq("Hi")) == "Hi"
+        assert roundtrip(sbleq_run, gen.sbleq("a\nb")) == "a\nb"
+        assert roundtrip(sbleq_run, gen.sbleq("\x00\x7f\xff")) == "\x00\x7f\xff"
 
     def test_modulous(self) -> None:
         assert roundtrip(modulous_run, gen.modulous("Hi")) == "Hi"
@@ -184,13 +205,14 @@ class TestGeneratorRoundTrips:
         assert roundtrip(polynomial_run, gen.polynomial(text)) == text
 
     def test_polynomial_precision_limit(self) -> None:
-        """Large codepoint deltas exceed float64 root precision (documented).
+        """Large codepoint deltas round-trip despite float64 root limits.
 
-        numpy.roots cannot recover the instruction roots when consecutive
-        characters differ by thousands, so the output corrupts silently.
-        See README "Known Issues".
+        float64 root-finding cannot recover the instruction roots when
+        consecutive characters differ by thousands (the integer coefficients
+        exceed float64's exact range).  The interpreter factors the integer
+        polynomial instead, so even wide codepoint spans round-trip.
         """
-        assert roundtrip(polynomial_run, gen.polynomial("a日a日")) != "a日a日"
+        assert roundtrip(polynomial_run, gen.polynomial("a日a日")) == "a日a日"
 
     def test_polynomial_format(self) -> None:
         """Zero coefficients are omitted from the formatted polynomial."""
@@ -412,9 +434,10 @@ class TestGeneratorProducesOutput:
     def test_supported_languages(self) -> None:
         """Every generator produces non-empty output for non-empty text."""
         generators = [
+            gen.between,
             gen.forth,
             gen.laserfuck,
-            gen.magnitude,
+            gen.pct_squared_minus_one,
             gen.painfuck,
             gen.suffolk,
             gen._123,  # noqa: SLF001 - public generator
@@ -465,6 +488,7 @@ class TestGeneratorBranches:
             gen.main()
         out = capsys.readouterr().out
         assert "--- BFStack ---" in out
+        assert "--- Between ---" in out
         assert "--- BrainIf ---" in out
         assert "--- Clockwise ---" in out
         assert "--- Container ---" in out
@@ -496,7 +520,7 @@ class TestGeneratorBranches:
     def test_edge_case_inputs(self) -> None:
         """Generators must not crash on edge-case inputs."""
         generators = [
-            gen.magnitude,
+            gen.pct_squared_minus_one,
             gen.painfuck,
             gen.laserfuck,
             gen.suffolk,

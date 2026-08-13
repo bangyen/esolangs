@@ -16,13 +16,24 @@ The wiki's cat program notes that output ignores negative register values;
 this interpreter clamps them to zero (printing a NUL) instead, and it raises
 :class:`EOFError` on exhausted input rather than halting with -1.  A
 10000-step cap guards non-terminating programs.
+
+Root recovery: every instruction contributes a factor of a known shape to the
+program's monic integer polynomial -- a complex instruction ``[a, b]`` is the
+quadratic ``(x-a)^2 + p**(2*b)`` (so the linear coefficient gives ``a`` and the
+constant term minus ``a^2`` is an exact square ``p**(2*b)``), and a real
+instruction ``[v]`` is the linear factor ``x - p**v``.  The interpreter
+therefore factors the polynomial over the integers with ``sympy`` and reads the
+instruction values straight off the factors, exactly -- no floating point, so
+the wide root spreads that defeated float64 root-finding are irrelevant.
 """
 
+import functools
+import math
 import re
 import sys
 from typing import Any
 
-import numpy as np
+import sympy as sp  # type: ignore[import-untyped]
 
 from esolangs.interpreters.io import IO
 
@@ -31,7 +42,7 @@ def prime(number: int) -> bool:
     """Check if a number is prime."""
     if number < 2:
         return False
-    return all(number % val for val in range(2, int(np.sqrt(number)) + 1))
+    return all(number % val for val in range(2, math.isqrt(number) + 1))
 
 
 def brackets(string: list[list[int]], pointer: int) -> int:
@@ -59,19 +70,16 @@ def brackets(string: list[list[int]], pointer: int) -> int:
 
 def convert(pre: list[complex]) -> list[list[int]]:
     """Convert polynomial roots to instruction codes using prime encoding."""
-    rounded_roots = [np.round(k) for k in pre]
+    rounded_roots = [complex(round(k.real), round(k.imag)) for k in pre]
     # Sort by imaginary part, then by real part
-    sorted_roots = sorted(
-        rounded_roots,
-        key=lambda x: (float(np.imag(x)), float(np.real(x))),
-    )
+    sorted_roots = sorted(rounded_roots, key=lambda x: (x.imag, x.real))
     post: list[list[int]] = []
     num = 2
 
     # A prime power p**v (v >= 1) is always >= p, so once num exceeds the
     # largest root magnitude no further root can match.
     if rounded_roots:
-        limit = max(max(abs(np.imag(k)), abs(np.real(k))) for k in rounded_roots)
+        limit = max(max(abs(k.imag), abs(k.real)) for k in rounded_roots)
     else:
         limit = 0
 
@@ -80,15 +88,15 @@ def convert(pre: list[complex]) -> list[list[int]]:
             num += 1
             continue
         for root in sorted_roots[:]:  # Use slice to avoid modification during iteration
-            if im := np.imag(root):
+            if im := root.imag:
                 for val in range(1, 7):
                     if im == num**val:
                         sorted_roots.remove(root)
-                        post.append([int(np.real(root)), val])
+                        post.append([int(root.real), val])
                         break
             else:
                 for val in range(1, 9):
-                    if root == num**val:
+                    if root.real == num**val:
                         sorted_roots.remove(root)
                         post.append([val])
                         break
@@ -148,6 +156,47 @@ def sanitize(code: str) -> list[int]:
     return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
 
 
+@functools.lru_cache(maxsize=256)
+def _factor_roots(coefficients: tuple[int, ...]) -> tuple[complex, ...]:
+    """Recover the instruction roots by factoring the monic integer polynomial.
+
+    A valid program is a product of linear factors ``x - p**v`` (real
+    instructions) and quadratics ``(x-a)**2 + p**(2*b)`` (complex
+    instructions).  ``sympy.factor_list`` returns exactly those factors, so
+    the instruction values come out exactly.  A factor of any other shape
+    encodes no instruction and is ignored.
+    """
+    x = sp.Symbol("x")
+    poly = sp.Poly.from_list(list(coefficients), x)
+    _, factors = sp.factor_list(poly)
+
+    roots: list[complex] = []
+    for factor, multiplicity in factors:
+        degree = factor.degree()
+        if degree == 1:
+            a, b = (int(k) for k in factor.all_coeffs())
+            roots.extend([complex(-b // a, 0)] * multiplicity)
+        elif degree == 2:
+            a, b, c = (int(k) for k in factor.all_coeffs())
+            if a != 1 or b % 2:
+                continue
+            real = -b // 2
+            q = c - real * real
+            if q < 0:
+                continue
+            imag = math.isqrt(q)
+            if imag * imag != q:
+                continue
+            roots.extend([complex(real, imag), complex(real, -imag)] * multiplicity)
+        # higher-degree factors encode no instruction; skip
+    return tuple(roots)
+
+
+def _find_roots(coefficients: list[int]) -> list[complex]:
+    """Find the roots of an exact-integer polynomial."""
+    return list(_factor_roots(tuple(coefficients)))
+
+
 def run(code: str, io: IO) -> None:
     """Execute a Polynomial program by finding and processing its zeroes."""
     # Clean the input code
@@ -159,7 +208,7 @@ def run(code: str, io: IO) -> None:
     coefficients = sanitize(cleaned_code)
 
     # Find roots and filter for non-negative imaginary parts
-    roots = [k for k in np.roots(coefficients) if np.imag(k) >= 0]
+    roots = [k for k in _find_roots(coefficients) if k.imag >= 0]
 
     # Convert roots to instruction codes
     instructions = convert(roots)
