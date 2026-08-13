@@ -123,7 +123,12 @@ _start:
 .false:
 	dec edx
 	cmp byte [edx], '|'
-	je .parse
+	jne .false_scan
+	cmp esi, 128
+	jg .final
+	mov edx, esp
+	jmp .parse
+.false_scan:
 	cmp byte [edx], '3'
 	je .parse
 	jmp .false
