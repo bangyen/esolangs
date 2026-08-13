@@ -213,6 +213,17 @@ state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
 the single bit as a number.  None can spell arbitrary text.
 
 ## Assessed boolean candidates that fell through
+- **Temporary**: the auto-drain is the only output, and it prints `front - 1`
+  for the *oldest* stack element when `sum(rest) / 2 > front`.  An
+  input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
+  select a 49/50 constant, but the only value-to-length conversion — the
+  front element popping — requires `front < input / 2 < 24`, so the front is
+  at most 24 and prints garbage (`chr(23)`/`"23"`), while the raw input at
+  the front prints `input - 1` (47/48).  Neither is a `'0'`/`'1'`.  Exhaustive
+  search to length 5 finds no identity or NOT program, and `\` (while
+  nonempty) never terminates except via the fixed 15-command stack reset, so
+  there is no input-dependent branch either.  A boolean generator is not
+  feasible for the standard harness.
 - **Movesum**: only `move` (copy) and `sum` (add), with no conditional — the
   loop repeats commands until the array stops changing.  The numeric output
   (always a trailing space) and the addition-only arithmetic cannot express a
