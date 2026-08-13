@@ -30,6 +30,7 @@ from esolangs.tools.booleans.tape import (
     circlefuck_byte,
     dimensional,
     dimensional_tree,
+    sbleq,
     six_five,
     six_five_arithmetic,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "nevermind",
     "polynomial",
     "qoibl",
+    "sbleq",
     "six_five",
     "six_five_arithmetic",
     "sophie",

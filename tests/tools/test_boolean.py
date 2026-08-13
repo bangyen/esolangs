@@ -395,6 +395,76 @@ class TestBetween:
             boolean.between("0123", 2)
 
 
+def run_sbleq(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.sbleq import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+class TestSbleq:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("0000000000000000", 4),  # constant zero
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.sbleq(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_sbleq(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_program_structure(self) -> None:
+        """The root reads and normalizes, then every leaf outputs and halts."""
+        program = boolean.sbleq("0110", 2)
+        cells = [int(tok) for tok in program.split()]
+        data_base = len(cells) - 13
+        assert cells[:3] == [data_base + 4, -2, data_base + 7]  # root read
+        assert cells[3:6] == [  # root normalize
+            data_base + 4,
+            data_base,
+            data_base + 10,
+        ]
+        assert cells[-13:-9] == [-49, 48, 49, -1]  # NEG49, D48, D49, HALT
+        code = cells[:data_base]
+        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
+        outputs = [
+            t for t in triples if t[0] == -3
+        ]  # one output per leaf, in combo order
+        assert outputs == [
+            (-3, data_base + 1, 0),
+            (-3, data_base + 2, 0),
+            (-3, data_base + 2, 0),
+            (-3, data_base + 1, 0),
+        ]
+        assert [t for t in triples if t == (0, 0, data_base + 3)] == 4 * [
+            (0, 0, data_base + 3)
+        ]  # one halt per leaf
+
+    def test_constant_table_has_no_reads(self) -> None:
+        """A constant table collapses to an output and a halt."""
+        program = boolean.sbleq("0000", 2)
+        cells = [int(tok) for tok in program.split()]
+        assert cells == [-3, 7, 0, 0, 0, 9, -49, 48, 49, -1]
+
+    def test_mismatched_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="4 entries"):
+            boolean.sbleq("011", 2)
+
+    def test_bad_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.sbleq("0123", 2)
+
+
 class TestForth:
     def test_program_structure(self) -> None:
         """The program defines one function per tree node and reads n bits."""
