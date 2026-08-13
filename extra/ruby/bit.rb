@@ -45,7 +45,7 @@ while (c = code[i])
     inp = gets
     raise SystemExit.new(3, "input exhausted") if inp.nil?
 
-    val = "0" * 8 + inp[0].ord.to_s(2)
+    val = "0" * 8 + inp.getbyte(0).to_s(2)
     tape[cell..cell + 7] =
       val[-8..].chars.map(&:to_i)
     line = ""
