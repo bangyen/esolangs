@@ -269,7 +269,7 @@ def nocomment(truth_table: str, n: int) -> str:
     result_cell = n
     zlen_base = result_cell + 1
     dcell = zlen_base + m  # per-leaf chain cells after the zlen cells
-    numd = 6  # chain cells per leaf
+    numd = 4  # chain cells per leaf
     rcell = dcell + k * numd  # node relay cells beyond the D cells
     maxrelay = 8  # relay cells per node
     tree_start = dcell + k * numd - 1
@@ -331,8 +331,8 @@ def nocomment(truth_table: str, n: int) -> str:
         tests[a] = [len(commands)]
         commands.append("s")
         node_regions.append((nstart, len(commands)))
-        assert zero is not None
-        assert one is not None
+        assert zero is not None  # nosec B101
+        assert one is not None  # nosec B101
         tree_emit(zero, b)
         tests[a].append(len(commands))
         tree_emit(one, b)
