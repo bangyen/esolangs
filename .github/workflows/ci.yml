@@ -270,6 +270,9 @@ jobs:
         # simulator must all agree on the generated programs
         PYTHONPATH=src python3 scripts/verify_123_differential.py \
           /tmp/123-riscv "Hi" "Hello, World!" "esolangs!"
+        # the NoComment differential (Python vs assembly, corpus + fuzz) needs
+        # unicorn, which the rust job lacks; LaserFuck's runs there instead
+        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
         # the other reference interpreters must execute and halt
         python3 scripts/x86_elf_runner.py extra/assembly/brainpocalypse.asm \
           </dev/null >/dev/null
