@@ -1116,12 +1116,22 @@ class TestParameterizedNoComment:
         assert template.count("o") == 2  # one output per leaf
         assert template.count("s") == 3  # one node branch + two leaf skips
 
-    def test_cap_rejected(self) -> None:
-        """n > 3 exceeds the byte-cell skip range and is rejected."""
+    def test_deep_table_rejected(self) -> None:
+        """A four-input table whose chains exceed the byte-cell skip range."""
         from esolangs.tools.booleans import parameterized
 
-        with pytest.raises(ValueError, match="n <= 3"):
-            parameterized.nocomment("0" * 16, 4)
+        with pytest.raises(ValueError, match="256-cell byte limit"):
+            parameterized.nocomment("1010101010101010", 4)
+
+    def test_four_input_works(self) -> None:
+        """A four-input table whose chains fit the byte limit assembles."""
+        from esolangs.tools.booleans import parameterized
+
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            template = parameterized.nocomment("1111111111111110", 4)
+            got = self.run_nocomment(self.instantiate(template, bits))
+            assert got == str(int("1111111111111110"[combo])), f"inputs {bits}"
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.booleans import parameterized

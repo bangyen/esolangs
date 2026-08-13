@@ -204,6 +204,10 @@ def back(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
+
+_byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"
+
+
 def nocomment(truth_table: str, n: int) -> str:
     """Build a NoComment template for the given truth table.
 
@@ -221,24 +225,24 @@ def nocomment(truth_table: str, n: int) -> str:
     the zero-subtree otherwise).  A leaf ``o``-prints the table bit added to
     the shared result cell (pre-set to 48), then walks a per-leaf chain of
     ``n i s d f`` stations that ``s``-skip over the other leaves' code to the
-    trailing ``c``.  The chains are interleaved through reserved gaps between
-    the leaf blocks, so each leaf's skips stay below the 256-cell byte limit
-    while never landing inside another leaf's code or a node test.  The
-    ``l``/``r`` moves are emitted from each subtree's known start pointer (the
-    parent's bit cell), and the setup length cancels out of the skips, so
-    every skip value depends only on the tree layout.  The setup builds each
-    non-zero cell via the stack: ``n`` copies the previous cell's value and
-    ``f`` writes it into the next, so cells are written in ascending-value
-    order and only the deltas are incremented — the ``i`` runs shrink from the
-    sum of the values to their maximum.
+    trailing ``c``.  When a subtree is too long for one byte-sized jump, the
+    node test instead skips to a chain of relay stations (each an ``n i s d f``
+    that returns to the bit cell) spread through the reserved gaps, so a
+    subtree of any length is reachable.  The chains are interleaved through
+    the gaps between the leaf blocks, never landing inside another leaf's code
+    or a node test.  The ``l``/``r`` moves are emitted from each subtree's
+    known start pointer (the parent's bit cell), and the setup length cancels
+    out of the skips, so every skip value depends only on the tree layout.
+    The setup builds each non-zero cell via the stack: ``n`` copies the
+    previous cell's value and ``f`` writes it into the next, so cells are
+    written in ascending-value order and only the deltas are incremented.
 
     NoComment cells hold bytes, so every skip value must stay below 256; the
-    generator is verified for ``n <= 3`` and raises :class:`ValueError`
-    beyond that.
+    generator covers every table up to three inputs and any four-input table
+    whose skip chains fit the byte limit, raising :class:`ValueError`
+    otherwise.
     """
     _validate(truth_table, n)
-    if n > 3:
-        raise ValueError("the NoComment boolean generator supports n <= 3")
 
     # Tree shape: assign node/leaf ids; a constant subtree collapses to a leaf.
     node_id = 0
@@ -264,11 +268,17 @@ def nocomment(truth_table: str, n: int) -> str:
     # moves right once per bit); the result cell sits just above the bits.
     result_cell = n
     zlen_base = result_cell + 1
-    dcell = zlen_base + m  # the per-leaf chain cells come after the zlen cells
+    dcell = zlen_base + m  # per-leaf chain cells after the zlen cells
     numd = 6  # chain cells per leaf
+    rcell = dcell + k * numd  # node relay cells beyond the D cells
+    maxrelay = 8  # relay cells per node
+    tree_start = dcell + k * numd - 1
 
     def d_of(lid: int, h: int) -> int:
         return dcell + lid * numd + h
+
+    def r_of(nid: int, j: int) -> int:
+        return rcell + nid * maxrelay + j
 
     # Emit the tree commands.  Each subtree starts at its parent's bit cell
     # (the ``s`` leaves the pointer there regardless of which way the branch
@@ -284,9 +294,12 @@ def nocomment(truth_table: str, n: int) -> str:
             commands.append("l")
             ptr[0] -= 1
 
+    node_level: dict[int, int] = {}
     tests: dict[int, list[int]] = {}  # node id -> [test s position, one start]
     leaf_sts: dict[int, list[int]] = {lid: [] for lid in range(k)}
-    leaf_out: dict[int, tuple[int, int]] = {}
+    leaf_out: dict[int, int] = {}
+    node_sts: dict[int, list[int]] = {nid: [] for nid in range(m)}
+    relay_blocks: list[tuple[int, int]] = []
     node_regions: list[tuple[int, int]] = []
 
     def leaf_emit(lid: int, value: int) -> None:
@@ -304,7 +317,7 @@ def nocomment(truth_table: str, n: int) -> str:
         commands.append("s")
         commands.append("d")
         commands.append("f")
-        leaf_out[lid] = (out_start, len(commands))
+        leaf_out[lid] = out_start
 
     def tree_emit(node: _Node, start: int) -> None:
         ptr[0] = start
@@ -312,6 +325,7 @@ def nocomment(truth_table: str, n: int) -> str:
         if kind == "leaf":
             leaf_emit(a, b)
             return
+        node_level[a] = b
         c = zlen_base + a
         nstart = len(commands)
         move(c)
@@ -326,20 +340,20 @@ def nocomment(truth_table: str, n: int) -> str:
         tests[a].append(len(commands))
         tree_emit(one, b)
 
-    # The tree starts where the setup leaves the pointer, on the last chain
-    # cell, so the first move cancels out.
-    tree_emit(tree, dcell + k * numd - 1)
+    # The tree starts where the setup leaves the pointer, on the last D cell,
+    # so the first move cancels out.
+    tree_emit(tree, tree_start)
     commands.append("c")  # the END target every chain skips to
 
     # Reserve interleaving gaps: the tree is otherwise dense, leaving no room
-    # for the per-leaf chains.  Insert PAD dead-space commands after each
-    # leaf's station.  These gaps are skipped over by every leaf's hops, so
-    # their content is never executed; stations are later placed inside them.
+    # for the per-leaf chains and node relays.  Insert PAD dead-space commands
+    # after each leaf's station.  These gaps are skipped over by every chain,
+    # so their content is never executed; stations are later placed inside.
     pad = 16
     for lid in sorted(range(k), reverse=True):
-        pos = leaf_out[lid][1]
+        pos = leaf_sts[lid][0] + 3
         commands[pos:pos] = ["c"] * pad
-        for sts in leaf_sts.values():
+        for sts in list(leaf_sts.values()) + list(node_sts.values()):
             for j in range(len(sts)):
                 if sts[j] >= pos:
                     sts[j] += pad
@@ -348,54 +362,62 @@ def nocomment(truth_table: str, n: int) -> str:
                 if tests[nid][j] >= pos:
                     tests[nid][j] += pad
         for lid2 in leaf_out:
-            a, b = leaf_out[lid2]
-            leaf_out[lid2] = (
-                a + pad if a >= pos else a,
-                b + pad if b >= pos else b,
-            )
+            if leaf_out[lid2] >= pos:
+                leaf_out[lid2] += pad
         for j in range(len(node_regions)):
             a, b = node_regions[j]
             node_regions[j] = (a + pad if a >= pos else a, b + pad if b >= pos else b)
+        for j in range(len(relay_blocks)):
+            a, b = relay_blocks[j]
+            relay_blocks[j] = (a + pad if a >= pos else a, b + pad if b >= pos else b)
 
-    # A leaf's own code spans from its output through the end of its last
-    # station.  Inserted stations must not land inside any leaf's code or any
-    # node's test code, otherwise they corrupt the moves of that code.
-    def leaf_chain_blocked() -> list[tuple[int, int]]:
-        return [(leaf_out[lid][0], leaf_sts[lid][-1] + 3) for lid in range(k)]
+    # Inserted stations must not land inside any leaf's code, any node's test
+    # code, or any already-placed station, otherwise they corrupt the moves.
+    def blocked_now() -> list[tuple[int, int]]:
+        blocks = []
+        for lid in range(k):
+            blocks.append((leaf_out[lid], leaf_sts[lid][0] + 3))
+            for h in range(1, len(leaf_sts[lid])):
+                s = leaf_sts[lid][h]
+                blocks.append((s - 3, s + 2))
+        blocks += relay_blocks
+        blocks += node_regions
+        return blocks
 
     def safe_pos(
         target: int,
         lo: int,
-        blocked: list[tuple[int, int]],
+        hi: int,
     ) -> int | None:
-        i = max(target, lo)
-        while i < len(commands):
-            if not any(a <= i < b for a, b in blocked):
-                return i
-            i += 1
+        for d in range(0, hi - lo + 1):
+            for cand in (target - d, target + d):
+                if lo <= cand <= hi and not any(
+                    a <= cand < b for a, b in blocked_now()
+                ):
+                    return cand
         return None
 
     used = dict.fromkeys(range(k), 1)
-    for _ in range(40):
+    for _ in range(80):
         end = len(commands) - 1
         moved = False
         for lid in range(k):
             last = leaf_sts[lid][-1]
-            if end - last > 255:
+            if end - last - 1 > 254:
                 h = used[lid]
+                if h >= numd:
+                    raise ValueError(_byte_limit)
                 used[lid] += 1
                 d = d_of(lid, h)
-                blocked = leaf_chain_blocked() + node_regions
-                pos = safe_pos(last + 130, last + 1, blocked)
+                pos = safe_pos(last + 130, last + 1, last + 254)
                 if pos is None:
-                    moved = False
-                    break
+                    raise ValueError(_byte_limit)
                 prev = d_of(lid, h - 1)
                 mv = ["r"] * (d - prev) if d >= prev else ["l"] * (prev - d)
                 cmds = [*mv, "n", "i", "s", "d", "f"]
                 commands[pos:pos] = cmds
                 body_s = pos + len(mv) + 2
-                for sts in leaf_sts.values():
+                for sts in list(leaf_sts.values()) + list(node_sts.values()):
                     for j in range(len(sts)):
                         if sts[j] >= pos:
                             sts[j] += len(cmds)
@@ -405,23 +427,71 @@ def nocomment(truth_table: str, n: int) -> str:
                         if tests[nid][j] >= pos:
                             tests[nid][j] += len(cmds)
                 for lid2 in leaf_out:
-                    a, b = leaf_out[lid2]
-                    leaf_out[lid2] = (
-                        a + len(cmds) if a >= pos else a,
-                        b + len(cmds) if b >= pos else b,
-                    )
+                    if leaf_out[lid2] >= pos:
+                        leaf_out[lid2] += len(cmds)
                 for j in range(len(node_regions)):
                     a, b = node_regions[j]
                     node_regions[j] = (
                         a + len(cmds) if a >= pos else a,
                         b + len(cmds) if b >= pos else b,
                     )
+                for j in range(len(relay_blocks)):
+                    a, b = relay_blocks[j]
+                    relay_blocks[j] = (
+                        a + len(cmds) if a >= pos else a,
+                        b + len(cmds) if b >= pos else b,
+                    )
+                moved = True
+        for nid in range(m):
+            st = tests[nid][0]
+            one = tests[nid][1]
+            last = node_sts[nid][-1] if node_sts[nid] else st
+            if one - last - 1 > 254:
+                j = len(node_sts[nid])
+                if j >= maxrelay:
+                    raise ValueError(_byte_limit)
+                r = r_of(nid, j)
+                pos = safe_pos(last + 130, last + 1, last + 254)
+                if pos is None:
+                    raise ValueError(_byte_limit)
+                bit = node_level[nid]
+                mv = ["r"] * (r - bit) if r >= bit else ["l"] * (bit - r)
+                back = ["l"] * (r - bit) if r >= bit else ["r"] * (bit - r)
+                cmds = [*mv, "n", "i", *back, "s", "d", "f"]
+                commands[pos:pos] = cmds
+                body_s = pos + len(mv) + 2 + len(back)
+                for sts in list(leaf_sts.values()) + list(node_sts.values()):
+                    for j2 in range(len(sts)):
+                        if sts[j2] >= pos:
+                            sts[j2] += len(cmds)
+                node_sts[nid].append(body_s)
+                for nid2 in tests:
+                    for j2 in range(2):
+                        if tests[nid2][j2] >= pos:
+                            tests[nid2][j2] += len(cmds)
+                for lid in leaf_out:
+                    if leaf_out[lid] >= pos:
+                        leaf_out[lid] += len(cmds)
+                for j2 in range(len(node_regions)):
+                    a, b = node_regions[j2]
+                    node_regions[j2] = (
+                        a + len(cmds) if a >= pos else a,
+                        b + len(cmds) if b >= pos else b,
+                    )
+                for j2 in range(len(relay_blocks)):
+                    a, b = relay_blocks[j2]
+                    relay_blocks[j2] = (
+                        a + len(cmds) if a >= pos else a,
+                        b + len(cmds) if b >= pos else b,
+                    )
+                relay_blocks.append((pos, pos + len(cmds)))
                 moved = True
         if not moved:
             break
 
-    # Every skip value must fit a byte.  The chain hops skip to the start of
-    # the next station (or END), and the node tests skip to their one-subtree.
+    # Every skip value must fit a byte (<= 254 so the station's ``i`` never
+    # wraps).  A leaf chain hops from station to station toward the END; a node
+    # chain hops from the test through its relays to the one-subtree.
     end = len(commands) - 1
     chain_skips: dict[tuple[int, int], int] = {}
 
@@ -434,33 +504,40 @@ def nocomment(truth_table: str, n: int) -> str:
         for h in range(len(sts)):
             nxt = sstart(lid, h + 1) if h + 1 < len(sts) else end
             chain_skips[(lid, h)] = nxt - sts[h] - 1
-    if any(not 0 <= v < 256 for v in chain_skips.values()):
-        raise ValueError(
-            "this truth table needs a chain skip beyond the 256-cell byte limit",
-        )
-    for st, one in tests.values():
-        if not 0 < one - st - 1 < 256:
-            raise ValueError(
-                "this truth table needs a subtree skip beyond the "
-                "256-cell byte limit",
-            )
+    if any(not 0 <= v < 255 for v in chain_skips.values()):
+        raise ValueError(_byte_limit)
+
+    def rstart(nid: int, j: int) -> int:
+        bit = node_level[nid]
+        r = r_of(nid, j)
+        mvlen = abs(r - bit)
+        return node_sts[nid][j] - 2 - 2 * mvlen
+
+    zvals: dict[object, int] = {}
+    for nid in tests:
+        st, one = tests[nid]
+        if node_sts[nid]:
+            zvals[nid] = rstart(nid, 0) - st - 1
+            for j in range(len(node_sts[nid])):
+                nxt = rstart(nid, j + 1) if j + 1 < len(node_sts[nid]) else one
+                zvals[("r", nid, j)] = nxt - node_sts[nid][j] - 1
+        else:
+            zvals[nid] = one - st - 1
+    if any(not 0 < v < 255 for v in zvals.values()):
+        raise ValueError(_byte_limit)
 
     # The setup length cancels out of every skip, so it can be emitted here
     # against the final tree layout.  The {Xi} placeholders all sit on cell 0;
     # the harness moves right once per bit, leaving the pointer on the last
-    # bit cell.
-    #
-    # Rather than incrementing every cell from zero (a long ``i`` run per
-    # cell), the nonzero cells are written in ascending-value order: ``n``
-    # copies the previous cell's value onto the stack, ``f`` pops it into the
-    # next cell, and only the delta is added with ``i``/``d``.  That reduces
-    # the increments from the sum of the values to their maximum.  The carry
-    # is stack-balanced (every ``n`` matched by an ``f``), and the unused D
-    # cells stay at zero untouched.
+    # bit cell.  The non-zero cells are written in ascending-value order with
+    # the stack carry, so only the deltas are incremented.
     cells: list[tuple[int, int]] = [(result_cell, 48)]
-    for nid in sorted(tests):
-        st, one = tests[nid]
-        cells.append((zlen_base + nid, one - st - 1))
+    for nid in sorted(zvals):
+        if isinstance(nid, tuple):
+            nid2, j = nid[1], nid[2]
+            cells.append((r_of(nid2, j), zvals[nid]))
+        else:
+            cells.append((zlen_base + nid, zvals[nid]))
     for lid in range(k):
         for h in range(numd):
             value = chain_skips.get((lid, h), 0)
@@ -494,6 +571,6 @@ def nocomment(truth_table: str, n: int) -> str:
             setup.extend(["d"] * -diff)
         prev_value = value
     # the tree's first move starts from its start pointer, so park there
-    setup_move(dcell + k * numd - 1)
+    setup_move(tree_start)
 
     return "".join(setup + commands)
