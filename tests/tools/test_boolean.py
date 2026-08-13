@@ -1057,8 +1057,8 @@ class TestParameterizedNoComment:
         return parameterized.instantiate(
             tpl,
             bits,
-            lambda i, b: ("r" if i > 0 else "") + ("c" if b == 0 else "i"),
-            lambda _i, _b: "",
+            lambda i, b: "c" if b == 0 else "i",
+            lambda i, b: "c" if b == 1 else "i",
         )
 
     @pytest.mark.parametrize(
@@ -1107,31 +1107,32 @@ class TestParameterizedNoComment:
         assert "{X1}" in template
 
     def test_program_structure(self) -> None:
-        """A one-bit template is a single node test, two leaves, and an END."""
+        """A one-bit template computes the index then skips to the output."""
         from esolangs.tools.booleans import parameterized
 
         template = parameterized.nocomment("10", 1)
         assert template.startswith("{X0}")
-        assert template.endswith("c")  # the trailing END target
-        assert template.count("o") == 2  # one output per leaf
-        assert template.count("s") == 3  # one node branch + two leaf skips
-
-    def test_deep_table_rejected(self) -> None:
-        """A four-input table whose chains exceed the byte-cell skip range."""
-        from esolangs.tools.booleans import parameterized
-
-        with pytest.raises(ValueError, match="256-cell byte limit"):
-            parameterized.nocomment("1010101010101010", 4)
+        assert "{C0}" in template  # the complement is injected too
+        assert template.endswith("o")  # a single final output
+        assert template.count("s") == 2  # one guarded increment + the index skip
+        assert template.count("o") == 1
 
     def test_four_input_works(self) -> None:
-        """A four-input table whose chains fit the byte limit assembles."""
+        """A dense four-input table assembles and runs correctly."""
         from esolangs.tools.booleans import parameterized
 
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
-            template = parameterized.nocomment("1111111111111110", 4)
+            template = parameterized.nocomment("1010101010101010", 4)
             got = self.run_nocomment(self.instantiate(template, bits))
-            assert got == str(int("1111111111111110"[combo])), f"inputs {bits}"
+            assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
+
+    def test_cap_rejected(self) -> None:
+        """n > 8 needs an index beyond a byte and is rejected."""
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="n <= 8"):
+            parameterized.nocomment("0" * (2**9), 9)
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.booleans import parameterized
