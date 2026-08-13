@@ -96,15 +96,22 @@ int main(int argc, char *argv[]) {
         break;
       case 'i':
         prompt(line);
-        std::cin >> inp;
+        if (!(std::cin >> inp))
+          std::exit(EXIT_INVALID_OP);
+
         tape[ptr] = stoi(inp);
         break;
-      case 'j':
+      case 'j': {
         prompt(line);
-        tape[ptr] = getchar();
+        int ch = getchar();
+        if (ch == EOF)
+          std::exit(EXIT_INVALID_OP);
+
+        tape[ptr] = ch;
         while ((c = getchar()) != '\n' && c != EOF)
           ;
         break;
+      }
       case 'o':
         std::cout << tape[ptr];
         line = true;

@@ -67,6 +67,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
@@ -80,6 +81,75 @@ TWO_D_FISH_BIN = Path("/tmp") / "verify-2dfish"
 PAINFUCK_CXX = ROOT / "extra" / "c++" / "painfuck.cpp"
 PAINFUCK_BIN = Path("/tmp") / "verify-painfuck"
 BIT_TILDE_RUBY = ROOT / "extra" / "ruby" / "bit.rb"
+
+# Parallelism for the native-reference runs: each check spawns a subprocess,
+# so threads (which just wait on the subprocess) scale well.
+_WORKERS = 8
+
+
+def _run_parallel(fn, tasks):
+    """Run ``fn`` over ``tasks`` concurrently, returning results in order."""
+    with ThreadPoolExecutor(max_workers=_WORKERS) as executor:
+        return list(executor.map(fn, tasks))
+
+
+def _fuzz_boolean(name, builder, native, python, rng, count):
+    """Fuzz ``count`` random truth tables through both implementations.
+
+    ``native(program, stdin)`` runs the reference (None on a timeout) and
+    ``python(program, stdin)`` the in-package interpreter.  Returns
+    ``(failures, checked)``.
+    """
+    tasks = []
+    for _ in range(count):
+        n = rng.randint(1, 4)
+        table = "".join(rng.choice("01") for _ in range(2**n))
+        program = builder(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            stdin = ("\n".join(map(str, bits)) + "\n").encode()
+            tasks.append((program, stdin, table, bits))
+    results = _run_parallel(lambda t: native(t[0], t[1]), tasks)
+    failures = checked = 0
+    for (program, stdin, table, bits), result in zip(tasks, results, strict=True):
+        if result is None:
+            print(f"{name} boolean {table!r}: reference did not terminate")
+            failures += 1
+            checked += 1
+            continue
+        py = python(program, stdin)
+        checked += 1
+        if result != py:
+            failures += 1
+            print(
+                f"{name} boolean {table!r} combo {bits}: "
+                f"reference {result!r} vs Python {py!r}"
+            )
+    return failures, checked
+
+
+def _fuzz_text(name, generator, native, python, rng, count):
+    """Fuzz ``count`` random byte texts through both implementations."""
+    tasks = []
+    for _ in range(count):
+        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
+        tasks.append((generator(text), text))
+    results = _run_parallel(lambda t: native(t[0], b""), tasks)
+    failures = checked = 0
+    for (program, text), result in zip(tasks, results, strict=True):
+        if result is None:
+            print(f"{name} {text!r}: reference did not terminate")
+            failures += 1
+            checked += 1
+            continue
+        py = python(program, b"")
+        checked += 1
+        if result != py:
+            failures += 1
+            print(f"{name} {text!r}: reference {result!r} vs Python {py!r}")
+    return failures, checked
+
+
 FORTH_CXX = ROOT / "extra" / "c++" / "forþ.cpp"
 FORTH_BIN = Path("/tmp") / "verify-forþ"
 BASICFUCK_CXX = ROOT / "extra" / "c++" / "basicfuck.cpp"
@@ -474,8 +544,10 @@ def _verify_laserfuck() -> bool:
     def check(program: str) -> None:
         nonlocal failures, checked
         outputs: set[str] = set()
-        for _ in range(30):
-            out = _run_native([str(RUST_BIN)], program, input_bytes=b"1\n")
+        for out in _run_parallel(
+            lambda _: _run_native([str(RUST_BIN)], program, input_bytes=b"1\n"),
+            range(30),
+        ):
             if out is None:
                 print(f"LaserFuck {program!r}: Rust reference does not terminate")
                 return
@@ -598,6 +670,7 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
 # (program, input).  Programs that `,` always provide enough input, since
 # Python's EOFError has no C++ equivalent.
 FORTH_CORPUS = [
+    (",,", b"hi\n"),  # second read hits EOF: exit 3
     ("", b""),  # empty program
     ("5", b""),  # nothing printed
     ("65.", b""),  # digits push and . prints
@@ -667,6 +740,8 @@ def _run_forth_python(program: str, stdin: bytes) -> tuple[bytes, int]:
         run(program, io)
     except HaltError:
         return io.getvalue().encode("latin1"), 3
+    except EOFError:
+        return io.getvalue().encode("latin1"), 3
     return io.getvalue().encode("latin1"), 0
 
 
@@ -707,29 +782,14 @@ def _fuzz_forth(rng: random.Random, count: int) -> bool:
     if binary is None:
         return True
 
-    failures = checked = 0
-    for _ in range(count):
-        n = rng.randint(1, 4)
-        table = "".join(rng.choice("01") for _ in range(2**n))
-        program = boolean.forth(table, n)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            stdin = ("\n".join(map(str, bits)) + "\n").encode()
-            native = _run_forth_native(binary, program, stdin)
-            if native is None:
-                print(f"Forþ boolean {table!r}: C++ reference did not terminate")
-                failures += 1
-                checked += 1
-                continue
-            py = _run_forth_python(program, stdin)
-            checked += 1
-            if native != py:
-                failures += 1
-                print(
-                    f"Forþ boolean {table!r} combo {bits}: "
-                    f"C++ {native!r} vs Python {py!r}"
-                )
-
+    failures, checked = _fuzz_boolean(
+        "Forþ",
+        boolean.forth,
+        lambda program, stdin: _run_forth_native(binary, program, stdin),
+        _run_forth_python,
+        rng,
+        count,
+    )
     print(
         f"Forþ fuzz: {checked} checks match"
         if not failures
@@ -748,6 +808,7 @@ _BF_H = "#basicfuck t=1 r=0~255 o=halt\n#allocate a\n"
 _BF_U = "#basicfuck t=unbounded r=0~255 o=wrap\n#allocate "
 
 BASICFUCK_CORPUS = [
+    (_BF_U + "a\nread -> a ;\nread -> a ;", b"X\n"),  # EOF
     (_BF_N + "a += 65;\nwrite <- a ;", b""),
     (_BF_W + "a += 65;\nwrite <- a ;", b""),
     (_BF_N + "a += 5;\nwrite <- a ;", b""),
@@ -819,6 +880,8 @@ def _run_basicfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
         run(program, io)
     except HaltError:
         return io.getvalue().encode("latin1"), 3
+    except EOFError:
+        return io.getvalue().encode("latin1"), 3
     except ValueError:
         return io.getvalue().encode("latin1"), 2
     return io.getvalue().encode("latin1"), 0
@@ -864,29 +927,14 @@ def _fuzz_basicfuck(rng: random.Random, count: int) -> bool:
     if binary is None:
         return True
 
-    failures = checked = 0
-    for _ in range(count):
-        n = rng.randint(1, 4)
-        table = "".join(rng.choice("01") for _ in range(2**n))
-        program = boolean.basicfuck(table, n)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            stdin = ("\n".join(map(str, bits)) + "\n").encode()
-            native = _run_basicfuck_native(binary, program, stdin)
-            if native is None:
-                print(f"Basicfuck boolean {table!r}: C++ reference did not terminate")
-                failures += 1
-                checked += 1
-                continue
-            py = _run_basicfuck_python(program, stdin)
-            checked += 1
-            if native != py:
-                failures += 1
-                print(
-                    f"Basicfuck boolean {table!r} combo {bits}: "
-                    f"C++ {native!r} vs Python {py!r}"
-                )
-
+    failures, checked = _fuzz_boolean(
+        "Basicfuck",
+        boolean.basicfuck,
+        lambda program, stdin: _run_basicfuck_native(binary, program, stdin),
+        _run_basicfuck_python,
+        rng,
+        count,
+    )
     print(
         f"Basicfuck fuzz: {checked} checks match"
         if not failures
@@ -901,6 +949,7 @@ def _fuzz_basicfuck(rng: random.Random, count: int) -> bool:
 # the references exit on exhausted input.  Characters above 127 are written
 # as UTF-8 by all three implementations.
 UNSQUARE_CORPUS = [
+    ("ii", b"X\n"),  # second read hits EOF: exit 3
     ("Io", b""),  # push 1 and print it
     ("Oo", b""),  # push 0 and print it
     ("Ooo", b""),  # o does not pop
@@ -969,6 +1018,8 @@ def _run_unsquare_python(program: str, stdin: bytes) -> tuple[bytes, int]:
         run(program, io)
     except HaltError:
         return io.getvalue().encode("utf-8"), 3
+    except EOFError:
+        return io.getvalue().encode("utf-8"), 3
     return io.getvalue().encode("utf-8"), 0
 
 
@@ -1008,29 +1059,14 @@ def _fuzz_unsquare(rng: random.Random, count: int) -> bool:
         print("[skip] Unsquare fuzz: Rust reference not built")
         return True
 
-    failures = checked = 0
-    for _ in range(count):
-        n = rng.randint(1, 4)
-        table = "".join(rng.choice("01") for _ in range(2**n))
-        program = boolean.unsquare(table, n)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            stdin = ("\n".join(map(str, bits)) + "\n").encode()
-            native = _run_unsquare_native(str(UNSQUARE_BIN), program, stdin)
-            if native is None:
-                print(f"Unsquare boolean {table!r}: Rust reference did not terminate")
-                failures += 1
-                checked += 1
-                continue
-            py = _run_unsquare_python(program, stdin)
-            checked += 1
-            if native != py:
-                failures += 1
-                print(
-                    f"Unsquare boolean {table!r} combo {bits}: "
-                    f"Rust {native!r} vs Python {py!r}"
-                )
-
+    failures, checked = _fuzz_boolean(
+        "Unsquare",
+        boolean.unsquare,
+        lambda program, stdin: _run_unsquare_native(str(UNSQUARE_BIN), program, stdin),
+        _run_unsquare_python,
+        rng,
+        count,
+    )
     print(
         f"Unsquare fuzz: {checked} checks match"
         if not failures
@@ -1044,6 +1080,7 @@ def _fuzz_unsquare(rng: random.Random, count: int) -> bool:
 # (program, input).  Programs that read always provide enough input, since
 # the reference crashes on exhausted input.
 THREE_X_CORPUS = [
+    ("??", b"5\n"),  # second read hits EOF: exit 3
     ("333x!", b""),  # 0
     ("3333x3x!", b""),  # 1
     ("3!", b""),  # 3
@@ -1105,6 +1142,8 @@ def _run_three_x_python(program: str, stdin: bytes) -> tuple[bytes, int]:
         run(program, io)
     except HaltError:
         return io.getvalue().encode("utf-8"), 3
+    except EOFError:
+        return io.getvalue().encode("utf-8"), 3
     return io.getvalue().encode("utf-8"), 0
 
 
@@ -1144,29 +1183,14 @@ def _fuzz_three_x(rng: random.Random, count: int) -> bool:
         print("[skip] 3x fuzz: ruby not found")
         return True
 
-    failures = checked = 0
-    for _ in range(count):
-        n = rng.randint(1, 4)
-        table = "".join(rng.choice("01") for _ in range(2**n))
-        program = boolean.three_x(table, n)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            stdin = ("\n".join(map(str, bits)) + "\n").encode()
-            native = _run_three_x_native(program, stdin)
-            if native is None:
-                print(f"3x boolean {table!r}: Ruby reference did not terminate")
-                failures += 1
-                checked += 1
-                continue
-            py = _run_three_x_python(program, stdin)
-            checked += 1
-            if native != py:
-                failures += 1
-                print(
-                    f"3x boolean {table!r} combo {bits}: "
-                    f"Ruby {native!r} vs Python {py!r}"
-                )
-
+    failures, checked = _fuzz_boolean(
+        "3x",
+        boolean.three_x,
+        _run_three_x_native,
+        _run_three_x_python,
+        rng,
+        count,
+    )
     print(
         f"3x fuzz: {checked} checks match"
         if not failures
@@ -1180,6 +1204,7 @@ def _fuzz_three_x(rng: random.Random, count: int) -> bool:
 # (program, input).  Programs that read always provide enough input, since
 # Python's EOFError has no C++ equivalent (the reference stores -1).
 PCT_CORPUS = [
+    ("nn", b"X\n"),  # second read hits EOF: exit 3
     ("'e", b""),  # reset then print 0
     ("'ipe", b""),  # -3, p -> 3
     ("'ipse", b""),  # the fixed three-op path for byte 1
@@ -1283,22 +1308,14 @@ def _fuzz_pct(rng: random.Random, count: int) -> bool:
     if binary is None:
         return True
 
-    failures = checked = 0
-    for _ in range(count):
-        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
-        program = pct_squared_minus_one(text)
-        native = _run_pct_native(binary, program, b"")
-        if native is None:
-            print(f"%^2^-1 {text!r}: C++ reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = _run_pct_python(program, b"")
-        checked += 1
-        if native != py:
-            failures += 1
-            print(f"%^2^-1 {text!r}: C++ {native!r} vs Python {py!r}")
-
+    failures, checked = _fuzz_text(
+        "%^2^-1",
+        pct_squared_minus_one,
+        lambda program, stdin: _run_pct_native(binary, program, stdin),
+        _run_pct_python,
+        rng,
+        count,
+    )
     print(
         f"%^2^-1 fuzz: {checked} programs match"
         if not failures
@@ -1310,6 +1327,7 @@ def _fuzz_pct(rng: random.Random, count: int) -> bool:
 # -- 2dFish corpus: every command plus the error categories ---------------
 
 TWO_D_FISH_CORPUS = [
+    ("/%o%o@", b"1\n"),  # second read hits EOF: exit 3
     ("/i@", b""),
     ("/ii@", b""),
     ("/d@", b""),
@@ -1379,6 +1397,8 @@ def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
         run(program, io)
     except HaltError:
         return io.getvalue().encode("latin1"), 3
+    except EOFError:
+        return io.getvalue().encode("latin1"), 3
     except ValueError:
         return io.getvalue().encode("latin1"), 2
     return io.getvalue().encode("latin1"), 0
@@ -1419,22 +1439,14 @@ def _fuzz_two_d_fish(rng: random.Random, count: int) -> bool:
     if binary is None:
         return True
 
-    failures = checked = 0
-    for _ in range(count):
-        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
-        program = two_d_fish(text)
-        native = _run_two_d_fish_native(binary, program, b"")
-        if native is None:
-            print(f"2dFish {text!r}: C++ reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = _run_two_d_fish_python(program, b"")
-        checked += 1
-        if native != py:
-            failures += 1
-            print(f"2dFish {text!r}: C++ {native!r} vs Python {py!r}")
-
+    failures, checked = _fuzz_text(
+        "2dFish",
+        two_d_fish,
+        lambda program, stdin: _run_two_d_fish_native(binary, program, stdin),
+        _run_two_d_fish_python,
+        rng,
+        count,
+    )
     print(
         f"2dFish fuzz: {checked} programs match"
         if not failures
@@ -1465,6 +1477,7 @@ def _painfuck_encode(targets: str) -> str:
 
 
 _PAIN_CORPUS = [
+    ("jj", b"X\n"),  # second read hits EOF: exit 3
     ("pue", b""),
     ("ppue", b""),
     ("sue", b""),
@@ -1540,6 +1553,8 @@ def _run_painfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
         run(program, io)
     except HaltError:
         return io.getvalue().encode("latin1"), 3
+    except EOFError:
+        return io.getvalue().encode("latin1"), 3
     return io.getvalue().encode("latin1"), 0
 
 
@@ -1579,22 +1594,14 @@ def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
     if binary is None:
         return True
 
-    failures = checked = 0
-    for _ in range(count):
-        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
-        program = painfuck(text)
-        native = _run_painfuck_native(binary, program, b"")
-        if native is None:
-            print(f"Painfuck {text!r}: C++ reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = _run_painfuck_python(program, b"")
-        checked += 1
-        if native != py:
-            failures += 1
-            print(f"Painfuck {text!r}: C++ {native!r} vs Python {py!r}")
-
+    failures, checked = _fuzz_text(
+        "Painfuck",
+        painfuck,
+        lambda program, stdin: _run_painfuck_native(binary, program, stdin),
+        _run_painfuck_python,
+        rng,
+        count,
+    )
     print(
         f"Painfuck fuzz: {checked} programs match"
         if not failures
@@ -1607,6 +1614,7 @@ def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
 
 # Unmatched brackets hang the Ruby reference (the Python side raises instead).
 BIT_TILDE_CORPUS = [
+    ("))", b"a\n"),  # second read hits EOF: exit 3
     ("~(", b""),
     ("~>~(", b""),
     ("~>~>~(", b""),
@@ -1662,6 +1670,8 @@ def _run_bit_tilde_python(program: str, stdin: bytes) -> tuple[bytes, int]:
         run(program, io)
     except HaltError:
         return io.getvalue().encode("latin1"), 3
+    except EOFError:
+        return io.getvalue().encode("latin1"), 3
     except ValueError:
         return io.getvalue().encode("latin1"), 2
     return io.getvalue().encode("latin1"), 0
@@ -1702,22 +1712,14 @@ def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
         print("[skip] bit~ fuzz: ruby not found")
         return True
 
-    failures = checked = 0
-    for _ in range(count):
-        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
-        program = bit_tilde(text)
-        native = _run_bit_tilde_native(program, b"")
-        if native is None:
-            print(f"bit~ {text!r}: Ruby reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = _run_bit_tilde_python(program, b"")
-        checked += 1
-        if native != py:
-            failures += 1
-            print(f"bit~ {text!r}: Ruby {native!r} vs Python {py!r}")
-
+    failures, checked = _fuzz_text(
+        "bit~",
+        bit_tilde,
+        _run_bit_tilde_native,
+        _run_bit_tilde_python,
+        rng,
+        count,
+    )
     print(
         f"bit~ fuzz: {checked} programs match"
         if not failures

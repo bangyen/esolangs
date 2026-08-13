@@ -151,7 +151,11 @@ int run(std::smatch pre, std::vector<int> &prog, std::vector<int> &tape,
         std::cout << std::endl;
 
       std::cout << "Input: ";
-      *val(0) = getchar();
+      int ch = getchar();
+      if (ch == EOF)
+        return EXIT_INVALID_OP;
+
+      *val(0) = ch;
       out = false;
       ptr++;
 

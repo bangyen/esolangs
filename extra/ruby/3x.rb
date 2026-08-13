@@ -65,7 +65,10 @@ while (c = code[ind])
     stk.push(n)
   when "?"
     print "#{line}Input: "
-    stk.push(Rational(gets.strip))
+    inp = gets
+    raise SystemExit.new(3, "input exhausted") if inp.nil?
+
+    stk.push(Rational(inp.strip))
     line = ""
   when "!"
     n = pop(stk)
