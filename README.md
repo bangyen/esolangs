@@ -26,7 +26,7 @@ Esoteric programming languages are designed to be difficult to program in, often
 
 Most interpreters work by reading the file specified by the first command line argument.
 
-Planned work is tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md); documented
+Planned work is tracked in [`docs/roadmap.md`](docs/roadmap.md); documented
 limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md).
 
 ## Usage
