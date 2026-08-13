@@ -40,6 +40,14 @@ Languages with both an in-package interpreter and a native cross-check:
   Both track the accumulator as a signed magnitude with the 3003 reset; the
   reference prints its ``Input: `` prompts to stdout, which are stripped
   before comparing.
+* **2dFish** — ``other/2dfish.py`` vs ``extra/c++/2dFish.cpp``.  Both run
+  the ragged grid with the reference's trailing-newline phantom row.
+* **Painfuck** — ``tape_based/painfuck.py`` vs ``extra/c++/painfuck.cpp``.
+  Corpus programs are encoded into the source alphabet (the reference
+  translates the source before running); the nondeterministic ``y`` is
+  excluded.
+* **bit~** — ``other/bit_tilde.py`` vs ``extra/ruby/bit.rb``.  The corpus
+  uses ASCII input because the Ruby reference crashes on bytes above 127.
 
 Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
 provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
@@ -67,6 +75,11 @@ UNSQUARE_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "unsquare"
 THREE_X_RUBY = ROOT / "extra" / "ruby" / "3x.rb"
 PCT_CXX = ROOT / "extra" / "c++" / "%^2^-1.cpp"
 PCT_BIN = Path("/tmp") / "verify-pct"
+TWO_D_FISH_CXX = ROOT / "extra" / "c++" / "2dFish.cpp"
+TWO_D_FISH_BIN = Path("/tmp") / "verify-2dfish"
+PAINFUCK_CXX = ROOT / "extra" / "c++" / "painfuck.cpp"
+PAINFUCK_BIN = Path("/tmp") / "verify-painfuck"
+BIT_TILDE_RUBY = ROOT / "extra" / "ruby" / "bit.rb"
 FORTH_CXX = ROOT / "extra" / "c++" / "forþ.cpp"
 FORTH_BIN = Path("/tmp") / "verify-forþ"
 BASICFUCK_CXX = ROOT / "extra" / "c++" / "basicfuck.cpp"
@@ -1294,6 +1307,429 @@ def _fuzz_pct(rng: random.Random, count: int) -> bool:
     return failures == 0
 
 
+# -- 2dFish corpus: every command plus the error categories ---------------
+
+TWO_D_FISH_CORPUS = [
+    ("/i@", b""),
+    ("/ii@", b""),
+    ("/d@", b""),
+    ("/s@", b""),
+    ("/iio@", b""),
+    ("/ia@", b""),
+    ("/i*a@", b""),
+    ("/i(abc)*@", b""),
+    ("/i(abc)@", b""),
+    ("/i(ab)a@", b""),  # a in string mode prints one captured character
+    ("v\ni\n@\n", b""),
+    ("v\nii\no\n@\n", b""),
+    ("^", b""),
+    ("\\", b""),
+    ("/i@\n", b""),  # trailing newline phantom-row quirk
+    ("/$*@", b"hi\n"),
+    ("/%o@", b"42\n"),
+    ("/@", b""),
+    ("", b""),  # no initial direction
+]
+
+
+def _build_two_d_fish() -> str | None:
+    """Compile the 2dFish C++ cross-check (once); None if g++ is missing."""
+    if shutil.which("g++") is None:
+        print("[skip] 2dFish differential: g++ not found")
+        return None
+    if TWO_D_FISH_BIN.exists():
+        return str(TWO_D_FISH_BIN)
+    rv = subprocess.run(
+        ["g++", "-std=c++11", str(TWO_D_FISH_CXX), "-o", str(TWO_D_FISH_BIN)],
+        capture_output=True,
+    )
+    return str(TWO_D_FISH_BIN) if rv.returncode == 0 else None
+
+
+def _run_two_d_fish_native(
+    binary: str, program: str, stdin: bytes
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through the C++ cross-check; return (stdout, exit code)."""
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            [binary, path], capture_output=True, input=stdin, timeout=5
+        )
+        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
+        return out, proc.returncode
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+    """Run ``program`` through the in-package interpreter."""
+    import importlib
+
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import ScriptedIO
+
+    run = importlib.import_module("esolangs.interpreters.other.2dfish").run
+
+    io = ScriptedIO(stdin.decode("latin1"))
+    try:
+        run(program, io)
+    except HaltError:
+        return io.getvalue().encode("latin1"), 3
+    except ValueError:
+        return io.getvalue().encode("latin1"), 2
+    return io.getvalue().encode("latin1"), 0
+
+
+def _verify_two_d_fish() -> bool:
+    """Compare the Python 2dFish interpreter against the C++ cross-check."""
+    binary = _build_two_d_fish()
+    if binary is None:
+        return True
+
+    failures = 0
+    for program, stdin in TWO_D_FISH_CORPUS:
+        native = _run_two_d_fish_native(binary, program, stdin)
+        if native is None:
+            print(f"2dFish {program!r}: C++ reference did not terminate")
+            failures += 1
+            continue
+        py = _run_two_d_fish_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"2dFish {program!r}: C++ {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"2dFish differential: {len(TWO_D_FISH_CORPUS)} programs match")
+    return failures == 0
+
+
+def _fuzz_two_d_fish(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz 2dFish with random byte text.
+
+    The language has no boolean generator, so the text generator's programs
+    are fuzzed instead.
+    """
+    from esolangs.tools.generate import two_d_fish
+
+    binary = _build_two_d_fish()
+    if binary is None:
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
+        program = two_d_fish(text)
+        native = _run_two_d_fish_native(binary, program, b"")
+        if native is None:
+            print(f"2dFish {text!r}: C++ reference did not terminate")
+            failures += 1
+            checked += 1
+            continue
+        py = _run_two_d_fish_python(program, b"")
+        checked += 1
+        if native != py:
+            failures += 1
+            print(f"2dFish {text!r}: C++ {native!r} vs Python {py!r}")
+
+    print(
+        f"2dFish fuzz: {checked} programs match"
+        if not failures
+        else f"2dFish fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
+# -- Painfuck corpus: every command plus the error categories --------------
+
+# Programs are written in the source alphabet via _painfuck_encode, whose
+# translation exercises the listed commands.  The nondeterministic `y` is
+# excluded (both the generator and this corpus avoid it).
+_PAIN_CYCLES = ("pevkjzwr", "yuctsobqihald")
+
+
+def _painfuck_encode(targets: str) -> str:
+    """Source text whose translation is exactly ``targets``."""
+    out: list[str] = []
+    k = 0
+    for tc in targets:
+        for cycle in _PAIN_CYCLES:
+            if tc in cycle:
+                out.append(cycle[(cycle.index(tc) - k) % len(cycle)])
+                k += 1
+                break
+    return "".join(out)
+
+
+_PAIN_CORPUS = [
+    ("pue", b""),
+    ("ppue", b""),
+    ("sue", b""),
+    ("pzue", b""),
+    ("pkue", b""),
+    ("ppkue", b""),
+    ("phue", b""),
+    ("pphue", b""),
+    ("ppwo", b""),
+    ("ppwqo", b""),
+    ("prppdpue", b""),
+    ("ppo", b""),
+    ("ppuo", b""),
+    ("pjo", b"5\n"),
+    ("pjo", b"65\n"),
+    ("jiu", b"7\n9\n"),
+    ("jiu", b"255\n1\n"),
+    ("ppas b ue".replace(" ", ""), b""),
+    ("pcsu", b""),
+    ("pcue", b""),
+    ("ptpue", b""),
+    ("pve", b""),
+    ("pvu", b""),
+    ("pe", b""),
+    ("b", b""),  # loop close with an empty stack: the reference segfaults
+]
+
+
+def _build_painfuck() -> str | None:
+    """Compile the Painfuck C++ cross-check (once); None if g++ is missing."""
+    if shutil.which("g++") is None:
+        print("[skip] Painfuck differential: g++ not found")
+        return None
+    if PAINFUCK_BIN.exists():
+        return str(PAINFUCK_BIN)
+    rv = subprocess.run(
+        ["g++", "-std=c++11", str(PAINFUCK_CXX), "-o", str(PAINFUCK_BIN)],
+        capture_output=True,
+    )
+    return str(PAINFUCK_BIN) if rv.returncode == 0 else None
+
+
+def _run_painfuck_native(
+    binary: str, program: str, stdin: bytes
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through the C++ cross-check; return (stdout, exit code).
+
+    A negative exit code is a crash (the reference segfaults on an unmatched
+    ``b``), normalized to the cross-check's 3 for invalid operations.
+    """
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            [binary, path], capture_output=True, input=stdin, timeout=5
+        )
+        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
+        code = 3 if proc.returncode < 0 else proc.returncode
+        return out, code
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _run_painfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+    """Run ``program`` through the in-package interpreter."""
+    import importlib
+
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import ScriptedIO
+
+    run = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
+
+    io = ScriptedIO(stdin.decode("latin1"))
+    try:
+        run(program, io)
+    except HaltError:
+        return io.getvalue().encode("latin1"), 3
+    return io.getvalue().encode("latin1"), 0
+
+
+def _verify_painfuck() -> bool:
+    """Compare the Python Painfuck interpreter against the C++ cross-check."""
+    binary = _build_painfuck()
+    if binary is None:
+        return True
+
+    failures = 0
+    for targets, stdin in _PAIN_CORPUS:
+        program = _painfuck_encode(targets)
+        native = _run_painfuck_native(binary, program, stdin)
+        if native is None:
+            print(f"Painfuck {targets!r}: C++ reference did not terminate")
+            failures += 1
+            continue
+        py = _run_painfuck_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"Painfuck {targets!r}: C++ {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"Painfuck differential: {len(_PAIN_CORPUS)} programs match")
+    return failures == 0
+
+
+def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz Painfuck with random byte text.
+
+    The language has no boolean generator, so the text generator's programs
+    (which avoid the nondeterministic `y`) are fuzzed instead.
+    """
+    from esolangs.tools.generate import painfuck
+
+    binary = _build_painfuck()
+    if binary is None:
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
+        program = painfuck(text)
+        native = _run_painfuck_native(binary, program, b"")
+        if native is None:
+            print(f"Painfuck {text!r}: C++ reference did not terminate")
+            failures += 1
+            checked += 1
+            continue
+        py = _run_painfuck_python(program, b"")
+        checked += 1
+        if native != py:
+            failures += 1
+            print(f"Painfuck {text!r}: C++ {native!r} vs Python {py!r}")
+
+    print(
+        f"Painfuck fuzz: {checked} programs match"
+        if not failures
+        else f"Painfuck fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
+# -- bit~ corpus: every command plus the error categories ------------------
+
+# Input is ASCII: the Ruby reference crashes on bytes >= 0x80 (an encoding
+# error), and unmatched brackets hang it (the Python side raises instead).
+BIT_TILDE_CORPUS = [
+    ("~(", b""),
+    ("~>~(", b""),
+    ("~>~>~(", b""),
+    ("~<(", b""),
+    (">(", b""),
+    (")((", b"a\n"),
+    ("))(((", b"ab\ncd\n"),
+    ("~)(", b"a\n"),
+    ("{~}", b""),
+    ("~{~}", b""),
+    ("}~", b""),
+    ("{~}~(", b""),
+    ("~{~}(", b""),
+    ("{>~}(~", b""),
+    (")", b"a\n"),
+    ("~~~~", b""),
+]
+
+
+def _run_bit_tilde_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
+    """Run ``program`` through the Ruby cross-check; return (stdout, exit code)."""
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            ["ruby", str(BIT_TILDE_RUBY), path],
+            capture_output=True,
+            input=stdin,
+            timeout=5,
+        )
+        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
+        return out, proc.returncode
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _run_bit_tilde_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+    """Run ``program`` through the in-package interpreter."""
+    import importlib
+
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import ScriptedIO
+
+    run = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
+
+    io = ScriptedIO(stdin.decode("latin1"))
+    try:
+        run(program, io)
+    except HaltError:
+        return io.getvalue().encode("latin1"), 3
+    except ValueError:
+        return io.getvalue().encode("latin1"), 2
+    return io.getvalue().encode("latin1"), 0
+
+
+def _verify_bit_tilde() -> bool:
+    """Compare the Python bit~ interpreter against the Ruby cross-check."""
+    if shutil.which("ruby") is None:
+        print("[skip] bit~ differential: ruby not found")
+        return True
+
+    failures = 0
+    for program, stdin in BIT_TILDE_CORPUS:
+        native = _run_bit_tilde_native(program, stdin)
+        if native is None:
+            print(f"bit~ {program!r}: Ruby reference did not terminate")
+            failures += 1
+            continue
+        py = _run_bit_tilde_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"bit~ {program!r}: Ruby {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"bit~ differential: {len(BIT_TILDE_CORPUS)} programs match")
+    return failures == 0
+
+
+def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz bit~ with random byte text.
+
+    The language has no boolean generator, so the text generator's programs
+    are fuzzed instead.
+    """
+    from esolangs.tools.generate import bit_tilde
+
+    if shutil.which("ruby") is None:
+        print("[skip] bit~ fuzz: ruby not found")
+        return True
+
+    failures = checked = 0
+    for _ in range(count):
+        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
+        program = bit_tilde(text)
+        native = _run_bit_tilde_native(program, b"")
+        if native is None:
+            print(f"bit~ {text!r}: Ruby reference did not terminate")
+            failures += 1
+            checked += 1
+            continue
+        py = _run_bit_tilde_python(program, b"")
+        checked += 1
+        if native != py:
+            failures += 1
+            print(f"bit~ {text!r}: Ruby {native!r} vs Python {py!r}")
+
+    print(
+        f"bit~ fuzz: {checked} programs match"
+        if not failures
+        else f"bit~ fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -1353,6 +1789,9 @@ def main() -> int:
     ok = _verify_unsquare() and ok
     ok = _verify_three_x() and ok
     ok = _verify_pct() and ok
+    ok = _verify_two_d_fish() and ok
+    ok = _verify_painfuck() and ok
+    ok = _verify_bit_tilde() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
@@ -1361,6 +1800,9 @@ def main() -> int:
         ok = _fuzz_unsquare(rng, args.fuzz) and ok
         ok = _fuzz_three_x(rng, args.fuzz) and ok
         ok = _fuzz_pct(rng, args.fuzz) and ok
+        ok = _fuzz_two_d_fish(rng, args.fuzz) and ok
+        ok = _fuzz_painfuck(rng, args.fuzz) and ok
+        ok = _fuzz_bit_tilde(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.

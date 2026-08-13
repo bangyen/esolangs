@@ -41,7 +41,7 @@ LANGUAGES: dict[str, Language] = {
         _generate._123,  # noqa: SLF001 - "123" is a language name
         "tape_based.123",
     ),
-    "2dFish": Language("2dFish", _generate.two_d_fish),
+    "2dFish": Language("2dFish", _generate.two_d_fish, "other.2dfish"),
     "6-5": Language("6-5", _generate.six_five, "tape_based.6-5"),
     "%^2^-1": Language(
         "%^2^-1", _generate.pct_squared_minus_one, "register_based.%^2^-1"
@@ -54,7 +54,7 @@ LANGUAGES: dict[str, Language] = {
     "BF": Language("BF", _generate.bf, "tape_based.bf"),
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
     "BIO": Language("BIO", _generate.bio, "register_based.bio"),
-    "bit~": Language("bit~", _generate.bit_tilde),
+    "bit~": Language("bit~", _generate.bit_tilde, "other.bit_tilde"),
     "BitDeque": Language("BitDeque", interpreter="other.bitdeque"),
     "BrainIf": Language("BrainIf", _generate.brainif, "tape_based.brainif", split=True),
     "CircleFuck": Language("CircleFuck", _generate.circlefuck, "tape_based.circlefuck"),
@@ -92,7 +92,7 @@ LANGUAGES: dict[str, Language] = {
         "Nevermind", _generate.nevermind, "other.nevermind", split=True
     ),
     "NoComment": Language("NoComment", _generate.nocomment, "tape_based.nocomment"),
-    "Painfuck": Language("Painfuck", _generate.painfuck),
+    "Painfuck": Language("Painfuck", _generate.painfuck, "tape_based.painfuck"),
     "Polynomial": Language(
         "Polynomial",
         _generate.polynomial,

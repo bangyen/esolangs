@@ -122,3 +122,45 @@ class TestDivergenceDetection:
 
         with patch.object(verify_differential, "_run_pct_native", side_effect=tampered):
             assert not verify_differential._fuzz_pct(rng, 20)  # noqa: SLF001
+
+    @pytest.mark.skipif(shutil.which("g++") is None, reason="g++ not installed")
+    def test_two_d_fish_catches_divergence(self, rng) -> None:
+        """A wrong output on the C++ side is reported as a failure."""
+        real_run = verify_differential._run_two_d_fish_native  # noqa: SLF001
+
+        def tampered(binary, program, stdin):
+            out, code = real_run(binary, program, stdin)
+            return out + b"!", code
+
+        with patch.object(
+            verify_differential, "_run_two_d_fish_native", side_effect=tampered
+        ):
+            assert not verify_differential._fuzz_two_d_fish(rng, 20)  # noqa: SLF001
+
+    @pytest.mark.skipif(shutil.which("g++") is None, reason="g++ not installed")
+    def test_painfuck_catches_divergence(self, rng) -> None:
+        """A wrong output on the C++ side is reported as a failure."""
+        real_run = verify_differential._run_painfuck_native  # noqa: SLF001
+
+        def tampered(binary, program, stdin):
+            out, code = real_run(binary, program, stdin)
+            return out + b"!", code
+
+        with patch.object(
+            verify_differential, "_run_painfuck_native", side_effect=tampered
+        ):
+            assert not verify_differential._fuzz_painfuck(rng, 20)  # noqa: SLF001
+
+    @pytest.mark.skipif(shutil.which("ruby") is None, reason="ruby not installed")
+    def test_bit_tilde_catches_divergence(self, rng) -> None:
+        """A wrong output on the Ruby side is reported as a failure."""
+        real_run = verify_differential._run_bit_tilde_native  # noqa: SLF001
+
+        def tampered(program, stdin):
+            out, code = real_run(program, stdin)
+            return out + b"!", code
+
+        with patch.object(
+            verify_differential, "_run_bit_tilde_native", side_effect=tampered
+        ):
+            assert not verify_differential._fuzz_bit_tilde(rng, 20)  # noqa: SLF001
