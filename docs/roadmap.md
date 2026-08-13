@@ -64,9 +64,12 @@ identifying each instruction) recovers the original brainfuck program.
 
 ### Lean interpreter equivalence (medium priority)
 Prove the ported Lean interpreters match their Python references.  BF-PDA's
-`find` bracket matching is done.  Remaining: EXCON's output semantics (that
-the port's `to_s`/state transitions match `src/esolangs/interpreters/tape_based/excon.py`,
-building on the fixed `pool[0]` handling) and the other ported interpreters.
+`find` bracket matching and EXCON's output semantics are done
+(`BfpdaCorrect.lean`, `ExconSemanticsCorrect.lean`): for programs where the
+reference interpreter does not halt (EXCON's `<` at cell 0 raises
+`HaltError`, which the port's `(n - 1) % 8` does not), both interpreters
+compute the same output and final state.  Remaining: the other ported
+interpreters.
 
 ### Albabet text generator and correctness (medium priority)
 Albabet's `i` prints the accumulator as a character, so it can emit arbitrary
