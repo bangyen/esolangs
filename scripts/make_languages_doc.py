@@ -143,6 +143,11 @@ _EXTRA_DIRS = [
     ),
 ]
 
+# Display names of the languages with a native implementation in extra/
+# (C++, Rust, Ruby, R, Lean, or x86 assembly).  These interpreters run as
+# standalone programs rather than through the Python package.
+NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
+
 # Extra-implementation display name -> wiki slug, where the page name
 # differs from ``name.replace(" ", "_")`` (URL-encoded characters kept
 # literal as in the pre-existing hand-written list).
@@ -217,6 +222,7 @@ def _capabilities(name: str) -> dict[str, bool]:
     return {
         "generator": lang.generator is not None if lang else False,
         "interpreter": lang.interpreter is not None if lang else False,
+        "native": name in NATIVE,
         "boolean": name in BOOLEAN,
         "compiler": name in ASSEMBLY_COMPILERS or name in C_COMPILERS,
         "hello": hello,
@@ -234,18 +240,24 @@ def render() -> str:
         "`esolangs/registry.py` by `scripts/make_languages_doc.py`; do not edit by",
         "hand.",
         "",
-        "| Language | Text generator | Interpreter | Boolean | Compiler | Examples |",
-        "| --- | :---: | :---: | :---: | :---: | :---: |",
+        "Python means an in-repo interpreter under `esolangs.interpreters`;",
+        "Native means an implementation in `extra/` that runs as a standalone",
+        "program (C++, Rust, Ruby, R, Lean, or x86 assembly).",
+        "",
+        "| Language | Text generator | Python | Native | Boolean | Compiler | Examples |",  # noqa: E501
+        "| --- | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
-    for name in sorted(set(LANGUAGES) | C_COMPILERS):
+    for name in sorted(set(LANGUAGES) | C_COMPILERS | NATIVE):
         c = _capabilities(name)
         examples = " ".join(k for k in ("hello", "cat", "truth-machine") if c[k])
         lines.append(
             f"| {name} | {'yes' if c['generator'] else ''} | "
-            f"{'yes' if c['interpreter'] else ''} | {'yes' if c['boolean'] else ''} | "
+            f"{'yes' if c['interpreter'] else ''} | "
+            f"{'yes' if c['native'] else ''} | "
+            f"{'yes' if c['boolean'] else ''} | "
             f"{'yes' if c['compiler'] else ''} | {examples} |"
         )
-    lines += ["", "The `esolangs` command lists the same languages:"]
+    lines += ["", "The `esolangs` command lists the languages with Python support:"]
     lines += ["", "```bash", "esolangs list", "```", ""]
     return "\n".join(lines)
 
@@ -321,6 +333,6 @@ if __name__ == "__main__":
     out = ROOT / "docs" / "languages.md"
     out.parent.mkdir(exist_ok=True)
     out.write_text(render())
-    print(f"wrote {out} ({len(set(LANGUAGES) | C_COMPILERS)} languages)")
+    print(f"wrote {out} ({len(set(LANGUAGES) | C_COMPILERS | NATIVE)} languages)")
     update_readme()
     print("updated the generated sections of README.md")
