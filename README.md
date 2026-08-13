@@ -160,6 +160,7 @@ Languages that use a stack for data manipulation.
 
 Languages that don't fit into the above categories.
 
+- [3x](https://esolangs.org/wiki/3x)
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue)
 - [Between](https://esolangs.org/wiki/Between)
 - [Bitdeque](https://esolangs.org/wiki/Bitdeque)

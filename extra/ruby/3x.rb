@@ -29,10 +29,19 @@ def pop(stk)
   stk.pop
 end
 
+def top(stk)
+  raise SystemExit.new(3, "empty stack") if stk.empty?
+
+  stk[-1]
+end
+
 def find(str, sym)
   num = 1
   while num.nonzero?
-    case str[sym += 1]
+    sym += 1
+    raise SystemExit.new(3, "unmatched (") if sym >= str.length
+
+    case str[sym]
     when "("
       num += 1
     when ")"
@@ -50,6 +59,8 @@ while (c = code[ind])
     x = pop(stk)
     y = pop(stk)
     z = pop(stk)
+    raise SystemExit.new(3, "division by zero") if z.zero?
+
     n = (x - y) / z
     stk.push(n)
   when "?"
@@ -70,20 +81,24 @@ while (c = code[ind])
     y = pop(stk)
     stk.push(x).push(y)
   when "("
-    if stk[-1].nonzero?
+    if top(stk).nonzero?
       ptr.push(ind)
     else
       ind = find(code, ind)
     end
   when ")"
-    if stk[-1].nonzero?
+    if top(stk).nonzero?
+      raise SystemExit.new(3, "unmatched )") if ptr.empty?
+
       ind = ptr[-1]
     else
       ptr.pop
     end
   when "["
-    s = code[ind..]
-    print s[/\[([^\]]*)\]/, 1]
+    if (close = code.index("]", ind))
+      print code[(ind + 1)...close]
+      ind = close
+    end
     line = 10.chr
   end
   ind += 1

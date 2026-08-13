@@ -107,7 +107,7 @@ LANGUAGES: dict[str, Language] = {
         kwargs=_kw(limit=1),
     ),
     "Temporary": Language("Temporary", _generate.temporary, "stack_based.temporary"),
-    "3x": Language("3x", _generate.three_x),
+    "3x": Language("3x", _generate.three_x, "other.three_x"),
     "Taglate": Language("Taglate", _generate.taglate, "other.taglate", split=True),
     "Unsquare": Language("Unsquare", _generate.unsquare, "stack_based.unsquare"),
     "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", split=True),

@@ -757,13 +757,11 @@ def bit_tilde(text: str) -> str:
 def three_x(text: str) -> str:
     """Build a 3x program that outputs ``text``.
 
-    ``[`` prints the literal up to the next ``]``, so the program is
-    ``[text]``.  A ``?`` or ``]`` in the text would be read as input or end
-    the literal early (the reference re-executes the printed characters), so
-    both are rejected.
+    ``[`` prints the literal up to the next ``]`` and skips past it, so the
+    program is ``[text]``; a ``]`` in the text would end the literal early.
     """
-    if any(c in "?]" for c in text):
-        raise ValueError("3x cannot output '?' or ']' (the literal re-executes)")
+    if "]" in text:
+        raise ValueError("3x cannot output ']' (it would end the literal)")
     return "[" + text + "]"
 
 

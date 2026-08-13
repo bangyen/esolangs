@@ -13,6 +13,7 @@ from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
+from esolangs.interpreters.other.three_x import run as three_x_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
 from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.dig import run as dig_run
@@ -367,13 +368,13 @@ class TestGeneratorRoundTrips:
         """A [literal] prints the text up to the closing bracket."""
         assert gen.three_x("Hi") == "[Hi]"
         assert gen.three_x("") == "[]"
+        assert roundtrip(three_x_run, gen.three_x("Hi")) == "Hi"
+        assert roundtrip(three_x_run, gen.three_x("Hello, World!")) == "Hello, World!"
 
     def test_three_x_unsupported(self) -> None:
-        """'?' or ']' in the text would be read as input or end the literal."""
-        with pytest.raises(ValueError, match="re-executes"):
+        """A ']' in the text would end the literal early."""
+        with pytest.raises(ValueError, match="end the literal"):
             gen.three_x("a]b")
-        with pytest.raises(ValueError, match="re-executes"):
-            gen.three_x("a?b")
 
     def test_byte_generators_reject_unicode(self) -> None:
         """Byte-oriented generators reject codepoints above 255 loudly."""
