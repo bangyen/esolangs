@@ -1395,7 +1395,7 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
         def __init__(self, ins: list[str]) -> None:
             self._ins = list(ins)
 
-        def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
+        def input_str(self, _prompt: str = "Input: ") -> str:
             return self._ins.pop(0)
 
         def print_char(self, char: str) -> None:
