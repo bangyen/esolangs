@@ -51,9 +51,10 @@ prefixes and the exact reachable table set are recorded in
 Completed proofs live in the commit history: MAMMALIAN generator totality
 (`extra/lean/esolangs/Esolangs.lean`), EXCON generator correctness
 (`ExconCorrect.lean`), CircleFuck generator correctness
-(`CircleFuckCorrect.lean`), and BF-PDA bracket matching
-(`BfpdaCorrect.lean`).  The candidates below go beyond totality, in
-increasing payoff order.
+(`CircleFuckCorrect.lean`), BF-PDA bracket matching (`BfpdaCorrect.lean`),
+EXCON interpreter equivalence (`ExconSemanticsCorrect.lean`), and AlbaBet
+generator correctness (`AlbabetCorrect.lean`).  The candidates below go
+beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 `_factor_encode` (`tools/generators/tape.py`) searches for a prime with a given
@@ -71,13 +72,6 @@ reference interpreter does not halt (EXCON's `<` at cell 0 raises
 compute the same output and final state.  Remaining: the other ported
 interpreters.
 
-### Albabet text generator and correctness (medium priority)
-Albabet's `i` prints the accumulator as a character, so it can emit arbitrary
-bytes; the extra/ roadmap note calling its output class "narrow" is
-inaccurate.  Build the missing text generator (drive `x` to each byte and
-print, like EXCON), round-trip it against the interpreter, then prove its
-correctness.  This is new feature work, not just a proof.
-
 ### `_bf_set` multiply loop (low priority)
 A Hoare-style invariant for `+a[>+b<-]>+r.` (`tools/generators/tape.py::_bf_set`):
 after the loop the printed cell holds `a*b + r = value`.  Genuine but generic
@@ -86,10 +80,10 @@ brainfuck reasoning.
 ## Text generators: exhausted
 
 Every language whose interpreter can emit arbitrary bytes already has a text
-generator, except Albabet (see the Lean proofs section, which tracks building
-and proving its generator).  The remaining interpreter-only languages
-(ArrowQueue, Back, BitDeque, DSDLAI, Keys, Lightlang, Minsky Swap, Movesum,
-RAM0) either have no output, print numeric state, or print a fixed string, so
-none can emit arbitrary text.  The newly assessed boolean candidates that fell
-through (Temporary, Movesum, WII2D, EXCON, Huf, Lightlang, DSDLAI) are
-recorded in `docs/limitations.md`.
+generator, now including AlbaBet (its `c`+`a`-run+`i` generator and
+correctness proof landed with the other Lean proofs).  The remaining
+interpreter-only languages (ArrowQueue, Back, BitDeque, DSDLAI, Keys,
+Lightlang, Minsky Swap, Movesum, RAM0) either have no output, print numeric
+state, or print a fixed string, so none can emit arbitrary text.  The newly
+assessed boolean candidates that fell through (Temporary, Movesum, WII2D,
+EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.

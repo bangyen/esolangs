@@ -120,6 +120,30 @@ the reference run succeeds — when it does not halt, both interpreters print
 exactly the same string (`output_eq_exec` states it from a reset pool, in
 terms of `exec`).
 
+## AlbaBet generator correctness
+
+A Lean 4 + mathlib proof (`Esolangs/AlbabetCorrect.lean`) that the AlbaBet
+text generator (`src/esolangs/tools/generators/register.py::albabet`) is
+*correct*.  AlbaBet is a two-register language (`x` and `y` start at 0): `a`
+moves `x` up by one, `c` zeroes `x`, and `i` prints `Char.ofNat x`.  The
+generator emits, for each byte `v`, the program `c` followed by `v` copies of
+`a` followed by `i`.
+
+The proof runs the generated program through the ported interpreter's own
+pure state transitions (`step`/`runList` over a `(x, y, out)` state), with
+three parts:
+
+1. **The `a` run** (`runList_replicate_a`): `v` copies of `a` add `v` to the
+   accumulator, wherever it started.
+2. **One character** (`run_charProgC`): `c` zeroes the accumulator, so the
+   `a` run sets it to exactly `v` and `i` appends `Char.ofNat v` to the
+   output; `y` is never touched.
+3. **The whole text** (`runList_textProg`): every character's program
+   preserves `y` and only appends, so the characters' outputs concatenate.
+
+The main theorem `exec_correct` states that for every `List Char` text whose
+codes are below 256, `exec (textProg t) = String.ofList t`.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
