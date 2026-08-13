@@ -24,7 +24,7 @@ from esolangs.interpreters.io import IO
 DELTA = [(1, 0), (0, 1), (-1, 0), (0, -1)]
 
 
-def run(code: list[str], io: IO) -> None:
+def run(code: list[str], io: IO) -> None:  # noqa: ARG001 - ArrowQueue has no output commands
     """Run an ArrowQueue program, halting on an empty-queue pop or off-grid."""
     if not code:
         return
