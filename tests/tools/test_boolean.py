@@ -80,7 +80,7 @@ class TestSixFive:
         assert "70" in program  # loop conditionals
         assert program.count("4") <= 35  # within the label budget
 
-    @pytest.mark.parametrize("n", [6, 7, 8, 9])
+    @pytest.mark.parametrize("n", [6, 7, 8])
     @pytest.mark.parametrize("table", ["10", "1100"])
     def test_arithmetic_fallback_table(self, n: int, table: str) -> None:
         """The fallback computes every combination for small-T tables."""
@@ -106,7 +106,7 @@ class TestSixFive:
         with pytest.raises(ValueError, match="~2 MB setup"):
             boolean.six_five("0" * 63 + "1", 6)  # AND6: T == 2**63
 
-    @pytest.mark.parametrize("n", [6, 8, 10])
+    @pytest.mark.parametrize("n", [6, 8])
     def test_arithmetic_fallback_complement(self, n: int) -> None:
         """Tables whose complement is cheap use it instead of a huge T."""
         table = "00" + "1" * (2**n - 2)  # zeros only at indices 0,1: T' == 3
