@@ -6,6 +6,7 @@ from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.generators.helpers import _require_bytes
 
 __all__ = [
+    "albabet",
     "bio",
     "dig",
     "dotlang",
@@ -16,6 +17,17 @@ __all__ = [
     "sophie",
     "wii2d",
 ]
+
+
+def albabet(text: str) -> str:
+    """Build an AlbaBet program that outputs ``text``.
+
+    AlbaBet's accumulator ``x`` starts at 0; ``c`` zeroes it, a run of ``a``
+    moves it up to the character's code, and ``i`` prints it.  A ``c`` resets
+    ``x`` before each character so the characters are independent.
+    """
+    _require_bytes(text, "AlbaBet")
+    return "".join("c" + "a" * ord(c) + "i" for c in text)
 
 
 def bio(text: str) -> str:

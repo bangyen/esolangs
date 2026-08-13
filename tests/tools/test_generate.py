@@ -9,6 +9,7 @@ import pytest
 
 import esolangs.tools.generate as gen
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other.albabet import run as albabet_run
 from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
@@ -127,6 +128,13 @@ class TestGeneratorRoundTrips:
     def test_bio(self) -> None:
         """Registers walk to each character value, then 1ix prints it."""
         assert roundtrip(bio_run, gen.bio("Hello, World!")) == "Hello, World!"
+
+    def test_albabet(self) -> None:
+        """c zeroes the accumulator, an a-run sets it, i prints it."""
+        assert roundtrip(albabet_run, gen.albabet("Hi")) == "Hi"
+        assert roundtrip(albabet_run, gen.albabet("Hello, World!")) == "Hello, World!"
+        assert roundtrip(albabet_run, gen.albabet("")) == ""
+        assert roundtrip(albabet_run, gen.albabet("\x00\x80\xff")) == "\x00\x80\xff"
 
     def test_wii2d(self) -> None:
         """The accumulator is built with digits and squares, then ~ prints."""
@@ -579,6 +587,7 @@ class TestGeneratorBranches:
             gen.laserfuck,
             gen.suffolk,
             gen.excon,
+            gen.albabet,
             gen.modulous,
             gen.qoibl,
             gen.temporary,
