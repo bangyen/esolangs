@@ -21,15 +21,6 @@ TO THERE are all fully specified with examples and fit the repo's
 Python-plus-generator model.  The joke, non-deterministic, no-I/O, and
 file/OS-based ones from that list are recorded in `docs/limitations.md`.
 
-### Forbin (high priority)
-An imperative language whose only datatypes are functions and bits: function
-definitions with bit arguments, iteration and range for-loops (range loops
-double as if-statements), the NOT operator, and the `in`/`out` builtins that
-read a bit and write a byte as eight bit arguments.  Fully specified with
-working Hello World, cat, while-loop, and truth-machine examples, and it is
-a genuine Category:Unimplemented gap.  The text generator is direct: one
-`out` line per byte.
-
 ### Exp (medium priority)
 An expression language (`{<...>}` prints an ASCII value, `{{<...>}}` prints
 an integer, `I` reads a character, `~` is the accumulator, `@` assigns it)
@@ -68,6 +59,15 @@ A self-modifying language with ADDRESS/DATA/JUMP opcodes and a polarity
 field, fully specified including a Minsky-machine reduction.  It has no
 I/O, so like A Painter Ant it can only be a self-contained interpreter
 without a generator.
+
+Forbin previously listed here is done: the interpreter covers function
+definitions (including nested and higher-order), iteration and range loops
+(``0..1`` iterates twice, so ranges double as if-statements), NOT, and the
+bit ``in``/``out`` builtins; the text generator emits one ``out`` line per
+byte.  Two of the wiki's examples are not reproduced — the cat is buggy
+(its ``for _:0..1`` "while" doubles every byte; the language was
+unimplemented, so it was never run) — and the entry point is ``main`` with a
+dummy argument, per the examples.
 
 ROTfuck previously listed here is done: the interpreter treats each
 executed command as advancing every source character one step along
