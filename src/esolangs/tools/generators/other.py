@@ -15,6 +15,7 @@ __all__ = [
     "clockwise",
     "container",
     "dimensional",
+    "forbin",
     "forth",
     "home_row",
     "laserfuck",
@@ -752,6 +753,21 @@ def bit_tilde(text: str) -> str:
                 res.append(">")
         res.append("<" * 7 + "(")
     return "".join(res)
+
+
+def forbin(text: str) -> str:
+    """Build a Forbin program that outputs ``text``.
+
+    Forbin's ``out`` writes one byte as eight bit arguments (most significant
+    first), so each character becomes one ``out`` line inside ``main``.
+    """
+    _require_bytes(text, "Forbin")
+    lines = ["main {"]
+    for char in text:
+        bits = ",".join(str((ord(char) >> k) & 1) for k in range(7, -1, -1))
+        lines.append(f"  out {bits};")
+    lines.append("}")
+    return "\n".join(lines)
 
 
 def three_x(text: str) -> str:

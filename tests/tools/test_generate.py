@@ -13,6 +13,7 @@ from esolangs.interpreters.other.albabet import run as albabet_run
 from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
+from esolangs.interpreters.other.forbin import run as forbin_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
 from esolangs.interpreters.other.three_x import run as three_x_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
@@ -93,6 +94,11 @@ class TestGeneratorRoundTrips:
         assert roundtrip(rotfuck_run, gen.rotfuck("Hi")) == "Hi"
         assert roundtrip(rotfuck_run, gen.rotfuck("Hello, World!")) == "Hello, World!"
         assert roundtrip(rotfuck_run, gen.rotfuck("\t\x0b\xff")) == "\t\x0b\xff"
+
+    def test_forbin(self) -> None:
+        assert roundtrip(forbin_run, gen.forbin("Hi")) == "Hi"
+        assert roundtrip(forbin_run, gen.forbin("Hello, World!")) == "Hello, World!"
+        assert roundtrip(forbin_run, gen.forbin("\x00\x7f\xff")) == "\x00\x7f\xff"
 
     def test_between(self) -> None:
         """p prints the whole text; apostrophes are doubled inside literals."""
