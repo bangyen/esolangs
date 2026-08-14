@@ -205,6 +205,16 @@ def _wiki_slug(name: str) -> str:
     return _wiki_name(name).replace(" ", "_")
 
 
+def _source_link(name: str) -> str:
+    """Return the GitHub URL of the language's Python interpreter."""
+    module = RUNNERS[name][0]
+    path = module.replace(".", "/")
+    return (
+        f"https://github.com/bangyen/esolangs/blob/main/"
+        f"src/esolangs/interpreters/{path}.py"
+    )
+
+
 def _file_name(name: str) -> str:
     return name.lower().replace(" ", "-")
 
@@ -263,7 +273,8 @@ def render_languages_section() -> str:
     """Render the README's Implemented Languages section between the markers.
 
     Each language with an in-repo interpreter is grouped by the interpreter's
-    category, sorted by display name, and linked to its esolangs wiki page.
+    category, sorted by display name, and linked to both its esolangs wiki
+    page and the interpreter's source file on GitHub.
     """
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
     for name, (module, _, _) in RUNNERS.items():
@@ -278,6 +289,7 @@ def render_languages_section() -> str:
         for name in sorted(groups[prefix]):
             out.append(
                 f"- [{_wiki_name(name)}](https://esolangs.org/wiki/{_wiki_slug(name)})"
+                f" ([code]({_source_link(name)}))"
             )
         out.append("")
     return "\n".join(out).rstrip()
