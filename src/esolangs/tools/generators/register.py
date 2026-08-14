@@ -270,16 +270,18 @@ def collatz_multiverse(text: str) -> str:
     Every line is ``[var1] = [var2] x + [var3], [DO|NOT] PRINT.`` and the
     operands must be variables, so byte values have to be driven into
     registers through the Collatz transform (odd or 0 values become
-    ``v*var2+var3``, even values halve).  A constant table of byte values is
-    bootstrapped from ``negativeOne`` with the copy trick and parity-aware
-    ``one x + one``/``one x + two`` increments; each output character is then
-    a single line on a fresh register: ``o = negativeOne x + k<byte>`` copies
-    the byte and prints it.
+    ``v*var2+var3``, even values halve).  A constant table builds each byte
+    the text references with a two-line multiply-add (copy an odd constant
+    with ``v = negativeOne x + b``, then ``v = a x + c`` makes it
+    ``b * a + c``), so only the used bytes are built rather than a full
+    ``1..maxval`` chain; each output character is then a single line on a
+    fresh register: ``o = negativeOne x + k<byte>`` copies the byte and
+    prints it.
     """
     if not text:
         return ""
     _require_bytes(text, "Collatz Multiverse")
-    lines = _cm_constants(max(ord(c) for c in text))
+    lines = _cm_constants(ord(c) for c in text)
     for i, c in enumerate(text):
         lines.append(f"o{i} = negativeOne x + k{ord(c)}, DO PRINT.")
     return "\n".join(lines)
