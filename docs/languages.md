@@ -37,7 +37,7 @@ into a template) rather than the program reading input.
 | Brainpocalypse |  | yes | yes |  |  |  |
 | CircleFuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
-| Collatz Multiverse | yes | yes |  |  |  | hello |
+| Collatz Multiverse | yes | yes |  | yes |  | hello |
 | Container | yes | yes |  | yes |  | hello |
 | DSDLAI |  | yes |  |  |  |  |
 | Dig | yes | yes |  | yes |  | hello |
