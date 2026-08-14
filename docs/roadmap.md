@@ -43,15 +43,18 @@ interpreter equivalence (`BfpdaSemanticsCorrect.lean`), the Sophie, BIO,
 6-5, and Qoibl generator correctness proofs (`SophieCorrect.lean`,
 `BioCorrect.lean`, `SixFiveCorrect.lean`, `QoiblCorrect.lean`), the
 `_bf_set` multiply loop (`BfSetCorrect.lean`), and the huf generator
-correctness proof (`HufCorrect.lean`).  The candidates below go beyond
+correctness proof (`HufCorrect.lean`), and the Factor Dirichlet totality /
+encode-decode round-trip (`FactorCorrect.lean`).  The candidates below go beyond
 totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
-`_factor_encode` (`tools/generators/tape.py`) searches for a prime with a given
-residue mod 11; totality needs mathlib's Dirichlet theorem
-(`exists_prime_modEq_of_coprime`).  The round-trip is the interesting half:
-prove decoding the prime factorization (exponents folding runs, residue mod 11
-identifying each instruction) recovers the original brainfuck program.
+Done.  `FactorCorrect.lean` models the commands/residues, the run-length
+machinery, and the prime search `nextPrimeWithRes`, whose totality is exactly
+mathlib's Dirichlet theorem (`Nat.forall_exists_prime_gt_and_modEq`).  The
+round-trip `decodeRuns_encodeRuns` / `decode_encode` proves the sorted distinct
+prime factors of the encoded integer are precisely the chosen primes, in
+order, with the right exponents (`encodeRuns_factorization_at`,
+`chosenExp_pos_iff`, `primeFactors_encodeRuns`).
 
 ### Huf text generator correctness proof (medium priority)
 Done.  `HufCorrect.lean` models the register interpreter (`num`/`mul`/output,
@@ -60,6 +63,20 @@ correct through the interpreter's own transitions: `seg_correct` reuses the
 `_bf_set` multiply invariant (`tools/generators/tape.py::_bf_set`), the
 segment prints `a*b + r`, and `progAux_correct` / `huf_value` compose
 segments for a whole text.
+
+### Remaining generator correctness proofs (medium priority)
+The text generators whose correctness proofs are still open, in rough payoff
+order.  `bf` (`tools/generators/tape.py::bf`) completes the `_bf_set`
+multiply-loop work over the brainfuck interpreter model already in
+`BfSetCorrect.lean`: prove the per-character choice (delta-reuse when the
+next character is close, else `[-]` + `_bf_set`) moves the pointer right one
+cell and prints exactly the text.  `eval` (`tools/generators/register.py::eval`)
+is the backtick-escaped string literal `"<text with " → \`>".` over Eval's
+two-stack interpreter (`stack_based/eval.py`): prove the literal round-trips
+backticks to quotes and `.` prints the text.  The rest are smaller and
+language-specific: dig, polynomial, wii2d, dotlang, collatz_multiverse,
+add_sub_jump (register.py); ascii_art, three_d_bf, bfstack, brainif,
+suffolk, minifuck (tape.py).
 
 ## Text generators: exhausted
 
