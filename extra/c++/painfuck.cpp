@@ -188,16 +188,22 @@ int main(int argc, char *argv[]) {
       case 'd':
         ptr = 0;
         break;
-      case 't':
+      case 't': {
         val = ind;
         rep = 1;
 
-        while (prog[--ind] == 't')
+        // walk back over the run of 't's; at the start of the program the
+        // byte before it reads as NUL (a command that matches no case),
+        // matching the Python interpreter
+        while (ind > 0 && prog[ind - 1] == 't') {
+          ind--;
           rep *= 3;
+        }
 
-        c = prog[ind];
+        c = (ind > 0) ? prog[ind - 1] : 0;
         ind = val;
         break;
+      }
       }
     }
 
