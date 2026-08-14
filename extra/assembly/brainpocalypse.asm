@@ -2,14 +2,20 @@
 ; "Extra Implementations").
 ;
 ; A brainfuck-like tape language (256 cells, wrapping): `+`/`-` increment/
-; decrement the current cell, `>`/`<` move the pointer, and `-` on a zero
-; cell rewinds the instruction pointer to the start of the program (the
-; wiki's flow-control rule).  Cells hold nonnegative integers.
+; decrement the current cell, `>`/`<` move the pointer (wrapping past the
+; ends), and `-` on a zero cell rewinds the instruction pointer to the start
+; of the program (the wiki's flow-control rule).  Cells hold nonnegative
+; integers (unbounded, so they never wrap).
+;
+; The tape is a fixed 256-cell region near the bottom of the stack; cell i
+; lives at [esp + 4*i - 8160].  esi is the pointer index (0..255) and edi
+; tracks the rightmost cell reached.
 ;
 ; Invocation: `brainpocalypse < stdin`; the program is read from stdin.
 ; The wiki defines no I/O; this implementation reads the program from stdin
-; and prints the whole tape as space-separated decimal values when the input
-; is exhausted — an output decision, not a language rule.
+; and prints the whole tape from cell 0 through the rightmost cell reached as
+; space-separated decimal values when the input is exhausted -- an output
+; decision, not a language rule.
 ;
 ; This is a direct syscall (int 80h) program with no libc; it is built with
 ; nasm -f elf32 and linked with ld -m elf_i386 by the CI extra-languages job.
@@ -19,8 +25,8 @@ _start:
 	lea ecx, [esp - 16]
 	mov ebx, 0
 	mov edx, 1
-	mov edi, 1
-	mov esi, 1
+	mov esi, 0
+	mov edi, 0
 .input:
 	mov eax, 3
 	int 80h
@@ -29,8 +35,6 @@ _start:
 	jg .input
 
 	mov byte [ecx], 0
-	sub ecx, 4
-	mov eax, ecx
 	lea edx, [esp - 15]
 .parse:
 	dec edx
@@ -46,16 +50,16 @@ _start:
 	cmp byte [edx], 0
 	jne .parse
 
-	mov ecx, eax
+	; program ended: print cells 0..edi
+	mov esi, 0
 .state:
+	lea ecx, [esp + esi * 4 - 8160]
 	call output
-	dec edi
-	cmp edi, 0
+	cmp esi, edi
 	je .final
-
 	mov dword [ecx], ' '
 	call print
-	sub ecx, 4
+	inc esi
 	jmp .state
 .final:
 	mov eax, 1
@@ -63,27 +67,33 @@ _start:
 	int 80h
 
 .plus:
+	lea ecx, [esp + esi * 4 - 8160]
 	inc dword [ecx]
 	jmp .parse
 .minus:
+	lea ecx, [esp + esi * 4 - 8160]
 	cmp dword [ecx], 0
 	je .goto
 	dec dword [ecx]
 	jmp .parse
 .right:
-	sub ecx, 4
 	inc esi
+	cmp esi, 256
+	jne .right2
+	mov esi, 0
+	jmp .parse
+.right2:
 	cmp edi, esi
 	jge .parse
-
-	inc edi
+	mov edi, esi
 	jmp .parse
 .left:
-	cmp ecx, edi
-	je .parse
-
+	cmp esi, 0
+	jne .left2
+	mov esi, 255
+	jmp .parse
+.left2:
 	dec esi
-	add ecx, 4
 	jmp .parse
 .goto:
 	lea edx, [esp - 15]

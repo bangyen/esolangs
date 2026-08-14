@@ -20,8 +20,14 @@ from esolangs.tools.booleans.other import (
     three_x,
     ztoalc_boolean,
 )
-from esolangs.tools.booleans.parameterized import back, bio, instantiate
-from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
+from esolangs.tools.booleans.parameterized import back, bio, instantiate, nocomment
+from esolangs.tools.booleans.register import (
+    collatz_multiverse,
+    dig,
+    polynomial,
+    qoibl,
+    sophie,
+)
 from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
 from esolangs.tools.booleans.tape import (
     ascii_art,
@@ -33,9 +39,11 @@ from esolangs.tools.booleans.tape import (
     circlefuck_byte,
     dimensional,
     dimensional_tree,
+    painfuck,
     sbleq,
     six_five,
     six_five_arithmetic,
+    three_d_bf,
 )
 
 __all__ = [
@@ -51,6 +59,7 @@ __all__ = [
     "circlefuck",
     "circlefuck_byte",
     "clockwise",
+    "collatz_multiverse",
     "container",
     "dig",
     "dimensional",
@@ -60,6 +69,8 @@ __all__ = [
     "laserfuck",
     "modulous",
     "nevermind",
+    "nocomment",
+    "painfuck",
     "polynomial",
     "qoibl",
     "sbleq",
@@ -67,6 +78,7 @@ __all__ = [
     "six_five_arithmetic",
     "sophie",
     "taglate",
+    "three_d_bf",
     "three_x",
     "unsquare",
     "ztoalc_boolean",

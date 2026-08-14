@@ -9,10 +9,12 @@ import pytest
 
 import esolangs.tools.generate as gen
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.other.albabet import run as albabet_run
 from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
+from esolangs.interpreters.other.three_x import run as three_x_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
 from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.dig import run as dig_run
@@ -24,14 +26,19 @@ from esolangs.interpreters.register_based.sophie import run as sophie_run
 from esolangs.interpreters.register_based.WII2D import run as wii2d_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
+from esolangs.interpreters.stack_based.forth import run as forth_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.temporary import run as temporary_run
+from esolangs.interpreters.stack_based.unsquare import run as unsquare_run
+from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
+from esolangs.interpreters.tape_based.factor import run as factor_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
+from esolangs.interpreters.tape_based.three_d_bf import run as three_d_bf_run
 from esolangs.tools.generators import other
 
 
@@ -45,7 +52,42 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
     return buffer.getvalue()
 
 
+_run_123 = importlib.import_module("esolangs.interpreters.tape_based.123").run
+_run_pct = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
+_run_2dfish = importlib.import_module("esolangs.interpreters.other.2dfish").run
+_run_painfuck = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
+_run_bit_tilde = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
+
+
 class TestGeneratorRoundTrips:
+    def test_123(self) -> None:
+        """Each character is XOR-encoded into bits and marched to the output."""
+        hi = gen._123("Hi")  # noqa: SLF001 - public generator
+        hello = gen._123("Hello, World!")  # noqa: SLF001 - public generator
+        assert roundtrip(_run_123, hi) == "Hi"
+        assert roundtrip(_run_123, hello) == "Hello, World!"
+
+    def test_forth(self) -> None:
+        """Each character is built from base-15 digits and printed by [.]."""
+        assert roundtrip(forth_run, gen.forth("Hi")) == "Hi"
+        assert roundtrip(forth_run, gen.forth("Hello, World!")) == "Hello, World!"
+        # single-digit values (< 15) and three-digit base-15 values (>= 241)
+        assert roundtrip(forth_run, gen.forth("\t\x0b")) == "\t\x0b"
+        assert roundtrip(forth_run, gen.forth("\xff\xf1")) == "\xff\xf1"
+
+    def test_unsquare(self) -> None:
+        """Each byte is built from a parity seed and +/x, printed by Po."""
+        assert roundtrip(unsquare_run, gen.unsquare("Hi")) == "Hi"
+        assert roundtrip(unsquare_run, gen.unsquare("Hello, World!")) == "Hello, World!"
+
+    def test_three_d_bf(self) -> None:
+        """The brainfuck tape moves map to the array's +X axis."""
+        assert roundtrip(three_d_bf_run, gen.three_d_bf("Hi")) == "Hi"
+        assert (
+            roundtrip(three_d_bf_run, gen.three_d_bf("Hello, World!"))
+            == "Hello, World!"
+        )
+
     def test_between(self) -> None:
         """p prints the whole text; apostrophes are doubled inside literals."""
         assert roundtrip(between_run, gen.between("Hi").splitlines()) == "Hi"
@@ -64,6 +106,11 @@ class TestGeneratorRoundTrips:
 
     def test_excon(self) -> None:
         assert roundtrip(excon_run, gen.excon("Hi")) == "Hi"
+
+    def test_factor(self) -> None:
+        """The integer's prime factors encode a brainfuck program."""
+        assert roundtrip(factor_run, gen.factor("Hi")) == "Hi"
+        assert roundtrip(factor_run, gen.factor("Hello, World!")) == "Hello, World!"
 
     def test_sbleq(self) -> None:
         """Each character is embedded as data and output via -3."""
@@ -90,6 +137,13 @@ class TestGeneratorRoundTrips:
     def test_bio(self) -> None:
         """Registers walk to each character value, then 1ix prints it."""
         assert roundtrip(bio_run, gen.bio("Hello, World!")) == "Hello, World!"
+
+    def test_albabet(self) -> None:
+        """c zeroes the accumulator, an a-run sets it, i prints it."""
+        assert roundtrip(albabet_run, gen.albabet("Hi")) == "Hi"
+        assert roundtrip(albabet_run, gen.albabet("Hello, World!")) == "Hello, World!"
+        assert roundtrip(albabet_run, gen.albabet("")) == ""
+        assert roundtrip(albabet_run, gen.albabet("\x00\x80\xff")) == "\x00\x80\xff"
 
     def test_wii2d(self) -> None:
         """The accumulator is built with digits and squares, then ~ prints."""
@@ -278,6 +332,10 @@ class TestGeneratorRoundTrips:
         assert gen.two_d_fish("A") == "/" + "i" * 65 + "a@"
         assert gen.two_d_fish("AA") == "/" + "i" * 65 + "a" + "a@"
         assert gen.two_d_fish("A\x00") == "/" + "i" * 65 + "a" + "d" * 65 + "a@"
+        assert roundtrip(_run_2dfish, gen.two_d_fish("Hi")) == "Hi"
+        assert (
+            roundtrip(_run_2dfish, gen.two_d_fish("Hello, World!")) == "Hello, World!"
+        )
 
     def test_pct_squared_minus_one(self) -> None:
         """Each 'path e resets the accumulator, builds the byte, and prints it."""
@@ -286,6 +344,11 @@ class TestGeneratorRoundTrips:
         assert (
             gen.pct_squared_minus_one("H")
             == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+        )
+        assert roundtrip(_run_pct, gen.pct_squared_minus_one("Hi")) == "Hi"
+        assert (
+            roundtrip(_run_pct, gen.pct_squared_minus_one("Hello, World!"))
+            == "Hello, World!"
         )
 
     def test_pct_path_formula(self) -> None:
@@ -318,6 +381,10 @@ class TestGeneratorRoundTrips:
             "a += 65;\n"
             "write <- a ;\n"
         )
+        assert roundtrip(basicfuck_run, gen.basicfuck("Hi")) == "Hi"
+        assert (
+            roundtrip(basicfuck_run, gen.basicfuck("Hello, World!")) == "Hello, World!"
+        )
 
     def test_bit_tilde(self) -> None:
         """Bits are toggled only where they differ; ( prints the 8-bit window."""
@@ -326,18 +393,22 @@ class TestGeneratorRoundTrips:
             ">>>>>>>" + "<" * 7 + "(" + ">>>>>>>" + "<" * 7 + "("
         )
         assert gen.bit_tilde("\xff") == "~>~>~>~>~>~>~>~" + "<" * 7 + "("
+        assert roundtrip(_run_bit_tilde, gen.bit_tilde("Hi")) == "Hi"
+        assert (
+            roundtrip(_run_bit_tilde, gen.bit_tilde("Hello, World!")) == "Hello, World!"
+        )
 
     def test_three_x(self) -> None:
         """A [literal] prints the text up to the closing bracket."""
         assert gen.three_x("Hi") == "[Hi]"
         assert gen.three_x("") == "[]"
+        assert roundtrip(three_x_run, gen.three_x("Hi")) == "Hi"
+        assert roundtrip(three_x_run, gen.three_x("Hello, World!")) == "Hello, World!"
 
     def test_three_x_unsupported(self) -> None:
-        """'?' or ']' in the text would be read as input or end the literal."""
-        with pytest.raises(ValueError, match="re-executes"):
+        """A ']' in the text would end the literal early."""
+        with pytest.raises(ValueError, match="end the literal"):
             gen.three_x("a]b")
-        with pytest.raises(ValueError, match="re-executes"):
-            gen.three_x("a?b")
 
     def test_byte_generators_reject_unicode(self) -> None:
         """Byte-oriented generators reject codepoints above 255 loudly."""
@@ -481,7 +552,7 @@ class TestGeneratorBranches:
 
     def test_forth_nul(self) -> None:
         """A NUL is pushed and printed with an explicit dot."""
-        assert gen.forth("a\x00b") == "0F6*7+.0.F6*8+."
+        assert gen.forth("a\x00b") == "06F*7+.0.6F*8+."
 
     def test_main_prints_all(self, capsys: pytest.CaptureFixture[str]) -> None:
         with patch("sys.argv", ["esolangs.tools.generate", "Hi"]):
@@ -525,6 +596,7 @@ class TestGeneratorBranches:
             gen.laserfuck,
             gen.suffolk,
             gen.excon,
+            gen.albabet,
             gen.modulous,
             gen.qoibl,
             gen.temporary,
@@ -567,6 +639,13 @@ class TestGeneratorBranches:
     def test_painfuck_negative_loop(self) -> None:
         """A large negative delta exercises painfuck's subtract loop."""
         gen.painfuck("H$")
+
+    def test_painfuck_roundtrip(self) -> None:
+        """Generated programs round-trip through the interpreter."""
+        assert roundtrip(_run_painfuck, gen.painfuck("Hi")) == "Hi"
+        assert (
+            roundtrip(_run_painfuck, gen.painfuck("Hello, World!")) == "Hello, World!"
+        )
 
     def test_module_entry_point(self) -> None:
         """Python -m esolangs.tools.generate runs as a script."""

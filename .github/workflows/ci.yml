@@ -125,57 +125,6 @@ jobs:
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
 
-  cxx:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install g++
-      run: sudo apt-get update && sudo apt-get install -y g++ clang-format
-
-    - name: Check extra/ C++ formatting
-      run: |
-        clang-format --dry-run --Werror extra/c++/*.cpp
-
-    - name: Build extra/ C++ implementations
-      run: |
-        for f in extra/c++/*.cpp; do
-          name="$(basename "$f" .cpp)"
-          g++ -std=c++11 "$f" -o "/tmp/$name"
-          echo "Built $name"
-        done
-
-    - name: Smoke test extra/ C++ implementations
-      run: |
-        set -e
-        : > /tmp/empty.txt
-        for f in extra/c++/*.cpp; do
-          name="$(basename "$f" .cpp)"
-          set +e
-          "/tmp/$name" /tmp/empty.txt > /dev/null 2>&1
-          rc=$?
-          set -e
-          if [ "$rc" -gt 3 ]; then
-            echo "FAIL: $name crashed with exit code $rc on empty input"
-            exit 1
-          fi
-          echo "OK: $name handles empty input"
-        done
-
-        # Output checks for languages with simple terminating programs.
-        printf 't3' > /tmp/trash.txt
-        [ "$(/tmp/trash /tmp/trash.txt)" = "5" ]
-        printf 't9' > /tmp/trash.txt
-        [ "$(/tmp/trash /tmp/trash.txt)" = "0" ]
-        printf 'l' > /tmp/magnitude.txt
-        [ "$(/tmp/%^2^-1 /tmp/magnitude.txt)" = "0" ]
-        [ "$(/tmp/kak /tmp/empty.txt)" = "0" ]
-        echo "All extra/ C++ smoke tests passed"
-
-    - name: Verify generator-only languages against the C++ references
-      run: |
-        PYTHONPATH=src python3 scripts/verify_extra_generators.py
-
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -196,6 +145,26 @@ jobs:
         : > /tmp/empty.txt
         ./extra/rust/target/debug/laserfuck /tmp/empty.txt
         ./extra/rust/target/debug/unsquare /tmp/empty.txt
+        ./extra/rust/target/debug/kak /tmp/empty.txt
+        printf 't3' > /tmp/trash.txt
+        [ "$(./extra/rust/target/debug/trash /tmp/trash.txt)" = "5" ]
+        printf '0H' > /tmp/74.txt
+        [ "$(./extra/rust/target/debug/seventy_four /tmp/74.txt)" = "H0" ]
+        printf "'e" > /tmp/pct.txt
+        [ "$(./extra/rust/target/debug/pct /tmp/pct.txt)" = "0" ]
+        printf '~(' > /tmp/bit_tilde.txt
+        ./extra/rust/target/debug/bit_tilde /tmp/bit_tilde.txt >/dev/null
+        printf '65.' > /tmp/forth.txt
+        [ "$(./extra/rust/target/debug/forth /tmp/forth.txt)" = "5" ]
+        printf '#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;' \
+          > /tmp/basicfuck.txt
+        [ "$(./extra/rust/target/debug/basicfuck /tmp/basicfuck.txt)" = "A" ]
+        printf '/io@' > /tmp/2dfish.txt
+        [ "$(./extra/rust/target/debug/two_d_fish /tmp/2dfish.txt)" = "1" ]
+        printf 'pyr' > /tmp/painfuck.txt
+        ./extra/rust/target/debug/painfuck /tmp/painfuck.txt >/dev/null
+        printf '3!' > /tmp/three_x.txt
+        [ "$(./extra/rust/target/debug/three_x /tmp/three_x.txt)" = "3" ]
         echo "All extra/ Rust smoke tests passed"
 
     - name: Verify generator-only languages against the Rust references
@@ -206,42 +175,15 @@ jobs:
       run: |
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
 
-  extra-languages:
+  assembly:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install toolchains
+    - name: Install nasm
       run: |
         sudo apt-get update
-        sudo apt-get install -y r-base nasm
-        sudo gem install standardrb
-        sudo Rscript -e 'install.packages("styler", repos="https://cloud.r-project.org", quiet=TRUE)'
-
-    - name: Check Ruby syntax and formatting
-      run: |
-        for f in extra/ruby/*.rb; do
-          ruby -c "$f"
-        done
-        standardrb extra/ruby/*.rb
-
-    - name: Check R syntax and formatting
-      run: |
-        Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) parse(f)'
-        cp -r extra/r /tmp/r_orig
-        Rscript -e 'for (f in list.files("extra/r", full.names = TRUE)) styler::style_file(f)'
-        if ! diff -r extra/r /tmp/r_orig; then
-          echo "R files need formatting: run styler::style_file() on extra/r"
-          exit 1
-        fi
-
-    - name: Verify generator round-trips against the R and Ruby references
-      run: |
-        PYTHONPATH=src python3 scripts/verify_extra_generators.py
-
-    - name: Differential-test EXCON against the R cross-check
-      run: |
-        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
+        sudo apt-get install -y nasm
 
     - name: Build and natively run the x86 reference interpreters
       run: |
@@ -285,6 +227,9 @@ jobs:
         # simulator must all agree on the generated programs
         PYTHONPATH=src python3 scripts/verify_123_differential.py \
           /tmp/123-riscv "Hi" "Hello, World!" "esolangs!"
+        # the NoComment differential (Python vs assembly, corpus + fuzz) needs
+        # unicorn, which the rust job lacks; LaserFuck's runs there instead
+        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
         # the other reference interpreters must execute and halt
         python3 scripts/x86_elf_runner.py extra/assembly/brainpocalypse.asm \
           </dev/null >/dev/null
@@ -339,3 +284,7 @@ jobs:
         [ "$(.lake/build/bin/bfpda /tmp/bfpda.txt)" = "1" ]
         [ "$(.lake/build/bin/seventy_four /tmp/74.txt)" = "1" ]
         echo "All Lean interpreters ran on text files"
+
+    - name: Differential-test the Lean-referenced interpreters
+      run: |
+        PYTHONPATH=src python3 scripts/verify_differential.py

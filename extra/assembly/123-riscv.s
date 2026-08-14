@@ -81,6 +81,11 @@ _start:
     mv   a1, s3
     li   a2, 1
     ecall
+    bnez a0, .read_ok
+    li   a0, 3
+    li   a7, 93
+    ecall
+.read_ok:
     lbu  s0, 0(s3)           # data = read byte
     li   s1, 128
     j    .parse
@@ -111,7 +116,12 @@ _start:
     addi s2, s2, -1
     lbu  t5, 0(s2)
     li   t4, '|'
-    beq  t5, t4, .parse
+    bne  t5, t4, .false_scan
+    li   t4, 128
+    blt  t4, s1, .final      # esi > 128: halt
+    addi s2, sp, 0           # else restart the program
+    j    .parse
+.false_scan:
     li   t4, '3'
     beq  t5, t4, .parse
     j    .false

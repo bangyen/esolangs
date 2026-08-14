@@ -85,6 +85,7 @@ TRUTH_MACHINE_EXAMPLES = {
     "modulous": ("stack_based.modulous", ["0"], "0", False),
     "brainif": ("tape_based.brainif", ["0"], "0", True),
     "circlefuck": ("tape_based.circlefuck", ["0"], "0", False),
+    "factor": ("tape_based.factor", ["0"], "0", False),
 }
 
 BASE_DIR = Path(__file__).parent.parent

@@ -1,0 +1,28 @@
+#basicfuck t=1 r=0~255 o=nearest
+#allocate a
+a += 72;
+write <- a ;
+a += 29;
+write <- a ;
+a += 7;
+write <- a ;
+a += 0;
+write <- a ;
+a += 3;
+write <- a ;
+a -= 67;
+write <- a ;
+a -= 12;
+write <- a ;
+a += 55;
+write <- a ;
+a += 24;
+write <- a ;
+a += 3;
+write <- a ;
+a -= 6;
+write <- a ;
+a -= 8;
+write <- a ;
+a -= 67;
+write <- a ;

@@ -47,6 +47,33 @@ def run_bf(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_three_d_bf(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.three_d_bf import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_painfuck(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.painfuck import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.collatz_multiverse import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -647,6 +674,93 @@ class TestBfTree:
             boolean.bf_tree("02", 1)
 
 
+class TestThreeDBf:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+            ("1000000000000000", 4),  # single one (AND4)
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.three_d_bf(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_three_d_bf(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_array_moves_use_the_3d_axes(self) -> None:
+        """3D Brainfuck's >/< are no-ops, so the array moves with e/w."""
+        program = boolean.three_d_bf("0110", 2)
+        assert ">" not in program
+        assert "<" not in program
+        assert "e" in program
+        assert "w" in program
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.three_d_bf("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.three_d_bf("02", 1)
+
+
+class TestPainfuck:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # top half
+            ("1000000000000000", 4),  # single one (AND4)
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.painfuck(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_painfuck(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_commands_are_preshifted_for_the_trans_table(self) -> None:
+        """The interpreter shifts commands through its cycles, so the source
+        must be the inverse shift; the translated commands are the BF moves."""
+        from esolangs.interpreters.tape_based.painfuck import _translate
+
+        program = boolean.painfuck("0110", 2)
+        translated = _translate(program)
+        assert "a" in translated  # [ loops
+        assert "b" in translated  # ] loops
+        assert translated.count("a") == translated.count("b")
+        assert "rl" in translated or "l" in translated  # pointer moves
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.painfuck("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.painfuck("02", 1)
+
+
 class TestBasicfuck:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -686,6 +800,52 @@ class TestBasicfuck:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.basicfuck("02", 1)
+
+
+class TestCollatzMultiverse:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.collatz_multiverse(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_collatz_multiverse(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_minterm_structure(self) -> None:
+        """The program reads one input per line and prints once."""
+        program = boolean.collatz_multiverse("0110", 2)
+        assert program.count("input") == 2
+        assert program.count("DO PRINT.") == 1
+
+    def test_constant_tables_skip_the_inputs(self) -> None:
+        """A constant table collapses to a single output."""
+        assert boolean.collatz_multiverse("0000", 2).count("DO PRINT.") == 1
+        assert "input" not in boolean.collatz_multiverse("1111", 2)
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.collatz_multiverse("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.collatz_multiverse("02", 1)
 
 
 class TestSophie:
@@ -1039,6 +1199,108 @@ class TestParameterizedBack:
         assert "*" in template
 
 
+class TestParameterizedNoComment:
+    """Input-by-substitution boolean generator for the no-input language NoComment."""
+
+    def run_nocomment(self, prog: str) -> str:
+        from esolangs.interpreters.io import IO
+        from esolangs.interpreters.tape_based.nocomment import run
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(prog, IO())
+        return buffer.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "c" if b == 0 else "i",
+            lambda _i, b: "c" if b == 1 else "i",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.nocomment(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_nocomment(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.booleans import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.nocomment(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_nocomment(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.nocomment("0110", 2)
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_program_structure(self) -> None:
+        """A one-bit template computes the index then skips to the output."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.nocomment("10", 1)
+        assert template.startswith("{X0}")
+        assert "{C0}" in template  # the complement is injected too
+        assert template.endswith("o")  # a single final output
+        assert template.count("s") == 2  # one guarded increment + the index skip
+        assert template.count("o") == 1
+
+    def test_four_input_works(self) -> None:
+        """A dense four-input table assembles and runs correctly."""
+        from esolangs.tools.booleans import parameterized
+
+        for combo in range(16):
+            bits = [(combo >> (3 - i)) & 1 for i in range(4)]
+            template = parameterized.nocomment("1010101010101010", 4)
+            got = self.run_nocomment(self.instantiate(template, bits))
+            assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
+
+    def test_cap_rejected(self) -> None:
+        """n > 8 needs an index beyond a byte and is rejected."""
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="n <= 8"):
+            parameterized.nocomment("0" * (2**9), 9)
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="4 entries"):
+            parameterized.nocomment("011", 2)
+
+
 class TestZtoalc:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1294,7 +1556,7 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
         def __init__(self, ins: list[str]) -> None:
             self._ins = list(ins)
 
-        def input_str(self, prompt: str = "Input: ") -> str:  # noqa: ARG002
+        def input_str(self, _prompt: str = "Input: ") -> str:
             return self._ins.pop(0)
 
         def print_char(self, char: str) -> None:

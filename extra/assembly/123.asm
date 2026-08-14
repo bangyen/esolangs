@@ -89,9 +89,16 @@ _start:
 	int 80h
 	pop edx
 
+	test eax, eax
+	jz .eof
+
 	mov edi, [ecx]
 	mov esi, 128
 	jmp .parse
+.eof:
+	mov eax, 1
+	mov ebx, 3
+	int 80h
 .write:
 	mov [ecx], edi
 	push edx
@@ -123,7 +130,12 @@ _start:
 .false:
 	dec edx
 	cmp byte [edx], '|'
-	je .parse
+	jne .false_scan
+	cmp esi, 128
+	jg .final
+	mov edx, esp
+	jmp .parse
+.false_scan:
 	cmp byte [edx], '3'
 	je .parse
 	jmp .false

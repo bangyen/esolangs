@@ -3,10 +3,12 @@
 from collections.abc import Callable
 
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
-from esolangs.tools.generators.helpers import _require_bytes
+from esolangs.tools.generators.helpers import _cm_constants, _require_bytes
 
 __all__ = [
+    "albabet",
     "bio",
+    "collatz_multiverse",
     "dig",
     "dotlang",
     "eval",
@@ -16,6 +18,17 @@ __all__ = [
     "sophie",
     "wii2d",
 ]
+
+
+def albabet(text: str) -> str:
+    """Build an AlbaBet program that outputs ``text``.
+
+    AlbaBet's accumulator ``x`` starts at 0; ``c`` zeroes it, a run of ``a``
+    moves it up to the character's code, and ``i`` prints it.  A ``c`` resets
+    ``x`` before each character so the characters are independent.
+    """
+    _require_bytes(text, "AlbaBet")
+    return "".join("c" + "a" * ord(c) + "i" for c in text)
 
 
 def bio(text: str) -> str:
@@ -221,3 +234,24 @@ def eval(text: str) -> str:  # noqa: A001 - the language is named "Eval"
     if not text:
         return ""
     return '"' + text.replace('"', "`") + '".'
+
+
+def collatz_multiverse(text: str) -> str:
+    """Build a Collatz Multiverse program that outputs ``text``.
+
+    Every line is ``[var1] = [var2] x + [var3], [DO|NOT] PRINT.`` and the
+    operands must be variables, so byte values have to be driven into
+    registers through the Collatz transform (odd or 0 values become
+    ``v*var2+var3``, even values halve).  A constant table of byte values is
+    bootstrapped from ``negativeOne`` with the copy trick and parity-aware
+    ``one x + one``/``one x + two`` increments; each output character is then
+    a single line on a fresh register: ``o = negativeOne x + k<byte>`` copies
+    the byte and prints it.
+    """
+    if not text:
+        return ""
+    _require_bytes(text, "Collatz Multiverse")
+    lines = _cm_constants(max(ord(c) for c in text))
+    for i, c in enumerate(text):
+        lines.append(f"o{i} = negativeOne x + k{ord(c)}, DO PRINT.")
+    return "\n".join(lines)
