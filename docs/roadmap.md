@@ -63,21 +63,21 @@ the program is linear and compact.
 Completed proofs live in the commit history: MAMMALIAN generator totality
 (`extra/lean/esolangs/Esolangs.lean`), EXCON generator correctness
 (`ExconCorrect.lean`), CircleFuck generator correctness
-(`CircleFuckCorrect.lean`), BF-PDA bracket matching (`BfpdaCorrect.lean`),
-EXCON interpreter equivalence (`ExconSemanticsCorrect.lean`), AlbaBet
-generator correctness (`AlbabetCorrect.lean`), AlbaBet interpreter
-equivalence (`AlbabetSemanticsCorrect.lean`), Number Seventy-Four
-interpreter equivalence (`SeventyFourSemanticsCorrect.lean`), BF-PDA
-interpreter equivalence (`BfpdaSemanticsCorrect.lean`), the Sophie, BIO,
+(`CircleFuckCorrect.lean`), AlbaBet generator correctness
+(`AlbabetCorrect.lean`), the Sophie, BIO,
 6-5, and Qoibl generator correctness proofs (`SophieCorrect.lean`,
 `BioCorrect.lean`, `SixFiveCorrect.lean`, `QoiblCorrect.lean`), the
 `_bf_set` multiply loop (`BfSetCorrect.lean`), the huf generator
 correctness proof (`HufCorrect.lean`), the brainfuck generator correctness
 proof (`BfCorrect.lean`), the Eval generator correctness proof
-(`EvalCorrect.lean`), the 3D Brainfuck generator correctness proof
-(`ThreeDbfCorrect.lean`), the Factor Dirichlet totality /
-encode-decode round-trip (`FactorCorrect.lean`), and the Collatz Multiverse
-generator correctness proof (`CollatzMultiverseCorrect.lean`).  The candidates
+(`EvalCorrect.lean`), the Factor Dirichlet totality /
+encode-decode round-trip (`FactorCorrect.lean`), the Collatz Multiverse
+generator correctness proof (`CollatzMultiverseCorrect.lean`), and the
+Sophie and 6-5 boolean-function generator correctness proofs
+(`SophieBoolCorrect.lean`, `SixFiveBoolCorrect.lean`).  The four ported
+Lean interpreters and their equivalence proofs were dropped: the ports were
+redundant with the Python interpreters and the equivalence proofs only
+certified them, so neither earned the maintenance cost.  The candidates
 below go beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
