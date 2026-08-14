@@ -43,6 +43,7 @@ BOOLEAN = {
     "Modulous",
     "Nevermind",
     "NoComment",
+    "Painfuck",
     "Polynomial",
     "Qoibl",
     "S*bleq",
