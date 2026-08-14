@@ -48,7 +48,7 @@ into a template) rather than the program reading input.
 | Eval | yes | yes |  |  |  | hello |
 | Factor | yes | yes |  |  |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
-| Home Row | yes |  |  |  | yes |  |
+| Home Row | yes | yes |  |  | yes | hello |
 | Kak |  | yes | yes |  |  |  |
 | Keys |  | yes |  |  |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
