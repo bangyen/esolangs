@@ -573,6 +573,21 @@ def bf(truth_table: str, n: int) -> str:
     return min((_bf_minterm(truth_table, n), bf_tree(truth_table, n)), key=len)
 
 
+def three_d_bf(truth_table: str, n: int) -> str:
+    """Build a 3D Brainfuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    3D Brainfuck's ``>``/``<`` set the generation pointer's heading (a no-op
+    in this interpreter), so the array is walked along one axis with
+    ``e``/``w`` instead; the brainfuck minterm and decision-tree strategies
+    otherwise translate directly, and :func:`bf` picks the shorter of the
+    two.
+    """
+    return bf(truth_table, n).translate(str.maketrans("><", "ew"))
+
+
 def bf_tree(truth_table: str, n: int) -> str:
     """Build a decision-tree brainfuck program for the given truth table.
 

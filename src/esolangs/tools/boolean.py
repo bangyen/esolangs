@@ -36,6 +36,7 @@ from esolangs.tools.booleans.tape import (
     sbleq,
     six_five,
     six_five_arithmetic,
+    three_d_bf,
 )
 
 __all__ = [
@@ -68,6 +69,7 @@ __all__ = [
     "six_five_arithmetic",
     "sophie",
     "taglate",
+    "three_d_bf",
     "three_x",
     "unsquare",
     "ztoalc_boolean",
