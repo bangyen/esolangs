@@ -85,9 +85,10 @@ interpreter equivalence (`BfpdaSemanticsCorrect.lean`), the Sophie, BIO,
 correctness proof (`HufCorrect.lean`), the brainfuck generator correctness
 proof (`BfCorrect.lean`), the Eval generator correctness proof
 (`EvalCorrect.lean`), the 3D Brainfuck generator correctness proof
-(`ThreeDbfCorrect.lean`), and the Factor Dirichlet totality /
-encode-decode round-trip (`FactorCorrect.lean`).  The candidates below go beyond
-totality, in increasing payoff order.
+(`ThreeDbfCorrect.lean`), the Factor Dirichlet totality /
+encode-decode round-trip (`FactorCorrect.lean`), and the Collatz Multiverse
+generator correctness proof (`CollatzMultiverseCorrect.lean`).  The candidates
+below go beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 Done.  `FactorCorrect.lean` models the commands/residues, the run-length
@@ -116,9 +117,9 @@ backtick-escaped string literal `"<text with " → \`>".` over Eval's
 two-stack interpreter: the literal scan round-trips backticks to quotes
 (`scan_aux`) and `.` prints the text (`eval_correct`).
 
-Still worth doing, low priority.  `collatz_multiverse` has a substantive
-in-progress proof (`CollatzMultiverseCorrect.lean`) modeling the register
-interpreter's Collatz transform and the constant-table bootstrap.
+Still worth doing, low priority.  `CollatzMultiverseCorrect.lean` models the
+register interpreter's Collatz transform and proves the constant-table
+bootstrap reaches every byte value and the output lines print the bytes.
 `ascii_art` reduces to a mechanical per-command rendering round-trip
 (`parse (bf_to_ascii_art prog) = prog`) over the `BfCorrect` proof.  `suffolk`
 is bf-family (its `!` op) and reuses the bf model structure.  The rest
