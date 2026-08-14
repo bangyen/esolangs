@@ -1892,7 +1892,14 @@ _SIMPLE_CORPUS = [
         lambda: _assemble_x86(BRAINPOCALYPSE_ASM) is not None,
         lambda p, _s: _run_asm_ref(_assemble_x86(BRAINPOCALYPSE_ASM), p),
         "esolangs.interpreters.tape_based.brainpocalypse",
-        [("+", b""), ("++-", b""), (">+<-", b""), ("-", b""), ("", b"")],
+        [
+            ("+", b""),
+            ("++-", b""),
+            (">+<-", b""),
+            ("-", b""),
+            ("", b""),
+            (">" * 256 + "+>", b""),  # the pointer wraps past cell 255
+        ],
     ),
     # Stun Step: program read from stdin by the reference
     (
