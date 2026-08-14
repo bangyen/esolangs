@@ -52,8 +52,9 @@ Completed proofs live in the commit history: MAMMALIAN generator totality
 (`extra/lean/esolangs/Esolangs.lean`), EXCON generator correctness
 (`ExconCorrect.lean`), CircleFuck generator correctness
 (`CircleFuckCorrect.lean`), BF-PDA bracket matching (`BfpdaCorrect.lean`),
-EXCON interpreter equivalence (`ExconSemanticsCorrect.lean`), and AlbaBet
-generator correctness (`AlbabetCorrect.lean`).  The candidates below go
+EXCON interpreter equivalence (`ExconSemanticsCorrect.lean`), AlbaBet
+generator correctness (`AlbabetCorrect.lean`), and AlbaBet interpreter
+equivalence (`AlbabetSemanticsCorrect.lean`).  The candidates below go
 beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
@@ -65,13 +66,12 @@ identifying each instruction) recovers the original brainfuck program.
 
 ### Lean interpreter equivalence (medium priority)
 Prove the ported Lean interpreters match their Python references.  BF-PDA's
-`find` bracket matching and EXCON's output semantics are done
-(`BfpdaCorrect.lean`, `ExconSemanticsCorrect.lean`): for programs where the
-reference interpreter does not halt (EXCON's `<` at cell 0 raises
-`HaltError`, which the port's `(n - 1) % 8` does not), both interpreters
-compute the same output and final state.  Remaining, in increasing payoff
-order: AlbaBet (the reference interpreter is in the repo and the port is
-total, so the proof is the EXCON one minus the underflow divergence),
+`find` bracket matching, EXCON's output semantics, and AlbaBet's output
+semantics are done (`BfpdaCorrect.lean`, `ExconSemanticsCorrect.lean`,
+`AlbabetSemanticsCorrect.lean`): for EXCON, programs that do not underflow
+the pointer; for AlbaBet, programs that never run `i` on an invalid scalar
+(the reference zeroes `x` there, the port keeps it, and both print NUL, so
+only a later `i` can diverge).  Remaining, in increasing payoff order:
 seventy_four (its `H`-restart loop makes it the most interesting of the
 three), and BF-PDA's full output semantics (a stack-and-loop proof building
 on the completed `find` bracket matching).
