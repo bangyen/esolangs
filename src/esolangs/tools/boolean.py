@@ -12,6 +12,7 @@ module re-exports them for compatibility.
 
 from esolangs.tools.booleans.other import (
     between,
+    bit_tilde,
     clockwise,
     container,
     laserfuck,
@@ -55,6 +56,7 @@ __all__ = [
     "bf_tree",
     "bfstack",
     "bio",
+    "bit_tilde",
     "brainif",
     "circlefuck",
     "circlefuck_byte",
