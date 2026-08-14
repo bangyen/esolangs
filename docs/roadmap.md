@@ -4,18 +4,30 @@ Planned work, in priority order.  Language assessments, documented walls,
 and ruled-out ideas live in `docs/limitations.md`; completed ideas live in
 the commit history.  This file only tracks what is still on the table.
 
-## New interpreters: exhausted
+## New interpreters (in priority order)
 
-Every candidate from the esolangs wiki's Category:Unimplemented with a usable
-file-based I/O protocol, a complete specification, and a plausible generator
-or boolean story now has an interpreter.  Ruled-out candidates (Gravity,
-Earfuck, Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic
-Teast) are recorded in `docs/limitations.md`.  A Painter Ant (from the
-original scan) ships as a no-I/O grid interpreter whose final state is
-printed as an observability convention, and AddSubJump (a self-modifying
-OISC found by a fresh scan of Category:Unimplemented) ships as a
-register-based interpreter with a text generator.  Future additions will
-come from re-scanning the category, which keeps gaining new languages.
+Candidates from re-scanning the esolangs wiki's Category:Unimplemented.  The
+original scan is exhausted: every candidate with a usable file-based I/O
+protocol, a complete specification, and a plausible generator or boolean
+story now has an interpreter.  Ruled-out candidates (Gravity, Earfuck,
+Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast)
+are recorded in `docs/limitations.md`, and A Painter Ant (a no-I/O grid
+interpreter) and AddSubJump (a self-modifying OISC with a text generator)
+shipped from that scan.
+
+### Decleq (medium priority)
+An OISC whose instruction `a b c` means `b = a - 1`, then jump to `c` if
+`b <= 0`, with optional memory-mapped I/O (`-2` outputs, `-1` reads).  The
+wiki page is a stub, so the loose edges (unconditional fall-through, jump
+targets, the I/O protocol) need pinning down as conventions before an
+interpreter can be verified.  A decrement-based text generator is plausible
+(OISC value-building like AddSubJump).
+
+### Crement (low priority)
+A self-modifying language with ADDRESS/DATA/JUMP opcodes and a polarity
+field, fully specified including a Minsky-machine reduction.  It has no
+I/O, so like A Painter Ant it can only be a self-contained interpreter
+without a generator.
 
 ## Lean proofs (in priority order)
 
