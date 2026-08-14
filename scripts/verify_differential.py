@@ -1785,9 +1785,7 @@ def _run_file_ref(
         f.write(program)
         path = f.name
     try:
-        proc = subprocess.run(
-            [*cmd, path], capture_output=True, input=stdin, timeout=5
-        )
+        proc = subprocess.run([*cmd, path], capture_output=True, input=stdin, timeout=5)
         return proc.stdout, proc.returncode
     except subprocess.TimeoutExpired:
         return None
@@ -1822,7 +1820,9 @@ def _run_asm_ref(binary: bytes, program: str) -> tuple[bytes, int] | None:
     return out, code
 
 
-def _inprocess_run(module: str, program: str, stdin: bytes = b"") -> bytes | None:
+def _inprocess_run(
+    module: str, program: str, stdin: bytes = b"", encoding: str = "latin1"
+) -> bytes | None:
     """Run ``program`` through the in-package interpreter, returning bytes.
 
     Returns None if the interpreter does not terminate within the timeout.
@@ -1845,7 +1845,7 @@ def _inprocess_run(module: str, program: str, stdin: bytes = b"") -> bytes | Non
     signal.alarm(3)
     try:
         run(program, io)
-        return io.getvalue().encode("latin1")
+        return io.getvalue().encode(encoding)
     except Exception:
         return None
     finally:
@@ -1995,9 +1995,7 @@ def _fuzz_albabet(rng: random.Random, count: int) -> bool:
     for _ in range(count):
         text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
         tasks.append((albabet(text), text))
-    results = _run_parallel(
-        lambda t: _run_file_ref([str(ALBABET_BIN)], t[0]), tasks
-    )
+    results = _run_parallel(lambda t: _run_file_ref([str(ALBABET_BIN)], t[0]), tasks)
     failures = checked = 0
     for (program, text), result in zip(tasks, results, strict=True):
         if result is None:
@@ -2005,7 +2003,9 @@ def _fuzz_albabet(rng: random.Random, count: int) -> bool:
             failures += 1
             checked += 1
             continue
-        py = _inprocess_run("esolangs.interpreters.other.albabet", program)
+        py = _inprocess_run(
+            "esolangs.interpreters.other.albabet", program, encoding="utf-8"
+        )
         checked += 1
         if result != (py, 0):
             failures += 1
@@ -2021,9 +2021,15 @@ def _fuzz_albabet(rng: random.Random, count: int) -> bool:
 def _verify_remaining_extras() -> bool:
     """Differentially check the newly ported extra/ interpreters."""
     ok = _verify_simple_corpus()
-    ok = _verify_lean(
-        "Albabet", ALBABET_BIN, "esolangs.interpreters.other.albabet", _ALBABET_CORPUS
-    ) and ok
+    ok = (
+        _verify_lean(
+            "Albabet",
+            ALBABET_BIN,
+            "esolangs.interpreters.other.albabet",
+            _ALBABET_CORPUS,
+        )
+        and ok
+    )
     return (
         _verify_lean(
             "BF-PDA", BFPDA_BIN, "esolangs.interpreters.tape_based.bfpda", _BFPDA_CORPUS

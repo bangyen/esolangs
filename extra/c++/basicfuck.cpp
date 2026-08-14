@@ -69,7 +69,14 @@ int run(std::smatch pre, std::vector<int> &prog, std::vector<int> &tape,
   int bot = pre[2] != "" ? stoi(pre[2]) : INT_MIN,
       top = pre[3] != "" ? stoi(pre[3]) : INT_MAX;
 
-  auto val = [&](int n) { return &tape[prog[ptr + n]]; };
+  auto val = [&](int n) {
+    int idx = prog[ptr + n];
+
+    if (idx < 0 || (size_t)idx >= tape.size())
+      error("Out of bounds.", EXIT_INVALID_OP);
+
+    return &tape[idx];
+  };
 
   while (ptr < prog.size()) {
     int c = prog[ptr++];
@@ -86,6 +93,9 @@ int run(std::smatch pre, std::vector<int> &prog, std::vector<int> &tape,
         else
           num /= 2;
       } else {
+        if (num < 0 || (size_t)num >= tape.size())
+          error("Out of bounds.", EXIT_INVALID_OP);
+
         num = tape[num];
       }
 
