@@ -91,8 +91,6 @@ _EXTRA_DIRS = [
         "*.cpp",
         {
             "2dFish": "2dFish",
-            "basicfuck": "Basicfuck",
-            "forþ": "Forþ",
             "painfuck": "Painfuck",
         },
         "C++ Implementations",
@@ -132,7 +130,9 @@ _EXTRA_DIRS = [
         ROOT / "extra" / "rust",
         "*.rs",
         {
+            "basicfuck": "Basicfuck",
             "bit_tilde": "bit~",
+            "forth": "Forþ",
             "kak": "Kak",
             "laserfuck": "LaserFuck",
             "pct": "%^2^-1",

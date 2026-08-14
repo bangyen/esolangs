@@ -133,6 +133,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [123](https://esolangs.org/wiki/123)
 - [3D Brainfuck](https://esolangs.org/wiki/3D_Brainfuck)
 - [6-5](https://esolangs.org/wiki/6-5)
+- [ABCDirection](https://esolangs.org/wiki/ABCDirection)
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
 - [brainfuck](https://esolangs.org/wiki/brainfuck)
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
@@ -171,6 +172,7 @@ Languages that don't fit into the above categories.
 - [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte)
 - [2dFish](https://esolangs.org/wiki/2dFish)
 - [3x](https://esolangs.org/wiki/3x)
+- [A Painter Ant](https://esolangs.org/wiki/A_Painter_Ant)
 - [Albabet](https://esolangs.org/wiki/Albabet)
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue)
 - [Between](https://esolangs.org/wiki/Between)
@@ -212,8 +214,6 @@ malformed program, 3 = invalid runtime operation.
 ### C++ Implementations
 
 - [2dFish](https://esolangs.org/wiki/2dFish)
-- [Basicfuck](https://esolangs.org/wiki/Basicfuck)
-- [Forþ](https://esolangs.org/wiki/For%C3%BE)
 - [Painfuck](https://esolangs.org/wiki/Painfuck)
 
 ### x86 Assembly Implementations
@@ -238,7 +238,9 @@ malformed program, 3 = invalid runtime operation.
 ### Rust Implementations
 
 - [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
+- [Basicfuck](https://esolangs.org/wiki/Basicfuck)
 - [bit~](https://esolangs.org/wiki/Bit~)
+- [Forþ](https://esolangs.org/wiki/For%C3%BE)
 - [Kak](https://esolangs.org/wiki/Kak)
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)

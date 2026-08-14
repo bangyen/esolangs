@@ -10,7 +10,7 @@ the stack, ``;`` calls the stored scope, ``o`` reverses the stack, ``c``
 rotates the top three, and ``v`` swaps the top two.  Unknown characters
 require a two-element stack and otherwise do nothing.
 
-Semantics match the C++ cross-check (``extra/c++/forþ.cpp``):
+Semantics match the Rust cross-check (``extra/rust/forth.rs``):
 - arithmetic wraps to signed 32-bit integers, and ``/``/``%`` truncate
   toward zero (C++11 semantics), so negative operands match;
 - an empty-stack pop halts the whole program with :class:`HaltError`, while
