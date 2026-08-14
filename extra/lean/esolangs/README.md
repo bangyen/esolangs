@@ -188,6 +188,26 @@ real and proven: `0H0H` makes the output start with `H` mid-pass, so the port
 prints `H0` while the reference finishes the pass and prints `H0H0`
 (`NoEarlyH` fails there).
 
+## BF-PDA interpreter equivalence
+
+A Lean 4 + mathlib proof (`Esolangs/BfpdaSemanticsCorrect.lean`) that the
+ported BF-PDA interpreter (`Esolangs/bfpda.lean`) and the reference
+(`src/esolangs/interpreters/tape_based/bfpda.py`) compute the same output for
+balanced programs whose run never performs an empty-stack operation.  Both
+are a bit-stack brainfuck bounded at `limit` commands; both halt on an
+empty-stack operation.
+
+The bracket control is the subtle part, and it ties this file to the
+bracket-matching proof.  The port's `find` and the reference's
+`_forward`/`_backward` both return the position after the bracket, so a
+matched pair runs its body exactly once rather than looping.  The walk
+(`hitsAux`, counting `[` as +1 and `]` as -1) is formalised and proved to
+reach depth 0 for balanced blocks — `hitsAux_block` for a forward `[` at its
+matching `]`, `hitsAux_back_block` for a backward `]` at its matching `[` —
+reusing `BfpdaCorrect`'s `Balanced`/`depth` results.  Under `Balanced` both
+interpreters are therefore the same `runAux`, and `interpreter_eq` states
+they print the same output.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
