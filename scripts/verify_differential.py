@@ -331,47 +331,28 @@ def _run_nocomment_python_limited(
         signal.alarm(0)
 
 
-def _assemble_nocomment() -> bytes | None:
-    """Assemble the NoComment cross-check; None if the toolchain is missing."""
-    if shutil.which("nasm") is None:
-        print("[skip] NoComment differential: nasm not found")
-        return None
-    try:
-        import x86_elf_runner as r
-    except SystemExit:
-        print("[skip] NoComment differential: unicorn not installed")
-        return None
-
-    asm = (ROOT / "extra" / "assembly" / "nocomment.asm").read_text()
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(asm)
-        path = f.name
-    try:
-        return r.assemble(path)
-    finally:
-        Path(path).unlink()
-
-
 def _verify_nocomment() -> bool:
-    """Compare the Python NoComment interpreter against the assembly cross-check.
+    """Compare the Python NoComment interpreter against the assembly cross-checks.
 
-    The assembly is run under unicorn (``x86_elf_runner``), which requires
-    unicorn and nasm; it is skipped when either is missing.  Both
+    The x86 and RISC-V references are run under unicorn (``x86_elf_runner``
+    and ``riscv_elf_runner``), which requires unicorn and either nasm or a
+    RISC-V cross-compiler; it is skipped when none is available.  Both
     implementations error on non-commands, stack underflow, and out-of-range
     jumps, and must agree on the valid-program corpus.
     """
-    binary = _assemble_nocomment()
-    if binary is None:
+    if not _asm_refs_ready(ROOT / "extra" / "assembly" / "nocomment.asm", "nocomment"):
         return True
-    import x86_elf_runner as r
 
     failures = 0
     for program in NOCOMMENT_CORPUS:
-        try:
-            asm_out, asm_code = r.run_elf(binary, stdin=program.encode())
-        except ValueError:
-            asm_out, asm_code = b"", 1
+        ref = _asm_refs(
+            ROOT / "extra" / "assembly" / "nocomment.asm", "nocomment", program
+        )
         py_out, py_code = _run_nocomment_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
         if (asm_out, asm_code) != (py_out, py_code):
             failures += 1
             print(
@@ -602,34 +583,28 @@ def _verify_laserfuck() -> bool:
 def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     """Differentially fuzz NoComment with random programs.
 
-    A random ``b``/``s`` program may loop forever.  The assembly raises
-    ValueError when it exhausts its instruction-count cap, and Python times
-    out under SIGALRM; ``None`` means "did not terminate" on that side.  A
-    program that halts on one side but loops on the other is a divergence
+    A random ``b``/``s`` program may loop forever.  The assembly references
+    raise or fault when they exhaust their instruction-count cap, and Python
+    times out under SIGALRM; ``None`` means "did not terminate" on that side.
+    A program that halts on one side but loops on the other is a divergence
     (and the reason a seeded fuzzer is worth having).
     """
-    binary = _assemble_nocomment()
-    if binary is None:
+    if not _asm_refs_ready(ROOT / "extra" / "assembly" / "nocomment.asm", "nocomment"):
         return True
-    import x86_elf_runner as r
 
-    # The assembly's tape and stack live in a fixed mapped region below the
+    # The references' tape and stack live in a fixed mapped region below the
     # program buffer; a program that loops (or extends the tape) long enough
-    # writes past it and unicorn raises UcError.  That is a resource limit,
-    # the same class as the instruction-count cap's ValueError: both mean the
-    # assembly did not halt cleanly, and a matching Python loop is not a
-    # divergence.
-    from unicorn import UcError
-
+    # writes past it and unicorn raises UcError, which the runners fold into
+    # None.  That is a resource limit, the same class as the instruction-count
+    # cap: a matching Python loop is not a divergence.
     alphabet = "idclrnfsbo"
     failures = checked = loops = 0
     for _ in range(count):
         program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
         py = _run_nocomment_python_limited(program, timeout=3)
-        try:
-            asm = r.run_elf(binary, stdin=program.encode())
-        except (ValueError, UcError):
-            asm = None
+        asm = _asm_refs(
+            ROOT / "extra" / "assembly" / "nocomment.asm", "nocomment", program
+        )
         if py is None and asm is None:
             loops += 1
             continue
@@ -1779,6 +1754,86 @@ def _run_asm_ref(binary: bytes, program: str) -> tuple[bytes, int] | None:
     return out, code
 
 
+def _build_riscv(name: str) -> bytes | None:
+    """Assemble the RISC-V port ``extra/assembly/{name}-riscv.s``.
+
+    Returns None if the cross-compiler is missing.
+    """
+    asm = ROOT / "extra" / "assembly" / f"{name}-riscv.s"
+    if not asm.exists():
+        return None
+    for cc in ("riscv64-linux-gnu-gcc", "riscv64-elf-gcc"):
+        if shutil.which(cc) is None:
+            continue
+        binary = Path("/tmp") / f"verify-{name}-riscv"
+        rv = subprocess.run(
+            [
+                cc,
+                "-nostdlib",
+                "-static",
+                "-march=rv64i",
+                "-mabi=lp64",
+                str(asm),
+                "-o",
+                str(binary),
+            ],
+            capture_output=True,
+        )
+        if rv.returncode == 0 and binary.exists():
+            return binary.read_bytes()
+    return None
+
+
+def _run_riscv_elf(binary: bytes, program: str) -> tuple[bytes, int] | None:
+    """Run ``program`` (as the stdin stream) through a RISC-V reference ELF."""
+    import importlib
+
+    try:
+        riscv_elf_runner = importlib.import_module("riscv_elf_runner")
+    except SystemExit:
+        return None
+    try:
+        out, code = riscv_elf_runner.run_elf(binary, program.encode("latin1"))
+    except ValueError:
+        return None
+    except Exception:
+        return None  # the reference faulted (e.g. walked off its tape)
+    return out, code
+
+
+def _asm_refs(
+    x86_path: Path, riscv_name: str, program: str
+) -> tuple[bytes, int] | None:
+    """Run both the x86 and RISC-V references and require they agree.
+
+    Returns ``(out, code)`` when the available native references agree, or
+    None when none terminates.  A disagreement between the two ports is a
+    divergence worth surfacing: the corpus caller's None check reports it.
+    """
+    x86 = _assemble_x86(x86_path)
+    riscv = _build_riscv(riscv_name)
+    results = []
+    if x86 is not None:
+        results.append(_run_asm_ref(x86, program))
+    if riscv is not None:
+        results.append(_run_riscv_elf(riscv, program))
+    results = [r for r in results if r is not None]
+    if not results:
+        return None
+    if len(results) == 2 and results[0] != results[1]:
+        print(
+            f"asm refs disagree for {riscv_name} {program!r}: "
+            f"x86={results[0]!r} riscv={results[1]!r}"
+        )
+        return None
+    return results[0]
+
+
+def _asm_refs_ready(x86_path: Path, riscv_name: str) -> bool:
+    """Whether either the x86 or RISC-V reference can be built."""
+    return _assemble_x86(x86_path) is not None or _build_riscv(riscv_name) is not None
+
+
 def _inprocess_run(
     module: str, program: str, stdin: bytes = b"", encoding: str = "latin1"
 ) -> bytes | None:
@@ -1838,19 +1893,19 @@ _SIMPLE_CORPUS = [
         "esolangs.interpreters.other.seventy_four",
         [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
     ),
-    # 2 Bits, 1 Byte: single program byte, read from stdin by the reference
+    # 2 Bits, 1 Byte: single program byte, read from stdin by the references
     (
         "2 Bits, 1 Byte",
-        lambda: _assemble_x86(TWO_BITS_ONE_BYTE_ASM) is not None,
-        lambda p, _s: _run_asm_ref(_assemble_x86(TWO_BITS_ONE_BYTE_ASM), p),
+        lambda: _asm_refs_ready(TWO_BITS_ONE_BYTE_ASM, "2b1b"),
+        lambda p, _s: _asm_refs(TWO_BITS_ONE_BYTE_ASM, "2b1b", p),
         "esolangs.interpreters.other.two_bits_one_byte",
         [("\xff", b""), ("\x3f", b""), ("\x00", b""), ("A", b"")],
     ),
-    # Brainpocalypse: program read from stdin by the reference
+    # Brainpocalypse: program read from stdin by the references
     (
         "Brainpocalypse",
-        lambda: _assemble_x86(BRAINPOCALYPSE_ASM) is not None,
-        lambda p, _s: _run_asm_ref(_assemble_x86(BRAINPOCALYPSE_ASM), p),
+        lambda: _asm_refs_ready(BRAINPOCALYPSE_ASM, "brainpocalypse"),
+        lambda p, _s: _asm_refs(BRAINPOCALYPSE_ASM, "brainpocalypse", p),
         "esolangs.interpreters.tape_based.brainpocalypse",
         [
             ("+", b""),
@@ -1861,11 +1916,11 @@ _SIMPLE_CORPUS = [
             (">" * 256 + "+>", b""),  # the pointer wraps past cell 255
         ],
     ),
-    # Stun Step: program read from stdin by the reference
+    # Stun Step: program read from stdin by the references
     (
         "Stun Step",
-        lambda: _assemble_x86(STUN_STEP_ASM) is not None,
-        lambda p, _s: _run_asm_ref(_assemble_x86(STUN_STEP_ASM), p),
+        lambda: _asm_refs_ready(STUN_STEP_ASM, "stun-step"),
+        lambda p, _s: _asm_refs(STUN_STEP_ASM, "stun-step", p),
         "esolangs.interpreters.tape_based.stun_step",
         [("-", b""), ("->", b""), ("<", b""), (">-", b""), (">", b"")],
     ),

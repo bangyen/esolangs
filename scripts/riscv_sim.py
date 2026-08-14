@@ -57,13 +57,29 @@ def disassemble_and_run(binary: bytes, stdin: bytes) -> bytes:
         funct3 = (ins >> 12) & 0x7
         rs1 = (ins >> 15) & 0x1F
         rs2 = (ins >> 20) & 0x1F
-        if opcode == 0x13:  # OP-IMM: addi / slli / srli
+        if opcode == 0x37:  # lui
+            if rd:
+                reg[rd] = (ins >> 12) << 12
+            pc += 4
+        elif opcode == 0x17:  # auipc
+            if rd:
+                reg[rd] = pc + ((ins >> 12) << 12)
+            pc += 4
+        elif opcode == 0x13:  # OP-IMM: addi / slli / srli
             if funct3 == 0x1:  # slli
                 if rd:
                     reg[rd] = reg[rs1] << ((ins >> 20) & 0x1F)
             elif funct3 == 0x5:  # srli / srai
                 if rd:
                     reg[rd] = reg[rs1] >> ((ins >> 20) & 0x1F)
+            elif funct3 == 0x6:  # ori
+                imm = sign_extend(ins >> 20, 12)
+                if rd:
+                    reg[rd] = reg[rs1] | imm
+            elif funct3 == 0x7:  # andi
+                imm = sign_extend(ins >> 20, 12)
+                if rd:
+                    reg[rd] = reg[rs1] & imm
             else:  # addi
                 imm = sign_extend(ins >> 20, 12)
                 if rd:
@@ -79,6 +95,8 @@ def disassemble_and_run(binary: bytes, stdin: bytes) -> bytes:
                 value = reg[rs1] - reg[rs2]
             elif funct3 == 0x4:
                 value = reg[rs1] ^ reg[rs2]
+            elif funct3 == 0x6:
+                value = reg[rs1] | reg[rs2]
             elif funct3 == 0x7:
                 value = reg[rs1] & reg[rs2]
             elif funct3 == 0x1:
@@ -90,15 +108,37 @@ def disassemble_and_run(binary: bytes, stdin: bytes) -> bytes:
             if rd:
                 reg[rd] = value
             pc += 4
-        elif opcode == 0x03:  # lbu
+        elif opcode == 0x03:  # loads: lb / lbu / lw / ld (funct3 0 / 4 / 2 / 3)
             imm = sign_extend(ins >> 20, 12)
+            addr = reg[rs1] + imm
             if rd:
-                reg[rd] = mem[reg[rs1] + imm]
+                if funct3 == 0:  # lb (sign-extended byte)
+                    value = mem[addr]
+                    reg[rd] = value - 0x100 if value & 0x80 else value
+                elif funct3 == 4:  # lbu
+                    reg[rd] = mem[addr]
+                elif funct3 == 2:  # lw (sign-extended word)
+                    value = int(struct.unpack_from("<i", mem, addr)[0])
+                    reg[rd] = value
+                elif funct3 == 3:  # ld
+                    reg[rd] = int(struct.unpack_from("<q", mem, addr)[0])
             pc += 4
-        elif opcode == 0x23:  # sb
+        elif opcode == 0x23:  # stores: sb / sw / sd (funct3 0 / 2 / 3)
             imm = sign_extend((ins >> 25 << 5) | ((ins >> 7) & 0x1F), 12)
-            mem[reg[rs1] + imm] = reg[rs2] & 0xFF
+            addr = reg[rs1] + imm
+            if funct3 == 0:  # sb
+                mem[addr] = reg[rs2] & 0xFF
+            elif funct3 == 2:  # sw
+                struct.pack_into("<I", mem, addr, reg[rs2] & 0xFFFFFFFF)
+            elif funct3 == 3:  # sd
+                struct.pack_into("<q", mem, addr, reg[rs2])
             pc += 4
+        elif opcode == 0x67:  # jalr (ret uses rd = x0)
+            imm = sign_extend(ins >> 20, 12)
+            target = (reg[rs1] + imm) & ~1
+            if rd:
+                reg[rd] = pc + 4
+            pc = target
         elif opcode == 0x63:  # branches
             imm = (
                 ((ins >> 31) & 1) << 12
@@ -108,11 +148,14 @@ def disassemble_and_run(binary: bytes, stdin: bytes) -> bytes:
             )
             imm = sign_extend(imm, 13)
             a, b = reg[rs1], reg[rs2]
+            ua, ub = a & 0xFFFFFFFFFFFFFFFF, b & 0xFFFFFFFFFFFFFFFF
             taken = {
                 0x0: a == b,
                 0x1: a != b,
                 0x4: a < b,
                 0x5: a >= b,
+                0x6: ua < ub,
+                0x7: ua >= ub,
             }.get(funct3, False)
             pc += imm if taken else 4
         elif opcode == 0x6F:  # jal (j pseudo uses x0)
