@@ -1,0 +1,65 @@
+"""Interpreter for Number Seventy-Four.
+
+A one-bit tape language.  ``0`` and ``1`` push their bit onto the front of
+the output string, and ``H`` writes an ``H`` only if the output already
+starts with ``0`` (the first character written, which the last push
+determines).  The program is scanned in repeated passes: once the output
+starts with ``H`` the program prints it and halts, otherwise it restarts
+from the beginning of the program.  Any other character is ignored, and
+there is no input command.
+
+Semantics match the Ruby cross-check (``extra/ruby/74.rb``):
+- the halting check is made only at a pass boundary, so a program that
+  makes the output start with ``H`` mid-pass and then pushes a ``0``/``1``
+  afterwards never halts;
+- a program whose output never starts with ``H`` restarts forever and never
+  returns, matching the Ruby reference (the Lean reference instead stops
+  after 100 commands and prints whatever it has accumulated); a program with
+  no ``0``/``1``/``H`` commands at all halts with no output instead of
+  looping;
+- there are no invalid operations or malformed programs, so ``run`` never
+  raises :class:`HaltError` or :class:`ValueError`.
+
+Divergences from the references:
+- the Lean interpreter (``extra/lean/.../seventy_four.lean``) checks whether
+  the output starts with ``H`` before every command rather than at pass
+  boundaries, so it halts (and prints) the moment the output starts with
+  ``H`` even mid-pass: ``0H0H`` prints ``H0H0`` here but ``H0`` in Lean.
+  It also never restarts, scanning past the end of the program as no-ops
+  until a fixed limit of 100 commands, so it prints the accumulated output
+  on programs the Ruby reference and this port restart forever;
+- the Ruby 4.x interpreter is written with ``frozen_string_literal: true``
+  and so crashes with a ``FrozenError`` when an ``H`` executes before any
+  ``0``/``1`` has been pushed (e.g. a program starting with ``H``); the
+  port follows the documented semantics (an ``H`` on an empty output does
+  nothing) instead of reproducing that crash.
+"""
+
+import sys
+
+from esolangs.interpreters.io import IO
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Number Seventy-Four program."""
+    # a program with no 0/1/H commands can never make the output start with
+    # H, so the reference would restart forever; halt instead (like the other
+    # no-op interpreters)
+    if not any(c in "01H" for c in code):
+        return
+    data = ""
+    while not data.startswith("H"):
+        for c in code:
+            if c == "0":
+                data = "0" + data
+            elif c == "1":
+                data = "1" + data
+            elif c == "H" and data.startswith("0"):
+                data = "H" + data
+    io.print_str(data)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        with open(sys.argv[1]) as file:
+            run(file.read(), IO())
