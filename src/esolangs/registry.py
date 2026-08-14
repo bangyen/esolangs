@@ -70,7 +70,9 @@ LANGUAGES: dict[str, Language] = {
         "Clockwise", _generate.clockwise, "other.clockwise", split=True
     ),
     "Collatz Multiverse": Language(
-        "Collatz Multiverse", interpreter="register_based.collatz_multiverse"
+        "Collatz Multiverse",
+        _generate.collatz_multiverse,
+        "register_based.collatz_multiverse",
     ),
     "Container": Language(
         "Container", _generate.container, "other.container", split=True
