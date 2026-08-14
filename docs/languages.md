@@ -41,6 +41,7 @@ into a template) rather than the program reading input.
 | Collatz Multiverse | yes | yes |  | yes |  | hello |
 | Container | yes | yes |  | yes |  | hello |
 | DSDLAI |  | yes |  |  |  |  |
+| Decleq | yes | yes |  |  |  | hello |
 | Dig | yes | yes |  | yes |  | hello |
 | Dimensional | yes | yes |  | yes |  | hello |
 | Dotlang | yes | yes |  |  |  | hello |

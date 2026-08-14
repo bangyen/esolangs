@@ -83,7 +83,7 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 64 languages</summary>
+<summary>Show all 65 languages</summary>
 
 The full capability matrix (generators, native and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -96,6 +96,7 @@ Languages that use registers to store and manipulate data.
 - [BIO](https://esolangs.org/wiki/BIO) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/bio.py))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/collatz_multiverse.py))
 - [DSDLAI](https://esolangs.org/wiki/DSDLAI) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/dsdlai.py))
+- [Decleq](https://esolangs.org/wiki/Decleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/decleq.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/dig.py))
 - [Dotlang](https://esolangs.org/wiki/Dotlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/dotlang.py))
 - [Lightlang](https://esolangs.org/wiki/Lightlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/lightlang.py))
