@@ -25,22 +25,26 @@ finds no ``3``-based NOT even at n == 1.  The single data byte also makes
 multi-bit state impossible (every read overwrites it), so the generator
 would need a genuinely new construction, not an adaptation.
 
-### bit~ generator (medium priority)
-A bit pool with ``{``/``}`` loops and byte I/O, so boolean logic is its
-native idiom; the main open question is normalizing a read byte down to the
-single bit a tree level tests.
-
-### Minifuck partial boolean generator (low priority)
-The documented wall caps Minifuck at 0-preserving tables with `n <= 3`.  A
-generator for exactly that subset is possible but low value; the working
-prefixes and the exact reachable table set are recorded in
-`docs/limitations.md`.
+### Minifuck partial boolean generator (medium priority)
+The documented wall was re-verified and is *partially wrong*: a search past
+the original length-14 cap finds NOT and const-1 for one input (lengths
+17-18), so all four one-input functions are reachable; the two-input set is
+still the 0-preserving eight (AND, OR, XOR, echoes, const-0), with the
+non-0-preserving tables (XNOR, NAND, NOR, NOT-b) unfound to length 34.  A
+generator covering n == 1 fully plus the n == 2 0-preserving subset is now
+worth building; the exact reachable set is recorded in `docs/limitations.md`.
 
 Painfuck previously listed here is done: its ``a``/``b`` while-nonzero loops
 and ``j``/``u`` byte I/O make it brainfuck-compatible, so the brainfuck
 minterm and decision-tree strategies translate directly (``>`` maps to
 ``rl`` since ``r`` moves +2 and ``l`` -1, and the source is pre-shifted
 through the interpreter's substitution cycles).
+
+bit~ previously listed here is done: each ``)`` read leaves the input bit at
+``8i+7`` with the ``00110000`` byte pattern in the low cells, every (input,
+constant) cell a minterm tests is pre-copied unconditionally (so a skipped
+branch cannot break the copy chain), and each ``1`` row is a nested
+``{ bit ... }`` test that forces the result cell, printed as ``48 + result``.
 
 ## Lean proofs (in priority order)
 
