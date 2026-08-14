@@ -174,3 +174,19 @@ bits, but moving the tape pointer between outputs needs the full 2D routing
 that makes a text generator a routing problem rather than an arithmetic one.
 The newly assessed boolean candidates that fell through (Temporary, Movesum,
 WII2D, EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.
+
+## Compiler consolidation (in priority order)
+
+The repo has two compiler backends: five Python compilers emit RISC-V
+assembly (`src/esolangs/compilers/assembly/`, now verified end to end in CI
+through `scripts/verify_riscv_unicorn.py`), and four C programs emit C
+(`src/esolangs/compilers/c/`).  Unifying on the RISC-V backend would leave
+one output format and one verification pipeline.
+
+### Convert the C compilers to RISC-V (medium priority)
+EXCON, BF-PDA, and RAM0 (BFStack already has a RISC-V compiler) would each
+get a Python ``comp()`` in ``assembly/`` emitting RISC-V Linux assembly,
+verified end to end through ``verify_riscv_unicorn.py``, and their ``.c``
+files would be dropped.  This moves their verification from real gcc
+execution in the test suite to the unicorn pipeline; RAM0's register machine
+and BF-PDA's stack are the harder backends.
