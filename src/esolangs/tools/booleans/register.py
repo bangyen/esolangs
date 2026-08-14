@@ -1,9 +1,90 @@
 """Boolean-function generators for register-based languages."""
 
+from esolangs.tools.generators.helpers import _cm_constants
+
 # Dig blocks for one level of the decision tree.
 _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
 _DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own block
 _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
+
+
+def collatz_multiverse(truth_table: str, n: int) -> str:
+    """Build a Collatz Multiverse program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    A register holding 0 or 1 is always odd, so on such registers the Collatz
+    rule is affine (``v`` becomes ``v*var2+var3``), which makes AND, NOT, and
+    minterms buildable: ``t = src x + zero`` multiplies by a 0/1 ``src`` and
+    ``t = negativeOne x + one`` complements.  Each ``1`` row of the table
+    contributes its minterm (the AND of each bit's equality indicator); the
+    OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
+    byte constants come from the text generator's constant table.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+    if all(c == "0" for c in truth_table):
+        return "\n".join([*_cm_constants(48), "out = negativeOne x + k48, DO PRINT."])
+    if all(c == "1" for c in truth_table):
+        return "\n".join([*_cm_constants(49), "out = negativeOne x + k49, DO PRINT."])
+
+    lines = _cm_constants(48)
+    for i in range(n):
+        lines.append(f"b{i} = negativeOne x + input, NOT PRINT.")
+
+    next_reg = 0
+
+    def fresh() -> str:
+        nonlocal next_reg
+        reg = f"r{next_reg}"
+        next_reg += 1
+        return reg
+
+    def flip(src: str) -> str:
+        reg = fresh()
+        lines.append(f"{reg} = negativeOne x + {src}, NOT PRINT.")
+        lines.append(f"{reg} = negativeOne x + k1, NOT PRINT.")
+        return reg
+
+    def and_bits(x: str, y: str) -> str:
+        reg = fresh()
+        lines.append(f"{reg} = negativeOne x + {x}, NOT PRINT.")
+        lines.append(f"{reg} = {y} x + zero, NOT PRINT.")
+        return reg
+
+    acc = "acc"
+    lines.append("acc = negativeOne x + k1, NOT PRINT.")
+    for k in range(2**n):
+        if truth_table[k] == "0":
+            continue
+        indicators = []
+        for i in range(n):
+            if (k >> (n - 1 - i)) & 1:
+                reg = fresh()
+                lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
+                indicators.append(reg)
+            else:
+                indicators.append(flip(f"b{i}"))
+        minterm = indicators[0]
+        for indicator in indicators[1:]:
+            minterm = and_bits(minterm, indicator)
+        complement = flip(minterm)
+        nacc = fresh()
+        lines.append(f"{nacc} = negativeOne x + {acc}, NOT PRINT.")
+        lines.append(f"{nacc} = {complement} x + zero, NOT PRINT.")
+        acc = nacc
+
+    result = flip(acc)
+    out = fresh()
+    lines.append(f"{out} = negativeOne x + {result}, NOT PRINT.")
+    lines.append(f"{out} = k1 x + k48, DO PRINT.")
+    return "\n".join(lines)
 
 
 def sophie(truth_table: str, n: int) -> str:

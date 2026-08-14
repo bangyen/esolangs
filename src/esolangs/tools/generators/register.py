@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
-from esolangs.tools.generators.helpers import _require_bytes
+from esolangs.tools.generators.helpers import _cm_constants, _require_bytes
 
 __all__ = [
     "albabet",
@@ -242,29 +242,16 @@ def collatz_multiverse(text: str) -> str:
     Every line is ``[var1] = [var2] x + [var3], [DO|NOT] PRINT.`` and the
     operands must be variables, so byte values have to be driven into
     registers through the Collatz transform (odd or 0 values become
-    ``v*var2+var3``, even values halve).  The generator first builds a
-    constant table: ``k1``/``k2`` are bootstrapped from ``negativeOne``, then
-    the copy trick ``v = negativeOne x + k`` sets a fresh register to any
-    already built constant, and ``v = one x + one`` (from the odd ``n-1``)
-    and ``v = one x + two`` (from the odd ``n-2``) reach every larger value
-    in two lines each.  Each output character is then a single line on a
-    fresh register: ``o = negativeOne x + k<byte>`` copies the byte and
-    prints it.
+    ``v*var2+var3``, even values halve).  A constant table of byte values is
+    bootstrapped from ``negativeOne`` with the copy trick and parity-aware
+    ``one x + one``/``one x + two`` increments; each output character is then
+    a single line on a fresh register: ``o = negativeOne x + k<byte>`` copies
+    the byte and prints it.
     """
     if not text:
         return ""
     _require_bytes(text, "Collatz Multiverse")
-    lines = [
-        "k1 = negativeOne x + negativeOne, NOT PRINT.",
-        "k1 = negativeOne x + zero, NOT PRINT.",
-        "k2 = negativeOne x + negativeOne, NOT PRINT.",
-        "k2 = negativeOne x + k1, NOT PRINT.",
-    ]
-    for n in range(3, max(ord(c) for c in text) + 1):
-        v = n - 1 if n % 2 == 0 else n - 2
-        b = "k1" if n % 2 == 0 else "k2"
-        lines.append(f"k{n} = negativeOne x + k{v}, NOT PRINT.")
-        lines.append(f"k{n} = k1 x + {b}, NOT PRINT.")
+    lines = _cm_constants(max(ord(c) for c in text))
     for i, c in enumerate(text):
         lines.append(f"o{i} = negativeOne x + k{ord(c)}, DO PRINT.")
     return "\n".join(lines)
