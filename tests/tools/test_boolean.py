@@ -65,6 +65,15 @@ def run_painfuck(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_bit_tilde(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.bit_tilde import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.collatz_multiverse import run
 
@@ -759,6 +768,49 @@ class TestPainfuck:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.painfuck("02", 1)
+
+
+class TestBitTilde:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # single one (AND4)
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.bit_tilde(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_bit_tilde(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_single_read_and_output(self) -> None:
+        """One read per input and a single final output."""
+        program = boolean.bit_tilde("0110", 2)
+        assert program.startswith(")")
+        assert program.count(")") == 2
+        assert program.count("(") == 1
+        assert program.endswith("(")
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.bit_tilde("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.bit_tilde("02", 1)
 
 
 class TestBasicfuck:

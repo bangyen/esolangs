@@ -31,6 +31,7 @@ BOOLEAN = {
     "BF",
     "BFStack",
     "BIO",
+    "bit~",
     "BrainIf",
     "CircleFuck",
     "Clockwise",
