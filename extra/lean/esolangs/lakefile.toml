@@ -1,6 +1,6 @@
 name = "esolangs"
 version = "0.1.0"
-defaultTargets = ["Esolangs", "albabet", "excon", "bfpda", "seventy_four"]
+defaultTargets = ["Esolangs"]
 
 [[require]]
 name = "mathlib"
@@ -9,19 +9,3 @@ rev = "v4.32.2"
 
 [[lean_lib]]
 name = "Esolangs"
-
-[[lean_exe]]
-name = "albabet"
-root = "AlbabetMain"
-
-[[lean_exe]]
-name = "excon"
-root = "ExconMain"
-
-[[lean_exe]]
-name = "bfpda"
-root = "BfpdaMain"
-
-[[lean_exe]]
-name = "seventy_four"
-root = "SeventyFourMain"
