@@ -257,6 +257,28 @@ roadmap.  The viable candidates are in `docs/roadmap.md`.
 - **Bitwise Cyclic Teast**: a work-in-progress with a still-in-development
   interpreter definition.
 
+## User:PythonshellDebugwindow candidates that fell through
+Assessments of the unimplemented languages on PythonshellDebugwindow's user
+page that did not make the roadmap (the viable ones — Jumplang, ROTfuck,
+UFSA, Suptiftam, Stackint, Queuenanimous — are in `docs/roadmap.md`).
+
+- **LogicF---**: a joke language whose commands are non-deterministic and
+  non-functional (a 2% chance to increment, a 67% chance to throw a
+  KeyError, and so on), with no usable protocol.
+- **Your Time Is Up**: non-deterministic string-rewriting (a matching rule
+  is picked at random) with no I/O.
+- **N Refine**: probabilistic constant-rewriting with no deterministic
+  output.
+- **Vandevelo**: input-only, with no output at all.
+- **Varigen**: an explicitly "uncomputable" joke language.
+- **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**,
+  **Writeover**: joke or vaguely specified languages with no usable
+  specification or I/O protocol.
+- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**,
+  **Streetcode**, **Unary Filesystem**, **Phile**: particle/map/file- or
+  OS-based languages with no portable file-based I/O protocol.
+- **Welcome To...**: a work-in-progress.
+
 ## Assessed boolean candidates that fell through
 - **Temporary**: the auto-drain is the only output, and it prints `front - 1`
   for the *oldest* stack element when `sum(rest) / 2 > front`.  An
