@@ -100,6 +100,17 @@ functions (const-0, identity, NOT, const-1) are reachable.  A generator is
 therefore limited to the 0-preserving two-input tables plus all four
 one-input tables (n <= 3 at most), and not to arbitrary boolean functions.
 
+## 123 (limited to the four one-input functions)
+A decision tree needs the ``3`` jump, which on a TRUE/FALSE bit jumps to the
+*nearest* preceding/following ``3`` (not bracket-matched), so the only
+constructible pattern is "repeat the region before the ``3`` while TRUE" —
+no ``3``-based branch exists (a random search finds no NOT even at n == 1),
+and the single data byte makes multi-bit state impossible (every read
+overwrites it).  The one-input functions are pure bit arithmetic, however:
+const-0/const-1 build the byte, identity reads and echoes it, and NOT flips
+its least significant bit, so all four are reachable without ``3`` and a
+generator covers n == 1 only.
+
 ## RAM0, BitDeque, Minsky Swap (not viable for the template model)
 These three have value-testable branches and clean setters, but their jumps
 are *absolute token indices*: RAM0's digit-`GOTO`, BitDeque's `GOTO N`, and

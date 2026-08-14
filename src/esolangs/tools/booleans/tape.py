@@ -3,7 +3,42 @@
 from collections.abc import Sequence
 from typing import cast
 
+from esolangs.tools.generators.other import _123
 from esolangs.tools.transpilers import _six_five_label, bf_to_ascii_art
+
+
+def one_two_three(truth_table: str, n: int) -> str:
+    """Build a 123 program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Only the four one-input functions are reachable.  A decision tree needs
+    the ``3`` jump, which on a TRUE/FALSE bit jumps to the *nearest*
+    preceding/following ``3`` (not bracket-matched), so the only
+    constructible pattern is a "repeat the region before the ``3`` while
+    TRUE" loop — no ``3``-based branch exists at any length (see
+    ``docs/limitations.md``).  For one input the functions are pure bit
+    arithmetic, so no ``3`` is needed: const-0/const-1 come from the text
+    generator, identity reads and echoes the byte, and NOT flips its least
+    significant bit.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+    if n != 1:
+        raise ValueError("123 has no boolean generator beyond one input")
+    programs = {
+        "00": _123("0"),
+        "01": "1112" + "2222222" + "121" * 9 + "21",
+        "10": "11122222222112112112112112112112112121",
+        "11": _123("1"),
+    }
+    return programs[truth_table]
 
 
 def brainif(truth_table: str, n: int) -> str:
