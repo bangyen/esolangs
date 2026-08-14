@@ -14,17 +14,10 @@ interpreter.  Ruled-out candidates (Gravity, Earfuck, Conveyor, Chainlang,
 Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast) are recorded in
 `docs/limitations.md`, and A Painter Ant (a no-I/O grid interpreter) and
 AddSubJump (a self-modifying OISC with a text generator) shipped from that
-scan.  A second pass over the PythonshellDebugwindow languages produced the
-batch below (Jumplang, ROTfuck, UFSA, Suptiftam, Stackint, Queuenanimous);
-the joke, non-deterministic, no-I/O, and file/OS-based ones from that list
-are recorded in `docs/limitations.md`.
-
-### Jumplang (high priority)
-A Turing-complete brainfuck derivative that replaces the loops with `?`
-(skip the next command if the cell is zero) and `!` (absolute jump to the
-`cell pointer + 1`th command; jumping out of bounds halts), plus `^`/`v`
-that step by 2.  Well specified with a cat example, and as a brainfuck
-family member with full I/O it has a text-generator and boolean story.
+scan.  A second pass over the PythonshellDebugwindow languages filtered for
+the actual Category:Unimplemented gaps; the joke, non-deterministic, no-I/O,
+file/OS-based, and already-implemented ones from that list are recorded in
+`docs/limitations.md`.
 
 ### ROTfuck (high priority)
 A Turing-complete brainfuck variant where every executed command rotates
@@ -32,29 +25,11 @@ all non-comment characters of the source one step along `+-><,.[]`.  The
 program text is self-modifying, but the spec is complete and there is a
 Hello World; the rotation-invariant construction is the interesting part.
 
-### UFSA (high priority)
-A finite-state-automaton meta-language: the first line names the initial
-and halt states, and each later line is `original transition trigger`
-followed by optional output tokens (`\*N*` octal escapes, `\\`).  Simple,
-deterministic, and fully specified with Hello World, cat, and truth-machine
-examples, and full I/O.
-
 ### Suptiftam (medium priority)
 Two-dimensional tape-tapes of bytes or integers, permissive function
 definitions, includes, and I/O via the `read`/`term` tapes.  The spec is
 complete but has undefined behaviors and its examples are untested, so it is
 a heavier, riskier implementation.
-
-### Stackint (medium priority)
-A stack-based language with `?`/`!` computed jumps, arithmetic, and
-duplication.  Deterministic and well specified, but the only output is the
-stack printed as an array at the end of the program, which fits the repo's
-print-text protocol only awkwardly.
-
-### Queuenanimous (low priority)
-A Turing-complete queue-based language (`0 + - >` and while loops) with a
-complete translation table.  It has no I/O, so like Crement and A Painter
-Ant it can only be a self-contained interpreter without a generator.
 
 ### Crement (low priority)
 A self-modifying language with ADDRESS/DATA/JUMP opcodes and a polarity
@@ -98,6 +73,18 @@ round-trip `decodeRuns_encodeRuns` / `decode_encode` proves the sorted distinct
 prime factors of the encoded integer are precisely the chosen primes, in
 order, with the right exponents (`encodeRuns_factorization_at`,
 `chosenExp_pos_iff`, `primeFactors_encodeRuns`).
+
+### Boolean generator correctness proofs (low priority)
+The boolean-function generators (`tools/generators/booleans/`) emit, for a
+truth table, a program that reads the input bits and prints the table's
+output.  Correctness proofs run the generated program through the
+interpreter's own transitions for every input combination.  The tractable
+first target is the Sophie decision tree (`sophie`): ``;`` reads a bit and
+``@$48{then}{else}`` branches on it, each leaf prints ``#$48``/``#$49`` and
+halts — a structured recursion with no scratch machinery.  The brainfuck
+minterm (`_bf_minterm`) is the shared core for painfuck/ascii_art/three_d_bf/
+dimensional but needs the bf model extended with ``,`` input and the
+copy/AND scratch machinery, so it is a larger effort.
 
 ### Huf text generator correctness proof (medium priority)
 Done.  `HufCorrect.lean` models the register interpreter (`num`/`mul`/output,
