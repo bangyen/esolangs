@@ -112,6 +112,7 @@ Languages that use registers to store and manipulate data.
 
 - [%^2^-1](https://esolangs.org/wiki/%^2^-1)
 - [BIO](https://esolangs.org/wiki/BIO)
+- [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse)
 - [DSDLAI](https://esolangs.org/wiki/DSDLAI)
 - [Dig](https://esolangs.org/wiki/Dig)
 - [Dotlang](https://esolangs.org/wiki/Dotlang)
@@ -214,9 +215,7 @@ malformed program, 3 = invalid runtime operation.
 - [2dFish](https://esolangs.org/wiki/2dFish)
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
 - [Forþ](https://esolangs.org/wiki/For%C3%BE)
-- [Kak](https://esolangs.org/wiki/Kak)
 - [Painfuck](https://esolangs.org/wiki/Painfuck)
-- [Trash](https://esolangs.org/wiki/Trash)
 
 ### x86 Assembly Implementations
 
@@ -237,12 +236,13 @@ malformed program, 3 = invalid runtime operation.
 
 - [3x](https://esolangs.org/wiki/3x)
 - [bit~](https://esolangs.org/wiki/Bit~)
-- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
-- [Unsquare](https://esolangs.org/wiki/Unsquare)
 
 ### Rust Implementations
 
+- [Kak](https://esolangs.org/wiki/Kak)
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
+- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
+- [Trash](https://esolangs.org/wiki/Trash)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 
 <!-- EXTRA:END -->

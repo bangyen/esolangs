@@ -2,7 +2,7 @@
 
 Forþ, Painfuck, 2dFish, %^2^-1, and Basicfuck have C++ references in
 ``extra/c++``, LaserFuck and Unsquare have Rust references in ``extra/rust``,
-and Unsquare, bit~, and 3x have Ruby references in ``extra/ruby``.  This
+and bit~ and 3x have Ruby references in ``extra/ruby``.  This
 script builds whatever references it can (g++ for C++, cargo for Rust) and
 round-trips each language's generator: a generated program must reproduce
 its text when run through the reference implementation.  Dimensional moved
@@ -132,7 +132,6 @@ def main() -> int:
         ("Basicfuck", gen.basicfuck, cxx["basicfuck"]),
         ("LaserFuck", gen.laserfuck, rust["laserfuck"]),
         ("Unsquare", gen.unsquare, rust["unsquare"]),
-        ("Unsquare", gen.unsquare, _ruby_reference("unsquare.rb")),
         ("bit~", gen.bit_tilde, _ruby_reference("bit.rb")),
         ("3x", gen.three_x, _ruby_reference("3x.rb")),
     ]
@@ -156,13 +155,13 @@ def main() -> int:
     # Boolean generators: 3x computes truth tables via a variable decision
     # tree (verified against Ruby), Forþ via a function-dispatch tree
     # (C++), Basicfuck via an if/if-not decision tree (C++), and Unsquare
-    # via an accumulator decision tree (Ruby).  Dimensional and Container are
+    # via an accumulator decision tree (Rust).  Dimensional and Container are
     # verified against their in-package interpreters instead.
     boolean_refs: list[tuple[str, Callable[[str, int], str], list[str] | None]] = [
         ("3x", boolean.three_x, _ruby_reference("3x.rb")),
         ("Forþ", boolean.forth, cxx["forþ"]),
         ("Basicfuck", boolean.basicfuck, cxx["basicfuck"]),
-        ("Unsquare", boolean.unsquare, _ruby_reference("unsquare.rb")),
+        ("Unsquare", boolean.unsquare, rust["unsquare"]),
     ]
     tables = {
         1: ("00", "01", "10", "11"),

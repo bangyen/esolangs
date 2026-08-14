@@ -94,9 +94,7 @@ _EXTRA_DIRS = [
             "2dFish": "2dFish",
             "basicfuck": "Basicfuck",
             "forþ": "Forþ",
-            "kak": "Kak",
             "painfuck": "Painfuck",
-            "trash": "Trash",
         },
         "C++ Implementations",
     ),
@@ -128,16 +126,20 @@ _EXTRA_DIRS = [
         "*.rb",
         {
             "3x": "3x",
-            "74": "Number Seventy-Four",
             "bit": "bit~",
-            "unsquare": "Unsquare",
         },
         "Ruby Implementations",
     ),
     (
         ROOT / "extra" / "rust",
         "*.rs",
-        {"laserfuck": "LaserFuck", "unsquare": "Unsquare"},
+        {
+            "kak": "Kak",
+            "laserfuck": "LaserFuck",
+            "seventy_four": "Number Seventy-Four",
+            "trash": "Trash",
+            "unsquare": "Unsquare",
+        },
         "Rust Implementations",
     ),
 ]

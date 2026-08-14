@@ -8,12 +8,12 @@ starts with ``H`` the program prints it and halts, otherwise it restarts
 from the beginning of the program.  Any other character is ignored, and
 there is no input command.
 
-Semantics match the Ruby cross-check (``extra/ruby/74.rb``):
+Semantics match the Rust cross-check (``extra/rust/seventy_four.rs``):
 - the halting check is made only at a pass boundary, so a program that
   makes the output start with ``H`` mid-pass and then pushes a ``0``/``1``
   afterwards never halts;
 - a program whose output never starts with ``H`` restarts forever and never
-  returns, matching the Ruby reference (the Lean reference instead stops
+  returns, matching the Rust reference (the Lean reference instead stops
   after 100 commands and prints whatever it has accumulated); a program with
   no ``0``/``1``/``H`` commands at all halts with no output instead of
   looping;
@@ -27,12 +27,9 @@ Divergences from the references:
   ``H`` even mid-pass: ``0H0H`` prints ``H0H0`` here but ``H0`` in Lean.
   It also never restarts, scanning past the end of the program as no-ops
   until a fixed limit of 100 commands, so it prints the accumulated output
-  on programs the Ruby reference and this port restart forever;
-- the Ruby 4.x interpreter is written with ``frozen_string_literal: true``
-  and so crashes with a ``FrozenError`` when an ``H`` executes before any
-  ``0``/``1`` has been pushed (e.g. a program starting with ``H``); the
-  port follows the documented semantics (an ``H`` on an empty output does
-  nothing) instead of reproducing that crash.
+  on programs the Rust reference and this port restart forever;
+- the Rust cross-check matches the documented semantics (an ``H`` on an
+  empty output does nothing), which the former Ruby reference crashed on.
 """
 
 import sys
