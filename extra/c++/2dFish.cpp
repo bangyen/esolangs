@@ -11,8 +11,9 @@
 // Spec decisions: the pointer starts at the top-left cell and the first cell
 // must set a direction, otherwise the program exits with EXIT_MALFORMED (a
 // malformed program, the Python ValueError analog).  Moving off the grid is
-// an invalid runtime operation, EXIT_INVALID_OP.  A missing, unreadable, or
-// empty program file exits with status 1 (unclassified).  The exit-code
+// an invalid runtime operation, EXIT_INVALID_OP.  A missing or unreadable
+// program file exits with status 1 (unclassified); an empty program file is
+// malformed (EXIT_MALFORMED).  The exit-code
 // convention is defined below.
 //
 // Invocation: `2dFish <program-file>`; program text from `argv[1]`.
@@ -85,7 +86,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (prog.size() == 0)
-      return EXIT_FAILURE;
+      return EXIT_MALFORMED;
   } else {
     return EXIT_FAILURE;
   }

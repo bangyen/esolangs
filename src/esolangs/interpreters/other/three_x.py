@@ -13,15 +13,22 @@ Semantics match the Ruby cross-check (``extra/ruby/3x.rb``):
   an empty stack, an unmatched ``(``, a ``)`` with no pending ``(``, or a
   division by zero raise :class:`HaltError`;
 - ``?`` raises :class:`EOFError` when input runs out, where the reference
-  exits with status 3, and accepts decimal input that the reference rejects;
+  exits with status 3, and rejects input that is not an integer or a
+  fraction (matching the reference's ``Rational`` parser, which rejects
+  decimals);
 - ``[`` with no closing ``]`` prints nothing.
 """
 
+import re
 import sys
 from fractions import Fraction
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+
+# Ruby's Rational() string parser accepts integers and "a/b" fractions only,
+# not decimals; the interpreter rejects the same inputs.
+_RATIONAL = re.compile(r"^[+-]?\d+(?:/[+-]?\d+)?$")
 
 
 def run(code: str, io: IO) -> None:
@@ -50,6 +57,10 @@ def run(code: str, io: IO) -> None:
             stack.append((c - b) / a)
         elif char == "?":
             line = io.input_str("Input: ").strip()
+            if not _RATIONAL.fullmatch(line):
+                raise ValueError("input must be an integer or a fraction")
+            if "/" in line and int(line.rsplit("/", 1)[1]) == 0:
+                raise ValueError("input must be an integer or a fraction")
             stack.append(Fraction(line))
         elif char == "!":
             value = pop()

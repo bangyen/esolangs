@@ -14,12 +14,15 @@ Semantics match the C++ cross-check (``extra/c++/basicfuck.cpp``):
   too small for the allocations) raise :class:`ValueError`;
 - a ``halt`` underflow/overflow raises :class:`HaltError`, while ``wrap``
   and ``nearest`` bound the cell instead;
-- an array access past the allocation reads or writes the following cells,
-  matching the reference's flat tape (there is no out-of-bounds check);
+- an array access past the allocation (``X->n`` beyond the array) raises
+  :class:`HaltError`, and the reference exits 3 too (it used to be undefined
+  out-of-bounds memory);
 - ``,`` (read) stores the first byte of a line and raises
   :class:`EOFError` when input runs out, where the reference exits with
   status 3.
 """
+
+from __future__ import annotations
 
 import re
 import sys
@@ -210,7 +213,7 @@ def _parser(tokens: list[str], var: list[tuple[str, int]]) -> list[int]:
 
 def _execute(
     prog: list[int],
-    tape: list[int],
+    tape: _BoundedTape,
     mode: str,
     bot: int,
     top: int,
@@ -310,7 +313,37 @@ def run(code: str, io: IO) -> None:
         raise ValueError("Insufficient memory.")
 
     instructions = _parser(_lexer(body), var)
-    _execute(instructions, tape, mode, bot, top, io, 0)
+    _execute(instructions, _BoundedTape(tape), mode, bot, top, io, 0)
+
+
+class _BoundedTape:
+    """A tape that treats an out-of-allocation index as an invalid operation.
+
+    An array access past its allocation (``X->n`` beyond the array) is
+    undefined in the reference; both it and the interpreter now halt with an
+    invalid operation instead of reading or writing memory.
+    """
+
+    def __init__(self, cells: list[int]) -> None:
+        """Wrap the allocated ``cells`` with bounds checks."""
+        self._cells = cells
+
+    def __len__(self) -> int:
+        return len(self._cells)
+
+    def __getitem__(self, index: int) -> int:
+        if not 0 <= index < len(self._cells):
+            raise HaltError("tape index out of bounds")
+        return self._cells[index]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        if not 0 <= index < len(self._cells):
+            raise HaltError("tape index out of bounds")
+        self._cells[index] = value
+
+    def append(self, value: int) -> None:
+        """Append a cell (used by the pointer growth)."""
+        self._cells.append(value)
 
 
 if __name__ == "__main__":

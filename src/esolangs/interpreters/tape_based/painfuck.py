@@ -28,22 +28,23 @@ the same way as the reference.
 
 Documented divergences from the C++ cross-check:
 
-- ``y`` is nondeterministic in the reference (a random skip); here it always
-  takes the skip branch, so it always discards the next command.  The
-  generator and the differential corpus never use it.
+- ``y`` is nondeterministic in the reference (a random skip) and the wiki
+  specifies it that way, so it skips the next command with probability 1/2
+  here too; the generator and the differential corpus never use it.
 - Reads at exhausted input raise :class:`EOFError` (the repo-wide
   convention), where the reference exits with status 3.
 - ``i`` parses the whole input line as an integer with ``int()``, so each
   line must be a single integer (the reference tokenizes with ``>>``).
 - A ``t`` run that reaches the start of the program repeats a NUL in place
-  of the command it walks before the program (the reference reads out of
-  bounds there; in practice that read yields NUL and the program halts).
+  of the command it walks before the program, in both implementations (the
+  reference used to read out of bounds there; it now bounds the walk).
 - The reference's reads before/after the program are modeled as NUL, so an
   unmatched ``a`` on a zero cell skips to the end and the program halts.
 - ``u`` prints ``chr(cell & 0xFF)``, matching the reference's ``(char)``
   cast for cell values outside the byte range.
 """
 
+import random
 import sys
 
 from esolangs.exceptions import HaltError
@@ -157,9 +158,9 @@ def run(code: str, io: IO) -> None:
                     ind += 1
                     rep *= 7
             elif c == "y":
-                # The reference skips randomly; make it deterministic by
-                # always taking the skip branch.
-                if ind < n:
+                # The wiki specifies a random skip; match the reference's
+                # coin flip (the generator and differential avoid `y`).
+                if random.randrange(2) and ind < n:  # nosec B311
                     c = prog[ind]
                     ind += 1
             elif c == "e":
