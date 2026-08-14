@@ -5,10 +5,14 @@ import Esolangs.AlbabetCorrect
 import Esolangs.AlbabetSemanticsCorrect
 import Esolangs.BfpdaCorrect
 import Esolangs.BfpdaSemanticsCorrect
+import Esolangs.BioCorrect
 import Esolangs.CircleFuckCorrect
 import Esolangs.Excon
 import Esolangs.ExconCorrect
 import Esolangs.ExconSemanticsCorrect
+import Esolangs.QoiblCorrect
+import Esolangs.SixFiveCorrect
+import Esolangs.SophieCorrect
 import Esolangs.bfpda
 import Esolangs.seventy_four
 import Esolangs.SeventyFourSemanticsCorrect
