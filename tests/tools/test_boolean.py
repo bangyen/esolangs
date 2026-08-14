@@ -102,6 +102,15 @@ def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_decleq(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.decleq import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1003,6 +1012,51 @@ class TestCollatzMultiverse:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.collatz_multiverse("02", 1)
+
+
+class TestDecleq:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.decleq(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_decleq(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_branch_normalizes_bits_to_one_and_two(self) -> None:
+        """Each bit gets a 47-step decrement chain, then one branch."""
+        program = boolean.decleq("0110", 2)
+        cells = [int(tok) for tok in program.split()]
+        instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
+        # count a==b>0 instructions: the 47 normalization steps plus the
+        # decision-tree branches (2**n - 1 of them)
+        decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
+        assert len(decs) == 47 * 2 + 3
+        assert sum(1 for ins in instrs if ins[0] == -1) == 2  # one read each
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.decleq("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.decleq("02", 1)
 
 
 class TestSophie:

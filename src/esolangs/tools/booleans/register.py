@@ -8,6 +8,73 @@ _DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own bloc
 _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
 
 
+def decleq(truth_table: str, n: int) -> str:
+    """Build a Decleq program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Decleq's only arithmetic is ``b = a - 1`` with a ``<= 0`` jump, so each
+    input byte (48/49) is normalized to 1/2 by a 47-step decrement chain,
+    which makes ``cell cell c`` a branch: a ``0`` bit (1) decrements to 0 and
+    jumps to ``c``, a ``1`` bit (2) falls through.  The decision tree routes
+    those branches to leaves that output 48 or 49 (placed in data cells of
+    the self-modifying memory) and then halt.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    # instructions: n reads, n*47 normalizations, and the tree
+    # (2**n - 1 branches plus 2**n leaves of output+halt each).
+    n_instr = n + 47 * n + 3 * 2**n - 1
+    data_base = 3 * n_instr
+    read_cells = [data_base + i for i in range(n)]
+    out48 = data_base + n
+    out49 = out48 + 1
+
+    mem: list[int] = []
+
+    def emit(a: int, b: int, c: int) -> None:
+        mem.extend([a, b, c])
+
+    def pc() -> int:
+        return len(mem)
+
+    def patch(addr: int, c: int) -> None:
+        mem[addr + 2] = c
+
+    for rc in read_cells:
+        emit(-1, rc, pc() + 3)
+    for rc in read_cells:
+        for _ in range(47):
+            emit(rc, rc, pc() + 3)
+
+    def node(level: int, row: int) -> None:
+        if level == n:
+            emit(-2, out49 if truth_table[row] == "1" else out48, 0)
+            emit(0, 0, 10**9)
+            return
+        rc = read_cells[level]
+        emit(rc, rc, 0)
+        branch = pc() - 3
+        node(level + 1, row + 2 ** (n - 1 - level))
+        target = pc()
+        node(level + 1, row)
+        patch(branch, target)
+
+    node(0, 0)
+
+    mem.extend([0] * (out49 - len(mem) + 1))
+    mem[out48] = 48
+    mem[out49] = 49
+    return " ".join(map(str, mem))
+
+
 def collatz_multiverse(truth_table: str, n: int) -> str:
     """Build a Collatz Multiverse program computing the given truth table.
 
