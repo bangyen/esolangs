@@ -166,6 +166,28 @@ state and print the same string.  Every generated program is clean
 (`Clean_textProg`), so `generator_output_eq` ties this back to the generator
 proof.
 
+## Number Seventy-Four interpreter equivalence
+
+A Lean 4 + mathlib proof (`Esolangs/SeventyFourSemanticsCorrect.lean`) that
+the ported 74 interpreter (`Esolangs/seventy_four.lean`) computes exactly the
+reference Python interpreter's output (`src/esolangs/interpreters/other/seventy_four.py`)
+for the programs where the two control flows coincide.  The push semantics
+(`push`) are identical: `0`/`1` push their bit, `H` writes an `H` only if the
+output starts with `0`.  The control flow differs: the reference scans in
+repeated passes and halts only when the output starts with `H` at a *pass
+boundary* (restarting forever otherwise), while the port walks the program
+once, checks before every command, and stops after `limit` commands.
+
+So the equivalence is stated under the guard `NoEarlyH` (no proper prefix of
+the meaningful commands makes the output start with `H`, so the port never
+halts early) plus `prog.length ≤ limit` (the port reaches the last meaningful
+command) plus `front (outOf (meany prog)) = 'H'` (the run halts at all).
+Under it `interpreter_eq` says both print the same string — the port at the
+next command's check, the reference at the pass boundary.  The divergence is
+real and proven: `0H0H` makes the output start with `H` mid-pass, so the port
+prints `H0` while the reference finishes the pass and prints `H0H0`
+(`NoEarlyH` fails there).
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
