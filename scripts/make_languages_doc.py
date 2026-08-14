@@ -41,6 +41,7 @@ BOOLEAN = {
     "Dimensional",
     "Forþ",
     "LaserFuck",
+    "Minifuck",
     "Modulous",
     "Nevermind",
     "NoComment",
@@ -285,7 +286,10 @@ def render_languages_section() -> str:
 def render_compilers_section() -> str:
     """Render the README's Compilers section between the markers."""
     out: list[str] = []
-    for kind, heading in (("assembly", "x86 Assembly Compilers"), ("c", "C Compilers")):
+    for kind, heading in (
+        ("assembly", "RISC-V Assembly Compilers"),
+        ("c", "C Compilers"),
+    ):
         out.append(f"### {heading}")
         out.append("")
         for name in sorted(_compiler_set(kind)):
