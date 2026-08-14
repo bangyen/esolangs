@@ -15,19 +15,17 @@ are recorded in `docs/limitations.md`, and A Painter Ant (a no-I/O grid
 interpreter) and AddSubJump (a self-modifying OISC with a text generator)
 shipped from that scan.
 
-### Decleq (medium priority)
-An OISC whose instruction `a b c` means `b = a - 1`, then jump to `c` if
-`b <= 0`, with optional memory-mapped I/O (`-2` outputs, `-1` reads).  The
-wiki page is a stub, so the loose edges (unconditional fall-through, jump
-targets, the I/O protocol) need pinning down as conventions before an
-interpreter can be verified.  A decrement-based text generator is plausible
-(OISC value-building like AddSubJump).
-
 ### Crement (low priority)
 A self-modifying language with ADDRESS/DATA/JUMP opcodes and a polarity
 field, fully specified including a Minsky-machine reduction.  It has no
 I/O, so like A Painter Ant it can only be a self-contained interpreter
 without a generator.
+
+Decleq previously listed here is done: the memory-mapped I/O falls through
+(the `-2` output and `-1` input do not jump), `a b c` stores `memory[a]-1`
+into `memory[b]` and jumps when it is `<= 0`, and the generator simply
+places each byte in a data cell and prints it with a `-2` instruction, so
+the program is linear and compact.
 
 ## Lean proofs (in priority order)
 

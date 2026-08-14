@@ -35,6 +35,7 @@ from esolangs.tools.generators.register import (
     albabet,
     bio,
     collatz_multiverse,
+    decleq,
     dig,
     dotlang,
     eval,  # noqa: A004 - the language is named "Eval"
@@ -77,6 +78,7 @@ __all__ = [
     "clockwise",
     "collatz_multiverse",
     "container",
+    "decleq",
     "dig",
     "dimensional",
     "dotlang",

@@ -10,6 +10,7 @@ __all__ = [
     "albabet",
     "bio",
     "collatz_multiverse",
+    "decleq",
     "dig",
     "dotlang",
     "eval",
@@ -296,4 +297,26 @@ def add_sub_jump(text: str) -> str:
             mem.extend([-1, val, c, -7])
     for i in range(n - 1):
         mem.append(4 * (i + 1))
+    return " ".join(map(str, mem))
+
+
+def decleq(text: str) -> str:
+    """Build a Decleq program that outputs ``text``.
+
+    Each character's byte value is placed in a data cell of the
+    self-modifying memory, and one ``-2 cell 0`` instruction per character
+    prints it and falls through (the memory-mapped output does not jump).  A
+    trailing ``0 0 <past-the-end>`` decrements cell 0 and jumps past the end
+    of memory to halt.
+    """
+    if not text:
+        return ""
+    _require_bytes(text, "Decleq")
+    n = len(text)
+    data_base = 3 * n + 3
+    mem: list[int] = []
+    for i in range(n):
+        mem.extend([-2, data_base + i, 0])
+    mem.extend([0, 0, 4 * n + 3])  # halt: decrement cell 0, jump past the end
+    mem.extend(ord(c) for c in text)
     return " ".join(map(str, mem))
