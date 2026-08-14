@@ -53,9 +53,10 @@ Completed proofs live in the commit history: MAMMALIAN generator totality
 (`ExconCorrect.lean`), CircleFuck generator correctness
 (`CircleFuckCorrect.lean`), BF-PDA bracket matching (`BfpdaCorrect.lean`),
 EXCON interpreter equivalence (`ExconSemanticsCorrect.lean`), AlbaBet
-generator correctness (`AlbabetCorrect.lean`), and AlbaBet interpreter
-equivalence (`AlbabetSemanticsCorrect.lean`).  The candidates below go
-beyond totality, in increasing payoff order.
+generator correctness (`AlbabetCorrect.lean`), AlbaBet interpreter
+equivalence (`AlbabetSemanticsCorrect.lean`), and Number Seventy-Four
+interpreter equivalence (`SeventyFourSemanticsCorrect.lean`).  The
+candidates below go beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 `_factor_encode` (`tools/generators/tape.py`) searches for a prime with a given
@@ -66,15 +67,17 @@ identifying each instruction) recovers the original brainfuck program.
 
 ### Lean interpreter equivalence (medium priority)
 Prove the ported Lean interpreters match their Python references.  BF-PDA's
-`find` bracket matching, EXCON's output semantics, and AlbaBet's output
-semantics are done (`BfpdaCorrect.lean`, `ExconSemanticsCorrect.lean`,
-`AlbabetSemanticsCorrect.lean`): for EXCON, programs that do not underflow
+`find` bracket matching, EXCON's output semantics, AlbaBet's output
+semantics, and seventy_four's output semantics are done (`BfpdaCorrect.lean`,
+`ExconSemanticsCorrect.lean`, `AlbabetSemanticsCorrect.lean`,
+`SeventyFourSemanticsCorrect.lean`): for EXCON, programs that do not underflow
 the pointer; for AlbaBet, programs that never run `i` on an invalid scalar
 (the reference zeroes `x` there, the port keeps it, and both print NUL, so
-only a later `i` can diverge).  Remaining, in increasing payoff order:
-seventy_four (its `H`-restart loop makes it the most interesting of the
-three), and BF-PDA's full output semantics (a stack-and-loop proof building
-on the completed `find` bracket matching).
+only a later `i` can diverge); for seventy_four, programs whose output first
+starts with `H` at the last meaningful command (the reference halts at pass
+boundaries, the port mid-pass, so they agree only there).  Remaining:
+BF-PDA's full output semantics (a stack-and-loop proof building on the
+completed `find` bracket matching).
 
 ### Simple text generator correctness proofs (medium priority)
 A correctness proof for the small generator/interpreter pairs, run through
