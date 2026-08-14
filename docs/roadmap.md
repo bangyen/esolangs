@@ -118,6 +118,16 @@ for painfuck/ascii_art/three_d_bf/dimensional but needs the bf model
 extended with ``,`` input and the copy/AND scratch machinery, so it is a
 larger effort.
 
+### Minifuck boolean reachability (low priority)
+A language-power theorem rather than a generator-correctness proof: Minifuck
+computes exactly the four one-input functions plus the eight 0-preserving
+two-input tables (`f(0, 0) == 0`), because `[` followed by `<` is a
+conditional pointer move that leaves the tested bit's value in the pointer
+displacement, and the decode suffix pins the pointer orientation so no
+complemented read can select the other tables (re-verified in
+`docs/limitations.md`).  The reachable half is a machine analysis of the
+`[<`-walk and the suffix search; the wall is structural.
+
 ### Huf text generator correctness proof (medium priority)
 Done.  `HufCorrect.lean` models the register interpreter (`num`/`mul`/output,
 `step`, `run` as a foldl) and proves huf's `# +*a | +*b ! +*r >@` segments
