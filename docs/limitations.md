@@ -170,6 +170,12 @@ A verified generator is thus a hard wall, not just a slow build; the 1-bit
 and 2-bit pieces are proven, and the AND gadget (`CONSUME SPRINT CONSUME`)
 works on clean separate arrays that the read flow cannot produce.
 
+Re-verified against the interpreter (unlike Minifuck, this wall holds): a
+search over the branch-free tails after the `b1`-normalize prefix reaches
+only the 0-preserving two-input tables (const-0, both echoes, XOR, and
+`NOT b0 AND b1` confirmed; no non-0-preserving table appears), matching the
+structural argument above.
+
 ## Dotlang (not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line
 and teleports the dot to the *first* `W<bit>`s` marker in the grid (the
