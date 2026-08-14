@@ -16,14 +16,16 @@ an observability convention.
 
 ## Boolean generators (in priority order)
 
-### 123 decision-tree generator (medium priority)
-The ``3`` jump does not route a decision tree cleanly: a TRUE bit jumps to
-the *nearest preceding* ``3`` and a FALSE bit to the nearest following one
-(not bracket-matched), so the constructible pattern is a "repeat the region
-before the ``3`` while TRUE" loop rather than a branch, and a random search
-finds no ``3``-based NOT even at n == 1.  The single data byte also makes
-multi-bit state impossible (every read overwrites it), so the generator
-would need a genuinely new construction, not an adaptation.
+### 123 boolean generator for one input (low priority)
+The ``3`` jump does not route a decision tree: a TRUE bit jumps to the
+*nearest preceding* ``3`` and a FALSE bit to the nearest following one (not
+bracket-matched), so the only constructible pattern is a "repeat the region
+before the ``3`` while TRUE" loop, and no ``3``-based branch is found at any
+length (a random search finds no NOT even at n == 1).  The single data byte
+also makes multi-bit state impossible (every read overwrites it).  The four
+one-input functions are pure bit arithmetic, however, so a generator covers
+n == 1 (const-0, identity, NOT, const-1) and n >= 2 stays a wall; the
+reachable set is recorded in `docs/limitations.md`.
 
 ### Minifuck partial boolean generator (medium priority)
 The documented wall was re-verified and is *partially wrong*: a search past
@@ -98,26 +100,20 @@ the `+a[>+b<-]>+r.` invariant (`tools/generators/tape.py::_bf_set`): after
 `a*b`, so the printed cell holds `a*b + r = value`.  This unblocks the huf
 generator proof below.
 
-## Toolchain consolidation (in priority order)
+## Toolchain consolidation
 
-Consolidate the `extra/` cross-check implementations onto fewer toolchains:
-one systems language (Rust) and one ISA (RISC-V), with Lean kept for proofs.
-The differential corpora in `scripts/verify_differential.py` and the generator
-round-trips in `scripts/verify_extra_generators.py` are the acceptance test:
-a port is done when the same corpora pass against the new binary.
-
-The C++ and Ruby cross-checks are done: every native oracle now lives in
-`extra/rust` (Forþ, Basicfuck, 2dFish, Painfuck, %^2^-1, Kak, Trash, bit~,
-3x, LaserFuck, Unsquare, and a pass-boundary Number Seventy-Four — the Lean
-port has diverged semantics), and the `cxx` and Ruby parts of CI are gone.
-
-### Port x86 reference interpreters to RISC-V (medium priority)
-`extra/assembly/`'s x86 refs (123, 2 Bits 1 Byte, Brainpocalypse, NoComment,
-Stun Step) follow the existing `123-riscv.s` port; the Python RISC-V simulator
-and ELF runner already exist.  The x86 compilers in
-`src/esolangs/compilers/assembly/` are the hard part: they emit x86 and are
-verified under unicorn, so they must be ported to emit RISC-V too before the
-nasm/unicorn toolchain and the x86 refs can be dropped.
+Done.  The `extra/` cross-check implementations are consolidated onto two
+native toolchains plus Lean: one systems language (Rust) and one ISA
+(RISC-V).  The C++ and Ruby cross-checks moved into `extra/rust` (Forþ,
+Basicfuck, 2dFish, Painfuck, %^2^-1, Kak, Trash, bit~, 3x, LaserFuck,
+Unsquare, and a pass-boundary Number Seventy-Four — the Lean port has
+diverged semantics); the x86 reference interpreters (123, 2 Bits 1 Byte,
+Brainpocalypse, NoComment, Stun Step) and the assembly compilers in
+`src/esolangs/compilers/assembly/` (bfstack, home-row, jaune, suffolk,
+unsquare) now emit/run RISC-V; and the x86/nasm toolchain is dropped.  The
+differential corpora in `scripts/verify_differential.py`, the generator
+round-trips in `scripts/verify_extra_generators.py`, and the RISC-V unicorn
+round-trips in `scripts/verify_riscv_unicorn.py` were the acceptance tests.
 
 ## Text generators: exhausted
 
