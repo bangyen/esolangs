@@ -6,6 +6,7 @@ from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.generators.helpers import _cm_constants, _require_bytes
 
 __all__ = [
+    "add_sub_jump",
     "albabet",
     "bio",
     "collatz_multiverse",
@@ -255,3 +256,44 @@ def collatz_multiverse(text: str) -> str:
     for i, c in enumerate(text):
         lines.append(f"o{i} = negativeOne x + k{ord(c)}, DO PRINT.")
     return "\n".join(lines)
+
+
+def add_sub_jump(text: str) -> str:
+    """Build an AddSubJump program that outputs ``text``.
+
+    The program is a self-modifying memory: each instruction occupies four
+    cells (``a b c d``) and means ``*a += *b`` (when ``*d <= 0``) or
+    ``*a -= *b`` (when ``*d > 0``), then ``goto *c``.  A value cell is driven
+    from one character's code to the next with ``val = val +/- 1`` (the ``1``
+    comes from address -6 and the add/sub selector from -7/-6), printed with
+    ``-1 val c -7``.  Every instruction except the last jumps to the next
+    instruction through a data cell holding its address; the final print uses
+    ``c = -8`` so it jumps to the constant -1, a special address, and halts.
+    """
+    if not text:
+        return ""
+    _require_bytes(text, "AddSubJump")
+    ops: list[tuple[str, int | None]] = []
+    prev = 0
+    for char in text:
+        v = ord(char)
+        delta = v - prev
+        sel = -7 if delta >= 0 else -6
+        for _ in range(abs(delta)):
+            ops.append(("inc", sel))
+        ops.append(("out", None))
+        prev = v
+    n = len(ops)
+    data_base = 4 * n
+    val = data_base + n
+    mem: list[int] = []
+    for i, (kind, op_sel) in enumerate(ops):
+        c = -8 if i == n - 1 else data_base + i
+        if kind == "inc":
+            assert op_sel is not None
+            mem.extend([val, -6, c, op_sel])
+        else:
+            mem.extend([-1, val, c, -7])
+    for i in range(n - 1):
+        mem.append(4 * (i + 1))
+    return " ".join(map(str, mem))

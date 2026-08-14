@@ -37,6 +37,11 @@ def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
 
 LANGUAGES: dict[str, Language] = {
     "ABCDirection": Language("ABCDirection", interpreter="tape_based.abcdirection"),
+    "AddSubJump": Language(
+        "AddSubJump",
+        _generate.add_sub_jump,
+        "register_based.add_sub_jump",
+    ),
     "A Painter Ant": Language("A Painter Ant", interpreter="other.a_painter_ant"),
     "123": Language(
         "123",

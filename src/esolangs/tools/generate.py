@@ -31,6 +31,7 @@ from esolangs.tools.generators.other import (
     ztoalc,
 )
 from esolangs.tools.generators.register import (
+    add_sub_jump,
     albabet,
     bio,
     collatz_multiverse,
@@ -62,6 +63,7 @@ from esolangs.tools.generators.tape import (
 __all__ = [
     "_123",
     "_ilog",
+    "add_sub_jump",
     "albabet",
     "ascii_art",
     "basicfuck",
