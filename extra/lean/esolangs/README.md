@@ -266,6 +266,22 @@ combines it into `bf_set_correct` / `bf_set_value`, sanity-checked with
 `native_decide` round-trips.  This is the multiply-loop invariant that the
 huf generator's `# +*a | +*b ! +*r >@` segments share.
 
+## huf generator correctness
+
+A proof that the huf text generator
+(`src/esolangs/tools/generators/register.py::huf`) is *correct*: for every
+text the generated program prints exactly that text.  Huf keeps two
+registers, `num` and `mul`; each character is a multiply segment
+``# +*a | +*b ! +*r >`` in which a run of `a` builds `num = a`, `|` starts
+the multiplier, a run of `b` raises it to `b + 1`, and `!` multiplies `num`
+by `mul - 1` so it becomes `a*b`; the final run of `r` tops it up to the
+character code, which `>` prints.  The file `HufCorrect.lean` models the
+interpreter (`State` of `num`/`mul`/output, `step`, `run` as a foldl),
+proves the per-segment correctness `seg_correct` (the `_bf_set` multiply
+invariant again: the segment prints `a*b + r`, and the `>`-guard holds for
+code points), and composes segments in `progAux_correct` / `huf_value`,
+sanity-checked with `native_decide` round-trips.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
