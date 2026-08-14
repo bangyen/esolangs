@@ -43,7 +43,8 @@ interpreter equivalence (`BfpdaSemanticsCorrect.lean`), the Sophie, BIO,
 `_bf_set` multiply loop (`BfSetCorrect.lean`), the huf generator
 correctness proof (`HufCorrect.lean`), the brainfuck generator correctness
 proof (`BfCorrect.lean`), the Eval generator correctness proof
-(`EvalCorrect.lean`), and the Factor Dirichlet totality /
+(`EvalCorrect.lean`), the 3D Brainfuck generator correctness proof
+(`ThreeDbfCorrect.lean`), and the Factor Dirichlet totality /
 encode-decode round-trip (`FactorCorrect.lean`).  The candidates below go beyond
 totality, in increasing payoff order.
 
@@ -75,9 +76,12 @@ text (`run_minusN`, `run_zero`, `bf_set_at`, `progAux_correct`).
 `EvalCorrect.lean` proves the backtick-escaped string literal
 `"<text with " → \`>".` over Eval's two-stack interpreter: the literal scan
 round-trips backticks to quotes (`scan_aux`) and `.` prints the text
-(`eval_correct`).  The rest are smaller and language-specific: dig,
+(`eval_correct`).  `three_d_bf` is done: `ThreeDbfCorrect.lean` reuses the
+brainfuck proof, since the 3D program is the bf program renamed `>`→`n`,
+`<`→`s` and the interpreter runs those moves along the x-axis with the same
+tape semantics.  The rest are smaller and language-specific: dig,
 polynomial, wii2d, dotlang, collatz_multiverse, add_sub_jump (register.py);
-ascii_art, three_d_bf, bfstack, brainif,
+ascii_art, bfstack, brainif,
 suffolk, minifuck (tape.py).
 
 ## Text generators: exhausted
