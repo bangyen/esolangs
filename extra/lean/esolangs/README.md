@@ -323,6 +323,20 @@ string-literal scan `scanString` with backticks expanded back to quotes, and
 (`scan_aux`), and shows the trailing ``.`` prints the pushed string
 (`eval_correct`), sanity-checked with `native_decide` round-trips.
 
+## 3D Brainfuck generator correctness
+
+A proof that the 3D Brainfuck text generator
+(`src/esolangs/tools/generators/tape.py::three_d_bf`) is *correct*: for every
+text the generated program prints exactly that text.  The generator emits the
+plain brainfuck program with `>`/`<` replaced by `n`/`s`, and 3D Brainfuck's
+array pointer moves `n`/`s` along the +X / -X axis; since the source runs
+along a single line of blocks on +X, the array pointer stays on the x-axis
+and `n`/`s` behave exactly like `>`/`<` on a one-dimensional tape.
+`ThreeDbfCorrect.lean` therefore reuses the brainfuck generator proof
+(`BfCorrect.lean`): the 3D program is the brainfuck program renamed one
+command per character, which the 3D interpreter decodes back to the same tape
+semantics (`three_d_bf_correct`).
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
