@@ -23,6 +23,7 @@ into a template) rather than the program reading input.
 | A Painter Ant |  | yes |  |  |  |  |
 | ABCDirection |  | yes |  |  |  |  |
 | ASCII art | yes | yes |  | yes |  | hello |
+| AddSubJump | yes | yes |  |  |  | hello |
 | Albabet | yes | yes | yes |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |
 | BF | yes | yes |  | yes |  | hello |

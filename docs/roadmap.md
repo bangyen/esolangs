@@ -10,9 +10,12 @@ Every candidate from the esolangs wiki's Category:Unimplemented with a usable
 file-based I/O protocol, a complete specification, and a plausible generator
 or boolean story now has an interpreter.  Ruled-out candidates (Gravity,
 Earfuck, Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic
-Teast) are recorded in `docs/limitations.md`, and A Painter Ant, the last
-addition, ships as a no-I/O grid interpreter whose final state is printed as
-an observability convention.
+Teast) are recorded in `docs/limitations.md`.  A Painter Ant (from the
+original scan) ships as a no-I/O grid interpreter whose final state is
+printed as an observability convention, and AddSubJump (a self-modifying
+OISC found by a fresh scan of Category:Unimplemented) ships as a
+register-based interpreter with a text generator.  Future additions will
+come from re-scanning the category, which keeps gaining new languages.
 
 ## Lean proofs (in priority order)
 
