@@ -16,8 +16,12 @@ CLI:
 Requires: pip install unicorn
 """
 
+import os
+import shutil
 import struct
+import subprocess
 import sys
+import tempfile
 from typing import Any
 
 try:
@@ -48,6 +52,38 @@ STACK_TOP = 0x800000
 HEAP_BASE = 0x100000
 HEAP_SIZE = 0x1000000
 STACK_SIZE = 0x2000
+
+
+def assemble_source(assembly: str) -> bytes:
+    """Compile a RISC-V assembly source string into a statically-linked ELF."""
+    fd, tmp = tempfile.mkstemp(suffix=".s")
+    os.close(fd)
+    try:
+        with open(tmp, "w") as f:
+            f.write(assembly)
+        for cc in ("riscv64-linux-gnu-gcc", "riscv64-elf-gcc"):
+            if not shutil.which(cc):
+                continue
+            binary = tmp + ".elf"
+            rv = subprocess.run(
+                [
+                    cc,
+                    "-nostdlib",
+                    "-static",
+                    "-march=rv64i",
+                    "-mabi=lp64",
+                    "-o",
+                    binary,
+                    tmp,
+                ],
+                capture_output=True,
+            )
+            if rv.returncode == 0:
+                with open(binary, "rb") as f:
+                    return f.read()
+        raise SystemExit("no RISC-V cross-compiler (riscv64-linux-gnu-gcc) on PATH")
+    finally:
+        os.unlink(tmp)
 
 
 def _align_down(x: int, a: int) -> int:

@@ -1,24 +1,25 @@
-"""Verify x86 machine code under unicorn: compilers and reference interpreters.
+"""Verify RISC-V machine code under unicorn: compilers and reference interpreters.
 
-Two kinds of round-trip run esolang programs as x86 ELF under unicorn:
+Two kinds of round-trip run esolang programs as RISC-V ELF under unicorn:
 
 1. each assembly compiler in ``src/esolangs/compilers/assembly/`` translates
-   an esolang program to x86 assembly, which is assembled with nasm and run;
+   an esolang program to RISC-V assembly, which is compiled and run;
 2. text generators whose interpreters live in ``extra/assembly/`` feed the
    generated program to the reference machine code.
 
 Both must reproduce the expected output.
 
 Usage:
-    python scripts/verify_x86_unicorn.py
+    python scripts/verify_riscv_unicorn.py
 
-Requires: pip install unicorn; nasm on PATH.
+Requires: pip install unicorn; a RISC-V cross-compiler on PATH
+(riscv64-linux-gnu-gcc or riscv64-elf-gcc).
 """
 
 import importlib
 import sys
 
-from x86_elf_runner import assemble, assemble_source, run_elf
+from riscv_elf_runner import assemble_source, run_elf
 
 from esolangs.tools import generate as gen
 
@@ -26,7 +27,7 @@ from esolangs.tools import generate as gen
 # generated program must reproduce its text when run as machine code.
 REFERENCE_TEXTS = ["Hi", "Hello, World!", "esolangs!", "A\nB", "\x00"]
 GENERATOR_CASES = [
-    ("nocomment", "extra/assembly/nocomment.asm", gen.nocomment),
+    ("nocomment", "extra/assembly/nocomment-riscv.s", gen.nocomment),
 ]
 
 # (name, compiler module, source program, expected output).  Compilers with
@@ -44,10 +45,11 @@ COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
 
 
 def main() -> int:
-    """Verify the x86 compilers under Unicorn, reporting failures."""
+    """Verify the RISC-V compilers under Unicorn, reporting failures."""
     failures = 0
     for name, path, generator in GENERATOR_CASES:
-        binary = assemble(path)
+        with open(path) as f:
+            binary = assemble_source(f.read())
         for text in REFERENCE_TEXTS:
             out, _ = run_elf(binary, generator(text).encode())
             ok = out == text.encode()

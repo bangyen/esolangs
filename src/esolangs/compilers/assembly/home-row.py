@@ -1,4 +1,4 @@
-"""Compiler that turns Home Row programs into x86 Linux assembly."""
+"""Compiler that turns Home Row programs into RISC-V Linux assembly."""
 
 import sys
 from re import sub
@@ -25,7 +25,7 @@ def count(code: str, ind: int) -> tuple[int, int]:
 
 
 def comp(code: str) -> str:
-    """Compile a Home Row program to x86 assembly on a 5x5 zeroed grid."""
+    """Compile a Home Row program to RISC-V assembly on a 5x5 zeroed grid."""
     res = ""
 
     func = {
@@ -59,20 +59,16 @@ def comp(code: str) -> str:
                 num = 1 if c == "a" else -1
                 new = ind + 1
 
-            if num > 1:
-                res += f"\tadd dword [ecx], {num}\n"
-            elif num == 1:
-                res += "\tinc dword [ecx]\n"
-            elif num == -1:
-                res += "\tdec dword [ecx]\n"
-            elif num < -1:
-                res += f"\tsub dword [ecx], {-num}\n"
+            if num:
+                res += (
+                    "\tlw   t0, 0(s1)\n" f"\taddi t0, t0, {num}\n" "\tsw   t0, 0(s1)\n"
+                )
         elif c in "dfk":
             if ind and code[ind - 1] == "j":
                 num, new = 1, ind + 1
 
             if num != 1:
-                res += f"\tmov eax, {num}\n"
+                res += f"\tli   t3, {num}\n"
                 func[c][2] = True
             res += f"\tcall {func[c][0]}\n"
             func[c][1] = True
@@ -82,20 +78,20 @@ def comp(code: str) -> str:
             end = True
 
             n = skip if skip - 1 else ""
-            res += "\tcmp dword [ecx], 0\n" f"\tje .skip{n}\n"
+            res += "\tlw   t0, 0(s1)\n" f"\tbeqz t0, .skip{n}\n"
 
             continue
         elif c == "l":
             loop += 1
             n = m if (m := (loop // 2 - 1)) else ""
-            res += "\tcmp dword [ecx], 0\n"
+            res += "\tlw   t0, 0(s1)\n"
 
             if loop % 2:
-                res += f"\tjne .top{n}\n" f".bot{n}:\n"
+                res += f"\tbnez t0, .top{n}\n" f".bot{n}:\n"
             else:
-                res += f"\tje .bot{n}\n" f".top{n}:\n"
+                res += f"\tbeqz t0, .bot{n}\n" f".top{n}:\n"
         elif c == ";":
-            res += "\n\tmov eax, 1\n" "\txor ebx, ebx\n" "\tint 80h\n"
+            res += "\n\tli   a0, 0\n" "\tli   a7, 93\n" "\tecall\n"
 
         if end:
             n = skip if skip - 1 else ""
@@ -105,81 +101,69 @@ def comp(code: str) -> str:
 
     def cell(r: str) -> str:
         return (
-            "\tmov eax, 20\n"
-            f"\tmul {r}\n"
-            "\tlea ecx, [esp + eax]\n"
-            "\tlea ecx, [ecx + 4*esi]\n"
-            "\tmov eax, 1\n"
+            "\t# cell address for the coordinate in "
+            + r
+            + ": s1 = sp + 20*"
+            + r
+            + " + 4*s5\n"
+            "\tslli t1, t0, 4\n"
+            "\tslli t2, t0, 2\n"
+            "\tadd  t1, t1, t2\n"
+            "\tadd  t1, t1, sp\n"
+            "\tslli t2, s5, 2\n"
+            "\tadd  s1, t1, t2\n"
         )
 
     if func["d"][1]:
         if func["d"][2]:
-            s = "\tadd edi, eax\n" "\tand edi, 3\n"
+            s = "\tadd  s4, s4, t3\n" "\tandi s4, s4, 3\n"
         else:
-            s = "\tinc edi\n" "\tand edi, 3\n"
+            s = "\taddi s4, s4, 1\n" "\tandi s4, s4, 3\n"
 
-        if func["k"][1]:
-            s += "\tmov ebx, edi\n" "\tcall cell\n"
-        else:
-            s += cell("edi")
+        s += "\tmv   t0, s4\n" + cell("t0")
 
         res += "\ndown:\n" + s + "\tret\n"
     if func["f"][1]:
         if func["f"][2]:
-            s = "\tadd esi, eax\n" "\tand esi, 3\n"
+            s = "\tadd  s5, s5, t3\n" "\tandi s5, s5, 3\n"
         else:
-            s = "\tinc esi\n" "\tand esi, 3\n"
+            s = "\taddi s5, s5, 1\n" "\tandi s5, s5, 3\n"
 
-        if func["d"][1]:
-            s += "\tmov ebx, esi\n" "\tcall cell\n"
-        else:
-            s += cell("esi")
+        s += "\tmv   t0, s5\n" + cell("t0")
 
         res += "\nright:\n" + s + "\tret\n"
     if func["k"][1]:
         b = func["k"][2]
-        b_int = int(b) if isinstance(b, int | float) else 0
         res += (
-            "\nprint:\n" + "\tpush eax\n" * b_int + "\tmov eax, 4\n"
-            "\tmov ebx, 1\n"
-            "\tmov edx, 1\n"
-            "\tint 80h\n"
-            "\tmov dword [ecx], 0\n"
-            + (
-                "\tpop eax\n"
-                "\tdec eax\n"
-                "\tcmp eax, 0\n"
-                "\tjg print\n"
-                "\tinc eax\n"
-            )
-            * b_int
-            + "\tmov eax, 1\n" * (1 - b_int)
+            "\nprint:\n"
+            "\tli   a7, 64\n"
+            "\tli   a0, 1\n"
+            "\tmv   a1, s1\n"
+            "\tli   a2, 1\n"
+            "\tecall\n"
+            "\tsw   zero, 0(s1)\n"
+            + ("\taddi t3, t3, -1\n" "\tbgt  t3, zero, print\n" "\taddi t3, t3, 1\n")
+            * bool(b)
             + "\tret\n"
         )
 
-    if func["d"][1] and func["f"][1]:
-        res += "\ncell:\n" + cell("ebx") + "\tret\n"
-
     s = (
-        "global _start\n"
+        "    .text\n"
+        "    .global _start\n"
         "_start:\n"
-        "\tlea esp, [esp - 100]\n"
-        "\tmov ecx, esp\n"
+        "    addi sp, sp, -100\n"
+        "    mv   s1, sp\n"
         # the spec's 5x5 grid initializes to zero
-        "\txor eax, eax\n"
-        "\tmov edi, 25\n"
+        "    li   s3, 25\n"
         ".zero_grid:\n"
-        "\tmov [ecx], eax\n"
-        "\tadd ecx, 4\n"
-        "\tdec edi\n"
-        "\tjnz .zero_grid\n"
-        "\tmov ecx, esp\n"
-        "\txor edi, edi\n"
-        "\txor esi, esi\n"
+        "    sw   zero, 0(s1)\n"
+        "    addi s1, s1, 4\n"
+        "    addi s3, s3, -1\n"
+        "    bnez s3, .zero_grid\n"
+        "    mv   s1, sp\n"
+        "    li   s4, 0\n"
+        "    li   s5, 0\n"
     )
-
-    if any(func[c][2] for c in "dfk"):
-        s += "\tmov eax, 1\n"
 
     return (f"{s}\n" + res).replace("\n\n\n", "\n\n")
 
