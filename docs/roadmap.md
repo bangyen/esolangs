@@ -106,25 +106,25 @@ correct through the interpreter's own transitions: `seg_correct` reuses the
 segment prints `a*b + r`, and `progAux_correct` / `huf_value` compose
 segments for a whole text.
 
-### Remaining generator correctness proofs (medium priority)
-The text generators whose correctness proofs are still open, in rough payoff
-order.  `bf` (`tools/generators/tape.py::bf`) and `eval`
-(`tools/generators/register.py::eval`) are done.  `BfCorrect.lean` completes
-the `_bf_set` multiply-loop work over the brainfuck interpreter model: the
-per-character choice (delta-reuse when the next character is close, else
-`[-]` + `_bf_set`) moves the pointer right one cell and prints exactly the
-text (`run_minusN`, `run_zero`, `bf_set_at`, `progAux_correct`).
-`EvalCorrect.lean` proves the backtick-escaped string literal
-`"<text with " → \`>".` over Eval's two-stack interpreter: the literal scan
-round-trips backticks to quotes (`scan_aux`) and `.` prints the text
-(`eval_correct`).  `three_d_bf` is not proved: the 3D program is the bf
-program renamed `>`→`n`, `<`→`s` and the interpreter runs those moves along
-the x-axis, but a faithful proof needs the 3D interpreter's flat-source
-decoding, so it was dropped rather than restated.  The rest are smaller and
-language-specific: dig,
-polynomial, wii2d, dotlang, collatz_multiverse, add_sub_jump (register.py);
-ascii_art, three_d_bf, bfstack, brainif,
-suffolk, minifuck (tape.py).
+### Remaining generator correctness proofs (low priority)
+Done: `bf` and `eval`.  `BfCorrect.lean` completes the `_bf_set` multiply-loop
+work over the brainfuck interpreter model: the per-character choice
+(delta-reuse when the next character is close, else `[-]` + `_bf_set`) moves
+the pointer right one cell and prints exactly the text (`run_minusN`,
+`run_zero`, `bf_set_at`, `progAux_correct`).  `EvalCorrect.lean` proves the
+backtick-escaped string literal `"<text with " → \`>".` over Eval's
+two-stack interpreter: the literal scan round-trips backticks to quotes
+(`scan_aux`) and `.` prints the text (`eval_correct`).
+
+Still worth doing, low priority.  `collatz_multiverse` has a substantive
+in-progress proof (`CollatzMultiverseCorrect.lean`) modeling the register
+interpreter's Collatz transform and the constant-table bootstrap.
+`ascii_art` reduces to a mechanical per-command rendering round-trip
+(`parse (bf_to_ascii_art prog) = prog`) over the `BfCorrect` proof.  `suffolk`
+is bf-family (its `!` op) and reuses the bf model structure.  The rest
+(three_d_bf, dig, polynomial, wii2d, dotlang, bfstack, brainif, minifuck,
+add_sub_jump) are full language-specific interpreter models for obscure
+languages, so they are dropped rather than restated.
 
 ## Text generators: exhausted
 
