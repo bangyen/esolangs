@@ -36,7 +36,7 @@ Languages with both an in-package interpreter and a native cross-check:
 * **3x** — ``other/three_x.py`` vs ``extra/ruby/3x.rb``.  Both compute over
   exact rationals; the reference prints its ``Input: `` prompts to stdout
   (stripped before comparing) and both agree on the exit-code convention.
-* **%^2^-1** — ``register_based/%^2^-1.py`` vs ``extra/c++/%^2^-1.cpp``.
+* **%^2^-1** — ``register_based/%^2^-1.py`` vs ``extra/rust/pct.rs``.
   Both track the accumulator as a signed magnitude with the 3003 reset; the
   reference prints its ``Input: `` prompts to stdout, which are stripped
   before comparing.
@@ -46,8 +46,9 @@ Languages with both an in-package interpreter and a native cross-check:
   Corpus programs are encoded into the source alphabet (the reference
   translates the source before running); the nondeterministic ``y`` is
   excluded.
-* **bit~** — ``other/bit_tilde.py`` vs ``extra/ruby/bit.rb``.  Both write
-  bytes above 127 as raw bytes; unmatched brackets hang the Ruby reference.
+* **bit~** — ``other/bit_tilde.py`` vs ``extra/rust/bit_tilde.rs``.  Both
+  write bytes above 127 as raw bytes; unmatched brackets raise (the former
+  Ruby reference hung).
 
 Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
 provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
@@ -77,14 +78,13 @@ UNSQUARE_BIN = RUST_BIN_DIR / "unsquare"
 KAK_BIN = RUST_BIN_DIR / "kak"
 TRASH_BIN = RUST_BIN_DIR / "trash"
 SEVENTY_FOUR_BIN = RUST_BIN_DIR / "seventy_four"
+PCT_BIN = RUST_BIN_DIR / "pct"
+BIT_TILDE_BIN = RUST_BIN_DIR / "bit_tilde"
 THREE_X_RUBY = ROOT / "extra" / "ruby" / "3x.rb"
-PCT_CXX = ROOT / "extra" / "c++" / "%^2^-1.cpp"
-PCT_BIN = Path("/tmp") / "verify-pct"
 TWO_D_FISH_CXX = ROOT / "extra" / "c++" / "2dFish.cpp"
 TWO_D_FISH_BIN = Path("/tmp") / "verify-2dfish"
 PAINFUCK_CXX = ROOT / "extra" / "c++" / "painfuck.cpp"
 PAINFUCK_BIN = Path("/tmp") / "verify-painfuck"
-BIT_TILDE_RUBY = ROOT / "extra" / "ruby" / "bit.rb"
 LEAN_BIN = ROOT / "extra" / "lean" / "esolangs" / ".lake" / "build" / "bin"
 ALBABET_BIN = LEAN_BIN / "albabet"
 BFPDA_BIN = LEAN_BIN / "bfpda"
@@ -1234,17 +1234,11 @@ PCT_CORPUS = [
 
 
 def _build_pct() -> str | None:
-    """Compile the %^2^-1 C++ cross-check (once); None if g++ is missing."""
-    if shutil.which("g++") is None:
-        print("[skip] %^2^-1 differential: g++ not found")
+    """Return the built %^2^-1 Rust reference; None if cargo built it not yet."""
+    if not PCT_BIN.exists():
+        print("[skip] %^2^-1 differential: Rust reference not built")
         return None
-    if PCT_BIN.exists():
-        return str(PCT_BIN)
-    rv = subprocess.run(
-        ["g++", "-std=c++11", str(PCT_CXX), "-o", str(PCT_BIN)],
-        capture_output=True,
-    )
-    return str(PCT_BIN) if rv.returncode == 0 else None
+    return str(PCT_BIN)
 
 
 def _run_pct_native(
@@ -1647,13 +1641,17 @@ BIT_TILDE_CORPUS = [
 
 
 def _run_bit_tilde_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Ruby cross-check; return (stdout, exit code)."""
+    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
+
+    The reference prints its ``Input: `` prompts to stdout, which are
+    stripped; invalid operations exit with status 3.
+    """
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(program)
         path = f.name
     try:
         proc = subprocess.run(
-            ["ruby", str(BIT_TILDE_RUBY), path],
+            [str(BIT_TILDE_BIN), path],
             capture_output=True,
             input=stdin,
             timeout=5,
@@ -1688,9 +1686,9 @@ def _run_bit_tilde_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
 
 def _verify_bit_tilde() -> bool:
-    """Compare the Python bit~ interpreter against the Ruby cross-check."""
-    if shutil.which("ruby") is None:
-        print("[skip] bit~ differential: ruby not found")
+    """Compare the Python bit~ interpreter against the Rust cross-check."""
+    if not BIT_TILDE_BIN.exists():
+        print("[skip] bit~ differential: Rust reference not built")
         return True
 
     failures = 0
@@ -1703,7 +1701,7 @@ def _verify_bit_tilde() -> bool:
         py = _run_bit_tilde_python(program, stdin)
         if native != py:
             failures += 1
-            print(f"bit~ {program!r}: Ruby {native!r} vs Python {py!r}")
+            print(f"bit~ {program!r}: Rust {native!r} vs Python {py!r}")
 
     if not failures:
         print(f"bit~ differential: {len(BIT_TILDE_CORPUS)} programs match")
@@ -1718,8 +1716,8 @@ def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
     """
     from esolangs.tools.generate import bit_tilde
 
-    if shutil.which("ruby") is None:
-        print("[skip] bit~ fuzz: ruby not found")
+    if not BIT_TILDE_BIN.exists():
+        print("[skip] bit~ fuzz: Rust reference not built")
         return True
 
     failures, checked = _fuzz_text(

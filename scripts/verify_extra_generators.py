@@ -1,8 +1,8 @@
 """Verify the generator-only languages against their extra/ references.
 
-Forþ, Painfuck, 2dFish, %^2^-1, and Basicfuck have C++ references in
-``extra/c++``, LaserFuck and Unsquare have Rust references in ``extra/rust``,
-and bit~ and 3x have Ruby references in ``extra/ruby``.  This
+Forþ, Painfuck, 2dFish, and Basicfuck have C++ references in ``extra/c++``,
+LaserFuck, Unsquare, %^2^-1, and bit~ have Rust references in ``extra/rust``,
+and 3x has a Ruby reference in ``extra/ruby``.  This
 script builds whatever references it can (g++ for C++, cargo for Rust) and
 round-trips each language's generator: a generated program must reproduce
 its text when run through the reference implementation.  Dimensional moved
@@ -115,24 +115,22 @@ def main() -> int:
     """Verify the extra generators round-trip, reporting failures."""
     failures = 0
 
-    cxx_names = ("forþ", "painfuck", "2dFish", "%^2^-1", "basicfuck")
+    cxx_names = ("forþ", "painfuck", "2dFish", "basicfuck")
     cxx = {name: _build_cxx(name) for name in cxx_names}
-    rust = dict.fromkeys(("laserfuck", "unsquare"))
+    rust_bins = ("laserfuck", "unsquare", "pct", "bit_tilde")
+    rust = dict.fromkeys(rust_bins)
     if _build_rust():
-        rust = {
-            "laserfuck": [str(RUST_BIN_DIR / "laserfuck")],
-            "unsquare": [str(RUST_BIN_DIR / "unsquare")],
-        }
+        rust = {name: [str(RUST_BIN_DIR / name)] for name in rust_bins}
 
     references: list[tuple[str, Callable[[str], str], list[str] | None]] = [
         ("Forþ", gen.forth, cxx["forþ"]),
         ("Painfuck", gen.painfuck, cxx["painfuck"]),
         ("2dFish", gen.two_d_fish, cxx["2dFish"]),
-        ("%^2^-1", gen.pct_squared_minus_one, cxx["%^2^-1"]),
         ("Basicfuck", gen.basicfuck, cxx["basicfuck"]),
         ("LaserFuck", gen.laserfuck, rust["laserfuck"]),
         ("Unsquare", gen.unsquare, rust["unsquare"]),
-        ("bit~", gen.bit_tilde, _ruby_reference("bit.rb")),
+        ("%^2^-1", gen.pct_squared_minus_one, rust["pct"]),
+        ("bit~", gen.bit_tilde, rust["bit_tilde"]),
         ("3x", gen.three_x, _ruby_reference("3x.rb")),
     ]
 
