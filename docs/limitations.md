@@ -256,6 +256,15 @@ numbers, Movesum prints `n ` (numbers with a trailing space), RAM0 prints a
 state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
 the single bit as a number.  None can spell arbitrary text.
 
+Grapheme joins that list: its only output channels are a string of
+uppercase Latin letters and an integer's decimal digits.  A string cannot
+contain `E` (which terminates stringmode), so even "HELLO" is unspellable,
+and there is no string-concatenation command to assemble text from parts;
+a text generator therefore cannot produce "Hello, World!".  (Grapheme also
+cannot read its inputs as clean bits: `W` yields the string `"0"`/`"1"`,
+`J` maps those to -160/-150, both truthy, and string constants cannot spell
+`"0"`, so a boolean generator is not feasible for the standard harness.)
+
 ## Category:Unimplemented candidates that fell through
 Assessments of unimplemented languages from the wiki that did not make the
 roadmap.  The viable candidates are in `docs/roadmap.md`.
