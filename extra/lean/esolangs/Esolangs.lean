@@ -3,10 +3,12 @@ import Mathlib
 import Esolangs.Albabet
 import Esolangs.AlbabetCorrect
 import Esolangs.AlbabetSemanticsCorrect
+import Esolangs.BfCorrect
 import Esolangs.BfpdaCorrect
 import Esolangs.BfpdaSemanticsCorrect
 import Esolangs.BfSetCorrect
 import Esolangs.BioCorrect
+import Esolangs.EvalCorrect
 import Esolangs.CircleFuckCorrect
 import Esolangs.Excon
 import Esolangs.ExconCorrect

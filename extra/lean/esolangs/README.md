@@ -299,6 +299,30 @@ to 11 contains infinitely many primes.  It then proves the decoder
 integer are precisely the chosen primes, in order, with the right exponents
 (`encodeRuns_factorization_at`, `chosenExp_pos_iff`, `primeFactors_encodeRuns`).
 
+## brainfuck generator correctness
+
+A proof that the brainfuck text generator (`src/esolangs/tools/generators/tape.py::bf`)
+is *correct*: for every text the generated program prints exactly that text.
+`BfCorrect.lean` reuses the `_bf_set` model from `BfSetCorrect.lean` and adds
+the missing pieces: ``-`` runs (`run_minusN`), the ``[-]`` zeroing loop
+(`run_zero`), and the ``_bf_set`` multiply segment at an arbitrary cell
+(`bf_set_at`, a generalisation of the earlier proof).  The generator walks the
+tape right one cell per character, either adjusting the current cell in place
+(delta path, `delta_run`) or zeroing it and building the byte in the next cell
+(rebuild path, `rebuild_run`); `progAux_correct` composes the per-character
+choice into the whole-text correctness theorem.
+
+## Eval generator correctness
+
+A proof that the Eval text generator (`src/esolangs/tools/generators/register.py::eval`)
+is *correct*: for text with no literal backtick (which the generator refuses),
+the program ``"<text with " -> `>".`` prints exactly that text.
+`EvalCorrect.lean` models the two-stack interpreter (values, the stacks, the
+string-literal scan `scanString` with backticks expanded back to quotes, and
+`run`), proves the literal scan undoes the generator's escaping
+(`scan_aux`), and shows the trailing ``.`` prints the pushed string
+(`eval_correct`), sanity-checked with `native_decide` round-trips.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
