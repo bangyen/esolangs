@@ -254,7 +254,7 @@ Compilers that translate esoteric languages to other target languages.
 
 <!-- COMPILERS:START -->
 
-### x86 Assembly Compilers
+### RISC-V Assembly Compilers
 
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [Home Row](https://esolangs.org/wiki/Home_Row)

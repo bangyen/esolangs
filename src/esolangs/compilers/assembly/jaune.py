@@ -1,4 +1,4 @@
-"""Compiler that turns Jaune programs into x86 Linux assembly.
+"""Compiler that turns Jaune programs into RISC-V Linux assembly.
 
 Compiled Jaune programs read one character per input operation, so a
 program can only input a single character at a time.
@@ -90,7 +90,7 @@ def prep(code: str) -> tuple[str, list[int], list[int]]:
 
 
 def comp(code: str) -> str:
-    """Compile a Jaune program to x86 assembly with decimal output."""
+    """Compile a Jaune program to RISC-V assembly with decimal output."""
 
     def add(m: int) -> str:
         return str(m + 1) if m else ""
@@ -100,12 +100,13 @@ def comp(code: str) -> str:
     ind = 0
 
     res = (
-        "global _start\n"
+        "    .text\n"
+        "    .global _start\n"
         "_start:\n"
-        "\tlea ecx, [esp - 60]\n"
-        "\txor edi, edi\n"
-        "\tmov edx, 1\n"
-        "\tmov esi, 1\n\n"
+        "    addi s1, sp, -60\n"
+        "    li   s2, 0\n"
+        "    li   s3, 1\n"
+        "    li   s7, 0\n\n"
     )
     subr = {
         "^": ["output", False, False],
@@ -120,46 +121,48 @@ def comp(code: str) -> str:
 
         if c in "^v<":
             if cast(int, num) > 1:
-                res += f"\tmov esi, {num}\n"
+                res += f"\tli   s3, {num}\n"
                 subr[c][2] = True
             res += f"\tcall {subr[c][0]}\n"
             subr[c][1] = True
         elif c == "&":
             if cast(int, num) > 1:
-                res += f"\tmov esi, {num}\n" f"\tcall {subr[c][0]}\n"
+                res += f"\tli   s3, {num}\n" f"\tcall {subr[c][0]}\n"
                 subr[c][1] = subr[c][2] = True
             else:
-                res += "\tadd [ecx], edi\n"
+                res += "\tlw   t0, 0(s1)\n" "\tadd  t0, t0, s2\n" "\tsw   t0, 0(s1)\n"
         elif c == ">":
-            res += f"\tsub ecx, {4 * cast(int, num)}\n"
+            res += f"\tli   t0, {4 * cast(int, num)}\n" "\tsub  s1, s1, t0\n"
         elif c in "+-":
             if num:
                 if isinstance(num, int):
-                    if num > 1:
-                        res += f"\tadd dword [ecx], {num}\n"
-                    elif num == 1:
-                        res += "\tinc dword [ecx]\n"
-                    elif num == -1:
-                        res += "\tdec dword [ecx]\n"
-                    else:
-                        res += f"\tsub dword [ecx], {-num}\n"
+                    res += (
+                        "\tlw   t0, 0(s1)\n"
+                        f"\taddi t0, t0, {num}\n"
+                        "\tsw   t0, 0(s1)\n"
+                    )
                 elif c == "+":
-                    res += "\tadd [ecx], eax\n"
+                    res += (
+                        "\tlw   t0, 0(s1)\n" "\tadd  t0, t0, s7\n" "\tsw   t0, 0(s1)\n"
+                    )
                 else:
-                    res += "\tsub [ecx], eax\n"
+                    res += (
+                        "\tlw   t0, 0(s1)\n" "\tsub  t0, t0, s7\n" "\tsw   t0, 0(s1)\n"
+                    )
         elif c == "#":
-            res += "\tmov edi, [ecx]\n"
+            res += "\tlw   s2, 0(s1)\n"
         elif c == ":":
             res += f".label{add(cast(int, num))}:\n"
         elif c in "?!":
-            res += "\tcmp dword [ecx], 0\n" f'\tj{"n" if c == "?" else ""}e '
+            res += "\tlw   t0, 0(s1)\n"
+            jcc = "bnez" if c == "?" else "beqz"
             if cast(int, num) >= 0:
-                res += f".label{add(cast(int, num))}\n"
+                res += f"\t{jcc} t0, .label{add(cast(int, num))}\n"
             else:
-                res += ".switch\n"
+                res += f"\t{jcc} t0, .switch\n"
                 inp[0] = True
         elif c == ".":
-            res += "\n\tmov eax, 1\n" "\txor ebx, ebx\n" "\tint 80h\n"
+            res += "\n\tli   a0, 0\n" "\tli   a7, 93\n" "\tecall\n"
         elif c == "$":
             res += f"sub{add(cast(int, num))}:\n"
         elif c == "@":
@@ -171,23 +174,23 @@ def comp(code: str) -> str:
         elif c == ";":
             res += "\tret\n"
         elif c == "%":
-            res += "\tmov dword [ecx], 0\n"
+            res += "\tsw   zero, 0(s1)\n"
 
         ind = new
 
     if jump and inp[0]:
         res += "\n.switch:\n"
         for k in jump[:-1]:
-            res += f"\tcmp eax, {k}\n" f"\tje .lab{add(k)}\n"
+            res += f"\tli   t0, {k}\n" f"\tbeq  s7, t0, .lab{add(k)}\n"
         for k in jump[::-1]:
             n = add(k)
             if k != jump[-1]:
                 res += f".lab{n}:\n"
-            res += f"\tjmp .label{n}\n"
+            res += f"\tj .label{n}\n"
     if rout and inp[1]:
         res += "\nswitch:\n"
         for k in rout[:-1]:
-            res += f"\tcmp eax, {k}\n" f"\tje .sub{add(k)}\n"
+            res += f"\tli   t0, {k}\n" f"\tbeq  s7, t0, .sub{add(k)}\n"
         res += "\tret\n"
         for k in rout[::-1]:
             n = add(k)
@@ -198,10 +201,9 @@ def comp(code: str) -> str:
     def end(opr: str) -> str:
         if subr[opr][2]:
             mul = (
-                "\tdec esi\n"
-                "\tcmp esi, 0\n"
-                f"\tjg {subr[opr][0]}\n"
-                "\tinc esi\n"
+                "\taddi s3, s3, -1\n"
+                f"\tbgt  s3, zero, {subr[opr][0]}\n"
+                "\taddi s3, s3, 1\n"
                 "\tret\n"
             )
         else:
@@ -211,73 +213,112 @@ def comp(code: str) -> str:
     if subr["^"][1]:
         res += (
             "\noutput:\n"
-            "\tmov edi, [ecx]\n"
-            "\tpush edi\n"
-            "\n\tmov eax, 10\n"
-            "\tcmp edi, 0\n"
-            "\tjge .max\n"
-            "\n\tmov dword [ecx], '-'\n"
+            "\taddi sp, sp, -16\n"
+            "\tsd   ra, 8(sp)\n"
+            "\tlw   s4, 0(s1)\n"
+            "\tbltz s4, .out_neg\n"
+            "\tmv   t0, s4\n"
+            "\tj    .out_pos\n"
+            ".out_neg:\n"
+            "\tli   t0, '-'\n"
+            "\tsb   t0, 0(s1)\n"
             "\tcall print\n"
-            "\tneg edi\n"
-            ".max:\n"
-            "\tcmp eax, edi\n"
-            "\tjg .main\n"
-            "\tmov ebx, 10\n"
-            "\tmul ebx\n"
-            "\tjmp .max\n"
-            ".main:\n"
-            "\tmov ebx, 10\n"
-            "\txor edx, edx\n"
-            "\tdiv ebx\n"
-            "\n\txchg eax, edi\n"
-            "\txor edx, edx\n"
-            "\tdiv edi\n"
-            "\tmov [ecx], eax\n"
-            "\tmov eax, edx\n"
-            "\txchg eax, edi\n"
-            "\n\tadd dword [ecx], '0'\n"
-            "\tcall print\n"
-            "\tsub dword [ecx], '0'\n"
-            "\n\tcmp eax, 1\n"
-            "\tje .done\n"
-            "\tjmp .main\n"
-            ".done:\n"
-            "\tpop edi\n"
-            "\tmov [ecx], edi\n" + end("^") + "\nprint:\n"
-            "\tpush eax\n"
-            "\tmov eax, 4\n"
-            "\tmov ebx, 1\n"
-            "\tmov edx, 1\n"
-            "\tint 80h\n"
-            "\tpop eax\n"
+            "\tsub  t0, x0, s4\n"
+            ".out_pos:\n"
+            "\taddi sp, sp, -32\n"
+            "\taddi s5, sp, 32\n"
+            "\tli   s6, 0\n"
+            ".out_digits:\n"
+            "\tmv   a0, t0\n"
+            "\tli   a1, 10\n"
+            "\tcall divmod\n"
+            "\tmv   t0, a0\n"
+            "\taddi s5, s5, -1\n"
+            "\taddi t2, a1, 48\n"
+            "\tsb   t2, 0(s5)\n"
+            "\taddi s6, s6, 1\n"
+            "\tbnez t0, .out_digits\n"
+            "\tli   a7, 64\n"
+            "\tli   a0, 1\n"
+            "\tmv   a1, s5\n"
+            "\tmv   a2, s6\n"
+            "\tecall\n"
+            "\taddi sp, sp, 32\n"
+            "\tsw   s4, 0(s1)\n"
+            "\tld   ra, 8(sp)\n"
+            "\taddi sp, sp, 16\n" + end("^") + "\nprint:\n"
+            "\tli   a7, 64\n"
+            "\tli   a0, 1\n"
+            "\tmv   a1, s1\n"
+            "\tli   a2, 1\n"
+            "\tecall\n"
+            "\tret\n"
+            "\n"
+            "# a0 / a1: quotient in a0, remainder in a1 (repeated subtraction)\n"
+            "divmod:\n"
+            "\tli   t0, 0\n"
+            ".div_loop:\n"
+            "\tbltu a0, a1, .div_done\n"
+            "\tsub  a0, a0, a1\n"
+            "\taddi t0, t0, 1\n"
+            "\tj    .div_loop\n"
+            ".div_done:\n"
+            "\tmv   a1, a0\n"
+            "\tmv   a0, t0\n"
             "\tret\n"
         )
     if subr["v"][1]:
-        s = (
+        res += (
             "\ninput:\n"
-            "\tpush ecx\n"
-            "\tmov eax, 3\n"
-            "\tmov ebx, 0\n"
-            "\tlea ecx, [esp - 4]\n"
-            "\tint 80h\n"
-            "\tmov eax, [esp - 4]\n"
-            "\tsub eax, '0'\n" + end("v")
+            "\taddi s1, s1, -4\n"
+            "\tli   a7, 63\n"
+            "\tli   a0, 0\n"
+            "\tmv   a1, s1\n"
+            "\tli   a2, 1\n"
+            "\tecall\n"
+            "\tlbu  s7, 0(s1)\n"
+            "\taddi s7, s7, -48\n"
+            "\taddi s1, s1, 4\n" + end("v")
         )
-        res += s.replace("ret", "pop ecx\n\tret")
     if subr["<"][1]:
         res += (
             "\nleft:\n"
-            "\tlea ecx, [ecx + 4*esi]\n"
-            "\tlea eax, [esp - 48]\n"
-            "\tcmp eax, ecx\n"
-            "\tjge .done\n"
-            "\tmov ecx, eax\n"
-            ".done:\n"
+            "\tslli t0, s3, 2\n"
+            "\tadd  s1, s1, t0\n"
+            "\taddi t1, sp, -48\n"
+            "\tbge  t1, s1, .left_done\n"
+            "\tmv   s1, t1\n"
+            ".left_done:\n"
             "\tret\n"
         )
     if subr["&"][1]:
         res += (
-            "\nmult:\n" "\tmov eax, edi\n" "\tmul esi\n" "\tadd [ecx], eax\n" "\tret\n"
+            "\nmult:\n"
+            "\taddi sp, sp, -16\n"
+            "\tsd   ra, 8(sp)\n"
+            "\tmv   a0, s2\n"
+            "\tmv   a1, s3\n"
+            "\tcall mul32\n"
+            "\tlw   t0, 0(s1)\n"
+            "\tadd  t0, t0, a0\n"
+            "\tsw   t0, 0(s1)\n"
+            "\tld   ra, 8(sp)\n"
+            "\taddi sp, sp, 16\n"
+            "\tret\n"
+            "\n"
+            "# a0 *= a1 (unsigned 32-bit), result in a0\n"
+            "mul32:\n"
+            "\tmv   t4, a0\n"
+            "\tli   a0, 0\n"
+            ".mul_loop:\n"
+            "\tandi t5, a1, 1\n"
+            "\tbeqz t5, .mul_skip\n"
+            "\tadd  a0, a0, t4\n"
+            ".mul_skip:\n"
+            "\tslli t4, t4, 1\n"
+            "\tsrli a1, a1, 1\n"
+            "\tbnez a1, .mul_loop\n"
+            "\tret\n"
         )
 
     return res.replace("\n\n\n", "\n\n")
