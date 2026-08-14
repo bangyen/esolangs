@@ -15,7 +15,6 @@ help:
     @echo "  lint-c       - Lint C files with clang-format and clang-tidy"
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
-    @echo "  lint-asm     - Basic syntax check for Assembly files"
     @echo "  lint         - Run all linting targets"
     @echo "  test         - Run Python tests with pytest"
     @echo "  install-dev  - Install development dependencies"
@@ -87,22 +86,8 @@ lint-lean:
         echo "skip: lake (Lean 4) not found"
     fi
 
-# lint asm
-lint-asm:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if command -v nasm >/dev/null 2>&1; then
-        fail=0
-        while IFS= read -r f; do
-            nasm -f elf32 -o /dev/null "$f" || fail=1
-        done < <(find extra/assembly -name "*.asm")
-        exit $fail
-    else
-        echo "skip: nasm not found"
-    fi
-
 # lint all code
-lint: lint-python lint-c lint-rust lint-lean lint-asm
+lint: lint-python lint-c lint-rust lint-lean
     @echo "All lint checks completed!"
 
 # run tests

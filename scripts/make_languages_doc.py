@@ -21,6 +21,7 @@ TRUTH = EXAMPLES / "truth-machine"
 # templates (the harness substitutes the input bits) rather than input-reading
 # programs.
 BOOLEAN = {
+    "123",
     "3x",
     "3D Brainfuck",
     "6-5",
@@ -88,13 +89,12 @@ C_COMPILERS = _compiler_set("c")
 
 # The README's Extra Implementations section: each entry is the extra/
 # subdirectory, its source pattern, the file-stem -> display-name map (an
-# unknown file fails loudly), and the heading.  The RISC-V ports
-# (``*-riscv.s``) are excluded by matching only ``*.asm``: they implement the
-# same languages as the x86 refs.
+# unknown file fails loudly), and the heading.  The assembly refs are the
+# RISC-V ports (``*-riscv.s``), matched by stripping the ``-riscv`` suffix.
 _EXTRA_DIRS = [
     (
         ROOT / "extra" / "assembly",
-        "*.asm",
+        "*-riscv.s",
         {
             "123": "123",
             "2b1b": "2 Bits, 1 Byte",
@@ -102,7 +102,7 @@ _EXTRA_DIRS = [
             "nocomment": "NoComment",
             "stun-step": "Stun Step",
         },
-        "x86 Assembly Implementations",
+        "RISC-V Assembly Implementations",
     ),
     (
         ROOT / "extra" / "lean" / "esolangs",
@@ -137,7 +137,7 @@ _EXTRA_DIRS = [
 ]
 
 # Display names of the languages with a native implementation in extra/
-# (Rust, Lean, or x86 assembly).  These interpreters run as
+# (Rust, Lean, or RISC-V assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
 
@@ -235,7 +235,7 @@ def render() -> str:
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Native means an implementation in `extra/` that runs as a standalone",
-        "program (Rust, Lean, or x86 assembly).  The Boolean",
+        "program (Rust, Lean, or RISC-V assembly).  The Boolean",
         "column marks the boolean-function generators; Back, BIO, and",
         "NoComment's are parameterized (the harness substitutes input bits",
         "into a template) rather than the program reading input.",
@@ -307,7 +307,11 @@ def render_extra_section() -> str:
         out.append(f"### {heading}")
         out.append("")
         for name in sorted(
-            {names[path.stem] for path in directory.glob(pattern)}, key=str.lower
+            {
+                names[path.stem.removesuffix("-riscv")]
+                for path in directory.glob(pattern)
+            },
+            key=str.lower,
         ):
             slug = _EXTRA_WIKI.get(name, name.replace(" ", "_"))
             out.append(f"- [{name}](https://esolangs.org/wiki/{slug})")

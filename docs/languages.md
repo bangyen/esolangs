@@ -6,7 +6,7 @@ hand.
 
 Python means an in-repo interpreter under `esolangs.interpreters`;
 Native means an implementation in `extra/` that runs as a standalone
-program (Rust, Lean, or x86 assembly).  The Boolean
+program (Rust, Lean, or RISC-V assembly).  The Boolean
 column marks the boolean-function generators; Back, BIO, and
 NoComment's are parameterized (the harness substitutes input bits
 into a template) rather than the program reading input.
