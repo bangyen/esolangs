@@ -50,8 +50,8 @@ STEPS = [
         [*PY, "scripts/make_ztoalc_table.py", "--check"],
     ),
     (
-        "x86 assembly under unicorn (compilers + references)",
-        [*PY, "scripts/verify_x86_unicorn.py"],
+        "RISC-V assembly under unicorn (compilers + references)",
+        [*PY, "scripts/verify_riscv_unicorn.py"],
     ),
     (
         "extra reference generators",
