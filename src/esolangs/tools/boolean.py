@@ -21,7 +21,13 @@ from esolangs.tools.booleans.other import (
     ztoalc_boolean,
 )
 from esolangs.tools.booleans.parameterized import back, bio, instantiate, nocomment
-from esolangs.tools.booleans.register import dig, polynomial, qoibl, sophie
+from esolangs.tools.booleans.register import (
+    collatz_multiverse,
+    dig,
+    polynomial,
+    qoibl,
+    sophie,
+)
 from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
 from esolangs.tools.booleans.tape import (
     ascii_art,
@@ -52,6 +58,7 @@ __all__ = [
     "circlefuck",
     "circlefuck_byte",
     "clockwise",
+    "collatz_multiverse",
     "container",
     "dig",
     "dimensional",
