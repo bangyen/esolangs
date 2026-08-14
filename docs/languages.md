@@ -74,7 +74,7 @@ into a template) rather than the program reading input.
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
 | ZTOALC | yes | yes |  |  |  | hello |
-| bit~ | yes | yes | yes |  |  | hello |
+| bit~ | yes | yes | yes | yes |  | hello |
 | huf | yes | yes |  |  |  | hello |
 
 The `esolangs` command lists the languages with Python support:
