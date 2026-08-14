@@ -15,8 +15,10 @@ def brainif(truth_table: str, n: int) -> str:
     BrainIf reads each input into a cell with ``if 0 input``, then a
     recursive decision tree checks each cell with ``if 48/49 goto`` (the
     groups' checks sit adjacent so a failed check falls through to the next
-    candidate). Each leaf moves to a fresh cell, increments it to 48+r, and
-    outputs it.
+    candidate).  Every leaf lands on a fresh cell (the last marker moved the
+    pointer past the inputs), so it jumps to one of two shared output
+    routines that build 48 or 49 in place and print it, instead of each leaf
+    incrementing a fresh cell itself.
     """
     entries: list[tuple[object, ...]] = []
     for i in range(n):
@@ -33,14 +35,7 @@ def brainif(truth_table: str, n: int) -> str:
     def build(rows: list[int], k: int) -> list[tuple[object, ...]]:
         if len(rows) == 1:
             r = int(truth_table[rows[0]])
-            block: list[tuple[object, ...]] = [
-                ("cmd", "if 48 move right"),
-                ("cmd", "if 49 move right"),
-            ]
-            block += [("cmd", f"if {v} increment") for v in range(48 + r)]
-            block.append(("cmd", f"if {48 + r} output"))
-            block.append(("if_goto", 48 + r))
-            return block
+            return [("cmd", f"if 0 goto OUT{r}")]
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
         l0, l1 = counter[0], counter[0] + 1
@@ -57,24 +52,50 @@ def brainif(truth_table: str, n: int) -> str:
         ]
 
     entries += build(list(range(2**n)), 1)
+    # two shared output routines: every leaf's pointer is on a fresh cell
+    for r in (0, 1):
+        entries.append(("out", r))
+        entries.append(("cmd", "if 48 move right"))
+        entries.append(("cmd", "if 49 move right"))
+        entries += [("cmd", f"if {v} increment") for v in range(48 + r)]
+        entries.append(("cmd", f"if {48 + r} output"))
+        entries.append(("cmd", f"if {48 + r} goto end"))
     entries.append(("end",))
-    labels = {
-        cast(int, entry[2]): i + 1
-        for i, entry in enumerate(entries)
-        if entry[0] == "mr"
-    }
-    end_line = len(entries)
+
+    # resolve labels from the actual line sequence (the "out" markers emit
+    # no line, so the marker's target is the next line that does)
+    labels: dict[int, int] = {}
+    out_labels: dict[int, int] = {}
+    line_no = 0
+    pending: int | None = None
+    for entry in entries:
+        if entry[0] == "out":
+            pending = cast(int, entry[1])
+            continue
+        line_no += 1
+        if pending is not None:
+            out_labels[pending] = line_no
+            pending = None
+        if entry[0] == "mr":
+            labels[cast(int, entry[2])] = line_no
+    end_line = line_no + 1
 
     lines: list[str] = []
     for entry in entries:
         if entry[0] == "cmd":
-            lines.append(cast(str, entry[1]))
+            s = cast(str, entry[1])
+            if "goto OUT" in s:
+                r = int(s.split("OUT")[1])
+                s = f"if 0 goto {out_labels[r]}"
+            elif "goto end" in s:
+                s = s.replace("goto end", f"goto {end_line}")
+            lines.append(s)
         elif entry[0] == "if":
             lines.append(f"if {entry[1]} goto {labels[cast(int, entry[2])]}")
         elif entry[0] == "mr":
             lines.append(f"if {entry[1]} move right")
-        elif entry[0] == "if_goto":
-            lines.append(f"if {entry[1]} goto {end_line}")
+        elif entry[0] == "out":
+            continue
         else:
             lines.append("")
     return "\n".join(lines)
@@ -541,10 +562,11 @@ def ascii_art(truth_table: str, n: int) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.
 
-    ASCII art is brainfuck with an art alphabet, so the program is the
-    ``_bf_minterm`` brainfuck program rendered as art blocks.
+    ASCII art is brainfuck with an art alphabet, so the program is :func:`bf`'s
+    shorter of the minterm sum and decision-tree program rendered as art
+    blocks.
     """
-    return bf_to_ascii_art(_bf_minterm(truth_table, n))
+    return bf_to_ascii_art(bf(truth_table, n))
 
 
 def bf(truth_table: str, n: int) -> str:
