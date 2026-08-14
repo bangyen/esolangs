@@ -10,6 +10,7 @@ import Esolangs.BfSetCorrect
 import Esolangs.BioCorrect
 import Esolangs.EvalCorrect
 import Esolangs.CircleFuckCorrect
+import Esolangs.CollatzMultiverseCorrect
 import Esolangs.Excon
 import Esolangs.ExconCorrect
 import Esolangs.ExconSemanticsCorrect
