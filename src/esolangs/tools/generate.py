@@ -33,6 +33,7 @@ from esolangs.tools.generators.other import (
 from esolangs.tools.generators.register import (
     albabet,
     bio,
+    collatz_multiverse,
     dig,
     dotlang,
     eval,  # noqa: A004 - the language is named "Eval"
@@ -72,6 +73,7 @@ __all__ = [
     "brainif",
     "circlefuck",
     "clockwise",
+    "collatz_multiverse",
     "container",
     "dig",
     "dimensional",
