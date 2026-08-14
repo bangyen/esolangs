@@ -89,11 +89,13 @@ encode-decode round-trip (`FactorCorrect.lean`), the Collatz Multiverse
 generator correctness proof (`CollatzMultiverseCorrect.lean`), and the
 Sophie and 6-5 boolean-function generator correctness proofs
 (`SophieBoolCorrect.lean`, `SixFiveBoolCorrect.lean`).  The four ported
-Lean interpreters, their equivalence proofs, and the EXCON and AlbaBet text
-generator proofs (whose models were the ports) were dropped: the ports were
+Lean interpreters and their equivalence proofs were dropped: the ports were
 redundant with the Python interpreters and the equivalence proofs only
-certified them, so neither earned the maintenance cost.  The candidates
-below go beyond totality, in increasing payoff order.
+certified them, so neither earned the maintenance cost.  The EXCON and
+AlbaBet text generator proofs were kept but made self-contained (their
+interpreter models are now embedded in `ExconCorrect.lean` and
+`AlbabetCorrect.lean` rather than importing the dropped ports).  The
+candidates below go beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 Done.  `FactorCorrect.lean` models the commands/residues, the run-length
