@@ -77,26 +77,15 @@ the program is linear and compact.
 
 ## Lean proofs (in priority order)
 
-Completed proofs live in the commit history: MAMMALIAN generator totality
-(`extra/lean/esolangs/Esolangs.lean`), CircleFuck generator correctness
-(`CircleFuckCorrect.lean`), the Sophie, BIO,
-6-5, and Qoibl generator correctness proofs (`SophieCorrect.lean`,
-`BioCorrect.lean`, `SixFiveCorrect.lean`, `QoiblCorrect.lean`), the
-`_bf_set` multiply loop (`BfSetCorrect.lean`), the huf generator
-correctness proof (`HufCorrect.lean`), the brainfuck generator correctness
-proof (`BfCorrect.lean`), the Eval generator correctness proof
-(`EvalCorrect.lean`), the Factor Dirichlet totality /
-encode-decode round-trip (`FactorCorrect.lean`), the Collatz Multiverse
-generator correctness proof (`CollatzMultiverseCorrect.lean`), and the
-Sophie and 6-5 boolean-function generator correctness proofs
-(`SophieBoolCorrect.lean`, `SixFiveBoolCorrect.lean`).  The four ported
-Lean interpreters and their equivalence proofs were dropped: the ports were
-redundant with the Python interpreters and the equivalence proofs only
-certified them, so neither earned the maintenance cost.  The EXCON and
-AlbaBet text generator proofs were kept but made self-contained (their
-interpreter models are now embedded in `ExconCorrect.lean` and
-`AlbabetCorrect.lean` rather than importing the dropped ports).  The
-candidates below go beyond totality, in increasing payoff order.
+Kept proofs: MAMMALIAN generator totality (`extra/lean/esolangs/Esolangs.lean`)
+and Factor's Dirichlet totality / encode-decode round-trip
+(`FactorCorrect.lean`).  Everything else in the Lean project was dropped:
+the four ported interpreters, their equivalence proofs, and all the
+generator and boolean correctness proofs were redundant with the round-trip
+test suite, so the Lean project now contains only the proofs of facts the
+tests cannot establish (MAMMALIAN's search totality, Factor's prime-search
+totality).  The candidates below go beyond totality, in increasing payoff
+order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 Done.  `FactorCorrect.lean` models the commands/residues, the run-length
@@ -107,57 +96,18 @@ prime factors of the encoded integer are precisely the chosen primes, in
 order, with the right exponents (`encodeRuns_factorization_at`,
 `chosenExp_pos_iff`, `primeFactors_encodeRuns`).
 
-### Boolean generator correctness proofs (low priority)
-The boolean-function generators (`tools/generators/booleans/`) emit, for a
-truth table, a program that reads the input bits and prints the table's
-output.  Correctness proofs run the generated program through the
-interpreter's own transitions for every input combination.  Done: the Sophie
-decision tree (`SophieBoolCorrect.lean`) and the 6-5 decision tree
-(`SixFiveBoolCorrect.lean`) — `B` + eight `2`s normalize each bit to 8/9,
-`78` skips the `8n` jump on a zero bit and the `4` markers route a one bit,
-and `treeOf_correct` shows reading the input bits descends to the leaf for
-the indexed row.  The brainfuck minterm (`_bf_minterm`) is the shared core
-for painfuck/ascii_art/three_d_bf/dimensional but needs the bf model
-extended with ``,`` input and the copy/AND scratch machinery, so it is a
-larger effort.
-
-### Minifuck boolean reachability (low priority)
-A language-power theorem rather than a generator-correctness proof: Minifuck
-computes exactly the four one-input functions plus the eight 0-preserving
-two-input tables (`f(0, 0) == 0`), because `[` followed by `<` is a
-conditional pointer move that leaves the tested bit's value in the pointer
-displacement, and the decode suffix pins the pointer orientation so no
-complemented read can select the other tables (re-verified in
-`docs/limitations.md`).  The reachable half is a machine analysis of the
-`[<`-walk and the suffix search; the wall is structural.
-
-### Huf text generator correctness proof (medium priority)
-Done.  `HufCorrect.lean` models the register interpreter (`num`/`mul`/output,
-`step`, `run` as a foldl) and proves huf's `# +*a | +*b ! +*r >@` segments
-correct through the interpreter's own transitions: `seg_correct` reuses the
-`_bf_set` multiply invariant (`tools/generators/tape.py::_bf_set`), the
-segment prints `a*b + r`, and `progAux_correct` / `huf_value` compose
-segments for a whole text.
-
-### Remaining generator correctness proofs (low priority)
-Done: `bf` and `eval`.  `BfCorrect.lean` completes the `_bf_set` multiply-loop
-work over the brainfuck interpreter model: the per-character choice
-(delta-reuse when the next character is close, else `[-]` + `_bf_set`) moves
-the pointer right one cell and prints exactly the text (`run_minusN`,
-`run_zero`, `bf_set_at`, `progAux_correct`).  `EvalCorrect.lean` proves the
-backtick-escaped string literal `"<text with " → \`>".` over Eval's
-two-stack interpreter: the literal scan round-trips backticks to quotes
-(`scan_aux`) and `.` prints the text (`eval_correct`).
-
-Still worth doing, low priority.  `CollatzMultiverseCorrect.lean` models the
-register interpreter's Collatz transform and proves the constant-table
-bootstrap reaches every byte value and the output lines print the bytes.
-`ascii_art` reduces to a mechanical per-command rendering round-trip
-(`parse (bf_to_ascii_art prog) = prog`) over the `BfCorrect` proof.  `suffolk`
-is bf-family (its `!` op) and reuses the bf model structure.  The rest
-(three_d_bf, dig, polynomial, wii2d, dotlang, bfstack, brainif, minifuck,
-add_sub_jump) are full language-specific interpreter models for obscure
-languages, so they are dropped rather than restated.
+### Retired Lean proof items
+All other Lean proofs were dropped as redundant with the round-trip test
+suite (the generator and boolean correctness proofs re-prove what the
+differential/round-trip tests already establish): EXCON, AlbaBet, CircleFuck,
+Sophie, BIO, 6-5, Qoibl, huf, brainfuck, eval, Collatz Multiverse, the
+``_bf_set`` multiply loop, the Sophie/6-5/brainfuck-minterm boolean proofs,
+and the four ported Lean interpreters with their equivalence proofs.  The one
+non-redundant candidate remaining, if more Lean work is ever wanted, is the
+Minifuck boolean reachability characterization (a language-power theorem, not
+a generator-correctness proof): Minifuck computes exactly the four one-input
+functions plus the eight 0-preserving two-input tables, via the ``[<``
+conditional pointer move and the decode-suffix wall (`docs/limitations.md`).
 
 ## Text generators: exhausted
 
