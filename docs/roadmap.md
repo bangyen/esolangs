@@ -15,38 +15,11 @@ Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast) are recorded in
 `docs/limitations.md`, and A Painter Ant (a no-I/O grid interpreter) and
 AddSubJump (a self-modifying OISC with a text generator) shipped from that
 scan.  A second look over the PythonshellDebugwindow languages found Forbin
-(a genuine Category:Unimplemented gap) and reassessed several pages that
-were previously skipped without checking: Exp, Eso2D, Yaren, and FROM HERE
-TO THERE are all fully specified with examples and fit the repo's
-Python-plus-generator model.  The joke, non-deterministic, no-I/O, and
-file/OS-based ones from that list are recorded in `docs/limitations.md`.
-
-### Exp (medium priority)
-An expression language (`{<...>}` prints an ASCII value, `{{<...>}}` prints
-an integer, `I` reads a character, `~` is the accumulator, `@` assigns it)
-with left-to-right `+ - x /` arithmetic and a working HELLO WORLD, cat, and
-add-two-inputs example.  Already implemented elsewhere, but deterministic
-with full I/O and a clean generator story (build each byte from small
-factors, as the example does).
-
-### Eso2D (medium priority)
-A Turing-complete 2D fungeoid with a wrapping tape: direction commands,
-accumulator steps of 5/50/97/200, char and integer input, char and numeric
-output, and `=`/`` ` `` conditionals.  Complete command spec with Hello
-World, cat, truth-machine, and 99-bottles examples.  Already implemented
-elsewhere (by the author), but a solid TC fungeoid for this package.
-
-### Yaren (medium priority)
-A brainfuck derivative with a left/right-moving program counter over a
-tape of one-bit cells, with optional byte I/O (`,` writes a byte LSB-first
-across 8 cells, `.` reads one back).  Hello World, truth-machine, and cat
-examples given.  Already implemented elsewhere.
-
-### FROM HERE TO THERE (medium priority)
-A line-based OISC of the form `FROM x TO y`: `OUT`/`ERR` print, `LINE`
-jumps, variables with reverse-operation math, and file I/O.  Hello World,
-cat, and truth-machine examples given.  Note that `OUT` appends a newline
-(like Nevermind).  Already implemented elsewhere.
+(a genuine Category:Unimplemented gap, now built); the other reassessed
+pages (Exp, Eso2D, Yaren, FROM HERE TO THERE) already have implementations,
+so like the earlier Jumplang/UFSA/Stackint/Queuenanimous they are not on
+this roadmap.  The joke, non-deterministic, no-I/O, and file/OS-based ones
+from that list are recorded in `docs/limitations.md`.
 
 ### Suptiftam (low priority)
 Two-dimensional tape-tapes of bytes or integers, permissive function
