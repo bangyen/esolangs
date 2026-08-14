@@ -30,28 +30,6 @@ Reachability uses the same step range (1..46) as the reference
 it never hits the `ValueError` branch.  The reference implementation reports
 the same zero failures.
 
-## EXCON generator correctness
-
-A Lean 4 + mathlib proof (`Esolangs/ExconCorrect.lean`) that the EXCON text
-generator (`src/esolangs/tools/generators/tape.py::excon`) is *correct*, not
-just total: for every byte-range text, running the generated program through
-the interpreter's own pure state transitions (`Excon.to_s`, `Excon.flips`,
-`Excon.gets`, `Excon.empty_list`) prints exactly that text.
-
-The proof is a bit-flip induction over the 8-cell pool:
-
-1. **Bit-flip induction** (`run_charProgAux`): the generator's pointer walk
-   visits each set bit exactly once (moving only left, so the pointer never
-   wraps), so after the flips `gets pool k = bit v k` for every cell `k`.
-   The `GoodPool` invariant tracks which high bits are already correct and
-   which low bits are still zero.
-2. **Binary value** (`byte_value`): `to_s` reads the pool back as
-   `128*pool[0] + 64*pool[1] + ... + pool[7]`, which equals the character's
-   code for every byte (the byte range is verified by computation).
-
-The main theorem `exec_correct` states that for every `List Char` text whose
-codes are below 256, `exec (textProg t) = String.ofList t`.
-
 ## CircleFuck generator correctness
 
 A Lean 4 + mathlib proof (`Esolangs/CircleFuckCorrect.lean`) that the
@@ -80,30 +58,6 @@ The proof has three parts:
 The main theorem `circle_correct` states that for every `List Char` text
 whose codes are below 256, the output of `runInstructions` on the generated
 program is exactly `String.ofList t`.
-
-## AlbaBet generator correctness
-
-A Lean 4 + mathlib proof (`Esolangs/AlbabetCorrect.lean`) that the AlbaBet
-text generator (`src/esolangs/tools/generators/register.py::albabet`) is
-*correct*.  AlbaBet is a two-register language (`x` and `y` start at 0): `a`
-moves `x` up by one, `c` zeroes `x`, and `i` prints `Char.ofNat x`.  The
-generator emits, for each byte `v`, the program `c` followed by `v` copies of
-`a` followed by `i`.
-
-The proof runs the generated program through the ported interpreter's own
-pure state transitions (`step`/`runList` over a `(x, y, out)` state), with
-three parts:
-
-1. **The `a` run** (`runList_replicate_a`): `v` copies of `a` add `v` to the
-   accumulator, wherever it started.
-2. **One character** (`run_charProgC`): `c` zeroes the accumulator, so the
-   `a` run sets it to exactly `v` and `i` appends `Char.ofNat v` to the
-   output; `y` is never touched.
-3. **The whole text** (`runList_textProg`): every character's program
-   preserves `y` and only appends, so the characters' outputs concatenate.
-
-The main theorem `exec_correct` states that for every `List Char` text whose
-codes are below 256, `exec (textProg t) = String.ofList t`.
 
 ## Sophie generator correctness
 

@@ -18,8 +18,24 @@ scan.  A second look over the PythonshellDebugwindow languages found Forbin
 (a genuine Category:Unimplemented gap, now built); the other reassessed
 pages (Exp, Eso2D, Yaren, FROM HERE TO THERE) already have implementations,
 so like the earlier Jumplang/UFSA/Stackint/Queuenanimous they are not on
-this roadmap.  The joke, non-deterministic, no-I/O, and file/OS-based ones
-from that list are recorded in `docs/limitations.md`.
+this roadmap.  A third pass over the remaining unchecked pages found
+Grapheme and Point Break, both Category:Unimplemented; the rest of that
+list is either implemented, a joke, non-deterministic, no-I/O, or
+file/OS-based, and is recorded in `docs/limitations.md`.
+
+### Grapheme (high priority)
+A Turing-complete stack language where every command is a single uppercase
+Latin letter, with normal/intmode/stringmode/funcmode, an untyped variable
+system, and full I/O (`W` reads a string, `Y` outputs).  Fully specified
+with working Hello World, cat, and truth-machine examples, and it is a
+genuine Category:Unimplemented gap.
+
+### Point Break (low priority)
+A Turing-complete language with four commands (`LET`, `POINT`, `BREAK`,
+`END`) that simulates Minsky machines; `?` reads an integer in a `LET`.  It
+has no output at all, so like Crement and A Painter Ant it can only be a
+self-contained interpreter without a generator.  A genuine
+Category:Unimplemented gap.
 
 ### Suptiftam (low priority)
 Two-dimensional tape-tapes of bytes or integers, permissive function
@@ -61,10 +77,8 @@ the program is linear and compact.
 ## Lean proofs (in priority order)
 
 Completed proofs live in the commit history: MAMMALIAN generator totality
-(`extra/lean/esolangs/Esolangs.lean`), EXCON generator correctness
-(`ExconCorrect.lean`), CircleFuck generator correctness
-(`CircleFuckCorrect.lean`), AlbaBet generator correctness
-(`AlbabetCorrect.lean`), the Sophie, BIO,
+(`extra/lean/esolangs/Esolangs.lean`), CircleFuck generator correctness
+(`CircleFuckCorrect.lean`), the Sophie, BIO,
 6-5, and Qoibl generator correctness proofs (`SophieCorrect.lean`,
 `BioCorrect.lean`, `SixFiveCorrect.lean`, `QoiblCorrect.lean`), the
 `_bf_set` multiply loop (`BfSetCorrect.lean`), the huf generator
@@ -75,7 +89,8 @@ encode-decode round-trip (`FactorCorrect.lean`), the Collatz Multiverse
 generator correctness proof (`CollatzMultiverseCorrect.lean`), and the
 Sophie and 6-5 boolean-function generator correctness proofs
 (`SophieBoolCorrect.lean`, `SixFiveBoolCorrect.lean`).  The four ported
-Lean interpreters and their equivalence proofs were dropped: the ports were
+Lean interpreters, their equivalence proofs, and the EXCON and AlbaBet text
+generator proofs (whose models were the ports) were dropped: the ports were
 redundant with the Python interpreters and the equivalence proofs only
 certified them, so neither earned the maintenance cost.  The candidates
 below go beyond totality, in increasing payoff order.

@@ -241,7 +241,7 @@ def copy (src dst a b : ℕ) : List Cmd :=
 preserving ``src``, using ``tmp`` and the copy scratch cells ``a``, ``b``.
 The pointer starts and ends at 0. -/
 def complement (src dst tmp a b : ℕ) : List Cmd :=
-  move 0 dst ++ [Cmd.loop [Cmd.minus]] ++ [Cmd.plus] ++
+  move 0 dst ++ [Cmd.loop [Cmd.minus]] ++ [Cmd.plus] ++ move dst 0 ++
   copy src tmp a b ++
   move 0 tmp ++ [Cmd.loop (move tmp dst ++ [Cmd.minus] ++ move dst tmp ++ [Cmd.minus])] ++
   move tmp 0
@@ -251,7 +251,7 @@ def complement (src dst tmp a b : ℕ) : List Cmd :=
 ``(c1, d1)``, ``(c2, d2)`` and the loop scratch ``t1``, ``t2``.  The pointer
 starts and ends at 0. -/
 def and_ (a b dst t1 t2 c1 d1 c2 d2 : ℕ) : List Cmd :=
-  move 0 dst ++ [Cmd.loop [Cmd.minus]] ++
+  move 0 dst ++ [Cmd.loop [Cmd.minus]] ++ move dst 0 ++
   copy a t1 c1 d1 ++
   copy b t2 c2 d2 ++
   move 0 t1 ++
@@ -733,7 +733,6 @@ lemma run_body_sub (cur tgt n : ℕ) (s : State) (hptr : s.ptr = cur) (hne : tgt
       · subst i
         have hc : ¬ cur = tgt := by exact fun h => hne h.symm
         simp [State.dec, Function.update, hptr, hc]
-        omega
       · simp [State.dec, Function.update, h0, h1, hptr, hne]
   · rfl
   · rfl
@@ -826,12 +825,23 @@ lemma run_complement (src dst tmp a b k : ℕ) (s : State) (hptr : s.ptr = 0)
   rw [run_append]
   rw [run_append]
   rw [run_append]
+  rw [run_append]
   rw [run_move 0 dst k s hptr]
   have hz := run_zero_here k { s with ptr := dst } (by simp [hdst0])
   rw [hz]
   rw [run_plus]
   rw [run_nil]
-  have hcopy := run_copy src tmp a b k { s with ptr := dst, tape := Function.update s.tape dst 1 }
+  have hinc : ({ s with ptr := dst }).inc = { s with ptr := dst, tape := Function.update s.tape dst 1 } := by
+    apply State.ext
+    · rfl
+    · ext i <;> by_cases h : i = dst <;> simp [State.inc, Function.update, h]
+      · rw [hdst0]
+    · rfl
+    · rfl
+  simpa [hinc] using (rfl : ({ s with ptr := dst }).inc = ({ s with ptr := dst }).inc)
+  have hmv := run_move dst 0 k { s with ptr := dst, tape := Function.update s.tape dst 1 } (by simp)
+  rw [hmv]
+  have hcopy := run_copy src tmp a b k { s with tape := Function.update s.tape dst 1 }
     (by simp) (by simp [hsrc]) (by simp [ha]) (by simp [hb]) hna hnb hnab hst.symm htA htB
   rw [hcopy]
   have hm0 := run_move 0 tmp k { ptr := 0, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape src else (if i = dst then 1 else s.tape i), inp := s.inp, out := s.out } (by simp)
