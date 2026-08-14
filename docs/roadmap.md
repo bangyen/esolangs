@@ -12,13 +12,6 @@ or boolean story.  Ruled-out candidates (Gravity, Earfuck, Conveyor,
 Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast) are recorded
 in `docs/limitations.md`.
 
-### ABCDirection (medium priority)
-A 2D `A`/`B`/`C`/`D` language with a bit tape and a queue
-(`esolangs.org/wiki/ABCDirection`).  Boolfuck-style I/O and Turing complete.
-The spec leaves a few edge cases open (donut wrapping, empty-queue start,
-queue/tape initialization); those need to be pinned down as conventions before
-an interpreter can be verified.
-
 ### A Painter Ant (low priority)
 A grid-based ant language with conditional movement and unconditional painting
 (`esolangs.org/wiki/A_Painter_Ant`).  Well-specified and Turing complete, but
@@ -41,9 +34,10 @@ Completed proofs live in the commit history: MAMMALIAN generator totality
 (`CircleFuckCorrect.lean`), BF-PDA bracket matching (`BfpdaCorrect.lean`),
 EXCON interpreter equivalence (`ExconSemanticsCorrect.lean`), AlbaBet
 generator correctness (`AlbabetCorrect.lean`), AlbaBet interpreter
-equivalence (`AlbabetSemanticsCorrect.lean`), and Number Seventy-Four
-interpreter equivalence (`SeventyFourSemanticsCorrect.lean`).  The
-candidates below go beyond totality, in increasing payoff order.
+equivalence (`AlbabetSemanticsCorrect.lean`), Number Seventy-Four
+interpreter equivalence (`SeventyFourSemanticsCorrect.lean`), and BF-PDA
+interpreter equivalence (`BfpdaSemanticsCorrect.lean`).  The candidates
+below go beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 `_factor_encode` (`tools/generators/tape.py`) searches for a prime with a given
@@ -53,18 +47,16 @@ prove decoding the prime factorization (exponents folding runs, residue mod 11
 identifying each instruction) recovers the original brainfuck program.
 
 ### Lean interpreter equivalence (medium priority)
-Prove the ported Lean interpreters match their Python references.  BF-PDA's
-`find` bracket matching, EXCON's output semantics, AlbaBet's output
-semantics, and seventy_four's output semantics are done (`BfpdaCorrect.lean`,
-`ExconSemanticsCorrect.lean`, `AlbabetSemanticsCorrect.lean`,
-`SeventyFourSemanticsCorrect.lean`): for EXCON, programs that do not underflow
-the pointer; for AlbaBet, programs that never run `i` on an invalid scalar
-(the reference zeroes `x` there, the port keeps it, and both print NUL, so
-only a later `i` can diverge); for seventy_four, programs whose output first
-starts with `H` at the last meaningful command (the reference halts at pass
-boundaries, the port mid-pass, so they agree only there).  Remaining:
-BF-PDA's full output semantics (a stack-and-loop proof building on the
-completed `find` bracket matching).
+Done.  All four ported Lean interpreters are proved to match their Python
+references: BF-PDA's `find` bracket matching and full output semantics
+(`BfpdaCorrect.lean`, `BfpdaSemanticsCorrect.lean`), EXCON's output
+semantics, AlbaBet's output semantics, and seventy_four's output semantics
+(`ExconSemanticsCorrect.lean`, `AlbabetSemanticsCorrect.lean`,
+`SeventyFourSemanticsCorrect.lean`).  The guards reflect where the
+interpreters genuinely diverge: EXCON's pointer underflow (the reference
+raises `HaltError`, the port wraps), AlbaBet's invalid-scalar `i` (the
+reference zeroes `x`), seventy_four's pass-boundary halting, and BF-PDA's
+bracket validation (the reference rejects unbalanced brackets up front).
 
 ### Simple text generator correctness proofs (medium priority)
 A correctness proof for the small generator/interpreter pairs, run through
@@ -122,6 +114,10 @@ state, or print a fixed string, so none can emit arbitrary text.  Collatz
 Multiverse is the one exception: its interpreter emits arbitrary bytes, but
 the OISC value-building problem (the operands must be variables, so each byte
 value has to be driven into a register through the Collatz transform) has no
-worked-out construction, so it ships interpreter-only for now.  The newly
-assessed boolean candidates that fell through (Temporary, Movesum, WII2D,
-EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.
+worked-out construction, so it ships interpreter-only for now.  ABCDirection
+is the second exception (its Boolfuck output can emit arbitrary bits, but
+moving the tape pointer between outputs needs the full 2D routing that makes
+a text generator a routing problem rather than an arithmetic one).  The
+newly assessed boolean candidates that fell through (Temporary, Movesum,
+WII2D, EXCON, Huf, Lightlang, DSDLAI) are recorded in
+`docs/limitations.md`.

@@ -4,6 +4,7 @@ import Esolangs.Albabet
 import Esolangs.AlbabetCorrect
 import Esolangs.AlbabetSemanticsCorrect
 import Esolangs.BfpdaCorrect
+import Esolangs.BfpdaSemanticsCorrect
 import Esolangs.CircleFuckCorrect
 import Esolangs.Excon
 import Esolangs.ExconCorrect
