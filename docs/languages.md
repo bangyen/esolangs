@@ -60,7 +60,7 @@ into a template) rather than the program reading input.
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
 | Number Seventy-Four |  | yes | yes |  |  |  |
-| Painfuck | yes | yes | yes |  |  | hello |
+| Painfuck | yes | yes | yes | yes |  | hello |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes |  |  | yes |  |

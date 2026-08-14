@@ -588,6 +588,52 @@ def three_d_bf(truth_table: str, n: int) -> str:
     return bf(truth_table, n).translate(str.maketrans("><", "ew"))
 
 
+# The interpreter's two substitution cycles, in the order the reference scans
+# them: Painfuck source is pre-shifted here so the trans table recovers the
+# intended commands.
+_CYCLES = ("pevkjzwr", "yuctsobqihald")
+
+
+def painfuck(truth_table: str, n: int) -> str:
+    """Build a Painfuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Painfuck is brainfuck-compatible: the commands ``a``/``b`` are while-
+    nonzero loops, ``j`` reads a byte and ``u`` prints one.  The brainfuck
+    minterm and decision-tree strategies translate directly, mapping BF's
+    ``>``/``<`` (each one cell) to ``rl`` (+1) / ``l`` (-1), ``+``/``-`` to
+    ``ps`` (+1) / ``s`` (-1), and ``[``/``]``/``,``/``.`` to ``a``/``b``/
+    ``j``/``u``.  The interpreter then rewrites the source through two
+    substitution cycles, so each emitted command is pre-shifted ``k`` steps
+    back along its cycle (where ``k`` counts the commands so far) to undo it.
+    """
+    code = (
+        bf(truth_table, n)
+        .replace(">", "rl")
+        .replace("<", "l")
+        .replace("+", "ps")
+        .replace("-", "s")
+        .replace("[", "a")
+        .replace("]", "b")
+        .replace(",", "j")
+        .replace(".", "u")
+    )
+    out: list[str] = []
+    k = 0
+    for char in code:
+        for cycle in _CYCLES:
+            p = cycle.find(char)
+            if p != -1:
+                out.append(cycle[(p - k) % len(cycle)])
+                k += 1
+                break
+        else:
+            raise ValueError(f"Painfuck command {char!r} is not in a cycle")
+    return "".join(out)
+
+
 def bf_tree(truth_table: str, n: int) -> str:
     """Build a decision-tree brainfuck program for the given truth table.
 
