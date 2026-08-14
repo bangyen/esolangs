@@ -144,6 +144,28 @@ three parts:
 The main theorem `exec_correct` states that for every `List Char` text whose
 codes are below 256, `exec (textProg t) = String.ofList t`.
 
+## AlbaBet interpreter equivalence
+
+A Lean 4 + mathlib proof (`Esolangs/AlbabetSemanticsCorrect.lean`) that the
+ported AlbaBet interpreter (`Esolangs/Albabet.lean`) computes exactly the
+reference Python interpreter's output (`src/esolangs/interpreters/other/albabet.py`).
+The reference is *total* — every character is a defined operation or a no-op —
+so unlike EXCON there is no underflow halt to guard against.  The reference
+model `pstep` reuses the ported transitions (`AlbabetCorrect.step`), so the
+theorem certifies the port itself.
+
+The two interpreters agree on every instruction except the state `i` leaves
+behind when it prints an invalid scalar value (the surrogate range
+0xD800-0xDFFF, or values at or above 0x110000): the reference zeroes `x`,
+while the port keeps it (Lean's `Char.ofNat` yields NUL without touching
+`x`).  Both print NUL at that `i`, so the current output agrees, but the
+different `x` changes what a *later* `i` prints.  The theorem `output_eq` is
+therefore stated under the guard `Clean` (the program never runs `i` with an
+invalid scalar in `x`): under that guard both interpreters reach the same
+state and print the same string.  Every generated program is clean
+(`Clean_textProg`), so `generator_output_eq` ties this back to the generator
+proof.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:

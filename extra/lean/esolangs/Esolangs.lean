@@ -2,6 +2,7 @@ import Mathlib
 
 import Esolangs.Albabet
 import Esolangs.AlbabetCorrect
+import Esolangs.AlbabetSemanticsCorrect
 import Esolangs.BfpdaCorrect
 import Esolangs.CircleFuckCorrect
 import Esolangs.Excon
