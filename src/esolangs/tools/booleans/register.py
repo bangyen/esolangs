@@ -288,13 +288,15 @@ def polynomial(truth_table: str, n: int) -> str:
     Polynomial programs are polynomials whose roots encode instructions, so
     the generator builds a decision tree of complex ``[a, b]`` (arithmetic,
     input, output) and real ``[val]`` (if/endif) roots and expands them into
-    ``f(x) = ...``.  Each instruction consumes a fresh prime, so the
-    coefficients of a deeper tree grow quickly -- at ``n == 3`` they reach
-    ~10**360 and at ``n == 4`` ~10**729.  The interpreter recovers roots by
-    factoring the integer polynomial (exact, so the huge coefficients are no
-    obstacle); ``n == 3`` runs in ~1s and ``n == 4`` in ~10s, while ``n ==
-    5`` (degree 376, coefficients ~10**1746) does not factor in practical
-    time.  ``n > 4`` is rejected.
+    ``f(x) = ...``.  A subtree whose rows are all the same value is collapsed
+    to its single output, so constant and near-constant tables skip the tree
+    that would otherwise isolate every leaf.  Each instruction consumes a
+    fresh prime, so the coefficients of a deeper tree grow quickly -- at
+    ``n == 3`` they reach ~10**360 and at ``n == 4`` ~10**729.  The
+    interpreter recovers roots by factoring the integer polynomial (exact,
+    so the huge coefficients are no obstacle); ``n == 3`` runs in ~1s and
+    ``n == 4`` in ~10s, while ``n == 5`` (degree 376, coefficients ~10**1746)
+    does not factor in practical time.  ``n > 4`` is rejected.
     """
     if n > 4:
         raise ValueError(
@@ -314,8 +316,9 @@ def polynomial(truth_table: str, n: int) -> str:
             instrs.append([-delta, 2])
 
     def build(rows: list[int], bit: int, last: int) -> None:
-        if len(rows) == 1:
-            v = int(truth_table[rows[0]])
+        vals = {truth_table[r] for r in rows}
+        if len(vals) == 1:
+            v = int(vals.pop())
             emit_delta(48 + v - last)
             instrs.append([0, 1])  # output
             emit_delta(1 - (48 + v))  # restore reg to nonzero so the else skips
