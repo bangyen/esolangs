@@ -40,6 +40,7 @@ BOOLEAN = {
     "Container",
     "Dig",
     "Dimensional",
+    "Decleq",
     "Forþ",
     "LaserFuck",
     "Minifuck",

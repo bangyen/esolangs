@@ -24,6 +24,7 @@ from esolangs.tools.booleans.other import (
 from esolangs.tools.booleans.parameterized import back, bio, instantiate, nocomment
 from esolangs.tools.booleans.register import (
     collatz_multiverse,
+    decleq,
     dig,
     polynomial,
     qoibl,
@@ -65,6 +66,7 @@ __all__ = [
     "clockwise",
     "collatz_multiverse",
     "container",
+    "decleq",
     "dig",
     "dimensional",
     "dimensional_tree",
