@@ -82,7 +82,7 @@ class TestTwoBitsOneByte:
         def _alarm(_signum: int, _frame: object) -> None:
             raise _TimeoutError
 
-        signal.signal(signal.SIGALRM, _alarm)
+        old_handler = signal.signal(signal.SIGALRM, _alarm)
         signal.alarm(1)
         try:
             run_program("\x00")  # all DON fields
@@ -90,3 +90,4 @@ class TestTwoBitsOneByte:
             pass
         finally:
             signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
