@@ -260,11 +260,13 @@ def brainif(text: str) -> str:
 def suffolk(text: str) -> str:
     """Build a Suffolk program that outputs ``text``.
 
-    Each character is factored as ``n = a * b + r`` with ``a`` near
-    ``sqrt(n)``; ``!`` computes ``max(0, cell + 1 - acc)`` so the multiplier
-    ``a`` is built into a helper cell and the remainder ``r`` is added by
-    repeated ``>!`` moves, then ``.`` prints.  Cell 2 is sized so ``!``
-    zeroes the working cells and they can be reused per character.
+    Each character is factored as ``n = a * b + r``; ``!`` computes
+    ``max(0, cell + 1 - acc)`` so the multiplier ``a`` is built into a helper
+    cell and the remainder ``r`` is added by repeated ``>!`` moves, then ``.``
+    prints.  The ``>!`` and ``><`` moves cost two characters each, so ``a``
+    is searched over the factorization that minimizes ``a + 2b + 2r`` rather
+    than fixed at ``sqrt(n)``.  Cell 2 is sized so ``!`` zeroes the working
+    cells and they can be reused per character.
     """
     if not text:
         return ""
@@ -274,8 +276,12 @@ def suffolk(text: str) -> str:
     res = []
     for c in text:
         n = ord(c) + 1
-        a = max(1, int(n**0.5))
-        b, r = divmod(n, a)
+        best = min(
+            (a + 2 * b + 2 * r, a, b, r)
+            for a in range(1, n + 1)
+            for b, r in (divmod(n, a),)
+        )
+        _, a, b, r = best
         res.append(f">><!>><>!{'!' * a}{'>!' * r}><{'<' * b}.")
     return ">>!" * big + "\n" + "\n".join(res)
 
