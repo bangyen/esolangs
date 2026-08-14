@@ -97,11 +97,11 @@ def collatz_multiverse(truth_table: str, n: int) -> str:
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
     if all(c == "0" for c in truth_table):
-        return "\n".join([*_cm_constants(48), "out = negativeOne x + k48, DO PRINT."])
+        return "\n".join([*_cm_constants({48}), "out = negativeOne x + k48, DO PRINT."])
     if all(c == "1" for c in truth_table):
-        return "\n".join([*_cm_constants(49), "out = negativeOne x + k49, DO PRINT."])
+        return "\n".join([*_cm_constants({49}), "out = negativeOne x + k49, DO PRINT."])
 
-    lines = _cm_constants(48)
+    lines = _cm_constants({48})
     for i in range(n):
         lines.append(f"b{i} = negativeOne x + input, NOT PRINT.")
 
