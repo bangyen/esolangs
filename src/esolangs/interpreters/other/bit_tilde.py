@@ -15,11 +15,12 @@ whenever ``cell + 8`` would exceed the pool's length, and ``)`` pads the
 pool to fit its window.  A ``(`` at a pointer with fewer than 8 cells left
 prints just the available bits.
 
-Semantics match the Ruby cross-check (``extra/ruby/bit.rb``):
+Semantics match the Rust cross-check (``extra/rust/bit_tilde.rs``):
 - ``)`` raises :class:`EOFError` when input runs out, where the reference
   exits with status 3 (the wiki leaves EOF undefined);
 - a ``{``/``}`` whose match is missing raises :class:`ValueError` when it
-  would have jumped, where the reference loops forever;
+  would have jumped (the Rust cross-check agrees; the former Ruby reference
+  looped forever);
 - an empty input line yields no character (the reference would read a
   newline), so ``)`` on an empty line raises :class:`IndexError` through
   :meth:`esolangs.interpreters.io.IO.input_char`.

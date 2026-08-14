@@ -25,3 +25,11 @@ path = "trash.rs"
 [[bin]]
 name = "seventy_four"
 path = "seventy_four.rs"
+
+[[bin]]
+name = "pct"
+path = "pct.rs"
+
+[[bin]]
+name = "bit_tilde"
+path = "bit_tilde.rs"

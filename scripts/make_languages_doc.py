@@ -90,7 +90,6 @@ _EXTRA_DIRS = [
         ROOT / "extra" / "c++",
         "*.cpp",
         {
-            "%^2^-1": "%^2^-1",
             "2dFish": "2dFish",
             "basicfuck": "Basicfuck",
             "forþ": "Forþ",
@@ -126,7 +125,6 @@ _EXTRA_DIRS = [
         "*.rb",
         {
             "3x": "3x",
-            "bit": "bit~",
         },
         "Ruby Implementations",
     ),
@@ -134,8 +132,10 @@ _EXTRA_DIRS = [
         ROOT / "extra" / "rust",
         "*.rs",
         {
+            "bit_tilde": "bit~",
             "kak": "Kak",
             "laserfuck": "LaserFuck",
+            "pct": "%^2^-1",
             "seventy_four": "Number Seventy-Four",
             "trash": "Trash",
             "unsquare": "Unsquare",
