@@ -82,10 +82,11 @@ CAT_EXAMPLES = {
 
 TRUTH_MACHINE_EXAMPLES = {
     "between": ("other.between", ["0"], "0", True),
-    "modulous": ("stack_based.modulous", ["0"], "0", False),
     "brainif": ("tape_based.brainif", ["0"], "0", True),
     "circlefuck": ("tape_based.circlefuck", ["0"], "0", False),
     "factor": ("tape_based.factor", ["0"], "0", False),
+    "forbin": ("other.forbin", ["0"], "0", False),
+    "modulous": ("stack_based.modulous", ["0"], "0", False),
 }
 
 BASE_DIR = Path(__file__).parent.parent
