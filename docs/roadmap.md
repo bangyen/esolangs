@@ -93,6 +93,32 @@ A Hoare-style invariant for `+a[>+b<-]>+r.` (`tools/generators/tape.py::_bf_set`
 after the loop the printed cell holds `a*b + r = value`.  Genuine but generic
 brainfuck reasoning.
 
+## Toolchain consolidation (in priority order)
+
+Consolidate the `extra/` cross-check implementations onto fewer toolchains:
+one systems language (Rust) and one ISA (RISC-V), with Lean kept for proofs.
+The differential corpora in `scripts/verify_differential.py` and the generator
+round-trips in `scripts/verify_extra_generators.py` are the acceptance test:
+a port is done when the same corpora pass against the new binary.
+
+### Port C++ and Ruby cross-checks to Rust (medium priority)
+`extra/c++/` (Forþ, Painfuck, 2dFish, %^2^-1, Basicfuck, Kak, Trash) and the
+unique Ruby oracles (`extra/ruby/3x.rb`, `bit.rb`) move into the existing
+`extra/rust` workspace; the Ruby duplicates (`74.rb` has a Lean twin,
+`unsquare.rb` a Rust twin) are deleted outright.  Rust is memory-safe — the
+C++ Painfuck reference segfaults on its own corpus, and the asm runner
+catches faults — and one cargo workspace replaces the `cxx` and
+`extra-languages` CI jobs.  No coverage is lost: every Python interpreter
+with a native oracle keeps one.
+
+### Port x86 reference interpreters to RISC-V (medium priority)
+`extra/assembly/`'s x86 refs (123, 2 Bits 1 Byte, Brainpocalypse, NoComment,
+Stun Step) follow the existing `123-riscv.s` port; the Python RISC-V simulator
+and ELF runner already exist.  The x86 compilers in
+`src/esolangs/compilers/assembly/` are the hard part: they emit x86 and are
+verified under unicorn, so they must be ported to emit RISC-V too before the
+nasm/unicorn toolchain and the x86 refs can be dropped.
+
 ## Text generators: exhausted
 
 Every language whose interpreter can emit arbitrary bytes already has a text
