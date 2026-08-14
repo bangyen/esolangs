@@ -111,6 +111,53 @@ def run_decleq(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_forbin_boolean(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.forbin import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+class TestForbinBoolean:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.forbin_boolean(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_forbin_boolean(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_uses_the_lsb_of_each_input(self) -> None:
+        """Each input is read as 8 bits and only the LSB drives the tree."""
+        program = boolean.forbin_boolean("01", 1)
+        # one 8-variable read, then a decision tree that prints '1' for bit 1
+        assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.forbin_boolean("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.forbin_boolean("02", 1)
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
