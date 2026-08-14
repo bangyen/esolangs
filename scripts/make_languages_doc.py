@@ -274,13 +274,21 @@ def render_languages_section() -> str:
 
     Each language with an in-repo interpreter is grouped by the interpreter's
     category, sorted by display name, and linked to both its esolangs wiki
-    page and the interpreter's source file on GitHub.
+    page and the interpreter's source file on GitHub.  The ``<summary>``
+    count and the pointer to the capability matrix are generated too, so they
+    stay in sync.
     """
+    out: list[str] = [
+        f"<summary>Show all {len(RUNNERS)} languages</summary>",
+        "",
+        "The full capability matrix (generators, native and boolean support,"
+        " examples) is in [`docs/languages.md`](docs/languages.md).",
+        "",
+    ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
     for name, (module, _, _) in RUNNERS.items():
         groups[module.split(".")[0]].append(name)
 
-    out: list[str] = []
     for prefix, heading, description in _README_HEADINGS:
         out.append(f"### {heading}")
         out.append("")
@@ -297,7 +305,14 @@ def render_languages_section() -> str:
 
 def render_compilers_section() -> str:
     """Render the README's Compilers section between the markers."""
-    out: list[str] = []
+    compilers = ASSEMBLY_COMPILERS | C_COMPILERS
+    out: list[str] = [
+        f"<summary>Show all {len(compilers)} compilers</summary>",
+        "",
+        "Compilers that translate esoteric languages to other target"
+        " languages.",
+        "",
+    ]
     for kind, heading in (
         ("assembly", "RISC-V Assembly Compilers"),
         ("c", "C Compilers"),
@@ -314,7 +329,20 @@ def render_compilers_section() -> str:
 
 def render_extra_section() -> str:
     """Render the README's Extra Implementations lists between the markers."""
-    out: list[str] = []
+    out: list[str] = [
+        f"<summary>Show all {len(NATIVE)} implementations</summary>",
+        "",
+        "Implementations written in languages other than Python, used as"
+        " cross-check references in CI: most generators are round-trip"
+        " verified against them, and languages whose output classes are too"
+        " narrow for a text generator (Kak, Trash, Number Seventy-Four, 2"
+        " Bits 1 Byte, Brainpocalypse, Stun Step, BF-PDA) still get a Python"
+        " interpreter differentially verified against the native reference."
+        "  The cross-checks share an exit-code convention mirroring the"
+        " Python interpreters: 0 = success, 2 = malformed program, 3 ="
+        " invalid runtime operation.",
+        "",
+    ]
     for directory, pattern, names, heading in _EXTRA_DIRS:
         out.append(f"### {heading}")
         out.append("")

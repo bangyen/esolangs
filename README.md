@@ -81,12 +81,11 @@ just test
 ## Implemented Languages
 
 <details>
-<summary>Show all</summary>
-
-The full capability matrix (generators, native and boolean support, examples)
-is in [`docs/languages.md`](docs/languages.md).
-
 <!-- IMPLEMENTED:START -->
+
+<summary>Show all 64 languages</summary>
+
+The full capability matrix (generators, native and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
 ### Register-based Languages
 
@@ -179,18 +178,11 @@ Languages that don't fit into the above categories.
 ## Extra Implementations
 
 <details>
-<summary>Show all</summary>
-
-Implementations written in languages other than Python, used as cross-check
-references in CI: most generators are round-trip verified against them, and
-languages whose output classes are too narrow for a text generator (Kak,
-Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step,
-BF-PDA) still get a Python interpreter differentially verified against the
-native reference.  The cross-checks share an exit-code convention mirroring
-the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid
-runtime operation.
-
 <!-- EXTRA:START -->
+
+<summary>Show all 20 implementations</summary>
+
+Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them, and languages whose output classes are too narrow for a text generator (Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step, BF-PDA) still get a Python interpreter differentially verified against the native reference.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
 
 ### RISC-V Assembly Implementations
 
@@ -229,11 +221,11 @@ runtime operation.
 ## Compilers
 
 <details>
-<summary>Show all</summary>
+<!-- COMPILERS:START -->
+
+<summary>Show all 8 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
-
-<!-- COMPILERS:START -->
 
 ### RISC-V Assembly Compilers
 
