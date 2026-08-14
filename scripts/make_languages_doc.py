@@ -299,8 +299,7 @@ def render_compilers_section() -> str:
     out: list[str] = [
         f"<summary>Show all {len(compilers)} compilers</summary>",
         "",
-        "Compilers that translate esoteric languages to other target"
-        " languages.",
+        "Compilers that translate esoteric languages to other target" " languages.",
         "",
     ]
     for kind, heading in (
