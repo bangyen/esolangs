@@ -365,6 +365,20 @@ leaf's `6`/`62` arithmetic adds `48 + tt - base` before `A` prints), and
 proves `treeOf_correct`: reading the input bits descends to the leaf for the
 row, printing `tt[row]`.
 
+## Collatz Multiverse generator correctness
+
+A proof that the Collatz Multiverse text generator
+(`src/esolangs/tools/generators/register.py::collatz_multiverse`) is
+*correct*: for every text the generated program prints exactly that text.
+`CollatzMultiverseCorrect.lean` models the register interpreter (the
+registers `k`/`o`, the Collatz transform `collatz t a b := if Odd t then
+t*a+b else t/2`, `init`) and proves the generator's two parts: the constant
+table is bootstrapped from `negativeOne` so every byte value up to `maxval`
+is reachable (`constProg`, the `constInv` invariant, `constProg_inv`), and
+the per-character output lines copy the byte from the table and print it
+(`outProg`, `outProgFrom_correct`); `cm_correct` composes them,
+sanity-checked with `native_decide` round-trips.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
