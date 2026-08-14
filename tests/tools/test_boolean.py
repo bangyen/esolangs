@@ -56,6 +56,15 @@ def run_three_d_bf(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.collatz_multiverse import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -734,6 +743,52 @@ class TestBasicfuck:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.basicfuck("02", 1)
+
+
+class TestCollatzMultiverse:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.collatz_multiverse(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_collatz_multiverse(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_minterm_structure(self) -> None:
+        """The program reads one input per line and prints once."""
+        program = boolean.collatz_multiverse("0110", 2)
+        assert program.count("input") == 2
+        assert program.count("DO PRINT.") == 1
+
+    def test_constant_tables_skip_the_inputs(self) -> None:
+        """A constant table collapses to a single output."""
+        assert boolean.collatz_multiverse("0000", 2).count("DO PRINT.") == 1
+        assert "input" not in boolean.collatz_multiverse("1111", 2)
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.collatz_multiverse("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.collatz_multiverse("02", 1)
 
 
 class TestSophie:
