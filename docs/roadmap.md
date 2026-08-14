@@ -23,19 +23,20 @@ Grapheme and Point Break, both Category:Unimplemented; the rest of that
 list is either implemented, a joke, non-deterministic, no-I/O, or
 file/OS-based, and is recorded in `docs/limitations.md`.
 
-### Grapheme (high priority)
-A Turing-complete stack language where every command is a single uppercase
-Latin letter, with normal/intmode/stringmode/funcmode, an untyped variable
-system, and full I/O (`W` reads a string, `Y` outputs).  Fully specified
-with working Hello World, cat, and truth-machine examples, and it is a
-genuine Category:Unimplemented gap.
-
 ### Point Break (low priority)
 A Turing-complete language with four commands (`LET`, `POINT`, `BREAK`,
 `END`) that simulates Minsky machines; `?` reads an integer in a `LET`.  It
 has no output at all, so like Crement and A Painter Ant it can only be a
 self-contained interpreter without a generator.  A genuine
 Category:Unimplemented gap.
+
+Grapheme previously listed here is done: the interpreter covers the four
+modes, the arithmetic/stack commands, the untyped variable system, and
+function execution (`G`/`I`/`Q`/`Z`), and its only wiki example that can
+run (Hello World) verifies.  It has no text generator — strings cannot
+contain `E`, so even "HELLO" is unspellable — nor a boolean generator (the
+wiki's truth-machine cannot even read its `"0"`/`"1"` input as a clean bit);
+both walls are recorded in `docs/limitations.md`.
 
 ### Suptiftam (low priority)
 Two-dimensional tape-tapes of bytes or integers, permissive function
