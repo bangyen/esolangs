@@ -252,6 +252,20 @@ by `tt`.  The proof covers the bit parsing (`bitVal`, `binVal`, `bitsOf`,
 `run_charProg_rest`), and `exec_correct`, sanity-checked with `native_decide`
 round-trips.
 
+## `_bf_set` multiply loop
+
+A proof of the brainfuck "set and print" primitive
+(`src/esolangs/tools/generators/tape.py::_bf_set`), which emits
+``+a[>+b<-]>+r.`` to set the next cell to ``a*b + r`` (the ``divmod`` of the
+target value) and print it, in ``O(sqrt)`` rather than ``O(value)``.  The
+file `BfSetCorrect.lean` models a minimal brainfuck interpreter (a tape of
+natural-number cells, a pointer, and an output list) with a fuel-bounded
+loop, proves the loop invariant `runLoop_mult` (after `a` iterations of
+``[>+b<-]`` the first cell is zeroed and the second holds ``a*b``), and
+combines it into `bf_set_correct` / `bf_set_value`, sanity-checked with
+`native_decide` round-trips.  This is the multiply-loop invariant that the
+huf generator's `# +*a | +*b ! +*r >@` segments share.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
