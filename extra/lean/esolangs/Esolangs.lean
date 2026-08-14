@@ -1,6 +1,8 @@
 import Mathlib
 
+import Esolangs.AlbabetCorrect
 import Esolangs.BfCorrect
+import Esolangs.ExconCorrect
 import Esolangs.BfSetCorrect
 import Esolangs.BioCorrect
 import Esolangs.EvalCorrect
