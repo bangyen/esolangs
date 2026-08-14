@@ -375,41 +375,43 @@ def minifuck(text: str) -> str:
     return "".join(res)
 
 
+# CircleFuck command characters (everything else is a harmless no-op cell).
+_CF_COMMANDS = frozenset("+-<>[],.@#{}")
+
+
 def circlefuck(text: str) -> str:
     """Generate a CircleFuck program that outputs ``text``.
 
-    CircleFuck's tape is the program itself, so each cell starts out holding
-    the character code of whatever instruction occupies that position. The
-    generator walks a single data pointer across the cells, emitting the
-    ``+``/``-`` run needed to reach each target value (reading the current
-    cell's base off the program text built so far), then ``.`` to print and
-    ``>`` to advance, ending with ``@``.
+    CircleFuck's tape is the program itself, so a cell starts out holding the
+    character code of whatever instruction occupies its position.  The
+    generator keeps the data pointer on a single cell: a no-op character near
+    the first target's code seeds it, and ``+``/``-`` runs placed later in the
+    program drive the cell in place from one character's value to the next,
+    ``.`` printing each and ``@`` halting.  Each character therefore costs
+    only its delta from the previous one rather than a fresh-cell rebuild
+    from its instruction code.
     """
     _require_bytes(text, "CircleFuck")
     if not text:
         return "@"
-    prog: list[str] = []
-    for i, c in enumerate(text):
-        target = ord(c)
-        if i == 0:
-            if target >= 44:
-                run = "+" * (target - 43)
-            elif target == 43:
-                run = "+-"
-            else:
-                run = "-" * (45 - target)
-        else:
-            delta = (target - ord(prog[i])) % 256
-            if delta == 0:
-                run = ""
-            elif delta <= 128:
-                run = "+" * delta
-            else:
-                run = "-" * (256 - delta)
-        prog.extend(run)
+    base = min(
+        (
+            chr(i)
+            for i in range(33, 127)
+            if chr(i) not in _CF_COMMANDS and chr(i) != "\\"
+        ),
+        key=lambda c: abs(ord(c) - ord(text[0])),
+    )
+    prog = [base]
+    cur = ord(base)
+    for c in text:
+        delta = ord(c) - cur
+        if delta > 0:
+            prog.append("+" * delta)
+        elif delta < 0:
+            prog.append("-" * -delta)
         prog.append(".")
-        if i != len(text) - 1:
-            prog.append(">")
+        cur = ord(c)
     prog.append("@")
     return "".join(prog)
 
