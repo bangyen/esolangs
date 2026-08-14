@@ -71,8 +71,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
-RUST_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "laserfuck"
-UNSQUARE_BIN = ROOT / "extra" / "rust" / "target" / "debug" / "unsquare"
+RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
+RUST_BIN = RUST_BIN_DIR / "laserfuck"
+UNSQUARE_BIN = RUST_BIN_DIR / "unsquare"
+KAK_BIN = RUST_BIN_DIR / "kak"
+TRASH_BIN = RUST_BIN_DIR / "trash"
+SEVENTY_FOUR_BIN = RUST_BIN_DIR / "seventy_four"
 THREE_X_RUBY = ROOT / "extra" / "ruby" / "3x.rb"
 PCT_CXX = ROOT / "extra" / "c++" / "%^2^-1.cpp"
 PCT_BIN = Path("/tmp") / "verify-pct"
@@ -81,14 +85,9 @@ TWO_D_FISH_BIN = Path("/tmp") / "verify-2dfish"
 PAINFUCK_CXX = ROOT / "extra" / "c++" / "painfuck.cpp"
 PAINFUCK_BIN = Path("/tmp") / "verify-painfuck"
 BIT_TILDE_RUBY = ROOT / "extra" / "ruby" / "bit.rb"
-KAK_CXX = ROOT / "extra" / "c++" / "kak.cpp"
-KAK_BIN = Path("/tmp") / "verify-kak"
-TRASH_CXX = ROOT / "extra" / "c++" / "trash.cpp"
-TRASH_BIN = Path("/tmp") / "verify-trash"
 LEAN_BIN = ROOT / "extra" / "lean" / "esolangs" / ".lake" / "build" / "bin"
 ALBABET_BIN = LEAN_BIN / "albabet"
 BFPDA_BIN = LEAN_BIN / "bfpda"
-SEVENTY_FOUR_RUBY = ROOT / "extra" / "ruby" / "74.rb"
 TWO_BITS_ONE_BYTE_ASM = ROOT / "extra" / "assembly" / "2b1b.asm"
 BRAINPOCALYPSE_ASM = ROOT / "extra" / "assembly" / "brainpocalypse.asm"
 STUN_STEP_ASM = ROOT / "extra" / "assembly" / "stun-step.asm"
@@ -1752,29 +1751,19 @@ _LEAN_BINARIES = {
 
 
 def _build_kak() -> str | None:
-    """Compile the Kak C++ cross-check (once); None if g++ is missing."""
-    if shutil.which("g++") is None:
-        print("[skip] Kak differential: g++ not found")
+    """Return the built Kak Rust reference; None if cargo built it not yet."""
+    if not KAK_BIN.exists():
+        print("[skip] Kak differential: Rust reference not built")
         return None
-    if KAK_BIN.exists():
-        return str(KAK_BIN)
-    rv = subprocess.run(
-        ["g++", "-std=c++11", str(KAK_CXX), "-o", str(KAK_BIN)], capture_output=True
-    )
-    return str(KAK_BIN) if rv.returncode == 0 else None
+    return str(KAK_BIN)
 
 
 def _build_trash() -> str | None:
-    """Compile the Trash C++ cross-check (once); None if g++ is missing."""
-    if shutil.which("g++") is None:
-        print("[skip] Trash differential: g++ not found")
+    """Return the built Trash Rust reference; None if cargo built it not yet."""
+    if not TRASH_BIN.exists():
+        print("[skip] Trash differential: Rust reference not built")
         return None
-    if TRASH_BIN.exists():
-        return str(TRASH_BIN)
-    rv = subprocess.run(
-        ["g++", "-std=c++11", str(TRASH_CXX), "-o", str(TRASH_BIN)], capture_output=True
-    )
-    return str(TRASH_BIN) if rv.returncode == 0 else None
+    return str(TRASH_BIN)
 
 
 def _run_file_ref(
@@ -1854,7 +1843,7 @@ def _inprocess_run(
 
 # (name, ready(), native(program, stdin), Python module, corpus)
 _SIMPLE_CORPUS = [
-    # Kak: one-bit tape; the C++ prints the tape plus a newline
+    # Kak: one-bit tape; the Rust prints the tape plus a newline
     (
         "Kak",
         lambda: _build_kak() is not None,
@@ -1862,7 +1851,7 @@ _SIMPLE_CORPUS = [
         "esolangs.interpreters.tape_based.kak",
         [("<!", b""), ("!<!", b""), ("<!!<", b""), ("", b"")],
     ),
-    # Trash: number program; C++ prints via std::endl (trailing newline)
+    # Trash: number program; the Rust prints via println (trailing newline)
     (
         "Trash",
         lambda: _build_trash() is not None,
@@ -1870,11 +1859,12 @@ _SIMPLE_CORPUS = [
         "esolangs.interpreters.other.trash",
         [("t2", b""), ("t5", b""), ("5", b""), ("0", b""), ("tt3", b""), ("1", b"")],
     ),
-    # Number Seventy-Four: Ruby reference
+    # Number Seventy-Four: Rust reference (a faithful pass-boundary port of
+    # the former Ruby cross-check; the Lean port has diverged semantics)
     (
         "Number Seventy-Four",
-        lambda: shutil.which("ruby") is not None,
-        lambda p, s: _run_file_ref(["ruby", str(SEVENTY_FOUR_RUBY)], p, s),
+        lambda: SEVENTY_FOUR_BIN.exists(),
+        lambda p, s: _run_file_ref([str(SEVENTY_FOUR_BIN)], p, s),
         "esolangs.interpreters.other.seventy_four",
         [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
     ),

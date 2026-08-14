@@ -10,8 +10,7 @@ are a loop bracket pair: ``>`` skips forward to the matching ``<`` when the
 accumulator is 0 or 1, otherwise it records its position and ``<`` jumps
 back to it.
 
-Semantics match the Rust and Ruby cross-checks (``extra/rust/unsquare.rs``
-and ``extra/ruby/unsquare.rb``):
+Semantics match the Rust cross-check (``extra/rust/unsquare.rs``):
 - an empty-stack pop, a swap with fewer than two elements, an ``o`` on an
   empty stack, an unmatched ``<``, or a ``>`` with no matching ``<`` raise
   :class:`HaltError` (the references exit with status 3);
