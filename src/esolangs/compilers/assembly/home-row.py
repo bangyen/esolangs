@@ -38,8 +38,8 @@ def comp(code: str) -> str:
         ("[^asdfjkl;]", ""),
         ("([^j])k{2,}", r"\1k"),
         (";{2,}", ";"),
-        ("^((dddd)+|(ffff)+|k*j[^l]|k*l[^l]*l|k+)", ""),
-        ("([^j])((dddd)+|(ffff)+)", r"\1"),
+        ("^((ddddd)+|(fffff)+|k*j[^l]|k*l[^l]*l|k+)", ""),
+        ("([^j])((ddddd)+|(fffff)+)", r"\1"),
         ("([^j]k)(j[^l]|l[^l]*l)", r"\1"),
     ]
 
@@ -67,11 +67,13 @@ def comp(code: str) -> str:
             if ind and code[ind - 1] == "j":
                 num, new = 1, ind + 1
 
-            if num != 1:
-                res += f"\tli   t3, {num}\n"
-                func[c][2] = True
+            # always set t3: the movement/print subroutines are shared
+            # between counted and single calls, so a single call must not
+            # rely on a stale t3 from a previous counted run
+            res += f"\tli   t3, {num}\n"
             res += f"\tcall {func[c][0]}\n"
             func[c][1] = True
+            func[c][2] = True
         elif c == "j":
             skip += 1
             ind = new
@@ -115,19 +117,26 @@ def comp(code: str) -> str:
         )
 
     if func["d"][1]:
-        if func["d"][2]:
-            s = "\tadd  s4, s4, t3\n" "\tandi s4, s4, 3\n"
-        else:
-            s = "\taddi s4, s4, 1\n" "\tandi s4, s4, 3\n"
+        s = "\tadd  s4, s4, t3\n"
+        # wrap mod 5 (the 5x5 grid): subtract 5 once the index reaches 5
+        s += (
+            "\tli   t4, 5\n"
+            "\tblt  s4, t4, .down_ok\n"
+            "\taddi s4, s4, -5\n"
+            ".down_ok:\n"
+        )
 
         s += "\tmv   t0, s4\n" + cell("t0")
 
         res += "\ndown:\n" + s + "\tret\n"
     if func["f"][1]:
-        if func["f"][2]:
-            s = "\tadd  s5, s5, t3\n" "\tandi s5, s5, 3\n"
-        else:
-            s = "\taddi s5, s5, 1\n" "\tandi s5, s5, 3\n"
+        s = "\tadd  s5, s5, t3\n"
+        s += (
+            "\tli   t4, 5\n"
+            "\tblt  s5, t4, .right_ok\n"
+            "\taddi s5, s5, -5\n"
+            ".right_ok:\n"
+        )
 
         s += "\tmv   t0, s5\n" + cell("t0")
 
