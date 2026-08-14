@@ -57,6 +57,25 @@ statements are `(state N!)` changes and `(return)` — the truth-machine
 example explicitly has "No output".  Like Point Break it can only be a
 self-contained interpreter.  A genuine Category:Unimplemented gap.
 
+### Your Time Is Up (low priority)
+A Turing-complete string-rewriting language in binary (`(1+0)(1+0)` rule
+groups followed by the initial datastring), where execution picks a matching
+rule at random.  The output is therefore non-deterministic, and like DSDLAI
+the interpreter would be faithful but its behavior only testable
+mechanically; it also has no I/O, so it is a self-contained interpreter.  A
+genuine Category:Unimplemented gap.
+
+### COD (low priority)
+A two-dimensional concurrency-heavy language of cods swimming in waves
+enclosed ponds, where each cod carries an unbounded integer and `+`/`-`
+duplicate or remove it.  Branches resolve to random directions, so like
+LaserFuck/DSDLAI the output is non-deterministic but the interpreter can be
+faithful to the spec.  It has I/O (`...` input, `---` output).  A genuine
+Category:Unimplemented gap.
+
+N Refine was considered here but dropped: it is Category:Implemented (an
+interpreter exists on GitHub), so by this roadmap's rule it is not a gap.
+
 Grapheme previously listed here is done: the interpreter covers the four
 modes, the arithmetic/stack commands, the untyped variable system, and
 function execution (`G`/`I`/`Q`/`Z`), and its only wiki example that can
