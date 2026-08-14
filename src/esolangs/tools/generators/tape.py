@@ -116,16 +116,23 @@ def rotfuck(text: str) -> str:
     rotated ``i`` steps, so a straight-line program is just a sequence of
     *effective* commands: the raw character for position ``i`` is the
     ``i``-fold inverse rotation of the desired command.  The generated
-    program walks right one fresh cell per character, fills it, prints it,
-    and halts at the end of the source.
+    program keeps one cell and drives it in place from one character's code
+    to the next (the shorter way around the 8-bit wrap), printing with ``.``
+    and halting at the end of the source.
     """
     _require_bytes(text, "ROTfuck")
     chain = "+-><,.[]"
     commands: list[str] = []
+    cur = 0
     for char in text:
-        commands.append(">")
-        commands.extend("+" * ord(char))
+        target = ord(char)
+        delta = (target - cur) % 256
+        if delta and delta <= 128:
+            commands.extend("+" * delta)
+        elif delta:
+            commands.extend("-" * (256 - delta))
         commands.append(".")
+        cur = target
 
     res: list[str] = []
     for i, command in enumerate(commands):
