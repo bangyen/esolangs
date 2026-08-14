@@ -504,7 +504,7 @@ def laserfuck(truth_table: str, n: int) -> str:
     """
     _validate_tt(truth_table, n)
     rows: int = 2 ** (n + 1) - 1
-    total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2**n * 55 + 64
+    total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2 + 49 + 8
     grid = [[" "] * total_cols for _ in range(rows)]
 
     # the funnel: every heading ends up on row 0 moving right
@@ -550,10 +550,12 @@ def laserfuck(truth_table: str, n: int) -> str:
     assign_col(0, 0)
     leaf_base = width[0] + 4  # past every internal column and descent column
 
-    # leaves: one per input combination, at (level n, row, high column)
+    # leaves: one per input combination on its own row, all at the same
+    # high column (past every internal node and descent column), so the
+    # grid needs room for just one leaf rather than one per combination
     for j in range(2**n):
         r = row(n, j)
-        c = leaf_base + j * 55
+        c = leaf_base
         # the beam arrives from the parent's descent column; it first moved the
         # pointer to cell i (level i), so here it is at cell n-1
         grid[r][c] = ">"
