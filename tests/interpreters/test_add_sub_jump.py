@@ -1,0 +1,155 @@
+"""Unit tests for the AddSubJump interpreter.
+
+Tests cover the self-modifying memory model, the add/sub OISC instruction,
+the special addresses (I/O, flags, constants, flag update mode), the jump,
+and the documented halt/limit conventions.
+"""
+
+import contextlib
+
+import pytest
+
+from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.register_based.add_sub_jump import run
+
+
+def memory(instructions, cells=None):
+    """Build the initial-memory code string.
+
+    ``instructions`` is a list of ``[a, b, c, d]`` operand lists; ``cells``
+    maps extra memory addresses to their initial values (the self-modifying
+    model stores the program and data in one flat memory).
+    """
+    mem = []
+    for ins in instructions:
+        mem.extend(ins)
+    cells = cells or {}
+    while len(mem) <= max(cells, default=-1):
+        mem.append(0)
+    for addr, value in cells.items():
+        mem[addr] = value
+    return " ".join(map(str, mem))
+
+
+def run_program(code, stdin="", limit=100_000):
+    io = ScriptedIO(stdin)
+    with contextlib.suppress(EOFError):
+        run(code, io, limit=limit)
+    return io.getvalue()
+
+
+class TestInstruction:
+    def test_output_a_memory_cell(self) -> None:
+        # The wiki's example: -1 1 0 -7 outputs memory address 1; here the
+        # value cell is at address 4 and *c = memory[0] = -1 halts.
+        assert run_program("-1 4 0 -7 65") == "A"
+
+    def test_adds_through_the_constant_one(self) -> None:
+        # memory[12] += 1 twice (d = -7 is the constant 0, so the += branch),
+        # then output and halt (c = -8 reads the constant -1, a special
+        # address).  Jump targets come from data cells 13/14.
+        code = memory(
+            [
+                [12, -6, 13, -7],
+                [12, -6, 14, -7],
+                [-1, 12, -8, -7],
+            ],
+            {13: 4, 14: 8},
+        )
+        assert run_program(code) == "\x02"
+
+    def test_subtracts_when_the_selector_is_positive(self) -> None:
+        # d = -6 is the constant 1, so the -= branch fires: 0 - 1 = -1.
+        code = memory([[12, -6, 13, -6], [-1, 12, -8, -7]], {13: 4})
+        assert run_program(code) == "\xff"
+
+    def test_jumps_via_a_data_cell(self) -> None:
+        # The increment's *c = memory[13] = 4 sends the pointer to ip 4.
+        code = memory([[12, -6, 13, -7], [-1, 12, -8, -7]], {13: 4})
+        assert run_program(code) == "\x01"
+
+
+class TestSpecialAddresses:
+    def test_constants(self) -> None:
+        # -6 = 1, -7 = 0, -8 = -1: memory[30] = 1 + 0 + (-1) = 0.
+        code = memory(
+            [
+                [30, -6, 20, -7],
+                [30, -7, 21, -7],
+                [30, -8, 22, -7],
+                [-1, 30, -8, -7],
+            ],
+            {20: 4, 21: 8, 22: 12},
+        )
+        assert run_program(code) == "\x00"
+
+    def test_input_byte_is_added_to_the_target(self) -> None:
+        # memory[12] starts 0, so reading -1 (as *b) adds the input byte.
+        code = memory([[12, -1, 13, -7], [-1, 12, -8, -7]], {13: 4})
+        assert run_program(code, "X") == "X"
+
+    def test_input_running_out_raises_eof(self) -> None:
+        code = memory([[12, -1, 4, -7], [-1, 12, -8, -7]])
+        io = ScriptedIO("")
+        with pytest.raises(EOFError):
+            run(code, io)
+
+    def test_flags_only_update_while_flag_mode_is_set(self) -> None:
+        # Without touching -9 the zero flag stays 0 even after a +0 result.
+        code = memory(
+            [
+                [12, -7, 13, -7],
+                [-1, 12, -8, -7],
+            ],
+            {13: 4},
+        )
+        assert run_program(code) == "\x00"
+
+    def test_zero_flag_is_set_under_flag_mode(self) -> None:
+        # Enable flag mode (-9 += 1), produce a zero result, copy the zero
+        # flag (-3) into a cell, and output it.
+        code = memory(
+            [
+                [-9, -6, 40, -7],
+                [30, -7, 41, -7],
+                [31, -3, 42, -7],
+                [-1, 31, -8, -7],
+            ],
+            {40: 4, 41: 8, 42: 12},
+        )
+        assert run_program(code) == "\x01"
+
+    def test_negative_flag(self) -> None:
+        # Under flag mode, 0 - 1 = -1 sets the negative flag (-4).
+        code = memory(
+            [
+                [-9, -6, 40, -7],
+                [30, -6, 41, -6],
+                [31, -4, 42, -7],
+                [-1, 31, -8, -7],
+            ],
+            {40: 4, 41: 8, 42: 12},
+        )
+        assert run_program(code) == "\x01"
+
+
+class TestHaltAndErrors:
+    def test_jump_off_the_end_halts(self) -> None:
+        # The jump target (a data cell) is huge, past the memory.
+        code = memory([[12, -6, 13, -7]], {13: 1000})
+        assert run_program(code) == ""
+
+    def test_looping_program_hits_the_limit(self) -> None:
+        # The increment's jump target is itself (data cell 13 = 0 -> ip 0).
+        code = memory([[12, -6, 13, -7]], {13: 0})
+        io = ScriptedIO("")
+        with pytest.raises(HaltError):
+            run(code, io, limit=100)
+
+    def test_malformed_token(self) -> None:
+        with pytest.raises(ValueError, match="malformed memory token"):
+            run_program("12 -6 x -7")
+
+    def test_empty_program(self) -> None:
+        assert run_program("") == ""
