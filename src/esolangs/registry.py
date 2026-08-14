@@ -79,6 +79,7 @@ LANGUAGES: dict[str, Language] = {
         _generate.collatz_multiverse,
         "register_based.collatz_multiverse",
     ),
+    "Decleq": Language("Decleq", _generate.decleq, "register_based.decleq"),
     "Container": Language(
         "Container", _generate.container, "other.container", split=True
     ),
