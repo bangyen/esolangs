@@ -1157,3 +1157,55 @@ def sbleq(truth_table: str, n: int) -> str:
         data[4 + 2 * m + nid] = one_addr
     cells += data
     return " ".join(map(str, cells))
+
+
+# Minifuck reachable programs, found by search (see docs/limitations.md): all
+# four one-input functions and the eight 0-preserving two-input tables.
+_MINIFUCK_N1 = {
+    "00": "<[<[<[[<.<[<<<[<[[[",
+    "01": "[<.<<<[<<.<[<",
+    "10": "<[<[<[[[<[.[<.[[.",
+    "11": "<[<<[[[.[[[.[<.[[<.<<",
+}
+_MINIFUCK_N2 = {
+    "0000": "<[<.[<[<[<[<[<[<[<.<<[<[.[<.[",
+    "0001": "<[<.[<[<[<[<[<[<[<.<<[<.<",
+    "0010": "<[<.[<[<[<[<[<[<[<.[[<<<[<<[<.[<[",
+    "0011": "<[<.[<[<[<[<[<[<[<.[<<<[<[.[[<.<",
+    "0100": "<[<.[<[<[<[<[<[<[<.<[<[.[[<.<",
+    "0101": "<[<.[<[<[<[<[<[<[<..",
+    "0110": "<[<.[<[<[<[<[<[<[<.<.[<[[[.[[<<[",
+    "0111": "<[<.[<[<[<[<[<[<[<.<[[<.<",
+}
+
+
+def minifuck(truth_table: str, n: int) -> str:
+    """Build a Minifuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The documented reachable set (re-verified in ``docs/limitations.md``) is
+    all four one-input functions plus the eight 0-preserving two-input tables
+    (``tt[0] == 0``): AND, OR, XOR, both echoes, and const-0 among them.  The
+    non-0-preserving two-input tables (XNOR, NAND, NOR, NOT-b0, NOT-b1,
+    const-1) are unreachable — the decode suffix pins the pointer orientation
+    so a complemented read cannot select them — and n >= 3 has no general
+    construction.  The programs below were found by search.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+    if n == 1:
+        return _MINIFUCK_N1[truth_table]
+    if n == 2:
+        if truth_table not in _MINIFUCK_N2:
+            raise ValueError(
+                "Minifuck cannot compute a non-0-preserving two-input table",
+            )
+        return _MINIFUCK_N2[truth_table]
+    raise ValueError("Minifuck has no boolean generator for n >= 3 inputs")
