@@ -53,12 +53,14 @@ _SPLITLINES = "\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
 
 
 def clockwise(text: str) -> str:
-    """Build a 1D parity program wrapped around a square's perimeter.
+    """Build a 1D parity program wrapped around a 3 x k rectangle's perimeter.
 
     The turtle walks the ring clockwise, executing one instruction per cell.
     Three corner ``R`` cells turn it, and the final cell walks it back to the
     origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
-    ``+`` is emitted only when the accumulator's parity needs to flip.
+    ``+`` is emitted only when the accumulator's parity needs to flip.  A
+    thin rectangle holds the same ring as an n x n square (the perimeter
+    length is 2k + 2 either way) but with a fraction of the area.
     """
     _require_ascii(text, "Clockwise")
     prog = ""
@@ -73,18 +75,18 @@ def clockwise(text: str) -> str:
     if not prog:
         return ""
 
-    n = max(3, (len(prog) + 10) // 4)
-    ring = [(i, 0) for i in range(n - 1)]
-    ring += [(n - 1, i) for i in range(1, n - 1)]
-    ring += [(i, n - 1) for i in range(n - 2, 0, -1)]
-    ring += [(0, i) for i in range(n - 2, 0, -1)]
+    k = max(3, (len(prog) + 2) // 2)
+    ring = [(i, 0) for i in range(k - 1)]  # top row, left to right
+    ring += [(k - 1, 1)]  # right side
+    ring += [(i, 2) for i in range(k - 2, 0, -1)]  # bottom row, right to left
+    ring += [(0, 1)]  # left side
 
-    grid = [[" "] * n for _ in range(n)]
+    grid = [[" "] * k for _ in range(3)]
     for (x, y), ch in zip(ring, prog, strict=False):
         grid[y][x] = ch
-    grid[0][n - 1] = "R"
-    grid[n - 1][n - 1] = "R"
-    grid[n - 1][0] = "R"
+    grid[0][k - 1] = "R"  # top-right
+    grid[2][k - 1] = "R"  # bottom-right
+    grid[2][0] = "R"  # bottom-left
 
     return "\n".join("".join(row) for row in grid)
 
