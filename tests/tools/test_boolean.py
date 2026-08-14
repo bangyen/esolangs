@@ -47,6 +47,15 @@ def run_bf(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_three_d_bf(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.three_d_bf import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -645,6 +654,45 @@ class TestBfTree:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.bf_tree("02", 1)
+
+
+class TestThreeDBf:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+            ("1000000000000000", 4),  # single one (AND4)
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.three_d_bf(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_three_d_bf(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_array_moves_use_the_3d_axes(self) -> None:
+        """3D Brainfuck's >/< are no-ops, so the array moves with e/w."""
+        program = boolean.three_d_bf("0110", 2)
+        assert ">" not in program
+        assert "<" not in program
+        assert "e" in program
+        assert "w" in program
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.three_d_bf("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.three_d_bf("02", 1)
 
 
 class TestBasicfuck:
