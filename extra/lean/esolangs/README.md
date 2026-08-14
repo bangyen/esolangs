@@ -282,6 +282,23 @@ invariant again: the segment prints `a*b + r`, and the `>`-guard holds for
 code points), and composes segments in `progAux_correct` / `huf_value`,
 sanity-checked with `native_decide` round-trips.
 
+## Factor correctness
+
+A proof that the Factor encoder is *total* and that decoding recovers the
+program: `decode (encode code) = code`.  The encoder
+(`src/esolangs/tools/generators/tape.py::_factor_encode`) walks the runs of a
+program, assigning each run `(c, e)` the least prime `p ≥ candidate` with
+`p % 11 = res c` and folding `num *= p^e`.  The file `FactorCorrect.lean`
+models the commands (`Cmd`, residue `res`), the run-length machinery
+(`splitRun`/`runGroup`/`expand`), and the prime search `nextPrimeWithRes`,
+whose totality is exactly the Dirichlet theorem
+(`Nat.forall_exists_prime_gt_and_modEq`): every residue class mod 11 coprime
+to 11 contains infinitely many primes.  It then proves the decoder
+(`decodeRuns`) recovers each run: `decodeRuns_encodeRuns` (and hence
+`decode_encode`) shows that the sorted distinct prime factors of the encoded
+integer are precisely the chosen primes, in order, with the right exponents
+(`encodeRuns_factorization_at`, `chosenExp_pos_iff`, `primeFactors_encodeRuns`).
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
