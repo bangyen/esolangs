@@ -11,6 +11,7 @@ import Esolangs.CircleFuckCorrect
 import Esolangs.Excon
 import Esolangs.ExconCorrect
 import Esolangs.ExconSemanticsCorrect
+import Esolangs.HufCorrect
 import Esolangs.QoiblCorrect
 import Esolangs.SixFiveCorrect
 import Esolangs.SophieCorrect

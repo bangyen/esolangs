@@ -29,9 +29,10 @@ equivalence (`AlbabetSemanticsCorrect.lean`), Number Seventy-Four
 interpreter equivalence (`SeventyFourSemanticsCorrect.lean`), BF-PDA
 interpreter equivalence (`BfpdaSemanticsCorrect.lean`), the Sophie, BIO,
 6-5, and Qoibl generator correctness proofs (`SophieCorrect.lean`,
-`BioCorrect.lean`, `SixFiveCorrect.lean`, `QoiblCorrect.lean`), and the
-`_bf_set` multiply loop (`BfSetCorrect.lean`).  The candidates below go
-beyond totality, in increasing payoff order.
+`BioCorrect.lean`, `SixFiveCorrect.lean`, `QoiblCorrect.lean`), the
+`_bf_set` multiply loop (`BfSetCorrect.lean`), and the huf generator
+correctness proof (`HufCorrect.lean`).  The candidates below go beyond
+totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 `_factor_encode` (`tools/generators/tape.py`) searches for a prime with a given
@@ -41,11 +42,12 @@ prove decoding the prime factorization (exponents folding runs, residue mod 11
 identifying each instruction) recovers the original brainfuck program.
 
 ### Huf text generator correctness proof (medium priority)
-`BfSetCorrect.lean` unblocked this: huf's `# +*a | +*b ! +*r >@` segments
-share the multiply-loop invariant with `_bf_set`
-(`tools/generators/tape.py::_bf_set`), so the generator/interpreter proof
-follows the same shape as the AlbaBet one, run through the interpreter's own
-transitions.
+Done.  `HufCorrect.lean` models the register interpreter (`num`/`mul`/output,
+`step`, `run` as a foldl) and proves huf's `# +*a | +*b ! +*r >@` segments
+correct through the interpreter's own transitions: `seg_correct` reuses the
+`_bf_set` multiply invariant (`tools/generators/tape.py::_bf_set`), the
+segment prints `a*b + r`, and `progAux_correct` / `huf_value` compose
+segments for a whole text.
 
 ## Text generators: exhausted
 
