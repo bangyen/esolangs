@@ -289,8 +289,13 @@ roadmap.  The viable candidates are in `docs/roadmap.md`.
 ## User:PythonshellDebugwindow candidates that fell through
 Assessments of the unimplemented languages on PythonshellDebugwindow's user
 page that did not make the roadmap (the actual Category:Unimplemented gaps —
-ROTfuck, Suptiftam — are in `docs/roadmap.md`).
+MyScript, Procedure, Lamfunc, Point Break, State and Main — are in
+`docs/roadmap.md`).
 
+- **COD**: two-dimensional and concurrency-heavy, but its cods pick a random
+  direction at every branch, so a program's output is non-deterministic.
+- **something positive**: explicitly uncomputable (its halting depends on
+  program equivalence), so no interpreter can be verified.
 - **LogicF---**: a joke language whose commands are non-deterministic and
   non-functional (a 2% chance to increment, a 67% chance to throw a
   KeyError, and so on), with no usable protocol.

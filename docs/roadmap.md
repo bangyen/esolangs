@@ -19,9 +19,30 @@ scan.  A second look over the PythonshellDebugwindow languages found Forbin
 pages (Exp, Eso2D, Yaren, FROM HERE TO THERE) already have implementations,
 so like the earlier Jumplang/UFSA/Stackint/Queuenanimous they are not on
 this roadmap.  A third pass over the remaining unchecked pages found
-Grapheme and Point Break, both Category:Unimplemented; the rest of that
-list is either implemented, a joke, non-deterministic, no-I/O, or
-file/OS-based, and is recorded in `docs/limitations.md`.
+Grapheme (built) and Point Break, and a fourth found MyScript, Procedure,
+Lamfunc, and State and Main — all Category:Unimplemented.  The rest of that
+list is either implemented, a joke, non-deterministic, uncomputable,
+no-I/O, or file/OS-based, and is recorded in `docs/limitations.md`.
+
+### MyScript (high priority)
+A Turing-complete JavaScript-based language with prefix functions, `var
+... is ...` variables, `check`/`if`/`else` switches, `while` loops, and
+`say`/`ask` I/O.  Fully specified with working Hello World, cat, and
+truth-machine examples, and it is a genuine Category:Unimplemented gap.
+
+### Procedure (medium priority)
+A Turing-complete pseudonatural English language with `Set the variable
+'x' to ...`, `Connect to STDOUT`/`Write ... to the connection`, functions,
+repeat-gotos, and if-then-otherwise conditionals.  Working Hello World, cat,
+and truth-machine examples given.  A genuine Category:Unimplemented gap,
+though the English-syntax parser is a heavier lift.
+
+### Lamfunc (medium priority)
+A Turing-complete functional language of prefix calls and `F name - code`
+definitions with lambdas (`` .f ``) and builtins for equality, branching,
+bit ops, and variable storage.  `p` prints a value, so text output goes
+bit-by-bit and a text generator is awkward.  A genuine
+Category:Unimplemented gap.
 
 ### Point Break (low priority)
 A Turing-complete language with four commands (`LET`, `POINT`, `BREAK`,
@@ -29,6 +50,12 @@ A Turing-complete language with four commands (`LET`, `POINT`, `BREAK`,
 has no output at all, so like Crement and A Painter Ant it can only be a
 self-contained interpreter without a generator.  A genuine
 Category:Unimplemented gap.
+
+### State and Main (low priority)
+A language of `main` and numbered `state N` definitions whose only
+statements are `(state N!)` changes and `(return)` — the truth-machine
+example explicitly has "No output".  Like Point Break it can only be a
+self-contained interpreter.  A genuine Category:Unimplemented gap.
 
 Grapheme previously listed here is done: the interpreter covers the four
 modes, the arithmetic/stack commands, the untyped variable system, and
