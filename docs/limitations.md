@@ -262,16 +262,6 @@ Assessments of the unimplemented languages on PythonshellDebugwindow's user
 page that did not make the roadmap (the actual Category:Unimplemented gaps —
 ROTfuck, Suptiftam — are in `docs/roadmap.md`).
 
-- **Jumplang**: Turing-complete and well specified, but already
-  [implemented](https://github.com/Hakerh400/esolangs) per its wiki page.
-- **UFSA**: simple and fully specified, but already implemented (a Common
-  Lisp interpreter) per its wiki page.
-- **Stackint**: deterministic and well specified, but already implemented
-  per its wiki page, and its only output is the stack printed as an array,
-  which fits the repo's print-text protocol only awkwardly anyway.
-- **Queuenanimous**: a Turing-complete queue-based language with no I/O, so
-  it could only be a self-contained interpreter; already implemented per its
-  wiki page.
 - **LogicF---**: a joke language whose commands are non-deterministic and
   non-functional (a 2% chance to increment, a 67% chance to throw a
   KeyError, and so on), with no usable protocol.
