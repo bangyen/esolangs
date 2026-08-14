@@ -569,12 +569,24 @@ def _123(text: str) -> str:
 def nocomment(text: str) -> str:
     """Generate a NoComment program that outputs ``text``.
 
-    NoComment's ``c`` zeroes the current cell, ``i`` increments it, and ``o``
-    prints it as a byte, so each character becomes a fixed ``c`` + ``i``*N + ``o``
-    run.
+    The current cell is driven in place from one character's value to the
+    next with ``i``/``d`` runs (increment/decrement wrap the 8-bit cell),
+    and ``o`` prints it as a byte, so each character costs only its delta
+    from the previous one rather than its full code.
     """
     _require_bytes(text, "NoComment")
-    return "".join("c" + "i" * ord(c) + "o" for c in text)
+    res: list[str] = []
+    prev = 0
+    for c in text:
+        n = ord(c)
+        delta = n - prev
+        if delta >= 0:
+            res.append("i" * delta)
+        else:
+            res.append("d" * -delta)
+        res.append("o")
+        prev = n
+    return "".join(res)
 
 
 def unsquare(text: str) -> str:
@@ -610,17 +622,43 @@ def unsquare(text: str) -> str:
 def home_row(text: str) -> str:
     """Generate a Home Row program that outputs ``text``.
 
-    ``a`` increments the current cell and ``k`` prints it as a byte, resetting
-    it to zero (the spec's 5x5 grid initializes at zero). A leading ``as``
-    (net zero) keeps NUL characters from collapsing the adjacent ``k``s.
+    Each character is built as ``a * b + r`` on a target cell by a counter
+    loop: ``a``-run sets the counter, an ``l`` loop adds ``b`` to the target
+    and decrements the counter each pass, and an ``a``-run tops the product
+    up before ``k`` prints the target and resets it (the spec's 5x5 grid
+    initializes at zero).  ``a`` is searched near ``sqrt(ord)`` so the
+    program is O(sqrt) rather than O(ord).  A NUL uses a net-zero ``ask`` so
+    it cannot collapse into the adjacent ``k``s.
     """
     _require_bytes(text, "Home Row")
-    res = []
-    for c in text:
-        if ord(c) == 0:
-            res.append("ask")
-        else:
-            res.append("a" * ord(c) + "k")
+
+    def segment(value: int) -> str:
+        best = min(
+            (
+                (a + b + r, a, b, r)
+                for a in range(1, int(value**0.5) + 2)
+                for b, r in (divmod(value, a),)
+            ),
+        )
+        _, a, b, r = best
+        # counter cell 0, target cell 1: "f" moves 0 -> 1 and four "f"s wrap
+        # 1 -> 0 back.  The loop body adds b to the target and decrements
+        # the counter.
+        return (
+            "a" * a
+            + "l"
+            + "f"
+            + "a" * b
+            + "f" * 4
+            + "s"
+            + "l"
+            + "f"
+            + "a" * r
+            + "k"
+            + "f" * 4
+        )
+
+    res = ["ask" if ord(c) == 0 else segment(ord(c)) for c in text]
     return "".join(res) + ";"
 
 

@@ -155,19 +155,20 @@ def bf_to_circlefuck(program: str, size: int | None = None) -> str:
     return setup + "".join(ops) + "@"
 
 
-_NOCOMMENT_TO_BF = {"c": "[-]", "i": "+", "o": "."}
+_NOCOMMENT_TO_BF = {"c": "[-]", "i": "+", "d": "-", "o": "."}
 
 
 def nocomment_to_bf(program: str) -> str:
     """Rewrite a NoComment program into brainfuck.
 
-    Handles the ``c``/``i``/``o`` subset of NoComment, which maps directly
-    onto brainfuck: ``c`` clears the current cell (``[-]``), ``i``
-    increments it (``+``), and ``o`` prints it as a byte (``.``).  Anything
-    else is dropped (the full language's tape, stack, and ``s``/``b`` jumps
-    have no brainfuck translation here).  Dropping characters also makes
-    this a lenient receiver: a program the interpreter would reject for a
-    non-command still transpiles by ignoring it.
+    Handles the ``c``/``i``/``d``/``o`` subset of NoComment, which maps
+    directly onto brainfuck: ``c`` clears the current cell (``[-]``), ``i``
+    increments it (``+``), ``d`` decrements it (``-``), and ``o`` prints it
+    as a byte (``.``).  Anything else is dropped (the full language's tape,
+    stack, and ``s``/``b`` jumps have no brainfuck translation here).
+    Dropping characters also makes this a lenient receiver: a program the
+    interpreter would reject for a non-command still transpiles by ignoring
+    it.
     """
     return "".join(_NOCOMMENT_TO_BF[c] for c in program if c in _NOCOMMENT_TO_BF)
 
