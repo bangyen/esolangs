@@ -211,7 +211,6 @@ malformed program, 3 = invalid runtime operation.
 
 ### C++ Implementations
 
-- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
 - [2dFish](https://esolangs.org/wiki/2dFish)
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
 - [Forþ](https://esolangs.org/wiki/For%C3%BE)
@@ -235,10 +234,11 @@ malformed program, 3 = invalid runtime operation.
 ### Ruby Implementations
 
 - [3x](https://esolangs.org/wiki/3x)
-- [bit~](https://esolangs.org/wiki/Bit~)
 
 ### Rust Implementations
 
+- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
+- [bit~](https://esolangs.org/wiki/Bit~)
 - [Kak](https://esolangs.org/wiki/Kak)
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
