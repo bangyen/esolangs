@@ -7,7 +7,8 @@ primes; otherwise it prints 0.  A program with no digits is malformed.
 
 The language has no input command; the program file itself is the source.
 
-Semantics follow the C++ cross-check (``extra/c++/trash.cpp``) exactly:
+Semantics follow the Rust cross-check (``extra/rust/trash.rs``, itself a
+port of the original C++ reference) exactly:
 
 * only ``t`` characters before the first digit contribute to the step count,
   and other characters there are ignored;

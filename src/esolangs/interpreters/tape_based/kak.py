@@ -12,7 +12,8 @@ After the program text has been read once, the whole tape is printed as a
 bit string on its own line and execution restarts from the beginning while
 the current bit is nonzero; the program therefore always runs at least once,
 and the empty program prints ``0``.  These semantics are ported exactly from
-the C++ cross-check at ``extra/c++/kak.cpp``.
+the Rust cross-check at ``extra/rust/kak.rs`` (itself a port of the original
+C++ reference).
 
 The ``?`` skip is read on the fly exactly as the reference does it.  When
 the current bit is zero the ``?`` consumes the character right after it; if

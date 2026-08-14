@@ -19,12 +19,6 @@ The spec leaves a few edge cases open (donut wrapping, empty-queue start,
 queue/tape initialization); those need to be pinned down as conventions before
 an interpreter can be verified.
 
-### Collatz Multiverse (medium priority)
-An OISC where each line is `[var1] = [var2] x + [var3], [DO|NOT] PRINT`
-(`esolangs.org/wiki/Collatz_Multiverse`).  Real input via the `input` special
-variable, `DO`/`NOT` conditional printing, arrays, and `lineNumber` for jumps.
-The spec is slightly loose but implementable.
-
 ### A Painter Ant (low priority)
 A grid-based ant language with conditional movement and unconditional painting
 (`esolangs.org/wiki/A_Painter_Ant`).  Well-specified and Turing complete, but
@@ -99,13 +93,15 @@ a port is done when the same corpora pass against the new binary.
 
 ### Port C++ and Ruby cross-checks to Rust (medium priority)
 `extra/c++/` (Forþ, Painfuck, 2dFish, %^2^-1, Basicfuck, Kak, Trash) and the
-unique Ruby oracles (`extra/ruby/3x.rb`, `bit.rb`) move into the existing
-`extra/rust` workspace; the Ruby duplicates (`74.rb` has a Lean twin,
-`unsquare.rb` a Rust twin) are deleted outright.  Rust is memory-safe — the
-C++ Painfuck reference segfaults on its own corpus, and the asm runner
-catches faults — and one cargo workspace replaces the `cxx` and
-`extra-languages` CI jobs.  No coverage is lost: every Python interpreter
-with a native oracle keeps one.
+Ruby cross-checks (`extra/ruby/3x.rb`, `bit.rb`, and `74.rb`) move into the
+existing `extra/rust` workspace.  `74.rb` cannot be dropped outright: the
+Lean `seventy_four` has documented divergences (mid-pass halting and a
+100-command cap), so a faithful pass-boundary Rust port keeps that oracle;
+`unsquare.rb` (duplicated by the Rust reference) is deleted outright.  Rust
+is memory-safe — the C++ Painfuck reference segfaults on its own corpus, and
+the asm runner catches faults — and one cargo workspace replaces the `cxx`
+and `extra-languages` CI jobs.  No coverage is lost: every Python
+interpreter with a native oracle keeps one.
 
 ### Port x86 reference interpreters to RISC-V (medium priority)
 `extra/assembly/`'s x86 refs (123, 2 Bits 1 Byte, Brainpocalypse, NoComment,
@@ -122,6 +118,10 @@ generator, now including AlbaBet (its `c`+`a`-run+`i` generator and
 correctness proof landed with the other Lean proofs).  The remaining
 interpreter-only languages (ArrowQueue, Back, BitDeque, DSDLAI, Keys,
 Lightlang, Minsky Swap, Movesum, RAM0) either have no output, print numeric
-state, or print a fixed string, so none can emit arbitrary text.  The newly
+state, or print a fixed string, so none can emit arbitrary text.  Collatz
+Multiverse is the one exception: its interpreter emits arbitrary bytes, but
+the OISC value-building problem (the operands must be variables, so each byte
+value has to be driven into a register through the Collatz transform) has no
+worked-out construction, so it ships interpreter-only for now.  The newly
 assessed boolean candidates that fell through (Temporary, Movesum, WII2D,
 EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.

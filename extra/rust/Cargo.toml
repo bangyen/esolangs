@@ -13,3 +13,15 @@ path = "laserfuck.rs"
 [[bin]]
 name = "unsquare"
 path = "unsquare.rs"
+
+[[bin]]
+name = "kak"
+path = "kak.rs"
+
+[[bin]]
+name = "trash"
+path = "trash.rs"
+
+[[bin]]
+name = "seventy_four"
+path = "seventy_four.rs"

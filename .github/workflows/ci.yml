@@ -163,13 +163,8 @@ jobs:
         done
 
         # Output checks for languages with simple terminating programs.
-        printf 't3' > /tmp/trash.txt
-        [ "$(/tmp/trash /tmp/trash.txt)" = "5" ]
-        printf 't9' > /tmp/trash.txt
-        [ "$(/tmp/trash /tmp/trash.txt)" = "0" ]
         printf 'l' > /tmp/magnitude.txt
         [ "$(/tmp/%^2^-1 /tmp/magnitude.txt)" = "0" ]
-        [ "$(/tmp/kak /tmp/empty.txt)" = "0" ]
         echo "All extra/ C++ smoke tests passed"
 
     - name: Verify generator-only languages against the C++ references
@@ -200,6 +195,11 @@ jobs:
         : > /tmp/empty.txt
         ./extra/rust/target/debug/laserfuck /tmp/empty.txt
         ./extra/rust/target/debug/unsquare /tmp/empty.txt
+        ./extra/rust/target/debug/kak /tmp/empty.txt
+        printf 't3' > /tmp/trash.txt
+        [ "$(./extra/rust/target/debug/trash /tmp/trash.txt)" = "5" ]
+        printf '0H' > /tmp/74.txt
+        [ "$(./extra/rust/target/debug/seventy_four /tmp/74.txt)" = "H0" ]
         echo "All extra/ Rust smoke tests passed"
 
     - name: Verify generator-only languages against the Rust references
