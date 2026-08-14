@@ -86,8 +86,9 @@ C_COMPILERS = _compiler_set("c")
 
 # The README's Extra Implementations section: each entry is the extra/
 # subdirectory, its source pattern, the file-stem -> display-name map (an
-# unknown file fails loudly), and the heading.  The RISC-V 123 port is
-# excluded by matching only ``*.asm``.
+# unknown file fails loudly), and the heading.  The RISC-V ports
+# (``*-riscv.s``) are excluded by matching only ``*.asm``: they implement the
+# same languages as the x86 refs.
 _EXTRA_DIRS = [
     (
         ROOT / "extra" / "assembly",
