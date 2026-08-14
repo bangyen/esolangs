@@ -887,46 +887,6 @@ class TestMinifuck:
             boolean.minifuck("02", 1)
 
 
-class Test123:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("00", 1),  # constant zero
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("11", 1),  # constant one
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.one_two_three(table, n)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_123(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_no_jump_needed_for_one_input(self) -> None:
-        """The one-input functions are pure bit arithmetic, not a 3 tree."""
-        for table in ("00", "01", "10", "11"):
-            program = boolean.one_two_three(table, 1)
-            assert "3" not in program
-
-    def test_two_inputs_rejected(self) -> None:
-        """A decision tree needs the 3 jump, which cannot branch."""
-        with pytest.raises(ValueError, match="beyond one input"):
-            boolean.one_two_three("0110", 2)
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.one_two_three("011", 1)
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.one_two_three("02", 1)
-
-
 class TestBasicfuck:
     @pytest.mark.parametrize(
         ("table", "n"),

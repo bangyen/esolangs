@@ -108,8 +108,9 @@ no ``3``-based branch exists (a random search finds no NOT even at n == 1),
 and the single data byte makes multi-bit state impossible (every read
 overwrites it).  The one-input functions are pure bit arithmetic, however:
 const-0/const-1 build the byte, identity reads and echoes it, and NOT flips
-its least significant bit, so all four are reachable without ``3`` and a
-generator covers n == 1 only.
+its least significant bit.  This is why no ``3``-based boolean generator
+exists; the four one-input programs were too trivial to keep, so the boolean
+generator was removed.
 
 ## RAM0, BitDeque, Minsky Swap (not viable for the template model)
 These three have value-testable branches and clean setters, but their jumps

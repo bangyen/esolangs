@@ -21,7 +21,6 @@ TRUTH = EXAMPLES / "truth-machine"
 # templates (the harness substitutes the input bits) rather than input-reading
 # programs.
 BOOLEAN = {
-    "123",
     "3x",
     "3D Brainfuck",
     "6-5",
