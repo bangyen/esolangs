@@ -4,19 +4,15 @@ Planned work, in priority order.  Language assessments, documented walls,
 and ruled-out ideas live in `docs/limitations.md`; completed ideas live in
 the commit history.  This file only tracks what is still on the table.
 
-## New interpreters (in priority order)
+## New interpreters: exhausted
 
-Candidates from the esolangs wiki's Category:Unimplemented with a usable
+Every candidate from the esolangs wiki's Category:Unimplemented with a usable
 file-based I/O protocol, a complete specification, and a plausible generator
-or boolean story.  Ruled-out candidates (Gravity, Earfuck, Conveyor,
-Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast) are recorded
-in `docs/limitations.md`.
-
-### A Painter Ant (low priority)
-A grid-based ant language with conditional movement and unconditional painting
-(`esolangs.org/wiki/A_Painter_Ant`).  Well-specified and Turing complete, but
-has no I/O, so it can only be a self-contained interpreter (like the existing
-C++/Lean extras) without a generator.
+or boolean story now has an interpreter.  Ruled-out candidates (Gravity,
+Earfuck, Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic
+Teast) are recorded in `docs/limitations.md`, and A Painter Ant, the last
+addition, ships as a no-I/O grid interpreter whose final state is printed as
+an observability convention.
 
 ## Boolean generators (in priority order)
 
@@ -83,17 +79,10 @@ The differential corpora in `scripts/verify_differential.py` and the generator
 round-trips in `scripts/verify_extra_generators.py` are the acceptance test:
 a port is done when the same corpora pass against the new binary.
 
-### Port C++ and Ruby cross-checks to Rust (medium priority)
-`extra/c++/` (Forþ, Painfuck, 2dFish, %^2^-1, Basicfuck, Kak, Trash) and the
-Ruby cross-checks (`extra/ruby/3x.rb`, `bit.rb`, and `74.rb`) move into the
-existing `extra/rust` workspace.  `74.rb` cannot be dropped outright: the
-Lean `seventy_four` has documented divergences (mid-pass halting and a
-100-command cap), so a faithful pass-boundary Rust port keeps that oracle;
-`unsquare.rb` (duplicated by the Rust reference) is deleted outright.  Rust
-is memory-safe — the C++ Painfuck reference segfaults on its own corpus, and
-the asm runner catches faults — and one cargo workspace replaces the `cxx`
-and `extra-languages` CI jobs.  No coverage is lost: every Python
-interpreter with a native oracle keeps one.
+The C++ and Ruby cross-checks are done: every native oracle now lives in
+`extra/rust` (Forþ, Basicfuck, 2dFish, Painfuck, %^2^-1, Kak, Trash, bit~,
+3x, LaserFuck, Unsquare, and a pass-boundary Number Seventy-Four — the Lean
+port has diverged semantics), and the `cxx` and Ruby parts of CI are gone.
 
 ### Port x86 reference interpreters to RISC-V (medium priority)
 `extra/assembly/`'s x86 refs (123, 2 Bits 1 Byte, Brainpocalypse, NoComment,
@@ -106,18 +95,16 @@ nasm/unicorn toolchain and the x86 refs can be dropped.
 ## Text generators: exhausted
 
 Every language whose interpreter can emit arbitrary bytes already has a text
-generator, now including AlbaBet (its `c`+`a`-run+`i` generator and
-correctness proof landed with the other Lean proofs).  The remaining
-interpreter-only languages (ArrowQueue, Back, BitDeque, DSDLAI, Keys,
-Lightlang, Minsky Swap, Movesum, RAM0) either have no output, print numeric
-state, or print a fixed string, so none can emit arbitrary text.  Collatz
-Multiverse is the one exception: its interpreter emits arbitrary bytes, but
-the OISC value-building problem (the operands must be variables, so each byte
-value has to be driven into a register through the Collatz transform) has no
-worked-out construction, so it ships interpreter-only for now.  ABCDirection
-is the second exception (its Boolfuck output can emit arbitrary bits, but
-moving the tape pointer between outputs needs the full 2D routing that makes
-a text generator a routing problem rather than an arithmetic one).  The
-newly assessed boolean candidates that fell through (Temporary, Movesum,
-WII2D, EXCON, Huf, Lightlang, DSDLAI) are recorded in
-`docs/limitations.md`.
+generator, now including Collatz Multiverse (a constant table of byte values
+bootstrapped from ``negativeOne`` with the copy trick and parity-aware
+``one x + one``/``one x + two`` increments, then one copy-and-print line per
+character) and AlbaBet (its `c`+`a`-run+`i` generator and correctness proof
+landed with the other Lean proofs).  The remaining interpreter-only languages
+(ArrowQueue, Back, BitDeque, DSDLAI, Keys, Lightlang, Minsky Swap, Movesum,
+RAM0, A Painter Ant) either have no output, print numeric state, print a
+fixed string, or print their final grid, so none can emit arbitrary text.
+ABCDirection is the one exception: its Boolfuck output can emit arbitrary
+bits, but moving the tape pointer between outputs needs the full 2D routing
+that makes a text generator a routing problem rather than an arithmetic one.
+The newly assessed boolean candidates that fell through (Temporary, Movesum,
+WII2D, EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.

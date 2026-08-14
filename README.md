@@ -211,11 +211,6 @@ malformed program, 3 = invalid runtime operation.
 
 <!-- EXTRA:START -->
 
-### C++ Implementations
-
-- [2dFish](https://esolangs.org/wiki/2dFish)
-- [Painfuck](https://esolangs.org/wiki/Painfuck)
-
 ### x86 Assembly Implementations
 
 - [123](https://esolangs.org/wiki/123)
@@ -231,19 +226,18 @@ malformed program, 3 = invalid runtime operation.
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 
-### Ruby Implementations
-
-- [3x](https://esolangs.org/wiki/3x)
-
 ### Rust Implementations
 
 - [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
+- [2dFish](https://esolangs.org/wiki/2dFish)
+- [3x](https://esolangs.org/wiki/3x)
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
 - [bit~](https://esolangs.org/wiki/Bit~)
 - [Forþ](https://esolangs.org/wiki/For%C3%BE)
 - [Kak](https://esolangs.org/wiki/Kak)
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
+- [Painfuck](https://esolangs.org/wiki/Painfuck)
 - [Trash](https://esolangs.org/wiki/Trash)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 

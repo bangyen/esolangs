@@ -42,3 +42,15 @@ path = "forth.rs"
 [[bin]]
 name = "basicfuck"
 path = "basicfuck.rs"
+
+[[bin]]
+name = "two_d_fish"
+path = "2dfish.rs"
+
+[[bin]]
+name = "painfuck"
+path = "painfuck.rs"
+
+[[bin]]
+name = "three_x"
+path = "three_x.rs"

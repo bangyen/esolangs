@@ -6,7 +6,7 @@ hand.
 
 Python means an in-repo interpreter under `esolangs.interpreters`;
 Native means an implementation in `extra/` that runs as a standalone
-program (C++, Rust, Ruby, Lean, or x86 assembly).  The Boolean
+program (Rust, Lean, or x86 assembly).  The Boolean
 column marks the boolean-function generators; Back, BIO, and
 NoComment's are parameterized (the harness substitutes input bits
 into a template) rather than the program reading input.
@@ -17,7 +17,7 @@ into a template) rather than the program reading input.
 | 123 | yes | yes | yes |  |  | hello |
 | 2 Bits, 1 Byte |  | yes | yes |  |  |  |
 | 2dFish | yes | yes | yes |  |  | hello |
-| 3D Brainfuck | yes | yes |  |  |  | hello |
+| 3D Brainfuck | yes | yes |  | yes |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |
 | A Painter Ant |  | yes |  |  |  |  |
@@ -37,7 +37,7 @@ into a template) rather than the program reading input.
 | Brainpocalypse |  | yes | yes |  |  |  |
 | CircleFuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
-| Collatz Multiverse |  | yes |  |  |  |  |
+| Collatz Multiverse | yes | yes |  |  |  | hello |
 | Container | yes | yes |  | yes |  | hello |
 | DSDLAI |  | yes |  |  |  |  |
 | Dig | yes | yes |  | yes |  | hello |
