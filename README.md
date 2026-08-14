@@ -83,6 +83,9 @@ just test
 <details>
 <summary>Show all</summary>
 
+The full capability matrix (generators, native and boolean support, examples)
+is in [`docs/languages.md`](docs/languages.md).
+
 <!-- IMPLEMENTED:START -->
 
 ### Register-based Languages
