@@ -208,6 +208,50 @@ reusing `BfpdaCorrect`'s `Balanced`/`depth` results.  Under `Balanced` both
 interpreters are therefore the same `runAux`, and `interpreter_eq` states
 they print the same output.
 
+## Sophie generator correctness
+
+A proof that the Sophie text generator
+(`src/esolangs/tools/generators/tape.py::sophie`) is *correct*: for every text
+the generated program prints exactly that text.  The generator emits `#c,`
+per character, using the `#$<code>,` digit form for `\n` and `$` (whose
+literal forms would be read as Sophie syntax).  The proof covers the run
+machinery (`run`, `run_charProg`), the digit form (`readDigits`/`renderDigits`,
+`Nat.toDigits`), and `exec_correct`, and is sanity-checked with `native_decide`
+round-trips.
+
+## BIO generator correctness
+
+A proof that the BIO text generator
+(`src/esolangs/tools/generators/tape.py::bio`) is *correct*: for every text
+the generated program prints exactly that text.  BIO uses one instruction per
+byte and `1`-prefix blocks to repeat a byte `1 + n` times.  The proof is
+`repTok`, the repeat lemmas (`run_rep0_append`, `run_rep1_append`,
+`run_1ix_rest`), `run_charProg_rest`, and `exec_correct`, sanity-checked with
+`native_decide` round-trips.
+
+## 6-5 generator correctness
+
+A proof that the 6-5 text generator
+(`src/esolangs/tools/generators/tape.py::six_five`) is *correct*: for every
+text the generated program prints exactly that text.  6-5's instructions move
+an integer cell by ±1; the generator emits a path of `9`/`6` steps.  The proof
+models the cell as an integer (`ℤ`), proves the path moves the cell by the
+right amount (`run_path_append`, via `Int.emod_add_ediv_mul`), and
+`exec_correct`, sanity-checked with `native_decide` round-trips including
+paths that cross the display boundary.
+
+## Qoibl generator correctness
+
+A proof that the Qoibl text generator
+(`src/esolangs/tools/generators/register.py::qoibl`) is *correct*: for every
+text the generated program prints exactly that text.  Qoibl's `tt <expr> tt`
+expressions parse binary digits and print a character.  The generator emits
+`tt` followed by the character's binary digits as `y` (1) / `e` (0), followed
+by `tt`.  The proof covers the bit parsing (`bitVal`, `binVal`, `bitsOf`,
+`binVal_eq_binValNat`), the `tt` framing (`takeBits_bits`, `dropBits_bits`,
+`run_charProg_rest`), and `exec_correct`, sanity-checked with `native_decide`
+round-trips.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
