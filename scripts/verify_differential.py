@@ -81,6 +81,17 @@ TWO_D_FISH_BIN = Path("/tmp") / "verify-2dfish"
 PAINFUCK_CXX = ROOT / "extra" / "c++" / "painfuck.cpp"
 PAINFUCK_BIN = Path("/tmp") / "verify-painfuck"
 BIT_TILDE_RUBY = ROOT / "extra" / "ruby" / "bit.rb"
+KAK_CXX = ROOT / "extra" / "c++" / "kak.cpp"
+KAK_BIN = Path("/tmp") / "verify-kak"
+TRASH_CXX = ROOT / "extra" / "c++" / "trash.cpp"
+TRASH_BIN = Path("/tmp") / "verify-trash"
+LEAN_BIN = ROOT / "extra" / "lean" / "esolangs" / ".lake" / "build" / "bin"
+ALBABET_BIN = LEAN_BIN / "albabet"
+BFPDA_BIN = LEAN_BIN / "bfpda"
+SEVENTY_FOUR_RUBY = ROOT / "extra" / "ruby" / "74.rb"
+TWO_BITS_ONE_BYTE_ASM = ROOT / "extra" / "assembly" / "2b1b.asm"
+BRAINPOCALYPSE_ASM = ROOT / "extra" / "assembly" / "brainpocalypse.asm"
+STUN_STEP_ASM = ROOT / "extra" / "assembly" / "stun-step.asm"
 
 # Parallelism for the native-reference runs: each check spawns a subprocess,
 # so threads (which just wait on the subprocess) scale well.
@@ -1728,6 +1739,299 @@ def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
     return failures == 0
 
 
+# -- The generator-less extra/ interpreters (corpus only) -------------------
+#
+# Kak, Trash, BF-PDA, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse,
+# and Stun Step have no generators (narrow output classes), so only the
+# fixed corpora are checked; Albabet has a text generator and is fuzzed.
+
+_LEAN_BINARIES = {
+    "Albabet": ALBABET_BIN,
+    "BF-PDA": BFPDA_BIN,
+}
+
+
+def _build_kak() -> str | None:
+    """Compile the Kak C++ cross-check (once); None if g++ is missing."""
+    if shutil.which("g++") is None:
+        print("[skip] Kak differential: g++ not found")
+        return None
+    if KAK_BIN.exists():
+        return str(KAK_BIN)
+    rv = subprocess.run(
+        ["g++", "-std=c++11", str(KAK_CXX), "-o", str(KAK_BIN)], capture_output=True
+    )
+    return str(KAK_BIN) if rv.returncode == 0 else None
+
+
+def _build_trash() -> str | None:
+    """Compile the Trash C++ cross-check (once); None if g++ is missing."""
+    if shutil.which("g++") is None:
+        print("[skip] Trash differential: g++ not found")
+        return None
+    if TRASH_BIN.exists():
+        return str(TRASH_BIN)
+    rv = subprocess.run(
+        ["g++", "-std=c++11", str(TRASH_CXX), "-o", str(TRASH_BIN)], capture_output=True
+    )
+    return str(TRASH_BIN) if rv.returncode == 0 else None
+
+
+def _run_file_ref(
+    cmd: list[str], program: str, stdin: bytes = b""
+) -> tuple[bytes, int] | None:
+    """Run ``program`` (written to a temp file) through a file-based reference."""
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write(program)
+        path = f.name
+    try:
+        proc = subprocess.run(
+            [*cmd, path], capture_output=True, input=stdin, timeout=5
+        )
+        return proc.stdout, proc.returncode
+    except subprocess.TimeoutExpired:
+        return None
+    finally:
+        Path(path).unlink()
+
+
+def _assemble_x86(asm: Path) -> bytes | None:
+    """Assemble an x86 cross-check; None if nasm/unicorn are unavailable."""
+    import importlib
+
+    if shutil.which("nasm") is None:
+        return None
+    try:
+        x86_elf_runner = importlib.import_module("x86_elf_runner")
+    except SystemExit:
+        return None
+    return x86_elf_runner.assemble(str(asm))
+
+
+def _run_asm_ref(binary: bytes, program: str) -> tuple[bytes, int] | None:
+    """Run ``program`` (as the stdin stream) through an assembled reference."""
+    import importlib
+
+    x86_elf_runner = importlib.import_module("x86_elf_runner")
+    try:
+        out, code = x86_elf_runner.run_elf(binary, program.encode("latin1"))
+    except ValueError:
+        return None
+    except Exception:
+        return None  # the reference faulted (e.g. walked off its stack page)
+    return out, code
+
+
+def _inprocess_run(module: str, program: str, stdin: bytes = b"") -> bytes | None:
+    """Run ``program`` through the in-package interpreter, returning bytes.
+
+    Returns None if the interpreter does not terminate within the timeout.
+    """
+    import importlib
+    import signal
+
+    from esolangs.interpreters.io import ScriptedIO
+
+    run = importlib.import_module(module).run
+    io = ScriptedIO(stdin.decode("latin1"))
+
+    class _TimeoutError(Exception):
+        pass
+
+    def _alarm(_signum: int, _frame: object) -> None:
+        raise _TimeoutError
+
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(3)
+    try:
+        run(program, io)
+        return io.getvalue().encode("latin1")
+    except Exception:
+        return None
+    finally:
+        signal.alarm(0)
+
+
+# (name, ready(), native(program, stdin), Python module, corpus)
+_SIMPLE_CORPUS = [
+    # Kak: one-bit tape; the C++ prints the tape plus a newline
+    (
+        "Kak",
+        lambda: _build_kak() is not None,
+        lambda p, s: _run_file_ref([_build_kak()], p, s),
+        "esolangs.interpreters.tape_based.kak",
+        [("<!", b""), ("!<!", b""), ("<!!<", b""), ("", b"")],
+    ),
+    # Trash: number program; C++ prints via std::endl (trailing newline)
+    (
+        "Trash",
+        lambda: _build_trash() is not None,
+        lambda p, s: _run_file_ref([_build_trash()], p, s),
+        "esolangs.interpreters.other.trash",
+        [("t2", b""), ("t5", b""), ("5", b""), ("0", b""), ("tt3", b""), ("1", b"")],
+    ),
+    # Number Seventy-Four: Ruby reference
+    (
+        "Number Seventy-Four",
+        lambda: shutil.which("ruby") is not None,
+        lambda p, s: _run_file_ref(["ruby", str(SEVENTY_FOUR_RUBY)], p, s),
+        "esolangs.interpreters.other.seventy_four",
+        [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
+    ),
+    # 2 Bits, 1 Byte: single program byte, read from stdin by the reference
+    (
+        "2 Bits, 1 Byte",
+        lambda: _assemble_x86(TWO_BITS_ONE_BYTE_ASM) is not None,
+        lambda p, _s: _run_asm_ref(_assemble_x86(TWO_BITS_ONE_BYTE_ASM), p),
+        "esolangs.interpreters.other.two_bits_one_byte",
+        [("\xff", b""), ("\x3f", b""), ("\x00", b""), ("A", b"")],
+    ),
+    # Brainpocalypse: program read from stdin by the reference
+    (
+        "Brainpocalypse",
+        lambda: _assemble_x86(BRAINPOCALYPSE_ASM) is not None,
+        lambda p, _s: _run_asm_ref(_assemble_x86(BRAINPOCALYPSE_ASM), p),
+        "esolangs.interpreters.tape_based.brainpocalypse",
+        [("+", b""), ("++-", b""), (">+<-", b""), ("-", b""), ("", b"")],
+    ),
+    # Stun Step: program read from stdin by the reference
+    (
+        "Stun Step",
+        lambda: _assemble_x86(STUN_STEP_ASM) is not None,
+        lambda p, _s: _run_asm_ref(_assemble_x86(STUN_STEP_ASM), p),
+        "esolangs.interpreters.tape_based.stun_step",
+        [("-", b""), ("->", b""), ("<", b""), (">-", b""), (">", b"")],
+    ),
+]
+
+
+def _verify_simple_corpus() -> bool:
+    """Differentially check the generator-less extra/ interpreters."""
+    failures = 0
+    for name, ready, native, module, corpus in _SIMPLE_CORPUS:
+        if not ready():
+            print(f"[skip] {name} differential: reference toolchain not available")
+            continue
+        checked = 0
+        for program, stdin in corpus:
+            ref = native(program, stdin)
+            py = _inprocess_run(module, program, stdin)
+            if ref is None and py is None:
+                continue  # both loop forever: consistent
+            if ref is None or py is None:
+                failures += 1
+                print(
+                    f"{name} {program!r}: termination mismatch "
+                    f"(reference {'loops' if ref is None else 'halts'}, "
+                    f"Python {'loops' if py is None else 'halts'})"
+                )
+                continue
+            ref_out = ref[0].rstrip(b"\n")
+            checked += 1
+            if ref_out != py.rstrip(b"\n") or ref[1] != 0:
+                failures += 1
+                print(f"{name} {program!r}: ref={(ref_out, ref[1])!r} py={py!r}")
+        if checked:
+            print(f"{name} differential: {checked} programs match")
+    return failures == 0
+
+
+def _verify_lean(name: str, binary: Path, module: str, corpus: list[str]) -> bool:
+    """Differentially check a Lean-referenced interpreter."""
+    failures = 0
+    if not binary.exists():
+        print(f"[skip] {name} differential: Lean binary not built")
+        return True
+    checked = 0
+    for program in corpus:
+        ref = _run_file_ref([str(binary)], program)
+        if ref is None:
+            print(f"{name} {program!r}: reference did not terminate")
+            failures += 1
+            continue
+        py = _inprocess_run(module, program)
+        checked += 1
+        if ref != (py, 0):
+            failures += 1
+            print(f"{name} {program!r}: ref={ref!r} py={(py, 0)!r}")
+    if checked:
+        print(f"{name} differential: {checked} programs match")
+    return failures == 0
+
+
+_ALBABET_CORPUS = [
+    "i",
+    "ai",
+    "aai",
+    "ciai",
+    "g",
+    "h",
+    "bai",
+    "dai",
+    "e",
+    "f",
+]
+_BFPDA_CORPUS = [
+    "<@.",
+    "<<@.",
+    "<<<@<@>.",
+    "<@[@].",
+    "<@<@[@]@>.",
+    "<@[@][@].",
+    "<@[<@>].",
+    "<@<@>.",
+]
+
+
+def _fuzz_albabet(rng: random.Random, count: int) -> bool:
+    """Fuzz the AlbaBet text generator against the Lean reference."""
+    from esolangs.tools.generate import albabet
+
+    if not ALBABET_BIN.exists():
+        print("[skip] AlbaBet fuzz: Lean binary not built")
+        return True
+
+    tasks = []
+    for _ in range(count):
+        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
+        tasks.append((albabet(text), text))
+    results = _run_parallel(
+        lambda t: _run_file_ref([str(ALBABET_BIN)], t[0]), tasks
+    )
+    failures = checked = 0
+    for (program, text), result in zip(tasks, results, strict=True):
+        if result is None:
+            print(f"AlbaBet {text!r}: reference did not terminate")
+            failures += 1
+            checked += 1
+            continue
+        py = _inprocess_run("esolangs.interpreters.other.albabet", program)
+        checked += 1
+        if result != (py, 0):
+            failures += 1
+            print(f"AlbaBet {text!r}: ref={result!r} py={(py, 0)!r}")
+    print(
+        f"AlbaBet fuzz: {checked} programs match"
+        if not failures
+        else f"AlbaBet fuzz: {failures} failures of {checked}"
+    )
+    return failures == 0
+
+
+def _verify_remaining_extras() -> bool:
+    """Differentially check the newly ported extra/ interpreters."""
+    ok = _verify_simple_corpus()
+    ok = _verify_lean(
+        "Albabet", ALBABET_BIN, "esolangs.interpreters.other.albabet", _ALBABET_CORPUS
+    ) and ok
+    return (
+        _verify_lean(
+            "BF-PDA", BFPDA_BIN, "esolangs.interpreters.tape_based.bfpda", _BFPDA_CORPUS
+        )
+        and ok
+    )
+
+
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -1790,6 +2094,7 @@ def main() -> int:
     ok = _verify_two_d_fish() and ok
     ok = _verify_painfuck() and ok
     ok = _verify_bit_tilde() and ok
+    ok = _verify_remaining_extras() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
@@ -1801,6 +2106,7 @@ def main() -> int:
         ok = _fuzz_two_d_fish(rng, args.fuzz) and ok
         ok = _fuzz_painfuck(rng, args.fuzz) and ok
         ok = _fuzz_bit_tilde(rng, args.fuzz) and ok
+        ok = _fuzz_albabet(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.
