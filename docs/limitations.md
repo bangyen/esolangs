@@ -83,15 +83,22 @@ search over `{<,.[}` reaches *exactly* the 0-preserving two-input tables
 three-input function reuses the same prefix, adds a second walker, and uses
 the same `<.` suffix (`b3 XOR (b1 AND b2)`, verified 49 chars).
 
-The limitation is structural: the decode suffix flips the pool LSB only
-when the pointer sits at cell 7, and `[`'s skip always maps bit 0 to the
-higher pointer position.  So the pointer orientation is fixed and the
+The *two-input* limitation is structural: the decode suffix flips the pool
+LSB only when the pointer sits at cell 7, and `[`'s skip always maps bit 0
+to the higher pointer position.  So the pointer orientation is fixed and the
 genuinely two-input functions are forced to f(0, 0) == 0: XNOR, NAND, NOR,
-and NOT-b2 are unreachable — no complemented read-prefix exists (searched
-to length 11) and full-program search to length 14 finds none.  The n == 4
-walker stage additionally cannot reach the 8 distinct pointer positions a
-third bit needs.  A generator is therefore limited to 0-preserving tables
-with n <= 3 at most, and not to arbitrary boolean functions.
+NOT-b0, NOT-b1, and const-1 were not reachable in the original analysis
+(no complemented read-prefix exists to length 11, full-program search to
+length 14 finds none, and a re-verification search to length 34 still finds
+none).  The n == 4 walker stage additionally cannot reach the 8 distinct
+pointer positions a third bit needs.
+
+The single-input case, however, is *not* 0-preserving-bound: a re-verification
+found NOT (`<<[<[<[.[[[<[[..[`) and const-1 (`[<[<[<[.[<[[.[.[.`) at lengths
+17-18, past the original search's length-14 cap, so all four one-input
+functions (const-0, identity, NOT, const-1) are reachable.  A generator is
+therefore limited to the 0-preserving two-input tables plus all four
+one-input tables (n <= 3 at most), and not to arbitrary boolean functions.
 
 ## RAM0, BitDeque, Minsky Swap (not viable for the template model)
 These three have value-testable branches and clean setters, but their jumps
