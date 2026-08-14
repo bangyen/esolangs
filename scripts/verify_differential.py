@@ -1951,7 +1951,13 @@ def _verify_lean(name: str, binary: Path, module: str, corpus: list[str]) -> boo
             continue
         py = _inprocess_run(module, program)
         checked += 1
-        if ref != (py, 0):
+        if py is None:
+            # the interpreter raised (an invalid operation): the reference
+            # must also exit with status 3
+            if ref[1] != 3:
+                failures += 1
+                print(f"{name} {program!r}: ref={ref!r} py=error")
+        elif ref != (py, 0):
             failures += 1
             print(f"{name} {program!r}: ref={ref!r} py={(py, 0)!r}")
     if checked:
@@ -1980,6 +1986,12 @@ _BFPDA_CORPUS = [
     "<@[@][@].",
     "<@[<@>].",
     "<@<@>.",
+    # empty-stack operations: both implementations exit 3
+    "@",
+    ".",
+    ">",
+    "[",
+    "]",
 ]
 
 

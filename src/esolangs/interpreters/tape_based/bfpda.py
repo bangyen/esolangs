@@ -14,12 +14,12 @@ rather than looping as in plain brainfuck.  The reference bounds every run
 at 100 commands (``Bfpda.limit``) so ``#eval`` terminates; this interpreter
 keeps that bound, overridable as ``limit``.
 
-The reference only reaches an empty-stack access as a runtime panic that
-still exits 0 (continuing with a zero top bit), and it misruns unmatched
-brackets silently.  This interpreter instead raises
-:class:`~esolangs.exceptions.HaltError` for any top-bit access or pop on an
-empty stack, and for unmatched brackets, and rejects an empty program as
-malformed with :class:`ValueError`.
+The reference now aligns with this interpreter on empty-stack operations
+(it exits 3 like the Python's :class:`HaltError`; it used to panic and
+continue with a zero top bit).  Unmatched brackets still misrun silently in
+the Lean reference, while this interpreter raises
+:class:`~esolangs.exceptions.HaltError` for them and rejects an empty
+program as malformed with :class:`ValueError`.
 """
 
 import sys
