@@ -862,13 +862,15 @@ def bit_tilde(truth_table: str, n: int) -> str:
     bit~ is a bit pool with ``{``/``}`` while-nonzero loops.  Each ``)``
     reads an input byte into eight bits (MSB first), so the input bit lands
     at cell ``8i+7`` and cells ``8i+2``/``8i+3`` hold the ``00110000`` byte
-    pattern a ``0`` output needs.  Every (input, constant) pair each minterm
+    pattern a ``0`` output needs.  Every (input, one-row) pair each minterm
     tests is pre-copied unconditionally into a fresh cell (chained two-dest
     copies so the source survives), complemented when the minterm needs the
-    bit zero; the copies run before any loop so a skipped branch cannot break
-    the chain.  Each ``1`` row of the table is then a nested ``{ bit ... }``
-    test whose innermost body forces the result cell to 1, and the result is
-    copied into cell 7 so ``(`` prints ``48 + result``.
+    bit zero; the first input-0 copy also consumes the input bit out of cell
+    7 so the output window holds a clean 48.  Each ``1`` row of the table is
+    then a nested ``{ bit ... }`` test whose innermost body forces the result
+    cell to 1, and the result is copied into cell 7 so ``(`` prints ``48 +
+    result``.  Dense tables evaluate the complement instead (fewer minterms)
+    and flip the output bit once.
     """
     if len(truth_table) != 2**n:
         raise ValueError(
@@ -877,6 +879,13 @@ def bit_tilde(truth_table: str, n: int) -> str:
         )
     if not all(c in "01" for c in truth_table):
         raise ValueError("truth table must contain only '0' and '1'")
+
+    use_complement = truth_table.count("1") > 2**n // 2
+    table = (
+        "".join("0" if c == "1" else "1" for c in truth_table)
+        if use_complement
+        else truth_table
+    )
 
     prog: list[str] = []
     pos = 0
@@ -914,6 +923,10 @@ def bit_tilde(truth_table: str, n: int) -> str:
     for i in range(n):
         src = 8 * i + 7
         for k in range(2**n):
+            # only one-rows' indicators are used; the first input-0 copy must
+            # still run to consume the input bit out of cell 7
+            if table[k] != "1" and not (i == 0 and k == 0):
+                continue
             c = (k >> (n - 1 - i)) & 1
             use = scratch
             keep = scratch + 1
@@ -951,7 +964,7 @@ def bit_tilde(truth_table: str, n: int) -> str:
         prog.append("}")
 
     for k in range(2**n):
-        if truth_table[k] == "1":
+        if table[k] == "1":
             node(0, k)
 
     move(result)
@@ -962,6 +975,10 @@ def bit_tilde(truth_table: str, n: int) -> str:
     prog.append("~")
     prog.append("}")
     pos = result
+    if use_complement:
+        move(7)
+        prog.append("~")
+        pos = 7
     move(0)
     prog.append("(")
     return "".join(prog)
