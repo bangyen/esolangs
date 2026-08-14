@@ -70,7 +70,7 @@ class TestArrowQueue:
     def test_truth_machine_present_loops_forever(self) -> None:
         """A ~ in the data cell sustains the ring, so the program never halts."""
         program = [" ~*", "+~*", "*~+"]
-        signal.signal(signal.SIGALRM, _on_alarm)
+        old_handler = signal.signal(signal.SIGALRM, _on_alarm)
         signal.alarm(2)
         try:
             run(program, IO())
@@ -80,6 +80,7 @@ class TestArrowQueue:
             pytest.fail("the ~ branch of the truth machine should never halt")
         finally:
             signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
 
     @pytest.mark.skipif(os.name != "posix", reason="signal.alarm is POSIX-only")
     def test_truth_machine_absent_halts(self) -> None:

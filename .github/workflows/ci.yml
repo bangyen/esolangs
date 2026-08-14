@@ -9,6 +9,7 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
 
@@ -28,6 +29,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
@@ -46,15 +48,6 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra dev --python ${{ matrix.python-version }}
 
-    - name: Lint with ruff
-      run: uv run ruff check .
-
-    - name: Format check with black
-      run: uv run black --check .
-
-    - name: Type check with mypy
-      run: uv run mypy src
-
     - name: Test with pytest
       run: uv run pytest --cov --cov-report=xml --cov-report=term-missing
 
@@ -67,10 +60,27 @@ jobs:
         name: codecov-umbrella
         fail_ci_if_error: false
 
+    - name: Upload coverage report for the badge
+      if: matrix.python-version == '3.12'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-xml
+        path: coverage.xml
+        if-no-files-found: error
+        retention-days: 1
+
   coverage-badge:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
     steps:
     - uses: actions/checkout@v4
+
+    - name: Download coverage report
+      uses: actions/download-artifact@v4
+      with:
+        name: coverage-xml
+        path: .
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
@@ -85,7 +95,6 @@ jobs:
 
     - name: Regenerate the coverage badge
       run: |
-        uv run pytest --cov --cov-report=xml -q
         uv run python scripts/make_coverage_badge.py
         if ! git diff --exit-code coverage-badge.svg; then
           echo "coverage-badge.svg is out of date. Run:"
@@ -105,6 +114,7 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v4
 
@@ -127,6 +137,7 @@ jobs:
 
   rust:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v4
 
@@ -177,6 +188,7 @@ jobs:
 
   assembly:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
     - uses: actions/checkout@v4
 
@@ -232,6 +244,7 @@ jobs:
 
   lean:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
     - uses: actions/checkout@v4
 
@@ -246,12 +259,18 @@ jobs:
       uses: actions/cache@v6
       with:
         path: extra/lean/esolangs/.lake
-        key: lean-esolangs-${{ hashFiles('extra/lean/esolangs/lake-manifest.json') }}-${{ hashFiles('extra/lean/esolangs/lean-toolchain') }}
+        key: lean-esolangs-${{ hashFiles('extra/lean/esolangs/lake-manifest.json') }}-${{ hashFiles('extra/lean/esolangs/lean-toolchain') }}-${{ hashFiles('extra/lean/esolangs/lakefile.toml', 'extra/lean/esolangs/Esolangs.lean', 'extra/lean/esolangs/Esolangs/*.lean') }}
         restore-keys: |
           lean-esolangs-
 
     - name: Build the Lean proofs
       run: |
         cd extra/lean/esolangs
-        lake build
-        echo "Lean proofs built"
+        sources_hash=$(sha256sum lakefile.toml lake-manifest.json lean-toolchain Esolangs.lean Esolangs/*.lean | sha256sum | cut -d' ' -f1)
+        if [ -f .lake/build/lean-sources.hash ] && [ "$(cat .lake/build/lean-sources.hash)" = "$sources_hash" ]; then
+          echo "Lean sources unchanged; skipping lake build"
+        else
+          lake build
+          echo "$sources_hash" > .lake/build/lean-sources.hash
+          echo "Lean proofs built"
+        fi

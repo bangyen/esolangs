@@ -36,7 +36,7 @@ def _on_alarm(_signum: int, _frame: object) -> None:
 @pytest.mark.parametrize("module", MODULES)
 def test_empty_program_terminates(module: str) -> None:
     run = importlib.import_module(module).run
-    signal.signal(signal.SIGALRM, _on_alarm)
+    old_handler = signal.signal(signal.SIGALRM, _on_alarm)
     signal.alarm(3)
     try:
         run("", io=IO())
@@ -46,3 +46,4 @@ def test_empty_program_terminates(module: str) -> None:
         pass  # rejecting the empty program is a valid termination
     finally:
         signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)

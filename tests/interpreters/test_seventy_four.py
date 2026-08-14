@@ -66,7 +66,7 @@ class TestSeventyFour:
         ],
     )
     def test_output_never_starting_with_h_loops_forever(self, program: str) -> None:
-        signal.signal(signal.SIGALRM, _on_alarm)
+        old_handler = signal.signal(signal.SIGALRM, _on_alarm)
         signal.alarm(2)
         try:
             run(program, IO())
@@ -76,3 +76,4 @@ class TestSeventyFour:
             pytest.fail(f"{program!r} should restart forever without printing")
         finally:
             signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)

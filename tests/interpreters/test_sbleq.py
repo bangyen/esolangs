@@ -42,7 +42,7 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
         def _write(self, value: object) -> None:
             buffer.write(str(value))
 
-    signal.signal(signal.SIGALRM, _on_alarm)
+    old_handler = signal.signal(signal.SIGALRM, _on_alarm)
     signal.alarm(2)
     try:
         run(program, _IO(), store=store)
@@ -50,6 +50,7 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
         pytest.fail(f"S*bleq program did not terminate: {program!r}")
     finally:
         signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
     return buffer.getvalue()
 
 
