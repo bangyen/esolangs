@@ -83,13 +83,14 @@ The boolean-function generators (`tools/generators/booleans/`) emit, for a
 truth table, a program that reads the input bits and prints the table's
 output.  Correctness proofs run the generated program through the
 interpreter's own transitions for every input combination.  Done: the Sophie
-decision tree (`SophieBoolCorrect.lean`) — ``;`` reads a bit and
-``@$48{then}{else}`` branches on it, each leaf prints ``#$48``/``#$49`` and
-halts, and `treeOf_correct` shows reading the input bits descends to the
-leaf for the indexed row.  The brainfuck minterm (`_bf_minterm`) is the
-shared core for painfuck/ascii_art/three_d_bf/dimensional but needs the bf
-model extended with ``,`` input and the copy/AND scratch machinery, so it is
-a larger effort.
+decision tree (`SophieBoolCorrect.lean`) and the 6-5 decision tree
+(`SixFiveBoolCorrect.lean`) — `B` + eight `2`s normalize each bit to 8/9,
+`78` skips the `8n` jump on a zero bit and the `4` markers route a one bit,
+and `treeOf_correct` shows reading the input bits descends to the leaf for
+the indexed row.  The brainfuck minterm (`_bf_minterm`) is the shared core
+for painfuck/ascii_art/three_d_bf/dimensional but needs the bf model
+extended with ``,`` input and the copy/AND scratch machinery, so it is a
+larger effort.
 
 ### Huf text generator correctness proof (medium priority)
 Done.  `HufCorrect.lean` models the register interpreter (`num`/`mul`/output,

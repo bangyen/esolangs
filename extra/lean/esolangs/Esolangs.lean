@@ -15,6 +15,7 @@ import Esolangs.ExconCorrect
 import Esolangs.ExconSemanticsCorrect
 import Esolangs.HufCorrect
 import Esolangs.QoiblCorrect
+import Esolangs.SixFiveBoolCorrect
 import Esolangs.SixFiveCorrect
 import Esolangs.SophieCorrect
 import Esolangs.bfpda
