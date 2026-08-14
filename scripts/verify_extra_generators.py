@@ -192,10 +192,7 @@ def main() -> int:
         ok = out == table[combo].encode()
         failures += not ok
         if not ok:
-            print(
-                f"{name} boolean {table!r} n={n} combo {bits}: "
-                f"FAIL -> {out!r}"
-            )
+            print(f"{name} boolean {table!r} n={n} combo {bits}: " f"FAIL -> {out!r}")
     for name, _, _ in boolean_refs:
         print(f"{name} boolean: verified tables for n = 1..4")
 
@@ -203,7 +200,9 @@ def main() -> int:
     # stack for a wide range of n (the tables above only reach names <= 6).
     three_x_cmd = _ruby_reference("3x.rb")
     if three_x_cmd is not None:
-        const_programs = [other_bools._const(n) + "!" for n in range(256)]  # noqa: SLF001
+        const_programs = [
+            other_bools._const(n) + "!" for n in range(256)  # noqa: SLF001
+        ]
         for n, out in zip(
             range(256),
             _run_parallel(lambda prog: _run(three_x_cmd, prog), const_programs),

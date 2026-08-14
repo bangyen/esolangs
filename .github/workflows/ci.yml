@@ -335,3 +335,7 @@ jobs:
         [ "$(.lake/build/bin/bfpda /tmp/bfpda.txt)" = "1" ]
         [ "$(.lake/build/bin/seventy_four /tmp/74.txt)" = "1" ]
         echo "All Lean interpreters ran on text files"
+
+    - name: Differential-test the Lean-referenced interpreters
+      run: |
+        PYTHONPATH=src python3 scripts/verify_differential.py

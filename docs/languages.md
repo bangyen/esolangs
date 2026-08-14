@@ -15,15 +15,15 @@ into a template) rather than the program reading input.
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
 | %^2^-1 | yes | yes | yes |  |  | hello |
 | 123 | yes | yes | yes |  |  | hello |
-| 2 Bits, 1 Byte |  |  | yes |  |  |  |
+| 2 Bits, 1 Byte |  | yes | yes |  |  |  |
 | 2dFish | yes | yes | yes |  |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |
 | ASCII art | yes | yes |  | yes |  | hello |
-| Albabet |  |  | yes |  |  |  |
+| Albabet | yes | yes | yes |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |
 | BF | yes | yes |  | yes |  | hello |
-| BF-PDA |  |  | yes |  | yes |  |
+| BF-PDA |  | yes | yes |  | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
 | Back |  | yes |  | yes |  |  |
@@ -31,7 +31,7 @@ into a template) rather than the program reading input.
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
 | BitDeque |  | yes |  |  |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
-| Brainpocalypse |  |  | yes |  |  |  |
+| Brainpocalypse |  | yes | yes |  |  |  |
 | CircleFuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
 | Container | yes | yes |  | yes |  | hello |
@@ -44,7 +44,7 @@ into a template) rather than the program reading input.
 | Factor | yes | yes |  |  |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
 | Home Row | yes |  |  |  | yes |  |
-| Kak |  |  | yes |  |  |  |
+| Kak |  | yes | yes |  |  |  |
 | Keys |  | yes |  |  |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
@@ -55,18 +55,18 @@ into a template) rather than the program reading input.
 | Movesum |  | yes |  |  |  |  |
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
-| Number Seventy-Four |  |  | yes |  |  |  |
+| Number Seventy-Four |  | yes | yes |  |  |  |
 | Painfuck | yes | yes | yes |  |  | hello |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes |  |  | yes |  |
 | S*bleq | yes | yes |  | yes |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
-| Stun Step |  |  | yes |  |  |  |
+| Stun Step |  | yes | yes |  |  |  |
 | Suffolk | yes | yes |  |  | yes | hello |
 | Taglate | yes | yes |  | yes |  | hello |
 | Temporary | yes | yes |  |  |  | hello |
-| Trash |  |  | yes |  |  |  |
+| Trash |  | yes | yes |  |  |  |
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
 | ZTOALC | yes | yes |  |  |  | hello |
