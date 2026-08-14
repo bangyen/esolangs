@@ -237,6 +237,13 @@ jobs:
         printf '\xff' | python3 scripts/riscv_elf_runner.py /tmp/2b1b-riscv >/dev/null
         echo "All extra/ RISC-V interpreters ran under unicorn"
 
+    - name: Compile and run the RISC-V compilers' output
+      run: |
+        # each assembly compiler's output is assembled and executed under
+        # unicorn, so the compilers are verified end to end, not just that
+        # they emit assembly
+        PYTHONPATH=src python3 scripts/verify_riscv_unicorn.py
+
     - name: Run the RISC-V compilers and reference interpreters under unicorn
       run: |
         PYTHONPATH=src python3 scripts/verify_riscv_unicorn.py

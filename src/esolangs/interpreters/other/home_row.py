@@ -18,11 +18,7 @@ Documented decisions for gaps and divergences:
   ``l`` form a loop, the third and fourth form another, and so on), matching
   the RISC-V compiler's ``loop // 2`` numbering rather than BF-style
   nesting; an unbalanced trailing ``l`` is a malformed program
-  (:class:`ValueError`);
-- the RISC-V compiler diverges from the wiki in two ways the interpreter
-  follows the wiki over: it wraps the pointer mod 4 (``andi ..., 3``) rather
-  than mod 5, and its ``l`` loop reruns while the cell is *zero* rather than
-  nonzero.
+  (:class:`ValueError`).
 """
 
 import sys
