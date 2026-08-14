@@ -351,6 +351,20 @@ a bit, `@$48{T}{E}` branches on it, leaves print `#$48`/`#$49`), and proves
 `treeOf_correct`: reading the input bits descends the tree to the leaf for
 the row they index, printing `tt[row]`.
 
+## 6-5 boolean-function generator correctness
+
+A proof that the 6-5 boolean-function generator
+(`tools/generators/booleans/tape.py::six_five`) is *correct*: for a truth
+table with at most five inputs, the generated decision tree prints the
+table's output bit for every input combination.  `SixFiveBoolCorrect.lean`
+models the interpreter's cell, tape, input, and the commands the boolean
+program uses (`B` reads a bit and eight `2`s normalize it to 8/9; `78`
+skips the following `8n` jump on a zero bit, routing to the left subtree,
+while a one bit jumps to the matching `4` marker and the right subtree; a
+leaf's `6`/`62` arithmetic adds `48 + tt - base` before `A` prints), and
+proves `treeOf_correct`: reading the input bits descends to the leaf for the
+row, printing `tt[row]`.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
