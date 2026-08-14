@@ -56,10 +56,11 @@ EXCON interpreter equivalence (`ExconSemanticsCorrect.lean`), AlbaBet
 generator correctness (`AlbabetCorrect.lean`), AlbaBet interpreter
 equivalence (`AlbabetSemanticsCorrect.lean`), Number Seventy-Four
 interpreter equivalence (`SeventyFourSemanticsCorrect.lean`), BF-PDA
-interpreter equivalence (`BfpdaSemanticsCorrect.lean`), and the Sophie,
-BIO, 6-5, and Qoibl generator correctness proofs (`SophieCorrect.lean`,
-`BioCorrect.lean`, `SixFiveCorrect.lean`, `QoiblCorrect.lean`).  The
-candidates below go beyond totality, in increasing payoff order.
+interpreter equivalence (`BfpdaSemanticsCorrect.lean`), the Sophie, BIO,
+6-5, and Qoibl generator correctness proofs (`SophieCorrect.lean`,
+`BioCorrect.lean`, `SixFiveCorrect.lean`, `QoiblCorrect.lean`), and the
+`_bf_set` multiply loop (`BfSetCorrect.lean`).  The candidates below go
+beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 `_factor_encode` (`tools/generators/tape.py`) searches for a prime with a given
@@ -91,9 +92,11 @@ load-and-print, BIO's `1`-prefix repeat blocks driving `x` between values,
 `_bf_set` below.
 
 ### `_bf_set` multiply loop (low priority)
-A Hoare-style invariant for `+a[>+b<-]>+r.` (`tools/generators/tape.py::_bf_set`):
-after the loop the printed cell holds `a*b + r = value`.  Genuine but generic
-brainfuck reasoning.
+Done.  `BfSetCorrect.lean` models a minimal brainfuck interpreter and proves
+the `+a[>+b<-]>+r.` invariant (`tools/generators/tape.py::_bf_set`): after
+`a` iterations of `[>+b<-]` the first cell is zeroed and the second holds
+`a*b`, so the printed cell holds `a*b + r = value`.  This unblocks the huf
+generator proof below.
 
 ## Toolchain consolidation (in priority order)
 
