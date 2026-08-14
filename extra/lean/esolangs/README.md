@@ -323,6 +323,23 @@ string-literal scan `scanString` with backticks expanded back to quotes, and
 (`scan_aux`), and shows the trailing ``.`` prints the pushed string
 (`eval_correct`), sanity-checked with `native_decide` round-trips.
 
+## Collatz Multiverse generator correctness
+
+A proof that the Collatz Multiverse text generator
+(`src/esolangs/tools/generators/register.py::collatz_multiverse`) is
+*correct*: for every text the generated program prints exactly that text.
+Collatz Multiverse is an OISC whose every line is
+`[var1] = [var2] x + [var3], [DO|NOT] PRINT.`, applying the Collatz rule to
+`var1` (odd or zero values become `var1 * var2 + var3`, even values halve).
+The generator first bootstraps a constant table `k1..kmaxval` out of
+`negativeOne` (`tools/generators/helpers.py::_cm_constants`) using the copy
+trick and parity-aware `k1 x + k1`/`k1 x + k2` increments, then emits one
+`o{i} = negativeOne x + k<byte>, DO PRINT.` line per character.  The file
+`CollatzMultiverseCorrect.lean` models the Collatz transform and the exact
+line shapes, proves the table satisfies `k n = n` (`constProg_inv`), and that
+each output line prints its byte (`outProgFrom_correct`), composing into
+`cm_correct`, sanity-checked with `native_decide` round-trips.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
