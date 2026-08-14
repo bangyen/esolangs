@@ -96,6 +96,7 @@ LANGUAGES: dict[str, Language] = {
     "Factor": Language("Factor", _generate.factor, "tape_based.factor"),
     "Forþ": Language("Forþ", _generate.forth, "stack_based.forth"),
     "Forbin": Language("Forbin", _generate.forbin, "other.forbin"),
+    "Grapheme": Language("Grapheme", interpreter="other.grapheme"),
     "Home Row": Language("Home Row", _generate.home_row, "other.home_row"),
     "huf": Language("huf", _generate.huf, "register_based.huf"),
     "Kak": Language("Kak", interpreter="tape_based.kak"),
