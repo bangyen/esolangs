@@ -47,16 +47,21 @@ def test_random_programs_terminate(module: str) -> None:
     random.seed(sum(map(ord, module)))
     alphabet = FUZZ[module]
     run = importlib.import_module("esolangs.interpreters." + module).run
-    signal.signal(signal.SIGALRM, _on_alarm)
-    for _ in range(25):
-        program = "".join(random.choice(alphabet) for _ in range(random.randint(1, 24)))
-        signal.alarm(3)
-        try:
-            with patch("builtins.input", return_value="0"):
-                run(program, io=IO())
-        except _TimeoutError:
-            pytest.fail(f"{module} hung on a random program")
-        except Exception:
-            pass  # rejecting a random program is a valid termination
-        finally:
-            signal.alarm(0)
+    old_handler = signal.signal(signal.SIGALRM, _on_alarm)
+    try:
+        for _ in range(25):
+            program = "".join(
+                random.choice(alphabet) for _ in range(random.randint(1, 24))
+            )
+            signal.alarm(3)
+            try:
+                with patch("builtins.input", return_value="0"):
+                    run(program, io=IO())
+            except _TimeoutError:
+                pytest.fail(f"{module} hung on a random program")
+            except Exception:
+                pass  # rejecting a random program is a valid termination
+            finally:
+                signal.alarm(0)
+    finally:
+        signal.signal(signal.SIGALRM, old_handler)

@@ -66,7 +66,7 @@ class Test123:
             raise _TimeoutError
 
         # 2 1 2 reaches position 0 with bit 7 set; the 3 is TRUE and loops.
-        signal.signal(signal.SIGALRM, _alarm)
+        old_handler = signal.signal(signal.SIGALRM, _alarm)
         signal.alarm(2)
         try:
             run_program("21232131")
@@ -74,3 +74,4 @@ class Test123:
             pass  # the TRUE jump loops back to the start, as expected
         finally:
             signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)

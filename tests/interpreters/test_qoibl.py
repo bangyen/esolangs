@@ -41,15 +41,16 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
         _TestTimeoutError: If function exceeds timeout
 
     """
-    signal.signal(signal.SIGALRM, timeout_handler)
+    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
     try:
         result = func()
-        signal.alarm(0)
-        return result
     except _TestTimeoutError:
-        signal.alarm(0)
         raise
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
+    return result
 
 
 class TestQoiblBasicOperations:
