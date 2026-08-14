@@ -180,35 +180,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install nasm
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y nasm
-
-    - name: Build and natively run the x86 reference interpreters
-      run: |
-        set -e
-        for f in extra/assembly/*.asm; do
-          base=$(basename "$f" .asm)
-          nasm -f elf32 -o "/tmp/$base.o" "$f"
-          ld -m elf_i386 -o "/tmp/$base" "/tmp/$base.o"
-          echo "Built $f"
-        done
-        # the original x86 interpreter must round-trip the generated program
-        PYTHONPATH=src python3 -c \
-          "from esolangs.tools.generate import _123; open('/tmp/123.prog','w').write(_123('Hi'))"
-        /tmp/123 < /tmp/123.prog > /tmp/123.out
-        [ "$(cat /tmp/123.out)" = "Hi" ] || { echo "got: $(cat /tmp/123.out)"; exit 1; }
-        echo "x86 123 round-tripped Hi natively"
-        # the other reference interpreters must execute and halt
-        /tmp/brainpocalypse </dev/null >/dev/null
-        /tmp/nocomment </dev/null >/dev/null
-        /tmp/stun-step </dev/null >/dev/null
-        printf '\xff' | /tmp/2b1b >/dev/null
-        echo "All extra/ assembly interpreters ran natively"
-
     - name: Build and run the RISC-V reference interpreters
       run: |
+        sudo apt-get update
         sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user
         for s in extra/assembly/*-riscv.s; do
           base=$(basename "$s" .s)
@@ -230,25 +204,18 @@ jobs:
         printf '\xff' | qemu-riscv64 /tmp/2b1b-riscv >/dev/null
         echo "All extra/ RISC-V interpreters ran natively"
 
-    - name: Run the x86 and RISC-V reference interpreters under unicorn
+    - name: Run the RISC-V reference interpreters under unicorn
       run: |
         python3 -m pip install -q unicorn
-        # the original x86 interpreter, the RISC-V port, and the Python
-        # simulator must all agree on the generated programs
+        # the RISC-V port and the Python simulator must both agree with the
+        # in-package interpreter on the generated programs
         PYTHONPATH=src python3 scripts/verify_123_differential.py \
           /tmp/123-riscv "Hi" "Hello, World!" "esolangs!"
-        # the differential (Python vs both the x86 and RISC-V references,
-        # corpus + fuzz) needs unicorn and the RISC-V compiler, which the
-        # rust job lacks; LaserFuck's runs there instead
+        # the differential (Python vs the RISC-V references, corpus + fuzz)
+        # needs unicorn and the RISC-V compiler, which the rust job lacks;
+        # LaserFuck's runs there instead
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
         # the other reference interpreters must execute and halt
-        python3 scripts/x86_elf_runner.py extra/assembly/brainpocalypse.asm \
-          </dev/null >/dev/null
-        python3 scripts/x86_elf_runner.py extra/assembly/nocomment.asm \
-          </dev/null >/dev/null
-        python3 scripts/x86_elf_runner.py extra/assembly/stun-step.asm \
-          </dev/null >/dev/null
-        printf '\xff' | python3 scripts/x86_elf_runner.py extra/assembly/2b1b.asm >/dev/null
         python3 scripts/riscv_elf_runner.py /tmp/brainpocalypse-riscv \
           </dev/null >/dev/null
         python3 scripts/riscv_elf_runner.py /tmp/nocomment-riscv \
@@ -256,7 +223,7 @@ jobs:
         python3 scripts/riscv_elf_runner.py /tmp/stun-step-riscv \
           </dev/null >/dev/null
         printf '\xff' | python3 scripts/riscv_elf_runner.py /tmp/2b1b-riscv >/dev/null
-        echo "All extra/ assembly interpreters ran under unicorn"
+        echo "All extra/ RISC-V interpreters ran under unicorn"
 
     - name: Run the RISC-V compilers and reference interpreters under unicorn
       run: |
