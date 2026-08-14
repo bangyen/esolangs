@@ -289,20 +289,16 @@ roadmap.  The viable candidates are in `docs/roadmap.md`.
 ## User:PythonshellDebugwindow candidates that fell through
 Assessments of the unimplemented languages on PythonshellDebugwindow's user
 page that did not make the roadmap (the actual Category:Unimplemented gaps —
-MyScript, Procedure, Lamfunc, Point Break, State and Main — are in
-`docs/roadmap.md`).
+MyScript, Procedure, Lamfunc, Point Break, State and Main, Your Time Is Up,
+COD — are in `docs/roadmap.md`).
 
-- **COD**: two-dimensional and concurrency-heavy, but its cods pick a random
-  direction at every branch, so a program's output is non-deterministic.
+- **N Refine**: probabilistic self-rewriting OISC with no I/O; also already
+  implemented per its wiki page, so it is not a gap either way.
 - **something positive**: explicitly uncomputable (its halting depends on
   program equivalence), so no interpreter can be verified.
 - **LogicF---**: a joke language whose commands are non-deterministic and
   non-functional (a 2% chance to increment, a 67% chance to throw a
   KeyError, and so on), with no usable protocol.
-- **Your Time Is Up**: non-deterministic string-rewriting (a matching rule
-  is picked at random) with no I/O.
-- **N Refine**: probabilistic constant-rewriting with no deterministic
-  output.
 - **Vandevelo**: input-only, with no output at all.
 - **Varigen**: an explicitly "uncomputable" joke language.
 - **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**,
