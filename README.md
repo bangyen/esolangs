@@ -22,9 +22,9 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
 
 ## About
 
-Esoteric programming languages are designed to be difficult to program in, often as a form of art or humor. This repository provides working interpreters and compilers for a wide variety of these languages, making them accessible for experimentation and learning.
-
-Most interpreters work by reading the file specified by the first command line argument.
+Working interpreters, compilers, and transpilers for esoteric programming
+languages, each verified against its spec.  Most interpreters read the
+program file from the first command-line argument.
 
 Planned work is tracked in [`docs/roadmap.md`](docs/roadmap.md); documented
 limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md).
@@ -33,60 +33,33 @@ limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations
 
 ### Installation
 
-First, clone the repository and install the project in editable mode with development dependencies:
-
 ```bash
 git clone https://github.com/bangyen/esolangs.git
 cd esolangs
 just install-dev
 ```
 
-### Running Tests
+### Running a Program
 
-You can run the test suite using pytest to verify your installation or check your modifications:
-
-```bash
-just test
-```
-
-### Running an Interpreter
-
-You can run interpreters as Python modules from the command line:
+Interpreters run as modules, with the program file as the first argument
+(categories: `register_based`, `tape_based`, `stack_based`, `other`), or
+through the `esolangs` command:
 
 ```bash
 python -m esolangs.interpreters.<category>.<language> program.txt
+esolangs run <language> program.txt
+esolangs list                          # list the supported languages
+esolangs generate <language> "Hello"   # print a program that outputs "Hello"
+esolangs transpile BF "ASCII art" program.txt  # rewrite between languages
 ```
 
-Where `<category>` is one of `register_based`, `tape_based`, `stack_based`, or `other`.
-
-### Running a Compiler
-
-Similarly, you can run assembly compilers as Python modules:
+Assembly compilers run the same way and write `output.asm`:
 
 ```bash
 python -m esolangs.compilers.assembly.<language> program.txt
 ```
 
-This writes the generated assembly to `output.asm`.
-
-### Example: Running a BrainIf Program
-
-```bash
-python -m esolangs.interpreters.tape_based.brainif hello_world.bf
-```
-
-### The `esolangs` Command
-
-The installed `esolangs` command provides friendly subcommands:
-
-```bash
-esolangs list                          # list the supported languages
-esolangs generate CircleFuck "Hello"   # print a program that outputs "Hello"
-esolangs run CircleFuck program.txt    # run a program through its interpreter
-esolangs transpile BF "ASCII art" hello.bf   # rewrite a program as ASCII art
-```
-
-## Public API
+### Public API
 
 The package exposes a small typed API:
 
@@ -95,8 +68,14 @@ import esolangs
 
 program = esolangs.generate("CircleFuck", "Hello, World!")
 output = esolangs.run("CircleFuck", program)
-esolangs.list_languages()   # every supported language
-art = esolangs.transpile("BF", "ASCII art", program)   # rewrite between languages
+esolangs.list_languages()
+art = esolangs.transpile("BF", "ASCII art", program)
+```
+
+### Running the Tests
+
+```bash
+just test
 ```
 
 ## Implemented Languages
@@ -279,12 +258,14 @@ Compilers that translate esoteric languages to other target languages.
 
 Transpilers rewrite a program in one esolang into an equivalent program in another, and are verified end-to-end: the source runs on its interpreter, the translation runs on the target interpreter, and the outputs must agree.
 
-- BF <-> ASCII art
-- BF -> CircleFuck
-- NoComment -> BF
-- BFStack -> BF
-- BIO -> BF
-- huf -> BF
+| Source | Direction | Target |
+| --- | :---: | --- |
+| BF | ⇄ | ASCII art |
+| BF | → | CircleFuck |
+| NoComment | → | BF |
+| BFStack | → | BF |
+| BIO | → | BF |
+| huf | → | BF |
 
 Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
 
