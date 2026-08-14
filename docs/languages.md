@@ -24,10 +24,10 @@ into a template) rather than the program reading input.
 | ABCDirection |  | yes |  |  |  |  |
 | ASCII art | yes | yes |  | yes |  | hello |
 | AddSubJump | yes | yes |  |  |  | hello |
-| Albabet | yes | yes | yes |  |  | hello |
+| Albabet | yes | yes |  |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |
 | BF | yes | yes |  | yes |  | hello |
-| BF-PDA |  | yes | yes |  | yes |  |
+| BF-PDA |  | yes |  |  | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
 | Back |  | yes |  | yes |  |  |
@@ -45,10 +45,10 @@ into a template) rather than the program reading input.
 | Dig | yes | yes |  | yes |  | hello |
 | Dimensional | yes | yes |  | yes |  | hello |
 | Dotlang | yes | yes |  |  |  | hello |
-| EXCON | yes | yes | yes |  | yes | hello |
+| EXCON | yes | yes |  |  | yes | hello |
 | Eval | yes | yes |  |  |  | hello |
 | Factor | yes | yes |  |  |  | hello truth-machine |
-| Forbin | yes | yes |  |  |  | hello truth-machine |
+| Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
 | Home Row | yes | yes |  |  | yes | hello |
 | Kak |  | yes | yes |  |  |  |

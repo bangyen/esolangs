@@ -40,6 +40,7 @@ BOOLEAN = {
     "Dig",
     "Dimensional",
     "Decleq",
+    "Forbin",
     "Forþ",
     "LaserFuck",
     "Minifuck",
@@ -103,17 +104,6 @@ _EXTRA_DIRS = [
             "stun-step": "Stun Step",
         },
         "RISC-V Assembly Implementations",
-    ),
-    (
-        ROOT / "extra" / "lean" / "esolangs",
-        "*Main.lean",
-        {
-            "AlbabetMain": "Albabet",
-            "BfpdaMain": "BF-PDA",
-            "ExconMain": "EXCON",
-            "SeventyFourMain": "Number Seventy-Four",
-        },
-        "Lean Implementations",
     ),
     (
         ROOT / "extra" / "rust",

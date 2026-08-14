@@ -5,6 +5,7 @@ __all__ = [
     "bit_tilde",
     "clockwise",
     "container",
+    "forbin_boolean",
     "laserfuck",
     "nevermind",
     "taglate",
@@ -962,3 +963,48 @@ def bit_tilde(truth_table: str, n: int) -> str:
     move(0)
     prog.append("(")
     return "".join(prog)
+
+
+def forbin_boolean(truth_table: str, n: int) -> str:
+    """Build a Forbin program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Forbin's ``in`` reads one bit (most significant first), so each input
+    byte contributes 8 reads and only the last bit (the LSB, which is what
+    distinguishes ``'0'`` from ``'1'``) is used.  A decision tree over those
+    bits is laid out with the range-loop if-trick: ``for _:!b..b`` runs its
+    body once when ``b`` is 1 (the ``return`` cuts the second iteration)
+    and falls through when ``b`` is 0, so each node emits the 1-subtree then
+    the 0-subtree and every leaf prints the result byte and returns.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    lines: list[str] = ["main {"]
+    bits: list[str] = []
+    for i in range(n):
+        reads = [f"i{i}_{j}" for j in range(8)]
+        lines.append(f"  {','.join(reads)} = (in 0);")
+        bits.append(reads[7])
+
+    def emit(level: int, row: int) -> None:
+        if level == n:
+            byte = 49 if truth_table[row] == "1" else 48
+            lines.append(f"  out {','.join(format(byte, '08b'))};")
+            lines.append("  return 0;")
+            return
+        lines.append(f"  for _:!{bits[level]}..{bits[level]} {{")
+        emit(level + 1, row + 2 ** (n - 1 - level))
+        lines.append("  }")
+        emit(level + 1, row)
+
+    emit(0, 0)
+    lines.append("}")
+    return "\n".join(lines)
