@@ -47,6 +47,25 @@ to 11 contains infinitely many primes.  It then proves the decoder
 integer are precisely the chosen primes, in order, with the right exponents
 (`encodeRuns_factorization_at`, `chosenExp_pos_iff`, `primeFactors_encodeRuns`).
 
+## brainfuck minterm boolean-function generator correctness
+
+A proof that the brainfuck minterm boolean-function generator
+(`tools/generators/booleans/tape.py::_bf_minterm`) is *correct*: for a truth
+table the generated program reads the `n` input bits and prints `48 + sum`
+where `sum` is the sum of the table's one-rows' minterms (each minterm is the
+product of the input bits or their complements selecting that row, so exactly
+the one matching the input combination contributes `1`).  `BfMintermCorrect.lean`
+extends the `_bf_set` brainfuck model with a `,` input command and an input
+list, and proves the scratch machinery the generator relies on — `run_copy`
+(the `[>a+ >b+ >src-]` spread and the move-back loops), `run_complement`,
+`run_add`, and `run_and` (the nested AND loop) — then shows the whole program
+reads the bits (`run_readProg`), folds each one-row's factors into the product
+(`run_factorStep`, `run_mintermPrefix`, `run_mintermRow`), accumulates them
+into the sum (`run_rows`), and prints `48 + sum` (`bf_minterm_correct`),
+sanity-checked with `native_decide` round-trips.  This proof is kept
+self-contained rather than part of the main `lake build` (which now holds
+only the totality proofs).
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:
