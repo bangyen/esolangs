@@ -19,11 +19,11 @@ Languages with both an in-package interpreter and a native cross-check:
   via ``x86_elf_runner`` and must agree with the Python interpreter on the
   full corpus; both error on non-commands, stack underflow, and out-of-range
   jumps.
-* **Forþ** — ``stack_based/forth.py`` vs ``extra/c++/forþ.cpp``.  The C++
+* **Forþ** — ``stack_based/forth.py`` vs ``extra/rust/forth.rs``.  The Rust
   reference writes its ``Input: `` prompt to stdout (the Python side routes
   it through the IO layer), which is stripped before comparing; both agree
   on the exit-code convention (3 = invalid operation).
-* **Basicfuck** — ``tape_based/basicfuck.py`` vs ``extra/c++/basicfuck.cpp``.
+* **Basicfuck** — ``tape_based/basicfuck.py`` vs ``extra/rust/basicfuck.rs``.
   Both parse the same source-level dialect; the reference prints its
   ``Input: `` prompts and error messages to stdout, which are stripped
   before comparing, and both agree on the exit-code convention (2 =
@@ -80,6 +80,8 @@ TRASH_BIN = RUST_BIN_DIR / "trash"
 SEVENTY_FOUR_BIN = RUST_BIN_DIR / "seventy_four"
 PCT_BIN = RUST_BIN_DIR / "pct"
 BIT_TILDE_BIN = RUST_BIN_DIR / "bit_tilde"
+FORTH_BIN = RUST_BIN_DIR / "forth"
+BASICFUCK_BIN = RUST_BIN_DIR / "basicfuck"
 THREE_X_RUBY = ROOT / "extra" / "ruby" / "3x.rb"
 TWO_D_FISH_CXX = ROOT / "extra" / "c++" / "2dFish.cpp"
 TWO_D_FISH_BIN = Path("/tmp") / "verify-2dfish"
@@ -160,13 +162,8 @@ def _fuzz_text(name, generator, native, python, rng, count):
     return failures, checked
 
 
-FORTH_CXX = ROOT / "extra" / "c++" / "forþ.cpp"
-FORTH_BIN = Path("/tmp") / "verify-forþ"
-BASICFUCK_CXX = ROOT / "extra" / "c++" / "basicfuck.cpp"
-BASICFUCK_BIN = Path("/tmp") / "verify-basicfuck"
-
-# Error messages the C++ references print to stdout before exiting; stripped
-# so only the program's own output is compared.
+# Error messages the Basicfuck reference prints to stdout before exiting;
+# stripped so only the program's own output is compared.
 _CPP_ERRORS = (
     "Identifier is undefined.",
     "Invalid token.",
@@ -183,31 +180,19 @@ _CPP_ERRORS = (
 
 
 def _build_forth() -> str | None:
-    """Compile the Forþ C++ cross-check (once); None if g++ is missing."""
-    if shutil.which("g++") is None:
-        print("[skip] Forþ differential: g++ not found")
+    """Return the built Forþ Rust reference; None if cargo built it not yet."""
+    if not FORTH_BIN.exists():
+        print("[skip] Forþ differential: Rust reference not built")
         return None
-    if FORTH_BIN.exists():
-        return str(FORTH_BIN)
-    rv = subprocess.run(
-        ["g++", "-std=c++11", str(FORTH_CXX), "-o", str(FORTH_BIN)],
-        capture_output=True,
-    )
-    return str(FORTH_BIN) if rv.returncode == 0 else None
+    return str(FORTH_BIN)
 
 
 def _build_basicfuck() -> str | None:
-    """Compile the Basicfuck C++ cross-check (once); None if g++ is missing."""
-    if shutil.which("g++") is None:
-        print("[skip] Basicfuck differential: g++ not found")
+    """Return the built Basicfuck Rust reference; None if cargo built it not yet."""
+    if not BASICFUCK_BIN.exists():
+        print("[skip] Basicfuck differential: Rust reference not built")
         return None
-    if BASICFUCK_BIN.exists():
-        return str(BASICFUCK_BIN)
-    rv = subprocess.run(
-        ["g++", "-std=c++11", str(BASICFUCK_CXX), "-o", str(BASICFUCK_BIN)],
-        capture_output=True,
-    )
-    return str(BASICFUCK_BIN) if rv.returncode == 0 else None
+    return str(BASICFUCK_BIN)
 
 
 # -- LaserFuck corpus: mirrors, conditionals, tape ops, direction -------

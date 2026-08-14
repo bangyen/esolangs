@@ -161,8 +161,6 @@ jobs:
           fi
           echo "OK: $name handles empty input"
         done
-
-        # Output checks for languages with simple terminating programs.
         echo "All extra/ C++ smoke tests passed"
 
     - name: Verify generator-only languages against the C++ references
@@ -202,6 +200,11 @@ jobs:
         [ "$(./extra/rust/target/debug/pct /tmp/pct.txt)" = "0" ]
         printf '~(' > /tmp/bit_tilde.txt
         ./extra/rust/target/debug/bit_tilde /tmp/bit_tilde.txt >/dev/null
+        printf '65.' > /tmp/forth.txt
+        [ "$(./extra/rust/target/debug/forth /tmp/forth.txt)" = "5" ]
+        printf '#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;' \
+          > /tmp/basicfuck.txt
+        [ "$(./extra/rust/target/debug/basicfuck /tmp/basicfuck.txt)" = "A" ]
         echo "All extra/ Rust smoke tests passed"
 
     - name: Verify generator-only languages against the Rust references

@@ -1,8 +1,8 @@
 """Verify the generator-only languages against their extra/ references.
 
-Forþ, Painfuck, 2dFish, and Basicfuck have C++ references in ``extra/c++``,
-LaserFuck, Unsquare, %^2^-1, and bit~ have Rust references in ``extra/rust``,
-and 3x has a Ruby reference in ``extra/ruby``.  This
+Painfuck and 2dFish have C++ references in ``extra/c++``; Forþ, Basicfuck,
+LaserFuck, Unsquare, %^2^-1, and bit~ have Rust references in
+``extra/rust``; and 3x has a Ruby reference in ``extra/ruby``.  This
 script builds whatever references it can (g++ for C++, cargo for Rust) and
 round-trips each language's generator: a generated program must reproduce
 its text when run through the reference implementation.  Dimensional moved
@@ -115,18 +115,18 @@ def main() -> int:
     """Verify the extra generators round-trip, reporting failures."""
     failures = 0
 
-    cxx_names = ("forþ", "painfuck", "2dFish", "basicfuck")
+    cxx_names = ("painfuck", "2dFish")
     cxx = {name: _build_cxx(name) for name in cxx_names}
-    rust_bins = ("laserfuck", "unsquare", "pct", "bit_tilde")
+    rust_bins = ("laserfuck", "unsquare", "pct", "bit_tilde", "forth", "basicfuck")
     rust = dict.fromkeys(rust_bins)
     if _build_rust():
         rust = {name: [str(RUST_BIN_DIR / name)] for name in rust_bins}
 
     references: list[tuple[str, Callable[[str], str], list[str] | None]] = [
-        ("Forþ", gen.forth, cxx["forþ"]),
         ("Painfuck", gen.painfuck, cxx["painfuck"]),
         ("2dFish", gen.two_d_fish, cxx["2dFish"]),
-        ("Basicfuck", gen.basicfuck, cxx["basicfuck"]),
+        ("Forþ", gen.forth, rust["forth"]),
+        ("Basicfuck", gen.basicfuck, rust["basicfuck"]),
         ("LaserFuck", gen.laserfuck, rust["laserfuck"]),
         ("Unsquare", gen.unsquare, rust["unsquare"]),
         ("%^2^-1", gen.pct_squared_minus_one, rust["pct"]),
@@ -152,13 +152,13 @@ def main() -> int:
 
     # Boolean generators: 3x computes truth tables via a variable decision
     # tree (verified against Ruby), Forþ via a function-dispatch tree
-    # (C++), Basicfuck via an if/if-not decision tree (C++), and Unsquare
+    # (Rust), Basicfuck via an if/if-not decision tree (Rust), and Unsquare
     # via an accumulator decision tree (Rust).  Dimensional and Container are
     # verified against their in-package interpreters instead.
     boolean_refs: list[tuple[str, Callable[[str, int], str], list[str] | None]] = [
         ("3x", boolean.three_x, _ruby_reference("3x.rb")),
-        ("Forþ", boolean.forth, cxx["forþ"]),
-        ("Basicfuck", boolean.basicfuck, cxx["basicfuck"]),
+        ("Forþ", boolean.forth, rust["forth"]),
+        ("Basicfuck", boolean.basicfuck, rust["basicfuck"]),
         ("Unsquare", boolean.unsquare, rust["unsquare"]),
     ]
     tables = {

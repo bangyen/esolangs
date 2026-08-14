@@ -9,7 +9,7 @@ and loop (with an optional ``!`` negating the condition), ``write <- X``
 prints X as a byte, ``read -> X`` stores the next input byte, and ``X->n``
 indexes into an allocated array.  ``//`` comments are stripped.
 
-Semantics match the C++ cross-check (``extra/c++/basicfuck.cpp``):
+Semantics match the Rust cross-check (``extra/rust/basicfuck.rs``):
 - malformed programs (a bad directive, identifier, token, syntax, or a tape
   too small for the allocations) raise :class:`ValueError`;
 - a ``halt`` underflow/overflow raises :class:`HaltError`, while ``wrap``
