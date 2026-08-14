@@ -19,12 +19,6 @@ the actual Category:Unimplemented gaps; the joke, non-deterministic, no-I/O,
 file/OS-based, and already-implemented ones from that list are recorded in
 `docs/limitations.md`.
 
-### ROTfuck (high priority)
-A Turing-complete brainfuck variant where every executed command rotates
-all non-comment characters of the source one step along `+-><,.[]`.  The
-program text is self-modifying, but the spec is complete and there is a
-Hello World; the rotation-invariant construction is the interesting part.
-
 ### Suptiftam (medium priority)
 Two-dimensional tape-tapes of bytes or integers, permissive function
 definitions, includes, and I/O via the `read`/`term` tapes.  The spec is
@@ -36,6 +30,16 @@ A self-modifying language with ADDRESS/DATA/JUMP opcodes and a polarity
 field, fully specified including a Minsky-machine reduction.  It has no
 I/O, so like A Painter Ant it can only be a self-contained interpreter
 without a generator.
+
+ROTfuck previously listed here is done: the interpreter treats each
+executed command as advancing every source character one step along
+`+-><,.[]`, brackets are matched on the source (partners stay fixed as
+positions do; a partnerless executed bracket halts), and the text generator
+emits straight-line programs by placing the ``i``-fold inverse rotation of
+each desired command at position ``i``.  The loop wall is recorded in
+`docs/limitations.md`: a rotating program cannot keep its bracket pair in
+place, so no iterative loop is expressible and the generator is
+straight-line.
 
 Decleq previously listed here is done: the memory-mapped I/O falls through
 (the `-2` output and `-1` input do not jump), `a b c` stores `memory[a]-1`

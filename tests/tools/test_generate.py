@@ -36,6 +36,7 @@ from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.factor import run as factor_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
+from esolangs.interpreters.tape_based.rotfuck import run as rotfuck_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.interpreters.tape_based.three_d_bf import run as three_d_bf_run
@@ -87,6 +88,11 @@ class TestGeneratorRoundTrips:
             roundtrip(three_d_bf_run, gen.three_d_bf("Hello, World!"))
             == "Hello, World!"
         )
+
+    def test_rotfuck(self) -> None:
+        assert roundtrip(rotfuck_run, gen.rotfuck("Hi")) == "Hi"
+        assert roundtrip(rotfuck_run, gen.rotfuck("Hello, World!")) == "Hello, World!"
+        assert roundtrip(rotfuck_run, gen.rotfuck("\t\x0b\xff")) == "\t\x0b\xff"
 
     def test_between(self) -> None:
         """p prints the whole text; apostrophes are doubled inside literals."""
