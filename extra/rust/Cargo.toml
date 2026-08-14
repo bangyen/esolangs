@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 rand = "0.8.5"
+regex = "1"
 
 [[bin]]
 name = "laserfuck"
@@ -33,3 +34,11 @@ path = "pct.rs"
 [[bin]]
 name = "bit_tilde"
 path = "bit_tilde.rs"
+
+[[bin]]
+name = "forth"
+path = "forth.rs"
+
+[[bin]]
+name = "basicfuck"
+path = "basicfuck.rs"

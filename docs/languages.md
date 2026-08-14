@@ -20,6 +20,8 @@ into a template) rather than the program reading input.
 | 3D Brainfuck | yes | yes |  |  |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |
+| A Painter Ant |  | yes |  |  |  |  |
+| ABCDirection |  | yes |  |  |  |  |
 | ASCII art | yes | yes |  | yes |  | hello |
 | Albabet | yes | yes | yes |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |
