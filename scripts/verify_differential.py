@@ -33,16 +33,17 @@ Languages with both an in-package interpreter and a native cross-check:
   prompts to stdout, which are stripped before comparing; both agree on the
   exit-code convention (3 = invalid operation) and write characters above
   127 as UTF-8, so the Python output is encoded the same way.
-* **3x** — ``other/three_x.py`` vs ``extra/ruby/3x.rb``.  Both compute over
-  exact rationals; the reference prints its ``Input: `` prompts to stdout
-  (stripped before comparing) and both agree on the exit-code convention.
+* **3x** — ``other/three_x.py`` vs ``extra/rust/three_x.rs``.  Both compute
+  over exact rationals; the reference prints its ``Input: `` prompts to
+  stdout (stripped before comparing) and both agree on the exit-code
+  convention.
 * **%^2^-1** — ``register_based/%^2^-1.py`` vs ``extra/rust/pct.rs``.
   Both track the accumulator as a signed magnitude with the 3003 reset; the
   reference prints its ``Input: `` prompts to stdout, which are stripped
   before comparing.
-* **2dFish** — ``other/2dfish.py`` vs ``extra/c++/2dFish.cpp``.  Both run
+* **2dFish** — ``other/2dfish.py`` vs ``extra/rust/2dfish.rs``.  Both run
   the ragged grid with the reference's trailing-newline phantom row.
-* **Painfuck** — ``tape_based/painfuck.py`` vs ``extra/c++/painfuck.cpp``.
+* **Painfuck** — ``tape_based/painfuck.py`` vs ``extra/rust/painfuck.rs``.
   Corpus programs are encoded into the source alphabet (the reference
   translates the source before running); the nondeterministic ``y`` is
   excluded.
@@ -50,8 +51,8 @@ Languages with both an in-package interpreter and a native cross-check:
   write bytes above 127 as raw bytes; unmatched brackets raise (the former
   Ruby reference hung).
 
-Called from CI's ``extra-languages``, ``rust``, and ``cxx`` jobs (which
-provide nasm+unicorn, cargo, and g++) and from ``verify.py`` locally.
+Called from CI's ``assembly`` and ``rust`` jobs (which provide
+nasm+unicorn and cargo) and from ``verify.py`` locally.
 References whose toolchain is missing are skipped, not failed.
 
 Usage:
@@ -82,11 +83,9 @@ PCT_BIN = RUST_BIN_DIR / "pct"
 BIT_TILDE_BIN = RUST_BIN_DIR / "bit_tilde"
 FORTH_BIN = RUST_BIN_DIR / "forth"
 BASICFUCK_BIN = RUST_BIN_DIR / "basicfuck"
-THREE_X_RUBY = ROOT / "extra" / "ruby" / "3x.rb"
-TWO_D_FISH_CXX = ROOT / "extra" / "c++" / "2dFish.cpp"
-TWO_D_FISH_BIN = Path("/tmp") / "verify-2dfish"
-PAINFUCK_CXX = ROOT / "extra" / "c++" / "painfuck.cpp"
-PAINFUCK_BIN = Path("/tmp") / "verify-painfuck"
+TWO_D_FISH_BIN = RUST_BIN_DIR / "two_d_fish"
+PAINFUCK_BIN = RUST_BIN_DIR / "painfuck"
+THREE_X_BIN = RUST_BIN_DIR / "three_x"
 LEAN_BIN = ROOT / "extra" / "lean" / "esolangs" / ".lake" / "build" / "bin"
 ALBABET_BIN = LEAN_BIN / "albabet"
 BFPDA_BIN = LEAN_BIN / "bfpda"
@@ -663,7 +662,7 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
 # -- Forþ corpus: every command plus the error categories ------------------
 
 # (program, input).  Programs that `,` always provide enough input, since
-# Python's EOFError has no C++ equivalent.
+# Python's EOFError has no Rust equivalent.
 FORTH_CORPUS = [
     (",,", b"hi\n"),  # second read hits EOF: exit 3
     ("", b""),  # empty program
@@ -703,9 +702,9 @@ FORTH_CORPUS = [
 def _run_forth_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the C++ cross-check; return (stdout, exit code).
+    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
 
-    The C++ writes its ``Input: `` prompt to stdout, which is stripped (the
+    The Rust reference writes its ``Input: `` prompt to stdout, which is stripped (the
     Python side routes the prompt through the IO layer instead).  Returns
     None if the reference does not terminate within the timeout.
     """
@@ -741,7 +740,7 @@ def _run_forth_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
 
 def _verify_forth() -> bool:
-    """Compare the Python Forþ interpreter against the C++ cross-check."""
+    """Compare the Python Forþ interpreter against the Rust cross-check."""
     binary = _build_forth()
     if binary is None:
         return True
@@ -750,13 +749,13 @@ def _verify_forth() -> bool:
     for program, stdin in FORTH_CORPUS:
         native = _run_forth_native(binary, program, stdin)
         if native is None:
-            print(f"Forþ {program!r}: C++ reference did not terminate")
+            print(f"Forþ {program!r}: Rust reference did not terminate")
             failures += 1
             continue
         py = _run_forth_python(program, stdin)
         if native != py:
             failures += 1
-            print(f"Forþ {program!r}: C++ {native!r} vs Python {py!r}")
+            print(f"Forþ {program!r}: Rust {native!r} vs Python {py!r}")
 
     if not failures:
         print(f"Forþ differential: {len(FORTH_CORPUS)} programs match")
@@ -768,7 +767,7 @@ def _fuzz_forth(rng: random.Random, count: int) -> bool:
 
     The boolean generator emits terminating decision-tree programs that read
     one bit per line and print the matching entry.  Random instruction
-    programs would frequently hang the C++ reference, which has no loop
+    programs would frequently hang the Rust reference, which has no loop
     bound, so they are not fuzzed.
     """
     from esolangs.tools import boolean
@@ -796,7 +795,7 @@ def _fuzz_forth(rng: random.Random, count: int) -> bool:
 # -- Basicfuck corpus: every construct plus the error categories -----------
 
 # (program, input).  Programs that read always provide enough input, since
-# Python's EOFError has no C++ equivalent (the reference stores -1 at EOF).
+# Python's EOFError has no Rust equivalent (the reference stores -1 at EOF).
 _BF_N = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
 _BF_W = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\n"
 _BF_H = "#basicfuck t=1 r=0~255 o=halt\n#allocate a\n"
@@ -842,7 +841,7 @@ BASICFUCK_CORPUS = [
 def _run_basicfuck_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the C++ cross-check; return (stdout, exit code).
+    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
 
     The reference prints its ``Input: `` prompts and error messages to
     stdout, which are stripped before comparing.
@@ -883,7 +882,7 @@ def _run_basicfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
 
 def _verify_basicfuck() -> bool:
-    """Compare the Python Basicfuck interpreter against the C++ cross-check."""
+    """Compare the Python Basicfuck interpreter against the Rust cross-check."""
     binary = _build_basicfuck()
     if binary is None:
         return True
@@ -892,7 +891,7 @@ def _verify_basicfuck() -> bool:
     for program, stdin in BASICFUCK_CORPUS:
         native = _run_basicfuck_native(binary, program, stdin)
         if native is None:
-            print(f"Basicfuck {program.splitlines()[-1]!r}: C++ did not terminate")
+            print(f"Basicfuck {program.splitlines()[-1]!r}: Rust did not terminate")
             failures += 1
             continue
         py = _run_basicfuck_python(program, stdin)
@@ -900,7 +899,7 @@ def _verify_basicfuck() -> bool:
             failures += 1
             print(
                 f"Basicfuck {program.splitlines()[-1]!r}: "
-                f"C++ {native!r} vs Python {py!r}"
+                f"Rust {native!r} vs Python {py!r}"
             )
 
     if not failures:
@@ -913,7 +912,7 @@ def _fuzz_basicfuck(rng: random.Random, count: int) -> bool:
 
     The boolean generator emits terminating decision-tree programs (reads,
     normalization, and nested if/if! dispatch); random source programs would
-    frequently hang the C++ reference, which has no loop bound, so they are
+    frequently hang the Rust reference, which has no loop bound, so they are
     not fuzzed.
     """
     from esolangs.tools import boolean
@@ -1103,7 +1102,7 @@ THREE_X_CORPUS = [
 
 
 def _run_three_x_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Ruby cross-check; return (stdout, exit code).
+    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
 
     The reference prints its ``Input: `` prompts to stdout, which are
     stripped; invalid operations exit with status 3.
@@ -1113,7 +1112,7 @@ def _run_three_x_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
         path = f.name
     try:
         proc = subprocess.run(
-            ["ruby", str(THREE_X_RUBY), path],
+            [str(THREE_X_BIN), path],
             capture_output=True,
             input=stdin,
             timeout=5,
@@ -1143,22 +1142,22 @@ def _run_three_x_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
 
 def _verify_three_x() -> bool:
-    """Compare the Python 3x interpreter against the Ruby cross-check."""
-    if shutil.which("ruby") is None:
-        print("[skip] 3x differential: ruby not found")
+    """Compare the Python 3x interpreter against the Rust cross-check."""
+    if not THREE_X_BIN.exists():
+        print("[skip] 3x differential: Rust reference not built")
         return True
 
     failures = 0
     for program, stdin in THREE_X_CORPUS:
         native = _run_three_x_native(program, stdin)
         if native is None:
-            print(f"3x {program!r}: Ruby reference did not terminate")
+            print(f"3x {program!r}: Rust reference did not terminate")
             failures += 1
             continue
         py = _run_three_x_python(program, stdin)
         if native != py:
             failures += 1
-            print(f"3x {program!r}: Ruby {native!r} vs Python {py!r}")
+            print(f"3x {program!r}: Rust {native!r} vs Python {py!r}")
 
     if not failures:
         print(f"3x differential: {len(THREE_X_CORPUS)} programs match")
@@ -1174,8 +1173,8 @@ def _fuzz_three_x(rng: random.Random, count: int) -> bool:
     """
     from esolangs.tools import boolean
 
-    if shutil.which("ruby") is None:
-        print("[skip] 3x fuzz: ruby not found")
+    if not THREE_X_BIN.exists():
+        print("[skip] 3x fuzz: Rust reference not built")
         return True
 
     failures, checked = _fuzz_boolean(
@@ -1197,7 +1196,7 @@ def _fuzz_three_x(rng: random.Random, count: int) -> bool:
 # -- %^2^-1 corpus: every command plus the error categories ----------------
 
 # (program, input).  Programs that read always provide enough input, since
-# Python's EOFError has no C++ equivalent (the reference stores -1).
+# Python's EOFError has no Rust equivalent (the reference stores -1).
 PCT_CORPUS = [
     ("nn", b"X\n"),  # second read hits EOF: exit 3
     ("'e", b""),  # reset then print 0
@@ -1229,7 +1228,7 @@ def _build_pct() -> str | None:
 def _run_pct_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the C++ cross-check; return (stdout, exit code)."""
+    """Run ``program`` through the Rust cross-check; return (stdout, exit code)."""
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(program)
         path = f.name
@@ -1262,7 +1261,7 @@ def _run_pct_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
 
 def _verify_pct() -> bool:
-    """Compare the Python %^2^-1 interpreter against the C++ cross-check."""
+    """Compare the Python %^2^-1 interpreter against the Rust cross-check."""
     binary = _build_pct()
     if binary is None:
         return True
@@ -1271,13 +1270,13 @@ def _verify_pct() -> bool:
     for program, stdin in PCT_CORPUS:
         native = _run_pct_native(binary, program, stdin)
         if native is None:
-            print(f"%^2^-1 {program!r}: C++ reference did not terminate")
+            print(f"%^2^-1 {program!r}: Rust reference did not terminate")
             failures += 1
             continue
         py = _run_pct_python(program, stdin)
         if native != py:
             failures += 1
-            print(f"%^2^-1 {program!r}: C++ {native!r} vs Python {py!r}")
+            print(f"%^2^-1 {program!r}: Rust {native!r} vs Python {py!r}")
 
     if not failures:
         print(f"%^2^-1 differential: {len(PCT_CORPUS)} programs match")
@@ -1340,23 +1339,17 @@ TWO_D_FISH_CORPUS = [
 
 
 def _build_two_d_fish() -> str | None:
-    """Compile the 2dFish C++ cross-check (once); None if g++ is missing."""
-    if shutil.which("g++") is None:
-        print("[skip] 2dFish differential: g++ not found")
+    """Return the built 2dFish Rust reference; None if cargo built it not yet."""
+    if not TWO_D_FISH_BIN.exists():
+        print("[skip] 2dFish differential: Rust reference not built")
         return None
-    if TWO_D_FISH_BIN.exists():
-        return str(TWO_D_FISH_BIN)
-    rv = subprocess.run(
-        ["g++", "-std=c++11", str(TWO_D_FISH_CXX), "-o", str(TWO_D_FISH_BIN)],
-        capture_output=True,
-    )
-    return str(TWO_D_FISH_BIN) if rv.returncode == 0 else None
+    return str(TWO_D_FISH_BIN)
 
 
 def _run_two_d_fish_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the C++ cross-check; return (stdout, exit code)."""
+    """Run ``program`` through the Rust cross-check; return (stdout, exit code)."""
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(program)
         path = f.name
@@ -1394,7 +1387,7 @@ def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
 
 def _verify_two_d_fish() -> bool:
-    """Compare the Python 2dFish interpreter against the C++ cross-check."""
+    """Compare the Python 2dFish interpreter against the Rust cross-check."""
     binary = _build_two_d_fish()
     if binary is None:
         return True
@@ -1403,13 +1396,13 @@ def _verify_two_d_fish() -> bool:
     for program, stdin in TWO_D_FISH_CORPUS:
         native = _run_two_d_fish_native(binary, program, stdin)
         if native is None:
-            print(f"2dFish {program!r}: C++ reference did not terminate")
+            print(f"2dFish {program!r}: Rust reference did not terminate")
             failures += 1
             continue
         py = _run_two_d_fish_python(program, stdin)
         if native != py:
             failures += 1
-            print(f"2dFish {program!r}: C++ {native!r} vs Python {py!r}")
+            print(f"2dFish {program!r}: Rust {native!r} vs Python {py!r}")
 
     if not failures:
         print(f"2dFish differential: {len(TWO_D_FISH_CORPUS)} programs match")
@@ -1496,23 +1489,17 @@ _PAIN_CORPUS = [
 
 
 def _build_painfuck() -> str | None:
-    """Compile the Painfuck C++ cross-check (once); None if g++ is missing."""
-    if shutil.which("g++") is None:
-        print("[skip] Painfuck differential: g++ not found")
+    """Return the built Painfuck Rust reference; None if cargo built it not yet."""
+    if not PAINFUCK_BIN.exists():
+        print("[skip] Painfuck differential: Rust reference not built")
         return None
-    if PAINFUCK_BIN.exists():
-        return str(PAINFUCK_BIN)
-    rv = subprocess.run(
-        ["g++", "-std=c++11", str(PAINFUCK_CXX), "-o", str(PAINFUCK_BIN)],
-        capture_output=True,
-    )
-    return str(PAINFUCK_BIN) if rv.returncode == 0 else None
+    return str(PAINFUCK_BIN)
 
 
 def _run_painfuck_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the C++ cross-check; return (stdout, exit code)."""
+    """Run ``program`` through the Rust cross-check; return (stdout, exit code)."""
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(program)
         path = f.name
@@ -1548,7 +1535,7 @@ def _run_painfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
 
 def _verify_painfuck() -> bool:
-    """Compare the Python Painfuck interpreter against the C++ cross-check."""
+    """Compare the Python Painfuck interpreter against the Rust cross-check."""
     binary = _build_painfuck()
     if binary is None:
         return True
@@ -1558,13 +1545,13 @@ def _verify_painfuck() -> bool:
         program = _painfuck_encode(targets)
         native = _run_painfuck_native(binary, program, stdin)
         if native is None:
-            print(f"Painfuck {targets!r}: C++ reference did not terminate")
+            print(f"Painfuck {targets!r}: Rust reference did not terminate")
             failures += 1
             continue
         py = _run_painfuck_python(program, stdin)
         if native != py:
             failures += 1
-            print(f"Painfuck {targets!r}: C++ {native!r} vs Python {py!r}")
+            print(f"Painfuck {targets!r}: Rust {native!r} vs Python {py!r}")
 
     if not failures:
         print(f"Painfuck differential: {len(_PAIN_CORPUS)} programs match")
@@ -1601,7 +1588,7 @@ def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
 
 # -- bit~ corpus: every command plus the error categories ------------------
 
-# Unmatched brackets hang the Ruby reference (the Python side raises instead).
+# Unmatched brackets raise in both sides (the former Ruby reference hung).
 BIT_TILDE_CORPUS = [
     ("))", b"a\n"),  # second read hits EOF: exit 3
     ("~(", b""),
@@ -1680,7 +1667,7 @@ def _verify_bit_tilde() -> bool:
     for program, stdin in BIT_TILDE_CORPUS:
         native = _run_bit_tilde_native(program, stdin)
         if native is None:
-            print(f"bit~ {program!r}: Ruby reference did not terminate")
+            print(f"bit~ {program!r}: Rust reference did not terminate")
             failures += 1
             continue
         py = _run_bit_tilde_python(program, stdin)
