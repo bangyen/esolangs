@@ -1,5 +1,16 @@
 # Lean proofs for the text generators
 
+## EXCON generator correctness
+
+A proof that the EXCON text generator
+(`src/esolangs/tools/generators/tape.py::excon`) is *correct*: for every text
+the generated program prints exactly that text.  `ExconCorrect.lean` embeds
+the EXCON interpreter's pure state transitions (the 8-cell bit pool,
+`gets`/`flips`/`to_s`, which reads the pool back as `128*pool[0] + ... +
+pool[7]`) and proves the generator's pointer walk: each set bit of the byte
+is flipped exactly once, so ``!`` prints the byte.  The main theorem is
+stated for byte-range texts, with the byte range verified by computation.
+
 ## MAMMALIAN generator totality
 
 A Lean 4 + mathlib proof that the MAMMALIAN text generator
@@ -29,6 +40,15 @@ Reachability uses the same step range (1..46) as the reference
 `_mammalian_walk`, so the theorem certifies the actual generator's search:
 it never hits the `ValueError` branch.  The reference implementation reports
 the same zero failures.
+
+## AlbaBet generator correctness
+
+A proof that the AlbaBet text generator
+(`src/esolangs/tools/generators/register.py::albabet`) is *correct*: for
+every text the generated program prints exactly that text.  `AlbabetCorrect.lean`
+models the tape interpreter's transitions (`a`/`b` move the accumulator, `c`
+zeroes it, `i` prints it) and proves the per-character program: `c` zeroes
+the accumulator, the `a` run sets it to the byte, and `i` prints it.
 
 ## CircleFuck generator correctness
 

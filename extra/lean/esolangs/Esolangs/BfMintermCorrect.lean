@@ -813,7 +813,7 @@ lemma run_complement (src dst tmp a b k : ℕ) (s : State) (hptr : s.ptr = 0)
     (hsrc1 : s.tape src ≤ 1) (hsrc : s.tape src ≤ k) (ha : s.tape a = 0) (hb : s.tape b = 0)
     (hdst0 : s.tape dst = 0) (htmp0 : s.tape tmp = 0)
     (hna : a ≠ src) (hnb : b ≠ src) (hnab : a ≠ b)
-    (hst : src ≠ tmp) (hdt : dst ≠ tmp)
+    (hst : src ≠ tmp) (hdt : dst ≠ tmp) (hdst2 : dst ≠ src)
     (hdstA : dst ≠ a) (hdstB : dst ≠ b) (htA : tmp ≠ a) (htB : tmp ≠ b) :
     run (complement src dst tmp a b) k s
       = { ptr := 0, tape := fun i => if i = dst then 1 - s.tape src else s.tape i,
@@ -831,49 +831,287 @@ lemma run_complement (src dst tmp a b k : ℕ) (s : State) (hptr : s.ptr = 0)
   rw [hz]
   rw [run_plus]
   rw [run_nil]
-  have hinc : ({ s with ptr := dst }).inc = { s with ptr := dst, tape := Function.update s.tape dst 1 } := by
-    apply State.ext
-    · rfl
-    · ext i <;> by_cases h : i = dst <;> simp [State.inc, Function.update, h]
-      · rw [hdst0]
-    · rfl
-    · rfl
-  simpa [hinc] using (rfl : ({ s with ptr := dst }).inc = ({ s with ptr := dst }).inc)
-  have hmv := run_move dst 0 k { s with ptr := dst, tape := Function.update s.tape dst 1 } (by simp)
+  have hmv := run_move dst 0 k ({ s with ptr := dst, tape := Function.update s.tape dst 0 }).inc (by simp [State.inc])
   rw [hmv]
-  have hcopy := run_copy src tmp a b k { s with tape := Function.update s.tape dst 1 }
-    (by simp) (by simp [hsrc]) (by simp [ha]) (by simp [hb]) hna hnb hnab hst.symm htA htB
+  let Sd : State := { ({ s with ptr := dst, tape := Function.update s.tape dst 0 }).inc with ptr := 0 }
+  have hcopy := run_copy src tmp a b k Sd
+    (by simp [Sd]) (by simp [Sd, State.inc, hdst2, hdst2.symm, hsrc]) (by simp [Sd, State.inc, ha, hdstA, hdstA.symm])
+    (by simp [Sd, State.inc, hb, hdstB, hdstB.symm]) hna hnb hnab hst.symm htA htB
   rw [hcopy]
-  have hm0 := run_move 0 tmp k { ptr := 0, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape src else (if i = dst then 1 else s.tape i), inp := s.inp, out := s.out } (by simp)
+  have hm0 := run_move 0 tmp k { ptr := 0, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then Sd.tape tmp + Sd.tape src else Sd.tape i, inp := Sd.inp, out := Sd.out } (by simp [Sd])
   rw [hm0]
+  let St : ℕ → ℕ := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then Sd.tape tmp + Sd.tape src else Sd.tape i
   have hloop4 : run [Cmd.loop (move tmp dst ++ [Cmd.minus] ++ move dst tmp ++ [Cmd.minus])] k
-      { ptr := tmp, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape src else (if i = dst then 1 else s.tape i), inp := s.inp, out := s.out }
+      { ptr := tmp, tape := St, inp := Sd.inp, out := Sd.out }
       = runLoop (fun n s => run (move tmp dst ++ [Cmd.minus] ++ move dst tmp ++ [Cmd.minus]) n s) k
-      { ptr := tmp, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape src else (if i = dst then 1 else s.tape i), inp := s.inp, out := s.out } := by
+      { ptr := tmp, tape := St, inp := Sd.inp, out := Sd.out } := by
     rw [run_loop, run_nil]
   rw [hloop4]
-  have hsub := runLoop_sub tmp dst k (s.tape src) 1
-    { ptr := tmp, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape src else (if i = dst then 1 else s.tape i), inp := s.inp, out := s.out }
-    (by simp) (by simp) (by simp [hsrc1, hsrc]) (by simp) hdt
+  have hsub := runLoop_sub tmp dst k (St tmp) (St dst)
+    { ptr := tmp, tape := St, inp := Sd.inp, out := Sd.out }
+    (by simp [St, Sd, State.inc, htmp0, hdst2, hdst2.symm, hdt, hdt.symm, htA, htB, htA.symm, htB.symm, hsrc1, hsrc])
+    (by simp [St, Sd, State.inc, hdstA, hdstB, hdst2, hdt, htA, htB]) (by simp [St, Sd, State.inc, htmp0, hdst2, hdst2.symm, hdt, hdt.symm, htA, htB, htA.symm, htB.symm, hsrc1, hsrc]) (by simp [St]) hdt
   rw [hsub]
-  have hm1 := run_move tmp 0 k { ptr := tmp, tape := fun i => if i = tmp then 0 else if i = dst then 1 - s.tape src else if i = a then 0 else if i = b then 0 else s.tape i, inp := s.inp, out := s.out } (by simp)
+  have hm1 := run_move tmp 0 k { ptr := tmp, tape := fun i => if i = tmp then 0 else if i = dst then St dst - St tmp else St i, inp := Sd.inp, out := Sd.out } (by simp)
   rw [hm1]
   apply State.ext
   · rfl
   · ext i
     by_cases h0 : i = dst
     · subst i
-      simp
+      simp [St, Sd, State.inc, htmp0, hdst2, hdst2.symm, hdt, hdt.symm, htA, htB, htA.symm, htB.symm, hsrc1, hdstA, hdstB]
     · by_cases h1 : i = tmp
       · subst i
-        simp
+        simp [St, Sd, State.inc, htmp0, hdt, hdst2, htA, htB]
+        omega
       · by_cases h2 : i = a
         · subst i
-          simp [hdstA]
+          simp [St, Sd, State.inc, ha, hdstA, hdstA.symm, hdst2, hdt, htmp0, htA, hdstB]
         · by_cases h3 : i = b
           · subst i
-            simp [hdstB]
-          · simp [h0, h1, h2, h3]
+            simp [St, Sd, State.inc, hb, hdstB, hdstB.symm, hdst2, hdt, htmp0, htB, hdstA]
+          · simp [St, Sd, State.inc, ha, hb, h0, h1, h2, h3, hdst2, hdst2.symm, hdstA, hdstA.symm, hdstB, hdstB.symm, hdt, htmp0, htA, htB]
+  · rfl
+  · rfl
+
+
+/-- **The ``add`` macro.**  ``sum += src``, ``src`` preserved, scratch
+zeroed, pointer home. -/
+lemma run_add (src sum tmp a b k : ℕ) (s : State) (hptr : s.ptr = 0)
+    (hsrc : s.tape src ≤ k) (ha : s.tape a = 0) (hb : s.tape b = 0) (htmp0 : s.tape tmp = 0)
+    (hna : a ≠ src) (hnb : b ≠ src) (hnab : a ≠ b)
+    (hst : src ≠ tmp) (hsum : sum ≠ tmp) (htA : tmp ≠ a) (htB : tmp ≠ b)
+    (hsumS : sum ≠ src) (hsumA : sum ≠ a) (hsumB : sum ≠ b) :
+    run (add src sum tmp a b) k s
+      = { ptr := 0, tape := fun i => if i = tmp then 0 else if i = sum then s.tape sum + s.tape src else s.tape i,
+          inp := s.inp, out := s.out } := by
+  unfold add
+  rw [run_append]
+  rw [run_append]
+  rw [run_append]
+  have hcopy := run_copy src tmp a b k s hptr hsrc ha hb hna hnb hnab hst.symm htA htB
+  rw [hcopy]
+  have hm0 := run_move 0 tmp k { ptr := 0, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape tmp + s.tape src else s.tape i, inp := s.inp, out := s.out } (by simp)
+  rw [hm0]
+  have hloop5 : run [Cmd.loop (move tmp sum ++ [Cmd.plus] ++ move sum tmp ++ [Cmd.minus])] k
+      { ptr := tmp, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape tmp + s.tape src else s.tape i, inp := s.inp, out := s.out }
+      = runLoop (fun n s => run (move tmp sum ++ [Cmd.plus] ++ move sum tmp ++ [Cmd.minus]) n s) k
+      { ptr := tmp, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape tmp + s.tape src else s.tape i, inp := s.inp, out := s.out } := by
+    rw [run_loop, run_nil]
+  rw [hloop5]
+  let St2 : ℕ → ℕ := fun i => if i = tmp then 0 else if i = sum then s.tape sum + (s.tape tmp + s.tape src) else (if i = a then 0 else if i = b then 0 else if i = tmp then s.tape tmp + s.tape src else s.tape i)
+  have hmove := runLoop_move tmp sum k (s.tape tmp + s.tape src) (s.tape sum)
+    { ptr := tmp, tape := fun i => if i = a then 0 else if i = b then 0 else if i = tmp then s.tape tmp + s.tape src else s.tape i, inp := s.inp, out := s.out }
+    (by simp [htA, htB]) (by simp [hsumA, hsumB, hsumS, hsum]) (by simp [htmp0, hsrc, htA, htB]) (by simp) hsum
+  rw [hmove]
+  have hm1 := run_move tmp 0 k { ptr := tmp, tape := St2, inp := s.inp, out := s.out } (by simp)
+  rw [hm1]
+  apply State.ext
+  · rfl
+  · ext i
+    by_cases h0 : i = sum
+    · subst i
+      simp [St2, hsum, hsumA, hsumB, htmp0]
+    · by_cases h1 : i = tmp
+      · subst i
+        simp [St2, htmp0]
+      · by_cases h2 : i = a
+        · subst i
+          simp [St2, ha, hsumA, htmp0, hsum]
+        · by_cases h3 : i = b
+          · subst i
+            simp [St2, hb, hsumB, htmp0, hsum]
+          · simp [St2, h0, h1, h2, h3, htmp0, hsum]
+  · rfl
+  · rfl
+
+
+/-- One iteration of ``[>t2[>dst+ >t2-]>t1-]``: cell ``t1`` drops by one and
+the value of ``t2`` (0/1) is moved into ``dst``. -/
+lemma run_body_and (t1 t2 dst k w : ℕ) (s : State) (hptr : s.ptr = t1) (hw : s.tape t2 = w)
+    (hd : s.tape dst = 0) (hne1 : t1 ≠ t2) (hne2 : t1 ≠ dst) (hne3 : t2 ≠ dst)
+    (hw1 : w ≤ k) :
+    run (move t1 t2 ++ [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] ++ move t2 t1 ++ [Cmd.minus]) k s
+      = { s with ptr := t1, tape := Function.update (Function.update s.tape t1 (s.tape t1 - 1)) dst (0 + w) } := by
+  rw [run_append]
+  rw [run_append]
+  rw [run_append]
+  rw [run_move t1 t2 k s hptr]
+  have hloopi : run [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] k
+      { s with ptr := t2 }
+      = runLoop (fun n s => run (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus]) n s) k { s with ptr := t2 } := by
+    rw [run_loop, run_nil]
+  rw [hloopi]
+  have hmove := runLoop_move t2 dst k w 0 { s with ptr := t2 }
+    (by simp [hw]) (by simp [hd]) (by simp [hw1]) (by simp) hne3.symm
+  rw [hmove]
+  have hmv := run_move t2 t1 k ({ ptr := t2, tape := (fun i => if i = t2 then 0 else if i = dst then 0 + w else s.tape i), inp := s.inp, out := s.out }) (by simp)
+  rw [hmv]
+  rw [run_minus]
+  rw [run_nil]
+  apply State.ext
+  · rfl
+  · ext i
+    by_cases h0 : i = t1
+    · by_cases h1 : i = dst
+      · omega
+      · subst i
+        have hc : ¬ t1 = dst := by exact fun h => hne2 h
+        simp [hptr, hc]
+    · by_cases h1 : i = dst
+      · subst i
+        have hc : ¬ t1 = dst := by exact fun h => hne2 h
+        simp [hptr, hc]
+        omega
+      · by_cases h2 : i = t2
+        · subst i
+          simp [hne1, hne2]
+        · simp [h0, h1, h2]
+  · rfl
+  · rfl
+
+/-- **The AND loop.**  ``[>t2[>dst+ >t2-]>t1-]`` sets ``dst`` to ``v AND w``
+(the ``0/1`` values of cells ``t1`` and ``t2``), zeroing ``t1`` and ``t2``. -/
+lemma runLoop_and (t1 t2 dst k v w : ℕ) (s : State) (hv : s.tape t1 = v) (hw : s.tape t2 = w)
+    (hv01 : v = 0 ∨ v = 1) (hd : s.tape dst = 0) (hs : v ≤ k) (hptr : s.ptr = t1)
+    (hne1 : t1 ≠ t2) (hne2 : t1 ≠ dst) (hne3 : t2 ≠ dst) (hw1 : w ≤ k) :
+    runLoop (fun n s => run (move t1 t2 ++ [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] ++ move t2 t1 ++ [Cmd.minus]) n s) k s
+      = { ptr := t1, tape := fun i => if i = t1 then 0 else if i = dst then v * w else s.tape i,
+          inp := s.inp, out := s.out } := by
+  rcases hv01 with h0 | h1
+  · subst v
+    have hcur : s.tape t1 = 0 := by simpa [hv]
+    have hz : s.tape s.ptr = 0 := by simp [hptr, hcur]
+    cases k with
+    | zero =>
+        simp [runLoop]
+        apply State.ext
+        · simp [hptr]
+        · ext i <;> by_cases h : i = t1 <;> by_cases h' : i = dst <;> simp [h, h', hcur, hd]
+        · rfl
+        · rfl
+    | succ k =>
+        rw [runLoop_exit (fun n s => run (move t1 t2 ++ [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] ++ move t2 t1 ++ [Cmd.minus]) n s) k s (by simp [hptr, hcur])]
+        apply State.ext
+        · simp [hptr]
+        · ext i <;> by_cases h : i = t1 <;> by_cases h' : i = dst <;> simp [h, h', hcur, hd]
+        · rfl
+        · rfl
+  · subst v
+    cases k with
+    | zero => omega
+    | succ k =>
+        have hnz : s.tape s.ptr ≠ 0 := by simp [hptr, hv]
+        rw [runLoop_step (fun n s => run (move t1 t2 ++ [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] ++ move t2 t1 ++ [Cmd.minus]) n s) k s hnz]
+        have hs' := run_body_and t1 t2 dst (k + 1) w s hptr hw hd hne1 hne2 hne3 hw1
+        rw [hs']
+        have hz : (run (move t1 t2 ++ [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] ++ move t2 t1 ++ [Cmd.minus]) (k + 1) s).tape (State.left ({ s with ptr := t1, tape := Function.update (Function.update s.tape t1 (s.tape t1 - 1)) dst (0 + w) }.ptr)) = 0 := by
+          simp
+        have hexit : runLoop (fun n s => run (move t1 t2 ++ [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] ++ move t2 t1 ++ [Cmd.minus]) n s) k
+            { s with ptr := t1, tape := Function.update (Function.update s.tape t1 (s.tape t1 - 1)) dst (0 + w) }
+            = { s with ptr := t1, tape := Function.update (Function.update s.tape t1 (s.tape t1 - 1)) dst (0 + w) } := by
+          cases k with
+          | zero => simp [runLoop]
+          | succ k => rw [runLoop_exit _ k _ hz]; rfl
+        rw [hexit]
+        apply State.ext
+        · rfl
+        · ext i <;> by_cases h0 : i = t1 <;> by_cases h1 : i = dst
+          · simp [h0, h1]
+          · subst i
+            simp [h0]
+          · subst i
+            rw [hs']
+            simp [hne2]
+            omega
+          · rw [hs']
+            simp [h0, h1]
+        · rfl
+        · rw [hs']
+
+/-- **The ``and_`` macro.**  ``dst = a AND b`` for ``a, b : ℕ`` with
+``a = 0 ∨ a = 1`` and ``b = 0 ∨ b = 1``; ``a`` and ``b`` preserved, scratch
+zeroed, pointer home. -/
+lemma run_and (a b dst t1 t2 c1 d1 c2 d2 k : ℕ) (s : State) (hptr : s.ptr = 0)
+    (ha1 : s.tape a ≤ k) (hb1 : s.tape b ≤ k)
+    (hdst0 : s.tape dst = 0) (ht1 : s.tape t1 = 0) (ht2 : s.tape t2 = 0)
+    (hc1 : s.tape c1 = 0) (hd1 : s.tape d1 = 0) (hc2 : s.tape c2 = 0) (hd2 : s.tape d2 = 0)
+    (hnd : dst ≠ a) (hnd2 : dst ≠ b) (hne1 : t1 ≠ a) (hne2 : t1 ≠ b)
+    (hne3 : t2 ≠ a) (hne4 : t2 ≠ b) (hne5 : t1 ≠ t2) (hne6 : t2 ≠ dst) (hne7 : t1 ≠ dst)
+    (hac : a ≠ c1) (had : a ≠ d1) (hbc : b ≠ c1) (hbd : b ≠ d1)
+    (haa : a ≠ c2) (hab : a ≠ d2) (hbb : b ≠ c2) (hbd2 : b ≠ d2)
+    (ht1c1 : t1 ≠ c1) (ht1d1 : t1 ≠ d1) (hc1d1 : c1 ≠ d1)
+    (ht2c2 : t2 ≠ c2) (ht2d2 : t2 ≠ d2) (hc2d2 : c2 ≠ d2) :
+    run (and_ a b dst t1 t2 c1 d1 c2 d2) k s
+      = { ptr := 0, tape := fun i => if i = dst then s.tape a * s.tape b else s.tape i,
+          inp := s.inp, out := s.out } := by
+  unfold and_
+  rw [run_append]
+  rw [run_append]
+  rw [run_append]
+  rw [run_append]
+  rw [run_append]
+  rw [run_append]
+  rw [run_append]
+  rw [run_append]
+  rw [run_move 0 dst k s hptr]
+  have hz := run_zero_here k { s with ptr := dst } (by simp [hdst0])
+  rw [hz]
+  have hmv := run_move dst 0 k { s with ptr := dst, tape := Function.update s.tape dst 0 } (by simp)
+  rw [hmv]
+  have hcopy1 := run_copy a t1 c1 d1 k { s with tape := Function.update s.tape dst 0 }
+    (by simp) (by simp [ha1]) (by simp [hc1]) (by simp [hd1])
+    hac.symm had.symm hc1d1 hne1 ht1c1 ht1d1
+  rw [hcopy1]
+  have hcopy2 := run_copy b t2 c2 d2 k { ptr := 0,
+      tape := fun i => if i = c1 then 0 else if i = d1 then 0 else if i = t1 then s.tape a else if i = dst then 0 else s.tape i,
+      inp := s.inp, out := s.out }
+    (by simp) (by simp [hb1, hbc, hbd, hc2, hd2]) (by simp [hc2]) (by simp [hd2])
+    hbb.symm hbd2.symm hc2d2 hne2 ht2c2 ht2d2
+  rw [hcopy2]
+  have hm0 := run_move 0 t1 k { ptr := 0,
+      tape := fun i => if i = c1 then 0 else if i = d1 then 0 else if i = t1 then s.tape a else if i = t2 then s.tape b else if i = dst then 0 else s.tape i,
+      inp := s.inp, out := s.out } (by simp)
+  rw [hm0]
+  have hloop6 : run [Cmd.loop (move t1 t2 ++ [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] ++ move t2 t1 ++ [Cmd.minus])] k
+      { ptr := t1,
+        tape := fun i => if i = c1 then 0 else if i = d1 then 0 else if i = t1 then s.tape a else if i = t2 then s.tape b else if i = dst then 0 else s.tape i,
+        inp := s.inp, out := s.out }
+      = runLoop (fun n s => run (move t1 t2 ++ [Cmd.loop (move t2 dst ++ [Cmd.plus] ++ move dst t2 ++ [Cmd.minus])] ++ move t2 t1 ++ [Cmd.minus]) n s) k
+      { ptr := t1,
+        tape := fun i => if i = c1 then 0 else if i = d1 then 0 else if i = t1 then s.tape a else if i = t2 then s.tape b else if i = dst then 0 else s.tape i,
+        inp := s.inp, out := s.out } := by
+    rw [run_loop, run_nil]
+  rw [hloop6]
+  have hand := runLoop_and t1 t2 dst k (s.tape a) (s.tape b)
+    { ptr := t1,
+      tape := fun i => if i = c1 then 0 else if i = d1 then 0 else if i = t1 then s.tape a else if i = t2 then s.tape b else if i = dst then 0 else s.tape i,
+      inp := s.inp, out := s.out }
+    (by simp) (by simp) (by simp) (by simp [hdst0]) (by simp [ha1]) (by simp) hne5 hne7 hne6 hb1
+  rw [hand]
+  have hm1 := run_move t1 0 k { ptr := t1,
+      tape := fun i => if i = t1 then 0 else if i = dst then s.tape a * s.tape b else if i = c1 then 0 else if i = d1 then 0 else if i = t2 then s.tape b else s.tape i,
+      inp := s.inp, out := s.out } (by simp)
+  rw [hm1]
+  apply State.ext
+  · rfl
+  · ext i
+    by_cases h0 : i = dst
+    · subst i
+      simp [hnd, hnd2]
+    · by_cases h1 : i = t1
+      · subst i
+        simp
+      · by_cases h2 : i = t2
+        · subst i
+          simp
+        · by_cases h3 : i = c1
+          · subst i
+            simp
+          · by_cases h4 : i = d1
+            · subst i
+              simp
+            · simp [h0, h1, h2, h3, h4]
   · rfl
   · rfl
 
