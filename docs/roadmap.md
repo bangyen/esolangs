@@ -84,8 +84,11 @@ the four ported interpreters, their equivalence proofs, and all the
 generator and boolean correctness proofs were redundant with the round-trip
 test suite, so the Lean project now contains only the proofs of facts the
 tests cannot establish (MAMMALIAN's search totality, Factor's prime-search
-totality).  The candidates below go beyond totality, in increasing payoff
-order.
+totality).  The one exception kept self-contained rather than dropped is the
+brainfuck-minterm boolean proof (`BfMintermCorrect.lean`), the completed
+proof of the ``_bf_minterm`` generator's copy/AND scratch machinery and
+minterm sum, which is not part of the main Lean build.  The candidates below
+go beyond totality, in increasing payoff order.
 
 ### Factor: Dirichlet totality and encode/decode round-trip (medium priority)
 Done.  `FactorCorrect.lean` models the commands/residues, the run-length
@@ -101,8 +104,8 @@ All other Lean proofs were dropped as redundant with the round-trip test
 suite (the generator and boolean correctness proofs re-prove what the
 differential/round-trip tests already establish): EXCON, AlbaBet, CircleFuck,
 Sophie, BIO, 6-5, Qoibl, huf, brainfuck, eval, Collatz Multiverse, the
-``_bf_set`` multiply loop, the Sophie/6-5/brainfuck-minterm boolean proofs,
-and the four ported Lean interpreters with their equivalence proofs.  The one
+``_bf_set`` multiply loop, and the Sophie/6-5 boolean proofs, and the four
+ported Lean interpreters with their equivalence proofs.  The one
 non-redundant candidate remaining, if more Lean work is ever wanted, is the
 Minifuck boolean reachability characterization (a language-power theorem, not
 a generator-correctness proof): Minifuck computes exactly the four one-input
