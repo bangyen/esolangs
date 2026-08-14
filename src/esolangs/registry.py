@@ -123,6 +123,7 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Qoibl": Language("Qoibl", _generate.qoibl, "register_based.qoibl", split=True),
     "RAM0": Language("RAM0", interpreter="register_based.RAM0"),
+    "ROTfuck": Language("ROTfuck", _generate.rotfuck, "tape_based.rotfuck"),
     "S*bleq": Language("S*bleq", _generate.sbleq, "tape_based.sbleq"),
     "3D Brainfuck": Language(
         "3D Brainfuck", _generate.three_d_bf, "tape_based.three_d_bf"

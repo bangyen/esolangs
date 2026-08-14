@@ -18,6 +18,7 @@ __all__ = [
     "factor",
     "mammalian",
     "minifuck",
+    "rotfuck",
     "six_five",
     "suffolk",
     "three_d_bf",
@@ -105,6 +106,31 @@ def bf(text: str) -> str:
         else:
             res.append("[-]" + _bf_set(v))
             cur = v
+    return "".join(res)
+
+
+def rotfuck(text: str) -> str:
+    """Generate a ROTfuck program that outputs ``text``.
+
+    After ``i`` commands the character at source position ``i`` has been
+    rotated ``i`` steps, so a straight-line program is just a sequence of
+    *effective* commands: the raw character for position ``i`` is the
+    ``i``-fold inverse rotation of the desired command.  The generated
+    program walks right one fresh cell per character, fills it, prints it,
+    and halts at the end of the source.
+    """
+    _require_bytes(text, "ROTfuck")
+    chain = "+-><,.[]"
+    commands: list[str] = []
+    for char in text:
+        commands.append(">")
+        commands.extend("+" * ord(char))
+        commands.append(".")
+
+    res: list[str] = []
+    for i, command in enumerate(commands):
+        back = i % 8
+        res.append(chain[(chain.index(command) - back) % 8])
     return "".join(res)
 
 
