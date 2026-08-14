@@ -22,6 +22,7 @@ TRUTH = EXAMPLES / "truth-machine"
 # programs.
 BOOLEAN = {
     "3x",
+    "3D Brainfuck",
     "6-5",
     "ASCII art",
     "Back",
@@ -33,6 +34,7 @@ BOOLEAN = {
     "BrainIf",
     "CircleFuck",
     "Clockwise",
+    "Collatz Multiverse",
     "Container",
     "Dig",
     "Dimensional",
@@ -87,15 +89,6 @@ C_COMPILERS = _compiler_set("c")
 # excluded by matching only ``*.asm``.
 _EXTRA_DIRS = [
     (
-        ROOT / "extra" / "c++",
-        "*.cpp",
-        {
-            "2dFish": "2dFish",
-            "painfuck": "Painfuck",
-        },
-        "C++ Implementations",
-    ),
-    (
         ROOT / "extra" / "assembly",
         "*.asm",
         {
@@ -119,24 +112,19 @@ _EXTRA_DIRS = [
         "Lean Implementations",
     ),
     (
-        ROOT / "extra" / "ruby",
-        "*.rb",
-        {
-            "3x": "3x",
-        },
-        "Ruby Implementations",
-    ),
-    (
         ROOT / "extra" / "rust",
         "*.rs",
         {
+            "2dfish": "2dFish",
             "basicfuck": "Basicfuck",
             "bit_tilde": "bit~",
             "forth": "Forþ",
             "kak": "Kak",
             "laserfuck": "LaserFuck",
+            "painfuck": "Painfuck",
             "pct": "%^2^-1",
             "seventy_four": "Number Seventy-Four",
+            "three_x": "3x",
             "trash": "Trash",
             "unsquare": "Unsquare",
         },
@@ -145,7 +133,7 @@ _EXTRA_DIRS = [
 ]
 
 # Display names of the languages with a native implementation in extra/
-# (C++, Rust, Ruby, Lean, or x86 assembly).  These interpreters run as
+# (Rust, Lean, or x86 assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
 
@@ -243,7 +231,7 @@ def render() -> str:
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Native means an implementation in `extra/` that runs as a standalone",
-        "program (C++, Rust, Ruby, Lean, or x86 assembly).  The Boolean",
+        "program (Rust, Lean, or x86 assembly).  The Boolean",
         "column marks the boolean-function generators; Back, BIO, and",
         "NoComment's are parameterized (the harness substitutes input bits",
         "into a template) rather than the program reading input.",

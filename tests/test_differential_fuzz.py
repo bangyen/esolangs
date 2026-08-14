@@ -53,9 +53,11 @@ class TestDivergenceDetection:
         with patch.object(x86_elf_runner, "run_elf", side_effect=tampered):
             assert not verify_differential._fuzz_nocomment(rng, 20)  # noqa: SLF001
 
-    @pytest.mark.skipif(shutil.which("g++") is None, reason="g++ not installed")
+    @pytest.mark.skipif(
+        not verify_differential.FORTH_BIN.exists(), reason="Rust reference not built"
+    )
     def test_forth_catches_divergence(self, rng) -> None:
-        """A wrong output on the C++ side is reported as a failure."""
+        """A wrong output on the Rust side is reported as a failure."""
         real_run = verify_differential._run_forth_native  # noqa: SLF001
 
         def tampered(binary, program, stdin):
@@ -67,9 +69,12 @@ class TestDivergenceDetection:
         ):
             assert not verify_differential._fuzz_forth(rng, 20)  # noqa: SLF001
 
-    @pytest.mark.skipif(shutil.which("g++") is None, reason="g++ not installed")
+    @pytest.mark.skipif(
+        not verify_differential.BASICFUCK_BIN.exists(),
+        reason="Rust reference not built",
+    )
     def test_basicfuck_catches_divergence(self, rng) -> None:
-        """A wrong output on the C++ side is reported as a failure."""
+        """A wrong output on the Rust side is reported as a failure."""
         real_run = verify_differential._run_basicfuck_native  # noqa: SLF001
 
         def tampered(binary, program, stdin):
@@ -97,9 +102,11 @@ class TestDivergenceDetection:
         ):
             assert not verify_differential._fuzz_unsquare(rng, 20)  # noqa: SLF001
 
-    @pytest.mark.skipif(shutil.which("ruby") is None, reason="ruby not installed")
+    @pytest.mark.skipif(
+        not verify_differential.THREE_X_BIN.exists(), reason="Rust reference not built"
+    )
     def test_three_x_catches_divergence(self, rng) -> None:
-        """A wrong output on the Ruby side is reported as a failure."""
+        """A wrong output on the Rust side is reported as a failure."""
         real_run = verify_differential._run_three_x_native  # noqa: SLF001
 
         def tampered(program, stdin):
@@ -111,9 +118,11 @@ class TestDivergenceDetection:
         ):
             assert not verify_differential._fuzz_three_x(rng, 20)  # noqa: SLF001
 
-    @pytest.mark.skipif(shutil.which("g++") is None, reason="g++ not installed")
+    @pytest.mark.skipif(
+        not verify_differential.PCT_BIN.exists(), reason="Rust reference not built"
+    )
     def test_pct_catches_divergence(self, rng) -> None:
-        """A wrong output on the C++ side is reported as a failure."""
+        """A wrong output on the Rust side is reported as a failure."""
         real_run = verify_differential._run_pct_native  # noqa: SLF001
 
         def tampered(binary, program, stdin):
@@ -123,9 +132,12 @@ class TestDivergenceDetection:
         with patch.object(verify_differential, "_run_pct_native", side_effect=tampered):
             assert not verify_differential._fuzz_pct(rng, 20)  # noqa: SLF001
 
-    @pytest.mark.skipif(shutil.which("g++") is None, reason="g++ not installed")
+    @pytest.mark.skipif(
+        not verify_differential.TWO_D_FISH_BIN.exists(),
+        reason="Rust reference not built",
+    )
     def test_two_d_fish_catches_divergence(self, rng) -> None:
-        """A wrong output on the C++ side is reported as a failure."""
+        """A wrong output on the Rust side is reported as a failure."""
         real_run = verify_differential._run_two_d_fish_native  # noqa: SLF001
 
         def tampered(binary, program, stdin):
@@ -137,9 +149,11 @@ class TestDivergenceDetection:
         ):
             assert not verify_differential._fuzz_two_d_fish(rng, 20)  # noqa: SLF001
 
-    @pytest.mark.skipif(shutil.which("g++") is None, reason="g++ not installed")
+    @pytest.mark.skipif(
+        not verify_differential.PAINFUCK_BIN.exists(), reason="Rust reference not built"
+    )
     def test_painfuck_catches_divergence(self, rng) -> None:
-        """A wrong output on the C++ side is reported as a failure."""
+        """A wrong output on the Rust side is reported as a failure."""
         real_run = verify_differential._run_painfuck_native  # noqa: SLF001
 
         def tampered(binary, program, stdin):
@@ -151,9 +165,12 @@ class TestDivergenceDetection:
         ):
             assert not verify_differential._fuzz_painfuck(rng, 20)  # noqa: SLF001
 
-    @pytest.mark.skipif(shutil.which("ruby") is None, reason="ruby not installed")
+    @pytest.mark.skipif(
+        not verify_differential.BIT_TILDE_BIN.exists(),
+        reason="Rust reference not built",
+    )
     def test_bit_tilde_catches_divergence(self, rng) -> None:
-        """A wrong output on the Ruby side is reported as a failure."""
+        """A wrong output on the Rust side is reported as a failure."""
         real_run = verify_differential._run_bit_tilde_native  # noqa: SLF001
 
         def tampered(program, stdin):

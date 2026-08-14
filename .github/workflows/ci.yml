@@ -125,52 +125,6 @@ jobs:
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
 
-  cxx:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Install g++
-      run: sudo apt-get update && sudo apt-get install -y g++ clang-format
-
-    - name: Check extra/ C++ formatting
-      run: |
-        clang-format --dry-run --Werror extra/c++/*.cpp
-
-    - name: Build extra/ C++ implementations
-      run: |
-        for f in extra/c++/*.cpp; do
-          name="$(basename "$f" .cpp)"
-          g++ -std=c++11 "$f" -o "/tmp/$name"
-          echo "Built $name"
-        done
-
-    - name: Smoke test extra/ C++ implementations
-      run: |
-        set -e
-        : > /tmp/empty.txt
-        for f in extra/c++/*.cpp; do
-          name="$(basename "$f" .cpp)"
-          set +e
-          "/tmp/$name" /tmp/empty.txt > /dev/null 2>&1
-          rc=$?
-          set -e
-          if [ "$rc" -gt 3 ]; then
-            echo "FAIL: $name crashed with exit code $rc on empty input"
-            exit 1
-          fi
-          echo "OK: $name handles empty input"
-        done
-        echo "All extra/ C++ smoke tests passed"
-
-    - name: Verify generator-only languages against the C++ references
-      run: |
-        PYTHONPATH=src python3 scripts/verify_extra_generators.py
-
-    - name: Differential-test Forþ against the C++ cross-check
-      run: |
-        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
-
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -205,6 +159,12 @@ jobs:
         printf '#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;' \
           > /tmp/basicfuck.txt
         [ "$(./extra/rust/target/debug/basicfuck /tmp/basicfuck.txt)" = "A" ]
+        printf '/io@' > /tmp/2dfish.txt
+        [ "$(./extra/rust/target/debug/two_d_fish /tmp/2dfish.txt)" = "1" ]
+        printf 'pyr' > /tmp/painfuck.txt
+        ./extra/rust/target/debug/painfuck /tmp/painfuck.txt >/dev/null
+        printf '3!' > /tmp/three_x.txt
+        [ "$(./extra/rust/target/debug/three_x /tmp/three_x.txt)" = "3" ]
         echo "All extra/ Rust smoke tests passed"
 
     - name: Verify generator-only languages against the Rust references
@@ -215,31 +175,15 @@ jobs:
       run: |
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
 
-  extra-languages:
+  assembly:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install toolchains
+    - name: Install nasm
       run: |
         sudo apt-get update
         sudo apt-get install -y nasm
-        sudo gem install standardrb
-
-    - name: Check Ruby syntax and formatting
-      run: |
-        for f in extra/ruby/*.rb; do
-          ruby -c "$f"
-        done
-        standardrb extra/ruby/*.rb
-
-    - name: Verify generator round-trips against the Ruby references
-      run: |
-        PYTHONPATH=src python3 scripts/verify_extra_generators.py
-
-    - name: Differential-test 3x against the Ruby cross-check
-      run: |
-        PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
 
     - name: Build and natively run the x86 reference interpreters
       run: |

@@ -13,8 +13,8 @@ redirects the pointer, so a direction both steers and executes as a no-op.
 Execution is a straight line in the current direction: the language has no
 flow control.
 
-The semantics (including the quirk below) are ported exactly from the C++
-cross-check at ``extra/c++/2dFish.cpp``:
+The semantics (including the quirk below) are ported exactly from the Rust
+cross-check at ``extra/rust/2dfish.rs``:
 
 - the grid is *ragged*: the pointer is off the grid when it leaves any row,
   not a padded rectangle, and stepping off the grid halts with
