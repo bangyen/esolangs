@@ -12,13 +12,6 @@ or boolean story.  Ruled-out candidates (Gravity, Earfuck, Conveyor,
 Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast) are recorded
 in `docs/limitations.md`.
 
-### 3D Brainfuck (high priority)
-A brainfuck variant whose tape, block grid, and instruction pointer are all
-three-dimensional (`esolangs.org/wiki/3D_Brainfuck`).  Full `,`/`.` I/O and
-Turing complete, with a completely specified instruction set.  Fits
-`tape_based`; a text generator can be derived from the existing brainfuck one
-by encoding the 1D tape traversal onto the 3D grid.
-
 ### ABCDirection (medium priority)
 A 2D `A`/`B`/`C`/`D` language with a bit tape and a queue
 (`esolangs.org/wiki/ABCDirection`).  Boolfuck-style I/O and Turing complete.
