@@ -14,9 +14,9 @@ Languages with both an in-package interpreter and a native cross-check:
   *set* across runs; the Python interpreter (which accepts a fixed heading)
   must produce a member of that set for each of the four headings.
 * **NoComment** — ``tape_based/nocomment.py`` vs
-  ``extra/assembly/nocomment.asm``.  Both implement the full wiki language
+  ``extra/assembly/nocomment-riscv.s``.  Both implement the full wiki language
   (10 commands over a tape and stack).  The assembly is run under unicorn
-  via ``x86_elf_runner`` and must agree with the Python interpreter on the
+  via ``riscv_elf_runner`` and must agree with the Python interpreter on the
   full corpus; both error on non-commands, stack underflow, and out-of-range
   jumps.
 * **Forþ** — ``stack_based/forth.py`` vs ``extra/rust/forth.rs``.  The Rust
@@ -52,7 +52,7 @@ Languages with both an in-package interpreter and a native cross-check:
   Ruby reference hung).
 
 Called from CI's ``assembly`` and ``rust`` jobs (which provide
-nasm+unicorn and cargo) and from ``verify.py`` locally.
+unicorn+the RISC-V compiler and cargo) and from ``verify.py`` locally.
 References whose toolchain is missing are skipped, not failed.
 
 Usage:
@@ -89,9 +89,6 @@ THREE_X_BIN = RUST_BIN_DIR / "three_x"
 LEAN_BIN = ROOT / "extra" / "lean" / "esolangs" / ".lake" / "build" / "bin"
 ALBABET_BIN = LEAN_BIN / "albabet"
 BFPDA_BIN = LEAN_BIN / "bfpda"
-TWO_BITS_ONE_BYTE_ASM = ROOT / "extra" / "assembly" / "2b1b.asm"
-BRAINPOCALYPSE_ASM = ROOT / "extra" / "assembly" / "brainpocalypse.asm"
-STUN_STEP_ASM = ROOT / "extra" / "assembly" / "stun-step.asm"
 
 # Parallelism for the native-reference runs: each check spawns a subprocess,
 # so threads (which just wait on the subprocess) scale well.
@@ -332,22 +329,20 @@ def _run_nocomment_python_limited(
 
 
 def _verify_nocomment() -> bool:
-    """Compare the Python NoComment interpreter against the assembly cross-checks.
+    """Compare the Python NoComment interpreter against the assembly cross-check.
 
-    The x86 and RISC-V references are run under unicorn (``x86_elf_runner``
-    and ``riscv_elf_runner``), which requires unicorn and either nasm or a
-    RISC-V cross-compiler; it is skipped when none is available.  Both
+    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
+    requires unicorn and a RISC-V cross-compiler; it is skipped when either
+    is missing.  Both
     implementations error on non-commands, stack underflow, and out-of-range
     jumps, and must agree on the valid-program corpus.
     """
-    if not _asm_refs_ready(ROOT / "extra" / "assembly" / "nocomment.asm", "nocomment"):
+    if not _asm_refs_ready("nocomment"):
         return True
 
     failures = 0
     for program in NOCOMMENT_CORPUS:
-        ref = _asm_refs(
-            ROOT / "extra" / "assembly" / "nocomment.asm", "nocomment", program
-        )
+        ref = _asm_refs("nocomment", program)
         py_out, py_code = _run_nocomment_python(program)
         if ref is None:
             asm_out, asm_code = b"", 1
@@ -589,7 +584,7 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     A program that halts on one side but loops on the other is a divergence
     (and the reason a seeded fuzzer is worth having).
     """
-    if not _asm_refs_ready(ROOT / "extra" / "assembly" / "nocomment.asm", "nocomment"):
+    if not _asm_refs_ready("nocomment"):
         return True
 
     # The references' tape and stack live in a fixed mapped region below the
@@ -602,9 +597,7 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     for _ in range(count):
         program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
         py = _run_nocomment_python_limited(program, timeout=3)
-        asm = _asm_refs(
-            ROOT / "extra" / "assembly" / "nocomment.asm", "nocomment", program
-        )
+        asm = _asm_refs("nocomment", program)
         if py is None and asm is None:
             loops += 1
             continue
@@ -1727,33 +1720,6 @@ def _run_file_ref(
         Path(path).unlink()
 
 
-def _assemble_x86(asm: Path) -> bytes | None:
-    """Assemble an x86 cross-check; None if nasm/unicorn are unavailable."""
-    import importlib
-
-    if shutil.which("nasm") is None:
-        return None
-    try:
-        x86_elf_runner = importlib.import_module("x86_elf_runner")
-    except SystemExit:
-        return None
-    return x86_elf_runner.assemble(str(asm))
-
-
-def _run_asm_ref(binary: bytes, program: str) -> tuple[bytes, int] | None:
-    """Run ``program`` (as the stdin stream) through an assembled reference."""
-    import importlib
-
-    x86_elf_runner = importlib.import_module("x86_elf_runner")
-    try:
-        out, code = x86_elf_runner.run_elf(binary, program.encode("latin1"))
-    except ValueError:
-        return None
-    except Exception:
-        return None  # the reference faulted (e.g. walked off its stack page)
-    return out, code
-
-
 def _build_riscv(name: str) -> bytes | None:
     """Assemble the RISC-V port ``extra/assembly/{name}-riscv.s``.
 
@@ -1801,37 +1767,21 @@ def _run_riscv_elf(binary: bytes, program: str) -> tuple[bytes, int] | None:
     return out, code
 
 
-def _asm_refs(
-    x86_path: Path, riscv_name: str, program: str
-) -> tuple[bytes, int] | None:
-    """Run both the x86 and RISC-V references and require they agree.
+def _asm_refs(riscv_name: str, program: str) -> tuple[bytes, int] | None:
+    """Run ``program`` through the RISC-V reference ``{name}-riscv.s``.
 
-    Returns ``(out, code)`` when the available native references agree, or
-    None when none terminates.  A disagreement between the two ports is a
-    divergence worth surfacing: the corpus caller's None check reports it.
+    Returns ``(out, code)``, or None when the reference does not terminate
+    cleanly (it looped or faulted).
     """
-    x86 = _assemble_x86(x86_path)
     riscv = _build_riscv(riscv_name)
-    results = []
-    if x86 is not None:
-        results.append(_run_asm_ref(x86, program))
-    if riscv is not None:
-        results.append(_run_riscv_elf(riscv, program))
-    results = [r for r in results if r is not None]
-    if not results:
+    if riscv is None:
         return None
-    if len(results) == 2 and results[0] != results[1]:
-        print(
-            f"asm refs disagree for {riscv_name} {program!r}: "
-            f"x86={results[0]!r} riscv={results[1]!r}"
-        )
-        return None
-    return results[0]
+    return _run_riscv_elf(riscv, program)
 
 
-def _asm_refs_ready(x86_path: Path, riscv_name: str) -> bool:
-    """Whether either the x86 or RISC-V reference can be built."""
-    return _assemble_x86(x86_path) is not None or _build_riscv(riscv_name) is not None
+def _asm_refs_ready(riscv_name: str) -> bool:
+    """Whether the RISC-V reference can be built."""
+    return _build_riscv(riscv_name) is not None
 
 
 def _inprocess_run(
@@ -1896,16 +1846,16 @@ _SIMPLE_CORPUS = [
     # 2 Bits, 1 Byte: single program byte, read from stdin by the references
     (
         "2 Bits, 1 Byte",
-        lambda: _asm_refs_ready(TWO_BITS_ONE_BYTE_ASM, "2b1b"),
-        lambda p, _s: _asm_refs(TWO_BITS_ONE_BYTE_ASM, "2b1b", p),
+        lambda: _asm_refs_ready("2b1b"),
+        lambda p, _s: _asm_refs("2b1b", p),
         "esolangs.interpreters.other.two_bits_one_byte",
         [("\xff", b""), ("\x3f", b""), ("\x00", b""), ("A", b"")],
     ),
     # Brainpocalypse: program read from stdin by the references
     (
         "Brainpocalypse",
-        lambda: _asm_refs_ready(BRAINPOCALYPSE_ASM, "brainpocalypse"),
-        lambda p, _s: _asm_refs(BRAINPOCALYPSE_ASM, "brainpocalypse", p),
+        lambda: _asm_refs_ready("brainpocalypse"),
+        lambda p, _s: _asm_refs("brainpocalypse", p),
         "esolangs.interpreters.tape_based.brainpocalypse",
         [
             ("+", b""),
@@ -1919,8 +1869,8 @@ _SIMPLE_CORPUS = [
     # Stun Step: program read from stdin by the references
     (
         "Stun Step",
-        lambda: _asm_refs_ready(STUN_STEP_ASM, "stun-step"),
-        lambda p, _s: _asm_refs(STUN_STEP_ASM, "stun-step", p),
+        lambda: _asm_refs_ready("stun-step"),
+        lambda p, _s: _asm_refs("stun-step", p),
         "esolangs.interpreters.tape_based.stun_step",
         [("-", b""), ("->", b""), ("<", b""), (">-", b""), (">", b"")],
     ),

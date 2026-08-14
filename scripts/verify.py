@@ -4,12 +4,12 @@ Everything that can be checked on a dev machine without a Linux host:
 
 1. pre-commit (lint, format, types)
 2. pytest (the test suite)
-3. unicorn-based round-trips (assembly compilers, x86 reference
+3. unicorn-based round-trips (RISC-V assembly compilers, RISC-V reference
    generators, and -- if a RISC-V 123 binary can be built -- the 123
-   differential across x86, RISC-V, and the simulator)
+   differential across RISC-V and the simulator)
 
-The native x86 link/run and qemu-riscv64 checks need Linux, so they run
-only in CI (see .github/workflows/ci.yml).
+The native qemu-riscv64 checks need Linux, so they run only in CI (see
+.github/workflows/ci.yml).
 
 Usage:
     python scripts/verify.py
@@ -67,8 +67,6 @@ STEPS = [
 def _build_riscv_123() -> str | None:
     if shutil.which("riscv64-elf-gcc") is None:
         return None
-    if shutil.which("nasm") is None:
-        return None
     rv = subprocess.run(
         [
             "riscv64-elf-gcc",
@@ -92,22 +90,25 @@ def main() -> int:
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     have_unicorn = importlib.util.find_spec("unicorn") is not None
-    have_nasm = shutil.which("nasm") is not None
+    have_riscv_gcc = (
+        shutil.which("riscv64-elf-gcc") is not None
+        or shutil.which("riscv64-linux-gnu-gcc") is not None
+    )
 
     failures = 0
     for name, cmd in STEPS:
         if not have_unicorn and "unicorn" in name:
             print(f"[skip] {name}: unicorn not installed (pip install unicorn)")
             continue
-        if not have_nasm and "assembly" in name:
-            print(f"[skip] {name}: nasm not installed")
+        if not have_riscv_gcc and "assembly" in name:
+            print(f"[skip] {name}: RISC-V cross-compiler not installed")
             continue
         result = subprocess.run(cmd, env=env)
         ok = result.returncode == 0
         failures += not ok
         print(f"[{'ok' if ok else 'FAIL'}] {name}")
 
-    if have_unicorn and have_nasm:
+    if have_unicorn and have_riscv_gcc:
         rv = _build_riscv_123()
         if rv is None:
             print("[skip] 123 differential: riscv64-elf-gcc or build failed")
@@ -124,7 +125,7 @@ def main() -> int:
             failures += not ok
             print(f"[{'ok' if ok else 'FAIL'}] 123 differential (unicorn)")
     else:
-        print("[skip] 123 differential: requires unicorn and nasm")
+        print("[skip] 123 differential: requires unicorn and a RISC-V compiler")
 
     print("=" * 40)
     if failures:

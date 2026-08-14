@@ -211,7 +211,7 @@ malformed program, 3 = invalid runtime operation.
 
 <!-- EXTRA:START -->
 
-### x86 Assembly Implementations
+### RISC-V Assembly Implementations
 
 - [123](https://esolangs.org/wiki/123)
 - [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte)
