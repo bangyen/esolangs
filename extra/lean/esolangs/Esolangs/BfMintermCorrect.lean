@@ -1756,4 +1756,3 @@ example : (run (mintermProg 2 [0] false) 100
 example : (run (mintermProg 2 [0] false) 100
     { ptr := 0, tape := fun _ => 0, inp := [49, 49], out := [] }).out = [Char.ofNat 48] := by
   native_decide
-

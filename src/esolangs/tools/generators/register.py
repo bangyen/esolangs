@@ -291,7 +291,7 @@ def add_sub_jump(text: str) -> str:
     for i, (kind, op_sel) in enumerate(ops):
         c = -8 if i == n - 1 else data_base + i
         if kind == "inc":
-            assert op_sel is not None
+            assert op_sel is not None  # nosec B101 - type narrowing for mypy
             mem.extend([val, -6, c, op_sel])
         else:
             mem.extend([-1, val, c, -7])

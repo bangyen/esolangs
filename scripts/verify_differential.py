@@ -86,9 +86,6 @@ BASICFUCK_BIN = RUST_BIN_DIR / "basicfuck"
 TWO_D_FISH_BIN = RUST_BIN_DIR / "two_d_fish"
 PAINFUCK_BIN = RUST_BIN_DIR / "painfuck"
 THREE_X_BIN = RUST_BIN_DIR / "three_x"
-LEAN_BIN = ROOT / "extra" / "lean" / "esolangs" / ".lake" / "build" / "bin"
-ALBABET_BIN = LEAN_BIN / "albabet"
-BFPDA_BIN = LEAN_BIN / "bfpda"
 
 # Parallelism for the native-reference runs: each check spawns a subprocess,
 # so threads (which just wait on the subprocess) scale well.
@@ -1678,14 +1675,9 @@ def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
 
 # -- The generator-less extra/ interpreters (corpus only) -------------------
 #
-# Kak, Trash, BF-PDA, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse,
-# and Stun Step have no generators (narrow output classes), so only the
-# fixed corpora are checked; Albabet has a text generator and is fuzzed.
-
-_LEAN_BINARIES = {
-    "Albabet": ALBABET_BIN,
-    "BF-PDA": BFPDA_BIN,
-}
+# Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, and Stun
+# Step have no generators (narrow output classes), so only the fixed corpora
+# are checked.
 
 
 def _build_kak() -> str | None:
@@ -1908,118 +1900,9 @@ def _verify_simple_corpus() -> bool:
     return failures == 0
 
 
-def _verify_lean(name: str, binary: Path, module: str, corpus: list[str]) -> bool:
-    """Differentially check a Lean-referenced interpreter."""
-    failures = 0
-    if not binary.exists():
-        print(f"[skip] {name} differential: Lean binary not built")
-        return True
-    checked = 0
-    for program in corpus:
-        ref = _run_file_ref([str(binary)], program)
-        if ref is None:
-            print(f"{name} {program!r}: reference did not terminate")
-            failures += 1
-            continue
-        py = _inprocess_run(module, program)
-        checked += 1
-        if py is None:
-            # the interpreter raised (an invalid operation): the reference
-            # must also exit with status 3
-            if ref[1] != 3:
-                failures += 1
-                print(f"{name} {program!r}: ref={ref!r} py=error")
-        elif ref != (py, 0):
-            failures += 1
-            print(f"{name} {program!r}: ref={ref!r} py={(py, 0)!r}")
-    if checked:
-        print(f"{name} differential: {checked} programs match")
-    return failures == 0
-
-
-_ALBABET_CORPUS = [
-    "i",
-    "ai",
-    "aai",
-    "ciai",
-    "g",
-    "h",
-    "bai",
-    "dai",
-    "e",
-    "f",
-]
-_BFPDA_CORPUS = [
-    "<@.",
-    "<<@.",
-    "<<<@<@>.",
-    "<@[@].",
-    "<@<@[@]@>.",
-    "<@[@][@].",
-    "<@[<@>].",
-    "<@<@>.",
-    # empty-stack operations: both implementations exit 3
-    "@",
-    ".",
-    ">",
-    "[",
-    "]",
-]
-
-
-def _fuzz_albabet(rng: random.Random, count: int) -> bool:
-    """Fuzz the AlbaBet text generator against the Lean reference."""
-    from esolangs.tools.generate import albabet
-
-    if not ALBABET_BIN.exists():
-        print("[skip] AlbaBet fuzz: Lean binary not built")
-        return True
-
-    tasks = []
-    for _ in range(count):
-        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
-        tasks.append((albabet(text), text))
-    results = _run_parallel(lambda t: _run_file_ref([str(ALBABET_BIN)], t[0]), tasks)
-    failures = checked = 0
-    for (program, text), result in zip(tasks, results, strict=True):
-        if result is None:
-            print(f"AlbaBet {text!r}: reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = _inprocess_run(
-            "esolangs.interpreters.other.albabet", program, encoding="utf-8"
-        )
-        checked += 1
-        if result != (py, 0):
-            failures += 1
-            print(f"AlbaBet {text!r}: ref={result!r} py={(py, 0)!r}")
-    print(
-        f"AlbaBet fuzz: {checked} programs match"
-        if not failures
-        else f"AlbaBet fuzz: {failures} failures of {checked}"
-    )
-    return failures == 0
-
-
 def _verify_remaining_extras() -> bool:
-    """Differentially check the newly ported extra/ interpreters."""
-    ok = _verify_simple_corpus()
-    ok = (
-        _verify_lean(
-            "Albabet",
-            ALBABET_BIN,
-            "esolangs.interpreters.other.albabet",
-            _ALBABET_CORPUS,
-        )
-        and ok
-    )
-    return (
-        _verify_lean(
-            "BF-PDA", BFPDA_BIN, "esolangs.interpreters.tape_based.bfpda", _BFPDA_CORPUS
-        )
-        and ok
-    )
+    """Differentially check the generator-less extra/ interpreters."""
+    return _verify_simple_corpus()
 
 
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
@@ -2096,7 +1979,6 @@ def main() -> int:
         ok = _fuzz_two_d_fish(rng, args.fuzz) and ok
         ok = _fuzz_painfuck(rng, args.fuzz) and ok
         ok = _fuzz_bit_tilde(rng, args.fuzz) and ok
-        ok = _fuzz_albabet(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.

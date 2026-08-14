@@ -81,7 +81,7 @@ class TestHaltAndErrors:
 
     def test_looping_program_hits_the_limit(self) -> None:
         # decrement cell 10 from a large value, looping back to itself.
-        code = memory([[10, 10, 0]], {10: 10 ** 6})
+        code = memory([[10, 10, 0]], {10: 10**6})
         io = ScriptedIO("")
         with pytest.raises(HaltError):
             run(code, io, limit=100)

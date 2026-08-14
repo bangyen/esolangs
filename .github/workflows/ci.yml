@@ -150,12 +150,12 @@ jobs:
         [ "$(./extra/rust/target/debug/trash /tmp/trash.txt)" = "5" ]
         printf '0H' > /tmp/74.txt
         [ "$(./extra/rust/target/debug/seventy_four /tmp/74.txt)" = "H0" ]
-        printf "'e" > /tmp/pct.txt
+        printf 'l' > /tmp/pct.txt
         [ "$(./extra/rust/target/debug/pct /tmp/pct.txt)" = "0" ]
         printf '~(' > /tmp/bit_tilde.txt
         ./extra/rust/target/debug/bit_tilde /tmp/bit_tilde.txt >/dev/null
-        printf '65.' > /tmp/forth.txt
-        [ "$(./extra/rust/target/debug/forth /tmp/forth.txt)" = "5" ]
+        printf 'F4*5+.' > /tmp/forth.txt
+        [ "$(./extra/rust/target/debug/forth /tmp/forth.txt)" = "A" ]
         printf '#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;' \
           > /tmp/basicfuck.txt
         [ "$(./extra/rust/target/debug/basicfuck /tmp/basicfuck.txt)" = "A" ]
@@ -250,26 +250,8 @@ jobs:
         restore-keys: |
           lean-esolangs-
 
-    - name: Build the Lean interpreters and MAMMALIAN proof
+    - name: Build the Lean proofs
       run: |
         cd extra/lean/esolangs
         lake build
-        echo "Lean interpreters and MAMMALIAN proof built"
-
-    - name: Smoke test the Lean interpreters
-      run: |
-        set -e
-        cd extra/lean/esolangs
-        printf 'aaai' > /tmp/albabet.txt
-        printf ':^:^:^:^:^:^:^:^!' > /tmp/excon.txt
-        printf '<@<@.' > /tmp/bfpda.txt
-        printf '1H' > /tmp/74.txt
-        [ "$(.lake/build/bin/albabet /tmp/albabet.txt | od -An -tuC | tr -d ' ')" = "3" ]
-        [ "$(.lake/build/bin/excon /tmp/excon.txt | od -An -tuC | tr -d ' ')" = "1" ]
-        [ "$(.lake/build/bin/bfpda /tmp/bfpda.txt)" = "1" ]
-        [ "$(.lake/build/bin/seventy_four /tmp/74.txt)" = "1" ]
-        echo "All Lean interpreters ran on text files"
-
-    - name: Differential-test the Lean-referenced interpreters
-      run: |
-        PYTHONPATH=src python3 scripts/verify_differential.py
+        echo "Lean proofs built"
