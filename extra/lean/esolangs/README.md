@@ -340,6 +340,17 @@ line shapes, proves the table satisfies `k n = n` (`constProg_inv`), and that
 each output line prints its byte (`outProgFrom_correct`), composing into
 `cm_correct`, sanity-checked with `native_decide` round-trips.
 
+## Sophie boolean-function generator correctness
+
+A proof that the Sophie boolean-function generator
+(`tools/generators/booleans/register.py::sophie`) is *correct*: for a truth
+table with `n` inputs, the generated decision tree prints the table's output
+bit for every input combination.  `SophieBoolCorrect.lean` models the
+interpreter's accumulator, input, and output and the decision tree (`;` reads
+a bit, `@$48{T}{E}` branches on it, leaves print `#$48`/`#$49`), and proves
+`treeOf_correct`: reading the input bits descends the tree to the leaf for
+the row they index, printing `tt[row]`.
+
 ## Building
 
 Requires [elan](https://github.com/leanprover/elan) and mathlib:

@@ -20,6 +20,7 @@ import Esolangs.SophieCorrect
 import Esolangs.bfpda
 import Esolangs.seventy_four
 import Esolangs.SeventyFourSemanticsCorrect
+import Esolangs.SophieBoolCorrect
 
 /-!
 # MAMMALIAN generator totality
