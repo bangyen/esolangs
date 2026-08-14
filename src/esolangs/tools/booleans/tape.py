@@ -3,7 +3,6 @@
 from collections.abc import Sequence
 from typing import cast
 
-from esolangs.tools.generators.other import _123
 from esolangs.tools.transpilers import _six_five_label, bf_to_ascii_art
 
 
