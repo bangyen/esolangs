@@ -6,14 +6,55 @@ the commit history.  This file only tracks what is still on the table.
 
 ## New interpreters (in priority order)
 
-Candidates from re-scanning the esolangs wiki's Category:Unimplemented.  The
-original scan is exhausted: every candidate with a usable file-based I/O
-protocol, a complete specification, and a plausible generator or boolean
-story now has an interpreter.  Ruled-out candidates (Gravity, Earfuck,
-Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast)
-are recorded in `docs/limitations.md`, and A Painter Ant (a no-I/O grid
-interpreter) and AddSubJump (a self-modifying OISC with a text generator)
-shipped from that scan.
+Candidates from re-scanning the esolangs wiki's Category:Unimplemented and
+from User:PythonshellDebugwindow's language list.  The original scan is
+exhausted: every candidate with a usable file-based I/O protocol, a complete
+specification, and a plausible generator or boolean story now has an
+interpreter.  Ruled-out candidates (Gravity, Earfuck, Conveyor, Chainlang,
+Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast) are recorded in
+`docs/limitations.md`, and A Painter Ant (a no-I/O grid interpreter) and
+AddSubJump (a self-modifying OISC with a text generator) shipped from that
+scan.  A second pass over the PythonshellDebugwindow languages produced the
+batch below (Jumplang, ROTfuck, UFSA, Suptiftam, Stackint, Queuenanimous);
+the joke, non-deterministic, no-I/O, and file/OS-based ones from that list
+are recorded in `docs/limitations.md`.
+
+### Jumplang (high priority)
+A Turing-complete brainfuck derivative that replaces the loops with `?`
+(skip the next command if the cell is zero) and `!` (absolute jump to the
+`cell pointer + 1`th command; jumping out of bounds halts), plus `^`/`v`
+that step by 2.  Well specified with a cat example, and as a brainfuck
+family member with full I/O it has a text-generator and boolean story.
+
+### ROTfuck (high priority)
+A Turing-complete brainfuck variant where every executed command rotates
+all non-comment characters of the source one step along `+-><,.[]`.  The
+program text is self-modifying, but the spec is complete and there is a
+Hello World; the rotation-invariant construction is the interesting part.
+
+### UFSA (high priority)
+A finite-state-automaton meta-language: the first line names the initial
+and halt states, and each later line is `original transition trigger`
+followed by optional output tokens (`\*N*` octal escapes, `\\`).  Simple,
+deterministic, and fully specified with Hello World, cat, and truth-machine
+examples, and full I/O.
+
+### Suptiftam (medium priority)
+Two-dimensional tape-tapes of bytes or integers, permissive function
+definitions, includes, and I/O via the `read`/`term` tapes.  The spec is
+complete but has undefined behaviors and its examples are untested, so it is
+a heavier, riskier implementation.
+
+### Stackint (medium priority)
+A stack-based language with `?`/`!` computed jumps, arithmetic, and
+duplication.  Deterministic and well specified, but the only output is the
+stack printed as an array at the end of the program, which fits the repo's
+print-text protocol only awkwardly.
+
+### Queuenanimous (low priority)
+A Turing-complete queue-based language (`0 + - >` and while loops) with a
+complete translation table.  It has no I/O, so like Crement and A Painter
+Ant it can only be a self-contained interpreter without a generator.
 
 ### Crement (low priority)
 A self-modifying language with ADDRESS/DATA/JUMP opcodes and a polarity
@@ -76,12 +117,13 @@ text (`run_minusN`, `run_zero`, `bf_set_at`, `progAux_correct`).
 `EvalCorrect.lean` proves the backtick-escaped string literal
 `"<text with " → \`>".` over Eval's two-stack interpreter: the literal scan
 round-trips backticks to quotes (`scan_aux`) and `.` prints the text
-(`eval_correct`).  `three_d_bf` is done: `ThreeDbfCorrect.lean` reuses the
-brainfuck proof, since the 3D program is the bf program renamed `>`→`n`,
-`<`→`s` and the interpreter runs those moves along the x-axis with the same
-tape semantics.  The rest are smaller and language-specific: dig,
+(`eval_correct`).  `three_d_bf` is not proved: the 3D program is the bf
+program renamed `>`→`n`, `<`→`s` and the interpreter runs those moves along
+the x-axis, but a faithful proof needs the 3D interpreter's flat-source
+decoding, so it was dropped rather than restated.  The rest are smaller and
+language-specific: dig,
 polynomial, wii2d, dotlang, collatz_multiverse, add_sub_jump (register.py);
-ascii_art, bfstack, brainif,
+ascii_art, three_d_bf, bfstack, brainif,
 suffolk, minifuck (tape.py).
 
 ## Text generators: exhausted
