@@ -20,6 +20,7 @@ __all__ = [
     "minifuck",
     "six_five",
     "suffolk",
+    "three_d_bf",
 ]
 
 
@@ -157,6 +158,19 @@ def ascii_art(text: str) -> str:
     """
     _require_bytes(text, "ASCII art")
     return bf_to_ascii_art(bf(text))
+
+
+def three_d_bf(text: str) -> str:
+    """Build a 3D Brainfuck program that outputs ``text``.
+
+    The memory array is three-dimensional, so the brainfuck tape moves
+    ``>``/``<`` map to ``n``/``s`` along the +X axis of the array and the
+    rest of the program is the brainfuck generator's unchanged.  The program
+    runs along a single axis of the 3D array, keeping 3D Brainfuck a
+    faithful brainfuck superset.
+    """
+    _require_bytes(text, "3D Brainfuck")
+    return bf(text).replace(">", "n").replace("<", "s")
 
 
 def bfstack(text: str) -> str:

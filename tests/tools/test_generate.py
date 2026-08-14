@@ -38,6 +38,7 @@ from esolangs.interpreters.tape_based.factor import run as factor_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
+from esolangs.interpreters.tape_based.three_d_bf import run as three_d_bf_run
 from esolangs.tools.generators import other
 
 
@@ -78,6 +79,14 @@ class TestGeneratorRoundTrips:
         """Each byte is built from a parity seed and +/x, printed by Po."""
         assert roundtrip(unsquare_run, gen.unsquare("Hi")) == "Hi"
         assert roundtrip(unsquare_run, gen.unsquare("Hello, World!")) == "Hello, World!"
+
+    def test_three_d_bf(self) -> None:
+        """The brainfuck tape moves map to the array's +X axis."""
+        assert roundtrip(three_d_bf_run, gen.three_d_bf("Hi")) == "Hi"
+        assert (
+            roundtrip(three_d_bf_run, gen.three_d_bf("Hello, World!"))
+            == "Hello, World!"
+        )
 
     def test_between(self) -> None:
         """p prints the whole text; apostrophes are doubled inside literals."""

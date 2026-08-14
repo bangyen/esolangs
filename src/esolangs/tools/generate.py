@@ -55,6 +55,7 @@ from esolangs.tools.generators.tape import (
     minifuck,
     six_five,
     suffolk,
+    three_d_bf,
 )
 
 __all__ = [
@@ -97,6 +98,7 @@ __all__ = [
     "suffolk",
     "taglate",
     "temporary",
+    "three_d_bf",
     "three_x",
     "two_d_fish",
     "unsquare",
