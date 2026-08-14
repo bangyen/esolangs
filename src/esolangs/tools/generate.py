@@ -31,7 +31,9 @@ from esolangs.tools.generators.other import (
     ztoalc,
 )
 from esolangs.tools.generators.register import (
+    albabet,
     bio,
+    collatz_multiverse,
     dig,
     dotlang,
     eval,  # noqa: A004 - the language is named "Eval"
@@ -49,15 +51,18 @@ from esolangs.tools.generators.tape import (
     brainif,
     circlefuck,
     excon,
+    factor,
     mammalian,
     minifuck,
     six_five,
     suffolk,
+    three_d_bf,
 )
 
 __all__ = [
     "_123",
     "_ilog",
+    "albabet",
     "ascii_art",
     "basicfuck",
     "between",
@@ -68,12 +73,14 @@ __all__ = [
     "brainif",
     "circlefuck",
     "clockwise",
+    "collatz_multiverse",
     "container",
     "dig",
     "dimensional",
     "dotlang",
     "eval",
     "excon",
+    "factor",
     "forth",
     "home_row",
     "huf",
@@ -93,6 +100,7 @@ __all__ = [
     "suffolk",
     "taglate",
     "temporary",
+    "three_d_bf",
     "three_x",
     "two_d_fish",
     "unsquare",

@@ -7,18 +7,14 @@ PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python
 HOMEBREW_BIN := "/opt/homebrew/bin"
 LLVM_BIN := `command -v brew >/dev/null 2>&1 && echo "$(brew --prefix llvm)/bin" || echo ""`
 CARGO_BIN := "$HOME/.cargo/bin"
-RUBY_BIN := "/opt/homebrew/opt/ruby/bin:/opt/homebrew/lib/ruby/gems/3.4.0/bin"
 
 # Help
 help:
     @echo "Available targets:"
     @echo "  lint-python  - Lint Python files with Black, Ruff, and MyPy"
     @echo "  lint-c       - Lint C files with clang-format and clang-tidy"
-    @echo "  lint-cpp     - Lint C++ files with clang-format and clang-tidy"
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
-    @echo "  lint-ruby    - Lint Ruby files with rubocop"
     @echo "  lint-lean    - Lint Lean files with lean linter"
-    @echo "  lint-r       - Lint R files with lintr"
     @echo "  lint-asm     - Basic syntax check for Assembly files"
     @echo "  lint         - Run all linting targets"
     @echo "  test         - Run Python tests with pytest"
@@ -63,21 +59,6 @@ lint-c:
         echo "skip: clang-format not found"
     fi
 
-# lint cpp
-lint-cpp:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export PATH="{{HOMEBREW_BIN}}:{{LLVM_BIN}}:$PATH"
-    if command -v clang-format >/dev/null 2>&1; then
-        fail=0
-        while IFS= read -r f; do
-            clang-format --dry-run --Werror "$f" || fail=1
-        done < <(find extra/c++ -name "*.cpp")
-        exit $fail
-    else
-        echo "skip: clang-format not found"
-    fi
-
 # lint rust
 lint-rust:
     #!/usr/bin/env bash
@@ -96,17 +77,6 @@ lint-rust:
         echo "skip: cargo not found"
     fi
 
-# lint ruby
-lint-ruby:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export PATH="{{RUBY_BIN}}:$PATH"
-    if command -v rubocop >/dev/null 2>&1; then
-        rubocop extra/ruby/
-    else
-        echo "skip: rubocop not found"
-    fi
-
 # lint lean
 lint-lean:
     #!/usr/bin/env bash
@@ -115,20 +85,6 @@ lint-lean:
         (cd extra/lean/esolangs && lake build)
     else
         echo "skip: lake (Lean 4) not found"
-    fi
-
-# lint r
-lint-r:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if command -v Rscript >/dev/null 2>&1; then
-        if Rscript -e "if (!requireNamespace('lintr', quietly = TRUE)) quit(status = 1)"; then
-            Rscript -e "if (length(lintr::lint_dir('extra/r')) > 0) quit(status = 1)"
-        else
-            echo "skip: lintr not installed (install with install.packages('lintr'))"
-        fi
-    else
-        echo "skip: Rscript not found"
     fi
 
 # lint asm
@@ -146,7 +102,7 @@ lint-asm:
     fi
 
 # lint all code
-lint: lint-python lint-c lint-cpp lint-rust lint-ruby lint-lean lint-r lint-asm
+lint: lint-python lint-c lint-rust lint-lean lint-asm
     @echo "All lint checks completed!"
 
 # run tests

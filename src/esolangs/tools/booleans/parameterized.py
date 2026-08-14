@@ -15,12 +15,19 @@ exactly for the no-input languages, and it does not make them read input —
 the harness performs the injection.  :func:`bio` replaces ``{Xi}`` with an
 increment that loads the raw bit into a register and ``{Ci}`` with a runtime
 complement computation; :func:`back` replaces ``{Xi}`` with a ``\\`` or
-``/`` mirror so the beam is reflected toward the correct subtree.
+``/`` mirror so the beam is reflected toward the correct subtree;
+:func:`nocomment` replaces ``{Xi}`` with a constant-length tape setter
+(``c``/``i``) and routes a decision tree with the ``s`` skip.
 """
 
 from collections.abc import Callable
+from typing import TypeAlias
 
-__all__ = ["back", "bio", "instantiate"]
+__all__ = ["back", "bio", "instantiate", "nocomment"]
+
+# A decision-tree node: ("leaf", leaf_id, value, None, None) or
+# ("node", node_id, level, zero_subtree, one_subtree).
+_Node: TypeAlias = "tuple[str, int, int, _Node | None, _Node | None]"
 
 SetBit = Callable[[int, int], str]
 SetComp = Callable[[int, int], str]
@@ -195,3 +202,119 @@ def back(truth_table: str, n: int) -> str:
 
     lines = ["".join(ln).rstrip() for ln in grid]
     return "\n".join(lines)
+
+
+_byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"
+
+
+def nocomment(truth_table: str, n: int) -> str:
+    """Build a NoComment template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    NoComment has no input command, so this is a parameterized generator: the
+    template's ``{Xi}``/``{Ci}`` placeholders become a constant-length setter
+    for each input bit and its complement, and the harness instantiates one
+    program per input combination.
+
+    Rather than routing a decision tree, the program **computes the input's
+    numeric index** and uses it as a byte-sized ``s`` skip into a staircase of
+    ``l`` moves that land the pointer on a pre-loaded output cell holding
+    ``48 + truth_table[index]``.  Each bit ``i`` contributes its weight
+    (``2**w``) to the index cell only when the bit is one -- the guard tests
+    the complement cell so the contribution is skipped when the bit is zero.
+    The output is then a single ``o``.
+
+    This is a straight-line program: no leaf chains, no interleaved stations,
+    no placement.  Every jump is byte-sized, so the index must fit a byte --
+    the generator covers every table up to eight inputs and raises
+    :class:`ValueError` beyond that.
+    """
+    _validate(truth_table, n)
+    if n > 8:
+        raise ValueError("the NoComment boolean generator supports n <= 8")
+
+    k = 2**n
+    index = 2 * n
+    skip_base = index + 1  # one skip cell per input bit
+    tbase = skip_base + n  # the output cells
+    sentinel = tbase + k  # non-zero cell the final ``s`` gates on
+
+    # Emit the index computation and the output staircase.  Each bit's
+    # guarded increment ends with the pointer back on its complement cell,
+    # so the emitted moves stay consistent.
+    commands: list[str] = []
+    ptr = [index]
+
+    def move(dst: int) -> None:
+        while ptr[0] < dst:
+            commands.append("r")
+            ptr[0] += 1
+        while ptr[0] > dst:
+            commands.append("l")
+            ptr[0] -= 1
+
+    skip_vals: dict[int, int] = {}
+    for i in range(n):
+        w = n - 1 - i
+        comp = n + i
+        d = skip_base + i
+        move(d)
+        commands.append("n")
+        move(comp)
+        commands.append("s")
+        block = len(commands)
+        move(index)
+        commands.extend(["i"] * (2**w))
+        move(comp)
+        skip_vals[d] = len(commands) - block
+    move(index)
+    commands.append("n")  # push the index
+    ptr[0] = index
+    move(sentinel)
+    commands.append("s")  # skip by the index into the staircase
+    commands.extend(["l"] * k)
+    commands.append("o")
+
+    # Setup: bits, complements, index, skip cells, output cells, sentinel.
+    setup: list[str] = []
+    setup_ptr = [0]
+
+    def setup_move(dst: int) -> None:
+        while setup_ptr[0] < dst:
+            setup.append("r")
+            setup_ptr[0] += 1
+        while setup_ptr[0] > dst:
+            setup.append("l")
+            setup_ptr[0] -= 1
+
+    for i in range(n):
+        setup.append("{X" + str(i) + "}")
+        setup.append("r")
+    for i in range(n):
+        setup.append("{C" + str(i) + "}")
+        setup.append("r")
+    setup_ptr[0] = 2 * n
+    setup_move(index)
+    setup.append("c")  # index starts at zero
+    cells: list[tuple[int, int]] = list(skip_vals.items())
+    cells.append((sentinel, 48))
+    for j in range(k):
+        cells.append((tbase + j, 48 + int(truth_table[j])))
+    cells.sort(key=lambda cv: cv[1])
+    if cells:
+        first_addr, first_value = cells[0]
+        setup_move(first_addr)
+        setup.extend(["i"] * first_value)
+        prev_value = first_value
+        for addr, value in cells[1:]:
+            setup.append("n")
+            setup_move(addr)
+            setup.append("f")
+            diff = value - prev_value
+            setup.extend(["i"] * diff if diff > 0 else ["d"] * -diff)
+            prev_value = value
+    setup_move(index)
+
+    return "".join(setup + commands)

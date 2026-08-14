@@ -17,10 +17,12 @@ CAT = EXAMPLES / "cat"
 TRUTH = EXAMPLES / "truth-machine"
 
 # Languages with a boolean generator in esolangs.tools.booleans, mapped to
-# display names.  BIO and Back's generators are parameterized templates (the
-# harness substitutes the input bits) rather than input-reading programs.
+# display names.  Back, BIO, and NoComment's generators are parameterized
+# templates (the harness substitutes the input bits) rather than input-reading
+# programs.
 BOOLEAN = {
     "3x",
+    "3D Brainfuck",
     "6-5",
     "ASCII art",
     "Back",
@@ -32,6 +34,7 @@ BOOLEAN = {
     "BrainIf",
     "CircleFuck",
     "Clockwise",
+    "Collatz Multiverse",
     "Container",
     "Dig",
     "Dimensional",
@@ -39,6 +42,8 @@ BOOLEAN = {
     "LaserFuck",
     "Modulous",
     "Nevermind",
+    "NoComment",
+    "Painfuck",
     "Polynomial",
     "Qoibl",
     "S*bleq",
@@ -85,20 +90,6 @@ C_COMPILERS = _compiler_set("c")
 # excluded by matching only ``*.asm``.
 _EXTRA_DIRS = [
     (
-        ROOT / "extra" / "c++",
-        "*.cpp",
-        {
-            "%^2^-1": "%^2^-1",
-            "2dFish": "2dFish",
-            "basicfuck": "Basicfuck",
-            "forþ": "Forþ",
-            "kak": "Kak",
-            "painfuck": "Painfuck",
-            "trash": "Trash",
-        },
-        "C++ Implementations",
-    ),
-    (
         ROOT / "extra" / "assembly",
         "*.asm",
         {
@@ -122,32 +113,28 @@ _EXTRA_DIRS = [
         "Lean Implementations",
     ),
     (
-        ROOT / "extra" / "r",
-        "*.r",
-        {"excon": "EXCON"},
-        "R Implementations",
-    ),
-    (
-        ROOT / "extra" / "ruby",
-        "*.rb",
-        {
-            "3x": "3x",
-            "74": "Number Seventy-Four",
-            "bit": "bit~",
-            "unsquare": "Unsquare",
-        },
-        "Ruby Implementations",
-    ),
-    (
         ROOT / "extra" / "rust",
         "*.rs",
-        {"laserfuck": "LaserFuck", "unsquare": "Unsquare"},
+        {
+            "2dfish": "2dFish",
+            "basicfuck": "Basicfuck",
+            "bit_tilde": "bit~",
+            "forth": "Forþ",
+            "kak": "Kak",
+            "laserfuck": "LaserFuck",
+            "painfuck": "Painfuck",
+            "pct": "%^2^-1",
+            "seventy_four": "Number Seventy-Four",
+            "three_x": "3x",
+            "trash": "Trash",
+            "unsquare": "Unsquare",
+        },
         "Rust Implementations",
     ),
 ]
 
 # Display names of the languages with a native implementation in extra/
-# (C++, Rust, Ruby, R, Lean, or x86 assembly).  These interpreters run as
+# (Rust, Lean, or x86 assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
 
@@ -245,12 +232,13 @@ def render() -> str:
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Native means an implementation in `extra/` that runs as a standalone",
-        "program (C++, Rust, Ruby, R, Lean, or x86 assembly).  The Boolean",
-        "column marks the boolean-function generators; BIO and Back's are",
-        "parameterized (the harness substitutes input bits into a template)",
-        "rather than the program reading input.",
+        "program (Rust, Lean, or x86 assembly).  The Boolean",
+        "column marks the boolean-function generators; Back, BIO, and",
+        "NoComment's are parameterized (the harness substitutes input bits",
+        "into a template) rather than the program reading input.",
         "",
-        "| Language | Text generator | Python | Native | Boolean | Compiler | Examples |",  # noqa: E501
+        "| Language | Text generator | Python | Native | Boolean | "
+        "Compiler | Examples |",
         "| --- | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
     for name in sorted(set(LANGUAGES) | C_COMPILERS | NATIVE):

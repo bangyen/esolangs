@@ -110,7 +110,9 @@ art = esolangs.transpile("BF", "ASCII art", program)   # rewrite between languag
 
 Languages that use registers to store and manipulate data.
 
+- [%^2^-1](https://esolangs.org/wiki/%^2^-1)
 - [BIO](https://esolangs.org/wiki/BIO)
+- [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse)
 - [DSDLAI](https://esolangs.org/wiki/DSDLAI)
 - [Dig](https://esolangs.org/wiki/Dig)
 - [Dotlang](https://esolangs.org/wiki/Dotlang)
@@ -128,18 +130,28 @@ Languages that use registers to store and manipulate data.
 
 Languages that operate on a tape (similar to Turing machines).
 
+- [123](https://esolangs.org/wiki/123)
+- [3D Brainfuck](https://esolangs.org/wiki/3D_Brainfuck)
 - [6-5](https://esolangs.org/wiki/6-5)
+- [ABCDirection](https://esolangs.org/wiki/ABCDirection)
 - [ASCII art](https://esolangs.org/wiki/ASCII_art)
 - [brainfuck](https://esolangs.org/wiki/brainfuck)
+- [BF-PDA](https://esolangs.org/wiki/BF-PDA)
 - [Back](https://esolangs.org/wiki/Back)
+- [Basicfuck](https://esolangs.org/wiki/Basicfuck)
 - [BrainIf](https://esolangs.org/wiki/BrainIf)
+- [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse)
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck)
 - [Dimensional](https://esolangs.org/wiki/Dimensional)
 - [EXCON](https://esolangs.org/wiki/EXCON)
+- [Factor](https://esolangs.org/wiki/Factor)
+- [Kak](https://esolangs.org/wiki/Kak)
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN)
 - [Minifuck](https://esolangs.org/wiki/Minifuck)
 - [NoComment](https://esolangs.org/wiki/NoComment)
+- [Painfuck](https://esolangs.org/wiki/Painfuck)
 - [S*bleq](https://esolangs.org/wiki/S*bleq)
+- [Stun Step](https://esolangs.org/wiki/Stun_Step)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)
 
 ### Stack-based Languages
@@ -148,22 +160,33 @@ Languages that use a stack for data manipulation.
 
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [Eval](https://esolangs.org/wiki/Eval)
+- [Forþ](https://esolangs.org/wiki/Forþ)
 - [Modulous](https://esolangs.org/wiki/Modulous)
 - [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack)
+- [Unsquare](https://esolangs.org/wiki/Unsquare)
 
 ### Other Languages
 
 Languages that don't fit into the above categories.
 
+- [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte)
+- [2dFish](https://esolangs.org/wiki/2dFish)
+- [3x](https://esolangs.org/wiki/3x)
+- [A Painter Ant](https://esolangs.org/wiki/A_Painter_Ant)
+- [Albabet](https://esolangs.org/wiki/Albabet)
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue)
 - [Between](https://esolangs.org/wiki/Between)
 - [Bitdeque](https://esolangs.org/wiki/Bitdeque)
 - [Clockwise](https://esolangs.org/wiki/Clockwise)
 - [Container](https://esolangs.org/wiki/Container)
 - [Keys](https://esolangs.org/wiki/Keys)
+- [LaserFuck](https://esolangs.org/wiki/LaserFuck)
 - [Nevermind](https://esolangs.org/wiki/Nevermind)
+- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 - [Taglate](https://esolangs.org/wiki/Taglate)
+- [Trash](https://esolangs.org/wiki/Trash)
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L)
+- [bit~](https://esolangs.org/wiki/bit~)
 
 <!-- IMPLEMENTED:END -->
 
@@ -178,25 +201,15 @@ Implementations written in languages other than Python.
 
 Note: these are cross-check implementations written in this repository (not
 upstream language-author code).  Most generators are round-trip verified
-against these native references in CI; a few (Kak, Trash, Number
-Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step, Albabet, BF-PDA)
-are self-contained interpreters without generators, because their output
-classes are too narrow for text or they lack a file-based I/O protocol.
-The cross-checks share an exit-code convention mirroring the Python
-interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime
-operation.
+against these native references in CI; Kak, Trash, Number Seventy-Four, 2
+Bits 1 Byte, Brainpocalypse, Stun Step, Albabet, and BF-PDA have output
+classes too narrow for a text generator, but each now has an in-package
+Python interpreter that is differentially verified against its native
+reference (and AlbaBet gained a text generator).  The cross-checks share an
+exit-code convention mirroring the Python interpreters: 0 = success, 2 =
+malformed program, 3 = invalid runtime operation.
 
 <!-- EXTRA:START -->
-
-### C++ Implementations
-
-- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
-- [2dFish](https://esolangs.org/wiki/2dFish)
-- [Basicfuck](https://esolangs.org/wiki/Basicfuck)
-- [Forþ](https://esolangs.org/wiki/For%C3%BE)
-- [Kak](https://esolangs.org/wiki/Kak)
-- [Painfuck](https://esolangs.org/wiki/Painfuck)
-- [Trash](https://esolangs.org/wiki/Trash)
 
 ### x86 Assembly Implementations
 
@@ -213,20 +226,19 @@ operation.
 - [EXCON](https://esolangs.org/wiki/EXCON)
 - [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 
-### R Implementations
-
-- [EXCON](https://esolangs.org/wiki/EXCON)
-
-### Ruby Implementations
-
-- [3x](https://esolangs.org/wiki/3x)
-- [bit~](https://esolangs.org/wiki/Bit~)
-- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
-- [Unsquare](https://esolangs.org/wiki/Unsquare)
-
 ### Rust Implementations
 
+- [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
+- [2dFish](https://esolangs.org/wiki/2dFish)
+- [3x](https://esolangs.org/wiki/3x)
+- [Basicfuck](https://esolangs.org/wiki/Basicfuck)
+- [bit~](https://esolangs.org/wiki/Bit~)
+- [Forþ](https://esolangs.org/wiki/For%C3%BE)
+- [Kak](https://esolangs.org/wiki/Kak)
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
+- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
+- [Painfuck](https://esolangs.org/wiki/Painfuck)
+- [Trash](https://esolangs.org/wiki/Trash)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 
 <!-- EXTRA:END -->

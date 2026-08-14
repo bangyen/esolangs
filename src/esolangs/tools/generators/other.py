@@ -35,11 +35,20 @@ def between(text: str) -> str:
 
     One ``p`` prints the whole text as a string literal, then ``x`` exits.
     Apostrophes are doubled (``''``) so they can appear inside the literal;
-    a newline cannot because each instruction occupies one line.
+    a line break cannot because each instruction occupies one line.
     """
-    if any(c in "\n\r" for c in text):
-        raise ValueError("Between cannot output a newline (instructions are one line)")
+    # Programs are split with str.splitlines(), which treats more than \n and
+    # \r as line boundaries; any of these would cut the literal in two.
+    if any(c in _SPLITLINES for c in text):
+        raise ValueError(
+            "Between cannot output a newline or other line break "
+            "(instructions are one line)"
+        )
     return f"'{text.replace(chr(39), chr(39) * 2)}'p.\n.x."
+
+
+# Characters str.splitlines() treats as line boundaries.
+_SPLITLINES = "\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
 
 
 def clockwise(text: str) -> str:
@@ -215,10 +224,17 @@ def forth(text: str) -> str:
         o = ord(c)
         if o == 0:
             return "0"
-        n = _ilog(15, o)
-        m = o // (15**n)
-        p = o - m * 15**n
-        return n * "F" + (n - 1) * "*" + s[m] + "*" + s[p] + "+"
+        # base-15 digits, most significant first, folded by Horner's rule
+        ds: list[int] = []
+        v = o
+        while v:
+            ds.append(v % 15)
+            v //= 15
+        ds.reverse()
+        prog = s[ds[0]]
+        for d in ds[1:]:
+            prog += "F*" + s[d] + "+"
+        return prog
 
     if "\x00" in text:
         return "0" + "".join(build(c) + "." for c in text)
@@ -614,8 +630,11 @@ def taglate(text: str) -> str:
     character pops and prints it.  A newline cannot appear in the text
     because it would split the queue line.
     """
-    if any(c in "\n\r" for c in text):
-        raise ValueError("Taglate cannot output a newline (the queue is one line)")
+    if any(c in _SPLITLINES for c in text):
+        raise ValueError(
+            "Taglate cannot output a newline or other line break "
+            "(the queue is one line)"
+        )
     return text + "\n" + "i" * len(text)
 
 
@@ -738,13 +757,11 @@ def bit_tilde(text: str) -> str:
 def three_x(text: str) -> str:
     """Build a 3x program that outputs ``text``.
 
-    ``[`` prints the literal up to the next ``]``, so the program is
-    ``[text]``.  A ``?`` or ``]`` in the text would be read as input or end
-    the literal early (the reference re-executes the printed characters), so
-    both are rejected.
+    ``[`` prints the literal up to the next ``]`` and skips past it, so the
+    program is ``[text]``; a ``]`` in the text would end the literal early.
     """
-    if any(c in "?]" for c in text):
-        raise ValueError("3x cannot output '?' or ']' (the literal re-executes)")
+    if "]" in text:
+        raise ValueError("3x cannot output ']' (it would end the literal)")
     return "[" + text + "]"
 
 
