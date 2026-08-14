@@ -4,8 +4,6 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Coverage](coverage-badge.svg)](coverage-badge.svg)
 
-A comprehensive collection of interpreters and compilers for esoteric programming languages (esolangs). This repository contains implementations of various esoteric languages, ranging from classic stack-based languages to modern register-based systems.
-
 ## Table of Contents
 
 - [About](#about)
@@ -19,6 +17,8 @@ A comprehensive collection of interpreters and compilers for esoteric programmin
 - [Compilers](#compilers)
 - [Transpilers](#transpilers)
 - [Tools](#tools)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## About
 
@@ -287,7 +287,8 @@ Utility programs that work with the esoteric languages.
 
 ### Boolean Function Generator
 
-The `boolean.py` module builds programs that compute a boolean function from a truth table (most-significant input first) for languages with suitable control flow:
+The `boolean.py` module builds a program that computes a truth table
+(most-significant input first) in each language with suitable control flow:
 
 ```python
 from esolangs.tools.boolean import between, circlefuck_byte, dig, laserfuck, polynomial, taglate
@@ -300,21 +301,27 @@ laserfuck("0110", 2)      # and in LaserFuck (random initial heading)
 circlefuck_byte(table, n)  # arbitrary byte-valued functions
 ```
 
-Most languages in the suite have a matching generator; the rest differ only in the function name.
+Most languages in the suite have such a generator (some cover only a
+documented subset, like Minifuck's 0-preserving and one-input tables).
 
 ### Program Generator
 
-The `generate.py` program outputs programs which output a given string in different languages:
+The `generate.py` module builds a program that prints a given string in each
+language with a text generator:
 
 ```bash
 python -m esolangs.tools.generate "Hello, World!"
 ```
 
-Every generator is also available through `esolangs list` and `esolangs generate` (see above); run `esolangs list` for the full set.
+Every generator is also available through `esolangs list` and
+`esolangs generate` (see above); run `esolangs list` for the full set.
 
 ## Contributing
 
-Contributions are welcome! If you find bugs or want to add new language implementations, please feel free to submit issues or pull requests.
+Contributions are welcome!  If you find a bug or want to add a language,
+check the [roadmap](docs/roadmap.md) and [limitations](docs/limitations.md)
+first, then open an issue or pull request.  New languages are registered in
+`src/esolangs/registry.py`; run `just test` to verify your changes.
 
 ## License
 
