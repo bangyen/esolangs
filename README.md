@@ -183,7 +183,7 @@ Languages that don't fit into the above categories.
 <details>
 <!-- EXTRA:START -->
 
-<summary>Show all 20 implementations</summary>
+<summary>Show all 17 implementations</summary>
 
 Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them, and languages whose output classes are too narrow for a text generator (Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step, BF-PDA) still get a Python interpreter differentially verified against the native reference.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
 
@@ -194,13 +194,6 @@ Implementations written in languages other than Python, used as cross-check refe
 - [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse)
 - [NoComment](https://esolangs.org/wiki/NoComment)
 - [Stun Step](https://esolangs.org/wiki/Stun_Step)
-
-### Lean Implementations
-
-- [Albabet](https://esolangs.org/wiki/Albabet)
-- [BF-PDA](https://esolangs.org/wiki/BF-PDA)
-- [EXCON](https://esolangs.org/wiki/EXCON)
-- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 
 ### Rust Implementations
 
