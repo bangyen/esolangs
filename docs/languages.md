@@ -53,7 +53,7 @@ into a template) rather than the program reading input.
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
 | MAMMALIAN | yes | yes |  |  |  | hello |
-| Minifuck | yes | yes |  |  |  | hello |
+| Minifuck | yes | yes |  | yes |  | hello |
 | Minsky Swap |  | yes |  |  |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |

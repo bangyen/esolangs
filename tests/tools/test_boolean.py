@@ -74,6 +74,15 @@ def run_bit_tilde(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_minifuck(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.minifuck import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.collatz_multiverse import run
 
@@ -811,6 +820,52 @@ class TestBitTilde:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.bit_tilde("02", 1)
+
+
+class TestMinifuck:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("00", 1),  # constant zero
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("11", 1),  # constant one
+            ("0000", 2),  # constant zero
+            ("0001", 2),  # AND
+            ("0011", 2),  # echo b0
+            ("0101", 2),  # echo b1
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.minifuck(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_minifuck(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_unreachable_two_input_tables_are_rejected(self) -> None:
+        """The non-0-preserving two-input tables are a documented wall."""
+        for table in ("1000", "1110", "1001", "1100", "1010", "1111"):
+            with pytest.raises(ValueError, match="non-0-preserving"):
+                boolean.minifuck(table, 2)
+
+    def test_n_three_rejected(self) -> None:
+        """No general construction exists for three or more inputs."""
+        with pytest.raises(ValueError, match="n >= 3"):
+            boolean.minifuck("00000000", 3)
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.minifuck("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.minifuck("02", 1)
 
 
 class TestBasicfuck:
