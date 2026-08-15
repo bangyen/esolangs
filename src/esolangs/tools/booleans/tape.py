@@ -102,12 +102,12 @@ def brainif(truth_table: str, n: int) -> str:
 
 
 def circlefuck(truth_table: str, n: int) -> str:
-    """Build a CircleFuck program computing the given truth table.
+    """Build a Circlefuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
     (most significant first), and ``n`` is the number of inputs.
 
-    CircleFuck reads each input with ``,`` and normalizes it to 0/1 with 48
+    Circlefuck reads each input with ``,`` and normalizes it to 0/1 with 48
     ``-``s, then a decision tree branches on the cells from the last input
     down. Each leaf starts from a cleared cell, so it sets the result with
     ``+``s, prints it, and halts with ``@`` -- halting at the leaf means the
@@ -145,7 +145,7 @@ def circlefuck(truth_table: str, n: int) -> str:
 
 
 def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
-    """Build a CircleFuck program computing a byte-valued function.
+    """Build a Circlefuck program computing a byte-valued function.
 
     ``truth_table`` is a sequence of ``2**n`` byte values (0-255) indexed by
     the inputs (most significant first), and ``n`` is the number of bit

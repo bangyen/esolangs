@@ -108,6 +108,26 @@ class TestFunctions:
         code = "main { a = 1; a = !a; out 0,0,0,0,0,0,0,a; }"
         assert run_program(code) == "\x00"
 
+    def test_unpassed_parameter_is_zero(self) -> None:
+        """Unpassed parameters are set to 0 (per the wiki)."""
+        code = """
+            main {
+              f a, b { out 0,0,0,0,0,0,0,b; }
+              r = (f 1);
+            }
+        """
+        assert run_program(code) == "\x00"
+
+    def test_bare_block_is_function_literal(self) -> None:
+        """A bare {code} block is a function literal in value position."""
+        code = """
+            main {
+              x = { return 1; };
+              out 0,0,0,0,0,0,0,(x 0);
+            }
+        """
+        assert run_program(code) == "\x01"
+
     def test_function_returns(self) -> None:
         code = """
             one { return 1; }

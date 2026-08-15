@@ -381,14 +381,14 @@ def minifuck(text: str) -> str:
     return "".join(res)
 
 
-# CircleFuck command characters (everything else is a harmless no-op cell).
+# Circlefuck command characters (everything else is a harmless no-op cell).
 _CF_COMMANDS = frozenset("+-<>[],.@#{}")
 
 
 def circlefuck(text: str) -> str:
-    """Generate a CircleFuck program that outputs ``text``.
+    """Generate a Circlefuck program that outputs ``text``.
 
-    CircleFuck's tape is the program itself, so a cell starts out holding the
+    Circlefuck's tape is the program itself, so a cell starts out holding the
     character code of whatever instruction occupies its position.  The
     generator keeps the data pointer on a single cell: a no-op character near
     the first target's code seeds it, and ``+``/``-`` runs placed later in the
@@ -397,7 +397,7 @@ def circlefuck(text: str) -> str:
     only its delta from the previous one rather than a fresh-cell rebuild
     from its instruction code.
     """
-    _require_bytes(text, "CircleFuck")
+    _require_bytes(text, "Circlefuck")
     if not text:
         return "@"
     base = min(
@@ -439,7 +439,7 @@ def mammalian(text: str) -> str:
     (pointer, SEED count, character) state with no extras, plus random states
     with extras, without ever failing.
     """
-    _require_bytes(text, "MAMMALIAN")
+    _require_bytes(text, "SLOW ACV MAMMALIAN")
     if not text:
         return ""
     k = 1

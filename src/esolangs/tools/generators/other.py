@@ -176,7 +176,7 @@ def _anchor_for(n: int) -> int:
 
 
 def ztoalc(text: str) -> str:
-    """Build a ZTOALC program that outputs ``text``.
+    """Build a ZTOALC L program that outputs ``text``.
 
     The interpreter runs lines in Collatz-trajectory order from the initial
     value on line 1, so each character is placed on the line its trajectory

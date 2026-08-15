@@ -107,7 +107,7 @@ class TestInProcess:
 
         program = tmp_path / "prog.txt"
         program.write_text(boolean.circlefuck("1101", 2))
-        out = call_main(["run", "CircleFuck", str(program)], capsys, stdin="1\n0\n")
+        out = call_main(["run", "Circlefuck", str(program)], capsys, stdin="1\n0\n")
         assert out == "0"
 
     def test_run_missing_file(self, capsys: pytest.CaptureFixture[str]) -> None:

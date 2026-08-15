@@ -16,7 +16,7 @@ def modulous(text: str) -> str:
 
 
 def temporary(text: str) -> str:
-    """Build a Temporary program that outputs ``text``.
+    """Build a The Temporary Stack program that outputs ``text``.
 
     Characters are pushed as a ``*`` string literal and popped by the
     numeric mode ``o``.  Control/whitespace characters that cannot live

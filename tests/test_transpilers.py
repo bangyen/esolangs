@@ -3,7 +3,7 @@
 The contract is that a brainfuck program and its translation are
 interchangeable: the translation runs to identical output through the
 target interpreter.  The ASCII-art transpilers are alphabet swaps whose
-translation also recovers the source program exactly.  The CircleFuck
+translation also recovers the source program exactly.  The Circlefuck
 transpiler is a real program transformation (its tape is the program
 itself), so it targets the class of brainfuck programs whose data pointer
 stays within ``[0, size)``; a battery plus a fuzz of bounded, terminating
@@ -51,7 +51,7 @@ PINNED = {
 }
 
 # (brainfuck program, stdin) pairs; each program keeps its pointer in
-# [0, size) for the auto-sized bound, so it is in the CircleFuck
+# [0, size) for the auto-sized bound, so it is in the Circlefuck
 # transpiler's supported class.
 CIRCLEFUCK_BATTERY = (
     ("++.", ""),
@@ -166,18 +166,18 @@ def test_listed_transpilers_are_known_languages() -> None:
 
 @pytest.mark.parametrize(("program", "stdin"), CIRCLEFUCK_BATTERY)
 def test_circlefuck_transpiled_output_matches_source(program: str, stdin: str) -> None:
-    circlefuck = esolangs.transpile("BF", "CircleFuck", program)
+    circlefuck = esolangs.transpile("BF", "Circlefuck", program)
     assert esolangs.run("BF", program, stdin) == esolangs.run(
-        "CircleFuck", circlefuck, stdin
+        "Circlefuck", circlefuck, stdin
     )
 
 
 @pytest.mark.parametrize(("program", "stdin"), CIRCLEFUCK_BATTERY)
 def test_circlefuck_explicit_size(program: str, stdin: str) -> None:
     """An explicit size is a larger-but-still-valid data region."""
-    circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)
+    circlefuck = esolangs.transpile("BF", "Circlefuck", program, size=8)
     assert esolangs.run("BF", program, stdin) == esolangs.run(
-        "CircleFuck", circlefuck, stdin
+        "Circlefuck", circlefuck, stdin
     )
 
 
@@ -185,50 +185,50 @@ def test_circlefuck_explicit_size(program: str, stdin: str) -> None:
 def test_circlefuck_transpiles_generated_program(text: str) -> None:
     """The BF generator's output (single cell) transpiles and prints the text."""
     program = esolangs.generate("BF", text)
-    circlefuck = esolangs.transpile("BF", "CircleFuck", program)
-    assert esolangs.run("CircleFuck", circlefuck) == text
+    circlefuck = esolangs.transpile("BF", "Circlefuck", program)
+    assert esolangs.run("Circlefuck", circlefuck) == text
 
 
 def test_circlefuck_left_edge_is_out_of_class() -> None:
     """Moving below cell 0 is outside the supported class.
 
-    Brainfuck clamps ``<`` at the left edge; CircleFuck's pointer wraps to
+    Brainfuck clamps ``<`` at the left edge; Circlefuck's pointer wraps to
     the end of the program, so the transpiler only guarantees equivalence
     for programs that stay in ``[0, size)``.
     """
     program = ">+<<."  # reads cell 1, then moves below cell 0
-    circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=4)
-    assert esolangs.run("BF", program) != esolangs.run("CircleFuck", circlefuck)
+    circlefuck = esolangs.transpile("BF", "Circlefuck", program, size=4)
+    assert esolangs.run("BF", program) != esolangs.run("Circlefuck", circlefuck)
 
 
 def test_circlefuck_auto_size_rejects_below_zero() -> None:
     """Programs that dip below cell 0 are rejected rather than mistranslated."""
     with pytest.raises(ValueError, match="below cell 0"):
-        esolangs.transpile("BF", "CircleFuck", ">+<<.")
+        esolangs.transpile("BF", "Circlefuck", ">+<<.")
 
 
 def test_circlefuck_auto_size_rejects_drifting_loop() -> None:
     """Loops that drift the pointer unboundedly cannot be auto-sized."""
     with pytest.raises(ValueError, match="drift"):
-        esolangs.transpile("BF", "CircleFuck", "+[>+]")
+        esolangs.transpile("BF", "Circlefuck", "+[>+]")
 
 
 def test_circlefuck_auto_size_rejects_nested_drifting_loop() -> None:
     """Drift detected inside a nested loop is propagated out."""
     with pytest.raises(ValueError, match="drift"):
-        esolangs.transpile("BF", "CircleFuck", "++[+[>+]]")
+        esolangs.transpile("BF", "Circlefuck", "++[+[>+]]")
 
 
 def test_circlefuck_unmatched_bracket_rejected() -> None:
     """Unbalanced brackets are malformed and rejected by both the source
     interpreter and the transpiler."""
     with pytest.raises(ValueError, match="unbalanced brackets"):
-        esolangs.transpile("BF", "CircleFuck", "[")
+        esolangs.transpile("BF", "Circlefuck", "[")
 
 
 def test_circlefuck_size_must_be_positive() -> None:
     with pytest.raises(ValueError, match="size must be positive"):
-        esolangs.transpile("BF", "CircleFuck", "+.", size=0)
+        esolangs.transpile("BF", "Circlefuck", "+.", size=0)
 
 
 def test_circlefuck_fuzz_bounded_programs() -> None:
@@ -256,8 +256,8 @@ def test_circlefuck_fuzz_bounded_programs() -> None:
             else:
                 parts.append("[-]")
         program = "".join(parts)
-        circlefuck = esolangs.transpile("BF", "CircleFuck", program)
-        assert esolangs.run("BF", program) == esolangs.run("CircleFuck", circlefuck)
+        circlefuck = esolangs.transpile("BF", "Circlefuck", program)
+        assert esolangs.run("BF", program) == esolangs.run("Circlefuck", circlefuck)
 
 
 @pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123", "\x00\x01"])

@@ -32,13 +32,20 @@ def run(code: list[str], io: IO) -> None:
     num: int = 0
     ind: int = 0
 
+    def read_value(prompt: str = "") -> str:
+        """Read a value, substituting ``0`` on EOF (per the wiki)."""
+        try:
+            return io.input_str(prompt)
+        except EOFError:
+            return "0"
+
     for m in reg.finditer(code[0]):
         x: str = m[1]
         y: str = m[2]
         if x == "42":
-            x = io.input_str("Key: ")
+            x = read_value("Key: ")
         if y == "42":
-            y = io.input_str("Value: ")
+            y = read_value("Value: ")
             y = y or "0"
         arr[int(x)] = int(y)
 
@@ -64,7 +71,7 @@ def run(code: list[str], io: IO) -> None:
                     io.print_str(f"{n} ")
             elif match_result[3].isdigit():
                 input_dst_idx: int = int(match_result[3])
-                input_str: str = io.input_str()
+                input_str: str = read_value()
                 arr[input_dst_idx] = int(input_str) if input_str else 0
 
         num = (num + 1) * (arr == copy)

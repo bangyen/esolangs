@@ -1,4 +1,4 @@
-"""Interpreter for ZTOALC.
+"""Interpreter for ZTOALC L.
 
 Programs are a list of lines; line 1 holds the initial pointer.  Execution
 visits line ``v`` when the Collatz step equals ``v``, halting when the value
@@ -24,13 +24,13 @@ from esolangs.interpreters.io import IO
 
 @dataclass
 class State:
-    """Per-run state for a ZTOALC interpreter."""
+    """Per-run state for a ZTOALC L interpreter."""
 
 
 def run(code: list[str], io: IO) -> None:
-    """Run a ZTOALC program, following the Collatz trajectory of line 1."""
+    """Run a ZTOALC L program, following the Collatz trajectory of line 1."""
     if not code:
-        raise ValueError("ZTOALC program cannot be empty")
+        raise ValueError("ZTOALC L program cannot be empty")
     ptr = int(code[0])
     state = State()
     var: dict[str, int | list[int]] = {}

@@ -1263,7 +1263,7 @@ def run_clockwise(program: str, inputs: list[str]) -> str:
 def run_ztoalc(program: str, inputs: list[str]) -> str:
     import esolangs
 
-    return esolangs.run("ZTOALC", program, stdin="\n".join(inputs))
+    return esolangs.run("ZTOALC L", program, stdin="\n".join(inputs))
 
 
 class TestParameterizedBIO:

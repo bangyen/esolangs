@@ -33,7 +33,7 @@ BOOLEAN = {
     "BIO",
     "bit~",
     "BrainIf",
-    "CircleFuck",
+    "Circlefuck",
     "Clockwise",
     "Collatz Multiverse",
     "Container",
@@ -166,14 +166,9 @@ _README_HEADINGS = [
 ]
 
 # Registry display name -> esolangs wiki page title, where the wiki names
-# the page differently from the registry's shorthand.
+# the page differently from the display name.
 _WIKI_PAGES = {
     "BF": "brainfuck",
-    "BitDeque": "Bitdeque",
-    "CircleFuck": "Circlefuck",
-    "MAMMALIAN": "SLOW ACV MAMMALIAN",
-    "Temporary": "The Temporary Stack",
-    "ZTOALC": "ZTOALC L",
 }
 
 _README_START = "<!-- IMPLEMENTED:START -->"

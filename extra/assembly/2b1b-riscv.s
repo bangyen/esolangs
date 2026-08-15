@@ -107,17 +107,25 @@ read_field:
     addi sp, sp, 16
     ret
 
-# Set the reader state to read ``field`` next: cl = 8 - 2*field,
-# bl = (3 << cl) & 0xFF.
+# Set the reader state to read ``field`` next: the reader advances cl and
+# rotates bl before reading, so cl = (6 - 2*field + 2) & 7 and
+# bl = rol2(3 << ((6 - 2*field) & 7)).
 seek:
     addi sp, sp, -16
     sd   ra, 8(sp)
     slli t0, a0, 1         # 2*field
-    li   t1, 8
-    sub  s1, t1, t0        # cl = 8 - 2*field
+    li   t1, 6
+    sub  t0, t1, t0        # used_cl = 6 - 2*field
+    andi t6, t0, 7         # t6 = used_cl (kept across shift_left)
+    mv   s1, t6
     li   a0, 3
-    call shift_left        # 3 << cl
-    andi s2, a0, 0xFF      # bl
+    call shift_left        # a0 = 3 << used_cl
+    slli t1, a0, 2         # rol2
+    srli t2, a0, 6
+    or   t1, t1, t2
+    andi s2, t1, 0xFF      # bl
+    addi t0, t6, 2
+    andi s1, t0, 7         # pre_cl = (used_cl + 2) & 7
     ld   ra, 8(sp)
     addi sp, sp, 16
     ret
