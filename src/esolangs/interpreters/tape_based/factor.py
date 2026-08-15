@@ -28,7 +28,7 @@ import sys
 import sympy
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.tape_based.bf import run as run_bf
+from esolangs.interpreters.tape_based.brainfuck import run as run_bf
 
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 

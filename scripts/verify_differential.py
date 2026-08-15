@@ -37,11 +37,11 @@ Languages with both an in-package interpreter and a native cross-check:
   over exact rationals; the reference prints its ``Input: `` prompts to
   stdout (stripped before comparing) and both agree on the exit-code
   convention.
-* **%^2^-1** — ``register_based/%^2^-1.py`` vs ``extra/rust/pct.rs``.
+* **%^2^-1** — ``register_based/pct_squared_minus_one.py`` vs ``extra/rust/pct.rs``.
   Both track the accumulator as a signed magnitude with the 3003 reset; the
   reference prints its ``Input: `` prompts to stdout, which are stripped
   before comparing.
-* **2dFish** — ``other/2dfish.py`` vs ``extra/rust/2dfish.rs``.  Both run
+* **2dFish** — ``other/two_d_fish.py`` vs ``extra/rust/2dfish.rs``.  Both run
   the ragged grid with the reference's trailing-newline phantom row.
 * **Painfuck** — ``tape_based/painfuck.py`` vs ``extra/rust/painfuck.rs``.
   Corpus programs are encoded into the source alphabet (the reference
@@ -785,7 +785,7 @@ BASICFUCK_CORPUS = [
     (_BF_U + "a\na += 0;\nif !(a) { write <- a ; }", b""),
     (_BF_U + "a\na += 5;\nwhile (a) { a -= 1; }\nwrite <- a ;", b""),
     (
-        _BF_U + "a->2\na->0 += 65;\nwrite <- a->0 ;\na->1 += 66;" "\nwrite <- a->1 ;",
+        _BF_U + "a->2\na->0 += 65;\nwrite <- a->0 ;\na->1 += 66;\nwrite <- a->1 ;",
         b"",
     ),
     (_BF_U + "a\nread -> a ;\nwrite <- a ;\nread -> a ;\nwrite <- a ;", b"hi\nx\n"),
@@ -1215,7 +1215,9 @@ def _run_pct_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
     from esolangs.interpreters.io import ScriptedIO
 
-    run = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
+    run = importlib.import_module(
+        "esolangs.interpreters.register_based.pct_squared_minus_one"
+    ).run
 
     io = ScriptedIO(stdin.decode("latin1"))
     try:
@@ -1337,7 +1339,7 @@ def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import ScriptedIO
 
-    run = importlib.import_module("esolangs.interpreters.other.2dfish").run
+    run = importlib.import_module("esolangs.interpreters.other.two_d_fish").run
 
     io = ScriptedIO(stdin.decode("latin1"))
     try:

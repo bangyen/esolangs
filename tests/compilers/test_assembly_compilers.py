@@ -6,12 +6,12 @@ import pytest
 
 COMPILERS = [
     "esolangs.compilers.assembly.bfstack",
-    "esolangs.compilers.assembly.home-row",
+    "esolangs.compilers.assembly.home_row",
     "esolangs.compilers.assembly.jaune",
     "esolangs.compilers.assembly.unsquare",
     "esolangs.compilers.assembly.excon",
-    "esolangs.compilers.assembly.bfpda",
-    "esolangs.compilers.assembly.RAM0",
+    "esolangs.compilers.assembly.bf_pda",
+    "esolangs.compilers.assembly.ram0",
 ]
 
 
@@ -125,41 +125,41 @@ def test_unsquare_emits_syscalls() -> None:
 
 class TestHomeRow:
     def test_arithmetic(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         assert "lw   t0, 0(s1)" in mod.comp("a")
         assert "addi t0, t0, 2" in mod.comp("aa")
         assert "lw   t0, 0(s1)" in mod.comp("s")
         assert "addi t0, t0, -2" in mod.comp("ss")
 
     def test_movement(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         assert "down:" in mod.comp("d")
         assert "right:" in mod.comp("f")
 
     def test_output(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         assert "print:" in mod.comp("akk")
 
     def test_conditional_movement_and_output(self) -> None:
         """Commands preceded by j are a single (uncounted) step."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         assert "call print" in mod.comp("jak")
 
     def test_cell_shared_function(self) -> None:
         """Both movement commands together emit the shared cell addressing."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         output = mod.comp("dkf")
         assert "slli t1, t0, 4" in output
 
     def test_counted_movement(self) -> None:
         """Repeated movement commands emit a count and add to the position."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         assert "add  s4, s4, t3" in mod.comp("ddk")
         assert "add  s5, s5, t3" in mod.comp("ffk")
 
     def test_loop_with_skip(self) -> None:
         """A loop combined with a conditional skip emits both labels."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         output = mod.comp("jl")
         assert ".skip" in output
         assert ".top" in output
@@ -167,17 +167,17 @@ class TestHomeRow:
 
     def test_odd_loop_count(self) -> None:
         """An odd loop count emits the bnez .top branch."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         assert "bnez t0, .top" in mod.comp("jlajl")
 
     def test_conditionals_and_loop(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         assert ".skip" in mod.comp("j")
         assert ".top" in mod.comp("l")
         assert ".bot" in mod.comp("l")
 
     def test_halt(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home-row")
+        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
         assert "ecall" in mod.comp(";")
 
 
@@ -369,37 +369,37 @@ class TestExcon:
 
 class TestBFPDA:
     def test_push_flip_pop(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfpda")
+        mod = importlib.import_module("esolangs.compilers.assembly.bf_pda")
         output = mod.comp("<@>")
         assert "sb   zero, 0(s1)" in output  # push 0
         assert "xori t0, t0, 1" in output  # flip top
         assert "addi s1, s1, 1" in output  # pop
 
     def test_output_emits_syscall(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfpda")
+        mod = importlib.import_module("esolangs.compilers.assembly.bf_pda")
         assert "ecall" in mod.comp(".")
 
 
 class TestRAM0:
     def test_parse(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.RAM0")
+        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
         assert mod.parse("A A 5") == ["A", "A", "5"]
         assert mod.parse("Z A N C L S") == ["Z", "A", "N", "C", "L", "S"]
 
     def test_dispatch_labels(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.RAM0")
+        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
         output = mod.comp("A A")
         assert ".L0:" in output
         assert ".L1:" in output
         assert ".done:" in output
 
     def test_goto_jumps(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.RAM0")
+        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
         assert "j .L0" in mod.comp("1")
         assert "j .done" in mod.comp("9 A")
 
     def test_c_skip(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.RAM0")
+        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
         assert "beqz s1, .done" in mod.comp("C")
 
 
@@ -412,12 +412,12 @@ class TestCompilerFuzz:
         "module",
         [
             "esolangs.compilers.assembly.bfstack",
-            "esolangs.compilers.assembly.home-row",
+            "esolangs.compilers.assembly.home_row",
             "esolangs.compilers.assembly.jaune",
             "esolangs.compilers.assembly.unsquare",
             "esolangs.compilers.assembly.excon",
-            "esolangs.compilers.assembly.bfpda",
-            "esolangs.compilers.assembly.RAM0",
+            "esolangs.compilers.assembly.bf_pda",
+            "esolangs.compilers.assembly.ram0",
         ],
     )
     def test_random_input_does_not_crash(self, module: str) -> None:

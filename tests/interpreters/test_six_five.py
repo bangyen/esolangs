@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 
-sixfive = importlib.import_module("esolangs.interpreters.tape_based.6-5")
+sixfive = importlib.import_module("esolangs.interpreters.tape_based.six_five")
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:

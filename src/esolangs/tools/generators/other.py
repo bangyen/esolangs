@@ -8,7 +8,6 @@ from esolangs.tools.generators.helpers import _ilog, _require_ascii, _require_by
 from esolangs.tools.ztoalc_starts import ANCHORS
 
 __all__ = [
-    "_123",
     "basicfuck",
     "between",
     "bit_tilde",
@@ -21,6 +20,7 @@ __all__ = [
     "laserfuck",
     "nevermind",
     "nocomment",
+    "one_two_three",
     "painfuck",
     "pct_squared_minus_one",
     "sbleq",
@@ -103,26 +103,19 @@ def container(text: str) -> str:
     _require_ascii(text, "Container")
     ind = last = 0
     if text:
-        res = (
-            "A:\n"
-            "+1 EXIT>=1\n\n"
-            "PRINT:\n"
-            "+1 PRINT<=0\n"
-            "-1 PRINT>=1\n\n"
-            "OUT:\n"
-        )
+        res = "A:\n+1 EXIT>=1\n\nPRINT:\n+1 PRINT<=0\n-1 PRINT>=1\n\nOUT:\n"
     else:
-        return "EXIT=1:\n" "-1 EXIT>=0"
+        return "EXIT=1:\n-1 EXIT>=0"
 
     for c in text:
         if (o := ord(c) - last) >= 0:
-            res += f"+{o} A>={ind}\n" f"-{o} A>={ind + 1}\n"
+            res += f"+{o} A>={ind}\n-{o} A>={ind + 1}\n"
         else:
-            res += f"-{-o} A>={ind}\n" f"+{-o} A>={ind + 1}\n"
+            res += f"-{-o} A>={ind}\n+{-o} A>={ind + 1}\n"
         last = ord(c)
         ind += 2
 
-    res += "EXIT=1:\n" f"-1 A>={ind - 2}"
+    res += f"EXIT=1:\n-1 A>={ind - 2}"
 
     return res
 
@@ -531,7 +524,7 @@ def painfuck(text: str) -> str:
     return shifted
 
 
-def _123(text: str) -> str:
+def one_two_three(text: str) -> str:
     """Build a 1/2 program per character, terminated by a trailing 1.
 
     ``edi`` carries the running XOR of the characters, so each segment only

@@ -566,10 +566,10 @@ def ascii_art(truth_table: str, n: int) -> str:
     shorter of the minterm sum and decision-tree program rendered as art
     blocks.
     """
-    return bf_to_ascii_art(bf(truth_table, n))
+    return bf_to_ascii_art(brainfuck(truth_table, n))
 
 
-def bf(truth_table: str, n: int) -> str:
+def brainfuck(truth_table: str, n: int) -> str:
     """Build a brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -607,7 +607,7 @@ def three_d_bf(truth_table: str, n: int) -> str:
     otherwise translate directly, and :func:`bf` picks the shorter of the
     two.
     """
-    return bf(truth_table, n).translate(str.maketrans("><", "ew"))
+    return brainfuck(truth_table, n).translate(str.maketrans("><", "ew"))
 
 
 # The interpreter's two substitution cycles, in the order the reference scans
@@ -632,7 +632,7 @@ def painfuck(truth_table: str, n: int) -> str:
     back along its cycle (where ``k`` counts the commands so far) to undo it.
     """
     code = (
-        bf(truth_table, n)
+        brainfuck(truth_table, n)
         .replace(">", "rl")
         .replace("<", "l")
         .replace("+", "ps")

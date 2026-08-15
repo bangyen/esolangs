@@ -6,7 +6,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 
-run = importlib.import_module("esolangs.interpreters.tape_based.123").run
+run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
 
 # The wiki's cat program: three 1s march the pointer to -3 (read), then the
 # trailing 12121 flips the byte back and marches to -2 (write).

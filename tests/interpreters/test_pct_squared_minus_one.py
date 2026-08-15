@@ -4,7 +4,9 @@ import importlib
 
 from esolangs.interpreters.io import ScriptedIO
 
-run = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
+run = importlib.import_module(
+    "esolangs.interpreters.register_based.pct_squared_minus_one"
+).run
 
 
 def run_program(code: str, stdin: str = "") -> str:
