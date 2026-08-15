@@ -95,6 +95,16 @@ class TestBasicfuck:
     def test_invalid_syntax(self) -> None:
         with pytest.raises(ValueError, match="syntax"):
             run_program(H + "a += ;")
+        with pytest.raises(ValueError, match="syntax"):
+            run_program(H + "a 5 1 ;")  # missing += / -=
+        with pytest.raises(ValueError, match="syntax"):
+            run_program(H + "a += {;")  # a constant that is not a number
+        with pytest.raises(ValueError, match="syntax"):
+            run_program(H + "write a b ;")  # missing the <- arrow
+        with pytest.raises(ValueError, match="syntax"):
+            run_program(H + "read a b ;")  # missing the -> arrow
+        with pytest.raises(ValueError, match="syntax"):
+            run_program(H + "if (a { a += 1; }")  # missing the closing )
 
     def test_invalid_token(self) -> None:
         with pytest.raises(ValueError, match="token"):
@@ -107,3 +117,16 @@ class TestBasicfuck:
     def test_insufficient_memory(self) -> None:
         with pytest.raises(ValueError, match="memory"):
             run_program("#basicfuck t=1 r=0~255 o=nearest\n#allocate a, b\n")
+
+    def test_invalid_overflow_directive(self) -> None:
+        """A one-sided range with ``o=wrap`` is rejected."""
+        with pytest.raises(ValueError, match="overflow"):
+            run_program("#basicfuck t=1 r=0~ o=wrap\n#allocate a\n")
+
+    def test_array_access_out_of_bounds_halts(self) -> None:
+        """Reading or writing past an array's allocation is an invalid op."""
+        ub = "#basicfuck t=unbounded r=0~255 o=nearest\n#allocate a->2\n"
+        with pytest.raises(HaltError):
+            run_program(ub + "write <- a->5 ;")
+        with pytest.raises(HaltError):
+            run_program(ub + "read -> a->5 ;", "A\n")
