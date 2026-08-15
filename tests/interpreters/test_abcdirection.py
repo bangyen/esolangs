@@ -177,6 +177,22 @@ class TestControlFlow:
         run_halts(QUEUE, "A")
         assert run_program(QUEUE, "A") == ""
 
+    def test_c_right_decrements_the_cell(self) -> None:
+        # a C reached moving right decrements the cell pointer
+        run_halts("DCADCB\nADABCB\nBDDDAB\nDDDDDD", "\x00" * 16)
+
+    def test_d_right_enqueues_the_cell(self) -> None:
+        # a D reached moving right pushes the current cell onto the queue
+        run_halts("CCDAAD\nDDDCAB\nACCDBA\nDDDDDD", "\x00" * 16)
+
+    def test_d_down_pops_a_nonzero_queue_entry(self) -> None:
+        # a D-down with a zero cell and a leading 1 in the queue turns up
+        run_halts("AACDAA\nBBCAAD\nAADCBC\nDDBCBD\nDDDDDD", "\x00" * 16)
+
+    def test_d_down_pops_a_zero_then_a_one(self) -> None:
+        # a D-down with a 0 then a 1 in the queue turns right
+        run_halts("BABCCB\nAADCAB\nDBABAC\nCAABCB\nDACCDC\nDDDDDD", "\x00" * 16)
+
 
 class TestEmptyProgram:
     def test_only_terminator_line(self) -> None:
