@@ -320,6 +320,15 @@ check the [roadmap](docs/roadmap.md) and [limitations](docs/limitations.md)
 first, then open an issue or pull request.  New languages are registered in
 `src/esolangs/registry.py`; run `just test` to verify your changes.
 
+Before pushing, run the local-checkable subset of CI (lint, pytest, bandit,
+cargo, and the Python verify scripts) so the workflow does not fail after the
+push:
+
+```sh
+sh scripts/check_all.sh        # run it once
+git config core.hooksPath .githooks   # or run it automatically on every push
+```
+
 ## License
 
 This project is licensed under the GPL v3 License - see the [LICENSE](LICENSE) file for details.

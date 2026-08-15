@@ -95,7 +95,7 @@ def main() -> int:
     rust_bins = (
         "laserfuck",
         "unsquare",
-        "pct",
+        "pct_squared_minus_one",
         "bit_tilde",
         "forth",
         "basicfuck",
@@ -114,7 +114,7 @@ def main() -> int:
         ("Painfuck", gen.painfuck, rust["painfuck"]),
         ("LaserFuck", gen.laserfuck, rust["laserfuck"]),
         ("Unsquare", gen.unsquare, rust["unsquare"]),
-        ("%^2^-1", gen.pct_squared_minus_one, rust["pct"]),
+        ("%^2^-1", gen.pct_squared_minus_one, rust["pct_squared_minus_one"]),
         ("bit~", gen.bit_tilde, rust["bit_tilde"]),
         ("3x", gen.three_x, rust["three_x"]),
     ]

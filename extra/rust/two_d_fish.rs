@@ -248,8 +248,8 @@ mod tests {
     #[test]
     fn string_capture_and_print() {
         assert_eq!(run_program("/i(abc)*@", ""), (b"abc".to_vec(), 0));
-        // a in string mode prints one captured character
-        assert_eq!(run_program("/i(ab)a@", ""), (b"a".to_vec(), 0));
+        // a in string mode prints the last captured character
+        assert_eq!(run_program("/i(ab)a@", ""), (b"b".to_vec(), 0));
     }
 
     #[test]
