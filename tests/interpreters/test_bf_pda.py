@@ -64,6 +64,14 @@ class TestBrackets:
         assert run_program("<@<@[>[@]]") == ""
         assert run_program("<@<@[>[>].]") == "0"
 
+    def test_skip_over_nested_bracket(self) -> None:
+        """``[`` with a zero top skips past nested ``[`` brackets."""
+        assert run_program("[[.]]") == ""
+
+    def test_jump_back_over_nested_bracket(self) -> None:
+        """``]`` with a one top jumps back across a nested ``]`` exactly once."""
+        assert run_program("<@<@[<@[>@]>]") == ""
+
 
 class TestHalting:
     def test_halts_at_end_of_program(self) -> None:

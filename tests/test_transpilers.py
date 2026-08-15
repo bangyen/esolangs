@@ -592,6 +592,7 @@ _BASICFUCK_MALFORMED = {
     "if-missing-paren": _HEADER + "if (a { a += 1; }",
     "if-missing-brace": _HEADER + "if (a) }",
     "if-unterminated": _HEADER + "if (a) { a += 1; x }",
+    "if-unterminated-eof": _HEADER + "if (a) { a += 1;",
     "write-missing-arrow": _HEADER + "write a;",
     "write-missing-semicolon": _HEADER + "write <- a b;",
     "assign-bad-op": _HEADER + "a 5;",

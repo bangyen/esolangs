@@ -53,8 +53,10 @@ class TestPct:
         assert run_program("nt", "\x00\n") == ""
 
     def test_reset_above_3003(self) -> None:
-        # 12 doublings reach 4096 > 3003, which resets to 0 before the l
-        assert run_program("'m" * 12 + "l") == "0"
+        # ip -> 3, ten doublings -> 3072 > 3003, which resets to 0 before the l
+        assert run_program("ip" + "m" * 10 + "l") == "0"
+        # just under the threshold: 3 * 2^9 = 1536 prints normally
+        assert run_program("ip" + "m" * 9 + "l") == "1536"
 
     def test_empty_program(self) -> None:
         assert run_program("") == ""
