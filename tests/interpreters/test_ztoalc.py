@@ -1,4 +1,4 @@
-"""Unit tests for the ZTOALC L L interpreter.
+"""Unit tests for the ZTOALC L interpreter.
 
 ZTOALC L L executes lines in Collatz-trajectory order determined by the initial
 pointer value. With pointer 3, lines are visited in the order 2, 4, 3, 1.
@@ -165,3 +165,106 @@ class TestZTOALCVariables:
 
         with pytest.raises(HaltError):
             run_and_capture(["-2", "print 65"])
+
+
+class TestArraysOfArrays:
+    """Arrays can hold arrays; index expressions are general (per the wiki)."""
+
+    def test_read_nested_element(self) -> None:
+        """x[0] = [3] makes element 0 an array; x[0][2] reads into it."""
+        code = ["6", "jump y 0", "x = [2]", "print x[0][2]", "x[0] = [3]"]
+        assert run_and_capture(code) == "\x00"
+
+    def test_write_and_read_nested_element(self) -> None:
+        """Writing a deep element and reading it back round-trips."""
+        code = [
+            "12",
+            "",
+            "x = [2]",
+            "print x[1][2]",
+            "x[1] = [5]",
+            "jump y 0",
+            "",
+            "x[1][2] = 66",
+            "",
+            "",
+            "",
+            "",
+        ]
+        assert run_and_capture(code) == "B"
+
+    def test_compound_index_expression(self) -> None:
+        """The index can itself be an indexed expression, e.g. a[b[0]]."""
+        code = [
+            "12",
+            "",
+            "a = [3]",
+            "print a[b[0]]",
+            "a[2] = 66",
+            "jump y 0",
+            "",
+            "b[0] = 2",
+            "",
+            "b = [2]",
+            "",
+            "",
+        ]
+        assert run_and_capture(code) == "B"
+
+    def test_array_size_must_be_number(self) -> None:
+        """A [expr] whose size is an array is an invalid operation."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump y 0", "x = [[2]]", "print 65"])
+
+    def test_print_of_array_halts(self) -> None:
+        """print requires a number; printing an array is invalid."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump y 0", "x = [2]", "print x"])
+
+    def test_jump_condition_must_be_number(self) -> None:
+        """jump requires a number; an array condition is invalid."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        code = ["12", "", "x = [2]", "print 65", "", "jump y 0", "", "jump if x"]
+        with pytest.raises(HaltError):
+            run_and_capture(code)
+
+    def test_indexing_scalar_element_halts(self) -> None:
+        """x[0][1] needs x[0] to be an array; a scalar element is invalid."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        code = [
+            "12",
+            "",
+            "x = [3]",
+            "print 65",
+            "x[0] = 5",
+            "jump y 0",
+            "",
+            "y = x[0][1]",
+        ]
+        with pytest.raises(HaltError):
+            run_and_capture(code)
+
+    def test_malformed_index_halts(self) -> None:
+        """An unbalanced or empty index on the lhs is invalid, not a crash."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump y 0", "a = [2]", "a[1 = 5"])
+        with pytest.raises(HaltError):
+            run_and_capture(["3", "jump y 0", "a = [2]", "a[] = 5"])
