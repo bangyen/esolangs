@@ -213,11 +213,16 @@ were assessed:
   Factor, Kak, Keys, Minsky Swap, RAM0): impossible — nothing to return.
 
 So AddSubJump (the one target with a usable conditional) shipped, and the
-assessed no-input interpreters all hit structural walls.  **Never assessed**
-and still on the table: the input-reading candidates 123, %^2^-1, and
-ABCDirection, and the parameterized no-input set Number Seventy-Four, Stun
-Step, Brainpocalypse, 2 Bits 1 Byte, and Albabet.  Each needs an individual
-assessment before it can be called a wall or an opportunity.
+assessed no-input interpreters all hit structural walls.  **Assessed since:
+123.**  Its single 8-bit data byte and pointer that flips the bit as it
+moves (``1`` XORs the mask *and* advances, wrapping -3..0) mean even reading
+a byte and navigating to the write position corrupts the value being built —
+an n=1 identity loops.  123 is research-level too.
+**Never assessed** and still on the table: the input-reading candidates
+%^2^-1 and ABCDirection, and the parameterized no-input set Number
+Seventy-Four, Stun Step, Brainpocalypse, 2 Bits 1 Byte, and Albabet.  Each
+needs an individual assessment before it can be called a wall or an
+opportunity.
 
 ## Compiler consolidation
 
