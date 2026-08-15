@@ -6,7 +6,7 @@ hand.
 
 Python means an in-repo interpreter under `esolangs.interpreters`;
 Native means an implementation in `extra/` that runs as a standalone
-program (Rust, Lean, or x86 assembly).  The Boolean
+program (Rust, Lean, or RISC-V assembly).  The Boolean
 column marks the boolean-function generators; Back, BIO, and
 NoComment's are parameterized (the harness substitutes input bits
 into a template) rather than the program reading input.
@@ -23,37 +23,40 @@ into a template) rather than the program reading input.
 | A Painter Ant |  | yes |  |  |  |  |
 | ABCDirection |  | yes |  |  |  |  |
 | ASCII art | yes | yes |  | yes |  | hello |
-| Albabet | yes | yes | yes |  |  | hello |
+| AddSubJump | yes | yes |  |  |  | hello |
+| Albabet | yes | yes |  |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |
-| BF | yes | yes |  | yes |  | hello |
-| BF-PDA |  | yes | yes |  | yes |  |
+| BF-PDA |  | yes |  |  | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
 | Back |  | yes |  | yes |  |  |
 | Basicfuck | yes | yes | yes | yes |  | hello |
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
-| BitDeque |  | yes |  |  |  |  |
+| Bitdeque |  | yes |  |  |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
 | Brainpocalypse |  | yes | yes |  |  |  |
-| CircleFuck | yes | yes |  | yes |  | hello truth-machine |
+| Circlefuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
 | Collatz Multiverse | yes | yes |  | yes |  | hello |
 | Container | yes | yes |  | yes |  | hello |
 | DSDLAI |  | yes |  |  |  |  |
+| Decleq | yes | yes |  | yes |  | hello |
 | Dig | yes | yes |  | yes |  | hello |
 | Dimensional | yes | yes |  | yes |  | hello |
 | Dotlang | yes | yes |  |  |  | hello |
-| EXCON | yes | yes | yes |  | yes | hello |
+| EXCON | yes | yes |  |  | yes | hello |
 | Eval | yes | yes |  |  |  | hello |
 | Factor | yes | yes |  |  |  | hello truth-machine |
+| Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
-| Home Row | yes |  |  |  | yes |  |
+| Grapheme |  | yes |  |  |  |  |
+| Home Row | yes | yes |  |  | yes | hello |
+| Jaune |  |  |  |  | yes |  |
 | Kak |  | yes | yes |  |  |  |
 | Keys |  | yes |  |  |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
-| MAMMALIAN | yes | yes |  |  |  | hello |
-| Minifuck | yes | yes |  |  |  | hello |
+| Minifuck | yes | yes |  | yes |  | hello |
 | Minsky Swap |  | yes |  |  |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |
@@ -64,17 +67,20 @@ into a template) rather than the program reading input.
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes |  |  | yes |  |
+| ROTfuck | yes | yes |  |  |  | hello |
 | S*bleq | yes | yes |  | yes |  | hello |
+| SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
 | Stun Step |  | yes | yes |  |  |  |
 | Suffolk | yes | yes |  |  | yes | hello |
 | Taglate | yes | yes |  | yes |  | hello |
-| Temporary | yes | yes |  |  |  | hello |
+| The Temporary Stack | yes | yes |  |  |  | hello |
 | Trash |  | yes | yes |  |  |  |
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
-| ZTOALC | yes | yes |  |  |  | hello |
-| bit~ | yes | yes | yes |  |  | hello |
+| ZTOALC L | yes | yes |  |  |  | hello |
+| bit~ | yes | yes | yes | yes |  | hello |
+| brainfuck | yes | yes |  | yes |  | hello |
 | huf | yes | yes |  |  |  | hello |
 
 The `esolangs` command lists the languages with Python support:

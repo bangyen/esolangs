@@ -13,6 +13,7 @@ from esolangs.interpreters.other.albabet import run as albabet_run
 from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
+from esolangs.interpreters.other.forbin import run as forbin_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
 from esolangs.interpreters.other.three_x import run as three_x_run
 from esolangs.interpreters.other.ztoalc import run as ztoalc_run
@@ -36,6 +37,7 @@ from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.factor import run as factor_run
 from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
+from esolangs.interpreters.tape_based.rotfuck import run as rotfuck_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.interpreters.tape_based.three_d_bf import run as three_d_bf_run
@@ -87,6 +89,16 @@ class TestGeneratorRoundTrips:
             roundtrip(three_d_bf_run, gen.three_d_bf("Hello, World!"))
             == "Hello, World!"
         )
+
+    def test_rotfuck(self) -> None:
+        assert roundtrip(rotfuck_run, gen.rotfuck("Hi")) == "Hi"
+        assert roundtrip(rotfuck_run, gen.rotfuck("Hello, World!")) == "Hello, World!"
+        assert roundtrip(rotfuck_run, gen.rotfuck("\t\x0b\xff")) == "\t\x0b\xff"
+
+    def test_forbin(self) -> None:
+        assert roundtrip(forbin_run, gen.forbin("Hi")) == "Hi"
+        assert roundtrip(forbin_run, gen.forbin("Hello, World!")) == "Hello, World!"
+        assert roundtrip(forbin_run, gen.forbin("\x00\x7f\xff")) == "\x00\x7f\xff"
 
     def test_between(self) -> None:
         """p prints the whole text; apostrophes are doubled inside literals."""
@@ -429,7 +441,7 @@ class TestGeneratorRoundTrips:
         assert roundtrip(ztoalc_run, gen.ztoalc("").splitlines()) == ""
 
     def test_temporary(self) -> None:
-        """The Temporary Stack squish prints each character."""
+        """The The Temporary Stack Stack squish prints each character."""
         assert roundtrip(temporary_run, gen.temporary("Hi")) == "Hi"
         assert roundtrip(temporary_run, gen.temporary("")) == ""
 
@@ -567,8 +579,8 @@ class TestGeneratorBranches:
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
         assert "--- Sophie ---" in out
-        assert "--- Temporary ---" in out
-        assert "--- ZTOALC ---" in out
+        assert "--- The Temporary Stack ---" in out
+        assert "--- ZTOALC L ---" in out
         assert "--- 6-5 ---" in out
         assert "--- ASCII art ---" in out
         assert "--- Dig ---" in out
@@ -576,7 +588,7 @@ class TestGeneratorBranches:
         assert "--- Eval ---" in out
         assert "--- huf ---" in out
         assert "--- LaserFuck ---" in out
-        assert "--- MAMMALIAN ---" in out
+        assert "--- SLOW ACV MAMMALIAN ---" in out
         assert "--- Minifuck ---" in out
         assert "--- Nevermind ---" in out
         assert "--- Polynomial ---" in out

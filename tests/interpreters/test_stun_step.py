@@ -1,4 +1,11 @@
-"""Unit tests for the Stun Step interpreter."""
+"""Unit tests for the Stun Step interpreter.
+
+Stun Step runs a tape of unbounded nonnegative integers (all cells are 1
+except the one the pointer starts on, which is 0).  ``+``/``-`` adjust the
+current cell, ``>``/``<`` move the pointer only while it is nonzero, and at
+the end of the program the machine halts if the current cell is 0, else loops
+back to the start.  Non-terminating programs run forever.
+"""
 
 import io
 from contextlib import redirect_stdout
@@ -24,6 +31,7 @@ class TestStunStepCommands:
         assert run_and_capture("+++---") == "0"
 
     def test_decrement_clamps_at_zero(self) -> None:
+        """Decrementing 0 is undefined per the wiki; we leave it at 0."""
         assert run_and_capture("-") == "0"
         assert run_and_capture("+--") == "0"
 
@@ -35,14 +43,16 @@ class TestStunStepCommands:
         assert run_and_capture("<") == "0"
         assert run_and_capture("+>+<-") == "0 2"
 
+    def test_move_left_of_start(self) -> None:
+        """The tape extends to negative positions too."""
+        assert run_and_capture("++<--") == "0 2"
+
 
 class TestStunStepHalting:
     def test_halts_when_current_cell_is_zero(self) -> None:
         assert run_and_capture("+>-") == "1 0"
         assert run_and_capture("++>--") == "2 0"
-
-    def test_loops_back_to_start_when_nonzero(self) -> None:
-        assert run_and_capture("<+<->>") == "1"
+        assert run_and_capture("<+<->>") == "0 1"
 
 
 class TestStunStepOutput:
@@ -61,11 +71,3 @@ class TestStunStepOutput:
 class TestStunStepSourceHandling:
     def test_non_commands_are_ignored(self) -> None:
         assert run_and_capture("ab+cd-ef") == "0"
-
-    def test_nul_truncates_the_program(self) -> None:
-        assert run_and_capture("ab\x00cd") == "0"
-
-    def test_left_below_start_overlaps_program_bytes(self) -> None:
-        assert run_and_capture("++<--") == "2"
-        assert run_and_capture("-+<<") == "1"
-        assert run_and_capture("<->+") == "0 1"

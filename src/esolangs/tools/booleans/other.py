@@ -2,8 +2,10 @@
 
 __all__ = [
     "between",
+    "bit_tilde",
     "clockwise",
     "container",
+    "forbin_boolean",
     "laserfuck",
     "nevermind",
     "taglate",
@@ -147,7 +149,7 @@ def three_x(truth_table: str, n: int) -> str:
 
 
 def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> bool:
-    """Fast ZTOALC simulator: True iff ``inputs`` prints ``expected`` once.
+    """Fast ZTOALC L simulator: True iff ``inputs`` prints ``expected`` once.
 
     Mirrors the interpreter's semantics exactly: the pointer follows the
     Collatz step (halving evens, ``3n+1`` odds) unless a ``jump`` fires,
@@ -257,12 +259,12 @@ def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
 
 
 def ztoalc_boolean(truth_table: str, n: int) -> str:
-    """Build a ZTOALC program computing the given truth table.
+    """Build a ZTOALC L program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.
 
-    ZTOALC's control flow is the Collatz trajectory of line 1, so the
+    ZTOALC L's control flow is the Collatz trajectory of line 1, so the
     generator lays out a decision tree on `p * 2**k` descents: branching at
     an even root lets a zero bit continue the descent (the Collatz step
     halves it) while a one bit jumps to `root + 1`, whose Collatz step lands
@@ -307,7 +309,7 @@ def ztoalc_boolean(truth_table: str, n: int) -> str:
     if linear is not None:
         return "\n".join(linear)
     raise ValueError(
-        "the ZTOALC boolean generator found no collision-free placement for "
+        "the ZTOALC L boolean generator found no collision-free placement for "
         f"this table at n == {n}",
     )
 
@@ -502,7 +504,7 @@ def laserfuck(truth_table: str, n: int) -> str:
     """
     _validate_tt(truth_table, n)
     rows: int = 2 ** (n + 1) - 1
-    total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2**n * 55 + 64
+    total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2 + 49 + 8
     grid = [[" "] * total_cols for _ in range(rows)]
 
     # the funnel: every heading ends up on row 0 moving right
@@ -548,10 +550,12 @@ def laserfuck(truth_table: str, n: int) -> str:
     assign_col(0, 0)
     leaf_base = width[0] + 4  # past every internal column and descent column
 
-    # leaves: one per input combination, at (level n, row, high column)
+    # leaves: one per input combination on its own row, all at the same
+    # high column (past every internal node and descent column), so the
+    # grid needs room for just one leaf rather than one per combination
     for j in range(2**n):
         r = row(n, j)
-        c = leaf_base + j * 55
+        c = leaf_base
         # the beam arrives from the parent's descent column; it first moved the
         # pointer to cell i (level i), so here it is at cell n-1
         grid[r][c] = ">"
@@ -846,4 +850,180 @@ def container(truth_table: str, n: int) -> str:
     lines.append(f"+1 T>={2 * n}")
     lines.append("EXIT=1:")
     lines.append(f"-1 T>={2 * n + 1}")
+    return "\n".join(lines)
+
+
+def bit_tilde(truth_table: str, n: int) -> str:
+    """Build a bit~ program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    bit~ is a bit pool with ``{``/``}`` while-nonzero loops.  Each ``)``
+    reads an input byte into eight bits (MSB first), so the input bit lands
+    at cell ``8i+7`` and cells ``8i+2``/``8i+3`` hold the ``00110000`` byte
+    pattern a ``0`` output needs.  Every (input, one-row) pair each minterm
+    tests is pre-copied unconditionally into a fresh cell (chained two-dest
+    copies so the source survives), complemented when the minterm needs the
+    bit zero; the first input-0 copy also consumes the input bit out of cell
+    7 so the output window holds a clean 48.  Each ``1`` row of the table is
+    then a nested ``{ bit ... }`` test whose innermost body forces the result
+    cell to 1, and the result is copied into cell 7 so ``(`` prints ``48 +
+    result``.  Dense tables evaluate the complement instead (fewer minterms)
+    and flip the output bit once.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    use_complement = truth_table.count("1") > 2**n // 2
+    table = (
+        "".join("0" if c == "1" else "1" for c in truth_table)
+        if use_complement
+        else truth_table
+    )
+
+    prog: list[str] = []
+    pos = 0
+
+    def move(dst: int) -> None:
+        nonlocal pos
+        while pos < dst:
+            prog.append(">")
+            pos += 1
+        while pos > dst:
+            prog.append("<")
+            pos -= 1
+
+    def copy2(src: int, d1: int, d2: int) -> None:
+        """Copy ``src`` to ``d1`` and ``d2``, zeroing ``src``."""
+        nonlocal pos
+        move(src)
+        prog.append("{")
+        move(d1)
+        prog.append("~")
+        move(d2)
+        prog.append("~")
+        move(src)
+        prog.append("~")
+        prog.append("}")
+
+    for i in range(n):
+        if i:
+            move(8 * i)
+        prog.append(")")
+        pos = 8 * i
+
+    scratch = 8 * n
+    uses: dict[tuple[int, int], int] = {}
+    for i in range(n):
+        src = 8 * i + 7
+        for k in range(2**n):
+            # only one-rows' indicators are used; the first input-0 copy must
+            # still run to consume the input bit out of cell 7
+            if table[k] != "1" and not (i == 0 and k == 0):
+                continue
+            c = (k >> (n - 1 - i)) & 1
+            use = scratch
+            keep = scratch + 1
+            scratch += 2
+            copy2(src, use, keep)
+            src = keep
+            if c == 0:
+                move(use)
+                prog.append("~")
+                pos = use
+            uses[(k, i)] = use
+
+    result = scratch
+    scratch += 1
+
+    def set_result() -> None:
+        nonlocal pos
+        move(result)
+        prog.append("{ ~ } ~")
+        pos = result
+
+    def node(level: int, k: int) -> None:
+        nonlocal pos
+        if level == n:
+            set_result()
+            return
+        use = uses[(k, level)]
+        move(use)
+        prog.append("{")
+        pos = use
+        node(level + 1, k)
+        move(use)
+        prog.append("~")
+        pos = use
+        prog.append("}")
+
+    for k in range(2**n):
+        if table[k] == "1":
+            node(0, k)
+
+    move(result)
+    prog.append("{")
+    move(7)
+    prog.append("~")
+    move(result)
+    prog.append("~")
+    prog.append("}")
+    pos = result
+    if use_complement:
+        move(7)
+        prog.append("~")
+        pos = 7
+    move(0)
+    prog.append("(")
+    return "".join(prog)
+
+
+def forbin_boolean(truth_table: str, n: int) -> str:
+    """Build a Forbin program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Forbin's ``in`` reads one bit (most significant first), so each input
+    byte contributes 8 reads and only the last bit (the LSB, which is what
+    distinguishes ``'0'`` from ``'1'``) is used.  A decision tree over those
+    bits is laid out with the range-loop if-trick: ``for _:!b..b`` runs its
+    body once when ``b`` is 1 (the ``return`` cuts the second iteration)
+    and falls through when ``b`` is 0, so each node emits the 1-subtree then
+    the 0-subtree and every leaf prints the result byte and returns.
+    """
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            f"truth table must have {2**n} entries for {n} inputs, "
+            f"got {len(truth_table)}",
+        )
+    if not all(c in "01" for c in truth_table):
+        raise ValueError("truth table must contain only '0' and '1'")
+
+    lines: list[str] = ["main {"]
+    bits: list[str] = []
+    for i in range(n):
+        reads = [f"i{i}_{j}" for j in range(8)]
+        lines.append(f"  {','.join(reads)} = (in 0);")
+        bits.append(reads[7])
+
+    def emit(level: int, row: int) -> None:
+        if level == n:
+            byte = 49 if truth_table[row] == "1" else 48
+            lines.append(f"  out {','.join(format(byte, '08b'))};")
+            lines.append("  return 0;")
+            return
+        lines.append(f"  for _:!{bits[level]}..{bits[level]} {{")
+        emit(level + 1, row + 2 ** (n - 1 - level))
+        lines.append("  }")
+        emit(level + 1, row)
+
+    emit(0, 0)
+    lines.append("}")
     return "\n".join(lines)

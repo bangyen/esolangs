@@ -65,6 +65,34 @@ def run_painfuck(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_bit_tilde(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.bit_tilde import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_minifuck(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.minifuck import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_123(program: str, inputs: list[str]) -> str:
+    import importlib
+
+    run = importlib.import_module("esolangs.interpreters.tape_based.123").run
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.collatz_multiverse import run
 
@@ -72,6 +100,62 @@ def run_collatz_multiverse(program: str, inputs: list[str]) -> str:
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
     return buffer.getvalue()
+
+
+def run_decleq(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.decleq import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_forbin_boolean(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.forbin import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+class TestForbinBoolean:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.forbin_boolean(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_forbin_boolean(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_uses_the_lsb_of_each_input(self) -> None:
+        """Each input is read as 8 bits and only the LSB drives the tree."""
+        program = boolean.forbin_boolean("01", 1)
+        # one 8-variable read, then a decision tree that prints '1' for bit 1
+        assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.forbin_boolean("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.forbin_boolean("02", 1)
 
 
 class TestSixFive:
@@ -761,6 +845,95 @@ class TestPainfuck:
             boolean.painfuck("02", 1)
 
 
+class TestBitTilde:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # single one (AND4)
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.bit_tilde(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_bit_tilde(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_single_read_and_output(self) -> None:
+        """One read per input and a single final output."""
+        program = boolean.bit_tilde("0110", 2)
+        assert program.startswith(")")
+        assert program.count(")") == 2
+        assert program.count("(") == 1
+        assert program.endswith("(")
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.bit_tilde("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.bit_tilde("02", 1)
+
+
+class TestMinifuck:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("00", 1),  # constant zero
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("11", 1),  # constant one
+            ("0000", 2),  # constant zero
+            ("0001", 2),  # AND
+            ("0011", 2),  # echo b0
+            ("0101", 2),  # echo b1
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.minifuck(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_minifuck(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_unreachable_two_input_tables_are_rejected(self) -> None:
+        """The non-0-preserving two-input tables are a documented wall."""
+        for table in ("1000", "1110", "1001", "1100", "1010", "1111"):
+            with pytest.raises(ValueError, match="non-0-preserving"):
+                boolean.minifuck(table, 2)
+
+    def test_n_three_rejected(self) -> None:
+        """No general construction exists for three or more inputs."""
+        with pytest.raises(ValueError, match="n >= 3"):
+            boolean.minifuck("00000000", 3)
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.minifuck("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.minifuck("02", 1)
+
+
 class TestBasicfuck:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -846,6 +1019,51 @@ class TestCollatzMultiverse:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.collatz_multiverse("02", 1)
+
+
+class TestDecleq:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.decleq(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_decleq(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_branch_normalizes_bits_to_one_and_two(self) -> None:
+        """Each bit gets a 47-step decrement chain, then one branch."""
+        program = boolean.decleq("0110", 2)
+        cells = [int(tok) for tok in program.split()]
+        instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
+        # count a==b>0 instructions: the 47 normalization steps plus the
+        # decision-tree branches (2**n - 1 of them)
+        decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
+        assert len(decs) == 47 * 2 + 3
+        assert sum(1 for ins in instrs if ins[0] == -1) == 2  # one read each
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.decleq("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.decleq("02", 1)
 
 
 class TestSophie:
@@ -1045,7 +1263,7 @@ def run_clockwise(program: str, inputs: list[str]) -> str:
 def run_ztoalc(program: str, inputs: list[str]) -> str:
     import esolangs
 
-    return esolangs.run("ZTOALC", program, stdin="\n".join(inputs))
+    return esolangs.run("ZTOALC L", program, stdin="\n".join(inputs))
 
 
 class TestParameterizedBIO:

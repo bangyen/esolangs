@@ -1,4 +1,4 @@
-"""Compiler that turns Suffolk programs into x86 Linux assembly."""
+"""Compiler that turns Suffolk programs into RISC-V Linux assembly."""
 
 import sys
 from re import sub
@@ -18,16 +18,17 @@ def count(code: str, ind: int) -> int:
 
 
 def comp(code: str, num: int) -> str:
-    """Compile a Suffolk program to x86 assembly, looping ``num`` times."""
+    """Compile a Suffolk program to RISC-V assembly, looping ``num`` times."""
     code = sub("[^><.,!]", "", code)
     res = (
-        "global _start\n"
+        "    .text\n"
+        "    .global _start\n"
         "_start:\n"
-        f"\tmov ebx, {num}\n"
-        "\txor esi, esi\n"
-        "\tlea ecx, [esp - 12]\n"
-        "\tlea edi, [ecx - 4]\n"
-        "\tmov edx, 1\n"
+        f"    li   s4, {num}\n"
+        "    li   s3, 0\n"
+        "    addi s1, sp, -12\n"
+        "    addi s2, s1, -4\n"
+        "    li   s5, 1\n"
         ".main:\n"
     )
     length = len(code)
@@ -43,14 +44,14 @@ def comp(code: str, num: int) -> str:
         c = code[ind]
 
         if c == ">":
-            s = f"sub edi, {n * 4}"
+            s = f"li   t0, {n * 4}\n" "\tsub  s2, s2, t0"
         elif c == "<":
-            s = "add esi, [edi]\n" "\tlea edi, [ecx - 4]"
+            s = "lw   t0, 0(s2)\n" "\tadd  s3, s3, t0\n" "\taddi s2, s1, -4"
 
             if n > 2:
-                s += f"\n\tmov edx, {n - 1}\n" "\tcall left"
+                s += f"\n\tli   s5, {n - 1}\n" "\tcall left"
             elif n == 2:
-                s += "\n\tadd esi, [edi]"
+                s += "\n\tlw   t0, 0(s2)\n" "\tadd  s3, s3, t0"
 
             add = True
         elif c == ".":
@@ -60,7 +61,13 @@ def comp(code: str, num: int) -> str:
             s = "input"
             inp = True
         else:
-            s = "call excl" + f"\n\tadd DWORD [edi], {n - 1}" * (n > 1)
+            s = "call excl"
+            if n > 1:
+                s += (
+                    "\n\tlw   t0, 0(s2)\n"
+                    f"\taddi t0, t0, {n - 1}\n"
+                    "\tsw   t0, 0(s2)"
+                )
             exc = True
 
         if c in ".,":
@@ -70,65 +77,80 @@ def comp(code: str, num: int) -> str:
         ind += n
 
     res += (
-        "\n\tdec ebx\n"
-        "\tcmp ebx, 0\n"
-        "\tjg .main\n"
-        "\tmov eax, 1\n"
-        "\txor ebx, ebx\n"
-        "\tint 80h"
+        "\n\taddi s4, s4, -1\n"
+        "\tbgt  s4, zero, .main\n"
+        "\tli   a0, 0\n"
+        "\tli   a7, 93\n"
+        "\tecall"
     )
 
     if inp:
         res += (
             "\n\ninput:\n"
-            "\tpush ebx\n"
-            "\tmov eax, 3\n"
-            "\txor ebx, ebx\n"
-            "\tint 80h\n"
-            "\tadd esi, [ecx]\n"
-            "\tpop ebx\n"
+            "\tli   a7, 63\n"
+            "\tli   a0, 0\n"
+            "\tmv   a1, s1\n"
+            "\tli   a2, 1\n"
+            "\tecall\n"
+            "\tlw   t0, 0(s1)\n"
+            "\tadd  s3, s3, t0\n"
             "\tret"
         )
     if out:
         res += (
             "\n\noutput:\n"
-            "\tcmp esi, 0\n"
-            "\tje .done\n"
-            "\tpush ebx\n"
-            "\tdec esi\n"
-            "\tpush esi\n"
-            "\tmov eax, 4\n"
-            "\tmov ebx, 1\n"
-            "\tint 80h\n"
-            "\tpop esi\n"
-            "\tinc esi\n"
-            "\tpop ebx\n"
-            ".done:\n"
+            "\tbeqz s3, .output_done\n"
+            "\taddi s3, s3, -1\n"
+            "\tsw   s3, 0(s1)\n"
+            "\tli   a7, 64\n"
+            "\tli   a0, 1\n"
+            "\tmv   a1, s1\n"
+            "\tli   a2, 1\n"
+            "\tecall\n"
+            "\taddi s3, s3, 1\n"
+            ".output_done:\n"
             "\tret"
         )
     if exc:
         res += (
             "\n\nexcl:\n"
-            "\tinc DWORD [edi]\n"
-            "\tsub [edi], esi\n"
-            "\tcmp DWORD [edi], 0\n"
-            "\tjge .done\n"
-            "\tmov DWORD [edi], 0\n"
-            ".done:\n"
-            "\txor esi, esi\n"
-            "\tlea edi, [ecx - 4]\n"
+            "\tlw   t0, 0(s2)\n"
+            "\taddi t0, t0, 1\n"
+            "\tsub  t0, t0, s3\n"
+            "\tbge  t0, zero, .excl_done\n"
+            "\tli   t0, 0\n"
+            ".excl_done:\n"
+            "\tsw   t0, 0(s2)\n"
+            "\tli   s3, 0\n"
+            "\taddi s2, s1, -4\n"
             "\tret"
         )
     if add:
         res += (
             "\n\nleft:\n"
-            "\tpush ebx\n"
-            "\tmov eax, edx\n"
-            "\tmov ebx, [edi]\n"
-            "\tmul ebx\n"
-            "\tadd esi, eax\n"
-            "\tmov edx, 1\n"
-            "\tpop ebx\n"
+            "\taddi sp, sp, -16\n"
+            "\tsd   ra, 8(sp)\n"
+            "\tlw   a0, 0(s2)\n"
+            "\tmv   a1, s5\n"
+            "\tcall mul32\n"
+            "\tadd  s3, s3, a0\n"
+            "\tli   s5, 1\n"
+            "\tld   ra, 8(sp)\n"
+            "\taddi sp, sp, 16\n"
+            "\tret\n"
+            "\n"
+            "# a0 *= a1 (unsigned 32-bit), result in a0\n"
+            "mul32:\n"
+            "\tmv   t4, a0\n"
+            "\tli   a0, 0\n"
+            ".mul_loop:\n"
+            "\tandi t5, a1, 1\n"
+            "\tbeqz t5, .mul_skip\n"
+            "\tadd  a0, a0, t4\n"
+            ".mul_skip:\n"
+            "\tslli t4, t4, 1\n"
+            "\tsrli a1, a1, 1\n"
+            "\tbnez a1, .mul_loop\n"
             "\tret"
         )
 

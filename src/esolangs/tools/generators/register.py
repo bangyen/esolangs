@@ -6,9 +6,11 @@ from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.generators.helpers import _cm_constants, _require_bytes
 
 __all__ = [
+    "add_sub_jump",
     "albabet",
     "bio",
     "collatz_multiverse",
+    "decleq",
     "dig",
     "dotlang",
     "eval",
@@ -23,32 +25,58 @@ __all__ = [
 def albabet(text: str) -> str:
     """Build an AlbaBet program that outputs ``text``.
 
-    AlbaBet's accumulator ``x`` starts at 0; ``c`` zeroes it, a run of ``a``
-    moves it up to the character's code, and ``i`` prints it.  A ``c`` resets
-    ``x`` before each character so the characters are independent.
+    Each character is built as ``a * b + r`` and printed with ``i``: ``c``
+    zeroes ``x``, a run of ``a`` sets it, ``e`` copies it into ``y``, ``c``
+    zeroes ``x`` again, a run of ``b`` sets it, ``g`` multiplies (``x *= y``),
+    and a final run of ``r`` tops the product up.  ``a`` is searched near
+    ``sqrt(ord)`` so the program is O(sqrt) rather than O(ord).
     """
     _require_bytes(text, "AlbaBet")
-    return "".join("c" + "a" * ord(c) + "i" for c in text)
+
+    def segment(value: int) -> str:
+        best = min(
+            (
+                (a + b + r, a, b, r)
+                for a in range(1, int(value**0.5) + 2)
+                for b, r in (divmod(value, a),)
+            ),
+        )
+        _, a, b, r = best
+        return "c" + "a" * a + "e" + "c" + "a" * b + "g" + "a" * r + "i"
+
+    return "".join(segment(ord(c)) for c in text)
 
 
 def bio(text: str) -> str:
     """Build a BIO program that outputs ``text``.
 
-    The x register is driven from the previous character's value to the next
-    one with ``0ox``/``1ox`` runs (increment/decrement), then printed with
-    ``1ix``.
+    Each character is a signed delta from the previous one, folded mod 256
+    into a fresh ``x`` counter and accumulated into ``y``: ``0ox`` sets the
+    count ``b``, ``0ix`` enters a loop that runs while ``x`` is nonzero, the
+    body ``1ox``/``0oy``*a decrements the counter and adds ``a`` to ``y``,
+    ``}`` jumps back, and ``0oy``*r tops up the remainder before ``1iy``
+    prints ``y``.  ``a`` and ``b`` are searched so ``a * b + r`` is the
+    delta (mod 256) with the shortest runs, keeping the program near
+    O(sqrt) rather than O(delta).
     """
     _require_bytes(text, "BIO")
     res = []
-    prev = 0
+    value = 0  # register y, mod 256
     for c in text:
-        n = ord(c)
-        if n > prev:
-            res.append("0ox" * (n - prev))
-        else:
-            res.append("1ox" * (prev - n))
-        res.append("1ix")
-        prev = n
+        target = ord(c)
+        delta = (target - value) % 256
+        if delta == 0:
+            res.append("1iy")
+            continue
+        best = (float("inf"), 1, 0, 0)
+        for total in (delta, delta + 256):
+            for a in range(1, 256):
+                b, r = divmod(total, a)
+                if a + b + r < best[0]:
+                    best = (a + b + r, a, b, r)
+        _, a, b, r = best
+        res.append("0ox" * b + "0ix" + "1ox" + "0oy" * a + "}" + "0oy" * r + "1iy")
+        value = target
     return "".join(res)
 
 
@@ -242,16 +270,84 @@ def collatz_multiverse(text: str) -> str:
     Every line is ``[var1] = [var2] x + [var3], [DO|NOT] PRINT.`` and the
     operands must be variables, so byte values have to be driven into
     registers through the Collatz transform (odd or 0 values become
-    ``v*var2+var3``, even values halve).  A constant table of byte values is
-    bootstrapped from ``negativeOne`` with the copy trick and parity-aware
-    ``one x + one``/``one x + two`` increments; each output character is then
-    a single line on a fresh register: ``o = negativeOne x + k<byte>`` copies
-    the byte and prints it.
+    ``v*var2+var3``, even values halve).  A constant table builds each byte
+    the text references with a two-line multiply-add (copy an odd constant
+    with ``v = negativeOne x + b``, then ``v = a x + c`` makes it
+    ``b * a + c``), so only the used bytes are built rather than a full
+    ``1..maxval`` chain; each output character is then a single line on a
+    fresh register: ``o = negativeOne x + k<byte>`` copies the byte and
+    prints it.
     """
     if not text:
         return ""
     _require_bytes(text, "Collatz Multiverse")
-    lines = _cm_constants(max(ord(c) for c in text))
+    lines = _cm_constants(ord(c) for c in text)
     for i, c in enumerate(text):
         lines.append(f"o{i} = negativeOne x + k{ord(c)}, DO PRINT.")
     return "\n".join(lines)
+
+
+def add_sub_jump(text: str) -> str:
+    """Build an AddSubJump program that outputs ``text``.
+
+    The program is a self-modifying memory: each instruction occupies four
+    cells (``a b c d``) and means ``*a += *b`` (when ``*d <= 0``) or
+    ``*a -= *b`` (when ``*d > 0``), then ``goto *c``.  Each character is
+    built into a shared ``val`` cell and printed: ``val = val - val`` zeroes
+    it (``d = -6`` reads the constant 1, so the subtract branch fires),
+    ``val = 1`` seeds it, and a walk down the byte's binary expansion doubles
+    it in place (``val = val + val``) and adds 1 for each set bit, then
+    ``-1 val c -7`` writes it to I/O.  The doubling makes the program
+    O(log byte) rather than O(byte).  Every instruction except the last
+    jumps to the next through a data cell holding its address; the final
+    print uses ``c = -8`` so it jumps to the constant -1, a special address,
+    and halts.
+    """
+    if not text:
+        return ""
+    _require_bytes(text, "AddSubJump")
+    ops: list[tuple[str, int]] = []
+    for char in text:
+        ops.append(("zero", -6))  # val = val - val, from the constant 1
+        if ord(char):
+            ops.append(("inc", -7))  # val = 1
+            for bit in bin(ord(char))[3:]:
+                ops.append(("dbl", -7))  # val = val + val
+                if bit == "1":
+                    ops.append(("inc", -7))
+        ops.append(("out", -7))
+    n = len(ops)
+    data_base = 4 * n
+    val = data_base + n
+    mem: list[int] = []
+    for i, (kind, d) in enumerate(ops):
+        c = -8 if i == n - 1 else data_base + i
+        if kind == "out":
+            mem.extend([-1, val, c, -7])
+        else:
+            mem.extend([val, val if kind in ("zero", "dbl") else -6, c, d])
+    for i in range(n - 1):
+        mem.append(4 * (i + 1))
+    return " ".join(map(str, mem))
+
+
+def decleq(text: str) -> str:
+    """Build a Decleq program that outputs ``text``.
+
+    Each character's byte value is placed in a data cell of the
+    self-modifying memory, and one ``-2 cell 0`` instruction per character
+    prints it and falls through (the memory-mapped output does not jump).  A
+    trailing ``0 0 <past-the-end>`` decrements cell 0 and jumps past the end
+    of memory to halt.
+    """
+    if not text:
+        return ""
+    _require_bytes(text, "Decleq")
+    n = len(text)
+    data_base = 3 * n + 3
+    mem: list[int] = []
+    for i in range(n):
+        mem.extend([-2, data_base + i, 0])
+    mem.extend([0, 0, 4 * n + 3])  # halt: decrement cell 0, jump past the end
+    mem.extend(ord(c) for c in text)
+    return " ".join(map(str, mem))

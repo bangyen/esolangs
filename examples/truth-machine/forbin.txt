@@ -1,0 +1,11 @@
+main {
+  a,b,c,d,e,f,g,h = (in 0);
+  out a,b,c,d,e,f,g,h;
+  for _:!h..h {
+    loop 0;
+  }
+}
+loop {
+  out 0,0,1,1,0,0,0,1;
+  loop 0;
+}

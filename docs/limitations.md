@@ -29,10 +29,10 @@ This closes the "constant-loop boolean generator" goal entirely: the
 constant *loop-count* half is met (8 loops, 27 markers, both constant in
 `n`), the constant *size* half is impossible (any table needs its `2**n`
 bits embedded), and no other language needs the design to lift a cap —
-CircleFuck's decision tree is total (verified exhaustively to n = 3,
+Circlefuck's decision tree is total (verified exhaustively to n = 3,
 sampled to n = 16), so the label-cap motivation is gone.
 
-## ZTOALC (built; dense non-symmetric n > 3 wall)
+## ZTOALC L (built; dense non-symmetric n > 3 wall)
 The generator (`ztoalc_boolean`) lays a decision tree on `p * 2**k`
 descents: branching at an even root lets a zero bit continue the descent
 (the Collatz step halves it) while a one bit jumps to `root + 1`, whose
@@ -83,22 +83,41 @@ search over `{<,.[}` reaches *exactly* the 0-preserving two-input tables
 three-input function reuses the same prefix, adds a second walker, and uses
 the same `<.` suffix (`b3 XOR (b1 AND b2)`, verified 49 chars).
 
-The limitation is structural: the decode suffix flips the pool LSB only
-when the pointer sits at cell 7, and `[`'s skip always maps bit 0 to the
-higher pointer position.  So the pointer orientation is fixed and the
+The *two-input* limitation is structural: the decode suffix flips the pool
+LSB only when the pointer sits at cell 7, and `[`'s skip always maps bit 0
+to the higher pointer position.  So the pointer orientation is fixed and the
 genuinely two-input functions are forced to f(0, 0) == 0: XNOR, NAND, NOR,
-and NOT-b2 are unreachable — no complemented read-prefix exists (searched
-to length 11) and full-program search to length 14 finds none.  The n == 4
-walker stage additionally cannot reach the 8 distinct pointer positions a
-third bit needs.  A generator is therefore limited to 0-preserving tables
-with n <= 3 at most, and not to arbitrary boolean functions.
+NOT-b0, NOT-b1, and const-1 were not reachable in the original analysis
+(no complemented read-prefix exists to length 11, full-program search to
+length 14 finds none, and a re-verification search to length 34 still finds
+none).  The n == 4 walker stage additionally cannot reach the 8 distinct
+pointer positions a third bit needs.
 
-## RAM0, BitDeque, Minsky Swap (not viable for the template model)
+The single-input case, however, is *not* 0-preserving-bound: a re-verification
+found NOT (`<<[<[<[.[[[<[[..[`) and const-1 (`[<[<[<[.[<[[.[.[.`) at lengths
+17-18, past the original search's length-14 cap, so all four one-input
+functions (const-0, identity, NOT, const-1) are reachable.  A generator is
+therefore limited to the 0-preserving two-input tables plus all four
+one-input tables (n <= 3 at most), and not to arbitrary boolean functions.
+
+## 123 (limited to the four one-input functions)
+A decision tree needs the ``3`` jump, which on a TRUE/FALSE bit jumps to the
+*nearest* preceding/following ``3`` (not bracket-matched), so the only
+constructible pattern is "repeat the region before the ``3`` while TRUE" —
+no ``3``-based branch exists (a random search finds no NOT even at n == 1),
+and the single data byte makes multi-bit state impossible (every read
+overwrites it).  The one-input functions are pure bit arithmetic, however:
+const-0/const-1 build the byte, identity reads and echoes it, and NOT flips
+its least significant bit.  This is why no ``3``-based boolean generator
+exists; the four one-input programs were too trivial to keep, so the boolean
+generator was removed.
+
+## RAM0, Bitdeque, Minsky Swap (not viable for the template model)
 These three have value-testable branches and clean setters, but their jumps
-are *absolute token indices*: RAM0's digit-`GOTO`, BitDeque's `GOTO N`, and
+are *absolute token indices*: RAM0's digit-`GOTO`, Bitdeque's `GOTO N`, and
 Minsky Swap's `~` targets are all fixed positions in the token/command
 stream.  The parameterized template's bit setter has variable length (e.g.
-RAM0's `Z` for a zero bit vs `Z A` for a one bit; BitDeque's `INVERT` vs
+RAM0's `Z` for a zero bit vs `Z A` for a one bit; Bitdeque's `INVERT` vs
 nothing), so substitution changes the token count and every jump target
 shifts — a fixed template cannot be correct for all instantiations.  Only
 Back avoids token-index jumps (its `+`-advance condition is positional), and
@@ -120,7 +139,7 @@ delimiters need escaping at multiple levels) cannot survive more than one
 wrap.  The wiki's examples only ever use single-level `!`.  Eval is
 therefore not viable for the parameterized class.
 
-## MAMMALIAN (branch-free core built; general n-bit functions open)
+## SLOW ACV MAMMALIAN (branch-free core built; general n-bit functions open)
 
 A *branch-free* approach works, verified against the real interpreter — no
 `LEAPFROG` needed.  `DIGEST` is `acc ^= sum(curr)`, a free XOR over GF(2),
@@ -163,6 +182,12 @@ A verified generator is thus a hard wall, not just a slow build; the 1-bit
 and 2-bit pieces are proven, and the AND gadget (`CONSUME SPRINT CONSUME`)
 works on clean separate arrays that the read flow cannot produce.
 
+Re-verified against the interpreter (unlike Minifuck, this wall holds): a
+search over the branch-free tails after the `b1`-normalize prefix reaches
+only the 0-preserving two-input tables (const-0, both echoes, XOR, and
+`NOT b0 AND b1` confirmed; no non-0-preserving table appears), matching the
+structural argument above.
+
 ## Dotlang (not viable)
 Dotlang's only input-dependent branch is the `W~` warp, which reads a line
 and teleports the dot to the *first* `W<bit>`s` marker in the grid (the
@@ -203,14 +228,33 @@ bound: `n == 4` (degree 184, coefficients ~10**729) factors in ~10s, while
 `n == 5` (degree 376, ~10**1746) does not factor in practical time, so the
 boolean generator is capped at `n <= 4`.
 
+## ROTfuck (built; straight-line generator)
+Every executed command rotates all source characters one step along
+`+-><,.[]`, so the character at position ``i`` at time ``t`` is
+``rot^t(source[i])``.  Brackets are matched dynamically: when a ``[`` or
+``]`` fires, the program is rotated first and the partner is then sought in
+the rotated program with the standard nesting count, so an executed bracket
+needs a partner in the current code, not in the source.  The text generator
+therefore emits straight-line programs (``source[i]`` is the ``i``-fold
+inverse rotation of the desired command), which fully covers arbitrary text.
+
 ## Text generators: exhausted
 Every language whose interpreter can emit arbitrary bytes already has a text
 generator.  The remaining interpreter-only languages cannot, so no text
 generator is possible for them: ArrowQueue has no output at all, Back prints
-the tape as a number list, BitDeque and Minsky Swap print their registers as
+the tape as a number list, Bitdeque and Minsky Swap print their registers as
 numbers, Movesum prints `n ` (numbers with a trailing space), RAM0 prints a
 state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
 the single bit as a number.  None can spell arbitrary text.
+
+Grapheme joins that list: its only output channels are a string of
+uppercase Latin letters and an integer's decimal digits.  A string cannot
+contain `E` (which terminates stringmode), so even "HELLO" is unspellable,
+and there is no string-concatenation command to assemble text from parts;
+a text generator therefore cannot produce "Hello, World!".  (Grapheme also
+cannot read its inputs as clean bits: `W` yields the string `"0"`/`"1"`,
+`J` maps those to -160/-150, both truthy, and string constants cannot spell
+`"0"`, so a boolean generator is not feasible for the standard harness.)
 
 ## Category:Unimplemented candidates that fell through
 Assessments of unimplemented languages from the wiki that did not make the
@@ -233,8 +277,31 @@ roadmap.  The viable candidates are in `docs/roadmap.md`.
 - **Bitwise Cyclic Teast**: a work-in-progress with a still-in-development
   interpreter definition.
 
+## User:PythonshellDebugwindow candidates that fell through
+Assessments of the unimplemented languages on PythonshellDebugwindow's user
+page that did not make the roadmap (the actual Category:Unimplemented gaps —
+MyScript, Procedure, Lamfunc, Point Break, State and Main, Your Time Is Up,
+COD — are in `docs/roadmap.md`).
+
+- **N Refine**: probabilistic self-rewriting OISC with no I/O; also already
+  implemented per its wiki page, so it is not a gap either way.
+- **something positive**: explicitly uncomputable (its halting depends on
+  program equivalence), so no interpreter can be verified.
+- **LogicF---**: a joke language whose commands are non-deterministic and
+  non-functional (a 2% chance to increment, a 67% chance to throw a
+  KeyError, and so on), with no usable protocol.
+- **Vandevelo**: input-only, with no output at all.
+- **Varigen**: an explicitly "uncomputable" joke language.
+- **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**,
+  **Writeover**: joke or vaguely specified languages with no usable
+  specification or I/O protocol.
+- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**,
+  **Streetcode**, **Unary Filesystem**, **Phile**: particle/map/file- or
+  OS-based languages with no portable file-based I/O protocol.
+- **Welcome To...**: a work-in-progress.
+
 ## Assessed boolean candidates that fell through
-- **Temporary**: the auto-drain is the only output, and it prints `front - 1`
+- **The Temporary Stack**: the auto-drain is the only output, and it prints `front - 1`
   for the *oldest* stack element when `sum(rest) / 2 > front`.  An
   input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
   select a 49/50 constant, but the only value-to-length conversion — the

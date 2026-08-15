@@ -1,11 +1,9 @@
 """Unit tests for the BF-PDA interpreter.
 
 BF-PDA is a brainfuck variant over a stack of bits whose top is the current
-cell; the semantics (including the bracket behavior and the 100-command run
-bound) port the Lean reference binary exactly.  These tests pin the valid
-programs to the reference outputs and the error handling to the repo
-conventions (``HaltError`` for invalid operations, ``ValueError`` for a
-malformed program).
+cell.  Per the wiki: ``[``/``]`` are while loops, an empty stack behaves as a
+zero (``>`` pops nothing, ``@``/``.``/``[`` read 0), and a run halts when the
+instruction pointer reaches the end of the program.
 """
 
 import importlib
@@ -18,9 +16,9 @@ from esolangs.interpreters.io import ScriptedIO
 run = importlib.import_module("esolangs.interpreters.tape_based.bfpda").run
 
 
-def run_program(code: str, limit: int = 100) -> str:
+def run_program(code: str) -> str:
     io = ScriptedIO()
-    run(code, io, limit=limit)
+    run(code, io)
     return io.getvalue()
 
 
@@ -44,69 +42,52 @@ class TestOutput:
 
 
 class TestBrackets:
-    def test_body_runs_once_when_top_zero(self) -> None:
-        """A matched pair enters and leaves the body once (no brainfuck loop)."""
-        assert run_program("<[.]") == "0"
+    def test_loop_skipped_when_top_zero(self) -> None:
+        """``[`` jumps past the body when the top bit is 0."""
+        assert run_program("<[.]") == ""
 
-    def test_body_runs_once_when_top_one(self) -> None:
-        assert run_program("<@[.]") == "1"
+    def test_loop_runs_while_top_nonzero(self) -> None:
+        """The body repeats while the top bit is 1, popping the bit out."""
+        assert run_program("<@[>]") == ""
 
-    def test_loop_flip_prints_both_bits(self) -> None:
-        assert run_program("<@[.@.]") == "10"
+    def test_loop_prints_each_bit(self) -> None:
+        assert run_program("<@<@[.>]") == "11"
 
-    def test_loop_push_print_pop(self) -> None:
-        assert run_program("<@[<@>.]") == "1"
+    def test_loop_flips_to_zero_and_exits(self) -> None:
+        assert run_program("<@[@.]") == "0"
+
+    def test_loop_terminates_on_empty_stack(self) -> None:
+        """A ``[`` on an empty stack reads 0 and skips the body."""
+        assert run_program("<@[>.]") == "0"
 
     def test_nested_loops(self) -> None:
-        assert run_program("<@[[.]]") == "1"
-        assert run_program("<@[[.].]") == "11"
-
-    def test_nested_scan_from_zero_top(self) -> None:
-        """A ``[`` with a zero top scans across a nested ``[`` for its match."""
-        assert run_program("<[[.]]") == "0"
-
-    def test_inner_loop_with_push(self) -> None:
-        assert run_program("<[<@.]") == "1"
-        assert run_program("<[<@.>]") == "1"
-
-    def test_complex_loops(self) -> None:
-        assert run_program("<.@[.]") == "01"
-        assert run_program("<.@[<@[.].@.>].@.>") == "011010"
+        assert run_program("<@<@[>[@]]") == ""
+        assert run_program("<@<@[>[>].]") == "0"
 
 
-class TestLimit:
-    def test_default_limit_matches_reference(self) -> None:
-        """The reference runs at most 100 commands; 33 of the 60 triples run."""
-        assert run_program("<@." * 60) == "1" * 33
+class TestHalting:
+    def test_halts_at_end_of_program(self) -> None:
+        """The IP running off the end halts the machine, not a command bound."""
+        assert run_program("<@." * 60) == "1" * 60
 
-    def test_override_limit(self) -> None:
-        assert run_program("<@." * 60, limit=200) == "1" * 60
-
-    def test_long_program_truncated(self) -> None:
-        assert run_program("<" * 110 + ".") == ""
+    def test_long_program_not_truncated(self) -> None:
+        assert run_program("<" * 110 + ".") == "0"
         assert run_program("<" * 50 + "." * 10 + "<" * 200) == "0" * 10
 
 
 class TestEmptyStack:
-    def test_pop_empty_stack_halts(self) -> None:
-        with pytest.raises(HaltError, match="pop an empty stack"):
-            run_program(">")
-        with pytest.raises(HaltError, match="pop an empty stack"):
-            run_program(">>")
-        with pytest.raises(HaltError, match="pop an empty stack"):
-            run_program("<>>")
+    def test_pop_empty_stack_is_noop(self) -> None:
+        """Popping an empty stack does nothing rather than halting."""
+        assert run_program(">") == ""
+        assert run_program(">>") == ""
+        assert run_program("<>>") == ""
 
-    def test_top_access_on_empty_stack_halts(self) -> None:
-        with pytest.raises(HaltError, match="top bit"):
-            run_program(".")
-        with pytest.raises(HaltError, match="top bit"):
-            run_program("@")
-        with pytest.raises(HaltError, match="top bit"):
-            run_program("[<@.>]")
-        with pytest.raises(HaltError, match="top bit"):
-            run_program("<[>]")
-        with pytest.raises(HaltError, match="top bit"):
-            run_program("<@>.")
+    def test_top_access_on_empty_stack_reads_zero(self) -> None:
+        """Peeking an empty stack reads 0; ``@`` pushes and flips it."""
+        assert run_program(".") == "0"
+        assert run_program("@.") == "1"
+        assert run_program("[<@.>]") == ""
+        assert run_program("<@>.") == "0"
 
 
 class TestMalformed:

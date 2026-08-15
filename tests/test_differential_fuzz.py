@@ -13,7 +13,6 @@ missing, mirroring the differential script itself.
 
 import importlib
 import random
-import shutil
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -40,17 +39,22 @@ class TestNoCommentFuzz:
 class TestDivergenceDetection:
     """The fuzzer must fail when the two sides disagree."""
 
-    @pytest.mark.skipif(shutil.which("nasm") is None, reason="nasm not installed")
+    @pytest.mark.skipif(
+        not verify_differential._asm_refs_ready("nocomment"),  # noqa: SLF001
+        reason="RISC-V reference not buildable",
+    )
     def test_nocomment_catches_divergence(self, rng) -> None:
-        """A wrong output on the assembly side is reported as a failure."""
-        x86_elf_runner = importlib.import_module("x86_elf_runner")
-        real_elf = x86_elf_runner.run_elf
+        """A wrong output on the RISC-V side is reported as a failure."""
+        real_ref = verify_differential._asm_refs  # noqa: SLF001
 
-        def tampered(binary, stdin):
-            out, code = real_elf(binary, stdin)
+        def tampered(name, program):
+            result = real_ref(name, program)
+            if result is None:
+                return None
+            out, code = result
             return out + b"!", code
 
-        with patch.object(x86_elf_runner, "run_elf", side_effect=tampered):
+        with patch.object(verify_differential, "_asm_refs", side_effect=tampered):
             assert not verify_differential._fuzz_nocomment(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(

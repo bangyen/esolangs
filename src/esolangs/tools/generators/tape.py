@@ -18,6 +18,7 @@ __all__ = [
     "factor",
     "mammalian",
     "minifuck",
+    "rotfuck",
     "six_five",
     "suffolk",
     "three_d_bf",
@@ -105,6 +106,38 @@ def bf(text: str) -> str:
         else:
             res.append("[-]" + _bf_set(v))
             cur = v
+    return "".join(res)
+
+
+def rotfuck(text: str) -> str:
+    """Generate a ROTfuck program that outputs ``text``.
+
+    After ``i`` commands the character at source position ``i`` has been
+    rotated ``i`` steps, so a straight-line program is just a sequence of
+    *effective* commands: the raw character for position ``i`` is the
+    ``i``-fold inverse rotation of the desired command.  The generated
+    program keeps one cell and drives it in place from one character's code
+    to the next (the shorter way around the 8-bit wrap), printing with ``.``
+    and halting at the end of the source.
+    """
+    _require_bytes(text, "ROTfuck")
+    chain = "+-><,.[]"
+    commands: list[str] = []
+    cur = 0
+    for char in text:
+        target = ord(char)
+        delta = (target - cur) % 256
+        if delta and delta <= 128:
+            commands.extend("+" * delta)
+        elif delta:
+            commands.extend("-" * (256 - delta))
+        commands.append(".")
+        cur = target
+
+    res: list[str] = []
+    for i, command in enumerate(commands):
+        back = i % 8
+        res.append(chain[(chain.index(command) - back) % 8])
     return "".join(res)
 
 
@@ -227,11 +260,13 @@ def brainif(text: str) -> str:
 def suffolk(text: str) -> str:
     """Build a Suffolk program that outputs ``text``.
 
-    Each character is factored as ``n = a * b + r`` with ``a`` near
-    ``sqrt(n)``; ``!`` computes ``max(0, cell + 1 - acc)`` so the multiplier
-    ``a`` is built into a helper cell and the remainder ``r`` is added by
-    repeated ``>!`` moves, then ``.`` prints.  Cell 2 is sized so ``!``
-    zeroes the working cells and they can be reused per character.
+    Each character is factored as ``n = a * b + r``; ``!`` computes
+    ``max(0, cell + 1 - acc)`` so the multiplier ``a`` is built into a helper
+    cell and the remainder ``r`` is added by repeated ``>!`` moves, then ``.``
+    prints.  The ``>!`` and ``><`` moves cost two characters each, so ``a``
+    is searched over the factorization that minimizes ``a + 2b + 2r`` rather
+    than fixed at ``sqrt(n)``.  Cell 2 is sized so ``!`` zeroes the working
+    cells and they can be reused per character.
     """
     if not text:
         return ""
@@ -241,8 +276,12 @@ def suffolk(text: str) -> str:
     res = []
     for c in text:
         n = ord(c) + 1
-        a = max(1, int(n**0.5))
-        b, r = divmod(n, a)
+        best = min(
+            (a + 2 * b + 2 * r, a, b, r)
+            for a in range(1, n + 1)
+            for b, r in (divmod(n, a),)
+        )
+        _, a, b, r = best
         res.append(f">><!>><>!{'!' * a}{'>!' * r}><{'<' * b}.")
     return ">>!" * big + "\n" + "\n".join(res)
 
@@ -342,41 +381,43 @@ def minifuck(text: str) -> str:
     return "".join(res)
 
 
-def circlefuck(text: str) -> str:
-    """Generate a CircleFuck program that outputs ``text``.
+# Circlefuck command characters (everything else is a harmless no-op cell).
+_CF_COMMANDS = frozenset("+-<>[],.@#{}")
 
-    CircleFuck's tape is the program itself, so each cell starts out holding
-    the character code of whatever instruction occupies that position. The
-    generator walks a single data pointer across the cells, emitting the
-    ``+``/``-`` run needed to reach each target value (reading the current
-    cell's base off the program text built so far), then ``.`` to print and
-    ``>`` to advance, ending with ``@``.
+
+def circlefuck(text: str) -> str:
+    """Generate a Circlefuck program that outputs ``text``.
+
+    Circlefuck's tape is the program itself, so a cell starts out holding the
+    character code of whatever instruction occupies its position.  The
+    generator keeps the data pointer on a single cell: a no-op character near
+    the first target's code seeds it, and ``+``/``-`` runs placed later in the
+    program drive the cell in place from one character's value to the next,
+    ``.`` printing each and ``@`` halting.  Each character therefore costs
+    only its delta from the previous one rather than a fresh-cell rebuild
+    from its instruction code.
     """
-    _require_bytes(text, "CircleFuck")
+    _require_bytes(text, "Circlefuck")
     if not text:
         return "@"
-    prog: list[str] = []
-    for i, c in enumerate(text):
-        target = ord(c)
-        if i == 0:
-            if target >= 44:
-                run = "+" * (target - 43)
-            elif target == 43:
-                run = "+-"
-            else:
-                run = "-" * (45 - target)
-        else:
-            delta = (target - ord(prog[i])) % 256
-            if delta == 0:
-                run = ""
-            elif delta <= 128:
-                run = "+" * delta
-            else:
-                run = "-" * (256 - delta)
-        prog.extend(run)
+    base = min(
+        (
+            chr(i)
+            for i in range(33, 127)
+            if chr(i) not in _CF_COMMANDS and chr(i) != "\\"
+        ),
+        key=lambda c: abs(ord(c) - ord(text[0])),
+    )
+    prog = [base]
+    cur = ord(base)
+    for c in text:
+        delta = ord(c) - cur
+        if delta > 0:
+            prog.append("+" * delta)
+        elif delta < 0:
+            prog.append("-" * -delta)
         prog.append(".")
-        if i != len(text) - 1:
-            prog.append(">")
+        cur = ord(c)
     prog.append("@")
     return "".join(prog)
 
@@ -398,7 +439,7 @@ def mammalian(text: str) -> str:
     (pointer, SEED count, character) state with no extras, plus random states
     with extras, without ever failing.
     """
-    _require_bytes(text, "MAMMALIAN")
+    _require_bytes(text, "SLOW ACV MAMMALIAN")
     if not text:
         return ""
     k = 1
