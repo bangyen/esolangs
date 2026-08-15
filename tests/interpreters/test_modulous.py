@@ -140,6 +140,11 @@ class TestModulous:
         with pytest.raises(ValueError, match="missing operand"):
             run("[JMP]", IO())
 
+    def test_empty_block_is_a_noop(self) -> None:
+        """An empty ``[]`` block has no command and is skipped, not crashed on."""
+        run("[]", IO())
+        run("[ ]\n[p 5]", IO())
+
     def test_missing_add_operand_rejected(self) -> None:
         with pytest.raises(ValueError, match="missing operand"):
             run("[ADD]", IO())

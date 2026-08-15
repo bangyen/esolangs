@@ -260,7 +260,9 @@ def _exec(code: str, machine: _Machine, depth: int) -> None:
                 while stack:
                     _exec(value[1], machine, depth + 1)
         else:
-            raise AssertionError(f"unhandled command {c!r}")
+            # a string read from input and executed via G/I may carry any
+            # character; reject it like the top-level program validation would
+            raise ValueError(f"unhandled command {c!r}")
         pc += 1
         if pending_at >= 0 and pc == pending_at + 2:
             pc += 1

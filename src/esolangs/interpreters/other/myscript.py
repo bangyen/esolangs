@@ -85,8 +85,11 @@ def _block_tree(code: str) -> list[Node]:
         stripped = raw.strip()
         if not stripped:
             continue
+        toks = _tokenize(stripped)
+        if not toks:
+            continue
         indent = len(raw) - len(raw.lstrip(" "))
-        node: Node = (_tokenize(stripped), [])
+        node: Node = (toks, [])
         while len(stack) > 1 and stack[-1][0] >= indent:
             stack.pop()
         stack[-1][1].append(node)
