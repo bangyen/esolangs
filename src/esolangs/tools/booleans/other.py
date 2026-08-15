@@ -52,6 +52,35 @@ def _const(n: int) -> str:
     return prog
 
 
+def myscript(truth_table: str, n: int) -> str:
+    """Build a MyScript program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
+    then walks a ``check`` decision tree: at level ``i`` it branches on
+    ``b_i`` and the leaves ``say`` the table value for the combination.
+    """
+    _validate_truth_table(truth_table, n)
+    lines = [f"var b{i} is ask" for i in range(n)]
+
+    def build(i: int, combo: int, pad: str) -> list[str]:
+        if i == n:
+            return [f'{pad}say "{truth_table[combo]}"']
+        one = build(i + 1, combo | (1 << (n - 1 - i)), pad + "    ")
+        zero = build(i + 1, combo, pad + "    ")
+        return [
+            f"{pad}check b{i}?",
+            f'{pad}  if "1",',
+            *one,
+            f"{pad}  else,",
+            *zero,
+        ]
+
+    return "\n".join(lines + build(0, 0, ""))
+
+
 def three_x(truth_table: str, n: int) -> str:
     """Build a 3x program computing the given truth table.
 

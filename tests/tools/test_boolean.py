@@ -1901,3 +1901,45 @@ class TestGeneratorEdgePaths:
         from esolangs.tools.booleans.other import _ztoalc_ok
 
         assert _ztoalc_ok({0: "2", 1: "a = 1"}, 1, "", "") is False
+
+
+def run_myscript(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.myscript import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+class TestMyScript:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.myscript(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_myscript(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.myscript("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.myscript("02", 1)
