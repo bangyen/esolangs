@@ -563,7 +563,7 @@ def one_two_three(text: str) -> str:
 
 
 def myscript(text: str) -> str:
-    """Generate a MyScript program that outputs ``text``.
+    r"""Generate a MyScript program that outputs ``text``.
 
     MyScript's string literals support the escapes ``\\0 \\n \\\\ \\t \\f
     \\"`` and literal printable ASCII, so ``text`` is emitted as one ``say``
