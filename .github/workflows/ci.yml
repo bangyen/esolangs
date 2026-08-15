@@ -160,9 +160,9 @@ jobs:
         printf 't3' > /tmp/trash.txt
         [ "$(./extra/rust/target/debug/trash /tmp/trash.txt)" = "5" ]
         printf '0H' > /tmp/74.txt
-        [ "$(./extra/rust/target/debug/seventy_four /tmp/74.txt)" = "H0" ]
+        [ "$(./extra/rust/target/debug/number_seventy_four /tmp/74.txt)" = "H0" ]
         printf 'l' > /tmp/pct.txt
-        [ "$(./extra/rust/target/debug/pct /tmp/pct.txt)" = "0" ]
+        [ "$(./extra/rust/target/debug/pct_squared_minus_one /tmp/pct.txt)" = "0" ]
         printf '~(' > /tmp/bit_tilde.txt
         ./extra/rust/target/debug/bit_tilde /tmp/bit_tilde.txt >/dev/null
         printf 'F4*5+.' > /tmp/forth.txt
@@ -205,7 +205,7 @@ jobs:
         # the 123 port must round-trip a generated program through the real
         # qemu-riscv64 (user mode) to verify the interpreter end to end
         PYTHONPATH=src python3 -c \
-          "from esolangs.tools.generate import _123; open('/tmp/123.prog','w').write(_123('Hi'))"
+          "from esolangs.tools.generate import one_two_three; open('/tmp/123.prog','w').write(one_two_three('Hi'))"
         qemu-riscv64 /tmp/123-riscv < /tmp/123.prog > /tmp/123.out
         [ "$(cat /tmp/123.out)" = "Hi" ] || { echo "got: $(cat /tmp/123.out)"; exit 1; }
         echo "RISC-V 123 round-tripped Hi"

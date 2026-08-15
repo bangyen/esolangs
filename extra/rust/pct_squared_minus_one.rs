@@ -97,7 +97,7 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("pct");
+            .join("pct_squared_minus_one");
         let path = std::env::temp_dir().join(format!(
             "pct-test-{}-{}.txt",
             std::process::id(),

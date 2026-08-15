@@ -41,7 +41,9 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
                     return  # a second start marker halts immediately
                 # The random heading is part of LaserFuck's spec, not a secret.
                 d = (
-                    heading if heading is not None else random.randrange(4)  # nosec B311
+                    heading
+                    if heading is not None
+                    else random.randrange(4)  # nosec B311
                 )
                 lsrs.append([x, y, d])
 

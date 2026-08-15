@@ -124,8 +124,14 @@ mod tests {
 
     #[test]
     fn non_prime_start_prints_zero() {
-        assert_eq!(run_program("t2"), "0\n");
+        assert_eq!(run_program("t4"), "0\n");
         assert_eq!(run_program("t9"), "0\n");
+    }
+
+    #[test]
+    fn two_is_prime() {
+        // 2 is prime per the port, so it advances rather than printing 0
+        assert_eq!(run_program("t2"), "3\n");
     }
 
     #[test]

@@ -1,0 +1,9 @@
+#!/bin/sh
+# Pre-push hook: run scripts/check_all.sh before allowing a push.  Enable with:
+#
+#     git config core.hooksPath .githooks
+#
+# The script runs the local-checkable subset of the CI workflow (lint,
+# pytest, bandit, cargo, the Python-only verify scripts) so failures are
+# caught before pushing rather than in GitHub Actions.
+exec "$(dirname "$0")/../scripts/check_all.sh"

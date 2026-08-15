@@ -14,8 +14,8 @@ port of the original C++ reference) exactly:
   and other characters there are ignored;
 * only the leading digits after the first digit form the starting value, so
   trailing characters do not affect the result;
-* the primality test is trial division up to the square root, which does not
-  treat 2 as prime, so a starting value of 2 prints 0.
+* the primality test is trial division up to the square root, which treats 2
+  as prime, so a starting value of 2 advances rather than printing 0.
 """
 
 import re
