@@ -8,8 +8,9 @@ jumps back when it is 1).  All other characters are comments.
 
 Per the wiki, an empty stack behaves as a zero: ``>`` pops nothing, and any
 peek (``@``, ``.``, ``[``) reads 0 (``@`` pushes that zero and flips it to
-1).  A run is bounded at ``limit`` commands so `#eval`-style loops that never
-empty the stack terminate.
+1).  A run ends when the instruction pointer reaches the end of the program,
+so the machine halts naturally like brainfuck; programs whose loops never
+empty the stack run forever.
 """
 
 import sys
@@ -44,8 +45,8 @@ def _backward(code: str, i: int) -> int:
     return j + 1
 
 
-def run(code: str, io: IO, limit: int = 100) -> None:
-    """Run a BF-PDA program, processing at most ``limit`` commands."""
+def run(code: str, io: IO) -> None:
+    """Run a BF-PDA program, halting when it reaches the end of the code."""
     if not code:
         raise ValueError("BF-PDA program cannot be empty")
     depth = 0
@@ -62,8 +63,8 @@ def run(code: str, io: IO, limit: int = 100) -> None:
     n = len(code)
     stack: list[int] = []
     ip = 0
-    for _ in range(limit):
-        c = code[ip] if ip < n else "\0"
+    while ip < n:
+        c = code[ip]
         if c == "@":
             if stack:
                 stack[-1] ^= 1
