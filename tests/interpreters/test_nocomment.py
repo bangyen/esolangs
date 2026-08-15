@@ -40,11 +40,12 @@ class TestNoComment:
         assert run_and_capture("c" + "i" * 256 + "o") == "\x00"
         assert run_and_capture("do") == "\xff"
 
-    def test_pointer_moves(self) -> None:
-        """r extends the tape to the right; l is a no-op at cell 0."""
+    def test_pointer_wraps(self) -> None:
+        """The static tape's pointer wraps to the opposite end (per the wiki)."""
         assert run_and_capture("c" + "i" * 65 + "r" + "o") == "\x00"
         assert run_and_capture("c" + "i" * 65 + "r" + "i" * 70 + "o") == "F"
-        assert run_and_capture("c" + "i" * 65 + "l" + "o") == "A"
+        # l at cell 0 wraps to cell 4095, a fresh zero cell
+        assert run_and_capture("c" + "i" * 65 + "l" + "o") == "\x00"
         assert run_and_capture("c" + "i" * 65 + "r" + "l" + "o") == "A"
 
     def test_stack_push_pop(self) -> None:
