@@ -67,8 +67,6 @@ def _to_str(value: object) -> str:
         return cast(str, value[1])
     if not isinstance(value, int):
         raise AssertionError(f"unexpected value {value!r}")
-    if value < 0:
-        raise HaltError("N on a negative integer is undefined")
     digits = "JABCDEFGHI"  # J = 0, A = 1, ..., I = 9
     if value == 0:
         return "J"
