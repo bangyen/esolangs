@@ -92,7 +92,7 @@ The full capability matrix (generators, native and boolean support, examples) is
 Languages that use registers to store and manipulate data.
 
 - [%^2^-1](https://esolangs.org/wiki/%^2^-1) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/pct_squared_minus_one.py))
-- [AddSubJump](https://esolangs.org/wiki/AddSubJump) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/add_sub_jump.py))
+- [AddSubJump](https://esolangs.org/wiki/AddSubJump) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/addsubjump.py))
 - [BIO](https://esolangs.org/wiki/BIO) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/bio.py))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/collatz_multiverse.py))
 - [DSDLAI](https://esolangs.org/wiki/DSDLAI) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/dsdlai.py))
@@ -114,7 +114,7 @@ Languages that use registers to store and manipulate data.
 Languages that operate on a tape (similar to Turing machines).
 
 - [123](https://esolangs.org/wiki/123) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/one_two_three.py))
-- [3D Brainfuck](https://esolangs.org/wiki/3D_Brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/three_d_bf.py))
+- [3D Brainfuck](https://esolangs.org/wiki/3D_Brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/three_d_brainfuck.py))
 - [6-5](https://esolangs.org/wiki/6-5) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/six_five.py))
 - [ABCDirection](https://esolangs.org/wiki/ABCDirection) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/abcdirection.py))
 - [ASCII art](https://esolangs.org/wiki/ASCII_art) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/ascii_art.py))
@@ -133,7 +133,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/painfuck.py))
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/rotfuck.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/sbleq.py))
-- [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/mammalian.py))
+- [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/slow_acv_mammalian.py))
 - [Stun Step](https://esolangs.org/wiki/Stun_Step) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/stun_step.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/suffolk.py))
 - [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainfuck.py))
@@ -146,7 +146,7 @@ Languages that use a stack for data manipulation.
 - [Eval](https://esolangs.org/wiki/Eval) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/eval.py))
 - [Forþ](https://esolangs.org/wiki/Forþ) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/forth.py))
 - [Modulous](https://esolangs.org/wiki/Modulous) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/modulous.py))
-- [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/temporary.py))
+- [The Temporary Stack](https://esolangs.org/wiki/The_Temporary_Stack) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/the_temporary_stack.py))
 - [Unsquare](https://esolangs.org/wiki/Unsquare) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/stack_based/unsquare.py))
 
 ### Other Languages
@@ -169,10 +169,10 @@ Languages that don't fit into the above categories.
 - [Keys](https://esolangs.org/wiki/Keys) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/keys.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/laserfuck.py))
 - [Nevermind](https://esolangs.org/wiki/Nevermind) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/nevermind.py))
-- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/seventy_four.py))
+- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/number_seventy_four.py))
 - [Taglate](https://esolangs.org/wiki/Taglate) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/taglate.py))
 - [Trash](https://esolangs.org/wiki/Trash) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/trash.py))
-- [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc.py))
+- [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/bit_tilde.py))
 
 <!-- IMPLEMENTED:END -->

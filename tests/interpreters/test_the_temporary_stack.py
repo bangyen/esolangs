@@ -5,7 +5,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.stack_based.temporary import run
+from esolangs.interpreters.stack_based.the_temporary_stack import run
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
@@ -71,7 +71,7 @@ class TestTemporaryStack:
     def test_random_command(self) -> None:
         """€ performs a random (here, forced) action."""
         with patch(
-            "esolangs.interpreters.stack_based.temporary.secrets.choice",
+            "esolangs.interpreters.stack_based.the_temporary_stack.secrets.choice",
             return_value="o",
         ):
             assert run_and_capture("€ v66") == ""

@@ -316,11 +316,7 @@ class TestHufIntegration:
     def test_program_with_mixed_content(self) -> None:
         """Test program with mixed valid and invalid content."""
         mixed_code = (
-            "Some text before\n"
-            "#+++>@\n"
-            "More text in between\n"
-            "#++++>@\n"
-            "Final text after"
+            "Some text before\n#+++>@\nMore text in between\n#++++>@\nFinal text after"
         )
 
         with redirect_stdout(io.StringIO()) as f:

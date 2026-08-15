@@ -197,7 +197,9 @@ def run(code: str, io: IO) -> None:
             try:
                 machine.set_value(int(code[ind : ind + 2], 16))
             except ValueError as exc:
-                raise ValueError(f"invalid hex literal {code[ind:ind+2]!r}") from exc
+                raise ValueError(
+                    f"invalid hex literal {code[ind : ind + 2]!r}"
+                ) from exc
             ind += 2
         elif c == "$":
             axis, ind = _number(code, ind, 2)

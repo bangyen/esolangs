@@ -47,8 +47,8 @@ def run_bf(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
-def run_three_d_bf(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.three_d_bf import run
+def run_three_d_brainfuck(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.three_d_brainfuck import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -772,15 +772,15 @@ class TestThreeDBf:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.three_d_bf(table, n)
+        program = boolean.three_d_brainfuck(table, n)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_three_d_bf(program, [str(b) for b in bits])
+            got = run_three_d_brainfuck(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_array_moves_use_the_3d_axes(self) -> None:
         """3D Brainfuck's >/< are no-ops, so the array moves with e/w."""
-        program = boolean.three_d_bf("0110", 2)
+        program = boolean.three_d_brainfuck("0110", 2)
         assert ">" not in program
         assert "<" not in program
         assert "e" in program
@@ -789,12 +789,12 @@ class TestThreeDBf:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.three_d_bf("011", 1)
+            boolean.three_d_brainfuck("011", 1)
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.three_d_bf("02", 1)
+            boolean.three_d_brainfuck("02", 1)
 
 
 class TestPainfuck:
@@ -1536,7 +1536,7 @@ class TestZtoalc:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.ztoalc_boolean(table, n)
+        program = boolean.ztoalc_l_boolean(table, n)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_ztoalc(program, [str(b) for b in bits])
@@ -1547,14 +1547,14 @@ class TestZtoalc:
         """Every table up to two inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            program = boolean.ztoalc_boolean(table, n)
+            program = boolean.ztoalc_l_boolean(table, n)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 assert run_ztoalc(program, [str(b) for b in bits]) == table[combo]
 
     def test_structure(self) -> None:
         """The program rides a Collatz descent with jumps and prints."""
-        program = boolean.ztoalc_boolean("0110", 2)
+        program = boolean.ztoalc_l_boolean("0110", 2)
         lines = program.splitlines()
         assert lines[0].strip().isdigit()  # line 1 is the starting value
         assert any("jump" in line for line in lines)
@@ -1562,7 +1562,7 @@ class TestZtoalc:
 
     def test_xor4_linear_fallback(self) -> None:
         """Dense symmetric tables fall back to a huge linear program."""
-        program = boolean.ztoalc_boolean("0110100110010110", 4)  # XOR4 = parity
+        program = boolean.ztoalc_l_boolean("0110100110010110", 4)  # XOR4 = parity
         assert len(program.splitlines()) > 100_000  # linear, not the small tree
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
@@ -1574,17 +1574,17 @@ class TestZtoalc:
         with pytest.raises(ValueError, match="no collision-free placement"):
             # tree fails, and the table is not popcount-symmetric, so the
             # linear fallback cannot help either
-            boolean.ztoalc_boolean("1010001000011000", 4)
+            boolean.ztoalc_l_boolean("1010001000011000", 4)
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.ztoalc_boolean("011", 1)
+            boolean.ztoalc_l_boolean("011", 1)
 
     def test_invalid_chars_rejected(self) -> None:
         """A truth table with non-0/1 characters is malformed."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.ztoalc_boolean("02", 1)
+            boolean.ztoalc_l_boolean("02", 1)
 
 
 class TestClockwise:

@@ -16,7 +16,7 @@ from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.forbin import run as forbin_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
 from esolangs.interpreters.other.three_x import run as three_x_run
-from esolangs.interpreters.other.ztoalc import run as ztoalc_run
+from esolangs.interpreters.other.ztoalc_l import run as ztoalc_run
 from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.dig import run as dig_run
 from esolangs.interpreters.register_based.dotlang import run as dotlang_run
@@ -29,18 +29,18 @@ from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.forth import run as forth_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
-from esolangs.interpreters.stack_based.temporary import run as temporary_run
+from esolangs.interpreters.stack_based.the_temporary_stack import run as temporary_run
 from esolangs.interpreters.stack_based.unsquare import run as unsquare_run
 from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.factor import run as factor_run
-from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.rotfuck import run as rotfuck_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
+from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
-from esolangs.interpreters.tape_based.three_d_bf import run as three_d_bf_run
+from esolangs.interpreters.tape_based.three_d_brainfuck import run as three_d_bf_run
 from esolangs.tools.generators import other
 
 
@@ -84,11 +84,11 @@ class TestGeneratorRoundTrips:
         assert roundtrip(unsquare_run, gen.unsquare("Hi")) == "Hi"
         assert roundtrip(unsquare_run, gen.unsquare("Hello, World!")) == "Hello, World!"
 
-    def test_three_d_bf(self) -> None:
+    def test_three_d_brainfuck(self) -> None:
         """The brainfuck tape moves map to the array's +X axis."""
-        assert roundtrip(three_d_bf_run, gen.three_d_bf("Hi")) == "Hi"
+        assert roundtrip(three_d_bf_run, gen.three_d_brainfuck("Hi")) == "Hi"
         assert (
-            roundtrip(three_d_bf_run, gen.three_d_bf("Hello, World!"))
+            roundtrip(three_d_bf_run, gen.three_d_brainfuck("Hello, World!"))
             == "Hello, World!"
         )
 
@@ -185,11 +185,12 @@ class TestGeneratorRoundTrips:
 
     def test_mammalian(self) -> None:
         """A SEED/SPRINT walk reaches the array holding each character."""
-        assert roundtrip(mammalian_run, gen.mammalian("Hi")) == "Hi"
+        assert roundtrip(mammalian_run, gen.slow_acv_mammalian("Hi")) == "Hi"
         assert (
-            roundtrip(mammalian_run, gen.mammalian("Hello, World!")) == "Hello, World!"
+            roundtrip(mammalian_run, gen.slow_acv_mammalian("Hello, World!"))
+            == "Hello, World!"
         )
-        assert gen.mammalian("") == ""
+        assert gen.slow_acv_mammalian("") == ""
 
     def test_mammalian_unreachable(self) -> None:
         """Report a character when no SEED/SPRINT walk can reach a value."""
@@ -200,7 +201,7 @@ class TestGeneratorRoundTrips:
             ),
             pytest.raises(ValueError, match="cannot build"),
         ):
-            gen.mammalian("H")
+            gen.slow_acv_mammalian("H")
 
     def test_huf(self) -> None:
         """Each # + inc >@ segment prints one character."""
@@ -435,34 +436,34 @@ class TestGeneratorRoundTrips:
 
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""
-        assert roundtrip(ztoalc_run, gen.ztoalc("Hi").splitlines()) == "Hi"
-        assert roundtrip(ztoalc_run, gen.ztoalc("").splitlines()) == ""
+        assert roundtrip(ztoalc_run, gen.ztoalc_l("Hi").splitlines()) == "Hi"
+        assert roundtrip(ztoalc_run, gen.ztoalc_l("").splitlines()) == ""
 
     def test_temporary(self) -> None:
         """The The Temporary Stack Stack squish prints each character."""
-        assert roundtrip(temporary_run, gen.temporary("Hi")) == "Hi"
-        assert roundtrip(temporary_run, gen.temporary("")) == ""
+        assert roundtrip(temporary_run, gen.the_temporary_stack("Hi")) == "Hi"
+        assert roundtrip(temporary_run, gen.the_temporary_stack("")) == ""
 
     def test_temporary_long_text(self) -> None:
         """Text longer than 13 characters is split across stack resets."""
         text = "".join(chr(33 + (i % 94)) for i in range(30))
-        assert roundtrip(temporary_run, gen.temporary(text)) == text
+        assert roundtrip(temporary_run, gen.the_temporary_stack(text)) == text
 
     def test_temporary_control_characters(self) -> None:
         """Characters whose increment is whitespace are pushed with vN."""
         text = "a\tb \n\x00\x7f"
-        assert roundtrip(temporary_run, gen.temporary(text)) == text
+        assert roundtrip(temporary_run, gen.the_temporary_stack(text)) == text
 
     def test_ztoalc_compact(self) -> None:
         """The program is far smaller than the 2**n power-of-2 scheme."""
-        program = gen.ztoalc("Hello, World!")
+        program = gen.ztoalc_l("Hello, World!")
         assert len(program.splitlines()) < 100
         assert roundtrip(ztoalc_run, program.splitlines()) == "Hello, World!"
 
     def test_ztoalc_uses_record_holder(self) -> None:
         """Longer text uses the best record-holder covering its length."""
         text = "a" * 200
-        program = gen.ztoalc(text)
+        program = gen.ztoalc_l(text)
         assert int(program.splitlines()[0]) == 2919  # covers n <= 216
         assert len(program.splitlines()) < 300000
         assert roundtrip(ztoalc_run, program.splitlines()) == text
@@ -470,7 +471,7 @@ class TestGeneratorRoundTrips:
     def test_ztoalc_long_text(self) -> None:
         """The generator scales to longer text without raising."""
         text = "".join(chr(65 + (i % 26)) for i in range(50))
-        program = gen.ztoalc(text)
+        program = gen.ztoalc_l(text)
         assert roundtrip(ztoalc_run, program.splitlines()) == text
 
     def test_ztoalc_anchor_lookup(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -480,18 +481,18 @@ class TestGeneratorRoundTrips:
         assert other._anchor_for(8) == 6  # noqa: SLF001
         assert other._anchor_for(9) == 18  # noqa: SLF001
         assert other._anchor_for(20) == 18  # noqa: SLF001
-        program = gen.ztoalc("ab")
+        program = gen.ztoalc_l("ab")
         assert program.splitlines() == ["6", "", "print 98", "", "", "print 97"]
         assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
 
     def test_ztoalc_too_long_rejected(self) -> None:
         """Text longer than the longest known record is rejected."""
         with pytest.raises(ValueError, match="no Collatz start"):
-            gen.ztoalc("a" * 1133)
+            gen.ztoalc_l("a" * 1133)
 
     def test_ztoalc_program_structure(self) -> None:
         """The initial pointer is the chosen start and each char sits on its line."""
-        lines = gen.ztoalc("ab").splitlines()
+        lines = gen.ztoalc_l("ab").splitlines()
         assert lines[0] == "6"
         assert "print 98" in lines
         assert "print 97" in lines
@@ -609,14 +610,14 @@ class TestGeneratorBranches:
             gen.albabet,
             gen.modulous,
             gen.qoibl,
-            gen.temporary,
+            gen.the_temporary_stack,
             gen.sophie,
             gen.bio,
             gen.six_five,
             gen.ascii_art,
             gen.wii2d,
             gen.clockwise,
-            gen.mammalian,
+            gen.slow_acv_mammalian,
             gen.huf,
         ]
         inputs = [

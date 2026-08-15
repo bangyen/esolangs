@@ -24,12 +24,12 @@ name = "trash"
 path = "trash.rs"
 
 [[bin]]
-name = "seventy_four"
-path = "seventy_four.rs"
+name = "number_seventy_four"
+path = "number_seventy_four.rs"
 
 [[bin]]
-name = "pct"
-path = "pct.rs"
+name = "pct_squared_minus_one"
+path = "pct_squared_minus_one.rs"
 
 [[bin]]
 name = "bit_tilde"
@@ -45,7 +45,7 @@ path = "basicfuck.rs"
 
 [[bin]]
 name = "two_d_fish"
-path = "2dfish.rs"
+path = "two_d_fish.rs"
 
 [[bin]]
 name = "painfuck"

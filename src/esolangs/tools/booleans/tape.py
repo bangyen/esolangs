@@ -595,7 +595,7 @@ def brainfuck(truth_table: str, n: int) -> str:
     return min((_bf_minterm(truth_table, n), bf_tree(truth_table, n)), key=len)
 
 
-def three_d_bf(truth_table: str, n: int) -> str:
+def three_d_brainfuck(truth_table: str, n: int) -> str:
     """Build a 3D Brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the

@@ -8,7 +8,7 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.seventy_four import run
+from esolangs.interpreters.other.number_seventy_four import run
 
 
 class _TimeoutError(Exception):
