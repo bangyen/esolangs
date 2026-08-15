@@ -22,6 +22,7 @@ __all__ = [
     "bf_to_six_five",
     "bfstack_to_bf",
     "bio_to_bf",
+    "circlefuck_to_bf",
     "huf_to_bf",
     "nocomment_to_bf",
     "six_five_to_bf",
@@ -348,6 +349,37 @@ def _six_five_label(value: int) -> str:
     return str(value) if value < 10 else chr(value + 55)
 
 
+def circlefuck_to_bf(program: str) -> str:
+    """Rewrite the ``bf_to_circlefuck`` form of a program back into brainfuck.
+
+    Circlefuck's tape *is* the program, so an arbitrary Circlefuck program
+    (whose data and code overlap, or which uses ``@``/``{``/``}``/``#``)
+    has no general brainfuck translation.  What :func:`bf_to_circlefuck`
+    produces, however, is structured: a data region setup ``>``*``size``
+    followed by ``("<" + "-"*62)*size`` (zeroing the ``size`` data cells),
+    then the brainfuck commands, then ``@``.  This decodes exactly that
+    form -- the leading ``>``s up to the first ``<`` give ``size``, the
+    setup tail is verified, and the commands before the ``@`` are the
+    brainfuck program.  Anything else is rejected.
+    """
+    from esolangs.interpreters.tape_based.circlefuck import parse
+
+    chars = [chr(c) for c in parse(program)]
+    size = 0
+    while size < len(chars) and chars[size] == ">":
+        size += 1
+    if size == 0:
+        raise ValueError("not the bf_to_circlefuck form: no data-region setup")
+    tail = "<" + "-" * 62
+    expected = tail * size
+    if "".join(chars[size : size + len(expected)]) != expected:
+        raise ValueError("not the bf_to_circlefuck form: missing data-region setup")
+    body = chars[size + len(expected) :]
+    if "@" in body:
+        body = body[: body.index("@")]
+    return "".join(c for c in body if c in "+-<>.,[]")
+
+
 def six_five_to_bf(program: str) -> str:
     """Rewrite a 6-5 program into brainfuck.
 
@@ -658,6 +690,7 @@ TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("ASCII art", "brainfuck"): ascii_art_to_bf,
     ("Basicfuck", "brainfuck"): basicfuck_to_bf,
     ("brainfuck", "Circlefuck"): bf_to_circlefuck,
+    ("Circlefuck", "brainfuck"): circlefuck_to_bf,
     ("brainfuck", "6-5"): bf_to_six_five,
     ("6-5", "brainfuck"): six_five_to_bf,
     ("NoComment", "brainfuck"): nocomment_to_bf,

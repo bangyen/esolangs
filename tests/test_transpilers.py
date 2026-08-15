@@ -677,3 +677,29 @@ def test_six_five_unsupported_control_flow_rejected() -> None:
 def test_six_five_unbalanced_loops_rejected() -> None:
     with pytest.raises(ValueError, match="unbalanced"):
         esolangs.transpile("6-5", "brainfuck", "814")
+
+
+@pytest.mark.parametrize(("program", "stdin"), CIRCLEFUCK_BATTERY)
+def test_circlefuck_round_trip_recovers_output(program: str, stdin: str) -> None:
+    """bf -> Circlefuck -> bf reproduces the same output (the reverse decodes)."""
+    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
+    back = esolangs.transpile("Circlefuck", "brainfuck", circlefuck)
+    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
+        "brainfuck", back, stdin
+    )
+
+
+def test_circlefuck_round_trip_explicit_size() -> None:
+    """An explicitly sized data region decodes too (the size is detected)."""
+    program = "+++[>++<-]>++."
+    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program, size=8)
+    back = esolangs.transpile("Circlefuck", "brainfuck", circlefuck)
+    assert esolangs.run("brainfuck", program) == esolangs.run("brainfuck", back)
+
+
+def test_circlefuck_non_canonical_rejected() -> None:
+    """A hand-written (self-referential) Circlefuck program has no bf form."""
+    with pytest.raises(ValueError, match="data-region setup"):
+        esolangs.transpile("Circlefuck", "brainfuck", "+")
+    with pytest.raises(ValueError, match="data-region setup"):
+        esolangs.transpile("Circlefuck", "brainfuck", "><.@")
