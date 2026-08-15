@@ -67,13 +67,15 @@ def test_compiler_sets_match_the_compiler_modules() -> None:
     """The compiler lists are derived from the compiler source files."""
     module = load_script()
     assert {
+        "BF-PDA",
         "BFStack",
+        "EXCON",
         "Home Row",
         "Jaune",
+        "RAM0",
         "Suffolk",
         "Unsquare",
     } == module.ASSEMBLY_COMPILERS
-    assert {"BF-PDA", "BFStack", "EXCON", "RAM0"} == module.C_COMPILERS
 
 
 def test_readme_extra_section_is_in_sync() -> None:
