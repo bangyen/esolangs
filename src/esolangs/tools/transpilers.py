@@ -211,8 +211,12 @@ def bio_to_bf(program: str) -> str:
             res.append(">" * reg + "[" + "<" * reg)
             loops.append(reg)
         else:  # "}"
+            if not loops:
+                raise ValueError("BIO: unmatched '}' without a loop to close")
             reg = loops.pop()
             res.append(">" * reg + "]" + "<" * reg)
+    if loops:
+        raise ValueError("BIO: unclosed '0i' loop")
     return "".join(res)
 
 

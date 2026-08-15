@@ -369,6 +369,14 @@ def test_bio_comments_are_ignored() -> None:
     )
 
 
+def test_bio_unbalanced_loops_rejected() -> None:
+    """A stray '}' or an unclosed '0i' is rejected, not crashed on."""
+    with pytest.raises(ValueError, match="unmatched"):
+        esolangs.transpile("BIO", "brainfuck", "}")
+    with pytest.raises(ValueError, match="unclosed"):
+        esolangs.transpile("BIO", "brainfuck", "0ix0iy")
+
+
 def test_bio_register_wrap_is_out_of_class() -> None:
     """A register reaching a nonzero multiple of 256 is outside the class.
 
