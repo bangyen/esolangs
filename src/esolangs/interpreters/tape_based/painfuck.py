@@ -34,8 +34,9 @@ Documented divergences from the cross-check:
   here too; the generator and the differential corpus never use it.
 - Reads at exhausted input raise :class:`EOFError` (the repo-wide
   convention), where the cross-check exits with status 3.
-- ``i`` parses the whole input line as an integer with ``int()``, so each
-  line must be a single integer (the cross-check tokenizes with ``>>``).
+- ``i`` parses the whole input line as an integer with ``int()``; a line
+  that is not a single integer raises :class:`HaltError` (the cross-check
+  exits with status 3 on the same input).
 - A ``t`` run that reaches the start of the program repeats a NUL in place
   of the command it walks before the program, in both implementations (the
   cross-check used to read out of bounds there; it now bounds the walk).
@@ -116,7 +117,11 @@ def run(code: str, io: IO) -> None:
                 if ptr:
                     ptr -= 1
             elif c == "i":
-                tape[ptr] = int(io.input_str("Input: "))
+                line = io.input_str("Input: ")
+                try:
+                    tape[ptr] = int(line)
+                except ValueError:
+                    raise HaltError from None
             elif c == "j":
                 tape[ptr] = io.input_char()
                 # The cross-check's discard-to-end-of-line loop leaves the

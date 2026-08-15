@@ -1301,6 +1301,7 @@ TWO_D_FISH_CORPUS = [
     ("/i@\n", b""),  # trailing newline phantom-row quirk
     ("/$*@", b"hi\n"),
     ("/%o@", b"42\n"),
+    ("/%o@", b"42abc\n"),  # unparseable % input: exit 2 on both sides
     ("/@", b""),
     ("", b""),  # no initial direction
 ]
@@ -1445,6 +1446,8 @@ _PAIN_CORPUS = [
     ("pjo", b"65\n"),
     ("jiu", b"7\n9\n"),
     ("jiu", b"255\n1\n"),
+    ("ip", b"42\n"),
+    ("ip", b"12x\n"),  # unparseable i input: exit 3 on both sides
     ("ppas b ue".replace(" ", ""), b""),
     ("pcsu", b""),
     ("pcue", b""),
