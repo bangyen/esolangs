@@ -175,18 +175,15 @@ that makes a text generator a routing problem rather than an arithmetic one.
 The newly assessed boolean candidates that fell through (Temporary, Movesum,
 WII2D, EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.
 
-## Compiler consolidation (in priority order)
+## Compiler consolidation
 
-The repo has two compiler backends: five Python compilers emit RISC-V
-assembly (`src/esolangs/compilers/assembly/`, now verified end to end in CI
-through `scripts/verify_riscv_unicorn.py`), and four C programs emit C
-(`src/esolangs/compilers/c/`).  Unifying on the RISC-V backend would leave
-one output format and one verification pipeline.
-
-### Convert the C compilers to RISC-V (medium priority)
-EXCON, BF-PDA, and RAM0 (BFStack already has a RISC-V compiler) would each
-get a Python ``comp()`` in ``assembly/`` emitting RISC-V Linux assembly,
-verified end to end through ``verify_riscv_unicorn.py``, and their ``.c``
-files would be dropped.  This moves their verification from real gcc
-execution in the test suite to the unicorn pipeline; RAM0's register machine
-and BF-PDA's stack are the harder backends.
+The repo previously had two compiler backends: Python compilers emitting
+RISC-V assembly (`src/esolangs/compilers/assembly/`) and C programs emitting
+C (`src/esolangs/compilers/c/`).  The consolidation is done: EXCON, BF-PDA,
+and RAM0 each got a Python ``comp()`` in ``assembly/`` emitting RISC-V Linux
+assembly, every compiler is now verified end to end in CI through
+``scripts/verify_riscv_unicorn.py``, and the ``.c`` files plus their
+gcc-based test suite were dropped.  The new BF-PDA and RAM0 backends follow
+the interpreters (no-op brackets; the ``z:/n:/ram:`` state dump with
+insertion-ordered RAM) rather than the C compilers' divergent semantics
+(while-loops; a pre-seeded stack; a ``Z:/N:`` dump).

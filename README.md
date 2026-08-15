@@ -226,18 +226,14 @@ Compilers that translate esoteric languages to other target languages.
 
 ### RISC-V Assembly Compilers
 
-- [BFStack](https://esolangs.org/wiki/BFStack)
-- [Home Row](https://esolangs.org/wiki/Home_Row)
-- [Jaune](https://esolangs.org/wiki/Jaune)
-- [Suffolk](https://esolangs.org/wiki/Suffolk)
-- [Unsquare](https://esolangs.org/wiki/Unsquare)
-
-### C Compilers
-
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [EXCON](https://esolangs.org/wiki/EXCON)
+- [Home Row](https://esolangs.org/wiki/Home_Row)
+- [Jaune](https://esolangs.org/wiki/Jaune)
 - [RAM0](https://esolangs.org/wiki/RAM0)
+- [Suffolk](https://esolangs.org/wiki/Suffolk)
+- [Unsquare](https://esolangs.org/wiki/Unsquare)
 
 <!-- COMPILERS:END -->
 
