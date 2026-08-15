@@ -9,6 +9,8 @@ program.
 
 A rule line before any container declaration is a malformed program and is
 rejected with :class:`ValueError`; an empty program halts immediately.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

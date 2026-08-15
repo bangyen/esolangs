@@ -14,6 +14,8 @@ malformed program and is rejected with :class:`ValueError`; referencing an
 undefined variable, indexing out of range, reaching a negative pointer, or
 using an array where a number is required are invalid operations that halt
 the program with :class:`~esolangs.exceptions.HaltError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

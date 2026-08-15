@@ -12,6 +12,9 @@ operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`; a word carrying more than one
 distinct command (``o@\@``), or a ``:`` with no instruction after it, is a
 malformed program rejected with :class:`ValueError`.
+
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import re

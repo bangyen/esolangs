@@ -7,6 +7,8 @@ input, or output the current cell.
 A command line missing its required operands (``if`` without a value, or
 ``goto`` without a target) is a malformed program and is rejected with
 :class:`ValueError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

@@ -42,6 +42,26 @@ Every interpreter follows the same conventions:
       invalid runtime operation.
 * Provide a ``__main__`` block that reads a program file and calls
   ``run(data, IO())``.
+
+The module docstring has a fixed shape, checked by
+``scripts/check_docstrings.py``::
+
+    '''Interpreter for <Language>.
+
+    <A short overview: the language's model (tape / stack / registers /
+    grid), how input and output work, and what the reader needs to run a
+    program.>
+
+    <Documented decisions for gaps the wiki leaves open, one bullet each:
+    EOF behavior when the language reads input, malformed programs
+    (``ValueError``), invalid runtime operations (``HaltError``), and any
+    other place the interpreter picks a behavior.>
+    '''
+
+The check enforces the mechanical parts -- the docstring names the language,
+and mentions ``EOF``, ``HaltError``, or ``ValueError`` when the interpreter
+reads input or raises them -- so the overview and the decision bullets stay
+substantive and accurate.
 """
 
 import sys

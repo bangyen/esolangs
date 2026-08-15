@@ -27,6 +27,9 @@ zero, matching the Subleq convention that an OISC memory is an infinite array
 of cells.  Execution halts when the instruction pointer runs off the end of
 the program, or when a ``c`` address holds a negative target (jumping to a
 negative address).
+
+
+Reading input (``-2``) past the end of the stream returns zero at EOF (per the wiki); malformed programs raise :class:`ValueError`.
 """
 
 import sys

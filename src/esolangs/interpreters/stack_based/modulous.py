@@ -12,6 +12,8 @@ Operations that act on an empty stack, an undefined variable, or a missing
 operand are invalid: they halt the program with
 :class:`~esolangs.exceptions.HaltError`, and a malformed token (a missing
 required argument) is rejected with :class:`ValueError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import re

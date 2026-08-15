@@ -9,6 +9,8 @@ A program with no instructions is malformed and is rejected with
 :class:`ValueError`, as is one with unmatched ``[``/``]`` brackets; deleting
 the last cell (``}``) is an invalid operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import re

@@ -25,6 +25,8 @@ instruction ``[v]`` is the linear factor ``x - p**v``.  The interpreter
 therefore factors the polynomial over the integers with ``sympy`` and reads the
 instruction values straight off the factors, exactly -- no floating point, so
 the wide root spreads that defeated float64 root-finding are irrelevant.
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import functools
