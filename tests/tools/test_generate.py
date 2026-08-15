@@ -14,6 +14,7 @@ from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.forbin import run as forbin_run
+from esolangs.interpreters.other.myscript import run as myscript_run
 from esolangs.interpreters.other.nevermind import run as nevermind_run
 from esolangs.interpreters.other.three_x import run as three_x_run
 from esolangs.interpreters.other.ztoalc_l import run as ztoalc_run
@@ -246,6 +247,12 @@ class TestGeneratorRoundTrips:
         )
         assert roundtrip(nevermind_run, gen.nevermind("a²b").splitlines()) == "a²b\n"
         assert roundtrip(nevermind_run, gen.nevermind("١٢٣").splitlines()) == "١٢٣\n"
+
+    def test_myscript(self) -> None:
+        """The generator escapes the byte string into one say statement."""
+        assert roundtrip(myscript_run, gen.myscript("Hi")) == "Hi"
+        assert roundtrip(myscript_run, gen.myscript("a\tb\nc")) == "a\tb\nc"
+        assert roundtrip(myscript_run, gen.myscript("quote\"slash\\")) == 'quote"slash\\'
 
     def test_nevermind_unsupported(self) -> None:
         """Nevermind cannot print multiline text or a leading $."""

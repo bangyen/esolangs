@@ -18,6 +18,7 @@ __all__ = [
     "forth",
     "home_row",
     "laserfuck",
+    "myscript",
     "nevermind",
     "nocomment",
     "one_two_three",
@@ -559,6 +560,35 @@ def one_two_three(text: str) -> str:
         last = ord(c)
 
     return res + "1"
+
+
+def myscript(text: str) -> str:
+    """Generate a MyScript program that outputs ``text``.
+
+    MyScript's string literals support the escapes ``\\0 \\n \\\\ \\t \\f
+    \\"`` and literal printable ASCII, so ``text`` is emitted as one ``say``
+    of the escaped string; any other byte (unrepresentable in the language)
+    is rejected.
+    """
+    res: list[str] = []
+    for c in text:
+        if c == "\\":
+            res.append("\\\\")
+        elif c == '"':
+            res.append('\\"')
+        elif c == "\0":
+            res.append("\\0")
+        elif c == "\n":
+            res.append("\\n")
+        elif c == "\t":
+            res.append("\\t")
+        elif c == "\f":
+            res.append("\\f")
+        elif 32 <= ord(c) < 127:
+            res.append(c)
+        else:
+            raise ValueError("MyScript can only output its representable bytes")
+    return 'say "' + "".join(res) + '"'
 
 
 def nocomment(text: str) -> str:
