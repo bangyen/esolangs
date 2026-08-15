@@ -2,7 +2,7 @@
 
 import importlib
 
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, canonical_id
 
 
 def test_every_language_has_a_canonical_id() -> None:
@@ -10,6 +10,18 @@ def test_every_language_has_a_canonical_id() -> None:
     for name, lang in LANGUAGES.items():
         assert lang.id, name
         assert lang.id.isidentifier(), name
+
+
+def test_canonical_id_derives_the_recorded_id() -> None:
+    """The recorded id is exactly what ``canonical_id`` derives from the name."""
+    for name, lang in LANGUAGES.items():
+        assert canonical_id(name) == lang.id, name
+
+
+def test_canonical_id_is_a_valid_identifier() -> None:
+    """The function produces valid-Python-identifier slugs for every name."""
+    for name in LANGUAGES:
+        assert canonical_id(name).isidentifier(), name
 
 
 def test_id_matches_the_interpreter_module() -> None:

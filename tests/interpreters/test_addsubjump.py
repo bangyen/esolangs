@@ -11,7 +11,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.register_based.add_sub_jump import run
+from esolangs.interpreters.register_based.addsubjump import run
 
 
 def memory(instructions, cells=None):

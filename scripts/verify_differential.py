@@ -37,11 +37,12 @@ Languages with both an in-package interpreter and a native cross-check:
   over exact rationals; the reference prints its ``Input: `` prompts to
   stdout (stripped before comparing) and both agree on the exit-code
   convention.
-* **%^2^-1** — ``register_based/pct_squared_minus_one.py`` vs ``extra/rust/pct.rs``.
+* **%^2^-1** — ``register_based/pct_squared_minus_one.py`` vs ``extra/rust/
+  ``pct_squared_minus_one.rs``.
   Both track the accumulator as a signed magnitude with the 3003 reset; the
   reference prints its ``Input: `` prompts to stdout, which are stripped
   before comparing.
-* **2dFish** — ``other/two_d_fish.py`` vs ``extra/rust/2dfish.rs``.  Both run
+* **2dFish** — ``other/two_d_fish.py`` vs ``extra/rust/two_d_fish.rs``.  Both run
   the ragged grid with the reference's trailing-newline phantom row.
 * **Painfuck** — ``tape_based/painfuck.py`` vs ``extra/rust/painfuck.rs``.
   Corpus programs are encoded into the source alphabet (the reference
@@ -78,8 +79,8 @@ RUST_BIN = RUST_BIN_DIR / "laserfuck"
 UNSQUARE_BIN = RUST_BIN_DIR / "unsquare"
 KAK_BIN = RUST_BIN_DIR / "kak"
 TRASH_BIN = RUST_BIN_DIR / "trash"
-SEVENTY_FOUR_BIN = RUST_BIN_DIR / "seventy_four"
-PCT_BIN = RUST_BIN_DIR / "pct"
+NUMBER_SEVENTY_FOUR_BIN = RUST_BIN_DIR / "number_seventy_four"
+PCT_SQUARED_MINUS_ONE_BIN = RUST_BIN_DIR / "pct_squared_minus_one"
 BIT_TILDE_BIN = RUST_BIN_DIR / "bit_tilde"
 FORTH_BIN = RUST_BIN_DIR / "forth"
 BASICFUCK_BIN = RUST_BIN_DIR / "basicfuck"
@@ -1184,10 +1185,10 @@ PCT_CORPUS = [
 
 def _build_pct() -> str | None:
     """Return the built %^2^-1 Rust reference; None if cargo built it not yet."""
-    if not PCT_BIN.exists():
+    if not PCT_SQUARED_MINUS_ONE_BIN.exists():
         print("[skip] %^2^-1 differential: Rust reference not built")
         return None
-    return str(PCT_BIN)
+    return str(PCT_SQUARED_MINUS_ONE_BIN)
 
 
 def _run_pct_native(
@@ -1832,9 +1833,9 @@ _SIMPLE_CORPUS = [
     # the former Ruby cross-check; the Lean port has diverged semantics)
     (
         "Number Seventy-Four",
-        lambda: SEVENTY_FOUR_BIN.exists(),
-        lambda p, s: _run_file_ref([str(SEVENTY_FOUR_BIN)], p, s),
-        "esolangs.interpreters.other.seventy_four",
+        lambda: NUMBER_SEVENTY_FOUR_BIN.exists(),
+        lambda p, s: _run_file_ref([str(NUMBER_SEVENTY_FOUR_BIN)], p, s),
+        "esolangs.interpreters.other.number_seventy_four",
         [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
     ),
     # 2 Bits, 1 Byte: single program byte, read from stdin by the references

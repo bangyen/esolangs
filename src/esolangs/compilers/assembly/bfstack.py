@@ -77,9 +77,7 @@ def comp(code: str) -> str:
     for char, num in tokens:
         if char == "+":
             if num:
-                res += (
-                    "\tlbu  t0, 0(s1)\n" f"\taddi t0, t0, {num}\n" "\tsb   t0, 0(s1)\n"
-                )
+                res += f"\tlbu  t0, 0(s1)\n\taddi t0, t0, {num}\n\tsb   t0, 0(s1)\n"
         elif char == "0":
             res += "\tsb   zero, 0(s1)\n"
         elif char in "><.,":
@@ -94,35 +92,28 @@ def comp(code: str) -> str:
                 if char == "[":
                     jump += 1
                     arr.append(jump)
-                    res += f".T{jump}:\n" "\tlbu  t0, 0(s1)\n" f"\tbeqz t0, .B{jump}\n"
+                    res += f".T{jump}:\n\tlbu  t0, 0(s1)\n\tbeqz t0, .B{jump}\n"
                 elif arr:
                     m = arr.pop()
-                    res += f"\tj .T{m}\n" f".B{m}:\n"
+                    res += f"\tj .T{m}\n.B{m}:\n"
 
-    res += "\n\tli   a0, 0\n" "\tli   a7, 93\n" "\tecall\n"
+    res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n"
 
     def end(s: str, *, mul: bool) -> str:
         return (
-            mul
-            * (
-                "\taddi s2, s2, -1\n"
-                "\tbgt  s2, zero, " + s + "\n"
-                "\taddi s2, s2, 1\n"
-            )
+            mul * ("\taddi s2, s2, -1\n\tbgt  s2, zero, " + s + "\n\taddi s2, s2, 1\n")
             + "\tret\n"
         )
 
     if ins[">"][1]:
-        res += (
-            "\nright:\n"
-            "\taddi s1, s1, -1\n"
-            "\tsb   zero, 0(s1)\n" + end("right", mul=cast(bool, ins[">"][2]))
+        res += "\nright:\n\taddi s1, s1, -1\n\tsb   zero, 0(s1)\n" + end(
+            "right", mul=cast(bool, ins[">"][2])
         )
     if ins["<"][1]:
-        res += "\nleft:\n" "\tbeq  s1, s3, .done_left\n" "\taddi s1, s1, 1\n"
+        res += "\nleft:\n\tbeq  s1, s3, .done_left\n\taddi s1, s1, 1\n"
         if ins["<"][2]:
-            res += "\taddi s2, s2, -1\n" "\tbgt  s2, zero, left\n" "\taddi s2, s2, 1\n"
-        res += ".done_left:\n" "\tret\n"
+            res += "\taddi s2, s2, -1\n\tbgt  s2, zero, left\n\taddi s2, s2, 1\n"
+        res += ".done_left:\n\tret\n"
     if ins["."][1]:
         res += (
             "\noutput:\n"

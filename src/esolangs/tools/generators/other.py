@@ -27,7 +27,7 @@ __all__ = [
     "three_x",
     "two_d_fish",
     "unsquare",
-    "ztoalc",
+    "ztoalc_l",
 ]
 
 
@@ -168,7 +168,7 @@ def _anchor_for(n: int) -> int:
     )
 
 
-def ztoalc(text: str) -> str:
+def ztoalc_l(text: str) -> str:
     """Build a ZTOALC L program that outputs ``text``.
 
     The interpreter runs lines in Collatz-trajectory order from the initial

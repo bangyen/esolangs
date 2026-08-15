@@ -20,7 +20,7 @@ from esolangs.tools.booleans.other import (
     nevermind,
     taglate,
     three_x,
-    ztoalc_boolean,
+    ztoalc_l_boolean,
 )
 from esolangs.tools.booleans.parameterized import back, bio, instantiate, nocomment
 from esolangs.tools.booleans.register import (
@@ -47,7 +47,7 @@ from esolangs.tools.booleans.tape import (
     sbleq,
     six_five,
     six_five_arithmetic,
-    three_d_bf,
+    three_d_brainfuck,
 )
 
 __all__ = [
@@ -86,8 +86,8 @@ __all__ = [
     "six_five_arithmetic",
     "sophie",
     "taglate",
-    "three_d_bf",
+    "three_d_brainfuck",
     "three_x",
     "unsquare",
-    "ztoalc_boolean",
+    "ztoalc_l_boolean",
 ]

@@ -4,27 +4,76 @@ Each :class:`Language` describes a language's generator (if any), its
 interpreter (if any), and how a program is handed to that interpreter. The
 public API, the tools, and the test suite all derive from this table, so
 adding a language is a one-place change.
+
+:func:`canonical_id` turns a language's display (wiki) name into its
+canonical internal identifier, so the two are derived, not maintained in
+parallel.
 """
 
+import re
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from esolangs.tools import generate as _generate
+
+# Display names whose canonical id cannot be produced by the slug rules
+# (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``,
+# or a digit-word boundary no slug can find, like ``2dFish``).
+_CANONICAL_OVERRIDES = {
+    "%^2^-1": "pct_squared_minus_one",
+    "2dFish": "two_d_fish",
+}
+
+_DIGIT_WORDS = {
+    "0": "zero",
+    "1": "one",
+    "2": "two",
+    "3": "three",
+    "4": "four",
+    "5": "five",
+    "6": "six",
+    "7": "seven",
+    "8": "eight",
+    "9": "nine",
+}
+
+
+def canonical_id(name: str) -> str:
+    """Return the canonical internal identifier for a language's display name.
+
+    The id is a valid-Python-identifier slug: lowercase, ASCII, non-ASCII
+    letters transliterated (``þ`` -> ``th``), ``~`` spelled out as
+    ``tilde``, ``*`` dropped, and digit-leading names expanded to words
+    (``6-5`` -> ``six_five``).  A couple of names that no slug can capture
+    are pinned in :data:`_CANONICAL_OVERRIDES`.
+    """
+    if name in _CANONICAL_OVERRIDES:
+        return _CANONICAL_OVERRIDES[name]
+    s = name.replace("~", "_tilde").replace("þ", "th").replace("*", "")
+    s = unicodedata.normalize("NFKD", s.lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"[^a-z0-9]+", "_", s).strip("_")
+    if s and s[0].isdigit():
+        s = "".join("_" + _DIGIT_WORDS[c] + "_" if c.isdigit() else c for c in s)
+        s = re.sub(r"_+", "_", s).strip("_")
+    return s
 
 
 @dataclass(frozen=True)
 class Language:
     """Metadata for one language.
 
-    ``id`` is the language's canonical internal identifier: a snake_case,
-    valid-Python-identifier slug used for the interpreter module, the
-    generator function, and the test file, so every internal reference to a
-    language uses the same token.  ``generator`` produces a program that
-    prints a text (None if the language has no generator).  ``interpreter``
-    is the dotted module under ``esolangs.interpreters`` that runs programs
-    (None if the executable lives elsewhere, e.g. in extra/).  ``split``
-    passes the program split into lines to the interpreter, and ``kwargs``
-    holds any extra run() keyword arguments as (name, value) pairs.
+    ``id`` is the language's canonical internal identifier: the slug
+    :func:`canonical_id` produces from the display name, used for the
+    interpreter module, the generator function, and the test file, so every
+    internal reference to a language uses the same token.  ``generator``
+    produces a program that prints a text (None if the language has no
+    generator).  ``interpreter`` is the dotted module under
+    ``esolangs.interpreters`` that runs programs (None if the executable
+    lives elsewhere, e.g. in extra/).  ``split`` passes the program split
+    into lines to the interpreter, and ``kwargs`` holds any extra run()
+    keyword arguments as (name, value) pairs.
     """
 
     name: str
@@ -47,9 +96,9 @@ LANGUAGES: dict[str, Language] = {
     ),
     "AddSubJump": Language(
         "AddSubJump",
-        _generate.add_sub_jump,
-        "register_based.add_sub_jump",
-        id="add_sub_jump",
+        _generate.addsubjump,
+        "register_based.addsubjump",
+        id="addsubjump",
     ),
     "A Painter Ant": Language(
         "A Painter Ant",
@@ -298,9 +347,9 @@ LANGUAGES: dict[str, Language] = {
     ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
-        _generate.mammalian,
-        "tape_based.mammalian",
-        id="mammalian",
+        _generate.slow_acv_mammalian,
+        "tape_based.slow_acv_mammalian",
+        id="slow_acv_mammalian",
     ),
     "Minifuck": Language(
         "Minifuck",
@@ -340,8 +389,8 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Number Seventy-Four": Language(
         "Number Seventy-Four",
-        id="seventy_four",
-        interpreter="other.seventy_four",
+        id="number_seventy_four",
+        interpreter="other.number_seventy_four",
     ),
     "Painfuck": Language(
         "Painfuck",
@@ -381,9 +430,9 @@ LANGUAGES: dict[str, Language] = {
     ),
     "3D Brainfuck": Language(
         "3D Brainfuck",
-        _generate.three_d_bf,
-        "tape_based.three_d_bf",
-        id="three_d_bf",
+        _generate.three_d_brainfuck,
+        "tape_based.three_d_brainfuck",
+        id="three_d_brainfuck",
     ),
     "Sophie": Language(
         "Sophie",
@@ -405,9 +454,9 @@ LANGUAGES: dict[str, Language] = {
     ),
     "The Temporary Stack": Language(
         "The Temporary Stack",
-        _generate.temporary,
-        "stack_based.temporary",
-        id="temporary",
+        _generate.the_temporary_stack,
+        "stack_based.the_temporary_stack",
+        id="the_temporary_stack",
     ),
     "Trash": Language(
         "Trash",
@@ -442,9 +491,9 @@ LANGUAGES: dict[str, Language] = {
     ),
     "ZTOALC L": Language(
         "ZTOALC L",
-        _generate.ztoalc,
-        "other.ztoalc",
-        id="ztoalc",
+        _generate.ztoalc_l,
+        "other.ztoalc_l",
+        id="ztoalc_l",
         split=True,
     ),
 }

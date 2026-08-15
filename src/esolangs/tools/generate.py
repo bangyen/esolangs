@@ -29,10 +29,10 @@ from esolangs.tools.generators.other import (
     three_x,
     two_d_fish,
     unsquare,
-    ztoalc,
+    ztoalc_l,
 )
 from esolangs.tools.generators.register import (
-    add_sub_jump,
+    addsubjump,
     albabet,
     bio,
     collatz_multiverse,
@@ -46,7 +46,7 @@ from esolangs.tools.generators.register import (
     sophie,
     wii2d,
 )
-from esolangs.tools.generators.stack import modulous, temporary
+from esolangs.tools.generators.stack import modulous, the_temporary_stack
 from esolangs.tools.generators.tape import (
     ascii_art,
     bfstack,
@@ -55,17 +55,17 @@ from esolangs.tools.generators.tape import (
     circlefuck,
     excon,
     factor,
-    mammalian,
     minifuck,
     rotfuck,
     six_five,
+    slow_acv_mammalian,
     suffolk,
-    three_d_bf,
+    three_d_brainfuck,
 )
 
 __all__ = [
     "_ilog",
-    "add_sub_jump",
+    "addsubjump",
     "albabet",
     "ascii_art",
     "basicfuck",
@@ -91,7 +91,6 @@ __all__ = [
     "home_row",
     "huf",
     "laserfuck",
-    "mammalian",
     "minifuck",
     "modulous",
     "nevermind",
@@ -104,16 +103,17 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
+    "slow_acv_mammalian",
     "sophie",
     "suffolk",
     "taglate",
-    "temporary",
-    "three_d_bf",
+    "the_temporary_stack",
+    "three_d_brainfuck",
     "three_x",
     "two_d_fish",
     "unsquare",
     "wii2d",
-    "ztoalc",
+    "ztoalc_l",
 ]
 
 

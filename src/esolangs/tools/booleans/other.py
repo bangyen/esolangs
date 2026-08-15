@@ -10,7 +10,7 @@ __all__ = [
     "nevermind",
     "taglate",
     "three_x",
-    "ztoalc_boolean",
+    "ztoalc_l_boolean",
 ]
 
 # Closed-form 3x constant encodings.  Every integer is built from the literal
@@ -258,7 +258,7 @@ def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
     return prog
 
 
-def ztoalc_boolean(truth_table: str, n: int) -> str:
+def ztoalc_l_boolean(truth_table: str, n: int) -> str:
     """Build a ZTOALC L program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the

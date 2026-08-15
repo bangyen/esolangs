@@ -16,12 +16,12 @@ __all__ = [
     "circlefuck",
     "excon",
     "factor",
-    "mammalian",
     "minifuck",
     "rotfuck",
     "six_five",
+    "slow_acv_mammalian",
     "suffolk",
-    "three_d_bf",
+    "three_d_brainfuck",
 ]
 
 
@@ -193,7 +193,7 @@ def ascii_art(text: str) -> str:
     return bf_to_ascii_art(brainfuck(text))
 
 
-def three_d_bf(text: str) -> str:
+def three_d_brainfuck(text: str) -> str:
     """Build a 3D Brainfuck program that outputs ``text``.
 
     The memory array is three-dimensional, so the brainfuck tape moves
@@ -422,7 +422,7 @@ def circlefuck(text: str) -> str:
     return "".join(prog)
 
 
-def mammalian(text: str) -> str:
+def slow_acv_mammalian(text: str) -> str:
     """Build a SEED/SPRINT walk that reaches the array whose value is the character.
 
     SEED once so every array's first value is ``(i + 1) * K`` for the running

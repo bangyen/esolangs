@@ -57,10 +57,10 @@ def test_text_generators_round_trip() -> None:
                 assert generator is not None
                 program = generator(text)
             except ValueError:
-                # every generator may document limits; the mammalian search
+                # every generator may document limits; the slow_acv_mammalian search
                 # itself is proven total, so it may only reject for non-byte
                 # characters (which _UNICODE includes)
-                if name == "mammalian":
+                if name == "slow_acv_mammalian":
                     assert any(ord(c) > 255 for c in text)
                 continue
             run = importlib.import_module("esolangs.interpreters." + module).run

@@ -86,7 +86,7 @@ def run(code: str, io: IO) -> None:
         "PRONOUNCE",
     )
 
-    tokens = re.findall(f'({"|".join(ins)})', code)
+    tokens = re.findall(f"({'|'.join(ins)})", code)
     lst: list[list[int]] = [[0] for _ in range(23)]
     ind = ptr = acc = 0
 
