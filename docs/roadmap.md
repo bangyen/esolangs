@@ -123,13 +123,13 @@ the program is linear and compact.
 
 ## Lean proofs (in priority order)
 
-Kept proofs: MAMMALIAN generator totality (`extra/lean/esolangs/Esolangs.lean`)
+Kept proofs: SLOW ACV MAMMALIAN generator totality (`extra/lean/esolangs/Esolangs.lean`)
 and Factor's Dirichlet totality / encode-decode round-trip
 (`FactorCorrect.lean`).  Everything else in the Lean project was dropped:
 the four ported interpreters, their equivalence proofs, and all the
 generator and boolean correctness proofs were redundant with the round-trip
 test suite, so the Lean project now contains only the proofs of facts the
-tests cannot establish (MAMMALIAN's search totality, Factor's prime-search
+tests cannot establish (SLOW ACV MAMMALIAN's search totality, Factor's prime-search
 totality).  The one exception kept self-contained rather than dropped is the
 brainfuck-minterm boolean proof (`BfMintermCorrect.lean`), the completed
 proof of the ``_bf_minterm`` generator's copy/AND scratch machinery and
@@ -148,7 +148,7 @@ order, with the right exponents (`encodeRuns_factorization_at`,
 ### Retired Lean proof items
 All other Lean proofs were dropped as redundant with the round-trip test
 suite (the generator and boolean correctness proofs re-prove what the
-differential/round-trip tests already establish): EXCON, AlbaBet, CircleFuck,
+differential/round-trip tests already establish): EXCON, AlbaBet, Circlefuck,
 Sophie, BIO, 6-5, Qoibl, huf, brainfuck, eval, Collatz Multiverse, the
 ``_bf_set`` multiply loop, and the Sophie/6-5 boolean proofs, and the four
 ported Lean interpreters with their equivalence proofs.  The one
@@ -166,13 +166,13 @@ bootstrapped from ``negativeOne`` with the copy trick and parity-aware
 ``one x + one``/``one x + two`` increments, then one copy-and-print line per
 character) and AlbaBet (its `c`+`a`-run+`i` generator and correctness proof
 landed with the other Lean proofs).  The remaining interpreter-only languages
-(ArrowQueue, Back, BitDeque, DSDLAI, Keys, Lightlang, Minsky Swap, Movesum,
+(ArrowQueue, Back, Bitdeque, DSDLAI, Keys, Lightlang, Minsky Swap, Movesum,
 RAM0, A Painter Ant) either have no output, print numeric state, print a
 fixed string, or print their final grid, so none can emit arbitrary text.
 ABCDirection is the one exception: its Boolfuck output can emit arbitrary
 bits, but moving the tape pointer between outputs needs the full 2D routing
 that makes a text generator a routing problem rather than an arithmetic one.
-The newly assessed boolean candidates that fell through (Temporary, Movesum,
+The newly assessed boolean candidates that fell through (The Temporary Stack, Movesum,
 WII2D, EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.
 
 ## Compiler consolidation

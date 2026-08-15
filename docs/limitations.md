@@ -29,10 +29,10 @@ This closes the "constant-loop boolean generator" goal entirely: the
 constant *loop-count* half is met (8 loops, 27 markers, both constant in
 `n`), the constant *size* half is impossible (any table needs its `2**n`
 bits embedded), and no other language needs the design to lift a cap —
-CircleFuck's decision tree is total (verified exhaustively to n = 3,
+Circlefuck's decision tree is total (verified exhaustively to n = 3,
 sampled to n = 16), so the label-cap motivation is gone.
 
-## ZTOALC (built; dense non-symmetric n > 3 wall)
+## ZTOALC L (built; dense non-symmetric n > 3 wall)
 The generator (`ztoalc_boolean`) lays a decision tree on `p * 2**k`
 descents: branching at an even root lets a zero bit continue the descent
 (the Collatz step halves it) while a one bit jumps to `root + 1`, whose
@@ -112,12 +112,12 @@ its least significant bit.  This is why no ``3``-based boolean generator
 exists; the four one-input programs were too trivial to keep, so the boolean
 generator was removed.
 
-## RAM0, BitDeque, Minsky Swap (not viable for the template model)
+## RAM0, Bitdeque, Minsky Swap (not viable for the template model)
 These three have value-testable branches and clean setters, but their jumps
-are *absolute token indices*: RAM0's digit-`GOTO`, BitDeque's `GOTO N`, and
+are *absolute token indices*: RAM0's digit-`GOTO`, Bitdeque's `GOTO N`, and
 Minsky Swap's `~` targets are all fixed positions in the token/command
 stream.  The parameterized template's bit setter has variable length (e.g.
-RAM0's `Z` for a zero bit vs `Z A` for a one bit; BitDeque's `INVERT` vs
+RAM0's `Z` for a zero bit vs `Z A` for a one bit; Bitdeque's `INVERT` vs
 nothing), so substitution changes the token count and every jump target
 shifts — a fixed template cannot be correct for all instantiations.  Only
 Back avoids token-index jumps (its `+`-advance condition is positional), and
@@ -139,7 +139,7 @@ delimiters need escaping at multiple levels) cannot survive more than one
 wrap.  The wiki's examples only ever use single-level `!`.  Eval is
 therefore not viable for the parameterized class.
 
-## MAMMALIAN (branch-free core built; general n-bit functions open)
+## SLOW ACV MAMMALIAN (branch-free core built; general n-bit functions open)
 
 A *branch-free* approach works, verified against the real interpreter — no
 `LEAPFROG` needed.  `DIGEST` is `acc ^= sum(curr)`, a free XOR over GF(2),
@@ -251,7 +251,7 @@ which fully covers arbitrary text.
 Every language whose interpreter can emit arbitrary bytes already has a text
 generator.  The remaining interpreter-only languages cannot, so no text
 generator is possible for them: ArrowQueue has no output at all, Back prints
-the tape as a number list, BitDeque and Minsky Swap print their registers as
+the tape as a number list, Bitdeque and Minsky Swap print their registers as
 numbers, Movesum prints `n ` (numbers with a trailing space), RAM0 prints a
 state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
 the single bit as a number.  None can spell arbitrary text.
@@ -310,7 +310,7 @@ COD — are in `docs/roadmap.md`).
 - **Welcome To...**: a work-in-progress.
 
 ## Assessed boolean candidates that fell through
-- **Temporary**: the auto-drain is the only output, and it prints `front - 1`
+- **The Temporary Stack**: the auto-drain is the only output, and it prints `front - 1`
   for the *oldest* stack element when `sum(rest) / 2 > front`.  An
   input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
   select a 49/50 constant, but the only value-to-length conversion — the

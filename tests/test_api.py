@@ -11,7 +11,7 @@ from esolangs.exceptions import (
 from esolangs.tools import boolean
 
 
-@pytest.mark.parametrize("language", ["Sophie", "CircleFuck", "BFStack", "huf"])
+@pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack", "huf"])
 def test_generate_round_trips(language: str) -> None:
     program = esolangs.generate(language, "Hi")
     assert esolangs.run(language, program) == "Hi"
@@ -19,14 +19,14 @@ def test_generate_round_trips(language: str) -> None:
 
 def test_run_feeds_stdin() -> None:
     program = boolean.circlefuck("1101", 2)
-    assert esolangs.run("CircleFuck", program, stdin="1\n0\n") == "0"
-    assert esolangs.run("CircleFuck", program, stdin="0\n1\n") == "1"
+    assert esolangs.run("Circlefuck", program, stdin="1\n0\n") == "0"
+    assert esolangs.run("Circlefuck", program, stdin="0\n1\n") == "1"
 
 
 def test_list_languages() -> None:
     names = esolangs.list_languages()
     assert "Sophie" in names
-    assert "CircleFuck" in names
+    assert "Circlefuck" in names
     assert names == sorted(names)
 
 
@@ -42,7 +42,7 @@ def test_unknown_language_raises() -> None:
 def test_run_eof_when_input_runs_out() -> None:
     program = boolean.circlefuck("10", 1)  # reads one input bit
     with pytest.raises(EOFError):
-        esolangs.run("CircleFuck", program, stdin="")
+        esolangs.run("Circlefuck", program, stdin="")
 
 
 def test_transpile_round_trips() -> None:
@@ -68,5 +68,5 @@ def test_transpile_unsupported_pair_raises() -> None:
 
 def test_transpile_to_circlefuck() -> None:
     program = esolangs.generate("BF", "Hi")
-    circlefuck = esolangs.transpile("BF", "CircleFuck", program)
-    assert esolangs.run("CircleFuck", circlefuck) == "Hi"
+    circlefuck = esolangs.transpile("BF", "Circlefuck", program)
+    assert esolangs.run("Circlefuck", circlefuck) == "Hi"

@@ -255,6 +255,16 @@ class TestMovesumEdgeCases:
 class TestMovesumValidation:
     """Test Movesum input validation and error handling."""
 
+    def test_eof_substitutes_zero(self) -> None:
+        """Input 42 is replaced with 0 on EOF (per the wiki)."""
+        code = ["42=42 42=42", "move -1 0", "move 0 -1"]
+        with (
+            patch("builtins.input", side_effect=EOFError),
+            redirect_stdout(io.StringIO()) as f,
+        ):
+            run(code, IO())
+        assert f.getvalue() == "0 "
+
     def test_empty_code_raises_error(self) -> None:
         """Test that empty code raises ValueError."""
         with pytest.raises(ValueError, match="Movesum program cannot be empty"):

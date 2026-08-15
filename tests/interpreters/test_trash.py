@@ -37,9 +37,9 @@ class TestTrash:
     def test_start_value_one_prints_zero(self) -> None:
         assert run_and_capture("t1") == "0"
 
-    def test_two_is_not_prime(self) -> None:
-        """The C++ reference's trial division mislabels 2 as composite."""
-        assert run_and_capture("t2") == "0"
+    def test_two_is_prime(self) -> None:
+        """2 is the smallest prime (per the wiki), so t2 prints 3."""
+        assert run_and_capture("t2") == "3"
 
     def test_leading_zeros(self) -> None:
         assert run_and_capture("t07") == "11"

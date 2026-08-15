@@ -105,6 +105,11 @@ class _Parser:
         if c in "01":
             self.i += 1
             return ("lit", int(c))
+        if c == "{":  # a bare {code} block is a function literal (no args)
+            body, nested = self._block()
+            fn = _Function("", [])
+            fn.body, fn.nested = body, nested
+            return ("fnlit", fn)
         if c == "(":
             self.i += 1
             save = self.i
@@ -382,6 +387,9 @@ def _call(
 ) -> object:
     if isinstance(callee, _Function):
         frame = _Frame(callee, caller)
+        # unpassed parameters are set to 0 (per the wiki)
+        for name in callee.args:
+            frame.locals[name] = 0
         for name, value in zip(callee.args, args, strict=False):
             frame.locals[name] = value
         result = _run(frame, globals_, reader)

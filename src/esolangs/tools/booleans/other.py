@@ -149,7 +149,7 @@ def three_x(truth_table: str, n: int) -> str:
 
 
 def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> bool:
-    """Fast ZTOALC simulator: True iff ``inputs`` prints ``expected`` once.
+    """Fast ZTOALC L simulator: True iff ``inputs`` prints ``expected`` once.
 
     Mirrors the interpreter's semantics exactly: the pointer follows the
     Collatz step (halving evens, ``3n+1`` odds) unless a ``jump`` fires,
@@ -259,12 +259,12 @@ def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
 
 
 def ztoalc_boolean(truth_table: str, n: int) -> str:
-    """Build a ZTOALC program computing the given truth table.
+    """Build a ZTOALC L program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.
 
-    ZTOALC's control flow is the Collatz trajectory of line 1, so the
+    ZTOALC L's control flow is the Collatz trajectory of line 1, so the
     generator lays out a decision tree on `p * 2**k` descents: branching at
     an even root lets a zero bit continue the descent (the Collatz step
     halves it) while a one bit jumps to `root + 1`, whose Collatz step lands
@@ -309,7 +309,7 @@ def ztoalc_boolean(truth_table: str, n: int) -> str:
     if linear is not None:
         return "\n".join(linear)
     raise ValueError(
-        "the ZTOALC boolean generator found no collision-free placement for "
+        "the ZTOALC L boolean generator found no collision-free placement for "
         f"this table at n == {n}",
     )
 

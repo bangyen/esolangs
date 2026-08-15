@@ -1,6 +1,6 @@
-"""Unit tests for the ZTOALC L interpreter.
+"""Unit tests for the ZTOALC L L interpreter.
 
-ZTOALC L executes lines in Collatz-trajectory order determined by the initial
+ZTOALC L L executes lines in Collatz-trajectory order determined by the initial
 pointer value. With pointer 3, lines are visited in the order 2, 4, 3, 1.
 """
 

@@ -7,7 +7,9 @@ extends the tape), ``n`` pushes the current cell onto the stack, ``f`` pops
 the stack into the current cell, ``s``/``b`` jump forward/backward by a
 peeked stack value when the current cell is nonzero (``s`` skips X
 instructions, ``b`` jumps back X-1), and ``o`` prints the current cell as a
-byte.
+byte.  The tape is unbounded to the right (``r`` grows it, ``l`` clamps at
+cell 0) rather than wrapping to the opposite end, matching the RISC-V
+cross-check.
 
 Per the wiki, any character that is not a command is an error (there are no
 comments), and popping an empty stack is an error.  A malformed program
