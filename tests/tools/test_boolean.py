@@ -158,6 +158,54 @@ class TestForbinBoolean:
             boolean.forbin_boolean("02", 1)
 
 
+def run_addsubjump(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.register_based.addsubjump import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+class TestAddSubJump:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.addsubjump(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_addsubjump(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_branch_normalizes_bits_to_zero_and_four(self) -> None:
+        """Each bit is normalized to {0, 4} and added to a jump cell."""
+        program = boolean.addsubjump("0110", 2)
+        assert "-48" in program  # the normalization constant
+        assert run_addsubjump(program, ["0", "1"]) == "1"
+        assert run_addsubjump(program, ["1", "0"]) == "1"
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.addsubjump("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.addsubjump("02", 1)
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),

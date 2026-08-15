@@ -1,5 +1,7 @@
 """Boolean-function generators for register-based languages."""
 
+from typing import Any
+
 from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.generators.helpers import _cm_constants
 
@@ -67,6 +69,115 @@ def decleq(truth_table: str, n: int) -> str:
     mem.extend([0] * (out49 - len(mem) + 1))
     mem[out48] = 48
     mem[out49] = 49
+    return " ".join(map(str, mem))
+
+
+def addsubjump(truth_table: str, n: int) -> str:
+    """Build an AddSubJump program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    ASJ's instruction is ``a b c d``: ``*a += *b`` (when ``*d <= 0``) or
+    ``*a -= *b`` (when ``*d > 0``), then ``goto *c``, where ``c`` is a cell
+    holding the next instruction pointer.  There is no data-testable jump,
+    so the generator routes a decision tree through the negative flag: with
+    flag mode enabled (writing ``-9``), ``t -6 ... d`` (``d`` = the bit cell)
+    sets the flag from the bit, but the branch itself is ``jump += 4 * bit``
+    onto two consecutive trampolines.  Each bit (48/49) is normalized to
+    ``{0, 4}`` (subtract 48, double twice), a jump cell initialized to the
+    zero trampoline's address is advanced by that value, and ``goto *jump``
+    lands on the zero or one trampoline, which jumps to the corresponding
+    subtree.  Leaves print 48/49 and halt via ``c = -8`` (a special
+    address).  Subtrees whose table entries are constant collapse to a leaf.
+    """
+    _validate_truth_table(truth_table, n)
+
+    instructions: list[list[Any]] = []
+    next_cells: list[str | None] = []
+    values: dict[str, int | tuple[str, int]] = {}
+
+    def emit(a: object, b: object, c: object, d: int) -> int:
+        idx = len(instructions)
+        next_cells.append(f"NEXT{idx}" if c == "next" else None)
+        instructions.append([a, b, c, d])
+        return idx
+
+    emit(-9, -6, "next", -7)  # enable flag mode
+    values["C48"] = -48
+    values["U"] = 0
+    values["D48"] = 48
+    values["D49"] = 49
+
+    def build(level: int, rows: list[int]) -> None:
+        results = {truth_table[r] for r in rows}
+        if len(results) == 1:
+            out = 48 if results.pop() == "0" else 49
+            emit(-1, f"D{out}", -8, -7)
+            return
+        base = len(instructions)
+        bit = f"B{base}"
+        jump = f"J{base}"
+        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
+        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
+        values[bit] = 0
+        values[jump] = ("t0", base + 6)
+        emit(bit, -1, "next", -7)  # B += input byte (48/49)
+        emit(bit, "C48", "next", -7)  # B += -48
+        emit(bit, bit, "next", -7)  # double
+        emit(bit, bit, "next", -7)  # double -> {0, 4}
+        emit(jump, bit, "next", -7)  # J += B
+        emit("U", "U", f"J{base}", -7)  # goto *J
+        ztarget = f"Z{base}"
+        otarget = f"O{base}"
+        emit("U", "U", ztarget, -7)  # zero trampoline
+        emit("U", "U", otarget, -7)  # one trampoline
+        zstart = len(instructions)
+        build(level + 1, zero)
+        ostart = len(instructions)
+        build(level + 1, one)
+        values[ztarget] = ("addr", zstart)
+        values[otarget] = ("addr", ostart)
+
+    build(0, list(range(2**n)))
+
+    base_data = 4 * len(instructions)
+    names: list[str] = []
+
+    def cell(name: str) -> int:
+        if name not in names:
+            names.append(name)
+        return base_data + names.index(name)
+
+    for ins in instructions:
+        for v in ins:
+            if isinstance(v, str) and v != "next":
+                cell(v)
+    for name in values:
+        cell(name)
+    for nc in next_cells:
+        if nc:
+            cell(nc)
+
+    mem = [0] * (base_data + len(names))
+    for i, ins in enumerate(instructions):
+        row = []
+        for v in ins:
+            if v == "next":
+                ncname = next_cells[i]
+                assert ncname is not None
+                row.append(cell(ncname))
+            elif isinstance(v, str):
+                row.append(cell(v))
+            else:
+                row.append(v)
+        mem[4 * i : 4 * i + 4] = row
+    for name, val in values.items():
+        idx = cell(name)
+        mem[idx] = 4 * val[1] if isinstance(val, tuple) else val
+    for i, nc in enumerate(next_cells):
+        if nc:
+            mem[cell(nc)] = 4 * (i + 1)
     return " ".join(map(str, mem))
 
 
