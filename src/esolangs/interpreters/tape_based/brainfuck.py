@@ -19,29 +19,8 @@ program terminates with an error rather than a graceful halt.
 
 import sys
 
+from esolangs.interpreters.brackets import match_brackets as matches
 from esolangs.interpreters.io import IO
-
-
-def matches(code: str) -> dict[int, int]:
-    """Map each bracket to its partner, ``{open: close, close: open}``.
-
-    Raises :class:`ValueError` if the brackets are unbalanced: the spec
-    defines ``[``/``]`` only for matched pairs.
-    """
-    stack: list[int] = []
-    res: dict[int, int] = {}
-    for i, char in enumerate(code):
-        if char == "[":
-            stack.append(i)
-        elif char == "]":
-            if not stack:
-                raise ValueError(f"unmatched ']' at position {i}")
-            open_i = stack.pop()
-            res[open_i] = i
-            res[i] = open_i
-    if stack:
-        raise ValueError(f"unmatched '[' at position {stack[-1]}")
-    return res
 
 
 def run(code: str, io: IO) -> None:

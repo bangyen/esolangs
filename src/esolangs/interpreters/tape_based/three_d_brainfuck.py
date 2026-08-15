@@ -29,6 +29,7 @@ Documented decisions filling those gaps:
 
 import sys
 
+from esolangs.interpreters.brackets import match_brackets as _matches
 from esolangs.interpreters.io import IO
 
 _HEADING = {
@@ -55,24 +56,6 @@ _GENERATION = {
     '"': (0, 1, 0),
     "'": (0, -1, 0),
 }
-
-
-def _matches(code: str) -> dict[int, int]:
-    """Map each bracket to its partner, ``{open: close, close: open}``."""
-    stack: list[int] = []
-    res: dict[int, int] = {}
-    for i, char in enumerate(code):
-        if char == "[":
-            stack.append(i)
-        elif char == "]":
-            if not stack:
-                raise ValueError(f"unmatched ']' at position {i}")
-            open_i = stack.pop()
-            res[open_i] = i
-            res[i] = open_i
-    if stack:
-        raise ValueError(f"unmatched '[' at position {stack[-1]}")
-    return res
 
 
 def run(code: str, io: IO) -> None:
