@@ -262,14 +262,17 @@ research-level too.  The last seven:
   queue-based byte echo (read into cell 0, ``D`` right enqueue, then
   ``D`` left dequeue and ``C`` down output) is the promising construction,
   but it needs the heading state threaded correctly through the wraps.
-  **Built since: an ``abcdirection`` generator now ships (``n == 1``).**  A
+  **Built since: an ``abcdirection`` generator now ships (``n <= 2``).**  A
   read staircase fills the queue, a corridor routes the pointer around the
   tree, each node tests its bit with ``C`` up, and the fired leaf prints
   ``48 + f`` before running off the terminator row (``EOFError``, which the
   harness treats as termination).  The tree's ``D``-left cells are spaced so
-  no six-``D`` run fools the grid reader.  ``n == 1`` is verified; ``n > 1``
-  raises, because deeper trees route the leaves through the tree's own cells
-  and are not yet correct.
+  no six-``D`` run fools the grid reader, the one-side leaves step into a
+  clear column before heading up, and each leaf's EOF sink uses its own
+  column so the turn cells never sit on another leaf's upward path.
+  ``n <= 2`` is verified for every one- and two-input function; ``n > 2``
+  raises, because deeper trees route their leaves and internal paths through
+  the tree's own cells and are not yet correct.
 
 **Never assessed** and still on the table: none — the no-input and
 input-reading candidates are now individually assessed.
