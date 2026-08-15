@@ -9,7 +9,7 @@ integers, and the tape is the wiki's default 256 cells wide, wrapping from
 the start to the end (``>`` past cell 255 wraps to cell 0 and ``<`` at cell
 0 wraps to cell 255).
 
-The reference (``extra/assembly/brainpocalypse.asm``) defines no I/O: the
+The reference (``extra/assembly/brainpocalypse-riscv.s``) defines no I/O: the
 program is read from stdin (there is no separate input channel) and, when
 the program ends, the whole tape is printed as space-separated decimal
 values — an output decision, not a language rule.  This interpreter mirrors

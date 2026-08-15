@@ -10,7 +10,7 @@ is consumed, execution loops back to the start unless the current cell is
 they do in the reference.
 
 The wiki defines no I/O.  This interpreter, like the x86-32 reference in
-``extra/assembly/stun-step.asm``, has no input command; on halting it
+``extra/assembly/stun-step-riscv.s``, has no input command; on halting it
 prints the cells from the start position through the rightmost cell ever
 reached as space-separated decimal values with no trailing separator.
 
