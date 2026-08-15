@@ -17,6 +17,12 @@ overrides those two primitives to consume a provided string and accumulate
 output.  Callers select the source by constructing the object, not by
 branching on a flag.
 
+Output is only observable once :meth:`ScriptedIO.getvalue` is called, which
+happens when a run completes; a program that never terminates therefore
+exposes none of its output through this interface.  (Factor's wiki talk
+page notes its reference flushes output in infinite loops, but every repo
+interpreter shares this buffered model.)
+
 The newline flag tracks whether the next input prompt should begin on a
 fresh line: it is set to ``True`` after any bare output (so the prompt moves
 to its own line) and back to ``False`` after reading (the cursor is already
