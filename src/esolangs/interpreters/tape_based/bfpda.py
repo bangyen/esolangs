@@ -2,24 +2,14 @@
 
 A brainfuck variant over a stack of bits whose top is the current cell.
 ``@`` flips the top bit, ``.`` prints the top bit as ``'0'``/``'1'``, ``<``
-pushes a zero, ``>`` pops the top bit, and ``[``/``]`` are bracket control.
-All other characters are comments.  There is no input command.
+pushes a zero, ``>`` pops the top bit, and ``[``/``]`` are brainfuck-style
+while loops (``[`` skips to its matching ``]`` when the top bit is 0, ``]``
+jumps back when it is 1).  All other characters are comments.
 
-The bracket semantics port the Lean reference (``extra/lean/esolangs/
-Esolangs/bfpda.lean``) exactly.  Its ``find`` matches a bracket by counting
-``[`` as +1 and ``]`` as -1 while scanning from the adjacent character, and
-both ``[`` and ``]`` resume at the position after the bracket (``[`` enters
-its body and ``]`` leaves it), so a matched pair runs its body exactly once
-rather than looping as in plain brainfuck.  The reference bounds every run
-at 100 commands (``Bfpda.limit``) so ``#eval`` terminates; this interpreter
-keeps that bound, overridable as ``limit``.
-
-The reference now aligns with this interpreter on empty-stack operations
-(it exits 3 like the Python's :class:`HaltError`; it used to panic and
-continue with a zero top bit).  Unmatched brackets still misrun silently in
-the Lean reference, while this interpreter raises
-:class:`~esolangs.exceptions.HaltError` for them and rejects an empty
-program as malformed with :class:`ValueError`.
+Per the wiki, an empty stack behaves as a zero: ``>`` pops nothing, and any
+peek (``@``, ``.``, ``[``) reads 0 (``@`` pushes that zero and flips it to
+1).  A run is bounded at ``limit`` commands so `#eval`-style loops that never
+empty the stack terminate.
 """
 
 import sys
@@ -28,54 +18,30 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
-def _top(stack: list[int]) -> int:
-    """Return the top bit, halting on an empty stack."""
-    if not stack:
-        raise HaltError("cannot read the top bit of an empty stack")
-    return stack[-1]
-
-
 def _forward(code: str, i: int) -> int:
-    """Run the reference's forward ``find`` from a ``[`` at position ``i``.
-
-    The reference scans from the next character counting ``[`` as +1 and
-    ``]`` as -1, returning the position after the bracket once a match is
-    confirmed.  ``run`` rejects unmatched brackets up front, so a match
-    always exists and the scan terminates.
-    """
-    length = len(code)
-    z = 1
+    """Return the index after the ``]`` matching the ``[`` at ``i``."""
+    depth = 1
     j = i + 1
-    c = code[j] if j < length else "\0"
-    while z != 0:
-        if c == "[":
-            z += 1
-        elif c == "]":
-            z -= 1
+    while depth:
+        if code[j] == "[":
+            depth += 1
+        elif code[j] == "]":
+            depth -= 1
         j += 1
-        c = code[j] if j < length else "\0"
-    return i + 1
+    return j
 
 
 def _backward(code: str, i: int) -> int:
-    """Run the reference's backward ``find`` from a ``]`` at position ``i``.
-
-    The reference scans backward from the previous character counting ``[``
-    as +1 and ``]`` as -1, returning the position after the bracket once a
-    match is confirmed.  ``run`` rejects unmatched brackets up front, so a
-    match always exists and the scan terminates.
-    """
-    z = -1
-    j = max(i - 1, 0)
-    c = code[j]
-    while z != 0:
-        if c == "[":
-            z += 1
-        elif c == "]":
-            z -= 1
-        j = max(j - 1, 0)
-        c = code[j]
-    return i + 1
+    """Return the index after the ``[`` matching the ``]`` at ``i``."""
+    depth = 1
+    j = i - 1
+    while depth:
+        if code[j] == "]":
+            depth += 1
+        elif code[j] == "[":
+            depth -= 1
+        j -= 1
+    return j + 1
 
 
 def run(code: str, io: IO, limit: int = 100) -> None:
@@ -99,26 +65,28 @@ def run(code: str, io: IO, limit: int = 100) -> None:
     for _ in range(limit):
         c = code[ip] if ip < n else "\0"
         if c == "@":
-            stack[-1] = _top(stack) ^ 1
+            if stack:
+                stack[-1] ^= 1
+            else:
+                stack.append(1)  # auto-push the zero, then flip it
             ip += 1
         elif c == ".":
-            io.print_char("01"[_top(stack)])
+            io.print_char("01"[stack[-1] if stack else 0])
             ip += 1
         elif c == "<":
             stack.append(0)
             ip += 1
         elif c == ">":
-            if not stack:
-                raise HaltError("cannot pop an empty stack")
-            stack.pop()
+            if stack:
+                stack.pop()
             ip += 1
         elif c == "[":
-            if _top(stack) == 0:
+            if not stack or stack[-1] == 0:
                 ip = _forward(code, ip)
             else:
                 ip += 1
         elif c == "]":
-            if _top(stack) == 1:
+            if stack and stack[-1] == 1:
                 ip = _backward(code, ip)
             else:
                 ip += 1
