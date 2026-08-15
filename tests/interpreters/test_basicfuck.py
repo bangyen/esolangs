@@ -36,7 +36,7 @@ class TestBasicfuck:
             run_program(prog + "a -= 1;")
 
     def test_var_to_var(self) -> None:
-        # t=3: the reference reserves a cell for variable-variable arithmetic
+        # t=3: the cross-check reserves a cell for variable-variable arithmetic
         prog = "#basicfuck t=3 r=0~255 o=wrap\n#allocate a, b\n"
         assert run_program(prog + "a += 5;\nb += a;\nwrite <- b ;") == "\x05"
 

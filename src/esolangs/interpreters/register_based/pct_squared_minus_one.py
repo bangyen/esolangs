@@ -10,7 +10,7 @@ reset to zero whenever it exceeds 3003 (before each command).
 
 Semantics match the Rust cross-check (``extra/rust/pct.rs``):
 - ``e`` prints the low byte, and ``l`` prints the signed magnitude;
-- ``n`` raises :class:`EOFError` when input runs out, where the reference
+- ``n`` raises :class:`EOFError` when input runs out, where the cross-check
   exits with status 3;
 - ``t`` on a nonzero magnitude loops the program forever (the only loop).
 """

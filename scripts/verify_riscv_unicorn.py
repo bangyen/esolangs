@@ -1,11 +1,11 @@
-"""Verify RISC-V machine code under unicorn: compilers and reference interpreters.
+"""Verify RISC-V machine code under unicorn: compilers and cross-check interpreters.
 
 Two kinds of round-trip run esolang programs as RISC-V ELF under unicorn:
 
 1. each assembly compiler in ``src/esolangs/compilers/assembly/`` translates
    an esolang program to RISC-V assembly, which is compiled and run;
 2. text generators whose interpreters live in ``extra/assembly/`` feed the
-   generated program to the reference machine code.
+   generated program to the cross-check machine code.
 
 Both must reproduce the expected output.
 
@@ -23,7 +23,7 @@ from riscv_elf_runner import assemble_source, run_elf
 
 from esolangs.tools import generate as gen
 
-# Generators whose reference interpreter lives in extra/assembly/: the
+# Generators whose cross-check interpreter lives in extra/assembly/: the
 # generated program must reproduce its text when run as machine code.
 REFERENCE_TEXTS = ["Hi", "Hello, World!", "esolangs!", "A\nB", "\x00"]
 GENERATOR_CASES = [

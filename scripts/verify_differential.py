@@ -50,7 +50,7 @@ Languages with both an in-package interpreter and a native cross-check:
   excluded.
 * **bit~** — ``other/bit_tilde.py`` vs ``extra/rust/bit_tilde.rs``.  Both
   write bytes above 127 as raw bytes; unmatched brackets raise (the former
-  Ruby reference hung).
+  Ruby port hung).
 
 Called from CI's ``assembly`` and ``rust`` jobs (which provide
 unicorn+the RISC-V compiler and cargo) and from ``verify.py`` locally.
@@ -1556,7 +1556,7 @@ def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
 
 # -- bit~ corpus: every command plus the error categories ------------------
 
-# Unmatched brackets raise in both sides (the former Ruby reference hung).
+# Unmatched brackets raise in both sides (the former Ruby port hung).
 BIT_TILDE_CORPUS = [
     ("))", b"a\n"),  # second read hits EOF: exit 3
     ("~(", b""),

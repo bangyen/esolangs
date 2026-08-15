@@ -16,12 +16,12 @@ pool to fit its window.  A ``(`` at a pointer with fewer than 8 cells left
 prints just the available bits.
 
 Semantics match the Rust cross-check (``extra/rust/bit_tilde.rs``):
-- ``)`` raises :class:`EOFError` when input runs out, where the reference
+- ``)`` raises :class:`EOFError` when input runs out, where the cross-check
   exits with status 3 (the wiki leaves EOF undefined);
 - a ``{``/``}`` whose match is missing raises :class:`ValueError` when it
-  would have jumped (the Rust cross-check agrees; the former Ruby reference
+  would have jumped (the Rust cross-check agrees; the former Ruby port
   looped forever);
-- an empty input line yields no character (the reference would read a
+- an empty input line yields no character (the cross-check would read a
   newline), so ``)`` on an empty line raises :class:`IndexError` through
   :meth:`esolangs.interpreters.io.IO.input_char`.
 """
@@ -36,7 +36,7 @@ def _match(code: str, ind: int, step: int) -> int:
 
     ``step`` is 1 to find the forward ``}`` for a ``{`` and -1 to find the
     backward ``{`` for a ``}``; a bracket with no match is a malformed
-    program (``ValueError``) — the reference loops forever instead.
+    program (``ValueError``) — the cross-check loops forever instead.
     """
     depth = step
     while depth:

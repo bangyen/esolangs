@@ -41,7 +41,7 @@ class TestDivergenceDetection:
 
     @pytest.mark.skipif(
         not verify_differential._asm_refs_ready("nocomment"),  # noqa: SLF001
-        reason="RISC-V reference not buildable",
+        reason="RISC-V cross-check not buildable",
     )
     def test_nocomment_catches_divergence(self, rng) -> None:
         """A wrong output on the RISC-V side is reported as a failure."""
@@ -58,7 +58,7 @@ class TestDivergenceDetection:
             assert not verify_differential._fuzz_nocomment(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(
-        not verify_differential.FORTH_BIN.exists(), reason="Rust reference not built"
+        not verify_differential.FORTH_BIN.exists(), reason="Rust cross-check not built"
     )
     def test_forth_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""
@@ -75,7 +75,7 @@ class TestDivergenceDetection:
 
     @pytest.mark.skipif(
         not verify_differential.BASICFUCK_BIN.exists(),
-        reason="Rust reference not built",
+        reason="Rust cross-check not built",
     )
     def test_basicfuck_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""
@@ -90,9 +90,13 @@ class TestDivergenceDetection:
         ):
             assert not verify_differential._fuzz_basicfuck(rng, 20)  # noqa: SLF001
 
-    _UNSQUARE_REF = Path(__file__).parents[1] / "extra/rust/target/debug/unsquare"
+    _UNSQUARE_CROSS_CHECK = (
+        Path(__file__).parents[1] / "extra/rust/target/debug/unsquare"
+    )
 
-    @pytest.mark.skipif(not _UNSQUARE_REF.exists(), reason="Rust reference not built")
+    @pytest.mark.skipif(
+        not _UNSQUARE_CROSS_CHECK.exists(), reason="Rust cross-check not built"
+    )
     def test_unsquare_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""
         real_run = verify_differential._run_unsquare_native  # noqa: SLF001
@@ -107,7 +111,8 @@ class TestDivergenceDetection:
             assert not verify_differential._fuzz_unsquare(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(
-        not verify_differential.THREE_X_BIN.exists(), reason="Rust reference not built"
+        not verify_differential.THREE_X_BIN.exists(),
+        reason="Rust cross-check not built",
     )
     def test_three_x_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""
@@ -124,7 +129,7 @@ class TestDivergenceDetection:
 
     @pytest.mark.skipif(
         not verify_differential.PCT_SQUARED_MINUS_ONE_BIN.exists(),
-        reason="Rust reference not built",
+        reason="Rust cross-check not built",
     )
     def test_pct_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""
@@ -139,7 +144,7 @@ class TestDivergenceDetection:
 
     @pytest.mark.skipif(
         not verify_differential.TWO_D_FISH_BIN.exists(),
-        reason="Rust reference not built",
+        reason="Rust cross-check not built",
     )
     def test_two_d_fish_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""
@@ -155,7 +160,8 @@ class TestDivergenceDetection:
             assert not verify_differential._fuzz_two_d_fish(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(
-        not verify_differential.PAINFUCK_BIN.exists(), reason="Rust reference not built"
+        not verify_differential.PAINFUCK_BIN.exists(),
+        reason="Rust cross-check not built",
     )
     def test_painfuck_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""
@@ -172,7 +178,7 @@ class TestDivergenceDetection:
 
     @pytest.mark.skipif(
         not verify_differential.BIT_TILDE_BIN.exists(),
-        reason="Rust reference not built",
+        reason="Rust cross-check not built",
     )
     def test_bit_tilde_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""

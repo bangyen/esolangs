@@ -13,8 +13,8 @@
 //! zero (C++11 semantics).  An empty-stack pop exits with status 3 (the whole
 //! program), while the other invalid operations (a binary operator with fewer
 //! than two values, `c` with fewer than three, a division by zero, or an
-//! unterminated bracket) abort only the innermost scope, mirroring the C++
-//! reference's discarded error codes.  `,` reads a whole line and exits with
+//! unterminated bracket) abort only the innermost scope, mirroring the Python
+//! interpreter's discarded error codes.  `,` reads a whole line and exits with
 //! status 3 when the input runs out.
 //!
 //! Invocation: `forth <program-file>`; program text from `argv[1]`.

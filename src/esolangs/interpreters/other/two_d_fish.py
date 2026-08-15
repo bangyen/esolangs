@@ -24,24 +24,24 @@ cross-check at ``extra/rust/2dfish.rs``:
   a malformed program (:class:`ValueError`, exit 2); after capturing, a
   right-moving pointer lands just past the ``)``, while any other direction
   resumes moving from the ``(``;
-- the reference's ``while (!file.eof()) getline(...)`` loop pushes the last
+- the cross-check's ``while (!file.eof()) getline(...)`` loop pushes the last
   line a second time when the program text ends with a newline, so a
   program file that ends in ``\\n`` has one extra phantom copy of its last
   row; the interpreter reproduces this (it is observable: a pointer that
   descends past the last real row can execute the phantom row before
   stepping off the grid).
 
-Documented divergences (the reference leaves these undefined or broken):
+Documented divergences (the cross-check leaves these undefined or broken):
 
 - exhausted input raises :class:`EOFError` (repo-wide convention) instead of
-  the references exiting with status 3;
-- ``a`` in string mode with an empty string (which the C++ ``str[0]`` makes
-  undefined) raises :class:`HaltError`;
+  the cross-checks exiting with status 3;
+- ``a`` in string mode with an empty string (which the Rust cross-check's
+  ``str[0]`` makes undefined) raises :class:`HaltError`;
 - ``a`` outside string mode writes the accumulator's low byte
-  (``chr(acc % 256)``), matching the C++ ``(char)acc`` two's-complement
+  (``chr(acc % 256)``), matching the cross-check's two's-complement
   truncation rather than raising on out-of-range values;
 - ``%`` parses a whole input line with :func:`int`, so a line it cannot
-  parse raises :class:`ValueError` (the reference would consume a prefix).
+  parse raises :class:`ValueError` (the cross-check would consume a prefix).
 """
 
 import sys
@@ -53,13 +53,13 @@ _DIRS = "/\\v^"
 
 
 def _read_lines(code: str) -> list[str]:
-    """Split ``code`` into rows the way the reference reads its file.
+    """Split ``code`` into rows the way the cross-check reads its file.
 
-    The C++ ``while (!file.eof()) getline(...)`` loop pushes the last line a
-    second time when the text ends with a newline (the final ``getline``
-    fails at EOF and leaves the string unchanged); without a trailing
-    newline the final ``getline`` hits EOF and the loop ends.  An empty
-    program is one row containing the empty string.
+    The cross-check's ``while (!file.eof()) getline(...)`` loop pushes the
+    last line a second time when the text ends with a newline (the final
+    ``getline`` fails at EOF and leaves the string unchanged); without a
+    trailing newline the final ``getline`` hits EOF and the loop ends.  An
+    empty program is one row containing the empty string.
     """
     rows = code.split("\n")
     if code.endswith("\n"):

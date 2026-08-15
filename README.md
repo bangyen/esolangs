@@ -187,7 +187,7 @@ Languages that don't fit into the above categories.
 
 <summary>Show all 17 implementations</summary>
 
-Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them, and languages whose output classes are too narrow for a text generator (Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step) still get a Python interpreter differentially verified against the native reference.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
+Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them, and languages whose output classes are too narrow for a text generator (Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step) still get a Python interpreter differentially verified against the native cross-check.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
 
 ### RISC-V Assembly Implementations
 

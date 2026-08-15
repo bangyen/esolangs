@@ -12,30 +12,29 @@ After the program text has been read once, the whole tape is printed as a
 bit string on its own line and execution restarts from the beginning while
 the current bit is nonzero; the program therefore always runs at least once,
 and the empty program prints ``0``.  These semantics are ported exactly from
-the Rust cross-check at ``extra/rust/kak.rs`` (itself a port of the original
-C++ reference).
+the Rust cross-check at ``extra/rust/kak.rs``.
 
-The ``?`` skip is read on the fly exactly as the reference does it.  When
+The ``?`` skip is read on the fly exactly as the cross-check does it.  When
 the current bit is zero the ``?`` consumes the character right after it; if
 the program ends immediately there, the skip stops without error (the
-reference's failed ``get`` leaves the ``?`` itself in the buffer, which is
+cross-check's failed ``get`` leaves the ``?`` itself in the buffer, which is
 one of the stopping characters).  Otherwise the ``?`` keeps consuming
 characters while they are not ``!``/``?``/``<``.  The character that finally
 stops the skip (a ``!``/``?``/``<``) is consumed but not executed, so a skip
 effectively jumps to just past the next command, and any ``!``/``?``/``<``
 characters encountered along the way are skipped as well.
 
-Documented divergence from the reference:
+Documented divergence from the cross-check:
 
 - a ``?`` that runs off the end of the program *while searching for a
   stopping character* (after already consuming at least one non-``!``/``?``/
   ``<`` character) is an invalid operation and halts with
-  :class:`~esolangs.exceptions.HaltError` (the reference exits with
+  :class:`~esolangs.exceptions.HaltError` (the cross-check exits with
   EXIT_FAILURE, and the repository's other interpreters raise ``HaltError``
   for runtime invalid operations);
 - the ``__main__`` entry point silently does nothing without an argument,
   following the other in-package interpreters, instead of exiting with
-  EXIT_FAILURE like the reference.
+  EXIT_FAILURE like the cross-check.
 """
 
 import sys

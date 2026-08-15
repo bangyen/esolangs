@@ -12,9 +12,9 @@ Semantics match the Rust cross-check (``extra/rust/three_x.rs``):
 - an empty-stack pop, a swap or ``x`` with too few items, a ``(``/``)`` on
   an empty stack, an unmatched ``(``, a ``)`` with no pending ``(``, or a
   division by zero raise :class:`HaltError`;
-- ``?`` raises :class:`EOFError` when input runs out, where the reference
+- ``?`` raises :class:`EOFError` when input runs out, where the cross-check
   exits with status 3, and rejects input that is not an integer or a
-  fraction (matching the reference's ``Rational`` parser, which rejects
+  fraction (matching the cross-check's ``Rational`` parser, which rejects
   decimals);
 - ``[`` with no closing ``]`` prints nothing.
 

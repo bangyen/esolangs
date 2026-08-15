@@ -60,7 +60,7 @@ git config core.hooksPath .githooks
 ```
 
 `python scripts/verify.py` additionally runs the RISC-V emulation stack
-(compilers and reference generators under unicorn), which needs the native
+(compilers and cross-check generators under unicorn), which needs the native
 toolchain; the qemu steps are CI-only.
 
 ## Conventions
