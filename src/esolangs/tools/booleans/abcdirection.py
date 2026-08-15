@@ -5,17 +5,31 @@ ABCDirection routes a pointer around a rectangular grid of ``A``/``B``/
 enqueueing into a bit queue, ``D``-left dequeuing into the current tape cell,
 ``C``-down outputting the current tape bit, and ``C``-up turning the pointer
 on a one.  There is no halt: the program reads the input into a queue, routes
-a decision tree over the queue (each node dequeues the next bit and tests it
-with ``C``-up), and the fired leaf outputs ``48 + f`` as a byte before
-running off the terminator row and raising :class:`EOFError` (the harness
-treats that as normal termination).
+a decision tree over the queue, and the fired leaf outputs ``48 + f`` as a
+byte before running off the terminator row and raising :class:`EOFError` (the
+harness treats that as normal termination).
 
-The layout: a read staircase at the bottom fills the queue, a corridor routes
-the pointer around the tree to the root, the tree's ``D``-left cells are
-spaced one cell apart so no six-``D`` run forms (the grid reader would
-mistake it for the terminator), and each leaf serpentine outputs the answer
-byte before diverting to the terminator's ``D`` run.
+The layout scales to any ``n``:
+
+- a read staircase at the bottom fills the queue with the ``8n`` input bits
+  (LSB first), and a corridor routes the pointer around the tree to the root;
+- a decision tree on absolute columns: the node for prefix ``p`` at depth
+  ``d`` sits at the midpoint of its leaf range, so no two nodes ever collide.
+  Each node has ``k`` ``D``-left cells (k=1 for the root, 8 for deeper nodes)
+  spaced one cell apart so no six-``D`` run forms (the grid reader would
+  mistake it for the terminator); entering a node dequeues ``k`` bits and the
+  ``C``-up tests the last one, so the tree consumes ``1 + 7(n-1)`` bits and
+  tests the n inputs;
+- each leaf routes DOWN at a clear column (left of its node's D-left cells) to
+  its own escape row, then RIGHT to a serpentine column and descends a
+  serpentine that outputs the answer byte ``48 + f`` (the state bit plus the
+  seven remaining queue bits, whose high bits sum to 48 for ASCII digits);
+- an EOF sink per leaf turns RIGHT to a distinct column and runs UP to row 0,
+  so the next step wraps into row H-1 and reads at that leaf's ``D`` cell,
+  raising :class:`EOFError`.
 """
+
+from dataclasses import dataclass
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
 
@@ -23,6 +37,16 @@ __all__ = ["abcdirection"]
 
 _R, _D, _L, _U = 0, 1, 2, 3
 _DIR = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+
+
+@dataclass
+class _LeafParams:
+    """Layout parameters threaded into the tree/leaf builders."""
+
+    escape_rows: list[int]
+    sink_cols: list[int]
+    serp_col: int
+    sp: int
 
 
 class _Builder:
@@ -107,16 +131,19 @@ def _build_node(
     n: int,
     table: str,
     depth: int,
+    p: int,
     x: int,
     y: int,
     combo: int,
     path: tuple[int, ...],
-    leaf_rows: dict[int, tuple[int, int]],
+    leaf_params: _LeafParams,
 ) -> None:
     """Place a tree node: k D-left's, a turn, a C-up test, then children.
 
     The D-left's are spaced one cell apart so no six-D run forms (the grid
-    reader would mistake it for the terminator).
+    reader would mistake it for the terminator).  Entering a node dequeues k
+    bits into the tape and the C-up tests the last one, so each node consumes
+    the next input bit's slot.
     """
     k = 1 if depth == 0 else 8
     for j in range(k):
@@ -124,7 +151,7 @@ def _build_node(
     b.set(x - 2 * k, y, "A")
     b.set(x - 2 * k, y - 1, "C")
     if depth == n - 1:
-        _leaf(b, table, x - 2 * k, y - 2, _U, combo, (*path, 0), leaf_rows)
+        _leaf(b, table, x - 2 * k, y - 2, _U, combo, (*path, 0), leaf_params)
         _leaf(
             b,
             table,
@@ -133,27 +160,50 @@ def _build_node(
             _L,
             combo | (1 << (n - 1 - depth)),
             (*path, 1),
-            leaf_rows,
+            leaf_params,
         )
         return
-    zx, zy, zh = x - 2 * k, y - 1, _U
-    zx, zy = zx, zy - 1
+    sp = leaf_params.sp
+    delta = 2 ** (n - depth - 2) * sp
+    band = 8
+    # zero-child (continue UP from the C-up), at x + delta: travel RIGHT to
+    # just past the child, DOWN, then LEFT into it.
+    zx, zy, zh = x - 2 * k, y - 2, _U
     zx, zy, zh = _turn(b, zx, zy, zh, _R)
-    zx, zy = _travel(b, zx, zy, _R, 3)
+    zx, zy = _travel(b, zx, zy, _R, delta + 2 * k)
     zx, zy, zh = _turn(b, zx, zy, zh, _D)
-    zx, zy = _travel(b, zx, zy, _D, 4)
+    zx, zy = _travel(b, zx, zy, _D, band + 1)
     zx, zy, zh = _turn(b, zx, zy, zh, _L)
-    _build_node(b, n, table, depth + 1, zx - 1, zy, combo, (*path, 0), leaf_rows)
     _build_node(
         b,
         n,
         table,
         depth + 1,
-        x - 2 * k - 1,
-        y - 1,
+        2 * p,
+        x + delta,
+        y + band,
+        combo,
+        (*path, 0),
+        leaf_params,
+    )
+    # one-child (turn LEFT from the C-up), at x - delta: travel LEFT, turn,
+    # DOWN, then LEFT into it.
+    ox, oy, oh = x - 2 * k - 1, y - 1, _L
+    ox, oy = _travel(b, ox, oy, _L, delta - 2 * k - 1)
+    ox, oy, oh = _turn(b, ox, oy, oh, _D)
+    ox, oy = _travel(b, ox, oy, _D, band + 1)
+    ox, oy, oh = _turn(b, ox, oy, oh, _L)
+    _build_node(
+        b,
+        n,
+        table,
+        depth + 1,
+        2 * p + 1,
+        x - delta,
+        y + band,
         combo | (1 << (n - 1 - depth)),
         (*path, 1),
-        leaf_rows,
+        leaf_params,
     )
 
 
@@ -165,34 +215,33 @@ def _leaf(
     entry_heading: int,
     combo: int,
     path: tuple[int, ...],
-    leaf_rows: dict[int, tuple[int, int]],
+    leaf_params: _LeafParams,
     leg: int = 2,
 ) -> None:
-    """Route a branch into a leaf band and output [f, padding...]."""
+    """Route a branch DOWN to its escape row, then output [f, padding]."""
     f = int(table[combo])
     last = path[-1]
     flip = f != last
-    band_y, band_x = leaf_rows[combo]
+    flip_row = leaf_params.escape_rows[combo]
+    serp_col = leaf_params.serp_col
+    sink_col = leaf_params.sink_cols[combo]
     cx, cy, ch = x, y, entry_heading
+    # Route DOWN at a clear column (left of this node's D-left cells) to just
+    # below the leaf's flip row; the turn to RIGHT shifts one row up.
     if entry_heading == _U:
         cx, cy, ch = _turn(b, cx, cy, ch, _R)
-        cx, cy = _travel(b, cx, cy, _R, band_x - cx)
-        cx, cy, ch = _turn(b, cx, cy, _R, _U)
-        cx, cy = _travel(b, cx, cy, _U, cy - band_y)
-        cx, cy, ch = _turn(b, cx, cy, _U, _R)
+        cx, cy, ch = _turn(b, cx, cy, _R, _D)
     else:
-        # one side: turned LEFT from the C-up.  Step left one column so the
-        # upward path runs in a clear column (the tree's D-left cells sit on
-        # the branch column and would be read as input).
         cx, cy = _travel(b, cx, cy, _L, 1)
-        cx, cy, ch = _turn(b, cx, cy, _L, _U)
-        cx, cy = _travel(b, cx, cy, _U, cy - band_y)
-        cx, cy, ch = _turn(b, cx, cy, _U, _R)
-        cx, cy = _travel(b, cx, cy, _R, band_x - cx)
+        cx, cy, ch = _turn(b, cx, cy, ch, _D)
+    cx, cy = _travel(b, cx, cy, _D, flip_row + 1 - cy)
+    cx, cy, ch = _turn(b, cx, cy, _D, _R)
+    cx, cy = _travel(b, cx, cy, _R, serp_col - cx)
+    # Serpentine entry: heading RIGHT at (serp_col, flip_row).
     if flip:
-        cx, cy = _here(b, cx, cy, _R, "C")
+        cx, cy = _here(b, cx, cy, _R, "C")  # cell -= 1
         cx, cy, ch = _turn(b, cx, cy, _R, _L)
-        cx, cy = _here(b, cx, cy, _L, "C")
+        cx, cy = _here(b, cx, cy, _L, "C")  # cell += 1, flip
         cx, cy = _travel(b, cx, cy, _L, 2)
         cx, cy, ch = _turn(b, cx, cy, _L, _U)
         cx, cy = _travel(b, cx, cy, _U, 2)
@@ -210,18 +259,13 @@ def _leaf(
         cx, cy = _travel(b, cx, cy, _D, leg)
         cx, cy = _here(b, cx, cy, _D, "C")
         cx, cy = _travel(b, cx, cy, _D, leg)
-    # EOF sink: travel DOWN (wrapping past the bottom) to this leaf's sink
-    # row, turn RIGHT, travel RIGHT to this leaf's sink column, turn UP, and
-    # the wrap into row H-1 reads at the terminator D cells -> EOFError.  The
-    # sink columns are distinct per leaf so the turn cells never sit on
-    # another leaf's upward path.
-    sink_row = 2 + 10 * combo
-    sink_col = 214 + combo
-    cx, cy = _travel(b, cx, cy, _D, b.height + sink_row - cy)
+    # EOF sink: travel RIGHT to this leaf's D column, run UP to row 0, and the
+    # next step wraps into row H-1 where a D cell reads input -> EOFError.
     cx, cy, ch = _turn(b, cx, cy, _D, _R)
-    cx, cy = _travel(b, cx, cy, _R, sink_col + 1 - cx)
+    cx, cy = _travel(b, cx, cy, _R, sink_col - cx)
     cx, cy, ch = _turn(b, cx, cy, _R, _U)
-    cx, cy = _travel(b, cx, cy, _U, sink_row)
+    cx, cy = _travel(b, cx, cy, _U, cy)
+    b.set(sink_col, b.height - 1, "D")
 
 
 def abcdirection(truth_table: str, n: int) -> str:
@@ -229,41 +273,36 @@ def abcdirection(truth_table: str, n: int) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first), and ``n`` is the number of inputs.
-
-    The program reads ``8*n`` bits (one byte per input) into its queue, then
-    routes a decision tree over the queued bits: each node dequeues the next
-    bit and tests it with ``C``-up.  The fired leaf prints ``48 + f`` as a
-    byte and runs off the terminator row, raising :class:`EOFError`, which
-    the harness treats as termination.  The tree's ``D``-left cells are
-    spaced one cell apart so no six-``D`` run forms (the grid reader would
-    mistake it for the terminator).
-
-    The current layout is verified for ``n <= 2`` (all one- and two-input
-    functions).  Deeper trees route the leaves and internal paths through the
-    tree's own cells and are not yet correct, so ``n > 2`` raises
-    :class:`ValueError`.
     """
     _validate_truth_table(truth_table, n)
-    if n > 2:
-        raise ValueError(
-            "the ABCDirection boolean generator currently supports n <= 2: "
-            "deeper trees route the leaves and internal paths through the "
-            "tree's own cells",
-        )
-    b = _Builder(220, 840)
+    width = 100 + 60 * (2**n - 1) + 60
+    sp = 36
+    center = 100 + 2 ** (n - 1) * sp
+    root_x = center
+    tree_bottom = 709 + 8 * (n - 1)
+    tree_max = center + int(round(((2**n - 1) + 0.5) - 2 ** (n - 1)) * sp)
+    serp_col = tree_max + 40
+    escape_rows = [tree_bottom + 8 + 52 * i for i in range(2**n)]
+    sink_cols = [serp_col + 30 + 8 * i for i in range(2**n)]
+    height = escape_rows[-1] + 60 + 8 * n + 150
+    b = _Builder(width, height)
     ex, ey, eh = _add_staircase(b, n)
-    x, y, _ = ex, ey, eh
-    x, y = _travel(b, x, y, _U, max(0, y - 713))
-    x, y, _ = _turn(b, x, y, _U, _L)
-    x, y = _travel(b, x, y, _L, max(0, x - 30))
-    x, y, _ = _turn(b, x, y, _L, _U)
+    x, y, h = ex, ey, eh
+    x, y = _travel(b, x, y, _U, 6)
+    x, y, h = _turn(b, x, y, h, _L)
+    x, y = _travel(b, x, y, _L, max(0, x - 2))
+    x, y, h = _turn(b, x, y, h, _U)
     x, y = _travel(b, x, y, _U, max(0, y - 600))
-    x, y, _ = _turn(b, x, y, _U, _R)
-    x, y = _travel(b, x, y, _R, 95 - x)
-    x, y, _ = _turn(b, x, y, _R, _D)
+    x, y, h = _turn(b, x, y, h, _R)
+    x, y = _travel(b, x, y, _R, root_x + 1 - x)
+    x, y, h = _turn(b, x, y, h, _D)
     x, y = _travel(b, x, y, _D, max(0, 709 - y))
-    x, y, _ = _turn(b, x, y, _D, _L)
-    root_x, root_y = x, y
-    leaf_rows = {i: (200 + i * 50, 100 + i * 40) for i in range(2**n)}
-    _build_node(b, n, truth_table, 0, root_x, root_y, 0, (), leaf_rows)
+    x, y, h = _turn(b, x, y, h, _L)
+    leaf_params = _LeafParams(
+        escape_rows=escape_rows,
+        sink_cols=sink_cols,
+        serp_col=serp_col,
+        sp=sp,
+    )
+    _build_node(b, n, truth_table, 0, 0, root_x, 709, 0, (), leaf_params)
     return "\n".join(b.grid())
