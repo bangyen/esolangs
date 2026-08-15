@@ -25,6 +25,7 @@ from esolangs.tools.booleans.other import (
 )
 from esolangs.tools.booleans.parameterized import back, bio, instantiate, nocomment
 from esolangs.tools.booleans.register import (
+    addsubjump,
     collatz_multiverse,
     decleq,
     dig,
@@ -52,6 +53,7 @@ from esolangs.tools.booleans.tape import (
 )
 
 __all__ = [
+    "addsubjump",
     "ascii_art",
     "back",
     "basicfuck",
