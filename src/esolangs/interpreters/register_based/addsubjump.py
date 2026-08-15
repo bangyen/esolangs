@@ -32,27 +32,13 @@ import sys
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import parse_int_memory as _parse
 
 _IO = -1
 _CF, _ZF, _NF, _OF = -2, -3, -4, -5
 _ONE, _ZERO, _NEG = -6, -7, -8
 _FUM = -9
 _SPECIAL = set(range(_FUM, _IO + 1))
-
-
-def _parse(code: str) -> list[int]:
-    """Split ``code`` into the initial memory (a list of integers)."""
-    tokens: list[int] = []
-    for line in code.splitlines():
-        line = line.split("#", 1)[0].strip()
-        if not line:
-            continue
-        for tok in line.split():
-            try:
-                tokens.append(int(tok))
-            except ValueError:
-                raise ValueError(f"malformed memory token: {tok!r}") from None
-    return tokens
 
 
 def run(code: str, io: IO, limit: int = 10_000) -> None:
