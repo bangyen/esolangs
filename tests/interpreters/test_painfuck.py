@@ -84,6 +84,26 @@ class TestPainfuck:
         assert run_program("pe") == ""
         assert run_program("p") == ""
 
+    def test_print_number(self) -> None:
+        assert run_program("ppoe") == "4"
+
+    def test_copy_from_left_neighbor(self) -> None:
+        # q copies the left neighbor into the current cell when ptr > 0
+        assert run_program("pprpplque") == "\x04"
+
+    def test_conditional_skip(self) -> None:
+        # v skips the next command when the cell is nonzero
+        assert run_program("pvpu") == "\x02"
+
+    def test_random_skip(self) -> None:
+        from unittest.mock import patch
+
+        # y skips the next command on a coin flip; pin both outcomes
+        with patch("random.randrange", return_value=1):
+            assert run_program("pyu") == ""
+        with patch("random.randrange", return_value=0):
+            assert run_program("pyu") == "\x02"
+
     def test_error(self) -> None:
         with pytest.raises(HaltError):
             run_program("b")  # loop close with an empty stack
