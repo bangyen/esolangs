@@ -47,10 +47,9 @@ def _check(module_path: str, language: str | None) -> list[str]:
 
 
 def main() -> int:
+    """Check every interpreter docstring; return a nonzero exit on violations."""
     module_to_name = {
-        lang.interpreter: name
-        for name, lang in LANGUAGES.items()
-        if lang.interpreter
+        lang.interpreter: name for name, lang in LANGUAGES.items() if lang.interpreter
     }
     failures = 0
     for category in CATEGORIES:
@@ -65,8 +64,10 @@ def main() -> int:
                 failures += 1
                 print(f"{module}: " + "; ".join(issues))
     if failures:
-        print(f"\n{failures} interpreter docstrings violate the conventions "
-              "(see _template.py)")
+        print(
+            f"\n{failures} interpreter docstrings violate the conventions "
+            "(see _template.py)"
+        )
         return 1
     print("all interpreter docstrings follow the conventions")
     return 0

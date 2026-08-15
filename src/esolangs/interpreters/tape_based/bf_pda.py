@@ -12,7 +12,9 @@ peek (``@``, ``.``, ``[``) reads 0 (``@`` pushes that zero and flips it to
 so the machine halts naturally like brainfuck; programs whose loops never
 empty the stack run forever.
 
-Invalid runtime operations halt with :class:`~esolangs.exceptions.HaltError`; Malformed programs raise :class:`ValueError`.
+Invalid runtime operations halt with
+:class:`~esolangs.exceptions.HaltError`; malformed programs raise
+:class:`ValueError`.
 """
 
 import sys
