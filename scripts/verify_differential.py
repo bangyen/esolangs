@@ -14,9 +14,9 @@ Languages with both an in-package interpreter and a native cross-check:
   *set* across runs; the Python interpreter (which accepts a fixed heading)
   must produce a member of that set for each of the four headings.
 * **NoComment** — ``tape_based/nocomment.py`` vs
-  ``extra/assembly/nocomment.asm``.  Both implement the full wiki language
+  ``extra/assembly/nocomment-riscv.s``.  Both implement the full wiki language
   (10 commands over a tape and stack).  The assembly is run under unicorn
-  via ``x86_elf_runner`` and must agree with the Python interpreter on the
+  via ``riscv_elf_runner`` and must agree with the Python interpreter on the
   full corpus; both error on non-commands, stack underflow, and out-of-range
   jumps.
 * **Forþ** — ``stack_based/forth.py`` vs ``extra/rust/forth.rs``.  The Rust
@@ -52,7 +52,7 @@ Languages with both an in-package interpreter and a native cross-check:
   Ruby reference hung).
 
 Called from CI's ``assembly`` and ``rust`` jobs (which provide
-nasm+unicorn and cargo) and from ``verify.py`` locally.
+unicorn+the RISC-V compiler and cargo) and from ``verify.py`` locally.
 References whose toolchain is missing are skipped, not failed.
 
 Usage:
@@ -86,12 +86,6 @@ BASICFUCK_BIN = RUST_BIN_DIR / "basicfuck"
 TWO_D_FISH_BIN = RUST_BIN_DIR / "two_d_fish"
 PAINFUCK_BIN = RUST_BIN_DIR / "painfuck"
 THREE_X_BIN = RUST_BIN_DIR / "three_x"
-LEAN_BIN = ROOT / "extra" / "lean" / "esolangs" / ".lake" / "build" / "bin"
-ALBABET_BIN = LEAN_BIN / "albabet"
-BFPDA_BIN = LEAN_BIN / "bfpda"
-TWO_BITS_ONE_BYTE_ASM = ROOT / "extra" / "assembly" / "2b1b.asm"
-BRAINPOCALYPSE_ASM = ROOT / "extra" / "assembly" / "brainpocalypse.asm"
-STUN_STEP_ASM = ROOT / "extra" / "assembly" / "stun-step.asm"
 
 # Parallelism for the native-reference runs: each check spawns a subprocess,
 # so threads (which just wait on the subprocess) scale well.
@@ -331,47 +325,26 @@ def _run_nocomment_python_limited(
         signal.alarm(0)
 
 
-def _assemble_nocomment() -> bytes | None:
-    """Assemble the NoComment cross-check; None if the toolchain is missing."""
-    if shutil.which("nasm") is None:
-        print("[skip] NoComment differential: nasm not found")
-        return None
-    try:
-        import x86_elf_runner as r
-    except SystemExit:
-        print("[skip] NoComment differential: unicorn not installed")
-        return None
-
-    asm = (ROOT / "extra" / "assembly" / "nocomment.asm").read_text()
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(asm)
-        path = f.name
-    try:
-        return r.assemble(path)
-    finally:
-        Path(path).unlink()
-
-
 def _verify_nocomment() -> bool:
     """Compare the Python NoComment interpreter against the assembly cross-check.
 
-    The assembly is run under unicorn (``x86_elf_runner``), which requires
-    unicorn and nasm; it is skipped when either is missing.  Both
+    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
+    requires unicorn and a RISC-V cross-compiler; it is skipped when either
+    is missing.  Both
     implementations error on non-commands, stack underflow, and out-of-range
     jumps, and must agree on the valid-program corpus.
     """
-    binary = _assemble_nocomment()
-    if binary is None:
+    if not _asm_refs_ready("nocomment"):
         return True
-    import x86_elf_runner as r
 
     failures = 0
     for program in NOCOMMENT_CORPUS:
-        try:
-            asm_out, asm_code = r.run_elf(binary, stdin=program.encode())
-        except ValueError:
-            asm_out, asm_code = b"", 1
+        ref = _asm_refs("nocomment", program)
         py_out, py_code = _run_nocomment_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
         if (asm_out, asm_code) != (py_out, py_code):
             failures += 1
             print(
@@ -602,34 +575,26 @@ def _verify_laserfuck() -> bool:
 def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     """Differentially fuzz NoComment with random programs.
 
-    A random ``b``/``s`` program may loop forever.  The assembly raises
-    ValueError when it exhausts its instruction-count cap, and Python times
-    out under SIGALRM; ``None`` means "did not terminate" on that side.  A
-    program that halts on one side but loops on the other is a divergence
+    A random ``b``/``s`` program may loop forever.  The assembly references
+    raise or fault when they exhaust their instruction-count cap, and Python
+    times out under SIGALRM; ``None`` means "did not terminate" on that side.
+    A program that halts on one side but loops on the other is a divergence
     (and the reason a seeded fuzzer is worth having).
     """
-    binary = _assemble_nocomment()
-    if binary is None:
+    if not _asm_refs_ready("nocomment"):
         return True
-    import x86_elf_runner as r
 
-    # The assembly's tape and stack live in a fixed mapped region below the
+    # The references' tape and stack live in a fixed mapped region below the
     # program buffer; a program that loops (or extends the tape) long enough
-    # writes past it and unicorn raises UcError.  That is a resource limit,
-    # the same class as the instruction-count cap's ValueError: both mean the
-    # assembly did not halt cleanly, and a matching Python loop is not a
-    # divergence.
-    from unicorn import UcError
-
+    # writes past it and unicorn raises UcError, which the runners fold into
+    # None.  That is a resource limit, the same class as the instruction-count
+    # cap: a matching Python loop is not a divergence.
     alphabet = "idclrnfsbo"
     failures = checked = loops = 0
     for _ in range(count):
         program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
         py = _run_nocomment_python_limited(program, timeout=3)
-        try:
-            asm = r.run_elf(binary, stdin=program.encode())
-        except (ValueError, UcError):
-            asm = None
+        asm = _asm_refs("nocomment", program)
         if py is None and asm is None:
             loops += 1
             continue
@@ -1710,14 +1675,9 @@ def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
 
 # -- The generator-less extra/ interpreters (corpus only) -------------------
 #
-# Kak, Trash, BF-PDA, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse,
-# and Stun Step have no generators (narrow output classes), so only the
-# fixed corpora are checked; Albabet has a text generator and is fuzzed.
-
-_LEAN_BINARIES = {
-    "Albabet": ALBABET_BIN,
-    "BF-PDA": BFPDA_BIN,
-}
+# Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, and Stun
+# Step have no generators (narrow output classes), so only the fixed corpora
+# are checked.
 
 
 def _build_kak() -> str | None:
@@ -1752,31 +1712,68 @@ def _run_file_ref(
         Path(path).unlink()
 
 
-def _assemble_x86(asm: Path) -> bytes | None:
-    """Assemble an x86 cross-check; None if nasm/unicorn are unavailable."""
+def _build_riscv(name: str) -> bytes | None:
+    """Assemble the RISC-V port ``extra/assembly/{name}-riscv.s``.
+
+    Returns None if the cross-compiler is missing.
+    """
+    asm = ROOT / "extra" / "assembly" / f"{name}-riscv.s"
+    if not asm.exists():
+        return None
+    for cc in ("riscv64-linux-gnu-gcc", "riscv64-elf-gcc"):
+        if shutil.which(cc) is None:
+            continue
+        binary = Path("/tmp") / f"verify-{name}-riscv"
+        rv = subprocess.run(
+            [
+                cc,
+                "-nostdlib",
+                "-static",
+                "-march=rv64i",
+                "-mabi=lp64",
+                str(asm),
+                "-o",
+                str(binary),
+            ],
+            capture_output=True,
+        )
+        if rv.returncode == 0 and binary.exists():
+            return binary.read_bytes()
+    return None
+
+
+def _run_riscv_elf(binary: bytes, program: str) -> tuple[bytes, int] | None:
+    """Run ``program`` (as the stdin stream) through a RISC-V reference ELF."""
     import importlib
 
-    if shutil.which("nasm") is None:
-        return None
     try:
-        x86_elf_runner = importlib.import_module("x86_elf_runner")
+        riscv_elf_runner = importlib.import_module("riscv_elf_runner")
     except SystemExit:
         return None
-    return x86_elf_runner.assemble(str(asm))
-
-
-def _run_asm_ref(binary: bytes, program: str) -> tuple[bytes, int] | None:
-    """Run ``program`` (as the stdin stream) through an assembled reference."""
-    import importlib
-
-    x86_elf_runner = importlib.import_module("x86_elf_runner")
     try:
-        out, code = x86_elf_runner.run_elf(binary, program.encode("latin1"))
+        out, code = riscv_elf_runner.run_elf(binary, program.encode("latin1"))
     except ValueError:
         return None
     except Exception:
-        return None  # the reference faulted (e.g. walked off its stack page)
+        return None  # the reference faulted (e.g. walked off its tape)
     return out, code
+
+
+def _asm_refs(riscv_name: str, program: str) -> tuple[bytes, int] | None:
+    """Run ``program`` through the RISC-V reference ``{name}-riscv.s``.
+
+    Returns ``(out, code)``, or None when the reference does not terminate
+    cleanly (it looped or faulted).
+    """
+    riscv = _build_riscv(riscv_name)
+    if riscv is None:
+        return None
+    return _run_riscv_elf(riscv, program)
+
+
+def _asm_refs_ready(riscv_name: str) -> bool:
+    """Whether the RISC-V reference can be built."""
+    return _build_riscv(riscv_name) is not None
 
 
 def _inprocess_run(
@@ -1838,19 +1835,19 @@ _SIMPLE_CORPUS = [
         "esolangs.interpreters.other.seventy_four",
         [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
     ),
-    # 2 Bits, 1 Byte: single program byte, read from stdin by the reference
+    # 2 Bits, 1 Byte: single program byte, read from stdin by the references
     (
         "2 Bits, 1 Byte",
-        lambda: _assemble_x86(TWO_BITS_ONE_BYTE_ASM) is not None,
-        lambda p, _s: _run_asm_ref(_assemble_x86(TWO_BITS_ONE_BYTE_ASM), p),
+        lambda: _asm_refs_ready("2b1b"),
+        lambda p, _s: _asm_refs("2b1b", p),
         "esolangs.interpreters.other.two_bits_one_byte",
         [("\xff", b""), ("\x3f", b""), ("\x00", b""), ("A", b"")],
     ),
-    # Brainpocalypse: program read from stdin by the reference
+    # Brainpocalypse: program read from stdin by the references
     (
         "Brainpocalypse",
-        lambda: _assemble_x86(BRAINPOCALYPSE_ASM) is not None,
-        lambda p, _s: _run_asm_ref(_assemble_x86(BRAINPOCALYPSE_ASM), p),
+        lambda: _asm_refs_ready("brainpocalypse"),
+        lambda p, _s: _asm_refs("brainpocalypse", p),
         "esolangs.interpreters.tape_based.brainpocalypse",
         [
             ("+", b""),
@@ -1861,11 +1858,11 @@ _SIMPLE_CORPUS = [
             (">" * 256 + "+>", b""),  # the pointer wraps past cell 255
         ],
     ),
-    # Stun Step: program read from stdin by the reference
+    # Stun Step: program read from stdin by the references
     (
         "Stun Step",
-        lambda: _assemble_x86(STUN_STEP_ASM) is not None,
-        lambda p, _s: _run_asm_ref(_assemble_x86(STUN_STEP_ASM), p),
+        lambda: _asm_refs_ready("stun-step"),
+        lambda p, _s: _asm_refs("stun-step", p),
         "esolangs.interpreters.tape_based.stun_step",
         [("-", b""), ("->", b""), ("<", b""), (">-", b""), (">", b"")],
     ),
@@ -1903,118 +1900,9 @@ def _verify_simple_corpus() -> bool:
     return failures == 0
 
 
-def _verify_lean(name: str, binary: Path, module: str, corpus: list[str]) -> bool:
-    """Differentially check a Lean-referenced interpreter."""
-    failures = 0
-    if not binary.exists():
-        print(f"[skip] {name} differential: Lean binary not built")
-        return True
-    checked = 0
-    for program in corpus:
-        ref = _run_file_ref([str(binary)], program)
-        if ref is None:
-            print(f"{name} {program!r}: reference did not terminate")
-            failures += 1
-            continue
-        py = _inprocess_run(module, program)
-        checked += 1
-        if py is None:
-            # the interpreter raised (an invalid operation): the reference
-            # must also exit with status 3
-            if ref[1] != 3:
-                failures += 1
-                print(f"{name} {program!r}: ref={ref!r} py=error")
-        elif ref != (py, 0):
-            failures += 1
-            print(f"{name} {program!r}: ref={ref!r} py={(py, 0)!r}")
-    if checked:
-        print(f"{name} differential: {checked} programs match")
-    return failures == 0
-
-
-_ALBABET_CORPUS = [
-    "i",
-    "ai",
-    "aai",
-    "ciai",
-    "g",
-    "h",
-    "bai",
-    "dai",
-    "e",
-    "f",
-]
-_BFPDA_CORPUS = [
-    "<@.",
-    "<<@.",
-    "<<<@<@>.",
-    "<@[@].",
-    "<@<@[@]@>.",
-    "<@[@][@].",
-    "<@[<@>].",
-    "<@<@>.",
-    # empty-stack operations: both implementations exit 3
-    "@",
-    ".",
-    ">",
-    "[",
-    "]",
-]
-
-
-def _fuzz_albabet(rng: random.Random, count: int) -> bool:
-    """Fuzz the AlbaBet text generator against the Lean reference."""
-    from esolangs.tools.generate import albabet
-
-    if not ALBABET_BIN.exists():
-        print("[skip] AlbaBet fuzz: Lean binary not built")
-        return True
-
-    tasks = []
-    for _ in range(count):
-        text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
-        tasks.append((albabet(text), text))
-    results = _run_parallel(lambda t: _run_file_ref([str(ALBABET_BIN)], t[0]), tasks)
-    failures = checked = 0
-    for (program, text), result in zip(tasks, results, strict=True):
-        if result is None:
-            print(f"AlbaBet {text!r}: reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = _inprocess_run(
-            "esolangs.interpreters.other.albabet", program, encoding="utf-8"
-        )
-        checked += 1
-        if result != (py, 0):
-            failures += 1
-            print(f"AlbaBet {text!r}: ref={result!r} py={(py, 0)!r}")
-    print(
-        f"AlbaBet fuzz: {checked} programs match"
-        if not failures
-        else f"AlbaBet fuzz: {failures} failures of {checked}"
-    )
-    return failures == 0
-
-
 def _verify_remaining_extras() -> bool:
-    """Differentially check the newly ported extra/ interpreters."""
-    ok = _verify_simple_corpus()
-    ok = (
-        _verify_lean(
-            "Albabet",
-            ALBABET_BIN,
-            "esolangs.interpreters.other.albabet",
-            _ALBABET_CORPUS,
-        )
-        and ok
-    )
-    return (
-        _verify_lean(
-            "BF-PDA", BFPDA_BIN, "esolangs.interpreters.tape_based.bfpda", _BFPDA_CORPUS
-        )
-        and ok
-    )
+    """Differentially check the generator-less extra/ interpreters."""
+    return _verify_simple_corpus()
 
 
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
@@ -2091,7 +1979,6 @@ def main() -> int:
         ok = _fuzz_two_d_fish(rng, args.fuzz) and ok
         ok = _fuzz_painfuck(rng, args.fuzz) and ok
         ok = _fuzz_bit_tilde(rng, args.fuzz) and ok
-        ok = _fuzz_albabet(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.

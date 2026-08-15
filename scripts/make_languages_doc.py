@@ -28,18 +28,22 @@ BOOLEAN = {
     "Back",
     "Basicfuck",
     "Between",
-    "BF",
+    "brainfuck",
     "BFStack",
     "BIO",
+    "bit~",
     "BrainIf",
-    "CircleFuck",
+    "Circlefuck",
     "Clockwise",
     "Collatz Multiverse",
     "Container",
     "Dig",
     "Dimensional",
+    "Decleq",
+    "Forbin",
     "Forþ",
     "LaserFuck",
+    "Minifuck",
     "Modulous",
     "Nevermind",
     "NoComment",
@@ -60,14 +64,13 @@ _COMPILER_NAMES = {
     "jaune": "Jaune",
     "suffolk": "Suffolk",
     "unsquare": "Unsquare",
-    "bf-pda": "BF-PDA",
+    "bfpda": "BF-PDA",
     "excon": "EXCON",
     "RAM0": "RAM0",
 }
 
 _COMPILER_DIRS = {
     "assembly": (ROOT / "src" / "esolangs" / "compilers" / "assembly", "*.py"),
-    "c": (ROOT / "src" / "esolangs" / "compilers" / "c", "*.c"),
 }
 
 
@@ -82,16 +85,15 @@ def _compiler_set(kind: str) -> set[str]:
 
 
 ASSEMBLY_COMPILERS = _compiler_set("assembly")
-C_COMPILERS = _compiler_set("c")
 
 # The README's Extra Implementations section: each entry is the extra/
 # subdirectory, its source pattern, the file-stem -> display-name map (an
-# unknown file fails loudly), and the heading.  The RISC-V 123 port is
-# excluded by matching only ``*.asm``.
+# unknown file fails loudly), and the heading.  The assembly refs are the
+# RISC-V ports (``*-riscv.s``), matched by stripping the ``-riscv`` suffix.
 _EXTRA_DIRS = [
     (
         ROOT / "extra" / "assembly",
-        "*.asm",
+        "*-riscv.s",
         {
             "123": "123",
             "2b1b": "2 Bits, 1 Byte",
@@ -99,18 +101,7 @@ _EXTRA_DIRS = [
             "nocomment": "NoComment",
             "stun-step": "Stun Step",
         },
-        "x86 Assembly Implementations",
-    ),
-    (
-        ROOT / "extra" / "lean" / "esolangs",
-        "*Main.lean",
-        {
-            "AlbabetMain": "Albabet",
-            "BfpdaMain": "BF-PDA",
-            "ExconMain": "EXCON",
-            "SeventyFourMain": "Number Seventy-Four",
-        },
-        "Lean Implementations",
+        "RISC-V Assembly Implementations",
     ),
     (
         ROOT / "extra" / "rust",
@@ -134,7 +125,7 @@ _EXTRA_DIRS = [
 ]
 
 # Display names of the languages with a native implementation in extra/
-# (Rust, Lean, or x86 assembly).  These interpreters run as
+# (Rust, Lean, or RISC-V assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
 
@@ -174,17 +165,6 @@ _README_HEADINGS = [
     ),
 ]
 
-# Registry display name -> esolangs wiki page title, where the wiki names
-# the page differently from the registry's shorthand.
-_WIKI_PAGES = {
-    "BF": "brainfuck",
-    "BitDeque": "Bitdeque",
-    "CircleFuck": "Circlefuck",
-    "MAMMALIAN": "SLOW ACV MAMMALIAN",
-    "Temporary": "The Temporary Stack",
-    "ZTOALC": "ZTOALC L",
-}
-
 _README_START = "<!-- IMPLEMENTED:START -->"
 _README_END = "<!-- IMPLEMENTED:END -->"
 _COMPILERS_START = "<!-- COMPILERS:START -->"
@@ -195,11 +175,21 @@ _EXTRA_END = "<!-- EXTRA:END -->"
 
 def _wiki_name(name: str) -> str:
     """Return the esolangs wiki page title for the displayed language name."""
-    return _WIKI_PAGES.get(name, name)
+    return name
 
 
 def _wiki_slug(name: str) -> str:
     return _wiki_name(name).replace(" ", "_")
+
+
+def _source_link(name: str) -> str:
+    """Return the GitHub URL of the language's Python interpreter."""
+    module = RUNNERS[name][0]
+    path = module.replace(".", "/")
+    return (
+        f"https://github.com/bangyen/esolangs/blob/main/"
+        f"src/esolangs/interpreters/{path}.py"
+    )
 
 
 def _file_name(name: str) -> str:
@@ -214,7 +204,7 @@ def _capabilities(name: str) -> dict[str, bool]:
         "interpreter": lang.interpreter is not None if lang else False,
         "native": name in NATIVE,
         "boolean": name in BOOLEAN,
-        "compiler": name in ASSEMBLY_COMPILERS or name in C_COMPILERS,
+        "compiler": name in ASSEMBLY_COMPILERS,
         "hello": hello,
         "cat": (CAT / f"{_file_name(name)}.txt").exists(),
         "truth-machine": (TRUTH / f"{_file_name(name)}.txt").exists(),
@@ -232,7 +222,7 @@ def render() -> str:
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
         "Native means an implementation in `extra/` that runs as a standalone",
-        "program (Rust, Lean, or x86 assembly).  The Boolean",
+        "program (Rust, Lean, or RISC-V assembly).  The Boolean",
         "column marks the boolean-function generators; Back, BIO, and",
         "NoComment's are parameterized (the harness substitutes input bits",
         "into a template) rather than the program reading input.",
@@ -241,7 +231,7 @@ def render() -> str:
         "Compiler | Examples |",
         "| --- | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
-    for name in sorted(set(LANGUAGES) | C_COMPILERS | NATIVE):
+    for name in sorted(set(LANGUAGES) | ASSEMBLY_COMPILERS | NATIVE):
         c = _capabilities(name)
         examples = " ".join(k for k in ("hello", "cat", "truth-machine") if c[k])
         lines.append(
@@ -260,13 +250,22 @@ def render_languages_section() -> str:
     """Render the README's Implemented Languages section between the markers.
 
     Each language with an in-repo interpreter is grouped by the interpreter's
-    category, sorted by display name, and linked to its esolangs wiki page.
+    category, sorted by display name, and linked to both its esolangs wiki
+    page and the interpreter's source file on GitHub.  The ``<summary>``
+    count and the pointer to the capability matrix are generated too, so they
+    stay in sync.
     """
+    out: list[str] = [
+        f"<summary>Show all {len(RUNNERS)} languages</summary>",
+        "",
+        "The full capability matrix (generators, native and boolean support,"
+        " examples) is in [`docs/languages.md`](docs/languages.md).",
+        "",
+    ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
     for name, (module, _, _) in RUNNERS.items():
         groups[module.split(".")[0]].append(name)
 
-    out: list[str] = []
     for prefix, heading, description in _README_HEADINGS:
         out.append(f"### {heading}")
         out.append("")
@@ -275,6 +274,7 @@ def render_languages_section() -> str:
         for name in sorted(groups[prefix]):
             out.append(
                 f"- [{_wiki_name(name)}](https://esolangs.org/wiki/{_wiki_slug(name)})"
+                f" ([code]({_source_link(name)}))"
             )
         out.append("")
     return "\n".join(out).rstrip()
@@ -282,26 +282,46 @@ def render_languages_section() -> str:
 
 def render_compilers_section() -> str:
     """Render the README's Compilers section between the markers."""
-    out: list[str] = []
-    for kind, heading in (("assembly", "x86 Assembly Compilers"), ("c", "C Compilers")):
-        out.append(f"### {heading}")
-        out.append("")
-        for name in sorted(_compiler_set(kind)):
-            out.append(
-                f"- [{name}](https://esolangs.org/wiki/{name.replace(' ', '_')})"
-            )
-        out.append("")
+    compilers = ASSEMBLY_COMPILERS
+    out: list[str] = [
+        f"<summary>Show all {len(compilers)} compilers</summary>",
+        "",
+        "Compilers that translate esoteric languages to other target" " languages.",
+        "",
+    ]
+    out.append("### RISC-V Assembly Compilers")
+    out.append("")
+    for name in sorted(_compiler_set("assembly")):
+        out.append(f"- [{name}](https://esolangs.org/wiki/{name.replace(' ', '_')})")
+    out.append("")
     return "\n".join(out).rstrip()
 
 
 def render_extra_section() -> str:
     """Render the README's Extra Implementations lists between the markers."""
-    out: list[str] = []
+    out: list[str] = [
+        f"<summary>Show all {len(NATIVE)} implementations</summary>",
+        "",
+        "Implementations written in languages other than Python, used as"
+        " cross-check references in CI: most generators are round-trip"
+        " verified against them, and languages whose output classes are too"
+        " narrow for a text generator (Kak, Trash, Number Seventy-Four, 2"
+        " Bits 1 Byte, Brainpocalypse, Stun Step) still get a Python"
+        " interpreter differentially verified against the native reference."
+        "  The cross-checks share an exit-code convention mirroring the"
+        " Python interpreters: 0 = success, 2 = malformed program, 3 ="
+        " invalid runtime operation.",
+        "",
+    ]
     for directory, pattern, names, heading in _EXTRA_DIRS:
         out.append(f"### {heading}")
         out.append("")
         for name in sorted(
-            {names[path.stem] for path in directory.glob(pattern)}, key=str.lower
+            {
+                names[path.stem.removesuffix("-riscv")]
+                for path in directory.glob(pattern)
+            },
+            key=str.lower,
         ):
             slug = _EXTRA_WIKI.get(name, name.replace(" ", "_"))
             out.append(f"- [{name}](https://esolangs.org/wiki/{slug})")
@@ -327,6 +347,7 @@ if __name__ == "__main__":
     out = ROOT / "docs" / "languages.md"
     out.parent.mkdir(exist_ok=True)
     out.write_text(render())
-    print(f"wrote {out} ({len(set(LANGUAGES) | C_COMPILERS | NATIVE)} languages)")
+    count = len(set(LANGUAGES) | ASSEMBLY_COMPILERS | NATIVE)
+    print(f"wrote {out} ({count} languages)")
     update_readme()
     print("updated the generated sections of README.md")

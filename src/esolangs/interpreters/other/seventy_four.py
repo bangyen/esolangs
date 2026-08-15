@@ -13,23 +13,10 @@ Semantics match the Rust cross-check (``extra/rust/seventy_four.rs``):
   makes the output start with ``H`` mid-pass and then pushes a ``0``/``1``
   afterwards never halts;
 - a program whose output never starts with ``H`` restarts forever and never
-  returns, matching the Rust reference (the Lean reference instead stops
-  after 100 commands and prints whatever it has accumulated); a program with
-  no ``0``/``1``/``H`` commands at all halts with no output instead of
-  looping;
+  returns (an ``H`` on an empty output does nothing); a program with no
+  ``0``/``1``/``H`` commands at all halts with no output instead of looping;
 - there are no invalid operations or malformed programs, so ``run`` never
   raises :class:`HaltError` or :class:`ValueError`.
-
-Divergences from the references:
-- the Lean interpreter (``extra/lean/.../seventy_four.lean``) checks whether
-  the output starts with ``H`` before every command rather than at pass
-  boundaries, so it halts (and prints) the moment the output starts with
-  ``H`` even mid-pass: ``0H0H`` prints ``H0H0`` here but ``H0`` in Lean.
-  It also never restarts, scanning past the end of the program as no-ops
-  until a fixed limit of 100 commands, so it prints the accumulated output
-  on programs the Rust reference and this port restart forever;
-- the Rust cross-check matches the documented semantics (an ``H`` on an
-  empty output does nothing), which the former Ruby reference crashed on.
 """
 
 import sys

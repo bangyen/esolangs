@@ -12,10 +12,8 @@ CARGO_BIN := "$HOME/.cargo/bin"
 help:
     @echo "Available targets:"
     @echo "  lint-python  - Lint Python files with Black, Ruff, and MyPy"
-    @echo "  lint-c       - Lint C files with clang-format and clang-tidy"
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
-    @echo "  lint-asm     - Basic syntax check for Assembly files"
     @echo "  lint         - Run all linting targets"
     @echo "  test         - Run Python tests with pytest"
     @echo "  install-dev  - Install development dependencies"
@@ -43,21 +41,6 @@ lint-python:
 # Lint helpers.  Each target fails loudly when its tool is present and the
 # code is unclean, and skips cleanly (exit 0) when the tool is missing, so a
 # local `just lint` degrades gracefully without silently swallowing failures.
-
-# lint c
-lint-c:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export PATH="{{HOMEBREW_BIN}}:{{LLVM_BIN}}:$PATH"
-    if command -v clang-format >/dev/null 2>&1; then
-        fail=0
-        while IFS= read -r f; do
-            clang-format --dry-run --Werror "$f" || fail=1
-        done < <(find src/esolangs/compilers/c -name "*.c")
-        exit $fail
-    else
-        echo "skip: clang-format not found"
-    fi
 
 # lint rust
 lint-rust:
@@ -87,22 +70,8 @@ lint-lean:
         echo "skip: lake (Lean 4) not found"
     fi
 
-# lint asm
-lint-asm:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if command -v nasm >/dev/null 2>&1; then
-        fail=0
-        while IFS= read -r f; do
-            nasm -f elf32 -o /dev/null "$f" || fail=1
-        done < <(find extra/assembly -name "*.asm")
-        exit $fail
-    else
-        echo "skip: nasm not found"
-    fi
-
 # lint all code
-lint: lint-python lint-c lint-rust lint-lean lint-asm
+lint: lint-python lint-rust lint-lean
     @echo "All lint checks completed!"
 
 # run tests

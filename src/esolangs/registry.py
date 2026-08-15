@@ -37,6 +37,11 @@ def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
 
 LANGUAGES: dict[str, Language] = {
     "ABCDirection": Language("ABCDirection", interpreter="tape_based.abcdirection"),
+    "AddSubJump": Language(
+        "AddSubJump",
+        _generate.add_sub_jump,
+        "register_based.add_sub_jump",
+    ),
     "A Painter Ant": Language("A Painter Ant", interpreter="other.a_painter_ant"),
     "123": Language(
         "123",
@@ -56,16 +61,16 @@ LANGUAGES: dict[str, Language] = {
     "BF-PDA": Language("BF-PDA", interpreter="tape_based.bfpda"),
     "Basicfuck": Language("Basicfuck", _generate.basicfuck, "tape_based.basicfuck"),
     "Between": Language("Between", _generate.between, "other.between", split=True),
-    "BF": Language("BF", _generate.bf, "tape_based.bf"),
+    "brainfuck": Language("brainfuck", _generate.bf, "tape_based.bf"),
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
     "BIO": Language("BIO", _generate.bio, "register_based.bio"),
     "bit~": Language("bit~", _generate.bit_tilde, "other.bit_tilde"),
-    "BitDeque": Language("BitDeque", interpreter="other.bitdeque"),
+    "Bitdeque": Language("Bitdeque", interpreter="other.bitdeque"),
     "BrainIf": Language("BrainIf", _generate.brainif, "tape_based.brainif", split=True),
     "Brainpocalypse": Language(
         "Brainpocalypse", interpreter="tape_based.brainpocalypse"
     ),
-    "CircleFuck": Language("CircleFuck", _generate.circlefuck, "tape_based.circlefuck"),
+    "Circlefuck": Language("Circlefuck", _generate.circlefuck, "tape_based.circlefuck"),
     "Clockwise": Language(
         "Clockwise", _generate.clockwise, "other.clockwise", split=True
     ),
@@ -74,6 +79,7 @@ LANGUAGES: dict[str, Language] = {
         _generate.collatz_multiverse,
         "register_based.collatz_multiverse",
     ),
+    "Decleq": Language("Decleq", _generate.decleq, "register_based.decleq"),
     "Container": Language(
         "Container", _generate.container, "other.container", split=True
     ),
@@ -89,7 +95,9 @@ LANGUAGES: dict[str, Language] = {
     "EXCON": Language("EXCON", _generate.excon, "tape_based.excon"),
     "Factor": Language("Factor", _generate.factor, "tape_based.factor"),
     "Forþ": Language("Forþ", _generate.forth, "stack_based.forth"),
-    "Home Row": Language("Home Row", _generate.home_row),
+    "Forbin": Language("Forbin", _generate.forbin, "other.forbin"),
+    "Grapheme": Language("Grapheme", interpreter="other.grapheme"),
+    "Home Row": Language("Home Row", _generate.home_row, "other.home_row"),
     "huf": Language("huf", _generate.huf, "register_based.huf"),
     "Kak": Language("Kak", interpreter="tape_based.kak"),
     "Keys": Language("Keys", interpreter="other.keys", split=True),
@@ -97,7 +105,9 @@ LANGUAGES: dict[str, Language] = {
         "LaserFuck", _generate.laserfuck, "other.laserfuck", split=True
     ),
     "Lightlang": Language("Lightlang", interpreter="register_based.lightlang"),
-    "MAMMALIAN": Language("MAMMALIAN", _generate.mammalian, "tape_based.mammalian"),
+    "SLOW ACV MAMMALIAN": Language(
+        "SLOW ACV MAMMALIAN", _generate.mammalian, "tape_based.mammalian"
+    ),
     "Minifuck": Language("Minifuck", _generate.minifuck, "tape_based.minifuck"),
     "Minsky Swap": Language("Minsky Swap", interpreter="register_based.minsky-swap"),
     "Modulous": Language("Modulous", _generate.modulous, "stack_based.modulous"),
@@ -117,6 +127,7 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Qoibl": Language("Qoibl", _generate.qoibl, "register_based.qoibl", split=True),
     "RAM0": Language("RAM0", interpreter="register_based.RAM0"),
+    "ROTfuck": Language("ROTfuck", _generate.rotfuck, "tape_based.rotfuck"),
     "S*bleq": Language("S*bleq", _generate.sbleq, "tape_based.sbleq"),
     "3D Brainfuck": Language(
         "3D Brainfuck", _generate.three_d_bf, "tape_based.three_d_bf"
@@ -129,13 +140,15 @@ LANGUAGES: dict[str, Language] = {
         kwargs=_kw(limit=1),
     ),
     "Stun Step": Language("Stun Step", interpreter="tape_based.stun_step"),
-    "Temporary": Language("Temporary", _generate.temporary, "stack_based.temporary"),
+    "The Temporary Stack": Language(
+        "The Temporary Stack", _generate.temporary, "stack_based.temporary"
+    ),
     "Trash": Language("Trash", interpreter="other.trash"),
     "3x": Language("3x", _generate.three_x, "other.three_x"),
     "Taglate": Language("Taglate", _generate.taglate, "other.taglate", split=True),
     "Unsquare": Language("Unsquare", _generate.unsquare, "stack_based.unsquare"),
     "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", split=True),
-    "ZTOALC": Language("ZTOALC", _generate.ztoalc, "other.ztoalc", split=True),
+    "ZTOALC L": Language("ZTOALC L", _generate.ztoalc, "other.ztoalc", split=True),
 }
 
 # Display name -> generator function, for languages that have one.

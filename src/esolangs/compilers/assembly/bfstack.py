@@ -1,4 +1,4 @@
-"""Compiler that turns BFStack programs into x86 Linux assembly."""
+"""Compiler that turns BFStack programs into RISC-V Linux assembly."""
 
 import itertools
 import re
@@ -54,16 +54,17 @@ def parse(code: str) -> list[tuple[str, int]]:
 
 
 def comp(code: str) -> str:
-    """Compile a BFStack program to x86 assembly with syscall I/O."""
+    """Compile a BFStack program to RISC-V assembly with syscall I/O."""
     tokens = parse(code)
     jump = 0
     arr = []
     res = (
-        "global _start\n"
+        "    .text\n"
+        "    .global _start\n"
         "_start:\n"
-        "\tlea ecx, [esp - 6]\n"
-        "\tmov edx, 1\n"
-        "\tmov esi, 1\n\n"
+        "    addi s1, sp, -6\n"
+        "    li   s2, 1\n"
+        "    addi s3, sp, -1\n\n"
     )
 
     ins = {
@@ -75,19 +76,15 @@ def comp(code: str) -> str:
 
     for char, num in tokens:
         if char == "+":
-            if num > 1:
-                res += f"\tadd byte [ecx], {num}\n"
-            elif num == 1:
-                res += "\tinc byte [ecx]\n"
-            elif num == -1:
-                res += "\tdec byte [ecx]\n"
-            elif num < -1:
-                res += f"\tsub byte [ecx], {-num}\n"
+            if num:
+                res += (
+                    "\tlbu  t0, 0(s1)\n" f"\taddi t0, t0, {num}\n" "\tsb   t0, 0(s1)\n"
+                )
         elif char == "0":
-            res += "\tmov byte [ecx], 0\n"
+            res += "\tsb   zero, 0(s1)\n"
         elif char in "><.,":
             if num > 1:
-                res += f"\tmov esi, {num}\n"
+                res += f"\tli   s2, {num}\n"
                 ins[char][2] = True
             res += f"\tcall {ins[char][0]}\n"
 
@@ -97,50 +94,53 @@ def comp(code: str) -> str:
                 if char == "[":
                     jump += 1
                     arr.append(jump)
-                    res += f".T{jump}:\n" "\tcmp byte [ecx], 0\n" f"\tje .B{jump}\n"
+                    res += f".T{jump}:\n" "\tlbu  t0, 0(s1)\n" f"\tbeqz t0, .B{jump}\n"
                 elif arr:
                     m = arr.pop()
-                    res += f"\tjmp .T{m}\n" f".B{m}:\n"
+                    res += f"\tj .T{m}\n" f".B{m}:\n"
 
-    res += "\n\tmov eax, 1\n" "\txor ebx, ebx\n" "\tint 80h\n"
+    res += "\n\tli   a0, 0\n" "\tli   a7, 93\n" "\tecall\n"
 
     def end(s: str, *, mul: bool) -> str:
         return (
-            mul * ("\tdec esi\n" "\tcmp esi, 0\n" f"\tjg {s}\n" "\tinc esi\n")
+            mul
+            * (
+                "\taddi s2, s2, -1\n"
+                "\tbgt  s2, zero, " + s + "\n"
+                "\taddi s2, s2, 1\n"
+            )
             + "\tret\n"
         )
 
     if ins[">"][1]:
         res += (
             "\nright:\n"
-            "\tdec ecx\n"
-            "\tmov byte [ecx], 0\n" + end("right", mul=cast(bool, ins[">"][2]))
+            "\taddi s1, s1, -1\n"
+            "\tsb   zero, 0(s1)\n" + end("right", mul=cast(bool, ins[">"][2]))
         )
     if ins["<"][1]:
-        res += (
-            "\nleft:\n"
-            "\tlea edi, [esp - 1]\n"
-            "\tcmp ecx, edi\n"
-            "\tje .done\n"
-            "\tinc ecx\n"
-        )
+        res += "\nleft:\n" "\tbeq  s1, s3, .done_left\n" "\taddi s1, s1, 1\n"
         if ins["<"][2]:
-            res += "\tdec esi\n" "\tcmp esi, 0\n" "\tjg left\n" "\tinc esi\n"
-        res += ".done:\n" "\tret\n"
+            res += "\taddi s2, s2, -1\n" "\tbgt  s2, zero, left\n" "\taddi s2, s2, 1\n"
+        res += ".done_left:\n" "\tret\n"
     if ins["."][1]:
         res += (
             "\noutput:\n"
-            "\tmov eax, 4\n"
-            "\tmov ebx, 1\n"
-            "\tint 80h\n" + end("output", mul=cast(bool, ins["."][2]))
+            "\tli   a7, 64\n"
+            "\tli   a0, 1\n"
+            "\tmv   a1, s1\n"
+            "\tli   a2, 1\n"
+            "\tecall\n" + end("output", mul=cast(bool, ins["."][2]))
         )
     if ins[","][1]:
         res += (
             "\ninput:\n"
-            "\tmov eax, 3\n"
-            "\txor ebx, ebx\n"
-            "\tdec ecx\n"
-            "\tint 80h\n" + end("input", mul=cast(bool, ins[","][2]))
+            "\taddi s1, s1, -1\n"
+            "\tli   a7, 63\n"
+            "\tli   a0, 0\n"
+            "\tmv   a1, s1\n"
+            "\tli   a2, 1\n"
+            "\tecall\n" + end("input", mul=cast(bool, ins[","][2]))
         )
 
     return res

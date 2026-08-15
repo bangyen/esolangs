@@ -15,6 +15,7 @@ __all__ = [
     "clockwise",
     "container",
     "dimensional",
+    "forbin",
     "forth",
     "home_row",
     "laserfuck",
@@ -52,12 +53,14 @@ _SPLITLINES = "\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
 
 
 def clockwise(text: str) -> str:
-    """Build a 1D parity program wrapped around a square's perimeter.
+    """Build a 1D parity program wrapped around a 3 x k rectangle's perimeter.
 
     The turtle walks the ring clockwise, executing one instruction per cell.
     Three corner ``R`` cells turn it, and the final cell walks it back to the
     origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
-    ``+`` is emitted only when the accumulator's parity needs to flip.
+    ``+`` is emitted only when the accumulator's parity needs to flip.  A
+    thin rectangle holds the same ring as an n x n square (the perimeter
+    length is 2k + 2 either way) but with a fraction of the area.
     """
     _require_ascii(text, "Clockwise")
     prog = ""
@@ -72,18 +75,18 @@ def clockwise(text: str) -> str:
     if not prog:
         return ""
 
-    n = max(3, (len(prog) + 10) // 4)
-    ring = [(i, 0) for i in range(n - 1)]
-    ring += [(n - 1, i) for i in range(1, n - 1)]
-    ring += [(i, n - 1) for i in range(n - 2, 0, -1)]
-    ring += [(0, i) for i in range(n - 2, 0, -1)]
+    k = max(3, (len(prog) + 2) // 2)
+    ring = [(i, 0) for i in range(k - 1)]  # top row, left to right
+    ring += [(k - 1, 1)]  # right side
+    ring += [(i, 2) for i in range(k - 2, 0, -1)]  # bottom row, right to left
+    ring += [(0, 1)]  # left side
 
-    grid = [[" "] * n for _ in range(n)]
+    grid = [[" "] * k for _ in range(3)]
     for (x, y), ch in zip(ring, prog, strict=False):
         grid[y][x] = ch
-    grid[0][n - 1] = "R"
-    grid[n - 1][n - 1] = "R"
-    grid[n - 1][0] = "R"
+    grid[0][k - 1] = "R"  # top-right
+    grid[2][k - 1] = "R"  # bottom-right
+    grid[2][0] = "R"  # bottom-left
 
     return "\n".join("".join(row) for row in grid)
 
@@ -173,7 +176,7 @@ def _anchor_for(n: int) -> int:
 
 
 def ztoalc(text: str) -> str:
-    """Build a ZTOALC program that outputs ``text``.
+    """Build a ZTOALC L program that outputs ``text``.
 
     The interpreter runs lines in Collatz-trajectory order from the initial
     value on line 1, so each character is placed on the line its trajectory
@@ -568,12 +571,24 @@ def _123(text: str) -> str:
 def nocomment(text: str) -> str:
     """Generate a NoComment program that outputs ``text``.
 
-    NoComment's ``c`` zeroes the current cell, ``i`` increments it, and ``o``
-    prints it as a byte, so each character becomes a fixed ``c`` + ``i``*N + ``o``
-    run.
+    The current cell is driven in place from one character's value to the
+    next with ``i``/``d`` runs (increment/decrement wrap the 8-bit cell),
+    and ``o`` prints it as a byte, so each character costs only its delta
+    from the previous one rather than its full code.
     """
     _require_bytes(text, "NoComment")
-    return "".join("c" + "i" * ord(c) + "o" for c in text)
+    res: list[str] = []
+    prev = 0
+    for c in text:
+        n = ord(c)
+        delta = n - prev
+        if delta >= 0:
+            res.append("i" * delta)
+        else:
+            res.append("d" * -delta)
+        res.append("o")
+        prev = n
+    return "".join(res)
 
 
 def unsquare(text: str) -> str:
@@ -609,17 +624,43 @@ def unsquare(text: str) -> str:
 def home_row(text: str) -> str:
     """Generate a Home Row program that outputs ``text``.
 
-    ``a`` increments the current cell and ``k`` prints it as a byte, resetting
-    it to zero (the spec's 5x5 grid initializes at zero). A leading ``as``
-    (net zero) keeps NUL characters from collapsing the adjacent ``k``s.
+    Each character is built as ``a * b + r`` on a target cell by a counter
+    loop: ``a``-run sets the counter, an ``l`` loop adds ``b`` to the target
+    and decrements the counter each pass, and an ``a``-run tops the product
+    up before ``k`` prints the target and resets it (the spec's 5x5 grid
+    initializes at zero).  ``a`` is searched near ``sqrt(ord)`` so the
+    program is O(sqrt) rather than O(ord).  A NUL uses a net-zero ``ask`` so
+    it cannot collapse into the adjacent ``k``s.
     """
     _require_bytes(text, "Home Row")
-    res = []
-    for c in text:
-        if ord(c) == 0:
-            res.append("ask")
-        else:
-            res.append("a" * ord(c) + "k")
+
+    def segment(value: int) -> str:
+        best = min(
+            (
+                (a + b + r, a, b, r)
+                for a in range(1, int(value**0.5) + 2)
+                for b, r in (divmod(value, a),)
+            ),
+        )
+        _, a, b, r = best
+        # counter cell 0, target cell 1: "f" moves 0 -> 1 and four "f"s wrap
+        # 1 -> 0 back.  The loop body adds b to the target and decrements
+        # the counter.
+        return (
+            "a" * a
+            + "l"
+            + "f"
+            + "a" * b
+            + "f" * 4
+            + "s"
+            + "l"
+            + "f"
+            + "a" * r
+            + "k"
+            + "f" * 4
+        )
+
+    res = ["ask" if ord(c) == 0 else segment(ord(c)) for c in text]
     return "".join(res) + ";"
 
 
@@ -752,6 +793,21 @@ def bit_tilde(text: str) -> str:
                 res.append(">")
         res.append("<" * 7 + "(")
     return "".join(res)
+
+
+def forbin(text: str) -> str:
+    """Build a Forbin program that outputs ``text``.
+
+    Forbin's ``out`` writes one byte as eight bit arguments (most significant
+    first), so each character becomes one ``out`` line inside ``main``.
+    """
+    _require_bytes(text, "Forbin")
+    lines = ["main {"]
+    for char in text:
+        bits = ",".join(str((ord(char) >> k) & 1) for k in range(7, -1, -1))
+        lines.append(f"  out {bits};")
+    lines.append("}")
+    return "\n".join(lines)
 
 
 def three_x(text: str) -> str:

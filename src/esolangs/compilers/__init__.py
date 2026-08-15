@@ -1,1 +1,1 @@
-"""Compilers that turn esolang programs into x86 assembly."""
+"""Compilers that turn esolang programs into RISC-V assembly."""
