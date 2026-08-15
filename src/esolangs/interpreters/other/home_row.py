@@ -11,7 +11,10 @@ the program.  The pointer starts at the top-left cell.
 
 Documented decisions for gaps and divergences:
 - cells are unbounded integers (the wiki's Minsky-machine construction needs
-  unbounded registers), so ``k`` prints the low byte;
+  unbounded registers), so ``k`` prints the low byte and ``s`` on a 0 cell
+  yields -1 (the wiki's talk page asks whether decrementing 0 should be a
+  no-op, but the language's author never ruled; the main page says ``s``
+  subtracts 1, so the cell goes negative);
 - reaching the end of the source without ``;`` halts (the pointer has no
   direction to keep moving);
 - ``l`` pairs alternate by their order in the program (the first and second
