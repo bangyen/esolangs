@@ -1,8 +1,9 @@
 """Interpreter for ASCII art (brainfuck with an art alphabet).
 
 Art blocks decode to the eight brainfuck commands plus . / , / < / > / + / [
-and ].  The tape, clamping, wrapping, and bracket semantics deliberately match
-the plain brainfuck interpreter so the two are interchangeable.
+and ].  The tape, clamping, wrapping, and bracket semantics are those of the
+plain brainfuck interpreter, so the two are interchangeable; execution is
+delegated to ``brainfuck.run`` after decoding.
 
 Exhausted input raises :class:`EOFError` (the repo-wide
 convention); malformed programs raise :class:`ValueError`.
@@ -12,6 +13,7 @@ import re
 import sys
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.tape_based.brainfuck import run as run_bf
 
 
 def parse(code: str) -> str:
@@ -41,56 +43,9 @@ def parse(code: str) -> str:
     return res
 
 
-def matches(code: str) -> dict[int, int]:
-    """Map each bracket to its partner, ``{open: close, close: open}``.
-
-    Raises :class:`ValueError` if the brackets are unbalanced: the spec
-    defines ``[``/``]`` only for matched pairs.
-    """
-    stack: list[int] = []
-    res: dict[int, int] = {}
-    for i, char in enumerate(code):
-        if char == "[":
-            stack.append(i)
-        elif char == "]":
-            if not stack:
-                raise ValueError(f"unmatched ']' at position {i}")
-            open_i = stack.pop()
-            res[open_i] = i
-            res[i] = open_i
-    if stack:
-        raise ValueError(f"unmatched '[' at position {stack[-1]}")
-    return res
-
-
 def run(code: str, io: IO) -> None:
     """Run an ASCII-art program after decoding it to brainfuck."""
-    tape: list[int] = [0]
-    code = parse(code)
-    m = matches(code)
-
-    ind = ptr = 0
-
-    while ind < len(code):
-        char = code[ind]
-        if char == ">":
-            ptr += 1
-            if ptr == len(tape):
-                tape.append(0)
-        elif char == "<" and ptr:
-            ptr -= 1
-        elif char == "+":
-            tape[ptr] = (tape[ptr] + 1) % 256
-        elif char == "-":
-            tape[ptr] = (tape[ptr] - 1) % 256
-        elif char == ".":
-            io.print_char(chr(tape[ptr]))
-        elif char == ",":
-            tape[ptr] = io.input_char()
-        elif (char == "[" and tape[ptr] == 0) or (char == "]" and tape[ptr] != 0):
-            ind = m[ind]
-
-        ind += 1
+    run_bf(parse(code), io)
 
 
 if __name__ == "__main__":
