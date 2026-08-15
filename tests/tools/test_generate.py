@@ -72,6 +72,14 @@ class TestGeneratorRoundTrips:
         assert roundtrip(_run_123, hi) == "Hi"
         assert roundtrip(_run_123, hello) == "Hello, World!"
 
+    def test_collatz_multiverse(self) -> None:
+        """Characters whose byte values need no constant table still round-trip."""
+        collatz_run = importlib.import_module(
+            "esolangs.interpreters.register_based.collatz_multiverse"
+        ).run
+        assert roundtrip(collatz_run, gen.collatz_multiverse("\x00")) == "\x00"
+        assert roundtrip(collatz_run, gen.collatz_multiverse("Hi")) == "Hi"
+
     def test_forth(self) -> None:
         """Each character is built from base-15 digits and printed by [.]."""
         assert roundtrip(forth_run, gen.forth("Hi")) == "Hi"
@@ -253,6 +261,15 @@ class TestGeneratorRoundTrips:
         assert roundtrip(myscript_run, gen.myscript("Hi")) == "Hi"
         assert roundtrip(myscript_run, gen.myscript("a\tb\nc")) == "a\tb\nc"
         assert roundtrip(myscript_run, gen.myscript('quote"slash\\')) == 'quote"slash\\'
+        # the backslash, form-feed, and NUL escapes take the remaining branches
+        assert roundtrip(myscript_run, gen.myscript("a\\b\fc")) == "a\\b\fc"
+        assert roundtrip(myscript_run, gen.myscript("a\x00b")) == "a\x00b"
+
+    def test_empty_text_returns_empty(self) -> None:
+        """The register generators return an empty program for empty text."""
+        assert gen.collatz_multiverse("") == ""
+        assert gen.addsubjump("") == ""
+        assert gen.decleq("") == ""
 
     def test_nevermind_unsupported(self) -> None:
         """Nevermind cannot print multiline text or a leading $."""

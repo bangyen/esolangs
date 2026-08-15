@@ -90,5 +90,9 @@ class TestHaltAndErrors:
         with pytest.raises(ValueError, match="malformed memory token"):
             run_program("10 10 x")
 
+    def test_comments_and_blank_lines_are_ignored(self) -> None:
+        code = "# a comment\n\n1 1 3 # trailing comment\n-2 1 0\n"
+        assert run_program(code) == "\x00"
+
     def test_empty_program(self) -> None:
         assert run_program("") == ""

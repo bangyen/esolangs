@@ -268,3 +268,81 @@ class TestArraysOfArrays:
             run_and_capture(["3", "jump y 0", "a = [2]", "a[1 = 5"])
         with pytest.raises(HaltError):
             run_and_capture(["3", "jump y 0", "a = [2]", "a[] = 5"])
+
+    def test_nested_write_through_a_scalar_middle_halts(self) -> None:
+        """x[0][1][2] = v needs x[0] to be an array; a scalar middle halts."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        code = [
+            "3",
+            "jump x 0",
+            "x = [2]",
+            "print 0",
+            "",
+            "",
+            "print 0",
+            "x[0][1][2] = 5",
+        ]
+        with pytest.raises(HaltError):
+            run_and_capture(code)
+
+    def test_nested_write_through_out_of_range_middle_halts(self) -> None:
+        """A middle index past the array is rejected rather than wrapping."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        code = [
+            "3",
+            "jump x 0",
+            "x = [2]",
+            "x[5][0] = 1",
+            "x[0] = [2]",
+            "",
+            "",
+            "x[1] = [2]",
+        ]
+        with pytest.raises(HaltError):
+            run_and_capture(code)
+
+    def test_index_by_an_array_element(self) -> None:
+        """An index expression may itself be an indexed array element."""
+        code = [
+            "3",
+            "jump x 0",
+            "x = [2]",
+            "print x[1]",
+            "a = [2]",
+            "",
+            "",
+            "x[a[1]] = 5",
+        ]
+        assert run_and_capture(code) == "\x00"
+
+    def test_print_out_of_unicode_range_halts(self) -> None:
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        code = [
+            "3",
+            "jump x 0",
+            "x = [2]",
+            "print 99999999",
+            "",
+            "",
+            "print 0",
+            "print 0",
+        ]
+        with pytest.raises(HaltError):
+            run_and_capture(code)
+
+    def test_pointer_below_zero_halts(self) -> None:
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["0"])
