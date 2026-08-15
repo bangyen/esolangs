@@ -22,7 +22,7 @@ from esolangs.interpreters.io import IO
 FUZZ = {
     "other.bitdeque": "PUSHINJECTEJECTPOPINVERT",
     "other.keys": "-_\\/",
-    "register_based.minsky-swap": "+~*",
+    "register_based.minsky_swap": "+~*",
     "register_based.movesum": "move sum0123456789",
     "register_based.dsdlai": ".!?$~;:#@",
 }

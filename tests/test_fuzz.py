@@ -28,7 +28,7 @@ from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.minifuck import run as minifuck_run
 
 minsky_run = importlib.import_module(
-    "esolangs.interpreters.register_based.minsky-swap"
+    "esolangs.interpreters.register_based.minsky_swap"
 ).run
 
 

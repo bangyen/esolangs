@@ -61,7 +61,7 @@ def ascii_art_to_bf(program: str) -> str:
     """
     parse = cast(
         Callable[[str], str],
-        importlib.import_module("esolangs.interpreters.tape_based.ascii-art").parse,
+        importlib.import_module("esolangs.interpreters.tape_based.ascii_art").parse,
     )
     return parse(program)
 

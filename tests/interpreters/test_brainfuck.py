@@ -15,7 +15,7 @@ from unittest.mock import patch
 import esolangs
 from esolangs.interpreters.io import IO
 
-bf = importlib.import_module("esolangs.interpreters.tape_based.bf")
+bf = importlib.import_module("esolangs.interpreters.tape_based.brainfuck")
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:

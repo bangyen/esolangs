@@ -7,7 +7,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 
-run = importlib.import_module("esolangs.interpreters.other.2dfish").run
+run = importlib.import_module("esolangs.interpreters.other.two_d_fish").run
 
 
 def run_program(code: str, stdin: str = "") -> str:

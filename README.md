@@ -91,7 +91,7 @@ The full capability matrix (generators, native and boolean support, examples) is
 
 Languages that use registers to store and manipulate data.
 
-- [%^2^-1](https://esolangs.org/wiki/%^2^-1) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/%^2^-1.py))
+- [%^2^-1](https://esolangs.org/wiki/%^2^-1) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/pct_squared_minus_one.py))
 - [AddSubJump](https://esolangs.org/wiki/AddSubJump) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/add_sub_jump.py))
 - [BIO](https://esolangs.org/wiki/BIO) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/bio.py))
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/collatz_multiverse.py))
@@ -100,25 +100,25 @@ Languages that use registers to store and manipulate data.
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/dig.py))
 - [Dotlang](https://esolangs.org/wiki/Dotlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/dotlang.py))
 - [Lightlang](https://esolangs.org/wiki/Lightlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/lightlang.py))
-- [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/minsky-swap.py))
+- [Minsky Swap](https://esolangs.org/wiki/Minsky_Swap) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/minsky_swap.py))
 - [Movesum](https://esolangs.org/wiki/Movesum) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/movesum.py))
 - [Polynomial](https://esolangs.org/wiki/Polynomial) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/polynomial.py))
 - [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/qoibl.py))
-- [RAM0](https://esolangs.org/wiki/RAM0) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/RAM0.py))
+- [RAM0](https://esolangs.org/wiki/RAM0) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/ram0.py))
 - [Sophie](https://esolangs.org/wiki/Sophie) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/sophie.py))
-- [WII2D](https://esolangs.org/wiki/WII2D) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/WII2D.py))
+- [WII2D](https://esolangs.org/wiki/WII2D) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/wii2d.py))
 - [huf](https://esolangs.org/wiki/huf) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/huf.py))
 
 ### Tape-based Languages
 
 Languages that operate on a tape (similar to Turing machines).
 
-- [123](https://esolangs.org/wiki/123) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/123.py))
+- [123](https://esolangs.org/wiki/123) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/one_two_three.py))
 - [3D Brainfuck](https://esolangs.org/wiki/3D_Brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/three_d_bf.py))
-- [6-5](https://esolangs.org/wiki/6-5) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/6-5.py))
+- [6-5](https://esolangs.org/wiki/6-5) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/six_five.py))
 - [ABCDirection](https://esolangs.org/wiki/ABCDirection) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/abcdirection.py))
-- [ASCII art](https://esolangs.org/wiki/ASCII_art) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/ascii-art.py))
-- [BF-PDA](https://esolangs.org/wiki/BF-PDA) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bfpda.py))
+- [ASCII art](https://esolangs.org/wiki/ASCII_art) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/ascii_art.py))
+- [BF-PDA](https://esolangs.org/wiki/BF-PDA) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bf_pda.py))
 - [Back](https://esolangs.org/wiki/Back) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/back.py))
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/basicfuck.py))
 - [BrainIf](https://esolangs.org/wiki/BrainIf) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainif.py))
@@ -136,7 +136,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/mammalian.py))
 - [Stun Step](https://esolangs.org/wiki/Stun_Step) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/stun_step.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/suffolk.py))
-- [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bf.py))
+- [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainfuck.py))
 
 ### Stack-based Languages
 
@@ -154,7 +154,7 @@ Languages that use a stack for data manipulation.
 Languages that don't fit into the above categories.
 
 - [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/two_bits_one_byte.py))
-- [2dFish](https://esolangs.org/wiki/2dFish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/2dfish.py))
+- [2dFish](https://esolangs.org/wiki/2dFish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/two_d_fish.py))
 - [3x](https://esolangs.org/wiki/3x) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/three_x.py))
 - [A Painter Ant](https://esolangs.org/wiki/A_Painter_Ant) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/a_painter_ant.py))
 - [Albabet](https://esolangs.org/wiki/Albabet) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/albabet.py))

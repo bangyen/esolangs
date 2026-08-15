@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.WII2D import run
+from esolangs.interpreters.register_based.wii2d import run
 
 
 class _TestTimeoutError(Exception):
@@ -199,7 +199,7 @@ class TestWII2DControlFlow:
         code = [" ?|.", " !  ", " .  "]
         with (
             patch(
-                "esolangs.interpreters.register_based.WII2D.secrets.randbelow",
+                "esolangs.interpreters.register_based.wii2d.secrets.randbelow",
                 side_effect=[3, 0],
             ),
             redirect_stdout(io.StringIO()) as f,

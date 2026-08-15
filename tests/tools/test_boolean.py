@@ -22,7 +22,7 @@ def run_dig(program: str, inputs: list[str]) -> str:
 def run_six_five(program: str, inputs: list[str]) -> str:
     import importlib
 
-    run = importlib.import_module("esolangs.interpreters.tape_based.6-5").run
+    run = importlib.import_module("esolangs.interpreters.tape_based.six_five").run
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
@@ -39,7 +39,7 @@ def run_dimensional(program: str, inputs: list[str]) -> str:
 
 
 def run_bf(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.bf import run
+    from esolangs.interpreters.tape_based.brainfuck import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -86,7 +86,7 @@ def run_minifuck(program: str, inputs: list[str]) -> str:
 def run_123(program: str, inputs: list[str]) -> str:
     import importlib
 
-    run = importlib.import_module("esolangs.interpreters.tape_based.123").run
+    run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
@@ -284,7 +284,7 @@ class TestQoibl:
 def run_ascii_art(program: str, inputs: list[str]) -> str:
     import importlib
 
-    run = importlib.import_module("esolangs.interpreters.tape_based.ascii-art").run
+    run = importlib.import_module("esolangs.interpreters.tape_based.ascii_art").run
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
@@ -693,7 +693,7 @@ class TestBf:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.bf(table, n)
+        program = boolean.brainfuck(table, n)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_bf(program, [str(b) for b in bits])
@@ -701,23 +701,23 @@ class TestBf:
 
     def test_bf_sparse_uses_the_minterm(self) -> None:
         """bf picks the minterm for sparse tables (shorter than the tree)."""
-        program = boolean.bf("0" * 15 + "1", 4)  # AND4: one one-row
+        program = boolean.brainfuck("0" * 15 + "1", 4)  # AND4: one one-row
         assert len(program) < len(boolean.bf_tree("0" * 15 + "1", 4))
 
     def test_bf_dense_uses_the_tree(self) -> None:
         """bf picks the decision tree for dense tables."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert boolean.bf(xor6, 6) == boolean.bf_tree(xor6, 6)
+        assert boolean.brainfuck(xor6, 6) == boolean.bf_tree(xor6, 6)
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.bf("011", 1)
+            boolean.brainfuck("011", 1)
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.bf("02", 1)
+            boolean.brainfuck("02", 1)
 
 
 class TestBfTree:
