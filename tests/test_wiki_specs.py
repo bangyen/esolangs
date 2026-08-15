@@ -48,7 +48,10 @@ def test_recorded_hashes_are_registered_languages() -> None:
 
 
 def test_recorded_hashes_look_like_sha256() -> None:
+    """Each entry carries page and talk fingerprints that look like sha256."""
     recorded = json.loads(HASHES.read_text())
     for lang, h in recorded.items():
-        assert len(h) == 64, lang
-        assert all(c in "0123456789abcdef" for c in h), lang
+        assert set(h) == {"page", "talk"}, lang
+        for digest in h.values():
+            assert len(digest) == 64, lang
+            assert all(c in "0123456789abcdef" for c in digest), lang
