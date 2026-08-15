@@ -5,6 +5,26 @@ approach is not viable (or only partially viable).  Completed work lives in
 the commit history; this file records the walls, the negative results, and
 the reasoning behind them.  Genuine future work is in `docs/roadmap.md`.
 
+## Interpreter conventions
+
+The interpreters share two behavioral conventions, so `esolangs.run` is
+predictable across languages:
+
+- **Empty programs are a no-op by default.**  An empty (or blank-only)
+  program produces no output, unless the language structurally requires
+  content to start — an initial direction (2dFish), a Collatz seed line
+  (ZTOALC L), or a program grid (Circlefuck, BF-PDA, Suffolk, Dig, Back,
+  Clockwise) — in which case it is rejected with a clear `ValueError`
+  (usually ``"... cannot be empty"``, or 2dFish's
+  ``"program does not set an initial direction"``).
+- **Exhausted input raises :class:`EOFError` by default.**  A program that
+  reads past the end of `stdin` is almost always a bug, and the loud error
+  surfaces it (and lets `,[.,]`-style cat loops terminate).  Languages whose
+  spec defines EOF behavior follow the spec instead and document it: S*bleq
+  and Movesum read `0` at EOF (both per the wiki), and every other
+  interpreter raises `EOFError`.  Malformed programs raise `ValueError` and
+  runtime halts raise :class:`HaltError`, never a raw Python exception.
+
 ## 6-5 (built; the decision tree stays primary)
 The arithmetic-kernel generator (`six_five_arithmetic`) was built: it packs
 the inputs into `x` and the table into `T = sum table[i] * 2**i` and
