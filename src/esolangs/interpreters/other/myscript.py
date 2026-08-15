@@ -268,8 +268,6 @@ def _apply_builtin(name: str, args: list[object], io: IO) -> object:
 
 def _call_function(function: _Function, args: list[object], io: IO) -> object:
     """Call a user function with ``args``, running its body in a child scope."""
-    if len(args) != len(function.params):
-        raise HaltError("function called with the wrong number of arguments")
     scope = Scope(function.outer)
     for name, value in zip(function.params, args, strict=True):
         scope.declare(name, value)
