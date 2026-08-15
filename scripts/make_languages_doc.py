@@ -22,6 +22,7 @@ TRUTH = EXAMPLES / "truth-machine"
 # programs.
 BOOLEAN = {
     "3x",
+    "AddSubJump",
     "3D Brainfuck",
     "6-5",
     "ASCII art",
