@@ -73,6 +73,19 @@ class Test3x:
         with pytest.raises(HaltError):
             run_program("333x33x!")
 
+    def test_error_bad_input(self) -> None:
+        with pytest.raises(ValueError, match="integer or a fraction"):
+            run_program("?", "abc")
+        with pytest.raises(ValueError, match="integer or a fraction"):
+            run_program("?", "1/0")
+
+    def test_loop_jumps_back_on_nonzero_top(self) -> None:
+        # pass 1 ends with a 3 on top (jump back), pass 2 with a 0 (exit)
+        assert run_program("333(33x#)!") == "0"
+
+    def test_unmatched_print_bracket_prints_nothing(self) -> None:
+        assert run_program("[") == ""
+
     def test_error_unmatched_bracket(self) -> None:
         with pytest.raises(HaltError):
             run_program("333x(")
