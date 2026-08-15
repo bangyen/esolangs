@@ -134,6 +134,13 @@ class TestDigEdgeCases:
         with pytest.raises(ValueError, match="empty"):
             run([], io=IO())
 
+    def test_blank_only_program_is_empty(self) -> None:
+        """Programs of only blank lines are rejected, not crashing the mole."""
+        with pytest.raises(ValueError, match="empty"):
+            run(["\n"], io=IO())
+        with pytest.raises(ValueError, match="empty"):
+            run(["   ", "\t"], io=IO())
+
     def test_single_character_program(self) -> None:
         """Test a program containing only a halt command."""
         assert run_and_capture(["@"]) == ""

@@ -31,6 +31,8 @@ def run(code: list[str], io: IO) -> None:
 
     def parse(state: State, expr: str | list[str]) -> int:
         """Parse and execute a single Qoibl expression."""
+        if not expr:
+            raise ValueError("malformed expression")
         if (op := expr[0]) == "tt":
             io.print_char(chr(parse(state, expr[1:-1])))
         elif op == "we":
@@ -42,6 +44,8 @@ def run(code: list[str], io: IO) -> None:
                 parse(state, expr[ind + 1 : -1])
         elif "yr" in expr:
             beg = expr.index("yr")
+            if beg + 1 >= len(expr):
+                raise ValueError("malformed comparison")
             num = expr[beg + 1]
             x = parse(state, expr[:beg])
             y = parse(state, expr[beg + 3 :])
@@ -57,6 +61,8 @@ def run(code: list[str], io: IO) -> None:
             raise ValueError("unrecognized comparison operator")
         elif "ry" in expr:
             beg = expr.index("ry")
+            if beg + 1 >= len(expr):
+                raise ValueError("malformed arithmetic")
             num = expr[beg + 1]
             x = parse(state, expr[:beg])
             y = parse(state, expr[beg + 3 :])
@@ -82,7 +88,9 @@ def run(code: list[str], io: IO) -> None:
         return 0
 
     for exp in code:
-        parse(state, exp.split())
+        tokens = exp.split()
+        if tokens:
+            parse(state, tokens)
 
 
 if __name__ == "__main__":

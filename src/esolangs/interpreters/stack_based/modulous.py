@@ -191,7 +191,8 @@ def run(code: str, io: IO) -> None:
         mod = tokens[state.ind]
         arg = mod.split()
         state.ind += 1
-
+        if not arg:
+            continue
         handler = _DISPATCH.get(arg[0])
         if handler is not None:
             if handler(state, mod, arg) == "halt":

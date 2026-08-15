@@ -12,6 +12,8 @@ from esolangs.interpreters.io import IO
 
 def run(code: list[str], io: IO) -> None:
     """Run a Back program and print the tape when it halts."""
+    if not code or not any(line.strip() for line in code):
+        raise ValueError("Back program cannot be empty")
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]
 
