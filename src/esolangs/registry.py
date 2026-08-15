@@ -374,6 +374,12 @@ LANGUAGES: dict[str, Language] = {
         interpreter="register_based.movesum",
         split=True,
     ),
+    "MyScript": Language(
+        "MyScript",
+        _generate.myscript,
+        "other.myscript",
+        id="myscript",
+    ),
     "Nevermind": Language(
         "Nevermind",
         _generate.nevermind,

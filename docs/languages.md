@@ -60,6 +60,7 @@ into a template) rather than the program reading input.
 | Minsky Swap |  | yes |  |  |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |
+| MyScript | yes | yes |  |  |  | hello |
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
 | Number Seventy-Four |  | yes | yes |  |  |  |
