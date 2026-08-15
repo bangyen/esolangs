@@ -232,3 +232,26 @@ brainfuck (a trivial tape + pointer), and grow the set per state model over
 time.  Medium priority: it is a distinct workstream rather than more
 interpreters or transpilers, and it is the one feature that changes the
 library's audience from "runner" to "study tool".
+
+### Cheaper study-tool improvements (do first)
+
+These serve the same "study tool" goal with no interpreter refactor, so they
+are natural stepping stones while the VM grows:
+
+- **Annotated program walkthroughs.**  For one representative language per
+  state model (brainfuck / a stack language / a register or OISC language /
+  a 2D language), a docs page walking a small program command by command:
+  what each instruction does to the cells/stacks/registers and why the
+  example terminates.  Pure content, immediately useful for teaching, and it
+  doubles as a spec-check against the wiki pages the interpreters document.
+- **`esolangs.describe(lang)`.**  A public function returning a structured
+  description: state model (derived from the interpreter's module path),
+  I/O style, whether it has a text/boolean generator, its transpilers, its
+  example files, and its esolangs.org page.  Most of the data already lives
+  in the registry and `docs/languages.md`; this just exposes it through the
+  API.
+- **A `run(..., timeout=...)` wall-clock guard.**  The public API currently
+  cannot bound a program (see the unbounded-execution convention), so a
+  runaway program hangs a caller.  A wall-clock `timeout` parameter on
+  `esolangs.run` that raises `HaltError` on expiry is a thin wrapper around
+  the existing interpreters and makes automation and study safe.
