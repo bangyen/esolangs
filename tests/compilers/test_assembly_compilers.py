@@ -402,6 +402,15 @@ class TestRAM0:
         mod = importlib.import_module("esolangs.compilers.assembly.ram0")
         assert "beqz s1, .done" in mod.comp("C")
 
+    def test_znls_emit(self) -> None:
+        """Each RAM0 command maps to its RISC-V instruction sequence."""
+        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
+        output = mod.comp("Z A N L S")
+        assert "li   s1, 0" in output  # Z
+        assert "mv   s2, s1" in output  # N
+        assert "lw   s1, 0(t0)" in output  # L
+        assert "sw   s1, 0(t0)" in output  # S
+
 
 class TestCompilerFuzz:
     """Compilers must not crash on arbitrary (possibly malformed) input."""
