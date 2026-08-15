@@ -10,79 +10,52 @@ Candidates from re-scanning the esolangs wiki's Category:Unimplemented and
 from User:PythonshellDebugwindow's language list.  The original scan is
 exhausted: every candidate with a usable file-based I/O protocol, a complete
 specification, and a plausible generator or boolean story now has an
-interpreter.  Ruled-out candidates (Gravity, Earfuck, Conveyor, Chainlang,
-Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast) are recorded in
-`docs/limitations.md`, and A Painter Ant (a no-I/O grid interpreter) and
-AddSubJump (a self-modifying OISC with a text generator) shipped from that
-scan.  A second look over the PythonshellDebugwindow languages found Forbin
-(a genuine Category:Unimplemented gap, now built); the other reassessed
-pages (Exp, Eso2D, Yaren, FROM HERE TO THERE) already have implementations,
-so like the earlier Jumplang/UFSA/Stackint/Queuenanimous they are not on
-this roadmap.  A third pass over the remaining unchecked pages found
-Grapheme (built) and Point Break, and a fourth found MyScript, Procedure,
-Lamfunc, and State and Main — all Category:Unimplemented.  The rest of that
-list is either implemented, a joke, non-deterministic, uncomputable,
-no-I/O, or file/OS-based, and is recorded in `docs/limitations.md`.
-
-### MyScript (high priority)
-A Turing-complete JavaScript-based language with prefix functions, `var
-... is ...` variables, `check`/`if`/`else` switches, `while` loops, and
-`say`/`ask` I/O.  Fully specified with working Hello World, cat, and
-truth-machine examples, and it is a genuine Category:Unimplemented gap.
+interpreter.  The candidates below are the genuine Category:Unimplemented
+gaps still on the table.  The rest of each scan is either implemented, a
+joke, non-deterministic, uncomputable, no-I/O, or file/OS-based, and is
+recorded in `docs/limitations.md`: ruled out are Gravity, Earfuck, Conveyor,
+Chainlang, Binary ///, Fourfuck, Aaargh++, and Bitwise Cyclic Teast; already
+implemented elsewhere are Exp, Eso2D, Yaren, FROM HERE TO THERE, Jumplang,
+UFSA, Stackint, Queuenanimous, and N Refine.
 
 ### Procedure (medium priority)
 A Turing-complete pseudonatural English language with `Set the variable
 'x' to ...`, `Connect to STDOUT`/`Write ... to the connection`, functions,
 repeat-gotos, and if-then-otherwise conditionals.  Working Hello World, cat,
-and truth-machine examples given.  A genuine Category:Unimplemented gap,
-though the English-syntax parser is a heavier lift.
+and truth-machine examples given.  The English-syntax parser is a heavier
+lift.
 
 ### Lamfunc (medium priority)
 A Turing-complete functional language of prefix calls and `F name - code`
 definitions with lambdas (`` .f ``) and builtins for equality, branching,
 bit ops, and variable storage.  `p` prints a value, so text output goes
-bit-by-bit and a text generator is awkward.  A genuine
-Category:Unimplemented gap.
+bit-by-bit and a text generator is awkward.
 
 ### Point Break (low priority)
 A Turing-complete language with four commands (`LET`, `POINT`, `BREAK`,
 `END`) that simulates Minsky machines; `?` reads an integer in a `LET`.  It
 has no output at all, so like Crement and A Painter Ant it can only be a
-self-contained interpreter without a generator.  A genuine
-Category:Unimplemented gap.
+self-contained interpreter without a generator.
 
 ### State and Main (low priority)
 A language of `main` and numbered `state N` definitions whose only
 statements are `(state N!)` changes and `(return)` — the truth-machine
 example explicitly has "No output".  Like Point Break it can only be a
-self-contained interpreter.  A genuine Category:Unimplemented gap.
+self-contained interpreter.
 
 ### Your Time Is Up (low priority)
 A Turing-complete string-rewriting language in binary (`(1+0)(1+0)` rule
 groups followed by the initial datastring), where execution picks a matching
 rule at random.  The output is therefore non-deterministic, and like DSDLAI
 the interpreter would be faithful but its behavior only testable
-mechanically; it also has no I/O, so it is a self-contained interpreter.  A
-genuine Category:Unimplemented gap.
+mechanically; it also has no I/O, so it is a self-contained interpreter.
 
 ### COD (low priority)
 A two-dimensional concurrency-heavy language of cods swimming in waves
 enclosed ponds, where each cod carries an unbounded integer and `+`/`-`
 duplicate or remove it.  Branches resolve to random directions, so like
 LaserFuck/DSDLAI the output is non-deterministic but the interpreter can be
-faithful to the spec.  It has I/O (`...` input, `---` output).  A genuine
-Category:Unimplemented gap.
-
-N Refine was considered here but dropped: it is Category:Implemented (an
-interpreter exists on GitHub), so by this roadmap's rule it is not a gap.
-
-Grapheme previously listed here is done: the interpreter covers the four
-modes, the arithmetic/stack commands, the untyped variable system, and
-function execution (`G`/`I`/`Q`/`Z`), and its only wiki example that can
-run (Hello World) verifies.  It has no text generator — strings cannot
-contain `E`, so even "HELLO" is unspellable — nor a boolean generator (the
-wiki's truth-machine cannot even read its `"0"`/`"1"` input as a clean bit);
-both walls are recorded in `docs/limitations.md`.
+faithful to the spec.  It has I/O (`...` input, `---` output).
 
 ### Suptiftam (low priority)
 Two-dimensional tape-tapes of bytes or integers, permissive function
@@ -96,28 +69,42 @@ field, fully specified including a Minsky-machine reduction.  It has no
 I/O, so like A Painter Ant it can only be a self-contained interpreter
 without a generator.
 
-Forbin previously listed here is done: the interpreter covers function
-definitions (including nested and higher-order), iteration and range loops
-(``0..1`` iterates twice, so ranges double as if-statements), NOT, and the
-bit ``in``/``out`` builtins; the text generator emits one ``out`` line per
-byte.  Two of the wiki's examples are not reproduced — the cat is buggy
-(its ``for _:0..1`` "while" doubles every byte; the language was
-unimplemented, so it was never run) — and the entry point is ``main`` with a
-dummy argument, per the examples.
+### Completed from these scans
+Languages from these scans that shipped (details in the commit history):
 
-ROTfuck previously listed here is done: the interpreter treats each
-executed command as advancing every source character one step along
-`+-><,.[]` and matches brackets dynamically — a bracket that fires rotates
-the program first, then seeks its partner in the rotated program (a
-partnerless fired bracket halts), so loops that revisit a bracket are
-expressible.  The text generator emits straight-line programs by placing
-the ``i``-fold inverse rotation of each desired command at position ``i``.
-
-Decleq previously listed here is done: the memory-mapped I/O falls through
-(the `-2` output and `-1` input do not jump), `a b c` stores `memory[a]-1`
-into `memory[b]` and jumps when it is `<= 0`, and the generator simply
-places each byte in a data cell and prints it with a `-2` instruction, so
-the program is linear and compact.
+- **MyScript** — a JavaScript-like prefix language (`var ... is ...`,
+  `check`/`if`/`else`, `while`, `say`/`ask`); interpreter, text generator,
+  and boolean generator built.
+- **A Painter Ant** — a no-I/O grid interpreter (self-contained, no
+  generator).
+- **AddSubJump** — a self-modifying OISC with a text generator.
+- **Grapheme** — the interpreter covers the four modes, the
+  arithmetic/stack commands, the untyped variable system, and function
+  execution (`G`/`I`/`Q`/`Z`), and its only wiki example that can run
+  (Hello World) verifies.  It has no text generator — strings cannot contain
+  `E`, so even "HELLO" is unspellable — nor a boolean generator (the wiki's
+  truth-machine cannot even read its `"0"`/`"1"` input as a clean bit); both
+  walls are recorded in `docs/limitations.md`.
+- **Forbin** — the interpreter covers function definitions (including
+  nested and higher-order), iteration and range loops (``0..1`` iterates
+  twice, so ranges double as if-statements), NOT, and the bit ``in``/``out``
+  builtins; the text generator emits one ``out`` line per byte.  Two of the
+  wiki's examples are not reproduced — the cat is buggy (its
+  ``for _:0..1`` "while" doubles every byte; the language was unimplemented,
+  so it was never run) — and the entry point is ``main`` with a dummy
+  argument, per the examples.
+- **ROTfuck** — the interpreter treats each executed command as advancing
+  every source character one step along `+-><,.[]` and matches brackets
+  dynamically — a bracket that fires rotates the program first, then seeks
+  its partner in the rotated program (a partnerless fired bracket halts), so
+  loops that revisit a bracket are expressible.  The text generator emits
+  straight-line programs by placing the ``i``-fold inverse rotation of each
+  desired command at position ``i``.
+- **Decleq** — the memory-mapped I/O falls through (the `-2` output and
+  `-1` input do not jump), `a b c` stores `memory[a]-1` into `memory[b]` and
+  jumps when it is `<= 0`, and the generator simply places each byte in a
+  data cell and prints it with a `-2` instruction, so the program is linear
+  and compact.
 
 ## Lean proofs (in priority order)
 
