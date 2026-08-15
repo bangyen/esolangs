@@ -394,7 +394,7 @@ def basicfuck_to_bf(program: str) -> str:
                     raise ValueError("Invalid syntax.")
                 pos += 1
                 body_stmts, pos = parse(pos)
-                if tokens[pos] != "}":
+                if pos >= len(tokens) or tokens[pos] != "}":
                     raise ValueError("Invalid syntax.")
                 pos += 1
                 stmts.append((t, neg, cond, body_stmts))
@@ -434,12 +434,6 @@ def basicfuck_to_bf(program: str) -> str:
         return stmts, pos
 
     statements, _ = parse(0)
-
-    def depth(node: tuple[Any, ...]) -> int:
-        """Return the max ``if``/``while`` nesting depth of a statement."""
-        if node[0] in ("if", "while"):
-            return 1 + max((depth(b) for b in node[3]), default=0)
-        return 0
 
     base = sum(size for _, size in var)  # cells used by the variables
 

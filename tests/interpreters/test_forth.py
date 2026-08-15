@@ -53,6 +53,10 @@ class TestForth:
         # [.] loop prints both and stops at the 0 seed
         assert run_program("0F7*0+F4*C+[.]") == "Hi"
 
+    def test_nested_brackets(self) -> None:
+        # a nested loop is matched to its own closing bracket, not the outer one
+        assert run_program("0[[.]]") == ""
+
     def test_store_and_call(self) -> None:
         assert run_program("1{65.}1;") == "\x05"
         assert run_program("1{F4*5+.}1;") == "A"

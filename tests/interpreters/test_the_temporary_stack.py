@@ -109,3 +109,8 @@ class TestTemporaryStack:
             run_and_capture("o@\\@")
         with pytest.raises(ValueError, match="multiple commands"):
             run_and_capture("v1 @o")
+
+    def test_words_without_commands_are_ignored(self) -> None:
+        """A word containing no command characters does nothing."""
+        assert run_and_capture("abc") == ""
+        assert run_and_capture("x hello. world") == ""

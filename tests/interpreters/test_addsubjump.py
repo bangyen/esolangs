@@ -151,5 +151,24 @@ class TestHaltAndErrors:
         with pytest.raises(ValueError, match="malformed memory token"):
             run_program("12 -6 x -7")
 
+    def test_carry_and_overflow_flags_read_as_zero(self) -> None:
+        # The carry (-2) and overflow (-5) flags are always 0 in this
+        # interpreter, so copying them into cells prints two NUL bytes.
+        code = memory(
+            [
+                [31, -2, 44, -7],
+                [32, -5, 45, -7],
+                [-1, 31, 46, -7],
+                [-1, 32, -8, -7],
+            ],
+            {44: 4, 45: 8, 46: 12},
+        )
+        assert run_program(code) == "\x00\x00"
+
+    def test_comments_and_blank_lines_are_ignored(self) -> None:
+        base = memory([[31, -6, 45, -7], [-1, 31, -8, -7]], {45: 4})
+        code = "# a comment\n\n" + base + " # trailing comment\n"
+        assert run_program(code) == "\x01"
+
     def test_empty_program(self) -> None:
         assert run_program("") == ""
