@@ -111,6 +111,13 @@ class TestFunctions:
     def test_g_executes_string(self) -> None:
         assert run_program("FAFEYEG") == "10"
 
+    def test_g_on_input_with_bad_commands_rejected(self) -> None:
+        """A string read from input and executed via G is validated, not asserted on."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unhandled command"):
+            run_program("WG", "zkg")
+
     def test_i_runs_function(self) -> None:
         assert run_program("FAFHYHIE") == "10"
 

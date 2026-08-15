@@ -24,7 +24,7 @@ def run(
     func: Callable[[], bool] = lambda: False,
 ) -> None:
     """Execute a Dig program with mole movement and underground work commands."""
-    if not code:
+    if not code or not any(line.strip() for line in code):
         raise ValueError("Dig program cannot be empty")
     size = max(len(lne) for lne in code)
     code = [c.ljust(size) for c in code]

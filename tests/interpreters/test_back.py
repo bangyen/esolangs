@@ -42,3 +42,12 @@ class TestBack:
     def test_move_left(self) -> None:
         """< moves the tape head left when it is not at zero."""
         assert run_and_capture([">>-<*"]) == "0 0 1\n"
+
+    def test_blank_only_program_is_empty(self) -> None:
+        """Programs of only blank lines are rejected, not crashed on."""
+        import pytest
+
+        with pytest.raises(ValueError, match="empty"):
+            run_and_capture(["\n"])
+        with pytest.raises(ValueError, match="empty"):
+            run_and_capture(["   ", "\t"])

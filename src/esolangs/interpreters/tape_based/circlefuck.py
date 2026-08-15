@@ -105,6 +105,7 @@ def run(code: str, io: IO) -> None:
             if len(cells) == 1:
                 raise HaltError
             cells.pop(ptr)
+            ptr %= len(cells)
 
         ind = (ind + 1) % len(cells)
 

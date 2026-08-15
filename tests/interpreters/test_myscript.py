@@ -104,6 +104,10 @@ class TestErrors:
         with pytest.raises(EOFError):
             run("say ask", ScriptedIO(""))
 
+    def test_lines_without_tokens_are_ignored(self) -> None:
+        """A line with no tokenizable content is skipped, not crashed on."""
+        assert run_and_capture("-}`\n") == ""
+
     def test_truthiness_coercion(self) -> None:
         # int/str/list/function values coerce in while conditions
         assert run_and_capture("var a is []\nwhile a,\n  say x") == ""
