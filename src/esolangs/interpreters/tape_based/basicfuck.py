@@ -62,10 +62,7 @@ def _parse_allocate(line: str) -> tuple[list[tuple[str, int]], list[int]]:
     var: list[tuple[str, int]] = []
     tape: list[int] = []
     rest = line[len("#allocate") :]
-    while True:
-        m = _IDENT.match(rest)
-        if not m:
-            break
+    while (m := _IDENT.match(rest)) is not None:
         size = int(m.group(3)) if m.group(3) else 1
         tape.extend([0] * size)
         name = m.group(2)
@@ -73,8 +70,6 @@ def _parse_allocate(line: str) -> tuple[list[tuple[str, int]], list[int]]:
             raise ValueError("Invalid identifier.")
         var.append((name, size))
         rest = m.group(4)
-        if not rest.strip():
-            break
     return var, tape
 
 
@@ -328,9 +323,6 @@ class _BoundedTape:
         """Wrap the allocated ``cells`` with bounds checks."""
         self._cells = cells
 
-    def __len__(self) -> int:
-        return len(self._cells)
-
     def __getitem__(self, index: int) -> int:
         if not 0 <= index < len(self._cells):
             raise HaltError("tape index out of bounds")
@@ -340,10 +332,6 @@ class _BoundedTape:
         if not 0 <= index < len(self._cells):
             raise HaltError("tape index out of bounds")
         self._cells[index] = value
-
-    def append(self, value: int) -> None:
-        """Append a cell (used by the pointer growth)."""
-        self._cells.append(value)
 
 
 if __name__ == "__main__":
