@@ -184,9 +184,33 @@ bit):
   matching, which is fragile and hard to verify.  The rotation is a real
   wall, not a pre-encoding detail.
 
-The rest of the interpreter-only languages lack the input a truth-table
-harness needs, are straight-line (2dFish), or are ruled out in
-`docs/limitations.md`.
+### No-input languages: parameterized (assessed)
+
+The remaining no-input languages are not one wall.  The parameterized
+generators (back, bio, nocomment) already handle languages without an input
+command by embedding the bits as constants, which requires **output plus a
+value-testable branch** — input is not needed.  Reclassifying the no-input
+set that way:
+
+- **Trash: ruled out.**  Its output is a prime-advanced number: a
+  non-prime start prints ``0``, a prime start prints the next prime (3, 5,
+  7, ...), and no ``t`` prints nothing.  It can never print a boolean
+  ``"1"``, so it cannot return a truth-table result.
+- **Home Row: viable (unbuilt).**  It prints the current cell as a byte
+  (``k``) and has a value-skip (``j``) and while-nonzero loops (``l``
+  pairs), so a parameterized decision tree over embedded bit cells is
+  possible; the 5x5 wrapping grid makes the pointer routing the main work.
+- **BF-PDA: viable (unbuilt).**  ``.`` prints the top bit as a literal
+  ``'0'``/``'1'`` (exactly the result characters), and ``[``/``]`` loops
+  branch on the top bit — the most tractable parameterized target, needing
+  only the loop-back structure for a bit-consuming decision tree.
+- **No-input and no-output** (A Painter Ant, ArrowQueue, Bitdeque, Eval,
+  Factor, Kak, Keys, Minsky Swap, RAM0): still impossible — nothing to
+  return.
+
+So the earlier "the rest lack input" framing was wrong for the
+output-plus-branch subset: Home Row and BF-PDA are genuine remaining
+parameterized opportunities, and Trash is now formally ruled out.
 
 ## Compiler consolidation
 
