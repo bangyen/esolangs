@@ -9,7 +9,6 @@ import sys
 
 from esolangs.tools.generators.helpers import _ilog
 from esolangs.tools.generators.other import (
-    _123,
     basicfuck,
     between,
     bit_tilde,
@@ -22,6 +21,7 @@ from esolangs.tools.generators.other import (
     laserfuck,
     nevermind,
     nocomment,
+    one_two_three,
     painfuck,
     pct_squared_minus_one,
     sbleq,
@@ -49,8 +49,8 @@ from esolangs.tools.generators.register import (
 from esolangs.tools.generators.stack import modulous, temporary
 from esolangs.tools.generators.tape import (
     ascii_art,
-    bf,
     bfstack,
+    brainfuck,
     brainif,
     circlefuck,
     excon,
@@ -64,17 +64,16 @@ from esolangs.tools.generators.tape import (
 )
 
 __all__ = [
-    "_123",
     "_ilog",
     "add_sub_jump",
     "albabet",
     "ascii_art",
     "basicfuck",
     "between",
-    "bf",
     "bfstack",
     "bio",
     "bit_tilde",
+    "brainfuck",
     "brainif",
     "circlefuck",
     "clockwise",
@@ -97,6 +96,7 @@ __all__ = [
     "modulous",
     "nevermind",
     "nocomment",
+    "one_two_three",
     "painfuck",
     "pct_squared_minus_one",
     "polynomial",

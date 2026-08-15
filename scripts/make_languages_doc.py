@@ -60,13 +60,13 @@ BOOLEAN = {
 # the docs.
 _COMPILER_NAMES = {
     "bfstack": "BFStack",
-    "home-row": "Home Row",
+    "home_row": "Home Row",
     "jaune": "Jaune",
     "suffolk": "Suffolk",
     "unsquare": "Unsquare",
-    "bfpda": "BF-PDA",
+    "bf_pda": "BF-PDA",
     "excon": "EXCON",
-    "RAM0": "RAM0",
+    "ram0": "RAM0",
 }
 
 _COMPILER_DIRS = {
@@ -286,7 +286,7 @@ def render_compilers_section() -> str:
     out: list[str] = [
         f"<summary>Show all {len(compilers)} compilers</summary>",
         "",
-        "Compilers that translate esoteric languages to other target" " languages.",
+        "Compilers that translate esoteric languages to other target languages.",
         "",
     ]
     out.append("### RISC-V Assembly Compilers")

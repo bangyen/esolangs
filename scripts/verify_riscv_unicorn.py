@@ -31,21 +31,21 @@ GENERATOR_CASES = [
 ]
 
 # (name, compiler module, source program, expected output).  Compilers with
-# generators (bfstack, suffolk, unsquare, home-row, excon) round-trip them;
-# the others (jaune, bfpda, RAM0) get fixed programs with known output.
+# generators (bfstack, suffolk, unsquare, home_row, excon) round-trip them;
+# the others (jaune, bf_pda, ram0) get fixed programs with known output.
 COMPILER_CASES = []
 for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("bfstack", "bfstack", gen.bfstack(text), text))
     COMPILER_CASES.append(("suffolk", "suffolk", gen.suffolk(text), text))
     COMPILER_CASES.append(("unsquare", "unsquare", gen.unsquare(text), text))
-    COMPILER_CASES.append(("home-row", "home-row", gen.home_row(text), text))
+    COMPILER_CASES.append(("home_row", "home_row", gen.home_row(text), text))
     COMPILER_CASES.append(("excon", "excon", gen.excon(text), text))
-COMPILER_CASES.append(("home-row", "home-row", "a" * 65 + "k;", "A"))
+COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
-COMPILER_CASES.append(("bfpda", "bfpda", "<.>@.", "01"))
-COMPILER_CASES.append(("RAM0", "RAM0", "A A A", "z: 3\nn: 0\nram: {}\n"))
-COMPILER_CASES.append(("RAM0", "RAM0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}\n"))
+COMPILER_CASES.append(("bf_pda", "bf_pda", "<.>@.", "01"))
+COMPILER_CASES.append(("ram0", "ram0", "A A A", "z: 3\nn: 0\nram: {}\n"))
+COMPILER_CASES.append(("ram0", "ram0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}\n"))
 
 
 def main() -> int:

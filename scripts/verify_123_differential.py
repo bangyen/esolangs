@@ -2,7 +2,7 @@
 
 Runs the same _123-generated program through the RISC-V port
 (extra/assembly/123-riscv.s), the Python simulator (scripts/riscv_sim.py),
-and the in-package Python interpreter (esolangs.interpreters.tape_based.123),
+and the in-package Python interpreter (esolangs.interpreters.tape_based.one_two_three),
 and requires all three to output the source text.  Hand-written programs
 exercising the ``3`` jump paths (which the generator never emits) are
 checked the same way against their expected output.
@@ -22,7 +22,9 @@ from riscv_sim import disassemble_and_run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.generate import _123
 
-run_python = importlib.import_module("esolangs.interpreters.tape_based.123").run
+run_python = importlib.import_module(
+    "esolangs.interpreters.tape_based.one_two_three"
+).run
 
 # Hand-written programs exercising the 3 jump paths, with expected output.
 # 3231: a FALSE 3 skips to the next 3, then a 1 leaves the pointer below 0.

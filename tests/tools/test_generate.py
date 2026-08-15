@@ -24,7 +24,7 @@ from esolangs.interpreters.register_based.huf import run as huf_run
 from esolangs.interpreters.register_based.polynomial import run as polynomial_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.register_based.sophie import run as sophie_run
-from esolangs.interpreters.register_based.WII2D import run as wii2d_run
+from esolangs.interpreters.register_based.wii2d import run as wii2d_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.forth import run as forth_run
@@ -54,9 +54,11 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
     return buffer.getvalue()
 
 
-_run_123 = importlib.import_module("esolangs.interpreters.tape_based.123").run
-_run_pct = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
-_run_2dfish = importlib.import_module("esolangs.interpreters.other.2dfish").run
+_run_123 = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
+_run_pct = importlib.import_module(
+    "esolangs.interpreters.register_based.pct_squared_minus_one"
+).run
+_run_2dfish = importlib.import_module("esolangs.interpreters.other.two_d_fish").run
 _run_painfuck = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 _run_bit_tilde = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
 
@@ -64,8 +66,8 @@ _run_bit_tilde = importlib.import_module("esolangs.interpreters.other.bit_tilde"
 class TestGeneratorRoundTrips:
     def test_123(self) -> None:
         """Each character is XOR-encoded into bits and marched to the output."""
-        hi = gen._123("Hi")  # noqa: SLF001 - public generator
-        hello = gen._123("Hello, World!")  # noqa: SLF001 - public generator
+        hi = gen.one_two_three("Hi")
+        hello = gen.one_two_three("Hello, World!")
         assert roundtrip(_run_123, hi) == "Hi"
         assert roundtrip(_run_123, hello) == "Hello, World!"
 
@@ -289,14 +291,14 @@ class TestGeneratorRoundTrips:
     def test_six_five(self) -> None:
         """±5/±6 walks reach each character value, then A prints it."""
         sixfive_run = importlib.import_module(
-            "esolangs.interpreters.tape_based.6-5"
+            "esolangs.interpreters.tape_based.six_five"
         ).run
         assert roundtrip(sixfive_run, gen.six_five("Hello, World!")) == "Hello, World!"
 
     def test_ascii_art(self) -> None:
         """A brainfuck program encoded as drawing blocks prints the text."""
         ascii_run = importlib.import_module(
-            "esolangs.interpreters.tape_based.ascii-art"
+            "esolangs.interpreters.tape_based.ascii_art"
         ).run
         assert roundtrip(ascii_run, gen.ascii_art("Hi")) == "Hi"
         assert roundtrip(ascii_run, gen.ascii_art("")) == ""
@@ -354,8 +356,7 @@ class TestGeneratorRoundTrips:
         assert gen.pct_squared_minus_one("") == ""
         assert gen.pct_squared_minus_one("\x00") == "'e"
         assert (
-            gen.pct_squared_minus_one("H")
-            == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+            gen.pct_squared_minus_one("H") == "'" + other._pct_path(72) + "e"  # noqa: SLF001
         )
         assert roundtrip(_run_pct, gen.pct_squared_minus_one("Hi")) == "Hi"
         assert (
@@ -388,10 +389,7 @@ class TestGeneratorRoundTrips:
     def test_basicfuck(self) -> None:
         """A variable walks to each byte with +=/-= and write prints it."""
         assert gen.basicfuck("A") == (
-            "#basicfuck t=1 r=0~255 o=nearest\n"
-            "#allocate a\n"
-            "a += 65;\n"
-            "write <- a ;\n"
+            "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;\n"
         )
         assert roundtrip(basicfuck_run, gen.basicfuck("Hi")) == "Hi"
         assert (
@@ -523,7 +521,7 @@ class TestGeneratorProducesOutput:
             gen.pct_squared_minus_one,
             gen.painfuck,
             gen.suffolk,
-            gen._123,  # noqa: SLF001 - public generator
+            gen.one_two_three,
         ]
         for gen_fn in generators:
             assert gen_fn("Hi"), gen_fn.__name__
@@ -560,7 +558,7 @@ class TestGeneratorBranches:
         assert gen.suffolk("") == ""
 
     def test_123_empty(self) -> None:
-        assert gen._123("") == "1"  # noqa: SLF001 - public generator
+        assert gen.one_two_three("") == "1"
 
     def test_forth_nul(self) -> None:
         """A NUL is pushed and printed with an explicit dot."""
@@ -641,8 +639,8 @@ class TestGeneratorBranches:
 
     def test_control_character_123(self) -> None:
         """The 123 generator must not crash on control characters."""
-        gen._123("\x00")  # noqa: SLF001 - public generator
-        gen._123("".join(chr(k) for k in range(1, 20)))  # noqa: SLF001
+        gen.one_two_three("\x00")
+        gen.one_two_three("".join(chr(k) for k in range(1, 20)))
 
     def test_laserfuck_zero_loop(self) -> None:
         """A small value makes laserfuck's loop end with no tail."""

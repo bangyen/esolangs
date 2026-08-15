@@ -12,7 +12,7 @@ from esolangs.interpreters.io import IO
 
 def output(z: int, n: int, ram: dict[int, int], io: IO) -> None:
     """Print the current state of all registers and RAM memory."""
-    res = f"z: {z}\n" f"n: {n}\n" "ram: {"
+    res = f"z: {z}\nn: {n}\nram: {{"
 
     for x, y in ram.items():
         res += f"\n    {x}: {y},"

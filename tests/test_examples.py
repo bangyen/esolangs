@@ -76,7 +76,7 @@ def test_example_files_match_generator() -> None:
 CAT_EXAMPLES = {
     "between": ("other.between", ["hi"], "hi", True),
     "nevermind": ("other.nevermind", ["hi"], "hi\n", True),
-    "6-5": ("tape_based.6-5", ["h"], "h", False),
+    "6-5": ("tape_based.six_five", ["h"], "h", False),
     "modulous": ("stack_based.modulous", ["hi"], "hi", False),
 }
 

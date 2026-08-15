@@ -10,8 +10,8 @@ __all__ = [
     "_mammalian_walk",
     "_six_five_path",
     "ascii_art",
-    "bf",
     "bfstack",
+    "brainfuck",
     "brainif",
     "circlefuck",
     "excon",
@@ -84,7 +84,7 @@ def _bf_set(value: int) -> str:
     return "+" * a + "[>" + "+" * b + "<-]" + ">" + "+" * r + "."
 
 
-def bf(text: str) -> str:
+def brainfuck(text: str) -> str:
     """Generate a brainfuck program that outputs ``text``.
 
     The pointer walks right one cell per character.  A cell is reused when
@@ -180,7 +180,7 @@ def factor(text: str) -> str:
     (from :func:`bf`) that prints ``text``.
     """
     _require_bytes(text, "Factor")
-    return str(_factor_encode(bf(text)))
+    return str(_factor_encode(brainfuck(text)))
 
 
 def ascii_art(text: str) -> str:
@@ -190,7 +190,7 @@ def ascii_art(text: str) -> str:
     the brainfuck program for ``text`` rendered as art blocks.
     """
     _require_bytes(text, "ASCII art")
-    return bf_to_ascii_art(bf(text))
+    return bf_to_ascii_art(brainfuck(text))
 
 
 def three_d_bf(text: str) -> str:
@@ -203,7 +203,7 @@ def three_d_bf(text: str) -> str:
     faithful brainfuck superset.
     """
     _require_bytes(text, "3D Brainfuck")
-    return bf(text).replace(">", "n").replace("<", "s")
+    return brainfuck(text).replace(">", "n").replace("<", "s")
 
 
 def bfstack(text: str) -> str:

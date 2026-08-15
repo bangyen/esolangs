@@ -60,9 +60,7 @@ def comp(code: str) -> str:
                 new = ind + 1
 
             if num:
-                res += (
-                    "\tlw   t0, 0(s1)\n" f"\taddi t0, t0, {num}\n" "\tsw   t0, 0(s1)\n"
-                )
+                res += f"\tlw   t0, 0(s1)\n\taddi t0, t0, {num}\n\tsw   t0, 0(s1)\n"
         elif c in "dfk":
             if ind and code[ind - 1] == "j":
                 num, new = 1, ind + 1
@@ -80,7 +78,7 @@ def comp(code: str) -> str:
             end = True
 
             n = skip if skip - 1 else ""
-            res += "\tlw   t0, 0(s1)\n" f"\tbeqz t0, .skip{n}\n"
+            res += f"\tlw   t0, 0(s1)\n\tbeqz t0, .skip{n}\n"
 
             continue
         elif c == "l":
@@ -89,11 +87,11 @@ def comp(code: str) -> str:
             res += "\tlw   t0, 0(s1)\n"
 
             if loop % 2:
-                res += f"\tbnez t0, .top{n}\n" f".bot{n}:\n"
+                res += f"\tbnez t0, .top{n}\n.bot{n}:\n"
             else:
-                res += f"\tbeqz t0, .bot{n}\n" f".top{n}:\n"
+                res += f"\tbeqz t0, .bot{n}\n.top{n}:\n"
         elif c == ";":
-            res += "\n\tli   a0, 0\n" "\tli   a7, 93\n" "\tecall\n"
+            res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n"
 
         if end:
             n = skip if skip - 1 else ""
@@ -119,24 +117,14 @@ def comp(code: str) -> str:
     if func["d"][1]:
         s = "\tadd  s4, s4, t3\n"
         # wrap mod 5 (the 5x5 grid): subtract 5 once the index reaches 5
-        s += (
-            "\tli   t4, 5\n"
-            "\tblt  s4, t4, .down_ok\n"
-            "\taddi s4, s4, -5\n"
-            ".down_ok:\n"
-        )
+        s += "\tli   t4, 5\n\tblt  s4, t4, .down_ok\n\taddi s4, s4, -5\n.down_ok:\n"
 
         s += "\tmv   t0, s4\n" + cell("t0")
 
         res += "\ndown:\n" + s + "\tret\n"
     if func["f"][1]:
         s = "\tadd  s5, s5, t3\n"
-        s += (
-            "\tli   t4, 5\n"
-            "\tblt  s5, t4, .right_ok\n"
-            "\taddi s5, s5, -5\n"
-            ".right_ok:\n"
-        )
+        s += "\tli   t4, 5\n\tblt  s5, t4, .right_ok\n\taddi s5, s5, -5\n.right_ok:\n"
 
         s += "\tmv   t0, s5\n" + cell("t0")
 
@@ -151,7 +139,7 @@ def comp(code: str) -> str:
             "\tli   a2, 1\n"
             "\tecall\n"
             "\tsw   zero, 0(s1)\n"
-            + ("\taddi t3, t3, -1\n" "\tbgt  t3, zero, print\n" "\taddi t3, t3, 1\n")
+            + ("\taddi t3, t3, -1\n\tbgt  t3, zero, print\n\taddi t3, t3, 1\n")
             * bool(b)
             + "\tret\n"
         )

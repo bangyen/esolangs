@@ -21,7 +21,7 @@ from esolangs.exceptions import (
     UnsupportedTranspilationError,
 )
 
-ascii_art = importlib.import_module("esolangs.interpreters.tape_based.ascii-art")
+ascii_art = importlib.import_module("esolangs.interpreters.tape_based.ascii_art")
 
 
 # (brainfuck program, stdin) pairs; every pair must terminate and agree.

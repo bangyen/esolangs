@@ -17,7 +17,7 @@ from esolangs.interpreters.io import IO
 spec = importlib.util.spec_from_file_location(
     "minsky_swap",
     Path(__file__).parents[2]
-    / "src/esolangs/interpreters/register_based/minsky-swap.py",
+    / "src/esolangs/interpreters/register_based/minsky_swap.py",
 )
 assert spec is not None, "Failed to load module spec"
 minsky_swap = importlib.util.module_from_spec(spec)
