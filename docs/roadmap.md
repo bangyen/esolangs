@@ -185,3 +185,36 @@ gcc-based test suite were dropped.  The new BF-PDA and RAM0 backends follow
 the interpreters (no-op brackets; the ``z:/n:/ram:`` state dump with
 insertion-ordered RAM) rather than the C compilers' divergent semantics
 (while-loops; a pre-seeded stack; a ``Z:/N:`` dump).
+
+## Transpilers
+
+The transpilers all hub through brainfuck today: ``bf ⇄ ASCII art`` (a
+bijection), ``bf → Circlefuck``, ``bf → 6-5``, and ``X → bf`` for X in
+{Basicfuck, BFStack, BIO, huf}.  This works because those languages share
+brainfuck's cell-tape/bracket core; the partial ones reject their
+out-of-class programs rather than mistranslate, and the NoComment and
+reverse-decoder transpilers were dropped (silent-dropper, round-trip-only).
+
+A direct transpile between languages with no shared core is not a rewrite —
+it needs a full runtime of one inside the other.  The candidates that do
+share a core:
+
+- **OISC-to-OISC (Decleq ↔ AddSubJump; research-level).**  Both are
+  self-modifying-memory OISCs, but a general total transpiler needs dynamic
+  instruction dispatch (``ip = memory[pc]`` lookup), which neither provides:
+  ASJ's only conditional is ``dest = dest ± op`` by a *fixed* operand, so it
+  can't express Decleq's "if ≤ 0 pick a target" jump, and Decleq can't index
+  its memory by a runtime address.  A companion ``SUBLEQ`` (``mem[b] -=
+  mem[a]; if <= 0 goto c``) shares Decleq's conditional-jump core and would
+  pair more directly, but the arithmetic is still a subleq-style compiler.
+- **Forth-family ↔ Forþ.**  Forþ is Forth-like (single-char stack,
+  arithmetic, ``(``/``[`` loops, ``;`` calls); adding a second Forth dialect
+  (e.g. plain Forth) would share the stack+arithmetic+loop core and
+  transpile directly.
+- **Boolfuck ↔ ABCDrection / Minifuck.**  A Boolfuck (bit tape, little-endian
+  byte I/O) shares ABCDrection's bit-tape model; Minifuck's
+  flip-and-conditional-skip is further away.
+- **2D bf-tape (Dimensional ↔ LaserFuck; research-level).**  Both operate a
+  brainfuck-style byte tape, but Dimensional's ``[``/``]`` loops have no
+  counterpart in LaserFuck's mirror-driven control — a direct transpile
+  would again be a full simulation.
