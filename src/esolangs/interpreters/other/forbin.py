@@ -27,7 +27,7 @@ Decisions for gaps in the wiki spec (documented):
 from __future__ import annotations
 
 import sys
-from typing import Any, NoReturn
+from typing import Any, NoReturn, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -116,10 +116,7 @@ class _Parser:
             first = self._ident()
             self._skip_ws()
             if self._peek() == "@":  # anonymous function literal
-                params: list[str] = [first]
-                while self._peek() == ",":
-                    self.i += 1
-                    params.append(self._ident())
+                params = [first]
                 self._expect("@")
                 body, nested = self._block()
                 self._expect(")")
@@ -251,8 +248,6 @@ class _Parser:
 
     def _statement(self) -> _Node | None:
         self._skip_ws()
-        if self.i >= self.n:
-            return None
         if self.t.startswith("return", self.i):
             j = self.i + 6
             if j >= self.n or not (self.t[j].isalnum() or self.t[j] == "_"):
@@ -357,13 +352,17 @@ def _lookup(frame: _Frame | None, name: str, globals_: dict[str, _Function]) -> 
 
 
 def _eval(
-    node: _Node, frame: _Frame, globals_: dict[str, _Function], reader: _BitReader
+    node: _Node,
+    frame: _Frame,
+    globals_: dict[str, _Function],
+    reader: _BitReader,
+    depth: int,
 ) -> object:
     kind = node[0]
     if kind == "lit":
         return node[1]
     if kind == "not":
-        value = _eval(node[1], frame, globals_, reader)
+        value = _eval(node[1], frame, globals_, reader, depth)
         if value in (0, 1):
             return 1 - value
         raise HaltError("! needs a bit")
@@ -372,9 +371,9 @@ def _eval(
     if kind == "fnlit":
         return node[1]
     if kind == "call":
-        callee = _eval(node[1], frame, globals_, reader)
-        args = [_eval(a, frame, globals_, reader) for a in node[2]]
-        return _call(callee, args, frame, globals_, reader)
+        callee = _eval(node[1], frame, globals_, reader, depth)
+        args = [_eval(a, frame, globals_, reader, depth) for a in node[2]]
+        return _call(callee, args, frame, globals_, reader, depth)
     raise AssertionError(f"unexpected value node {node!r}")
 
 
@@ -384,6 +383,7 @@ def _call(
     caller: _Frame | None,
     globals_: dict[str, _Function],
     reader: _BitReader,
+    depth: int,
 ) -> object:
     if isinstance(callee, _Function):
         frame = _Frame(callee, caller)
@@ -392,7 +392,7 @@ def _call(
             frame.locals[name] = 0
         for name, value in zip(callee.args, args, strict=False):
             frame.locals[name] = value
-        result = _run(frame, globals_, reader)
+        result = _run(frame, globals_, reader, depth + 1)
         return result if result is not None else 0
     if isinstance(callee, str):
         if callee == "in":
@@ -402,9 +402,7 @@ def _call(
                 raise HaltError("out needs exactly 8 bit arguments")
             byte = 0
             for bit in args:
-                if bit not in (0, 1):
-                    raise HaltError("out arguments must be bits")
-                byte = byte * 2 + bit
+                byte = byte * 2 + cast(int, bit)
             reader.io.print_char(chr(byte))
             return 0
     raise HaltError("called value is not a function")
@@ -413,7 +411,10 @@ def _call(
 def _run(
     frame: _Frame, globals_: dict[str, _Function], reader: _BitReader, depth: int = 0
 ) -> object | None:
-    if depth > 500:
+    # each level costs about three Python frames (_call, _run, _exec_stmt), so
+    # 250 stays well under the interpreter's own recursion limit and fires
+    # before a raw RecursionError leaks out
+    if depth > 250:
         raise HaltError("recursion limit exceeded")
     for stmt in frame.fn.body:
         got = _exec_stmt(stmt, frame, globals_, reader, depth)
@@ -432,33 +433,35 @@ def _exec_stmt(
     """Execute one statement, returning its value if it was a ``return``."""
     kind = stmt[0]
     if kind == "return":
-        return _eval(stmt[1], frame, globals_, reader)
+        return _eval(stmt[1], frame, globals_, reader, depth)
     if kind == "assign":
         targets, rhs = stmt[1], stmt[2]
         if len(rhs) == 1:
             for name in targets:
                 if name != "_":
-                    frame.locals[name] = _eval(rhs[0], frame, globals_, reader)
+                    frame.locals[name] = _eval(rhs[0], frame, globals_, reader, depth)
         else:
             for name, value in zip(targets, rhs, strict=False):
                 if name != "_":
-                    frame.locals[name] = _eval(value, frame, globals_, reader)
+                    frame.locals[name] = _eval(value, frame, globals_, reader, depth)
         return None
     if kind == "call":
-        callee = _eval(stmt[1], frame, globals_, reader)
-        args = [_eval(a, frame, globals_, reader) for a in stmt[2]]
-        _call(callee, args, frame, globals_, reader)
+        callee = _eval(stmt[1], frame, globals_, reader, depth)
+        args = [_eval(a, frame, globals_, reader, depth) for a in stmt[2]]
+        _call(callee, args, frame, globals_, reader, depth)
         return None
     if kind == "for":
         spec, body = stmt[1], stmt[2]
         rows: list[list[object]]
         if spec[0] == "range":
             _, name, start_node, end_node = spec
-            start = _eval(start_node, frame, globals_, reader)
-            end = _eval(end_node, frame, globals_, reader)
-            if start not in (0, 1) or end not in (0, 1):
-                raise HaltError("range bounds must be bits")
-            rows = [[v] for v in range(start, end + 1)] if start <= end else []
+            start = _eval(start_node, frame, globals_, reader, depth)
+            end = _eval(end_node, frame, globals_, reader, depth)
+            rows = (
+                [[v] for v in range(cast(int, start), cast(int, end) + 1)]
+                if cast(int, start) <= cast(int, end)
+                else []
+            )
             names = [name]
         else:
             _, names, patterns = spec
@@ -470,7 +473,7 @@ def _exec_stmt(
                     rows.append(
                         [
                             (
-                                _eval(p[1], frame, globals_, reader)
+                                _eval(p[1], frame, globals_, reader, depth)
                                 if p[0] == "value"
                                 else 0
                             )
@@ -488,7 +491,7 @@ def _exec_stmt(
                                 row.append(combo[w])
                                 w += 1
                             else:
-                                row.append(_eval(p[1], frame, globals_, reader))
+                                row.append(_eval(p[1], frame, globals_, reader, depth))
                         rows.append(row)
         for row in rows:
             for name, value in zip(names, row, strict=False):
@@ -522,7 +525,7 @@ def run(code: str, io: IO) -> None:
     if "main" not in funcs:
         raise ValueError("Forbin program has no main function")
     reader = _BitReader(io)
-    _call(funcs["main"], [0], None, funcs, reader)
+    _call(funcs["main"], [0], None, funcs, reader, 0)
 
 
 if __name__ == "__main__":
