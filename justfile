@@ -12,7 +12,6 @@ CARGO_BIN := "$HOME/.cargo/bin"
 help:
     @echo "Available targets:"
     @echo "  lint-python  - Lint Python files with Black, Ruff, and MyPy"
-    @echo "  lint-c       - Lint C files with clang-format and clang-tidy"
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
@@ -43,21 +42,6 @@ lint-python:
 # code is unclean, and skips cleanly (exit 0) when the tool is missing, so a
 # local `just lint` degrades gracefully without silently swallowing failures.
 
-# lint c
-lint-c:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    export PATH="{{HOMEBREW_BIN}}:{{LLVM_BIN}}:$PATH"
-    if command -v clang-format >/dev/null 2>&1; then
-        fail=0
-        while IFS= read -r f; do
-            clang-format --dry-run --Werror "$f" || fail=1
-        done < <(find src/esolangs/compilers/c -name "*.c")
-        exit $fail
-    else
-        echo "skip: clang-format not found"
-    fi
-
 # lint rust
 lint-rust:
     #!/usr/bin/env bash
@@ -87,7 +71,7 @@ lint-lean:
     fi
 
 # lint all code
-lint: lint-python lint-c lint-rust lint-lean
+lint: lint-python lint-rust lint-lean
     @echo "All lint checks completed!"
 
 # run tests

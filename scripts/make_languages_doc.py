@@ -64,14 +64,13 @@ _COMPILER_NAMES = {
     "jaune": "Jaune",
     "suffolk": "Suffolk",
     "unsquare": "Unsquare",
-    "bf-pda": "BF-PDA",
+    "bfpda": "BF-PDA",
     "excon": "EXCON",
     "RAM0": "RAM0",
 }
 
 _COMPILER_DIRS = {
     "assembly": (ROOT / "src" / "esolangs" / "compilers" / "assembly", "*.py"),
-    "c": (ROOT / "src" / "esolangs" / "compilers" / "c", "*.c"),
 }
 
 
@@ -86,7 +85,6 @@ def _compiler_set(kind: str) -> set[str]:
 
 
 ASSEMBLY_COMPILERS = _compiler_set("assembly")
-C_COMPILERS = _compiler_set("c")
 
 # The README's Extra Implementations section: each entry is the extra/
 # subdirectory, its source pattern, the file-stem -> display-name map (an
@@ -217,7 +215,7 @@ def _capabilities(name: str) -> dict[str, bool]:
         "interpreter": lang.interpreter is not None if lang else False,
         "native": name in NATIVE,
         "boolean": name in BOOLEAN,
-        "compiler": name in ASSEMBLY_COMPILERS or name in C_COMPILERS,
+        "compiler": name in ASSEMBLY_COMPILERS,
         "hello": hello,
         "cat": (CAT / f"{_file_name(name)}.txt").exists(),
         "truth-machine": (TRUTH / f"{_file_name(name)}.txt").exists(),
@@ -244,7 +242,7 @@ def render() -> str:
         "Compiler | Examples |",
         "| --- | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
-    for name in sorted(set(LANGUAGES) | C_COMPILERS | NATIVE):
+    for name in sorted(set(LANGUAGES) | ASSEMBLY_COMPILERS | NATIVE):
         c = _capabilities(name)
         examples = " ".join(k for k in ("hello", "cat", "truth-machine") if c[k])
         lines.append(
@@ -295,24 +293,18 @@ def render_languages_section() -> str:
 
 def render_compilers_section() -> str:
     """Render the README's Compilers section between the markers."""
-    compilers = ASSEMBLY_COMPILERS | C_COMPILERS
+    compilers = ASSEMBLY_COMPILERS
     out: list[str] = [
         f"<summary>Show all {len(compilers)} compilers</summary>",
         "",
         "Compilers that translate esoteric languages to other target" " languages.",
         "",
     ]
-    for kind, heading in (
-        ("assembly", "RISC-V Assembly Compilers"),
-        ("c", "C Compilers"),
-    ):
-        out.append(f"### {heading}")
-        out.append("")
-        for name in sorted(_compiler_set(kind)):
-            out.append(
-                f"- [{name}](https://esolangs.org/wiki/{name.replace(' ', '_')})"
-            )
-        out.append("")
+    out.append("### RISC-V Assembly Compilers")
+    out.append("")
+    for name in sorted(_compiler_set("assembly")):
+        out.append(f"- [{name}](https://esolangs.org/wiki/{name.replace(' ', '_')})")
+    out.append("")
     return "\n".join(out).rstrip()
 
 
@@ -366,6 +358,7 @@ if __name__ == "__main__":
     out = ROOT / "docs" / "languages.md"
     out.parent.mkdir(exist_ok=True)
     out.write_text(render())
-    print(f"wrote {out} ({len(set(LANGUAGES) | C_COMPILERS | NATIVE)} languages)")
+    count = len(set(LANGUAGES) | ASSEMBLY_COMPILERS | NATIVE)
+    print(f"wrote {out} ({count} languages)")
     update_readme()
     print("updated the generated sections of README.md")

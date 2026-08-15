@@ -9,6 +9,9 @@ COMPILERS = [
     "esolangs.compilers.assembly.home-row",
     "esolangs.compilers.assembly.jaune",
     "esolangs.compilers.assembly.unsquare",
+    "esolangs.compilers.assembly.excon",
+    "esolangs.compilers.assembly.bfpda",
+    "esolangs.compilers.assembly.RAM0",
 ]
 
 
@@ -351,6 +354,55 @@ class TestSuffolkComp:
         assert "li   s5" in mod.comp("<<<<", 1)
 
 
+class TestExcon:
+    def test_reset_and_flip(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.excon")
+        output = mod.comp(":^")
+        assert "li   s1, 0" in output
+        assert "li   s2, 7" in output
+        assert "xor  s1, s1, t1" in output
+
+    def test_output_emits_syscall(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.excon")
+        assert "ecall" in mod.comp("!")
+
+
+class TestBFPDA:
+    def test_push_flip_pop(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.bfpda")
+        output = mod.comp("<@>")
+        assert "sb   zero, 0(s1)" in output  # push 0
+        assert "xori t0, t0, 1" in output  # flip top
+        assert "addi s1, s1, 1" in output  # pop
+
+    def test_output_emits_syscall(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.bfpda")
+        assert "ecall" in mod.comp(".")
+
+
+class TestRAM0:
+    def test_parse(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.RAM0")
+        assert mod.parse("A A 5") == ["A", "A", "5"]
+        assert mod.parse("Z A N C L S") == ["Z", "A", "N", "C", "L", "S"]
+
+    def test_dispatch_labels(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.RAM0")
+        output = mod.comp("A A")
+        assert ".L0:" in output
+        assert ".L1:" in output
+        assert ".done:" in output
+
+    def test_goto_jumps(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.RAM0")
+        assert "j .L0" in mod.comp("1")
+        assert "j .done" in mod.comp("9 A")
+
+    def test_c_skip(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.RAM0")
+        assert "beqz s1, .done" in mod.comp("C")
+
+
 class TestCompilerFuzz:
     """Compilers must not crash on arbitrary (possibly malformed) input."""
 
@@ -363,6 +415,9 @@ class TestCompilerFuzz:
             "esolangs.compilers.assembly.home-row",
             "esolangs.compilers.assembly.jaune",
             "esolangs.compilers.assembly.unsquare",
+            "esolangs.compilers.assembly.excon",
+            "esolangs.compilers.assembly.bfpda",
+            "esolangs.compilers.assembly.RAM0",
         ],
     )
     def test_random_input_does_not_crash(self, module: str) -> None:
