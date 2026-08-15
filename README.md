@@ -246,7 +246,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 | Source | Direction | Target |
 | --- | :---: | --- |
 | BF | ⇄ | ASCII art |
-| BF | → | Circlefuck |
+| BF | ⇄ | Circlefuck |
 | Basicfuck | → | BF |
 | BF | ⇄ | 6-5 |
 | NoComment | → | BF |
