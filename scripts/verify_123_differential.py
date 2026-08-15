@@ -1,6 +1,6 @@
 """Differential check of the 123 interpreter across three implementations.
 
-Runs the same _123-generated program through the RISC-V port
+Runs the same one_two_three-generated program through the RISC-V port
 (extra/assembly/123-riscv.s), the Python simulator (scripts/riscv_sim.py),
 and the in-package Python interpreter (esolangs.interpreters.tape_based.one_two_three),
 and requires all three to output the source text.  Hand-written programs
@@ -20,7 +20,7 @@ from riscv_elf_runner import run_elf as run_riscv
 from riscv_sim import disassemble_and_run
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.generate import _123
+from esolangs.tools.generate import one_two_three
 
 run_python = importlib.import_module(
     "esolangs.interpreters.tape_based.one_two_three"
@@ -67,7 +67,7 @@ def main(argv: list[str]) -> int:
             print(f"input {label!r} -> all three agree {expected!r}")
 
     for text in argv[2:]:
-        check(_123(text).encode(), text.encode(), text)
+        check(one_two_three(text).encode(), text.encode(), text)
     for program, expected in HAND_WRITTEN:
         check(program.encode(), expected, program)
     return 1 if failures else 0
