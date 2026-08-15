@@ -7,8 +7,8 @@ bitwise complement of the top, ``.`` prints the top as a character, ``,``
 reads a line pushing each byte (rightmost on top), ``(``/``[`` branch or
 loop while the top is nonzero, ``{`` stores a scope under the number atop
 the stack, ``;`` calls the stored scope, ``o`` reverses the stack, ``c``
-rotates the top three, and ``v`` swaps the top two.  Unknown characters
-require a two-element stack and otherwise do nothing.
+rotates the top three, and ``v`` swaps the top two.  Any other character is
+ignored.
 
 Semantics match the Rust cross-check (``extra/rust/forth.rs``):
 - arithmetic wraps to signed 32-bit integers, and ``/``/``%`` truncate
@@ -121,7 +121,7 @@ def _execute(code: str, stack: list[int], table: dict[int, str], io: IO) -> int:
                     _execute(scope, stack, table, io)
             else:
                 table[top()] = scope
-        else:
+        elif char in "+-*/%v":
             if len(stack) < 2:
                 return 3
             two = pop()
@@ -143,9 +143,6 @@ def _execute(code: str, stack: list[int], table: dict[int, str], io: IO) -> int:
             elif char == "v":
                 stack.append(two)
                 stack.append(one)
-            else:
-                stack.append(one)
-                stack.append(two)
     return 0
 
 
