@@ -188,25 +188,27 @@ insertion-ordered RAM) rather than the C compilers' divergent semantics
 
 ## Transpilers
 
-The transpilers all hub through brainfuck today: ``bf ⇄ ASCII art`` (a
-bijection), ``bf → Circlefuck``, ``bf → 6-5``, and ``X → bf`` for X in
-{Basicfuck, BFStack, BIO, huf}.  This works because those languages share
-brainfuck's cell-tape/bracket core; the partial ones reject their
-out-of-class programs rather than mistranslate, and the NoComment and
-reverse-decoder transpilers were dropped (silent-dropper, round-trip-only).
+The transpilers today: ``bf ⇄ ASCII art`` (a bijection), ``bf → Circlefuck``,
+``bf → 6-5``, ``Decleq → S*bleq`` (the one non-brainfuck pair), and ``X → bf``
+for X in {Basicfuck, BFStack, BIO, huf}.  This works because those languages
+share a common core; the partial ones reject their out-of-class programs
+rather than mistranslate, and the NoComment and reverse-decoder transpilers
+were dropped (silent-dropper, round-trip-only).
 
 A direct transpile between languages with no shared core is not a rewrite —
 it needs a full runtime of one inside the other.  The candidates that do
 share a core:
 
-- **OISC-to-OISC (Decleq ↔ AddSubJump; research-level).**  Both are
-  self-modifying-memory OISCs, but a general total transpiler needs dynamic
-  instruction dispatch (``ip = memory[pc]`` lookup), which neither provides:
-  ASJ's only conditional is ``dest = dest ± op`` by a *fixed* operand, so it
-  can't express Decleq's "if ≤ 0 pick a target" jump, and Decleq can't index
-  its memory by a runtime address.  A companion ``SUBLEQ`` (``mem[b] -=
-  mem[a]; if <= 0 goto c``) shares Decleq's conditional-jump core and would
-  pair more directly, but the arithmetic is still a subleq-style compiler.
+- **OISC-to-OISC (Decleq → S*bleq; done).**  Both are self-modifying-memory
+  OISCs, and both branch on "≤ 0"; the transpiler materialises Decleq's
+  ``mem[b] = mem[a] - 1`` with straight-line scratch blocks and S*bleq's
+  indirect ``c`` (``ip = mem[c]``) expresses Decleq's direct jump.  Decleq
+  code that re-reads a written cell as an operand (self-modifying code) is
+  rejected, and a program that runs off into memory it extended past itself
+  halts in the translation; both limits are documented in
+  `transpilers.decleq_to_sbleq`.  The reverse S*bleq → Decleq and the
+  AddSubJump pair remain research-level: neither has dynamic instruction
+  dispatch, so the general total transpiler is not expressible.
 - **Forth-family ↔ Forþ.**  Forþ is Forth-like (single-char stack,
   arithmetic, ``(``/``[`` loops, ``;`` calls); adding a second Forth dialect
   (e.g. plain Forth) would share the stack+arithmetic+loop core and

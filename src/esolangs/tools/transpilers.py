@@ -22,6 +22,7 @@ __all__ = [
     "bf_to_six_five",
     "bfstack_to_bf",
     "bio_to_bf",
+    "decleq_to_sbleq",
     "huf_to_bf",
 ]
 
@@ -565,6 +566,230 @@ def basicfuck_to_bf(program: str) -> str:
     return "".join(out)
 
 
+class _DecleqAsm:
+    """Tiny S*bleq assembler used by :func:`decleq_to_sbleq`.
+
+    Labels map to instruction indices; ``data`` and ``scratch`` cells are
+    resolved to absolute addresses at build time, and ``jump`` cells hold the
+    absolute address of a label so that S*bleq's *indirect* ``c`` operand
+    (``ip = mem[c]``) can express a direct Decleq jump target.
+    """
+
+    def __init__(self, cells: list[int]) -> None:
+        self.code: list[list[Any]] = []
+        self.syms: dict[str, int] = {}
+        self.data: list[int] = list(cells)
+        self.cells: list[int] = []
+        self._cells: dict[str, int] = {}
+        self.jump_cells: dict[str, int] = {}
+
+    def emit(self, a: Any, b: Any, c: Any, label: str | None = None) -> None:
+        if label is not None:
+            self.syms[label] = len(self.code)
+        self.code.append([a, b, c])
+
+    def data_addr(self, i: int) -> tuple[str, int]:
+        return ("data", i)
+
+    def scratch(self, name: str, value: int = 0) -> tuple[str, int]:
+        if name not in self._cells:
+            self._cells[name] = len(self.cells)
+            self.cells.append(value)
+        return ("scratch", self._cells[name])
+
+    def jcell(self, label: str) -> tuple[str, int]:
+        if label not in self.jump_cells:
+            self.jump_cells[label] = len(self.cells)
+            self.cells.append(0)
+        return ("jump", self.jump_cells[label])
+
+    def _resolve(self, v: Any, base_data: int, base_scratch: int) -> int:
+        if isinstance(v, tuple):
+            kind, idx = v
+            base = base_data if kind == "data" else base_scratch
+            return base + int(idx)
+        return int(v)
+
+    def build(self) -> list[int]:
+        n = len(self.code)
+        base_data = 3 * n
+        base_scratch = base_data + len(self.data)
+        for label, cell in self.jump_cells.items():
+            self.cells[cell] = 3 * self.syms[label]
+        mem: list[int] = []
+        for a, b, c in self.code:
+            mem += [
+                self._resolve(a, base_data, base_scratch),
+                self._resolve(b, base_data, base_scratch),
+                self._resolve(c, base_data, base_scratch),
+            ]
+        return mem + self.data + self.cells
+
+
+def _emit_copy(asm: _DecleqAsm, a: Any, b: Any, target: str, label: str) -> None:
+    """Emit ``b = a - 1`` for ``a != b``, preserving ``a``, then branch on ``b``."""
+    s1 = asm.scratch("s1")
+    s2 = asm.scratch("s2")
+    u = asm.scratch("u")
+    zero = asm.scratch("zero", 0)
+    one = asm.scratch("one", 1)
+    neg = asm.scratch("neg", -1)
+    t = asm.scratch("t")
+    asm.emit(a, zero, asm.jcell(f"{label}.NEG"), label=label)
+    asm.emit(s1, s1, asm.jcell(f"{label}.z2"), label=f"{label}.Z1")
+    asm.emit(s2, s2, asm.jcell(f"{label}.z3"), label=f"{label}.z2")
+    asm.emit(b, b, asm.jcell(f"{label}.L1"), label=f"{label}.z3")
+    asm.emit(a, one, asm.jcell(f"{label}.C2"), label=f"{label}.L1")
+    asm.emit(s1, neg, asm.jcell(f"{label}.j1"))
+    asm.emit(s2, neg, asm.jcell(f"{label}.j2"), label=f"{label}.j1")
+    asm.emit(u, u, asm.jcell(f"{label}.L1"), label=f"{label}.j2")
+    asm.emit(s1, neg, asm.jcell(f"{label}.j1b"), label=f"{label}.C2")
+    asm.emit(s2, neg, asm.jcell(f"{label}.L3"), label=f"{label}.j1b")
+    asm.emit(s2, one, asm.jcell(f"{label}.C3"), label=f"{label}.L3")
+    asm.emit(a, neg, asm.jcell(f"{label}.j3"))
+    asm.emit(u, u, asm.jcell(f"{label}.L3"), label=f"{label}.j3")
+    asm.emit(a, neg, asm.jcell(f"{label}.C4"), label=f"{label}.C3")
+    asm.emit(s1, one, asm.jcell(f"{label}.C5"), label=f"{label}.C4")
+    asm.emit(b, neg, asm.jcell(f"{label}.j5"))
+    asm.emit(u, u, asm.jcell(f"{label}.C4"), label=f"{label}.j5")
+    asm.emit(t, t, asm.jcell(f"{label}.A2"), label=f"{label}.NEG")
+    asm.emit(t, neg, asm.jcell(f"{label}.A3"), label=f"{label}.A2")  # t = 1
+    asm.emit(t, a, asm.jcell(f"{label}.A4"), label=f"{label}.A3")  # t = 1 - a
+    asm.emit(b, b, asm.jcell(f"{label}.A5"), label=f"{label}.A4")
+    asm.emit(t, one, asm.jcell(f"{label}.A7"), label=f"{label}.A5")  # t -= 1
+    asm.emit(b, one, asm.jcell(f"{label}.A5"))  # b -= 1; loop
+    asm.emit(b, one, asm.jcell(f"{label}.C5"), label=f"{label}.A7")  # final b -= 1
+    asm.emit(b, zero, asm.jcell(target), label=f"{label}.C5")  # if b <= 0 goto target
+
+
+def _emit_input(asm: _DecleqAsm, b: Any, target: str, label: str) -> None:
+    """Emit ``b = <byte>`` (an input cell, so ``b >= 0``), then branch on ``b``."""
+    u = asm.scratch("u")
+    neg = asm.scratch("neg", -1)
+    one = asm.scratch("one", 1)
+    t = asm.scratch("t")
+    asm.emit(b, b, asm.jcell(f"{label}.R2"), label=label)
+    asm.emit(b, -2, asm.jcell(f"{label}.R3"), label=f"{label}.R2")  # b = -value
+    asm.emit(t, t, asm.jcell(f"{label}.R4"), label=f"{label}.R3")
+    asm.emit(t, neg, asm.jcell(f"{label}.R5"), label=f"{label}.R4")  # t = 1
+    asm.emit(t, b, asm.jcell(f"{label}.S2L"), label=f"{label}.R5")  # t = 1 + value
+    asm.emit(b, b, asm.jcell(f"{label}.S2L"))  # b = 0 (value >= 0)
+    asm.emit(t, one, asm.jcell(f"{label}.C5"), label=f"{label}.S2L")  # t -= 1
+    asm.emit(b, neg, asm.jcell(f"{label}.J"))  # b += 1
+    asm.emit(u, u, asm.jcell(f"{label}.S2L"), label=f"{label}.J")
+    asm.emit(
+        b,
+        asm.scratch("zero", 0),
+        asm.jcell(target),
+        label=f"{label}.C5",
+    )  # if b <= 0 goto target
+
+
+def decleq_to_sbleq(program: str) -> str:
+    """Rewrite a Decleq program as an equivalent S*bleq program.
+
+    Decleq's ``a b c`` does ``mem[b] = mem[a] - 1`` and jumps to ``c`` when
+    the new ``mem[b]`` is at most zero; S*bleq's ``a b c`` does
+    ``mem[a] -= mem[b]`` and jumps *indirectly* to ``mem[c]``.  Each Decleq
+    instruction becomes a straight-line S*bleq block that materialises the
+    arithmetic with scratch cells and then branches to the Decleq target.
+    The ``-1`` (input) and ``-2`` (output) Decleq addresses map onto
+    S*bleq's ``-1``/``-3`` specials and the input-address ``-2``.
+
+    The translation is faithful for Decleq programs that keep the
+    instruction pointer inside the original program and never treat a cell
+    as both data and (later) an operand: writes that would be re-read as an
+    operand of a reachable instruction are rejected with :class:`ValueError`
+    (self-modifying Decleq code is out of scope), and a program that would
+    run off the end into memory it extended past itself halts instead.
+    Reading past end-of-input also differs (Decleq raises :class:`EOFError`,
+    S*bleq reads zero).
+    """
+    from esolangs.interpreters.register_based.decleq import _parse
+
+    cells = _parse(program)
+    n = len(cells) // 3
+    if 3 * n != len(cells):
+        raise ValueError("Decleq program length must be a multiple of three")
+
+    succ: list[list[int]] = [[] for _ in range(n)]
+    for k in range(n):
+        a, c = cells[3 * k], cells[3 * k + 2]
+        if a in (-1, -2):
+            if k + 1 < n:
+                succ[k].append(k + 1)
+        elif c >= 0 and c % 3 == 0 and 0 <= c // 3 < n:
+            succ[k].append(c // 3)
+            if k + 1 < n:
+                succ[k].append(k + 1)
+
+    reachable: set[int] = set()
+    stack = [0]
+    while stack:
+        k = stack.pop()
+        if k in reachable or k >= n:
+            continue
+        reachable.add(k)
+        stack.extend(succ[k])
+
+    writers = [
+        (k, cells[3 * k + 1])
+        for k in range(n)
+        if k in reachable and cells[3 * k] not in (-1, -2) and cells[3 * k + 1] >= 0
+    ]
+    for m, w in writers:
+        seen: set[int] = set()
+        stack = list(succ[m])
+        while stack:
+            k = stack.pop()
+            if k in seen or k >= n:
+                continue
+            seen.add(k)
+            lo, hi = (
+                (3 * k, 3 * k + 1) if cells[3 * k] in (-1, -2) else (3 * k, 3 * k + 2)
+            )
+            if lo <= w <= hi:
+                raise ValueError(
+                    f"instruction {m} writes cell {w}, which is re-read as an "
+                    f"operand of instruction {k} (self-modifying Decleq code "
+                    "is out of scope)"
+                )
+            stack.extend(succ[k])
+
+    max_addr = max(
+        [len(cells) - 1]
+        + [v for k in range(n) for v in (cells[3 * k], cells[3 * k + 1]) if v >= 0]
+    )
+    cells = cells + [0] * (max_addr + 1 - len(cells))
+    asm = _DecleqAsm(cells)
+    neg1 = asm.scratch("halt", -1)
+    u = asm.scratch("u")
+    for k in range(n):
+        a, b, c = cells[3 * k], cells[3 * k + 1], cells[3 * k + 2]
+        if c >= 0 and c % 3 != 0:
+            raise ValueError("Decleq jump targets must be multiples of three")
+        target = f"k{c // 3}" if 0 <= c < 3 * n else "halt"
+        label = f"k{k}"
+        if a == -2:  # output mem[b]
+            asm.emit(-3, asm.data_addr(b), asm.jcell(target), label=label)
+        elif a == -1:  # input into mem[b]
+            _emit_input(asm, asm.data_addr(b), target, label)
+        elif b < 0:
+            raise ValueError("a negative non-special b is out of the supported class")
+        elif a == b:  # countdown idiom: mem[a] -= 1; if <= 0 goto c
+            asm.emit(
+                asm.data_addr(a),
+                asm.scratch("one", 1),
+                asm.jcell(target),
+                label=label,
+            )
+        else:  # b = a - 1; if <= 0 goto c
+            src = asm.data_addr(a) if a >= 0 else asm.scratch("zero", 0)
+            _emit_copy(asm, src, asm.data_addr(b), target, label)
+    asm.emit(u, u, neg1, label="halt")
+    return " ".join(map(str, asm.build()))
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("brainfuck", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "brainfuck"): ascii_art_to_bf,
@@ -573,5 +798,6 @@ TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("brainfuck", "6-5"): bf_to_six_five,
     ("BFStack", "brainfuck"): bfstack_to_bf,
     ("BIO", "brainfuck"): bio_to_bf,
+    ("Decleq", "S*bleq"): decleq_to_sbleq,
     ("huf", "brainfuck"): huf_to_bf,
 }

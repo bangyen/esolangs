@@ -330,16 +330,18 @@ COD — are in `docs/roadmap.md`).
 
 ## Transpiler walls
 
-The transpilers all hub through brainfuck because that is the only shared
-semantic core in the repo.  Direct transpilation between languages with no
-shared core is a full runtime-in-a-language, not a program rewrite:
+Transpilers exist where languages share a semantic core (through brainfuck,
+and the one direct pair `Decleq → S*bleq`).  Direct transpilation between
+languages with no shared core is a full runtime-in-a-language, not a program
+rewrite:
 
-- **OISC-to-OISC (Decleq ↔ AddSubJump).**  Both are self-modifying-memory
-  OISCs, but neither has dynamic instruction dispatch: ASJ's only
-  conditional is ``dest = dest ± op`` by a fixed operand (it cannot express
-  "if ≤ 0 select a jump target"), and Decleq cannot index its memory by a
-  runtime address.  A general total transpiler is therefore not expressible;
-  the partial classes (e.g. fixed jump targets) would be silent-droppers.
+- **OISC-to-OISC (S*bleq → Decleq; Decleq ↔ AddSubJump).**  Both
+  self-modifying-memory OISCs share the "≤ 0 branch", and `Decleq → S*bleq`
+  ships, but neither has dynamic instruction dispatch in general: S*bleq
+  cannot express Decleq code that re-reads a written cell as an operand
+  (self-modifying code; rejected), and ASJ's only conditional is
+  ``dest = dest ± op`` by a fixed operand.  A general total transpiler is
+  therefore not expressible; the partial classes would be silent-droppers.
   Documented as research-level future work in `docs/roadmap.md`.
 - **2D-to-2D.**  No two 2D languages share a model: 2dFish is a deadfish
   accumulator, Dimensional a pointer-hierarchy tape, LaserFuck mirror-driven

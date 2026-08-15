@@ -611,3 +611,85 @@ def test_basicfuck_fuzz_in_bounds_programs() -> None:
         assert esolangs.run("Basicfuck", program) == esolangs.run(
             "brainfuck", bf_program
         )
+
+
+# (Decleq program, stdin) pairs; every program keeps its instruction pointer
+# inside the original program and terminates.
+DECLEQ_BATTERY = (
+    ("1 1 3 -2 1 0", ""),
+    ("9 12 3 -2 12 0 -7 0 -1 5 0 0", ""),
+    ("9 12 3 -2 12 0 -7 0 -1 1 0 0", ""),
+    ("9 12 6 -2 12 0 -7 0 -1 0 0 0", ""),
+    ("9 12 3 -2 12 0 -7 0 -1 -3 0 0", ""),
+    ("2 21 3 -2 21 0 21 21 9 -2 21 0 21 21 15 -2 21 0 -7 0 -1", ""),
+    ("-1 0 3 -2 0 0", "A"),
+    ("-1 0 3 -2 0 0", "\x00"),
+    ("-1 0 3 -2 0 0 -1 1 9 -2 1 0", "B\nC\n"),
+    ("", ""),
+)
+
+
+@pytest.mark.parametrize(("program", "stdin"), DECLEQ_BATTERY)
+def test_decleq_transpiles_to_sbleq(program: str, stdin: str) -> None:
+    sb_program = esolangs.transpile("Decleq", "S*bleq", program)
+    assert esolangs.run("Decleq", program, stdin) == esolangs.run(
+        "S*bleq", sb_program, stdin
+    )
+
+
+def test_decleq_self_modifying_code_is_out_of_class() -> None:
+    """A write that is re-read as an operand is rejected, not mistranslated."""
+    program = "2 10 3 255 10 6 -10 16 9 -2 10 0 -2 10 0 -2 16 0"
+    with pytest.raises(ValueError, match="self-modifying"):
+        esolangs.transpile("Decleq", "S*bleq", program)
+
+
+def test_decleq_non_triple_length_rejected() -> None:
+    with pytest.raises(ValueError, match="multiple of three"):
+        esolangs.transpile("Decleq", "S*bleq", "1 2")
+
+
+def test_decleq_bad_jump_target_rejected() -> None:
+    with pytest.raises(ValueError, match="multiples of three"):
+        esolangs.transpile("Decleq", "S*bleq", "1 1 4 -2 1 0")
+
+
+def test_decleq_fuzz_in_class_programs() -> None:
+    """Random in-class programs (write targets outside the code) agree."""
+    rng = random.Random(19)
+    vals = [0, 1, 2, 3, 5, 9, 42, 127, 200, 255, -2, -3, -5, -10]
+    for _ in range(200):
+        k = rng.randint(1, 4)
+        cells = []
+        for i in range(k):
+            cells.extend([rng.choice(vals), rng.randint(3 * k, 30), (i + 1) * 3])
+        for i in range(k):
+            cells.extend([-2, cells[i * 3 + 1], 0])
+        cells.extend([-7, 0, -1])  # halt, so the pointer never runs off the end
+        program = " ".join(map(str, cells))
+        try:
+            expected = esolangs.run("Decleq", program)
+        except (EsolangError, EOFError):
+            continue  # out of the terminating class; the transpiler halts early
+        try:
+            sb_program = esolangs.transpile("Decleq", "S*bleq", program)
+        except ValueError:
+            continue  # writes into reachable operands; self-modifying code
+        assert esolangs.run("S*bleq", sb_program) == expected
+
+
+def test_decleq_fuzz_countdowns() -> None:
+    """Random countdowns (the canonical ``x x next`` idiom) agree."""
+    rng = random.Random(23)
+    for _ in range(80):
+        x = rng.randint(0, 25)
+        program = f"{x} {x} 3 -2 {x} 0"
+        try:
+            expected = esolangs.run("Decleq", program)
+        except (EsolangError, EOFError):
+            continue  # counters inside the code extend memory; out of class
+        try:
+            sb_program = esolangs.transpile("Decleq", "S*bleq", program)
+        except ValueError:
+            continue  # a counter cell doubled as a re-read operand
+        assert esolangs.run("S*bleq", sb_program) == expected
