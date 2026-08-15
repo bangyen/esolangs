@@ -581,6 +581,37 @@ def test_basicfuck_requires_byte_tape() -> None:
         )
 
 
+_HEADER = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\n"
+
+# malformed Basicfuck programs, each rejected by the parser rather than
+# mistranslated
+_BASICFUCK_MALFORMED = {
+    "missing-allocate": "#basicfuck t=1 r=0~255 o=wrap",
+    "bad-directive": "hello\n#allocate a",
+    "if-without-paren": _HEADER + "if a { a += 1; }",
+    "if-missing-paren": _HEADER + "if (a { a += 1; }",
+    "if-missing-brace": _HEADER + "if (a) }",
+    "if-unterminated": _HEADER + "if (a) { a += 1; x }",
+    "write-missing-arrow": _HEADER + "write a;",
+    "write-missing-semicolon": _HEADER + "write <- a b;",
+    "assign-bad-op": _HEADER + "a 5;",
+    "assign-missing-semicolon": _HEADER + "a += 1 b;",
+    "constant-out-of-range": _HEADER + "a += 300;",
+}
+
+
+@pytest.mark.parametrize("program", _BASICFUCK_MALFORMED.values())
+def test_basicfuck_malformed_programs_rejected(program: str) -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"(needs a directive|Missing/Invalid|Invalid syntax|"
+            r"Invalid token|constants within)"
+        ),
+    ):
+        esolangs.transpile("Basicfuck", "brainfuck", program)
+
+
 def test_basicfuck_fuzz_in_bounds_programs() -> None:
     """Random in-bounds programs (cells stay in 0..255) agree."""
     rng = random.Random(11)
@@ -652,6 +683,12 @@ def test_decleq_non_triple_length_rejected() -> None:
 def test_decleq_bad_jump_target_rejected() -> None:
     with pytest.raises(ValueError, match="multiples of three"):
         esolangs.transpile("Decleq", "S*bleq", "1 1 4 -2 1 0")
+
+
+def test_decleq_negative_non_special_b_rejected() -> None:
+    """A negative ``b`` other than the I/O specials has no S*bleq mapping."""
+    with pytest.raises(ValueError, match="negative non-special b"):
+        esolangs.transpile("Decleq", "S*bleq", "5 -2 3")
 
 
 def test_decleq_fuzz_in_class_programs() -> None:
