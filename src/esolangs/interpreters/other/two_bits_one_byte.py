@@ -16,7 +16,7 @@ bit -- after which execution resumes at the field after X.  JMP X jumps the
 instruction pointer to field X.  The byte operated on is the program byte
 itself, so ACT instructions change the program as it runs.
 
-This matches the x86 reference (``extra/assembly/2b1b.asm``), which follows
+This matches the x86 reference (``extra/assembly/2b1b-riscv.s``), which follows
 the wiki's *disassembly example* for ACT (bit toggles / shift-combines driven
 by the two operands) rather than the wiki's command-table description of a
 fixed value mapping (00->11, 01->10, 10->00, 11->01); the wiki's two

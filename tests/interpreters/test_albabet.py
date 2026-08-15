@@ -65,6 +65,11 @@ class TestAlbabet:
     def test_g_multiplies_x_by_y(self) -> None:
         assert run_scripted("aaaebgi") == "\x06"  # 3 * 2
 
+    def test_j_adds_x_into_y(self) -> None:
+        """j adds the accumulator into the multiplier (per the wiki)."""
+        assert run_scripted("aeajgi") == "\x06"  # y = 1 + 2, x = 2 * 3
+        assert run_scripted("aaaaae aajgi") == "T"  # y = 5 + 2, x = 7 * 12
+
     def test_h_squares_x(self) -> None:
         assert run_scripted("aahi") == "\x04"
 
