@@ -11,11 +11,12 @@ own, and the outputs must agree.
 import importlib
 import re
 from collections.abc import Callable
-from typing import cast
+from typing import Any, cast
 
 __all__ = [
     "TRANSPILERS",
     "ascii_art_to_bf",
+    "basicfuck_to_bf",
     "bf_to_ascii_art",
     "bf_to_circlefuck",
     "bf_to_six_five",
@@ -346,9 +347,243 @@ def _six_five_label(value: int) -> str:
     return str(value) if value < 10 else chr(value + 55)
 
 
+def basicfuck_to_bf(program: str) -> str:
+    """Compile a Basicfuck program into brainfuck.
+
+    Basicfuck is a high-level brainfuck: named cells and arrays, ``+=``/
+    ``-=``, ``if``/``while`` (optionally negated), and ``write``/``read``.
+    This mirrors the interpreter's own compilation -- each variable or array
+    element becomes a tape cell at the same offset -- and emits the
+    equivalent brainfuck, using a scratch cell pair per nesting level for the
+    value copies and loop gates.  The brainfuck pointer always returns to
+    cell 0 between statements, so nested ``if``/``while`` compile cleanly.
+
+    The emitted program is 8-bit wrapping brainfuck, so it matches the
+    Basicfuck interpreter only for programs whose cells stay within ``0~255``
+    while they run (the interpreter's ``wrap`` resets and ``nearest`` clamps
+    are only observable out of that range, and brainfuck has no tape-size
+    bound).  A ``r=0~255`` tape is therefore required; anything else is
+    rejected rather than silently mistranslated.
+    """
+    from esolangs.interpreters.tape_based.basicfuck import (
+        _DIRECTIVE,
+        _index,
+        _lexer,
+        _parse_allocate,
+    )
+
+    lines = program.split("\n")
+    if len(lines) < 2:
+        raise ValueError("Basicfuck program needs a directive and an #allocate line")
+    directive = lines[0]
+    allocate = lines[1]
+    body = "\n".join(lines[2:])
+
+    m = _DIRECTIVE.fullmatch(directive)
+    if not m:
+        raise ValueError("Missing/Invalid directives.")
+    if m.group(2) != "0" or m.group(3) != "255":
+        raise ValueError("Basicfuck->brainfuck requires r=0~255 cells")
+
+    var, _ = _parse_allocate(allocate)
+    body = re.sub(r"//[^\n]*", "", body)
+    tokens = _lexer(body)
+
+    def parse(pos: int) -> tuple[list[tuple[Any, ...]], int]:
+        """Recursively parse statements from ``tokens`` until a ``}``."""
+        stmts: list[tuple[Any, ...]] = []
+        while pos < len(tokens):
+            t = tokens[pos]
+            if t in ("if", "while"):
+                pos += 1
+                neg = False
+                if tokens[pos] == "!":
+                    neg = True
+                    pos += 1
+                if tokens[pos] != "(":
+                    raise ValueError("Invalid syntax.")
+                pos += 1
+                cond = tokens[pos]
+                pos += 1
+                if tokens[pos] != ")":
+                    raise ValueError("Invalid syntax.")
+                pos += 1
+                if tokens[pos] != "{":
+                    raise ValueError("Invalid syntax.")
+                pos += 1
+                body_stmts, pos = parse(pos)
+                if tokens[pos] != "}":
+                    raise ValueError("Invalid syntax.")
+                pos += 1
+                stmts.append((t, neg, cond, body_stmts))
+            elif t in ("write", "read"):
+                arrow = "<-" if t == "write" else "->"
+                pos += 1
+                if tokens[pos] != arrow:
+                    raise ValueError("Invalid syntax.")
+                pos += 1
+                name = tokens[pos]
+                pos += 1
+                if tokens[pos] != ";":
+                    raise ValueError("Invalid syntax.")
+                pos += 1
+                stmts.append((t, name))
+            elif t == "}":
+                return stmts, pos
+            else:
+                pos += 1
+                op = tokens[pos]
+                if op not in ("+=", "-="):
+                    raise ValueError("Invalid syntax.")
+                pos += 1
+                rhs = tokens[pos]
+                pos += 1
+                if tokens[pos] != ";":
+                    raise ValueError("Invalid syntax.")
+                pos += 1
+                stmts.append(
+                    ("assign", t, op, ("const", int(rhs))
+                     if rhs.isdigit() else ("var", rhs)),
+                )
+        return stmts, pos
+
+    statements, _ = parse(0)
+
+    def depth(node: tuple[Any, ...]) -> int:
+        """Return the max ``if``/``while`` nesting depth of a statement."""
+        if node[0] in ("if", "while"):
+            return 1 + max((depth(b) for b in node[3]), default=0)
+        return 0
+
+    base = sum(size for _, size in var)  # cells used by the variables
+
+    out: list[str] = []
+
+    def move(target: int, cur: int) -> int:
+        """Emit the pointer movement to ``target``, returning the new offset."""
+        if target > cur:
+            out.append(">" * (target - cur))
+        elif target < cur:
+            out.append("<" * (cur - target))
+        return target
+
+    def copy_preserving(src: int, dest: int, temp: int, cur: int) -> int:
+        """Copy cell ``src`` to ``dest`` (preserving ``src``) via ``temp``.
+
+        ``src -> dest`` and ``src -> temp``, then ``temp -> src``; the
+        pointer ends on ``dest``.
+        """
+        cur = move(dest, cur)
+        out.append("[-]")  # zero the copy target and temp so a zero src
+        cur = move(temp, cur)
+        out.append("[-]")  # leaves them zero (and skips the restore loop)
+        cur = move(src, cur)
+        out.append("[")
+        cur = move(dest, cur)
+        out.append("+")
+        cur = move(temp, cur)
+        out.append("+")
+        cur = move(src, cur)
+        out.append("-")
+        out.append("]")
+        cur = move(temp, cur)
+        out.append("[")
+        cur = move(src, cur)
+        out.append("+")
+        cur = move(temp, cur)
+        out.append("-")
+        out.append("]")
+        return move(dest, cur)
+
+    def flag_from_q(*, neg: bool, p: int, q: int, cur: int) -> int:
+        """Set ``p`` to the truthiness of ``q`` (negated if ``neg``).
+
+        ``p`` starts at 0 and ``q`` holds the value; ``p`` ends as 0/1 and
+        ``q`` ends at 0.
+        """
+        cur = move(p, cur)
+        out.append("[-]")  # clear the copy's leftover value
+        if neg:
+            out.append("+")  # p = 1, corrected to 0 below when q != 0
+            cur = move(q, cur)
+            out.append("[")
+            cur = move(p, cur)
+            out.append("[-]")
+            cur = move(q, cur)
+            out.append("-")
+            out.append("]")
+            return move(p, cur)
+        cur = move(q, cur)
+        out.append("[")
+        cur = move(p, cur)
+        out.append("+")
+        cur = move(q, cur)
+        out.append("-")
+        out.append("]")
+        return move(p, cur)
+
+    def compile_stmts(stmts: list[tuple[Any, ...]], depth: int, cur: int) -> int:
+        p = base + 2 * depth
+        q = base + 2 * depth + 1
+        for stmt in stmts:
+            kind = stmt[0]
+            if kind in ("if", "while"):
+                neg, cond, body = stmt[1], stmt[2], stmt[3]
+                x = _index(cond, var)
+                cur = move(x, cur)
+                cur = copy_preserving(x, q, p, cur)
+                cur = flag_from_q(neg=neg, p=p, q=q, cur=cur)
+                out.append("[")
+                cur = move(0, cur)
+                cur = compile_stmts(body, depth + 1, cur)
+                cur = 0
+                if kind == "while":
+                    cur = move(x, cur)
+                    cur = copy_preserving(x, q, p, cur)
+                    cur = flag_from_q(neg=neg, p=p, q=q, cur=cur)
+                else:
+                    cur = move(p, cur)
+                    out.append("[-]")
+                out.append("]")
+                cur = move(0, cur)
+            elif kind in ("write", "read"):
+                cur = move(_index(stmt[1], var), cur)
+                out.append("." if kind == "write" else ",")
+                cur = move(0, cur)
+            else:  # assign
+                x = _index(stmt[1], var)
+                op = stmt[2]
+                rhs = stmt[3]
+                if rhs[0] == "const":
+                    k = rhs[1]
+                    if abs(k) >= 256:
+                        raise ValueError(
+                            "Basicfuck->brainfuck requires constants within 0~255",
+                        )
+                    cur = move(x, cur)
+                    out.append(("+" if op == "+=" else "-") * abs(k))
+                    cur = move(0, cur)
+                else:
+                    y = _index(rhs[1], var)
+                    cur = move(y, cur)
+                    cur = copy_preserving(y, q, p, cur)
+                    out.append("[")
+                    cur = move(x, cur)
+                    out.append("+" if op == "+=" else "-")
+                    cur = move(q, cur)
+                    out.append("-")
+                    out.append("]")
+                    cur = move(0, cur)
+        return cur
+
+    compile_stmts(statements, 0, 0)
+    return "".join(out)
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("brainfuck", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "brainfuck"): ascii_art_to_bf,
+    ("Basicfuck", "brainfuck"): basicfuck_to_bf,
     ("brainfuck", "Circlefuck"): bf_to_circlefuck,
     ("brainfuck", "6-5"): bf_to_six_five,
     ("NoComment", "brainfuck"): nocomment_to_bf,
