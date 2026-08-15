@@ -327,3 +327,26 @@ COD — are in `docs/roadmap.md`).
 - **DSDLAI**: a Dig variant whose dig commands carry a random 20-90% death
   chance (printing "You died." and halting), so a generated program's output
   is non-deterministic and cannot round-trip text or a truth table.
+
+## Transpiler walls
+
+The transpilers all hub through brainfuck because that is the only shared
+semantic core in the repo.  Direct transpilation between languages with no
+shared core is a full runtime-in-a-language, not a program rewrite:
+
+- **OISC-to-OISC (Decleq ↔ AddSubJump).**  Both are self-modifying-memory
+  OISCs, but neither has dynamic instruction dispatch: ASJ's only
+  conditional is ``dest = dest ± op`` by a fixed operand (it cannot express
+  "if ≤ 0 select a jump target"), and Decleq cannot index its memory by a
+  runtime address.  A general total transpiler is therefore not expressible;
+  the partial classes (e.g. fixed jump targets) would be silent-droppers.
+  Documented as research-level future work in `docs/roadmap.md`.
+- **2D-to-2D.**  No two 2D languages share a model: 2dFish is a deadfish
+  accumulator, Dimensional a pointer-hierarchy tape, LaserFuck mirror-driven
+  control, ABCDrection a Boolfuck bit tape with a queue, EXCON a straight-line
+  bit pool.  Even the two bf-tape ones (Dimensional, LaserFuck) differ in
+  control flow.
+- **Dropped transpilers.**  `nocomment_to_bf` silently dropped NoComment's
+  stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
+  `Circlefuck → bf` decoders only reversed the forward transpilers' canonical
+  form (round-trip-only).
