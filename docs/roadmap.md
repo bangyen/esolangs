@@ -214,15 +214,49 @@ were assessed:
 
 So AddSubJump (the one target with a usable conditional) shipped, and the
 assessed no-input interpreters all hit structural walls.  **Assessed since:
-123.**  Its single 8-bit data byte and pointer that flips the bit as it
-moves (``1`` XORs the mask *and* advances, wrapping -3..0) mean even reading
-a byte and navigating to the write position corrupts the value being built —
-an n=1 identity loops.  123 is research-level too.
-**Never assessed** and still on the table: the input-reading candidates
-%^2^-1 and ABCDirection, and the parameterized no-input set Number
-Seventy-Four, Stun Step, Brainpocalypse, 2 Bits 1 Byte, and Albabet.  Each
-needs an individual assessment before it can be called a wall or an
-opportunity.
+123 and the last seven candidates.**  123's single 8-bit data byte and
+pointer that flips the bit as it moves (``1`` XORs the mask *and* advances,
+wrapping -3..0) mean even reading a byte and navigating to the write
+position corrupts the value being built — an n=1 identity loops.  123 is
+research-level too.  The last seven:
+
+- **Stun Step: ruled out.**  On halt it prints the reached cells
+  space-joined, and the leftmost cell (position 0, where the pointer starts)
+  must be 0 to halt, so a bare single-cell output is always ``"0"`` and
+  reaching any other cell appends more numbers — it can never print a bare
+  boolean ``"1"``.
+- **Number Seventy-Four: ruled out.**  A program halts only once the output
+  starts with ``H`` (and an ``H`` fires only on an output that starts with
+  ``0``), so every halting program prints ``"H..."`` and never a bare
+  ``"0"``/``"1"``.
+- **2 Bits, 1 Byte: ruled out.**  Its only branches are the unconditional
+  ``JMP`` and the self-modifying ``ACT``; the 2-bit opcode is fixed by the
+  program byte, so there are no runtime values to test — a generator would
+  degenerate to printing a baked constant.
+- **AlbaBet: ruled out.**  Only straight-line arithmetic (+1, *y, square,
+  move, print); there is no loop, jump, or skip, so no value-testable
+  branch for the bits to route through.
+- **%^2^-1: research-level.**  Its only control flow is ``t`` (rewind to
+  the program start when the accumulator is nonzero) — no local jump
+  targets and no skip — so a decision tree must be threaded through
+  restart-to-start loops, and the arithmetic (``-2``/``-3``/``*2``/negate/
+  zero) is too weak to fold the bits arithmetically.
+- **Brainpocalypse: research-level.**  Its only control flow is ``-`` on a
+  zero cell rewinding the instruction pointer to the program start, and
+  every other character is a comment; it can print ``"0"``/``"1"`` (the
+  tape prints on end) but any ``-`` that sees zero restarts the whole
+  prefix, so loops and decisions need the pointer routed so the ``-`` never
+  lands on a zero — a general n-bit tree is a genuine construction problem.
+- **ABCDirection: the one remaining genuine opportunity.**  It has real
+  input (``D`` up reads a Boolfuck bit), output (``C`` down emits one), and
+  value-tested routing (``C`` up turns on a one, ``D`` down dispatches on
+  the cell and queue), so a decision tree is expressible — but it must be
+  laid out on a wrapping 2D grid with no halt instruction (the interpreter
+  stops on a command limit), the LaserFuck/Back class of hard 2D-layout
+  work.  A generator is buildable with substantial effort.
+
+**Never assessed** and still on the table: none — the no-input and
+input-reading candidates are now individually assessed.
 
 ## Compiler consolidation
 
