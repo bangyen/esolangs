@@ -385,3 +385,14 @@ rewrite:
   stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
   `Circlefuck → bf` decoders only reversed the forward transpilers' canonical
   form (round-trip-only).
+## ABCDirection (built; n == 1 verified)
+- The boolean generator ships and is verified for ``n == 1`` (all four
+  one-input functions).  A read staircase fills the queue, a corridor routes
+  the pointer around the tree, each node dequeues a bit and tests it with
+  ``C up``, and the fired leaf prints ``48 + f`` as a byte before running off
+  the terminator row (``EOFError``, which the harness treats as termination).
+- ``n > 1`` raises: deeper trees route the leaves up from their branches
+  through the tree's own ``D``-left cells, which the pointer then reads as
+  input (EOF), so the leaves never print.  Resolving this needs a leaf
+  routing that detours around the tree (or a tree layout whose columns are
+  clear of the leaf paths).

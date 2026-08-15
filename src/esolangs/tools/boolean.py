@@ -10,6 +10,7 @@ The generators live in ``esolangs.tools.booleans``, split by language family
 module re-exports them for compatibility.
 """
 
+from esolangs.tools.booleans.abcdirection import abcdirection
 from esolangs.tools.booleans.other import (
     between,
     bit_tilde,
@@ -53,6 +54,7 @@ from esolangs.tools.booleans.tape import (
 )
 
 __all__ = [
+    "abcdirection",
     "addsubjump",
     "ascii_art",
     "back",

@@ -1991,3 +1991,69 @@ class TestMyScript:
     def test_rejects_non_binary(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.myscript("02", 1)
+
+
+def run_abcdirection(program: str, inputs: list[str]) -> str:
+    import io as _io
+    from contextlib import suppress
+
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.tape_based.abcdirection import run
+
+    class _IO(IO):
+        def __init__(self, ins: list[str]) -> None:
+            self._ins = list(ins)
+            self.out = _io.StringIO()
+
+        def input_char(self, _prompt: str = "Input: ") -> int:
+            if not self._ins:
+                raise EOFError
+            return ord(self._ins.pop(0)[0])
+
+        def print_char(self, char: str) -> None:
+            self.out.write(char)
+
+    io_ = _IO(inputs)
+    with suppress(HaltError, EOFError):
+        run(program, io_, limit=100_000)
+    return io_.out.getvalue()
+
+
+class TestABCDirection:
+    """The ABCDirection boolean generator (currently verified for n == 1)."""
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.abcdirection(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_abcdirection(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_grid_shape(self) -> None:
+        """The program is a rectangular grid ending in the DDDDDD terminator."""
+        from esolangs.interpreters.tape_based.abcdirection import _parse
+
+        program = boolean.abcdirection("01", 1)
+        rows = _parse(program)
+        width = len(rows[0])
+        assert all(len(r) == width for r in rows)
+        assert program.splitlines()[-1].endswith("DDDDDD")
+
+    def test_rejects_n_greater_than_one(self) -> None:
+        with pytest.raises(ValueError, match="n <= 1"):
+            boolean.abcdirection("0001", 2)
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.abcdirection("011", 1)
