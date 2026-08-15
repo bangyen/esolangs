@@ -7,7 +7,7 @@ the reasoning behind them.  Genuine future work is in `docs/roadmap.md`.
 
 ## Interpreter conventions
 
-The interpreters share two behavioral conventions, so `esolangs.run` is
+The interpreters share a few behavioral conventions, so `esolangs.run` is
 predictable across languages:
 
 - **Empty programs are a no-op by default.**  An empty (or blank-only)
@@ -24,6 +24,15 @@ predictable across languages:
   and Movesum read `0` at EOF (both per the wiki), and every other
   interpreter raises `EOFError`.  Malformed programs raise `ValueError` and
   runtime halts raise :class:`HaltError`, never a raw Python exception.
+- **Byte input is line-delimited.**  ``io.input_char`` reads a whole input
+  line and returns its first character (the rest of the line is discarded),
+  so a byte-oriented program needs one line per byte: `,.,.` on ``"A\nB"``
+  echoes ``"AB"``, while ``"AB"`` on one line supplies only ``A`` and the
+  second `,` raises `EOFError`.
+- **Execution is unbounded through the public API.**  `esolangs.run` has no
+  step limit: interpreters run until the program halts naturally or loops
+  forever.  Suffolk is the sole interpreter that ships with a fixed
+  instruction limit, and callers cannot set one through the public API.
 
 ## 6-5 (built; the decision tree stays primary)
 The arithmetic-kernel generator (`six_five_arithmetic`) was built: it packs
