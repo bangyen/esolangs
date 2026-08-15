@@ -207,9 +207,21 @@ set that way:
   ``]`` exits), and BF-PDA's guards are all the same stack top.  The one-side
   loop cannot exclude the zero-side after it (no forward jump), so a
   bit-consuming tree over the stack is genuinely awkward.  The grid
-  language Home Row is the tractable one: its 5x5 random-access cells give
-  bf-style separate guards, so the bf_tree structure transfers and only the
-  pointer routing needs building.
+  language Home Row looked tractable — its random-access cells give bf-style
+  separate guards — but Home Row's ``l`` loops pair strictly *by order* (the
+  first and second ``l`` form a loop, the third and fourth another; the
+  RISC-V compiler's ``loop // 2`` numbering), so loops cannot nest.  A
+  decision tree's AND-gating needs nested guards (the bf_tree structure),
+  which Home Row cannot express; the pointer also only moves forward
+  (``d``/``f``, no left/up).  So Home Row is also research-level, and the
+  no-input boolean-generator candidates all hit structural walls.
+
+The parameterized idea itself is real — back, bio, and nocomment prove a
+no-input language with output and a value-branch can do it — but the
+specific no-input interpreters in this repo each lack a usable structure:
+Trash cannot print ``"1"``, and BF-PDA and Home Row cannot nest their
+branching primitives.  AddSubJump was the one remaining target that had a
+usable conditional, and it shipped.
 - **No-input and no-output** (A Painter Ant, ArrowQueue, Bitdeque, Eval,
   Factor, Kak, Keys, Minsky Swap, RAM0): still impossible — nothing to
   return.
