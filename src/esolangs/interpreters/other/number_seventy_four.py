@@ -8,7 +8,7 @@ starts with ``H`` the program prints it and halts, otherwise it restarts
 from the beginning of the program.  Any other character is ignored, and
 there is no input command.
 
-Semantics match the Rust cross-check (``extra/rust/seventy_four.rs``):
+Semantics match the Rust cross-check (``extra/rust/number_seventy_four.rs``):
 - the halting check is made only at a pass boundary, so a program that
   makes the output start with ``H`` mid-pass and then pushes a ``0``/``1``
   afterwards never halts;

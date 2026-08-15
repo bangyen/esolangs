@@ -70,7 +70,7 @@ mod tests {
             .unwrap()
             .parent()
             .unwrap()
-            .join("seventy_four");
+            .join("number_seventy_four");
         let path = std::env::temp_dir().join(format!(
             "seventy_four-test-{}-{}.txt",
             std::process::id(),

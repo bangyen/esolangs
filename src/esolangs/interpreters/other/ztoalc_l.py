@@ -24,9 +24,9 @@ from esolangs.interpreters.io import IO
 Value = int | list["Value"]
 
 
-def _is_int(token: str) -> bool:
-    """Whether ``token`` is a decimal integer literal (possibly negative)."""
-    return token.lstrip("-").isdigit() and token != "-"
+def _is_int(tok: str) -> bool:
+    """Whether ``tok`` is a decimal integer literal (possibly negative)."""
+    return tok.lstrip("-").isdigit() and tok != "-"
 
 
 def _as_int(value: Value) -> int:
@@ -58,13 +58,13 @@ def run(code: list[str], io: IO) -> None:
         j = pos
         while j < len(exp) and exp[j] not in "[]":
             j += 1
-        token = exp[pos:j]
-        if token == "input":
+        tok = exp[pos:j]
+        if tok == "input":
             return io.input_char(), j
-        if _is_int(token):
-            return int(token), j
-        if token in var:
-            return var[token], j
+        if _is_int(tok):
+            return int(tok), j
+        if tok in var:
+            return var[tok], j
         raise HaltError
 
     def _eval(exp: str, pos: int) -> tuple[Value, int]:

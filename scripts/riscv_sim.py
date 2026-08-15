@@ -193,12 +193,12 @@ def disassemble_and_run(binary: bytes, stdin: bytes) -> bytes:
 if __name__ == "__main__":
     import sys
 
-    from esolangs.tools.generate import _123
+    from esolangs.tools.generate import one_two_three
 
     with open(sys.argv[1], "rb") as f:
         binary = f.read()
     text = sys.argv[2]
-    program = _123(text)
+    program = one_two_three(text)
     out = disassemble_and_run(binary, program.encode())
     print(
         f"input {text!r} -> output {out!r} {'ok' if out == text.encode() else 'FAIL'}"
