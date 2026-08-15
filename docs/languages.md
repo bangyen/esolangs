@@ -26,7 +26,6 @@ into a template) rather than the program reading input.
 | AddSubJump | yes | yes |  |  |  | hello |
 | Albabet | yes | yes |  |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |
-| BF | yes | yes |  | yes |  | hello |
 | BF-PDA |  | yes |  |  | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
@@ -81,6 +80,7 @@ into a template) rather than the program reading input.
 | WII2D | yes | yes |  |  |  | hello |
 | ZTOALC L | yes | yes |  |  |  | hello |
 | bit~ | yes | yes | yes | yes |  | hello |
+| brainfuck | yes | yes |  | yes |  | hello |
 | huf | yes | yes |  |  |  | hello |
 
 The `esolangs` command lists the languages with Python support:

@@ -69,7 +69,7 @@ import esolangs
 program = esolangs.generate("Circlefuck", "Hello, World!")
 output = esolangs.run("Circlefuck", program)
 esolangs.list_languages()
-art = esolangs.transpile("BF", "ASCII art", program)
+art = esolangs.transpile("brainfuck", "ASCII art", program)
 ```
 
 ### Running the Tests
@@ -118,7 +118,6 @@ Languages that operate on a tape (similar to Turing machines).
 - [6-5](https://esolangs.org/wiki/6-5) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/6-5.py))
 - [ABCDirection](https://esolangs.org/wiki/ABCDirection) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/abcdirection.py))
 - [ASCII art](https://esolangs.org/wiki/ASCII_art) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/ascii-art.py))
-- [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bf.py))
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bfpda.py))
 - [Back](https://esolangs.org/wiki/Back) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/back.py))
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/basicfuck.py))
@@ -137,6 +136,7 @@ Languages that operate on a tape (similar to Turing machines).
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/mammalian.py))
 - [Stun Step](https://esolangs.org/wiki/Stun_Step) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/stun_step.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/suffolk.py))
+- [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bf.py))
 
 ### Stack-based Languages
 
@@ -261,9 +261,9 @@ esolangs transpile BF Circlefuck program.bf     # auto-sized data region
 ```
 
 ```python
-art = esolangs.transpile("BF", "ASCII art", program)   # or via the API
-program = esolangs.transpile("ASCII art", "BF", art)
-circlefuck = esolangs.transpile("BF", "Circlefuck", program, size=8)  # explicit size
+art = esolangs.transpile("brainfuck", "ASCII art", program)   # or via the API
+program = esolangs.transpile("ASCII art", "brainfuck", art)
+circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program, size=8)  # explicit size
 ```
 
 ## Tools
