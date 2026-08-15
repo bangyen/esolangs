@@ -253,7 +253,16 @@ research-level too.  The last seven:
   the cell and queue), so a decision tree is expressible — but it must be
   laid out on a wrapping 2D grid with no halt instruction (the interpreter
   stops on a command limit), the LaserFuck/Back class of hard 2D-layout
-  work.  A generator is buildable with substantial effort.
+  work.  A quick probe confirms the concrete blockers: the ``D``/``C``
+  actions depend on the current heading (up reads, right enqueues, left
+  dequeues, down dispatches), the ``C left`` tape move flips the cell it
+  leaves so the tape pointer cannot move right without corrupting, the
+  ``DDDDDD`` terminator row sits on the donut's wrap edge so every upward
+  wrap enters it and fires its ``D`` actions, and there is no halt.  A
+  queue-based byte echo (read into cell 0, ``D`` right enqueue, then
+  ``D`` left dequeue and ``C`` down output) is the promising construction,
+  but it needs the heading state threaded correctly through the wraps.
+  A generator is buildable with substantial effort, not quickly.
 
 **Never assessed** and still on the table: none — the no-input and
 input-reading candidates are now individually assessed.
