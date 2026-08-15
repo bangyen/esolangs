@@ -252,7 +252,7 @@ class TestGeneratorRoundTrips:
         """The generator escapes the byte string into one say statement."""
         assert roundtrip(myscript_run, gen.myscript("Hi")) == "Hi"
         assert roundtrip(myscript_run, gen.myscript("a\tb\nc")) == "a\tb\nc"
-        assert roundtrip(myscript_run, gen.myscript("quote\"slash\\")) == 'quote"slash\\'
+        assert roundtrip(myscript_run, gen.myscript('quote"slash\\')) == 'quote"slash\\'
 
     def test_nevermind_unsupported(self) -> None:
         """Nevermind cannot print multiline text or a leading $."""
