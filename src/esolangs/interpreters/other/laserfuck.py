@@ -10,8 +10,8 @@ no lasers remain; the tape is then printed, with the first grid cell ``\xff``
 selecting byte mode (no separators) over the default decimal mode, and
 negative cells excluded from the output.
 
-The initial heading is chosen uniformly at random, matching the reference; a
-run may therefore produce one of several outputs, so tests set a fixed
+The initial heading is chosen uniformly at random, matching the cross-check;
+a run may therefore produce one of several outputs, so tests set a fixed
 heading through :func:`run`.
 
 
@@ -29,7 +29,7 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
 
     ``heading`` forces the laser's initial direction (0=up, 1=down, 2=left,
     3=right); when None it is drawn uniformly at random, matching the
-    reference implementation.
+    cross-check.
     """
     text = [list(ln) for ln in code]
     size = max(len(ln) for ln in text) if text else 0
@@ -89,7 +89,7 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
                 tape.insert(0, [0, 0])
         elif op == ",":
             line_val = io.input_str()
-            # an empty (or blank) input line reads a zero, per the reference
+            # an empty (or blank) input line reads a zero, per the cross-check
             tape[ptr] = [ord(line_val[0]) if line_val else 0, 1]
         elif op == "x":
             lsrs.pop(ind)

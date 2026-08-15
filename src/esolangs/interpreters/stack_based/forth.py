@@ -17,13 +17,13 @@ Semantics match the Rust cross-check (``extra/rust/forth.rs``):
   the other invalid operations (a binary operator with fewer than two
   values, ``c`` with fewer than three, a division by zero, or an unterminated
   bracket) abort only the innermost scope and are otherwise ignored -- the
-  C++ reference returns an error code that nested calls discard;
+  cross-check returns an error code that nested calls discard;
 - ``,`` reads a whole line and raises :class:`EOFError` when input runs out
-  (like the other stack interpreters), where the references exit with
+  (like the other stack interpreters), where the cross-check exits with
   status 3;
-- ``,`` pushes each character's byte value (the reference's signed ``char``
+- ``,`` pushes each character's byte value (the cross-check's signed ``char``
   would push negative values for bytes above 127);
-- ``.`` prints the top's low byte (``& 0xFF``), matching the Rust reference,
+- ``.`` prints the top's low byte (``& 0xFF``), matching the Rust cross-check,
   rather than the wiki's "print as a unicode character" -- the byte model is
   baked into the arithmetic (``~`` complements, so ``.`` on ``-1`` prints the
   byte 0xFF).
@@ -51,12 +51,12 @@ def _trunc_mod(a: int, b: int) -> int:
 
 
 def _execute(code: str, stack: list[int], table: dict[int, str], io: IO) -> int:
-    """Run ``code`` on ``stack``/``table``, returning the C++ run() status.
+    """Run ``code`` on ``stack``/``table``, returning the cross-check status.
 
     The status is 3 (invalid operation) when a scope aborts on an error; the
-    callers of ``;`` and ``(``/``[`` discard it, mirroring the C++ reference,
-    while an empty-stack pop raises :class:`HaltError` instead, mirroring the
-    reference's ``exit()`` which terminates the whole program.
+    callers of ``;`` and ``(``/``[`` discard it, mirroring the cross-check,
+    while an empty-stack pop raises :class:`HaltError` instead, mirroring its
+    ``exit()`` which terminates the whole program.
     """
 
     def top() -> int:

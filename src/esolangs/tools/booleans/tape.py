@@ -600,9 +600,9 @@ def three_d_brainfuck(truth_table: str, n: int) -> str:
     return brainfuck(truth_table, n).translate(str.maketrans("><", "ew"))
 
 
-# The interpreter's two substitution cycles, in the order the reference scans
-# them: Painfuck source is pre-shifted here so the trans table recovers the
-# intended commands.
+# The interpreter's two substitution cycles, in the order the cross-check
+# scans them: Painfuck source is pre-shifted here so the trans table recovers
+# the intended commands.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
 
 

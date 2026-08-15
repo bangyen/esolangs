@@ -13,9 +13,9 @@ back to it.
 Semantics match the Rust cross-check (``extra/rust/unsquare.rs``):
 - an empty-stack pop, a swap with fewer than two elements, an ``o`` on an
   empty stack, an unmatched ``<``, or a ``>`` with no matching ``<`` raise
-  :class:`HaltError` (the references exit with status 3);
-- ``i`` raises :class:`EOFError` when input runs out, where the references
-  exit with status 3;
+  :class:`HaltError` (the cross-check exits with status 3);
+- ``i`` raises :class:`EOFError` when input runs out, where the cross-check
+  exits with status 3;
 - ``i`` re-prompts on blank input lines.
 """
 

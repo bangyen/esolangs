@@ -9,17 +9,17 @@ integers, and the tape is the wiki's default 256 cells wide, wrapping from
 the start to the end (``>`` past cell 255 wraps to cell 0 and ``<`` at cell
 0 wraps to cell 255).
 
-The reference (``extra/assembly/brainpocalypse-riscv.s``) defines no I/O: the
-program is read from stdin (there is no separate input channel) and, when
+The cross-check (``extra/assembly/brainpocalypse-riscv.s``) defines no I/O:
+the program is read from stdin (there is no separate input channel) and, when
 the program ends, the whole tape is printed as space-separated decimal
 values — an output decision, not a language rule.  This interpreter mirrors
 that: it takes the program as ``code`` and prints cells 0..n (where n is
 the rightmost cell reached) through ``io``, and there is no input command.
 
-Divergences from the reference (this interpreter follows the reference):
+Divergences from the cross-check (this interpreter follows the cross-check):
 - cells are 32-bit dwords there but unbounded Python ints here, which is
-  equivalent for any program the reference can complete;
-- a NUL byte terminates the stored program in the reference, so ``code``
+  equivalent for any program the cross-check can complete;
+- a NUL byte terminates the stored program in the cross-check, so ``code``
   is truncated at the first NUL.
 """
 

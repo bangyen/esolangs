@@ -27,8 +27,8 @@ from esolangs.interpreters.io import IO
 def run(code: str, io: IO) -> None:
     """Run a Number Seventy-Four program."""
     # a program with no 0/1/H commands can never make the output start with
-    # H, so the reference would restart forever; halt instead (like the other
-    # no-op interpreters)
+    # H, so the cross-check would restart forever; halt instead (like the
+    # other no-op interpreters)
     if not any(c in "01H" for c in code):
         return
     data = ""

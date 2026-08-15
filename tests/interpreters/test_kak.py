@@ -57,7 +57,7 @@ class TestKak:
 
     def test_question_mark_at_end_is_not_an_error(self) -> None:
         """A ? with nothing after it stops the skip without error (the
-        reference's failed get leaves the '?' itself in the buffer)."""
+        cross-check's failed get leaves the '?' itself in the buffer)."""
         assert run_program("?") == "0\n"
         assert run_program("!<?") == "01\n"
         assert run_program("!!<?") == "011\n0101\n"

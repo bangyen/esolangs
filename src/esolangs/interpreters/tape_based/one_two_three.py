@@ -12,7 +12,7 @@ and unrecognized characters are NOPs.
 The pointer is tracked as a bitmask: 1024 = -3 (the read position), 512 = -2
 (the write position), 256 = -1, 128 = 0, then halving to 1 = position 7 and
 0 = position 8.  Flipping XORs the mask into the data byte, so position 0
-holds the *most* significant bit: the reference interpreters and the
+holds the *most* significant bit: the cross-check interpreters and the
 repository's generator are MSB-first, which is the opposite of the wiki's
 little-endian note.
 

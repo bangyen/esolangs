@@ -16,18 +16,19 @@ bit -- after which execution resumes at the field after X.  JMP X jumps the
 instruction pointer to field X.  The byte operated on is the program byte
 itself, so ACT instructions change the program as it runs.
 
-This matches the x86 reference (``extra/assembly/2b1b-riscv.s``), which follows
+This matches the RISC-V cross-check (``extra/assembly/2b1b-riscv.s``), which
+follows
 the wiki's *disassembly example* for ACT (bit toggles / shift-combines driven
 by the two operands) rather than the wiki's command-table description of a
 fixed value mapping (00->11, 01->10, 10->00, 11->01); the wiki's two
-descriptions disagree, and the reference follows the example.
+descriptions disagree, and the cross-check follows the example.
 
-Divergences from the reference:
+Divergences from the cross-check:
 - The first byte of ``code`` is the program byte; extra bytes are ignored.
-- An empty program halts with no output (the reference would read whatever
+- An empty program halts with no output (the cross-check would read whatever
   byte sits on its stack from stdin).
 - Programs that never reach an END (e.g. 0x00) loop forever, exactly as the
-  reference does; detect that from outside with a step limit or timeout.
+  cross-check does; detect that from outside with a step limit or timeout.
 """
 
 import sys
@@ -43,7 +44,7 @@ def _ror2(value: int) -> int:
 def _read_field(state: tuple[int, int], byte: int) -> tuple[tuple[int, int], int]:
     """Advance the ``(cl, bl)`` reader state and return the next 2-bit field.
 
-    Mirrors the reference's ``num`` subroutine: ``cl`` walks the field down
+    Mirrors the cross-check's ``num`` subroutine: ``cl`` walks the field down
     the byte (mod 8) while ``bl`` is a rotating 2-bit mask; the field is
     ``(bl & byte) >> cl``.
     """
@@ -57,7 +58,7 @@ def _read_field(state: tuple[int, int], byte: int) -> tuple[tuple[int, int], int
 def _seek(field: int) -> tuple[int, int]:
     """Return the ``(cl, bl)`` state that reads ``field`` next.
 
-    Mirrors the reference's ``ind`` subroutine: the mask ``3`` is positioned
+    Mirrors the cross-check's ``ind`` subroutine: the mask ``3`` is positioned
     at the field (``3 << (6 - 2*field)``) and pre-rotated, because
     ``_read_field`` rotates and advances before reading.
     """
