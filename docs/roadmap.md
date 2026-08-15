@@ -107,13 +107,11 @@ dummy argument, per the examples.
 
 ROTfuck previously listed here is done: the interpreter treats each
 executed command as advancing every source character one step along
-`+-><,.[]`, brackets are matched on the source (partners stay fixed as
-positions do; a partnerless executed bracket halts), and the text generator
-emits straight-line programs by placing the ``i``-fold inverse rotation of
-each desired command at position ``i``.  The loop wall is recorded in
-`docs/limitations.md`: a rotating program cannot keep its bracket pair in
-place, so no iterative loop is expressible and the generator is
-straight-line.
+`+-><,.[]` and matches brackets dynamically — a bracket that fires rotates
+the program first, then seeks its partner in the rotated program (a
+partnerless fired bracket halts), so loops that revisit a bracket are
+expressible.  The text generator emits straight-line programs by placing
+the ``i``-fold inverse rotation of each desired command at position ``i``.
 
 Decleq previously listed here is done: the memory-mapped I/O falls through
 (the `-2` output and `-1` input do not jump), `a b c` stores `memory[a]-1`
