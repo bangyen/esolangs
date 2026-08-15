@@ -313,6 +313,26 @@ python -m esolangs.tools.generate "Hello, World!"
 Every generator is also available through `esolangs list` and
 `esolangs generate` (see above); run `esolangs list` for the full set.
 
+### Single-Interpreter Install
+
+Want one interpreter without cloning the repo or installing the package?
+`scripts/install_one.sh` fetches that language's interpreter and inlines the
+shared `io` and `exceptions` modules (plus any interpreter it imports, e.g.
+Factor's brainfuck) into one self-contained file:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bangyen/esolangs/main/scripts/install_one.sh | sh -s brainfuck
+python esolangs_brainfuck.py program.txt
+```
+
+The language name matches `esolangs list` (e.g. `brainfuck`, `Nevermind`,
+`Forþ`).  Factor and Polynomial need `pip install sympy`; the bundled file
+notes this.  `scripts/bundle_one.py` does the same from a local checkout:
+
+```bash
+python scripts/bundle_one.py Nevermind
+```
+
 ## Contributing
 
 Contributions are welcome!  If you find a bug or want to add a language,
