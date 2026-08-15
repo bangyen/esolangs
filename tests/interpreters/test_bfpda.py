@@ -1,9 +1,9 @@
 """Unit tests for the BF-PDA interpreter.
 
 BF-PDA is a brainfuck variant over a stack of bits whose top is the current
-cell.  Per the wiki: ``[``/``]`` are while loops, and an empty stack behaves
-as a zero (``>`` pops nothing, ``@``/``.``/``[`` read 0).  A run is bounded
-at ``limit`` commands so loops that never empty the stack terminate.
+cell.  Per the wiki: ``[``/``]`` are while loops, an empty stack behaves as a
+zero (``>`` pops nothing, ``@``/``.``/``[`` read 0), and a run halts when the
+instruction pointer reaches the end of the program.
 """
 
 import importlib
@@ -16,9 +16,9 @@ from esolangs.interpreters.io import ScriptedIO
 run = importlib.import_module("esolangs.interpreters.tape_based.bfpda").run
 
 
-def run_program(code: str, limit: int = 100) -> str:
+def run_program(code: str) -> str:
     io = ScriptedIO()
-    run(code, io, limit=limit)
+    run(code, io)
     return io.getvalue()
 
 
@@ -64,21 +64,14 @@ class TestBrackets:
         assert run_program("<@<@[>[@]]") == ""
         assert run_program("<@<@[>[>].]") == "0"
 
-    def test_loop_does_not_run_past_limit(self) -> None:
-        """A loop that never empties the stack stops at the command bound."""
-        assert run_program("<@[.]", limit=6) == "1"
 
+class TestHalting:
+    def test_halts_at_end_of_program(self) -> None:
+        """The IP running off the end halts the machine, not a command bound."""
+        assert run_program("<@." * 60) == "1" * 60
 
-class TestLimit:
-    def test_default_limit_matches_reference(self) -> None:
-        """The reference runs at most 100 commands; 33 of the 60 triples run."""
-        assert run_program("<@." * 60) == "1" * 33
-
-    def test_override_limit(self) -> None:
-        assert run_program("<@." * 60, limit=200) == "1" * 60
-
-    def test_long_program_truncated(self) -> None:
-        assert run_program("<" * 110 + ".") == ""
+    def test_long_program_not_truncated(self) -> None:
+        assert run_program("<" * 110 + ".") == "0"
         assert run_program("<" * 50 + "." * 10 + "<" * 200) == "0" * 10
 
 
