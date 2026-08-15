@@ -29,7 +29,8 @@ the program, or when a ``c`` address holds a negative target (jumping to a
 negative address).
 
 
-Reading input (``-2``) past the end of the stream returns zero at EOF (per the wiki); malformed programs raise :class:`ValueError`.
+Reading input (``-2``) past the end of the stream returns zero
+at EOF (per the wiki); malformed programs raise :class:`ValueError`.
 """
 
 import sys
