@@ -65,6 +65,15 @@ def run_painfuck(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_rotfuck(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.rotfuck import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_bit_tilde(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.bit_tilde import run
 
@@ -2021,7 +2030,7 @@ def run_abcdirection(program: str, inputs: list[str]) -> str:
 
 
 class TestABCDirection:
-    """The ABCDirection boolean generator (currently verified for n <= 2)."""
+    """The ABCDirection boolean generator (works for arbitrary n)."""
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -2067,10 +2076,76 @@ class TestABCDirection:
         assert all(len(r) == width for r in rows)
         assert program.splitlines()[-1].endswith("DDDDDD")
 
-    def test_rejects_n_greater_than_two(self) -> None:
-        with pytest.raises(ValueError, match="n <= 2"):
-            boolean.abcdirection("00000001", 3)
+    def test_scales_to_larger_n(self) -> None:
+        """Three- and four-input tables compute the right result too."""
+        for table, n in [
+            ("00000001", 3),  # 3-input AND
+            ("11111110", 3),  # 3-input NAND
+            ("01101001", 3),  # majority
+            ("0" * 16, 4),  # constant zero
+            ("1" * 16, 4),  # constant one
+            ("0110100110010110", 4),  # parity
+        ]:
+            program = boolean.abcdirection(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_abcdirection(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):
             boolean.abcdirection("011", 1)
+
+
+class TestRotfuck:
+    """The ROTfuck boolean generator.
+
+    ROTfuck rotates the program after every command, so the generator lays
+    out ``[ body ]`` blocks whose ``]`` is a phantom encoded at the ``[``-fire
+    seek state; both the skip and body paths re-converge in the same rotation
+    state because every body length is 7 (mod 8).
+    """
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0111", 2),  # OR
+            ("0110", 2),  # XOR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # high half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.rotfuck(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_rotfuck(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_program_round_trips_every_table_at_n_2(self) -> None:
+        """Every two-input table produces the right result."""
+        for table_int in range(2 ** (2**2)):
+            table = format(table_int, "04b")
+            program = boolean.rotfuck(table, 2)
+            for combo in range(4):
+                bits = [(combo >> (1 - i)) & 1 for i in range(2)]
+                got = run_rotfuck(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.rotfuck("011", 1)
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.rotfuck("02", 1)

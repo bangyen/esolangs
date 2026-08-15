@@ -68,7 +68,7 @@ into a template) rather than the program reading input.
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes |  |  | yes |  |
-| ROTfuck | yes | yes |  |  |  | hello |
+| ROTfuck | yes | yes |  | yes |  | hello |
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |

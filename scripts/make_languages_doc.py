@@ -53,6 +53,7 @@ BOOLEAN = {
     "Painfuck",
     "Polynomial",
     "Qoibl",
+    "ROTfuck",
     "S*bleq",
     "Sophie",
     "Taglate",

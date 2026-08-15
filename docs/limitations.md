@@ -257,7 +257,7 @@ bound: `n == 4` (degree 184, coefficients ~10**729) factors in ~10s, while
 `n == 5` (degree 376, ~10**1746) does not factor in practical time, so the
 boolean generator is capped at `n <= 4`.
 
-## ROTfuck (built; straight-line generator)
+## ROTfuck (built; straight-line generator and phantom-block boolean generator)
 Every executed command rotates all source characters one step along
 `+-><,.[]`, so the character at position ``i`` at time ``t`` is
 ``rot^t(source[i])``.  Brackets are matched dynamically: when a ``[`` or
@@ -266,6 +266,26 @@ the rotated program with the standard nesting count, so an executed bracket
 needs a partner in the current code, not in the source.  The text generator
 therefore emits straight-line programs (``source[i]`` is the ``i``-fold
 inverse rotation of the desired command), which fully covers arbitrary text.
+
+The rotation defeats a brainfuck decision tree outright: a ``[ body ]``
+whose body is a rotation-encoded loop cannot work, because when the ``]``
+fires its ``[`` has rotated away (the ``]`` seeks the partner at a rotation
+state that depends on the step count, and the body path and skip path arrive
+with conflicting mod-8 alignment requirements — the skip-path seek needs
+``q ≡ p+1`` while re-convergence needs ``q ≡ p``).  The boolean generator
+sidesteps the wall by never looping: every ``[`` opens a block whose body is
+straight-line ``+-><`` (no brackets), and the closing ``]`` is a *phantom*
+encoded as the inverse rotation of ``]`` at the ``[``-fire seek state, so the
+skip path (tested cell 0) seeks it and jumps past the block while the body
+path (tested cell nonzero) sees a non-firing ``[``.  Because every body
+length is 7 (mod 8), the two paths reach the position after the phantom in
+the same rotation state and the rest of the program is position-encoded.
+The table is a minterm sum: mismatch counters guarded by the bits and their
+complements, one block per minterm zeroing it iff its counter is nonzero
+(idempotent — the cell goes 1 to 0 exactly once), and ``1``-row blocks
+accumulating into the printed result.  The programs are long (O(``n·2**n``)
+blocks, ~1.4s/execution at ``n == 4``), verified exhaustively at
+``n <= 2`` and sampled through ``n = 4``.
 
 ## Text generators: exhausted
 Every language whose interpreter can emit arbitrary bytes already has a text
@@ -385,18 +405,18 @@ rewrite:
   stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
   `Circlefuck → bf` decoders only reversed the forward transpilers' canonical
   form (round-trip-only).
-## ABCDirection (built; n <= 2 verified)
-- The boolean generator ships and is verified for ``n <= 2`` (every one- and
-  two-input function).  A read staircase fills the queue, a corridor routes
-  the pointer around the tree, each node dequeues a bit and tests it with
-  ``C up``, and the fired leaf prints ``48 + f`` as a byte before running off
-  the terminator row (``EOFError``, which the harness treats as termination).
-  The ``D``-left cells are spaced so no six-``D`` run fools the grid reader,
-  the one-side leaves step into a clear column before heading up, and each
-  leaf's EOF sink column is distinct so no turn cell sits on another leaf's
-  upward path.
-- ``n > 2`` raises: deeper trees route their leaves and internal paths
-  through the tree's own cells.  The two-child routing paths cross deeper
-  nodes' ``D``-left runs, so the leaves never print.  Resolving this needs a
-  tree layout whose level bands are well separated (e.g. wider child routing
-  or a different level spacing).
+## ABCDirection (built; scales to arbitrary n)
+- The boolean generator ships and works for any ``n``.  A read staircase
+  fills the queue, a corridor routes the pointer around the tree, each node
+  dequeues a bit and tests it with ``C up``, and the fired leaf prints
+  ``48 + f`` as a byte before running off the terminator row (``EOFError``,
+  which the harness treats as termination).  The tree is laid out on absolute
+  columns (each node sits at the midpoint of its leaf range, so the crossing
+  subtrees can never meet), the ``D``-left cells are spaced so no six-``D``
+  run fools the grid reader, each leaf routes DOWN at a clear column to its
+  own escape row before the serpentine, and each leaf's EOF sink column is
+  distinct so no turn cell sits on another leaf's upward path.
+- Verified for every table at ``n <= 3`` (4 + 16 + 256 functions) and sampled
+  through ``n = 6``.  The grid grows as ``O(4^n)`` cells (roughly ``60*2^n``
+  wide by ``52*2^n`` tall), so exhaustive checks are only practical for small
+  ``n``.

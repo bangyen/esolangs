@@ -182,7 +182,18 @@ bit):
   boolean generator cannot reuse the brainfuck minterm strategy.  A decision
   tree would have to be designed around the rotation-state-dependent bracket
   matching, which is fragile and hard to verify.  The rotation is a real
-  wall, not a pre-encoding detail.
+  wall, not a pre-encoding detail.  **Done: the generator shipped.**  The
+  escape from the wall is to avoid loops entirely: each ``[ body ]`` block
+  has a straight-line ``+-><``-only body (no nested brackets), and the
+  closing ``]`` is a *phantom* whose source character is encoded so the
+  ``[``-fire seek finds it at the right rotation state.  Both the skip path
+  (tested cell 0) and the body path re-converge after the block in the same
+  rotation state because every body length is 7 (mod 8), so the program
+  after a block can be encoded position-wise.  The truth table is evaluated
+  as a minterm sum with an idempotent-zeroing indirection (each input bit
+  and its complement guard mismatch counters; one block per minterm zeroes
+  the minterm iff its counter is nonzero; ``1``-rows accumulate).  Verified
+  exhaustively for every table at ``n <= 2`` and sampled through ``n = 4``.
 
 ### No-input languages: parameterized (assessed)
 
@@ -262,17 +273,17 @@ research-level too.  The last seven:
   queue-based byte echo (read into cell 0, ``D`` right enqueue, then
   ``D`` left dequeue and ``C`` down output) is the promising construction,
   but it needs the heading state threaded correctly through the wraps.
-  **Built since: an ``abcdirection`` generator now ships (``n <= 2``).**  A
-  read staircase fills the queue, a corridor routes the pointer around the
-  tree, each node tests its bit with ``C`` up, and the fired leaf prints
-  ``48 + f`` before running off the terminator row (``EOFError``, which the
-  harness treats as termination).  The tree's ``D``-left cells are spaced so
-  no six-``D`` run fools the grid reader, the one-side leaves step into a
-  clear column before heading up, and each leaf's EOF sink uses its own
-  column so the turn cells never sit on another leaf's upward path.
-  ``n <= 2`` is verified for every one- and two-input function; ``n > 2``
-  raises, because deeper trees route their leaves and internal paths through
-  the tree's own cells and are not yet correct.
+   **Built since: an ``abcdirection`` generator now ships and scales to any
+   ``n``.**  A read staircase fills the queue, a corridor routes the pointer
+   around the tree, each node tests its bit with ``C`` up, and the fired leaf
+   prints ``48 + f`` before running off the terminator row (``EOFError``,
+   which the harness treats as termination).  The tree is laid out on absolute
+   columns (each node sits at the midpoint of its leaf range, so the crossing
+   subtrees can never meet), the ``D``-left cells are spaced so no six-``D``
+   run fools the grid reader, each leaf routes DOWN at a clear column to its
+   own escape row before the serpentine, and each leaf's EOF sink uses its own
+   column so the turn cells never sit on another leaf's upward path.
+   Verified for every table at ``n <= 3`` and sampled through ``n = 6``.
 
 **Never assessed** and still on the table: none — the no-input and
 input-reading candidates are now individually assessed.
