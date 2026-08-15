@@ -207,3 +207,28 @@ share a core:
   brainfuck-style byte tape, but Dimensional's ``[``/``]`` loops have no
   counterpart in LaserFuck's mirror-driven control — a direct transpile
   would again be a full simulation.
+
+## VM / debugging interface
+
+A common step-and-inspect interface would make the library a tool for
+studying esolangs, not just running them: `vm.step()`, `vm.halted`,
+`vm.output`, `vm.ip`, `vm.memory`, and `vm.stack` on a wrapper around each
+interpreter.  The goal is a `vm` module exposing one `VM` protocol, with a
+per-language adapter behind it.
+
+The state models are fundamentally different (tapes, stacks, registers, 2D
+grids, self-modifying code), so `memory`/`stack`/`ip` are best-effort and
+language-shaped rather than uniform: a tape language exposes its cells and
+pointer, a stack language exposes its stack (and an empty ``stack`` for
+languages without one), an OISC exposes its cells, and a 2D language exposes
+its position and direction.  The interface contract is common; the fields
+are what each language's state actually is.
+
+This needs the interpreters to expose their state machine, which only seven
+currently do (S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
+Temporary Stack); the rest keep state in `run()` locals.  The incremental
+path is to define the `VM` protocol, implement adapters for those seven plus
+brainfuck (a trivial tape + pointer), and grow the set per state model over
+time.  Medium priority: it is a distinct workstream rather than more
+interpreters or transpilers, and it is the one feature that changes the
+library's audience from "runner" to "study tool".
