@@ -252,6 +252,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 | BF | → | 6-5 |
 | BFStack | → | BF |
 | BIO | → | BF |
+| Decleq | → | S*bleq |
 | huf | → | BF |
 
 Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
