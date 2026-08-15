@@ -511,8 +511,12 @@ def basicfuck_to_bf(program: str) -> str:
                     raise ValueError("Invalid syntax.")
                 pos += 1
                 stmts.append(
-                    ("assign", t, op, ("const", int(rhs))
-                     if rhs.isdigit() else ("var", rhs)),
+                    (
+                        "assign",
+                        t,
+                        op,
+                        ("const", int(rhs)) if rhs.isdigit() else ("var", rhs),
+                    ),
                 )
         return stmts, pos
 

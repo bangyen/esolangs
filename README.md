@@ -263,9 +263,11 @@ esolangs transpile BF Circlefuck program.bf     # auto-sized data region
 ```
 
 ```python
-art = esolangs.transpile("brainfuck", "ASCII art", program)   # or via the API
+art = esolangs.transpile("brainfuck", "ASCII art", program)  # or via the API
 program = esolangs.transpile("ASCII art", "brainfuck", art)
-circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program, size=8)  # explicit size
+circlefuck = esolangs.transpile(
+    "brainfuck", "Circlefuck", program, size=8
+)  # explicit size
 ```
 
 ## Tools
@@ -278,13 +280,20 @@ The `boolean.py` module builds a program that computes a truth table
 (most-significant input first) in each language with suitable control flow:
 
 ```python
-from esolangs.tools.boolean import between, circlefuck_byte, dig, laserfuck, polynomial, taglate
+from esolangs.tools.boolean import (
+    between,
+    circlefuck_byte,
+    dig,
+    laserfuck,
+    polynomial,
+    taglate,
+)
 
-dig("0110", 2)            # 2-input XOR in Dig
-between("0110", 2)        # the same truth table in Between
-polynomial("0110", 2)     # in Polynomial (up to n = 4)
-taglate("0110", 2)        # 2-input XOR in Taglate (up to n = 2)
-laserfuck("0110", 2)      # and in LaserFuck (random initial heading)
+dig("0110", 2)  # 2-input XOR in Dig
+between("0110", 2)  # the same truth table in Between
+polynomial("0110", 2)  # in Polynomial (up to n = 4)
+taglate("0110", 2)  # 2-input XOR in Taglate (up to n = 2)
+laserfuck("0110", 2)  # and in LaserFuck (random initial heading)
 circlefuck_byte(table, n)  # arbitrary byte-valued functions
 ```
 

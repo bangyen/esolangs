@@ -174,7 +174,7 @@ def main() -> int:
         ok = out == table[combo].encode()
         failures += not ok
         if not ok:
-            print(f"{name} boolean {table!r} n={n} combo {bits}: " f"FAIL -> {out!r}")
+            print(f"{name} boolean {table!r} n={n} combo {bits}: FAIL -> {out!r}")
     for name, _, _ in boolean_refs:
         print(f"{name} boolean: verified tables for n = 1..4")
 
@@ -183,7 +183,8 @@ def main() -> int:
     three_x_cmd = rust["three_x"]
     if three_x_cmd is not None:
         const_programs = [
-            other_bools._const(n) + "!" for n in range(256)  # noqa: SLF001
+            other_bools._const(n) + "!"  # noqa: SLF001 - boolean-constant helper
+            for n in range(256)
         ]
         for n, out in zip(
             range(256),
