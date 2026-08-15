@@ -642,7 +642,11 @@ def painfuck(truth_table: str, n: int) -> str:
                 k += 1
                 break
         else:
-            raise ValueError(f"Painfuck command {char!r} is not in a cycle")
+            # every command the brainfuck generator emits maps to a command
+            # in _CYCLES, so this branch is unreachable by construction
+            raise ValueError(
+                f"Painfuck command {char!r} is not in a cycle"
+            )  # pragma: no cover
     return "".join(out)
 
 
