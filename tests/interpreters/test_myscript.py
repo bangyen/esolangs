@@ -32,7 +32,9 @@ class TestExamples:
         assert run_and_capture("say ask", inputs=["hi"]) == "hi"
 
     def test_truth_machine_zero(self) -> None:
-        code = "check ask?\n  if \"1\",\n    while yes,\n      say \"1\"\n  else,\n    say \"0\""
+        code = (
+            'check ask?\n  if "1",\n    while yes,\n      say "1"\n  else,\n    say "0"'
+        )
         assert run_and_capture(code, inputs=["0"]) == "0"
 
     def test_math_and_variables(self) -> None:
@@ -48,8 +50,8 @@ class TestExamples:
             "var MyClass is func prop\n"
             "  return [prop]\n"
             "var MyClass_myMethod is func obj\n"
-            "  say concat \"obj.prop: \" itemat obj 0\n"
-            "var myObject is MyClass \"Hello!\"\n"
+            '  say concat "obj.prop: " itemat obj 0\n'
+            'var myObject is MyClass "Hello!"\n'
             "MyClass_myMethod myObject"
         )
         assert run_and_capture(code) == "obj.prop: Hello!"
@@ -94,7 +96,7 @@ class TestErrors:
 
     def test_if_outside_check_halts(self) -> None:
         with pytest.raises(HaltError):
-            run_and_capture("if no,\n  say \"x\"")
+            run_and_capture('if no,\n  say "x"')
 
     def test_input_running_out_raises_eof(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -107,7 +109,7 @@ class TestGenerator:
     def test_round_trip(self) -> None:
         from esolangs.tools import generate as gen
 
-        for text in ["Hi", "Hello, World!", "a\tb\nc", "quote\"and\\slash"]:
+        for text in ["Hi", "Hello, World!", "a\tb\nc", 'quote"and\\slash']:
             assert run_and_capture(gen.myscript(text)) == text
 
     def test_unrepresentable_rejected(self) -> None:
