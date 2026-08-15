@@ -248,6 +248,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 | BF | ⇄ | ASCII art |
 | BF | → | Circlefuck |
 | Basicfuck | → | BF |
+| BF | ⇄ | 6-5 |
 | NoComment | → | BF |
 | BFStack | → | BF |
 | BIO | → | BF |

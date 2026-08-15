@@ -629,3 +629,51 @@ def test_basicfuck_fuzz_in_bounds_programs() -> None:
         assert esolangs.run("Basicfuck", program) == esolangs.run(
             "brainfuck", bf_program
         )
+
+
+# (6-5 program, stdin) pairs; each uses only the direct commands and the
+# 8n4...4708m while idiom, and keeps its cells in [0, 255] while it runs.
+SIX_FIVE_TO_BF_BATTERY = (
+    ("62A", ""),
+    ("6262A", ""),
+    ("5A", ""),
+    ("6" * 10 + "5" + "A", ""),
+    ("3A", ""),
+    ("13A", ""),
+    ("BA", "X\n"),
+    ("B2A", "X\n"),
+    ("69A", ""),
+    ("68149A47081", ""),  # cell 6, loop [ 9 A ] -> prints a zero
+    ("681459A47081", ""),  # cell 6, loop [ 59 A ] -> prints 5..0
+)
+
+
+@pytest.mark.parametrize(("program", "stdin"), SIX_FIVE_TO_BF_BATTERY)
+def test_six_five_transpiles_to_brainfuck(program: str, stdin: str) -> None:
+    bf_program = esolangs.transpile("6-5", "brainfuck", program)
+    assert esolangs.run("6-5", program, stdin) == esolangs.run(
+        "brainfuck", bf_program, stdin
+    )
+
+
+@pytest.mark.parametrize(("program", "stdin"), SIX_FIVE_BATTERY)
+def test_six_five_round_trip_recovers_output(program: str, stdin: str) -> None:
+    """bf -> 6-5 -> bf reproduces the same output (the reverse decodes)."""
+    six_five = esolangs.transpile("brainfuck", "6-5", program)
+    back = esolangs.transpile("6-5", "brainfuck", six_five)
+    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
+        "brainfuck", back, stdin
+    )
+
+
+def test_six_five_unsupported_control_flow_rejected() -> None:
+    """A 7n skip with n != 0 or a loose 8n jump has no brainfuck form."""
+    with pytest.raises(ValueError, match="unsupported"):
+        esolangs.transpile("6-5", "brainfuck", "7A")
+    with pytest.raises(ValueError, match="unsupported"):
+        esolangs.transpile("6-5", "brainfuck", "82")
+
+
+def test_six_five_unbalanced_loops_rejected() -> None:
+    with pytest.raises(ValueError, match="unbalanced"):
+        esolangs.transpile("6-5", "brainfuck", "814")
