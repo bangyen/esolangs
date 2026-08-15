@@ -82,5 +82,5 @@ class TestBrainfuck:
             ">+<<.",
         ]
         for program in programs:
-            art = esolangs.transpile("BF", "ASCII art", program)
-            assert esolangs.run("BF", program) == esolangs.run("ASCII art", art)
+            art = esolangs.transpile("brainfuck", "ASCII art", program)
+            assert esolangs.run("brainfuck", program) == esolangs.run("ASCII art", art)
