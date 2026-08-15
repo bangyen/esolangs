@@ -22,10 +22,7 @@ __all__ = [
     "bf_to_six_five",
     "bfstack_to_bf",
     "bio_to_bf",
-    "circlefuck_to_bf",
     "huf_to_bf",
-    "nocomment_to_bf",
-    "six_five_to_bf",
 ]
 
 # The eight brainfuck commands -> their ASCII-art blocks.  This is the
@@ -156,24 +153,6 @@ def bf_to_circlefuck(program: str, size: int | None = None) -> str:
         raise ValueError(f"size must be positive, got {size}")
     setup = ">" * size + ("<" + "-" * 62) * size
     return setup + "".join(ops) + "@"
-
-
-_NOCOMMENT_TO_BF = {"c": "[-]", "i": "+", "d": "-", "o": "."}
-
-
-def nocomment_to_bf(program: str) -> str:
-    """Rewrite a NoComment program into brainfuck.
-
-    Handles the ``c``/``i``/``d``/``o`` subset of NoComment, which maps
-    directly onto brainfuck: ``c`` clears the current cell (``[-]``), ``i``
-    increments it (``+``), ``d`` decrements it (``-``), and ``o`` prints it
-    as a byte (``.``).  Anything else is dropped (the full language's tape,
-    stack, and ``s``/``b`` jumps have no brainfuck translation here).
-    Dropping characters also makes this a lenient receiver: a program the
-    interpreter would reject for a non-command still transpiles by ignoring
-    it.
-    """
-    return "".join(_NOCOMMENT_TO_BF[c] for c in program if c in _NOCOMMENT_TO_BF)
 
 
 _BFSTACK_TO_BF = {
@@ -347,105 +326,6 @@ def bf_to_six_five(program: str) -> str:
 def _six_five_label(value: int) -> str:
     """Return the single character 6-5 reads as ``value`` for a 7n/8n operand."""
     return str(value) if value < 10 else chr(value + 55)
-
-
-def circlefuck_to_bf(program: str) -> str:
-    """Rewrite the ``bf_to_circlefuck`` form of a program back into brainfuck.
-
-    Circlefuck's tape *is* the program, so an arbitrary Circlefuck program
-    (whose data and code overlap, or which uses ``@``/``{``/``}``/``#``)
-    has no general brainfuck translation.  What :func:`bf_to_circlefuck`
-    produces, however, is structured: a data region setup ``>``*``size``
-    followed by ``("<" + "-"*62)*size`` (zeroing the ``size`` data cells),
-    then the brainfuck commands, then ``@``.  This decodes exactly that
-    form -- the leading ``>``s up to the first ``<`` give ``size``, the
-    setup tail is verified, and the commands before the ``@`` are the
-    brainfuck program.  Anything else is rejected.
-    """
-    from esolangs.interpreters.tape_based.circlefuck import parse
-
-    chars = [chr(c) for c in parse(program)]
-    size = 0
-    while size < len(chars) and chars[size] == ">":
-        size += 1
-    if size == 0:
-        raise ValueError("not the bf_to_circlefuck form: no data-region setup")
-    tail = "<" + "-" * 62
-    expected = tail * size
-    if "".join(chars[size : size + len(expected)]) != expected:
-        raise ValueError("not the bf_to_circlefuck form: missing data-region setup")
-    body = chars[size + len(expected) :]
-    if "@" in body:
-        body = body[: body.index("@")]
-    return "".join(c for c in body if c in "+-<>.,[]")
-
-
-def six_five_to_bf(program: str) -> str:
-    """Rewrite a 6-5 program into brainfuck.
-
-    6-5's pointer and cell commands map directly: ``1`` moves right two
-    cells, ``3`` left one, ``5``/``6`` add 5/6 to the cell, ``2``/``9``
-    subtract 5/6, ``A`` prints the cell and ``B`` reads input.  Its while
-    idiom ``8n4 <body> 4708m`` decodes back to ``[ <body> ]``: the ``8n4``
-    jumps to the loop's marker and the closing ``4708m`` skips the jump back
-    when the cell is zero, exactly the loop ``bf_to_six_five`` produces.
-    A ``0`` ends the program (everything after it is dropped).
-
-    The emitted program is 8-bit wrapping brainfuck, so it matches the 6-5
-    interpreter for programs whose cells stay within ``[0, 255]`` while they
-    run (6-5 cells are unbounded).  Other control flow -- a ``7n`` skip with
-    ``n != 0``, an ``8n`` jump whose marker is not immediately after it, or
-    a bare ``0`` in the middle -- is rejected rather than mistranslated.
-    """
-    from esolangs.interpreters.tape_based.six_five import _tokens
-
-    toks = _tokens(program)
-    out: list[str] = []
-    i = 0
-    n = len(toks)
-    while i < n:
-        t = toks[i]
-        if len(t) == 2 and t[0] == "8" and i + 1 < n and toks[i + 1] == "4":
-            out.append("[")  # loop open: 8n 4
-            i += 2
-        elif t == "4" and i + 2 < n and toks[i + 1] == "70":
-            out.append("]")  # loop close: 4 70 8m
-            i += 3
-        elif t == "0":
-            break
-        elif t == "4":
-            i += 1  # a bare marker is a no-op
-        elif t == "1":
-            out.append(">>")
-            i += 1
-        elif t == "3":
-            out.append("<")
-            i += 1
-        elif t == "5":
-            out.append("+++++")
-            i += 1
-        elif t == "6":
-            out.append("++++++")
-            i += 1
-        elif t == "2":
-            out.append("-----")
-            i += 1
-        elif t == "9":
-            out.append("------")
-            i += 1
-        elif t == "A":
-            out.append(".")
-            i += 1
-        elif t == "B":
-            out.append(",")
-            i += 1
-        else:
-            raise ValueError(f"unsupported 6-5 construct: {t!r}")
-
-    result = "".join(out)
-    if result.count("[") != result.count("]"):
-        raise ValueError("unbalanced 6-5 loops cannot be transpiled")
-    return result
 
 
 def basicfuck_to_bf(program: str) -> str:
@@ -690,10 +570,7 @@ TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("ASCII art", "brainfuck"): ascii_art_to_bf,
     ("Basicfuck", "brainfuck"): basicfuck_to_bf,
     ("brainfuck", "Circlefuck"): bf_to_circlefuck,
-    ("Circlefuck", "brainfuck"): circlefuck_to_bf,
     ("brainfuck", "6-5"): bf_to_six_five,
-    ("6-5", "brainfuck"): six_five_to_bf,
-    ("NoComment", "brainfuck"): nocomment_to_bf,
     ("BFStack", "brainfuck"): bfstack_to_bf,
     ("BIO", "brainfuck"): bio_to_bf,
     ("huf", "brainfuck"): huf_to_bf,
