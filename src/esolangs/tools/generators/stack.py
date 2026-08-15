@@ -1,6 +1,6 @@
 """Stack text generators."""
 
-__all__ = ["modulous", "temporary"]
+__all__ = ["modulous", "the_temporary_stack"]
 
 
 def modulous(text: str) -> str:
@@ -15,7 +15,7 @@ def modulous(text: str) -> str:
     return f'[PSH STR "{text}"][PRT STR][JMP B 1 NIF 0]'
 
 
-def temporary(text: str) -> str:
+def the_temporary_stack(text: str) -> str:
     """Build a The Temporary Stack program that outputs ``text``.
 
     Characters are pushed as a ``*`` string literal and popped by the

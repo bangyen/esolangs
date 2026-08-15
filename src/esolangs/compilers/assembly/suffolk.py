@@ -44,14 +44,14 @@ def comp(code: str, num: int) -> str:
         c = code[ind]
 
         if c == ">":
-            s = f"li   t0, {n * 4}\n" "\tsub  s2, s2, t0"
+            s = f"li   t0, {n * 4}\n\tsub  s2, s2, t0"
         elif c == "<":
-            s = "lw   t0, 0(s2)\n" "\tadd  s3, s3, t0\n" "\taddi s2, s1, -4"
+            s = "lw   t0, 0(s2)\n\tadd  s3, s3, t0\n\taddi s2, s1, -4"
 
             if n > 2:
-                s += f"\n\tli   s5, {n - 1}\n" "\tcall left"
+                s += f"\n\tli   s5, {n - 1}\n\tcall left"
             elif n == 2:
-                s += "\n\tlw   t0, 0(s2)\n" "\tadd  s3, s3, t0"
+                s += "\n\tlw   t0, 0(s2)\n\tadd  s3, s3, t0"
 
             add = True
         elif c == ".":
@@ -63,11 +63,7 @@ def comp(code: str, num: int) -> str:
         else:
             s = "call excl"
             if n > 1:
-                s += (
-                    "\n\tlw   t0, 0(s2)\n"
-                    f"\taddi t0, t0, {n - 1}\n"
-                    "\tsw   t0, 0(s2)"
-                )
+                s += f"\n\tlw   t0, 0(s2)\n\taddi t0, t0, {n - 1}\n\tsw   t0, 0(s2)"
             exc = True
 
         if c in ".,":

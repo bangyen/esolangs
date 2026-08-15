@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.tape_based.three_d_bf import run
+from esolangs.interpreters.tape_based.three_d_brainfuck import run
 
 
 def run_program(code: str, stdin: str = "") -> str:

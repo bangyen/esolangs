@@ -24,8 +24,8 @@ from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
-from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.minifuck import run as minifuck_run
+from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian_run
 
 minsky_run = importlib.import_module(
     "esolangs.interpreters.register_based.minsky_swap"

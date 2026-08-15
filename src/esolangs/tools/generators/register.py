@@ -6,7 +6,7 @@ from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.generators.helpers import _cm_constants, _require_bytes
 
 __all__ = [
-    "add_sub_jump",
+    "addsubjump",
     "albabet",
     "bio",
     "collatz_multiverse",
@@ -287,7 +287,7 @@ def collatz_multiverse(text: str) -> str:
     return "\n".join(lines)
 
 
-def add_sub_jump(text: str) -> str:
+def addsubjump(text: str) -> str:
     """Build an AddSubJump program that outputs ``text``.
 
     The program is a self-modifying memory: each instruction occupies four

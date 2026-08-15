@@ -19,7 +19,7 @@ def run(code: str, io: IO) -> None:
     """Run a Bitdeque program and print the deque at the end."""
     lst = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", r"GOTO *(\d+)")
 
-    join = f'({"|".join(lst)})'
+    join = f"({'|'.join(lst)})"
     tokens = re.findall(join, code)
     ind = reg = 0
     deq: list[int] = []

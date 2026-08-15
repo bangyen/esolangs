@@ -123,7 +123,8 @@ class TestDivergenceDetection:
             assert not verify_differential._fuzz_three_x(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(
-        not verify_differential.PCT_BIN.exists(), reason="Rust reference not built"
+        not verify_differential.PCT_SQUARED_MINUS_ONE_BIN.exists(),
+        reason="Rust reference not built",
     )
     def test_pct_catches_divergence(self, rng) -> None:
         """A wrong output on the Rust side is reported as a failure."""

@@ -106,14 +106,14 @@ def comp(code: str) -> str:
             res += f"\tslli s2, s2, {num}\n"
         elif c == ">":
             jmp += 1
-            res += f".T{jmp}:\n" "\tli   t0, 2\n" f"\tbltu s2, t0, .B{jmp}\n"
+            res += f".T{jmp}:\n\tli   t0, 2\n\tbltu s2, t0, .B{jmp}\n"
         elif c == "<":
-            res += f"\tj .T{jmp}\n" f".B{jmp}:\n"
+            res += f"\tj .T{jmp}\n.B{jmp}:\n"
             jmp -= 1
 
         ind = new
 
-    res += "\n\tli   a0, 0\n" "\tli   a7, 93\n" "\tecall\n\n"
+    res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n\n"
 
     def end(opr: str) -> str:
         if func[opr][2]:
@@ -128,16 +128,11 @@ def comp(code: str) -> str:
         return mul
 
     if func["O"][1]:
-        res += "zero:\n" "\taddi s1, s1, -4\n" "\tsw   zero, 0(s1)\n" + end("O")
+        res += "zero:\n\taddi s1, s1, -4\n\tsw   zero, 0(s1)\n" + end("O")
     if func["I"][1]:
-        res += (
-            "one:\n"
-            "\taddi s1, s1, -4\n"
-            "\tli   t0, 1\n"
-            "\tsw   t0, 0(s1)\n" + end("I")
-        )
+        res += "one:\n\taddi s1, s1, -4\n\tli   t0, 1\n\tsw   t0, 0(s1)\n" + end("I")
     if func["P"][1]:
-        res += "up:\n" "\taddi s1, s1, -4\n" "\tsw   s2, 0(s1)\n" + end("P")
+        res += "up:\n\taddi s1, s1, -4\n\tsw   s2, 0(s1)\n" + end("P")
     if func["A"][1]:
         if func["A"][2]:
             res += (
@@ -151,7 +146,7 @@ def comp(code: str) -> str:
                 "\tret\n"
             )
         else:
-            res += "down:\n" "\tlw   s2, 0(s1)\n" "\taddi s1, s1, 4\n" "\tret\n"
+            res += "down:\n\tlw   s2, 0(s1)\n\taddi s1, s1, 4\n\tret\n"
     if func["S"][1]:
         res += (
             "swap:\n"
