@@ -44,6 +44,10 @@ class Test2dFish:
     def test_read_number(self) -> None:
         assert run_program("/%o@", "42\n") == "42"
 
+    def test_read_number_rejects_garbage(self) -> None:
+        with pytest.raises(ValueError, match="invalid literal"):
+            run_program("/%o@", "42abc\n")
+
     def test_multiple_rows(self) -> None:
         assert run_program("v\ni\n@\n") == ""
         assert run_program("v\nii\no\n@\n") == "1"

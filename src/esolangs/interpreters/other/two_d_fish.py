@@ -39,9 +39,7 @@ Documented divergences (the cross-check leaves these undefined or broken):
   ``str[0]`` makes undefined) raises :class:`HaltError`;
 - ``a`` outside string mode writes the accumulator's low byte
   (``chr(acc % 256)``), matching the cross-check's two's-complement
-  truncation rather than raising on out-of-range values;
-- ``%`` parses a whole input line with :func:`int`, so a line it cannot
-  parse raises :class:`ValueError` (the cross-check would consume a prefix).
+  truncation rather than raising on out-of-range values.
 """
 
 import sys

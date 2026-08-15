@@ -66,6 +66,10 @@ class TestPainfuck:
     def test_read_number(self) -> None:
         assert run_program("jiue", "6\n65\n") == "A"
 
+    def test_read_number_rejects_garbage(self) -> None:
+        with pytest.raises(HaltError):
+            run_program("ip", "12x\n")
+
     def test_loop(self) -> None:
         # pp a (cell 2 nonzero, open), s b (0 -> close), u prints 0
         assert run_program("ppas b ue".replace(" ", "")) == "\x00"
