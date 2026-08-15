@@ -60,7 +60,7 @@ into a template) rather than the program reading input.
 | Minsky Swap |  | yes |  |  |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |
-| MyScript | yes | yes |  |  |  | hello |
+| MyScript | yes | yes |  | yes |  | hello |
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
 | Number Seventy-Four |  | yes | yes |  |  |  |
@@ -79,7 +79,7 @@ into a template) rather than the program reading input.
 | Trash |  | yes | yes |  |  |  |
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
-| ZTOALC L | yes | yes |  |  |  | hello |
+| ZTOALC L | yes | yes |  | yes |  | hello |
 | bit~ | yes | yes | yes | yes |  | hello |
 | brainfuck | yes | yes |  | yes |  | hello |
 | huf | yes | yes |  |  |  | hello |
