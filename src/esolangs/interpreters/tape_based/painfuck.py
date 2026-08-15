@@ -43,6 +43,8 @@ Documented divergences from the C++ cross-check:
   unmatched ``a`` on a zero cell skips to the end and the program halts.
 - ``u`` prints ``chr(cell & 0xFF)``, matching the reference's ``(char)``
   cast for cell values outside the byte range.
+
+Invalid runtime operations halt with :class:`~esolangs.exceptions.HaltError`.
 """
 
 import random

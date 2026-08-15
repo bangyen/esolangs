@@ -27,6 +27,8 @@ Commands: ``>d``/``<d`` move the axis pointer along dimension ``d`` (bare
 read it from input, ``[``/``]`` loop on it, ``{d``/``}`` loop on the axis
 pointer's dimension-``d`` coordinate, ``?d``/``!d`` read/clear it, ``$AXIS``
 selects the pointer, and ``*`` toggles comment mode.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

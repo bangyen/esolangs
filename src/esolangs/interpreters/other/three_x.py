@@ -17,6 +17,8 @@ Semantics match the Rust cross-check (``extra/rust/three_x.rs``):
   fraction (matching the reference's ``Rational`` parser, which rejects
   decimals);
 - ``[`` with no closing ``]`` prints nothing.
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import re

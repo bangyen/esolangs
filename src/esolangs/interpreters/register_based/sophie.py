@@ -9,6 +9,8 @@ fails.  `&` halts.  Unbalanced brackets are a malformed program and are
 rejected with :class:`ValueError`; a `*` break with no enclosing loop is an
 invalid operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import re

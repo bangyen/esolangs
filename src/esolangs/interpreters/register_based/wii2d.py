@@ -5,6 +5,8 @@ Pointer moves on a 2D grid with wrap-around behavior and an accumulator.
 
 The wiki requires exactly one ``!`` start marker; this interpreter rejects
 programs that violate that constraint instead of silently tolerating them.
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import copy

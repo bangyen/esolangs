@@ -11,6 +11,8 @@ The language features:
 - Move instruction: copies values between array positions or handles I/O
 - Sum instruction: sets position 0 to sum of positions 1-4
 - Automatic halting when array doesn't change after two commands
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import re

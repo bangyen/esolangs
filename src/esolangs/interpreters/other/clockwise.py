@@ -9,6 +9,8 @@ The wiki defines the program as a closed ring; a pointer that walks off the
 edge is a malformed program and is rejected with :class:`ValueError`.  Input
 bits are read once at the start and then rotated, so a program that consumes
 more than 7 bits re-reads them rather than halting on exhausted input.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

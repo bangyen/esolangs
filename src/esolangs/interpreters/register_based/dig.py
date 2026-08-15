@@ -9,6 +9,8 @@ digit from an adjacent cell but finds none, or divides by an adjacent zero, is
 an invalid runtime operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`; an empty program is malformed and
 rejected with :class:`ValueError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

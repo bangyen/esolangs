@@ -13,6 +13,9 @@ negative cells excluded from the output.
 The initial heading is chosen uniformly at random, matching the reference; a
 run may therefore produce one of several outputs, so tests set a fixed
 heading through :func:`run`.
+
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import random

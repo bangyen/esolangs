@@ -9,6 +9,8 @@ rather than reading the next character on the fly.
 Outputting a cell value outside the valid character range is an invalid
 operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import re

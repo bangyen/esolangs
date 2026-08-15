@@ -6,6 +6,8 @@ Each dot can carry values and execute commands based on its position.
 The interpreter skips over string and warp-name tokens after parsing them,
 so printing a string containing spaces works (the whole literal is consumed
 as one token).
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 from __future__ import annotations

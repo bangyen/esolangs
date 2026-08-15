@@ -7,6 +7,8 @@ instead when the pool is zero).  < moves the pointer left.
 The program is not implicitly looped: execution halts when the instruction
 pointer reaches the end of the code (the wiki talk page leaves the question
 open; this interpreter does not assume an implicit loop).
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys
