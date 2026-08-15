@@ -4,8 +4,8 @@ A pointer travels a grid of rows; the top-left cell must set its direction
 (``/`` right, ``\\`` left, ``v`` down, ``^`` up) and every cell it lands on
 is executed as a command: ``i``/``d``/``s`` increment/decrement/square the
 accumulator, ``o`` prints it in decimal, ``a`` prints it as a byte (or, in
-string mode, the next captured character), ``$`` reads an input line into
-the string variable, ``%`` reads an integer into the accumulator, ``(``
+string mode, the last captured character, which it removes), ``$`` reads an
+input line into the string variable, ``%`` reads an integer into the accumulator, ``(``
 captures the rest of its row up to the first ``)`` as the string variable
 and (heading right) skips past it, ``*`` prints and clears the string
 variable, and ``@`` halts.  The direction cell on the current cell also
@@ -125,8 +125,8 @@ def run(code: str, io: IO) -> None:
             if mode:
                 if not string:
                     raise HaltError("a on an empty string")
-                io.print_char(string[0])
-                string = string[1:]
+                io.print_char(string[-1])
+                string = string[:-1]
             else:
                 io.print_char(chr(acc % 256))
         elif c == "$":

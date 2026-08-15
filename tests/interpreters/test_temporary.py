@@ -100,3 +100,12 @@ class TestTemporaryStack:
 
         with pytest.raises(ValueError, match="following instruction"):
             run_and_capture("v1 :")
+
+    def test_multiple_commands_in_one_word_rejected(self) -> None:
+        """A word with more than one distinct command is invalid (per talk)."""
+        import pytest
+
+        with pytest.raises(ValueError, match="multiple commands"):
+            run_and_capture("o@\\@")
+        with pytest.raises(ValueError, match="multiple commands"):
+            run_and_capture("v1 @o")

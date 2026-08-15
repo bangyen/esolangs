@@ -3,6 +3,10 @@
 A binary tape where [ skips the next instruction when the flipped bit is 0
 and . prints the first eight cells as a binary byte (reading a byte of input
 instead when the pool is zero).  < moves the pointer left.
+
+The program is not implicitly looped: execution halts when the instruction
+pointer reaches the end of the code (the wiki talk page leaves the question
+open; this interpreter does not assume an implicit loop).
 """
 
 import sys

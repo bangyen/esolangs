@@ -35,8 +35,8 @@ class Test2dFish:
         assert run_program("/i(abc)@") == ""  # captured, never printed
 
     def test_string_accumulator_output(self) -> None:
-        # in string mode, a prints the captured characters one at a time
-        assert run_program("/i(ab)a@") == "a"
+        # in string mode, a removes and prints the last captured character
+        assert run_program("/i(ab)a@") == "b"
 
     def test_read_line(self) -> None:
         assert run_program("/$*@", "hi\n") == "hi"
