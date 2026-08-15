@@ -57,13 +57,13 @@ def _read_field(state: tuple[int, int], byte: int) -> tuple[tuple[int, int], int
 def _seek(field: int) -> tuple[int, int]:
     """Return the ``(cl, bl)`` state that reads ``field`` next.
 
-    Mirrors the reference's ``ind`` subroutine: the mask ``3`` shifted up to
-    the field's position (``3 << (8 - 2*field)``), which ``_read_field`` then
-    rotates back into place.
+    Mirrors the reference's ``ind`` subroutine: the mask ``3`` is positioned
+    at the field (``3 << (6 - 2*field)``) and pre-rotated, because
+    ``_read_field`` rotates and advances before reading.
     """
-    cl = 8 - 2 * field
-    bl = (3 << cl) & 0xFF
-    return cl, bl
+    cl = (6 - 2 * field) & 7
+    mask = (3 << cl) & 0xFF
+    return (cl + 2) & 7, ((mask << 2) | (mask >> 6)) & 0xFF
 
 
 def run(code: str, io: IO) -> None:

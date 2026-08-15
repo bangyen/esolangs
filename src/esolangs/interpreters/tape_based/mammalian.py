@@ -1,4 +1,4 @@
-"""Interpreter for MAMMALIAN.
+"""Interpreter for SLOW ACV MAMMALIAN.
 
 SEED/CONFLAGRATE operate on all 23 arrays, EXCRETE/CONSUME/FISSION/DIGEST on
 the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads a byte
@@ -72,7 +72,7 @@ def partial(op: int, curr: list[int], acc: int) -> int:
 
 
 def run(code: str, io: IO) -> None:
-    """Run a MAMMALIAN program."""
+    """Run a SLOW ACV MAMMALIAN program."""
     ins = (
         "SEED",
         "CONFLAGRATE",

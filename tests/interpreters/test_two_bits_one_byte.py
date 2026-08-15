@@ -56,11 +56,11 @@ class TestTwoBitsOneByte:
         # 0x7c = 01 11 11 00, X=3, Y=0 -> whole pair: 0x7c ^ 0x03 = 0x7f
         assert run_program("\x7c") == "\x7f"
 
-    def test_act_x0_noop(self) -> None:
-        """ACT with X=0 toggles nothing and resumes in sequence."""
-        # 0x41 = 01 00 00 01: first ACT is X=0 (no-op), the later one at
-        # field 3 toggles bits 4-5 to reach 0x71 = 'q' at the END field.
-        assert run_program("A") == "q"
+    def test_act_x0_toggles_top_field(self) -> None:
+        """ACT with X=0 targets the top field (bits 7-6), not a no-op."""
+        # 0x41 = 01 00 00 01: the first ACT is X=0 and toggles bits 7-6,
+        # yielding 0x8D before the later ACT at field 3.
+        assert run_program("A") == "\x8d"
 
     def test_jump(self) -> None:
         """JMP X jumps the instruction pointer to field X."""

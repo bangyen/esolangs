@@ -6,12 +6,11 @@
 //! many primes; otherwise it prints 0.  A program with no digits is malformed
 //! (status 1, the reference's EXIT_FAILURE).
 //!
-//! Matches the C++ reference exactly: only `t` characters before the first
-//! digit contribute to the step count and other characters there are ignored;
-//! only the leading digits after the first digit form the starting value, so
-//! trailing characters do not affect the result; and the primality test is
-//! trial division up to the square root, which does not treat 2 as prime, so
-//! a starting value of 2 prints 0.
+//! Matches the C++ reference except that 2 is treated as prime: only `t`
+//! characters before the first digit contribute to the step count and other
+//! characters there are ignored; only the leading digits after the first
+//! digit form the starting value, so trailing characters do not affect the
+//! result; and the primality test is trial division up to the square root.
 //!
 //! Invocation: `trash <program-file>`; program text from `argv[1]`.
 //! Input: the program file is `argv[1]`; the language has no input command.
@@ -26,7 +25,7 @@ fn is_prime(n: i64) -> bool {
     }
     let root = (n as f64).sqrt() as i64;
     let mut k = 2;
-    while k <= root + 1 {
+    while k <= root {
         if n % k == 0 {
             return false;
         }

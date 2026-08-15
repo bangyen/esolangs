@@ -26,10 +26,10 @@ from esolangs.interpreters.io import IO
 
 
 def _prime(n: int) -> bool:
-    """Return whether ``n`` is prime, matching the C++ reference's test."""
+    """Return whether ``n`` is prime (2 is prime, per the wiki)."""
     if n < 2:
         return False
-    return all(n % k != 0 for k in range(2, isqrt(n) + 2))
+    return all(n % k != 0 for k in range(2, isqrt(n) + 1))
 
 
 def run(code: str, io: IO) -> None:

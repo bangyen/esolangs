@@ -1,4 +1,4 @@
-"""Unit tests for the SLOW ACV MAMMALIAN interpreter."""
+"""Unit tests for the SLOW ACV SLOW ACV MAMMALIAN interpreter."""
 
 import io
 from contextlib import redirect_stdout

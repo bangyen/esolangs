@@ -1,4 +1,4 @@
-"""Regenerate the committed ZTOALC anchor table.
+"""Regenerate the committed ZTOALC L anchor table.
 
 The ``ztoalc`` generator needs, for each text length, a Collatz start whose
 trajectory is long enough.  This script derives the committed table
@@ -122,7 +122,7 @@ def anchors() -> list[tuple[int, int]]:
 def write_module(table: list[tuple[int, int]]) -> None:
     """Write ``ztoalc_starts.py``."""
     lines = [
-        '"""Collatz start for each ZTOALC text-length interval.',
+        '"""Collatz start for each ZTOALC L text-length interval.',
         "",
         "Each entry ``(end, start)`` covers every text length up to ``end``: for a",
         "length ``n`` the generator uses the first ``start`` whose ``end >= n``.  The",

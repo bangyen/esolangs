@@ -33,10 +33,10 @@ into a template) rather than the program reading input.
 | Back |  | yes |  | yes |  |  |
 | Basicfuck | yes | yes | yes | yes |  | hello |
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
-| BitDeque |  | yes |  |  |  |  |
+| Bitdeque |  | yes |  |  |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
 | Brainpocalypse |  | yes | yes |  |  |  |
-| CircleFuck | yes | yes |  | yes |  | hello truth-machine |
+| Circlefuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
 | Collatz Multiverse | yes | yes |  | yes |  | hello |
 | Container | yes | yes |  | yes |  | hello |
@@ -57,7 +57,6 @@ into a template) rather than the program reading input.
 | Keys |  | yes |  |  |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
-| MAMMALIAN | yes | yes |  |  |  | hello |
 | Minifuck | yes | yes |  | yes |  | hello |
 | Minsky Swap |  | yes |  |  |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
@@ -71,15 +70,16 @@ into a template) rather than the program reading input.
 | RAM0 |  | yes |  |  | yes |  |
 | ROTfuck | yes | yes |  |  |  | hello |
 | S*bleq | yes | yes |  | yes |  | hello |
+| SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
 | Stun Step |  | yes | yes |  |  |  |
 | Suffolk | yes | yes |  |  | yes | hello |
 | Taglate | yes | yes |  | yes |  | hello |
-| Temporary | yes | yes |  |  |  | hello |
+| The Temporary Stack | yes | yes |  |  |  | hello |
 | Trash |  | yes | yes |  |  |  |
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
-| ZTOALC | yes | yes |  |  |  | hello |
+| ZTOALC L | yes | yes |  |  |  | hello |
 | bit~ | yes | yes | yes | yes |  | hello |
 | huf | yes | yes |  |  |  | hello |
 

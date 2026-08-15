@@ -65,12 +65,12 @@ LANGUAGES: dict[str, Language] = {
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
     "BIO": Language("BIO", _generate.bio, "register_based.bio"),
     "bit~": Language("bit~", _generate.bit_tilde, "other.bit_tilde"),
-    "BitDeque": Language("BitDeque", interpreter="other.bitdeque"),
+    "Bitdeque": Language("Bitdeque", interpreter="other.bitdeque"),
     "BrainIf": Language("BrainIf", _generate.brainif, "tape_based.brainif", split=True),
     "Brainpocalypse": Language(
         "Brainpocalypse", interpreter="tape_based.brainpocalypse"
     ),
-    "CircleFuck": Language("CircleFuck", _generate.circlefuck, "tape_based.circlefuck"),
+    "Circlefuck": Language("Circlefuck", _generate.circlefuck, "tape_based.circlefuck"),
     "Clockwise": Language(
         "Clockwise", _generate.clockwise, "other.clockwise", split=True
     ),
@@ -105,7 +105,9 @@ LANGUAGES: dict[str, Language] = {
         "LaserFuck", _generate.laserfuck, "other.laserfuck", split=True
     ),
     "Lightlang": Language("Lightlang", interpreter="register_based.lightlang"),
-    "MAMMALIAN": Language("MAMMALIAN", _generate.mammalian, "tape_based.mammalian"),
+    "SLOW ACV MAMMALIAN": Language(
+        "SLOW ACV MAMMALIAN", _generate.mammalian, "tape_based.mammalian"
+    ),
     "Minifuck": Language("Minifuck", _generate.minifuck, "tape_based.minifuck"),
     "Minsky Swap": Language("Minsky Swap", interpreter="register_based.minsky-swap"),
     "Modulous": Language("Modulous", _generate.modulous, "stack_based.modulous"),
@@ -138,13 +140,15 @@ LANGUAGES: dict[str, Language] = {
         kwargs=_kw(limit=1),
     ),
     "Stun Step": Language("Stun Step", interpreter="tape_based.stun_step"),
-    "Temporary": Language("Temporary", _generate.temporary, "stack_based.temporary"),
+    "The Temporary Stack": Language(
+        "The Temporary Stack", _generate.temporary, "stack_based.temporary"
+    ),
     "Trash": Language("Trash", interpreter="other.trash"),
     "3x": Language("3x", _generate.three_x, "other.three_x"),
     "Taglate": Language("Taglate", _generate.taglate, "other.taglate", split=True),
     "Unsquare": Language("Unsquare", _generate.unsquare, "stack_based.unsquare"),
     "WII2D": Language("WII2D", _generate.wii2d, "register_based.WII2D", split=True),
-    "ZTOALC": Language("ZTOALC", _generate.ztoalc, "other.ztoalc", split=True),
+    "ZTOALC L": Language("ZTOALC L", _generate.ztoalc, "other.ztoalc", split=True),
 }
 
 # Display name -> generator function, for languages that have one.

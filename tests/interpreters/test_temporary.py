@@ -1,4 +1,4 @@
-"""Unit tests for The Temporary Stack interpreter."""
+"""Unit tests for The The Temporary Stack Stack interpreter."""
 
 import io
 from contextlib import redirect_stdout
@@ -42,6 +42,13 @@ class TestTemporaryStack:
 
     def test_duplicate_affects_squish(self) -> None:
         assert run_and_capture("O v1 v3 + v1 v3") == "02"
+
+    def test_comments_inside_commands(self) -> None:
+        """The command is the first command char; comments may precede it."""
+        # cOOde is O: switch to integer mode, so 4x v65 prints "64" not "@"
+        assert run_and_capture("o cOOde v65 v65 v65 v65") == "64"
+        # hv1no2th3ing is v123: a 123 bottom squishes 'z' under two 130s
+        assert run_and_capture("o hv1no2th3ing v130 v130") == "z"
 
     def test_repeat_instruction(self) -> None:
         """: repeats the next instruction until the stack changes."""

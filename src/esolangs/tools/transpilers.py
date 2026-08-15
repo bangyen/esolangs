@@ -115,7 +115,7 @@ def _auto_size(ops: list[str]) -> int:
     if lo < 0:
         raise ValueError(
             "the program moves its data pointer below cell 0, where brainfuck "
-            "clamps but CircleFuck's tape wraps around",
+            "clamps but Circlefuck's tape wraps around",
         )
     if not ok:
         raise ValueError(
@@ -126,15 +126,15 @@ def _auto_size(ops: list[str]) -> int:
 
 
 def bf_to_circlefuck(program: str, size: int | None = None) -> str:
-    """Rewrite a brainfuck program into CircleFuck.
+    """Rewrite a brainfuck program into Circlefuck.
 
-    CircleFuck's tape is the program itself, so a clean data region must be
+    Circlefuck's tape is the program itself, so a clean data region must be
     set up first.  Each of the ``size`` data cells holds ``>`` -- the only
     command whose value (62) is not a bracket -- so the setup walk can move
     past them and zero each with an exact run of ``-``s without ever writing
-    a ``[``/``]`` character (CircleFuck's bracket matching reads the current
+    a ``[``/``]`` character (Circlefuck's bracket matching reads the current
     cell values, so a zeroed ``[`` would no longer be a bracket).  The
-    brainfuck commands then follow unchanged: CircleFuck's ``[``/``]``
+    brainfuck commands then follow unchanged: Circlefuck's ``[``/``]``
     already test the cell at the data pointer.  ``@`` halts.
 
     The data pointer must stay within ``[0, size)``: moving below cell 0
@@ -349,7 +349,7 @@ def _six_five_label(value: int) -> str:
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BF", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "BF"): ascii_art_to_bf,
-    ("BF", "CircleFuck"): bf_to_circlefuck,
+    ("BF", "Circlefuck"): bf_to_circlefuck,
     ("BF", "6-5"): bf_to_six_five,
     ("NoComment", "BF"): nocomment_to_bf,
     ("BFStack", "BF"): bfstack_to_bf,

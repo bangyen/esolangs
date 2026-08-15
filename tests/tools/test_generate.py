@@ -441,7 +441,7 @@ class TestGeneratorRoundTrips:
         assert roundtrip(ztoalc_run, gen.ztoalc("").splitlines()) == ""
 
     def test_temporary(self) -> None:
-        """The Temporary Stack squish prints each character."""
+        """The The Temporary Stack Stack squish prints each character."""
         assert roundtrip(temporary_run, gen.temporary("Hi")) == "Hi"
         assert roundtrip(temporary_run, gen.temporary("")) == ""
 
@@ -579,8 +579,8 @@ class TestGeneratorBranches:
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
         assert "--- Sophie ---" in out
-        assert "--- Temporary ---" in out
-        assert "--- ZTOALC ---" in out
+        assert "--- The Temporary Stack ---" in out
+        assert "--- ZTOALC L ---" in out
         assert "--- 6-5 ---" in out
         assert "--- ASCII art ---" in out
         assert "--- Dig ---" in out
@@ -588,7 +588,7 @@ class TestGeneratorBranches:
         assert "--- Eval ---" in out
         assert "--- huf ---" in out
         assert "--- LaserFuck ---" in out
-        assert "--- MAMMALIAN ---" in out
+        assert "--- SLOW ACV MAMMALIAN ---" in out
         assert "--- Minifuck ---" in out
         assert "--- Nevermind ---" in out
         assert "--- Polynomial ---" in out

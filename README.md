@@ -66,8 +66,8 @@ The package exposes a small typed API:
 ```python
 import esolangs
 
-program = esolangs.generate("CircleFuck", "Hello, World!")
-output = esolangs.run("CircleFuck", program)
+program = esolangs.generate("Circlefuck", "Hello, World!")
+output = esolangs.run("Circlefuck", program)
 esolangs.list_languages()
 art = esolangs.transpile("BF", "ASCII art", program)
 ```
@@ -129,12 +129,12 @@ Languages that operate on a tape (similar to Turing machines).
 - [EXCON](https://esolangs.org/wiki/EXCON) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/excon.py))
 - [Factor](https://esolangs.org/wiki/Factor) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/factor.py))
 - [Kak](https://esolangs.org/wiki/Kak) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/kak.py))
-- [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/mammalian.py))
 - [Minifuck](https://esolangs.org/wiki/Minifuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/minifuck.py))
 - [NoComment](https://esolangs.org/wiki/NoComment) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/nocomment.py))
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/painfuck.py))
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/rotfuck.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/sbleq.py))
+- [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/mammalian.py))
 - [Stun Step](https://esolangs.org/wiki/Stun_Step) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/stun_step.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/suffolk.py))
 
@@ -246,7 +246,7 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 | Source | Direction | Target |
 | --- | :---: | --- |
 | BF | ⇄ | ASCII art |
-| BF | → | CircleFuck |
+| BF | → | Circlefuck |
 | NoComment | → | BF |
 | BFStack | → | BF |
 | BIO | → | BF |
@@ -257,13 +257,13 @@ Each transpiler's supported subset and caveats are documented in `esolangs/tools
 ```bash
 esolangs transpile BF "ASCII art" program.bf    # rewrite a program into another esolang
 esolangs transpile "ASCII art" BF program.txt   # and back again
-esolangs transpile BF CircleFuck program.bf     # auto-sized data region
+esolangs transpile BF Circlefuck program.bf     # auto-sized data region
 ```
 
 ```python
 art = esolangs.transpile("BF", "ASCII art", program)   # or via the API
 program = esolangs.transpile("ASCII art", "BF", art)
-circlefuck = esolangs.transpile("BF", "CircleFuck", program, size=8)  # explicit size
+circlefuck = esolangs.transpile("BF", "Circlefuck", program, size=8)  # explicit size
 ```
 
 ## Tools

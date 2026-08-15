@@ -1,4 +1,4 @@
-"""Collatz start for each ZTOALC text-length interval.
+"""Collatz start for each ZTOALC L text-length interval.
 
 Each entry ``(end, start)`` covers every text length up to ``end``: for a
 length ``n`` the generator uses the first ``start`` whose ``end >= n``.  The

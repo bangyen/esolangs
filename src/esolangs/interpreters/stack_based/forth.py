@@ -22,7 +22,11 @@ Semantics match the Rust cross-check (``extra/rust/forth.rs``):
   (like the other stack interpreters), where the references exit with
   status 3;
 - ``,`` pushes each character's byte value (the reference's signed ``char``
-  would push negative values for bytes above 127).
+  would push negative values for bytes above 127);
+- ``.`` prints the top's low byte (``& 0xFF``), matching the Rust reference,
+  rather than the wiki's "print as a unicode character" -- the byte model is
+  baked into the arithmetic (``~`` complements, so ``.`` on ``-1`` prints the
+  byte 0xFF).
 """
 
 import sys

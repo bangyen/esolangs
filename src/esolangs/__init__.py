@@ -44,7 +44,7 @@ def transpile(source: str, target: str, program: str, **kwargs: int) -> str:
     """Rewrite a ``program`` in ``source`` into an equivalent one in ``target``.
 
     Transpilers with extra options accept them as keyword arguments (for
-    example ``size`` when targeting CircleFuck).
+    example ``size`` when targeting Circlefuck).
     """
     try:
         fn = TRANSPILERS[(source, target)]
