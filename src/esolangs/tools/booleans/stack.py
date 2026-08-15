@@ -1,5 +1,7 @@
 """Boolean-function generators for stack-based languages."""
 
+from esolangs.tools.booleans.helpers import _validate_truth_table
+
 
 def _forth_const(value: int) -> str:
     """Forþ code pushing ``value`` (base-15 digits built with Horner's rule)."""
@@ -152,13 +154,7 @@ def unsquare(truth_table: str, n: int) -> str:
     guard skips), and each leaf pushes ``48 + entry`` and leaves acc = 0, so
     the final ``o`` prints exactly the matching row's entry.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     flip = "x->IA<"
 

@@ -1,5 +1,6 @@
 """Boolean-function generators for register-based languages."""
 
+from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.generators.helpers import _cm_constants
 
 # Dig blocks for one level of the decision tree.
@@ -21,13 +22,7 @@ def decleq(truth_table: str, n: int) -> str:
     those branches to leaves that output 48 or 49 (placed in data cells of
     the self-modifying memory) and then halt.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     # instructions: n reads, n*47 normalizations, and the tree
     # (2**n - 1 branches plus 2**n leaves of output+halt each).
@@ -89,13 +84,7 @@ def collatz_multiverse(truth_table: str, n: int) -> str:
     OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
     byte constants come from the text generator's constant table.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     if all(c == "0" for c in truth_table):
         return "\n".join([*_cm_constants({48}), "out = negativeOne x + k48, DO PRINT."])
     if all(c == "1" for c in truth_table):
@@ -242,12 +231,7 @@ def qoibl(truth_table: str, n: int) -> str:
     instead (fewer minterms) and ``49 - sum`` is printed, keeping the program
     under the size of the sparser half.
     """
-    use_complement = truth_table.count("1") > 2**n // 2
-    table = (
-        truth_table
-        if not use_complement
-        else "".join("1" if c == "0" else "0" for c in truth_table)
-    )
+    table, use_complement = _maybe_complement(truth_table, n)
     lines = []
     for i in range(n):
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(48)} we")

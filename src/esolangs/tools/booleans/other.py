@@ -1,5 +1,7 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
+from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
+
 __all__ = [
     "between",
     "bit_tilde",
@@ -71,13 +73,7 @@ def three_x(truth_table: str, n: int) -> str:
     get an override block.  Each override's ``( ... )`` guard leaves the
     stack balanced via the trash pop, so arbitrary ``n`` works.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     # Variable allocation: var 0 is the loop-trash (its constant, 333x, is
     # short and emitted twice per guard), var 3 is the result (its constant
@@ -285,13 +281,7 @@ def ztoalc_l_boolean(truth_table: str, n: int) -> str:
     Verified exhaustively for every table at ``n <= 3`` and for structured
     and symmetric tables at ``n == 4``; all tests run the real interpreter.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     for b1 in range(2 ** (n + 1), 4000, 4):
         lines = _ztoalc_lines(truth_table, n, b1)
         if all(
@@ -421,16 +411,6 @@ def _build_padded_tt(truth_table: str, n_effective: int) -> str:
     return truth_table.ljust(half * 2, "0")
 
 
-def _validate_tt(truth_table: str, n: int) -> None:
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
-
-
 def between(truth_table: str, n: int) -> str:
     """Build a Between program computing the given truth table.
 
@@ -444,7 +424,7 @@ def between(truth_table: str, n: int) -> str:
     branch addresses are 0-indexed line numbers, so the size of each subtree
     is computed ahead of the linear layout.
     """
-    _validate_tt(truth_table, n)
+    _validate_truth_table(truth_table, n)
 
     def leaf_value(path: list[int]) -> int:
         row = 0
@@ -502,7 +482,7 @@ def laserfuck(truth_table: str, n: int) -> str:
     the 48/49 result cell.  The tree is loop-free, so no loop-ring geometry is
     needed.
     """
-    _validate_tt(truth_table, n)
+    _validate_truth_table(truth_table, n)
     rows: int = 2 ** (n + 1) - 1
     total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2 + 49 + 8
     grid = [[" "] * total_cols for _ in range(rows)]
@@ -655,13 +635,13 @@ def taglate(truth_table: str, n: int) -> str:
     values on the two remaining inputs and prints ``48 + bit``.
     """
     if n == 1:
-        _validate_tt(truth_table, n)
+        _validate_truth_table(truth_table, n)
         base = 48 + int(truth_table[0])
         coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
         seed = "0" + chr(coeff) + chr(base)
         return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
 
-    _validate_tt(truth_table, n)
+    _validate_truth_table(truth_table, n)
 
     # For odd n, prepend a fake zero-input (ghost) to make the stride land
     # on a separator.  n_effective is the number of h-reads and levels.
@@ -726,7 +706,7 @@ def clockwise(truth_table: str, n: int) -> str:
     paths at acc=0 so they do not turn on another leaf's exit.  The row
     funnels left to the corner ``R`` and up column 0 to halt.
     """
-    _validate_tt(truth_table, n)
+    _validate_truth_table(truth_table, n)
     cells: dict[tuple[int, int], str] = {}
     root = 2 ** (n + 2) + 8
 
@@ -804,13 +784,7 @@ def container(truth_table: str, n: int) -> str:
       table entry of the surviving row to ``OUT``; ``PRINT`` fires and
       ``EXIT`` halts.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     lines = ["T:", "+1 T>=T"]
     lines.append(":")  # the empty-named container reads input
@@ -872,20 +846,9 @@ def bit_tilde(truth_table: str, n: int) -> str:
     result``.  Dense tables evaluate the complement instead (fewer minterms)
     and flip the output bit once.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
-    use_complement = truth_table.count("1") > 2**n // 2
-    table = (
-        "".join("0" if c == "1" else "1" for c in truth_table)
-        if use_complement
-        else truth_table
-    )
+    table, use_complement = _maybe_complement(truth_table, n)
 
     prog: list[str] = []
     pos = 0
@@ -998,13 +961,7 @@ def forbin_boolean(truth_table: str, n: int) -> str:
     and falls through when ``b`` is 0, so each node emits the 1-subtree then
     the 0-subtree and every leaf prints the result byte and returns.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     lines: list[str] = ["main {"]
     bits: list[str] = []

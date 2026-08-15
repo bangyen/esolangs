@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from typing import cast
 
+from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.transpilers import _six_five_label, bf_to_ascii_art
 
 
@@ -431,12 +432,7 @@ def _bf_minterm(truth_table: str, n: int) -> str:
     When the table has more ``1``s than ``0``s the complement is evaluated
     instead (fewer minterms) and ``49 - sum`` is printed.
     """
-    use_complement = truth_table.count("1") > 2**n // 2
-    table = (
-        truth_table
-        if not use_complement
-        else "".join("1" if c == "0" else "0" for c in truth_table)
-    )
+    table, use_complement = _maybe_complement(truth_table, n)
 
     class _Cell:
         def __init__(self, n: int) -> None:
@@ -585,13 +581,7 @@ def brainfuck(truth_table: str, n: int) -> str:
     - :func:`bf_tree`: a decision tree sharing the bit tests.  Best for
       dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     return min((_bf_minterm(truth_table, n), bf_tree(truth_table, n)), key=len)
 
 
@@ -673,13 +663,7 @@ def bf_tree(truth_table: str, n: int) -> str:
     minterm evaluator's O(n * 2**n); for XOR-n it measures 1.4K..20K
     characters at n = 2..8 against the minterm's 1.4K..33M.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     cells: list[str] = []
     pos = 0
@@ -855,13 +839,7 @@ def dimensional(truth_table: str, n: int) -> str:
     - :func:`dimensional_tree`: a decision tree sharing the bit tests.
       Best for dense tables — XOR-8 is ~8x smaller than the survivor.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     return min(
         (_dimensional_survivor(truth_table, n), dimensional_tree(truth_table, n)),
         key=len,
@@ -870,12 +848,7 @@ def dimensional(truth_table: str, n: int) -> str:
 
 def _dimensional_survivor(truth_table: str, n: int) -> str:
     """Build the survivor-cell evaluator for the given truth table."""
-    use_complement = truth_table.count("1") > 2**n // 2
-    table = (
-        truth_table
-        if not use_complement
-        else "".join("1" if c == "0" else "0" for c in truth_table)
-    )
+    table, use_complement = _maybe_complement(truth_table, n)
 
     cell = _Dimensional(n)
     for i in cell.inputs:
@@ -950,13 +923,7 @@ def dimensional_tree(truth_table: str, n: int) -> str:
     O(2**n) characters and wins on dense tables; the survivor evaluator
     (``_dimensional_survivor``) wins on sparse ones.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     cells: list[str] = []
     pos = 0
@@ -1057,13 +1024,7 @@ def basicfuck(truth_table: str, n: int) -> str:
     variable (which starts at 0 and is touched by exactly one leaf) and
     prints it with ``write <- out ;``.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     lines = ["#basicfuck t=unbounded r=0~255 o=wrap"]
     lines.append("#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out")
@@ -1126,13 +1087,7 @@ def sbleq(truth_table: str, n: int) -> str:
     variants would overwrite, so this generator targets base S*bleq
     (``store="a"``).
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     instructions: list[tuple[int, int, int]] = []
     nodes: list[tuple[int, int, int]] = []  # (v offset, normalize addr, one addr)
@@ -1215,13 +1170,7 @@ def minifuck(truth_table: str, n: int) -> str:
     so a complemented read cannot select them — and n >= 3 has no general
     construction.  The programs below were found by search.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     if n == 1:
         return _MINIFUCK_N1[truth_table]
     if n == 2:
