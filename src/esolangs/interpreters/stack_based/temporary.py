@@ -9,8 +9,9 @@ As the wiki specifies, every fifteen commands (including comments) the stack
 is reset, hence the name "The The Temporary Stack Stack".  Duplicating an empty stack,
 or squishing a value that is not a valid character in byte mode, is an invalid
 operation and halts the program with
-:class:`~esolangs.exceptions.HaltError`; a ``:`` with no instruction after it
-is a malformed program rejected with :class:`ValueError`.
+:class:`~esolangs.exceptions.HaltError`; a word carrying more than one
+distinct command (``o@\@``), or a ``:`` with no instruction after it, is a
+malformed program rejected with :class:`ValueError`.
 """
 
 import re
@@ -22,8 +23,9 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 # The command characters; every other character is a comment.  A word's
-# command is its first command character, so comments may appear inside a
-# command (e.g. ``cOOde`` is ``O`` and ``hv1no2th3ing`` pushes 123).
+# command is its first command character, and a word may only carry one
+# distinct command, so comments may appear inside a command (``cOOde`` is
+# ``O`` and ``hv1no2th3ing`` pushes 123) but ``o@\@`` is an invalid command.
 _COMMANDS = r"[@v*oO+:\#€\\]"
 
 
@@ -67,6 +69,11 @@ def run(source: str, io: IO) -> None:
         if m:
             char = m.group(0)
             rest = word[m.end() :]
+            if char not in "v*€" and set(re.findall(_COMMANDS, word)) - {char}:
+                # only one command per word, per the author's talk-page
+                # clarification (``o@\@`` is invalid); ``cOOde`` is still
+                # ``O`` because the repeated O is the same command
+                raise ValueError(f"multiple commands in one word: {word!r}")
         else:
             char = ""
             rest = ""

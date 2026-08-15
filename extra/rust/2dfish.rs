@@ -4,8 +4,9 @@
 //! (`/` right, `\` left, `v` down, `^` up) and every cell it lands on is
 //! executed as a command: `i`/`d`/`s` increment/decrement/square the
 //! accumulator, `o` prints it in decimal, `a` prints it as a byte (or, in
-//! string mode, the next captured character), `$` reads an input line into
-//! the string variable, `%` reads an integer into the accumulator, `(`
+//! string mode, the last captured character, which it removes), `$` reads an
+//! input line into the string variable, `%` reads an integer into the
+//! accumulator, `(`
 //! captures the rest of its row up to the first `)` as the string variable
 //! and (heading right) skips past it, `*` prints and clears the string
 //! variable, and `@` halts.  The direction cell on the current cell also
@@ -130,9 +131,9 @@ fn main() {
                     if string.is_empty() {
                         process::exit(3);
                     }
-                    let byte = string.as_bytes()[0];
+                    let byte = string.as_bytes()[string.len() - 1];
                     stdout.write_all(&[byte]).unwrap();
-                    string = string[1..].to_string();
+                    string = string[..string.len() - 1].to_string();
                 } else {
                     stdout.write_all(&[(acc & 0xFF) as u8]).unwrap();
                 }
