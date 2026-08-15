@@ -228,24 +228,15 @@ bound: `n == 4` (degree 184, coefficients ~10**729) factors in ~10s, while
 `n == 5` (degree 376, ~10**1746) does not factor in practical time, so the
 boolean generator is capped at `n <= 4`.
 
-## ROTfuck (built; no iterative loops)
+## ROTfuck (built; straight-line generator)
 Every executed command rotates all source characters one step along
-`+-><,.[]`, so a raw ``[``/``]`` pair cannot both be the current character
-when the pointer reaches them: the ``]`` needed for a forward skip is not
-the character at any fixed position until a later rotation, and by then the
-``[`` has rotated away.  Concretely, the character at position ``i`` at time
-``t`` is ``rot^t(source[i])``, so a position executes a given bracket only
-at times congruent to one residue mod 8, and the two partner residues can
-never coincide — no iterative loop is expressible (searches to length 8
-find no program whose ``]`` fires twice), so a boolean generator is not
-feasible either.
-
-The interpreter matches brackets on the source (positions are fixed even
-though the characters are not), treats unbalanced sources as legal because
-the rotation can surface any character, and halts on an executed bracket
-with no partner.  The text generator therefore emits straight-line programs
-(``source[i]`` is the ``i``-fold inverse rotation of the desired command),
-which fully covers arbitrary text.
+`+-><,.[]`, so the character at position ``i`` at time ``t`` is
+``rot^t(source[i])``.  Brackets are matched dynamically: when a ``[`` or
+``]`` fires, the program is rotated first and the partner is then sought in
+the rotated program with the standard nesting count, so an executed bracket
+needs a partner in the current code, not in the source.  The text generator
+therefore emits straight-line programs (``source[i]`` is the ``i``-fold
+inverse rotation of the desired command), which fully covers arbitrary text.
 
 ## Text generators: exhausted
 Every language whose interpreter can emit arbitrary bytes already has a text

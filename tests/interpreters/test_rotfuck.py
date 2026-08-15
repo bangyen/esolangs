@@ -6,6 +6,12 @@ the ``i``-fold inverse rotation of a command executes exactly that command
 when the pointer reaches it.  ``build`` encodes a sequence of *effective*
 commands that way, letting the tests read like plain brainfuck while pinning
 the rotation semantics.
+
+Brackets match dynamically: when a ``[`` or ``]`` fires it rotates the
+program first and then seeks for its partner in the rotated program, so
+partners need not (and usually do not) exist at the same positions in the
+source.  A bracket that fires with no partner in the rotated program is a
+runtime error.
 """
 
 import contextlib
@@ -79,17 +85,26 @@ class TestIO:
 
 
 class TestBrackets:
-    def test_loop_skipped_when_zero(self) -> None:
-        """A [ with a zero cell jumps past its partner, skipping the dot."""
-        assert run_program("[.]") == ""
+    def test_wiki_cat_example_runs(self) -> None:
+        """The wiki's `,[` cat no longer errors: the ] finds a [ dynamically."""
+        assert run_program(",[", "x") == ""
 
-    def test_backward_jump_fires(self) -> None:
-        # raw '+[]': the '+' sets the cell, the ']' (rotated in) jumps to
-        # its partner, then the program runs out and halts.
-        assert run_program("+[]") == ""
+    def test_backward_jump_fires_in_rotated_program(self) -> None:
+        """A ] fires, rotates, and jumps back to a [ found in the result.
+
+        In ``+<.]>`` the fired ``]`` first jumps back to the ``[`` of ``[+``
+        and later to the ``[`` of ``[-<.``: neither partner exists in the
+        source, so a static match (as a raw brainfuck would do) has no
+        target at all.
+        """
+        assert run_program("+<.]>", "x") == ""
 
     def test_unmatched_bracket_halts_when_executed(self) -> None:
-        """An executed bracket with no partner is an invalid operation."""
+        """A fired bracket with no partner in the rotated program errors."""
+        with pytest.raises(HaltError):
+            run_program("[.]")
+        with pytest.raises(HaltError):
+            run_program("+[]")
         with pytest.raises(HaltError):
             run_program(build("+]"))
         with pytest.raises(HaltError):
