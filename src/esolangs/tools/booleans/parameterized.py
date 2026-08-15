@@ -23,6 +23,8 @@ complement computation; :func:`back` replaces ``{Xi}`` with a ``\\`` or
 from collections.abc import Callable
 from typing import TypeAlias
 
+from esolangs.tools.booleans.helpers import _validate_truth_table
+
 __all__ = ["back", "bio", "instantiate", "nocomment"]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
@@ -52,16 +54,6 @@ def instantiate(
     return template
 
 
-def _validate(truth_table: str, n: int) -> None:
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
-
-
 def bio(truth_table: str, n: int) -> str:
     """Build a BIO template for the given truth table.
 
@@ -78,7 +70,7 @@ def bio(truth_table: str, n: int) -> str:
     ancestor loops unwind, and builds the result in ``z`` before printing
     it with ``1iz``.
     """
-    _validate(truth_table, n)
+    _validate_truth_table(truth_table, n)
 
     def set_bit(_i: int, bit: int) -> str:
         return (
@@ -144,7 +136,7 @@ def back(truth_table: str, n: int) -> str:
     child's own region, and each leaf sets the tape bit (``-``) when its
     table entry is one and halts (``*``) printing the tape.
     """
-    _validate(truth_table, n)
+    _validate_truth_table(truth_table, n)
     rows: int = 2 ** (n + 1) - 1
     center: int = 2**n - 1
     # a full tree has 2**(n+1)-1 nodes, each taking two columns
@@ -231,7 +223,7 @@ def nocomment(truth_table: str, n: int) -> str:
     the generator covers every table up to eight inputs and raises
     :class:`ValueError` beyond that.
     """
-    _validate(truth_table, n)
+    _validate_truth_table(truth_table, n)
     if n > 8:
         raise ValueError("the NoComment boolean generator supports n <= 8")
 
