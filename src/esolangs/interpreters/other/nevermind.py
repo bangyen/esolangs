@@ -10,6 +10,8 @@ malformed program and is rejected with :class:`ValueError`; dividing by zero,
 referencing an undefined ``$name``, or ``input`` with no prompt are invalid
 operations that halt the program with :class:`~esolangs.exceptions.HaltError`
 (or, for the missing prompt, :class:`ValueError`).
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

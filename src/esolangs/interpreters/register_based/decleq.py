@@ -19,6 +19,8 @@ Documented decisions for gaps in the wiki stub:
   of memory, exhausted input raises :class:`EOFError` (repo-wide
   convention), and a program that has not halted after ``limit``
   instructions is rejected with :class:`HaltError`.
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import sys

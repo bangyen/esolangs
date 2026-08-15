@@ -3,6 +3,9 @@ r"""Interpreter for Back.
 A beam bounces across a grid at right angles: \\ and / reflect its direction,
 < and > move the tape pointer, - flips the current bit, + steps the beam
 forward when the current bit is 0, and * halts, printing the tape.
+
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import sys

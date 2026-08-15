@@ -3,6 +3,8 @@
 Art blocks decode to the eight brainfuck commands plus . / , / < / > / + / [
 and ].  The tape, clamping, wrapping, and bracket semantics deliberately match
 the plain brainfuck interpreter so the two are interchangeable.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention); malformed programs raise :class:`ValueError`.
 """
 
 import re

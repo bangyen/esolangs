@@ -8,6 +8,8 @@ The wiki defines SPRINT with a too-large ``x`` as a NOP (it does nothing when
 the array has fewer than ``x`` variables), which this interpreter follows;
 LEAPFROG with a negative jump target is undefined by the wiki, so the
 interpreter halts instead of jumping.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import functools

@@ -2,6 +2,8 @@
 
 Esoteric language that uses only 1 bit as memory.
 Each character is an instruction, invalid instructions are ignored.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import secrets

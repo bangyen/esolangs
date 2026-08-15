@@ -11,6 +11,8 @@ peek (``@``, ``.``, ``[``) reads 0 (``@`` pushes that zero and flips it to
 1).  A run ends when the instruction pointer reaches the end of the program,
 so the machine halts naturally like brainfuck; programs whose loops never
 empty the stack run forever.
+
+Invalid runtime operations halt with :class:`~esolangs.exceptions.HaltError`; Malformed programs raise :class:`ValueError`.
 """
 
 import sys

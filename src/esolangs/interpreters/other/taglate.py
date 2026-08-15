@@ -22,6 +22,8 @@ Decisions for gaps in the wiki spec (documented):
   translate page also leaves ``!$'()*,/:;?@`` literal and uses ``+`` for
   spaces, but the wiki spec only requires URL-safe characters to survive, so
   encoding the extra characters too is safe and simpler.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

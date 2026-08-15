@@ -9,6 +9,8 @@ invalid operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`; a comparison or arithmetic expression
 with an unrecognized operator is a malformed program and is rejected with
 :class:`ValueError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import re

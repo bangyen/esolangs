@@ -25,6 +25,8 @@ Decisions for gaps in the wiki spec (documented):
   :class:`~esolangs.exceptions.HaltError`; a malformed line (unbalanced
   brackets, an unknown operation, trailing characters) raises
   :class:`ValueError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
 import sys

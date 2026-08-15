@@ -16,6 +16,9 @@ port of the original C++ reference) exactly:
   trailing characters do not affect the result;
 * the primality test is trial division up to the square root, which treats 2
   as prime, so a starting value of 2 advances rather than printing 0.
+
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import re

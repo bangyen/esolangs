@@ -26,5 +26,6 @@ echo "== cargo fmt + test =="
 
 echo "== verify scripts (no RISC-V toolchain or network required) =="
 PYTHONPATH=src "$PY" scripts/verify_extra_generators.py
+PYTHONPATH=src "$PY" scripts/check_docstrings.py
 
 echo "check_all: all checks passed"
