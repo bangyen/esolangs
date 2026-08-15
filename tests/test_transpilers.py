@@ -551,3 +551,81 @@ def test_six_five_loop_cap() -> None:
 def test_six_five_unbalanced_brackets_rejected() -> None:
     with pytest.raises(ValueError, match="unbalanced"):
         esolangs.transpile("brainfuck", "6-5", "+[")
+
+
+# (Basicfuck program, stdin) pairs; each uses an 8-bit wrapping tape and
+# keeps every cell in [0, 255] while it runs (the transpiler's supported
+# class).
+# The 8-bit wrapping tape header shared by the battery programs.
+_BF = "#basicfuck t=unbounded r=0~255 o=wrap\n#allocate "
+_HDR2 = _BF + "a, b\n"
+_HDR3 = _BF + "a, b, c\n"
+_HDRARR = _BF + "a->3\n"
+
+BASICFUCK_BATTERY = (
+    (_BF + "a\na += 65;\nwrite <- a ;", ""),
+    (
+        "#basicfuck t=3 r=0~255 o=wrap\n#allocate a, b\na += 5;\nb += a;\nwrite <- b ;",
+        "",
+    ),
+    (_BF + "a\nread -> a ;\nwrite <- a ;", "X\n"),
+    (_BF + "a\na += 1;\nif (a) { write <- a ; }", ""),
+    (_BF + "a\na += 0;\nif (a) { write <- a ; }", ""),
+    (_BF + "a\na += 0;\nif !(a) { a += 65; }\nwrite <- a ;", ""),
+    (_BF + "a\na += 5;\nwhile (a) { a -= 1; }\nwrite <- a ;", ""),
+    (_BF + "a\na += 5;\nwhile !(a) { a -= 1; }\nwrite <- a ;", ""),
+    (_HDR3 + "a += 1;\nif (a) { b += 2; if (b) { c += 3; } }\nwrite <- c ;", ""),
+    (_HDR2 + "a += 7;\nb += 2;\nb += a;\nwrite <- b ;", ""),
+    (_HDRARR + "a->0 += 72;\na->1 += 105;\nwrite <- a->0 ;\nwrite <- a->1 ;", ""),
+    (_BF + "a\nread -> a ;\na -= 32;\nwrite <- a ;", "h\n"),
+    (_HDR2 + "a += 4;\nwhile (a) { a -= 1; b += 2; }\nwrite <- b ;", ""),
+    (_HDR2 + "a += 3;\nwhile (a) { b += a; a -= 1; }\nwrite <- b ;", ""),
+)
+
+
+@pytest.mark.parametrize(("program", "stdin"), BASICFUCK_BATTERY)
+def test_basicfuck_transpiles_to_brainfuck(program: str, stdin: str) -> None:
+    bf_program = esolangs.transpile("Basicfuck", "brainfuck", program)
+    assert esolangs.run("Basicfuck", program, stdin) == esolangs.run(
+        "brainfuck", bf_program, stdin
+    )
+
+
+def test_basicfuck_requires_byte_tape() -> None:
+    """Non-8-bit tapes are rejected rather than silently mistranslated."""
+    with pytest.raises(ValueError, match="r=0~255"):
+        esolangs.transpile(
+            "Basicfuck", "brainfuck", "#basicfuck t=1 r=0~1023 o=wrap\n#allocate a\n"
+        )
+
+
+def test_basicfuck_fuzz_in_bounds_programs() -> None:
+    """Random in-bounds programs (cells stay in 0..255) agree."""
+    rng = random.Random(11)
+    for _ in range(60):
+        a = rng.randint(1, 5)
+        stmts = [f"a += {a};"]
+        for _ in range(rng.randint(1, 3)):
+            kind = rng.choice(("inc", "dec-safe", "loop", "ifadd"))
+            if kind == "inc":
+                k = rng.randint(1, 5)
+                a += k
+                stmts.append(f"a += {k};")
+            elif kind == "dec-safe" and a > 0:
+                k = rng.randint(1, min(a, 3))
+                a -= k
+                stmts.append(f"a -= {k};")
+            elif kind == "loop":
+                stmts.append("while (a) { a -= 1; b += 1; }")
+                a = 0
+            else:
+                stmts.append("if (a) { b += 1; }")
+        stmts.append("b += a;")
+        stmts.append("write <- b ;")
+        program = "#basicfuck t=unbounded r=0~255 o=wrap\n#allocate a, b\n" + "\n".join(
+            stmts
+        )
+        bf_program = esolangs.transpile("Basicfuck", "brainfuck", program)
+        assert esolangs.run("Basicfuck", program) == esolangs.run(
+            "brainfuck", bf_program
+        )
