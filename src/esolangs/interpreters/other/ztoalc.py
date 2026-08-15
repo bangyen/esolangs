@@ -5,26 +5,35 @@ visits line ``v`` when the Collatz step equals ``v``, halting when the value
 reaches 1.  Commands print, jump, assign, add, and subtract using the current
 value as an expression.
 
-The wiki allows array elements as general expressions; this interpreter
-supports reading and writing ``array[index]`` but not nested or compound
-indexing (no arrays-of-arrays).  A command missing a required operand
-is a malformed program and is rejected with :class:`ValueError`; referencing
-an undefined variable, indexing out of range, or reaching a negative pointer
-are invalid operations that halt the program with
-:class:`~esolangs.exceptions.HaltError`.
+Expressions follow the wiki's grammar: ``input`` (read a character's ASCII
+value), a variable, a number, ``[size]`` to create an array of ``size``
+elements, and ``array[index]`` where ``array`` is any expression evaluating
+to an array -- so nested indexing and arrays-of-arrays (an element that is
+itself an array) are supported.  A command missing a required operand is a
+malformed program and is rejected with :class:`ValueError`; referencing an
+undefined variable, indexing out of range, reaching a negative pointer, or
+using an array where a number is required are invalid operations that halt
+the program with :class:`~esolangs.exceptions.HaltError`.
 """
 
 import sys
-from dataclasses import dataclass
-from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
+Value = int | list["Value"]
 
-@dataclass
-class State:
-    """Per-run state for a ZTOALC L interpreter."""
+
+def _is_int(token: str) -> bool:
+    """Whether ``token`` is a decimal integer literal (possibly negative)."""
+    return token.lstrip("-").isdigit() and token != "-"
+
+
+def _as_int(value: Value) -> int:
+    """Require ``value`` to be an integer, halting on an array."""
+    if not isinstance(value, int):
+        raise HaltError
+    return value
 
 
 def run(code: list[str], io: IO) -> None:
@@ -32,28 +41,55 @@ def run(code: list[str], io: IO) -> None:
     if not code:
         raise ValueError("ZTOALC L program cannot be empty")
     ptr = int(code[0])
-    state = State()
-    var: dict[str, int | list[int]] = {}
+    var: dict[str, Value] = {}
 
-    def val(state: State, exp: str) -> int | list[int]:
-        if exp == "input":
-            return io.input_char()
-        if exp in var:
-            return var[exp]
-        if exp.isnumeric() or (exp[0] == "-" and exp[1:].isnumeric()):
-            return int(exp)
-        if exp[0] == "[":
-            return [0] * cast(int, val(state, exp[1:-1]))
-        arg = exp[:-1].split("[")
-        if arg[0] not in var:
+    def _atom(exp: str, pos: int) -> tuple[Value, int]:
+        """Parse the leading atom of ``exp`` from ``pos``.
+
+        Returns ``(value, next_position)``.  An atom is ``[expr]`` (array
+        creation), the ``input`` keyword, a number, or a variable name.
+        """
+        if not exp:
             raise HaltError
-        arr = var[arg[0]]
-        if not isinstance(arr, list):
-            raise HaltError
-        idx = cast(int, val(state, arg[1]))
-        if idx < 0 or idx >= len(arr):
-            raise HaltError
-        return arr[idx]
+        if exp[pos] == "[":
+            size, pos = _eval(exp, pos + 1)
+            pos += 1  # the closing ']'
+            return [0] * _as_int(size), pos
+        j = pos
+        while j < len(exp) and exp[j] not in "[]":
+            j += 1
+        token = exp[pos:j]
+        if token == "input":
+            return io.input_char(), j
+        if _is_int(token):
+            return int(token), j
+        if token in var:
+            return var[token], j
+        raise HaltError
+
+    def _eval(exp: str, pos: int) -> tuple[Value, int]:
+        """Evaluate the expression ``exp`` from ``pos``, returning (value, pos).
+
+        An expression is an atom followed by any number of ``[index]``
+        indexings, so ``array[index]`` with a general ``array`` expression
+        (including further indexings) works.
+        """
+        value, pos = _atom(exp, pos)
+        while pos < len(exp) and exp[pos] == "[":
+            index, pos = _eval(exp, pos + 1)
+            pos += 1  # the closing ']'
+            if not isinstance(value, list):
+                raise HaltError
+            i = _as_int(index)
+            if i < 0 or i >= len(value):
+                raise HaltError
+            value = value[i]
+        return value, pos
+
+    def val(exp: str) -> Value:
+        """Evaluate the expression ``exp``."""
+        value, _ = _eval(exp, 0)
+        return value
 
     def operand(lst: list[str], n: int) -> str:
         """Return the ``n``-th token of a command, rejecting a missing one."""
@@ -61,50 +97,77 @@ def run(code: list[str], io: IO) -> None:
             raise ValueError("missing operand in " + " ".join(lst))
         return lst[n]
 
-    def store(state: State, lhs: str, value: int | list[int]) -> None:
-        """Assign ``value`` to ``lhs`` (a variable or an ``array[index]``)."""
-        if "[" in lhs:
-            name, idx_exp = lhs[:-1].split("[")
-            if name not in var or not isinstance(var[name], list):
-                raise HaltError
-            arr = cast(list[int], var[name])
-            idx = cast(int, val(state, idx_exp))
-            if idx < 0 or idx >= len(arr):
-                raise HaltError
-            # arrays-of-arrays are unsupported (see module docstring), so an
-            # array element can only hold a scalar
-            arr[idx] = cast(int, value)
-        else:
+    def _split(lhs: str) -> tuple[str, list[str]]:
+        """Split ``lhs`` into its base atom and index-expression strings."""
+        atom = lhs[: lhs.find("[")]
+        indexes: list[str] = []
+        pos = lhs.find("[")
+        while pos < len(lhs):
+            depth = 1
+            j = pos + 1
+            while depth:
+                if j >= len(lhs):
+                    raise HaltError  # unbalanced brackets in the lhs
+                if lhs[j] == "[":
+                    depth += 1
+                elif lhs[j] == "]":
+                    depth -= 1
+                j += 1
+            indexes.append(lhs[pos + 1 : j - 1])
+            pos = j
+        return atom, indexes
+
+    def store(lhs: str, value: Value) -> None:
+        """Assign ``value`` to ``lhs`` (a name or an ``array[index]``)."""
+        if "[" not in lhs:
             var[lhs] = value
+            return
+        atom, indexes = _split(lhs)
+        target, _ = _atom(atom, 0)
+        for idx_exp in indexes[:-1]:
+            if not isinstance(target, list):
+                raise HaltError
+            i = _as_int(_eval(idx_exp, 0)[0])
+            if i < 0 or i >= len(target):
+                raise HaltError
+            target = target[i]
+        if not isinstance(target, list):
+            raise HaltError
+        i = _as_int(_eval(indexes[-1], 0)[0])
+        if i < 0 or i >= len(target):
+            raise HaltError
+        target[i] = value
 
     while p := ptr - 1:
         if p < 0:
             raise HaltError
         ins = code[p] if p < len(code) else ""
         lst = ins.split()
-
-        if "print" in ins:
-            io.print_char(chr(cast(int, val(state, operand(lst, 1)))))
-        elif "jump" in ins:
-            if val(state, operand(lst, 2)):
+        if not lst:
+            pass
+        elif lst[0] == "print":
+            value = _as_int(val(operand(lst, 1)))
+            if not 0 <= value <= 0x10FFFF:
+                raise HaltError
+            io.print_char(chr(value))
+        elif lst[0] == "jump":
+            if _as_int(val(operand(lst, 2))):
                 ptr += 1
                 continue
-        elif " =" in ins:
-            store(state, operand(lst, 0), val(state, operand(lst, 2)))
-        elif "+" in ins:
-            store(
-                state,
-                operand(lst, 0),
-                cast(int, val(state, operand(lst, 0)))
-                + cast(int, val(state, operand(lst, 2))),
-            )
-        elif "-" in ins:
-            store(
-                state,
-                operand(lst, 0),
-                cast(int, val(state, operand(lst, 0)))
-                - cast(int, val(state, operand(lst, 2))),
-            )
+        else:
+            op = lst[1] if len(lst) > 1 else ""
+            if op == "=":
+                store(operand(lst, 0), val(operand(lst, 2)))
+            elif op in ("+=", "+"):
+                store(
+                    operand(lst, 0),
+                    _as_int(val(operand(lst, 0))) + _as_int(val(operand(lst, 2))),
+                )
+            elif op in ("-=", "-"):
+                store(
+                    operand(lst, 0),
+                    _as_int(val(operand(lst, 0))) - _as_int(val(operand(lst, 2))),
+                )
 
         if ptr % 2:
             ptr = 3 * ptr + 1
