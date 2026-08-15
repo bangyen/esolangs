@@ -28,7 +28,7 @@ BOOLEAN = {
     "Back",
     "Basicfuck",
     "Between",
-    "BF",
+    "brainfuck",
     "BFStack",
     "BIO",
     "bit~",
@@ -165,12 +165,6 @@ _README_HEADINGS = [
     ),
 ]
 
-# Registry display name -> esolangs wiki page title, where the wiki names
-# the page differently from the display name.
-_WIKI_PAGES = {
-    "BF": "brainfuck",
-}
-
 _README_START = "<!-- IMPLEMENTED:START -->"
 _README_END = "<!-- IMPLEMENTED:END -->"
 _COMPILERS_START = "<!-- COMPILERS:START -->"
@@ -181,7 +175,7 @@ _EXTRA_END = "<!-- EXTRA:END -->"
 
 def _wiki_name(name: str) -> str:
     """Return the esolangs wiki page title for the displayed language name."""
-    return _WIKI_PAGES.get(name, name)
+    return name
 
 
 def _wiki_slug(name: str) -> str:

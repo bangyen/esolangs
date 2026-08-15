@@ -46,27 +46,27 @@ def test_run_eof_when_input_runs_out() -> None:
 
 
 def test_transpile_round_trips() -> None:
-    program = esolangs.generate("BF", "Hi")
-    art = esolangs.transpile("BF", "ASCII art", program)
+    program = esolangs.generate("brainfuck", "Hi")
+    art = esolangs.transpile("brainfuck", "ASCII art", program)
     assert esolangs.run("ASCII art", art) == "Hi"
 
 
 def test_transpile_reverse_round_trips() -> None:
-    program = esolangs.generate("BF", "Hi")
-    art = esolangs.transpile("BF", "ASCII art", program)
-    recovered = esolangs.transpile("ASCII art", "BF", art)
+    program = esolangs.generate("brainfuck", "Hi")
+    art = esolangs.transpile("brainfuck", "ASCII art", program)
+    recovered = esolangs.transpile("ASCII art", "brainfuck", art)
     assert recovered == program
-    assert esolangs.run("BF", recovered) == "Hi"
+    assert esolangs.run("brainfuck", recovered) == "Hi"
 
 
 def test_transpile_unsupported_pair_raises() -> None:
     with pytest.raises(UnsupportedTranspilationError):
-        esolangs.transpile("BF", "Unsquare", "x")
+        esolangs.transpile("brainfuck", "Unsquare", "x")
     assert issubclass(UnsupportedTranspilationError, EsolangError)
     assert issubclass(UnsupportedTranspilationError, ValueError)
 
 
 def test_transpile_to_circlefuck() -> None:
-    program = esolangs.generate("BF", "Hi")
-    circlefuck = esolangs.transpile("BF", "Circlefuck", program)
+    program = esolangs.generate("brainfuck", "Hi")
+    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
     assert esolangs.run("Circlefuck", circlefuck) == "Hi"

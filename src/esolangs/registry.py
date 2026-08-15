@@ -61,7 +61,7 @@ LANGUAGES: dict[str, Language] = {
     "BF-PDA": Language("BF-PDA", interpreter="tape_based.bfpda"),
     "Basicfuck": Language("Basicfuck", _generate.basicfuck, "tape_based.basicfuck"),
     "Between": Language("Between", _generate.between, "other.between", split=True),
-    "BF": Language("BF", _generate.bf, "tape_based.bf"),
+    "brainfuck": Language("brainfuck", _generate.bf, "tape_based.bf"),
     "BFStack": Language("BFStack", _generate.bfstack, "stack_based.bfstack"),
     "BIO": Language("BIO", _generate.bio, "register_based.bio"),
     "bit~": Language("bit~", _generate.bit_tilde, "other.bit_tilde"),

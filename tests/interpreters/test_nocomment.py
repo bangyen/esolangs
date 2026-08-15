@@ -90,5 +90,7 @@ class TestNoComment:
         """A NoComment program and its brainfuck translation agree."""
         for text in ("Hello, World!", "Hi"):
             program = esolangs.generate("NoComment", text)
-            bf_program = esolangs.transpile("NoComment", "BF", program)
-            assert esolangs.run("NoComment", program) == esolangs.run("BF", bf_program)
+            bf_program = esolangs.transpile("NoComment", "brainfuck", program)
+            assert esolangs.run("NoComment", program) == esolangs.run(
+                "brainfuck", bf_program
+            )

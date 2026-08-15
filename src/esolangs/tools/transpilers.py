@@ -347,12 +347,12 @@ def _six_five_label(value: int) -> str:
 
 
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
-    ("BF", "ASCII art"): bf_to_ascii_art,
-    ("ASCII art", "BF"): ascii_art_to_bf,
-    ("BF", "Circlefuck"): bf_to_circlefuck,
-    ("BF", "6-5"): bf_to_six_five,
-    ("NoComment", "BF"): nocomment_to_bf,
-    ("BFStack", "BF"): bfstack_to_bf,
-    ("BIO", "BF"): bio_to_bf,
-    ("huf", "BF"): huf_to_bf,
+    ("brainfuck", "ASCII art"): bf_to_ascii_art,
+    ("ASCII art", "brainfuck"): ascii_art_to_bf,
+    ("brainfuck", "Circlefuck"): bf_to_circlefuck,
+    ("brainfuck", "6-5"): bf_to_six_five,
+    ("NoComment", "brainfuck"): nocomment_to_bf,
+    ("BFStack", "brainfuck"): bfstack_to_bf,
+    ("BIO", "brainfuck"): bio_to_bf,
+    ("huf", "brainfuck"): huf_to_bf,
 }

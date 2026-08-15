@@ -74,34 +74,36 @@ def _filter(program: str) -> str:
 
 @pytest.mark.parametrize(("program", "stdin"), BATTERY)
 def test_transpiled_output_matches_source(program: str, stdin: str) -> None:
-    art = esolangs.transpile("BF", "ASCII art", program)
-    assert esolangs.run("BF", program, stdin) == esolangs.run("ASCII art", art, stdin)
+    art = esolangs.transpile("brainfuck", "ASCII art", program)
+    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
+        "ASCII art", art, stdin
+    )
 
 
 @pytest.mark.parametrize(("program", "pair"), tuple(PINNED.items()))
 def test_pinned_outputs(program: str, pair: tuple[str, str]) -> None:
     stdin, expected = pair
-    assert esolangs.run("BF", program, stdin) == expected
+    assert esolangs.run("brainfuck", program, stdin) == expected
 
 
 @pytest.mark.parametrize(("program", "stdin"), BATTERY)
 def test_parse_recovers_source(program: str, stdin: str) -> None:
-    art = esolangs.transpile("BF", "ASCII art", program)
+    art = esolangs.transpile("brainfuck", "ASCII art", program)
     assert ascii_art.parse(art) == _filter(program)
 
 
 @pytest.mark.parametrize(("program", "stdin"), BATTERY)
 def test_reverse_transpiler_recovers_source(program: str, stdin: str) -> None:
     """ASCII art -> BF inverts BF -> ASCII art for well-formed art."""
-    art = esolangs.transpile("BF", "ASCII art", program)
-    assert esolangs.transpile("ASCII art", "BF", art) == _filter(program)
+    art = esolangs.transpile("brainfuck", "ASCII art", program)
+    assert esolangs.transpile("ASCII art", "brainfuck", art) == _filter(program)
 
 
 @pytest.mark.parametrize(("program", "stdin"), BATTERY)
 def test_reverse_transpiled_output_matches_source(program: str, stdin: str) -> None:
-    art = esolangs.transpile("BF", "ASCII art", program)
-    bf_program = esolangs.transpile("ASCII art", "BF", art)
-    assert esolangs.run("BF", bf_program, stdin) == esolangs.run(
+    art = esolangs.transpile("brainfuck", "ASCII art", program)
+    bf_program = esolangs.transpile("ASCII art", "brainfuck", art)
+    assert esolangs.run("brainfuck", bf_program, stdin) == esolangs.run(
         "ASCII art", art, stdin
     )
 
@@ -109,25 +111,27 @@ def test_reverse_transpiled_output_matches_source(program: str, stdin: str) -> N
 def test_reverse_round_trips_art() -> None:
     """Re-encoding recovered art reproduces it byte for byte."""
     for program, _ in BATTERY:
-        art = esolangs.transpile("BF", "ASCII art", program)
+        art = esolangs.transpile("brainfuck", "ASCII art", program)
         assert (
             esolangs.transpile(
-                "BF", "ASCII art", esolangs.transpile("ASCII art", "BF", art)
+                "brainfuck",
+                "ASCII art",
+                esolangs.transpile("ASCII art", "brainfuck", art),
             )
             == art
         )
 
 
 def test_reverse_empty_program() -> None:
-    assert esolangs.transpile("ASCII art", "BF", "") == ""
-    assert esolangs.transpile("BF", "ASCII art", "") == ""
+    assert esolangs.transpile("ASCII art", "brainfuck", "") == ""
+    assert esolangs.transpile("brainfuck", "ASCII art", "") == ""
 
 
 @pytest.mark.parametrize("text", ["Hello, World!", "Hi", "\x00\x01"])
 def test_generator_is_transpiled_generator(text: str) -> None:
     """The ASCII-art generator is exactly the BF generator, transpiled."""
-    bf_program = esolangs.generate("BF", text)
-    art = esolangs.transpile("BF", "ASCII art", bf_program)
+    bf_program = esolangs.generate("brainfuck", text)
+    art = esolangs.transpile("brainfuck", "ASCII art", bf_program)
     assert esolangs.generate("ASCII art", text) == art
     assert esolangs.run("ASCII art", art) == text
 
@@ -136,18 +140,20 @@ def test_generator_is_transpiled_generator(text: str) -> None:
 def test_generator_inverse(text: str) -> None:
     """The reverse transpiler recovers the BF generator's program."""
     art = esolangs.generate("ASCII art", text)
-    assert esolangs.transpile("ASCII art", "BF", art) == esolangs.generate("BF", text)
+    assert esolangs.transpile("ASCII art", "brainfuck", art) == esolangs.generate(
+        "brainfuck", text
+    )
 
 
 def test_empty_program_stays_empty() -> None:
-    art = esolangs.transpile("BF", "ASCII art", "")
+    art = esolangs.transpile("brainfuck", "ASCII art", "")
     assert art == ""
     assert esolangs.run("ASCII art", art) == ""
 
 
 def test_unsupported_pair_raises() -> None:
     with pytest.raises(UnsupportedTranspilationError):
-        esolangs.transpile("BF", "Unsquare", "x")
+        esolangs.transpile("brainfuck", "Unsquare", "x")
     with pytest.raises(UnsupportedTranspilationError):
         esolangs.transpile("Sophie", "Modulous", "x")
     assert issubclass(UnsupportedTranspilationError, EsolangError)
@@ -166,8 +172,8 @@ def test_listed_transpilers_are_known_languages() -> None:
 
 @pytest.mark.parametrize(("program", "stdin"), CIRCLEFUCK_BATTERY)
 def test_circlefuck_transpiled_output_matches_source(program: str, stdin: str) -> None:
-    circlefuck = esolangs.transpile("BF", "Circlefuck", program)
-    assert esolangs.run("BF", program, stdin) == esolangs.run(
+    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
+    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
         "Circlefuck", circlefuck, stdin
     )
 
@@ -175,8 +181,8 @@ def test_circlefuck_transpiled_output_matches_source(program: str, stdin: str) -
 @pytest.mark.parametrize(("program", "stdin"), CIRCLEFUCK_BATTERY)
 def test_circlefuck_explicit_size(program: str, stdin: str) -> None:
     """An explicit size is a larger-but-still-valid data region."""
-    circlefuck = esolangs.transpile("BF", "Circlefuck", program, size=8)
-    assert esolangs.run("BF", program, stdin) == esolangs.run(
+    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program, size=8)
+    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
         "Circlefuck", circlefuck, stdin
     )
 
@@ -184,8 +190,8 @@ def test_circlefuck_explicit_size(program: str, stdin: str) -> None:
 @pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123"])
 def test_circlefuck_transpiles_generated_program(text: str) -> None:
     """The BF generator's output (single cell) transpiles and prints the text."""
-    program = esolangs.generate("BF", text)
-    circlefuck = esolangs.transpile("BF", "Circlefuck", program)
+    program = esolangs.generate("brainfuck", text)
+    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
     assert esolangs.run("Circlefuck", circlefuck) == text
 
 
@@ -197,38 +203,38 @@ def test_circlefuck_left_edge_is_out_of_class() -> None:
     for programs that stay in ``[0, size)``.
     """
     program = ">+<<."  # reads cell 1, then moves below cell 0
-    circlefuck = esolangs.transpile("BF", "Circlefuck", program, size=4)
-    assert esolangs.run("BF", program) != esolangs.run("Circlefuck", circlefuck)
+    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program, size=4)
+    assert esolangs.run("brainfuck", program) != esolangs.run("Circlefuck", circlefuck)
 
 
 def test_circlefuck_auto_size_rejects_below_zero() -> None:
     """Programs that dip below cell 0 are rejected rather than mistranslated."""
     with pytest.raises(ValueError, match="below cell 0"):
-        esolangs.transpile("BF", "Circlefuck", ">+<<.")
+        esolangs.transpile("brainfuck", "Circlefuck", ">+<<.")
 
 
 def test_circlefuck_auto_size_rejects_drifting_loop() -> None:
     """Loops that drift the pointer unboundedly cannot be auto-sized."""
     with pytest.raises(ValueError, match="drift"):
-        esolangs.transpile("BF", "Circlefuck", "+[>+]")
+        esolangs.transpile("brainfuck", "Circlefuck", "+[>+]")
 
 
 def test_circlefuck_auto_size_rejects_nested_drifting_loop() -> None:
     """Drift detected inside a nested loop is propagated out."""
     with pytest.raises(ValueError, match="drift"):
-        esolangs.transpile("BF", "Circlefuck", "++[+[>+]]")
+        esolangs.transpile("brainfuck", "Circlefuck", "++[+[>+]]")
 
 
 def test_circlefuck_unmatched_bracket_rejected() -> None:
     """Unbalanced brackets are malformed and rejected by both the source
     interpreter and the transpiler."""
     with pytest.raises(ValueError, match="unbalanced brackets"):
-        esolangs.transpile("BF", "Circlefuck", "[")
+        esolangs.transpile("brainfuck", "Circlefuck", "[")
 
 
 def test_circlefuck_size_must_be_positive() -> None:
     with pytest.raises(ValueError, match="size must be positive"):
-        esolangs.transpile("BF", "Circlefuck", "+.", size=0)
+        esolangs.transpile("brainfuck", "Circlefuck", "+.", size=0)
 
 
 def test_circlefuck_fuzz_bounded_programs() -> None:
@@ -256,22 +262,28 @@ def test_circlefuck_fuzz_bounded_programs() -> None:
             else:
                 parts.append("[-]")
         program = "".join(parts)
-        circlefuck = esolangs.transpile("BF", "Circlefuck", program)
-        assert esolangs.run("BF", program) == esolangs.run("Circlefuck", circlefuck)
+        circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
+        assert esolangs.run("brainfuck", program) == esolangs.run(
+            "Circlefuck", circlefuck
+        )
 
 
 @pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123", "\x00\x01"])
 def test_nocomment_transpiles_to_brainfuck(text: str) -> None:
     """NoComment programs print the same text through the BF interpreter."""
     program = esolangs.generate("NoComment", text)
-    bf_program = esolangs.transpile("NoComment", "BF", program)
-    assert esolangs.run("NoComment", program) == esolangs.run("BF", bf_program) == text
+    bf_program = esolangs.transpile("NoComment", "brainfuck", program)
+    assert (
+        esolangs.run("NoComment", program)
+        == esolangs.run("brainfuck", bf_program)
+        == text
+    )
 
 
 def test_nocomment_comments_are_dropped() -> None:
     program = "xyz " + "c" + "i" * 72 + "o" + " qwerty"
-    bf_program = esolangs.transpile("NoComment", "BF", program)
-    assert esolangs.run("BF", bf_program) == "H"
+    bf_program = esolangs.transpile("NoComment", "brainfuck", program)
+    assert esolangs.run("brainfuck", bf_program) == "H"
 
 
 # (BFStack program, stdin) pairs; every program pushes before it reads the
@@ -294,9 +306,9 @@ BFSTACK_BATTERY = (
 
 @pytest.mark.parametrize(("program", "stdin"), BFSTACK_BATTERY)
 def test_bfstack_transpiles_to_brainfuck(program: str, stdin: str) -> None:
-    bf_program = esolangs.transpile("BFStack", "BF", program)
+    bf_program = esolangs.transpile("BFStack", "brainfuck", program)
     assert esolangs.run("BFStack", program, stdin) == esolangs.run(
-        "BF", bf_program, stdin
+        "brainfuck", bf_program, stdin
     )
 
 
@@ -304,8 +316,8 @@ def test_bfstack_transpiles_to_brainfuck(program: str, stdin: str) -> None:
 def test_bfstack_transpiles_generated_program(text: str) -> None:
     """The BFStack generator's output prints the same text as brainfuck."""
     program = esolangs.generate("BFStack", text)
-    bf_program = esolangs.transpile("BFStack", "BF", program)
-    assert esolangs.run("BF", bf_program) == text
+    bf_program = esolangs.transpile("BFStack", "brainfuck", program)
+    assert esolangs.run("brainfuck", bf_program) == text
 
 
 def test_bfstack_fuzz_stack_programs() -> None:
@@ -331,8 +343,8 @@ def test_bfstack_fuzz_stack_programs() -> None:
             else:
                 parts.append("[-]")
         program = "".join(parts)
-        bf_program = esolangs.transpile("BFStack", "BF", program)
-        assert esolangs.run("BFStack", program) == esolangs.run("BF", bf_program)
+        bf_program = esolangs.transpile("BFStack", "brainfuck", program)
+        assert esolangs.run("BFStack", program) == esolangs.run("brainfuck", bf_program)
 
 
 # (BIO program, stdin) pairs; every program terminates and its registers
@@ -353,22 +365,26 @@ BIO_BATTERY = (
 
 @pytest.mark.parametrize(("program", "stdin"), BIO_BATTERY)
 def test_bio_transpiles_to_brainfuck(program: str, stdin: str) -> None:
-    bf_program = esolangs.transpile("BIO", "BF", program)
-    assert esolangs.run("BIO", program, stdin) == esolangs.run("BF", bf_program, stdin)
+    bf_program = esolangs.transpile("BIO", "brainfuck", program)
+    assert esolangs.run("BIO", program, stdin) == esolangs.run(
+        "brainfuck", bf_program, stdin
+    )
 
 
 @pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123"])
 def test_bio_transpiles_generated_program(text: str) -> None:
     """The BIO generator's output prints the same text as brainfuck."""
     program = esolangs.generate("BIO", text)
-    bf_program = esolangs.transpile("BIO", "BF", program)
-    assert esolangs.run("BF", bf_program) == text
+    bf_program = esolangs.transpile("BIO", "brainfuck", program)
+    assert esolangs.run("brainfuck", bf_program) == text
 
 
 def test_bio_comments_are_ignored() -> None:
     program = "hello there 0ox 1ix ok"
-    bf_program = esolangs.transpile("BIO", "BF", program)
-    assert esolangs.run("BIO", program) == esolangs.run("BF", bf_program) == "\x01"
+    bf_program = esolangs.transpile("BIO", "brainfuck", program)
+    assert (
+        esolangs.run("BIO", program) == esolangs.run("brainfuck", bf_program) == "\x01"
+    )
 
 
 def test_bio_register_wrap_is_out_of_class() -> None:
@@ -378,8 +394,8 @@ def test_bio_register_wrap_is_out_of_class() -> None:
     brainfuck cells wrap, so the same register reads as 0.
     """
     program = "0ox" * 256 + "0ix1ix1ox}"
-    bf_program = esolangs.transpile("BIO", "BF", program)
-    assert esolangs.run("BIO", program) != esolangs.run("BF", bf_program)
+    bf_program = esolangs.transpile("BIO", "brainfuck", program)
+    assert esolangs.run("BIO", program) != esolangs.run("brainfuck", bf_program)
 
 
 def test_bio_fuzz_register_programs() -> None:
@@ -407,8 +423,8 @@ def test_bio_fuzz_register_programs() -> None:
                 parts.append("0i" + "xyz"[r] + body + "}")
                 reg[r] = 0
         program = "".join(parts)
-        bf_program = esolangs.transpile("BIO", "BF", program)
-        assert esolangs.run("BIO", program) == esolangs.run("BF", bf_program)
+        bf_program = esolangs.transpile("BIO", "brainfuck", program)
+        assert esolangs.run("BIO", program) == esolangs.run("brainfuck", bf_program)
 
 
 # (Huf program, stdin) pairs; Huf is straight line, so every program
@@ -431,22 +447,26 @@ HUF_BATTERY = (
 
 @pytest.mark.parametrize(("program", "stdin"), HUF_BATTERY)
 def test_huf_transpiles_to_brainfuck(program: str, stdin: str) -> None:
-    bf_program = esolangs.transpile("huf", "BF", program)
-    assert esolangs.run("huf", program, stdin) == esolangs.run("BF", bf_program, stdin)
+    bf_program = esolangs.transpile("huf", "brainfuck", program)
+    assert esolangs.run("huf", program, stdin) == esolangs.run(
+        "brainfuck", bf_program, stdin
+    )
 
 
 @pytest.mark.parametrize("text", ["Hello, World!", "Hi", "123"])
 def test_huf_transpiles_generated_program(text: str) -> None:
     """The huf generator's output prints the same text as brainfuck."""
     program = esolangs.generate("huf", text)
-    bf_program = esolangs.transpile("huf", "BF", program)
-    assert esolangs.run("BF", bf_program) == text
+    bf_program = esolangs.transpile("huf", "brainfuck", program)
+    assert esolangs.run("brainfuck", bf_program) == text
 
 
 def test_huf_comments_are_ignored() -> None:
     program = "hello #+++>@ world"
-    bf_program = esolangs.transpile("huf", "BF", program)
-    assert esolangs.run("huf", program) == esolangs.run("BF", bf_program) == "\x03"
+    bf_program = esolangs.transpile("huf", "brainfuck", program)
+    assert (
+        esolangs.run("huf", program) == esolangs.run("brainfuck", bf_program) == "\x03"
+    )
 
 
 def test_huf_fuzz_segments() -> None:
@@ -486,8 +506,8 @@ def test_huf_fuzz_segments() -> None:
                     num = 0
             parts.append(seg + "@")
         program = "".join(parts)
-        bf_program = esolangs.transpile("huf", "BF", program)
-        assert esolangs.run("huf", program) == esolangs.run("BF", bf_program)
+        bf_program = esolangs.transpile("huf", "brainfuck", program)
+        assert esolangs.run("huf", program) == esolangs.run("brainfuck", bf_program)
 
 
 # (brainfuck program, stdin) pairs; every program terminates.
@@ -508,24 +528,26 @@ SIX_FIVE_BATTERY = (
 
 @pytest.mark.parametrize(("program", "stdin"), SIX_FIVE_BATTERY)
 def test_six_five_transpiled_output_matches_source(program: str, stdin: str) -> None:
-    six_five = esolangs.transpile("BF", "6-5", program)
-    assert esolangs.run("BF", program, stdin) == esolangs.run("6-5", six_five, stdin)
+    six_five = esolangs.transpile("brainfuck", "6-5", program)
+    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
+        "6-5", six_five, stdin
+    )
 
 
 def test_six_five_transpiles_generated_program() -> None:
     """The BF generator's output (single cell) transpiles and prints the text."""
     text = "Hello, World!"
-    program = esolangs.generate("BF", text)
-    six_five = esolangs.transpile("BF", "6-5", program)
+    program = esolangs.generate("brainfuck", text)
+    six_five = esolangs.transpile("brainfuck", "6-5", program)
     assert esolangs.run("6-5", six_five) == text
 
 
 def test_six_five_loop_cap() -> None:
     """More than 18 loops (36 markers) cannot be labelled."""
     with pytest.raises(ValueError, match="18 loops"):
-        esolangs.transpile("BF", "6-5", "[-]" * 19)
+        esolangs.transpile("brainfuck", "6-5", "[-]" * 19)
 
 
 def test_six_five_unbalanced_brackets_rejected() -> None:
     with pytest.raises(ValueError, match="unbalanced"):
-        esolangs.transpile("BF", "6-5", "+[")
+        esolangs.transpile("brainfuck", "6-5", "+[")
