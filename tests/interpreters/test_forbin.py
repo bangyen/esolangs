@@ -189,3 +189,68 @@ class TestFunctions:
     def test_malformed_syntax(self) -> None:
         with pytest.raises(ValueError, match="expected"):
             run_program("main { out 0,0,0,0,0,0,0 } extra")
+
+
+class TestParserErrors:
+    def test_line_comments_are_ignored(self) -> None:
+        code = "main { // header\n a = 1; // trailing\n out 0,0,0,0,0,0,0,a; }"
+        assert run_program(code) == "\x01"
+
+    def test_missing_paren_after_anon_func(self) -> None:
+        with pytest.raises(ValueError, match="expected"):
+            run_program("main { x = (a@ { return 1; }; }")
+
+    def test_digit_where_an_identifier_is_expected(self) -> None:
+        with pytest.raises(ValueError, match="identifier"):
+            run_program("main { for 1:0..1 { } }")
+
+    def test_value_at_end_of_input(self) -> None:
+        with pytest.raises(ValueError, match="value"):
+            run_program("main { x =")
+
+    def test_anonymous_function_literal(self) -> None:
+        code = "main { f = (a@ { out 0,0,0,0,0,0,0,a; }); r = (f 1); }"
+        assert run_program(code) == "\x01"
+
+    def test_unexpected_character(self) -> None:
+        with pytest.raises(ValueError, match="character"):
+            run_program("main { x = 2; }")
+
+    def test_range_needs_two_dots(self) -> None:
+        with pytest.raises(ValueError, match=r"\.\."):
+            run_program("main { for i:0 1 { } }")
+
+    def test_trailing_comma_header(self) -> None:
+        # f a, { is a header whose parameter list ends after the comma
+        assert run_program("main { f a, { out 0,0,0,0,0,0,0,0; } }") == ""
+
+    def test_unterminated_block(self) -> None:
+        with pytest.raises(ValueError, match="unterminated"):
+            run_program("main {")
+
+    def test_assignment_target_must_be_a_variable(self) -> None:
+        with pytest.raises(ValueError, match="target must be a variable"):
+            run_program("main { (f 1) = 2; }")
+        with pytest.raises(ValueError, match="target must be a variable"):
+            run_program("main { a, !b = 0, 1; }")
+
+    def test_multi_target_needs_equals(self) -> None:
+        with pytest.raises(ValueError, match="after assignment"):
+            run_program("main { a, b 2; }")
+
+    def test_statement_must_be_a_call_or_assignment(self) -> None:
+        with pytest.raises(ValueError, match="statement must be"):
+            run_program("main { 1; }")
+
+    def test_calling_a_non_function_halts(self) -> None:
+        with pytest.raises(HaltError, match="not a function"):
+            run_program("main { x = 0; r = (x 1); }")
+
+    def test_recursion_limit_exceeded(self) -> None:
+        """Infinite recursion halts cleanly rather than leaking a RecursionError."""
+        with pytest.raises(HaltError, match="recursion"):
+            run_program("main { again 1; }\nagain { again 0; }")
+
+    def test_multi_assignment(self) -> None:
+        code = "main { a, b = 1, 0; " "out 0,0,0,0,0,0,0,a; out 0,0,0,0,0,0,0,b; }"
+        assert run_program(code) == "\x01\x00"
