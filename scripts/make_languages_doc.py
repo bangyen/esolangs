@@ -45,6 +45,7 @@ BOOLEAN = {
     "LaserFuck",
     "Minifuck",
     "Modulous",
+    "MyScript",
     "Nevermind",
     "NoComment",
     "Painfuck",
@@ -54,6 +55,7 @@ BOOLEAN = {
     "Sophie",
     "Taglate",
     "Unsquare",
+    "ZTOALC L",
 }
 # Compiler source-file stem -> the language's display name.  A compiler file
 # without an entry here fails loudly rather than silently dropping out of

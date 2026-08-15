@@ -160,6 +160,27 @@ that makes a text generator a routing problem rather than an arithmetic one.
 The newly assessed boolean candidates that fell through (The Temporary Stack, Movesum,
 WII2D, EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.
 
+## Boolean generators: remaining opportunities
+
+Text generators are exhausted, but two interpreters can still take a
+truth-table generator (they read input, branch on a value, and output a
+bit), so a boolean generator is plausible:
+
+- **AddSubJump.**  A self-modifying OISC whose conditional is the zero /
+  negative flag under flag mode, with input and output specials.  It already
+  has a text generator; a boolean generator would compile the truth table
+  the same way the Decleq and S*bleq boolean generators do, and the
+  input/conditional/output primitives are verified to work (a byte reads in
+  and echoes out).  The strongest remaining opportunity.
+- **ROTfuck.**  Brainfuck with a rotating program text and dynamic bracket
+  matching; it reads a byte and has loops, so the brainfuck minterm strategy
+  carries over, but every emitted command must be pre-encoded by its
+  position's inverse rotation (as the ROTfuck text generator already does).
+
+The rest of the interpreter-only languages lack the input a truth-table
+harness needs, are straight-line (2dFish), or are ruled out in
+`docs/limitations.md`.
+
 ## Compiler consolidation
 
 The repo previously had two compiler backends: Python compilers emitting
