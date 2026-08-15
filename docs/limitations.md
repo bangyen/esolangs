@@ -356,6 +356,10 @@ COD — are in `docs/roadmap.md`).
 - **DSDLAI**: a Dig variant whose dig commands carry a random 20-90% death
   chance (printing "You died." and halting), so a generated program's output
   is non-deterministic and cannot round-trip text or a truth table.
+- **Trash**: its only output is a prime-advanced number — a non-prime start
+  prints ``0``, a prime start prints the next prime (3, 5, 7, ...), and no
+  leading ``t`` prints nothing — so it can never print a boolean ``"1"`` and
+  cannot return a truth-table result even parameterized.
 
 ## Transpiler walls
 
