@@ -64,3 +64,30 @@ class Test2dFish:
     def test_trailing_newline_phantom_row(self) -> None:
         # the reference pushes the last row twice when the file ends in \n
         assert run_program("/i@\n") == ""
+
+    def test_square_and_string_mode_reset(self) -> None:
+        # s squares the accumulator; i/d/s all leave string mode, so the
+        # following a prints the accumulator byte instead of the string
+        assert run_program("/iiso@") == "4"
+        assert run_program("/i(ab)sa@") == "\x01"
+        assert run_program("/i(ab)ia@") == "\x02"
+
+    def test_left_turn_off_the_grid_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run_program("v\n\\\n@")
+
+    def test_up_off_the_top_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run_program("^\ni\n@")
+
+    def test_a_on_empty_string_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run_program("/()a@")
+
+    def test_unterminated_string_capture_rejected(self) -> None:
+        with pytest.raises(ValueError, match="unterminated"):
+            run_program("/(abc@")
+
+    def test_non_right_capture_resumes_from_the_paren(self) -> None:
+        # a downward pointer resumes moving from the '(' after capturing
+        assert run_program("v\n(a)\n@") == ""
