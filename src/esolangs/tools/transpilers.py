@@ -703,7 +703,7 @@ def decleq_to_sbleq(program: str) -> str:
     Reading past end-of-input also differs (Decleq raises :class:`EOFError`,
     S*bleq reads zero).
     """
-    from esolangs.interpreters.register_based.decleq import _parse
+    from esolangs.interpreters.memory import parse_int_memory as _parse
 
     cells = _parse(program)
     n = len(cells) // 3
