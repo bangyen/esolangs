@@ -52,15 +52,14 @@ class TestLightlangBasicCommands:
             assert f.getvalue() == "0"
 
     def test_random_command(self) -> None:
-        """Test @ command sets bit to random state."""
-        # Test multiple times to ensure randomness works
-        results = set()
-        for _ in range(10):
-            with redirect_stdout(io.StringIO()) as f:
-                run("@!", io=IO())
-            results.add(f.getvalue())
-        # Should get both 0 and 1 at some point
-        assert len(results) > 1
+        """Test @ command sets bit to random state (both branches deterministically)."""
+        with patch("secrets.randbelow", side_effect=[0, 1]):
+            results = set()
+            for _ in range(2):
+                with redirect_stdout(io.StringIO()) as f:
+                    run("@!", io=IO())
+                results.add(f.getvalue())
+        assert results == {"0", "1"}
 
     def test_skip_command_bit_on(self) -> None:
         """Test & command skips next instruction when bit is 1."""
