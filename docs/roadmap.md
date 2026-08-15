@@ -186,49 +186,38 @@ bit):
 
 ### No-input languages: parameterized (assessed)
 
-The remaining no-input languages are not one wall.  The parameterized
-generators (back, bio, nocomment) already handle languages without an input
-command by embedding the bits as constants, which requires **output plus a
-value-testable branch** — input is not needed.  Reclassifying the no-input
-set that way:
+The parameterized generators (back, bio, nocomment) prove a no-input
+language can compute a truth table if it has output plus a value-testable
+branch (the bits are embedded as constants).  The no-input candidates that
+were assessed:
 
 - **Trash: ruled out.**  Its output is a prime-advanced number: a
   non-prime start prints ``0``, a prime start prints the next prime (3, 5,
   7, ...), and no ``t`` prints nothing.  It can never print a boolean
   ``"1"``, so it cannot return a truth-table result.
-- **Home Row: viable (unbuilt).**  It prints the current cell as a byte
-  (``k``) and has a value-skip (``j``) and while-nonzero loops (``l``
-  pairs), so a parameterized decision tree over embedded bit cells is
-  possible; the 5x5 wrapping grid makes the pointer routing the main work.
-- **BF-PDA: research-level, not a carry-over.**  ``.`` prints the top bit as
-  a literal ``'0'``/``'1'`` and ``[``/``]`` loop on the top bit, which looks
-  ideal — but the decision-tree guard trick needs *two independent guard
-  cells per bit* (the bit and its complement, cleared separately so each
-  ``]`` exits), and BF-PDA's guards are all the same stack top.  The one-side
-  loop cannot exclude the zero-side after it (no forward jump), so a
-  bit-consuming tree over the stack is genuinely awkward.  The grid
-  language Home Row looked tractable — its random-access cells give bf-style
-  separate guards — but Home Row's ``l`` loops pair strictly *by order* (the
-  first and second ``l`` form a loop, the third and fourth another; the
-  RISC-V compiler's ``loop // 2`` numbering), so loops cannot nest.  A
-  decision tree's AND-gating needs nested guards (the bf_tree structure),
-  which Home Row cannot express; the pointer also only moves forward
-  (``d``/``f``, no left/up).  So Home Row is also research-level, and the
-  no-input boolean-generator candidates all hit structural walls.
-
-The parameterized idea itself is real — back, bio, and nocomment prove a
-no-input language with output and a value-branch can do it — but the
-specific no-input interpreters in this repo each lack a usable structure:
-Trash cannot print ``"1"``, and BF-PDA and Home Row cannot nest their
-branching primitives.  AddSubJump was the one remaining target that had a
-usable conditional, and it shipped.
+- **BF-PDA: research-level.**  ``.`` prints the top bit as a literal
+  ``'0'``/``'1'`` and ``[``/``]`` loop on the top bit, which looks ideal —
+  but a decision tree needs *two independent guard cells per bit* (the bit
+  and its complement, cleared separately so each ``]`` exits), and BF-PDA's
+  guards are all the same stack top.  The one-side loop cannot exclude the
+  zero-side after it (no forward jump), so a bit-consuming tree over the
+  stack is genuinely awkward.
+- **Home Row: research-level.**  Its random-access cells give bf-style
+  separate guards, but the ``l`` loops pair strictly *by order* (the first
+  and second ``l`` form a loop, the third and fourth another; the RISC-V
+  compiler's ``loop // 2`` numbering), so loops cannot nest.  A decision
+  tree's AND-gating needs nested guards (the bf_tree structure), which Home
+  Row cannot express; the pointer also only moves forward (``d``/``f``, no
+  left/up).
 - **No-input and no-output** (A Painter Ant, ArrowQueue, Bitdeque, Eval,
-  Factor, Kak, Keys, Minsky Swap, RAM0): still impossible — nothing to
-  return.
+  Factor, Kak, Keys, Minsky Swap, RAM0): impossible — nothing to return.
 
-So the earlier "the rest lack input" framing was wrong for the
-output-plus-branch subset: Home Row and BF-PDA are genuine remaining
-parameterized opportunities, and Trash is now formally ruled out.
+So AddSubJump (the one target with a usable conditional) shipped, and the
+assessed no-input interpreters all hit structural walls.  **Never assessed**
+and still on the table: the input-reading candidates 123, %^2^-1, and
+ABCDirection, and the parameterized no-input set Number Seventy-Four, Stun
+Step, Brainpocalypse, 2 Bits 1 Byte, and Albabet.  Each needs an individual
+assessment before it can be called a wall or an opportunity.
 
 ## Compiler consolidation
 
