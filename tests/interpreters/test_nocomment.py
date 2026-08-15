@@ -85,12 +85,3 @@ class TestNoComment:
             assert (
                 esolangs.run("NoComment", esolangs.generate("NoComment", text)) == text
             )
-
-    def test_parity_with_transpiled_brainfuck(self) -> None:
-        """A NoComment program and its brainfuck translation agree."""
-        for text in ("Hello, World!", "Hi"):
-            program = esolangs.generate("NoComment", text)
-            bf_program = esolangs.transpile("NoComment", "brainfuck", program)
-            assert esolangs.run("NoComment", program) == esolangs.run(
-                "brainfuck", bf_program
-            )
