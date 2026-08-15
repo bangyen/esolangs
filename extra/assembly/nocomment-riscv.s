@@ -2,8 +2,8 @@
 #
 # The full wiki language: a byte tape with a movable pointer, plus a byte
 # stack.  `i`/`d` increment/decrement the current cell (mod 256), `c` clears
-# it, `l`/`r` move the pointer (left is a no-op at cell 0, right extends the
-# tape), `n` pushes the current cell, `f` pops into it, `s`/`b` jump
+# it, `l`/`r` move the pointer (a static 4096-byte tape whose pointer wraps
+# at both ends), `n` pushes the current cell, `f` pops into it, `s`/`b` jump
 # forward/backward by the top-of-stack amount when the current cell is
 # nonzero (`s` skips X instructions, `b` jumps back X-1), and `o` prints
 # the current cell as a byte.  Any other character is a malformed program.
@@ -115,12 +115,18 @@ _start:
     j    .next
 
 .left:
-    beqz s6, .next          # ptr == 0: no-op
     addi s6, s6, -1
+    bge  s6, zero, 1f
+    li   s6, 4095           # pointer overflow wraps to the opposite end
+1:
     j    .next
 
 .right:
-    addi s6, s6, 1          # the tape is a fixed zeroed buffer
+    addi s6, s6, 1
+    li   t0, 4096
+    blt  s6, t0, 1f
+    li   s6, 0              # the tape is a fixed 4096-byte zeroed buffer
+1:
     j    .next
 
 .on:

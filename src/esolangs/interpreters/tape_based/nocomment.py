@@ -7,9 +7,9 @@ extends the tape), ``n`` pushes the current cell onto the stack, ``f`` pops
 the stack into the current cell, ``s``/``b`` jump forward/backward by a
 peeked stack value when the current cell is nonzero (``s`` skips X
 instructions, ``b`` jumps back X-1), and ``o`` prints the current cell as a
-byte.  The tape is unbounded to the right (``r`` grows it, ``l`` clamps at
-cell 0) rather than wrapping to the opposite end, matching the RISC-V
-cross-check.
+byte.  The tape is a static 4096 bytes and the pointer wraps at both ends
+(per the wiki, pointer overflow is legal and moves to the opposite end),
+matching the RISC-V cross-check.
 
 Per the wiki, any character that is not a command is an error (there are no
 comments), and popping an empty stack is an error.  A malformed program
@@ -24,10 +24,14 @@ from esolangs.interpreters.io import IO
 
 _COMMANDS = "idclrnfsbo"
 
+# The static tape size: the wiki says the memory space is static but does not
+# give its size, so 4096 (matching the RISC-V cross-check's buffer) is used.
+_TAPE = 4096
+
 
 def run(code: str, io: IO) -> None:
     """Run a NoComment program."""
-    tape: list[int] = [0]
+    tape: list[int] = [0] * _TAPE
     stack: list[int] = []
     ptr = 0
     ind = 0
@@ -41,12 +45,9 @@ def run(code: str, io: IO) -> None:
         elif c == "c":
             tape[ptr] = 0
         elif c == "l":
-            if ptr:
-                ptr -= 1
+            ptr = (ptr - 1) % _TAPE  # pointer overflow wraps per the wiki
         elif c == "r":
-            ptr += 1
-            if ptr == len(tape):
-                tape.append(0)
+            ptr = (ptr + 1) % _TAPE
         elif c == "n":
             stack.append(tape[ptr])
         elif c == "f":
