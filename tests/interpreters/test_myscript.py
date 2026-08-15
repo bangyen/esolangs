@@ -104,6 +104,58 @@ class TestErrors:
         with pytest.raises(EOFError):
             run("say ask", ScriptedIO(""))
 
+    def test_truthiness_coercion(self) -> None:
+        # int/str/list/function values coerce in while conditions
+        assert run_and_capture("var a is []\nwhile a,\n  say x") == ""
+        assert run_and_capture('while "",\n  say x') == ""
+        assert run_and_capture("while 0,\n  say x") == ""
+        assert run_and_capture('var f is func\n  say "x"\nsay not f') == "xno"
+
+    def test_float_print_omits_the_point(self) -> None:
+        assert run_and_capture("var a is 5.0\nsay a") == "5"
+
+    def test_expected_a_number_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run_and_capture('say add "x" 1')
+
+    def test_expected_an_array_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run_and_capture("say arrlen 5")
+
+    def test_function_assigns_to_an_outer_variable(self) -> None:
+        code = "var a is 1\nvar f is func\n  a is 2\n  say a\nsay f\nsay a"
+        assert run_and_capture(code) == "2None2"
+
+    def test_bare_return_in_a_function(self) -> None:
+        assert run_and_capture("var f is func\n  return\nsay f") == "None"
+
+    def test_while_loop_runs(self) -> None:
+        code = "var i is 3\nwhile less 0 i,\n  say i\n  var i is subtract i 1"
+        assert run_and_capture(code) == "321"
+
+    def test_while_loop_with_condition_recheck(self) -> None:
+        # the condition is re-evaluated after each pass through the body
+        code = "var i is 1\nvar f is func\n  var i is 2\nwhile i,\n  var i is 0\nsay i"
+        assert run_and_capture(code) == "0"
+
+    def test_malformed_var_declaration_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run_and_capture("var x 5")
+
+    def test_malformed_check_case_halts(self) -> None:
+        with pytest.raises(HaltError):
+            run_and_capture('check 5,\n  whatever,\n    say "y"')
+
+    def test_check_with_no_matching_case(self) -> None:
+        assert run_and_capture('check 5,\n  if 1,\n    say "a"') == ""
+
+    def test_is_head_is_malformed(self) -> None:
+        with pytest.raises(HaltError):
+            run_and_capture("is 5")
+
+    def test_top_level_assignment(self) -> None:
+        assert run_and_capture("var a is 1\na is 2\nsay a") == "2"
+
 
 class TestGenerator:
     def test_round_trip(self) -> None:
