@@ -2021,7 +2021,7 @@ def run_abcdirection(program: str, inputs: list[str]) -> str:
 
 
 class TestABCDirection:
-    """The ABCDirection boolean generator (currently verified for n == 1)."""
+    """The ABCDirection boolean generator (currently verified for n <= 2)."""
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -2030,6 +2030,12 @@ class TestABCDirection:
             ("10", 1),  # NOT
             ("00", 1),  # constant zero
             ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0111", 2),  # OR
+            ("0110", 2),  # XOR
+            ("1110", 2),  # NAND
+            ("0000", 2),  # constant zero
+            ("1111", 2),  # constant one
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -2039,6 +2045,17 @@ class TestABCDirection:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_abcdirection(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every one- and two-input table produces the right result."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.abcdirection(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_abcdirection(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_grid_shape(self) -> None:
         """The program is a rectangular grid ending in the DDDDDD terminator."""
@@ -2050,9 +2067,9 @@ class TestABCDirection:
         assert all(len(r) == width for r in rows)
         assert program.splitlines()[-1].endswith("DDDDDD")
 
-    def test_rejects_n_greater_than_one(self) -> None:
-        with pytest.raises(ValueError, match="n <= 1"):
-            boolean.abcdirection("0001", 2)
+    def test_rejects_n_greater_than_two(self) -> None:
+        with pytest.raises(ValueError, match="n <= 2"):
+            boolean.abcdirection("00000001", 3)
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):

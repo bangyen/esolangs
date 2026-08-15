@@ -48,7 +48,7 @@ class _Builder:
         for (x, y), c in self.cells.items():
             if y == self.height - 1:
                 term[x] = c
-        term[self.width - 6:self.width] = ["D"] * 6
+        term[self.width - 6 : self.width] = ["D"] * 6
         rows = ["".join(r) for r in g]
         rows.append("".join(term))
         return rows
@@ -77,7 +77,9 @@ def _travel(b: _Builder, x: int, y: int, h: int, dist: int) -> tuple[int, int]:
     return x, y
 
 
-def _add_staircase(b: _Builder, n: int, right: int = 6, up: int = 3, d: int = 2) -> tuple[int, int, int]:
+def _add_staircase(
+    b: _Builder, n: int, right: int = 6, up: int = 3, d: int = 2
+) -> tuple[int, int, int]:
     """Read phase: [D-up read, D-right enqueue] x 8n pairs rising rightward."""
     pairs = 8 * n
     b.set(0, 0, "A")
@@ -122,9 +124,17 @@ def _build_node(
     b.set(x - 2 * k, y, "A")
     b.set(x - 2 * k, y - 1, "C")
     if depth == n - 1:
-        _leaf(b, n, table, x - 2 * k, y - 2, _U, combo, path + (0,), leaf_rows)
-        _leaf(b, n, table, x - 2 * k - 1, y - 1, _L,
-              combo | (1 << (n - 1 - depth)), path + (1,), leaf_rows)
+        _leaf(b, table, x - 2 * k, y - 2, _U, combo, (*path, 0), leaf_rows)
+        _leaf(
+            b,
+            table,
+            x - 2 * k - 1,
+            y - 1,
+            _L,
+            combo | (1 << (n - 1 - depth)),
+            (*path, 1),
+            leaf_rows,
+        )
         return
     zx, zy, zh = x - 2 * k, y - 1, _U
     zx, zy = zx, zy - 1
@@ -133,14 +143,22 @@ def _build_node(
     zx, zy, zh = _turn(b, zx, zy, zh, _D)
     zx, zy = _travel(b, zx, zy, _D, 4)
     zx, zy, zh = _turn(b, zx, zy, zh, _L)
-    _build_node(b, n, table, depth + 1, zx - 1, zy, combo, path + (0,), leaf_rows)
-    _build_node(b, n, table, depth + 1, x - 2 * k - 1, y - 1,
-                combo | (1 << (n - 1 - depth)), path + (1,), leaf_rows)
+    _build_node(b, n, table, depth + 1, zx - 1, zy, combo, (*path, 0), leaf_rows)
+    _build_node(
+        b,
+        n,
+        table,
+        depth + 1,
+        x - 2 * k - 1,
+        y - 1,
+        combo | (1 << (n - 1 - depth)),
+        (*path, 1),
+        leaf_rows,
+    )
 
 
 def _leaf(
     b: _Builder,
-    n: int,
     table: str,
     x: int,
     y: int,
@@ -163,7 +181,11 @@ def _leaf(
         cx, cy = _travel(b, cx, cy, _U, cy - band_y)
         cx, cy, ch = _turn(b, cx, cy, _U, _R)
     else:
-        cx, cy, ch = _turn(b, cx, cy, ch, _U)
+        # one side: turned LEFT from the C-up.  Step left one column so the
+        # upward path runs in a clear column (the tree's D-left cells sit on
+        # the branch column and would be read as input).
+        cx, cy = _travel(b, cx, cy, _L, 1)
+        cx, cy, ch = _turn(b, cx, cy, _L, _U)
         cx, cy = _travel(b, cx, cy, _U, cy - band_y)
         cx, cy, ch = _turn(b, cx, cy, _U, _R)
         cx, cy = _travel(b, cx, cy, _R, band_x - cx)
@@ -189,12 +211,15 @@ def _leaf(
         cx, cy = _here(b, cx, cy, _D, "C")
         cx, cy = _travel(b, cx, cy, _D, leg)
     # EOF sink: travel DOWN (wrapping past the bottom) to this leaf's sink
-    # row, turn RIGHT, travel RIGHT to the terminator run's column, turn UP,
-    # and the wrap into row H-1 reads at the terminator D cells -> EOFError.
+    # row, turn RIGHT, travel RIGHT to this leaf's sink column, turn UP, and
+    # the wrap into row H-1 reads at the terminator D cells -> EOFError.  The
+    # sink columns are distinct per leaf so the turn cells never sit on
+    # another leaf's upward path.
     sink_row = 2 + 10 * combo
+    sink_col = 214 + combo
     cx, cy = _travel(b, cx, cy, _D, b.height + sink_row - cy)
     cx, cy, ch = _turn(b, cx, cy, _D, _R)
-    cx, cy = _travel(b, cx, cy, _R, 215 - cx)
+    cx, cy = _travel(b, cx, cy, _R, sink_col + 1 - cx)
     cx, cy, ch = _turn(b, cx, cy, _R, _U)
     cx, cy = _travel(b, cx, cy, _U, sink_row)
 
@@ -213,29 +238,31 @@ def abcdirection(truth_table: str, n: int) -> str:
     spaced one cell apart so no six-``D`` run forms (the grid reader would
     mistake it for the terminator).
 
-    The current layout is verified for ``n == 1``; deeper trees route the
-    leaves through the tree's own cells and are not yet correct, so ``n > 1``
-    raises :class:`ValueError`.
+    The current layout is verified for ``n <= 2`` (all one- and two-input
+    functions).  Deeper trees route the leaves and internal paths through the
+    tree's own cells and are not yet correct, so ``n > 2`` raises
+    :class:`ValueError`.
     """
     _validate_truth_table(truth_table, n)
-    if n > 1:
+    if n > 2:
         raise ValueError(
-            "the ABCDirection boolean generator currently supports n <= 1: "
-            "deeper trees route the leaves through the tree's own cells",
+            "the ABCDirection boolean generator currently supports n <= 2: "
+            "deeper trees route the leaves and internal paths through the "
+            "tree's own cells",
         )
     b = _Builder(220, 840)
     ex, ey, eh = _add_staircase(b, n)
-    x, y, h = ex, ey, eh
+    x, y, _ = ex, ey, eh
     x, y = _travel(b, x, y, _U, max(0, y - 713))
-    x, y, h = _turn(b, x, y, _U, _L)
+    x, y, _ = _turn(b, x, y, _U, _L)
     x, y = _travel(b, x, y, _L, max(0, x - 30))
-    x, y, h = _turn(b, x, y, _L, _U)
+    x, y, _ = _turn(b, x, y, _L, _U)
     x, y = _travel(b, x, y, _U, max(0, y - 600))
-    x, y, h = _turn(b, x, y, _U, _R)
+    x, y, _ = _turn(b, x, y, _U, _R)
     x, y = _travel(b, x, y, _R, 95 - x)
-    x, y, h = _turn(b, x, y, _R, _D)
+    x, y, _ = _turn(b, x, y, _R, _D)
     x, y = _travel(b, x, y, _D, max(0, 709 - y))
-    x, y, h = _turn(b, x, y, _D, _L)
+    x, y, _ = _turn(b, x, y, _D, _L)
     root_x, root_y = x, y
     leaf_rows = {i: (200 + i * 50, 100 + i * 40) for i in range(2**n)}
     _build_node(b, n, truth_table, 0, root_x, root_y, 0, (), leaf_rows)
