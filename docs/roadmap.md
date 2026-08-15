@@ -160,22 +160,29 @@ that makes a text generator a routing problem rather than an arithmetic one.
 The newly assessed boolean candidates that fell through (The Temporary Stack, Movesum,
 WII2D, EXCON, Huf, Lightlang, DSDLAI) are recorded in `docs/limitations.md`.
 
-## Boolean generators: remaining opportunities
+## Boolean generators: assessed
 
-Text generators are exhausted, but two interpreters can still take a
-truth-table generator (they read input, branch on a value, and output a
-bit), so a boolean generator is plausible:
+Text generators are exhausted.  The last two candidates to assess were
+AddSubJump and ROTfuck (both read input, branch on a value, and output a
+bit):
 
 - **AddSubJump.**  A self-modifying OISC whose conditional is the zero /
   negative flag under flag mode, with input and output specials.  It already
   has a text generator; a boolean generator would compile the truth table
   the same way the Decleq and S*bleq boolean generators do, and the
   input/conditional/output primitives are verified to work (a byte reads in
-  and echoes out).  The strongest remaining opportunity.
-- **ROTfuck.**  Brainfuck with a rotating program text and dynamic bracket
-  matching; it reads a byte and has loops, so the brainfuck minterm strategy
-  carries over, but every emitted command must be pre-encoded by its
-  position's inverse rotation (as the ROTfuck text generator already does).
+  and echoes out).  The strongest remaining opportunity.  **Done: the
+  generator shipped (decision tree through the negative flag).**
+- **ROTfuck (research-level, not a carry-over).**  ROTfuck is brainfuck
+  whose program text rotates after every command and whose brackets match
+  *dynamically* (a firing bracket rotates, then seeks its partner in the
+  rotated program).  The text generator's straight-line inverse-rotation
+  encoding does not survive loops — a rotation-encoded brainfuck loop fails
+  (the ``]`` cannot find its ``[`` at the right rotation state) — so a
+  boolean generator cannot reuse the brainfuck minterm strategy.  A decision
+  tree would have to be designed around the rotation-state-dependent bracket
+  matching, which is fragile and hard to verify.  The rotation is a real
+  wall, not a pre-encoding detail.
 
 The rest of the interpreter-only languages lack the input a truth-table
 harness needs, are straight-line (2dFish), or are ruled out in
