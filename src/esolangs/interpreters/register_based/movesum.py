@@ -2,7 +2,8 @@
 
 Movesum is an esoteric programming language by User:PythonshellDebugwindow where
 the only instructions are 'move' and 'sum'. Programs operate on a right-unbounded
-array of unbounded unsigned integers with 0-based indexing.
+array of unbounded unsigned integers with 0-based indexing, so a negative input
+number cannot be represented and halts the program with :class:`HaltError`.
 
 The language features:
 - Initial array setup via key=value pairs on the first line
@@ -15,6 +16,7 @@ The language features:
 import re
 import sys
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -39,14 +41,21 @@ def run(code: list[str], io: IO) -> None:
         except EOFError:
             return "0"
 
+    def read_unsigned(prompt: str = "", fallback: str = "0") -> int:
+        """Read a nonnegative integer, substituting ``fallback`` on EOF."""
+        value = read_value(prompt) or fallback
+        n = int(value)
+        if n < 0:
+            raise HaltError("negative value in an unsigned array")
+        return n
+
     for m in reg.finditer(code[0]):
         x: str = m[1]
         y: str = m[2]
         if x == "42":
-            x = read_value("Key: ")
+            x = str(read_unsigned("Key: "))
         if y == "42":
-            y = read_value("Value: ")
-            y = y or "0"
+            y = str(read_unsigned("Value: "))
         arr[int(x)] = int(y)
 
     code = code[1:]
@@ -71,8 +80,7 @@ def run(code: list[str], io: IO) -> None:
                     io.print_str(f"{n} ")
             elif match_result[3].isdigit():
                 input_dst_idx: int = int(match_result[3])
-                input_str: str = read_value()
-                arr[input_dst_idx] = int(input_str) if input_str else 0
+                arr[input_dst_idx] = read_unsigned()
 
         num = (num + 1) * (arr == copy)
         ind = (ind + 1) % len(code)

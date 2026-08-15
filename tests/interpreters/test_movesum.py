@@ -11,6 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.movesum import run
 
@@ -264,6 +265,26 @@ class TestMovesumValidation:
         ):
             run(code, IO())
         assert f.getvalue() == "0 "
+
+    def test_negative_input_value_halts(self) -> None:
+        """A negative number cannot be stored in an unsigned array."""
+        code = ["0=1", "move -1 5", "move 5 -1"]
+        with (
+            patch("builtins.input", side_effect=["-3"]),
+            redirect_stdout(io.StringIO()),
+            pytest.raises(HaltError),
+        ):
+            run(code, IO())
+
+    def test_negative_initialization_value_halts(self) -> None:
+        """A negative value for a 42= key or value pair is rejected."""
+        code = ["42=42", "move 5 -1"]
+        with (
+            patch("builtins.input", side_effect=["1", "-4"]),
+            redirect_stdout(io.StringIO()),
+            pytest.raises(HaltError),
+        ):
+            run(code, IO())
 
     def test_empty_code_raises_error(self) -> None:
         """Test that empty code raises ValueError."""
