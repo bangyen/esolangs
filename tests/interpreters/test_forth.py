@@ -68,10 +68,10 @@ class TestForth:
         # , reads '0' (48), 6 8 * is 48, - leaves 0
         assert run_program(",68*-.", "0") == "\x00"
 
-    def test_unknown_char_requires_two_elements(self) -> None:
-        with pytest.raises(HaltError):
-            run_program("a5.")
-        # with two elements an unknown char pops and pushes them back (no-op)
+    def test_unknown_char_is_ignored(self) -> None:
+        # an unknown char does nothing, even with a near-empty stack
+        assert run_program("a5.") == "\x05"
+        # with two elements it leaves the stack untouched (no-op)
         assert run_program("65a.") == "\x05"
 
     def test_empty_stack_pop_halts(self) -> None:

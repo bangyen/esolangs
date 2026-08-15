@@ -658,7 +658,7 @@ FORTH_CORPUS = [
     ("50/", b""),  # division by zero: exit 3
     ("50%", b""),  # modulo by zero: exit 3
     ("9/", b""),  # binary op with 1 element: exit 3
-    ("a5.", b""),  # unknown char with 1 element: exit 3
+    ("a5.", b""),  # unknown char is ignored: prints 5
     ("(5", b""),  # unterminated bracket: exit 3
     ("[", b""),  # unterminated bracket: exit 3
     ("{5", b""),  # unterminated bracket: exit 3
