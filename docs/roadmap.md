@@ -200,10 +200,16 @@ set that way:
   (``k``) and has a value-skip (``j``) and while-nonzero loops (``l``
   pairs), so a parameterized decision tree over embedded bit cells is
   possible; the 5x5 wrapping grid makes the pointer routing the main work.
-- **BF-PDA: viable (unbuilt).**  ``.`` prints the top bit as a literal
-  ``'0'``/``'1'`` (exactly the result characters), and ``[``/``]`` loops
-  branch on the top bit — the most tractable parameterized target, needing
-  only the loop-back structure for a bit-consuming decision tree.
+- **BF-PDA: research-level, not a carry-over.**  ``.`` prints the top bit as
+  a literal ``'0'``/``'1'`` and ``[``/``]`` loop on the top bit, which looks
+  ideal — but the decision-tree guard trick needs *two independent guard
+  cells per bit* (the bit and its complement, cleared separately so each
+  ``]`` exits), and BF-PDA's guards are all the same stack top.  The one-side
+  loop cannot exclude the zero-side after it (no forward jump), so a
+  bit-consuming tree over the stack is genuinely awkward.  The grid
+  language Home Row is the tractable one: its 5x5 random-access cells give
+  bf-style separate guards, so the bf_tree structure transfers and only the
+  pointer routing needs building.
 - **No-input and no-output** (A Painter Ant, ArrowQueue, Bitdeque, Eval,
   Factor, Kak, Keys, Minsky Swap, RAM0): still impossible — nothing to
   return.
