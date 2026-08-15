@@ -318,11 +318,10 @@ Every generator is also available through `esolangs list` and
 Contributions are welcome!  If you find a bug or want to add a language,
 check the [roadmap](docs/roadmap.md) and [limitations](docs/limitations.md)
 first, then open an issue or pull request.  New languages are registered in
-`src/esolangs/registry.py`; run `just test` to verify your changes.
+`src/esolangs/registry.py`.  Run `just test` (the full local check: lint,
+pytest, bandit, cargo, and the Python verify scripts) to verify a change.
 
-Before pushing, run the local-checkable subset of CI (lint, pytest, bandit,
-cargo, and the Python verify scripts) so the workflow does not fail after the
-push:
+To run that check automatically on every push:
 
 ```sh
 sh scripts/check_all.sh        # run it once

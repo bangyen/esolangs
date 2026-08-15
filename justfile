@@ -15,7 +15,7 @@ help:
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
-    @echo "  test         - Run Python tests with pytest"
+    @echo "  test         - Run the full local check (lint, pytest, bandit, cargo)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
 
@@ -74,9 +74,9 @@ lint-lean:
 lint: lint-python lint-rust lint-lean
     @echo "All lint checks completed!"
 
-# run tests
+# test (full local check: lint, pytest, bandit, cargo, verify scripts)
 test:
-    {{PYTHON}} -m pytest
+    sh scripts/check_all.sh
 
 # clean generated
 clean:
