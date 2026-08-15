@@ -4,7 +4,7 @@ Everything that can be checked on a dev machine without a Linux host:
 
 1. pre-commit (lint, format, types)
 2. pytest (the test suite)
-3. unicorn-based round-trips (RISC-V assembly compilers, RISC-V reference
+3. unicorn-based round-trips (RISC-V assembly compilers, RISC-V cross-check
    generators, and -- if a RISC-V 123 binary can be built -- the 123
    differential across RISC-V and the simulator)
 
@@ -50,11 +50,11 @@ STEPS = [
         [*PY, "scripts/make_ztoalc_table.py", "--check"],
     ),
     (
-        "RISC-V assembly under unicorn (compilers + references)",
+        "RISC-V assembly under unicorn (compilers + cross-checks)",
         [*PY, "scripts/verify_riscv_unicorn.py"],
     ),
     (
-        "extra reference generators",
+        "extra cross-check generators",
         [*PY, "scripts/verify_extra_generators.py"],
     ),
     (

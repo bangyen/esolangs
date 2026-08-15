@@ -62,7 +62,7 @@ class Test2dFish:
             run_program("")
 
     def test_trailing_newline_phantom_row(self) -> None:
-        # the reference pushes the last row twice when the file ends in \n
+        # the cross-check pushes the last row twice when the file ends in \n
         assert run_program("/i@\n") == ""
 
     def test_square_and_string_mode_reset(self) -> None:

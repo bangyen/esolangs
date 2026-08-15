@@ -108,6 +108,6 @@ class TestAlbabet:
 
     def test_arbitrary_programs_never_raise(self) -> None:
         """Every character is a defined operation or a no-op, so the
-        interpreter never raises (matching the reference's total semantics)."""
+        interpreter never raises (total semantics)."""
         for code in ("", "a", "b", "abcdefghij", "x", "a" * 10 + "h" + "i"):
             run_scripted(code)

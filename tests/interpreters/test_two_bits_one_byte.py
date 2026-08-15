@@ -72,7 +72,7 @@ class TestTwoBitsOneByte:
         assert run_program("/") == "/"
 
     def test_loop_never_halts(self) -> None:
-        """Programs that never reach END loop forever, like the reference."""
+        """Programs that never reach END loop forever, like the cross-check."""
         if os.name != "posix":
             pytest.skip("signal.alarm is POSIX-only")
 

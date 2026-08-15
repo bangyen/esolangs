@@ -25,23 +25,23 @@ command ``3``^run-length times, and ``e`` halts.  A ``c``/``t`` run also
 re-fetches the command it repeats: ``c`` consumes the whole ``c`` run and
 repeats the following command, ``t`` consumes the whole ``t`` run and
 repeats the preceding command.  Both interact with the repetition count in
-the same way as the reference.
+the same way as the cross-check.
 
-Documented divergences from the C++ cross-check:
+Documented divergences from the cross-check:
 
-- ``y`` is nondeterministic in the reference (a random skip) and the wiki
+- ``y`` is nondeterministic in the cross-check (a random skip) and the wiki
   specifies it that way, so it skips the next command with probability 1/2
   here too; the generator and the differential corpus never use it.
 - Reads at exhausted input raise :class:`EOFError` (the repo-wide
-  convention), where the reference exits with status 3.
+  convention), where the cross-check exits with status 3.
 - ``i`` parses the whole input line as an integer with ``int()``, so each
-  line must be a single integer (the reference tokenizes with ``>>``).
+  line must be a single integer (the cross-check tokenizes with ``>>``).
 - A ``t`` run that reaches the start of the program repeats a NUL in place
   of the command it walks before the program, in both implementations (the
-  reference used to read out of bounds there; it now bounds the walk).
-- The reference's reads before/after the program are modeled as NUL, so an
+  cross-check used to read out of bounds there; it now bounds the walk).
+- The cross-check's reads before/after the program are modeled as NUL, so an
   unmatched ``a`` on a zero cell skips to the end and the program halts.
-- ``u`` prints ``chr(cell & 0xFF)``, matching the reference's ``(char)``
+- ``u`` prints ``chr(cell & 0xFF)``, matching the cross-check's ``(char)``
   cast for cell values outside the byte range.
 
 Invalid runtime operations halt with :class:`~esolangs.exceptions.HaltError`.
@@ -53,11 +53,11 @@ import sys
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# The two substitution cycles, in the order the reference scans them.
+# The two substitution cycles, in the order the cross-check scans them.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
 
 # "Past the end" (or before the start) of a program reads as NUL: the
-# reference's program string is NUL-terminated, so an out-of-range read
+# cross-check's program string is NUL-terminated, so an out-of-range read
 # yields a command that matches no case.
 _NUL = "\0"
 
@@ -65,7 +65,7 @@ _NUL = "\0"
 def _translate(code: str) -> str:
     """Translate the source text into an executable program.
 
-    Mirrors the reference ``trans`` table: each source character found in
+    Mirrors the cross-check ``trans`` table: each source character found in
     one of the two cycles is replaced by the character ``k`` steps further
     along that cycle, where ``k`` counts the characters translated so far.
     Characters in no cycle are dropped.
@@ -119,7 +119,7 @@ def run(code: str, io: IO) -> None:
                 tape[ptr] = int(io.input_str("Input: "))
             elif c == "j":
                 tape[ptr] = io.input_char()
-                # The reference's discard-to-end-of-line loop leaves the
+                # The cross-check's discard-to-end-of-line loop leaves the
                 # main command variable holding '\n', so a ``c``/``t``-repeated
                 # ``j`` only reads once and then no-ops.
                 c = "\n"
@@ -161,7 +161,7 @@ def run(code: str, io: IO) -> None:
                     ind += 1
                     rep *= 7
             elif c == "y":
-                # The wiki specifies a random skip; match the reference's
+                # The wiki specifies a random skip; match the cross-check's
                 # coin flip (the generator and differential avoid `y`).
                 if random.randrange(2) and ind < n:  # nosec B311
                     c = prog[ind]

@@ -14,7 +14,7 @@ def _ilog(base: int, n: int) -> int:
 def _require_bytes(text: str, name: str) -> None:
     """Reject any character outside the 0-255 byte range.
 
-    The byte-oriented reference interpreters emit one byte per character, so
+    The byte-oriented cross-check interpreters emit one byte per character, so
     a generator that builds byte values would silently corrupt codepoints
     above 255.  Fail loudly instead.
     """

@@ -1,21 +1,21 @@
-"""Verify the generator-only languages against their extra/ references.
+"""Verify the generator-only languages against their extra/ cross-checks.
 
-Every generator with a native reference now round-trips through Rust:
+Every generator with a native cross-check now round-trips through Rust:
 Forþ, Basicfuck, 2dFish, Painfuck, LaserFuck, Unsquare, %^2^-1, bit~, and
-3x all have references in ``extra/rust``.  This script builds whatever
-references it can (cargo for Rust) and round-trips each language's
+3x all have cross-checks in ``extra/rust``.  This script builds whatever
+cross-checks it can (cargo for Rust) and round-trips each language's
 generator: a generated program must reproduce its text when run through the
-reference implementation.  Dimensional moved to its in-package v3.0
+cross-check.  Dimensional moved to its in-package v3.0
 interpreter (``esolangs.interpreters.tape_based.dimensional``) and is
 verified by unit tests instead.
 
 It is called from CI's ``rust`` job and from ``verify.py`` locally.
-References whose toolchain is missing are skipped, not failed.
+Cross-checks whose toolchain is missing are skipped, not failed.
 
 Usage:
     PYTHONPATH=src python scripts/verify_extra_generators.py
 
-Requires: cargo (for the Rust references).
+Requires: cargo (for the Rust cross-checks).
 """
 
 import shutil
@@ -36,7 +36,7 @@ RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
 
 TEXTS = ("Hi", "Hello, World!", "esolangs!")
 
-# The round-trips and truth-table checks each spawn a reference subprocess,
+# The round-trips and truth-table checks each spawn a cross-check subprocess,
 # so threads (which just wait on the subprocess) scale well.
 _WORKERS = 8
 
@@ -78,7 +78,7 @@ def _run_boolean(cmd: Sequence[str], program: str, inputs: str) -> bytes:
 
 
 def _build_rust() -> bool:
-    """Build the Rust references, reporting whether they are runnable."""
+    """Build the Rust cross-checks, reporting whether they are runnable."""
     if shutil.which("cargo") is None:
         return False
     rv = subprocess.run(
@@ -107,7 +107,7 @@ def main() -> int:
     if _build_rust():
         rust = {name: [str(RUST_BIN_DIR / name)] for name in rust_bins}
 
-    references: list[tuple[str, Callable[[str], str], list[str] | None]] = [
+    cross_checks: list[tuple[str, Callable[[str], str], list[str] | None]] = [
         ("Forþ", gen.forth, rust["forth"]),
         ("Basicfuck", gen.basicfuck, rust["basicfuck"]),
         ("2dFish", gen.two_d_fish, rust["two_d_fish"]),
@@ -120,9 +120,9 @@ def main() -> int:
     ]
 
     text_tasks = []
-    for name, generator, cmd in references:
+    for name, generator, cmd in cross_checks:
         if cmd is None:
-            print(f"[skip] {name}: reference toolchain not available or build failed")
+            print(f"[skip] {name}: cross-check toolchain not available or build failed")
             continue
         for text in TEXTS:
             text_tasks.append((name, cmd, generator(text), text))
@@ -155,7 +155,7 @@ def main() -> int:
     bool_tasks = []
     for name, builder, cmd in boolean_refs:
         if cmd is None:
-            print(f"[skip] {name} boolean: reference toolchain not available")
+            print(f"[skip] {name} boolean: cross-check toolchain not available")
             continue
         for n, group in tables.items():
             for table in group:
