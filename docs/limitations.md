@@ -350,6 +350,22 @@ COD — are in `docs/roadmap.md`).
 - **Welcome To...**: a work-in-progress.
 
 ## Assessed boolean candidates that fell through
+- **%^2^-1**: its only control flow is ``t`` — rewind to the program start
+  when the accumulator is nonzero — with the accumulator preserved across the
+  rewind.  A program is therefore a whole-program ``while`` loop, and each
+  ``n`` in the body consumes one input line, so a ``t`` loop iterates over
+  the input bits.  It cannot count them: there is no increment-by-1 for an
+  arbitrary value, and a ``m``/``s``-style counter in the rewind path grows
+  without bound (the ``acc > 3003`` reset only fires on huge magnitudes, and
+  the re-run re-applies the growth), so the loop stops only when a body pass
+  ends with ``acc == 0`` — a uniform predicate that cannot tell pass 1 from
+  pass n.  The all-ones row of any truth table therefore either stops the
+  loop early or rewinds past the input (``StopIteration`` in the harness).
+  Exhaustive search: of the four one-input functions only identity and the
+  two constants are expressible (``ne`` and ``n`` + 24×``s`` + ``l`` for
+  identity, ``l`` for const-0, ``ipsl`` for const-1); NOT and every two-input
+  table fail even at length 8.  A boolean generator is not feasible for the
+  standard harness.
 - **Brainpocalypse**: its only control flow is ``-`` on a zero cell rewinding
   the instruction pointer to the program start (the tape stays intact), so a
   branch always restarts the whole prefix.  The output constraint closes the
