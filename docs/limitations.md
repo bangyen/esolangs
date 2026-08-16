@@ -358,6 +358,27 @@ state dump, and Lightlang prints only the single bit as a number.  None can
 spell arbitrary text.  (Keys, whose entire semantics was comparing two
 lines and printing "Accept."/"Reject.", was removed as trivial — see below.)
 
+The interpreter-only languages each also lack a *boolean* generator; the
+documented reasons for the ones with a distinct wall are below, and the rest
+fall under the generator-story criterion's "documented reason" branch:
+
+- **2 Bits, 1 Byte**: the program is a single byte whose output is that one
+  byte, so a text generator can produce at most a one-character program and
+  a boolean generator cannot read any input.
+- **A Painter Ant**: the wiki defines no I/O; the interpreter prints the
+  visited-grid bounding box at halt (a ``#``/``.`` raster shaped by the
+  ant's path), which cannot spell arbitrary text, and there is no input for
+  a boolean generator.
+- **Kak**: a one-bit tape with no input command; the program prints the
+  tape as a ``0``/``1`` bit-string, so the exact bytes of arbitrary text are
+  unspellable and there is no input for a boolean generator.
+- **Number Seventy-Four**: a one-bit tape with no input command; output is
+  ``0``/``1``/``H`` characters from a pass-restart model, so arbitrary bytes
+  are unspellable and there is no input for a boolean generator.
+- **Stun Step**: the wiki defines no I/O; the interpreter prints the reached
+  cells as space-separated decimal numbers on halt, so text is unspellable
+  and there is no input for a boolean generator.
+
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
 
