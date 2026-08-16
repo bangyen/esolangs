@@ -100,8 +100,8 @@ random differential can exercise beyond what the fixed round-trip corpus
 covers, while a straight-line generator (a per-character program mirroring
 the text) is already fully verified by the round-trip test, so a second
 implementation would find nothing new.  The fuzzed cross-checks (NoComment,
-Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck,
-123) have complex-output generators and stay; the straight-line-generator
+Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck)
+have complex-output generators and stay; the straight-line-generator
 languages (6-5, Albabet, Decleq, Dimensional, huf, Qoibl, and the rest)
 correctly have none.
 
@@ -111,8 +111,7 @@ cells, registers, and jumps), and Rust fits the semantic ones (stacks, typed
 registers, bit manipulation, 2D grids, where hand-written assembly would be
 unreadable).  The current split:
 
-- **RISC-V assembly** — NoComment (tape + stack with a byte-indexed skip),
-  123 (tape + pointer).
+- **RISC-V assembly** — NoComment (tape + stack with a byte-indexed skip).
 - **Rust** — Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~,
   LaserFuck (stacks, typed registers, bit manipulation, 2D grids).
 
@@ -136,14 +135,17 @@ would add little).**  brainfuck, BFStack, BrainIf, Minifuck, Modulous, SLOW
 ACV MAMMALIAN, WII2D, Home Row.  These stay without a cross-check unless a
 specific bug motivates one.
 
-**Removed:** the six fixed-corpus cross-checks — Kak, Trash, Number
-Seventy-Four (Rust) and Brainpocalypse, Stun Step, 2 Bits 1 Byte (RISC-V).
-None has a generator, so their differentials were a hand-written 4-6 program
-corpus each, and the references were ports of (or ported to) the Python, so
-agreement was not independent evidence.  They added little over the Python
-unit tests at real toolchain cost (cargo + RISC-V cross-compiler + unicorn
-in CI).  The six *languages* stayed (they pass the admission criteria as
-distinct no-input interpreters); only the redundant cross-checks went.
+**Removed:** the seven cross-checks that did not meet the criterion — Kak,
+Trash, Number Seventy-Four (Rust) and Brainpocalypse, Stun Step, 2 Bits 1
+Byte (RISC-V) had no generator at all, so their differentials were a
+hand-written 4-6 program corpus each, and the references were ports of (or
+ported to) the Python, so agreement was not independent evidence.  123 had
+a generator but its RISC-V cross-check was corpus-only (4 generated texts +
+2 hand-written jumps, no fuzz) and verified programs the round-trip test
+already covers.  All seven added little over the Python unit tests at real
+toolchain cost (cargo + RISC-V cross-compiler + unicorn in CI); the
+*languages* all stayed (they have generators or pass the admission criteria
+as distinct interpreters); only the redundant cross-checks went.
 
 ## VM / debugging interface (remaining work)
 
