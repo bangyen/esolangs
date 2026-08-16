@@ -14,7 +14,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.myscript import run
+from esolangs.interpreters.register_based.myscript import run
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:

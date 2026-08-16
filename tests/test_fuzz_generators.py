@@ -115,7 +115,7 @@ def test_boolean_generators_random_tables() -> None:
         (boolean.sophie, "register_based.sophie", False, ""),
         (boolean.modulous, "stack_based.modulous", False, ""),
         (boolean.brainif, "tape_based.brainif", True, ""),
-        (boolean.nevermind, "other.nevermind", True, "\n"),
+        (boolean.nevermind, "register_based.nevermind", True, "\n"),
         (boolean.circlefuck, "tape_based.circlefuck", False, ""),
         (boolean.dimensional, "tape_based.dimensional", False, ""),
         (boolean.brainfuck, "tape_based.brainfuck", False, ""),
@@ -157,7 +157,7 @@ def test_byte_function_generator_random_tables() -> None:
 
 def test_binary_generator_random_tables() -> None:
     random.seed(3)
-    run = importlib.import_module("esolangs.interpreters.register_based.dig").run
+    run = importlib.import_module("esolangs.interpreters.grid_based.dig").run
     for n in (1, 2, 3, 4):
         for _ in range(3):
             table = "".join(random.choice("01") for _ in range(2**n))
