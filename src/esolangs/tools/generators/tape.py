@@ -7,13 +7,11 @@ from esolangs.tools.generators.helpers import (
     _require_ascii,
     _require_bytes,
 )
-from esolangs.tools.transpilers import bf_to_ascii_art
 
 __all__ = [
     "_MAMMALIAN_WALK",
     "_mammalian_walk",
     "_six_five_path",
-    "ascii_art",
     "bfstack",
     "brainfuck",
     "brainif",
@@ -178,16 +176,6 @@ def factor(text: str) -> str:
     """
     _require_bytes(text, "Factor")
     return str(_factor_encode(brainfuck(text)))
-
-
-def ascii_art(text: str) -> str:
-    """Generate an ASCII-art program that outputs ``text``.
-
-    ASCII art is brainfuck with an art alphabet, so the program is exactly
-    the brainfuck program for ``text`` rendered as art blocks.
-    """
-    _require_bytes(text, "ASCII art")
-    return bf_to_ascii_art(brainfuck(text))
 
 
 def three_d_brainfuck(text: str) -> str:

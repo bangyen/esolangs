@@ -8,16 +8,13 @@ verified end-to-end: the source runs on its interpreter, the target on its
 own, and the outputs must agree.
 """
 
-import importlib
 import re
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 __all__ = [
     "TRANSPILERS",
-    "ascii_art_to_bf",
     "basicfuck_to_bf",
-    "bf_to_ascii_art",
     "bf_to_circlefuck",
     "bf_to_painfuck",
     "bf_to_six_five",
@@ -28,46 +25,6 @@ __all__ = [
     "dimensional_to_laserfuck",
     "huf_to_bf",
 ]
-
-# The eight brainfuck commands -> their ASCII-art blocks.  This is the
-# single source of truth for the art alphabet; ``ascii-art.parse`` decodes
-# exactly these blocks (by line count and final character).
-_BF_ASCII_ART_BLOCKS = {
-    "-": "-",
-    ".": "#\n#",
-    ",": "|\n|\n|",
-    "<": "\\\n\\\n\\\n\\",
-    ">": "/\n/\n/\n/",
-    "+": "|\n|\n|\n|\n|",
-    "[": "_\n_\n_\n_\n_\n_",
-    "]": "|\n|\n|\n|\n|\n|",
-}
-
-
-def bf_to_ascii_art(program: str) -> str:
-    """Rewrite a brainfuck program as ASCII art.
-
-    Each command becomes its art block; anything that is not a brainfuck
-    command is dropped.  The empty program stays empty.
-    """
-    return "\n\n".join(
-        _BF_ASCII_ART_BLOCKS[c] for c in program if c in _BF_ASCII_ART_BLOCKS
-    )
-
-
-def ascii_art_to_bf(program: str) -> str:
-    """Rewrite an ASCII-art program back to brainfuck.
-
-    This is the ASCII-art interpreter's own decoder: ``ascii-art.parse``
-    maps the art blocks to brainfuck commands, so the translation runs
-    identically by construction.  Unknown blocks are ignored and the empty
-    program stays empty.
-    """
-    parse = cast(
-        Callable[[str], str],
-        importlib.import_module("esolangs.interpreters.tape_based.ascii_art").parse,
-    )
-    return parse(program)
 
 
 def _auto_size(ops: list[str]) -> int:
@@ -1148,8 +1105,6 @@ def dimensional_to_laserfuck(program: str) -> str:
 
 
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
-    ("brainfuck", "ASCII art"): bf_to_ascii_art,
-    ("ASCII art", "brainfuck"): ascii_art_to_bf,
     ("Basicfuck", "brainfuck"): basicfuck_to_bf,
     ("brainfuck", "Circlefuck"): bf_to_circlefuck,
     ("brainfuck", "6-5"): bf_to_six_five,

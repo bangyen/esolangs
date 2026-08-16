@@ -469,6 +469,15 @@ in `docs/roadmap.md`).
   be verified against expected output — it failed the admission criteria in
   `CONTRIBUTING.md` (deterministic computable behavior, not a trivial
   reskin) and was removed.
+- **ASCII art: removed.**  Brainfuck with an art alphabet — each of the eight
+  commands replaced by a block of repeated characters, and the interpreter
+  decoded the blocks then delegated to ``brainfuck.run``.  The transpiler
+  pair was a character-to-block string substitution (``bf_to_ascii_art`` was
+  a dict lookup; ``ascii_art_to_bf`` called the interpreter's own decoder),
+  and the text/boolean generators simply ran the brainfuck generators through
+  that substitution.  It added no capability beyond a visual encoding, so it
+  failed the "not a trivial reskin" admission criterion and was removed
+  along with its transpiler pair and generators.
 - **Trash**: its only output is a prime-advanced number — a non-prime start
   prints ``0``, a prime start prints the next prime (3, 5, 7, ...), and no
   leading ``t`` prints nothing — so it can never print a boolean ``"1"`` and
