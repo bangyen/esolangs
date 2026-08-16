@@ -15,10 +15,10 @@ Semantics match the Rust cross-check (``extra/rust/basicfuck.rs``):
 - a ``halt`` underflow/overflow raises :class:`HaltError`, while ``wrap``
   and ``nearest`` bound the cell instead;
 - an array access past the allocation (``X->n`` beyond the array) raises
-  :class:`HaltError`, and the reference exits 3 too (it used to be undefined
-  out-of-bounds memory);
+  :class:`HaltError`, and the cross-check exits 3 too (it used to be
+  undefined out-of-bounds memory);
 - ``,`` (read) stores the first byte of a line and raises
-  :class:`EOFError` when input runs out, where the reference exits with
+  :class:`EOFError` when input runs out, where the cross-check exits with
   status 3.
 """
 
@@ -62,10 +62,7 @@ def _parse_allocate(line: str) -> tuple[list[tuple[str, int]], list[int]]:
     var: list[tuple[str, int]] = []
     tape: list[int] = []
     rest = line[len("#allocate") :]
-    while True:
-        m = _IDENT.match(rest)
-        if not m:
-            break
+    while (m := _IDENT.match(rest)) is not None:
         size = int(m.group(3)) if m.group(3) else 1
         tape.extend([0] * size)
         name = m.group(2)
@@ -73,8 +70,6 @@ def _parse_allocate(line: str) -> tuple[list[tuple[str, int]], list[int]]:
             raise ValueError("Invalid identifier.")
         var.append((name, size))
         rest = m.group(4)
-        if not rest.strip():
-            break
     return var, tape
 
 
@@ -127,7 +122,7 @@ def _lexer(program: str) -> list[str]:
 def _parser(tokens: list[str], var: list[tuple[str, int]]) -> list[int]:
     """Compile the tokens to the flat instruction list the executor runs.
 
-    Prefix notation mirrors the C++ reference: ``+=`` -1, ``-=`` -2, ``if``
+    Prefix notation mirrors the Rust cross-check: ``+=`` -1, ``-=`` -2, ``if``
     -3, ``while`` -4, ``write`` -5, ``read`` -6, ``!`` -7, ``{`` -8, ``}``
     -9; nonnegative numbers are variable tape offsets and constants below -9
     are encoded as ``-2n-9`` (odd) / ``2n-10`` (even) for positive/negative
@@ -220,7 +215,7 @@ def _execute(
     io: IO,
     ptr: int,
 ) -> None:
-    """Run the compiled ``prog`` starting at ``ptr`` (mirrors the C++ run())."""
+    """Run the compiled ``prog`` starting at ``ptr`` (mirrors the Rust run())."""
     size = len(prog)
     while ptr < size:
         op = prog[ptr]
@@ -306,7 +301,7 @@ def run(code: str, io: IO) -> None:
     var, tape = _parse_allocate(allocate)
 
     body = re.sub(r"//[^\n]*", "", body)
-    # the reference reserves a cell for variable-variable arithmetic
+    # the cross-check reserves a cell for variable-variable arithmetic
     if _ASSIGN.search(body) and lim != -1:
         lim -= 1
     if lim != -1 and lim < len(tape):
@@ -320,16 +315,13 @@ class _BoundedTape:
     """A tape that treats an out-of-allocation index as an invalid operation.
 
     An array access past its allocation (``X->n`` beyond the array) is
-    undefined in the reference; both it and the interpreter now halt with an
+    undefined in the cross-check; both it and the interpreter now halt with an
     invalid operation instead of reading or writing memory.
     """
 
     def __init__(self, cells: list[int]) -> None:
         """Wrap the allocated ``cells`` with bounds checks."""
         self._cells = cells
-
-    def __len__(self) -> int:
-        return len(self._cells)
 
     def __getitem__(self, index: int) -> int:
         if not 0 <= index < len(self._cells):
@@ -340,10 +332,6 @@ class _BoundedTape:
         if not 0 <= index < len(self._cells):
             raise HaltError("tape index out of bounds")
         self._cells[index] = value
-
-    def append(self, value: int) -> None:
-        """Append a cell (used by the pointer growth)."""
-        self._cells.append(value)
 
 
 if __name__ == "__main__":

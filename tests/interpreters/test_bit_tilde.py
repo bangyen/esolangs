@@ -6,7 +6,7 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.other.bit_tilde import run
+from esolangs.interpreters.tape_based.bit_tilde import run
 from esolangs.tools import generate as gen
 
 
@@ -90,7 +90,7 @@ class TestBitTilde:
 
     def test_output_bytes_round_trip_under_latin1(self) -> None:
         """The interpreter emits ``chr(byte)``, so each byte round-trips
-        under latin1 (the references write raw bytes 0x00-0xFF)."""
+        under latin1 (the cross-checks write raw bytes 0x00-0xFF)."""
         assert run_scripted(")(", "\x80").encode("latin1") == b"\x80"
         assert run_scripted(")(", "\xe9").encode("latin1") == b"\xe9"
 

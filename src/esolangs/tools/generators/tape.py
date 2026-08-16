@@ -2,7 +2,11 @@
 
 import math
 
-from esolangs.tools.generators.helpers import _require_ascii, _require_bytes
+from esolangs.tools.generators.helpers import (
+    _factor_triple,
+    _require_ascii,
+    _require_bytes,
+)
 from esolangs.tools.transpilers import bf_to_ascii_art
 
 __all__ = [
@@ -10,18 +14,18 @@ __all__ = [
     "_mammalian_walk",
     "_six_five_path",
     "ascii_art",
-    "bf",
     "bfstack",
+    "brainfuck",
     "brainif",
     "circlefuck",
     "excon",
     "factor",
-    "mammalian",
     "minifuck",
     "rotfuck",
     "six_five",
+    "slow_acv_mammalian",
     "suffolk",
-    "three_d_bf",
+    "three_d_brainfuck",
 ]
 
 
@@ -73,18 +77,11 @@ def _bf_set(value: int) -> str:
     the pointer is left on the printed cell.  ``a`` is searched near
     ``sqrt(value)`` so the program is O(sqrt) rather than O(value).
     """
-    best = min(
-        (
-            (a + b + r, a, b, r)
-            for a in range(1, int(value**0.5) + 2)
-            for b, r in (divmod(value, a),)
-        ),
-    )
-    _, a, b, r = best
+    a, b, r = _factor_triple(value)
     return "+" * a + "[>" + "+" * b + "<-]" + ">" + "+" * r + "."
 
 
-def bf(text: str) -> str:
+def brainfuck(text: str) -> str:
     """Generate a brainfuck program that outputs ``text``.
 
     The pointer walks right one cell per character.  A cell is reused when
@@ -180,7 +177,7 @@ def factor(text: str) -> str:
     (from :func:`bf`) that prints ``text``.
     """
     _require_bytes(text, "Factor")
-    return str(_factor_encode(bf(text)))
+    return str(_factor_encode(brainfuck(text)))
 
 
 def ascii_art(text: str) -> str:
@@ -190,10 +187,10 @@ def ascii_art(text: str) -> str:
     the brainfuck program for ``text`` rendered as art blocks.
     """
     _require_bytes(text, "ASCII art")
-    return bf_to_ascii_art(bf(text))
+    return bf_to_ascii_art(brainfuck(text))
 
 
-def three_d_bf(text: str) -> str:
+def three_d_brainfuck(text: str) -> str:
     """Build a 3D Brainfuck program that outputs ``text``.
 
     The memory array is three-dimensional, so the brainfuck tape moves
@@ -203,7 +200,7 @@ def three_d_bf(text: str) -> str:
     faithful brainfuck superset.
     """
     _require_bytes(text, "3D Brainfuck")
-    return bf(text).replace(">", "n").replace("<", "s")
+    return brainfuck(text).replace(">", "n").replace("<", "s")
 
 
 def bfstack(text: str) -> str:
@@ -422,7 +419,7 @@ def circlefuck(text: str) -> str:
     return "".join(prog)
 
 
-def mammalian(text: str) -> str:
+def slow_acv_mammalian(text: str) -> str:
     """Build a SEED/SPRINT walk that reaches the array whose value is the character.
 
     SEED once so every array's first value is ``(i + 1) * K`` for the running

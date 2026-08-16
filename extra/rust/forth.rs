@@ -7,15 +7,14 @@
 //! input pushing each byte, `(`/`[` branch or loop while the top is nonzero,
 //! `{` stores a scope under the number atop the stack, `;` calls the stored
 //! scope, `o` reverses the stack, `c` rotates the top three, and `v` swaps
-//! the top two.  Unknown characters require a two-element stack and otherwise
-//! do nothing.
+//! the top two.  Any other character is ignored.
 //!
 //! Arithmetic wraps to signed 32-bit integers, and `/`/`%` truncate toward
 //! zero (C++11 semantics).  An empty-stack pop exits with status 3 (the whole
 //! program), while the other invalid operations (a binary operator with fewer
 //! than two values, `c` with fewer than three, a division by zero, or an
-//! unterminated bracket) abort only the innermost scope, mirroring the C++
-//! reference's discarded error codes.  `,` reads a whole line and exits with
+//! unterminated bracket) abort only the innermost scope, mirroring the Python
+//! interpreter's discarded error codes.  `,` reads a whole line and exits with
 //! status 3 when the input runs out.
 //!
 //! Invocation: `forth <program-file>`; program text from `argv[1]`.
@@ -140,7 +139,7 @@ fn run(
                 let key = top(stack);
                 table.insert(key, scope);
             }
-        } else {
+        } else if matches!(c, '+' | '-' | '*' | '/' | '%' | 'v') {
             if stack.len() < 2 {
                 return 3;
             }
@@ -162,12 +161,9 @@ fn run(
                     return 3;
                 }
                 stack.push(one.wrapping_rem(two));
-            } else if c == 'v' {
-                stack.push(two);
-                stack.push(one);
             } else {
-                stack.push(one);
                 stack.push(two);
+                stack.push(one);
             }
         }
     }
@@ -265,7 +261,7 @@ mod tests {
     fn invalid_operations_exit_3() {
         assert_eq!(run_program("50/", "").1, 3); // division by zero
         assert_eq!(run_program("12c", "").1, 3); // c with two elements
-        assert_eq!(run_program("a5.", "").1, 3); // unknown char, one element
+        assert_eq!(run_program("a5.", ""), (vec![5], 0)); // unknown char ignored
         assert_eq!(run_program("(5", "").1, 3); // unterminated bracket
     }
 }

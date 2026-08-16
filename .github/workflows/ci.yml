@@ -27,6 +27,12 @@ jobs:
     - name: Run pre-commit
       run: uv run pre-commit run --all-files
 
+    - name: Check for duplicated code blocks
+      run: uv run --with pylint python scripts/check_duplicates.py
+
+    - name: Verify the single-interpreter installer
+      run: python scripts/verify_install_one.py
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -160,9 +166,9 @@ jobs:
         printf 't3' > /tmp/trash.txt
         [ "$(./extra/rust/target/debug/trash /tmp/trash.txt)" = "5" ]
         printf '0H' > /tmp/74.txt
-        [ "$(./extra/rust/target/debug/seventy_four /tmp/74.txt)" = "H0" ]
+        [ "$(./extra/rust/target/debug/number_seventy_four /tmp/74.txt)" = "H0" ]
         printf 'l' > /tmp/pct.txt
-        [ "$(./extra/rust/target/debug/pct /tmp/pct.txt)" = "0" ]
+        [ "$(./extra/rust/target/debug/pct_squared_minus_one /tmp/pct.txt)" = "0" ]
         printf '~(' > /tmp/bit_tilde.txt
         ./extra/rust/target/debug/bit_tilde /tmp/bit_tilde.txt >/dev/null
         printf 'F4*5+.' > /tmp/forth.txt
@@ -205,7 +211,7 @@ jobs:
         # the 123 port must round-trip a generated program through the real
         # qemu-riscv64 (user mode) to verify the interpreter end to end
         PYTHONPATH=src python3 -c \
-          "from esolangs.tools.generate import _123; open('/tmp/123.prog','w').write(_123('Hi'))"
+          "from esolangs.tools.generate import one_two_three; open('/tmp/123.prog','w').write(one_two_three('Hi'))"
         qemu-riscv64 /tmp/123-riscv < /tmp/123.prog > /tmp/123.out
         [ "$(cat /tmp/123.out)" = "Hi" ] || { echo "got: $(cat /tmp/123.out)"; exit 1; }
         echo "RISC-V 123 round-tripped Hi"
@@ -219,13 +225,10 @@ jobs:
     - name: Run the RISC-V reference interpreters under unicorn
       run: |
         python3 -m pip install -q unicorn
-        # the RISC-V port and the Python simulator must both agree with the
-        # in-package interpreter on the generated programs
-        PYTHONPATH=src python3 scripts/verify_123_differential.py \
-          /tmp/123-riscv "Hi" "Hello, World!" "esolangs!"
         # the differential (Python vs the RISC-V references, corpus + fuzz)
         # needs unicorn and the RISC-V compiler, which the rust job lacks;
-        # LaserFuck's runs there instead
+        # LaserFuck's runs there instead.  It also covers the 123 RISC-V
+        # port and the hand-written 3-jump programs.
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
         # the other reference interpreters must execute and halt
         python3 scripts/riscv_elf_runner.py /tmp/brainpocalypse-riscv \

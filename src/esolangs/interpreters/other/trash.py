@@ -7,15 +7,17 @@ primes; otherwise it prints 0.  A program with no digits is malformed.
 
 The language has no input command; the program file itself is the source.
 
-Semantics follow the Rust cross-check (``extra/rust/trash.rs``, itself a
-port of the original C++ reference) exactly:
+Semantics follow the Rust cross-check (``extra/rust/trash.rs``) exactly:
 
 * only ``t`` characters before the first digit contribute to the step count,
   and other characters there are ignored;
 * only the leading digits after the first digit form the starting value, so
   trailing characters do not affect the result;
-* the primality test is trial division up to the square root, which does not
-  treat 2 as prime, so a starting value of 2 prints 0.
+* the primality test is trial division up to the square root, which treats 2
+  as prime, so a starting value of 2 advances rather than printing 0.
+
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import re

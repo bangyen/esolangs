@@ -7,8 +7,8 @@ bitwise complement of the top, ``.`` prints the top as a character, ``,``
 reads a line pushing each byte (rightmost on top), ``(``/``[`` branch or
 loop while the top is nonzero, ``{`` stores a scope under the number atop
 the stack, ``;`` calls the stored scope, ``o`` reverses the stack, ``c``
-rotates the top three, and ``v`` swaps the top two.  Unknown characters
-require a two-element stack and otherwise do nothing.
+rotates the top three, and ``v`` swaps the top two.  Any other character is
+ignored.
 
 Semantics match the Rust cross-check (``extra/rust/forth.rs``):
 - arithmetic wraps to signed 32-bit integers, and ``/``/``%`` truncate
@@ -17,13 +17,13 @@ Semantics match the Rust cross-check (``extra/rust/forth.rs``):
   the other invalid operations (a binary operator with fewer than two
   values, ``c`` with fewer than three, a division by zero, or an unterminated
   bracket) abort only the innermost scope and are otherwise ignored -- the
-  C++ reference returns an error code that nested calls discard;
+  cross-check returns an error code that nested calls discard;
 - ``,`` reads a whole line and raises :class:`EOFError` when input runs out
-  (like the other stack interpreters), where the references exit with
+  (like the other stack interpreters), where the cross-check exits with
   status 3;
-- ``,`` pushes each character's byte value (the reference's signed ``char``
+- ``,`` pushes each character's byte value (the cross-check's signed ``char``
   would push negative values for bytes above 127);
-- ``.`` prints the top's low byte (``& 0xFF``), matching the Rust reference,
+- ``.`` prints the top's low byte (``& 0xFF``), matching the Rust cross-check,
   rather than the wiki's "print as a unicode character" -- the byte model is
   baked into the arithmetic (``~`` complements, so ``.`` on ``-1`` prints the
   byte 0xFF).
@@ -51,12 +51,12 @@ def _trunc_mod(a: int, b: int) -> int:
 
 
 def _execute(code: str, stack: list[int], table: dict[int, str], io: IO) -> int:
-    """Run ``code`` on ``stack``/``table``, returning the C++ run() status.
+    """Run ``code`` on ``stack``/``table``, returning the cross-check status.
 
     The status is 3 (invalid operation) when a scope aborts on an error; the
-    callers of ``;`` and ``(``/``[`` discard it, mirroring the C++ reference,
-    while an empty-stack pop raises :class:`HaltError` instead, mirroring the
-    reference's ``exit()`` which terminates the whole program.
+    callers of ``;`` and ``(``/``[`` discard it, mirroring the cross-check,
+    while an empty-stack pop raises :class:`HaltError` instead, mirroring its
+    ``exit()`` which terminates the whole program.
     """
 
     def top() -> int:
@@ -121,7 +121,7 @@ def _execute(code: str, stack: list[int], table: dict[int, str], io: IO) -> int:
                     _execute(scope, stack, table, io)
             else:
                 table[top()] = scope
-        else:
+        elif char in "+-*/%v":
             if len(stack) < 2:
                 return 3
             two = pop()
@@ -143,9 +143,6 @@ def _execute(code: str, stack: list[int], table: dict[int, str], io: IO) -> int:
             elif char == "v":
                 stack.append(two)
                 stack.append(one)
-            else:
-                stack.append(one)
-                stack.append(two)
     return 0
 
 

@@ -9,7 +9,7 @@ Python interpreter and the native implementation and asserts they agree.
 
 Languages with both an in-package interpreter and a native cross-check:
 
-* **LaserFuck** — ``other/laserfuck.py`` vs ``extra/rust/laserfuck.rs``.
+* **LaserFuck** — ``grid_based/laserfuck.py`` vs ``extra/rust/laserfuck.rs``.
   The Rust reference picks a random initial heading, so its output is a
   *set* across runs; the Python interpreter (which accepts a fixed heading)
   must produce a member of that set for each of the four headings.
@@ -33,23 +33,24 @@ Languages with both an in-package interpreter and a native cross-check:
   prompts to stdout, which are stripped before comparing; both agree on the
   exit-code convention (3 = invalid operation) and write characters above
   127 as UTF-8, so the Python output is encoded the same way.
-* **3x** — ``other/three_x.py`` vs ``extra/rust/three_x.rs``.  Both compute
+* **3x** — ``stack_based/three_x.py`` vs ``extra/rust/three_x.rs``.  Both compute
   over exact rationals; the reference prints its ``Input: `` prompts to
   stdout (stripped before comparing) and both agree on the exit-code
   convention.
-* **%^2^-1** — ``register_based/%^2^-1.py`` vs ``extra/rust/pct.rs``.
+* **%^2^-1** — ``register_based/pct_squared_minus_one.py`` vs ``extra/rust/
+  ``pct_squared_minus_one.rs``.
   Both track the accumulator as a signed magnitude with the 3003 reset; the
   reference prints its ``Input: `` prompts to stdout, which are stripped
   before comparing.
-* **2dFish** — ``other/2dfish.py`` vs ``extra/rust/2dfish.rs``.  Both run
+* **2dFish** — ``grid_based/two_d_fish.py`` vs ``extra/rust/two_d_fish.rs``.  Both run
   the ragged grid with the reference's trailing-newline phantom row.
 * **Painfuck** — ``tape_based/painfuck.py`` vs ``extra/rust/painfuck.rs``.
   Corpus programs are encoded into the source alphabet (the reference
   translates the source before running); the nondeterministic ``y`` is
   excluded.
-* **bit~** — ``other/bit_tilde.py`` vs ``extra/rust/bit_tilde.rs``.  Both
+* **bit~** — ``tape_based/bit_tilde.py`` vs ``extra/rust/bit_tilde.rs``.  Both
   write bytes above 127 as raw bytes; unmatched brackets raise (the former
-  Ruby reference hung).
+  Ruby port hung).
 
 Called from CI's ``assembly`` and ``rust`` jobs (which provide
 unicorn+the RISC-V compiler and cargo) and from ``verify.py`` locally.
@@ -61,6 +62,7 @@ Usage:
 """
 
 import argparse
+import functools
 import io
 import random
 import re
@@ -78,8 +80,8 @@ RUST_BIN = RUST_BIN_DIR / "laserfuck"
 UNSQUARE_BIN = RUST_BIN_DIR / "unsquare"
 KAK_BIN = RUST_BIN_DIR / "kak"
 TRASH_BIN = RUST_BIN_DIR / "trash"
-SEVENTY_FOUR_BIN = RUST_BIN_DIR / "seventy_four"
-PCT_BIN = RUST_BIN_DIR / "pct"
+NUMBER_SEVENTY_FOUR_BIN = RUST_BIN_DIR / "number_seventy_four"
+PCT_SQUARED_MINUS_ONE_BIN = RUST_BIN_DIR / "pct_squared_minus_one"
 BIT_TILDE_BIN = RUST_BIN_DIR / "bit_tilde"
 FORTH_BIN = RUST_BIN_DIR / "forth"
 BASICFUCK_BIN = RUST_BIN_DIR / "basicfuck"
@@ -357,6 +359,62 @@ def _verify_nocomment() -> bool:
     return failures == 0
 
 
+def _run_one_two_three_python(program: str) -> tuple[bytes, int]:
+    """Run the Python 123 interpreter; return (output, exit code)."""
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.one_two_three import run
+
+    io_obj = ScriptedIO("")
+    run(program, io_obj)
+    return io_obj.getvalue().encode("latin1"), 0
+
+
+# Generator-produced 123 programs that must echo their text, plus hand-written
+# programs exercising the ``3``-jump paths the generator never emits.
+_ONE_TWO_THREE_TEXTS = ("Hi", "Hello, World!", "A", "cat")
+_ONE_TWO_THREE_HAND = (("3231", b""), ("132231", b""))
+
+
+def _verify_one_two_three() -> bool:
+    """Compare the Python 123 interpreter against the assembly cross-check.
+
+    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
+    requires unicorn and a RISC-V cross-compiler; it is skipped when either
+    is missing.
+    """
+    if not _asm_refs_ready("123"):
+        return True
+
+    from esolangs.tools.generate import one_two_three
+
+    failures = 0
+
+    def check(program: str, expected: bytes, label: str) -> None:
+        nonlocal failures
+        ref = _asm_refs("123", program)
+        py_out, py_code = _run_one_two_three_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
+        if (asm_out, asm_code) != (py_out, py_code) or asm_out != expected:
+            failures += 1
+            print(
+                f"123 {label!r}: asm={(asm_out, asm_code)} "
+                f"py={(py_out, py_code)} expected={expected!r}"
+            )
+
+    for text in _ONE_TWO_THREE_TEXTS:
+        check(one_two_three(text), text.encode(), text)
+    for program, expected in _ONE_TWO_THREE_HAND:
+        check(program, expected, program)
+
+    if not failures:
+        total = len(_ONE_TWO_THREE_TEXTS) + len(_ONE_TWO_THREE_HAND)
+        print(f"123 differential: {total} programs match")
+    return failures == 0
+
+
 def _run_native(
     cmd: list[str],
     program: str,
@@ -405,8 +463,8 @@ def _run_native_code(
 def _run_laserfuck_python(
     program: str, heading: int, inputs: list[str] | None = None
 ) -> str:
+    from esolangs.interpreters.grid_based.laserfuck import run
     from esolangs.interpreters.io import IO
-    from esolangs.interpreters.other.laserfuck import run
 
     buffer = io.StringIO()
     reads = list(inputs if inputs is not None else ["1"])
@@ -657,7 +715,7 @@ FORTH_CORPUS = [
     ("50/", b""),  # division by zero: exit 3
     ("50%", b""),  # modulo by zero: exit 3
     ("9/", b""),  # binary op with 1 element: exit 3
-    ("a5.", b""),  # unknown char with 1 element: exit 3
+    ("a5.", b""),  # unknown char is ignored: prints 5
     ("(5", b""),  # unterminated bracket: exit 3
     ("[", b""),  # unterminated bracket: exit 3
     ("{5", b""),  # unterminated bracket: exit 3
@@ -785,7 +843,7 @@ BASICFUCK_CORPUS = [
     (_BF_U + "a\na += 0;\nif !(a) { write <- a ; }", b""),
     (_BF_U + "a\na += 5;\nwhile (a) { a -= 1; }\nwrite <- a ;", b""),
     (
-        _BF_U + "a->2\na->0 += 65;\nwrite <- a->0 ;\na->1 += 66;" "\nwrite <- a->1 ;",
+        _BF_U + "a->2\na->0 += 65;\nwrite <- a->0 ;\na->1 += 66;\nwrite <- a->1 ;",
         b"",
     ),
     (_BF_U + "a\nread -> a ;\nwrite <- a ;\nread -> a ;\nwrite <- a ;", b"hi\nx\n"),
@@ -1094,7 +1152,7 @@ def _run_three_x_python(program: str, stdin: bytes) -> tuple[bytes, int]:
     """Run ``program`` through the in-package interpreter."""
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.other.three_x import run
+    from esolangs.interpreters.stack_based.three_x import run
 
     io = ScriptedIO(stdin.decode("utf-8"))
     try:
@@ -1184,10 +1242,10 @@ PCT_CORPUS = [
 
 def _build_pct() -> str | None:
     """Return the built %^2^-1 Rust reference; None if cargo built it not yet."""
-    if not PCT_BIN.exists():
+    if not PCT_SQUARED_MINUS_ONE_BIN.exists():
         print("[skip] %^2^-1 differential: Rust reference not built")
         return None
-    return str(PCT_BIN)
+    return str(PCT_SQUARED_MINUS_ONE_BIN)
 
 
 def _run_pct_native(
@@ -1215,7 +1273,9 @@ def _run_pct_python(program: str, stdin: bytes) -> tuple[bytes, int]:
 
     from esolangs.interpreters.io import ScriptedIO
 
-    run = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
+    run = importlib.import_module(
+        "esolangs.interpreters.register_based.pct_squared_minus_one"
+    ).run
 
     io = ScriptedIO(stdin.decode("latin1"))
     try:
@@ -1298,6 +1358,7 @@ TWO_D_FISH_CORPUS = [
     ("/i@\n", b""),  # trailing newline phantom-row quirk
     ("/$*@", b"hi\n"),
     ("/%o@", b"42\n"),
+    ("/%o@", b"42abc\n"),  # unparseable % input: exit 2 on both sides
     ("/@", b""),
     ("", b""),  # no initial direction
 ]
@@ -1337,7 +1398,7 @@ def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import ScriptedIO
 
-    run = importlib.import_module("esolangs.interpreters.other.2dfish").run
+    run = importlib.import_module("esolangs.interpreters.grid_based.two_d_fish").run
 
     io = ScriptedIO(stdin.decode("latin1"))
     try:
@@ -1442,6 +1503,8 @@ _PAIN_CORPUS = [
     ("pjo", b"65\n"),
     ("jiu", b"7\n9\n"),
     ("jiu", b"255\n1\n"),
+    ("ip", b"42\n"),
+    ("ip", b"12x\n"),  # unparseable i input: exit 3 on both sides
     ("ppas b ue".replace(" ", ""), b""),
     ("pcsu", b""),
     ("pcue", b""),
@@ -1553,7 +1616,7 @@ def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
 
 # -- bit~ corpus: every command plus the error categories ------------------
 
-# Unmatched brackets raise in both sides (the former Ruby reference hung).
+# Unmatched brackets raise in both sides (the former Ruby port hung).
 BIT_TILDE_CORPUS = [
     ("))", b"a\n"),  # second read hits EOF: exit 3
     ("~(", b""),
@@ -1608,7 +1671,7 @@ def _run_bit_tilde_python(program: str, stdin: bytes) -> tuple[bytes, int]:
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import ScriptedIO
 
-    run = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
+    run = importlib.import_module("esolangs.interpreters.tape_based.bit_tilde").run
 
     io = ScriptedIO(stdin.decode("latin1"))
     try:
@@ -1712,10 +1775,14 @@ def _run_file_ref(
         Path(path).unlink()
 
 
+@functools.cache
 def _build_riscv(name: str) -> bytes | None:
     """Assemble the RISC-V port ``extra/assembly/{name}-riscv.s``.
 
-    Returns None if the cross-compiler is missing.
+    Returns None if the cross-compiler is missing.  Cached: the ELF is
+    deterministic for a given source, and the differential fuzzers call this
+    once per program, so without caching the nocomment fuzz would re-run the
+    cross-compiler for every case.
     """
     asm = ROOT / "extra" / "assembly" / f"{name}-riscv.s"
     if not asm.exists():
@@ -1830,9 +1897,9 @@ _SIMPLE_CORPUS = [
     # the former Ruby cross-check; the Lean port has diverged semantics)
     (
         "Number Seventy-Four",
-        lambda: SEVENTY_FOUR_BIN.exists(),
-        lambda p, s: _run_file_ref([str(SEVENTY_FOUR_BIN)], p, s),
-        "esolangs.interpreters.other.seventy_four",
+        lambda: NUMBER_SEVENTY_FOUR_BIN.exists(),
+        lambda p, s: _run_file_ref([str(NUMBER_SEVENTY_FOUR_BIN)], p, s),
+        "esolangs.interpreters.tape_based.number_seventy_four",
         [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
     ),
     # 2 Bits, 1 Byte: single program byte, read from stdin by the references
@@ -1959,6 +2026,7 @@ def main() -> int:
 
     ok = _verify_laserfuck()
     ok = _verify_nocomment() and ok
+    ok = _verify_one_two_three() and ok
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok

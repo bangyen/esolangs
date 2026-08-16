@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from esolangs.interpreters.io import IO
 
-ascii_art = importlib.import_module("esolangs.interpreters.tape_based.ascii-art")
+ascii_art = importlib.import_module("esolangs.interpreters.tape_based.ascii_art")
 
 # ASCII-art blocks mapping to brainfuck commands:
 PLUS = "|\n|\n|\n|\n|"  # +

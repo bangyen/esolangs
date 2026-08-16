@@ -127,28 +127,20 @@ def comp(code: str) -> str:
             subr[c][1] = True
         elif c == "&":
             if cast(int, num) > 1:
-                res += f"\tli   s3, {num}\n" f"\tcall {subr[c][0]}\n"
+                res += f"\tli   s3, {num}\n\tcall {subr[c][0]}\n"
                 subr[c][1] = subr[c][2] = True
             else:
-                res += "\tlw   t0, 0(s1)\n" "\tadd  t0, t0, s2\n" "\tsw   t0, 0(s1)\n"
+                res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s2\n\tsw   t0, 0(s1)\n"
         elif c == ">":
-            res += f"\tli   t0, {4 * cast(int, num)}\n" "\tsub  s1, s1, t0\n"
+            res += f"\tli   t0, {4 * cast(int, num)}\n\tsub  s1, s1, t0\n"
         elif c in "+-":
             if num:
                 if isinstance(num, int):
-                    res += (
-                        "\tlw   t0, 0(s1)\n"
-                        f"\taddi t0, t0, {num}\n"
-                        "\tsw   t0, 0(s1)\n"
-                    )
+                    res += f"\tlw   t0, 0(s1)\n\taddi t0, t0, {num}\n\tsw   t0, 0(s1)\n"
                 elif c == "+":
-                    res += (
-                        "\tlw   t0, 0(s1)\n" "\tadd  t0, t0, s7\n" "\tsw   t0, 0(s1)\n"
-                    )
+                    res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s7\n\tsw   t0, 0(s1)\n"
                 else:
-                    res += (
-                        "\tlw   t0, 0(s1)\n" "\tsub  t0, t0, s7\n" "\tsw   t0, 0(s1)\n"
-                    )
+                    res += "\tlw   t0, 0(s1)\n\tsub  t0, t0, s7\n\tsw   t0, 0(s1)\n"
         elif c == "#":
             res += "\tlw   s2, 0(s1)\n"
         elif c == ":":
@@ -162,7 +154,7 @@ def comp(code: str) -> str:
                 res += f"\t{jcc} t0, .switch\n"
                 inp[0] = True
         elif c == ".":
-            res += "\n\tli   a0, 0\n" "\tli   a7, 93\n" "\tecall\n"
+            res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n"
         elif c == "$":
             res += f"sub{add(cast(int, num))}:\n"
         elif c == "@":
@@ -181,7 +173,7 @@ def comp(code: str) -> str:
     if jump and inp[0]:
         res += "\n.switch:\n"
         for k in jump[:-1]:
-            res += f"\tli   t0, {k}\n" f"\tbeq  s7, t0, .lab{add(k)}\n"
+            res += f"\tli   t0, {k}\n\tbeq  s7, t0, .lab{add(k)}\n"
         for k in jump[::-1]:
             n = add(k)
             if k != jump[-1]:
@@ -190,13 +182,13 @@ def comp(code: str) -> str:
     if rout and inp[1]:
         res += "\nswitch:\n"
         for k in rout[:-1]:
-            res += f"\tli   t0, {k}\n" f"\tbeq  s7, t0, .sub{add(k)}\n"
+            res += f"\tli   t0, {k}\n\tbeq  s7, t0, .sub{add(k)}\n"
         res += "\tret\n"
         for k in rout[::-1]:
             n = add(k)
             if k != rout[-1]:
                 res += f".sub{n}:\n"
-            res += f"\tcall sub{n}\n" "\tret\n"
+            res += f"\tcall sub{n}\n\tret\n"
 
     def end(opr: str) -> str:
         if subr[opr][2]:

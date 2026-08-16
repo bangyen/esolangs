@@ -9,7 +9,6 @@ import sys
 
 from esolangs.tools.generators.helpers import _ilog
 from esolangs.tools.generators.other import (
-    _123,
     basicfuck,
     between,
     bit_tilde,
@@ -20,8 +19,10 @@ from esolangs.tools.generators.other import (
     forth,
     home_row,
     laserfuck,
+    myscript,
     nevermind,
     nocomment,
+    one_two_three,
     painfuck,
     pct_squared_minus_one,
     sbleq,
@@ -29,10 +30,10 @@ from esolangs.tools.generators.other import (
     three_x,
     two_d_fish,
     unsquare,
-    ztoalc,
+    ztoalc_l,
 )
 from esolangs.tools.generators.register import (
-    add_sub_jump,
+    addsubjump,
     albabet,
     bio,
     collatz_multiverse,
@@ -46,35 +47,34 @@ from esolangs.tools.generators.register import (
     sophie,
     wii2d,
 )
-from esolangs.tools.generators.stack import modulous, temporary
+from esolangs.tools.generators.stack import modulous, the_temporary_stack
 from esolangs.tools.generators.tape import (
     ascii_art,
-    bf,
     bfstack,
+    brainfuck,
     brainif,
     circlefuck,
     excon,
     factor,
-    mammalian,
     minifuck,
     rotfuck,
     six_five,
+    slow_acv_mammalian,
     suffolk,
-    three_d_bf,
+    three_d_brainfuck,
 )
 
 __all__ = [
-    "_123",
     "_ilog",
-    "add_sub_jump",
+    "addsubjump",
     "albabet",
     "ascii_art",
     "basicfuck",
     "between",
-    "bf",
     "bfstack",
     "bio",
     "bit_tilde",
+    "brainfuck",
     "brainif",
     "circlefuck",
     "clockwise",
@@ -92,11 +92,12 @@ __all__ = [
     "home_row",
     "huf",
     "laserfuck",
-    "mammalian",
     "minifuck",
     "modulous",
+    "myscript",
     "nevermind",
     "nocomment",
+    "one_two_three",
     "painfuck",
     "pct_squared_minus_one",
     "polynomial",
@@ -104,16 +105,17 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
+    "slow_acv_mammalian",
     "sophie",
     "suffolk",
     "taglate",
-    "temporary",
-    "three_d_bf",
+    "the_temporary_stack",
+    "three_d_brainfuck",
     "three_x",
     "two_d_fish",
     "unsquare",
     "wii2d",
-    "ztoalc",
+    "ztoalc_l",
 ]
 
 

@@ -8,39 +8,40 @@ from unittest.mock import patch
 import pytest
 
 import esolangs.tools.generate as gen
+from esolangs.interpreters.grid_based.clockwise import run as clockwise_run
+from esolangs.interpreters.grid_based.dig import run as dig_run
+from esolangs.interpreters.grid_based.dotlang import run as dotlang_run
+from esolangs.interpreters.grid_based.wii2d import run as wii2d_run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.albabet import run as albabet_run
-from esolangs.interpreters.other.between import run as between_run
-from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.forbin import run as forbin_run
-from esolangs.interpreters.other.nevermind import run as nevermind_run
-from esolangs.interpreters.other.three_x import run as three_x_run
-from esolangs.interpreters.other.ztoalc import run as ztoalc_run
+from esolangs.interpreters.other.ztoalc_l import run as ztoalc_run
+from esolangs.interpreters.register_based.albabet import run as albabet_run
+from esolangs.interpreters.register_based.between import run as between_run
 from esolangs.interpreters.register_based.bio import run as bio_run
-from esolangs.interpreters.register_based.dig import run as dig_run
-from esolangs.interpreters.register_based.dotlang import run as dotlang_run
 from esolangs.interpreters.register_based.huf import run as huf_run
+from esolangs.interpreters.register_based.myscript import run as myscript_run
+from esolangs.interpreters.register_based.nevermind import run as nevermind_run
 from esolangs.interpreters.register_based.polynomial import run as polynomial_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.register_based.sophie import run as sophie_run
-from esolangs.interpreters.register_based.WII2D import run as wii2d_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.forth import run as forth_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
-from esolangs.interpreters.stack_based.temporary import run as temporary_run
+from esolangs.interpreters.stack_based.the_temporary_stack import run as temporary_run
+from esolangs.interpreters.stack_based.three_x import run as three_x_run
 from esolangs.interpreters.stack_based.unsquare import run as unsquare_run
 from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.factor import run as factor_run
-from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.rotfuck import run as rotfuck_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
+from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
-from esolangs.interpreters.tape_based.three_d_bf import run as three_d_bf_run
+from esolangs.interpreters.tape_based.three_d_brainfuck import run as three_d_bf_run
 from esolangs.tools.generators import other
 
 
@@ -54,20 +55,32 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
     return buffer.getvalue()
 
 
-_run_123 = importlib.import_module("esolangs.interpreters.tape_based.123").run
-_run_pct = importlib.import_module("esolangs.interpreters.register_based.%^2^-1").run
-_run_2dfish = importlib.import_module("esolangs.interpreters.other.2dfish").run
+_run_123 = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
+_run_pct = importlib.import_module(
+    "esolangs.interpreters.register_based.pct_squared_minus_one"
+).run
+_run_2dfish = importlib.import_module("esolangs.interpreters.grid_based.two_d_fish").run
 _run_painfuck = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
-_run_bit_tilde = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
+_run_bit_tilde = importlib.import_module(
+    "esolangs.interpreters.tape_based.bit_tilde"
+).run
 
 
 class TestGeneratorRoundTrips:
     def test_123(self) -> None:
         """Each character is XOR-encoded into bits and marched to the output."""
-        hi = gen._123("Hi")  # noqa: SLF001 - public generator
-        hello = gen._123("Hello, World!")  # noqa: SLF001 - public generator
+        hi = gen.one_two_three("Hi")
+        hello = gen.one_two_three("Hello, World!")
         assert roundtrip(_run_123, hi) == "Hi"
         assert roundtrip(_run_123, hello) == "Hello, World!"
+
+    def test_collatz_multiverse(self) -> None:
+        """Characters whose byte values need no constant table still round-trip."""
+        collatz_run = importlib.import_module(
+            "esolangs.interpreters.register_based.collatz_multiverse"
+        ).run
+        assert roundtrip(collatz_run, gen.collatz_multiverse("\x00")) == "\x00"
+        assert roundtrip(collatz_run, gen.collatz_multiverse("Hi")) == "Hi"
 
     def test_forth(self) -> None:
         """Each character is built from base-15 digits and printed by [.]."""
@@ -82,11 +95,11 @@ class TestGeneratorRoundTrips:
         assert roundtrip(unsquare_run, gen.unsquare("Hi")) == "Hi"
         assert roundtrip(unsquare_run, gen.unsquare("Hello, World!")) == "Hello, World!"
 
-    def test_three_d_bf(self) -> None:
+    def test_three_d_brainfuck(self) -> None:
         """The brainfuck tape moves map to the array's +X axis."""
-        assert roundtrip(three_d_bf_run, gen.three_d_bf("Hi")) == "Hi"
+        assert roundtrip(three_d_bf_run, gen.three_d_brainfuck("Hi")) == "Hi"
         assert (
-            roundtrip(three_d_bf_run, gen.three_d_bf("Hello, World!"))
+            roundtrip(three_d_bf_run, gen.three_d_brainfuck("Hello, World!"))
             == "Hello, World!"
         )
 
@@ -183,11 +196,12 @@ class TestGeneratorRoundTrips:
 
     def test_mammalian(self) -> None:
         """A SEED/SPRINT walk reaches the array holding each character."""
-        assert roundtrip(mammalian_run, gen.mammalian("Hi")) == "Hi"
+        assert roundtrip(mammalian_run, gen.slow_acv_mammalian("Hi")) == "Hi"
         assert (
-            roundtrip(mammalian_run, gen.mammalian("Hello, World!")) == "Hello, World!"
+            roundtrip(mammalian_run, gen.slow_acv_mammalian("Hello, World!"))
+            == "Hello, World!"
         )
-        assert gen.mammalian("") == ""
+        assert gen.slow_acv_mammalian("") == ""
 
     def test_mammalian_unreachable(self) -> None:
         """Report a character when no SEED/SPRINT walk can reach a value."""
@@ -198,7 +212,7 @@ class TestGeneratorRoundTrips:
             ),
             pytest.raises(ValueError, match="cannot build"),
         ):
-            gen.mammalian("H")
+            gen.slow_acv_mammalian("H")
 
     def test_huf(self) -> None:
         """Each # + inc >@ segment prints one character."""
@@ -243,6 +257,21 @@ class TestGeneratorRoundTrips:
         )
         assert roundtrip(nevermind_run, gen.nevermind("a²b").splitlines()) == "a²b\n"
         assert roundtrip(nevermind_run, gen.nevermind("١٢٣").splitlines()) == "١٢٣\n"
+
+    def test_myscript(self) -> None:
+        """The generator escapes the byte string into one say statement."""
+        assert roundtrip(myscript_run, gen.myscript("Hi")) == "Hi"
+        assert roundtrip(myscript_run, gen.myscript("a\tb\nc")) == "a\tb\nc"
+        assert roundtrip(myscript_run, gen.myscript('quote"slash\\')) == 'quote"slash\\'
+        # the backslash, form-feed, and NUL escapes take the remaining branches
+        assert roundtrip(myscript_run, gen.myscript("a\\b\fc")) == "a\\b\fc"
+        assert roundtrip(myscript_run, gen.myscript("a\x00b")) == "a\x00b"
+
+    def test_empty_text_returns_empty(self) -> None:
+        """The register generators return an empty program for empty text."""
+        assert gen.collatz_multiverse("") == ""
+        assert gen.addsubjump("") == ""
+        assert gen.decleq("") == ""
 
     def test_nevermind_unsupported(self) -> None:
         """Nevermind cannot print multiline text or a leading $."""
@@ -289,14 +318,14 @@ class TestGeneratorRoundTrips:
     def test_six_five(self) -> None:
         """±5/±6 walks reach each character value, then A prints it."""
         sixfive_run = importlib.import_module(
-            "esolangs.interpreters.tape_based.6-5"
+            "esolangs.interpreters.tape_based.six_five"
         ).run
         assert roundtrip(sixfive_run, gen.six_five("Hello, World!")) == "Hello, World!"
 
     def test_ascii_art(self) -> None:
         """A brainfuck program encoded as drawing blocks prints the text."""
         ascii_run = importlib.import_module(
-            "esolangs.interpreters.tape_based.ascii-art"
+            "esolangs.interpreters.tape_based.ascii_art"
         ).run
         assert roundtrip(ascii_run, gen.ascii_art("Hi")) == "Hi"
         assert roundtrip(ascii_run, gen.ascii_art("")) == ""
@@ -388,10 +417,7 @@ class TestGeneratorRoundTrips:
     def test_basicfuck(self) -> None:
         """A variable walks to each byte with +=/-= and write prints it."""
         assert gen.basicfuck("A") == (
-            "#basicfuck t=1 r=0~255 o=nearest\n"
-            "#allocate a\n"
-            "a += 65;\n"
-            "write <- a ;\n"
+            "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;\n"
         )
         assert roundtrip(basicfuck_run, gen.basicfuck("Hi")) == "Hi"
         assert (
@@ -437,34 +463,34 @@ class TestGeneratorRoundTrips:
 
     def test_ztoalc(self) -> None:
         """The Collatz trajectory from the chosen start visits each slot once."""
-        assert roundtrip(ztoalc_run, gen.ztoalc("Hi").splitlines()) == "Hi"
-        assert roundtrip(ztoalc_run, gen.ztoalc("").splitlines()) == ""
+        assert roundtrip(ztoalc_run, gen.ztoalc_l("Hi").splitlines()) == "Hi"
+        assert roundtrip(ztoalc_run, gen.ztoalc_l("").splitlines()) == ""
 
     def test_temporary(self) -> None:
         """The The Temporary Stack Stack squish prints each character."""
-        assert roundtrip(temporary_run, gen.temporary("Hi")) == "Hi"
-        assert roundtrip(temporary_run, gen.temporary("")) == ""
+        assert roundtrip(temporary_run, gen.the_temporary_stack("Hi")) == "Hi"
+        assert roundtrip(temporary_run, gen.the_temporary_stack("")) == ""
 
     def test_temporary_long_text(self) -> None:
         """Text longer than 13 characters is split across stack resets."""
         text = "".join(chr(33 + (i % 94)) for i in range(30))
-        assert roundtrip(temporary_run, gen.temporary(text)) == text
+        assert roundtrip(temporary_run, gen.the_temporary_stack(text)) == text
 
     def test_temporary_control_characters(self) -> None:
         """Characters whose increment is whitespace are pushed with vN."""
         text = "a\tb \n\x00\x7f"
-        assert roundtrip(temporary_run, gen.temporary(text)) == text
+        assert roundtrip(temporary_run, gen.the_temporary_stack(text)) == text
 
     def test_ztoalc_compact(self) -> None:
         """The program is far smaller than the 2**n power-of-2 scheme."""
-        program = gen.ztoalc("Hello, World!")
+        program = gen.ztoalc_l("Hello, World!")
         assert len(program.splitlines()) < 100
         assert roundtrip(ztoalc_run, program.splitlines()) == "Hello, World!"
 
     def test_ztoalc_uses_record_holder(self) -> None:
         """Longer text uses the best record-holder covering its length."""
         text = "a" * 200
-        program = gen.ztoalc(text)
+        program = gen.ztoalc_l(text)
         assert int(program.splitlines()[0]) == 2919  # covers n <= 216
         assert len(program.splitlines()) < 300000
         assert roundtrip(ztoalc_run, program.splitlines()) == text
@@ -472,7 +498,7 @@ class TestGeneratorRoundTrips:
     def test_ztoalc_long_text(self) -> None:
         """The generator scales to longer text without raising."""
         text = "".join(chr(65 + (i % 26)) for i in range(50))
-        program = gen.ztoalc(text)
+        program = gen.ztoalc_l(text)
         assert roundtrip(ztoalc_run, program.splitlines()) == text
 
     def test_ztoalc_anchor_lookup(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -482,18 +508,18 @@ class TestGeneratorRoundTrips:
         assert other._anchor_for(8) == 6  # noqa: SLF001
         assert other._anchor_for(9) == 18  # noqa: SLF001
         assert other._anchor_for(20) == 18  # noqa: SLF001
-        program = gen.ztoalc("ab")
+        program = gen.ztoalc_l("ab")
         assert program.splitlines() == ["6", "", "print 98", "", "", "print 97"]
         assert roundtrip(ztoalc_run, program.splitlines()) == "ab"
 
     def test_ztoalc_too_long_rejected(self) -> None:
         """Text longer than the longest known record is rejected."""
         with pytest.raises(ValueError, match="no Collatz start"):
-            gen.ztoalc("a" * 1133)
+            gen.ztoalc_l("a" * 1133)
 
     def test_ztoalc_program_structure(self) -> None:
         """The initial pointer is the chosen start and each char sits on its line."""
-        lines = gen.ztoalc("ab").splitlines()
+        lines = gen.ztoalc_l("ab").splitlines()
         assert lines[0] == "6"
         assert "print 98" in lines
         assert "print 97" in lines
@@ -523,7 +549,7 @@ class TestGeneratorProducesOutput:
             gen.pct_squared_minus_one,
             gen.painfuck,
             gen.suffolk,
-            gen._123,  # noqa: SLF001 - public generator
+            gen.one_two_three,
         ]
         for gen_fn in generators:
             assert gen_fn("Hi"), gen_fn.__name__
@@ -560,7 +586,7 @@ class TestGeneratorBranches:
         assert gen.suffolk("") == ""
 
     def test_123_empty(self) -> None:
-        assert gen._123("") == "1"  # noqa: SLF001 - public generator
+        assert gen.one_two_three("") == "1"
 
     def test_forth_nul(self) -> None:
         """A NUL is pushed and printed with an explicit dot."""
@@ -611,14 +637,14 @@ class TestGeneratorBranches:
             gen.albabet,
             gen.modulous,
             gen.qoibl,
-            gen.temporary,
+            gen.the_temporary_stack,
             gen.sophie,
             gen.bio,
             gen.six_five,
             gen.ascii_art,
             gen.wii2d,
             gen.clockwise,
-            gen.mammalian,
+            gen.slow_acv_mammalian,
             gen.huf,
         ]
         inputs = [
@@ -641,8 +667,8 @@ class TestGeneratorBranches:
 
     def test_control_character_123(self) -> None:
         """The 123 generator must not crash on control characters."""
-        gen._123("\x00")  # noqa: SLF001 - public generator
-        gen._123("".join(chr(k) for k in range(1, 20)))  # noqa: SLF001
+        gen.one_two_three("\x00")
+        gen.one_two_three("".join(chr(k) for k in range(1, 20)))
 
     def test_laserfuck_zero_loop(self) -> None:
         """A small value makes laserfuck's loop end with no tail."""

@@ -19,30 +19,18 @@ Documented decisions for gaps in the wiki stub:
   of memory, exhausted input raises :class:`EOFError` (repo-wide
   convention), and a program that has not halted after ``limit``
   instructions is rejected with :class:`HaltError`.
+
+Malformed programs raise :class:`ValueError`.
 """
 
 import sys
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.memory import parse_int_memory as _parse
 
 _OUT = -2
 _IN = -1
-
-
-def _parse(code: str) -> list[int]:
-    """Split ``code`` into the initial memory (a list of integers)."""
-    tokens: list[int] = []
-    for line in code.splitlines():
-        line = line.split("#", 1)[0].strip()
-        if not line:
-            continue
-        for tok in line.split():
-            try:
-                tokens.append(int(tok))
-            except ValueError:
-                raise ValueError(f"malformed memory token: {tok!r}") from None
-    return tokens
 
 
 def run(code: str, io: IO, limit: int = 10_000) -> None:

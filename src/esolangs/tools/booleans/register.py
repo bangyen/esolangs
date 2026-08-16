@@ -1,5 +1,8 @@
 """Boolean-function generators for register-based languages."""
 
+from typing import Any
+
+from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.generators.helpers import _cm_constants
 
 # Dig blocks for one level of the decision tree.
@@ -21,13 +24,7 @@ def decleq(truth_table: str, n: int) -> str:
     those branches to leaves that output 48 or 49 (placed in data cells of
     the self-modifying memory) and then halt.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     # instructions: n reads, n*47 normalizations, and the tree
     # (2**n - 1 branches plus 2**n leaves of output+halt each).
@@ -75,6 +72,116 @@ def decleq(truth_table: str, n: int) -> str:
     return " ".join(map(str, mem))
 
 
+def addsubjump(truth_table: str, n: int) -> str:
+    """Build an AddSubJump program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    ASJ's instruction is ``a b c d``: ``*a += *b`` (when ``*d <= 0``) or
+    ``*a -= *b`` (when ``*d > 0``), then ``goto *c``, where ``c`` is a cell
+    holding the next instruction pointer.  There is no data-testable jump,
+    so the generator routes a decision tree through the negative flag: with
+    flag mode enabled (writing ``-9``), ``t -6 ... d`` (``d`` = the bit cell)
+    sets the flag from the bit, but the branch itself is ``jump += 4 * bit``
+    onto two consecutive trampolines.  Each bit (48/49) is normalized to
+    ``{0, 4}`` (subtract 48, double twice), a jump cell initialized to the
+    zero trampoline's address is advanced by that value, and ``goto *jump``
+    lands on the zero or one trampoline, which jumps to the corresponding
+    subtree.  Leaves print 48/49 and halt via ``c = -8`` (a special
+    address).  Subtrees whose table entries are constant collapse to a leaf.
+    """
+    _validate_truth_table(truth_table, n)
+
+    instructions: list[list[Any]] = []
+    next_cells: list[str | None] = []
+    values: dict[str, int | tuple[str, int]] = {}
+
+    def emit(a: object, b: object, c: object, d: int) -> int:
+        idx = len(instructions)
+        next_cells.append(f"NEXT{idx}" if c == "next" else None)
+        instructions.append([a, b, c, d])
+        return idx
+
+    emit(-9, -6, "next", -7)  # enable flag mode
+    values["C48"] = -48
+    values["U"] = 0
+    values["D48"] = 48
+    values["D49"] = 49
+
+    def build(level: int, rows: list[int]) -> None:
+        results = {truth_table[r] for r in rows}
+        if len(results) == 1:
+            out = 48 if results.pop() == "0" else 49
+            emit(-1, f"D{out}", -8, -7)
+            return
+        base = len(instructions)
+        bit = f"B{base}"
+        jump = f"J{base}"
+        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
+        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
+        values[bit] = 0
+        values[jump] = ("t0", base + 6)
+        emit(bit, -1, "next", -7)  # B += input byte (48/49)
+        emit(bit, "C48", "next", -7)  # B += -48
+        emit(bit, bit, "next", -7)  # double
+        emit(bit, bit, "next", -7)  # double -> {0, 4}
+        emit(jump, bit, "next", -7)  # J += B
+        emit("U", "U", f"J{base}", -7)  # goto *J
+        ztarget = f"Z{base}"
+        otarget = f"O{base}"
+        emit("U", "U", ztarget, -7)  # zero trampoline
+        emit("U", "U", otarget, -7)  # one trampoline
+        zstart = len(instructions)
+        build(level + 1, zero)
+        ostart = len(instructions)
+        build(level + 1, one)
+        values[ztarget] = ("addr", zstart)
+        values[otarget] = ("addr", ostart)
+
+    build(0, list(range(2**n)))
+
+    base_data = 4 * len(instructions)
+    names: list[str] = []
+
+    def cell(name: str) -> int:
+        if name not in names:
+            names.append(name)
+        return base_data + names.index(name)
+
+    for ins in instructions:
+        for v in ins:
+            if isinstance(v, str) and v != "next":
+                cell(v)
+    for name in values:
+        cell(name)
+    for nc in next_cells:
+        if nc:
+            cell(nc)
+
+    mem = [0] * (base_data + len(names))
+    for i, ins in enumerate(instructions):
+        row = []
+        for v in ins:
+            if v == "next":
+                ncname = next_cells[i]
+                if ncname is None:
+                    raise AssertionError("no next cell for instruction")
+                row.append(cell(ncname))
+            elif isinstance(v, str):
+                row.append(cell(v))
+            else:
+                row.append(v)
+        mem[4 * i : 4 * i + 4] = row
+    for name, val in values.items():
+        idx = cell(name)
+        mem[idx] = 4 * val[1] if isinstance(val, tuple) else val
+    for i, nc in enumerate(next_cells):
+        if nc:
+            mem[cell(nc)] = 4 * (i + 1)
+    return " ".join(map(str, mem))
+
+
 def collatz_multiverse(truth_table: str, n: int) -> str:
     """Build a Collatz Multiverse program computing the given truth table.
 
@@ -89,13 +196,7 @@ def collatz_multiverse(truth_table: str, n: int) -> str:
     OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
     byte constants come from the text generator's constant table.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     if all(c == "0" for c in truth_table):
         return "\n".join([*_cm_constants({48}), "out = negativeOne x + k48, DO PRINT."])
     if all(c == "1" for c in truth_table):
@@ -242,12 +343,7 @@ def qoibl(truth_table: str, n: int) -> str:
     instead (fewer minterms) and ``49 - sum`` is printed, keeping the program
     under the size of the sparser half.
     """
-    use_complement = truth_table.count("1") > 2**n // 2
-    table = (
-        truth_table
-        if not use_complement
-        else "".join("1" if c == "0" else "0" for c in truth_table)
-    )
+    table, use_complement = _maybe_complement(truth_table, n)
     lines = []
     for i in range(n):
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(48)} we")

@@ -66,6 +66,10 @@ class TestPainfuck:
     def test_read_number(self) -> None:
         assert run_program("jiue", "6\n65\n") == "A"
 
+    def test_read_number_rejects_garbage(self) -> None:
+        with pytest.raises(HaltError):
+            run_program("ip", "12x\n")
+
     def test_loop(self) -> None:
         # pp a (cell 2 nonzero, open), s b (0 -> close), u prints 0
         assert run_program("ppas b ue".replace(" ", "")) == "\x00"
@@ -83,6 +87,26 @@ class TestPainfuck:
     def test_halt(self) -> None:
         assert run_program("pe") == ""
         assert run_program("p") == ""
+
+    def test_print_number(self) -> None:
+        assert run_program("ppoe") == "4"
+
+    def test_copy_from_left_neighbor(self) -> None:
+        # q copies the left neighbor into the current cell when ptr > 0
+        assert run_program("pprpplque") == "\x04"
+
+    def test_conditional_skip(self) -> None:
+        # v skips the next command when the cell is nonzero
+        assert run_program("pvpu") == "\x02"
+
+    def test_random_skip(self) -> None:
+        from unittest.mock import patch
+
+        # y skips the next command on a coin flip; pin both outcomes
+        with patch("random.randrange", return_value=1):
+            assert run_program("pyu") == ""
+        with patch("random.randrange", return_value=0):
+            assert run_program("pyu") == "\x02"
 
     def test_error(self) -> None:
         with pytest.raises(HaltError):

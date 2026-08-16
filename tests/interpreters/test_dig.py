@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs.interpreters.grid_based.dig import run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.dig import run
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -133,6 +133,13 @@ class TestDigEdgeCases:
         """Test that an empty program raises ValueError."""
         with pytest.raises(ValueError, match="empty"):
             run([], io=IO())
+
+    def test_blank_only_program_is_empty(self) -> None:
+        """Programs of only blank lines are rejected, not crashing the mole."""
+        with pytest.raises(ValueError, match="empty"):
+            run(["\n"], io=IO())
+        with pytest.raises(ValueError, match="empty"):
+            run(["   ", "\t"], io=IO())
 
     def test_single_character_program(self) -> None:
         """Test a program containing only a halt command."""

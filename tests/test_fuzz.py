@@ -15,8 +15,8 @@ from unittest.mock import patch
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.bitdeque import run as bitdeque_run
 from esolangs.interpreters.other.keys import run as keys_run
+from esolangs.interpreters.queue_based.bitdeque import run as bitdeque_run
 from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.huf import run as huf_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
@@ -24,11 +24,11 @@ from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.excon import run as excon_run
-from esolangs.interpreters.tape_based.mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.minifuck import run as minifuck_run
+from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian_run
 
 minsky_run = importlib.import_module(
-    "esolangs.interpreters.register_based.minsky-swap"
+    "esolangs.interpreters.register_based.minsky_swap"
 ).run
 
 

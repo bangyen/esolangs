@@ -4,11 +4,15 @@ import math
 import re
 from functools import cache
 
-from esolangs.tools.generators.helpers import _ilog, _require_ascii, _require_bytes
+from esolangs.tools.generators.helpers import (
+    _factor_triple,
+    _ilog,
+    _require_ascii,
+    _require_bytes,
+)
 from esolangs.tools.ztoalc_starts import ANCHORS
 
 __all__ = [
-    "_123",
     "basicfuck",
     "between",
     "bit_tilde",
@@ -19,15 +23,17 @@ __all__ = [
     "forth",
     "home_row",
     "laserfuck",
+    "myscript",
     "nevermind",
     "nocomment",
+    "one_two_three",
     "painfuck",
     "pct_squared_minus_one",
     "sbleq",
     "three_x",
     "two_d_fish",
     "unsquare",
-    "ztoalc",
+    "ztoalc_l",
 ]
 
 
@@ -103,26 +109,19 @@ def container(text: str) -> str:
     _require_ascii(text, "Container")
     ind = last = 0
     if text:
-        res = (
-            "A:\n"
-            "+1 EXIT>=1\n\n"
-            "PRINT:\n"
-            "+1 PRINT<=0\n"
-            "-1 PRINT>=1\n\n"
-            "OUT:\n"
-        )
+        res = "A:\n+1 EXIT>=1\n\nPRINT:\n+1 PRINT<=0\n-1 PRINT>=1\n\nOUT:\n"
     else:
-        return "EXIT=1:\n" "-1 EXIT>=0"
+        return "EXIT=1:\n-1 EXIT>=0"
 
     for c in text:
         if (o := ord(c) - last) >= 0:
-            res += f"+{o} A>={ind}\n" f"-{o} A>={ind + 1}\n"
+            res += f"+{o} A>={ind}\n-{o} A>={ind + 1}\n"
         else:
-            res += f"-{-o} A>={ind}\n" f"+{-o} A>={ind + 1}\n"
+            res += f"-{-o} A>={ind}\n+{-o} A>={ind + 1}\n"
         last = ord(c)
         ind += 2
 
-    res += "EXIT=1:\n" f"-1 A>={ind - 2}"
+    res += f"EXIT=1:\n-1 A>={ind - 2}"
 
     return res
 
@@ -175,7 +174,7 @@ def _anchor_for(n: int) -> int:
     )
 
 
-def ztoalc(text: str) -> str:
+def ztoalc_l(text: str) -> str:
     """Build a ZTOALC L program that outputs ``text``.
 
     The interpreter runs lines in Collatz-trajectory order from the initial
@@ -531,7 +530,7 @@ def painfuck(text: str) -> str:
     return shifted
 
 
-def _123(text: str) -> str:
+def one_two_three(text: str) -> str:
     """Build a 1/2 program per character, terminated by a trailing 1.
 
     ``edi`` carries the running XOR of the characters, so each segment only
@@ -566,6 +565,35 @@ def _123(text: str) -> str:
         last = ord(c)
 
     return res + "1"
+
+
+def myscript(text: str) -> str:
+    r"""Generate a MyScript program that outputs ``text``.
+
+    MyScript's string literals support the escapes ``\\0 \\n \\\\ \\t \\f
+    \\"`` and literal printable ASCII, so ``text`` is emitted as one ``say``
+    of the escaped string; any other byte (unrepresentable in the language)
+    is rejected.
+    """
+    res: list[str] = []
+    for c in text:
+        if c == "\\":
+            res.append("\\\\")
+        elif c == '"':
+            res.append('\\"')
+        elif c == "\0":
+            res.append("\\0")
+        elif c == "\n":
+            res.append("\\n")
+        elif c == "\t":
+            res.append("\\t")
+        elif c == "\f":
+            res.append("\\f")
+        elif 32 <= ord(c) < 127:
+            res.append(c)
+        else:
+            raise ValueError("MyScript can only output its representable bytes")
+    return 'say "' + "".join(res) + '"'
 
 
 def nocomment(text: str) -> str:
@@ -635,14 +663,7 @@ def home_row(text: str) -> str:
     _require_bytes(text, "Home Row")
 
     def segment(value: int) -> str:
-        best = min(
-            (
-                (a + b + r, a, b, r)
-                for a in range(1, int(value**0.5) + 2)
-                for b, r in (divmod(value, a),)
-            ),
-        )
-        _, a, b, r = best
+        a, b, r = _factor_triple(value)
         # counter cell 0, target cell 1: "f" moves 0 -> 1 and four "f"s wrap
         # 1 -> 0 back.  The loop body adds b to the target and decrements
         # the counter.

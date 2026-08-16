@@ -20,11 +20,11 @@ from esolangs.interpreters.io import IO
 # interpreter module -> instruction alphabet. lightlang's "_" (sleep) is
 # left out so the fuzz stays fast, and input is mocked below.
 FUZZ = {
-    "other.bitdeque": "PUSHINJECTEJECTPOPINVERT",
+    "queue_based.bitdeque": "PUSHINJECTEJECTPOPINVERT",
     "other.keys": "-_\\/",
-    "register_based.minsky-swap": "+~*",
-    "register_based.movesum": "move sum0123456789",
-    "register_based.dsdlai": ".!?$~;:#@",
+    "register_based.minsky_swap": "+~*",
+    "tape_based.movesum": "move sum0123456789",
+    "grid_based.dsdlai": ".!?$~;:#@",
 }
 
 # ArrowQueue, back, Between, lightlang, and RAM0 are not fuzzed here: they
