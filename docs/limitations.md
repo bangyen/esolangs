@@ -287,6 +287,26 @@ accumulating into the printed result.  The programs are long (O(``n·2**n``)
 blocks, ~1.4s/execution at ``n == 4``), verified exhaustively at
 ``n <= 2`` and sampled through ``n = 4``.
 
+## Home Row (built; j-guarded-move boolean generator, n <= 2)
+Home Row's ``l`` loops pair strictly by order (the first and second ``l``
+form a loop, the third and fourth another), so loops cannot nest and a
+bf-style decision tree is inexpressible.  But ``j`` skips the next
+instruction when the current cell is zero, making ``jf``/``jd`` *guarded
+moves*: a beam at a nonzero cell moves right/down, at a zero cell stays put.
+The boolean generator routes a tree with these instead of loops.  The
+template bakes the answer bytes (48/49) into leaf cells, then the ``{Xi}``
+bit placeholders at cells ``0..n-1``, then a routing of ``j``-guarded moves
+that sends each input combination to a distinct leaf, then ``k`` prints it.
+
+The one-input routing ``jfd`` sends 0 -> cell 5, 1 -> cell 6; the two-input
+routing ``jfjffjdd`` sends 00 -> 6, 01 -> 11, 10 -> 7, 11 -> 8, and every
+``j`` in it tests a cell holding only baked bits (never an answer cell), so
+the answers can be baked before routing without corrupting the branches.
+Verified exhaustively for every one- and two-input table.  ``n >= 3``
+raises: an exhaustive search over ``j``-guarded sequences shows no routing
+separates ``2**n`` combinations onto distinct cells of the 5x5 torus past
+``n == 2`` (the search caps at 6 of 8 combinations).
+
 ## Text generators: exhausted
 Every language whose interpreter can emit arbitrary bytes already has a text
 generator.  The remaining interpreter-only languages cannot, so no text

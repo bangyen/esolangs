@@ -217,13 +217,23 @@ were assessed:
   with ``.``, and pop it), so every ``]`` re-tests its own guard.  A
   parameterized ``bfpda`` generator ships and is verified for every table at
   ``n <= 4``.
-- **Home Row: research-level.**  Its random-access cells give bf-style
-  separate guards, but the ``l`` loops pair strictly *by order* (the first
-  and second ``l`` form a loop, the third and fourth another; the RISC-V
-  compiler's ``loop // 2`` numbering), so loops cannot nest.  A decision
-  tree's AND-gating needs nested guards (the bf_tree structure), which Home
-  Row cannot express; the pointer also only moves forward (``d``/``f``, no
-  left/up).
+- **Home Row: done.**  Its random-access cells give bf-style separate
+  guards, and the ``l`` loops pair strictly *by order* (the first and second
+  ``l`` form a loop, the third and fourth another; the RISC-V compiler's
+  ``loop // 2`` numbering), so loops cannot nest — a bf-style decision tree
+  is inexpressible.  But ``j`` skips the next instruction when the current
+  cell is zero, so ``jf``/``jd`` are *guarded moves*: a beam at a nonzero
+  cell moves right/down, at a zero cell stays put.  The generator routes a
+  tree with these instead of loops: a baked bit cell at position ``i`` is
+  tested by a ``j``-guarded move, and the two outcomes (beam at the bit cell
+  or one cell right) are diverged with a plain move.  The ``jfjffjdd``
+  routing with bits at cells 0 and 1 separates all four two-input
+  combinations onto distinct cells with every ``j`` testing only a baked bit
+  cell, so the answer bytes can be baked first without corrupting the
+  branches; ``jfd`` does the same for one input.  Verified exhaustively for
+  every one- and two-input table.  ``n >= 3`` raises: no ``j``-guarded
+  routing separates ``2**n`` combinations onto distinct cells of the 5x5
+  grid (an exhaustive search caps at 6 of 8 combinations).
 - **No-input and no-output** (A Painter Ant, ArrowQueue, Bitdeque, Eval,
   Factor, Kak, Keys, Minsky Swap, RAM0): impossible — nothing to return.
 
