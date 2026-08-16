@@ -237,6 +237,22 @@ were assessed:
 - **No-input and no-output** (A Painter Ant, ArrowQueue, Bitdeque, Eval,
   Factor, Kak, Keys, Minsky Swap, RAM0): impossible — nothing to return.
 
+A note on embedding: the shipped parameterized generators fall into two
+classes.  **Single-embed** generators bake each input bit exactly once —
+nocomment computes the input's numeric index arithmetically with one
+``{Xi}`` setter per bit and does a single computed skip, and home_row's beam
+passes through each baked bit cell exactly once per combination.  **Per-node
+embed** generators place the bit at every tree node of its depth — back's
+``{Xi}`` mirror appears at each of the ``2**i`` nodes at depth ``i``, and
+bio's ``{Xi}``/``{Ci}`` twice per node.  The per-node embedding is not an
+optimization opportunity: a node's two branches diverge to different
+locations, so sharing one test cell would require them to *reconverge*
+before the next bit — which loses the branch history (the beam's position /
+registers are the only record of the path).  Reconvergence is precisely the
+construct those languages lack, so single-embedding back/bio is a structural
+wall, not a cheap win; the single-embed designs already shipped where the
+language permits it.
+
 So AddSubJump (the one target with a usable conditional) shipped, and the
 assessed no-input interpreters mostly hit structural walls — BF-PDA turned
 out to be a false wall and shipped too.  **Assessed since:
