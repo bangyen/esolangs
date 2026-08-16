@@ -92,6 +92,33 @@ the table:
   byte I/O) shares ABCDrection's bit-tape model; Minifuck's
   flip-and-conditional-skip is further away.
 
+## Extra implementations (cross-checks)
+
+The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
+against the Python ones by `scripts/verify_differential.py`) earn their keep
+only where they are *broad* and *independent*: the language has a generator
+or boolean generator, so the differential fuzzes hundreds of random programs
+rather than a hand-picked handful, and the reference is written from the
+spec rather than ported from the Python.  The fuzzed cross-checks (NoComment,
+Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck,
+123) satisfy both and stay.
+
+The toolchain choice follows the language's model: RISC-V assembly fits the
+machine-model languages (a tape/pointer/instruction-counter maps 1:1 onto
+cells, registers, and jumps), and Rust fits the semantic ones (stacks, typed
+registers, bit manipulation, 2D grids, where hand-written assembly would be
+unreadable).  The current split already reflects that — the assembly ports
+are the simple tape/cell/OISC languages, the Rust ports the complex ones.
+
+**To remove:** the six fixed-corpus cross-checks — Kak, Trash, Number
+Seventy-Four (Rust) and Brainpocalypse, Stun Step, 2 Bits 1 Byte (RISC-V).
+None has a generator, so their differentials are a hand-written 4-6 program
+corpus each, and the references are ports of (or ported to) the Python, so
+agreement is not independent evidence.  They add little over the Python unit
+tests at real toolchain cost (cargo + RISC-V cross-compiler + unicorn in
+CI).  The six *languages* stay (they pass the admission criteria as distinct
+no-input interpreters); only the redundant cross-checks go.
+
 ## VM / debugging interface (remaining work)
 
 `esolangs.make_vm` (step-and-inspect wrappers for nine interpreters:
