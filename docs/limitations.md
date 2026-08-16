@@ -3,7 +3,8 @@
 What the generators cannot do, and the assessments that concluded an
 approach is not viable (or only partially viable).  Completed work lives in
 the commit history; this file records the walls, the negative results, and
-the reasoning behind them.  Genuine future work is in `docs/roadmap.md`.
+the reasoning behind them.  Genuine future work is in `docs/roadmap.md`, and
+the criteria for assessing a candidate language are in `CONTRIBUTING.md`.
 
 ## Interpreter conventions
 
