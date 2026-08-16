@@ -2,7 +2,8 @@
 
 Provides ``generate`` (produce a program that prints a text), ``run``
 (execute a program through an interpreter), ``make_vm`` (a step-and-inspect
-wrapper around the step-capable interpreters), ``transpile`` (rewrite a
+wrapper around the step-capable interpreters), ``make_debugger`` (a
+breakpoint/watch layer over the VM), ``transpile`` (rewrite a
 program between languages), ``describe`` (a structured language summary),
 and ``list_languages``.
 """
@@ -14,6 +15,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
+from esolangs.debug import Debugger, make_debugger
 from esolangs.exceptions import (
     HaltError,
     UnknownLanguageError,

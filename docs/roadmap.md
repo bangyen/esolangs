@@ -447,14 +447,22 @@ and LaserFuck (a grid language whose ``ip`` is the active laser's
 The interpreters expose their state machine as `step()`/`halted`; the rest
 of the registry keeps state in `run()` locals.
 
+**Shipped:** `esolangs.make_debugger` wraps a VM in a `Debugger` that adds
+breakpoints and watches: `break_at` (stop at a position, checked before the
+step so the watched state still holds), `break_on_cell`/`break_on_stack`/
+`break_on_output`/`break_when` (condition breakpoints), and
+`watch_cell`/`watch_stack` (a per-step history of a cell or stack slot).
+`run(max_steps=...)` bounds a runaway program, matching the `run(timeout=)`
+convention.
+
 The remaining work is to grow the set per state model over time: convert
 more interpreters to a step-capable state object (the other grid languages,
-whose position/direction is the natural ``ip``), and add the debugger
-affordances on top of the VM (breakpoints, watch on a cell/stack slot, a
-richer ``ip`` for the recursive languages).  Medium priority: it is a
-distinct workstream rather than more interpreters or transpilers, and it is
-the one feature that changes the library's audience from "runner" to
-"study tool".
+whose position/direction is the natural ``ip``), and add the last debugger
+affordance the roadmap names — a richer ``ip`` for the recursive languages
+(e.g. Grapheme's call stack, which is currently folded into one frame's
+cursor).  Medium priority: it is a distinct workstream rather than more
+interpreters or transpilers, and it is the one feature that changes the
+library's audience from "runner" to "study tool".
 
 ### Cheaper study-tool improvements (do first)
 
