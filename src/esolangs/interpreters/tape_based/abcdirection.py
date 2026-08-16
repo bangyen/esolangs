@@ -53,6 +53,11 @@ RIGHT, DOWN, LEFT, UP = 0, 1, 2, 3
 
 _TERMINATOR = "DDDDDD"
 
+# Deletes every valid command character, so ``row.translate(_STRIP)`` is
+# non-empty exactly when the row contains a character outside ABCD (far
+# faster than a per-character scan for the multi-megabyte generated grids).
+_STRIP = str.maketrans("", "", "ABCD")
+
 
 def _parse(code: str) -> list[str]:
     """Split ``code`` into the program's grid of rows."""
@@ -64,9 +69,8 @@ def _parse(code: str) -> list[str]:
             rows = [ln[:width] for ln in lines[: index + 1]]
             if any(len(ln) < width for ln in rows):
                 raise ValueError("program is not a rectangle")
-            for ln in rows:
-                if any(c not in "ABCD" for c in ln):
-                    raise ValueError("program must contain only A, B, C, D")
+            if any(ln.translate(_STRIP) for ln in rows):
+                raise ValueError("program must contain only A, B, C, D")
             return rows
     raise ValueError("program must contain a line with DDDDDD")
 
