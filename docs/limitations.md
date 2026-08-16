@@ -378,10 +378,21 @@ fall under the generator-story criterion's "documented reason" branch:
   unspellable and there is no input for a boolean generator.
 - **Number Seventy-Four**: a one-bit tape with no input command; output is
   ``0``/``1``/``H`` characters from a pass-restart model, so arbitrary bytes
-  are unspellable and there is no input for a boolean generator.
+  are unspellable and there is no input for a boolean generator.  A
+  *termination-based* convention expresses the one-input functions: the
+  machine restarts until the output starts with ``H``, so ``0H`` halts and
+  ``1H`` loops forever (and the halt check reads the output string, which
+  the restart does not corrupt, unlike the tape-rewind languages).  But the
+  halt condition depends only on the *front-most* output character (the last
+  push), so a multi-bit decision tree cannot branch on all inputs.
 - **Stun Step**: the wiki defines no I/O; the interpreter prints the reached
   cells as space-separated decimal numbers on halt, so text is unspellable
-  and there is no input for a boolean generator.
+  and there is no input for a boolean generator.  A *termination-based*
+  convention would express the one-input constants: the machine halts iff
+  the current cell is 0 at a pass boundary, so ``>`` (moves only when the
+  cell is nonzero) gives halt-for-bit-0 and loop-for-bit-1.  Multi-input
+  trees still fail: the loop-back re-runs the code with a shifted pointer,
+  so the ``+``/``>`` baking applies at shifted cells across restarts.
 
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
@@ -495,14 +506,20 @@ in `docs/roadmap.md`).
 - **Brainpocalypse**: its only control flow is ``-`` on a zero cell rewinding
   the instruction pointer to the program start (the tape stays intact), so a
   branch always restarts the whole prefix.  The output constraint closes the
-  case: a bare boolean means only cell 0 may print (the ``right`` bound stays
-  0), leaving just cell 0 and the wrap scratch cell 255 usable, and of the
-  four one-input functions an exhaustive template search finds only identity
-  (bake the bit into cell 0 and move to cell 255) — const-0, const-1, and
-  NOT all need to branch on cell 0's value, which the ``-``-on-zero rewind
-  consumes while re-running the bit-baking prefix (unbounded cell growth
-  across restarts).  A boolean generator is not feasible for the standard
-  harness.
+   case: a bare boolean means only cell 0 may print (the ``right`` bound stays
+   0), leaving just cell 0 and the wrap scratch cell 255 usable, and of the
+   four one-input functions an exhaustive template search finds only identity
+   (bake the bit into cell 0 and move to cell 255) — const-0, const-1, and
+   NOT all need to branch on cell 0's value, which the ``-``-on-zero rewind
+   consumes while re-running the bit-baking prefix (unbounded cell growth
+   across restarts).  A boolean generator is not feasible for the standard
+   harness.
+   A *termination-based* convention would partially help: the ``-``-on-zero
+   rewind is an infinite loop, so a program that halts iff the embedded bits
+   satisfy the function is expressible for the one-input constants (``-``
+   loops for bit 0, ``+-`` halts for bit 1).  Multi-input decision trees
+   still fail, because the rewind restarts the whole prefix and re-running
+   the ``+`` baking increments already-set cells.
 - **The Temporary Stack**: the auto-drain is the only output, and it prints `front - 1`
   for the *oldest* stack element when `sum(rest) / 2 > front`.  An
   input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
