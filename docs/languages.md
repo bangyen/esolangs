@@ -50,7 +50,7 @@ into a template) rather than the program reading input.
 | Forþ | yes | yes | yes | yes |  | hello |
 | Grapheme |  | yes |  |  |  |  |
 | Home Row | yes | yes |  | yes | yes | hello |
-| Jaune |  |  |  |  | yes |  |
+| Jaune |  | yes |  |  | yes |  |
 | Kak |  | yes |  |  |  |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
