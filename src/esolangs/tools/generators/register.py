@@ -3,7 +3,11 @@
 from collections.abc import Callable
 
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
-from esolangs.tools.generators.helpers import _cm_constants, _require_bytes
+from esolangs.tools.generators.helpers import (
+    _cm_constants,
+    _factor_triple,
+    _require_bytes,
+)
 
 __all__ = [
     "addsubjump",
@@ -34,14 +38,7 @@ def albabet(text: str) -> str:
     _require_bytes(text, "AlbaBet")
 
     def segment(value: int) -> str:
-        best = min(
-            (
-                (a + b + r, a, b, r)
-                for a in range(1, int(value**0.5) + 2)
-                for b, r in (divmod(value, a),)
-            ),
-        )
-        _, a, b, r = best
+        a, b, r = _factor_triple(value)
         return "c" + "a" * a + "e" + "c" + "a" * b + "g" + "a" * r + "i"
 
     return "".join(segment(ord(c)) for c in text)
@@ -240,14 +237,7 @@ def huf(text: str) -> str:
 
 
 def _huf_segment(value: int) -> str:
-    best = min(
-        (
-            (a + b + r, a, b, r)
-            for a in range(1, int(value**0.5) + 2)
-            for b, r in (divmod(value, a),)
-        ),
-    )
-    _, a, b, r = best
+    a, b, r = _factor_triple(value)
     return "#" + "+" * a + "|" + "+" * b + "!" + "+" * r + ">@"
 
 
