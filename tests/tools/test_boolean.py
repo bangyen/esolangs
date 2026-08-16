@@ -356,42 +356,6 @@ class TestQoibl:
         assert "ry ye ry" not in program
 
 
-def run_ascii_art(program: str, inputs: list[str]) -> str:
-    import importlib
-
-    run = importlib.import_module("esolangs.interpreters.tape_based.ascii_art").run
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
-
-
-class TestAsciiArt:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.ascii_art(table, n)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_ascii_art(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_is_art(self) -> None:
-        """The program is ASCII art, not raw brainfuck."""
-        program = boolean.ascii_art("0110", 2)
-        assert "[" not in program
-        assert "|" in program
-
-
 def run_polynomial(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.polynomial import run
 

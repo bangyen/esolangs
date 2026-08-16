@@ -140,12 +140,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.albabet",
         id="albabet",
     ),
-    "ASCII art": Language(
-        "ASCII art",
-        _generate.ascii_art,
-        "tape_based.ascii_art",
-        id="ascii_art",
-    ),
     "ArrowQueue": Language(
         "ArrowQueue",
         id="arrowqueue",

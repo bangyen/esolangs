@@ -67,9 +67,9 @@ class TestSubprocess:
     def test_transpile(self, tmp_path: Path) -> None:
         program = tmp_path / "prog.bf"
         program.write_text(esolangs.generate("brainfuck", "Hi"))
-        result = run_cli("transpile", "brainfuck", "ASCII art", str(program))
+        result = run_cli("transpile", "brainfuck", "Circlefuck", str(program))
         assert result.returncode == 0
-        assert esolangs.run("ASCII art", result.stdout) == "Hi"
+        assert esolangs.run("Circlefuck", result.stdout) == "Hi"
 
 
 class TestInProcess:
@@ -136,8 +136,8 @@ class TestInProcess:
     ) -> None:
         program = tmp_path / "prog.bf"
         program.write_text(esolangs.generate("brainfuck", "Hi"))
-        out = call_main(["transpile", "brainfuck", "ASCII art", str(program)], capsys)
-        assert esolangs.run("ASCII art", out) == "Hi"
+        out = call_main(["transpile", "brainfuck", "Circlefuck", str(program)], capsys)
+        assert esolangs.run("Circlefuck", out) == "Hi"
 
     def test_transpile_unsupported_pair(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -151,12 +151,12 @@ class TestInProcess:
 
     def test_transpile_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
-            call_main(["transpile", "brainfuck", "ASCII art"], capsys)
+            call_main(["transpile", "brainfuck", "Circlefuck"], capsys)
         assert exc.value.code == 2
 
     def test_transpile_missing_file(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
-            call_main(["transpile", "brainfuck", "ASCII art", "/no/such/file"], capsys)
+            call_main(["transpile", "brainfuck", "Circlefuck", "/no/such/file"], capsys)
         assert exc.value.code == 2
         assert "cannot read" in capsys.readouterr().err
 

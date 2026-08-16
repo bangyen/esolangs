@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from typing import cast
 
 from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
-from esolangs.tools.transpilers import _six_five_label, bf_to_ascii_art
+from esolangs.tools.transpilers import _six_five_label
 
 
 def brainif(truth_table: str, n: int) -> str:
@@ -523,19 +523,6 @@ def _bf_minterm(truth_table: str, n: int) -> str:
         cell.code.append("+" * 48)
         cell.code.append(".")
     return "".join(cell.code)
-
-
-def ascii_art(truth_table: str, n: int) -> str:
-    """Build an ASCII-art program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
-
-    ASCII art is brainfuck with an art alphabet, so the program is :func:`bf`'s
-    shorter of the minterm sum and decision-tree program rendered as art
-    blocks.
-    """
-    return bf_to_ascii_art(brainfuck(truth_table, n))
 
 
 def brainfuck(truth_table: str, n: int) -> str:
