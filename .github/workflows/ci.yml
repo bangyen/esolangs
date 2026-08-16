@@ -225,13 +225,10 @@ jobs:
     - name: Run the RISC-V reference interpreters under unicorn
       run: |
         python3 -m pip install -q unicorn
-        # the RISC-V port and the Python simulator must both agree with the
-        # in-package interpreter on the generated programs
-        PYTHONPATH=src python3 scripts/verify_123_differential.py \
-          /tmp/123-riscv "Hi" "Hello, World!" "esolangs!"
         # the differential (Python vs the RISC-V references, corpus + fuzz)
         # needs unicorn and the RISC-V compiler, which the rust job lacks;
-        # LaserFuck's runs there instead
+        # LaserFuck's runs there instead.  It also covers the 123 RISC-V
+        # port and the hand-written 3-jump programs.
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
         # the other reference interpreters must execute and halt
         python3 scripts/riscv_elf_runner.py /tmp/brainpocalypse-riscv \

@@ -359,6 +359,62 @@ def _verify_nocomment() -> bool:
     return failures == 0
 
 
+def _run_one_two_three_python(program: str) -> tuple[bytes, int]:
+    """Run the Python 123 interpreter; return (output, exit code)."""
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.one_two_three import run
+
+    io_obj = ScriptedIO("")
+    run(program, io_obj)
+    return io_obj.getvalue().encode("latin1"), 0
+
+
+# Generator-produced 123 programs that must echo their text, plus hand-written
+# programs exercising the ``3``-jump paths the generator never emits.
+_ONE_TWO_THREE_TEXTS = ("Hi", "Hello, World!", "A", "cat")
+_ONE_TWO_THREE_HAND = (("3231", b""), ("132231", b""))
+
+
+def _verify_one_two_three() -> bool:
+    """Compare the Python 123 interpreter against the assembly cross-check.
+
+    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
+    requires unicorn and a RISC-V cross-compiler; it is skipped when either
+    is missing.
+    """
+    if not _asm_refs_ready("123"):
+        return True
+
+    from esolangs.tools.generate import one_two_three
+
+    failures = 0
+
+    def check(program: str, expected: bytes, label: str) -> None:
+        nonlocal failures
+        ref = _asm_refs("123", program)
+        py_out, py_code = _run_one_two_three_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
+        if (asm_out, asm_code) != (py_out, py_code) or asm_out != expected:
+            failures += 1
+            print(
+                f"123 {label!r}: asm={(asm_out, asm_code)} "
+                f"py={(py_out, py_code)} expected={expected!r}"
+            )
+
+    for text in _ONE_TWO_THREE_TEXTS:
+        check(one_two_three(text), text.encode(), text)
+    for program, expected in _ONE_TWO_THREE_HAND:
+        check(program, expected, program)
+
+    if not failures:
+        total = len(_ONE_TWO_THREE_TEXTS) + len(_ONE_TWO_THREE_HAND)
+        print(f"123 differential: {total} programs match")
+    return failures == 0
+
+
 def _run_native(
     cmd: list[str],
     program: str,
@@ -1970,6 +2026,7 @@ def main() -> int:
 
     ok = _verify_laserfuck()
     ok = _verify_nocomment() and ok
+    ok = _verify_one_two_three() and ok
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok
