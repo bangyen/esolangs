@@ -354,8 +354,9 @@ generator.  The remaining interpreter-only languages cannot, so no text
 generator is possible for them: ArrowQueue has no output at all, Back prints
 the tape as a number list, Bitdeque and Minsky Swap print their registers as
 numbers, Movesum prints `n ` (numbers with a trailing space), RAM0 prints a
-state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
-the single bit as a number.  None can spell arbitrary text.
+state dump, and Lightlang prints only the single bit as a number.  None can
+spell arbitrary text.  (Keys, whose entire semantics was comparing two
+lines and printing "Accept."/"Reject.", was removed as trivial — see below.)
 
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
@@ -512,6 +513,12 @@ in `docs/roadmap.md`).
   that substitution.  It added no capability beyond a visual encoding, so it
   failed the "not a trivial reskin" admission criterion and was removed
   along with its transpiler pair and generators.
+- **Keys: removed.**  The program was two lines compared for equality (and
+  the absence of ``- _ / \\``), printing "Accept." or "Reject." — no loops,
+  no memory, no computation beyond one comparison.  It was a trivial
+  comparison gadget rather than a language model, so like Earfuck (a
+  brainfuck reskin "too easy to be worth a dedicated interpreter") it failed
+  the non-triviality admission criterion and was removed.
 - **Trash**: its only output is a prime-advanced number — a non-prime start
   prints ``0``, a prime start prints the next prime (3, 5, 7, ...), and no
   leading ``t`` prints nothing — so it can never print a boolean ``"1"`` and
