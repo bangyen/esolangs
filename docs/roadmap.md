@@ -102,21 +102,39 @@ the text) is already fully verified by the round-trip test, so a second
 implementation would find nothing new.  The fuzzed cross-checks (NoComment,
 Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck,
 123) have complex-output generators and stay; the straight-line-generator
-languages (brainfuck, 6-5, Factor, huf, and the rest) correctly have none.
+languages (6-5, Albabet, Decleq, Dimensional, huf, Qoibl, and the rest)
+correctly have none.
 
 The toolchain choice follows the language's model: RISC-V assembly fits the
 machine-model languages (a tape/pointer/instruction-counter maps 1:1 onto
 cells, registers, and jumps), and Rust fits the semantic ones (stacks, typed
 registers, bit manipulation, 2D grids, where hand-written assembly would be
-unreadable).  The current split is the target for any future cross-check:
+unreadable).  The current split:
 
-- **RISC-V assembly** — the machine-model languages: NoComment (tape +
-  stack with a byte-indexed skip), 123 (tape + pointer).  A future tape/OISC
-  language with a complex-output generator would join these.
-- **Rust** — the semantic languages: Forþ, Basicfuck, Unsquare, 3x,
-  %^2^-1, 2dFish, Painfuck, bit~, LaserFuck (stacks, typed registers, bit
-  manipulation, 2D grids).  A future language in one of those models would
-  join these.
+- **RISC-V assembly** — NoComment (tape + stack with a byte-indexed skip),
+  123 (tape + pointer).
+- **Rust** — Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~,
+  LaserFuck (stacks, typed registers, bit manipulation, 2D grids).
+
+**Worth adding (audited).**  These languages have complex-output generators
+(arithmetic encodings, branch-and-goto OISCs, runtime state carried across
+characters) that a random differential fuzz would exercise beyond the
+round-trip corpus, so a cross-check would add real verification.  In target
+language:
+
+- **RISC-V assembly:** 3D Brainfuck (tape + loops), Factor (a giant integer
+  whose prime factors re-encode a looped brainfuck program).
+- **Rust:** AddSubJump (branch-and-goto OISC), BIO (register counter loops),
+  Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots
+  encoding a command stream), Clockwise (2D ring routing), Dig (2D mole
+  grid with runtime segment counts), Container (threshold-rule firing),
+  ZTOALC L (Collatz-trajectory-driven execution).
+
+**Judgment call (borderline — the generator is stateful or looped, but its
+output is a fixed pattern the round-trip already covers; a cross-check
+would add little).**  brainfuck, BFStack, BrainIf, Minifuck, Modulous, SLOW
+ACV MAMMALIAN, WII2D, Home Row.  These stay without a cross-check unless a
+specific bug motivates one.
 
 **Removed:** the six fixed-corpus cross-checks — Kak, Trash, Number
 Seventy-Four (Rust) and Brainpocalypse, Stun Step, 2 Bits 1 Byte (RISC-V).
