@@ -15,8 +15,8 @@ from contextlib import redirect_stdout
 import pytest
 
 import esolangs
+from esolangs.interpreters.grid_based.arrowqueue import run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.queue_based.arrowqueue import run
 
 
 class _TimeoutError(Exception):

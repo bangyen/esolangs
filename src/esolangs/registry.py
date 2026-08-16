@@ -149,7 +149,7 @@ LANGUAGES: dict[str, Language] = {
     "ArrowQueue": Language(
         "ArrowQueue",
         id="arrowqueue",
-        interpreter="queue_based.arrowqueue",
+        interpreter="grid_based.arrowqueue",
         split=True,
     ),
     "Back": Language(
@@ -371,7 +371,7 @@ LANGUAGES: dict[str, Language] = {
     "Movesum": Language(
         "Movesum",
         id="movesum",
-        interpreter="register_based.movesum",
+        interpreter="tape_based.movesum",
         split=True,
     ),
     "MyScript": Language(

@@ -107,17 +107,15 @@ _EXTRA_WIKI = {
 }
 
 # The README's Implemented Languages section, grouped by interpreter
-# category in this order, with its one-line descriptions.
+# category.  The list order is the classification priority (a language is
+# filed by its most distinctive data structure): grid (a beam/pointer moving
+# on a 2D surface) > stack > queue > tape > register (the imperative
+# default) > other.
 _README_HEADINGS = [
     (
-        "register_based",
-        "Register-based Languages",
-        "Languages that use registers to store and manipulate data.",
-    ),
-    (
-        "tape_based",
-        "Tape-based Languages",
-        "Languages that operate on a tape (similar to Turing machines).",
+        "grid_based",
+        "Grid-based Languages",
+        "Languages that move a pointer or beam across a 2D grid.",
     ),
     (
         "stack_based",
@@ -125,14 +123,19 @@ _README_HEADINGS = [
         "Languages that use a stack for data manipulation.",
     ),
     (
-        "grid_based",
-        "Grid-based Languages",
-        "Languages that move a pointer or beam across a 2D grid.",
-    ),
-    (
         "queue_based",
         "Queue-based Languages",
         "Languages whose primary data structure is a queue or deque.",
+    ),
+    (
+        "tape_based",
+        "Tape-based Languages",
+        "Languages that operate on a tape (similar to Turing machines).",
+    ),
+    (
+        "register_based",
+        "Register-based Languages",
+        "Languages that use registers to store and manipulate data.",
     ),
     (
         "other",
