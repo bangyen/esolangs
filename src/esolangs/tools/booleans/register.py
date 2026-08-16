@@ -165,7 +165,8 @@ def addsubjump(truth_table: str, n: int) -> str:
         for v in ins:
             if v == "next":
                 ncname = next_cells[i]
-                assert ncname is not None
+                if ncname is None:
+                    raise AssertionError("no next cell for instruction")
                 row.append(cell(ncname))
             elif isinstance(v, str):
                 row.append(cell(v))
