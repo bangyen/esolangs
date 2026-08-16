@@ -42,8 +42,12 @@ class VM(Protocol):
         """Everything the machine has written so far."""
 
     @property
-    def ip(self) -> int:
-        """The current code or instruction position."""
+    def ip(self) -> int | tuple[int, ...]:
+        """The current code/instruction position, or (position, direction).
+
+        A linear language's ``ip`` is an index into its program; a 2D
+        language's is the moving agent's ``(x, y, heading)``.
+        """
 
     @property
     def memory(self) -> list[int]:
@@ -78,7 +82,7 @@ class _BaseVM:
         raise NotImplementedError
 
     @property
-    def ip(self) -> int:
+    def ip(self) -> int | tuple[int, ...]:
         raise NotImplementedError
 
     @property
@@ -337,6 +341,44 @@ class _TemporaryStackVM(_BaseVM):
         return list(self._state.stk)
 
 
+class _LaserFuckVM(_BaseVM):
+    """2D grid; ``ip`` is the active laser's (x, y, heading).
+
+    The heading is fixed to 0 (up) so stepping is reproducible; the
+    interpreter's own ``run`` draws a random heading when none is given.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io, heading=0)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        machine = self._machine
+        if machine.halted:
+            return
+        machine.step()
+        if not machine.lsrs:
+            machine.dump()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return self._machine.pos
+
+    @property
+    def memory(self) -> list[int]:
+        return [v for v, _ in self._machine.tape]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -348,6 +390,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Eval": _EvalVM,
     "Modulous": _ModulousVM,
     "The Temporary Stack": _TemporaryStackVM,
+    "LaserFuck": _LaserFuckVM,
 }
 
 
