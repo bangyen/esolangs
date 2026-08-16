@@ -438,20 +438,22 @@ its position and direction.  The interface contract is common; the fields
 are what each language's state actually is.
 
 **Shipped:** `esolangs.make_vm` exposes the `VM` protocol with adapters for
-the eight interpreters whose state objects step: brainfuck (tape + pointer),
+nine interpreters whose state objects step: brainfuck (tape + pointer),
 S*bleq (OISC cells), Dimensional (its addressed byte), Grapheme (stack +
 call frames), Qoibl (expression cursor + variable list), Eval (active stack),
-Modulous (stack + token cursor), and The Temporary Stack (stack + word
-pointer).  The interpreters expose their state machine as `step()`/`halted`;
-the rest of the registry keeps state in `run()` locals.
+Modulous (stack + token cursor), The Temporary Stack (stack + word pointer),
+and LaserFuck (a grid language whose ``ip`` is the active laser's
+``(x, y, heading)``, with the heading fixed to 0 for reproducible stepping).
+The interpreters expose their state machine as `step()`/`halted`; the rest
+of the registry keeps state in `run()` locals.
 
 The remaining work is to grow the set per state model over time: convert
-more interpreters to a step-capable state object (e.g. the other grid
-languages, whose position/direction is the natural ``ip``), and add the
-debugger affordances on top of the VM (breakpoints, watch on a cell/stack
-slot, a richer ``ip`` for the recursive languages).  Medium priority: it is
-a distinct workstream rather than more interpreters or transpilers, and it
-is the one feature that changes the library's audience from "runner" to
+more interpreters to a step-capable state object (the other grid languages,
+whose position/direction is the natural ``ip``), and add the debugger
+affordances on top of the VM (breakpoints, watch on a cell/stack slot, a
+richer ``ip`` for the recursive languages).  Medium priority: it is a
+distinct workstream rather than more interpreters or transpilers, and it is
+the one feature that changes the library's audience from "runner" to
 "study tool".
 
 ### Cheaper study-tool improvements (do first)

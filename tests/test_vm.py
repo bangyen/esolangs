@@ -110,6 +110,30 @@ class TestTemporaryStack:
         assert vm.stack == [5, 5]
 
 
+class TestLaserFuck:
+    def test_ip_is_position_and_heading(self) -> None:
+        # heading is fixed to 0 (up), so the laser at (2,4) moves up
+        vm = esolangs.make_vm("LaserFuck", "\u00ff   x\n    +\n    o")
+        assert vm.ip == (2, 4, 0)  # the laser's start position and heading
+        vm.step()
+        assert vm.ip == (1, 4, 0)  # moved up onto the '+'
+        assert vm.memory == [1]
+        vm.step()
+        assert vm.ip == (0, 4, 0)  # moved up onto the 'x', died
+        assert vm.halted
+        assert vm.output == "\x01"
+
+    def test_dump_output_matches_interpreter(self) -> None:
+        from esolangs.interpreters.grid_based.laserfuck import run as lf_run
+        from esolangs.interpreters.io import ScriptedIO
+
+        program = "\u00ff   x\n    +\n    o"
+        io_obj = ScriptedIO()
+        lf_run(program.splitlines(), io_obj, heading=0)
+        vm = esolangs.make_vm("LaserFuck", program)
+        assert _run_all(vm) == io_obj.getvalue()
+
+
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
         with pytest.raises(UnknownLanguageError):
