@@ -241,7 +241,10 @@ A note on embedding: the shipped parameterized generators fall into two
 classes.  **Single-embed** generators bake each input bit exactly once —
 nocomment computes the input's numeric index arithmetically with one
 ``{Xi}`` setter per bit and does a single computed skip, and home_row's beam
-passes through each baked bit cell exactly once per combination.  **Per-node
+passes through each baked bit cell exactly once per combination.  (The
+nocomment skip is byte-sized, so its index caps at eight inputs — a genuine
+language wall, since a conditional ``s`` jump over a region larger than 255
+commands is inexpressible; see `docs/limitations.md`.)  **Per-node
 embed** generators place the bit at every tree node of its depth — back's
 ``{Xi}`` mirror appears at each of the ``2**i`` nodes at depth ``i``, and
 bio's ``{Xi}``/``{Ci}`` twice per node.  The per-node embedding is not an
@@ -258,9 +261,19 @@ assessed no-input interpreters mostly hit structural walls — BF-PDA turned
 out to be a false wall and shipped too.  **Assessed since:
 123 and the last seven candidates.**  123's single 8-bit data byte and
 pointer that flips the bit as it moves (``1`` XORs the mask *and* advances,
-wrapping -3..0) mean even reading a byte and navigating to the write
-position corrupts the value being built — an n=1 identity loops.  123 is
-research-level too.  The last seven:
+wrapping -3..0) corrupt the value being built as the pointer navigates to the
+write position.  **Assessed: ruled out.**  An exhaustive search over every
+program up to length 13 (1.6M programs) finds that input ``'0'`` (48) can
+only ever print the even bytes ``{0, 4, 6, 8, ..., 248}`` — the odd byte 49
+(``'1'``) is unreachable, so NOT and const-1 are inexpressible.  Only two of
+the four one-input functions work: identity (``1112121121``) and const-0
+(``1111132231``), both verified against the interpreter.  The ``3``-jump
+(nearest preceding/following ``3``) and the loop-from-start behavior (reaching
+the end with the pointer at a data position restarts without resetting data)
+do provide real control flow, but the write's fixed flip structure (writing
+needs mask 512, whose ``1``-path toggles masks 2..256) binds the reachable
+output bytes per input.  A boolean generator is not feasible.  The last
+seven:
 
 - **Stun Step: ruled out.**  On halt it prints the reached cells
   space-joined, and the leftmost cell (position 0, where the pointer starts)
@@ -352,7 +365,8 @@ insertion-ordered RAM) rather than the C compilers' divergent semantics
 ## Transpilers
 
 The transpilers today: ``bf ⇄ ASCII art`` (a bijection), ``bf → Circlefuck``,
-``bf → 6-5``, ``Decleq → S*bleq`` (the one non-brainfuck pair), and ``X → bf``
+``bf → 6-5``, ``bf → 3D Brainfuck``, ``bf → Painfuck``, ``Decleq → S*bleq``
+(the one non-brainfuck pair), and ``X → bf``
 for X in {Basicfuck, BFStack, BIO, huf}.  This works because those languages
 share a common core; the partial ones reject their out-of-class programs
 rather than mistranslate, and the NoComment and reverse-decoder transpilers
@@ -393,6 +407,19 @@ share a core:
   below cell 0, drifting loops, and any output beyond a final single ``.``
   are rejected rather than mistranslated, and cells do not wrap at 8 bits in
   the translation.
+- **bf → 3D Brainfuck (done).**  3D Brainfuck is a brainfuck superset whose
+  ``>``/``<`` set the code pointer's heading and whose array moves ``n``/``s``
+  walk the tape along one axis, so the translation is a one-to-one command
+  swap: ``>``→``n``, ``<``→``s``, everything else unchanged.  Verified for
+  the transpiler battery through the target interpreter.
+- **bf → Painfuck (done).**  Painfuck is brainfuck-compatible through a
+  fixed two-cycle Caesar substitution (the interpreter rewrites each source
+  character ``k`` steps along its cycle, where ``k`` counts the characters
+  translated so far): brainfuck ``>``/``<``/``+``/``-``/``[``/``]``/``,``/``.``
+  become ``rl``/``l``/``ps``/``s``/``a``/``b``/``j``/``u``, and each emitted
+  command is pre-shifted ``k`` steps back along its cycle to undo the
+  interpreter's forward shift.  Verified for the transpiler battery through
+  the target interpreter.
 
 ## VM / debugging interface
 
