@@ -52,6 +52,7 @@ into a template) rather than the program reading input.
 | Jaune |  |  |  |  | yes |  |
 | Kak |  | yes |  |  |  |  |
 | Keys |  | yes |  |  |  |  |
+| Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
 | Minifuck | yes | yes |  | yes |  | hello |

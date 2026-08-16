@@ -31,12 +31,6 @@ is heavy enough that the arithmetic question should be settled before that
 work starts.  Revisit if the wiki (or its successor Pure) defines the rest
 of the operator set.
 
-### Lamfunc (medium priority)
-A Turing-complete functional language of prefix calls and `F name - code`
-definitions with lambdas (`` .f ``) and builtins for equality, branching,
-bit ops, and variable storage.  `p` prints a value, so text output goes
-bit-by-bit and a text generator is awkward.
-
 ### Point Break (low priority)
 A Turing-complete language with four commands (`LET`, `POINT`, `BREAK`,
 `END`) that simulates Minsky machines; `?` reads an integer in a `LET`.  It
