@@ -63,6 +63,7 @@ from esolangs.tools.booleans.tape import (
 )
 
 __all__ = [
+    "BOOLEAN",
     "abcdirection",
     "addsubjump",
     "ascii_art",
@@ -109,3 +110,51 @@ __all__ = [
     "unsquare",
     "ztoalc_l_boolean",
 ]
+
+# Display names of the languages that have a boolean-function generator.
+# Single source of truth for the capability matrix and the public API's
+# ``describe``.
+BOOLEAN: frozenset[str] = frozenset(
+    {
+        "3x",
+        "ABCDirection",
+        "AddSubJump",
+        "3D Brainfuck",
+        "6-5",
+        "ASCII art",
+        "Back",
+        "Basicfuck",
+        "Between",
+        "BF-PDA",
+        "brainfuck",
+        "BFStack",
+        "BIO",
+        "bit~",
+        "BrainIf",
+        "Circlefuck",
+        "Clockwise",
+        "Collatz Multiverse",
+        "Container",
+        "Dig",
+        "Dimensional",
+        "Decleq",
+        "Forbin",
+        "Forþ",
+        "Home Row",
+        "LaserFuck",
+        "Minifuck",
+        "Modulous",
+        "MyScript",
+        "Nevermind",
+        "NoComment",
+        "Painfuck",
+        "Polynomial",
+        "Qoibl",
+        "ROTfuck",
+        "S*bleq",
+        "Sophie",
+        "Taglate",
+        "Unsquare",
+        "ZTOALC L",
+    }
+)
