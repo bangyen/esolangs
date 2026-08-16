@@ -23,6 +23,7 @@ __all__ = [
     "bfstack_to_bf",
     "bio_to_bf",
     "decleq_to_sbleq",
+    "dimensional_to_laserfuck",
     "huf_to_bf",
 ]
 
@@ -788,6 +789,280 @@ def decleq_to_sbleq(program: str) -> str:
     return " ".join(map(str, asm.build()))
 
 
+class _LaserGrid:
+    """A LaserFuck grid being built: rows x columns of cells."""
+
+    def __init__(self) -> None:
+        self.cells: dict[tuple[int, int], str] = {}
+        self.rows = 0
+        self.cols = 0
+
+    def set(self, row: int, col: int, c: str) -> None:
+        old = self.cells.get((row, col))
+        assert old is None or old == c, ("collision", (row, col), old, c)
+        self.cells[(row, col)] = c
+        self.rows = max(self.rows, row + 1)
+        self.cols = max(self.cols, col + 1)
+
+    def dump(self) -> str:
+        g = [[" "] * self.cols for _ in range(self.rows)]
+        for (row, col), c in self.cells.items():
+            g[row][col] = c
+        return "\n".join("".join(ln).rstrip() for ln in g)
+
+
+def _laser_funnel(g: _LaserGrid) -> None:
+    """Send every initial heading right on row 0 (the start-marker funnel)."""
+    g.set(0, 0, "\u00ff")
+    g.set(0, 1, "}")
+    g.set(0, 2, "}")
+    g.set(1, 0, "|")
+    g.set(1, 1, "o")
+    g.set(1, 2, "^")
+    g.set(2, 1, "_")
+
+
+def _laser_emit(g: _LaserGrid, ops: list[str], row: int, col: int) -> tuple[int, int]:
+    """Lay out ``ops`` on ``row`` heading right; return (next_col, bottom_row)."""
+    i = 0
+    bottom = row + 1
+    while i < len(ops):
+        c = ops[i]
+        if c in "+-><.,":
+            g.set(row, col, c)
+            col += 1
+            i += 1
+        elif c == "[":
+            depth = 1
+            j = i + 1
+            while j < len(ops) and depth:
+                if ops[j] == "[":
+                    depth += 1
+                elif ops[j] == "]":
+                    depth -= 1
+                j += 1
+            assert depth == 0, "balanced brackets were validated before emission"
+            body = ops[i + 1 : j - 1]
+            col, lbottom = _laser_loop(g, row, col, body)
+            bottom = max(bottom, lbottom)
+            i = j
+        else:  # pragma: no cover - only validated commands reach emission
+            i += 1
+    return col, bottom
+
+
+def _laser_loop(
+    g: _LaserGrid, strip_row: int, c: int, body: list[str]
+) -> tuple[int, int]:
+    r"""Emit a while-loop ring below the strip's ``v`` at (strip_row, c).
+
+    The beam turns down at the ``v``, the test ``# v ) \\`` on the row below
+    reflects a nonzero cell back into the body and lets a zero cell fall
+    through to the exit, and a loop-back returns the body's beam to the test
+    via a clear up-column.  Returns (next_col, bottom_row) for the region.
+    """
+    r = strip_row
+    g.set(r, c, "v")
+    g.set(r + 1, c, "}")
+    g.set(r + 1, c + 1, "#")
+    g.set(r + 1, c + 2, "v")
+    g.set(r + 1, c + 3, ")")
+    g.set(r + 1, c + 4, "\\")
+    g.set(r + 3, c + 2, "}")
+    _, bbottom = _laser_emit(g, body, r + 3, c + 5)
+    rcol = g.cols  # routing columns begin at the content's right edge
+    rrow = bbottom
+    g.set(r + 3, rcol, "v")
+    g.set(rrow, rcol, "{")
+    g.set(rrow, c, "^")
+    g.set(r + 1, c, "}")
+    exit_row = rrow + 1
+    g.set(exit_row, c + 4, "}")
+    u_exit = rcol + 2
+    g.set(exit_row, u_exit, "^")
+    g.set(r, u_exit, "}")
+    return u_exit + 1, exit_row + 1
+
+
+def _laser_analyze(ops: list[str]) -> tuple[int, int, int | None]:
+    """Analyze the ops statically: final pointer, max cell, output cell.
+
+    Loops must have net-zero pointer displacement (so the pointer stays
+    statically known), the pointer must never move below cell 0 (LaserFuck's
+    tape has no negative cells), and a ``.`` is allowed only as the last
+    top-level command (LaserFuck prints the tape once at the end).
+    """
+    ptr = 0
+    maxcell = 0
+    i = 0
+    out_cell: int | None = None
+    while i < len(ops):
+        c = ops[i]
+        if c == ">":
+            ptr += 1
+            maxcell = max(maxcell, ptr)
+            i += 1
+        elif c == "<":
+            ptr -= 1
+            if ptr < 0:
+                raise ValueError(
+                    "moving below cell 0 is out of the supported class (LaserFuck's "
+                    "tape has no negative cells)"
+                )
+            i += 1
+        elif c == ".":
+            if i != len(ops) - 1:
+                raise ValueError(
+                    "a '.' must be the last command (LaserFuck prints the tape "
+                    "once at the end, so only a final single output is in class)"
+                )
+            out_cell = ptr
+            i += 1
+        elif c == "[":
+            depth = 1
+            j = i + 1
+            while j < len(ops) and depth:
+                if ops[j] == "[":
+                    depth += 1
+                elif ops[j] == "]":
+                    depth -= 1
+                j += 1
+            assert depth == 0, "balanced brackets were validated before analysis"
+            body = ops[i + 1 : j - 1]
+            if "." in body:
+                raise ValueError("a '.' inside a loop is out of the supported class")
+            bptr, bmax, bout = _laser_analyze(body)
+            if bout is not None:  # pragma: no cover - rejected by the "." in body check
+                raise ValueError("a '.' inside a loop is out of the supported class")
+            if bptr != 0:
+                raise ValueError(
+                    "loops that drift the tape pointer are out of the supported class"
+                )
+            maxcell = max(maxcell, ptr + bmax)
+            i = j
+        else:  # pragma: no cover - only validated commands reach analysis
+            i += 1
+    return ptr, maxcell, out_cell
+
+
+def _laser_parse(program: str) -> list[str]:
+    """Parse a Dimensional program into the supported command list.
+
+    The supported class is Dimensional's brainfuck-like core on a linear
+    tape: ``>0``/``<0`` moves, ``+``/``-``, ``.``/``,``, ``[``/``]``, and
+    the ``=HH``/``:CH`` literals (emitted as a clear plus increments);
+    ``*``..``*`` comments are skipped.  Everything else is rejected.
+    """
+    ops: list[str] = []
+    comment = False
+    i = 0
+    while i < len(program):
+        ch = program[i]
+        if comment:
+            if ch == "*":
+                comment = False
+            i += 1
+            continue
+        if ch == "*":
+            comment = True
+            i += 1
+        elif ch in "+-><.,[]":
+            if ch in "><":
+                neg = False
+                j = i + 1
+                if j < len(program) and program[j] == "~":
+                    neg = True
+                    j += 1
+                if j < len(program) and program[j].isdigit():
+                    k = j
+                    while k < len(program) and program[k].isdigit():
+                        k += 1
+                    dim = int(program[j:k])
+                    if neg:
+                        dim = -dim
+                    if dim != 0:
+                        raise ValueError(
+                            f"only dimension 0 moves are supported, got {dim}"
+                        )
+                    i = k
+                else:
+                    raise ValueError(
+                        "bare '>'/'<' (dimension = current value) is out of the "
+                        "supported class; write an explicit >0 / <0"
+                    )
+            else:
+                i += 1
+            ops.append(ch)
+        elif ch == "=":
+            if i + 2 >= len(program):
+                raise ValueError("'=' must be followed by two hex digits")
+            try:
+                value = int(program[i + 1 : i + 3], 16)
+            except ValueError:
+                raise ValueError("'=' must be followed by two hex digits") from None
+            ops.extend(["[", "-", "]"])
+            ops.extend(["+"] * value)
+            i += 3
+        elif ch == ":":
+            if i + 1 >= len(program):
+                raise ValueError("':' must be followed by a character")
+            value = ord(program[i + 1])
+            ops.extend(["[", "-", "]"])
+            ops.extend(["+"] * value)
+            i += 2
+        else:
+            raise ValueError(f"command {ch!r} is out of the supported class")
+    depth = 0
+    for ch in ops:
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth < 0:
+                raise ValueError("unbalanced brackets")
+    if depth:
+        raise ValueError("unbalanced brackets")
+    return ops
+
+
+def dimensional_to_laserfuck(program: str) -> str:
+    r"""Rewrite a Dimensional program into LaserFuck.
+
+    Dimensional's brainfuck-like core (``>0``/``<0``, ``+``/``-``, ``.``/``,``,
+    ``[``/``]``, and the ``=HH``/``:CH`` literals) maps onto a LaserFuck grid.
+    A start-marker funnel pins the laser's random initial heading, ``[``
+    becomes a ``v`` that detours the beam into a loop ring below the strip,
+    and the ring's test ``# v ) \\`` reflects a nonzero cell back into the
+    body and lets a zero cell fall through to the exit, so the loop runs
+    exactly while its cell is nonzero like Dimensional's.
+
+    LaserFuck prints the whole tape once when the laser dies, so the emitted
+    program negates every working cell at the end; a final single ``.`` is
+    kept (and touched) so the tape dump is exactly that one byte.  Everything
+    outside this core is rejected rather than mistranslated: the pointer
+    hierarchy (``$``, ``{``/``}``, ``?``/``!``), the numeric readers (``d``/
+    ``x``), bare or non-zero-dimension moves, moving below cell 0, loops that
+    drift the pointer, and any ``.`` other than a final single output.
+    Cells do not wrap at 8 bits in the translation (LaserFuck cells are
+    unbounded), so programs that rely on Dimensional's byte wrapping are out
+    of class.
+    """
+    ops = _laser_parse(program)
+    ptr, maxcell, out_cell = _laser_analyze(ops)
+    epi: list[str] = []
+    epi.extend(["<"] * ptr)
+    for cell in range(0, maxcell + 1):
+        if cell == out_cell:
+            epi.extend(["+", "-", ">"])
+            continue
+        epi.extend(["[", "-", "]", "-"])
+        epi.append(">")
+    g = _LaserGrid()
+    _laser_funnel(g)
+    _laser_emit(g, ops + epi, 0, 3)
+    return g.dump()
+
+
 TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("brainfuck", "ASCII art"): bf_to_ascii_art,
     ("ASCII art", "brainfuck"): ascii_art_to_bf,
@@ -798,4 +1073,5 @@ TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BIO", "brainfuck"): bio_to_bf,
     ("Decleq", "S*bleq"): decleq_to_sbleq,
     ("huf", "brainfuck"): huf_to_bf,
+    ("Dimensional", "LaserFuck"): dimensional_to_laserfuck,
 }
