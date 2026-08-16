@@ -112,37 +112,10 @@ def circlefuck(truth_table: str, n: int) -> str:
     ``-``s, then a decision tree branches on the cells from the last input
     down. Each leaf starts from a cleared cell, so it sets the result with
     ``+``s, prints it, and halts with ``@`` -- halting at the leaf means the
-    tree never needs to skip the sibling branch.
+    tree never needs to skip the sibling branch.  A boolean table is just
+    the byte-valued generator with ``48 + bit`` outputs.
     """
-
-    def emit(c: str) -> None:
-        prog.append(c)
-
-    prog: list[str] = []
-    for _ in range(n):
-        emit(",")
-        prog.extend("-" * 48)
-        emit(">")
-    prog.pop()  # the trailing ">" would leave the pointer past the last input
-
-    def build(k: int, row: int) -> None:
-        if k < 0:
-            prog.extend("+" * (48 + int(truth_table[row])))
-            emit(".")
-            emit("@")
-            return
-        emit("[")
-        emit("[-]")
-        if k:
-            emit("<")
-        build(k - 1, row + 2 ** (n - 1 - k))
-        emit("]")
-        if k:
-            emit("<")
-        build(k - 1, row)
-
-    build(n - 1, 0)
-    return "".join(prog)
+    return circlefuck_byte([48 + int(bit) for bit in truth_table], n)
 
 
 def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
