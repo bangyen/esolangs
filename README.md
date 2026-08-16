@@ -27,7 +27,8 @@ languages, each verified against its spec.  Most interpreters read the
 program file from the first command-line argument.
 
 Planned work is tracked in [`docs/roadmap.md`](docs/roadmap.md); documented
-limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md).
+limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md),
+with the full wall arguments in [`docs/walls.md`](docs/walls.md).
 
 ## Usage
 
