@@ -315,6 +315,11 @@ LANGUAGES: dict[str, Language] = {
         id="kak",
         interpreter="tape_based.kak",
     ),
+    "Lamfunc": Language(
+        "Lamfunc",
+        id="lamfunc",
+        interpreter="other.lamfunc",
+    ),
     "Keys": Language(
         "Keys",
         id="keys",

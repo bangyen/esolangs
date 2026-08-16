@@ -180,8 +180,20 @@ nothing), so substitution changes the token count and every jump target
 shifts — a fixed template cannot be correct for all instantiations.  Only
 Back avoids token-index jumps (its `+`-advance condition is positional), and
 its decision tree was built as a mirror tree on the 2D beam grid
-(`booleans/parameterized.py`), so the template class is now complete: BIO
-and Back built, these three and Eval blocked.
+(`booleans/parameterized.py`), so the template class is now complete: BIO,
+Back, NoComment, BF-PDA, and Lamfunc built, these three and Eval blocked.
+
+## Lamfunc (built; parameterized boolean generator)
+Lamfunc has no input command, so it cannot read truth-table bits — but it
+has the three capabilities a parameterized generator needs: output (`p`),
+constant construction (binary literals), and a value-testable branch (`i`,
+which returns its second argument when the first is nonzero else its third).
+Its generator in `booleans/parameterized.py` emits a decision tree of `i`
+over the embedded `{Xi}` constants with `p 0`/`p 1` leaves, and the
+`i`-branch is lazy so only the chosen subtree evaluates.  No text generator:
+`p` prints numbers as bits, not bytes, so it cannot emit arbitrary text.
+The interpreter documents its decisions for the spec's gaps (the value of a
+user function's body, and variable names as literal tokens for `vs`/`vg`).
 
 ## Eval (not viable for nested parameterized trees)
 Eval was surveyed as capable for input-by-substitution boolean generators

@@ -24,6 +24,7 @@ FUZZ = {
     "other.keys": "-_\\/",
     "register_based.minsky_swap": "+~*",
     "tape_based.movesum": "move sum0123456789",
+    "other.lamfunc": "p eq i cb lb fb vs vg F . x 0 1",
 }
 
 # ArrowQueue, back, Between, lightlang, and RAM0 are not fuzzed here: they
