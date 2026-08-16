@@ -4,7 +4,7 @@ import io
 from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.bitdeque import run
+from esolangs.interpreters.queue_based.bitdeque import run
 
 
 def run_and_capture(code: str) -> str:
