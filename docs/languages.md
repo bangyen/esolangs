@@ -50,7 +50,7 @@ into a template) rather than the program reading input.
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
 | Grapheme |  | yes |  |  |  |  |
-| Home Row | yes | yes |  |  | yes | hello |
+| Home Row | yes | yes |  | yes | yes | hello |
 | Jaune |  |  |  |  | yes |  |
 | Kak |  | yes | yes |  |  |  |
 | Keys |  | yes |  |  |  |  |
