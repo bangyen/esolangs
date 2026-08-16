@@ -248,9 +248,12 @@ but it is tied to the printer's cell layout, not reusable as a standalone
 carry.  So n = 1 is proven; n > 1 needs a wrapping-safe carry, which is a
 genuine brainfuck-algorithms construction rather than a quick extension.
 
-**Jaune realizes the capability:** its cells are unbounded integers and ``^``
-prints the current cell as a decimal number, so each operand fits in a single
-cell and the product accumulates without a digit-per-cell carry.  The
+**Jaune realizes the capability:** its cells do not wrap (the author's
+reference implementation stores each cell as a JavaScript number with plain
+``+=``/``-=``, no modulo or bitmask, and this interpreter uses Python
+``int``) and ``^`` prints the current cell as a decimal number, so each
+operand fits in a single cell and the product accumulates without a
+digit-per-cell carry.  The
 program (:func:`esolangs.tools.boolean.jaune_multiply`) runs each read on a
 dedicated always-one cell (the ``?``/``!`` jumps are conditional, so a cell
 permanently set to 1 gives the loop-back jump an unconditional trigger),
