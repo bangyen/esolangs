@@ -17,9 +17,9 @@ CAT = EXAMPLES / "cat"
 TRUTH = EXAMPLES / "truth-machine"
 
 # Languages with a boolean generator in esolangs.tools.booleans, mapped to
-# display names.  Back, BIO, and NoComment's generators are parameterized
-# templates (the harness substitutes the input bits) rather than input-reading
-# programs.
+# display names.  Back, BIO, NoComment, and BF-PDA's generators are
+# parameterized templates (the harness substitutes the input bits) rather
+# than input-reading programs.
 BOOLEAN = {
     "3x",
     "ABCDirection",
@@ -30,6 +30,7 @@ BOOLEAN = {
     "Back",
     "Basicfuck",
     "Between",
+    "BF-PDA",
     "brainfuck",
     "BFStack",
     "BIO",

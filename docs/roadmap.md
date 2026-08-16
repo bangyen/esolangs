@@ -197,7 +197,7 @@ bit):
 
 ### No-input languages: parameterized (assessed)
 
-The parameterized generators (back, bio, nocomment) prove a no-input
+The parameterized generators (back, bio, nocomment, bfpda) prove a no-input
 language can compute a truth table if it has output plus a value-testable
 branch (the bits are embedded as constants).  The no-input candidates that
 were assessed:
@@ -206,13 +206,17 @@ were assessed:
   non-prime start prints ``0``, a prime start prints the next prime (3, 5,
   7, ...), and no ``t`` prints nothing.  It can never print a boolean
   ``"1"``, so it cannot return a truth-table result.
-- **BF-PDA: research-level.**  ``.`` prints the top bit as a literal
-  ``'0'``/``'1'`` and ``[``/``]`` loop on the top bit, which looks ideal —
-  but a decision tree needs *two independent guard cells per bit* (the bit
-  and its complement, cleared separately so each ``]`` exits), and BF-PDA's
-  guards are all the same stack top.  The one-side loop cannot exclude the
-  zero-side after it (no forward jump), so a bit-consuming tree over the
-  stack is genuinely awkward.
+- **BF-PDA: the earlier wall was wrong; the generator shipped.**  ``.``
+  prints the top bit as a literal ``'0'``/``'1'`` and ``[``/``]`` loop on the
+  top bit, which looks ideal — the assessment claimed a decision tree needs
+  two independent guard cells per bit and that BF-PDA's guards are all the
+  same stack top, but the bit stack *provides* the independent guards: a
+  node pushes the complement then the bit, runs the one-side loop when the
+  bit is one, pops it, and runs the zero-side loop when the complement is
+  one.  Each subtree is stack-balanced (leaves push the answer bit, print it
+  with ``.``, and pop it), so every ``]`` re-tests its own guard.  A
+  parameterized ``bfpda`` generator ships and is verified for every table at
+  ``n <= 4``.
 - **Home Row: research-level.**  Its random-access cells give bf-style
   separate guards, but the ``l`` loops pair strictly *by order* (the first
   and second ``l`` form a loop, the third and fourth another; the RISC-V
@@ -224,7 +228,8 @@ were assessed:
   Factor, Kak, Keys, Minsky Swap, RAM0): impossible — nothing to return.
 
 So AddSubJump (the one target with a usable conditional) shipped, and the
-assessed no-input interpreters all hit structural walls.  **Assessed since:
+assessed no-input interpreters mostly hit structural walls — BF-PDA turned
+out to be a false wall and shipped too.  **Assessed since:
 123 and the last seven candidates.**  123's single 8-bit data byte and
 pointer that flips the bit as it moves (``1`` XORs the mask *and* advances,
 wrapping -3..0) mean even reading a byte and navigating to the write
@@ -252,12 +257,18 @@ research-level too.  The last seven:
   targets and no skip — so a decision tree must be threaded through
   restart-to-start loops, and the arithmetic (``-2``/``-3``/``*2``/negate/
   zero) is too weak to fold the bits arithmetically.
-- **Brainpocalypse: research-level.**  Its only control flow is ``-`` on a
+- **Brainpocalypse: ruled out.**  Its only control flow is ``-`` on a
   zero cell rewinding the instruction pointer to the program start, and
   every other character is a comment; it can print ``"0"``/``"1"`` (the
   tape prints on end) but any ``-`` that sees zero restarts the whole
-  prefix, so loops and decisions need the pointer routed so the ``-`` never
-  lands on a zero — a general n-bit tree is a genuine construction problem.
+  prefix.  The output constraint closes the case: a bare boolean means only
+  cell 0 may print (``right`` stays 0), leaving just cell 0 and the wrap
+  scratch cell 255; the ``-``-on-zero branch is the *only* conditional, and
+  rewinding re-runs the whole bit-baking prefix with the tape intact.  An
+  exhaustive search of templates confirms it: of the four one-input
+  functions, only identity is expressible (bake the bit into cell 0 and move
+  away) — const-0, const-1, and NOT all need to branch on cell 0's value,
+  which the ``-``-rewind destroys.  A boolean generator is not feasible.
 - **ABCDirection: the one remaining genuine opportunity.**  It has real
   input (``D`` up reads a Boolfuck bit), output (``C`` down emits one), and
   value-tested routing (``C`` up turns on a one, ``D`` down dispatches on
