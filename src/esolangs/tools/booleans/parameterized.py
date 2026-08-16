@@ -25,7 +25,7 @@ from typing import TypeAlias
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
 
-__all__ = ["back", "bio", "instantiate", "nocomment"]
+__all__ = ["back", "bfpda", "bio", "instantiate", "nocomment"]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
 # ("node", node_id, level, zero_subtree, one_subtree).
@@ -310,3 +310,64 @@ def nocomment(truth_table: str, n: int) -> str:
     setup_move(index)
 
     return "".join(setup + commands)
+
+
+def bfpda(truth_table: str, n: int) -> str:
+    """Build a BF-PDA template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    BF-PDA has no input command, so this is a parameterized generator: the
+    template's ``{Xi}``/``{Ci}`` placeholders become a push of the bit and of
+    its complement onto the bit stack, and the harness instantiates one
+    program per input combination.
+
+    The tree uses the stack as independent guard storage, which the earlier
+    assessment missed: a node pushes the complement then the bit (so the bit
+    is on top), runs the one-side loop ``[ sub1 @ ]`` when the bit is one,
+    pops the bit, runs the zero-side loop ``[ sub0 @ ]`` when the complement
+    is one, and pops the complement.  Each subtree is stack-balanced (it
+    pushes and pops its own guards, and a leaf pushes the answer bit, prints
+    it with ``.``, and pops it), so the outer ``]`` always re-tests its own
+    guard.  The one loop clears its guard with ``@`` before exiting, so the
+    other side's guard is untouched and the if/else separates cleanly.
+    """
+    _validate_truth_table(truth_table, n)
+
+    def set_bit(_i: int, bit: int) -> str:
+        return "<@" if bit else "<"  # pragma: no cover - bfpda returns a template
+
+    def set_comp(_i: int, bit: int) -> str:
+        return "<@" if not bit else "<"  # pragma: no cover - bfpda returns a template
+
+    def leaf(value: str) -> str:
+        # push the answer bit, print it, pop it (balanced)
+        return ("<@" if value == "1" else "<") + ". > "
+
+    def node(i: int, rows: list[int]) -> str:
+        results = {truth_table[r] for r in rows}
+        if len(results) == 1:
+            return leaf(results.pop())
+        zero = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 0]
+        one = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 1]
+        sub0 = node(i + 1, zero)
+        sub1 = node(i + 1, one)
+        return (
+            "{C"
+            + str(i)
+            + "}"
+            + "{X"
+            + str(i)
+            + "}"
+            + "[ "
+            + sub1
+            + " @ ]"
+            + " > "
+            + "[ "
+            + sub0
+            + " @ ]"
+            + " > "
+        )
+
+    return node(0, list(range(2**n)))

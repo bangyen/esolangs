@@ -26,7 +26,7 @@ into a template) rather than the program reading input.
 | AddSubJump | yes | yes |  | yes |  | hello |
 | Albabet | yes | yes |  |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |
-| BF-PDA |  | yes |  |  | yes |  |
+| BF-PDA |  | yes |  | yes | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
 | Back |  | yes |  | yes |  |  |
