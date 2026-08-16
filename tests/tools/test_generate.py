@@ -9,28 +9,28 @@ import pytest
 
 import esolangs.tools.generate as gen
 from esolangs.interpreters.grid_based.clockwise import run as clockwise_run
+from esolangs.interpreters.grid_based.dig import run as dig_run
+from esolangs.interpreters.grid_based.dotlang import run as dotlang_run
+from esolangs.interpreters.grid_based.wii2d import run as wii2d_run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.albabet import run as albabet_run
-from esolangs.interpreters.other.between import run as between_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.forbin import run as forbin_run
-from esolangs.interpreters.other.myscript import run as myscript_run
-from esolangs.interpreters.other.nevermind import run as nevermind_run
-from esolangs.interpreters.other.three_x import run as three_x_run
 from esolangs.interpreters.other.ztoalc_l import run as ztoalc_run
+from esolangs.interpreters.register_based.albabet import run as albabet_run
+from esolangs.interpreters.register_based.between import run as between_run
 from esolangs.interpreters.register_based.bio import run as bio_run
-from esolangs.interpreters.register_based.dig import run as dig_run
-from esolangs.interpreters.register_based.dotlang import run as dotlang_run
 from esolangs.interpreters.register_based.huf import run as huf_run
+from esolangs.interpreters.register_based.myscript import run as myscript_run
+from esolangs.interpreters.register_based.nevermind import run as nevermind_run
 from esolangs.interpreters.register_based.polynomial import run as polynomial_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.register_based.sophie import run as sophie_run
-from esolangs.interpreters.register_based.wii2d import run as wii2d_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.forth import run as forth_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
 from esolangs.interpreters.stack_based.the_temporary_stack import run as temporary_run
+from esolangs.interpreters.stack_based.three_x import run as three_x_run
 from esolangs.interpreters.stack_based.unsquare import run as unsquare_run
 from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
@@ -61,7 +61,9 @@ _run_pct = importlib.import_module(
 ).run
 _run_2dfish = importlib.import_module("esolangs.interpreters.grid_based.two_d_fish").run
 _run_painfuck = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
-_run_bit_tilde = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
+_run_bit_tilde = importlib.import_module(
+    "esolangs.interpreters.tape_based.bit_tilde"
+).run
 
 
 class TestGeneratorRoundTrips:

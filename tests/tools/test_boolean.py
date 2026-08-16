@@ -11,7 +11,7 @@ from esolangs.tools import boolean
 
 
 def run_dig(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.dig import run
+    from esolangs.interpreters.grid_based.dig import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -75,7 +75,7 @@ def run_rotfuck(program: str, inputs: list[str]) -> str:
 
 
 def run_home_row(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.home_row import run
+    from esolangs.interpreters.tape_based.home_row import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -84,7 +84,7 @@ def run_home_row(program: str, inputs: list[str]) -> str:
 
 
 def run_bit_tilde(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.bit_tilde import run
+    from esolangs.interpreters.tape_based.bit_tilde import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -529,7 +529,7 @@ def run_sophie(program: str, inputs: list[str]) -> str:
 
 
 def run_between(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.between import run
+    from esolangs.interpreters.register_based.between import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -1200,7 +1200,7 @@ def run_brainif(program: str, inputs: list[str]) -> str:
 
 
 def run_nevermind(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.nevermind import run
+    from esolangs.interpreters.register_based.nevermind import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -1590,7 +1590,7 @@ class TestParameterizedBfpda:
 
     def run_bfpda(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.tape_based.bf_pda import run
+        from esolangs.interpreters.stack_based.bf_pda import run
 
         io_ = ScriptedIO("")
         run(prog, io_)
@@ -2064,7 +2064,7 @@ class TestGeneratorEdgePaths:
 
 
 def run_myscript(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.myscript import run
+    from esolangs.interpreters.register_based.myscript import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):

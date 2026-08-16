@@ -137,7 +137,7 @@ LANGUAGES: dict[str, Language] = {
     "Albabet": Language(
         "Albabet",
         _generate.albabet,
-        "other.albabet",
+        "register_based.albabet",
         id="albabet",
     ),
     "ASCII art": Language(
@@ -161,7 +161,7 @@ LANGUAGES: dict[str, Language] = {
     "BF-PDA": Language(
         "BF-PDA",
         id="bf_pda",
-        interpreter="tape_based.bf_pda",
+        interpreter="stack_based.bf_pda",
     ),
     "Basicfuck": Language(
         "Basicfuck",
@@ -172,7 +172,7 @@ LANGUAGES: dict[str, Language] = {
     "Between": Language(
         "Between",
         _generate.between,
-        "other.between",
+        "register_based.between",
         id="between",
         split=True,
     ),
@@ -197,7 +197,7 @@ LANGUAGES: dict[str, Language] = {
     "bit~": Language(
         "bit~",
         _generate.bit_tilde,
-        "other.bit_tilde",
+        "tape_based.bit_tilde",
         id="bit_tilde",
     ),
     "Bitdeque": Language(
@@ -252,7 +252,7 @@ LANGUAGES: dict[str, Language] = {
     "Dig": Language(
         "Dig",
         _generate.dig,
-        "register_based.dig",
+        "grid_based.dig",
         id="dig",
         split=True,
     ),
@@ -265,14 +265,14 @@ LANGUAGES: dict[str, Language] = {
     "Dotlang": Language(
         "Dotlang",
         _generate.dotlang,
-        "register_based.dotlang",
+        "grid_based.dotlang",
         id="dotlang",
         split=True,
     ),
     "DSDLAI": Language(
         "DSDLAI",
         id="dsdlai",
-        interpreter="register_based.dsdlai",
+        interpreter="grid_based.dsdlai",
         split=True,
     ),
     "Eval": Language(
@@ -308,12 +308,12 @@ LANGUAGES: dict[str, Language] = {
     "Grapheme": Language(
         "Grapheme",
         id="grapheme",
-        interpreter="other.grapheme",
+        interpreter="stack_based.grapheme",
     ),
     "Home Row": Language(
         "Home Row",
         _generate.home_row,
-        "other.home_row",
+        "tape_based.home_row",
         id="home_row",
     ),
     "huf": Language(
@@ -377,13 +377,13 @@ LANGUAGES: dict[str, Language] = {
     "MyScript": Language(
         "MyScript",
         _generate.myscript,
-        "other.myscript",
+        "register_based.myscript",
         id="myscript",
     ),
     "Nevermind": Language(
         "Nevermind",
         _generate.nevermind,
-        "other.nevermind",
+        "register_based.nevermind",
         id="nevermind",
         split=True,
     ),
@@ -396,7 +396,7 @@ LANGUAGES: dict[str, Language] = {
     "Number Seventy-Four": Language(
         "Number Seventy-Four",
         id="number_seventy_four",
-        interpreter="other.number_seventy_four",
+        interpreter="tape_based.number_seventy_four",
     ),
     "Painfuck": Language(
         "Painfuck",
@@ -472,7 +472,7 @@ LANGUAGES: dict[str, Language] = {
     "3x": Language(
         "3x",
         _generate.three_x,
-        "other.three_x",
+        "stack_based.three_x",
         id="three_x",
     ),
     "Taglate": Language(
@@ -491,7 +491,7 @@ LANGUAGES: dict[str, Language] = {
     "WII2D": Language(
         "WII2D",
         _generate.wii2d,
-        "register_based.wii2d",
+        "grid_based.wii2d",
         id="wii2d",
         split=True,
     ),

@@ -13,7 +13,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 
-run = importlib.import_module("esolangs.interpreters.tape_based.bf_pda").run
+run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
 
 
 def run_program(code: str) -> str:

@@ -4,7 +4,7 @@ import io
 from contextlib import redirect_stdout
 
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.other.albabet import run
+from esolangs.interpreters.register_based.albabet import run
 
 
 def run_scripted(code: str) -> str:

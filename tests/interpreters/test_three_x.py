@@ -4,7 +4,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.three_x import run
+from esolangs.interpreters.stack_based.three_x import run
 
 
 def run_program(code: str, stdin: str = "") -> str:

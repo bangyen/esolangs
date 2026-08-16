@@ -6,7 +6,7 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.interpreters.other.bit_tilde import run
+from esolangs.interpreters.tape_based.bit_tilde import run
 from esolangs.tools import generate as gen
 
 
