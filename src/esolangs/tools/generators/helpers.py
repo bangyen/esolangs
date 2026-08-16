@@ -11,6 +11,26 @@ def _ilog(base: int, n: int) -> int:
     return k
 
 
+def _factor_triple(value: int) -> tuple[int, int, int]:
+    """Return ``(a, b, r)`` with ``value == a * b + r`` and minimal ``a + b + r``.
+
+    The generators use a multiplication loop to build a byte value: a run of
+    ``a`` then a run of ``b`` multiplies (``a * b``), and a final run of
+    ``r`` tops the product up.  The ``a`` that minimizes ``a + b + r`` is
+    found by scanning ``a`` up to ``sqrt(value)``, so the program is
+    O(sqrt) rather than O(value).
+    """
+    best = min(
+        (
+            (a + b + r, a, b, r)
+            for a in range(1, int(value**0.5) + 2)
+            for b, r in (divmod(value, a),)
+        ),
+    )
+    _, a, b, r = best
+    return a, b, r
+
+
 def _require_bytes(text: str, name: str) -> None:
     """Reject any character outside the 0-255 byte range.
 

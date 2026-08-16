@@ -61,6 +61,10 @@ STEPS = [
         "interpreter vs native differential corpora",
         [*PY, "scripts/verify_differential.py"],
     ),
+    (
+        "duplicate-code check",
+        [*PY, "scripts/check_duplicates.py"],
+    ),
 ]
 
 
