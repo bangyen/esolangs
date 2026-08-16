@@ -1384,3 +1384,41 @@ def rotfuck(truth_table: str, n: int) -> str:
         )
         for i, cmd in enumerate(eff)
     )
+
+
+def jaune(truth_table: str, n: int) -> str:
+    """Build a Jaune program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Jaune reads each input bit with ``v`` (a digit character, ``ord-48``) into
+    a fresh cell and routes a decision tree with ``?``/``!`` jumps: ``v`` then
+    ``N?`` jumps to label ``N`` when the cell is nonzero, else falls through,
+    and each leaf builds 48 or 49 in a fresh cell and prints it with ``^``
+    before jumping to a shared end label.  A subtree whose table slice is a
+    constant collapses to a single leaf.
+    """
+    _validate_truth_table(truth_table, n)
+    label = [1]
+
+    def fresh() -> int:
+        label[0] += 1
+        return label[0]
+
+    def leaf(value: str, end: int) -> str:
+        # move to a fresh cell, build 0 or 1, print, then force nonzero and jump
+        body = ">+^" if value == "1" else ">^"
+        return body + f"+{end}?"
+
+    def node(level: int, lo: int, hi: int, end: int) -> str:
+        if level == n or len(set(truth_table[lo:hi])) == 1:
+            return leaf(truth_table[lo], end)
+        then_lbl = fresh()
+        mid = (lo + hi) // 2
+        then = node(level + 1, mid, hi, end)
+        else_ = node(level + 1, lo, mid, end)
+        return f"v{then_lbl}?{else_}{then_lbl}:{then}"
+
+    end = fresh()
+    return node(0, 0, 2**n, end) + f"{end}:."

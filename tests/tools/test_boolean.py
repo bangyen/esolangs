@@ -110,6 +110,15 @@ def run_minifuck(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_jaune(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.jaune import run
+
+    io = ScriptedIO("\n".join(inputs) + "\n")
+    run(program, io)
+    return io.getvalue()
+
+
 def run_123(program: str, inputs: list[str]) -> str:
     import importlib
 
@@ -1006,6 +1015,45 @@ class TestMinifuck:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.minifuck("02", 1)
+
+
+class TestJaune:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("00", 1),  # constant zero
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.jaune(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_jaune(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.jaune(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_jaune(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_bad_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="4 entries"):
+            boolean.jaune("011", 2)
 
 
 class TestBasicfuck:
