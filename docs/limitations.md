@@ -377,8 +377,8 @@ roadmap.  The viable candidates are in `docs/roadmap.md`.
 ## User:PythonshellDebugwindow candidates that fell through
 Assessments of the unimplemented languages on PythonshellDebugwindow's user
 page that did not make the roadmap (the actual Category:Unimplemented gaps —
-MyScript, Procedure, Lamfunc, Point Break, State and Main, Your Time Is Up,
-COD — are in `docs/roadmap.md`).
+Procedure, Lamfunc, Point Break, State and Main, Your Time Is Up, COD — are
+in `docs/roadmap.md`).
 
 - **N Refine**: probabilistic self-rewriting OISC with no I/O; also already
   implemented per its wiki page, so it is not a gap either way.
@@ -524,3 +524,16 @@ rewrite:
 - Verified for every table at ``n <= 4`` (4 + 16 + 256 + 65536 functions);
   the programs are tiny and terminate immediately, so exhaustive checks stay
   cheap.
+
+## Lean proofs (kept set)
+The Lean project keeps only the proofs of facts the tests cannot establish:
+SLOW ACV MAMMALIAN's generator search totality and Factor's Dirichlet-based
+prime-search totality plus the encode/decode round-trip
+(`extra/lean/esolangs/Esolangs.lean`, `FactorCorrect.lean`), and the
+self-contained brainfuck-minterm boolean proof (`BfMintermCorrect.lean`).
+Every other proof (the ported interpreters, their equivalence proofs, and
+the generator/boolean correctness proofs) was dropped as redundant with the
+round-trip test suite.  The one open theorem, if more Lean work is ever
+wanted, is the Minifuck boolean reachability characterization above: it is
+a language-power statement (exactly the four one-input functions plus the
+eight 0-preserving two-input tables), not a generator-correctness proof.
