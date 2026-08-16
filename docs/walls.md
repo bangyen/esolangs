@@ -226,12 +226,19 @@ A brainfuck prototype was built and verified: read+normalize each digit
 itchyny 8-bit decimal printer.  **n = 1 works exhaustively (all 100
 single-digit pairs 0-9 × 0-9).**
 
-**n > 1 is blocked for brainfuck** by the interpreter's documented 8-bit
-wrapping cells (mod 256): a 2-digit product exceeds 255 and wraps, so the
-program cannot represent 12 × 34 = 408, let alone 99 × 99 = 9801.  The
-"any-size cell" decimal printer also assumes non-wrapping cells, so it fails
-on our interpreter past 255.  A language with *unbounded* cells (e.g. the
-register/OISC languages with arbitrary integers) could lift this, but no such
-language currently has the decimal-I/O + multiply combination the class
-needs, so the class is recorded as designed-and-partially-proven rather than
-built out across the registry.
+For n > 1 the right construction is grade-school long multiplication:
+allocate 2n cells for the 2n operand digits (each 0-9, fitting a byte) and
+carry over between result cells, so no single cell ever holds the full
+product.  This avoids the single-cell overflow that blocks accumulating the
+product in one cell.  But the per-digit *carry* needs a "while >= 10"
+operation, and with the interpreter's documented 8-bit wrapping cells (mod
+256) the standard divmod/carry algorithms assume non-wrapping cells and do
+not transfer directly — the itchyny decimal printer embeds a working divmod,
+but it is tied to the printer's cell layout, not reusable as a standalone
+carry.  So n = 1 is proven; n > 1 needs a wrapping-safe carry, which is a
+genuine brainfuck-algorithms construction rather than a quick extension.  A
+language with *unbounded* cells (e.g. a register/OISC language with
+arbitrary integers) would lift this cleanly, but no such language currently
+has the decimal-I/O + multiply combination the class needs, so the class is
+recorded as designed-and-partially-proven rather than built across the
+registry.
