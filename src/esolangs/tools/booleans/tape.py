@@ -1436,10 +1436,12 @@ def jaune_multiply() -> str:
     input, not of the function (unlike a boolean truth table, where ``n``
     selects a different function space).
 
-    Jaune is the language the multiply capability needs: cells are
-    *unbounded* integers (no 8-bit wrapping), so each operand fits in one
-    cell with no digit-per-cell carry, and ``^`` prints the current cell as a
-    decimal number directly.  Each read loop runs on a dedicated always-one
+    Jaune is the language the multiply capability needs: its cells do not
+    wrap (the author's JauneJS stores each cell as a JavaScript number with
+    plain ``+=``/``-=``, and this interpreter uses Python ``int``), so each
+    operand fits in a single cell with no digit-per-cell carry, and ``^``
+    prints the current cell as a decimal number directly.  Each read loop
+    runs on a dedicated always-one
     cell: the ``?``/``!`` jumps are conditional, so a cell permanently set to
     1 gives the loop-back jump an unconditional trigger (the sentinel check
     is the only exit).  A digit is folded into the operand with ``v+`` (read
