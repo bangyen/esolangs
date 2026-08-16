@@ -130,6 +130,11 @@ _README_HEADINGS = [
         "Languages that move a pointer or beam across a 2D grid.",
     ),
     (
+        "queue_based",
+        "Queue-based Languages",
+        "Languages whose primary data structure is a queue or deque.",
+    ),
+    (
         "other",
         "Other Languages",
         "Languages that don't fit into the above categories.",

@@ -31,7 +31,8 @@ _STATE_MODELS = {
     "tape_based": "tape",
     "stack_based": "stack",
     "grid_based": "grid",
-    "other": "grid",
+    "queue_based": "queue",
+    "other": "other",
 }
 
 
