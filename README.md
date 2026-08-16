@@ -83,7 +83,7 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 68 languages</summary>
+<summary>Show all 67 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -180,7 +180,6 @@ Languages that don't fit into the above categories.
 - [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/two_bits_one_byte.py))
 - [Container](https://esolangs.org/wiki/Container) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/container.py))
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/forbin.py))
-- [Keys](https://esolangs.org/wiki/Keys) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/keys.py))
 - [Lamfunc](https://esolangs.org/wiki/Lamfunc) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/lamfunc.py))
 - [Trash](https://esolangs.org/wiki/Trash) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/trash.py))
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
