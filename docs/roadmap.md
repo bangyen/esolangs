@@ -15,59 +15,34 @@ Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast,
 and the languages already implemented elsewhere) is in the commit history and
 `docs/limitations.md`.
 
-### Procedure (medium priority)
-A Turing-complete pseudonatural English language with `Set the variable
-'x' to ...`, `Connect to STDOUT`/`Write ... to the connection`, functions,
-repeat-gotos, and if-then-otherwise conditionals.  Working Hello World, cat,
-and truth-machine examples given.  The English-syntax parser is a heavier
-lift.
+| Language | Priority | Why it is on the table |
+| --- | --- | --- |
+| Procedure | medium | Turing-complete pseudonatural English; deferred on a spec gap (see below). |
+| Point Break | low | Four commands simulating Minsky machines; no output at all. |
+| State and Main | low | `main` + numbered states; truth-machine is explicitly "No output". |
+| Your Time Is Up | low | Binary string-rewriting; random rule choice, no I/O. |
+| COD | low | 2D concurrency-heavy cods; random branches; has I/O. |
+| Suptiftam | low | 2D tape-tapes; complete spec but undefined behaviors. |
+| Crement | low | Self-modifying ADDRESS/DATA/JUMP; no I/O. |
 
-Deferred on a spec gap: the only arithmetic operator the wiki defines is
-`the sum of ...` (in the ``addthree`` example); there is no documented
-subtraction, multiplication, or division.  A faithful interpreter cannot
-implement the comparisons and GOTOs that make it Turing-complete without
-inventing arithmetic semantics the spec never gives, and the English parser
-is heavy enough that the arithmetic question should be settled before that
-work starts.  Revisit if the wiki (or its successor Pure) defines the rest
-of the operator set.
+**Procedure — deferred on a spec gap.**  The only arithmetic operator the
+wiki defines is `the sum of ...` (in the ``addthree`` example); there is no
+documented subtraction, multiplication, or division.  A faithful interpreter
+cannot implement the comparisons and GOTOs that make it Turing-complete
+without inventing arithmetic semantics the spec never gives, and the English
+parser is heavy enough that the arithmetic question should be settled before
+that work starts.  Revisit if the wiki (or its successor Pure) defines the
+rest of the operator set.
 
-### Point Break (low priority)
-A Turing-complete language with four commands (`LET`, `POINT`, `BREAK`,
-`END`) that simulates Minsky machines; `?` reads an integer in a `LET`.  It
-has no output at all, so like Crement and A Painter Ant it can only be a
-self-contained interpreter without a generator.
+**Point Break, State and Main, Your Time Is Up, Crement — no-output tier.**
+None have I/O, so like Crement and A Painter Ant they can only be
+self-contained interpreters without a generator; they would inherit the
+no-output removal policy below.
 
-### State and Main (low priority)
-A language of `main` and numbered `state N` definitions whose only
-statements are `(state N!)` changes and `(return)` — the truth-machine
-example explicitly has "No output".  Like Point Break it can only be a
-self-contained interpreter.
-
-### Your Time Is Up (low priority)
-A Turing-complete string-rewriting language in binary (`(1+0)(1+0)` rule
-groups followed by the initial datastring), where execution picks a matching
-rule at random.  The output is therefore non-deterministic, so the
-interpreter would be faithful but its behavior only testable mechanically;
-it also has no I/O, so it is a self-contained interpreter.
-
-### COD (low priority)
-A two-dimensional concurrency-heavy language of cods swimming in waves
-enclosed ponds, where each cod carries an unbounded integer and `+`/`-`
-duplicate or remove it.  Branches resolve to random directions, so like
-LaserFuck the output is non-deterministic but the interpreter can be
-faithful to the spec.  It has I/O (`...` input, `---` output).
-
-### Suptiftam (low priority)
-Two-dimensional tape-tapes of bytes or integers, permissive function
-definitions, includes, and I/O via the `read`/`term` tapes.  The spec is
-complete but has undefined behaviors and its examples are untested, so it is
-a heavier, riskier implementation.
-
-### Crement (low priority)
-A self-modifying language with ADDRESS/DATA/JUMP opcodes and a polarity
-field, fully specified including a Minsky-machine reduction.  It has no
-I/O, so like A Painter Ant it can only be a self-contained interpreter
-without a generator.
+**COD, Suptiftam — heavier, riskier.**  COD's random branches (like
+LaserFuck) make output non-deterministic but the interpreter can still be
+faithful to the spec.  Suptiftam's spec is complete but has undefined
+behaviors and untested examples.
 
 ## Transpilers
 
@@ -94,27 +69,35 @@ invented state dump (the tape, registers, deque, or grid printed at halt to
 make the run testable) — not a language output command.  They cannot
 generate text, compute a boolean, be differentially verified, or step
 through input, so by the admission criteria' "usable file-based I/O" test
-they are the weakest additions.  The eight: ArrowQueue (no output at all),
-A Painter Ant, Brainpocalypse, Kak, Minsky Swap, RAM0, Stun Step, Bitdeque
-(each prints only its final state).
+they are the weakest additions.
 
-Candidate to remove, with the rationale recorded, once decided.  The
-roadmap's planned no-output candidates (Point Break, State and Main,
-Crement, Your Time Is Up) would be dropped under the same policy.  The
-I/O-capable interpreter-only languages (2 Bits 1 Byte, Number Seventy-Four,
-Trash, Grapheme, Movesum, Lightlang) are not in this tier.
+| Language | Output |
+| --- | --- |
+| ArrowQueue | None at all; the IP walks the grid and halts. |
+| A Painter Ant | Visited-grid bounding box (`#`/`.` raster). |
+| Brainpocalypse | Final tape dump. |
+| Kak | Final tape dump. |
+| Minsky Swap | Final register dump. |
+| RAM0 | Final state dump. |
+| Stun Step | Final reached-cells dump. |
+| Bitdeque | Final register/deque dump. |
 
-Note that **none of the fourteen interpreter-only languages in the tier
-below has a generator of either kind** — every one lacks both a text
-generator and a boolean generator (the boolean-generator angle does not
-rescue any of them; each hits a documented wall in `docs/walls.md`).  Jaune
-is the one interpreter-only language *not* in this tier: it now has a
-boolean generator (an input-reading decision tree, added when its Python
-interpreter was built).  So the generator-story criterion is failed by the
-entire interpreter-only set except Jaune, and the distinction below is only
-how observable their non-generator output is.
+**Candidate to remove, once decided.**  The roadmap's planned no-output
+candidates (Point Break, State and Main, Crement, Your Time Is Up) would be
+dropped under the same policy.  The I/O-capable interpreter-only languages
+(2 Bits 1 Byte, Number Seventy-Four, Trash, Grapheme, Movesum, Lightlang)
+are not in this tier.
 
-Against removal, weighed but not decisive: most of these are the *only*
+**Generator story is uniformly absent.**  None of the fourteen
+interpreter-only languages has a generator of either kind — every one lacks
+both a text and a boolean generator (each hits a documented wall in
+`docs/walls.md`).  Jaune is the one interpreter-only language *not* in this
+tier: it has a boolean generator (an input-reading decision tree, added when
+its Python interpreter was built).  So the generator-story criterion is
+failed by the entire interpreter-only set except Jaune, and the distinction
+below is only how observable their non-generator output is.
+
+**Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
 admission criteria treat as a genuine gap.  Of the eight, only Brainpocalypse
@@ -131,61 +114,57 @@ The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
 against the Python ones by `scripts/verify_differential.py`) earn their keep
 only where they are *broad* and *independent*: the reference is written from
 the spec rather than ported from the Python, and the differential can fuzz
-hundreds of random programs rather than a hand-picked handful.  Having a
-text or boolean generator is necessary but not sufficient — what matters is
-whether the generator's output is *complex enough to fuzz meaningfully*: a
-generator that emits branching, loops, or 2D routing produces programs a
-random differential can exercise beyond what the fixed round-trip corpus
-covers, while a straight-line generator (a per-character program mirroring
-the text) is already fully verified by the round-trip test, so a second
-implementation would find nothing new.  The fuzzed cross-checks (NoComment,
-Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck)
-have complex-output generators and stay; the straight-line-generator
-languages (6-5, Albabet, Decleq, Dimensional, huf, Qoibl, and the rest)
-correctly have none.
+hundreds of random programs rather than a hand-picked handful.
 
-The toolchain choice follows the language's model: RISC-V assembly fits the
-machine-model languages (a tape/pointer/instruction-counter maps 1:1 onto
-cells, registers, and jumps), and Rust fits the semantic ones (stacks, typed
-registers, bit manipulation, 2D grids, where hand-written assembly would be
-unreadable).  The current split:
+**The fuzzability test.**  Having a text or boolean generator is necessary
+but not sufficient — what matters is whether the generator's output is
+*complex enough to fuzz meaningfully*: a generator that emits branching,
+loops, or 2D routing produces programs a random differential can exercise
+beyond what the fixed round-trip corpus covers, while a straight-line
+generator (a per-character program mirroring the text) is already fully
+verified by the round-trip test, so a second implementation would find
+nothing new.
 
-- **RISC-V assembly** — NoComment (tape + stack with a byte-indexed skip).
-- **Rust** — Forþ, Basicfuck, Unsquare, 3x, 2dFish, Painfuck, LaserFuck
-  (stacks, typed registers, 2D grids), plus %^2^-1 and bit~ whose corpus
-  cross-checks remain but whose text-generator fuzzes were dropped as
-  straight-line (their generators emit a per-byte encoding, so a random
-  differential fuzz adds nothing the round-trip corpus does not).
+- **Stay (complex-output generators, fuzzed):** NoComment, Forþ, Basicfuck,
+  Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck.
+- **No cross-check (straight-line generators):** 6-5, Albabet, Decleq,
+  Dimensional, huf, Qoibl, and the rest.
+
+**Toolchain follows the model.**  RISC-V assembly fits the machine-model
+languages (a tape/pointer/instruction-counter maps 1:1 onto cells,
+registers, and jumps); Rust fits the semantic ones (stacks, typed registers,
+bit manipulation, 2D grids, where hand-written assembly would be unreadable).
+
+| Toolchain | Languages |
+| --- | --- |
+| RISC-V assembly | NoComment (tape + stack with a byte-indexed skip). |
+| Rust | Forþ, Basicfuck, Unsquare, 3x, 2dFish, Painfuck, LaserFuck (stacks, typed registers, 2D grids); %^2^-1 and bit~ keep corpus cross-checks but lost their straight-line text-generator fuzzes. |
 
 **Worth adding (audited).**  These languages have complex-output generators
 (arithmetic encodings, branch-and-goto OISCs, runtime state carried across
 characters) that a random differential fuzz would exercise beyond the
-round-trip corpus, so a cross-check would add real verification.  In target
-language:
+round-trip corpus, so a cross-check would add real verification.
 
-- **RISC-V assembly:** 3D Brainfuck (tape + loops), Factor (a giant integer
-  whose prime factors re-encode a looped brainfuck program).
-- **Rust:** AddSubJump (branch-and-goto OISC), BIO (register counter loops),
-  Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots
-  encoding a command stream), Clockwise (2D ring routing), Dig (2D mole
-  grid with runtime segment counts), Container (threshold-rule firing),
-  ZTOALC L (Collatz-trajectory-driven execution).
+| Toolchain | Languages |
+| --- | --- |
+| RISC-V assembly | 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program). |
+| Rust | AddSubJump (branch-and-goto OISC), BIO (register counter loops), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution). |
 
-**Judgment call (borderline — the generator is stateful or looped, but its
-output is a fixed pattern the round-trip already covers; a cross-check
-would add little).**  brainfuck, BFStack, BrainIf, Minifuck, Modulous, SLOW
+**Judgment call (borderline).**  The generator is stateful or looped, but
+its output is a fixed pattern the round-trip already covers, so a cross-check
+would add little: brainfuck, BFStack, BrainIf, Minifuck, Modulous, SLOW
 ACV MAMMALIAN, WII2D, Home Row.  These stay without a cross-check unless a
 specific bug motivates one.
 
-**Removed:** the seven cross-checks that did not meet the criterion — Kak,
-Trash, Number Seventy-Four (Rust) and Brainpocalypse, Stun Step, 2 Bits 1
-Byte (RISC-V) had no generator at all, so their differentials were a
-hand-written 4-6 program corpus each, and the references were ports of (or
-ported to) the Python, so agreement was not independent evidence.  123 had
-a generator but its RISC-V cross-check was corpus-only (4 generated texts +
-2 hand-written jumps, no fuzz) and verified programs the round-trip test
-already covers.  All seven added little over the Python unit tests at real
-toolchain cost (cargo + RISC-V cross-compiler + unicorn in CI); the
+**Removed (did not meet the criterion).**  The seven cross-checks that were
+removed — Kak, Trash, Number Seventy-Four (Rust) and Brainpocalypse, Stun
+Step, 2 Bits 1 Byte (RISC-V) had no generator at all, so their differentials
+were a hand-written 4-6 program corpus each, and the references were ports
+of (or ported to) the Python, so agreement was not independent evidence.
+123 had a generator but its RISC-V cross-check was corpus-only (4 generated
+texts + 2 hand-written jumps, no fuzz) and verified programs the round-trip
+test already covers.  All seven added little over the Python unit tests at
+real toolchain cost (cargo + RISC-V cross-compiler + unicorn in CI); the
 *languages* all stayed (they have generators or pass the admission criteria
 as distinct interpreters); only the redundant cross-checks went.
 
