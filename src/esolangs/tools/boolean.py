@@ -31,6 +31,7 @@ from esolangs.tools.booleans.parameterized import (
     bfpda,
     bio,
     instantiate,
+    lamfunc,
     nocomment,
 )
 from esolangs.tools.booleans.register import (
@@ -88,6 +89,7 @@ __all__ = [
     "forth",
     "home_row",
     "instantiate",
+    "lamfunc",
     "laserfuck",
     "minifuck",
     "modulous",
@@ -138,6 +140,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "Forbin",
         "Forþ",
         "Home Row",
+        "Lamfunc",
         "LaserFuck",
         "Minifuck",
         "Modulous",

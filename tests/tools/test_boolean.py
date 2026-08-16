@@ -1593,6 +1593,86 @@ class TestParameterizedNoComment:
             parameterized.nocomment("011", 2)
 
 
+class TestParameterizedLamfunc:
+    """Input-by-substitution boolean generator for the no-input language Lamfunc."""
+
+    def run_lamfunc(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import run
+
+        io = ScriptedIO()
+        run(prog, io)
+        return io.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: str(b),
+            lambda _i, b: str(b),
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.lamfunc(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_lamfunc(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.booleans import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.lamfunc(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_lamfunc(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.lamfunc("0110", 2)
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_constant_table_is_a_leaf(self) -> None:
+        """A constant table emits a single p with no branching."""
+        from esolangs.tools.booleans import parameterized
+
+        assert parameterized.lamfunc("0000", 2) == "p 0"
+        assert parameterized.lamfunc("1111", 2) == "p 1"
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="4 entries"):
+            parameterized.lamfunc("011", 2)
+
+
 class TestParameterizedBfpda:
     """Input-by-substitution boolean generator for the no-input language BF-PDA."""
 

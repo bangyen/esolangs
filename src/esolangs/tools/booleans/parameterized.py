@@ -25,7 +25,7 @@ from typing import TypeAlias
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
 
-__all__ = ["back", "bfpda", "bio", "instantiate", "nocomment"]
+__all__ = ["back", "bfpda", "bio", "instantiate", "lamfunc", "nocomment"]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
 # ("node", node_id, level, zero_subtree, one_subtree).
@@ -356,3 +356,36 @@ def bfpda(truth_table: str, n: int) -> str:
         )
 
     return node(0, list(range(2**n)))
+
+
+def lamfunc(truth_table: str, n: int) -> str:
+    """Build a Lamfunc template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Lamfunc has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders become the binary literal for each input
+    bit, and the harness instantiates one program per input combination.
+
+    The template is a decision tree of ``i`` builtins — ``i x y z`` returns
+    ``y`` when ``x`` is nonzero else ``z`` — over the embedded bit constants,
+    with ``p 0``/``p 1`` at the leaves printing the table's result as binary.
+    A subtree whose table slice is a constant collapses to a single leaf, so
+    constant rows emit no branching.
+    """
+    _validate_truth_table(truth_table, n)
+
+    def node(level: int, lo: int, hi: int) -> str:
+        results = {truth_table[k] for k in range(lo, hi)}
+        if level == n or len(results) == 1:
+            return f"p {results.pop()}"
+        mid = (lo + hi) // 2
+        # i x y z returns y when x is nonzero else z: y is the one-case
+        return (
+            f"i {{X{level}}} "
+            f"{node(level + 1, mid, hi)} "
+            f"{node(level + 1, lo, mid)}"
+        )
+
+    return node(0, 0, 2**n)
