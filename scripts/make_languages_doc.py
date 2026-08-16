@@ -45,6 +45,7 @@ BOOLEAN = {
     "Decleq",
     "Forbin",
     "Forþ",
+    "Home Row",
     "LaserFuck",
     "Minifuck",
     "Modulous",
@@ -91,6 +92,11 @@ def _compiler_set(kind: str) -> set[str]:
 
 
 ASSEMBLY_COMPILERS = _compiler_set("assembly")
+
+# Extra source files that are support modules, not implementations: they are
+# globbed alongside the languages but have no display name (an unknown
+# implementation file still fails loudly).
+_EXTRA_SUPPORT_MODULES = {"common"}
 
 # The README's Extra Implementations section: each entry is the extra/
 # subdirectory, its source pattern, the file-stem -> display-name map (an
@@ -326,6 +332,7 @@ def render_extra_section() -> str:
             {
                 names[path.stem.removesuffix("-riscv")]
                 for path in directory.glob(pattern)
+                if path.stem not in _EXTRA_SUPPORT_MODULES
             },
             key=str.lower,
         ):
