@@ -15,7 +15,7 @@ Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO

@@ -34,6 +34,7 @@ class State:
         return self.ind >= len(self.sym)
 
     def __post_init__(self) -> None:
+        """Wire the command dispatch to this state's stacks and I/O."""
         self._dct: dict[str, Callable[[], object]] = {
             "`": lambda: self.stk[self.ptr].append(1 - self.ptr),
             "^": lambda: self.stk[self.ptr].append(self._top()),
