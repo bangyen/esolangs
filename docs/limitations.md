@@ -515,9 +515,15 @@ in `docs/roadmap.md`).
   value-testable branch to route a decision tree on.
 - **EXCON / Huf**: straight-line with no input and no branch, so neither an
   input-reading nor a parameterized generator can route on a bit.
-- **Lightlang**: `?` sets the bit to ``not line`` — every non-empty line,
-  including `'0'` and `'1'`, collapses to bit 0, so it cannot read bit values
-  at all; its only output is the bit as a number.
+- **Lightlang**: `?` reads a bit (an empty line gives 1, any non-empty line
+  gives 0), so a bit is readable — but a boolean generator is still
+  infeasible because ``&`` (skip the next instruction when the bit is 1)
+  skips exactly one character, so a decision-tree node cannot route to a
+  multi-character subtree.  Only a one-sided AND-like cascade is
+  expressible (each level's zero-branch is the fixed ``!&#`` "print 0,
+  halt"), not a general truth table; XOR and OR were both searched and
+  rejected.  Its ``@`` command is also non-deterministic (a random bit),
+  and its only output is the bit as a number.
 - **DSDLAI: removed.**  A Dig variant whose dig commands carry a random
   20-90% death chance (printing "You died." and halting).  It was a trivial
   reskin of Dig (its interpreter delegated to ``dig.run``) with irreducibly
