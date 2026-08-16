@@ -462,9 +462,13 @@ in `docs/roadmap.md`).
 - **Lightlang**: `?` sets the bit to ``not line`` — every non-empty line,
   including `'0'` and `'1'`, collapses to bit 0, so it cannot read bit values
   at all; its only output is the bit as a number.
-- **DSDLAI**: a Dig variant whose dig commands carry a random 20-90% death
-  chance (printing "You died." and halting), so a generated program's output
-  is non-deterministic and cannot round-trip text or a truth table.
+- **DSDLAI: removed.**  A Dig variant whose dig commands carry a random
+  20-90% death chance (printing "You died." and halting).  It was a trivial
+  reskin of Dig (its interpreter delegated to ``dig.run``) with irreducibly
+  random behavior, so a program's output was non-deterministic and could not
+  be verified against expected output — it failed the admission criteria in
+  `CONTRIBUTING.md` (deterministic computable behavior, not a trivial
+  reskin) and was removed.
 - **Trash**: its only output is a prime-advanced number — a non-prime start
   prints ``0``, a prime start prints the next prime (3, 5, 7, ...), and no
   leading ``t`` prints nothing — so it can never print a boolean ``"1"`` and
