@@ -27,6 +27,9 @@ jobs:
     - name: Run pre-commit
       run: uv run pre-commit run --all-files
 
+    - name: Check for duplicated code blocks
+      run: uv run --with pylint python scripts/check_duplicates.py
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 15

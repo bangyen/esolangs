@@ -4,7 +4,12 @@ import math
 import re
 from functools import cache
 
-from esolangs.tools.generators.helpers import _ilog, _require_ascii, _require_bytes
+from esolangs.tools.generators.helpers import (
+    _factor_triple,
+    _ilog,
+    _require_ascii,
+    _require_bytes,
+)
 from esolangs.tools.ztoalc_starts import ANCHORS
 
 __all__ = [
@@ -658,14 +663,7 @@ def home_row(text: str) -> str:
     _require_bytes(text, "Home Row")
 
     def segment(value: int) -> str:
-        best = min(
-            (
-                (a + b + r, a, b, r)
-                for a in range(1, int(value**0.5) + 2)
-                for b, r in (divmod(value, a),)
-            ),
-        )
-        _, a, b, r = best
+        a, b, r = _factor_triple(value)
         # counter cell 0, target cell 1: "f" moves 0 -> 1 and four "f"s wrap
         # 1 -> 0 back.  The loop body adds b to the target and decrements
         # the counter.

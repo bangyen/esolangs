@@ -2,7 +2,11 @@
 
 import math
 
-from esolangs.tools.generators.helpers import _require_ascii, _require_bytes
+from esolangs.tools.generators.helpers import (
+    _factor_triple,
+    _require_ascii,
+    _require_bytes,
+)
 from esolangs.tools.transpilers import bf_to_ascii_art
 
 __all__ = [
@@ -73,14 +77,7 @@ def _bf_set(value: int) -> str:
     the pointer is left on the printed cell.  ``a`` is searched near
     ``sqrt(value)`` so the program is O(sqrt) rather than O(value).
     """
-    best = min(
-        (
-            (a + b + r, a, b, r)
-            for a in range(1, int(value**0.5) + 2)
-            for b, r in (divmod(value, a),)
-        ),
-    )
-    _, a, b, r = best
+    a, b, r = _factor_triple(value)
     return "+" * a + "[>" + "+" * b + "<-]" + ">" + "+" * r + "."
 
 
