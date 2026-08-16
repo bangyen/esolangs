@@ -26,7 +26,7 @@ from esolangs.interpreters.io import IO
 class _Machine:
     """A Brainfuck tape, its pointer, and the code position."""
 
-    __slots__ = ("code", "io", "m", "tape", "ind", "ptr")
+    __slots__ = ("code", "ind", "io", "m", "ptr", "tape")
 
     def __init__(self, code: str, io: IO) -> None:
         self.code = code

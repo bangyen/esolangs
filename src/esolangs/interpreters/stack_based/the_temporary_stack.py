@@ -49,6 +49,7 @@ class State:
         return self.ptr >= len(self.code)
 
     def execute(self, char: str, rest: str) -> None:
+        """Run the single-command words (the non-recursive commands)."""
         if char == "@":
             s = self.io.input_str()
             self.stk.extend(ord(c) for c in s)
@@ -68,6 +69,7 @@ class State:
         # because they recurse over the source, and '#' is a no-op comment
 
     def parse(self) -> None:
+        r"""Execute one word, including the recursive ``:``/``\`` loops."""
         word = self.code[self.ptr]
         m = re.search(_COMMANDS, word)
         if m:
