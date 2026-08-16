@@ -22,7 +22,6 @@ into a template) rather than the program reading input.
 | 6-5 | yes | yes |  | yes |  | hello cat |
 | A Painter Ant |  | yes |  |  |  |  |
 | ABCDirection |  | yes |  | yes |  |  |
-| ASCII art | yes | yes |  | yes |  | hello |
 | AddSubJump | yes | yes |  | yes |  | hello |
 | Albabet | yes | yes |  |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |

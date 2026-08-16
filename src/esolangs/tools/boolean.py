@@ -44,7 +44,6 @@ from esolangs.tools.booleans.register import (
 )
 from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
 from esolangs.tools.booleans.tape import (
-    ascii_art,
     basicfuck,
     bf_tree,
     brainfuck,
@@ -66,7 +65,6 @@ __all__ = [
     "BOOLEAN",
     "abcdirection",
     "addsubjump",
-    "ascii_art",
     "back",
     "basicfuck",
     "between",
@@ -121,7 +119,6 @@ BOOLEAN: frozenset[str] = frozenset(
         "AddSubJump",
         "3D Brainfuck",
         "6-5",
-        "ASCII art",
         "Back",
         "Basicfuck",
         "Between",

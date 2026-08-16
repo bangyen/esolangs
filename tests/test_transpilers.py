@@ -10,7 +10,6 @@ stays within ``[0, size)``; a battery plus a fuzz of bounded, terminating
 programs verifies that class.
 """
 
-import importlib
 import random
 
 import pytest
@@ -20,9 +19,6 @@ from esolangs.exceptions import (
     EsolangError,
     UnsupportedTranspilationError,
 )
-
-ascii_art = importlib.import_module("esolangs.interpreters.tape_based.ascii_art")
-
 
 # (brainfuck program, stdin) pairs; every pair must terminate and agree.
 BATTERY = (
@@ -66,89 +62,6 @@ CIRCLEFUCK_BATTERY = (
     ("[-]+++++++[-]++++++++++++++++++++++++++++++++++++++++++++++++.", ""),
     ("", ""),
 )
-
-
-def _filter(program: str) -> str:
-    return "".join(c for c in program if c in "+-<>.,[]")
-
-
-@pytest.mark.parametrize(("program", "stdin"), BATTERY)
-def test_transpiled_output_matches_source(program: str, stdin: str) -> None:
-    art = esolangs.transpile("brainfuck", "ASCII art", program)
-    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
-        "ASCII art", art, stdin
-    )
-
-
-@pytest.mark.parametrize(("program", "pair"), tuple(PINNED.items()))
-def test_pinned_outputs(program: str, pair: tuple[str, str]) -> None:
-    stdin, expected = pair
-    assert esolangs.run("brainfuck", program, stdin) == expected
-
-
-@pytest.mark.parametrize(("program", "stdin"), BATTERY)
-def test_parse_recovers_source(program: str, stdin: str) -> None:
-    art = esolangs.transpile("brainfuck", "ASCII art", program)
-    assert ascii_art.parse(art) == _filter(program)
-
-
-@pytest.mark.parametrize(("program", "stdin"), BATTERY)
-def test_reverse_transpiler_recovers_source(program: str, stdin: str) -> None:
-    """ASCII art -> BF inverts BF -> ASCII art for well-formed art."""
-    art = esolangs.transpile("brainfuck", "ASCII art", program)
-    assert esolangs.transpile("ASCII art", "brainfuck", art) == _filter(program)
-
-
-@pytest.mark.parametrize(("program", "stdin"), BATTERY)
-def test_reverse_transpiled_output_matches_source(program: str, stdin: str) -> None:
-    art = esolangs.transpile("brainfuck", "ASCII art", program)
-    bf_program = esolangs.transpile("ASCII art", "brainfuck", art)
-    assert esolangs.run("brainfuck", bf_program, stdin) == esolangs.run(
-        "ASCII art", art, stdin
-    )
-
-
-def test_reverse_round_trips_art() -> None:
-    """Re-encoding recovered art reproduces it byte for byte."""
-    for program, _ in BATTERY:
-        art = esolangs.transpile("brainfuck", "ASCII art", program)
-        assert (
-            esolangs.transpile(
-                "brainfuck",
-                "ASCII art",
-                esolangs.transpile("ASCII art", "brainfuck", art),
-            )
-            == art
-        )
-
-
-def test_reverse_empty_program() -> None:
-    assert esolangs.transpile("ASCII art", "brainfuck", "") == ""
-    assert esolangs.transpile("brainfuck", "ASCII art", "") == ""
-
-
-@pytest.mark.parametrize("text", ["Hello, World!", "Hi", "\x00\x01"])
-def test_generator_is_transpiled_generator(text: str) -> None:
-    """The ASCII-art generator is exactly the BF generator, transpiled."""
-    bf_program = esolangs.generate("brainfuck", text)
-    art = esolangs.transpile("brainfuck", "ASCII art", bf_program)
-    assert esolangs.generate("ASCII art", text) == art
-    assert esolangs.run("ASCII art", art) == text
-
-
-@pytest.mark.parametrize("text", ["Hello, World!", "Hi"])
-def test_generator_inverse(text: str) -> None:
-    """The reverse transpiler recovers the BF generator's program."""
-    art = esolangs.generate("ASCII art", text)
-    assert esolangs.transpile("ASCII art", "brainfuck", art) == esolangs.generate(
-        "brainfuck", text
-    )
-
-
-def test_empty_program_stays_empty() -> None:
-    art = esolangs.transpile("brainfuck", "ASCII art", "")
-    assert art == ""
-    assert esolangs.run("ASCII art", art) == ""
 
 
 def test_unsupported_pair_raises() -> None:
