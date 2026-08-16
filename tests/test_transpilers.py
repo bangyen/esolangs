@@ -416,6 +416,8 @@ def test_laserfuck_pinned_outputs() -> None:
         "=4A.": "J",
         ":A.": "A",
         "+++.": "\x03",
+        "+[>0+[>0+<0-]<0-]>0.": "\x00",  # nested loop emission
+        "+*comment*+>0.": "\x00",  # *...* comment skipped
     }
     for program, expected in pinned.items():
         laserfuck = esolangs.transpile("Dimensional", "LaserFuck", program)
@@ -450,6 +452,11 @@ def test_laserfuck_grid_is_rectangular_with_start_and_marker() -> None:
         ("d", "out of the supported class"),  # decimal read
         ("x", "out of the supported class"),  # hex read
         ("[", "unbalanced brackets"),
+        ("]", "unbalanced brackets"),  # stray close
+        ("=", "must be followed by two hex digits"),  # truncated literal
+        ("=4", "must be followed by two hex digits"),
+        ("=zz", "must be followed by two hex digits"),  # non-hex literal
+        (":", "must be followed by a character"),  # truncated char literal
     ],
 )
 def test_laserfuck_out_of_class_rejected(program: str, match: str) -> None:
