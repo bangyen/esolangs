@@ -9,7 +9,7 @@ Python interpreter and the native implementation and asserts they agree.
 
 Languages with both an in-package interpreter and a native cross-check:
 
-* **LaserFuck** — ``other/laserfuck.py`` vs ``extra/rust/laserfuck.rs``.
+* **LaserFuck** — ``grid_based/laserfuck.py`` vs ``extra/rust/laserfuck.rs``.
   The Rust reference picks a random initial heading, so its output is a
   *set* across runs; the Python interpreter (which accepts a fixed heading)
   must produce a member of that set for each of the four headings.
@@ -407,8 +407,8 @@ def _run_native_code(
 def _run_laserfuck_python(
     program: str, heading: int, inputs: list[str] | None = None
 ) -> str:
+    from esolangs.interpreters.grid_based.laserfuck import run
     from esolangs.interpreters.io import IO
-    from esolangs.interpreters.other.laserfuck import run
 
     buffer = io.StringIO()
     reads = list(inputs if inputs is not None else ["1"])
@@ -1342,7 +1342,7 @@ def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import ScriptedIO
 
-    run = importlib.import_module("esolangs.interpreters.other.two_d_fish").run
+    run = importlib.import_module("esolangs.interpreters.grid_based.two_d_fish").run
 
     io = ScriptedIO(stdin.decode("latin1"))
     try:

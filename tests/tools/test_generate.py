@@ -8,10 +8,10 @@ from unittest.mock import patch
 import pytest
 
 import esolangs.tools.generate as gen
+from esolangs.interpreters.grid_based.clockwise import run as clockwise_run
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.albabet import run as albabet_run
 from esolangs.interpreters.other.between import run as between_run
-from esolangs.interpreters.other.clockwise import run as clockwise_run
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.forbin import run as forbin_run
 from esolangs.interpreters.other.myscript import run as myscript_run
@@ -59,7 +59,7 @@ _run_123 = importlib.import_module("esolangs.interpreters.tape_based.one_two_thr
 _run_pct = importlib.import_module(
     "esolangs.interpreters.register_based.pct_squared_minus_one"
 ).run
-_run_2dfish = importlib.import_module("esolangs.interpreters.other.two_d_fish").run
+_run_2dfish = importlib.import_module("esolangs.interpreters.grid_based.two_d_fish").run
 _run_painfuck = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 _run_bit_tilde = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
 
