@@ -211,21 +211,25 @@ No existing boolean generator uses this convention; it would require a new
 harness contract (termination as the answer) and still does not unlock a
 multi-input generator in any of the three.
 
-## Multiply generator class (designed; Jaune realizes it)
+## Multiply capability (Jaune realizes it)
 
-A *multiply* generator is the arithmetic analog of the boolean generator:
-`multiply(language)` emits a program that reads two decimal operands
-(most-significant first, one digit per input line) and prints their product
-as a decimal number (no leading zeros).  It tests a distinct capability from
-the boolean criterion (digit input + arithmetic + decimal output, vs. bit
-input + branching) and from the text criterion (arbitrary byte output).
+A *multiply* program reads two decimal operands (most-significant first, one
+digit per input line) and prints their product as a decimal number (no
+leading zeros).  It tests a distinct capability from the boolean criterion
+(digit input + arithmetic + decimal output, vs. bit input + branching) and
+from the text criterion (arbitrary byte output).
 
-Unlike the boolean generator, `multiply` takes **no `n` parameter**: the
+Unlike the boolean criterion, this is **not a generator family**: the
 boolean ``n`` selects a different function space (a truth table is indexed
-by the input combination), but multiplication is a single function ``a * b``,
-and the operand lengths are a property of the input, not of the function.
-The construction reads each operand until a delimiter (``*`` between the
-operands, ``#`` at the end), so one program handles any digit count.
+by the input combination), but multiplication is a single function ``a * b``
+whose operand lengths are a property of the input, not of the function.  So
+there is no ``multiply(language, n)`` class to build across the registry — a
+language either reads until a delimiter (``*`` between the operands, ``#``
+at the end) and needs one sentinel construction for any digit count, or it
+cannot.  Jaune is the first language found with the capability; the rest of
+the registry's languages are not known to have it (their generators are
+text-only or absent), so this records the criterion and the one realized
+construction rather than a family of generators.
 
 A brainfuck prototype was built and verified: read+normalize each digit
 (ASCII minus 48), multiply via a nested loop, and print the product with the
@@ -244,10 +248,10 @@ but it is tied to the printer's cell layout, not reusable as a standalone
 carry.  So n = 1 is proven; n > 1 needs a wrapping-safe carry, which is a
 genuine brainfuck-algorithms construction rather than a quick extension.
 
-**Jaune realizes the class:** its cells are unbounded integers and ``^``
+**Jaune realizes the capability:** its cells are unbounded integers and ``^``
 prints the current cell as a decimal number, so each operand fits in a single
 cell and the product accumulates without a digit-per-cell carry.  The
-generator (:func:`esolangs.tools.boolean.jaune_multiply`) runs each read on a
+program (:func:`esolangs.tools.boolean.jaune_multiply`) runs each read on a
 dedicated always-one cell (the ``?``/``!`` jumps are conditional, so a cell
 permanently set to 1 gives the loop-back jump an unconditional trigger),
 folds each digit with ``v+`` plus a run of nine ``&`` after a ``#``
@@ -255,6 +259,4 @@ folds each digit with ``v+`` plus a run of nine ``&`` after a ``#``
 (``*`` is 42, ``6+`` zeroes it; ``#`` is 35, ``13+`` zeroes it) and jumping
 on zero, then loops the repeated addition of the first operand over the
 second.  Verified exhaustively for single-digit operands (all 100 pairs)
-and spot-checked through ten-digit operands.  This gives the class its first
-realized language: the unbounded-cell + decimal-I/O + multiply combination
-that the brainfuck n > 1 wall needs.
+and spot-checked through ten-digit operands.
