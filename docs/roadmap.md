@@ -112,8 +112,11 @@ registers, bit manipulation, 2D grids, where hand-written assembly would be
 unreadable).  The current split:
 
 - **RISC-V assembly** — NoComment (tape + stack with a byte-indexed skip).
-- **Rust** — Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~,
-  LaserFuck (stacks, typed registers, bit manipulation, 2D grids).
+- **Rust** — Forþ, Basicfuck, Unsquare, 3x, 2dFish, Painfuck, LaserFuck
+  (stacks, typed registers, 2D grids), plus %^2^-1 and bit~ whose corpus
+  cross-checks remain but whose text-generator fuzzes were dropped as
+  straight-line (their generators emit a per-byte encoding, so a random
+  differential fuzz adds nothing the round-trip corpus does not).
 
 **Worth adding (audited).**  These languages have complex-output generators
 (arithmetic encodings, branch-and-goto OISCs, runtime state carried across

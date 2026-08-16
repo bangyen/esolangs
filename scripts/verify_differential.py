@@ -1249,35 +1249,6 @@ def _verify_pct() -> bool:
     return failures == 0
 
 
-def _fuzz_pct(rng: random.Random, count: int) -> bool:
-    """Differentially fuzz %^2^-1 with random byte text.
-
-    The language has no boolean generator, so the text generator's programs
-    are fuzzed instead: they are built per byte and always terminate, unlike
-    a hand-written ``t`` loop.
-    """
-    from esolangs.tools.generate import pct_squared_minus_one
-
-    binary = _build_pct()
-    if binary is None:
-        return True
-
-    failures, checked = _fuzz_text(
-        "%^2^-1",
-        pct_squared_minus_one,
-        lambda program, stdin: _run_pct_native(binary, program, stdin),
-        _run_pct_python,
-        rng,
-        count,
-    )
-    print(
-        f"%^2^-1 fuzz: {checked} programs match"
-        if not failures
-        else f"%^2^-1 fuzz: {failures} failures of {checked}"
-    )
-    return failures == 0
-
-
 # -- 2dFish corpus: every command plus the error categories ---------------
 
 TWO_D_FISH_CORPUS = [
@@ -1649,34 +1620,6 @@ def _verify_bit_tilde() -> bool:
     return failures == 0
 
 
-def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
-    """Differentially fuzz bit~ with random byte text.
-
-    The language has no boolean generator, so the text generator's programs
-    are fuzzed instead.
-    """
-    from esolangs.tools.generate import bit_tilde
-
-    if not BIT_TILDE_BIN.exists():
-        print("[skip] bit~ fuzz: Rust reference not built")
-        return True
-
-    failures, checked = _fuzz_text(
-        "bit~",
-        bit_tilde,
-        _run_bit_tilde_native,
-        _run_bit_tilde_python,
-        rng,
-        count,
-    )
-    print(
-        f"bit~ fuzz: {checked} programs match"
-        if not failures
-        else f"bit~ fuzz: {failures} failures of {checked}"
-    )
-    return failures == 0
-
-
 # -- The generator-less extra/ interpreters (corpus only) -------------------
 #
 # Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, and Stun
@@ -1821,10 +1764,8 @@ def main() -> int:
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok
         ok = _fuzz_three_x(rng, args.fuzz) and ok
-        ok = _fuzz_pct(rng, args.fuzz) and ok
         ok = _fuzz_two_d_fish(rng, args.fuzz) and ok
         ok = _fuzz_painfuck(rng, args.fuzz) and ok
-        ok = _fuzz_bit_tilde(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.
