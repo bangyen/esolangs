@@ -61,7 +61,6 @@ _EXTRA_DIRS = [
         ROOT / "extra" / "assembly",
         "*-riscv.s",
         {
-            "123": "123",
             "nocomment": "NoComment",
         },
         "RISC-V Assembly Implementations",
