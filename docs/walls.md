@@ -210,3 +210,28 @@ no multi-input tree:
 No existing boolean generator uses this convention; it would require a new
 harness contract (termination as the answer) and still does not unlock a
 multi-input generator in any of the three.
+
+## Multiply generator class (designed; brainfuck n = 1 proven)
+
+A *multiply* generator is the arithmetic analog of the boolean generator:
+`multiply(language, n)` emits a program that reads two operands, each `n`
+decimal digits (most-significant first, one digit per input line), and
+prints their product as a decimal number (no leading zeros).  It tests a
+distinct capability from the boolean criterion (digit input + arithmetic +
+decimal output, vs. bit input + branching) and from the text criterion
+(arbitrary byte output).
+
+A brainfuck prototype was built and verified: read+normalize each digit
+(ASCII minus 48), multiply via a nested loop, and print the product with the
+itchyny 8-bit decimal printer.  **n = 1 works exhaustively (all 100
+single-digit pairs 0-9 × 0-9).**
+
+**n > 1 is blocked for brainfuck** by the interpreter's documented 8-bit
+wrapping cells (mod 256): a 2-digit product exceeds 255 and wraps, so the
+program cannot represent 12 × 34 = 408, let alone 99 × 99 = 9801.  The
+"any-size cell" decimal printer also assumes non-wrapping cells, so it fails
+on our interpreter past 255.  A language with *unbounded* cells (e.g. the
+register/OISC languages with arbitrary integers) could lift this, but no such
+language currently has the decimal-I/O + multiply combination the class
+needs, so the class is recorded as designed-and-partially-proven rather than
+built out across the registry.
