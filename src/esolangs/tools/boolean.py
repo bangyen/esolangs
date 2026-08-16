@@ -2,8 +2,9 @@
 
 Each generator builds a program that reads n boolean inputs and prints the
 truth-table result for the combination it is given.  The parameterized
-generators (``bio``, ``back``) instead emit a template the harness
-instantiates per input combination, for the no-input languages.
+generators (``bio``, ``back``, ``nocomment``, ``bfpda``) instead emit a
+template the harness instantiates per input combination, for the no-input
+languages.
 
 The generators live in ``esolangs.tools.booleans``, split by language family
 (``register``, ``stack``, ``tape``, ``other``, ``parameterized``); this
@@ -24,7 +25,13 @@ from esolangs.tools.booleans.other import (
     three_x,
     ztoalc_l_boolean,
 )
-from esolangs.tools.booleans.parameterized import back, bio, instantiate, nocomment
+from esolangs.tools.booleans.parameterized import (
+    back,
+    bfpda,
+    bio,
+    instantiate,
+    nocomment,
+)
 from esolangs.tools.booleans.register import (
     addsubjump,
     collatz_multiverse,
@@ -62,6 +69,7 @@ __all__ = [
     "basicfuck",
     "between",
     "bf_tree",
+    "bfpda",
     "bfstack",
     "bio",
     "bit_tilde",

@@ -350,6 +350,17 @@ COD — are in `docs/roadmap.md`).
 - **Welcome To...**: a work-in-progress.
 
 ## Assessed boolean candidates that fell through
+- **Brainpocalypse**: its only control flow is ``-`` on a zero cell rewinding
+  the instruction pointer to the program start (the tape stays intact), so a
+  branch always restarts the whole prefix.  The output constraint closes the
+  case: a bare boolean means only cell 0 may print (the ``right`` bound stays
+  0), leaving just cell 0 and the wrap scratch cell 255 usable, and of the
+  four one-input functions an exhaustive template search finds only identity
+  (bake the bit into cell 0 and move to cell 255) — const-0, const-1, and
+  NOT all need to branch on cell 0's value, which the ``-``-on-zero rewind
+  consumes while re-running the bit-baking prefix (unbounded cell growth
+  across restarts).  A boolean generator is not feasible for the standard
+  harness.
 - **The Temporary Stack**: the auto-drain is the only output, and it prints `front - 1`
   for the *oldest* stack element when `sum(rest) / 2 > front`.  An
   input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
@@ -420,3 +431,19 @@ rewrite:
   through ``n = 6``.  The grid grows as ``O(4^n)`` cells (roughly ``60*2^n``
   wide by ``52*2^n`` tall), so exhaustive checks are only practical for small
   ``n``.
+
+## BF-PDA (built; parameterized)
+- The boolean generator ships and works for any ``n``.  BF-PDA has no input,
+  so it is a parameterized generator: the harness instantiates the template
+  once per input combination, and each ``{Xi}``/``{Ci}`` placeholder becomes a
+  push of the bit or its complement onto the bit stack.
+- The earlier wall was wrong: a decision tree *does* get two independent guard
+  cells per bit from the stack.  A node pushes the complement then the bit
+  (bit on top), runs the one-side loop ``[ sub1 @ ]`` when the bit is one,
+  pops the bit, runs the zero-side loop ``[ sub0 @ ]`` when the complement is
+  one, and pops the complement.  Every subtree is stack-balanced (leaves push
+  the answer bit, print it with ``.``, and pop it), so each ``]`` re-tests its
+  own guard and the if/else separates cleanly.
+- Verified for every table at ``n <= 4`` (4 + 16 + 256 + 65536 functions);
+  the programs are tiny and terminate immediately, so exhaustive checks stay
+  cheap.

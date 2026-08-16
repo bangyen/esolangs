@@ -1576,6 +1576,100 @@ class TestParameterizedNoComment:
             parameterized.nocomment("011", 2)
 
 
+class TestParameterizedBfpda:
+    """Input-by-substitution boolean generator for the no-input language BF-PDA."""
+
+    def run_bfpda(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.bf_pda import run
+
+        io_ = ScriptedIO("")
+        run(prog, io_)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "<@" if b else "<",
+            lambda _i, b: "<@" if not b else "<",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bfpda(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_bfpda(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.booleans import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.bfpda(table, n)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_bfpda(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bfpda("0110", 2)
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_program_structure(self) -> None:
+        """Each node pushes a complement+bit guard pair and pops both."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bfpda("0110", 2)
+        # XOR has three internal nodes (X0, X1, X1), each pushing two guards
+        assert template.count("{X0}") == 1
+        assert template.count("{X1}") == 2
+        assert template.count("{C0}") == 1
+        assert template.count("{C1}") == 2
+
+    def test_leaf_print_is_balanced(self) -> None:
+        """A leaf pushes the answer bit, prints it, and pops it."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bfpda("10", 1)  # NOT: one-leaf prints 1
+        assert "<@. >" in template
+        assert "<. >" in template
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="4 entries"):
+            parameterized.bfpda("011", 2)
+
+
 class TestZtoalc:
     @pytest.mark.parametrize(
         ("table", "n"),
