@@ -268,6 +268,122 @@ def test_circlefuck_fuzz_bounded_programs() -> None:
         )
 
 
+# (Dimensional program, stdin) pairs in the transpiler's supported class: the
+# linear-tape bf core with a final single output at most.
+LASERFUCK_BATTERY = (
+    ("+++", ""),
+    ("+++[-]", ""),
+    ("+>0+<0++", ""),
+    ("+++[>0+++<0-]", ""),
+    ("++[>0++<0-]", ""),
+    (">0+++<0+++[-]", ""),
+    ("+++[>0+++<0-]>0.", ""),
+    ("++++++++[>0++++++++<0-]>0.", ""),
+    ("=4A.", ""),
+    (":A.", ""),
+    (",>0+<0-", "ab"),
+    (",+,.", "a\nb"),
+    ("+->0.", "a"),
+    ("", ""),
+)
+
+
+@pytest.mark.parametrize(("program", "stdin"), LASERFUCK_BATTERY)
+def test_laserfuck_transpiled_output_matches_source(program: str, stdin: str) -> None:
+    laserfuck = esolangs.transpile("Dimensional", "LaserFuck", program)
+    assert esolangs.run("Dimensional", program, stdin) == esolangs.run(
+        "LaserFuck", laserfuck, stdin
+    )
+
+
+def test_laserfuck_pinned_outputs() -> None:
+    """A subset with pinned output, so the battery checks more than self-consistency."""
+    pinned = {
+        "+++[>0+++<0-]>0.": "\t",
+        "++++++++[>0++++++++<0-]>0.": "@",
+        "=4A.": "J",
+        ":A.": "A",
+        "+++.": "\x03",
+    }
+    for program, expected in pinned.items():
+        laserfuck = esolangs.transpile("Dimensional", "LaserFuck", program)
+        assert esolangs.run("LaserFuck", laserfuck) == expected
+
+
+def test_laserfuck_grid_is_rectangular_with_start_and_marker() -> None:
+    """The output is a grid with the byte-mode marker and a start."""
+    laserfuck = esolangs.transpile("Dimensional", "LaserFuck", "+++[>0+<0-]")
+    lines = laserfuck.splitlines()
+    assert lines[0][0] == "\u00ff"
+    assert any("o" in ln for ln in lines)
+    assert any(")" in ln for ln in lines)  # a loop test
+
+
+@pytest.mark.parametrize(
+    ("program", "match"),
+    [
+        ("+>1-", "only dimension 0"),  # non-zero dimension
+        ("+>~1-", "only dimension 0"),  # negative dimension
+        ("+>+", "bare '>'/'<'"),  # bare move (dimension = current value)
+        ("<0+", "below cell 0"),
+        ("[<0]", "below cell 0"),  # below cell 0 inside a loop
+        (".+", "must be the last"),  # output not last
+        ("+[.-]", "inside a loop"),  # output inside a loop
+        ("[>0-]", "drift"),  # drifting loop
+        ("++[+[>0]]", "drift"),  # drifting nested loop
+        ("$2", "out of the supported class"),  # axis selection
+        ("{0", "out of the supported class"),  # axis-coordinate loop
+        ("?0", "out of the supported class"),  # coordinate read
+        ("!0", "out of the supported class"),  # coordinate clear
+        ("d", "out of the supported class"),  # decimal read
+        ("x", "out of the supported class"),  # hex read
+        ("[", "unbalanced brackets"),
+    ],
+)
+def test_laserfuck_out_of_class_rejected(program: str, match: str) -> None:
+    with pytest.raises(ValueError, match=match):
+        esolangs.transpile("Dimensional", "LaserFuck", program)
+
+
+def test_laserfuck_fuzz_bounded_programs() -> None:
+    """Random in-class, guaranteed-terminating programs agree."""
+    rng = random.Random(9)
+
+    def gen() -> str:
+        cells: dict[int, int] = {}
+        ptr = 0
+        ops: list[str] = []
+        for _ in range(rng.randint(3, 8)):
+            r = rng.random()
+            v = cells.get(ptr, 0)
+            if r < 0.3 and v < 8:
+                ops.append("+")
+                cells[ptr] = v + 1
+            elif r < 0.45 and v > 0:
+                ops.append("-")
+                cells[ptr] = v - 1
+            elif r < 0.6:
+                ops.append("[-]")  # clear loop: terminates on a nonnegative cell
+                cells[ptr] = 0
+            elif r < 0.75:
+                ptr += 1
+                ops.append(">0")
+                cells.setdefault(ptr, 0)
+            elif r < 0.9 and ptr > 0:
+                ptr -= 1
+                ops.append("<0")
+        if rng.random() < 0.5:
+            ops.append(".")
+        return "".join(ops)
+
+    for _ in range(60):
+        program = gen()
+        stdin = "".join(rng.choice("ab") for _ in range(rng.randint(1, 2)))
+        expected = esolangs.run("Dimensional", program, stdin)
+        laserfuck = esolangs.transpile("Dimensional", "LaserFuck", program)
+        assert esolangs.run("LaserFuck", laserfuck, stdin) == expected
+
+
 # (BFStack program, stdin) pairs; every program pushes before it reads the
 # stack and terminates.
 BFSTACK_BATTERY = (
