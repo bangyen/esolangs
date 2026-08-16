@@ -83,7 +83,7 @@ class TestTwoBitsOneByte:
             raise _TimeoutError
 
         old_handler = signal.signal(signal.SIGALRM, _alarm)
-        signal.alarm(1)
+        signal.setitimer(signal.ITIMER_REAL, 0.2)
         try:
             run_program("\x00")  # all DON fields
         except _TimeoutError:
