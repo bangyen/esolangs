@@ -72,15 +72,6 @@ def bio(truth_table: str, n: int) -> str:
     """
     _validate_truth_table(truth_table, n)
 
-    def set_bit(_i: int, bit: int) -> str:
-        return (
-            "0ox" * bit
-        )  # pragma: no cover - bio returns a template; the harness injects bits
-
-    def set_comp(_i: int, _bit: int) -> str:
-        # y = 1 - x, computed at runtime from the raw bit in x (x cleared)
-        return "0oy" + "0ix" + "1oy" + "1ox" + "}"  # pragma: no cover - see set_bit
-
     def leaf(value: str) -> str:
         # build the result in z, print it, then clear x and y so every
         # ancestor loop (which checks x or y) unwinds cleanly
@@ -334,12 +325,6 @@ def bfpda(truth_table: str, n: int) -> str:
     other side's guard is untouched and the if/else separates cleanly.
     """
     _validate_truth_table(truth_table, n)
-
-    def set_bit(_i: int, bit: int) -> str:
-        return "<@" if bit else "<"  # pragma: no cover - bfpda returns a template
-
-    def set_comp(_i: int, bit: int) -> str:
-        return "<@" if not bit else "<"  # pragma: no cover - bfpda returns a template
 
     def leaf(value: str) -> str:
         # push the answer bit, print it, pop it (balanced)
