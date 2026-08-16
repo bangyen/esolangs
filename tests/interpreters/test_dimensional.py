@@ -98,7 +98,7 @@ class TestDimensional:
     def test_boolean_generator(self, table: str, n: int) -> None:
         for combo in range(2**n):
             bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_and_capture(bool_gen(table, n), bits) == table[combo], bits
+            assert run_and_capture(bool_gen(table), bits) == table[combo], bits
 
     def test_rejects_unmatched_brackets(self) -> None:
         with pytest.raises(ValueError, match="unmatched"):

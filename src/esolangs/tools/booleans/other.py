@@ -52,17 +52,17 @@ def _const(n: int) -> str:
     return prog
 
 
-def myscript(truth_table: str, n: int) -> str:
+def myscript(truth_table: str) -> str:
     """Build a MyScript program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
     then walks a ``check`` decision tree: at level ``i`` it branches on
     ``b_i`` and the leaves ``say`` the table value for the combination.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     lines = [f"var b{i} is ask" for i in range(n)]
 
     def build(i: int, combo: int, pad: str) -> list[str]:
@@ -81,11 +81,11 @@ def myscript(truth_table: str, n: int) -> str:
     return "\n".join(lines + build(0, 0, ""))
 
 
-def three_x(truth_table: str, n: int) -> str:
+def three_x(truth_table: str) -> str:
     """Build a 3x program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     3x reads an integer with ``?`` and has no direct boolean literals or
     conditionals, so the generator builds a decision tree with variables:
@@ -102,7 +102,7 @@ def three_x(truth_table: str, n: int) -> str:
     get an override block.  Each override's ``( ... )`` guard leaves the
     stack balanced via the trash pop, so arbitrary ``n`` works.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     # Variable allocation: var 0 is the loop-trash (its constant, 333x, is
     # short and emitted twice per guard), var 3 is the result (its constant
@@ -283,11 +283,11 @@ def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
     return prog
 
 
-def ztoalc_l_boolean(truth_table: str, n: int) -> str:
+def ztoalc_l_boolean(truth_table: str) -> str:
     """Build a ZTOALC L program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     ZTOALC L's control flow is the Collatz trajectory of line 1, so the
     generator lays out a decision tree on `p * 2**k` descents: branching at
@@ -310,7 +310,7 @@ def ztoalc_l_boolean(truth_table: str, n: int) -> str:
     Verified exhaustively for every table at ``n <= 3`` and for structured
     and symmetric tables at ``n == 4``; all tests run the real interpreter.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     for b1 in range(2 ** (n + 1), 4000, 4):
         lines = _ztoalc_lines(truth_table, n, b1)
         if all(
@@ -333,16 +333,17 @@ def ztoalc_l_boolean(truth_table: str, n: int) -> str:
     )
 
 
-def nevermind(truth_table: str, n: int) -> str:
+def nevermind(truth_table: str) -> str:
     """Build a Nevermind program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), and ``n`` is the number of inputs.
+    (most significant first), ``n`` is the input count implied by the table length.
 
     Nevermind reads each input with ``input,?`` into its own variable, then a
     decision tree of nested ``if``/``endif`` blocks prints the result for the
     matching combination.
     """
+    n = _validate_truth_table(truth_table)
     lines: list[str] = []
     for i in range(n):
         lines.append("input,?")
@@ -440,11 +441,11 @@ def _build_padded_tt(truth_table: str, n_effective: int) -> str:
     return truth_table.ljust(half * 2, "0")
 
 
-def between(truth_table: str, n: int) -> str:
+def between(truth_table: str) -> str:
     """Build a Between program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     The program reads each input bit as a line, converts it to an integer
     with ``c``, then walks a decision tree laid out linearly: every node
@@ -453,7 +454,7 @@ def between(truth_table: str, n: int) -> str:
     branch addresses are 0-indexed line numbers, so the size of each subtree
     is computed ahead of the linear layout.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     def leaf_value(path: list[int]) -> int:
         row = 0
@@ -487,11 +488,11 @@ def between(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
-def laserfuck(truth_table: str, n: int) -> str:
+def laserfuck(truth_table: str) -> str:
     r"""Build a LaserFuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     The laser starts at ``o`` with a random heading, so a mirror funnel
     (``|``/``^``/``_`` plus two ``}`` on the row above) sends every heading to
@@ -511,7 +512,7 @@ def laserfuck(truth_table: str, n: int) -> str:
     the 48/49 result cell.  The tree is loop-free, so no loop-ring geometry is
     needed.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     rows: int = 2 ** (n + 1) - 1
     total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2 + 49 + 8
     grid = [[" "] * total_cols for _ in range(rows)]
@@ -636,11 +637,11 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     return "e" * rot + zero + swap + bring + er
 
 
-def taglate(truth_table: str, n: int) -> str:
+def taglate(truth_table: str) -> str:
     r"""Build a Taglate program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     ``n == 1`` reads the single input with ``h`` and computes the affine
     combination ``base + bit * coeff`` with the ``b``/``c``/``a`` queue
@@ -663,14 +664,12 @@ def taglate(truth_table: str, n: int) -> str:
     layout, and ``_SEL1_N2`` selects between the last two candidate
     values on the two remaining inputs and prints ``48 + bit``.
     """
+    n = _validate_truth_table(truth_table)
     if n == 1:
-        _validate_truth_table(truth_table, n)
         base = 48 + int(truth_table[0])
         coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
         seed = "0" + chr(coeff) + chr(base)
         return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
-
-    _validate_truth_table(truth_table, n)
 
     # For odd n, prepend a fake zero-input (ghost) to make the stride land
     # on a separator.  n_effective is the number of h-reads and levels.
@@ -716,11 +715,11 @@ def taglate(truth_table: str, n: int) -> str:
     return result
 
 
-def clockwise(truth_table: str, n: int) -> str:
+def clockwise(truth_table: str) -> str:
     """Build a Clockwise program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.  The
+    inputs (most significant first); the table length implies ``n``.  The
     program prints the result bit seven times, as ``chr(127 * result)``.
 
     The program is a decision tree in a closed ring.  ``S`` zeroes the
@@ -735,7 +734,7 @@ def clockwise(truth_table: str, n: int) -> str:
     paths at acc=0 so they do not turn on another leaf's exit.  The row
     funnels left to the corner ``R`` and up column 0 to halt.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
     root = 2 ** (n + 2) + 8
 
@@ -788,11 +787,11 @@ def clockwise(truth_table: str, n: int) -> str:
     return "\n".join("".join(row) for row in grid)
 
 
-def container(truth_table: str, n: int) -> str:
+def container(truth_table: str) -> str:
     """Build a Container program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Container is a synchronous rule system: every tick each container's value
     becomes ``max(old + sum of deltas of satisfied ``X>=Y``/``X<=Y`` rules,
@@ -813,7 +812,7 @@ def container(truth_table: str, n: int) -> str:
       table entry of the surviving row to ``OUT``; ``PRINT`` fires and
       ``EXIT`` halts.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     lines = ["T:", "+1 T>=T"]
     lines.append(":")  # the empty-named container reads input
@@ -856,11 +855,11 @@ def container(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
-def bit_tilde(truth_table: str, n: int) -> str:
+def bit_tilde(truth_table: str) -> str:
     """Build a bit~ program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     bit~ is a bit pool with ``{``/``}`` while-nonzero loops.  Each ``)``
     reads an input byte into eight bits (MSB first), so the input bit lands
@@ -875,9 +874,9 @@ def bit_tilde(truth_table: str, n: int) -> str:
     result``.  Dense tables evaluate the complement instead (fewer minterms)
     and flip the output bit once.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
-    table, use_complement = _maybe_complement(truth_table, n)
+    table, use_complement = _maybe_complement(truth_table)
 
     prog: list[str] = []
     pos = 0
@@ -976,11 +975,11 @@ def bit_tilde(truth_table: str, n: int) -> str:
     return "".join(prog)
 
 
-def forbin_boolean(truth_table: str, n: int) -> str:
+def forbin_boolean(truth_table: str) -> str:
     """Build a Forbin program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Forbin's ``in`` reads one bit (most significant first), so each input
     byte contributes 8 reads and only the last bit (the LSB, which is what
@@ -990,7 +989,7 @@ def forbin_boolean(truth_table: str, n: int) -> str:
     and falls through when ``b`` is 0, so each node emits the 1-subtree then
     the 0-subtree and every leaf prints the result byte and returns.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     lines: list[str] = ["main {"]
     bits: list[str] = []
@@ -1040,11 +1039,11 @@ _HOME_ROW_ROUTES = {
 }
 
 
-def home_row(truth_table: str, n: int) -> str:
+def home_row(truth_table: str) -> str:
     """Build a Home Row program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Home Row's ``j`` skips the next instruction when the current cell is
     zero, so ``jf``/``jd`` act as guarded moves: a beam at a nonzero cell
@@ -1064,7 +1063,7 @@ def home_row(truth_table: str, n: int) -> str:
     shows no ``j``-guarded routing separates ``2**n`` combinations onto
     distinct cells of the 5x5 grid past ``n == 2``.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     if n not in _HOME_ROW_ROUTES:
         raise ValueError("Home Row has no boolean generator for n >= 3 inputs")
     route, leaves = _HOME_ROW_ROUTES[n]
