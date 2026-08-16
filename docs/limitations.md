@@ -141,6 +141,34 @@ its least significant bit.  This is why no ``3``-based boolean generator
 exists; the four one-input programs were too trivial to keep, so the boolean
 generator was removed.
 
+## Boolean generator caps (audited)
+A sweep of the remaining input caps on the shipped generators, and whether
+each is liftable:
+
+- **NoComment: ``n <= 8`` is a genuine language wall, not a liftable cap.**
+  The template computes the input's numeric index and does one ``s`` skip
+  into the answer staircase, but ``s`` skips a *byte* (the stack top, read
+  off the current cell), so the index and every jump are capped at 255.
+  Lifting needs a conditional jump over a region > 255 commands, which is
+  inexpressible: the region must be split with ``s`` commands, but each
+  split-``s`` has to be gated on the tested bit while the pointer is
+  mid-region, and the only way to reach the bit cell (a move) resets the
+  pointer and undoes the region.  The decision-tree and binary-selection
+  rewrites both hit this same wall.
+- **Polynomial: ``n <= 4`` is a performance cap.**  Each instruction consumes
+  a fresh prime, so the coefficients reach ~10**1746 at ``n == 5`` and the
+  interpreter's exact factorization no longer completes in practical time.
+  Lifting needs a faster factoring path, not a construction.
+- **Home Row: ``n <= 2`` is a language cap.**  The grid is *fixed* at 5x5
+  (25 cells); an exhaustive search shows no ``j``-guarded routing separates
+  2**n combinations onto distinct cells past ``n == 2``.
+- **Minifuck: ``n <= 3``, 0-preserving two-input tables only** (a re-verified
+  structural wall: the decode suffix fixes the pointer orientation).
+- **123: one input only** (single data byte; every read overwrites it).
+- **Already total (no cap):** Circlefuck (decision tree, sampled to
+  ``n == 16``), ROTfuck (phantom-block minterm sum, sampled to ``n == 4``),
+  ABCDirection and BF-PDA (arbitrary ``n``, exhaustive to ``n <= 3``).
+
 ## RAM0, Bitdeque, Minsky Swap (not viable for the template model)
 These three have value-testable branches and clean setters, but their jumps
 are *absolute token indices*: RAM0's digit-`GOTO`, Bitdeque's `GOTO N`, and
@@ -370,6 +398,19 @@ COD — are in `docs/roadmap.md`).
 - **Welcome To...**: a work-in-progress.
 
 ## Assessed boolean candidates that fell through
+- **123**: its single 8-bit data byte and pointer that flips the bit as it
+  moves (``1`` XORs the mask *and* advances) corrupt any value being built
+  while the pointer navigates to the write position, and writing needs mask
+  512 whose ``1``-path toggles masks 2..256.  The ``3``-jump (nearest
+  preceding/following ``3``) and loop-from-start restart (reaching the end
+  with the pointer at a data position resumes from index 0 without resetting
+  data) provide real control flow, but an exhaustive search over every
+  program up to length 13 (1.6M programs) shows input ``'0'`` (48) can only
+  ever print the even bytes ``{0, 4, 6, 8, ..., 248}`` — the odd byte 49
+  (``'1'``) is unreachable, so NOT and const-1 are inexpressible.  Only
+  identity (``1112121121``) and const-0 (``1111132231``) work, both verified
+  against the interpreter.  A boolean generator is not feasible for the
+  standard harness.
 - **%^2^-1**: its only control flow is ``t`` — rewind to the program start
   when the accumulator is nonzero — with the accumulator preserved across the
   rewind.  A program is therefore a whole-program ``while`` loop, and each
