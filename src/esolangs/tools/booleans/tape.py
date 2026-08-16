@@ -1422,3 +1422,38 @@ def jaune(truth_table: str, n: int) -> str:
 
     end = fresh()
     return node(0, 0, 2**n, end) + f"{end}:."
+
+
+def jaune_multiply(n: int) -> str:
+    """Build a Jaune program reading two ``n``-digit numbers and printing their product.
+
+    ``n`` is the number of decimal digits of each operand (most-significant
+    first, one digit per input line); the program prints the product as a
+    decimal number with no leading zeros.
+
+    Jaune is the language the multiply generator class needs: cells are
+    *unbounded* integers (no 8-bit wrapping), so each operand fits in one
+    cell with no digit-per-cell carry, and ``^`` prints the current cell as a
+    decimal number directly.  Each operand is folded in with ``v+`` (read a
+    digit and add it) and a run of nine ``&`` (add the hold cell) after a
+    ``#`` (copy the current cell to hold), which multiplies the accumulated
+    value by 10.  The product is then a repeated-addition loop over the
+    second operand: ``1:`` labels the top, ``2!`` exits when it hits zero,
+    ``#``/``&`` adds the first operand to the result cell, ``1-`` decrements
+    the counter, and ``1?`` loops.  Cells 0/1/2 hold the first operand, the
+    second operand, and the result.
+    """
+    out: list[str] = []
+
+    def fold(digits: int) -> None:
+        out.append("v+")
+        for _ in range(digits - 1):
+            out.append("#")
+            out.append("&" * 9)
+            out.append("v+")
+
+    fold(n)
+    out.append(">")
+    fold(n)
+    out.extend(["1:", "2!", "<", "#", ">>", "&", "<", "1-", "1?", "2:", ">", "^", "."])
+    return "".join(out)

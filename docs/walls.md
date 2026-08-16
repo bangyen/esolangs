@@ -236,9 +236,15 @@ operation, and with the interpreter's documented 8-bit wrapping cells (mod
 not transfer directly — the itchyny decimal printer embeds a working divmod,
 but it is tied to the printer's cell layout, not reusable as a standalone
 carry.  So n = 1 is proven; n > 1 needs a wrapping-safe carry, which is a
-genuine brainfuck-algorithms construction rather than a quick extension.  A
-language with *unbounded* cells (e.g. a register/OISC language with
-arbitrary integers) would lift this cleanly, but no such language currently
-has the decimal-I/O + multiply combination the class needs, so the class is
-recorded as designed-and-partially-proven rather than built across the
-registry.
+genuine brainfuck-algorithms construction rather than a quick extension.
+
+**Jaune realizes the class:** its cells are unbounded integers and ``^``
+prints the current cell as a decimal number, so each operand fits in a single
+cell and the product accumulates without a digit-per-cell carry.  The
+generator (:func:`esolangs.tools.boolean.jaune_multiply`) folds each n-digit
+operand with ``v+`` plus a run of nine ``&`` after a ``#`` (multiply by 10),
+then loops the repeated addition of the first operand over the second.
+Verified exhaustively for n == 1 and n == 2 (all 100 / 10,000 digit pairs)
+and spot-checked for n == 3..5.  This gives the class its first realized
+language: the unbounded-cell + decimal-I/O + multiply combination that the
+brainfuck n > 1 wall needs.
