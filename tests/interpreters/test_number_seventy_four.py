@@ -67,7 +67,7 @@ class TestSeventyFour:
     )
     def test_output_never_starting_with_h_loops_forever(self, program: str) -> None:
         old_handler = signal.signal(signal.SIGALRM, _on_alarm)
-        signal.alarm(2)
+        signal.alarm(1)
         try:
             run(program, IO())
         except _TimeoutError:

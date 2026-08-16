@@ -67,7 +67,7 @@ class Test123:
 
         # 2 1 2 reaches position 0 with bit 7 set; the 3 is TRUE and loops.
         old_handler = signal.signal(signal.SIGALRM, _alarm)
-        signal.alarm(2)
+        signal.alarm(1)
         try:
             run_program("21232131")
         except _TimeoutError:
