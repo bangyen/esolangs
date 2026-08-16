@@ -423,11 +423,11 @@ share a core:
 
 ## VM / debugging interface
 
-A common step-and-inspect interface would make the library a tool for
-studying esolangs, not just running them: `vm.step()`, `vm.halted`,
-`vm.output`, `vm.ip`, `vm.memory`, and `vm.stack` on a wrapper around each
-interpreter.  The goal is a `vm` module exposing one `VM` protocol, with a
-per-language adapter behind it.
+A common step-and-inspect interface makes the library a tool for studying
+esolangs, not just running them: `vm.step()`, `vm.halted`, `vm.output`,
+`vm.ip`, `vm.memory`, and `vm.stack` on a wrapper around each interpreter.
+The goal is a `vm` module exposing one `VM` protocol, with a per-language
+adapter behind it.
 
 The state models are fundamentally different (tapes, stacks, registers, 2D
 grids, self-modifying code), so `memory`/`stack`/`ip` are best-effort and
@@ -437,14 +437,22 @@ languages without one), an OISC exposes its cells, and a 2D language exposes
 its position and direction.  The interface contract is common; the fields
 are what each language's state actually is.
 
-This needs the interpreters to expose their state machine, which only seven
-currently do (S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
-Temporary Stack); the rest keep state in `run()` locals.  The incremental
-path is to define the `VM` protocol, implement adapters for those seven plus
-brainfuck (a trivial tape + pointer), and grow the set per state model over
-time.  Medium priority: it is a distinct workstream rather than more
-interpreters or transpilers, and it is the one feature that changes the
-library's audience from "runner" to "study tool".
+**Shipped:** `esolangs.make_vm` exposes the `VM` protocol with adapters for
+the eight interpreters whose state objects step: brainfuck (tape + pointer),
+S*bleq (OISC cells), Dimensional (its addressed byte), Grapheme (stack +
+call frames), Qoibl (expression cursor + variable list), Eval (active stack),
+Modulous (stack + token cursor), and The Temporary Stack (stack + word
+pointer).  The interpreters expose their state machine as `step()`/`halted`;
+the rest of the registry keeps state in `run()` locals.
+
+The remaining work is to grow the set per state model over time: convert
+more interpreters to a step-capable state object (e.g. the other grid
+languages, whose position/direction is the natural ``ip``), and add the
+debugger affordances on top of the VM (breakpoints, watch on a cell/stack
+slot, a richer ``ip`` for the recursive languages).  Medium priority: it is
+a distinct workstream rather than more interpreters or transpilers, and it
+is the one feature that changes the library's audience from "runner" to
+"study tool".
 
 ### Cheaper study-tool improvements (do first)
 
