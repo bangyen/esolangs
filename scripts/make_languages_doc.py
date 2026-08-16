@@ -62,10 +62,7 @@ _EXTRA_DIRS = [
         "*-riscv.s",
         {
             "123": "123",
-            "2b1b": "2 Bits, 1 Byte",
-            "brainpocalypse": "Brainpocalypse",
             "nocomment": "NoComment",
-            "stun-step": "Stun Step",
         },
         "RISC-V Assembly Implementations",
     ),
@@ -77,13 +74,10 @@ _EXTRA_DIRS = [
             "basicfuck": "Basicfuck",
             "bit_tilde": "bit~",
             "forth": "Forþ",
-            "kak": "Kak",
             "laserfuck": "LaserFuck",
             "painfuck": "Painfuck",
             "pct_squared_minus_one": "%^2^-1",
-            "number_seventy_four": "Number Seventy-Four",
             "three_x": "3x",
-            "trash": "Trash",
             "unsquare": "Unsquare",
         },
         "Rust Implementations",
@@ -283,13 +277,9 @@ def render_extra_section() -> str:
         "",
         "Implementations written in languages other than Python, used as"
         " cross-check references in CI: most generators are round-trip"
-        " verified against them, and languages whose output classes are too"
-        " narrow for a text generator (Kak, Trash, Number Seventy-Four, 2"
-        " Bits 1 Byte, Brainpocalypse, Stun Step) still get a Python"
-        " interpreter differentially verified against the native cross-check."
-        "  The cross-checks share an exit-code convention mirroring the"
-        " Python interpreters: 0 = success, 2 = malformed program, 3 ="
-        " invalid runtime operation.",
+        " verified against them.  The cross-checks share an exit-code"
+        " convention mirroring the Python interpreters: 0 = success, 2 ="
+        " malformed program, 3 = invalid runtime operation.",
         "",
     ]
     for directory, pattern, names, heading in _EXTRA_DIRS:

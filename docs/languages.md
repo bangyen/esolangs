@@ -15,7 +15,7 @@ into a template) rather than the program reading input.
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
 | %^2^-1 | yes | yes | yes |  |  | hello |
 | 123 | yes | yes | yes |  |  | hello |
-| 2 Bits, 1 Byte |  | yes | yes |  |  |  |
+| 2 Bits, 1 Byte |  | yes |  |  |  |  |
 | 2dFish | yes | yes | yes |  |  | hello |
 | 3D Brainfuck | yes | yes |  | yes |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
@@ -33,7 +33,7 @@ into a template) rather than the program reading input.
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
 | Bitdeque |  | yes |  |  |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
-| Brainpocalypse |  | yes | yes |  |  |  |
+| Brainpocalypse |  | yes |  |  |  |  |
 | Circlefuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
 | Collatz Multiverse | yes | yes |  | yes |  | hello |
@@ -50,7 +50,7 @@ into a template) rather than the program reading input.
 | Grapheme |  | yes |  |  |  |  |
 | Home Row | yes | yes |  | yes | yes | hello |
 | Jaune |  |  |  |  | yes |  |
-| Kak |  | yes | yes |  |  |  |
+| Kak |  | yes |  |  |  |  |
 | Keys |  | yes |  |  |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
@@ -61,7 +61,7 @@ into a template) rather than the program reading input.
 | MyScript | yes | yes |  | yes |  | hello |
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
-| Number Seventy-Four |  | yes | yes |  |  |  |
+| Number Seventy-Four |  | yes |  |  |  |  |
 | Painfuck | yes | yes | yes | yes |  | hello |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
@@ -70,11 +70,11 @@ into a template) rather than the program reading input.
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
-| Stun Step |  | yes | yes |  |  |  |
+| Stun Step |  | yes |  |  |  |  |
 | Suffolk | yes | yes |  |  | yes | hello |
 | Taglate | yes | yes |  | yes |  | hello |
 | The Temporary Stack | yes | yes |  |  |  | hello |
-| Trash |  | yes | yes |  |  |  |
+| Trash |  | yes |  |  |  |  |
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
 | ZTOALC L | yes | yes |  | yes |  | hello |

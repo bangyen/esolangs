@@ -110,14 +110,14 @@ registers, bit manipulation, 2D grids, where hand-written assembly would be
 unreadable).  The current split already reflects that — the assembly ports
 are the simple tape/cell/OISC languages, the Rust ports the complex ones.
 
-**To remove:** the six fixed-corpus cross-checks — Kak, Trash, Number
+**Removed:** the six fixed-corpus cross-checks — Kak, Trash, Number
 Seventy-Four (Rust) and Brainpocalypse, Stun Step, 2 Bits 1 Byte (RISC-V).
-None has a generator, so their differentials are a hand-written 4-6 program
-corpus each, and the references are ports of (or ported to) the Python, so
-agreement is not independent evidence.  They add little over the Python unit
-tests at real toolchain cost (cargo + RISC-V cross-compiler + unicorn in
-CI).  The six *languages* stay (they pass the admission criteria as distinct
-no-input interpreters); only the redundant cross-checks go.
+None has a generator, so their differentials were a hand-written 4-6 program
+corpus each, and the references were ports of (or ported to) the Python, so
+agreement was not independent evidence.  They added little over the Python
+unit tests at real toolchain cost (cargo + RISC-V cross-compiler + unicorn
+in CI).  The six *languages* stayed (they pass the admission criteria as
+distinct no-input interpreters); only the redundant cross-checks went.
 
 ## VM / debugging interface (remaining work)
 
