@@ -379,10 +379,20 @@ share a core:
 - **Boolfuck ↔ ABCDrection / Minifuck.**  A Boolfuck (bit tape, little-endian
   byte I/O) shares ABCDrection's bit-tape model; Minifuck's
   flip-and-conditional-skip is further away.
-- **2D bf-tape (Dimensional ↔ LaserFuck; research-level).**  Both operate a
-  brainfuck-style byte tape, but Dimensional's ``[``/``]`` loops have no
-  counterpart in LaserFuck's mirror-driven control — a direct transpile
-  would again be a full simulation.
+- **2D bf-tape (Dimensional → LaserFuck; done).**  Dimensional's ``[``/``]``
+  loops have no counterpart in LaserFuck's mirror-driven control, so a
+  transpile is a real construction, not a rewrite.  It works by giving the
+  start marker a funnel that pins its random heading, emitting each ``[`` as
+  a ``v`` that detours the beam into a loop ring below the strip (the test
+  ``# v ) \\`` reflects a nonzero cell back into the body and lets a zero
+  cell fall through to the exit, with a loop-back up a clear column), and
+  negating every working cell at the end so LaserFuck's single final tape
+  dump matches Dimensional's output.  The supported class is the linear-tape
+  core (``>0``/``<0``, ``+``/``-``, ``.``/``,``, ``[``/``]``, the ``=HH``/
+  ``:CH`` literals); the pointer hierarchy, non-zero-dimension moves, moving
+  below cell 0, drifting loops, and any output beyond a final single ``.``
+  are rejected rather than mistranslated, and cells do not wrap at 8 bits in
+  the translation.
 
 ## VM / debugging interface
 
