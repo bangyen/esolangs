@@ -80,7 +80,7 @@ def _run(
 ) -> None:
     """Run ``run_fn``, applying the wall-clock ``timeout`` guard when set."""
     if timeout is None:
-        run_fn(program, io=io_obj, **kwargs)
+        run_fn(program, io_obj, **kwargs)
     elif threading.current_thread() is threading.main_thread() and hasattr(
         signal, "SIGALRM"
     ):
@@ -104,7 +104,7 @@ def _run_timed_signal(
     old = signal.signal(signal.SIGALRM, _timeout_handler)
     signal.setitimer(signal.ITIMER_REAL, timeout)
     try:
-        run_fn(program, io=io_obj, **kwargs)
+        run_fn(program, io_obj, **kwargs)
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old)
