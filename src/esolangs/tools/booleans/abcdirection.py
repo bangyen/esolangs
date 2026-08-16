@@ -56,10 +56,13 @@ class _Builder:
         self.cells: dict[tuple[int, int], str] = {}
 
     def set(self, x: int, y: int, c: str) -> None:
-        assert 0 <= x < self.width, (x, y)
-        assert 0 <= y < self.height, (x, y)
+        if not 0 <= x < self.width:
+            raise AssertionError((x, y))
+        if not 0 <= y < self.height:
+            raise AssertionError((x, y))
         old = self.cells.get((x, y))
-        assert old is None or old == c, ("collision", (x, y), old, c)
+        if old is not None and old != c:
+            raise AssertionError(("collision", (x, y), old, c))
         self.cells[(x, y)] = c
 
     def grid(self) -> list[str]:

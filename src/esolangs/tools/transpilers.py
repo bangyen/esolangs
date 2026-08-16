@@ -882,7 +882,8 @@ class _LaserGrid:
 
     def set(self, row: int, col: int, c: str) -> None:
         old = self.cells.get((row, col))
-        assert old is None or old == c, ("collision", (row, col), old, c)
+        if old is not None and old != c:
+            raise AssertionError(("collision", (row, col), old, c))
         self.cells[(row, col)] = c
         self.rows = max(self.rows, row + 1)
         self.cols = max(self.cols, col + 1)
@@ -924,7 +925,8 @@ def _laser_emit(g: _LaserGrid, ops: list[str], row: int, col: int) -> tuple[int,
                 elif ops[j] == "]":
                     depth -= 1
                 j += 1
-            assert depth == 0, "balanced brackets were validated before emission"
+            if depth != 0:
+                raise AssertionError("balanced brackets were validated before emission")
             body = ops[i + 1 : j - 1]
             col, lbottom = _laser_loop(g, row, col, body)
             bottom = max(bottom, lbottom)
@@ -1010,7 +1012,8 @@ def _laser_analyze(ops: list[str]) -> tuple[int, int, int | None]:
                 elif ops[j] == "]":
                     depth -= 1
                 j += 1
-            assert depth == 0, "balanced brackets were validated before analysis"
+            if depth != 0:
+                raise AssertionError("balanced brackets were validated before analysis")
             body = ops[i + 1 : j - 1]
             if "." in body:
                 raise ValueError("a '.' inside a loop is out of the supported class")
