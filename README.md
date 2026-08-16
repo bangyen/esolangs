@@ -85,7 +85,7 @@ just test
 
 <summary>Show all 68 languages</summary>
 
-The full capability matrix (generators, native and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
+The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
 ### Grid-based Languages
 

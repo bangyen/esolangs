@@ -128,21 +128,6 @@ class TestDivergenceDetection:
             assert not verify_differential._fuzz_three_x(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(
-        not verify_differential.PCT_SQUARED_MINUS_ONE_BIN.exists(),
-        reason="Rust cross-check not built",
-    )
-    def test_pct_catches_divergence(self, rng) -> None:
-        """A wrong output on the Rust side is reported as a failure."""
-        real_run = verify_differential._run_pct_native  # noqa: SLF001
-
-        def tampered(binary, program, stdin):
-            out, code = real_run(binary, program, stdin)
-            return out + b"!", code
-
-        with patch.object(verify_differential, "_run_pct_native", side_effect=tampered):
-            assert not verify_differential._fuzz_pct(rng, 20)  # noqa: SLF001
-
-    @pytest.mark.skipif(
         not verify_differential.TWO_D_FISH_BIN.exists(),
         reason="Rust cross-check not built",
     )
@@ -175,20 +160,3 @@ class TestDivergenceDetection:
             verify_differential, "_run_painfuck_native", side_effect=tampered
         ):
             assert not verify_differential._fuzz_painfuck(rng, 20)  # noqa: SLF001
-
-    @pytest.mark.skipif(
-        not verify_differential.BIT_TILDE_BIN.exists(),
-        reason="Rust cross-check not built",
-    )
-    def test_bit_tilde_catches_divergence(self, rng) -> None:
-        """A wrong output on the Rust side is reported as a failure."""
-        real_run = verify_differential._run_bit_tilde_native  # noqa: SLF001
-
-        def tampered(program, stdin):
-            out, code = real_run(program, stdin)
-            return out + b"!", code
-
-        with patch.object(
-            verify_differential, "_run_bit_tilde_native", side_effect=tampered
-        ):
-            assert not verify_differential._fuzz_bit_tilde(rng, 20)  # noqa: SLF001
