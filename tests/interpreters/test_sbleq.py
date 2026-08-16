@@ -43,7 +43,7 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
             buffer.write(str(value))
 
     old_handler = signal.signal(signal.SIGALRM, _on_alarm)
-    signal.alarm(2)
+    signal.alarm(1)
     try:
         run(program, _IO(), store=store)
     except _TimeoutError:
