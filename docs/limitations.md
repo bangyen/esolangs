@@ -405,10 +405,14 @@ Grapheme joins that list: its only output channels are a string of
 uppercase Latin letters and an integer's decimal digits.  A string cannot
 contain `E` (which terminates stringmode), so even "HELLO" is unspellable,
 and there is no string-concatenation command to assemble text from parts;
-a text generator therefore cannot produce "Hello, World!".  (Grapheme also
-cannot read its inputs as clean bits: `W` yields the string `"0"`/`"1"`,
-`J` maps those to -160/-150, both truthy, and string constants cannot spell
-`"0"`, so a boolean generator is not feasible for the standard harness.)
+a text generator therefore cannot produce "Hello, World!".  For a boolean
+generator the *input* half is expressible — `W` reads a line and `J`
+converts `"@"` to 0 (falsy) and `"A"` to 10 (truthy), and `O` of a string's
+length prints the digit `0`/`1` — but the *branching* half is a wall: the
+only conditional skip (`V`) jumps forward when the value is falsy, and a
+frame runs to the end of its code with no mid-tree halt, so the truthy
+branch always falls through both leaves and prints both outputs.  A general
+decision tree is therefore not expressible.
 
 ## Category:Unimplemented candidates that fell through
 Assessments of unimplemented languages from the wiki that did not make the
