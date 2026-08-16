@@ -152,7 +152,7 @@ class _Machine:
             self.frames.pop()
 
     def step(self) -> None:
-        """Execute one command at the current execution depth."""
+        """Execute one command, finishing any frames that are now complete."""
         frame = self.frames[-1]
         if frame.pc >= len(frame.code):
             self._finish(frame)
@@ -230,9 +230,10 @@ class _Machine:
             frame.mode, frame.buf = "int", []
         elif c == "G":
             value = self.pop()
-            body = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
-            if not isinstance(body, str):
+            raw = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
+            if not isinstance(raw, str):
                 raise HaltError("G needs a string or a function")
+            body = raw
         elif c == "H":
             frame.mode, frame.buf = "func", []
         elif c == "I":
@@ -312,6 +313,12 @@ class _Machine:
             if depth > 500:
                 raise HaltError("recursion limit exceeded")
             self.frames.append(_Frame(body, depth, repeat=repeat))
+
+        # a command that left the current frame finished (the program ended or
+        # a call returned) is completed now, so a caller sees ``halted`` as
+        # soon as the last command runs instead of one step later.
+        while self.frames and self.frames[-1].pc >= len(self.frames[-1].code):
+            self._finish(self.frames[-1])
 
 
 def run(code: str, io: IO, limit: int = 1_000_000) -> None:

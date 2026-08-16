@@ -1,7 +1,8 @@
 """Public API for the esolangs package.
 
 Provides ``generate`` (produce a program that prints a text), ``run``
-(execute a program through an interpreter), ``transpile`` (rewrite a
+(execute a program through an interpreter), ``make_vm`` (a step-and-inspect
+wrapper around the step-capable interpreters), ``transpile`` (rewrite a
 program between languages), ``describe`` (a structured language summary),
 and ``list_languages``.
 """
@@ -22,6 +23,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
 from esolangs.tools.boolean import BOOLEAN
 from esolangs.tools.transpilers import TRANSPILERS
+from esolangs.vm import VM, make_vm
 
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
 
