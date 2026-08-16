@@ -125,6 +125,11 @@ _README_HEADINGS = [
         "Languages that use a stack for data manipulation.",
     ),
     (
+        "grid_based",
+        "Grid-based Languages",
+        "Languages that move a pointer or beam across a 2D grid.",
+    ),
+    (
         "other",
         "Other Languages",
         "Languages that don't fit into the above categories.",
