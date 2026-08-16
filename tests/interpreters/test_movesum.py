@@ -13,7 +13,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.movesum import run
+from esolangs.interpreters.tape_based.movesum import run
 
 
 class TestMovesumBasicCommands:
