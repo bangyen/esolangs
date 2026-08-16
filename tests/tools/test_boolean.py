@@ -173,7 +173,7 @@ class TestForbinBoolean:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.forbin_boolean(table, n)
+        program = boolean.forbin_boolean(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_forbin_boolean(program, [str(b) for b in bits])
@@ -181,17 +181,17 @@ class TestForbinBoolean:
 
     def test_uses_the_lsb_of_each_input(self) -> None:
         """Each input is read as 8 bits and only the LSB drives the tree."""
-        program = boolean.forbin_boolean("01", 1)
+        program = boolean.forbin_boolean("01")
         # one 8-variable read, then a decision tree that prints '1' for bit 1
         assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):
-            boolean.forbin_boolean("011", 1)
+            boolean.forbin_boolean("011")
 
     def test_rejects_non_binary(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.forbin_boolean("02", 1)
+            boolean.forbin_boolean("02")
 
 
 def run_addsubjump(program: str, inputs: list[str]) -> str:
@@ -220,7 +220,7 @@ class TestAddSubJump:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.addsubjump(table, n)
+        program = boolean.addsubjump(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_addsubjump(program, [str(b) for b in bits])
@@ -228,18 +228,18 @@ class TestAddSubJump:
 
     def test_branch_normalizes_bits_to_zero_and_four(self) -> None:
         """Each bit is normalized to {0, 4} and added to a jump cell."""
-        program = boolean.addsubjump("0110", 2)
+        program = boolean.addsubjump("0110")
         assert "-48" in program  # the normalization constant
         assert run_addsubjump(program, ["0", "1"]) == "1"
         assert run_addsubjump(program, ["1", "0"]) == "1"
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):
-            boolean.addsubjump("011", 1)
+            boolean.addsubjump("011")
 
     def test_rejects_non_binary(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.addsubjump("02", 1)
+            boolean.addsubjump("02")
 
 
 class TestSixFive:
@@ -255,7 +255,7 @@ class TestSixFive:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.six_five(table, n)
+        program = boolean.six_five(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_six_five(program, [str(b) for b in bits])
@@ -263,14 +263,14 @@ class TestSixFive:
 
     def test_branch_structure(self) -> None:
         """Each level reads a bit and branches to a 4 marker."""
-        program = boolean.six_five("0110", 2)
+        program = boolean.six_five("0110")
         assert program.startswith("B" + "2" * 8)
         assert "78" in program
         assert program.endswith("A0")
 
     def test_arithmetic_fallback_path(self) -> None:
         """n > 5 falls back to the arithmetic kernel instead of the tree."""
-        program = boolean.six_five("1" + "0" * 63, 6)  # f(x) = (x == 0): T == 1
+        program = boolean.six_five("1" + "0" * 63)  # f(x) = (x == 0): T == 1
         assert "8" in program  # loops use 8n jumps
         assert "70" in program  # loop conditionals
         assert program.count("4") <= 35  # within the label budget
@@ -280,7 +280,7 @@ class TestSixFive:
     def test_arithmetic_fallback_table(self, n: int, table: str) -> None:
         """The fallback computes every combination for small-T tables."""
         table = table + "0" * (2**n - len(table))  # ones only at low indices
-        program = boolean.six_five(table, n)
+        program = boolean.six_five(table)
         assert len(program) < 2000  # the small-T setup stays short
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -290,7 +290,7 @@ class TestSixFive:
     def test_arithmetic_fallback_constant_markers(self) -> None:
         """A loop-based x build keeps the marker count constant in n."""
         markers = {
-            n: boolean.six_five("1" + "0" * (2**n - 1), n).count("4")
+            n: boolean.six_five("1" + "0" * (2**n - 1)).count("4")
             for n in (6, 9, 12, 16)
         }
         assert markers == {6: markers[6], 9: markers[6], 12: markers[6], 16: markers[6]}
@@ -299,13 +299,13 @@ class TestSixFive:
     def test_arithmetic_fallback_refuses_large_t(self) -> None:
         """AND-n is the worst case: T == 2**(2**n - 1) blows up the setup."""
         with pytest.raises(ValueError, match="~2 MB setup"):
-            boolean.six_five("0" * 63 + "1", 6)  # AND6: T == 2**63
+            boolean.six_five("0" * 63 + "1")  # AND6: T == 2**63
 
     @pytest.mark.parametrize("n", [6, 8])
     def test_arithmetic_fallback_complement(self, n: int) -> None:
         """Tables whose complement is cheap use it instead of a huge T."""
         table = "00" + "1" * (2**n - 2)  # zeros only at indices 0,1: T' == 3
-        program = boolean.six_five(table, n)
+        program = boolean.six_five(table)
         assert len(program) < 2000
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -314,13 +314,13 @@ class TestSixFive:
 
     def test_arithmetic_fallback_compact_setup(self) -> None:
         """+6 runs make the setup ~T/6, far below the naive 2T pairs."""
-        program = boolean.six_five("1" * 20 + "0" * 44, 6)  # T == 2**20 - 1
+        program = boolean.six_five("1" * 20 + "0" * 44)  # T == 2**20 - 1
         assert len(program) < 500_000  # ~T/6, not ~2T
         assert program[:32].count("6") > program[:32].count("62")  # uses +6 runs
 
     def test_arithmetic_fallback_complement_marker_budget(self) -> None:
         """The complement output branch stays inside the label budget."""
-        program = boolean.six_five("00" + "1" * 62, 6)
+        program = boolean.six_five("00" + "1" * 62)
         assert program.count("4") <= 35
 
 
@@ -346,7 +346,7 @@ class TestQoibl:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.qoibl(table, n)
+        program = boolean.qoibl(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_qoibl(program, [str(b) for b in bits])
@@ -354,14 +354,14 @@ class TestQoibl:
 
     def test_minterm_structure(self) -> None:
         """An AND function stores the minterm product and prints 48 + sum."""
-        program = boolean.qoibl("0001", 2)
+        program = boolean.qoibl("0001")
         assert program.startswith("we e we et")
         assert "ry ye ry" in program  # a minterm product
         assert program.endswith("tt")
 
     def test_empty_truth_table(self) -> None:
         """A constant-zero function skips all minterms."""
-        program = boolean.qoibl("0000", 2)
+        program = boolean.qoibl("0000")
         assert "ry ye ry" not in program
 
 
@@ -396,7 +396,7 @@ class TestPolynomial:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.polynomial(table, n)
+        program = boolean.polynomial(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_polynomial(program, [str(b) for b in bits])
@@ -404,40 +404,40 @@ class TestPolynomial:
 
     def test_is_polynomial(self) -> None:
         """The program is a polynomial function."""
-        assert boolean.polynomial("0110", 2).startswith("f(x) = ")
+        assert boolean.polynomial("0110").startswith("f(x) = ")
 
     def test_supports_three_inputs(self) -> None:
         """A 3-input table is factored exactly by the interpreter."""
-        assert boolean.polynomial("00000001", 3).startswith("f(x) = ")
+        assert boolean.polynomial("00000001").startswith("f(x) = ")
 
     def test_five_inputs_rejected(self) -> None:
         with pytest.raises(ValueError, match="n <= 4"):
-            boolean.polynomial("0" * 31 + "1", 5)
+            boolean.polynomial("0" * 31 + "1")
 
 
 class TestUnsquare:
     def test_program_shape(self) -> None:
         """The program reads n inputs and prints once."""
-        program = boolean.unsquare("0110", 2)
+        program = boolean.unsquare("0110")
         assert program.startswith("iA>-<P" * 2)
         assert program.count("iA>-<P") == 2  # one read per input
         assert program.endswith("o")
 
     def test_decision_tree(self) -> None:
         """Each internal node branches on a bit with the flip primitive."""
-        program = boolean.unsquare("0110", 2)
+        program = boolean.unsquare("0110")
         assert "x->IA<" in program  # the stack-clean flip
         assert program.count("x>") >= 3  # one guard per branch
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.unsquare("011", 1)
+            boolean.unsquare("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.unsquare("02", 1)
+            boolean.unsquare("02")
 
 
 class TestBfstack:
@@ -454,7 +454,7 @@ class TestBfstack:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.bfstack(table, n)
+        program = boolean.bfstack(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_bfstack(program, [str(b) for b in bits])
@@ -462,7 +462,7 @@ class TestBfstack:
 
     def test_encode_decode_structure(self) -> None:
         """The program encodes the inputs then tests the zero rows."""
-        program = boolean.bfstack("0110", 2)
+        program = boolean.bfstack("0110")
         assert program.startswith(">>+,")  # result cell, accumulator, first input
         assert program.count(",") == 2  # one read per input
         assert program.endswith("+" * 48 + ".")  # print 48 + result
@@ -481,7 +481,7 @@ class TestDig:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.dig(table, n)
+        program = boolean.dig(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_dig(program, [str(b) for b in bits])
@@ -498,7 +498,7 @@ class TestDig:
             "     > >2$~;#@\n"
             "            > >$30:@"
         )
-        assert boolean.dig("0110", 2) == expected
+        assert boolean.dig("0110") == expected
 
 
 def run_sophie(program: str, inputs: list[str]) -> str:
@@ -532,7 +532,7 @@ class TestBetween:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.between(table, n)
+        program = boolean.between(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_between(program, [str(b) for b in bits])
@@ -540,18 +540,18 @@ class TestBetween:
 
     def test_program_structure(self) -> None:
         """One declare/read/normalize triplet per input, one branch per node."""
-        program = boolean.between("0110", 2)
+        program = boolean.between("0110")
         lines = program.splitlines()
         assert lines[:3] == ["'0'v.", "[0]i.", "[0]s|[0]c.|"]
         assert lines.count(".x.") == 4  # one leaf per input combination
 
     def test_mismatched_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="4 entries"):
-            boolean.between("011", 2)
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.between("011")
 
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.between("0123", 2)
+            boolean.between("0123")
 
 
 def run_sbleq(program: str, inputs: list[str]) -> str:
@@ -576,7 +576,7 @@ class TestSbleq:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.sbleq(table, n)
+        program = boolean.sbleq(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_sbleq(program, [str(b) for b in bits])
@@ -584,7 +584,7 @@ class TestSbleq:
 
     def test_program_structure(self) -> None:
         """The root reads and normalizes, then every leaf outputs and halts."""
-        program = boolean.sbleq("0110", 2)
+        program = boolean.sbleq("0110")
         cells = [int(tok) for tok in program.split()]
         data_base = len(cells) - 13
         assert cells[:3] == [data_base + 4, -2, data_base + 7]  # root read
@@ -611,36 +611,36 @@ class TestSbleq:
 
     def test_constant_table_has_no_reads(self) -> None:
         """A constant table collapses to an output and a halt."""
-        program = boolean.sbleq("0000", 2)
+        program = boolean.sbleq("0000")
         cells = [int(tok) for tok in program.split()]
         assert cells == [-3, 7, 0, 0, 0, 9, -49, 48, 49, -1]
 
     def test_mismatched_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="4 entries"):
-            boolean.sbleq("011", 2)
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.sbleq("011")
 
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.sbleq("0123", 2)
+            boolean.sbleq("0123")
 
 
 class TestForth:
     def test_program_structure(self) -> None:
         """The program defines one function per tree node and reads n bits."""
-        program = boolean.forth("0001", 2)
+        program = boolean.forth("0001")
         assert program.endswith("1+;.")
         assert program.count("{") == program.count("}") == 6  # 6 nodes
         assert program.count(",68*-") == 2  # read and normalize 2 inputs
 
     def test_leaf_results_are_the_byte(self) -> None:
         """Each leaf pushes 48 + its table entry."""
-        program = boolean.forth("0001", 2)
+        program = boolean.forth("0001")
         assert "3F*3+" in program  # '0' leaves push 48 = 3*15+3
         assert "3F*4+" in program  # the '1' leaf pushes 49 = 3*15+4
 
     def test_scales(self) -> None:
         """More inputs mean more tree functions."""
-        program = boolean.forth("0" * 16 + "1" * 16, 5)
+        program = boolean.forth("0" * 16 + "1" * 16)
         assert program.count("{") == 2 ** (5 + 1) - 2
         assert program.count(",68*-") == 5
 
@@ -665,7 +665,7 @@ class TestDimensional:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.dimensional(table, n)
+        program = boolean.dimensional(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_dimensional(program, [str(b) for b in bits])
@@ -673,26 +673,26 @@ class TestDimensional:
 
     def test_moves_are_pinned_to_dimension_zero(self) -> None:
         """A bare >/< would take its dimension from the cell's value."""
-        program = boolean.dimensional("0110", 2)
+        program = boolean.dimensional("0110")
         rest = program.replace(">0", "").replace("<0", "")
         assert ">" not in rest
         assert "<" not in rest
 
     def test_scales_beyond_the_old_reference_cap(self) -> None:
         """The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
-        program = boolean.dimensional("0" * 4095 + "1", 12)
+        program = boolean.dimensional("0" * 4095 + "1")
         got = run_dimensional(program, ["1"] * 12)
         assert got == "1"
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.dimensional("011", 1)
+            boolean.dimensional("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.dimensional("02", 1)
+            boolean.dimensional("02")
 
 
 class TestDimensionalTree:
@@ -708,7 +708,7 @@ class TestDimensionalTree:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.dimensional_tree(table, n)
+        program = boolean.dimensional_tree(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_dimensional(program, [str(b) for b in bits])
@@ -717,14 +717,14 @@ class TestDimensionalTree:
     def test_tree_small_on_dense_tables(self) -> None:
         """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.dimensional_tree(xor6, 6)) < 10_000  # vs ~34K survivor
+        assert len(boolean.dimensional_tree(xor6)) < 10_000  # vs ~34K survivor
 
     def test_dimensional_dispatches(self) -> None:
         """dimensional picks the survivor for sparse and the tree for dense."""
-        sparse = boolean.dimensional("0" * 15 + "1", 4)  # AND4
-        assert len(sparse) < len(boolean.dimensional_tree("0" * 15 + "1", 4))
+        sparse = boolean.dimensional("0" * 15 + "1")  # AND4
+        assert len(sparse) < len(boolean.dimensional_tree("0" * 15 + "1"))
         xor = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        assert boolean.dimensional(xor, 4) == boolean.dimensional_tree(xor, 4)
+        assert boolean.dimensional(xor) == boolean.dimensional_tree(xor)
 
 
 class TestCirclefuck:
@@ -740,7 +740,7 @@ class TestCirclefuck:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.circlefuck(table, n)
+        program = boolean.circlefuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_circlefuck(program, [str(b) for b in bits])
@@ -755,7 +755,7 @@ class TestCirclefuck:
     )
     def test_byte_values(self, values: list[int], n: int) -> None:
         """circlefuck_byte outputs the given byte per input combination."""
-        program = boolean.circlefuck_byte(values, n)
+        program = boolean.circlefuck_byte(values)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_circlefuck(program, [str(b) for b in bits])
@@ -776,7 +776,7 @@ class TestBf:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.brainfuck(table, n)
+        program = boolean.brainfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_bf(program, [str(b) for b in bits])
@@ -784,23 +784,23 @@ class TestBf:
 
     def test_bf_sparse_uses_the_minterm(self) -> None:
         """bf picks the minterm for sparse tables (shorter than the tree)."""
-        program = boolean.brainfuck("0" * 15 + "1", 4)  # AND4: one one-row
-        assert len(program) < len(boolean.bf_tree("0" * 15 + "1", 4))
+        program = boolean.brainfuck("0" * 15 + "1")  # AND4: one one-row
+        assert len(program) < len(boolean.bf_tree("0" * 15 + "1"))
 
     def test_bf_dense_uses_the_tree(self) -> None:
         """bf picks the decision tree for dense tables."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert boolean.brainfuck(xor6, 6) == boolean.bf_tree(xor6, 6)
+        assert boolean.brainfuck(xor6) == boolean.bf_tree(xor6)
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.brainfuck("011", 1)
+            boolean.brainfuck("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.brainfuck("02", 1)
+            boolean.brainfuck("02")
 
 
 class TestBfTree:
@@ -819,7 +819,7 @@ class TestBfTree:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.bf_tree(table, n)
+        program = boolean.bf_tree(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_bf(program, [str(b) for b in bits])
@@ -828,17 +828,17 @@ class TestBfTree:
     def test_tree_small_on_dense_tables(self) -> None:
         """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.bf_tree(xor6, 6)) < 10_000  # vs the minterm's ~1.2M
+        assert len(boolean.bf_tree(xor6)) < 10_000  # vs the minterm's ~1.2M
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.bf_tree("011", 1)
+            boolean.bf_tree("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.bf_tree("02", 1)
+            boolean.bf_tree("02")
 
 
 class TestThreeDBf:
@@ -855,7 +855,7 @@ class TestThreeDBf:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.three_d_brainfuck(table, n)
+        program = boolean.three_d_brainfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_three_d_brainfuck(program, [str(b) for b in bits])
@@ -863,7 +863,7 @@ class TestThreeDBf:
 
     def test_array_moves_use_the_3d_axes(self) -> None:
         """3D Brainfuck's >/< are no-ops, so the array moves with e/w."""
-        program = boolean.three_d_brainfuck("0110", 2)
+        program = boolean.three_d_brainfuck("0110")
         assert ">" not in program
         assert "<" not in program
         assert "e" in program
@@ -872,12 +872,12 @@ class TestThreeDBf:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.three_d_brainfuck("011", 1)
+            boolean.three_d_brainfuck("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.three_d_brainfuck("02", 1)
+            boolean.three_d_brainfuck("02")
 
 
 class TestPainfuck:
@@ -899,7 +899,7 @@ class TestPainfuck:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.painfuck(table, n)
+        program = boolean.painfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_painfuck(program, [str(b) for b in bits])
@@ -910,7 +910,7 @@ class TestPainfuck:
         must be the inverse shift; the translated commands are the BF moves."""
         from esolangs.interpreters.tape_based.painfuck import _translate
 
-        program = boolean.painfuck("0110", 2)
+        program = boolean.painfuck("0110")
         translated = _translate(program)
         assert "a" in translated  # [ loops
         assert "b" in translated  # ] loops
@@ -920,12 +920,12 @@ class TestPainfuck:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.painfuck("011", 1)
+            boolean.painfuck("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.painfuck("02", 1)
+            boolean.painfuck("02")
 
 
 class TestBitTilde:
@@ -946,7 +946,7 @@ class TestBitTilde:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.bit_tilde(table, n)
+        program = boolean.bit_tilde(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_bit_tilde(program, [str(b) for b in bits])
@@ -954,7 +954,7 @@ class TestBitTilde:
 
     def test_single_read_and_output(self) -> None:
         """One read per input and a single final output."""
-        program = boolean.bit_tilde("0110", 2)
+        program = boolean.bit_tilde("0110")
         assert program.startswith(")")
         assert program.count(")") == 2
         assert program.count("(") == 1
@@ -963,12 +963,12 @@ class TestBitTilde:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.bit_tilde("011", 1)
+            boolean.bit_tilde("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.bit_tilde("02", 1)
+            boolean.bit_tilde("02")
 
 
 class TestMinifuck:
@@ -989,7 +989,7 @@ class TestMinifuck:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.minifuck(table, n)
+        program = boolean.minifuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_minifuck(program, [str(b) for b in bits])
@@ -999,22 +999,22 @@ class TestMinifuck:
         """The non-0-preserving two-input tables are a documented wall."""
         for table in ("1000", "1110", "1001", "1100", "1010", "1111"):
             with pytest.raises(ValueError, match="non-0-preserving"):
-                boolean.minifuck(table, 2)
+                boolean.minifuck(table)
 
     def test_n_three_rejected(self) -> None:
         """No general construction exists for three or more inputs."""
         with pytest.raises(ValueError, match="n >= 3"):
-            boolean.minifuck("00000000", 3)
+            boolean.minifuck("00000000")
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.minifuck("011", 1)
+            boolean.minifuck("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.minifuck("02", 1)
+            boolean.minifuck("02")
 
 
 class TestJaune:
@@ -1034,7 +1034,7 @@ class TestJaune:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.jaune(table, n)
+        program = boolean.jaune(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_jaune(program, [str(b) for b in bits])
@@ -1045,15 +1045,15 @@ class TestJaune:
         """Every table up to three inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            program = boolean.jaune(table, n)
+            program = boolean.jaune(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_jaune(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="4 entries"):
-            boolean.jaune("011", 2)
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.jaune("011")
 
     @pytest.mark.parametrize(
         ("a", "b"),
@@ -1102,7 +1102,7 @@ class TestBasicfuck:
     )
     def test_program_shape(self, table: str, n: int) -> None:
         """The program declares its cells, reads n inputs, and prints once."""
-        program = boolean.basicfuck(table, n)
+        program = boolean.basicfuck(table)
         assert program.startswith("#basicfuck t=unbounded r=0~255 o=wrap")
         assert (
             program.splitlines()[1]
@@ -1113,7 +1113,7 @@ class TestBasicfuck:
 
     def test_decision_tree(self) -> None:
         """Each internal node branches both ways with the wiki's if!(...)."""
-        program = boolean.basicfuck("0110", 2)
+        program = boolean.basicfuck("0110")
         assert program.count("if (a1) {") == 1
         assert program.count("if !(a1) {") == 1
         assert program.count("if (a2) {") == 2
@@ -1122,12 +1122,12 @@ class TestBasicfuck:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.basicfuck("011", 1)
+            boolean.basicfuck("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.basicfuck("02", 1)
+            boolean.basicfuck("02")
 
 
 class TestCollatzMultiverse:
@@ -1148,7 +1148,7 @@ class TestCollatzMultiverse:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.collatz_multiverse(table, n)
+        program = boolean.collatz_multiverse(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_collatz_multiverse(program, [str(b) for b in bits])
@@ -1156,24 +1156,24 @@ class TestCollatzMultiverse:
 
     def test_minterm_structure(self) -> None:
         """The program reads one input per line and prints once."""
-        program = boolean.collatz_multiverse("0110", 2)
+        program = boolean.collatz_multiverse("0110")
         assert program.count("input") == 2
         assert program.count("DO PRINT.") == 1
 
     def test_constant_tables_skip_the_inputs(self) -> None:
         """A constant table collapses to a single output."""
-        assert boolean.collatz_multiverse("0000", 2).count("DO PRINT.") == 1
-        assert "input" not in boolean.collatz_multiverse("1111", 2)
+        assert boolean.collatz_multiverse("0000").count("DO PRINT.") == 1
+        assert "input" not in boolean.collatz_multiverse("1111")
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.collatz_multiverse("011", 1)
+            boolean.collatz_multiverse("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.collatz_multiverse("02", 1)
+            boolean.collatz_multiverse("02")
 
 
 class TestDecleq:
@@ -1193,7 +1193,7 @@ class TestDecleq:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.decleq(table, n)
+        program = boolean.decleq(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_decleq(program, [str(b) for b in bits])
@@ -1201,7 +1201,7 @@ class TestDecleq:
 
     def test_branch_normalizes_bits_to_one_and_two(self) -> None:
         """Each bit gets a 47-step decrement chain, then one branch."""
-        program = boolean.decleq("0110", 2)
+        program = boolean.decleq("0110")
         cells = [int(tok) for tok in program.split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
         # count a==b>0 instructions: the 47 normalization steps plus the
@@ -1213,12 +1213,12 @@ class TestDecleq:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.decleq("011", 1)
+            boolean.decleq("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.decleq("02", 1)
+            boolean.decleq("02")
 
 
 class TestSophie:
@@ -1234,7 +1234,7 @@ class TestSophie:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.sophie(table, n)
+        program = boolean.sophie(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_sophie(program, [str(b) for b in bits])
@@ -1242,7 +1242,7 @@ class TestSophie:
 
     def test_structure(self) -> None:
         """A one-input function is a single conditional pair."""
-        assert boolean.sophie("10", 1) == ";@$48{#$49,&}{#$48,&}"
+        assert boolean.sophie("10") == ";@$48{#$49,&}{#$48,&}"
 
 
 def run_modulous(program: str, inputs: list[str]) -> str:
@@ -1267,7 +1267,7 @@ class TestModulous:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.modulous(table, n)
+        program = boolean.modulous(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_modulous(program, [str(b) for b in bits])
@@ -1275,8 +1275,8 @@ class TestModulous:
 
     def test_structure(self) -> None:
         """A one-input function reads one input then branches on it."""
-        assert boolean.modulous("10", 1).startswith("[INP INT]")
-        assert "[JMP F 2 IF 0]" in boolean.modulous("10", 1)
+        assert boolean.modulous("10").startswith("[INP INT]")
+        assert "[JMP F 2 IF 0]" in boolean.modulous("10")
 
 
 def run_brainif(program: str, inputs: list[str]) -> str:
@@ -1323,7 +1323,7 @@ class TestNevermind:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.nevermind(table, n)
+        program = boolean.nevermind(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_nevermind(program, [str(b) for b in bits])
@@ -1331,7 +1331,7 @@ class TestNevermind:
 
     def test_structure(self) -> None:
         """A one-input function reads one input and branches on it."""
-        program = boolean.nevermind("10", 1)
+        program = boolean.nevermind("10")
         assert program.startswith("input,?")
         assert "if,$a,==,0" in program
         assert program.count("endif") == 2
@@ -1351,7 +1351,7 @@ class TestContainer:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.container(table, n)
+        program = boolean.container(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_container(program, [str(b) for b in bits])
@@ -1359,7 +1359,7 @@ class TestContainer:
 
     def test_structure(self) -> None:
         """The program reads n inputs and keeps one survivor per row."""
-        program = boolean.container("0110", 2)
+        program = boolean.container("0110")
         assert program.startswith("T:\n+1 T>=T")
         assert ":" in program.splitlines()[:4]  # the empty-named reader
         assert program.count("S") >= 4  # a survivor per row
@@ -1368,12 +1368,12 @@ class TestContainer:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.container("011", 1)
+            boolean.container("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.container("02", 1)
+            boolean.container("02")
 
 
 class TestBrainIf:
@@ -1389,7 +1389,7 @@ class TestBrainIf:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.brainif(table, n)
+        program = boolean.brainif(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_brainif(program, [str(b) for b in bits])
@@ -1397,7 +1397,7 @@ class TestBrainIf:
 
     def test_structure(self) -> None:
         """A one-input function reads one input then branches on it."""
-        program = boolean.brainif("10", 1)
+        program = boolean.brainif("10")
         assert program.startswith("if 0 input")
         assert "if 48 goto" in program
 
@@ -1463,7 +1463,7 @@ class TestParameterizedBIO:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.bio(table, n)
+        template = parameterized.bio(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_bio(self.instantiate(template, bits), bits)
@@ -1473,7 +1473,7 @@ class TestParameterizedBIO:
         """The template has {Xi}/{Ci} placeholders, not hardcoded bits."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.bio("0110", 2)
+        template = parameterized.bio("0110")
         assert "{X0}" in template
         assert "{X1}" in template
         assert "{C0}" in template
@@ -1482,7 +1482,7 @@ class TestParameterizedBIO:
         """The {Ci} placeholder computes 1 - x in the program, not a constant."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.bio("10", 1)
+        template = parameterized.bio("10")
         assert "0ix" in template  # the complement computation is emitted, not a literal
 
 
@@ -1527,7 +1527,7 @@ class TestParameterizedBack:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.back(table, n)
+        template = parameterized.back(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_back(self.instantiate(template, bits))
@@ -1540,7 +1540,7 @@ class TestParameterizedBack:
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.back(table, n)
+            template = parameterized.back(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_back(self.instantiate(template, bits))
@@ -1550,7 +1550,7 @@ class TestParameterizedBack:
         """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.back("0110", 2)
+        template = parameterized.back("0110")
         assert "{X0}" in template
         assert "{X1}" in template
 
@@ -1558,7 +1558,7 @@ class TestParameterizedBack:
         """Each node is a mirror: backslash for a one, slash for a zero."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.back("0110", 2)
+        template = parameterized.back("0110")
         # XOR has three internal nodes (X0, X1, X1)
         assert template.count("{X0}") == 1
         assert template.count("{X1}") == 2
@@ -1567,7 +1567,7 @@ class TestParameterizedBack:
         """A one-result leaf flips the tape bit; a zero-result leaf halts bare."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.back("0110", 2)
+        template = parameterized.back("0110")
         assert "-*" in template
         assert "*" in template
 
@@ -1612,7 +1612,7 @@ class TestParameterizedNoComment:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.nocomment(table, n)
+        template = parameterized.nocomment(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_nocomment(self.instantiate(template, bits))
@@ -1625,7 +1625,7 @@ class TestParameterizedNoComment:
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.nocomment(table, n)
+            template = parameterized.nocomment(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_nocomment(self.instantiate(template, bits))
@@ -1635,7 +1635,7 @@ class TestParameterizedNoComment:
         """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.nocomment("0110", 2)
+        template = parameterized.nocomment("0110")
         assert "{X0}" in template
         assert "{X1}" in template
 
@@ -1643,7 +1643,7 @@ class TestParameterizedNoComment:
         """A one-bit template computes the index then skips to the output."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.nocomment("10", 1)
+        template = parameterized.nocomment("10")
         assert template.startswith("{X0}")
         assert "{C0}" in template  # the complement is injected too
         assert template.endswith("o")  # a single final output
@@ -1656,7 +1656,7 @@ class TestParameterizedNoComment:
 
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
-            template = parameterized.nocomment("1010101010101010", 4)
+            template = parameterized.nocomment("1010101010101010")
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
@@ -1665,13 +1665,13 @@ class TestParameterizedNoComment:
         from esolangs.tools.booleans import parameterized
 
         with pytest.raises(ValueError, match="n <= 8"):
-            parameterized.nocomment("0" * (2**9), 9)
+            parameterized.nocomment("0" * (2**9))
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.booleans import parameterized
 
-        with pytest.raises(ValueError, match="4 entries"):
-            parameterized.nocomment("011", 2)
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.nocomment("011")
 
 
 class TestParameterizedLamfunc:
@@ -1713,7 +1713,7 @@ class TestParameterizedLamfunc:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.lamfunc(table, n)
+        template = parameterized.lamfunc(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_lamfunc(self.instantiate(template, bits))
@@ -1726,7 +1726,7 @@ class TestParameterizedLamfunc:
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.lamfunc(table, n)
+            template = parameterized.lamfunc(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_lamfunc(self.instantiate(template, bits))
@@ -1736,7 +1736,7 @@ class TestParameterizedLamfunc:
         """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.lamfunc("0110", 2)
+        template = parameterized.lamfunc("0110")
         assert "{X0}" in template
         assert "{X1}" in template
 
@@ -1744,14 +1744,14 @@ class TestParameterizedLamfunc:
         """A constant table emits a single p with no branching."""
         from esolangs.tools.booleans import parameterized
 
-        assert parameterized.lamfunc("0000", 2) == "p 0"
-        assert parameterized.lamfunc("1111", 2) == "p 1"
+        assert parameterized.lamfunc("0000") == "p 0"
+        assert parameterized.lamfunc("1111") == "p 1"
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.booleans import parameterized
 
-        with pytest.raises(ValueError, match="4 entries"):
-            parameterized.lamfunc("011", 2)
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.lamfunc("011")
 
 
 class TestParameterizedBfpda:
@@ -1795,7 +1795,7 @@ class TestParameterizedBfpda:
         """Every instantiated input produces the truth-table result."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.bfpda(table, n)
+        template = parameterized.bfpda(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_bfpda(self.instantiate(template, bits))
@@ -1808,7 +1808,7 @@ class TestParameterizedBfpda:
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = parameterized.bfpda(table, n)
+            template = parameterized.bfpda(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = self.run_bfpda(self.instantiate(template, bits))
@@ -1818,7 +1818,7 @@ class TestParameterizedBfpda:
         """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.bfpda("0110", 2)
+        template = parameterized.bfpda("0110")
         assert "{X0}" in template
         assert "{X1}" in template
 
@@ -1826,7 +1826,7 @@ class TestParameterizedBfpda:
         """Each node pushes a complement+bit guard pair and pops both."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.bfpda("0110", 2)
+        template = parameterized.bfpda("0110")
         # XOR has three internal nodes (X0, X1, X1), each pushing two guards
         assert template.count("{X0}") == 1
         assert template.count("{X1}") == 2
@@ -1837,15 +1837,15 @@ class TestParameterizedBfpda:
         """A leaf pushes the answer bit, prints it, and pops it."""
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.bfpda("10", 1)  # NOT: one-leaf prints 1
+        template = parameterized.bfpda("10")  # NOT: one-leaf prints 1
         assert "<@. >" in template
         assert "<. >" in template
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.booleans import parameterized
 
-        with pytest.raises(ValueError, match="4 entries"):
-            parameterized.bfpda("011", 2)
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.bfpda("011")
 
 
 class TestZtoalc:
@@ -1865,7 +1865,7 @@ class TestZtoalc:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.ztoalc_l_boolean(table, n)
+        program = boolean.ztoalc_l_boolean(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_ztoalc(program, [str(b) for b in bits])
@@ -1876,14 +1876,14 @@ class TestZtoalc:
         """Every table up to two inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            program = boolean.ztoalc_l_boolean(table, n)
+            program = boolean.ztoalc_l_boolean(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 assert run_ztoalc(program, [str(b) for b in bits]) == table[combo]
 
     def test_structure(self) -> None:
         """The program rides a Collatz descent with jumps and prints."""
-        program = boolean.ztoalc_l_boolean("0110", 2)
+        program = boolean.ztoalc_l_boolean("0110")
         lines = program.splitlines()
         assert lines[0].strip().isdigit()  # line 1 is the starting value
         assert any("jump" in line for line in lines)
@@ -1891,7 +1891,7 @@ class TestZtoalc:
 
     def test_xor4_linear_fallback(self) -> None:
         """Dense symmetric tables fall back to a huge linear program."""
-        program = boolean.ztoalc_l_boolean("0110100110010110", 4)  # XOR4 = parity
+        program = boolean.ztoalc_l_boolean("0110100110010110")  # XOR4 = parity
         assert len(program.splitlines()) > 100_000  # linear, not the small tree
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
@@ -1903,17 +1903,17 @@ class TestZtoalc:
         with pytest.raises(ValueError, match="no collision-free placement"):
             # tree fails, and the table is not popcount-symmetric, so the
             # linear fallback cannot help either
-            boolean.ztoalc_l_boolean("1010001000011000", 4)
+            boolean.ztoalc_l_boolean("1010001000011000")
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.ztoalc_l_boolean("011", 1)
+            boolean.ztoalc_l_boolean("011")
 
     def test_invalid_chars_rejected(self) -> None:
         """A truth table with non-0/1 characters is malformed."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.ztoalc_l_boolean("02", 1)
+            boolean.ztoalc_l_boolean("02")
 
 
 class TestClockwise:
@@ -1933,7 +1933,7 @@ class TestClockwise:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination prints the result bit seven times."""
-        program = boolean.clockwise(table, n)
+        program = boolean.clockwise(table)
         for combo in range(2**n):
             bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
             got = run_clockwise(program, bits)
@@ -1941,7 +1941,7 @@ class TestClockwise:
 
     def test_ring_starts_at_origin(self) -> None:
         """The program is a closed ring whose pointer starts at (0, 0)."""
-        program = boolean.clockwise("0110", 2)
+        program = boolean.clockwise("0110")
         lines = program.splitlines()
         assert lines[0][0] == " "
         assert run_clockwise(program, ["1", "0"]) == "\x7f"
@@ -1964,7 +1964,7 @@ class TestTaglate:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.taglate(table, n)
+        program = boolean.taglate(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             # Odd n > 1 uses a ghost digit (fake zero first input)
@@ -1982,7 +1982,7 @@ class TestTaglate:
             tt = format(table, "04b")
             for combo in range(4):
                 bits = [(combo >> 1) & 1, combo & 1]
-                got = run_taglate(boolean.taglate(tt, 2), [str(b) for b in bits])
+                got = run_taglate(boolean.taglate(tt), [str(b) for b in bits])
                 assert got == tt[combo], f"{tt} inputs {bits}"
 
     def test_all_three_input_tables(self) -> None:
@@ -1990,7 +1990,7 @@ class TestTaglate:
         failures = 0
         for table in range(256):
             tt = format(table, "08b")
-            program = boolean.taglate(tt, 3)
+            program = boolean.taglate(tt)
             for combo in range(8):
                 bits = [(combo >> (2 - i)) & 1 for i in range(3)]
                 inputs = ["0"] + [str(b) for b in bits]  # ghost digit
@@ -2007,60 +2007,60 @@ class TestTaglate:
     def test_wrong_length_truth_table_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.taglate("011", 2)
+            boolean.taglate("011")
 
     def test_invalid_truth_table_chars_rejected(self) -> None:
         """A truth table with non-0/1 characters is malformed."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.taglate("0120", 2)
+            boolean.taglate("0120")
 
 
 class TestThreeX:
     def test_identity_program_structure(self) -> None:
         """The 01 table reads a bit and stores it before printing."""
-        program = boolean.three_x("01", 1)
+        program = boolean.three_x("01")
         assert program.startswith("?")
         assert program.endswith("!")
 
     def test_wrong_length_truth_table_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.three_x("011", 1)
+            boolean.three_x("011")
 
     def test_invalid_truth_table_chars_rejected(self) -> None:
         """A truth table with non-0/1 characters is malformed."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.three_x("02", 1)
+            boolean.three_x("02")
 
     def test_uses_input_variables(self) -> None:
         """Each input bit is read into a distinct variable."""
-        program = boolean.three_x("0001", 2)
+        program = boolean.three_x("0001")
         assert program.count("?") == 2
         assert "333x" in program  # the constant-0 encoding appears
         assert "3333x3x" in program  # the constant-1 encoding appears
 
     def test_constant_table_has_no_override_blocks(self) -> None:
         """When every row equals the default, no ( ... ) guards are emitted."""
-        assert "(" not in boolean.three_x("0" * 4, 2)
-        assert "(" not in boolean.three_x("1" * 4, 2)
+        assert "(" not in boolean.three_x("0" * 4)
+        assert "(" not in boolean.three_x("1" * 4)
 
     def test_majority_default_handles_zero_row(self) -> None:
         """A zero row differing from a majority-1 default still overrides it."""
-        program = boolean.three_x("0110", 2)  # XOR: two 1s, two 0s
+        program = boolean.three_x("0110")  # XOR: two 1s, two 0s
         assert program.startswith("?")
         assert program.endswith("!")
         assert "(" in program  # the zero row needs an override block
 
     def test_scales_to_more_inputs(self) -> None:
         """The generator handles n beyond the built-in constants."""
-        program = boolean.three_x("0" * (2**7), 7)
+        program = boolean.three_x("0" * (2**7))
         assert program.count("?") == 7
 
     def test_shared_tree_prefix_sharing(self) -> None:
         """Differing combos share prefix guards instead of repeating them."""
         # top-half n=5: 16 zero-rows all share MSB=0.  A full tree has
         # 31 guard nodes; independent chains would emit 16 * 5 = 80.
-        program = boolean.three_x("0" * 16 + "1" * 16, 5)
+        program = boolean.three_x("0" * 16 + "1" * 16)
         assert program.count("(") < 40
 
     def test_digit_constant_encodings(self) -> None:
@@ -2142,7 +2142,7 @@ class TestLaserFuck:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.laserfuck(table, n)
+        program = boolean.laserfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             for heading in range(4):
@@ -2154,7 +2154,7 @@ class TestLaserFuck:
         """Every table up to three inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            program = boolean.laserfuck(table, n)
+            program = boolean.laserfuck(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_laserfuck(program, [str(b) for b in bits], 3)
@@ -2162,18 +2162,18 @@ class TestLaserFuck:
 
     def test_funnel_is_heading_independent(self) -> None:
         """Every initial heading reaches the tree on the top row."""
-        program = boolean.laserfuck("0110", 2)
+        program = boolean.laserfuck("0110")
         for heading in range(4):
             assert run_laserfuck(program, ["1", "0"], heading) == "1"
 
     def test_byte_output_mode(self) -> None:
         """The first grid cell selects byte output (no separators)."""
-        program = boolean.laserfuck("10", 1)
+        program = boolean.laserfuck("10")
         assert program.splitlines()[0][0] == "\u00ff"
 
     def test_loop_free_tree(self) -> None:
         """The decision tree uses the #/)/\\ branch, not loop rings."""
-        program = boolean.laserfuck("0110", 2)
+        program = boolean.laserfuck("0110")
         assert "#" in program
         assert ")" in program
         assert "\\" in program
@@ -2181,12 +2181,12 @@ class TestLaserFuck:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.laserfuck("011", 1)
+            boolean.laserfuck("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.laserfuck("02", 1)
+            boolean.laserfuck("02")
 
 
 class TestGeneratorEdgePaths:
@@ -2196,19 +2196,19 @@ class TestGeneratorEdgePaths:
         """bio/back reject malformed truth tables."""
         from esolangs.tools.booleans import parameterized
 
-        with pytest.raises(ValueError, match="4 entries"):
-            parameterized.bio("011", 2)
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.bio("011")
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            parameterized.bio("0123", 2)
-        with pytest.raises(ValueError, match="4 entries"):
-            parameterized.back("011", 2)
+            parameterized.bio("0123")
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.back("011")
 
     def test_dimensional_tree_validation(self) -> None:
         """The Dimensional decision-tree generator rejects bad truth tables."""
-        with pytest.raises(ValueError, match="4 entries"):
-            boolean.dimensional_tree("011", 2)
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.dimensional_tree("011")
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.dimensional_tree("0123", 2)
+            boolean.dimensional_tree("0123")
 
     def test_six_five_helper_edges(self) -> None:
         """Same-cell navigation and the +5 tail of the constant encoder."""
@@ -2259,7 +2259,7 @@ class TestMyScript:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.myscript(table, n)
+        program = boolean.myscript(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_myscript(program, [str(b) for b in bits])
@@ -2267,11 +2267,11 @@ class TestMyScript:
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):
-            boolean.myscript("011", 1)
+            boolean.myscript("011")
 
     def test_rejects_non_binary(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.myscript("02", 1)
+            boolean.myscript("02")
 
 
 def run_abcdirection(program: str, inputs: list[str]) -> str:
@@ -2321,7 +2321,7 @@ class TestABCDirection:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.abcdirection(table, n)
+        program = boolean.abcdirection(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_abcdirection(program, [str(b) for b in bits])
@@ -2332,7 +2332,7 @@ class TestABCDirection:
         """Every one- and two-input table produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            program = boolean.abcdirection(table, n)
+            program = boolean.abcdirection(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_abcdirection(program, [str(b) for b in bits])
@@ -2342,7 +2342,7 @@ class TestABCDirection:
         """The program is a rectangular grid ending in the DDDDDD terminator."""
         from esolangs.interpreters.tape_based.abcdirection import _parse
 
-        program = boolean.abcdirection("01", 1)
+        program = boolean.abcdirection("01")
         rows = _parse(program)
         width = len(rows[0])
         assert all(len(r) == width for r in rows)
@@ -2358,7 +2358,7 @@ class TestABCDirection:
             ("1" * 16, 4),  # constant one
             ("0110100110010110", 4),  # parity
         ]:
-            program = boolean.abcdirection(table, n)
+            program = boolean.abcdirection(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_abcdirection(program, [str(b) for b in bits])
@@ -2366,7 +2366,7 @@ class TestABCDirection:
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):
-            boolean.abcdirection("011", 1)
+            boolean.abcdirection("011")
 
 
 class TestRotfuck:
@@ -2396,7 +2396,7 @@ class TestRotfuck:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.rotfuck(table, n)
+        program = boolean.rotfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_rotfuck(program, [str(b) for b in bits])
@@ -2406,7 +2406,7 @@ class TestRotfuck:
         """Every two-input table produces the right result."""
         for table_int in range(2 ** (2**2)):
             table = format(table_int, "04b")
-            program = boolean.rotfuck(table, 2)
+            program = boolean.rotfuck(table)
             for combo in range(4):
                 bits = [(combo >> (1 - i)) & 1 for i in range(2)]
                 got = run_rotfuck(program, [str(b) for b in bits])
@@ -2415,12 +2415,12 @@ class TestRotfuck:
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.rotfuck("011", 1)
+            boolean.rotfuck("011")
 
     def test_rejects_non_binary(self) -> None:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.rotfuck("02", 1)
+            boolean.rotfuck("02")
 
 
 class TestHomeRow:
@@ -2461,7 +2461,7 @@ class TestHomeRow:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        template = boolean.home_row(table, n)
+        template = boolean.home_row(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_home_row(self.instantiate(template, bits), [])
@@ -2472,7 +2472,7 @@ class TestHomeRow:
         """Every table up to two inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            template = boolean.home_row(table, n)
+            template = boolean.home_row(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_home_row(self.instantiate(template, bits), [])
@@ -2480,24 +2480,24 @@ class TestHomeRow:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        template = boolean.home_row("0110", 2)
+        template = boolean.home_row("0110")
         assert "{X0}" in template
         assert "{X1}" in template
 
     def test_routes_with_guarded_moves(self) -> None:
         """The routing uses j-guarded moves, not nested l loops."""
-        template = boolean.home_row("0110", 2)
+        template = boolean.home_row("0110")
         assert "jf" in template
         assert template.count("l") == 0
 
     def test_rejects_n_greater_than_two(self) -> None:
         with pytest.raises(ValueError, match="n >= 3"):
-            boolean.home_row("00000001", 3)
+            boolean.home_row("00000001")
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):
-            boolean.home_row("011", 1)
+            boolean.home_row("011")
 
     def test_rejects_non_binary(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.home_row("02", 1)
+            boolean.home_row("02")

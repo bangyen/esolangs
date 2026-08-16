@@ -1,10 +1,11 @@
 """Boolean-function program generators (re-exported from the booleans package).
 
 Each generator builds a program that reads n boolean inputs and prints the
-truth-table result for the combination it is given.  The parameterized
-generators (``bio``, ``back``, ``nocomment``, ``bfpda``) instead emit a
-template the harness instantiates per input combination, for the no-input
-languages.
+truth-table result for the combination it is given; the input count ``n``
+is implied by the table length (``2**n`` entries), so the generators take
+only the table.  The parameterized generators (``bio``, ``back``,
+``nocomment``, ``bfpda``) instead emit a template the harness instantiates
+per input combination, for the no-input languages.
 
 The generators live in ``esolangs.tools.booleans``, split by language family
 (``register``, ``stack``, ``tape``, ``other``, ``parameterized``); this

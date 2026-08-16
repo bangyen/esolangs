@@ -127,7 +127,7 @@ def test_boolean_generators_random_tables() -> None:
         for _ in range(3):
             table = "".join(random.choice("01") for _ in range(2**n))
             for builder, module, split, suffix in runners:
-                program = builder(table, n)
+                program = builder(table)
                 run = importlib.import_module("esolangs.interpreters." + module).run
                 for combo in range(2**n):
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
@@ -147,7 +147,7 @@ def test_byte_function_generator_random_tables() -> None:
     for n in (1, 2, 3):
         for _ in range(3):
             table = [random.randint(0, 255) for _ in range(2**n)]
-            program = boolean.circlefuck_byte(table, n)
+            program = boolean.circlefuck_byte(table)
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 buffer = io.StringIO()
@@ -162,7 +162,7 @@ def test_binary_generator_random_tables() -> None:
     for n in (1, 2, 3, 4):
         for _ in range(3):
             table = "".join(random.choice("01") for _ in range(2**n))
-            program = boolean.dig(table, n)
+            program = boolean.dig(table)
             for combo in range(2**n):
                 inputs = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                 buffer = io.StringIO()

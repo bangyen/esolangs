@@ -140,7 +140,7 @@ def main() -> int:
     # if/if-not decision tree (Rust), and Unsquare via an accumulator decision
     # tree (Rust).  Dimensional and Container are verified against their
     # in-package interpreters instead.
-    boolean_refs: list[tuple[str, Callable[[str, int], str], list[str] | None]] = [
+    boolean_refs: list[tuple[str, Callable[[str], str], list[str] | None]] = [
         ("3x", boolean.three_x, rust["three_x"]),
         ("Forþ", boolean.forth, rust["forth"]),
         ("Basicfuck", boolean.basicfuck, rust["basicfuck"]),
@@ -159,7 +159,7 @@ def main() -> int:
             continue
         for n, group in tables.items():
             for table in group:
-                program = builder(table, n)
+                program = builder(table)
                 for combo in range(2**n):
                     bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                     inputs = "\n".join(map(str, bits)) + "\n"

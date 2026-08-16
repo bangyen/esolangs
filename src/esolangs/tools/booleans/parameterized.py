@@ -54,11 +54,11 @@ def instantiate(
     return template
 
 
-def bio(truth_table: str, n: int) -> str:
+def bio(truth_table: str) -> str:
     """Build a BIO template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     BIO has three registers (``x``, ``y``, ``z``).  ``{Xi}`` is replaced by
     ``0ox`` (increment ``x``) when bit ``i`` is one and by nothing when it
@@ -70,7 +70,7 @@ def bio(truth_table: str, n: int) -> str:
     ancestor loops unwind, and builds the result in ``z`` before printing
     it with ``1iz``.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     def leaf(value: str) -> str:
         # build the result in z, print it, then clear x and y so every
@@ -110,11 +110,11 @@ def bio(truth_table: str, n: int) -> str:
     return node(0, list(range(2**n)))
 
 
-def back(truth_table: str, n: int) -> str:
+def back(truth_table: str) -> str:
     r"""Build a Back template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Back is a no-input grid language: a beam bounces across a grid, ``\\``
     and ``/`` reflect its direction, and ``*`` halts, printing the tape.  A
@@ -127,7 +127,7 @@ def back(truth_table: str, n: int) -> str:
     child's own region, and each leaf sets the tape bit (``-``) when its
     table entry is one and halts (``*``) printing the tape.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     rows: int = 2 ** (n + 1) - 1
     center: int = 2**n - 1
     # a full tree has 2**(n+1)-1 nodes, each taking two columns
@@ -190,11 +190,11 @@ def back(truth_table: str, n: int) -> str:
 _byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"
 
 
-def nocomment(truth_table: str, n: int) -> str:
+def nocomment(truth_table: str) -> str:
     """Build a NoComment template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     NoComment has no input command, so this is a parameterized generator: the
     template's ``{Xi}``/``{Ci}`` placeholders become a constant-length setter
@@ -214,7 +214,7 @@ def nocomment(truth_table: str, n: int) -> str:
     the generator covers every table up to eight inputs and raises
     :class:`ValueError` beyond that.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     if n > 8:
         raise ValueError("the NoComment boolean generator supports n <= 8")
 
@@ -303,11 +303,11 @@ def nocomment(truth_table: str, n: int) -> str:
     return "".join(setup + commands)
 
 
-def bfpda(truth_table: str, n: int) -> str:
+def bfpda(truth_table: str) -> str:
     """Build a BF-PDA template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     BF-PDA has no input command, so this is a parameterized generator: the
     template's ``{Xi}``/``{Ci}`` placeholders become a push of the bit and of
@@ -324,7 +324,7 @@ def bfpda(truth_table: str, n: int) -> str:
     guard.  The one loop clears its guard with ``@`` before exiting, so the
     other side's guard is untouched and the if/else separates cleanly.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     def leaf(value: str) -> str:
         # push the answer bit, print it, pop it (balanced)
@@ -358,11 +358,11 @@ def bfpda(truth_table: str, n: int) -> str:
     return node(0, list(range(2**n)))
 
 
-def lamfunc(truth_table: str, n: int) -> str:
+def lamfunc(truth_table: str) -> str:
     """Build a Lamfunc template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Lamfunc has no input command, so this is a parameterized generator: the
     template's ``{Xi}`` placeholders become the binary literal for each input
@@ -374,7 +374,7 @@ def lamfunc(truth_table: str, n: int) -> str:
     A subtree whose table slice is a constant collapses to a single leaf, so
     constant rows emit no branching.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     def node(level: int, lo: int, hi: int) -> str:
         results = {truth_table[k] for k in range(lo, hi)}
