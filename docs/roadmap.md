@@ -108,8 +108,15 @@ The toolchain choice follows the language's model: RISC-V assembly fits the
 machine-model languages (a tape/pointer/instruction-counter maps 1:1 onto
 cells, registers, and jumps), and Rust fits the semantic ones (stacks, typed
 registers, bit manipulation, 2D grids, where hand-written assembly would be
-unreadable).  The current split already reflects that — the assembly ports
-are the simple tape/cell/OISC languages, the Rust ports the complex ones.
+unreadable).  The current split is the target for any future cross-check:
+
+- **RISC-V assembly** — the machine-model languages: NoComment (tape +
+  stack with a byte-indexed skip), 123 (tape + pointer).  A future tape/OISC
+  language with a complex-output generator would join these.
+- **Rust** — the semantic languages: Forþ, Basicfuck, Unsquare, 3x,
+  %^2^-1, 2dFish, Painfuck, bit~, LaserFuck (stacks, typed registers, bit
+  manipulation, 2D grids).  A future language in one of those models would
+  join these.
 
 **Removed:** the six fixed-corpus cross-checks — Kak, Trash, Number
 Seventy-Four (Rust) and Brainpocalypse, Stun Step, 2 Bits 1 Byte (RISC-V).
