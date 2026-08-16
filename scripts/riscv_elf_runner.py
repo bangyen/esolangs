@@ -1,10 +1,10 @@
 """Run RISC-V RV64 Linux ELFs under unicorn (an independent CPU emulator).
 
 unicorn is a mature, independent CPU-emulation engine, so this runner
-cross-checks the hand-rolled simulator (scripts/riscv_sim.py) without needing
-a Linux VM or qemu. It targets the statically-linked, nostdlib RV64 ELFs the
-esolangs interpreter ports produce (see extra/assembly/), implementing the
-small set of Linux syscalls they use. It is not a full Linux ABI.
+executes the interpreter ports without needing a Linux VM or qemu. It
+targets the statically-linked, nostdlib RV64 ELFs the esolangs interpreter
+ports produce (see extra/assembly/), implementing the small set of Linux
+syscalls they use. It is not a full Linux ABI.
 
 API:
     run_elf(binary, stdin=b"") -> (stdout: bytes, exit_code: int)

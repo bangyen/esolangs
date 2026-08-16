@@ -5,8 +5,7 @@ Everything that can be checked on a dev machine without a Linux host:
 1. pre-commit (lint, format, types)
 2. pytest (the test suite)
 3. unicorn-based round-trips (RISC-V assembly compilers, RISC-V cross-check
-   generators, and -- if a RISC-V 123 binary can be built -- the 123
-   differential across RISC-V and the simulator)
+   generators, and the interpreter-vs-native differential corpora)
 
 The native qemu-riscv64 checks need Linux, so they run only in CI (see
 .github/workflows/ci.yml).
@@ -72,25 +71,6 @@ STEPS = [
 ]
 
 
-def _build_riscv_123() -> str | None:
-    if shutil.which("riscv64-elf-gcc") is None:
-        return None
-    rv = subprocess.run(
-        [
-            "riscv64-elf-gcc",
-            "-nostdlib",
-            "-static",
-            "-march=rv64i",
-            "-mabi=lp64",
-            "-o",
-            "/tmp/123-riscv",
-            "extra/assembly/123-riscv.s",
-        ],
-        capture_output=True,
-    )
-    return "/tmp/123-riscv" if rv.returncode == 0 else None
-
-
 def main() -> int:
     """Compile and run every example, reporting failures."""
     import importlib.util
@@ -115,25 +95,6 @@ def main() -> int:
         ok = result.returncode == 0
         failures += not ok
         print(f"[{'ok' if ok else 'FAIL'}] {name}")
-
-    if have_unicorn and have_riscv_gcc:
-        rv = _build_riscv_123()
-        if rv is None:
-            print("[skip] 123 differential: riscv64-elf-gcc or build failed")
-        else:
-            cmd = [
-                *PY,
-                "scripts/verify_123_differential.py",
-                rv,
-                "Hi",
-                "Hello, World!",
-            ]
-            result = subprocess.run(cmd, env=env)
-            ok = result.returncode == 0
-            failures += not ok
-            print(f"[{'ok' if ok else 'FAIL'}] 123 differential (unicorn)")
-    else:
-        print("[skip] 123 differential: requires unicorn and a RISC-V compiler")
 
     print("=" * 40)
     if failures:
