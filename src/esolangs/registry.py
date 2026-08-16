@@ -149,7 +149,7 @@ LANGUAGES: dict[str, Language] = {
     "ArrowQueue": Language(
         "ArrowQueue",
         id="arrowqueue",
-        interpreter="other.arrowqueue",
+        interpreter="queue_based.arrowqueue",
         split=True,
     ),
     "Back": Language(
@@ -203,7 +203,7 @@ LANGUAGES: dict[str, Language] = {
     "Bitdeque": Language(
         "Bitdeque",
         id="bitdeque",
-        interpreter="other.bitdeque",
+        interpreter="queue_based.bitdeque",
     ),
     "BrainIf": Language(
         "BrainIf",
@@ -478,7 +478,7 @@ LANGUAGES: dict[str, Language] = {
     "Taglate": Language(
         "Taglate",
         _generate.taglate,
-        "other.taglate",
+        "queue_based.taglate",
         id="taglate",
         split=True,
     ),

@@ -16,7 +16,7 @@ import pytest
 
 import esolangs
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.arrowqueue import run
+from esolangs.interpreters.queue_based.arrowqueue import run
 
 
 class _TimeoutError(Exception):
