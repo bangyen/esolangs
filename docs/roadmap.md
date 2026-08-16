@@ -104,6 +104,13 @@ Crement, Your Time Is Up) would be dropped under the same policy.  The
 I/O-capable interpreter-only languages (2 Bits 1 Byte, Number Seventy-Four,
 Trash, Grapheme, Movesum, Lightlang) are not in this tier.
 
+Note that **none of the fourteen interpreter-only languages has a generator
+of either kind** — every one lacks both a text generator and a boolean
+generator (the boolean-generator angle does not rescue any of them; each
+hits a documented wall in `docs/walls.md`).  So the generator-story
+criterion is failed by the entire interpreter-only set, and the distinction
+below is only how observable their non-generator output is.
+
 Against removal, weighed but not decisive: most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
