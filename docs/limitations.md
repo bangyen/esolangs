@@ -365,6 +365,10 @@ fall under the generator-story criterion's "documented reason" branch:
 - **2 Bits, 1 Byte**: the program is a single byte whose output is that one
   byte, so a text generator can produce at most a one-character program and
   a boolean generator cannot read any input.
+- **ArrowQueue**: no output at all (the IP walks the grid and halts; nothing
+  is printed) and no value-testable branch (``*``/``~``/``+`` change the
+  direction from grid characters and the queue, never by testing a data
+  value), so neither a text nor a boolean generator is possible.
 - **A Painter Ant**: the wiki defines no I/O; the interpreter prints the
   visited-grid bounding box at halt (a ``#``/``.`` raster shaped by the
   ant's path), which cannot spell arbitrary text, and there is no input for
