@@ -1013,3 +1013,94 @@ def forbin_boolean(truth_table: str, n: int) -> str:
     emit(0, 0)
     lines.append("}")
     return "\n".join(lines)
+
+
+# Home Row is a 5x5 torus of cells.  ``j`` skips the next instruction when
+# the current cell is zero, so ``jf``/``jd`` are *guarded moves*: a beam at a
+# nonzero cell moves right/down, at a zero cell stays put.  A boolean
+# generator can therefore route a decision tree without nested ``l`` loops:
+# each baked bit cell is tested by a ``j``-guarded move, and the two outcomes
+# (beam at the bit cell vs one cell right) diverge further with a plain move.
+#
+# The routing ``jfjffjdd`` with the bits at cells 0 and 1 sends the four
+# two-input combinations to four distinct cells, and every ``j`` in it tests
+# a cell that holds only the baked bits (never an answer cell), so the
+# answers can be baked before routing without corrupting the branches:
+#
+#   00 -> cell 6, 01 -> cell 11, 10 -> cell 7, 11 -> cell 8
+#
+# For one input the routing ``jfd`` sends 0 -> cell 5, 1 -> cell 6.  The
+# template bakes the answer bytes (48/49) into the leaf cells first, then the
+# input bits at cells 0..n-1, then routes and prints with ``k``.  ``n >= 3``
+# has no routing: an exhaustive search of ``j``-guarded sequences shows a
+# 5x5 grid cannot separate 2**n combinations onto distinct cells past n == 2.
+_HOME_ROW_ROUTES = {
+    1: ("jfd", {0: 5, 1: 6}),
+    2: ("jfjffjdd", {0: 6, 1: 11, 2: 7, 3: 8}),
+}
+
+
+def home_row(truth_table: str, n: int) -> str:
+    """Build a Home Row program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Home Row's ``j`` skips the next instruction when the current cell is
+    zero, so ``jf``/``jd`` act as guarded moves: a beam at a nonzero cell
+    moves right/down, at a zero cell stays put.  The generator routes a
+    decision tree with these guarded moves instead of the ``l`` loops (which
+    pair by order and cannot nest): a baked bit cell at position ``i`` is
+    tested by a ``j``-guarded move, and the two outcomes — the beam at the
+    bit cell (zero) or one cell right (nonzero) — are then diverged with a
+    plain move.  The template bakes the answer bytes (48/49) into the leaf
+    cells first, then the ``{Xi}`` bit placeholders at cells ``0..n-1``,
+    then routes, then ``k`` prints the leaf the beam reached.
+
+    Supported for ``n <= 2``: the one-input routing ``jfd`` and the
+    two-input routing ``jfjffjdd`` separate every combination onto a
+    distinct cell (verified exhaustively against the interpreter for every
+    one- and two-input table).  ``n >= 3`` raises: an exhaustive search
+    shows no ``j``-guarded routing separates ``2**n`` combinations onto
+    distinct cells of the 5x5 grid past ``n == 2``.
+    """
+    _validate_truth_table(truth_table, n)
+    if n not in _HOME_ROW_ROUTES:
+        raise ValueError("Home Row has no boolean generator for n >= 3 inputs")
+    route, leaves = _HOME_ROW_ROUTES[n]
+
+    out: list[str] = []
+    ptr = 0
+
+    def _emit(s: str) -> None:
+        nonlocal ptr
+        for ch in s:
+            out.append(ch)
+            if ch == "f":
+                ptr += 1
+                if ptr % 5 == 0:
+                    ptr -= 5
+            elif ch == "d":
+                ptr = (ptr + 5) % 25
+
+    def _move(dst: int) -> None:
+        nonlocal ptr
+        sr, sc = divmod(ptr, 5)
+        dr, dc = divmod(dst, 5)
+        _emit("d" * ((dr - sr) % 5))
+        _emit("f" * ((dc - sc) % 5))
+
+    # Bake the answer bytes into the leaf cells.
+    for combo in range(2**n):
+        _move(leaves[combo])
+        _emit("a" * (48 + int(truth_table[combo])))
+    # Return to cell 0 and bake the input bits at cells 0..n-1.
+    _move(0)
+    for i in range(n):
+        _move(i)
+        _emit("{X" + str(i) + "}")
+    _move(0)
+    # Route the beam to the leaf and print it.
+    _emit(route)
+    out.append("k")
+    return "".join(out)
