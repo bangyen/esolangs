@@ -90,12 +90,19 @@ the table:
 
 The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
 against the Python ones by `scripts/verify_differential.py`) earn their keep
-only where they are *broad* and *independent*: the language has a generator
-or boolean generator, so the differential fuzzes hundreds of random programs
-rather than a hand-picked handful, and the reference is written from the
-spec rather than ported from the Python.  The fuzzed cross-checks (NoComment,
+only where they are *broad* and *independent*: the reference is written from
+the spec rather than ported from the Python, and the differential can fuzz
+hundreds of random programs rather than a hand-picked handful.  Having a
+text or boolean generator is necessary but not sufficient — what matters is
+whether the generator's output is *complex enough to fuzz meaningfully*: a
+generator that emits branching, loops, or 2D routing produces programs a
+random differential can exercise beyond what the fixed round-trip corpus
+covers, while a straight-line generator (a per-character program mirroring
+the text) is already fully verified by the round-trip test, so a second
+implementation would find nothing new.  The fuzzed cross-checks (NoComment,
 Forþ, Basicfuck, Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck,
-123) satisfy both and stay.
+123) have complex-output generators and stay; the straight-line-generator
+languages (brainfuck, 6-5, Factor, huf, and the rest) correctly have none.
 
 The toolchain choice follows the language's model: RISC-V assembly fits the
 machine-model languages (a tape/pointer/instruction-counter maps 1:1 onto
