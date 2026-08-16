@@ -9,59 +9,13 @@ hand-maintained list would.
 import pathlib
 
 from esolangs.registry import LANGUAGES, RUNNERS
+from esolangs.tools.boolean import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[1]
 EXAMPLES = ROOT / "examples"
 HELLO = EXAMPLES / "hello-world"
 CAT = EXAMPLES / "cat"
 TRUTH = EXAMPLES / "truth-machine"
-
-# Languages with a boolean generator in esolangs.tools.booleans, mapped to
-# display names.  Back, BIO, NoComment, and BF-PDA's generators are
-# parameterized templates (the harness substitutes the input bits) rather
-# than input-reading programs.
-BOOLEAN = {
-    "3x",
-    "ABCDirection",
-    "AddSubJump",
-    "3D Brainfuck",
-    "6-5",
-    "ASCII art",
-    "Back",
-    "Basicfuck",
-    "Between",
-    "BF-PDA",
-    "brainfuck",
-    "BFStack",
-    "BIO",
-    "bit~",
-    "BrainIf",
-    "Circlefuck",
-    "Clockwise",
-    "Collatz Multiverse",
-    "Container",
-    "Dig",
-    "Dimensional",
-    "Decleq",
-    "Forbin",
-    "Forþ",
-    "Home Row",
-    "LaserFuck",
-    "Minifuck",
-    "Modulous",
-    "MyScript",
-    "Nevermind",
-    "NoComment",
-    "Painfuck",
-    "Polynomial",
-    "Qoibl",
-    "ROTfuck",
-    "S*bleq",
-    "Sophie",
-    "Taglate",
-    "Unsquare",
-    "ZTOALC L",
-}
 # Compiler source-file stem -> the language's display name.  A compiler file
 # without an entry here fails loudly rather than silently dropping out of
 # the docs.
