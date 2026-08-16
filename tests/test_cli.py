@@ -106,7 +106,7 @@ class TestInProcess:
         from esolangs.tools import boolean
 
         program = tmp_path / "prog.txt"
-        program.write_text(boolean.circlefuck("1101", 2))
+        program.write_text(boolean.circlefuck("1101"))
         out = call_main(["run", "Circlefuck", str(program)], capsys, stdin="1\n0\n")
         assert out == "0"
 

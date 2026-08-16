@@ -108,7 +108,7 @@ def _fuzz_boolean(name, builder, native, python, rng, count):
     for _ in range(count):
         n = rng.randint(1, 4)
         table = "".join(rng.choice("01") for _ in range(2**n))
-        program = builder(table, n)
+        program = builder(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             stdin = ("\n".join(map(str, bits)) + "\n").encode()
@@ -447,7 +447,7 @@ def _check_laserfuck_boolean(table: str, n: int, runs: int = 12) -> tuple[int, i
     """
     from esolangs.tools.booleans import other
 
-    program = other.laserfuck(table, n)
+    program = other.laserfuck(table)
     checked = 0
     failures = 0
     for combo in range(2**n):

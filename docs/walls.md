@@ -219,14 +219,15 @@ leading zeros).  It tests a distinct capability from the boolean criterion
 (digit input + arithmetic + decimal output, vs. bit input + branching) and
 from the text criterion (arbitrary byte output).
 
-Unlike the boolean criterion, this is **not a generator family**: the
-boolean ``n`` selects a different function space (a truth table is indexed
-by the input combination), but multiplication is a single function ``a * b``
-whose operand lengths are a property of the input, not of the function.  So
-there is no ``multiply(language, n)`` class to build across the registry — a
-language either reads until a delimiter (``*`` between the operands, ``#``
-at the end) and needs one sentinel construction for any digit count, or it
-cannot.  Jaune is the first language found with the capability; the rest of
+Unlike the boolean criterion, this is **not a generator family**: a boolean
+truth table's length ``2**n`` *is* the input count (so the boolean
+generators infer ``n`` from the table and take only the table), but
+multiplication is a single function ``a * b`` whose operand lengths are a
+property of the input, not of the function.  So there is no
+``multiply(language, n)`` class to build across the registry — a language
+either reads until a delimiter (``*`` between the operands, ``#`` at the
+end) and needs one sentinel construction for any digit count, or it cannot.
+Jaune is the first language found with the capability; the rest of
 the registry's languages are not known to have it (their generators are
 text-only or absent), so this records the criterion and the one realized
 construction rather than a family of generators.

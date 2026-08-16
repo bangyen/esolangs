@@ -11,11 +11,11 @@ _DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own bloc
 _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
 
 
-def decleq(truth_table: str, n: int) -> str:
+def decleq(truth_table: str) -> str:
     """Build a Decleq program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Decleq's only arithmetic is ``b = a - 1`` with a ``<= 0`` jump, so each
     input byte (48/49) is normalized to 1/2 by a 47-step decrement chain,
@@ -24,7 +24,7 @@ def decleq(truth_table: str, n: int) -> str:
     those branches to leaves that output 48 or 49 (placed in data cells of
     the self-modifying memory) and then halt.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     # instructions: n reads, n*47 normalizations, and the tree
     # (2**n - 1 branches plus 2**n leaves of output+halt each).
@@ -72,11 +72,11 @@ def decleq(truth_table: str, n: int) -> str:
     return " ".join(map(str, mem))
 
 
-def addsubjump(truth_table: str, n: int) -> str:
+def addsubjump(truth_table: str) -> str:
     """Build an AddSubJump program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     ASJ's instruction is ``a b c d``: ``*a += *b`` (when ``*d <= 0``) or
     ``*a -= *b`` (when ``*d > 0``), then ``goto *c``, where ``c`` is a cell
@@ -91,7 +91,7 @@ def addsubjump(truth_table: str, n: int) -> str:
     subtree.  Leaves print 48/49 and halt via ``c = -8`` (a special
     address).  Subtrees whose table entries are constant collapse to a leaf.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     instructions: list[list[Any]] = []
     next_cells: list[str | None] = []
@@ -182,11 +182,11 @@ def addsubjump(truth_table: str, n: int) -> str:
     return " ".join(map(str, mem))
 
 
-def collatz_multiverse(truth_table: str, n: int) -> str:
+def collatz_multiverse(truth_table: str) -> str:
     """Build a Collatz Multiverse program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     A register holding 0 or 1 is always odd, so on such registers the Collatz
     rule is affine (``v`` becomes ``v*var2+var3``), which makes AND, NOT, and
@@ -196,7 +196,7 @@ def collatz_multiverse(truth_table: str, n: int) -> str:
     OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
     byte constants come from the text generator's constant table.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     if all(c == "0" for c in truth_table):
         return "\n".join([*_cm_constants({48}), "out = negativeOne x + k48, DO PRINT."])
     if all(c == "1" for c in truth_table):
@@ -255,17 +255,18 @@ def collatz_multiverse(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
-def sophie(truth_table: str, n: int) -> str:
+def sophie(truth_table: str) -> str:
     """Build a Sophie program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), and ``n`` is the number of inputs.
+    (most significant first), ``n`` is the input count implied by the table length.
 
     Sophie reads a character with ``;`` and branches on the accumulator with
     ``@$48{then}{else}`` -- the else block runs flat after a failed check, so
     consecutive conditionals must use the block form. Each leaf sets the
     result with ``#$48``/``#$49`` and prints it before halting.
     """
+    n = _validate_truth_table(truth_table)
 
     def build(path: list[int]) -> str:
         depth = len(path)
@@ -279,11 +280,11 @@ def sophie(truth_table: str, n: int) -> str:
     return build([])
 
 
-def dig(truth_table: str, n: int) -> str:
+def dig(truth_table: str) -> str:
     """Build a Dig program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     The tree is laid out so the mole starts in the top-left corner (``'``)
     facing down into the root.  Each branch block reads one input bit:
@@ -292,6 +293,7 @@ def dig(truth_table: str, n: int) -> str:
     into the next level's branch, and the leaves print the function's value
     for the input combination they stand for.
     """
+    n = _validate_truth_table(truth_table)
     total = 2 ** (n + 1) - 1
     lines = ["" for _ in range(total)]
     rows = [total // 2]
@@ -325,11 +327,11 @@ def _qoibl_enc(n: int) -> str:
     return f"{n:b}".replace("0", "e").replace("1", "y")
 
 
-def qoibl(truth_table: str, n: int) -> str:
+def qoibl(truth_table: str) -> str:
     """Build a Qoibl program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Each input is read with ``et`` and normalized to 0/1 (``ry ey ry 48``),
     and each one's complement ``1 - bit`` is stored too.  The function is then
@@ -343,7 +345,8 @@ def qoibl(truth_table: str, n: int) -> str:
     instead (fewer minterms) and ``49 - sum`` is printed, keeping the program
     under the size of the sparser half.
     """
-    table, use_complement = _maybe_complement(truth_table, n)
+    n = _validate_truth_table(truth_table)
+    table, use_complement = _maybe_complement(truth_table)
     lines = []
     for i in range(n):
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(48)} we")
@@ -375,11 +378,11 @@ def qoibl(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
-def polynomial(truth_table: str, n: int) -> str:
+def polynomial(truth_table: str) -> str:
     """Build a Polynomial program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Polynomial programs are polynomials whose roots encode instructions, so
     the generator builds a decision tree of complex ``[a, b]`` (arithmetic,
@@ -394,6 +397,7 @@ def polynomial(truth_table: str, n: int) -> str:
     ``n == 4`` in ~10s, while ``n == 5`` (degree 376, coefficients ~10**1746)
     does not factor in practical time.  ``n > 4`` is rejected.
     """
+    n = _validate_truth_table(truth_table)
     if n > 4:
         raise ValueError(
             "the Polynomial boolean generator supports n <= 4: "

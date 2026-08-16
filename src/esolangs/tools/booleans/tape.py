@@ -7,11 +7,11 @@ from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_t
 from esolangs.tools.transpilers import _six_five_label
 
 
-def brainif(truth_table: str, n: int) -> str:
+def brainif(truth_table: str) -> str:
     """Build a BrainIf program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), and ``n`` is the number of inputs.
+    (most significant first), ``n`` is the input count implied by the table length.
 
     BrainIf reads each input into a cell with ``if 0 input``, then a
     recursive decision tree checks each cell with ``if 48/49 goto`` (the
@@ -21,6 +21,7 @@ def brainif(truth_table: str, n: int) -> str:
     routines that build 48 or 49 in place and print it, instead of each leaf
     incrementing a fresh cell itself.
     """
+    n = _validate_truth_table(truth_table)
     entries: list[tuple[object, ...]] = []
     for i in range(n):
         entries.append(("cmd", "if 0 input"))
@@ -102,11 +103,11 @@ def brainif(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
-def circlefuck(truth_table: str, n: int) -> str:
+def circlefuck(truth_table: str) -> str:
     """Build a Circlefuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), and ``n`` is the number of inputs.
+    (most significant first), ``n`` is the input count implied by the table length.
 
     Circlefuck reads each input with ``,`` and normalizes it to 0/1 with 48
     ``-``s, then a decision tree branches on the cells from the last input
@@ -115,17 +116,24 @@ def circlefuck(truth_table: str, n: int) -> str:
     tree never needs to skip the sibling branch.  A boolean table is just
     the byte-valued generator with ``48 + bit`` outputs.
     """
-    return circlefuck_byte([48 + int(bit) for bit in truth_table], n)
+    return circlefuck_byte([48 + int(bit) for bit in truth_table])
 
 
-def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
+def circlefuck_byte(truth_table: Sequence[int]) -> str:
     """Build a Circlefuck program computing a byte-valued function.
 
     ``truth_table`` is a sequence of ``2**n`` byte values (0-255) indexed by
-    the inputs (most significant first), and ``n`` is the number of bit
-    inputs.  This is the boolean generator generalized to arbitrary byte
-    outputs: each leaf prints ``chr(value)`` instead of ``chr(48 + bit)``.
+    the inputs (most significant first); the input count ``n`` is implied
+    by the table length.  This is the boolean generator generalized to
+    arbitrary byte outputs: each leaf prints ``chr(value)`` instead of
+    ``chr(48 + bit)``.
     """
+    n = len(truth_table).bit_length() - 1
+    if len(truth_table) != 2**n:
+        raise ValueError(
+            "truth table must have a power-of-two number of entries "
+            f"(2**n), got {len(truth_table)}",
+        )
     prog: list[str] = []
 
     def emit(c: str) -> None:
@@ -159,11 +167,11 @@ def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
     return "".join(prog)
 
 
-def six_five(truth_table: str, n: int) -> str:
+def six_five(truth_table: str) -> str:
     """Build a 6-5 program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Each input is read with ``B`` and normalized to 8/9 (subtracting 40 with
     eight ``2``s).  ``78`` branches: the ``7`` compares the cell to 8, so a
@@ -180,6 +188,7 @@ def six_five(truth_table: str, n: int) -> str:
     into single cells and decodes the table entry arithmetically with a
     constant number of loop constructs.
     """
+    n = _validate_truth_table(truth_table)
     if 2**n - 1 <= 35:
         marker = 0
 
@@ -200,7 +209,7 @@ def six_five(truth_table: str, n: int) -> str:
             )
 
         return build(list(range(2**n)), 1, 0)
-    return six_five_arithmetic(truth_table, n)
+    return six_five_arithmetic(truth_table)
 
 
 class _SixFiveAsm:
@@ -268,7 +277,7 @@ def _six_five_const(value: int) -> str:
     return "6" * q + "62" * r
 
 
-def six_five_arithmetic(truth_table: str, n: int) -> str:
+def six_five_arithmetic(truth_table: str) -> str:
     """Build a 6-5 program computing ``truth_table`` arithmetically.
 
     This is the fallback generator for ``n > 5``, where the decision tree's
@@ -304,6 +313,7 @@ def six_five_arithmetic(truth_table: str, n: int) -> str:
     remaining practical limit is the runtime, which scales as ``O(x * T)``
     with ``x`` up to ``2**n``.
     """
+    n = _validate_truth_table(truth_table)
     value = int(truth_table[::-1], 2)  # bit i of value is table[i] (combo i)
     invert = (2 ** (2**n) - 1 - value) < value
     if invert:
@@ -392,7 +402,7 @@ def six_five_arithmetic(truth_table: str, n: int) -> str:
     return a.build()
 
 
-def _bf_minterm(truth_table: str, n: int) -> str:
+def _bf_minterm(truth_table: str) -> str:
     """Build a brainfuck program evaluating ``truth_table`` via its minterms.
 
     The output is ``48 + sum_k tt[k] * M_k`` where ``M_k`` is the product of
@@ -405,7 +415,8 @@ def _bf_minterm(truth_table: str, n: int) -> str:
     When the table has more ``1``s than ``0``s the complement is evaluated
     instead (fewer minterms) and ``49 - sum`` is printed.
     """
-    table, use_complement = _maybe_complement(truth_table, n)
+    n = _validate_truth_table(truth_table)
+    table, use_complement = _maybe_complement(truth_table)
 
     class _Cell:
         def __init__(self, n: int) -> None:
@@ -525,11 +536,11 @@ def _bf_minterm(truth_table: str, n: int) -> str:
     return "".join(cell.code)
 
 
-def brainfuck(truth_table: str, n: int) -> str:
+def brainfuck(truth_table: str) -> str:
     """Build a brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Two generators exist with complementary strengths, and ``bf`` returns
     the shorter of the two for the given table:
@@ -541,15 +552,14 @@ def brainfuck(truth_table: str, n: int) -> str:
     - :func:`bf_tree`: a decision tree sharing the bit tests.  Best for
       dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
     """
-    _validate_truth_table(truth_table, n)
-    return min((_bf_minterm(truth_table, n), bf_tree(truth_table, n)), key=len)
+    return min((_bf_minterm(truth_table), bf_tree(truth_table)), key=len)
 
 
-def three_d_brainfuck(truth_table: str, n: int) -> str:
+def three_d_brainfuck(truth_table: str) -> str:
     """Build a 3D Brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     3D Brainfuck's ``>``/``<`` set the generation pointer's heading (a no-op
     in this interpreter), so the array is walked along one axis with
@@ -557,7 +567,7 @@ def three_d_brainfuck(truth_table: str, n: int) -> str:
     otherwise translate directly, and :func:`bf` picks the shorter of the
     two.
     """
-    return brainfuck(truth_table, n).translate(str.maketrans("><", "ew"))
+    return brainfuck(truth_table).translate(str.maketrans("><", "ew"))
 
 
 # The interpreter's two substitution cycles, in the order the cross-check
@@ -566,11 +576,11 @@ def three_d_brainfuck(truth_table: str, n: int) -> str:
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
 
 
-def painfuck(truth_table: str, n: int) -> str:
+def painfuck(truth_table: str) -> str:
     """Build a Painfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Painfuck is brainfuck-compatible: the commands ``a``/``b`` are while-
     nonzero loops, ``j`` reads a byte and ``u`` prints one.  The brainfuck
@@ -582,7 +592,7 @@ def painfuck(truth_table: str, n: int) -> str:
     back along its cycle (where ``k`` counts the commands so far) to undo it.
     """
     code = (
-        brainfuck(truth_table, n)
+        brainfuck(truth_table)
         .replace(">", "rl")
         .replace("<", "l")
         .replace("+", "ps")
@@ -610,11 +620,11 @@ def painfuck(truth_table: str, n: int) -> str:
     return "".join(out)
 
 
-def bf_tree(truth_table: str, n: int) -> str:
+def bf_tree(truth_table: str) -> str:
     """Build a decision-tree brainfuck program for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Each input is read and normalized to 0/1 into cell ``2i``, its
     complement ``1 - b`` into cell ``2i + 1`` (via two temp cells), and a
@@ -627,7 +637,7 @@ def bf_tree(truth_table: str, n: int) -> str:
     minterm evaluator's O(n * 2**n); for XOR-n it measures 1.4K..20K
     characters at n = 2..8 against the minterm's 1.4K..33M.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     cells: list[str] = []
     pos = 0
@@ -784,11 +794,11 @@ class _Dimensional:
         self.code.append("-]")
 
 
-def dimensional(truth_table: str, n: int) -> str:
+def dimensional(truth_table: str) -> str:
     """Build a Dimensional program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Dimensional is brainfuck on a multidimensional tape and has no halt
     command, so a decision tree cannot rely on halting at the leaf.  Two
@@ -803,16 +813,16 @@ def dimensional(truth_table: str, n: int) -> str:
     - :func:`dimensional_tree`: a decision tree sharing the bit tests.
       Best for dense tables — XOR-8 is ~8x smaller than the survivor.
     """
-    _validate_truth_table(truth_table, n)
     return min(
-        (_dimensional_survivor(truth_table, n), dimensional_tree(truth_table, n)),
+        (_dimensional_survivor(truth_table), dimensional_tree(truth_table)),
         key=len,
     )
 
 
-def _dimensional_survivor(truth_table: str, n: int) -> str:
+def _dimensional_survivor(truth_table: str) -> str:
     """Build the survivor-cell evaluator for the given truth table."""
-    table, use_complement = _maybe_complement(truth_table, n)
+    n = _validate_truth_table(truth_table)
+    table, use_complement = _maybe_complement(truth_table)
 
     cell = _Dimensional(n)
     for i in cell.inputs:
@@ -871,11 +881,11 @@ def _dimensional_survivor(truth_table: str, n: int) -> str:
     return "".join(cell.code)
 
 
-def dimensional_tree(truth_table: str, n: int) -> str:
+def dimensional_tree(truth_table: str) -> str:
     """Build a decision-tree Dimensional program for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     The same construction as :func:`bf_tree`, ported to Dimensional's tape:
     bit ``i`` lives at cell ``2i``, its complement at ``2i + 1``, a node
@@ -887,7 +897,7 @@ def dimensional_tree(truth_table: str, n: int) -> str:
     O(2**n) characters and wins on dense tables; the survivor evaluator
     (``_dimensional_survivor``) wins on sparse ones.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     cells: list[str] = []
     pos = 0
@@ -972,11 +982,11 @@ def dimensional_tree(truth_table: str, n: int) -> str:
     return "".join(cells)
 
 
-def basicfuck(truth_table: str, n: int) -> str:
+def basicfuck(truth_table: str) -> str:
     """Build a Basicfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Basicfuck's named variables behave like BF cells with an explicit
     arithmetic, so the program is a decision tree: each input is read with
@@ -988,7 +998,7 @@ def basicfuck(truth_table: str, n: int) -> str:
     variable (which starts at 0 and is touched by exactly one leaf) and
     prints it with ``write <- out ;``.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     lines = ["#basicfuck t=unbounded r=0~255 o=wrap"]
     lines.append("#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out")
@@ -1016,11 +1026,11 @@ def basicfuck(truth_table: str, n: int) -> str:
     return "\n".join(lines)
 
 
-def sbleq(truth_table: str, n: int) -> str:
+def sbleq(truth_table: str) -> str:
     """Build an S*bleq program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     S*bleq's instruction is ``a b c``: ``mem[a] -= mem[b]``, and when the
     result is ``<= 0`` the pointer jumps to the address stored at ``c``.
@@ -1051,7 +1061,7 @@ def sbleq(truth_table: str, n: int) -> str:
     variants would overwrite, so this generator targets base S*bleq
     (``store="a"``).
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     instructions: list[tuple[int, int, int]] = []
     nodes: list[tuple[int, int, int]] = []  # (v offset, normalize addr, one addr)
@@ -1120,11 +1130,11 @@ _MINIFUCK_N2 = {
 }
 
 
-def minifuck(truth_table: str, n: int) -> str:
+def minifuck(truth_table: str) -> str:
     """Build a Minifuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     The documented reachable set (re-verified in ``docs/limitations.md``) is
     all four one-input functions plus the eight 0-preserving two-input tables
@@ -1134,7 +1144,7 @@ def minifuck(truth_table: str, n: int) -> str:
     so a complemented read cannot select them — and n >= 3 has no general
     construction.  The programs below were found by search.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     if n == 1:
         return _MINIFUCK_N1[truth_table]
     if n == 2:
@@ -1280,11 +1290,11 @@ def _rotfuck_body(guard: int, target: int, op: str) -> str:
     return body
 
 
-def rotfuck(truth_table: str, n: int) -> str:
+def rotfuck(truth_table: str) -> str:
     """Build a ROTfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     ROTfuck rotates the program after every command, which defeats the
     brainfuck decision-tree strategy (a firing bracket seeks its partner in
@@ -1305,7 +1315,7 @@ def rotfuck(truth_table: str, n: int) -> str:
     ``-``-guarded block zeroes the matching minterm, ``1``-rows accumulate
     into the result cell, and ``48 + r`` is printed.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     b = list(range(n))
     c = list(range(n, 2 * n))
@@ -1386,11 +1396,11 @@ def rotfuck(truth_table: str, n: int) -> str:
     )
 
 
-def jaune(truth_table: str, n: int) -> str:
+def jaune(truth_table: str) -> str:
     """Build a Jaune program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Jaune reads each input bit with ``v`` (a digit character, ``ord-48``) into
     a fresh cell and routes a decision tree with ``?``/``!`` jumps: ``v`` then
@@ -1399,7 +1409,7 @@ def jaune(truth_table: str, n: int) -> str:
     before jumping to a shared end label.  A subtree whose table slice is a
     constant collapses to a single leaf.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     label = [1]
 
     def fresh() -> int:

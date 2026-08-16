@@ -30,11 +30,11 @@ def _forth_combo(m: int) -> int:
     return sum(b << i for i, b in enumerate(path))
 
 
-def forth(truth_table: str, n: int) -> str:
+def forth(truth_table: str) -> str:
     """Build a Forþ program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.  The
+    inputs (most significant first); the table length implies ``n``.  The
     program prints ``'0'`` or ``'1'``.
 
     Forþ reads a line with ``,`` and has no clean pop, so the generator
@@ -47,6 +47,7 @@ def forth(truth_table: str, n: int) -> str:
     ``{ }`` construct reads (but does not pop) the top index, and ``;`` pops
     it, so the stale indices never get in the way of the dispatch arithmetic.
     """
+    n = _validate_truth_table(truth_table)
     prog = []
     for m in range(1, 2 ** (n + 1) - 1):
         if m <= 2**n - 2:  # internal node: dispatch on the top bit
@@ -60,17 +61,18 @@ def forth(truth_table: str, n: int) -> str:
     return "".join(prog)
 
 
-def modulous(truth_table: str, n: int) -> str:
+def modulous(truth_table: str) -> str:
     """Build a Modulous program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), and ``n`` is the number of inputs.
+    (most significant first), ``n`` is the input count implied by the table length.
 
     Modulous reads the inputs onto the stack with ``[INP INT]`` (top is the
     last input), then a decision tree branches on the top with
     ``[JMP F n IF 0/1]``, popping each checked bit. Each leaf pushes the
     result with ``[PSH INT]`` and prints it.
     """
+    n = _validate_truth_table(truth_table)
 
     def build(rows: list[int], k: int) -> str:
         if len(rows) == 1:
@@ -123,11 +125,11 @@ def _bfstack_decoder(truth_table: str) -> str:
     return prog
 
 
-def bfstack(truth_table: str, n: int) -> str:
+def bfstack(truth_table: str) -> str:
     """Build a BFStack program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     BFStack is a pure stack machine, so the generator avoids branching
     entirely: it encodes the n inputs as the number ``1 + sum(bit*2^k)``
@@ -135,14 +137,15 @@ def bfstack(truth_table: str, n: int) -> str:
     decodes it with nested ``[`` loops that only set the result to 1 when the
     number is not one of the table's zero rows.
     """
+    n = _validate_truth_table(truth_table)
     return _bfstack_encoder(n) + _bfstack_decoder(truth_table) + "<" + "+" * 48 + "."
 
 
-def unsquare(truth_table: str, n: int) -> str:
+def unsquare(truth_table: str) -> str:
     """Build an Unsquare program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Unsquare's ``>``/``<`` loop runs while the accumulator is neither 0 nor 1,
     so a 0/1 bit is turned into a loop condition by ``x`` (0 stays 0, 1
@@ -154,7 +157,7 @@ def unsquare(truth_table: str, n: int) -> str:
     guard skips), and each leaf pushes ``48 + entry`` and leaves acc = 0, so
     the final ``o`` prints exactly the matching row's entry.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
 
     flip = "x->IA<"
 
