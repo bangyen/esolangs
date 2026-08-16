@@ -27,6 +27,7 @@ Decisions for gaps in the wiki spec (documented):
 from __future__ import annotations
 
 import sys
+from dataclasses import dataclass, field
 from typing import cast
 
 from esolangs.exceptions import HaltError
@@ -97,8 +98,21 @@ def _truthy(value: object) -> bool:
     raise AssertionError(f"unexpected value {value!r}")
 
 
+@dataclass
+class _Frame:
+    """One ``_exec`` context: its code, cursor, mode, and pending skip."""
+
+    code: str
+    depth: int
+    pc: int = 0
+    mode: str = ""
+    buf: list[str] = field(default_factory=list)
+    pending_at: int = -1
+    repeat: str = ""  # for ``Z``: re-run this body while the stack is nonempty
+
+
 class _Machine:
-    """Shared stack, variables, and step counter for one top-level run."""
+    """Shared stack, variables, step counter, and call stack for a run."""
 
     def __init__(self, io: IO, limit: int) -> None:
         self.stack: list[object] = []
@@ -106,181 +120,208 @@ class _Machine:
         self.io = io
         self.limit = limit
         self.steps = 0
+        self.frames: list[_Frame] = []
+
+    @property
+    def halted(self) -> bool:
+        return not self.frames
 
     def pop(self) -> object:
         if not self.stack:
             raise HaltError("popped an empty stack")
         return self.stack.pop()
 
+    def _flush(self, frame: _Frame) -> None:
+        """Push any unterminated mode buffer, as at the end of a program."""
+        if frame.mode == "string":
+            self.stack.append("".join(frame.buf))
+        elif frame.mode == "int":
+            self.stack.append(_int_from(frame.buf))
+        elif frame.mode == "func":
+            self.stack.append((_FUNC, "".join(frame.buf)))
+        frame.mode = ""
+        frame.buf = []
 
-def _exec(code: str, machine: _Machine, depth: int) -> None:
-    """Run ``code`` in a fresh normal-mode context sharing the machine state."""
-    if depth > 500:
-        raise HaltError("recursion limit exceeded")
-    stack, io = machine.stack, machine.io
-    mode = ""
-    buf: list[str] = []
-    pc = 0
-    n = len(code)
-    pending_at = -1
+    def _finish(self, frame: _Frame) -> None:
+        """Flush ``frame``'s mode and pop it (or re-run it for ``Z``)."""
+        self._flush(frame)
+        if frame.repeat and self.stack:
+            frame.pc = 0
+            frame.pending_at = -1
+        else:
+            self.frames.pop()
 
-    while pc < n:
-        machine.steps += 1
-        if machine.steps > machine.limit:
-            raise HaltError(f"execution exceeded the {machine.limit}-command limit")
-        c = code[pc]
-        if mode == "string":
+    def step(self) -> None:
+        """Execute one command at the current execution depth."""
+        frame = self.frames[-1]
+        if frame.pc >= len(frame.code):
+            self._finish(frame)
+            return
+        self.steps += 1
+        if self.steps > self.limit:
+            raise HaltError(f"execution exceeded the {self.limit}-command limit")
+
+        stack = self.stack
+        code = frame.code
+        c = code[frame.pc]
+
+        if frame.mode == "string":
             if c == "E":
-                mode = ""
-                stack.append("".join(buf))
-                buf = []
+                frame.mode = ""
+                stack.append("".join(frame.buf))
+                frame.buf = []
             else:
-                buf.append(c)
-            pc += 1
-            continue
-        if mode == "int":
+                frame.buf.append(c)
+            frame.pc += 1
+            return
+        if frame.mode == "int":
             if c == "F":
-                mode = ""
-                stack.append(_int_from(buf))
-                buf = []
+                frame.mode = ""
+                stack.append(_int_from(frame.buf))
+                frame.buf = []
             else:
-                buf.append(c)
-            pc += 1
-            continue
-        if mode == "func":
+                frame.buf.append(c)
+            frame.pc += 1
+            return
+        if frame.mode == "func":
             if c == "H":
-                mode = ""
-                stack.append((_FUNC, "".join(buf)))
-                buf = []
+                frame.mode = ""
+                stack.append((_FUNC, "".join(frame.buf)))
+                frame.buf = []
             else:
-                buf.append(c)
-            pc += 1
-            continue
+                frame.buf.append(c)
+            frame.pc += 1
+            return
+
+        body: str | None = None
+        repeat = ""
+        depth = frame.depth + 1
 
         if c == "A":
-            b, a = machine.pop(), machine.pop()
+            b, a = self.pop(), self.pop()
             stack.append(_as_num(a) + _as_num(b))
         elif c == "B":
-            b, a = machine.pop(), machine.pop()
+            b, a = self.pop(), self.pop()
             stack.append(_as_num(a) - _as_num(b))
         elif c == "R":
-            b, a = machine.pop(), machine.pop()
+            b, a = self.pop(), self.pop()
             if _as_num(b) == 0:
                 raise HaltError("division by zero")
             stack.append(_as_num(a) // _as_num(b))
         elif c == "S":
-            b, a = machine.pop(), machine.pop()
+            b, a = self.pop(), self.pop()
             stack.append(_as_num(a) * _as_num(b))
         elif c == "C":
-            name, value = machine.pop(), machine.pop()
+            name, value = self.pop(), self.pop()
             if isinstance(name, tuple):
                 raise HaltError("a function cannot name a variable")
-            machine.vars[name] = value
+            self.vars[name] = value
         elif c == "D":
-            name = machine.pop()
+            name = self.pop()
             if isinstance(name, tuple):
                 raise HaltError("a function cannot name a variable")
             try:
-                stack.append(machine.vars[name])
+                stack.append(self.vars[name])
             except KeyError:
                 raise HaltError(f"undeclared variable {name!r}") from None
         elif c == "E":
-            mode, buf = "string", []
+            frame.mode, frame.buf = "string", []
         elif c == "F":
-            mode, buf = "int", []
+            frame.mode, frame.buf = "int", []
         elif c == "G":
-            value = machine.pop()
+            value = self.pop()
             body = value[1] if isinstance(value, tuple) and value[0] == _FUNC else value
             if not isinstance(body, str):
                 raise HaltError("G needs a string or a function")
-            _exec(body, machine, depth + 1)
         elif c == "H":
-            mode, buf = "func", []
+            frame.mode, frame.buf = "func", []
         elif c == "I":
-            value = machine.pop()
+            value = self.pop()
             if isinstance(value, tuple) and value[0] == _FUNC:
-                _exec(value[1], machine, depth + 1)
+                body = value[1]
             else:
                 stack.append(value)
         elif c == "J":
-            stack.append(_to_int(machine.pop()))
+            stack.append(_to_int(self.pop()))
         elif c == "K":
-            value = machine.pop()
+            value = self.pop()
             stack.append(value)
             stack.append(value)
         elif c == "L":
-            a, b = machine.pop(), machine.pop()
+            a, b = self.pop(), self.pop()
             stack.append(a)
             stack.append(b)
         elif c == "M":
-            machine.pop()
+            self.pop()
         elif c == "N":
-            stack.append(_to_str(machine.pop()))
+            stack.append(_to_str(self.pop()))
         elif c == "O":
-            value = machine.pop()
+            value = self.pop()
             stack.append(len(value) if isinstance(value, str) else value)
         elif c == "P":
             stack.reverse()
         elif c == "Q":
-            a, b = machine.pop(), machine.pop()
+            a, b = self.pop(), self.pop()
             if isinstance(a, tuple) and a[0] == _FUNC and _truthy(b):
-                _exec(a[1], machine, depth + 1)
+                body = a[1]
         elif c == "T":
-            value = machine.pop()
+            value = self.pop()
             stack.append(1 if not _truthy(value) else 0)
         elif c == "U":
-            value = machine.pop()
+            value = self.pop()
             if not _truthy(value):
-                pc += 1
+                frame.pc += 1
         elif c == "V":
-            a, b = machine.pop(), machine.pop()
+            a, b = self.pop(), self.pop()
             if not _truthy(a):
-                pc += _to_int(b)
+                frame.pc += _to_int(b)
         elif c == "W":
-            stack.append(io.input_str())
+            stack.append(self.io.input_str())
         elif c == "X":
-            value = machine.pop()
+            value = self.pop()
             if _truthy(value):
                 # execute the next command, then skip the one after it
-                pending_at = pc
+                frame.pending_at = frame.pc
             else:
                 # skip the next command entirely
-                pc += 1
+                frame.pc += 1
         elif c == "Y":
-            value = machine.pop()
+            value = self.pop()
             if isinstance(value, str):
-                io.print_str(value)
+                self.io.print_str(value)
             elif isinstance(value, int):
-                io.print_value(value)
+                self.io.print_value(value)
             else:
                 raise HaltError("Y cannot output a function")
         elif c == "Z":
-            value = machine.pop()
-            if isinstance(value, tuple) and value[0] == _FUNC:
-                while stack:
-                    _exec(value[1], machine, depth + 1)
+            value = self.pop()
+            if isinstance(value, tuple) and value[0] == _FUNC and self.stack:
+                body = value[1]
+                repeat = value[1]
         else:
             # a string read from input and executed via G/I may carry any
             # character; reject it like the top-level program validation would
             raise ValueError(f"unhandled command {c!r}")
-        pc += 1
-        if pending_at >= 0 and pc == pending_at + 2:
-            pc += 1
-            pending_at = -1
 
-    if mode == "string":
-        stack.append("".join(buf))
-    elif mode == "int":
-        stack.append(_int_from(buf))
-    elif mode == "func":
-        stack.append((_FUNC, "".join(buf)))
+        frame.pc += 1
+        if frame.pending_at >= 0 and frame.pc == frame.pending_at + 2:
+            frame.pc += 1
+            frame.pending_at = -1
+
+        if body is not None:
+            if depth > 500:
+                raise HaltError("recursion limit exceeded")
+            self.frames.append(_Frame(body, depth, repeat=repeat))
 
 
 def run(code: str, io: IO, limit: int = 1_000_000) -> None:
     """Run a Grapheme program, halting after ``limit`` commands."""
     if any(c not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" for c in code):
         raise ValueError("Grapheme programs may only contain uppercase Latin letters")
-    _exec(code, _Machine(io, limit), 0)
+    machine = _Machine(io, limit)
+    machine.frames.append(_Frame(code, 0))
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
