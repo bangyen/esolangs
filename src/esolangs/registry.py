@@ -269,12 +269,6 @@ LANGUAGES: dict[str, Language] = {
         id="dotlang",
         split=True,
     ),
-    "DSDLAI": Language(
-        "DSDLAI",
-        id="dsdlai",
-        interpreter="grid_based.dsdlai",
-        split=True,
-    ),
     "Eval": Language(
         "Eval",
         _generate.eval,

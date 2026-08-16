@@ -52,15 +52,15 @@ self-contained interpreter.
 ### Your Time Is Up (low priority)
 A Turing-complete string-rewriting language in binary (`(1+0)(1+0)` rule
 groups followed by the initial datastring), where execution picks a matching
-rule at random.  The output is therefore non-deterministic, and like DSDLAI
-the interpreter would be faithful but its behavior only testable
-mechanically; it also has no I/O, so it is a self-contained interpreter.
+rule at random.  The output is therefore non-deterministic, so the
+interpreter would be faithful but its behavior only testable mechanically;
+it also has no I/O, so it is a self-contained interpreter.
 
 ### COD (low priority)
 A two-dimensional concurrency-heavy language of cods swimming in waves
 enclosed ponds, where each cod carries an unbounded integer and `+`/`-`
 duplicate or remove it.  Branches resolve to random directions, so like
-LaserFuck/DSDLAI the output is non-deterministic but the interpreter can be
+LaserFuck the output is non-deterministic but the interpreter can be
 faithful to the spec.  It has I/O (`...` input, `---` output).
 
 ### Suptiftam (low priority)
