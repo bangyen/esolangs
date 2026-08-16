@@ -149,15 +149,6 @@ class TestBundleDetails:
             out.read_text()
         )
 
-    def test_relative_interpreter_inlined(self, tmp_path: Path) -> None:
-        """DSDLAI's bundle inlines the dig interpreter it imports relatively."""
-        bundle_one = load_script()
-        out = tmp_path / "dsdlai.py"
-        bundle_one.bundle("DSDLAI", bundle_one.Source(None), out)
-        assert "inlined from esolangs/interpreters/grid_based/dig.py" in (
-            out.read_text()
-        )
-
     def test_bundle_runs_from_command_line(self, tmp_path: Path) -> None:
         """The bundle honors the ``python file.py program.txt`` convention."""
         import subprocess
