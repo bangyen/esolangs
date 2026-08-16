@@ -1,5 +1,7 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
+from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
+
 __all__ = [
     "between",
     "bit_tilde",
@@ -10,7 +12,7 @@ __all__ = [
     "nevermind",
     "taglate",
     "three_x",
-    "ztoalc_boolean",
+    "ztoalc_l_boolean",
 ]
 
 # Closed-form 3x constant encodings.  Every integer is built from the literal
@@ -50,6 +52,35 @@ def _const(n: int) -> str:
     return prog
 
 
+def myscript(truth_table: str, n: int) -> str:
+    """Build a MyScript program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
+    then walks a ``check`` decision tree: at level ``i`` it branches on
+    ``b_i`` and the leaves ``say`` the table value for the combination.
+    """
+    _validate_truth_table(truth_table, n)
+    lines = [f"var b{i} is ask" for i in range(n)]
+
+    def build(i: int, combo: int, pad: str) -> list[str]:
+        if i == n:
+            return [f'{pad}say "{truth_table[combo]}"']
+        one = build(i + 1, combo | (1 << (n - 1 - i)), pad + "    ")
+        zero = build(i + 1, combo, pad + "    ")
+        return [
+            f"{pad}check b{i}?",
+            f'{pad}  if "1",',
+            *one,
+            f"{pad}  else,",
+            *zero,
+        ]
+
+    return "\n".join(lines + build(0, 0, ""))
+
+
 def three_x(truth_table: str, n: int) -> str:
     """Build a 3x program computing the given truth table.
 
@@ -71,13 +102,7 @@ def three_x(truth_table: str, n: int) -> str:
     get an override block.  Each override's ``( ... )`` guard leaves the
     stack balanced via the trash pop, so arbitrary ``n`` works.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     # Variable allocation: var 0 is the loop-trash (its constant, 333x, is
     # short and emitted twice per guard), var 3 is the result (its constant
@@ -258,7 +283,7 @@ def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
     return prog
 
 
-def ztoalc_boolean(truth_table: str, n: int) -> str:
+def ztoalc_l_boolean(truth_table: str, n: int) -> str:
     """Build a ZTOALC L program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -285,13 +310,7 @@ def ztoalc_boolean(truth_table: str, n: int) -> str:
     Verified exhaustively for every table at ``n <= 3`` and for structured
     and symmetric tables at ``n == 4``; all tests run the real interpreter.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     for b1 in range(2 ** (n + 1), 4000, 4):
         lines = _ztoalc_lines(truth_table, n, b1)
         if all(
@@ -421,16 +440,6 @@ def _build_padded_tt(truth_table: str, n_effective: int) -> str:
     return truth_table.ljust(half * 2, "0")
 
 
-def _validate_tt(truth_table: str, n: int) -> None:
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
-
-
 def between(truth_table: str, n: int) -> str:
     """Build a Between program computing the given truth table.
 
@@ -444,7 +453,7 @@ def between(truth_table: str, n: int) -> str:
     branch addresses are 0-indexed line numbers, so the size of each subtree
     is computed ahead of the linear layout.
     """
-    _validate_tt(truth_table, n)
+    _validate_truth_table(truth_table, n)
 
     def leaf_value(path: list[int]) -> int:
         row = 0
@@ -502,7 +511,7 @@ def laserfuck(truth_table: str, n: int) -> str:
     the 48/49 result cell.  The tree is loop-free, so no loop-ring geometry is
     needed.
     """
-    _validate_tt(truth_table, n)
+    _validate_truth_table(truth_table, n)
     rows: int = 2 ** (n + 1) - 1
     total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2 + 49 + 8
     grid = [[" "] * total_cols for _ in range(rows)]
@@ -655,13 +664,13 @@ def taglate(truth_table: str, n: int) -> str:
     values on the two remaining inputs and prints ``48 + bit``.
     """
     if n == 1:
-        _validate_tt(truth_table, n)
+        _validate_truth_table(truth_table, n)
         base = 48 + int(truth_table[0])
         coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
         seed = "0" + chr(coeff) + chr(base)
         return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
 
-    _validate_tt(truth_table, n)
+    _validate_truth_table(truth_table, n)
 
     # For odd n, prepend a fake zero-input (ghost) to make the stride land
     # on a separator.  n_effective is the number of h-reads and levels.
@@ -726,7 +735,7 @@ def clockwise(truth_table: str, n: int) -> str:
     paths at acc=0 so they do not turn on another leaf's exit.  The row
     funnels left to the corner ``R`` and up column 0 to halt.
     """
-    _validate_tt(truth_table, n)
+    _validate_truth_table(truth_table, n)
     cells: dict[tuple[int, int], str] = {}
     root = 2 ** (n + 2) + 8
 
@@ -804,13 +813,7 @@ def container(truth_table: str, n: int) -> str:
       table entry of the surviving row to ``OUT``; ``PRINT`` fires and
       ``EXIT`` halts.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     lines = ["T:", "+1 T>=T"]
     lines.append(":")  # the empty-named container reads input
@@ -872,20 +875,9 @@ def bit_tilde(truth_table: str, n: int) -> str:
     result``.  Dense tables evaluate the complement instead (fewer minterms)
     and flip the output bit once.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
-    use_complement = truth_table.count("1") > 2**n // 2
-    table = (
-        "".join("0" if c == "1" else "1" for c in truth_table)
-        if use_complement
-        else truth_table
-    )
+    table, use_complement = _maybe_complement(truth_table, n)
 
     prog: list[str] = []
     pos = 0
@@ -998,13 +990,7 @@ def forbin_boolean(truth_table: str, n: int) -> str:
     and falls through when ``b`` is 0, so each node emits the 1-subtree then
     the 0-subtree and every leaf prints the result byte and returns.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     lines: list[str] = ["main {"]
     bits: list[str] = []
@@ -1027,3 +1013,94 @@ def forbin_boolean(truth_table: str, n: int) -> str:
     emit(0, 0)
     lines.append("}")
     return "\n".join(lines)
+
+
+# Home Row is a 5x5 torus of cells.  ``j`` skips the next instruction when
+# the current cell is zero, so ``jf``/``jd`` are *guarded moves*: a beam at a
+# nonzero cell moves right/down, at a zero cell stays put.  A boolean
+# generator can therefore route a decision tree without nested ``l`` loops:
+# each baked bit cell is tested by a ``j``-guarded move, and the two outcomes
+# (beam at the bit cell vs one cell right) diverge further with a plain move.
+#
+# The routing ``jfjffjdd`` with the bits at cells 0 and 1 sends the four
+# two-input combinations to four distinct cells, and every ``j`` in it tests
+# a cell that holds only the baked bits (never an answer cell), so the
+# answers can be baked before routing without corrupting the branches:
+#
+#   00 -> cell 6, 01 -> cell 11, 10 -> cell 7, 11 -> cell 8
+#
+# For one input the routing ``jfd`` sends 0 -> cell 5, 1 -> cell 6.  The
+# template bakes the answer bytes (48/49) into the leaf cells first, then the
+# input bits at cells 0..n-1, then routes and prints with ``k``.  ``n >= 3``
+# has no routing: an exhaustive search of ``j``-guarded sequences shows a
+# 5x5 grid cannot separate 2**n combinations onto distinct cells past n == 2.
+_HOME_ROW_ROUTES = {
+    1: ("jfd", {0: 5, 1: 6}),
+    2: ("jfjffjdd", {0: 6, 1: 11, 2: 7, 3: 8}),
+}
+
+
+def home_row(truth_table: str, n: int) -> str:
+    """Build a Home Row program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    Home Row's ``j`` skips the next instruction when the current cell is
+    zero, so ``jf``/``jd`` act as guarded moves: a beam at a nonzero cell
+    moves right/down, at a zero cell stays put.  The generator routes a
+    decision tree with these guarded moves instead of the ``l`` loops (which
+    pair by order and cannot nest): a baked bit cell at position ``i`` is
+    tested by a ``j``-guarded move, and the two outcomes — the beam at the
+    bit cell (zero) or one cell right (nonzero) — are then diverged with a
+    plain move.  The template bakes the answer bytes (48/49) into the leaf
+    cells first, then the ``{Xi}`` bit placeholders at cells ``0..n-1``,
+    then routes, then ``k`` prints the leaf the beam reached.
+
+    Supported for ``n <= 2``: the one-input routing ``jfd`` and the
+    two-input routing ``jfjffjdd`` separate every combination onto a
+    distinct cell (verified exhaustively against the interpreter for every
+    one- and two-input table).  ``n >= 3`` raises: an exhaustive search
+    shows no ``j``-guarded routing separates ``2**n`` combinations onto
+    distinct cells of the 5x5 grid past ``n == 2``.
+    """
+    _validate_truth_table(truth_table, n)
+    if n not in _HOME_ROW_ROUTES:
+        raise ValueError("Home Row has no boolean generator for n >= 3 inputs")
+    route, leaves = _HOME_ROW_ROUTES[n]
+
+    out: list[str] = []
+    ptr = 0
+
+    def _emit(s: str) -> None:
+        nonlocal ptr
+        for ch in s:
+            out.append(ch)
+            if ch == "f":
+                ptr += 1
+                if ptr % 5 == 0:
+                    ptr -= 5
+            elif ch == "d":
+                ptr = (ptr + 5) % 25
+
+    def _move(dst: int) -> None:
+        nonlocal ptr
+        sr, sc = divmod(ptr, 5)
+        dr, dc = divmod(dst, 5)
+        _emit("d" * ((dr - sr) % 5))
+        _emit("f" * ((dc - sc) % 5))
+
+    # Bake the answer bytes into the leaf cells.
+    for combo in range(2**n):
+        _move(leaves[combo])
+        _emit("a" * (48 + int(truth_table[combo])))
+    # Return to cell 0 and bake the input bits at cells 0..n-1.
+    _move(0)
+    for i in range(n):
+        _move(i)
+        _emit("{X" + str(i) + "}")
+    _move(0)
+    # Route the beam to the leaf and print it.
+    _emit(route)
+    out.append("k")
+    return "".join(out)

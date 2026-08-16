@@ -21,8 +21,11 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 use std::process;
+
+mod common;
+use common::read_line;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Rat {
@@ -104,15 +107,6 @@ fn parse_rat(line: &[u8]) -> Option<Rat> {
             den: 1,
         })
     }
-}
-
-fn read_line() -> Option<Vec<u8>> {
-    let mut stdin = io::stdin().lock();
-    let mut line: Vec<u8> = Vec::new();
-    if stdin.read_until(b'\n', &mut line).unwrap_or(0) == 0 {
-        return None;
-    }
-    Some(line)
 }
 
 fn main() {

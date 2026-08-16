@@ -5,6 +5,35 @@ approach is not viable (or only partially viable).  Completed work lives in
 the commit history; this file records the walls, the negative results, and
 the reasoning behind them.  Genuine future work is in `docs/roadmap.md`.
 
+## Interpreter conventions
+
+The interpreters share a few behavioral conventions, so `esolangs.run` is
+predictable across languages:
+
+- **Empty programs are a no-op by default.**  An empty (or blank-only)
+  program produces no output, unless the language structurally requires
+  content to start — an initial direction (2dFish), a Collatz seed line
+  (ZTOALC L), or a program grid (Circlefuck, BF-PDA, Suffolk, Dig, Back,
+  Clockwise) — in which case it is rejected with a clear `ValueError`
+  (usually ``"... cannot be empty"``, or 2dFish's
+  ``"program does not set an initial direction"``).
+- **Exhausted input raises :class:`EOFError` by default.**  A program that
+  reads past the end of `stdin` is almost always a bug, and the loud error
+  surfaces it (and lets `,[.,]`-style cat loops terminate).  Languages whose
+  spec defines EOF behavior follow the spec instead and document it: S*bleq
+  and Movesum read `0` at EOF (both per the wiki), and every other
+  interpreter raises `EOFError`.  Malformed programs raise `ValueError` and
+  runtime halts raise :class:`HaltError`, never a raw Python exception.
+- **Byte input is line-delimited.**  ``io.input_char`` reads a whole input
+  line and returns its first character (the rest of the line is discarded),
+  so a byte-oriented program needs one line per byte: `,.,.` on ``"A\nB"``
+  echoes ``"AB"``, while ``"AB"`` on one line supplies only ``A`` and the
+  second `,` raises `EOFError`.
+- **Execution is unbounded through the public API.**  `esolangs.run` has no
+  step limit: interpreters run until the program halts naturally or loops
+  forever.  Suffolk is the sole interpreter that ships with a fixed
+  instruction limit, and callers cannot set one through the public API.
+
 ## 6-5 (built; the decision tree stays primary)
 The arithmetic-kernel generator (`six_five_arithmetic`) was built: it packs
 the inputs into `x` and the table into `T = sum table[i] * 2**i` and
@@ -111,6 +140,34 @@ const-0/const-1 build the byte, identity reads and echoes it, and NOT flips
 its least significant bit.  This is why no ``3``-based boolean generator
 exists; the four one-input programs were too trivial to keep, so the boolean
 generator was removed.
+
+## Boolean generator caps (audited)
+A sweep of the remaining input caps on the shipped generators, and whether
+each is liftable:
+
+- **NoComment: ``n <= 8`` is a genuine language wall, not a liftable cap.**
+  The template computes the input's numeric index and does one ``s`` skip
+  into the answer staircase, but ``s`` skips a *byte* (the stack top, read
+  off the current cell), so the index and every jump are capped at 255.
+  Lifting needs a conditional jump over a region > 255 commands, which is
+  inexpressible: the region must be split with ``s`` commands, but each
+  split-``s`` has to be gated on the tested bit while the pointer is
+  mid-region, and the only way to reach the bit cell (a move) resets the
+  pointer and undoes the region.  The decision-tree and binary-selection
+  rewrites both hit this same wall.
+- **Polynomial: ``n <= 4`` is a performance cap.**  Each instruction consumes
+  a fresh prime, so the coefficients reach ~10**1746 at ``n == 5`` and the
+  interpreter's exact factorization no longer completes in practical time.
+  Lifting needs a faster factoring path, not a construction.
+- **Home Row: ``n <= 2`` is a language cap.**  The grid is *fixed* at 5x5
+  (25 cells); an exhaustive search shows no ``j``-guarded routing separates
+  2**n combinations onto distinct cells past ``n == 2``.
+- **Minifuck: ``n <= 3``, 0-preserving two-input tables only** (a re-verified
+  structural wall: the decode suffix fixes the pointer orientation).
+- **123: one input only** (single data byte; every read overwrites it).
+- **Already total (no cap):** Circlefuck (decision tree, sampled to
+  ``n == 16``), ROTfuck (phantom-block minterm sum, sampled to ``n == 4``),
+  ABCDirection and BF-PDA (arbitrary ``n``, exhaustive to ``n <= 3``).
 
 ## RAM0, Bitdeque, Minsky Swap (not viable for the template model)
 These three have value-testable branches and clean setters, but their jumps
@@ -228,7 +285,7 @@ bound: `n == 4` (degree 184, coefficients ~10**729) factors in ~10s, while
 `n == 5` (degree 376, ~10**1746) does not factor in practical time, so the
 boolean generator is capped at `n <= 4`.
 
-## ROTfuck (built; straight-line generator)
+## ROTfuck (built; straight-line generator and phantom-block boolean generator)
 Every executed command rotates all source characters one step along
 `+-><,.[]`, so the character at position ``i`` at time ``t`` is
 ``rot^t(source[i])``.  Brackets are matched dynamically: when a ``[`` or
@@ -237,6 +294,46 @@ the rotated program with the standard nesting count, so an executed bracket
 needs a partner in the current code, not in the source.  The text generator
 therefore emits straight-line programs (``source[i]`` is the ``i``-fold
 inverse rotation of the desired command), which fully covers arbitrary text.
+
+The rotation defeats a brainfuck decision tree outright: a ``[ body ]``
+whose body is a rotation-encoded loop cannot work, because when the ``]``
+fires its ``[`` has rotated away (the ``]`` seeks the partner at a rotation
+state that depends on the step count, and the body path and skip path arrive
+with conflicting mod-8 alignment requirements — the skip-path seek needs
+``q ≡ p+1`` while re-convergence needs ``q ≡ p``).  The boolean generator
+sidesteps the wall by never looping: every ``[`` opens a block whose body is
+straight-line ``+-><`` (no brackets), and the closing ``]`` is a *phantom*
+encoded as the inverse rotation of ``]`` at the ``[``-fire seek state, so the
+skip path (tested cell 0) seeks it and jumps past the block while the body
+path (tested cell nonzero) sees a non-firing ``[``.  Because every body
+length is 7 (mod 8), the two paths reach the position after the phantom in
+the same rotation state and the rest of the program is position-encoded.
+The table is a minterm sum: mismatch counters guarded by the bits and their
+complements, one block per minterm zeroing it iff its counter is nonzero
+(idempotent — the cell goes 1 to 0 exactly once), and ``1``-row blocks
+accumulating into the printed result.  The programs are long (O(``n·2**n``)
+blocks, ~1.4s/execution at ``n == 4``), verified exhaustively at
+``n <= 2`` and sampled through ``n = 4``.
+
+## Home Row (built; j-guarded-move boolean generator, n <= 2)
+Home Row's ``l`` loops pair strictly by order (the first and second ``l``
+form a loop, the third and fourth another), so loops cannot nest and a
+bf-style decision tree is inexpressible.  But ``j`` skips the next
+instruction when the current cell is zero, making ``jf``/``jd`` *guarded
+moves*: a beam at a nonzero cell moves right/down, at a zero cell stays put.
+The boolean generator routes a tree with these instead of loops.  The
+template bakes the answer bytes (48/49) into leaf cells, then the ``{Xi}``
+bit placeholders at cells ``0..n-1``, then a routing of ``j``-guarded moves
+that sends each input combination to a distinct leaf, then ``k`` prints it.
+
+The one-input routing ``jfd`` sends 0 -> cell 5, 1 -> cell 6; the two-input
+routing ``jfjffjdd`` sends 00 -> 6, 01 -> 11, 10 -> 7, 11 -> 8, and every
+``j`` in it tests a cell holding only baked bits (never an answer cell), so
+the answers can be baked before routing without corrupting the branches.
+Verified exhaustively for every one- and two-input table.  ``n >= 3``
+raises: an exhaustive search over ``j``-guarded sequences shows no routing
+separates ``2**n`` combinations onto distinct cells of the 5x5 torus past
+``n == 2`` (the search caps at 6 of 8 combinations).
 
 ## Text generators: exhausted
 Every language whose interpreter can emit arbitrary bytes already has a text
@@ -301,6 +398,46 @@ COD — are in `docs/roadmap.md`).
 - **Welcome To...**: a work-in-progress.
 
 ## Assessed boolean candidates that fell through
+- **123**: its single 8-bit data byte and pointer that flips the bit as it
+  moves (``1`` XORs the mask *and* advances) corrupt any value being built
+  while the pointer navigates to the write position, and writing needs mask
+  512 whose ``1``-path toggles masks 2..256.  The ``3``-jump (nearest
+  preceding/following ``3``) and loop-from-start restart (reaching the end
+  with the pointer at a data position resumes from index 0 without resetting
+  data) provide real control flow, but an exhaustive search over every
+  program up to length 13 (1.6M programs) shows input ``'0'`` (48) can only
+  ever print the even bytes ``{0, 4, 6, 8, ..., 248}`` — the odd byte 49
+  (``'1'``) is unreachable, so NOT and const-1 are inexpressible.  Only
+  identity (``1112121121``) and const-0 (``1111132231``) work, both verified
+  against the interpreter.  A boolean generator is not feasible for the
+  standard harness.
+- **%^2^-1**: its only control flow is ``t`` — rewind to the program start
+  when the accumulator is nonzero — with the accumulator preserved across the
+  rewind.  A program is therefore a whole-program ``while`` loop, and each
+  ``n`` in the body consumes one input line, so a ``t`` loop iterates over
+  the input bits.  It cannot count them: there is no increment-by-1 for an
+  arbitrary value, and a ``m``/``s``-style counter in the rewind path grows
+  without bound (the ``acc > 3003`` reset only fires on huge magnitudes, and
+  the re-run re-applies the growth), so the loop stops only when a body pass
+  ends with ``acc == 0`` — a uniform predicate that cannot tell pass 1 from
+  pass n.  The all-ones row of any truth table therefore either stops the
+  loop early or rewinds past the input (``StopIteration`` in the harness).
+  Exhaustive search: of the four one-input functions only identity and the
+  two constants are expressible (``ne`` and ``n`` + 24×``s`` + ``l`` for
+  identity, ``l`` for const-0, ``ipsl`` for const-1); NOT and every two-input
+  table fail even at length 8.  A boolean generator is not feasible for the
+  standard harness.
+- **Brainpocalypse**: its only control flow is ``-`` on a zero cell rewinding
+  the instruction pointer to the program start (the tape stays intact), so a
+  branch always restarts the whole prefix.  The output constraint closes the
+  case: a bare boolean means only cell 0 may print (the ``right`` bound stays
+  0), leaving just cell 0 and the wrap scratch cell 255 usable, and of the
+  four one-input functions an exhaustive template search finds only identity
+  (bake the bit into cell 0 and move to cell 255) — const-0, const-1, and
+  NOT all need to branch on cell 0's value, which the ``-``-on-zero rewind
+  consumes while re-running the bit-baking prefix (unbounded cell growth
+  across restarts).  A boolean generator is not feasible for the standard
+  harness.
 - **The Temporary Stack**: the auto-drain is the only output, and it prints `front - 1`
   for the *oldest* stack element when `sum(rest) / 2 > front`.  An
   input-dependent `'0'`/`'1'` (48/49) output therefore needs the input to
@@ -327,3 +464,63 @@ COD — are in `docs/roadmap.md`).
 - **DSDLAI**: a Dig variant whose dig commands carry a random 20-90% death
   chance (printing "You died." and halting), so a generated program's output
   is non-deterministic and cannot round-trip text or a truth table.
+- **Trash**: its only output is a prime-advanced number — a non-prime start
+  prints ``0``, a prime start prints the next prime (3, 5, 7, ...), and no
+  leading ``t`` prints nothing — so it can never print a boolean ``"1"`` and
+  cannot return a truth-table result even parameterized.
+
+## Transpiler walls
+
+Transpilers exist where languages share a semantic core (through brainfuck,
+and the one direct pair `Decleq → S*bleq`).  Direct transpilation between
+languages with no shared core is a full runtime-in-a-language, not a program
+rewrite:
+
+- **OISC-to-OISC (S*bleq → Decleq; Decleq ↔ AddSubJump).**  Both
+  self-modifying-memory OISCs share the "≤ 0 branch", and `Decleq → S*bleq`
+  ships, but neither has dynamic instruction dispatch in general: S*bleq
+  cannot express Decleq code that re-reads a written cell as an operand
+  (self-modifying code; rejected), and ASJ's only conditional is
+  ``dest = dest ± op`` by a fixed operand.  A general total transpiler is
+  therefore not expressible; the partial classes would be silent-droppers.
+  Documented as research-level future work in `docs/roadmap.md`.
+- **2D-to-2D.**  No two 2D languages share a model: 2dFish is a deadfish
+  accumulator, Dimensional a pointer-hierarchy tape, LaserFuck mirror-driven
+  control, ABCDrection a Boolfuck bit tape with a queue, EXCON a straight-line
+  bit pool.  Even the two bf-tape ones (Dimensional, LaserFuck) differ in
+  control flow.
+- **Dropped transpilers.**  `nocomment_to_bf` silently dropped NoComment's
+  stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
+  `Circlefuck → bf` decoders only reversed the forward transpilers' canonical
+  form (round-trip-only).
+## ABCDirection (built; scales to arbitrary n)
+- The boolean generator ships and works for any ``n``.  A read staircase
+  fills the queue, a corridor routes the pointer around the tree, each node
+  dequeues a bit and tests it with ``C up``, and the fired leaf prints
+  ``48 + f`` as a byte before running off the terminator row (``EOFError``,
+  which the harness treats as termination).  The tree is laid out on absolute
+  columns (each node sits at the midpoint of its leaf range, so the crossing
+  subtrees can never meet), the ``D``-left cells are spaced so no six-``D``
+  run fools the grid reader, each leaf routes DOWN at a clear column to its
+  own escape row before the serpentine, and each leaf's EOF sink column is
+  distinct so no turn cell sits on another leaf's upward path.
+- Verified for every table at ``n <= 3`` (4 + 16 + 256 functions) and sampled
+  through ``n = 6``.  The grid grows as ``O(4^n)`` cells (roughly ``60*2^n``
+  wide by ``52*2^n`` tall), so exhaustive checks are only practical for small
+  ``n``.
+
+## BF-PDA (built; parameterized)
+- The boolean generator ships and works for any ``n``.  BF-PDA has no input,
+  so it is a parameterized generator: the harness instantiates the template
+  once per input combination, and each ``{Xi}``/``{Ci}`` placeholder becomes a
+  push of the bit or its complement onto the bit stack.
+- The earlier wall was wrong: a decision tree *does* get two independent guard
+  cells per bit from the stack.  A node pushes the complement then the bit
+  (bit on top), runs the one-side loop ``[ sub1 @ ]`` when the bit is one,
+  pops the bit, runs the zero-side loop ``[ sub0 @ ]`` when the complement is
+  one, and pops the complement.  Every subtree is stack-balanced (leaves push
+  the answer bit, print it with ``.``, and pop it), so each ``]`` re-tests its
+  own guard and the if/else separates cleanly.
+- Verified for every table at ``n <= 4`` (4 + 16 + 256 + 65536 functions);
+  the programs are tiny and terminate immediately, so exhaustive checks stay
+  cheap.

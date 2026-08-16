@@ -21,12 +21,12 @@ into a template) rather than the program reading input.
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |
 | A Painter Ant |  | yes |  |  |  |  |
-| ABCDirection |  | yes |  |  |  |  |
+| ABCDirection |  | yes |  | yes |  |  |
 | ASCII art | yes | yes |  | yes |  | hello |
-| AddSubJump | yes | yes |  |  |  | hello |
+| AddSubJump | yes | yes |  | yes |  | hello |
 | Albabet | yes | yes |  |  |  | hello |
 | ArrowQueue |  | yes |  |  |  |  |
-| BF-PDA |  | yes |  |  | yes |  |
+| BF-PDA |  | yes |  | yes | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
 | Back |  | yes |  | yes |  |  |
@@ -50,7 +50,7 @@ into a template) rather than the program reading input.
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
 | Grapheme |  | yes |  |  |  |  |
-| Home Row | yes | yes |  |  | yes | hello |
+| Home Row | yes | yes |  | yes | yes | hello |
 | Jaune |  |  |  |  | yes |  |
 | Kak |  | yes | yes |  |  |  |
 | Keys |  | yes |  |  |  |  |
@@ -60,6 +60,7 @@ into a template) rather than the program reading input.
 | Minsky Swap |  | yes |  |  |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |
+| MyScript | yes | yes |  | yes |  | hello |
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
 | Number Seventy-Four |  | yes | yes |  |  |  |
@@ -67,7 +68,7 @@ into a template) rather than the program reading input.
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes |  |  | yes |  |
-| ROTfuck | yes | yes |  |  |  | hello |
+| ROTfuck | yes | yes |  | yes |  | hello |
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
@@ -78,7 +79,7 @@ into a template) rather than the program reading input.
 | Trash |  | yes | yes |  |  |  |
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
-| ZTOALC L | yes | yes |  |  |  | hello |
+| ZTOALC L | yes | yes |  | yes |  | hello |
 | bit~ | yes | yes | yes | yes |  | hello |
 | brainfuck | yes | yes |  | yes |  | hello |
 | huf | yes | yes |  |  |  | hello |

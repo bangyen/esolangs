@@ -17,17 +17,17 @@ before the search runs.)
 2. **Reachability** (`walk_reaches_even`): the SPRINT walk from every
    pointer reaches an even array in steps 1..46 (at SEED count 1 the walk is
    the affine bijection `q ↦ 2q+1 mod 23`, whose orbits have period dividing
-   11).  The start array is *not* counted as reached, matching the reference
+   11).  The start array is *not* counted as reached, matching the Python
    walk table.
 
 ### Totality (`search_total`)
 
 The per-character search is formalised as `searchOne` (mirroring the
-reference generator) and its success is verified by computation over the
+Python generator) and its success is verified by computation over the
 full finite state space: 23 pointers × 256 SEED counts × 256 targets.
-Reachability uses the same step range (1..46) as the reference
+Reachability uses the same step range (1..46) as the Python
 `_mammalian_walk`, so the theorem certifies the actual generator's search:
-it never hits the `ValueError` branch.  The reference implementation reports
+it never hits the `ValueError` branch.  The Python generator reports
 the same zero failures.
 
 ## Factor correctness

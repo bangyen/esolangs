@@ -90,3 +90,7 @@ class TestCirclefuck:
 
         with pytest.raises(HaltError):
             run_and_capture("}")
+        # a pop that would leave the pointer out of bounds wraps instead of
+        # leaking an IndexError
+        with pytest.raises(HaltError):
+            run_and_capture("<}}@")

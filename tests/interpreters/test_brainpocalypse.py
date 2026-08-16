@@ -3,11 +3,11 @@
 Brainpocalypse is a brainfuck-like tape language: ``+``/``-`` adjust the
 current cell, ``>``/``<`` move the pointer, and ``-`` on a zero cell rewinds
 the instruction pointer to the start of the program.  Non-command characters
-are comments.  The wiki defines no I/O; the reference reads the program from
-stdin and prints the whole tape as space-separated decimals on exit, which is
-what this interpreter does (there is no input command).
+are comments.  The wiki defines no I/O; the RISC-V cross-check reads the
+program from stdin and prints the whole tape as space-separated decimals on
+exit, which is what this interpreter does (there is no input command).
 
-These tests pin the reference semantics: cells are unbounded nonnegative
+These tests pin the cross-check semantics: cells are unbounded nonnegative
 integers (no 256 wrap), the tape is unbounded in both directions (no
 wrap-around), and the whole used tape is printed from cell 0 regardless of
 where the pointer ends up.
@@ -88,7 +88,7 @@ class TestBrainpocalypse:
         assert run_and_capture(" + - > < ") == "0 0"
 
     def test_nul_truncates_program(self) -> None:
-        """A NUL byte ends the stored program in the reference."""
+        """A NUL byte ends the stored program in the cross-check."""
         assert run_and_capture("+\x00++") == "1"
 
     def test_growing_programs(self) -> None:

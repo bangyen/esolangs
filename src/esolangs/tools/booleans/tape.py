@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from typing import cast
 
+from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.transpilers import _six_five_label, bf_to_ascii_art
 
 
@@ -111,37 +112,10 @@ def circlefuck(truth_table: str, n: int) -> str:
     ``-``s, then a decision tree branches on the cells from the last input
     down. Each leaf starts from a cleared cell, so it sets the result with
     ``+``s, prints it, and halts with ``@`` -- halting at the leaf means the
-    tree never needs to skip the sibling branch.
+    tree never needs to skip the sibling branch.  A boolean table is just
+    the byte-valued generator with ``48 + bit`` outputs.
     """
-
-    def emit(c: str) -> None:
-        prog.append(c)
-
-    prog: list[str] = []
-    for _ in range(n):
-        emit(",")
-        prog.extend("-" * 48)
-        emit(">")
-    prog.pop()  # the trailing ">" would leave the pointer past the last input
-
-    def build(k: int, row: int) -> None:
-        if k < 0:
-            prog.extend("+" * (48 + int(truth_table[row])))
-            emit(".")
-            emit("@")
-            return
-        emit("[")
-        emit("[-]")
-        if k:
-            emit("<")
-        build(k - 1, row + 2 ** (n - 1 - k))
-        emit("]")
-        if k:
-            emit("<")
-        build(k - 1, row)
-
-    build(n - 1, 0)
-    return "".join(prog)
+    return circlefuck_byte([48 + int(bit) for bit in truth_table], n)
 
 
 def circlefuck_byte(truth_table: Sequence[int], n: int) -> str:
@@ -431,12 +405,7 @@ def _bf_minterm(truth_table: str, n: int) -> str:
     When the table has more ``1``s than ``0``s the complement is evaluated
     instead (fewer minterms) and ``49 - sum`` is printed.
     """
-    use_complement = truth_table.count("1") > 2**n // 2
-    table = (
-        truth_table
-        if not use_complement
-        else "".join("1" if c == "0" else "0" for c in truth_table)
-    )
+    table, use_complement = _maybe_complement(truth_table, n)
 
     class _Cell:
         def __init__(self, n: int) -> None:
@@ -566,10 +535,10 @@ def ascii_art(truth_table: str, n: int) -> str:
     shorter of the minterm sum and decision-tree program rendered as art
     blocks.
     """
-    return bf_to_ascii_art(bf(truth_table, n))
+    return bf_to_ascii_art(brainfuck(truth_table, n))
 
 
-def bf(truth_table: str, n: int) -> str:
+def brainfuck(truth_table: str, n: int) -> str:
     """Build a brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -585,17 +554,11 @@ def bf(truth_table: str, n: int) -> str:
     - :func:`bf_tree`: a decision tree sharing the bit tests.  Best for
       dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     return min((_bf_minterm(truth_table, n), bf_tree(truth_table, n)), key=len)
 
 
-def three_d_bf(truth_table: str, n: int) -> str:
+def three_d_brainfuck(truth_table: str, n: int) -> str:
     """Build a 3D Brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -607,12 +570,12 @@ def three_d_bf(truth_table: str, n: int) -> str:
     otherwise translate directly, and :func:`bf` picks the shorter of the
     two.
     """
-    return bf(truth_table, n).translate(str.maketrans("><", "ew"))
+    return brainfuck(truth_table, n).translate(str.maketrans("><", "ew"))
 
 
-# The interpreter's two substitution cycles, in the order the reference scans
-# them: Painfuck source is pre-shifted here so the trans table recovers the
-# intended commands.
+# The interpreter's two substitution cycles, in the order the cross-check
+# scans them: Painfuck source is pre-shifted here so the trans table recovers
+# the intended commands.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
 
 
@@ -632,7 +595,7 @@ def painfuck(truth_table: str, n: int) -> str:
     back along its cycle (where ``k`` counts the commands so far) to undo it.
     """
     code = (
-        bf(truth_table, n)
+        brainfuck(truth_table, n)
         .replace(">", "rl")
         .replace("<", "l")
         .replace("+", "ps")
@@ -652,7 +615,11 @@ def painfuck(truth_table: str, n: int) -> str:
                 k += 1
                 break
         else:
-            raise ValueError(f"Painfuck command {char!r} is not in a cycle")
+            # every command the brainfuck generator emits maps to a command
+            # in _CYCLES, so this branch is unreachable by construction
+            raise ValueError(
+                f"Painfuck command {char!r} is not in a cycle"
+            )  # pragma: no cover
     return "".join(out)
 
 
@@ -673,13 +640,7 @@ def bf_tree(truth_table: str, n: int) -> str:
     minterm evaluator's O(n * 2**n); for XOR-n it measures 1.4K..20K
     characters at n = 2..8 against the minterm's 1.4K..33M.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     cells: list[str] = []
     pos = 0
@@ -855,13 +816,7 @@ def dimensional(truth_table: str, n: int) -> str:
     - :func:`dimensional_tree`: a decision tree sharing the bit tests.
       Best for dense tables — XOR-8 is ~8x smaller than the survivor.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     return min(
         (_dimensional_survivor(truth_table, n), dimensional_tree(truth_table, n)),
         key=len,
@@ -870,12 +825,7 @@ def dimensional(truth_table: str, n: int) -> str:
 
 def _dimensional_survivor(truth_table: str, n: int) -> str:
     """Build the survivor-cell evaluator for the given truth table."""
-    use_complement = truth_table.count("1") > 2**n // 2
-    table = (
-        truth_table
-        if not use_complement
-        else "".join("1" if c == "0" else "0" for c in truth_table)
-    )
+    table, use_complement = _maybe_complement(truth_table, n)
 
     cell = _Dimensional(n)
     for i in cell.inputs:
@@ -950,13 +900,7 @@ def dimensional_tree(truth_table: str, n: int) -> str:
     O(2**n) characters and wins on dense tables; the survivor evaluator
     (``_dimensional_survivor``) wins on sparse ones.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     cells: list[str] = []
     pos = 0
@@ -1057,13 +1001,7 @@ def basicfuck(truth_table: str, n: int) -> str:
     variable (which starts at 0 and is touched by exactly one leaf) and
     prints it with ``write <- out ;``.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     lines = ["#basicfuck t=unbounded r=0~255 o=wrap"]
     lines.append("#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out")
@@ -1126,13 +1064,7 @@ def sbleq(truth_table: str, n: int) -> str:
     variants would overwrite, so this generator targets base S*bleq
     (``store="a"``).
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
 
     instructions: list[tuple[int, int, int]] = []
     nodes: list[tuple[int, int, int]] = []  # (v offset, normalize addr, one addr)
@@ -1215,13 +1147,7 @@ def minifuck(truth_table: str, n: int) -> str:
     so a complemented read cannot select them — and n >= 3 has no general
     construction.  The programs below were found by search.
     """
-    if len(truth_table) != 2**n:
-        raise ValueError(
-            f"truth table must have {2**n} entries for {n} inputs, "
-            f"got {len(truth_table)}",
-        )
-    if not all(c in "01" for c in truth_table):
-        raise ValueError("truth table must contain only '0' and '1'")
+    _validate_truth_table(truth_table, n)
     if n == 1:
         return _MINIFUCK_N1[truth_table]
     if n == 2:
@@ -1231,3 +1157,243 @@ def minifuck(truth_table: str, n: int) -> str:
             )
         return _MINIFUCK_N2[truth_table]
     raise ValueError("Minifuck has no boolean generator for n >= 3 inputs")
+
+
+# ROTfuck rotates the whole program after every command, so a brainfuck-style
+# decision tree does not survive: the bracket that fires seeks its partner in
+# the *rotated* program, at a rotation state that depends on the step count.
+# The construction below is the discovered escape, verified against the
+# interpreter: each ``[`` body is a *straight-line* ``+-><``-only block (no
+# brackets), and the closing ``]`` is a phantom character whose position is
+# encoded so that the ``[``-fire seek finds it at the right rotation state.
+#
+# A block is ``[ body ]`` at positions ``p``..``q`` where ``len(body)``
+# satisfies ``len(body) + 1 ≡ 0 (mod 8)``:
+#
+# - skip path (cell == 0): the ``[`` fires, rotates once, seeks forward for
+#   ``]`` at depth 1, and lands at ``q + 1`` with rotation state ``p + 1``;
+# - body path (cell != 0): the body runs (straight-line, pointer starts and
+#   ends on the tested cell, which stays nonzero), and at ``q`` the phantom
+#   shows ``rot^len(body)(']')`` = ``'['`` (since ``len(body) ≡ 7``), which
+#   does not fire on the nonzero cell, so it advances to ``q + 1`` with state
+#   ``q + 1 ≡ p + 1 (mod 8)``.
+#
+# Both paths therefore re-converge at ``q + 1`` in the same rotation state,
+# so the rest of the program can be encoded position-wise.  A body command at
+# relative offset ``j`` must also satisfy ``rot^{-j}(cmd)`` not a bracket, so
+# the ``[``-fire seek (at state ``p + 1``) sees no bracket inside the body.
+#
+# The generator is a branch-free minterm sum over an idempotent-zeroing
+# indirection: each input bit ``b_i`` (cell ``i``) and its complement ``c_i``
+# (cell ``n + i``, set to 1) guard blocks that count mismatches into cells
+# ``mc_k``; one block per minterm then zeroes ``m_k`` (cell
+# ``2n + 1 + 2**n + k``) iff ``mc_k != 0``, so ``m_k == 1`` exactly when the
+# input is ``k``; and blocks guarded by the ``1``-rows accumulate into the
+# result cell, which is printed as ``48 + r``.
+
+# The eight-step rotation cycle: + -> - -> > -> < -> , -> . -> [ -> ] -> +.
+_ROTFUCK_CHAIN = "+-><,.[]"
+
+
+def _rotfuck_rot(char: str, steps: int) -> str:
+    """Advance ``char`` ``steps`` steps along the ROTfuck rotation cycle."""
+    index = _ROTFUCK_CHAIN.index(char)
+    return _ROTFUCK_CHAIN[(index + steps) % 8]
+
+
+def _rotfuck_allowed(offset: int) -> list[str]:
+    """Commands a body may place at relative offset ``offset``.
+
+    At the ``[``-fire seek state ``p + 1``, a body command at relative offset
+    ``j`` shows ``rot^{-j}(cmd)``, which must not be a bracket (else the
+    seek's depth count changes).  So ``cmd`` must not be ``rot^{j}`` of a
+    bracket.
+    """
+    bad = {_rotfuck_rot("[", offset), _rotfuck_rot("]", offset)}
+    return [c for c in "+-><" if c not in bad]
+
+
+def _rotfuck_neutral(offset: int) -> str:
+    """Return a two-char net-neutral pair usable at ``offset``.
+
+    The pair is ``+-``/``-+`` or ``><``/``<>``, both of whose characters are
+    allowed at ``offset`` and ``offset + 1``.
+    """
+    for pair in ("+-", "-+", "><", "<>"):
+        if all(c in _rotfuck_allowed(offset + i) for i, c in enumerate(pair)):
+            return pair
+    raise ValueError(  # pragma: no cover - a neutral pair exists at every offset
+        "ROTfuck body padding is impossible at this offset"
+    )
+
+
+def _rotfuck_move(ptr: int, goal: int, offset: int, direction: str) -> str:
+    """Emit ``>``/``<`` to move ``ptr`` toward ``goal``.
+
+    The direction command is forbidden at some offsets, so a net-neutral
+    padding pair is inserted there to shift past them while every command
+    stays at an allowed offset.
+    """
+    out: list[str] = []
+    while ptr < goal if direction == ">" else ptr > goal:
+        if direction in _rotfuck_allowed(offset % 8):
+            out.append(direction)
+            ptr += 1 if direction == ">" else -1
+            offset += 1
+        else:
+            pad = _rotfuck_neutral(offset % 8)
+            out.append(pad)
+            offset += 2
+    return "".join(out)
+
+
+def _rotfuck_body(guard: int, target: int, op: str) -> str:
+    """Build a body that moves the pointer from ``guard`` to ``target``.
+
+    The body applies ``op`` to the target cell and returns to ``guard``.  It
+    is straight-line ``+-><`` only, has length ``L`` with
+    ``L + 1 ≡ 0 (mod 8)``, and every command sits at an allowed offset.  The
+    tested cell (``guard``) stays nonzero, so the phantom ``[`` at the block
+    end does not fire on the body path.
+    """
+    out: list[str] = []
+    offset = 0
+    ptr = guard
+    if target > guard:
+        out.append(_rotfuck_move(ptr, target, offset, ">"))
+        offset += len(out[-1])
+        ptr = target
+    else:
+        out.append(_rotfuck_move(ptr, target, offset, "<"))
+        offset += len(out[-1])
+        ptr = target
+    if op not in _rotfuck_allowed(offset % 8):
+        pad = _rotfuck_neutral(offset % 8)
+        out.append(pad)
+        offset += 2
+        if op not in _rotfuck_allowed(offset % 8):
+            # padding always shifts a +/- op off both its forbidden offsets
+            raise ValueError(
+                "ROTfuck body op lands on a forbidden offset"
+            )  # pragma: no cover
+    out.append(op)
+    offset += 1
+    if guard > target:
+        out.append(_rotfuck_move(ptr, guard, offset, ">"))
+    else:
+        out.append(_rotfuck_move(ptr, guard, offset, "<"))
+    offset += len(out[-1])
+    body = "".join(out)
+    need = (8 - (len(body) + 1) % 8) % 8
+    while need:
+        pad = _rotfuck_neutral(offset % 8)
+        body += pad
+        offset += 2
+        need -= 2
+    return body
+
+
+def rotfuck(truth_table: str, n: int) -> str:
+    """Build a ROTfuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), and ``n`` is the number of inputs.
+
+    ROTfuck rotates the program after every command, which defeats the
+    brainfuck decision-tree strategy (a firing bracket seeks its partner in
+    the rotated program).  The generator instead lays out one ``[ body ]``
+    block per guard, where the body is a straight-line ``+-><`` walk that
+    moves the pointer from the tested cell to a target, applies one
+    ``+``/``-``, and returns.  The closing ``]`` is a *phantom*: its source
+    character is the inverse rotation of ``]`` at the ``[``-fire seek state,
+    so the skip path (tested cell == 0) finds it and jumps past the block,
+    while the body path (tested cell != 0) sees it as a non-firing ``[``.
+    Both paths re-converge after the block in the same rotation state because
+    every body length is ``7 (mod 8)``.
+
+    The truth table is evaluated as a minterm sum: the input bits are read
+    and normalized into cells ``0..n-1``, their complements into
+    ``n..2n-1``, each minterm's mismatch count into ``2n+1..2n+2**n``, and
+    each minterm into ``2n+1+2**n..2n+1+2*2**n``.  Per-input a single
+    ``-``-guarded block zeroes the matching minterm, ``1``-rows accumulate
+    into the result cell, and ``48 + r`` is printed.
+    """
+    _validate_truth_table(truth_table, n)
+
+    b = list(range(n))
+    c = list(range(n, 2 * n))
+    r = 2 * n
+    mc = list(range(2 * n + 1, 2 * n + 1 + 2**n))
+    m = list(range(2 * n + 1 + 2**n, 2 * n + 1 + 2 * 2**n))
+
+    eff: list[str] = []
+    phantoms: dict[int, int] = {}
+
+    def emit(cmds: list[str]) -> None:
+        eff.extend(cmds)
+
+    # Read the bits (each on its own line), normalize to 0/1, set the
+    # complements to 1, set the minterm cells to 1 (mismatch cells start 0).
+    for i in range(n):
+        emit([","])
+        emit(["-"] * 48)
+        if i < n - 1:
+            emit([">"])
+    emit([">"] * (c[0] - (n - 1)))
+    for i in range(n):
+        emit(["+"])
+        if i < n - 1:
+            emit([">"])
+    emit([">"] * (m[0] - c[-1]))
+    for k in range(2**n):
+        emit(["+"])
+        if k < 2**n - 1:
+            emit([">"])
+
+    # Block layout: for each minterm, each input bit guards a mismatch count;
+    # a single block then zeroes the minterm iff its count is nonzero; and
+    # each 1-row guards an accumulation into the result cell.
+    block_specs: list[tuple[int, int, str]] = []
+    for i in range(n):
+        block_specs.append((b[i], c[i], "-"))  # complement c_i = 1 - b_i
+    for k in range(2**n):
+        for i in range(n):
+            guard = c[i] if ((k >> (n - 1 - i)) & 1) else b[i]
+            block_specs.append((guard, mc[k], "+"))  # mismatch count
+        block_specs.append((mc[k], m[k], "-"))  # zero minterm on any mismatch
+    for k in range(2**n):
+        if truth_table[k] == "1":
+            block_specs.append((m[k], r, "+"))  # accumulate 1-rows
+
+    ptr = m[-1]
+    for guard, target, op in block_specs:
+        while ptr < guard:
+            emit([">"])
+            ptr += 1
+        while ptr > guard:
+            emit(["<"])
+            ptr -= 1
+        p = len(eff)
+        emit(["["])
+        body = _rotfuck_body(guard, target, op)
+        emit(list(body))
+        emit(["]"])
+        phantoms[p + len(body) + 1] = p
+
+    while ptr < r:  # pragma: no cover - the last block's guard sits above r
+        emit([">"])
+        ptr += 1
+    while ptr > r:
+        emit(["<"])
+        ptr -= 1
+    emit(["+"] * 48)
+    emit(["."])
+
+    return "".join(
+        (
+            _rotfuck_rot("]", -(phantoms[i] + 1))
+            if i in phantoms
+            else _rotfuck_rot(cmd, -i)
+        )
+        for i, cmd in enumerate(eff)
+    )

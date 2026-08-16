@@ -7,8 +7,8 @@ the no-I/O language observable.
 
 import pytest
 
+from esolangs.interpreters.grid_based.a_painter_ant import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.a_painter_ant import run
 
 
 def run_program(code: str, limit: int = 10_000) -> str:

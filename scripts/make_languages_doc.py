@@ -9,64 +9,25 @@ hand-maintained list would.
 import pathlib
 
 from esolangs.registry import LANGUAGES, RUNNERS
+from esolangs.tools.boolean import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[1]
 EXAMPLES = ROOT / "examples"
 HELLO = EXAMPLES / "hello-world"
 CAT = EXAMPLES / "cat"
 TRUTH = EXAMPLES / "truth-machine"
-
-# Languages with a boolean generator in esolangs.tools.booleans, mapped to
-# display names.  Back, BIO, and NoComment's generators are parameterized
-# templates (the harness substitutes the input bits) rather than input-reading
-# programs.
-BOOLEAN = {
-    "3x",
-    "3D Brainfuck",
-    "6-5",
-    "ASCII art",
-    "Back",
-    "Basicfuck",
-    "Between",
-    "brainfuck",
-    "BFStack",
-    "BIO",
-    "bit~",
-    "BrainIf",
-    "Circlefuck",
-    "Clockwise",
-    "Collatz Multiverse",
-    "Container",
-    "Dig",
-    "Dimensional",
-    "Decleq",
-    "Forbin",
-    "Forþ",
-    "LaserFuck",
-    "Minifuck",
-    "Modulous",
-    "Nevermind",
-    "NoComment",
-    "Painfuck",
-    "Polynomial",
-    "Qoibl",
-    "S*bleq",
-    "Sophie",
-    "Taglate",
-    "Unsquare",
-}
 # Compiler source-file stem -> the language's display name.  A compiler file
 # without an entry here fails loudly rather than silently dropping out of
 # the docs.
 _COMPILER_NAMES = {
     "bfstack": "BFStack",
-    "home-row": "Home Row",
+    "home_row": "Home Row",
     "jaune": "Jaune",
     "suffolk": "Suffolk",
     "unsquare": "Unsquare",
-    "bfpda": "BF-PDA",
+    "bf_pda": "BF-PDA",
     "excon": "EXCON",
-    "RAM0": "RAM0",
+    "ram0": "RAM0",
 }
 
 _COMPILER_DIRS = {
@@ -85,6 +46,11 @@ def _compiler_set(kind: str) -> set[str]:
 
 
 ASSEMBLY_COMPILERS = _compiler_set("assembly")
+
+# Extra source files that are support modules, not implementations: they are
+# globbed alongside the languages but have no display name (an unknown
+# implementation file still fails loudly).
+_EXTRA_SUPPORT_MODULES = {"common"}
 
 # The README's Extra Implementations section: each entry is the extra/
 # subdirectory, its source pattern, the file-stem -> display-name map (an
@@ -107,15 +73,15 @@ _EXTRA_DIRS = [
         ROOT / "extra" / "rust",
         "*.rs",
         {
-            "2dfish": "2dFish",
+            "two_d_fish": "2dFish",
             "basicfuck": "Basicfuck",
             "bit_tilde": "bit~",
             "forth": "Forþ",
             "kak": "Kak",
             "laserfuck": "LaserFuck",
             "painfuck": "Painfuck",
-            "pct": "%^2^-1",
-            "seventy_four": "Number Seventy-Four",
+            "pct_squared_minus_one": "%^2^-1",
+            "number_seventy_four": "Number Seventy-Four",
             "three_x": "3x",
             "trash": "Trash",
             "unsquare": "Unsquare",
@@ -141,12 +107,25 @@ _EXTRA_WIKI = {
 }
 
 # The README's Implemented Languages section, grouped by interpreter
-# category in this order, with its one-line descriptions.
+# category.  The list order is the classification priority (a language is
+# filed by its most distinctive data structure): grid (a beam/pointer moving
+# on a 2D surface) > stack > queue > tape > register (the imperative
+# default) > other.
 _README_HEADINGS = [
     (
-        "register_based",
-        "Register-based Languages",
-        "Languages that use registers to store and manipulate data.",
+        "grid_based",
+        "Grid-based Languages",
+        "Languages that move a pointer or beam across a 2D grid.",
+    ),
+    (
+        "stack_based",
+        "Stack-based Languages",
+        "Languages that use a stack for data manipulation.",
+    ),
+    (
+        "queue_based",
+        "Queue-based Languages",
+        "Languages whose primary data structure is a queue or deque.",
     ),
     (
         "tape_based",
@@ -154,9 +133,9 @@ _README_HEADINGS = [
         "Languages that operate on a tape (similar to Turing machines).",
     ),
     (
-        "stack_based",
-        "Stack-based Languages",
-        "Languages that use a stack for data manipulation.",
+        "register_based",
+        "Register-based Languages",
+        "Languages that use registers to store and manipulate data.",
     ),
     (
         "other",
@@ -286,7 +265,7 @@ def render_compilers_section() -> str:
     out: list[str] = [
         f"<summary>Show all {len(compilers)} compilers</summary>",
         "",
-        "Compilers that translate esoteric languages to other target" " languages.",
+        "Compilers that translate esoteric languages to other target languages.",
         "",
     ]
     out.append("### RISC-V Assembly Compilers")
@@ -307,7 +286,7 @@ def render_extra_section() -> str:
         " verified against them, and languages whose output classes are too"
         " narrow for a text generator (Kak, Trash, Number Seventy-Four, 2"
         " Bits 1 Byte, Brainpocalypse, Stun Step) still get a Python"
-        " interpreter differentially verified against the native reference."
+        " interpreter differentially verified against the native cross-check."
         "  The cross-checks share an exit-code convention mirroring the"
         " Python interpreters: 0 = success, 2 = malformed program, 3 ="
         " invalid runtime operation.",
@@ -320,6 +299,7 @@ def render_extra_section() -> str:
             {
                 names[path.stem.removesuffix("-riscv")]
                 for path in directory.glob(pattern)
+                if path.stem not in _EXTRA_SUPPORT_MODULES
             },
             key=str.lower,
         ):

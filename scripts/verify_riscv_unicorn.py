@@ -1,11 +1,11 @@
-"""Verify RISC-V machine code under unicorn: compilers and reference interpreters.
+"""Verify RISC-V machine code under unicorn: compilers and cross-check interpreters.
 
 Two kinds of round-trip run esolang programs as RISC-V ELF under unicorn:
 
 1. each assembly compiler in ``src/esolangs/compilers/assembly/`` translates
    an esolang program to RISC-V assembly, which is compiled and run;
 2. text generators whose interpreters live in ``extra/assembly/`` feed the
-   generated program to the reference machine code.
+   generated program to the cross-check machine code.
 
 Both must reproduce the expected output.
 
@@ -23,7 +23,7 @@ from riscv_elf_runner import assemble_source, run_elf
 
 from esolangs.tools import generate as gen
 
-# Generators whose reference interpreter lives in extra/assembly/: the
+# Generators whose cross-check interpreter lives in extra/assembly/: the
 # generated program must reproduce its text when run as machine code.
 REFERENCE_TEXTS = ["Hi", "Hello, World!", "esolangs!", "A\nB", "\x00"]
 GENERATOR_CASES = [
@@ -31,21 +31,21 @@ GENERATOR_CASES = [
 ]
 
 # (name, compiler module, source program, expected output).  Compilers with
-# generators (bfstack, suffolk, unsquare, home-row, excon) round-trip them;
-# the others (jaune, bfpda, RAM0) get fixed programs with known output.
+# generators (bfstack, suffolk, unsquare, home_row, excon) round-trip them;
+# the others (jaune, bf_pda, ram0) get fixed programs with known output.
 COMPILER_CASES = []
 for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("bfstack", "bfstack", gen.bfstack(text), text))
     COMPILER_CASES.append(("suffolk", "suffolk", gen.suffolk(text), text))
     COMPILER_CASES.append(("unsquare", "unsquare", gen.unsquare(text), text))
-    COMPILER_CASES.append(("home-row", "home-row", gen.home_row(text), text))
+    COMPILER_CASES.append(("home_row", "home_row", gen.home_row(text), text))
     COMPILER_CASES.append(("excon", "excon", gen.excon(text), text))
-COMPILER_CASES.append(("home-row", "home-row", "a" * 65 + "k;", "A"))
+COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
-COMPILER_CASES.append(("bfpda", "bfpda", "<.>@.", "01"))
-COMPILER_CASES.append(("RAM0", "RAM0", "A A A", "z: 3\nn: 0\nram: {}\n"))
-COMPILER_CASES.append(("RAM0", "RAM0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}\n"))
+COMPILER_CASES.append(("bf_pda", "bf_pda", "<.>@.", "01"))
+COMPILER_CASES.append(("ram0", "ram0", "A A A", "z: 3\nn: 0\nram: {}\n"))
+COMPILER_CASES.append(("ram0", "ram0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}\n"))
 
 
 def main() -> int:

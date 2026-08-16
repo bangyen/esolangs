@@ -291,6 +291,12 @@ class TestQoiblEdgeCases:
             run(code, IO())
         assert f.getvalue() == ""
 
+    def test_blank_lines_are_ignored(self) -> None:
+        """Blank and whitespace-only lines are skipped, not crashed on."""
+        with redirect_stdout(io.StringIO()) as f:
+            run(["\n", "\t \t", ""], IO())
+        assert f.getvalue() == ""
+
     def test_undefined_variable_access(self) -> None:
         """Test accessing undefined variables (should return 0)."""
         code: list[str] = ["tt qe yyy qe tt"]  # print var[7] (undefined)
@@ -321,6 +327,17 @@ class TestQoiblEdgeCases:
         code: list[str] = ["tt y yr qe y y tt"]
         with pytest.raises(ValueError, match="operator"):
             run(code, IO())
+
+    def test_truncated_operator_rejected(self) -> None:
+        """A comparison or arithmetic operator with no operand is malformed."""
+        with pytest.raises(ValueError, match="comparison"):
+            run(["yr"], IO())
+        with pytest.raises(ValueError, match="arithmetic"):
+            run(["ry"], IO())
+
+    def test_empty_expression_rejected(self) -> None:
+        with pytest.raises(ValueError, match="expression"):
+            run(["tt  "], IO())
 
     def test_nested_expressions(self) -> None:
         """Test nested expressions and complex operations."""

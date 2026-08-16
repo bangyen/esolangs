@@ -11,7 +11,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.grapheme import run
+from esolangs.interpreters.stack_based.grapheme import run
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -111,6 +111,13 @@ class TestFunctions:
     def test_g_executes_string(self) -> None:
         assert run_program("FAFEYEG") == "10"
 
+    def test_g_on_input_with_bad_commands_rejected(self) -> None:
+        """A string read from input and executed via G is validated, not asserted on."""
+        import pytest
+
+        with pytest.raises(ValueError, match="unhandled command"):
+            run_program("WG", "zkg")
+
     def test_i_runs_function(self) -> None:
         assert run_program("FAFHYHIE") == "10"
 
@@ -161,3 +168,68 @@ class TestErrors:
 
     def test_empty_program(self) -> None:
         assert run_program("") == ""
+
+
+class TestEdgeCases:
+    def test_j_on_an_int_is_identity(self) -> None:
+        assert run_program("FAFJJY") == "10"
+
+    def test_j_on_a_function_counts_its_commands(self) -> None:
+        assert run_program("HABHJY") == "2"
+
+    def test_j_on_a_string_stops_at_an_f(self) -> None:
+        assert run_program("EFAEJY") == "0"
+
+    def test_n_on_a_string_is_identity(self) -> None:
+        assert run_program("EAENY") == "A"
+
+    def test_n_on_zero_is_j(self) -> None:
+        assert run_program("FFNY") == "J"
+
+    def test_math_on_a_function_halts(self) -> None:
+        with pytest.raises(HaltError, match="math on a function"):
+            run_program("HABHFFA")
+
+    def test_truthiness_of_strings_and_functions(self) -> None:
+        assert run_program("EAETY") == "0"  # "A" truthy -> push 0
+        assert run_program("EETY") == "1"  # "" falsy -> push 1
+        assert run_program("HABHTY") == "0"  # nonempty function truthy
+        assert run_program("HHTY") == "1"  # empty function falsy
+
+    def test_recursion_limit_exceeded(self) -> None:
+        with pytest.raises(HaltError, match="recursion"):
+            run_program("HKGHKG")
+
+    def test_command_limit_exceeded(self) -> None:
+        from esolangs.interpreters.stack_based.grapheme import run
+
+        io = ScriptedIO("")
+        with pytest.raises(HaltError, match="command limit"):
+            run("FF", io, limit=1)
+
+    def test_function_cannot_name_a_variable(self) -> None:
+        with pytest.raises(HaltError, match="cannot name"):
+            run_program("FAFHHC")
+        with pytest.raises(HaltError, match="cannot name"):
+            run_program("FAFHHD")
+
+    def test_g_needs_a_string_or_function(self) -> None:
+        with pytest.raises(HaltError, match="G needs"):
+            run_program("FAFG")
+
+    def test_i_pushes_back_a_non_function(self) -> None:
+        assert run_program("FAFIY") == "10"
+
+    def test_v_branches_on_a_falsy_value(self) -> None:
+        with pytest.raises(HaltError, match="popped"):
+            run_program("FFFFVY")
+
+    def test_y_cannot_output_a_function(self) -> None:
+        with pytest.raises(HaltError, match="Y cannot"):
+            run_program("HABHY")
+
+    def test_unterminated_int_mode(self) -> None:
+        assert run_program("F") == ""
+
+    def test_unterminated_func_mode(self) -> None:
+        assert run_program("H") == ""

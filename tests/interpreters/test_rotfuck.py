@@ -99,6 +99,14 @@ class TestBrackets:
         """
         assert run_program("+<.]>", "x") == ""
 
+    def test_forward_skip_over_nested_bracket(self) -> None:
+        """A skipped ``[`` seeks its partner past a nested ``[``."""
+        assert run_program("[[.].]") == ""
+
+    def test_backward_jump_over_nested_bracket(self) -> None:
+        """A fired ``]`` jumps back across a nested ``]`` in the rotation."""
+        assert run_program("<+..>[]") == "\x01"
+
     def test_unmatched_bracket_halts_when_executed(self) -> None:
         """A fired bracket with no partner in the rotated program errors."""
         with pytest.raises(HaltError):

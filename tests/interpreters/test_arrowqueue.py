@@ -15,8 +15,8 @@ from contextlib import redirect_stdout
 import pytest
 
 import esolangs
+from esolangs.interpreters.grid_based.arrowqueue import run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.arrowqueue import run
 
 
 class _TimeoutError(Exception):
@@ -71,7 +71,7 @@ class TestArrowQueue:
         """A ~ in the data cell sustains the ring, so the program never halts."""
         program = [" ~*", "+~*", "*~+"]
         old_handler = signal.signal(signal.SIGALRM, _on_alarm)
-        signal.alarm(2)
+        signal.alarm(1)
         try:
             run(program, IO())
         except _TimeoutError:
@@ -87,7 +87,7 @@ class TestArrowQueue:
         """Without the ~, the ring stops refilling and an empty queue halts it."""
         program = [" ~*", "+ *", "*~+"]
         signal.signal(signal.SIGALRM, _on_alarm)
-        signal.alarm(2)
+        signal.alarm(1)
         try:
             run(program, IO())
         except _TimeoutError:

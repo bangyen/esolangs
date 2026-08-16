@@ -57,10 +57,10 @@ def test_text_generators_round_trip() -> None:
                 assert generator is not None
                 program = generator(text)
             except ValueError:
-                # every generator may document limits; the mammalian search
+                # every generator may document limits; the slow_acv_mammalian search
                 # itself is proven total, so it may only reject for non-byte
                 # characters (which _UNICODE includes)
-                if name == "mammalian":
+                if name == "slow_acv_mammalian":
                     assert any(ord(c) > 255 for c in text)
                 continue
             run = importlib.import_module("esolangs.interpreters." + module).run
@@ -115,10 +115,10 @@ def test_boolean_generators_random_tables() -> None:
         (boolean.sophie, "register_based.sophie", False, ""),
         (boolean.modulous, "stack_based.modulous", False, ""),
         (boolean.brainif, "tape_based.brainif", True, ""),
-        (boolean.nevermind, "other.nevermind", True, "\n"),
+        (boolean.nevermind, "register_based.nevermind", True, "\n"),
         (boolean.circlefuck, "tape_based.circlefuck", False, ""),
         (boolean.dimensional, "tape_based.dimensional", False, ""),
-        (boolean.bf, "tape_based.bf", False, ""),
+        (boolean.brainfuck, "tape_based.brainfuck", False, ""),
         (boolean.sbleq, "tape_based.sbleq", False, ""),
         (boolean.container, "other.container", True, ""),
     ]
@@ -157,7 +157,7 @@ def test_byte_function_generator_random_tables() -> None:
 
 def test_binary_generator_random_tables() -> None:
     random.seed(3)
-    run = importlib.import_module("esolangs.interpreters.register_based.dig").run
+    run = importlib.import_module("esolangs.interpreters.grid_based.dig").run
     for n in (1, 2, 3, 4):
         for _ in range(3):
             table = "".join(random.choice("01") for _ in range(2**n))
