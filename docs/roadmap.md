@@ -86,6 +86,35 @@ the table:
   byte I/O) shares ABCDrection's bit-tape model; Minifuck's
   flip-and-conditional-skip is further away.
 
+## No-output interpreters (deferred removal)
+
+**Deferred — not yet removed.**  Eight interpreters are for languages whose
+wiki defines no I/O, so their only observable output is an interpreter-
+invented state dump (the tape, registers, deque, or grid printed at halt to
+make the run testable) — not a language output command.  They cannot
+generate text, compute a boolean, be differentially verified, or step
+through input, so by the admission criteria' "usable file-based I/O" test
+they are the weakest additions.  The eight: ArrowQueue (no output at all),
+A Painter Ant, Brainpocalypse, Kak, Minsky Swap, RAM0, Stun Step, Bitdeque
+(each prints only its final state).
+
+Candidate to remove, with the rationale recorded, once decided.  The
+roadmap's planned no-output candidates (Point Break, State and Main,
+Crement, Your Time Is Up) would be dropped under the same policy.  The
+I/O-capable interpreter-only languages (2 Bits 1 Byte, Number Seventy-Four,
+Trash, Grapheme, Movesum, Lightlang) are not in this tier.
+
+Against removal, weighed but not decisive: most of these are the *only*
+implementation on the wiki (only this repo's interpreter is listed), so
+removing them leaves the language with no implementation at all — which the
+admission criteria treat as a genuine gap.  Of the eight, only Brainpocalypse
+and Kak have external implementations (Ruby/Crystal/Python and Common
+Lisp/Scratch/C respectively); the other six (ArrowQueue, A Painter Ant,
+Minsky Swap, RAM0, Stun Step, Bitdeque) are Bangyen-only.  The tradeoff is
+between "no I/O ⇒ cannot participate in the repo's verification machinery"
+and "sole implementation ⇒ removing creates a gap"; the removal is recorded
+here as a candidate to resolve deliberately rather than by default.
+
 ## Extra implementations (cross-checks)
 
 The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
