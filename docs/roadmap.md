@@ -252,11 +252,22 @@ research-level too.  The last seven:
 - **AlbaBet: ruled out.**  Only straight-line arithmetic (+1, *y, square,
   move, print); there is no loop, jump, or skip, so no value-testable
   branch for the bits to route through.
-- **%^2^-1: research-level.**  Its only control flow is ``t`` (rewind to
+- **%^2^-1: ruled out.**  Its only control flow is ``t`` (rewind to
   the program start when the accumulator is nonzero) — no local jump
-  targets and no skip — so a decision tree must be threaded through
-  restart-to-start loops, and the arithmetic (``-2``/``-3``/``*2``/negate/
-  zero) is too weak to fold the bits arithmetically.
+  targets and no skip.  The rewind re-runs the whole body with the
+  accumulator preserved, so a program is a whole-program ``while`` loop:
+  ``run body; if acc != 0: rewind``.  Each ``n`` in the body consumes an
+  input line, so the loop iterates over the input bits — but it cannot
+  *count* them (there is no increment op, and rewinds re-run the body, so a
+  ``m``/``s``-style counter grows without bound and crashes).  The loop
+  stops only when a body pass ends with ``acc == 0``, a uniform predicate
+  that cannot distinguish pass 1 from pass n, so the all-ones input of any
+  truth table either stops early or rewinds past the input (EOF).  Exhaustive
+  search confirms it: of the four one-input functions only identity and the
+  two constants are expressible (``ne``/``n``+24×``s``+``l`` for identity,
+  ``l`` for const-0, ``ipsl`` for const-1); NOT and every two-input table
+  (AND, OR, XOR) fail even at length 8.  A boolean generator is not
+  feasible.
 - **Brainpocalypse: ruled out.**  Its only control flow is ``-`` on a
   zero cell rewinding the instruction pointer to the program start, and
   every other character is a comment; it can print ``"0"``/``"1"`` (the
