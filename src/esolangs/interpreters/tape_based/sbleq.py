@@ -45,6 +45,12 @@ class _Machine:
     mem: list[int] = field(default_factory=list)
     ip: int = 0
     store: str = "a"
+    _halted: bool = field(default=False, init=False)
+
+    @property
+    def halted(self) -> bool:
+        """Whether the instruction pointer has run off the program."""
+        return self._halted or not (0 <= self.ip < len(self.mem) - 2)
 
     def read(self, addr: int) -> int:
         """Read a value: a special address or a memory cell."""
@@ -75,6 +81,35 @@ class _Machine:
     def output(self, value: int) -> None:
         self.io.print_char(chr(value & 0xFF))
 
+    def step(self) -> None:
+        """Execute one instruction (``a b c``), advancing or branching."""
+        a = self.mem[self.ip]
+        b = self.mem[self.ip + 1]
+        c = self.mem[self.ip + 2]
+
+        if a == -3:
+            self.output(self.read(b))
+            self.ip += 3
+            return
+        if b == -3:
+            self.output(self.read(a))
+            self.ip += 3
+            return
+
+        diff = self.read(a) - self.read(b)
+        self.write(a, diff)
+        if self.store in ("ab", "b") and b >= 0:
+            self.write(b, diff)
+
+        if diff <= 0:
+            target = self.read(c)
+            if target < 0:
+                self._halted = True  # jumping to a negative address halts
+                return
+            self.ip = target
+        else:
+            self.ip += 3
+
 
 def run(code: str, io: IO, store: str = "a") -> None:
     """Execute an S*bleq program.
@@ -84,32 +119,8 @@ def run(code: str, io: IO, store: str = "a") -> None:
     """
     mach = _Machine(io=io, mem=[int(tok) for tok in code.split()], store=store)
 
-    while 0 <= mach.ip < len(mach.mem) - 2:
-        a = mach.mem[mach.ip]
-        b = mach.mem[mach.ip + 1]
-        c = mach.mem[mach.ip + 2]
-
-        if a == -3:
-            mach.output(mach.read(b))
-            mach.ip += 3
-            continue
-        if b == -3:
-            mach.output(mach.read(a))
-            mach.ip += 3
-            continue
-
-        diff = mach.read(a) - mach.read(b)
-        mach.write(a, diff)
-        if mach.store in ("ab", "b") and b >= 0:
-            mach.write(b, diff)
-
-        if diff <= 0:
-            target = mach.read(c)
-            if target < 0:
-                break  # jumping to a negative address halts
-            mach.ip = target
-        else:
-            mach.ip += 3
+    while not mach.halted:
+        mach.step()
 
 
 if __name__ == "__main__":

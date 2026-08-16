@@ -20,74 +20,91 @@ from esolangs.interpreters.io import IO
 
 @dataclass
 class State:
-    """Two stacks with an index choosing the active one."""
+    """Two stacks with an index choosing the active one, and the code cursor."""
 
     ptr: int = 0
     stk: list[list[int | str]] = field(default_factory=lambda: [[], []])
+    io: IO = field(default_factory=IO)
+    sym: str = ""
+    ind: int = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the code cursor has run off the program."""
+        return self.ind >= len(self.sym)
+
+    def __post_init__(self) -> None:
+        self._dct: dict[str, Callable[[], object]] = {
+            "`": lambda: self.stk[self.ptr].append(1 - self.ptr),
+            "^": lambda: self.stk[self.ptr].append(self._top()),
+            "0": lambda: self.stk[self.ptr].append(0),
+            "+": lambda: self._bump(1),
+            "-": lambda: self._bump(-1),
+            ".": lambda: self.io.print_value(self._pop()),
+            "=": lambda: self.stk[1 - self.ptr].append(self._pop()),
+            ";": lambda: self._pop(),
+        }
+
+    def _top(self) -> int | str:
+        if not self.stk[self.ptr]:
+            raise HaltError
+        return self.stk[self.ptr][-1]
+
+    def _pop(self) -> int | str:
+        if not self.stk[self.ptr]:
+            raise HaltError
+        return self.stk[self.ptr].pop()
+
+    def _bump(self, delta: int) -> None:
+        """Add ``delta`` to the top, halting when the top is not a number."""
+        val = self._pop()
+        if not isinstance(val, int):
+            raise HaltError
+        self.stk[self.ptr].append(val + delta)
+
+    def _iteration(self, sym: str, ind: int) -> int:
+        """Execute one command of ``sym`` at ``ind``, returning the new index."""
+        if (char := sym[ind]) in self._dct:
+            self._dct[char]()
+        elif char == "~":
+            self.ptr ^= 1
+        elif char == "*":
+            self.stk[self.ptr] = self.stk[self.ptr][::-1]
+        elif char == "?":
+            if not self._pop():
+                ind += 1
+        elif char == "!":
+            val = self._pop()
+            if not isinstance(val, str):
+                raise HaltError
+            self._run(val)
+        elif char in "\"'":
+            match = re.match('[^"]*', sym[ind + 1 :])
+            s = match[0].replace("`", '"') if match else ""
+            ind += len(s) + 1
+            if char == "'":
+                s = f'"{s}"'
+
+            self.stk[self.ptr].append(s)
+
+        return ind + 1
+
+    def _run(self, sym: str) -> None:
+        """Run a program to completion (a nested ``!`` evaluation)."""
+        ind = 0
+        while ind < len(sym):
+            ind = self._iteration(sym, ind)
+
+    def step(self) -> None:
+        """Execute one command, advancing the code cursor."""
+        self.ind = self._iteration(self.sym, self.ind)
 
 
 def run(code: str, io: IO) -> None:
     """Run an Eval program."""
-    state = State()
-
-    def top() -> int | str:
-        if not state.stk[state.ptr]:
-            raise HaltError
-        return state.stk[state.ptr][-1]
-
-    def pop() -> int | str:
-        if not state.stk[state.ptr]:
-            raise HaltError
-        return state.stk[state.ptr].pop()
-
-    def bump(delta: int) -> None:
-        """Add ``delta`` to the top, halting when the top is not a number."""
-        val = pop()
-        if not isinstance(val, int):
-            raise HaltError
-        state.stk[state.ptr].append(val + delta)
-
-    dct: dict[str, Callable[[], object]] = {
-        "`": lambda: state.stk[state.ptr].append(1 - state.ptr),
-        "^": lambda: state.stk[state.ptr].append(top()),
-        "0": lambda: state.stk[state.ptr].append(0),
-        "+": lambda: bump(1),
-        "-": lambda: bump(-1),
-        ".": lambda: io.print_value(pop()),
-        "=": lambda: state.stk[1 - state.ptr].append(pop()),
-        ";": lambda: pop(),
-    }
-
-    def ins(sym: str) -> None:
-        ind = 0
-
-        while ind < len(sym):
-            if (char := sym[ind]) in dct:
-                dct[char]()
-            elif char == "~":
-                state.ptr ^= 1
-            elif char == "*":
-                state.stk[state.ptr] = state.stk[state.ptr][::-1]
-            elif char == "?":
-                if not pop():
-                    ind += 1
-            elif char == "!":
-                val = pop()
-                if not isinstance(val, str):
-                    raise HaltError
-                ins(val)
-            elif char in "\"'":
-                match = re.match('[^"]*', sym[ind + 1 :])
-                s = match[0].replace("`", '"') if match else ""
-                ind += len(s) + 1
-                if char == "'":
-                    s = f'"{s}"'
-
-                state.stk[state.ptr].append(s)
-
-            ind += 1
-
-    ins(code)
+    state = State(io=io, sym=code)
+    while not state.halted:
+        state.step()
 
 
 if __name__ == "__main__":

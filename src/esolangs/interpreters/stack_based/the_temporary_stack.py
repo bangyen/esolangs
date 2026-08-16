@@ -40,34 +40,35 @@ class State:
     num: bool = True
     ptr: int = 0
     comm: int = 0
+    code: list[str] = field(default_factory=list, init=False)
+    io: IO = field(default_factory=IO)
 
+    @property
+    def halted(self) -> bool:
+        """Whether the word pointer has run off the program."""
+        return self.ptr >= len(self.code)
 
-def run(source: str, io: IO) -> None:
-    """Run a The Temporary Stack program."""
-    code = source.split()
-    state = State()
-
-    def execute(state: State, char: str, rest: str) -> None:
+    def execute(self, char: str, rest: str) -> None:
         if char == "@":
-            s = io.input_str()
-            state.stk.extend(ord(c) for c in s)
+            s = self.io.input_str()
+            self.stk.extend(ord(c) for c in s)
         elif char == "v":
-            state.stk.append(int(re.sub(r"\D", "", rest)))
+            self.stk.append(int(re.sub(r"\D", "", rest)))
         elif char == "*":
-            state.stk.extend(ord(c) for c in rest)
+            self.stk.extend(ord(c) for c in rest)
         elif char in "oO":
-            state.num = char == "O"
+            self.num = char == "O"
         elif char == "+":
-            if not state.stk:
+            if not self.stk:
                 raise HaltError
-            state.stk.append(state.stk[-1])
+            self.stk.append(self.stk[-1])
         elif char == "€":
-            execute(state, secrets.choice("@v*oO+"), rest)
+            self.execute(secrets.choice("@v*oO+"), rest)
         # ':', '\\', and '#' fall through: ':'/'\\' are handled in parse
         # because they recurse over the source, and '#' is a no-op comment
 
-    def parse(state: State) -> None:
-        word = code[state.ptr]
+    def parse(self) -> None:
+        word = self.code[self.ptr]
         m = re.search(_COMMANDS, word)
         if m:
             char = m.group(0)
@@ -82,32 +83,42 @@ def run(source: str, io: IO) -> None:
             rest = ""
 
         if char == ":":
-            state.ptr += 1
-            if state.ptr >= len(code):
+            self.ptr += 1
+            if self.ptr >= len(self.code):
                 raise ValueError("':' requires a following instruction")
-            n = len(state.stk)
-            while len(state.stk) == n:
-                parse(state)
+            n = len(self.stk)
+            while len(self.stk) == n:
+                self.parse()
         elif char == "\\":
-            state.ptr += 1
-            while len(state.stk):
-                parse(state)
+            self.ptr += 1
+            while len(self.stk):
+                self.parse()
         else:
-            execute(state, char, rest)
+            self.execute(char, rest)
 
-        while state.stk and sum(state.stk[1:]) / 2 > state.stk[0]:
-            n = state.stk.pop(0) - 1
-            if not state.num and not 0 <= n <= 0x10FFFF:
+        while self.stk and sum(self.stk[1:]) / 2 > self.stk[0]:
+            n = self.stk.pop(0) - 1
+            if not self.num and not 0 <= n <= 0x10FFFF:
                 raise HaltError
-            io.print_value(n if state.num else chr(n))
+            self.io.print_value(n if self.num else chr(n))
 
-        state.comm += 1
-        if state.comm % 15 == 0:
-            state.stk = []
+        self.comm += 1
+        if self.comm % 15 == 0:
+            self.stk = []
 
-    while state.ptr < len(code):
-        parse(state)
-        state.ptr += 1
+    def step(self) -> None:
+        """Execute one word, advancing the word pointer."""
+        self.parse()
+        self.ptr += 1
+
+
+def run(source: str, io: IO) -> None:
+    """Run a The Temporary Stack program."""
+    state = State(io=io)
+    state.code = source.split()
+
+    while not state.halted:
+        state.step()
 
 
 if __name__ == "__main__":
