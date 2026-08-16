@@ -1055,35 +1055,38 @@ class TestJaune:
         with pytest.raises(ValueError, match="4 entries"):
             boolean.jaune("011", 2)
 
-    @pytest.mark.parametrize("n", [1, 2])
-    def test_multiply_all_small_operands(self, n: int) -> None:
-        """Every pair of n-digit operands produces the right product."""
-        program = boolean.jaune_multiply(n)
-        for a in range(10**n):
-            for b in range(10**n):
-                digits = [int(ch) for ch in f"{a:0{n}d}{b:0{n}d}"]
-                got = run_jaune(program, [str(d) for d in digits])
-                assert got == str(a * b), f"{a} * {b}"
-
     @pytest.mark.parametrize(
-        ("n", "a", "b"),
+        ("a", "b"),
         [
-            (1, 9, 9),
-            (2, 99, 99),
-            (2, 10, 10),
-            (3, 123, 456),
-            (3, 999, 999),
-            (4, 1000, 1000),
-            (4, 9999, 1),
-            (5, 12345, 54321),
+            (0, 5),
+            (5, 0),
+            (0, 0),
+            (3, 4),
+            (12, 34),
+            (99, 99),
+            (100, 7),
+            (7, 100),
+            (7, 123),
+            (123, 456),
+            (12345, 6789),
+            (99999, 99999),
         ],
     )
-    def test_multiply_spot_checks(self, n: int, a: int, b: int) -> None:
-        """Selected products, including edge cases and leading zeros."""
-        program = boolean.jaune_multiply(n)
-        digits = [int(ch) for ch in f"{a:0{n}d}{b:0{n}d}"]
-        got = run_jaune(program, [str(d) for d in digits])
+    def test_multiply(self, a: int, b: int) -> None:
+        """The sentinel-delimited multiply reads any-length operands."""
+        program = boolean.jaune_multiply()
+        lines = [*list(str(a)), "*", *list(str(b)), "#"]
+        got = run_jaune(program, lines)
         assert got == str(a * b), f"{a} * {b}"
+
+    def test_multiply_all_small_operands(self) -> None:
+        """Every single-digit pair produces the right product."""
+        program = boolean.jaune_multiply()
+        for a in range(10):
+            for b in range(10):
+                lines = [*list(str(a)), "*", *list(str(b)), "#"]
+                got = run_jaune(program, lines)
+                assert got == str(a * b), f"{a} * {b}"
 
 
 class TestBasicfuck:

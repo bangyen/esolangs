@@ -1424,36 +1424,113 @@ def jaune(truth_table: str, n: int) -> str:
     return node(0, 0, 2**n, end) + f"{end}:."
 
 
-def jaune_multiply(n: int) -> str:
-    """Build a Jaune program reading two ``n``-digit numbers and printing their product.
+def jaune_multiply() -> str:
+    """Build a Jaune program reading two decimal numbers and printing their product.
 
-    ``n`` is the number of decimal digits of each operand (most-significant
-    first, one digit per input line); the program prints the product as a
-    decimal number with no leading zeros.
+    The program reads decimal digits (most-significant first, one per input
+    line) into the first operand until a ``*`` line, then digits into the
+    second operand until a ``#`` line, and prints the product as a decimal
+    number with no leading zeros.  The single construction handles *any*
+    number of digits, so the generator takes no ``n`` parameter: multiplying
+    is one function ``a * b``, and the operand lengths are a property of the
+    input, not of the function (unlike a boolean truth table, where ``n``
+    selects a different function space).
 
     Jaune is the language the multiply generator class needs: cells are
     *unbounded* integers (no 8-bit wrapping), so each operand fits in one
     cell with no digit-per-cell carry, and ``^`` prints the current cell as a
-    decimal number directly.  Each operand is folded in with ``v+`` (read a
-    digit and add it) and a run of nine ``&`` (add the hold cell) after a
-    ``#`` (copy the current cell to hold), which multiplies the accumulated
-    value by 10.  The product is then a repeated-addition loop over the
-    second operand: ``1:`` labels the top, ``2!`` exits when it hits zero,
-    ``#``/``&`` adds the first operand to the result cell, ``1-`` decrements
-    the counter, and ``1?`` loops.  Cells 0/1/2 hold the first operand, the
-    second operand, and the result.
+    decimal number directly.  Each read loop runs on a dedicated always-one
+    cell: the ``?``/``!`` jumps are conditional, so a cell permanently set to
+    1 gives the loop-back jump an unconditional trigger (the sentinel check
+    is the only exit).  A digit is folded into the operand with ``v+`` (read
+    a digit and add it), ``#`` (copy the current cell to hold) and a run of
+    nine ``&`` (add the hold cell), which multiplies the accumulated value by
+    10; a sentinel is detected by adding its offset from a digit (``*`` is
+    42, so ``6+`` zeroes it) and jumping on zero.  The product is then a
+    repeated-addition loop over the second operand.  Cells 0/1/2/3/4 hold
+    the first operand, the digit scratch, the second operand, the result,
+    and the always-one trigger.
     """
     out: list[str] = []
+    pos = 0
 
-    def fold(digits: int) -> None:
-        out.append("v+")
-        for _ in range(digits - 1):
-            out.append("#")
-            out.append("&" * 9)
-            out.append("v+")
+    def move(target: int) -> None:
+        nonlocal pos
+        while pos < target:
+            out.append(">")
+            pos += 1
+        while pos > target:
+            out.append("<")
+            pos -= 1
 
-    fold(n)
-    out.append(">")
-    fold(n)
-    out.extend(["1:", "2!", "<", "#", ">>", "&", "<", "1-", "1?", "2:", ">", "^", "."])
+    def cmd(s: str) -> None:
+        out.append(s)
+
+    def fold(operand: int) -> None:
+        # accumulate the digit in the scratch cell into the operand cell
+        move(operand)
+        cmd("#")
+        cmd("&" * 9)
+        move(1)
+        cmd("#")
+        move(operand)
+        cmd("&")
+        move(4)
+        cmd(f"{4 if operand == 2 else 1}?")
+
+    move(4)
+    cmd("1+")  # cell 4 = 1: the unconditional loop-back trigger
+    # read the first operand until '*': label 1 at cell 4
+    cmd("1:")
+    move(1)
+    cmd("v")
+    cmd("6+")  # '*' is 42, so ord-48 == -6; +6 zeroes it
+    cmd("2!")  # a zero (the sentinel) exits to label 2
+    cmd("6-")
+    move(0)
+    cmd("#")
+    cmd("&" * 9)
+    move(1)
+    cmd("#")
+    move(0)
+    cmd("&")
+    move(4)
+    cmd("1?")  # always jump back to label 1
+    cmd("2:")  # first operand done; the '*' was read at cell 1
+    pos = 1
+    move(4)
+    # read the second operand until '#': label 4 at cell 4
+    cmd("4:")
+    move(1)
+    cmd("v")
+    cmd("13+")  # '#' is 35, so ord-48 == -13; +13 zeroes it
+    cmd("3!")  # a zero (the sentinel) exits to label 3
+    cmd("13-")
+    move(2)
+    cmd("#")
+    cmd("&" * 9)
+    move(1)
+    cmd("#")
+    move(2)
+    cmd("&")
+    move(4)
+    cmd("4?")  # always jump back to label 4
+    cmd("3:")  # second operand done; the '#' was read at cell 1
+    pos = 1
+    move(2)
+    # multiply: while cell 2 != 0: cell 3 += cell 0; cell 2 -= 1
+    cmd("5:")
+    cmd("6!")
+    move(0)
+    cmd("#")
+    move(3)
+    cmd("&")
+    move(2)
+    cmd("1-")
+    cmd("5?")
+    cmd("6:")
+    pos = 2
+    move(3)
+    cmd("^")
+    cmd(".")
     return "".join(out)
