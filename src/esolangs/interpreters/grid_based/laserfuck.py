@@ -24,39 +24,49 @@ import sys
 from esolangs.interpreters.io import IO
 
 
-def run(code: list[str], io: IO, heading: int | None = None) -> None:
-    """Run a LaserFuck program, printing the tape when it halts.
+class _Machine:
+    """A LaserFuck run: the grid, the live lasers, and the tape."""
 
-    ``heading`` forces the laser's initial direction (0=up, 1=down, 2=left,
-    3=right); when None it is drawn uniformly at random, matching the
-    cross-check.
-    """
-    text = [list(ln) for ln in code]
-    size = max(len(ln) for ln in text) if text else 0
-    text = [ln + [" "] * (size - len(ln)) for ln in text]
-    rows = len(text)
+    def __init__(self, code: list[str], io: IO, heading: int | None = None) -> None:
+        self.io = io
+        text = [list(ln) for ln in code]
+        size = max(len(ln) for ln in text) if text else 0
+        self.text = [ln + [" "] * (size - len(ln)) for ln in text]
+        self.rows = len(text)
 
-    lsrs: list[list[int]] = []
-    for x, line in enumerate(text):
-        for y, c in enumerate(line):
-            if c == "o":
-                if lsrs:
-                    return  # a second start marker halts immediately
-                # The random heading is part of LaserFuck's spec, not a secret.
-                d = heading if heading is not None else secrets.randbelow(4)
-                lsrs.append([x, y, d])
+        self.ptr = 0
+        self.tape: list[list[int]] = [[0, 0]]  # value, touched
+        self.jmp = False
+        self.ind = 0
+        self.pos = (0, 0, 0)
+        self._second_start = False
 
-    ptr = 0
-    tape: list[list[int]] = [[0, 0]]  # value, touched
-    jmp = False
-    ind = 0
+        self.lsrs: list[list[int]] = []
+        for x, line in enumerate(self.text):
+            for y, c in enumerate(line):
+                if c == "o":
+                    if self.lsrs:
+                        self._second_start = True  # a second marker halts
+                        return
+                    # The random heading is part of LaserFuck's spec, not a
+                    # secret.
+                    d = heading if heading is not None else secrets.randbelow(4)
+                    self.lsrs.append([x, y, d])
+                    self.pos = (x, y, d)
 
-    while lsrs:
-        x, y, d = lsrs[ind]
+    @property
+    def halted(self) -> bool:
+        return self._second_start or not self.lsrs
+
+    def step(self) -> None:
+        """Move the active laser one step and execute the command it lands on."""
+        if self.halted:
+            return
+        x, y, d = self.lsrs[self.ind]
 
         # move one step in the current direction
         if (x == 0 and d == 0) or (y == 0 and d == 2):
-            x = rows  # step off the grid (top/left edges)
+            x = self.rows  # step off the grid (top/left edges)
         elif d == 0:
             x -= 1
         elif d == 1:
@@ -66,39 +76,45 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
         elif d == 3:
             y += 1
 
-        if jmp:
-            jmp = False
-            lsrs[ind] = [x, y, d]
-            ind = (ind + 1) % len(lsrs)
-            continue
+        self.pos = (x, y, d)
 
-        op = text[x][y] if 0 <= x < rows and 0 <= y < size else "x"
+        if self.jmp:
+            self.jmp = False
+            self.lsrs[self.ind] = [x, y, d]
+            self.ind = (self.ind + 1) % len(self.lsrs)
+            return
+
+        op = (
+            self.text[x][y]
+            if 0 <= x < self.rows and 0 <= y < len(self.text[0])
+            else "x"
+        )
 
         if op == ">":
-            ptr += 1
-            if ptr == len(tape):
-                tape.append([0, 0])
+            self.ptr += 1
+            if self.ptr == len(self.tape):
+                self.tape.append([0, 0])
         elif op == "<":
-            if ptr > 0:
-                ptr -= 1
+            if self.ptr > 0:
+                self.ptr -= 1
             else:
-                tape.insert(0, [0, 0])
+                self.tape.insert(0, [0, 0])
         elif op == ",":
-            line_val = io.input_str()
+            line_val = self.io.input_str()
             # an empty (or blank) input line reads a zero, per the cross-check
-            tape[ptr] = [ord(line_val[0]) if line_val else 0, 1]
+            self.tape[self.ptr] = [ord(line_val[0]) if line_val else 0, 1]
         elif op == "x":
-            lsrs.pop(ind)
-            if lsrs:
-                ind %= len(lsrs)
-            continue
+            self.lsrs.pop(self.ind)
+            if self.lsrs:
+                self.ind %= len(self.lsrs)
+            return
         elif op == "*":
-            lsrs.append([x, y, 2 * (1 - d // 2) + secrets.randbelow(2)])
+            self.lsrs.append([x, y, 2 * (1 - d // 2) + secrets.randbelow(2)])
         elif op in "_(":
-            if d < 2 and (tape[ptr][0] != 0 or op == "_"):
+            if d < 2 and (self.tape[self.ptr][0] != 0 or op == "_"):
                 d = 1 - d
         elif op in "|)":
-            if d > 1 and (tape[ptr][0] != 0 or op == "|"):
+            if d > 1 and (self.tape[self.ptr][0] != 0 or op == "|"):
                 d = 5 - d
         elif op == "/":
             d = 3 - d
@@ -107,30 +123,44 @@ def run(code: list[str], io: IO, heading: int | None = None) -> None:
         elif op == "\\":
             d = (d + 2) % 4
         elif op == "+":
-            tape[ptr][0] += 1
-            tape[ptr][1] = 1
+            self.tape[self.ptr][0] += 1
+            self.tape[self.ptr][1] = 1
         elif op == "-":
-            tape[ptr][0] -= 1
-            tape[ptr][1] = 1
+            self.tape[self.ptr][0] -= 1
+            self.tape[self.ptr][1] = 1
         elif op == "#":
-            jmp = True
+            self.jmp = True
 
-        lsrs[ind] = [x, y, d]
-        ind = (ind + 1) % len(lsrs)
+        self.lsrs[self.ind] = [x, y, d]
+        self.ind = (self.ind + 1) % len(self.lsrs)
 
-    # -- output ---------------------------------------------------------
-    out = bool(text) and bool(text[0]) and text[0][0] == "\u00ff"
-    first = True
-    for val, touched in tape:
-        if touched and val >= 0:
-            if out:
-                io.print_char(chr(val))
-            elif first:
-                io.print_num(val)
-                first = False
-            else:
-                io.print_line()
-                io.print_num(val)
+    def dump(self) -> None:
+        r"""Print the tape, honoring the ``\xff`` byte-mode marker."""
+        out = bool(self.text) and bool(self.text[0]) and self.text[0][0] == "\u00ff"
+        first = True
+        for val, touched in self.tape:
+            if touched and val >= 0:
+                if out:
+                    self.io.print_char(chr(val))
+                elif first:
+                    self.io.print_num(val)
+                    first = False
+                else:
+                    self.io.print_line()
+                    self.io.print_num(val)
+
+
+def run(code: list[str], io: IO, heading: int | None = None) -> None:
+    """Run a LaserFuck program, printing the tape when it halts.
+
+    ``heading`` forces the laser's initial direction (0=up, 1=down, 2=left,
+    3=right); when None it is drawn uniformly at random, matching the
+    cross-check.
+    """
+    machine = _Machine(code, io, heading)
+    while not machine.halted:
+        machine.step()
+    machine.dump()
 
 
 if __name__ == "__main__":
