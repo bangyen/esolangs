@@ -65,6 +65,10 @@ STEPS = [
         "duplicate-code check",
         [*PY, "scripts/check_duplicates.py"],
     ),
+    (
+        "single-interpreter installer",
+        [*PY, "scripts/verify_install_one.py"],
+    ),
 ]
 
 
