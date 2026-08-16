@@ -1,5 +1,54 @@
 # Contributing
 
+## Is a language worth adding?
+
+Not every language on the esolangs wiki belongs in this repo; the
+fell-through lists in `docs/limitations.md` record the concrete cases that
+were assessed and rejected.  A language is a candidate if it meets all of
+these:
+
+- **Complete, stable specification.**  The wiki page must fully define the
+  commands and behavior.  A stub, a work-in-progress, an "in-development"
+  definition, or a spec whose own author warns is unfinished does not give
+  enough to verify an interpreter against (Chainlang, Fourfuck, Aaargh++,
+  Binary ///, Welcome To...).
+- **Deterministic, computable behavior.**  A program must have a definite
+  result the tests can check.  Uncomputable languages (Gravity, something
+  positive, Varigen) and languages whose commands are irreducibly random
+  (LogicF---) cannot be verified.  *Seeded* randomness is fine — LaserFuck's
+  initial heading and DSDLAI's are drawn from a seed the tests fix, so
+  behavior stays checkable.
+- **A usable file-based I/O protocol.**  The language must read input and
+  write output as characters/lines through the repo's `IO` seam (see the
+  interpreter conventions in `docs/limitations.md`).  Languages with no
+  output (Point Break, State and Main, Vandevelo), stderr-only output
+  (Conveyor), or file/OS-based I/O (Unary Filesystem, Streetcode) do not
+  fit.  A no-output language is admitted only as a self-contained
+  interpreter with no generator.
+- **A generator story.**  Either a text generator that can emit arbitrary
+  bytes, or a boolean generator, or a documented reason the language cannot
+  have one.  The generator is what makes the language testable end-to-end;
+  a language with no plausible generator is a weaker addition (though a
+  no-I/O self-contained interpreter can still be admitted, as A Painter Ant
+  is).
+
+Two judgment calls are applied case by case and recorded, rather than being
+absolute rules:
+
+- **Not a trivial reskin.**  A language that merely renames another's
+  commands (Earfuck renames brainfuck's to musical notes) is "too easy to
+  be worth a dedicated interpreter".  A dialect with genuinely different
+  semantics (e.g. the S*bleq family's store variants) is a real interpreter.
+- **Not already implemented elsewhere.**  A language already covered by an
+  interpreter in this repo (or whose own page documents a working
+  implementation) is not a gap.
+
+If a candidate fails the criteria, record the assessment in the appropriate
+fell-through list in `docs/limitations.md` — the negative result is as
+valuable as the interpreter, because it stops the assessment from being
+redone.  The roadmap (`docs/roadmap.md`) tracks which candidates are still
+on the table.
+
 ## Layout
 
 - `src/esolangs/interpreters/<category>/<name>.py` — one interpreter per
