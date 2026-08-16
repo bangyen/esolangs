@@ -22,6 +22,15 @@ repeat-gotos, and if-then-otherwise conditionals.  Working Hello World, cat,
 and truth-machine examples given.  The English-syntax parser is a heavier
 lift.
 
+Deferred on a spec gap: the only arithmetic operator the wiki defines is
+`the sum of ...` (in the ``addthree`` example); there is no documented
+subtraction, multiplication, or division.  A faithful interpreter cannot
+implement the comparisons and GOTOs that make it Turing-complete without
+inventing arithmetic semantics the spec never gives, and the English parser
+is heavy enough that the arithmetic question should be settled before that
+work starts.  Revisit if the wiki (or its successor Pure) defines the rest
+of the operator set.
+
 ### Lamfunc (medium priority)
 A Turing-complete functional language of prefix calls and `F name - code`
 definitions with lambdas (`` .f ``) and builtins for equality, branching,
