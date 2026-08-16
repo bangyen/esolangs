@@ -29,8 +29,11 @@
 
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 use std::process;
+
+mod common;
+use common::{prompt, read_line};
 
 fn translate(code: &str) -> Vec<char> {
     let cycles = ["pevkjzwr", "yuctsobqihald"];
@@ -47,25 +50,6 @@ fn translate(code: &str) -> Vec<char> {
         }
     }
     prog
-}
-
-fn prompt(out: &mut bool) {
-    let mut stdout = io::stdout();
-    if *out {
-        stdout.write_all(b"\n").unwrap();
-    }
-    stdout.write_all(b"Input: ").unwrap();
-    stdout.flush().unwrap();
-    *out = false;
-}
-
-fn read_line() -> Option<Vec<u8>> {
-    let mut stdin = io::stdin().lock();
-    let mut line: Vec<u8> = Vec::new();
-    if stdin.read_until(b'\n', &mut line).unwrap_or(0) == 0 {
-        return None;
-    }
-    Some(line)
 }
 
 fn main() {

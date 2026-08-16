@@ -27,8 +27,11 @@
 
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::{self, Write};
 use std::process;
+
+mod common;
+use common::{prompt, read_line};
 
 fn read_rows(code: &str) -> Vec<String> {
     let mut rows: Vec<String> = code.split('\n').map(str::to_string).collect();
@@ -62,25 +65,6 @@ fn direct(c: char, x: i64, y: i64, d: Option<char>) -> (i64, i64, Option<char>) 
         _ => {}
     }
     (x, y, d)
-}
-
-fn prompt(out: &mut bool) {
-    let mut stdout = io::stdout();
-    if *out {
-        stdout.write_all(b"\n").unwrap();
-    }
-    stdout.write_all(b"Input: ").unwrap();
-    stdout.flush().unwrap();
-    *out = false;
-}
-
-fn read_line() -> Option<Vec<u8>> {
-    let mut stdin = io::stdin().lock();
-    let mut line: Vec<u8> = Vec::new();
-    if stdin.read_until(b'\n', &mut line).unwrap_or(0) == 0 {
-        return None;
-    }
-    Some(line)
 }
 
 fn main() {
