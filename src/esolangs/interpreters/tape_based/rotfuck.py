@@ -20,6 +20,13 @@ program is a runtime error, not a load error, and the interpreter halts with
 :class:`~esolangs.exceptions.HaltError`.  Unbalanced sources are legal, since
 the rotation can bring any character to the pointer at any time; only
 executing a partnerless bracket is an error.
+
+Rather than physically rotating the whole program after every command (an
+O(n) rewrite per step), the interpreter tracks the rotation count and
+derives the effective character at any position on the fly: after ``k``
+rotations the command at a source position has advanced ``k`` steps along
+the cycle.  Bracket partners are found by the same derivation, so the
+behavior is identical to rotating the program text.
 """
 
 import sys
@@ -27,62 +34,74 @@ import sys
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-_ROTATION = str.maketrans("+-><,.[]", "-><,.[]+")
+_CYCLE = "+-><,.[]"
+_COMMANDS = frozenset(_CYCLE)
 
 
-def _rotate(prog: list[str]) -> None:
-    """Advance every command in ``prog`` one step along the cycle."""
-    for i, ch in enumerate(prog):
-        if ch in "+-><,.[]":
-            prog[i] = ch.translate(_ROTATION)
+class _Program:
+    """A ROTfuck program with an implicit rotation count.
 
-
-def _forward(prog: list[str], i: int) -> int | None:
-    """Return the index of the ``]`` matching the ``[`` at ``i``.
-
-    Seeks forward from ``i + 1`` in ``prog``, so the bracket that fired
-    (which has rotated to ``]`` at ``i``) is not counted.
+    The source text is stored once; the effective command at position ``i``
+    after ``rot`` executed commands is the source character advanced ``rot``
+    steps along the cycle (comments never rotate).  Matching a bracket seeks
+    through these effective characters with the standard nesting count.
     """
-    depth = 1
-    j = i + 1
-    while j < len(prog):
-        if prog[j] == "[":
-            depth += 1
-        elif prog[j] == "]":
-            depth -= 1
-            if depth == 0:
-                return j
-        j += 1
-    return None
 
+    def __init__(self, code: str) -> None:
+        """Store ``code`` with a zero rotation count."""
+        self._chars = list(code)
+        self._rot = 0
 
-def _backward(prog: list[str], i: int) -> int | None:
-    """Return the index of the ``[`` matching the ``]`` at ``i``.
+    def rotate(self) -> None:
+        """Advance the rotation count by one (a command executed)."""
+        self._rot += 1
 
-    Seeks backward from ``i - 1`` in ``prog``; the fired ``]`` has rotated
-    away at ``i``, so it is not counted.
-    """
-    depth = 1
-    j = i - 1
-    while j >= 0:
-        if prog[j] == "]":
-            depth += 1
-        elif prog[j] == "[":
-            depth -= 1
-            if depth == 0:
-                return j
-        j -= 1
-    return None
+    def at(self, i: int) -> str:
+        """Return the effective command at ``i`` under the current rotation."""
+        ch = self._chars[i]
+        if ch in _COMMANDS:
+            return _CYCLE[(_CYCLE.index(ch) + self._rot) % len(_CYCLE)]
+        return ch
+
+    def forward(self, i: int) -> int | None:
+        """Return the ``]`` matching the effective ``[`` at ``i``, if any."""
+        depth = 1
+        j = i + 1
+        while j < len(self._chars):
+            ch = self.at(j)
+            if ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+                if depth == 0:
+                    return j
+            j += 1
+        return None
+
+    def backward(self, i: int) -> int | None:
+        """Return the ``[`` matching the effective ``]`` at ``i``, if any."""
+        depth = 1
+        j = i - 1
+        while j >= 0:
+            ch = self.at(j)
+            if ch == "]":
+                depth += 1
+            elif ch == "[":
+                depth -= 1
+                if depth == 0:
+                    return j
+            j -= 1
+        return None
 
 
 def run(code: str, io: IO) -> None:
     """Run a ROTfuck program."""
-    prog = list(code)
+    prog = _Program(code)
     tape: list[int] = [0]
     ptr = ind = 0
 
-    while ind < len(prog):
-        char = prog[ind]
+    while ind < len(code):
+        char = prog.at(ind)
         if char == ">":
             ptr += 1
             if ptr == len(tape):
@@ -99,21 +118,21 @@ def run(code: str, io: IO) -> None:
         elif char == ",":
             tape[ptr] = io.input_char()
         elif char == "[" and tape[ptr] == 0:
-            _rotate(prog)
-            partner = _forward(prog, ind)
+            prog.rotate()
+            partner = prog.forward(ind)
             if partner is None:
                 raise HaltError("an executed '[' has no bracket partner")
             ind = partner + 1
             continue
         elif char == "]" and tape[ptr] != 0:
-            _rotate(prog)
-            partner = _backward(prog, ind)
+            prog.rotate()
+            partner = prog.backward(ind)
             if partner is None:
                 raise HaltError("an executed ']' has no bracket partner")
             ind = partner + 1
             continue
 
-        _rotate(prog)
+        prog.rotate()
         ind += 1
 
 
