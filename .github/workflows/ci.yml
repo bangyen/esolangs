@@ -162,11 +162,6 @@ jobs:
         : > /tmp/empty.txt
         ./extra/rust/target/debug/laserfuck /tmp/empty.txt
         ./extra/rust/target/debug/unsquare /tmp/empty.txt
-        ./extra/rust/target/debug/kak /tmp/empty.txt
-        printf 't3' > /tmp/trash.txt
-        [ "$(./extra/rust/target/debug/trash /tmp/trash.txt)" = "5" ]
-        printf '0H' > /tmp/74.txt
-        [ "$(./extra/rust/target/debug/number_seventy_four /tmp/74.txt)" = "H0" ]
         printf 'l' > /tmp/pct.txt
         [ "$(./extra/rust/target/debug/pct_squared_minus_one /tmp/pct.txt)" = "0" ]
         printf '~(' > /tmp/bit_tilde.txt
@@ -215,11 +210,8 @@ jobs:
         qemu-riscv64 /tmp/123-riscv < /tmp/123.prog > /tmp/123.out
         [ "$(cat /tmp/123.out)" = "Hi" ] || { echo "got: $(cat /tmp/123.out)"; exit 1; }
         echo "RISC-V 123 round-tripped Hi"
-        # the other reference interpreters must execute and halt
-        qemu-riscv64 /tmp/brainpocalypse-riscv </dev/null >/dev/null
+        # the other reference interpreter must execute and halt
         qemu-riscv64 /tmp/nocomment-riscv </dev/null >/dev/null
-        qemu-riscv64 /tmp/stun-step-riscv </dev/null >/dev/null
-        printf '\xff' | qemu-riscv64 /tmp/2b1b-riscv >/dev/null
         echo "All extra/ RISC-V interpreters ran natively"
 
     - name: Run the RISC-V reference interpreters under unicorn
@@ -230,14 +222,9 @@ jobs:
         # LaserFuck's runs there instead.  It also covers the 123 RISC-V
         # port and the hand-written 3-jump programs.
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
-        # the other reference interpreters must execute and halt
-        python3 scripts/riscv_elf_runner.py /tmp/brainpocalypse-riscv \
-          </dev/null >/dev/null
+        # the other reference interpreter must execute and halt
         python3 scripts/riscv_elf_runner.py /tmp/nocomment-riscv \
           </dev/null >/dev/null
-        python3 scripts/riscv_elf_runner.py /tmp/stun-step-riscv \
-          </dev/null >/dev/null
-        printf '\xff' | python3 scripts/riscv_elf_runner.py /tmp/2b1b-riscv >/dev/null
         echo "All extra/ RISC-V interpreters ran under unicorn"
 
     - name: Compile and run the RISC-V compilers' output

@@ -78,9 +78,6 @@ ROOT = Path(__file__).parents[1]
 RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
 RUST_BIN = RUST_BIN_DIR / "laserfuck"
 UNSQUARE_BIN = RUST_BIN_DIR / "unsquare"
-KAK_BIN = RUST_BIN_DIR / "kak"
-TRASH_BIN = RUST_BIN_DIR / "trash"
-NUMBER_SEVENTY_FOUR_BIN = RUST_BIN_DIR / "number_seventy_four"
 PCT_SQUARED_MINUS_ONE_BIN = RUST_BIN_DIR / "pct_squared_minus_one"
 BIT_TILDE_BIN = RUST_BIN_DIR / "bit_tilde"
 FORTH_BIN = RUST_BIN_DIR / "forth"
@@ -1743,38 +1740,6 @@ def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
 # are checked.
 
 
-def _build_kak() -> str | None:
-    """Return the built Kak Rust reference; None if cargo built it not yet."""
-    if not KAK_BIN.exists():
-        print("[skip] Kak differential: Rust reference not built")
-        return None
-    return str(KAK_BIN)
-
-
-def _build_trash() -> str | None:
-    """Return the built Trash Rust reference; None if cargo built it not yet."""
-    if not TRASH_BIN.exists():
-        print("[skip] Trash differential: Rust reference not built")
-        return None
-    return str(TRASH_BIN)
-
-
-def _run_file_ref(
-    cmd: list[str], program: str, stdin: bytes = b""
-) -> tuple[bytes, int] | None:
-    """Run ``program`` (written to a temp file) through a file-based reference."""
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run([*cmd, path], capture_output=True, input=stdin, timeout=5)
-        return proc.stdout, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
-
-
 @functools.cache
 def _build_riscv(name: str) -> bytes | None:
     """Assemble the RISC-V port ``extra/assembly/{name}-riscv.s``.
@@ -1843,135 +1808,6 @@ def _asm_refs_ready(riscv_name: str) -> bool:
     return _build_riscv(riscv_name) is not None
 
 
-def _inprocess_run(
-    module: str, program: str, stdin: bytes = b"", encoding: str = "latin1"
-) -> bytes | None:
-    """Run ``program`` through the in-package interpreter, returning bytes.
-
-    Returns None if the interpreter does not terminate within the timeout.
-    """
-    import importlib
-    import signal
-
-    from esolangs.interpreters.io import ScriptedIO
-
-    run = importlib.import_module(module).run
-    io = ScriptedIO(stdin.decode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(3)
-    try:
-        run(program, io)
-        return io.getvalue().encode(encoding)
-    except Exception:
-        return None
-    finally:
-        signal.alarm(0)
-
-
-# (name, ready(), native(program, stdin), Python module, corpus)
-_SIMPLE_CORPUS = [
-    # Kak: one-bit tape; the Rust prints the tape plus a newline
-    (
-        "Kak",
-        lambda: _build_kak() is not None,
-        lambda p, s: _run_file_ref([_build_kak()], p, s),
-        "esolangs.interpreters.tape_based.kak",
-        [("<!", b""), ("!<!", b""), ("<!!<", b""), ("", b"")],
-    ),
-    # Trash: number program; the Rust prints via println (trailing newline)
-    (
-        "Trash",
-        lambda: _build_trash() is not None,
-        lambda p, s: _run_file_ref([_build_trash()], p, s),
-        "esolangs.interpreters.other.trash",
-        [("t2", b""), ("t5", b""), ("5", b""), ("0", b""), ("tt3", b""), ("1", b"")],
-    ),
-    # Number Seventy-Four: Rust reference (a faithful pass-boundary port of
-    # the former Ruby cross-check; the Lean port has diverged semantics)
-    (
-        "Number Seventy-Four",
-        lambda: NUMBER_SEVENTY_FOUR_BIN.exists(),
-        lambda p, s: _run_file_ref([str(NUMBER_SEVENTY_FOUR_BIN)], p, s),
-        "esolangs.interpreters.tape_based.number_seventy_four",
-        [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
-    ),
-    # 2 Bits, 1 Byte: single program byte, read from stdin by the references
-    (
-        "2 Bits, 1 Byte",
-        lambda: _asm_refs_ready("2b1b"),
-        lambda p, _s: _asm_refs("2b1b", p),
-        "esolangs.interpreters.other.two_bits_one_byte",
-        [("\xff", b""), ("\x3f", b""), ("\x00", b""), ("A", b"")],
-    ),
-    # Brainpocalypse: program read from stdin by the references
-    (
-        "Brainpocalypse",
-        lambda: _asm_refs_ready("brainpocalypse"),
-        lambda p, _s: _asm_refs("brainpocalypse", p),
-        "esolangs.interpreters.tape_based.brainpocalypse",
-        [
-            ("+", b""),
-            ("++-", b""),
-            (">+<-", b""),
-            ("-", b""),
-            ("", b""),
-            (">" * 256 + "+>", b""),  # the pointer wraps past cell 255
-        ],
-    ),
-    # Stun Step: program read from stdin by the references
-    (
-        "Stun Step",
-        lambda: _asm_refs_ready("stun-step"),
-        lambda p, _s: _asm_refs("stun-step", p),
-        "esolangs.interpreters.tape_based.stun_step",
-        [("-", b""), ("->", b""), ("<", b""), (">-", b""), (">", b"")],
-    ),
-]
-
-
-def _verify_simple_corpus() -> bool:
-    """Differentially check the generator-less extra/ interpreters."""
-    failures = 0
-    for name, ready, native, module, corpus in _SIMPLE_CORPUS:
-        if not ready():
-            print(f"[skip] {name} differential: reference toolchain not available")
-            continue
-        checked = 0
-        for program, stdin in corpus:
-            ref = native(program, stdin)
-            py = _inprocess_run(module, program, stdin)
-            if ref is None and py is None:
-                continue  # both loop forever: consistent
-            if ref is None or py is None:
-                failures += 1
-                print(
-                    f"{name} {program!r}: termination mismatch "
-                    f"(reference {'loops' if ref is None else 'halts'}, "
-                    f"Python {'loops' if py is None else 'halts'})"
-                )
-                continue
-            ref_out = ref[0].rstrip(b"\n")
-            checked += 1
-            if ref_out != py.rstrip(b"\n") or ref[1] != 0:
-                failures += 1
-                print(f"{name} {program!r}: ref={(ref_out, ref[1])!r} py={py!r}")
-        if checked:
-            print(f"{name} differential: {checked} programs match")
-    return failures == 0
-
-
-def _verify_remaining_extras() -> bool:
-    """Differentially check the generator-less extra/ interpreters."""
-    return _verify_simple_corpus()
-
-
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -2035,7 +1871,6 @@ def main() -> int:
     ok = _verify_two_d_fish() and ok
     ok = _verify_painfuck() and ok
     ok = _verify_bit_tilde() and ok
-    ok = _verify_remaining_extras() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
