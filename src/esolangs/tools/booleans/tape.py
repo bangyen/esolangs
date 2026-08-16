@@ -1436,7 +1436,7 @@ def jaune_multiply() -> str:
     input, not of the function (unlike a boolean truth table, where ``n``
     selects a different function space).
 
-    Jaune is the language the multiply generator class needs: cells are
+    Jaune is the language the multiply capability needs: cells are
     *unbounded* integers (no 8-bit wrapping), so each operand fits in one
     cell with no digit-per-cell carry, and ``^`` prints the current cell as a
     decimal number directly.  Each read loop runs on a dedicated always-one
