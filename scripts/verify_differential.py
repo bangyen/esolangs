@@ -62,6 +62,7 @@ Usage:
 """
 
 import argparse
+import functools
 import io
 import random
 import re
@@ -1718,10 +1719,14 @@ def _run_file_ref(
         Path(path).unlink()
 
 
+@functools.cache
 def _build_riscv(name: str) -> bytes | None:
     """Assemble the RISC-V port ``extra/assembly/{name}-riscv.s``.
 
-    Returns None if the cross-compiler is missing.
+    Returns None if the cross-compiler is missing.  Cached: the ELF is
+    deterministic for a given source, and the differential fuzzers call this
+    once per program, so without caching the nocomment fuzz would re-run the
+    cross-compiler for every case.
     """
     asm = ROOT / "extra" / "assembly" / f"{name}-riscv.s"
     if not asm.exists():
