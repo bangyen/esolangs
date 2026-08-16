@@ -1017,9 +1017,7 @@ def _laser_analyze(ops: list[str]) -> tuple[int, int, int | None]:
             body = ops[i + 1 : j - 1]
             if "." in body:
                 raise ValueError("a '.' inside a loop is out of the supported class")
-            bptr, bmax, bout = _laser_analyze(body)
-            if bout is not None:  # pragma: no cover - rejected by the "." in body check
-                raise ValueError("a '.' inside a loop is out of the supported class")
+            bptr, bmax, _bout = _laser_analyze(body)
             if bptr != 0:
                 raise ValueError(
                     "loops that drift the tape pointer are out of the supported class"
