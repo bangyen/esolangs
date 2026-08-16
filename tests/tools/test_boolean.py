@@ -74,6 +74,15 @@ def run_rotfuck(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_circlefuck(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.circlefuck import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_home_row(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.home_row import run
 
@@ -743,6 +752,41 @@ class TestDimensionalTree:
         assert len(sparse) < len(boolean.dimensional_tree("0" * 15 + "1", 4))
         xor = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
         assert boolean.dimensional(xor, 4) == boolean.dimensional_tree(xor, 4)
+
+
+class TestCirclefuck:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.circlefuck(table, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_circlefuck(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize(
+        ("values", "n"),
+        [
+            ([0, 255], 1),
+            ([48, 49, 50, 51], 2),
+        ],
+    )
+    def test_byte_values(self, values: list[int], n: int) -> None:
+        """circlefuck_byte outputs the given byte per input combination."""
+        program = boolean.circlefuck_byte(values, n)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_circlefuck(program, [str(b) for b in bits])
+            assert got == chr(values[combo]), f"inputs {bits}"
 
 
 class TestBf:
