@@ -103,7 +103,7 @@ LANGUAGES: dict[str, Language] = {
     "A Painter Ant": Language(
         "A Painter Ant",
         id="a_painter_ant",
-        interpreter="other.a_painter_ant",
+        interpreter="grid_based.a_painter_ant",
     ),
     "123": Language(
         "123",
@@ -119,7 +119,7 @@ LANGUAGES: dict[str, Language] = {
     "2dFish": Language(
         "2dFish",
         _generate.two_d_fish,
-        "other.two_d_fish",
+        "grid_based.two_d_fish",
         id="two_d_fish",
     ),
     "6-5": Language(
@@ -226,7 +226,7 @@ LANGUAGES: dict[str, Language] = {
     "Clockwise": Language(
         "Clockwise",
         _generate.clockwise,
-        "other.clockwise",
+        "grid_based.clockwise",
         id="clockwise",
         split=True,
     ),
@@ -336,7 +336,7 @@ LANGUAGES: dict[str, Language] = {
     "LaserFuck": Language(
         "LaserFuck",
         _generate.laserfuck,
-        "other.laserfuck",
+        "grid_based.laserfuck",
         id="laserfuck",
         split=True,
     ),

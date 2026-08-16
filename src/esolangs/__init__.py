@@ -30,6 +30,7 @@ _STATE_MODELS = {
     "register_based": "register",
     "tape_based": "tape",
     "stack_based": "stack",
+    "grid_based": "grid",
     "other": "grid",
 }
 

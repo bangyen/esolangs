@@ -1925,8 +1925,8 @@ class TestThreeX:
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
     import re
 
+    from esolangs.interpreters.grid_based.laserfuck import run
     from esolangs.interpreters.io import IO
-    from esolangs.interpreters.other.laserfuck import run
 
     buffer = io.StringIO()
 

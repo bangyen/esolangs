@@ -3,8 +3,8 @@
 import io
 from contextlib import redirect_stdout
 
+from esolangs.interpreters.grid_based.laserfuck import run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.laserfuck import run
 
 
 def run_and_capture(code: list[str], heading: int = 3) -> str:
