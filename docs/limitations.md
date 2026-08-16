@@ -357,6 +357,28 @@ numbers, Movesum prints `n ` (numbers with a trailing space), RAM0 prints a
 state dump, Keys prints only "Accept."/"Reject.", and Lightlang prints only
 the single bit as a number.  None can spell arbitrary text.
 
+The straight-line generators are also at their length floor — no
+per-character encoding can be meaningfully shortened:
+
+- **Sqrt-factorized** (AlbaBet, BIO, huf) build each byte as ``a*b + r`` with
+  ``a`` near ``sqrt(byte)``, so they are O(sqrt) not O(byte).
+- **Delta- and cell-reuse** (brainfuck, Circlefuck) keep a running cell and
+  emit only the difference, so consecutive close bytes cost a couple of
+  tokens.
+- **Literal-embed** (Taglate, Eval, Between, Dotlang, MyScript, Nevermind)
+  put the text in the program directly (a string/queue literal); the text
+  *is* the data.
+- **Literal-load with no arithmetic** (Sophie, Dimensional) reload the byte
+  each character because the language has no instruction to reuse across
+  characters.
+- **Decleq, S*bleq** store each byte as a literal data cell behind a 3-cell
+  output instruction (4 cells per byte).  A delta-encoding was considered
+  and rejected: both are OISCs whose only arithmetic is ``mem[a] -= mem[b]``
+  with a ``<= 0`` branch, so adjusting a running cell costs a second 3-cell
+  instruction per byte (6-7 cells total) — strictly worse than the literal.
+  There is no cheaper encoding in an instruction set where every mutation is
+  a 3-cell instruction.
+
 Grapheme joins that list: its only output channels are a string of
 uppercase Latin letters and an integer's decimal digits.  A string cannot
 contain `E` (which terminates stringmode), so even "HELLO" is unspellable,
