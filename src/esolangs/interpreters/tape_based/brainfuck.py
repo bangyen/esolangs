@@ -23,33 +23,53 @@ from esolangs.interpreters.brackets import match_brackets as matches
 from esolangs.interpreters.io import IO
 
 
+class _Machine:
+    """A Brainfuck tape, its pointer, and the code position."""
+
+    __slots__ = ("code", "io", "m", "tape", "ind", "ptr")
+
+    def __init__(self, code: str, io: IO) -> None:
+        self.code = code
+        self.io = io
+        self.m = matches(code)
+        self.tape: list[int] = [0]
+        self.ind = 0
+        self.ptr = 0
+
+    @property
+    def halted(self) -> bool:
+        return self.ind >= len(self.code)
+
+    def step(self) -> None:
+        """Execute one command, advancing the code position."""
+        char = self.code[self.ind]
+        if char == ">":
+            self.ptr += 1
+            if self.ptr == len(self.tape):
+                self.tape.append(0)
+        elif char == "<" and self.ptr:
+            self.ptr -= 1
+        elif char == "+":
+            self.tape[self.ptr] = (self.tape[self.ptr] + 1) % 256
+        elif char == "-":
+            self.tape[self.ptr] = (self.tape[self.ptr] - 1) % 256
+        elif char == ".":
+            self.io.print_char(chr(self.tape[self.ptr]))
+        elif char == ",":
+            self.tape[self.ptr] = self.io.input_char()
+        elif (char == "[" and self.tape[self.ptr] == 0) or (
+            char == "]" and self.tape[self.ptr] != 0
+        ):
+            self.ind = self.m[self.ind]
+
+        self.ind += 1
+
+
 def run(code: str, io: IO) -> None:
     """Run a Brainfuck program."""
-    tape: list[int] = [0]
-    m = matches(code)
-
-    ind = ptr = 0
-
-    while ind < len(code):
-        char = code[ind]
-        if char == ">":
-            ptr += 1
-            if ptr == len(tape):
-                tape.append(0)
-        elif char == "<" and ptr:
-            ptr -= 1
-        elif char == "+":
-            tape[ptr] = (tape[ptr] + 1) % 256
-        elif char == "-":
-            tape[ptr] = (tape[ptr] - 1) % 256
-        elif char == ".":
-            io.print_char(chr(tape[ptr]))
-        elif char == ",":
-            tape[ptr] = io.input_char()
-        elif (char == "[" and tape[ptr] == 0) or (char == "]" and tape[ptr] != 0):
-            ind = m[ind]
-
-        ind += 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

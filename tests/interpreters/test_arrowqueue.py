@@ -71,7 +71,7 @@ class TestArrowQueue:
         """A ~ in the data cell sustains the ring, so the program never halts."""
         program = [" ~*", "+~*", "*~+"]
         old_handler = signal.signal(signal.SIGALRM, _on_alarm)
-        signal.alarm(1)
+        signal.setitimer(signal.ITIMER_REAL, 0.2)
         try:
             run(program, IO())
         except _TimeoutError:
@@ -87,7 +87,7 @@ class TestArrowQueue:
         """Without the ~, the ring stops refilling and an empty queue halts it."""
         program = [" ~*", "+ *", "*~+"]
         signal.signal(signal.SIGALRM, _on_alarm)
-        signal.alarm(1)
+        signal.setitimer(signal.ITIMER_REAL, 0.2)
         try:
             run(program, IO())
         except _TimeoutError:

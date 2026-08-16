@@ -34,6 +34,27 @@ class State:
     var: dict[str, int] = field(default_factory=dict)
     ind: int = 0
     io: IO = field(default_factory=IO)
+    tokens: list[str] = field(default_factory=list, init=False)
+    _halted: bool = field(default=False, init=False)
+
+    @property
+    def halted(self) -> bool:
+        """Whether the instruction pointer has run off the program."""
+        return self._halted or self.ind >= len(self.tokens)
+
+    def step(self) -> None:
+        """Execute one ``[OP arg]`` token, advancing the pointer."""
+        mod = self.tokens[self.ind]
+        arg = mod.split()
+        self.ind += 1
+        if not arg:
+            return
+        handler = _DISPATCH.get(arg[0])
+        if handler is not None:
+            if handler(self, mod, arg) == "halt":
+                self._halted = True
+        elif "+" in mod or "-" in mod:
+            _var_arith(self, mod)
 
 
 def _top(state: State) -> int:
@@ -186,21 +207,11 @@ _DISPATCH: dict[str, Callable[[State, str, list[str]], str | None]] = {
 def run(code: str, io: IO) -> None:
     """Run a Modulous program."""
     reg = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
-    tokens = [k[0] for k in reg.findall(code)]
     state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
+    state.tokens = [k[0] for k in reg.findall(code)]
 
-    while state.ind < len(tokens):
-        mod = tokens[state.ind]
-        arg = mod.split()
-        state.ind += 1
-        if not arg:
-            continue
-        handler = _DISPATCH.get(arg[0])
-        if handler is not None:
-            if handler(state, mod, arg) == "halt":
-                return
-        elif "+" in mod or "-" in mod:
-            _var_arith(state, mod)
+    while not state.halted:
+        state.step()
 
 
 if __name__ == "__main__":

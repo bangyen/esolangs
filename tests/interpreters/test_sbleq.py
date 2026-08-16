@@ -43,7 +43,7 @@ def run_bounded(program: str, stdin: str = "", store: str = "a") -> str:
             buffer.write(str(value))
 
     old_handler = signal.signal(signal.SIGALRM, _on_alarm)
-    signal.alarm(1)
+    signal.setitimer(signal.ITIMER_REAL, 0.2)
     try:
         run(program, _IO(), store=store)
     except _TimeoutError:
