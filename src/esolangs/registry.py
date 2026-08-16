@@ -320,12 +320,6 @@ LANGUAGES: dict[str, Language] = {
         id="lamfunc",
         interpreter="other.lamfunc",
     ),
-    "Keys": Language(
-        "Keys",
-        id="keys",
-        interpreter="other.keys",
-        split=True,
-    ),
     "LaserFuck": Language(
         "LaserFuck",
         _generate.laserfuck,

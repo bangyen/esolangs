@@ -21,7 +21,6 @@ from esolangs.interpreters.io import IO
 # left out so the fuzz stays fast, and input is mocked below.
 FUZZ = {
     "queue_based.bitdeque": "PUSHINJECTEJECTPOPINVERT",
-    "other.keys": "-_\\/",
     "register_based.minsky_swap": "+~*",
     "tape_based.movesum": "move sum0123456789",
     "other.lamfunc": "p eq i cb lb fb vs vg F . x 0 1",

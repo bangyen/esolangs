@@ -52,7 +52,6 @@ into a template) rather than the program reading input.
 | Home Row | yes | yes |  | yes | yes | hello |
 | Jaune |  |  |  |  | yes |  |
 | Kak |  | yes |  |  |  |  |
-| Keys |  | yes |  |  |  |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
