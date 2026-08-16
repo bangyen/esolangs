@@ -18,7 +18,9 @@ Documented decisions for gaps in the wiki spec:
 - ``v`` reads one input character and stores ``ord(c) - 48`` (the compiler
   subtracts 48), raising :class:`EOFError` when input runs out;
 - the pointer starts at cell 0 and moves into an unbounded array of
-  zero-initialized cells;
+  zero-initialized cells; cells hold plain integers with no wrapping (the
+  author's reference JauneJS stores each cell as a JavaScript number and
+  does plain ``+=``/``-=``, no modulo or bitmask);
 - a jump to an undefined label, a call to an undefined subroutine, or a
   ``;`` with no active subroutine call is an invalid runtime operation
   (:class:`~esolangs.exceptions.HaltError`); a command that requires a
