@@ -268,6 +268,118 @@ def test_circlefuck_fuzz_bounded_programs() -> None:
         )
 
 
+# 3D Brainfuck and Painfuck are brainfuck supersets, so the battery programs
+# in class must agree byte-for-byte through the target interpreter.  3D
+# Brainfuck's ``s`` walks negative where brainfuck clamps ``<``, so the one
+# battery program that dips below cell 0 (``>+<<.``) is out of class and is
+# tested as a rejection instead.
+THREE_D_BATTERY = tuple((p, s) for p, s in BATTERY if p != ">+<<.")
+PAINFUCK_BATTERY = BATTERY
+
+
+@pytest.mark.parametrize(("program", "stdin"), THREE_D_BATTERY)
+def test_three_d_bf_transpiled_output_matches_source(program: str, stdin: str) -> None:
+    target = esolangs.transpile("brainfuck", "3D Brainfuck", program)
+    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
+        "3D Brainfuck", target, stdin
+    )
+
+
+@pytest.mark.parametrize(("program", "stdin"), PAINFUCK_BATTERY)
+def test_painfuck_transpiled_output_matches_source(program: str, stdin: str) -> None:
+    target = esolangs.transpile("brainfuck", "Painfuck", program)
+    assert esolangs.run("brainfuck", program, stdin) == esolangs.run(
+        "Painfuck", target, stdin
+    )
+
+
+@pytest.mark.parametrize("program", ["+", "+[>+<-]>.", ",>,<.>."])
+def test_three_d_bf_is_a_command_swap(program: str) -> None:
+    """The translation swaps >/< for n/s and leaves everything else."""
+    target = esolangs.transpile("brainfuck", "3D Brainfuck", program)
+    assert target == program.replace(">", "n").replace("<", "s")
+
+
+@pytest.mark.parametrize("program", ["+", "+[>+<-]>.", ",>,<.>."])
+def test_three_d_bf_transpile_preserves_comments(program: str) -> None:
+    """Non-command characters pass through unchanged (comments stay comments)."""
+    commented = "xx" + program + "yy"
+    target = esolangs.transpile("brainfuck", "3D Brainfuck", commented)
+    assert target.startswith("xx")
+    assert target.endswith("yy")
+
+
+def test_three_d_bf_transpile_empty() -> None:
+    assert esolangs.transpile("brainfuck", "3D Brainfuck", "") == ""
+
+
+def test_painfuck_transpile_empty() -> None:
+    assert esolangs.transpile("brainfuck", "Painfuck", "") == ""
+
+
+def test_three_d_bf_fuzz_agrees() -> None:
+    """Random in-class brainfuck programs agree through 3D Brainfuck.
+
+    In-class = straight-line commands whose pointer never dips below cell 0
+    (3D Brainfuck's ``s`` walks negative where brainfuck clamps).
+    """
+    rng = random.Random(7)
+    for _ in range(60):
+        parts: list[str] = []
+        ptr = 0
+        for _ in range(rng.randint(3, 12)):
+            kind = rng.choice(("inc", "dec", "print", "right", "left", "zero"))
+            if kind == "right":
+                parts.append(">" * rng.randint(1, 2))
+                ptr += rng.randint(1, 2)
+            elif kind == "left":
+                if ptr == 0:
+                    continue
+                back = rng.randint(1, min(2, ptr))
+                parts.append("<" * back)
+                ptr -= back
+            elif kind == "inc":
+                parts.append("+" * rng.randint(1, 5))
+            elif kind == "dec":
+                parts.append("-" * rng.randint(1, 5))
+            elif kind == "print":
+                parts.append(".")
+            else:
+                parts.append("[-]")
+        program = "".join(parts)
+        try:
+            target = esolangs.transpile("brainfuck", "3D Brainfuck", program)
+        except ValueError:
+            continue  # the generated program left cell 0; skip it
+        expected = esolangs.run("brainfuck", program)
+        assert esolangs.run("3D Brainfuck", target) == expected
+
+
+def test_painfuck_fuzz_agrees() -> None:
+    """Random terminating brainfuck programs agree through Painfuck."""
+    rng = random.Random(11)
+    for _ in range(60):
+        # straight-line programs always terminate (loops can run forever)
+        program = "".join(rng.choice("+-<>.,") for _ in range(rng.randint(1, 16)))
+        try:
+            expected = esolangs.run("brainfuck", program)
+        except Exception:
+            continue
+        target = esolangs.transpile("brainfuck", "Painfuck", program)
+        assert esolangs.run("Painfuck", target) == expected
+
+
+def test_three_d_bf_rejects_below_cell_zero() -> None:
+    """Programs that dip below cell 0 are rejected, like Circlefuck's.
+
+    3D Brainfuck's ``s`` walks negative where brainfuck clamps ``<``.
+    """
+    with pytest.raises(ValueError, match="below cell 0"):
+        esolangs.transpile("brainfuck", "3D Brainfuck", ">+<<.")
+    with pytest.raises(ValueError, match="below cell 0"):
+        esolangs.transpile("brainfuck", "3D Brainfuck", "<")
+
+
 # (Dimensional program, stdin) pairs in the transpiler's supported class: the
 # linear-tape bf core with a final single output at most.
 LASERFUCK_BATTERY = (

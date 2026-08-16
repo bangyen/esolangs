@@ -19,7 +19,9 @@ __all__ = [
     "basicfuck_to_bf",
     "bf_to_ascii_art",
     "bf_to_circlefuck",
+    "bf_to_painfuck",
     "bf_to_six_five",
+    "bf_to_three_d_brainfuck",
     "bfstack_to_bf",
     "bio_to_bf",
     "decleq_to_sbleq",
@@ -155,6 +157,87 @@ def bf_to_circlefuck(program: str, size: int | None = None) -> str:
         raise ValueError(f"size must be positive, got {size}")
     setup = ">" * size + ("<" + "-" * 62) * size
     return setup + "".join(ops) + "@"
+
+
+def bf_to_three_d_brainfuck(program: str) -> str:
+    """Rewrite a brainfuck program into 3D Brainfuck.
+
+    3D Brainfuck is a brainfuck superset: the code pointer travels a 3D grid
+    of the source characters (default heading +X), and the array moves
+    ``n``/``s`` walk the data tape along that same axis.  So the translation
+    is a one-to-one command swap — ``>`` → ``n``, ``<`` → ``s`` — with
+    ``+``/``-``/``,``/``.``/``[``/``]`` unchanged.
+
+    The supported class is programs whose pointer never moves below cell 0:
+    brainfuck clamps ``<`` at the left edge, but 3D Brainfuck's ``s`` walks
+    into the negative cells, so a program that dips below cell 0 diverges.
+    A program that moves below cell 0 is rejected rather than mistranslated
+    (``ValueError``), matching the Circlefuck transpiler's handling of its
+    out-of-class programs.  Comment characters are carried through unchanged
+    and stay comments in the target.
+    """
+    ptr = 0
+    for char in program:
+        if char == ">":
+            ptr += 1
+        elif char == "<":
+            ptr -= 1
+            if ptr < 0:
+                raise ValueError(
+                    "3D Brainfuck cannot represent a program that moves below cell 0 "
+                    "(brainfuck clamps '<' but 3D Brainfuck's 's' walks negative)"
+                )
+    return program.translate(str.maketrans("><", "ns"))
+
+
+# Painfuck's two substitution cycles, in the order the interpreter (and the
+# Rust cross-check) scan them: a source character in a cycle is rewritten to
+# the character ``k`` steps further along it, where ``k`` counts the
+# characters translated so far.
+_PAINFUCK_CYCLES = ("pevkjzwr", "yuctsobqihald")
+
+# brainfuck command -> the Painfuck commands it expands to, before the cycle
+# pre-shift.  ``>`` expands to ``r`` then ``l`` (two right, one left = +1),
+# ``+`` to ``p`` then ``s`` (add two, subtract one = +1); ``<``/``-``/``[``/
+# ``]``/``,``/``.`` map one-to-one.  The expansion cannot use
+# ``str.translate`` (it is 1:1), so it is a per-command rewrite.
+_BF_TO_PAINFUCK = {
+    ">": "rl",
+    "<": "l",
+    "+": "ps",
+    "-": "s",
+    "[": "a",
+    "]": "b",
+    ",": "j",
+    ".": "u",
+}
+
+
+def bf_to_painfuck(program: str) -> str:
+    """Rewrite a brainfuck program into Painfuck.
+
+    Painfuck's source is first translated through a fixed two-cycle Caesar
+    substitution (each source character in a cycle is rewritten ``k`` steps
+    along it, ``k`` counting the characters translated), then executed.
+    Brainfuck maps onto Painfuck's commands directly — ``>``/``<`` become
+    ``rl``/``l``, ``+``/``-`` become ``ps``/``s``, ``[``/``]``/``,``/``.``
+    become ``a``/``b``/``j``/``u`` — and the interpreter's forward shift is
+    undone by pre-shifting each emitted command ``k`` steps *back* along its
+    cycle, so a generated program round-trips.  Every brainfuck program is in
+    class; comment characters are dropped (Painfuck ignores characters in no
+    cycle).
+    """
+    out: list[str] = []
+    k = 0
+    for char in program:
+        for ch in _BF_TO_PAINFUCK.get(char, char):
+            for cycle in _PAINFUCK_CYCLES:
+                p = cycle.find(ch)
+                if p != -1:
+                    out.append(cycle[(p - k) % len(cycle)])
+                    k += 1
+                    break
+    return "".join(out)
 
 
 _BFSTACK_TO_BF = {
@@ -1069,6 +1152,8 @@ TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("Basicfuck", "brainfuck"): basicfuck_to_bf,
     ("brainfuck", "Circlefuck"): bf_to_circlefuck,
     ("brainfuck", "6-5"): bf_to_six_five,
+    ("brainfuck", "3D Brainfuck"): bf_to_three_d_brainfuck,
+    ("brainfuck", "Painfuck"): bf_to_painfuck,
     ("BFStack", "brainfuck"): bfstack_to_bf,
     ("BIO", "brainfuck"): bio_to_bf,
     ("Decleq", "S*bleq"): decleq_to_sbleq,
