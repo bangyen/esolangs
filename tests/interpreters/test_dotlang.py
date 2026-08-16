@@ -8,8 +8,8 @@ warps, and edge cases.
 import io
 from unittest.mock import patch
 
+from esolangs.interpreters.grid_based.dotlang import Dot, run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.dotlang import Dot, run
 
 
 class TestDot:

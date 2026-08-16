@@ -7,7 +7,7 @@ the while-nonzero loop, and the malformed-program rule.
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.home_row import run
+from esolangs.interpreters.tape_based.home_row import run
 
 
 def run_program(code: str) -> str:

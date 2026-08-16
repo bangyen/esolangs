@@ -33,7 +33,7 @@ Languages with both an in-package interpreter and a native cross-check:
   prompts to stdout, which are stripped before comparing; both agree on the
   exit-code convention (3 = invalid operation) and write characters above
   127 as UTF-8, so the Python output is encoded the same way.
-* **3x** — ``other/three_x.py`` vs ``extra/rust/three_x.rs``.  Both compute
+* **3x** — ``stack_based/three_x.py`` vs ``extra/rust/three_x.rs``.  Both compute
   over exact rationals; the reference prints its ``Input: `` prompts to
   stdout (stripped before comparing) and both agree on the exit-code
   convention.
@@ -42,13 +42,13 @@ Languages with both an in-package interpreter and a native cross-check:
   Both track the accumulator as a signed magnitude with the 3003 reset; the
   reference prints its ``Input: `` prompts to stdout, which are stripped
   before comparing.
-* **2dFish** — ``other/two_d_fish.py`` vs ``extra/rust/two_d_fish.rs``.  Both run
+* **2dFish** — ``grid_based/two_d_fish.py`` vs ``extra/rust/two_d_fish.rs``.  Both run
   the ragged grid with the reference's trailing-newline phantom row.
 * **Painfuck** — ``tape_based/painfuck.py`` vs ``extra/rust/painfuck.rs``.
   Corpus programs are encoded into the source alphabet (the reference
   translates the source before running); the nondeterministic ``y`` is
   excluded.
-* **bit~** — ``other/bit_tilde.py`` vs ``extra/rust/bit_tilde.rs``.  Both
+* **bit~** — ``tape_based/bit_tilde.py`` vs ``extra/rust/bit_tilde.rs``.  Both
   write bytes above 127 as raw bytes; unmatched brackets raise (the former
   Ruby port hung).
 
@@ -1096,7 +1096,7 @@ def _run_three_x_python(program: str, stdin: bytes) -> tuple[bytes, int]:
     """Run ``program`` through the in-package interpreter."""
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.other.three_x import run
+    from esolangs.interpreters.stack_based.three_x import run
 
     io = ScriptedIO(stdin.decode("utf-8"))
     try:
@@ -1615,7 +1615,7 @@ def _run_bit_tilde_python(program: str, stdin: bytes) -> tuple[bytes, int]:
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import ScriptedIO
 
-    run = importlib.import_module("esolangs.interpreters.other.bit_tilde").run
+    run = importlib.import_module("esolangs.interpreters.tape_based.bit_tilde").run
 
     io = ScriptedIO(stdin.decode("latin1"))
     try:
@@ -1843,7 +1843,7 @@ _SIMPLE_CORPUS = [
         "Number Seventy-Four",
         lambda: NUMBER_SEVENTY_FOUR_BIN.exists(),
         lambda p, s: _run_file_ref([str(NUMBER_SEVENTY_FOUR_BIN)], p, s),
-        "esolangs.interpreters.other.number_seventy_four",
+        "esolangs.interpreters.tape_based.number_seventy_four",
         [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
     ),
     # 2 Bits, 1 Byte: single program byte, read from stdin by the references

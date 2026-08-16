@@ -13,8 +13,8 @@ from contextlib import redirect_stdout
 from typing import cast
 from unittest.mock import patch
 
+from esolangs.interpreters.grid_based.dsdlai import rand, run
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.dsdlai import rand, run
 
 
 class TestDSDLARandomDeath:
@@ -47,7 +47,7 @@ class TestDSDLARandomDeath:
 
         # Create a death function and test multiple times
         # We'll use a mock to capture stdout
-        with patch("esolangs.interpreters.register_based.dsdlai.s") as mock_secrets:
+        with patch("esolangs.interpreters.grid_based.dsdlai.s") as mock_secrets:
             # Mock to always return death (n=1, num=20)
             mock_secrets.randbelow.side_effect = [19, 0]  # num=20, n=1
 
@@ -60,7 +60,7 @@ class TestDSDLARandomDeath:
 
     def test_survival_no_message(self) -> None:
         """Test that no death message is printed when mole survives."""
-        with patch("esolangs.interpreters.register_based.dsdlai.s") as mock_secrets:
+        with patch("esolangs.interpreters.grid_based.dsdlai.s") as mock_secrets:
             # Mock to always return survival (n=100, num=20)
             mock_secrets.randbelow.side_effect = [19, 99]  # num=20, n=100
 
@@ -90,7 +90,7 @@ class TestDSDLABasicPrograms:
     def test_program_with_dig_risk(self) -> None:
         """Test that programs with dig commands may terminate early."""
         # With a guaranteed survival, the dig completes without death
-        with patch("esolangs.interpreters.register_based.dsdlai.rand") as mock_rand:
+        with patch("esolangs.interpreters.grid_based.dsdlai.rand") as mock_rand:
             mock_rand.return_value = lambda: False
             with redirect_stdout(io.StringIO()) as f:
                 run(["$1@"], io=IO())
@@ -116,7 +116,7 @@ class TestDSDLAHelloWorld:
         hello_world_code = ["@"]
 
         # Mock the death function to always return False (survive)
-        with patch("esolangs.interpreters.register_based.dsdlai.rand") as mock_rand:
+        with patch("esolangs.interpreters.grid_based.dsdlai.rand") as mock_rand:
             mock_rand.return_value = lambda: False
 
             with redirect_stdout(io.StringIO()) as captured_output:
@@ -140,7 +140,7 @@ class TestDSDLAHelloWorld:
         # Note: The death message may or may not be printed depending on random chance
 
         # Test that the death function can be mocked to always return True
-        with patch("esolangs.interpreters.register_based.dsdlai.rand") as mock_rand:
+        with patch("esolangs.interpreters.grid_based.dsdlai.rand") as mock_rand:
             mock_rand.return_value = lambda: True
 
             # Test that the mocked function works
@@ -216,7 +216,7 @@ class TestDSDLAIntegration:
         code = ["$1$2@", " 1 2"]
 
         # With a guaranteed survival, all digs complete
-        with patch("esolangs.interpreters.register_based.dsdlai.rand") as mock_rand:
+        with patch("esolangs.interpreters.grid_based.dsdlai.rand") as mock_rand:
             mock_rand.return_value = lambda: False
             with redirect_stdout(io.StringIO()) as f:
                 run(code, IO())

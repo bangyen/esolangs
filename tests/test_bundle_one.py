@@ -154,7 +154,7 @@ class TestBundleDetails:
         bundle_one = load_script()
         out = tmp_path / "dsdlai.py"
         bundle_one.bundle("DSDLAI", bundle_one.Source(None), out)
-        assert "inlined from esolangs/interpreters/register_based/dig.py" in (
+        assert "inlined from esolangs/interpreters/grid_based/dig.py" in (
             out.read_text()
         )
 

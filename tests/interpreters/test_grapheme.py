@@ -11,7 +11,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.grapheme import run
+from esolangs.interpreters.stack_based.grapheme import run
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -201,7 +201,7 @@ class TestEdgeCases:
             run_program("HKGHKG")
 
     def test_command_limit_exceeded(self) -> None:
-        from esolangs.interpreters.other.grapheme import run
+        from esolangs.interpreters.stack_based.grapheme import run
 
         io = ScriptedIO("")
         with pytest.raises(HaltError, match="command limit"):
