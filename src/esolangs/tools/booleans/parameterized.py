@@ -20,6 +20,16 @@ complement computation; :func:`back` replaces ``{Xi}`` with a ``\\`` or
 (``c``/``i``) and routes a decision tree with the ``s`` skip; :func:`bitdeque`,
 :func:`ram0`, and :func:`minsky_swap` replace ``{Xi}`` with fixed-length
 setters and route a ``POP``/``GOTO``, ``C``/``goto``, or ``~`` decision tree.
+
+**Every input must be embedded exactly once.**  An input-capable language
+reads each of its ``n`` inputs exactly once per run; a no-input language's
+parameterized generator should match that, so a template may contain each
+``{Xi}`` placeholder at most once (and its ``{Ci}`` complement, if used, at
+most once too).  Re-embedding a bit at multiple decision nodes would let a
+no-input program "read" an input more than its input-capable counterpart
+does, which muddies the generator API.  Each generator below therefore
+stores every input once (a tape load, a register pack, a deque/stack push,
+a variable, or a mirror) and reads it back, rather than re-substituting it.
 """
 
 from collections.abc import Callable
