@@ -74,18 +74,19 @@ and the I/O-capable Grapheme, Lightlang, and Movesum are weaker ones.
 | Language | Output | Why it is on the list |
 | --- | --- | --- |
 | ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
-| A Painter Ant | No I/O; visited-grid bounding box (`#`/`.` raster) | no text generator; boolean generator capped at `n <= 2` (raises for `n >= 3`), so effectively no general boolean generator. |
+| A Painter Ant | No I/O; visited-grid bounding box (`#`/`.` raster) | no text generator; boolean generator was removed as trivial (`n <= 2`), so no boolean generator at all. |
 | Grapheme | I/O-capable, but text is unspellable (no `E`, no concatenation) | no text generator; boolean wall. |
 | Lightlang | Prints only the single bit as a number | no text generator; boolean wall (AND/OR-class only). |
-| Movesum | Prints `n ` (numbers with a trailing space) | no text generator; no conditional, so no boolean generator. |
+| Movesum | Prints numbers space-separated with no trailing space | no text generator; no conditional, so no boolean generator. |
 
 The I/O-capable members (Grapheme, Lightlang, Movesum) were previously
 excluded from this tier as "I/O-capable" — they stay on the list because
 they still fail both generator gates, but their real language-defined output
-counts against removing them.  A Painter Ant is here because, although it
-has a boolean generator, that generator only covers one- and two-input
-tables (`n <= 2`), so for any higher arity it is effectively without a
-generator; the ``n >= 3`` construction is open (see `docs/walls.md`).  No
+counts against removing them.  A Painter Ant was here because its boolean
+generator only covered one- and two-input tables (`n <= 2`); that generator
+has since been **removed** as trivial (see the constrained-generators
+section below), so A Painter Ant now has no generator at all — it sits in
+the same fully-generator-less tier as ArrowQueue.  No
 text generator is severely constrained — even the most restricted ones
 (Dig's letter/digit/``.,!?`` alphabet, MyScript's printable ASCII) still
 cover a substantial output range, so no language is added on the text side.
@@ -198,9 +199,14 @@ watches over the VM) shipped.  The medium-priority work that remains:
 
 ## A Painter Ant: general n-input boolean generator (open)
 
-`esolangs.tools.booleans.a_painter_ant` expresses every one- and two-input
-truth table exactly (answer = the origin's colour after a whole cycle, all
-templates cycle-stable), and raises for `n >= 3`.
+The A Painter Ant boolean generator was removed (see the constrained-
+generators section below) because it was capped at `n <= 2`.  This open
+problem records what a *general* construction would need, should it be
+re-added.
+
+The removed generator expressed every one- and two-input truth table exactly
+(answer = the origin's colour after a whole cycle, all templates
+cycle-stable), and raised for `n >= 3`.
 
 The cap is not "unreachable": a search-found *box-height* method extends
 the range — each one-input makes the ant step one cell further north, so
@@ -217,11 +223,8 @@ reach the balanced tables; a general solution needs to route on *which*
 inputs are one, not just *how many* — e.g. a way to encode each of the
 ``2**n`` combos into a distinguishable ant state (position, painted pattern,
 or box content) with a cycle-stable template.  This is the documented wall
-in `docs/walls.md`; a successful construction would lift the generator's
-cap to arbitrary ``n``.  Until then, A Painter Ant sits on the
-deferred-removal list (above) as a language whose boolean generator is
-severely constrained, and this open problem is exactly the work that would
-take it off.
+in `docs/walls.md`; a successful construction would warrant re-adding the
+generator.
 
 ## Severely constrained boolean generators (remove or lift)
 
@@ -230,16 +233,20 @@ deliberate rather than implicit: either lift the cap (an open construction)
 or, where the language has no other generator story, remove it.  The caps
 are documented in `docs/limitations.md` and `docs/walls.md`.
 
-| Language | Boolean cap | Also has text generator? | Deferred-removal candidate? | Resolution |
-| --- | --- | --- | --- | --- |
-| A Painter Ant | `n <= 2` (raises for `n >= 3`) | no | yes | lift (open, see the section above) or remove. |
-| Minifuck | `n <= 3`, 0-preserving two-input only | yes | no | lift (structural wall, `docs/walls.md`); has a text generator so not a removal candidate. |
-| Home Row | `n <= 2` | yes | no | lift (language cap, fixed 5x5 torus); has a text generator so not a removal candidate. |
-| 123 | one input only | yes | no | lift (structural wall, single data byte); has a text generator so not a removal candidate. |
-| NoComment | `n <= 8` | yes | no | lift (genuine wall, byte-indexed skip); cap is high enough for practical use. |
-| Polynomial | `n <= 4` | yes | no | lift (performance cap on exact factorization); cap is high enough for practical use. |
+| Language | Boolean cap | Also has text generator? | Resolution |
+| --- | --- | --- | --- |
+| 123 | one input only | yes | lift (structural wall, single data byte); has a text generator so not a removal candidate. |
+| NoComment | `n <= 8` | yes | lift (genuine wall, byte-indexed skip); cap is high enough for practical use. |
+| Polynomial | `n <= 4` | yes | lift (performance cap on exact factorization); cap is high enough for practical use. |
 
-Only A Painter Ant is a deferred-removal candidate, because it is the only
-one of these with no text generator too.  The rest have a text generator, so
-their constrained boolean generator is a capability gap but not a removal
-ground; the work there is purely to lift the cap.
+Removed (constraints made them trivial): the boolean generators for A
+Painter Ant (`n <= 2`, no text generator), Minifuck (`n <= 3`, only
+0-preserving two-input tables), and Home Row (`n <= 2`) were dropped because
+their low caps left them only able to express the four one-input and a small
+fraction of the two-input boolean functions — too small a subset to be
+interesting.  Their languages and text generators remain.
+
+Borderline, kept for now: **ZTOALC L** raises for dense, non-symmetric
+tables past `n == 3` but still covers symmetric and structured tables at
+`n == 4`, so it is a candidate to revisit if a general construction or a
+decision to drop it lands.

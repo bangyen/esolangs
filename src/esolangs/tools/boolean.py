@@ -12,7 +12,6 @@ The generators live in ``esolangs.tools.booleans``, split by language family
 module re-exports them for compatibility.
 """
 
-from esolangs.tools.booleans.a_painter_ant import a_painter_ant
 from esolangs.tools.booleans.abcdirection import abcdirection
 from esolangs.tools.booleans.other import (
     between,
@@ -20,7 +19,6 @@ from esolangs.tools.booleans.other import (
     clockwise,
     container,
     forbin_boolean,
-    home_row,
     laserfuck,
     myscript,
     nevermind,
@@ -60,7 +58,6 @@ from esolangs.tools.booleans.tape import (
     dimensional_tree,
     jaune,
     jaune_multiply,
-    minifuck,
     painfuck,
     rotfuck,
     sbleq,
@@ -71,7 +68,6 @@ from esolangs.tools.booleans.tape import (
 
 __all__ = [
     "BOOLEAN",
-    "a_painter_ant",
     "abcdirection",
     "addsubjump",
     "back",
@@ -96,13 +92,11 @@ __all__ = [
     "dimensional_tree",
     "forbin_boolean",
     "forth",
-    "home_row",
     "instantiate",
     "jaune",
     "jaune_multiply",
     "lamfunc",
     "laserfuck",
-    "minifuck",
     "minsky_swap",
     "modulous",
     "myscript",
@@ -134,7 +128,6 @@ BOOLEAN: frozenset[str] = frozenset(
         "AddSubJump",
         "3D Brainfuck",
         "6-5",
-        "A Painter Ant",
         "Back",
         "Basicfuck",
         "Between",
@@ -154,11 +147,9 @@ BOOLEAN: frozenset[str] = frozenset(
         "Decleq",
         "Forbin",
         "Forþ",
-        "Home Row",
         "Jaune",
         "Lamfunc",
         "LaserFuck",
-        "Minifuck",
         "Minsky Swap",
         "Modulous",
         "MyScript",
