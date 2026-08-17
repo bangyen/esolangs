@@ -20,7 +20,7 @@ into a template) rather than the program reading input.
 | 3D Brainfuck | yes | yes |  | yes |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |
-| A Painter Ant |  | yes |  | yes |  |  |
+| A Painter Ant |  | yes |  |  |  |  |
 | ABCDirection |  | yes |  | yes |  |  |
 | AddSubJump | yes | yes |  | yes |  | hello |
 | Albabet | yes | yes |  |  |  | hello |
@@ -47,12 +47,12 @@ into a template) rather than the program reading input.
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
 | Grapheme |  | yes |  |  |  |  |
-| Home Row | yes | yes |  | yes | yes | hello |
+| Home Row | yes | yes |  |  | yes | hello |
 | Jaune |  | yes |  | yes | yes |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  | boolean |
-| Minifuck | yes | yes |  | yes |  | hello boolean |
+| Minifuck | yes | yes |  |  |  | hello boolean |
 | Minsky Swap |  | yes |  | yes |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |
