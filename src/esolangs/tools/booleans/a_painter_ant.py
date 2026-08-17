@@ -13,24 +13,22 @@ convention (like ``bio``/``back``/``nocomment``/``bfpda``): each input bit
 is filled into the template as a lowercase/uppercase *pair* that tests the
 target cell's colour — the two members of a pair point the same way but
 require opposite colours, so exactly one succeeds and the ant's position
-routes the computation.
+routes the computation.  The answer is the origin's colour after a whole
+cycle (white is one, black is zero), read by a semantic grid model (the
+interpreter's own output is the visited-cell bounding box, which carries no
+coordinates).
 
-Two output contracts, both read by a semantic model (the interpreter's own
-output is the visited-cell bounding box, which carries no coordinates):
-
-- **n <= 2**: exact truth tables, answer = the origin's colour after a
-  whole cycle (white is one, black is zero).
-- **n >= 3**: weight-threshold tables (``1`` exactly when at least ``k``
-  inputs are one), answer = the visited-cell box *height*, which grows
-  strictly with the number of one-inputs; ``1`` when the height reaches the
-  threshold.  Verified for n == 3..6 and pattern-matching suggests it
-  extends (each input adds one northward step).
+The generator supports every one- and two-input table exactly.  n >= 3 is
+an open problem (``docs/roadmap.md``): a *box-height* construction found by
+search expresses most n == 3 tables (196 of 256, including AND3/OR3/XOR3/
+majority via the box's height or its parity) but no general method for all
+functions of an arity is known, so ``a_painter_ant`` raises for n >= 3.
 
 The templates were found by search and verified exhaustively against the
 interpreter for every instantiation; they are all fixed points
 (cycle-stable).  Each base string has ``n`` slot positions, and each slot is
-filled with ``{Ci}`` (the complemented bit: ``N`` for 0, ``n`` for 1), since
-a one-bit must move north onto black.
+filled with ``{Xi}`` (bit ``i``) or ``{Ci}`` (the complemented bit), chosen
+so the emitted template computes the requested table.
 """
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
@@ -64,16 +62,6 @@ _ONE_INPUT: dict[str, str] = {
     "11": "P",  # constant one
 }
 
-# n >= 3 weight-threshold tails: n -> tail appended after "PW" + n {Ci} slots.
-# Each was found by search and verified cycle-stable with *strictly* monotone
-# box height in the input weight (so every threshold is distinguishable).
-_THRESHOLD_TAILS: dict[int, str] = {
-    3: "nsssSeSP",
-    4: "nsWsssWSppp",
-    5: "nssWsWsspSWesWSpSnW",
-    6: "WnpssWWsssWsS",
-}
-
 
 def instantiate(template: str, bits: list[int]) -> str:
     """Fill a template's ``{X0}``/``{C0}`` placeholders with the bit commands.
@@ -97,13 +85,14 @@ def a_painter_ant(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
     returned template contains ``{X0}``/``{C0}``.. placeholders that
-    :func:`instantiate` fills with the per-bit movement commands.
+    :func:`instantiate` fills with the per-bit movement commands.  The
+    answer is the origin's colour after a whole cycle.
 
-    For ``n <= 2`` every table is supported, the answer being the origin's
-    colour.  For ``n >= 3`` only *weight-threshold* tables (true when at
-    least ``k`` inputs are one) are supported, the answer being the
-    visited-cell box height; other ``n >= 3`` tables raise
-    :class:`ValueError`.
+    All one- and two-input tables are supported; ``n >= 3`` raises
+    :class:`ValueError`.  The n >= 3 cap is a documented open problem
+    (``docs/roadmap.md``): a box-height construction expresses most tables
+    (e.g. 196 of 256 at n == 3) but no general method for *all* functions of
+    an arity is known.
     """
     n = _validate_truth_table(truth_table)
 
@@ -118,30 +107,10 @@ def a_painter_ant(truth_table: str) -> str:
             return "P"  # constant one
         template, slots, modes = _TWO_INPUT[truth_table]
         return _mark_slots(template, slots, modes)
-
-    # n >= 3: weight-threshold tables only.
-    if n not in _THRESHOLD_TAILS:
-        raise ValueError(
-            "the A Painter Ant boolean generator supports weight-threshold "
-            f"tables for n <= {max(_THRESHOLD_TAILS)}, got n == {n}",
-        )
-    if not _is_threshold(truth_table):
-        raise ValueError(
-            "A Painter Ant's n >= 3 boolean generator supports only "
-            "weight-threshold tables (1 when at least k inputs are one)",
-        )
-    slot_str = "".join(f"{{C{i}}}" for i in range(n))
-    return "PW" + slot_str + _THRESHOLD_TAILS[n]
-
-
-def _is_threshold(truth_table: str) -> bool:
-    """Whether ``truth_table`` is a weight-threshold: ``1`` iff ``popcount(i) >= k``."""
-    n = len(truth_table).bit_length() - 1
-    for k in range(0, n + 1):
-        expected = "".join("1" if i.bit_count() >= k else "0" for i in range(2**n))
-        if truth_table == expected:
-            return True
-    return False
+    raise ValueError(
+        "the A Painter Ant boolean generator supports n <= 2; n >= 3 is "
+        "an open problem (see docs/roadmap.md)",
+    )
 
 
 def _mark_slots(
