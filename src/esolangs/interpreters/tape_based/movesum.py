@@ -12,6 +12,11 @@ The language features:
 - Sum instruction: sets position 0 to sum of positions 1-4
 - Automatic halting when array doesn't change after two commands
 
+The wiki says a ``move`` with a negative second argument "outputs the first
+argumentth item in the Array"; it does not mention a separator, so successive
+values are printed space-separated with no trailing space (``8`` then
+``12345`` prints ``8 12345``).
+
 Malformed programs raise :class:`ValueError`.
 """
 
@@ -61,6 +66,7 @@ def run(code: list[str], io: IO) -> None:
         arr[int(x)] = int(y)
 
     code = code[1:]
+    printed: bool = False
     while num < 2:
         copy: dict[int, int] = arr.copy()
         expr: str = r"(move *(-?\d+)" r" *(-?\d+)|sum)"
@@ -79,7 +85,10 @@ def run(code: list[str], io: IO) -> None:
                     dst_idx: int = int(match_result[3])
                     arr[dst_idx] = n
                 else:
-                    io.print_str(f"{n} ")
+                    if printed:
+                        io.print_str(" ")
+                    io.print_str(str(n))
+                    printed = True
             elif match_result[3].isdigit():
                 input_dst_idx: int = int(match_result[3])
                 arr[input_dst_idx] = read_unsigned()
