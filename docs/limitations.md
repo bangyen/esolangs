@@ -80,7 +80,6 @@ per-character encoding can be meaningfully shortened:
 
 | Language | Why it cannot compute a truth table |
 | --- | --- |
-| 2 Bits 1 Byte | Program is a single byte; `JMP`/`ACT` target fixed fields, so there is no value-testable branch. |
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | ArrowQueue | No output; only the halt-vs-hang outcome is observable, which expresses AND/OR/threshold functions but no XOR (see `docs/walls.md`). |
@@ -216,3 +215,17 @@ repeated.
   comparison gadget rather than a language model, so like Earfuck (a
   brainfuck reskin "too easy to be worth a dedicated interpreter") it failed
   the non-triviality admission criterion.
+- **2 Bits 1 Byte: removed.**  A joke language (wiki categories: joke,
+  unusable for programming) whose program is a single byte, so it can never
+  have a text generator (the output is always one byte) or a boolean
+  generator (``JMP``/``ACT`` target fixed fields, so there is no
+  value-testable branch).  Its wiki page already documents six external
+  implementations (JavaScript, C++, Haskell, Snap!, HTML, and Bangyen's
+  Python), so removing this interpreter leaves no gap, and its RISC-V
+  cross-check had already been dropped.  The counterweight — it was one of
+  the few interpreters hand-verifiable against a complete spec enumeration
+  (the wiki lists every one of the 256 possible programs' output) and it
+  resolved the wiki's ACT ambiguity (the command table contradicts the
+  disassembly example, and the interpreter followed the example to match
+  Hakerh400's reference) — was weighed and did not outweigh the absence of
+  any generator, gap, or unique verification value.
