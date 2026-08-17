@@ -67,7 +67,6 @@ into a template) rather than the program reading input.
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
-| Stun Step |  | yes |  |  |  |  |
 | Suffolk | yes | yes |  |  | yes | hello |
 | Taglate | yes | yes |  | yes |  | hello |
 | The Temporary Stack | yes | yes |  |  |  | hello |

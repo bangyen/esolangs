@@ -96,7 +96,6 @@ _EXTRA_WIKI = {
     "Forþ": "For%C3%BE",
     "%^2^-1": "%25%5E2%5E-1",
     "bit~": "Bit~",
-    "Stun Step": "Stun_Step",
 }
 
 # The README's Implemented Languages section, grouped by interpreter
