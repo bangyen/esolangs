@@ -16,6 +16,7 @@ EXAMPLES = ROOT / "examples"
 HELLO = EXAMPLES / "hello-world"
 CAT = EXAMPLES / "cat"
 TRUTH = EXAMPLES / "truth-machine"
+BOOLEAN_EX = EXAMPLES / "boolean"
 # Compiler source-file stem -> the language's display name.  A compiler file
 # without an entry here fails loudly rather than silently dropping out of
 # the docs.
@@ -179,6 +180,7 @@ def _capabilities(name: str) -> dict[str, bool]:
         "hello": hello,
         "cat": (CAT / f"{_file_name(name)}.txt").exists(),
         "truth-machine": (TRUTH / f"{_file_name(name)}.txt").exists(),
+        "boolean-ex": (BOOLEAN_EX / f"{_file_name(name)}.txt").exists(),
     }
 
 
@@ -205,7 +207,11 @@ def render() -> str:
     ]
     for name in sorted(set(LANGUAGES) | ASSEMBLY_COMPILERS | NATIVE):
         c = _capabilities(name)
-        examples = " ".join(k for k in ("hello", "cat", "truth-machine") if c[k])
+        examples = " ".join(
+            k for k in ("hello", "cat", "truth-machine", "boolean-ex") if c[k]
+        )
+        if "boolean-ex" in examples:
+            examples = examples.replace("boolean-ex", "boolean")
         lines.append(
             f"| {name} | {'yes' if c['generator'] else ''} | "
             f"{'yes' if c['interpreter'] else ''} | "

@@ -87,7 +87,7 @@ per-character encoding can be meaningfully shortened:
 | EXCON / Huf | Straight-line, no input, no branch. |
 | Grapheme | `V` jumps forward on falsy with no mid-tree halt, so the truthy branch falls through both leaves. |
 | Kak | Prints the whole tape, not a single `0`/`1`. |
-| Lightlang | `&` skips one character, so a decision-tree node cannot route to a multi-character subtree. |
+| Lightlang | `&` skips one character, so it cannot route to a multi-character leaf; only the AND/OR-class tables are expressible (each bit's skip covers exactly the single `#` halt), with no XOR or arbitrary table (see `docs/walls.md`). |
 | Movesum | No conditional; the loop repeats until the array stops changing. |
 | Stun Step | The loop-back re-runs the code with a shifted pointer, corrupting the bit bakes. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
