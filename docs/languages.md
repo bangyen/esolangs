@@ -16,7 +16,6 @@ into a template) rather than the program reading input.
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
 | %^2^-1 | yes | yes | yes |  |  | hello |
 | 123 | yes | yes |  |  |  | hello |
-| 2 Bits, 1 Byte |  | yes |  |  |  |  |
 | 2dFish | yes | yes | yes |  |  | hello |
 | 3D Brainfuck | yes | yes |  | yes |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |

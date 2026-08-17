@@ -27,7 +27,7 @@ def load_script() -> object:
 def test_page_title_replaces_spaces() -> None:
     module = load_script()
     assert module.page_title("Home Row") == "Home_Row"
-    assert module.page_title("2 Bits, 1 Byte") == "2_Bits,_1_Byte"
+    assert module.page_title("Number Seventy-Four") == "Number_Seventy-Four"
     assert module.page_title("S*bleq") == "S*bleq"
 
 
