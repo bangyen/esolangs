@@ -222,19 +222,14 @@ No existing boolean generator uses this convention; it would require a new
 harness contract (termination as the answer) and still does not unlock a
 general multi-input generator in any of these languages.
 
-## A Painter Ant boolean generator (exact n <= 2; weight-threshold n >= 3)
+## A Painter Ant boolean generator (exact n <= 2; n >= 3 is open)
 
 A Painter Ant has no I/O, so its boolean generator (in
 :mod:`esolangs.tools.booleans.a_painter_ant`) uses the parameterized
-convention, with two output contracts read by a semantic grid model (the
-interpreter's own output is the visited-cell bounding box, which carries no
-coordinates):
-
-- **n <= 2**: the answer is the **origin's colour** (white is one, black is
-  zero), giving *exact* truth tables.
-- **n >= 3**: the answer is the visited-cell box **height**, which grows
-  strictly with the number of one-inputs, giving *weight-threshold* tables
-  (``1`` when at least ``k`` inputs are one).
+convention, read by a semantic grid model (the interpreter's own output is
+the visited-cell bounding box, which carries no coordinates).  The answer
+for the supported arities is the **origin's colour** (white is one, black is
+zero), giving *exact* truth tables.
 
 The input encoding is the lowercase/uppercase movement *pair*: ``n`` and
 ``N`` both point north but ``n`` moves onto a black cell while ``N`` moves
@@ -250,20 +245,17 @@ Supported and verified exhaustively against the interpreter:
 - **n == 1**: all four one-input functions.
 - **n == 2**: all sixteen two-input functions (five base templates plus the
   two constant programs, with per-bit plain/complemented slots).
-- **n == 3..6**: every weight-threshold table, via a search-found template
-  whose box height is *strictly* monotone in the input weight (verified for
-  every instantiation, all cycle-stable).  AND-n is the weight-``n``
-  threshold (``00000001`` for n == 3), majority is weight-``n//2+1``.
 
-The mechanism behind n >= 3 is *accumulative travel*: each one-input makes
-the ant step one cell further north, so the ant's depth equals the input
-weight, and the paint/return section turns that depth into a box height.
-This is why weight thresholds — not arbitrary tables — are the natural
-expressible class for n >= 3: the ant can measure *how many* inputs are one
-but not route on *which*.  A non-threshold n >= 3 table (e.g. XOR3) raises
-:class:`ValueError`.  The wall is therefore "weight-threshold, not general
-tables", which is far weaker than the earlier claim that n >= 3 was
-unreachable.
+**n >= 3 is open.**  A *box-height* method found by search extends the
+range: each one-input makes the ant step one cell further north
+(*accumulative travel*), so the ant's depth equals the input weight and a
+paint/return section turns that depth into a box height (or its parity).
+This is cycle-stable and expresses *most* n == 3 tables — a search found
+196 of 256, including AND3, OR3, XOR3 (via height parity), and majority —
+but the ~60 unreachable ones are exactly the balanced, non-monotone tables
+(such as equality), and no general construction is known that reaches *all*
+functions of an arity.  ``a_painter_ant`` therefore raises for ``n >= 3``;
+lifting the cap to a general method is recorded in ``docs/roadmap.md``.
 
 ## Multiply capability (Jaune realizes it)
 
