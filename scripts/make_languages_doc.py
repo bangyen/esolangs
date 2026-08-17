@@ -95,7 +95,6 @@ _EXTRA_WIKI = {
     "Forþ": "For%C3%BE",
     "%^2^-1": "%25%5E2%5E-1",
     "bit~": "Bit~",
-    "Number Seventy-Four": "Number_Seventy-Four",
     "Stun Step": "Stun_Step",
 }
 

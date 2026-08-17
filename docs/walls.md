@@ -176,10 +176,6 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   loop repeats commands until the array stops changing.  The numeric output
   (always a trailing space) and the addition-only arithmetic cannot express a
   general boolean function.
-- **Trash**: its only output is a prime-advanced number — a non-prime start
-  prints ``0``, a prime start prints the next prime (3, 5, 7, ...), and no
-  leading ``t`` prints nothing — so it can never print a boolean ``"1"`` and
-  cannot return a truth-table result even parameterized.
 - **Lightlang**: `?` reads a bit (an empty line gives 1, any non-empty line
   gives 0), so a bit is readable — but `&` (skip the next instruction when
   the bit is 1) skips exactly one character, so a decision-tree node cannot
@@ -202,10 +198,6 @@ languages reach multi-input threshold functions:
   boundary, so `>` (moves only when the cell is nonzero) gives
   halt-for-0/loop-for-1; but the loop-back re-runs the code with a shifted
   pointer, corrupting multi-bit bakes.
-- **Number Seventy-Four**: the pass-restart checks the accumulated output
-  string (not corrupted by restart), so `0H` halts and `1H` loops; but the
-  halt depends only on the front-most output character, so multi-bit trees
-  still fail.
 - **ArrowQueue**: a queue-sustaining ring (``[" ~*", "+~*", "*~+"]``) hangs
   iff its center `~` is present, so the ring is a one-input identity gadget
   under the convention.  With bit cells spread across the ring it becomes

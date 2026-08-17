@@ -380,11 +380,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.nocomment",
         id="nocomment",
     ),
-    "Number Seventy-Four": Language(
-        "Number Seventy-Four",
-        id="number_seventy_four",
-        interpreter="tape_based.number_seventy_four",
-    ),
     "Painfuck": Language(
         "Painfuck",
         _generate.painfuck,
@@ -450,11 +445,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.the_temporary_stack,
         "stack_based.the_temporary_stack",
         id="the_temporary_stack",
-    ),
-    "Trash": Language(
-        "Trash",
-        id="trash",
-        interpreter="other.trash",
     ),
     "3x": Language(
         "3x",
