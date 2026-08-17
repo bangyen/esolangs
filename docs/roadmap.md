@@ -74,7 +74,7 @@ they are the weakest additions.
 | Language | Output |
 | --- | --- |
 | ArrowQueue | None; only halt-vs-hang, which expresses AND/OR-class boolean functions (see `docs/walls.md`). |
-| A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (exact n <= 2, weight-threshold n >= 3). |
+| A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (exact n <= 2). |
 | Brainpocalypse | Final tape dump. |
 | Kak | Final tape dump. |
 | Minsky Swap | Final register dump. |
@@ -90,9 +90,9 @@ are not in this tier.
 
 **Generator story is mostly absent.**  None of the fourteen
 interpreter-only languages has a text generator.  Jaune and A Painter Ant
-now have full boolean generators (Jaune's reads input; A Painter Ant's uses
-the parameterized convention — exact tables for n <= 2, weight-threshold
-for n >= 3), ArrowQueue realizes
+now have full boolean generators for small arities (Jaune's reads input; A
+Painter Ant's uses the parameterized convention — exact tables for n <= 2),
+ArrowQueue realizes
 the halt-vs-hang *termination* convention for AND/OR-class functions (a ring
 template committed as its truth-machine example), and the rest have no
 boolean story at all (each hits a documented wall in `docs/walls.md`).  So
@@ -186,3 +186,27 @@ watches over the VM) shipped.  The medium-priority work that remains:
 - **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
   currently the active call frame's cursor; a language with nested calls
   should expose the call stack, not fold it into one frame's position.
+
+## A Painter Ant: general n-input boolean generator (open)
+
+`esolangs.tools.booleans.a_painter_ant` expresses every one- and two-input
+truth table exactly (answer = the origin's colour after a whole cycle, all
+templates cycle-stable), and raises for `n >= 3`.
+
+The cap is not "unreachable": a search-found *box-height* method extends
+the range — each one-input makes the ant step one cell further north, so
+its depth equals the input weight, and a paint/return section turns that
+depth into a box height or its parity.  This is cycle-stable and expresses
+**most** n == 3 tables (196 of 256 in a search, including AND3, OR3, XOR3
+via parity, and majority); the ~60 unreachable ones are exactly the
+balanced, non-monotone tables (e.g. equality).
+
+**Goal: find a general construction such that for any ``n``, *every*
+``n``-ary boolean function is expressible.**  The box-height method loses
+the "which inputs" information (it only measures the weight), so it cannot
+reach the balanced tables; a general solution needs to route on *which*
+inputs are one, not just *how many* — e.g. a way to encode each of the
+``2**n`` combos into a distinguishable ant state (position, painted pattern,
+or box content) with a cycle-stable template.  This is the documented wall
+in `docs/walls.md`; a successful construction would lift the generator's
+cap to arbitrary ``n``.

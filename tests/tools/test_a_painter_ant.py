@@ -2,10 +2,8 @@
 
 A Painter Ant has no I/O: the interpreter prints the visited-cell bounding
 box, and the Boolean answer is read from a small semantic grid model (the
-box output carries no coordinates).  For ``n <= 2`` the answer is the
-origin's colour after a whole cycle (white is one, black is zero); for
-``n >= 3`` the answer is the box *height*, which grows strictly with the
-number of one-inputs, so every weight-threshold table is decodable.
+box output carries no coordinates).  For the supported arities the answer
+is the origin's colour after a whole cycle (white is one, black is zero).
 
 Every instantiated program is also run through the real interpreter to
 confirm it is a fixed point: the box is identical for any limit that is a
@@ -39,13 +37,6 @@ def _origin_after(program: str, cycles: int = 6) -> int:
     return grid.get((0, 0), 0)
 
 
-def _box_height(program: str) -> int:
-    """Visited-cell bounding-box height after whole cycles (n >= 3 contract)."""
-    io = ScriptedIO()
-    run(program, io, limit=10 * len(program))
-    return io.getvalue().count("\n") + 1
-
-
 def _cycle_stable(program: str) -> bool:
     """The interpreter's box is identical for every whole number of cycles."""
     io = ScriptedIO()
@@ -76,56 +67,14 @@ def test_all_two_input_functions() -> None:
             assert _check(table, bits) == int(table[row]), f"{table} bits {bits}"
 
 
-@pytest.mark.parametrize("n", [3, 4, 5, 6])
-def test_weight_thresholds(n: int) -> None:
-    """Every weight-threshold table is decodable via the box height."""
-    import itertools
-
-    for k in range(1, n + 1):
-        table = "".join("1" if i.bit_count() >= k else "0" for i in range(2**n))
-        template = a_painter_ant(table)
-        # the height must distinguish every weight, so the threshold decodes
-        heights = set()
-        for bits in itertools.product((0, 1), repeat=n):
-            program = instantiate(template, list(bits))
-            assert _cycle_stable(program), f"{table} {bits}"
-            heights.add(_box_height(program))
-        # strictly monotone heights -> each weight maps to a distinct height
-        assert len(heights) == n + 1, f"n={n} k={k}: heights not distinct"
+def test_three_input_rejected() -> None:
+    with pytest.raises(ValueError, match="n <= 2"):
+        a_painter_ant("00000001")  # AND3
 
 
-@pytest.mark.parametrize("n", [3, 4, 5])
-def test_weight_threshold_is_correct(n: int) -> None:
-    """A threshold table's box height is monotone in the input weight."""
-    import itertools
-
-    for k in range(1, n + 1):
-        table = "".join("1" if i.bit_count() >= k else "0" for i in range(2**n))
-        template = a_painter_ant(table)
-        by_weight: dict[int, set[int]] = {}
-        for bits in itertools.product((0, 1), repeat=n):
-            program = instantiate(template, list(bits))
-            by_weight.setdefault(sum(bits), set()).add(_box_height(program))
-        heights = [sorted(by_weight[w]) for w in range(n + 1)]
-        for w in range(n):
-            assert max(heights[w]) <= min(
-                heights[w + 1]
-            ), f"n={n} k={k}: weight {w} not below weight {w + 1}"
-
-
-def test_three_input_non_threshold_rejected() -> None:
-    import pytest
-
-    # 01101001 is XOR3, not a weight threshold.
-    with pytest.raises(ValueError, match="weight-threshold"):
-        a_painter_ant("01101001")
-
-
-def test_large_n_rejected() -> None:
-    import pytest
-
-    with pytest.raises(ValueError, match="n <= 6"):
-        a_painter_ant("0" * 128 + "1" * 128)  # n == 8 threshold
+def test_three_input_xor_rejected() -> None:
+    with pytest.raises(ValueError, match="n <= 2"):
+        a_painter_ant("01101001")  # XOR3
 
 
 def test_instantiate_complement_placeholders() -> None:
