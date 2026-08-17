@@ -42,7 +42,7 @@ predictable across languages:
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a boolean generator (origin colour, n <= 2), not a text one. |
+| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a boolean generator (exact n <= 2, weight-threshold n >= 3), not a text one. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | Bitdeque | Prints the register/deque contents as numbers. |
