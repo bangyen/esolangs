@@ -80,7 +80,6 @@ per-character encoding can be meaningfully shortened:
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | ArrowQueue | No output; only the halt-vs-hang outcome is observable, which expresses AND/OR/threshold functions but no XOR (see `docs/walls.md`). |
-| Brainpocalypse | `-`-on-zero rewinds to the program start; re-running the `+` bake increments cells unboundedly. |
 | Dotlang | The `W~` warp re-enters the first-match markers, losing branch history. |
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
@@ -267,3 +266,24 @@ repeated.
   (the ``?`` skip read on the fly, the halt-on-zero-cell restart), but the
   absence of any input, generator, or language-defined output class outweighed
   keeping it.
+- **Brainpocalypse: removed.**  A brainfuck-like tape language (``+``/``-``
+  adjust the current cell, ``>``/``<`` move the pointer) whose only control
+  flow is ``-``-on-zero rewinding the instruction pointer to the start of the
+  program.  It has no input command, and its only observable result is the
+  tape printed as space-separated decimal values at halt — an
+  interpreter-invented state dump rather than a language-defined output, so
+  it can never have a text generator.  Its boolean wall is the ``-``-on-zero
+  rewind: it gives a halt-vs-loop convention for one bit (``-`` loops for
+  bit 0, ``+-`` halts for bit 1), but the rewind restarts the prefix and
+  re-running ``+`` increments already-set cells, so multi-input bakes corrupt
+  and no general boolean generator exists.  Unlike the other no-output
+  interpreters it is not a sole implementation — the wiki lists Ruby, Crystal,
+  and Python interpreters by other authors — so removing this interpreter
+  leaves no gap, and its RISC-V cross-check had already been dropped.  The
+  counterweight is stronger than for Kak: Brainpocalypse is Turing-complete
+  (a Waterfall Model construction is proven on the wiki) and by a notable
+  author, but the no-I/O admission criterion applies regardless of
+  computational class.  If it were ever readded, the open work is a
+  *nontrivial* boolean generator — the ``-``-on-zero rewind is the only
+  branch, and a working multi-bit construction (beyond the corrupting bake
+  pattern) has not been found.

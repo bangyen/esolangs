@@ -201,11 +201,6 @@ LANGUAGES: dict[str, Language] = {
         id="brainif",
         split=True,
     ),
-    "Brainpocalypse": Language(
-        "Brainpocalypse",
-        id="brainpocalypse",
-        interpreter="tape_based.brainpocalypse",
-    ),
     "Circlefuck": Language(
         "Circlefuck",
         _generate.circlefuck,

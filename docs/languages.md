@@ -33,7 +33,6 @@ into a template) rather than the program reading input.
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
 | Bitdeque |  | yes |  | yes |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
-| Brainpocalypse |  | yes |  |  |  |  |
 | Circlefuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
 | Collatz Multiverse | yes | yes |  | yes |  | hello |
