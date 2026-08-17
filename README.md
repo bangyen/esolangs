@@ -84,7 +84,7 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 63 languages</summary>
+<summary>Show all 62 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -146,7 +146,6 @@ Languages that operate on a tape (similar to Turing machines).
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/rotfuck.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/sbleq.py))
 - [SLOW ACV MAMMALIAN](https://esolangs.org/wiki/SLOW_ACV_MAMMALIAN) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/slow_acv_mammalian.py))
-- [Stun Step](https://esolangs.org/wiki/Stun_Step) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/stun_step.py))
 - [Suffolk](https://esolangs.org/wiki/Suffolk) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/suffolk.py))
 - [bit~](https://esolangs.org/wiki/bit~) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/bit_tilde.py))
 - [brainfuck](https://esolangs.org/wiki/brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainfuck.py))
