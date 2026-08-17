@@ -74,7 +74,7 @@ they are the weakest additions.
 | Language | Output |
 | --- | --- |
 | ArrowQueue | None; only halt-vs-hang, which expresses AND/OR-class boolean functions (see `docs/walls.md`). |
-| A Painter Ant | Visited-grid bounding box (`#`/`.` raster). |
+| A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (origin colour, n <= 2). |
 | Brainpocalypse | Final tape dump. |
 | Kak | Final tape dump. |
 | Minsky Swap | Final register dump. |
@@ -89,17 +89,15 @@ dropped under the same policy.  The I/O-capable interpreter-only languages
 are not in this tier.
 
 **Generator story is mostly absent.**  None of the fourteen
-interpreter-only languages has a text generator, and none has a full boolean
-generator (each hits a documented wall in `docs/walls.md`).  Jaune is the
-one interpreter-only language *not* in this tier: it has a boolean generator
-(an input-reading decision tree, added when its Python interpreter was
-built).  ArrowQueue additionally realizes the halt-vs-hang *termination*
-convention for AND/OR-class functions (a ring template committed as its
-truth-machine example), which is not a full boolean generator but does give
-it an observable boolean story where the other no-output languages have
-none.  So the generator-story criterion is failed by the entire
-interpreter-only set except Jaune, and the distinction below is only how
-observable their non-generator output is.
+interpreter-only languages has a text generator.  Jaune and A Painter Ant
+now have full boolean generators (Jaune's reads input; A Painter Ant's uses
+the origin-colour parameterized convention, n <= 2), ArrowQueue realizes
+the halt-vs-hang *termination* convention for AND/OR-class functions (a ring
+template committed as its truth-machine example), and the rest have no
+boolean story at all (each hits a documented wall in `docs/walls.md`).  So
+the generator-story criterion is failed by most of the interpreter-only set,
+and the distinction below is only how observable their non-generator output
+is.
 
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
