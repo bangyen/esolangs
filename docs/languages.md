@@ -46,7 +46,7 @@ into a template) rather than the program reading input.
 | Factor | yes | yes |  |  |  | hello truth-machine |
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
-| Grapheme |  | yes |  |  |  |  |
+| Grapheme |  | yes |  | yes |  |  |
 | Home Row | yes | yes |  |  | yes | hello |
 | Jaune |  | yes |  | yes | yes |  |
 | Lamfunc |  | yes |  | yes |  |  |

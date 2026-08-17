@@ -3,6 +3,86 @@
 from esolangs.tools.booleans.helpers import _validate_truth_table
 
 
+def _grapheme_push0() -> str:
+    """Grapheme code pushing the integer 0 (``Z`` is intmode's zero digit)."""
+    return "FZF"
+
+
+def _grapheme_push1() -> str:
+    """Grapheme code pushing the integer 1 (``10 / 10``)."""
+    return "FAF" + "FAF" + "R"
+
+
+def _grapheme_push65() -> str:
+    """Grapheme code pushing 65 (``ord('A')``, the input normalization constant)."""
+    return "FGF" + "FEF" + "FAF" + "R" + "B"  # 70 - (50 / 10)
+
+
+def _grapheme_push_key(key: int) -> str:
+    """Grapheme code pushing the integer variable key ``key`` (a multiple of 10)."""
+    return "F" + chr(key // 10 + 64) + "F"
+
+
+def grapheme(truth_table: str) -> str:
+    """Build a Grapheme program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.  The
+    program prints ``'0'`` or ``'1'``.
+
+    Grapheme reads a whole line with ``W`` and every non-empty string is
+    truthy, so the generator uses a two-character input alphabet instead of
+    ``'0'``/``'1'``: the harness feeds ``A`` for a one bit and ``%`` for a
+    zero.  Each bit is normalized to the integer 0/1 with ``W 65 B T``
+    (``B`` computes ``ord(bit) - 65``, which is 0 exactly for ``A``, and
+    ``T`` maps zero to 1 and nonzero to 0), stored in a variable, and the
+    table is evaluated as a sum of minterms: the result is ``1`` minus the
+    sum of the ``0``-rows' minterms, or the sum of the ``1``-rows' minterms,
+    whichever has fewer rows (each minterm is the arithmetic AND, ``S``, of
+    the bits or their complements ``1 - b``).  Since exactly one row's
+    minterm is 1 for any input, the accumulator holds the table entry, which
+    ``Y`` prints.  No control-flow jumps are needed — only ``A``/``B``/``S``
+    arithmetic and ``T``.
+    """
+    n = _validate_truth_table(truth_table)
+
+    prog = [_grapheme_push65() + _grapheme_push_key(90) + "C"]  # vars[90] = 65
+    for i in range(n):
+        # W reads the bit; normalize to 0/1; store under key 10*(i+1).
+        prog.append(
+            "W"
+            + _grapheme_push_key(90)
+            + "D"
+            + "B"
+            + "T"
+            + _grapheme_push_key(10 * (i + 1))
+            + "C"
+        )
+
+    # Evaluate over the sparser side to bound the program size.
+    zeros = [r for r in range(2**n) if truth_table[r] == "0"]
+    ones = [r for r in range(2**n) if truth_table[r] == "1"]
+    if len(zeros) <= len(ones):
+        rows, acc, op = zeros, _grapheme_push1(), "B"  # acc = 1 - sum(0-row minterms)
+    else:
+        rows, acc, op = ones, _grapheme_push0(), "A"  # acc = sum(1-row minterms)
+    prog.append(acc)
+    for row in rows:
+        prog.append(_grapheme_push1())  # start this minterm at 1
+        for i in range(n):
+            if (row >> (n - 1 - i)) & 1:
+                prog.append(_grapheme_push_key(10 * (i + 1)) + "D")  # factor = b_i
+            else:
+                # factor = 1 - b_i
+                prog.append(
+                    _grapheme_push1() + _grapheme_push_key(10 * (i + 1)) + "D" + "B"
+                )
+            prog.append("S")
+        prog.append(op)  # fold the minterm into the accumulator
+    prog.append("Y")
+    return "".join(prog)
+
+
 def _forth_const(value: int) -> str:
     """Forþ code pushing ``value`` (base-15 digits built with Horner's rule)."""
     digits = "0123456789ABCDEF"

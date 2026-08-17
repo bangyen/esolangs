@@ -1231,6 +1231,69 @@ def run_modulous(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_grapheme(program: str, inputs: list[str]) -> str:
+    """Run a Grapheme boolean program on the ``%``/``A`` input alphabet.
+
+    Grapheme reads a whole line with ``W`` and every non-empty string is
+    truthy, so the generator's input alphabet is ``%`` (0) and ``A`` (1)
+    rather than ``0``/``1``.  This helper maps each ``0``/``1`` bit to the
+    matching ``%``/``A`` line.
+    """
+    from esolangs.interpreters.stack_based.grapheme import run
+
+    alphabet = {"0": "%", "1": "A"}
+    buffer = io.StringIO()
+    with (
+        patch("builtins.input", side_effect=[alphabet[i] for i in inputs]),
+        redirect_stdout(
+            buffer,
+        ),
+    ):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+class TestGrapheme:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.grapheme(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_grapheme(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.grapheme(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_grapheme(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_bad_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.grapheme("011")
+
+    def test_non_binary_rejected(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.grapheme("02")
+
+
 class TestModulous:
     @pytest.mark.parametrize(
         ("table", "n"),
