@@ -191,9 +191,9 @@ past `n == 2` (the search caps at 6 of 8 combinations).
 ## Termination-based convention (partial, not a boolean generator)
 
 A "halt vs. loop forever" convention — the program halts iff the embedded
-input bits satisfy the function — was explored for the three languages with
-a built-in infinite-loop branch.  It expresses the one-input functions but
-no multi-input tree:
+input bits satisfy the function — was explored for the languages with a
+built-in infinite-loop branch.  It expresses one-input functions, and some
+languages reach multi-input threshold functions:
 
 - **Brainpocalypse**: `-`-on-zero rewinds and loops, so `-` loops for bit 0
   and `+-` halts for bit 1; but the rewind restarts the prefix and re-running
@@ -206,10 +206,21 @@ no multi-input tree:
   string (not corrupted by restart), so `0H` halts and `1H` loops; but the
   halt depends only on the front-most output character, so multi-bit trees
   still fail.
+- **ArrowQueue**: a queue-sustaining ring (``[" ~*", "+~*", "*~+"]``) hangs
+  iff its center `~` is present, so the ring is a one-input identity gadget
+  under the convention.  With bit cells spread across the ring it becomes
+  an *n*-ary AND (hang iff all bits present); the OR and NOR tables are
+  expressible in other layouts (verified by search).  But the hang structure
+  sustains iff its single sustainer cell is `~` — each bit can only add a
+  "must be present" literal, so a single ring is one AND of literals (one
+  minterm), and multiple rings cannot be OR'd on the IP's single path.
+  XOR/XNOR (two disjunct minterms) are therefore not expressible, and a
+  200,000-grid search never produced them.  So ArrowQueue realizes the
+  convention for threshold/AND/OR-class functions, not arbitrary tables.
 
 No existing boolean generator uses this convention; it would require a new
 harness contract (termination as the answer) and still does not unlock a
-multi-input generator in any of the three.
+general multi-input generator in any of these languages.
 
 ## Multiply capability (Jaune realizes it)
 

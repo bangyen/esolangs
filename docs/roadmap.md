@@ -73,7 +73,7 @@ they are the weakest additions.
 
 | Language | Output |
 | --- | --- |
-| ArrowQueue | None at all; the IP walks the grid and halts. |
+| ArrowQueue | None; only halt-vs-hang, which expresses AND/OR-class boolean functions (see `docs/walls.md`). |
 | A Painter Ant | Visited-grid bounding box (`#`/`.` raster). |
 | Brainpocalypse | Final tape dump. |
 | Kak | Final tape dump. |
@@ -88,14 +88,18 @@ dropped under the same policy.  The I/O-capable interpreter-only languages
 (2 Bits 1 Byte, Number Seventy-Four, Trash, Grapheme, Movesum, Lightlang)
 are not in this tier.
 
-**Generator story is uniformly absent.**  None of the fourteen
-interpreter-only languages has a generator of either kind — every one lacks
-both a text and a boolean generator (each hits a documented wall in
-`docs/walls.md`).  Jaune is the one interpreter-only language *not* in this
-tier: it has a boolean generator (an input-reading decision tree, added when
-its Python interpreter was built).  So the generator-story criterion is
-failed by the entire interpreter-only set except Jaune, and the distinction
-below is only how observable their non-generator output is.
+**Generator story is mostly absent.**  None of the fourteen
+interpreter-only languages has a text generator, and none has a full boolean
+generator (each hits a documented wall in `docs/walls.md`).  Jaune is the
+one interpreter-only language *not* in this tier: it has a boolean generator
+(an input-reading decision tree, added when its Python interpreter was
+built).  ArrowQueue additionally realizes the halt-vs-hang *termination*
+convention for AND/OR-class functions (a ring template committed as its
+truth-machine example), which is not a full boolean generator but does give
+it an observable boolean story where the other no-output languages have
+none.  So the generator-story criterion is failed by the entire
+interpreter-only set except Jaune, and the distinction below is only how
+observable their non-generator output is.
 
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
