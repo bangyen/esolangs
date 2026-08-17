@@ -51,10 +51,8 @@ predictable across languages:
 | Lightlang | Prints only the single bit as a number. |
 | Minsky Swap | Prints the registers as numbers. |
 | Movesum | Prints `n ` (numbers with a trailing space). |
-| Number Seventy-Four | Output is `0`/`1`/`H` from a pass-restart model. |
 | RAM0 | Prints a state dump. |
 | Stun Step | Prints the reached cells as space-separated decimal numbers. |
-| Trash | Prints only a prime-advanced number. |
 
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
@@ -93,11 +91,9 @@ per-character encoding can be meaningfully shortened:
 | Lightlang | `&` skips one character, so a decision-tree node cannot route to a multi-character subtree. |
 | Minsky Swap | `~` targets are absolute indices that shift under substitution. |
 | Movesum | No conditional; the loop repeats until the array stops changing. |
-| Number Seventy-Four | Halt depends only on the front-most output character. |
 | RAM0 | `goto` is an absolute token index that shifts under substitution. |
 | Stun Step | The loop-back re-runs the code with a shifted pointer, corrupting the bit bakes. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
-| Trash | Prints only a prime-advanced number; can never print `'1'`. |
 | WII2D | The accumulator never affects control flow. |
 
 ## Generator caps (shipped)
@@ -229,3 +225,25 @@ repeated.
   disassembly example, and the interpreter followed the example to match
   Hakerh400's reference) — was weighed and did not outweigh the absence of
   any generator, gap, or unique verification value.
+- **Number Seventy-Four: removed.**  A string-rewriting language whose three
+  commands ``0``/``1``/``H`` only ever *prepend* to an output string, run in
+  repeated passes until the output starts with ``H``; it has no input
+  command.  It can never have a text generator (the output alphabet is
+  ``0``/``1``/``H``) or a boolean generator (the halt depends only on the
+  front-most output character).  Unlike 2 Bits 1 Byte it is a genuine gap to
+  remove — the wiki categorizes it Unimplemented, so this interpreter was
+  the only one — and its Rust cross-check had already been dropped.  The
+  interpreter was hand-verifiable (it resolved the pass-boundary halting
+  check and the restart-forever behavior), but the absence of any input,
+  generator, or non-trivial output class was weighed against the gap and won.
+- **Trash: removed.**  The wiki defines a single function — advance to the
+  next prime, or print ``0`` for a non-prime start — applied to a number,
+  so a program is just a value with leading ``t`` step counts: a gadget
+  rather than a language model (it exists to satisfy CGCC's definition of a
+  programming language).  It can never have a text generator (only
+  prime-advanced output) or a boolean generator (it can never print ``1``).
+  It is also a genuine gap to remove (the wiki categorizes it Unimplemented;
+  this interpreter was the only implementation) and its Rust cross-check was
+  already dropped.  The interpreter resolved real spec details (trial
+  division, 2-is-prime, leading-digit and prefix parsing) but the language's
+  triviality and missing generator story outweighed the gap.

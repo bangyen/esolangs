@@ -1622,9 +1622,8 @@ def _verify_bit_tilde() -> bool:
 
 # -- The generator-less extra/ interpreters (corpus only) -------------------
 #
-# Kak, Trash, Number Seventy-Four, Brainpocalypse, and Stun Step have no
-# generators (narrow output classes), so only the fixed corpora are
-# checked.
+# Kak, Brainpocalypse, and Stun Step have no generators (narrow output
+# classes), so only the fixed corpora are checked.
 
 
 @functools.cache
