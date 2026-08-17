@@ -25,7 +25,7 @@ from typing import TypeAlias
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
 
-__all__ = ["back", "bfpda", "bio", "instantiate", "nocomment"]
+__all__ = ["back", "bfpda", "bio", "instantiate", "lamfunc", "nocomment"]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
 # ("node", node_id, level, zero_subtree, one_subtree).
@@ -54,11 +54,11 @@ def instantiate(
     return template
 
 
-def bio(truth_table: str, n: int) -> str:
+def bio(truth_table: str) -> str:
     """Build a BIO template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     BIO has three registers (``x``, ``y``, ``z``).  ``{Xi}`` is replaced by
     ``0ox`` (increment ``x``) when bit ``i`` is one and by nothing when it
@@ -70,16 +70,7 @@ def bio(truth_table: str, n: int) -> str:
     ancestor loops unwind, and builds the result in ``z`` before printing
     it with ``1iz``.
     """
-    _validate_truth_table(truth_table, n)
-
-    def set_bit(_i: int, bit: int) -> str:
-        return (
-            "0ox" * bit
-        )  # pragma: no cover - bio returns a template; the harness injects bits
-
-    def set_comp(_i: int, _bit: int) -> str:
-        # y = 1 - x, computed at runtime from the raw bit in x (x cleared)
-        return "0oy" + "0ix" + "1oy" + "1ox" + "}"  # pragma: no cover - see set_bit
+    n = _validate_truth_table(truth_table)
 
     def leaf(value: str) -> str:
         # build the result in z, print it, then clear x and y so every
@@ -119,11 +110,11 @@ def bio(truth_table: str, n: int) -> str:
     return node(0, list(range(2**n)))
 
 
-def back(truth_table: str, n: int) -> str:
+def back(truth_table: str) -> str:
     r"""Build a Back template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     Back is a no-input grid language: a beam bounces across a grid, ``\\``
     and ``/`` reflect its direction, and ``*`` halts, printing the tape.  A
@@ -136,7 +127,7 @@ def back(truth_table: str, n: int) -> str:
     child's own region, and each leaf sets the tape bit (``-``) when its
     table entry is one and halts (``*``) printing the tape.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     rows: int = 2 ** (n + 1) - 1
     center: int = 2**n - 1
     # a full tree has 2**(n+1)-1 nodes, each taking two columns
@@ -199,11 +190,11 @@ def back(truth_table: str, n: int) -> str:
 _byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"
 
 
-def nocomment(truth_table: str, n: int) -> str:
+def nocomment(truth_table: str) -> str:
     """Build a NoComment template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     NoComment has no input command, so this is a parameterized generator: the
     template's ``{Xi}``/``{Ci}`` placeholders become a constant-length setter
@@ -223,7 +214,7 @@ def nocomment(truth_table: str, n: int) -> str:
     the generator covers every table up to eight inputs and raises
     :class:`ValueError` beyond that.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     if n > 8:
         raise ValueError("the NoComment boolean generator supports n <= 8")
 
@@ -312,11 +303,11 @@ def nocomment(truth_table: str, n: int) -> str:
     return "".join(setup + commands)
 
 
-def bfpda(truth_table: str, n: int) -> str:
+def bfpda(truth_table: str) -> str:
     """Build a BF-PDA template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
 
     BF-PDA has no input command, so this is a parameterized generator: the
     template's ``{Xi}``/``{Ci}`` placeholders become a push of the bit and of
@@ -333,13 +324,7 @@ def bfpda(truth_table: str, n: int) -> str:
     guard.  The one loop clears its guard with ``@`` before exiting, so the
     other side's guard is untouched and the if/else separates cleanly.
     """
-    _validate_truth_table(truth_table, n)
-
-    def set_bit(_i: int, bit: int) -> str:
-        return "<@" if bit else "<"  # pragma: no cover - bfpda returns a template
-
-    def set_comp(_i: int, bit: int) -> str:
-        return "<@" if not bit else "<"  # pragma: no cover - bfpda returns a template
+    n = _validate_truth_table(truth_table)
 
     def leaf(value: str) -> str:
         # push the answer bit, print it, pop it (balanced)
@@ -371,3 +356,36 @@ def bfpda(truth_table: str, n: int) -> str:
         )
 
     return node(0, list(range(2**n)))
+
+
+def lamfunc(truth_table: str) -> str:
+    """Build a Lamfunc template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Lamfunc has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders become the binary literal for each input
+    bit, and the harness instantiates one program per input combination.
+
+    The template is a decision tree of ``i`` builtins — ``i x y z`` returns
+    ``y`` when ``x`` is nonzero else ``z`` — over the embedded bit constants,
+    with ``p 0``/``p 1`` at the leaves printing the table's result as binary.
+    A subtree whose table slice is a constant collapses to a single leaf, so
+    constant rows emit no branching.
+    """
+    n = _validate_truth_table(truth_table)
+
+    def node(level: int, lo: int, hi: int) -> str:
+        results = {truth_table[k] for k in range(lo, hi)}
+        if level == n or len(results) == 1:
+            return f"p {results.pop()}"
+        mid = (lo + hi) // 2
+        # i x y z returns y when x is nonzero else z: y is the one-case
+        return (
+            f"i {{X{level}}} "
+            f"{node(level + 1, mid, hi)} "
+            f"{node(level + 1, lo, mid)}"
+        )
+
+    return node(0, 0, 2**n)

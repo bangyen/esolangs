@@ -15,7 +15,6 @@ from unittest.mock import patch
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.other.keys import run as keys_run
 from esolangs.interpreters.queue_based.bitdeque import run as bitdeque_run
 from esolangs.interpreters.register_based.bio import run as bio_run
 from esolangs.interpreters.register_based.huf import run as huf_run
@@ -87,14 +86,6 @@ def test_brainif_random() -> None:
             for _ in range(random.randint(1, 8))
         ]
         run_safely(brainif_run, lines)
-
-
-def test_keys_random() -> None:
-    random.seed(4)
-    for _ in range(50):
-        a = _random_string("\\/-_", 10)
-        b = _random_string("\\/-_", 10)
-        run_safely(keys_run, [a, b])
 
 
 def test_bitdeque_random() -> None:

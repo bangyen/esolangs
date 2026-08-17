@@ -1,16 +1,18 @@
 """Boolean-function program generators (re-exported from the booleans package).
 
 Each generator builds a program that reads n boolean inputs and prints the
-truth-table result for the combination it is given.  The parameterized
-generators (``bio``, ``back``, ``nocomment``, ``bfpda``) instead emit a
-template the harness instantiates per input combination, for the no-input
-languages.
+truth-table result for the combination it is given; the input count ``n``
+is implied by the table length (``2**n`` entries), so the generators take
+only the table.  The parameterized generators (``bio``, ``back``,
+``nocomment``, ``bfpda``) instead emit a template the harness instantiates
+per input combination, for the no-input languages.
 
 The generators live in ``esolangs.tools.booleans``, split by language family
 (``register``, ``stack``, ``tape``, ``other``, ``parameterized``); this
 module re-exports them for compatibility.
 """
 
+from esolangs.tools.booleans.a_painter_ant import a_painter_ant
 from esolangs.tools.booleans.abcdirection import abcdirection
 from esolangs.tools.booleans.other import (
     between,
@@ -31,6 +33,7 @@ from esolangs.tools.booleans.parameterized import (
     bfpda,
     bio,
     instantiate,
+    lamfunc,
     nocomment,
 )
 from esolangs.tools.booleans.register import (
@@ -44,7 +47,6 @@ from esolangs.tools.booleans.register import (
 )
 from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
 from esolangs.tools.booleans.tape import (
-    ascii_art,
     basicfuck,
     bf_tree,
     brainfuck,
@@ -53,6 +55,8 @@ from esolangs.tools.booleans.tape import (
     circlefuck_byte,
     dimensional,
     dimensional_tree,
+    jaune,
+    jaune_multiply,
     minifuck,
     painfuck,
     rotfuck,
@@ -64,9 +68,9 @@ from esolangs.tools.booleans.tape import (
 
 __all__ = [
     "BOOLEAN",
+    "a_painter_ant",
     "abcdirection",
     "addsubjump",
-    "ascii_art",
     "back",
     "basicfuck",
     "between",
@@ -90,6 +94,9 @@ __all__ = [
     "forth",
     "home_row",
     "instantiate",
+    "jaune",
+    "jaune_multiply",
+    "lamfunc",
     "laserfuck",
     "minifuck",
     "modulous",
@@ -121,7 +128,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "AddSubJump",
         "3D Brainfuck",
         "6-5",
-        "ASCII art",
+        "A Painter Ant",
         "Back",
         "Basicfuck",
         "Between",
@@ -141,6 +148,8 @@ BOOLEAN: frozenset[str] = frozenset(
         "Forbin",
         "Forþ",
         "Home Row",
+        "Jaune",
+        "Lamfunc",
         "LaserFuck",
         "Minifuck",
         "Modulous",

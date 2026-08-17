@@ -103,9 +103,9 @@ class TestPainfuck:
         from unittest.mock import patch
 
         # y skips the next command on a coin flip; pin both outcomes
-        with patch("random.randrange", return_value=1):
+        with patch("secrets.randbelow", return_value=1):
             assert run_program("pyu") == ""
-        with patch("random.randrange", return_value=0):
+        with patch("secrets.randbelow", return_value=0):
             assert run_program("pyu") == "\x02"
 
     def test_error(self) -> None:

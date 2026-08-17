@@ -27,7 +27,8 @@ languages, each verified against its spec.  Most interpreters read the
 program file from the first command-line argument.
 
 Planned work is tracked in [`docs/roadmap.md`](docs/roadmap.md); documented
-limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md).
+limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md),
+with the full wall arguments in [`docs/walls.md`](docs/walls.md).
 
 ## Usage
 
@@ -83,9 +84,9 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 69 languages</summary>
+<summary>Show all 65 languages</summary>
 
-The full capability matrix (generators, native and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
+The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
 ### Grid-based Languages
 
@@ -95,7 +96,6 @@ Languages that move a pointer or beam across a 2D grid.
 - [A Painter Ant](https://esolangs.org/wiki/A_Painter_Ant) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/a_painter_ant.py))
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
-- [DSDLAI](https://esolangs.org/wiki/DSDLAI) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dsdlai.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
 - [Dotlang](https://esolangs.org/wiki/Dotlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dotlang.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/laserfuck.py))
@@ -130,7 +130,6 @@ Languages that operate on a tape (similar to Turing machines).
 - [3D Brainfuck](https://esolangs.org/wiki/3D_Brainfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/three_d_brainfuck.py))
 - [6-5](https://esolangs.org/wiki/6-5) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/six_five.py))
 - [ABCDirection](https://esolangs.org/wiki/ABCDirection) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/abcdirection.py))
-- [ASCII art](https://esolangs.org/wiki/ASCII_art) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/ascii_art.py))
 - [Back](https://esolangs.org/wiki/Back) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/back.py))
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/basicfuck.py))
 - [BrainIf](https://esolangs.org/wiki/BrainIf) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainif.py))
@@ -140,11 +139,11 @@ Languages that operate on a tape (similar to Turing machines).
 - [EXCON](https://esolangs.org/wiki/EXCON) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/excon.py))
 - [Factor](https://esolangs.org/wiki/Factor) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/factor.py))
 - [Home Row](https://esolangs.org/wiki/Home_Row) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/home_row.py))
+- [Jaune](https://esolangs.org/wiki/Jaune) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/jaune.py))
 - [Kak](https://esolangs.org/wiki/Kak) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/kak.py))
 - [Minifuck](https://esolangs.org/wiki/Minifuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/minifuck.py))
 - [Movesum](https://esolangs.org/wiki/Movesum) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/movesum.py))
 - [NoComment](https://esolangs.org/wiki/NoComment) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/nocomment.py))
-- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/number_seventy_four.py))
 - [Painfuck](https://esolangs.org/wiki/Painfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/painfuck.py))
 - [ROTfuck](https://esolangs.org/wiki/ROTfuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/rotfuck.py))
 - [S*bleq](https://esolangs.org/wiki/S*bleq) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/sbleq.py))
@@ -179,11 +178,9 @@ Languages that use registers to store and manipulate data.
 
 Languages that don't fit into the above categories.
 
-- [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/two_bits_one_byte.py))
 - [Container](https://esolangs.org/wiki/Container) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/container.py))
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/forbin.py))
-- [Keys](https://esolangs.org/wiki/Keys) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/keys.py))
-- [Trash](https://esolangs.org/wiki/Trash) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/trash.py))
+- [Lamfunc](https://esolangs.org/wiki/Lamfunc) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/lamfunc.py))
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
 
 <!-- IMPLEMENTED:END -->
@@ -195,17 +192,13 @@ Languages that don't fit into the above categories.
 <details>
 <!-- EXTRA:START -->
 
-<summary>Show all 17 implementations</summary>
+<summary>Show all 10 implementations</summary>
 
-Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them, and languages whose output classes are too narrow for a text generator (Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, Stun Step) still get a Python interpreter differentially verified against the native cross-check.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
+Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
 
 ### RISC-V Assembly Implementations
 
-- [123](https://esolangs.org/wiki/123)
-- [2 Bits, 1 Byte](https://esolangs.org/wiki/2_Bits,_1_Byte)
-- [Brainpocalypse](https://esolangs.org/wiki/Brainpocalypse)
 - [NoComment](https://esolangs.org/wiki/NoComment)
-- [Stun Step](https://esolangs.org/wiki/Stun_Step)
 
 ### Rust Implementations
 
@@ -215,11 +208,8 @@ Implementations written in languages other than Python, used as cross-check refe
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
 - [bit~](https://esolangs.org/wiki/Bit~)
 - [Forþ](https://esolangs.org/wiki/For%C3%BE)
-- [Kak](https://esolangs.org/wiki/Kak)
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck)
-- [Number Seventy-Four](https://esolangs.org/wiki/Number_Seventy-Four)
 - [Painfuck](https://esolangs.org/wiki/Painfuck)
-- [Trash](https://esolangs.org/wiki/Trash)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 
 <!-- EXTRA:END -->
@@ -348,9 +338,11 @@ python scripts/bundle_one.py Nevermind
 
 Contributions are welcome!  If you find a bug or want to add a language,
 check the [roadmap](docs/roadmap.md) and [limitations](docs/limitations.md)
-first, then open an issue or pull request.  New languages are registered in
-`src/esolangs/registry.py`.  Run `just test` (the full local check: lint,
-pytest, bandit, cargo, and the Python verify scripts) to verify a change.
+first, and read [CONTRIBUTING.md](CONTRIBUTING.md) — including whether the
+language is worth adding — before proposing one.  New languages are
+registered in `src/esolangs/registry.py`.  Run `just test` (the full local
+check: lint, pytest, bandit, cargo, and the Python verify scripts) to verify
+a change.
 
 To run that check automatically on every push:
 

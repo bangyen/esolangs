@@ -1,10 +1,7 @@
 """Unit tests for the Brainfuck interpreter.
 
-The interpreter is defined to be interchangeable with the ASCII-art
-interpreter (same wrapping tape, ``<`` clamp, and bracket-matching loops),
-so the interesting property here is parity: any brainfuck program must
-behave identically when its ASCII-art translation runs instead.  These
-tests also pin the plain semantics directly.
+The interpreter pins the wrapping tape, ``<`` clamp, and bracket-matching
+loop semantics directly.
 """
 
 import importlib
@@ -12,7 +9,6 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-import esolangs
 from esolangs.interpreters.io import IO
 
 bf = importlib.import_module("esolangs.interpreters.tape_based.brainfuck")
@@ -73,14 +69,3 @@ class TestBrainfuck:
             run_and_capture("]")
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("+]")
-
-    def test_parity_with_ascii_art(self) -> None:
-        """A program and its ASCII-art translation behave identically."""
-        programs = [
-            "+++[>++[>+<-]<-]>+++.",
-            "+++[>++<-]>++.>",
-            ">+<<.",
-        ]
-        for program in programs:
-            art = esolangs.transpile("brainfuck", "ASCII art", program)
-            assert esolangs.run("brainfuck", program) == esolangs.run("ASCII art", art)

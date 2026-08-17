@@ -61,11 +61,7 @@ _EXTRA_DIRS = [
         ROOT / "extra" / "assembly",
         "*-riscv.s",
         {
-            "123": "123",
-            "2b1b": "2 Bits, 1 Byte",
-            "brainpocalypse": "Brainpocalypse",
             "nocomment": "NoComment",
-            "stun-step": "Stun Step",
         },
         "RISC-V Assembly Implementations",
     ),
@@ -77,20 +73,17 @@ _EXTRA_DIRS = [
             "basicfuck": "Basicfuck",
             "bit_tilde": "bit~",
             "forth": "Forþ",
-            "kak": "Kak",
             "laserfuck": "LaserFuck",
             "painfuck": "Painfuck",
             "pct_squared_minus_one": "%^2^-1",
-            "number_seventy_four": "Number Seventy-Four",
             "three_x": "3x",
-            "trash": "Trash",
             "unsquare": "Unsquare",
         },
         "Rust Implementations",
     ),
 ]
 
-# Display names of the languages with a native implementation in extra/
+# Display names of the languages with a cross-check implementation in extra/
 # (Rust, Lean, or RISC-V assembly).  These interpreters run as
 # standalone programs rather than through the Python package.
 NATIVE = {name for _, _, names, _ in _EXTRA_DIRS for name in names.values()}
@@ -102,7 +95,6 @@ _EXTRA_WIKI = {
     "Forþ": "For%C3%BE",
     "%^2^-1": "%25%5E2%5E-1",
     "bit~": "Bit~",
-    "Number Seventy-Four": "Number_Seventy-Four",
     "Stun Step": "Stun_Step",
 }
 
@@ -181,7 +173,7 @@ def _capabilities(name: str) -> dict[str, bool]:
     return {
         "generator": lang.generator is not None if lang else False,
         "interpreter": lang.interpreter is not None if lang else False,
-        "native": name in NATIVE,
+        "cross_check": name in NATIVE,
         "boolean": name in BOOLEAN,
         "compiler": name in ASSEMBLY_COMPILERS,
         "hello": hello,
@@ -200,13 +192,14 @@ def render() -> str:
         "hand.",
         "",
         "Python means an in-repo interpreter under `esolangs.interpreters`;",
-        "Native means an implementation in `extra/` that runs as a standalone",
-        "program (Rust, Lean, or RISC-V assembly).  The Boolean",
+        "Cross-check means an implementation in `extra/` that runs as a",
+        "standalone program (Rust, Lean, or RISC-V assembly), used to",
+        "differentially verify the Python interpreter.  The Boolean",
         "column marks the boolean-function generators; Back, BIO, and",
         "NoComment's are parameterized (the harness substitutes input bits",
         "into a template) rather than the program reading input.",
         "",
-        "| Language | Text generator | Python | Native | Boolean | "
+        "| Language | Text generator | Python | Cross-check | Boolean | "
         "Compiler | Examples |",
         "| --- | :---: | :---: | :---: | :---: | :---: | :---: |",
     ]
@@ -216,7 +209,7 @@ def render() -> str:
         lines.append(
             f"| {name} | {'yes' if c['generator'] else ''} | "
             f"{'yes' if c['interpreter'] else ''} | "
-            f"{'yes' if c['native'] else ''} | "
+            f"{'yes' if c['cross_check'] else ''} | "
             f"{'yes' if c['boolean'] else ''} | "
             f"{'yes' if c['compiler'] else ''} | {examples} |"
         )
@@ -237,8 +230,8 @@ def render_languages_section() -> str:
     out: list[str] = [
         f"<summary>Show all {len(RUNNERS)} languages</summary>",
         "",
-        "The full capability matrix (generators, native and boolean support,"
-        " examples) is in [`docs/languages.md`](docs/languages.md).",
+        "The full capability matrix (generators, cross-check and boolean"
+        " support, examples) is in [`docs/languages.md`](docs/languages.md).",
         "",
     ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
@@ -283,13 +276,9 @@ def render_extra_section() -> str:
         "",
         "Implementations written in languages other than Python, used as"
         " cross-check references in CI: most generators are round-trip"
-        " verified against them, and languages whose output classes are too"
-        " narrow for a text generator (Kak, Trash, Number Seventy-Four, 2"
-        " Bits 1 Byte, Brainpocalypse, Stun Step) still get a Python"
-        " interpreter differentially verified against the native cross-check."
-        "  The cross-checks share an exit-code convention mirroring the"
-        " Python interpreters: 0 = success, 2 = malformed program, 3 ="
-        " invalid runtime operation.",
+        " verified against them.  The cross-checks share an exit-code"
+        " convention mirroring the Python interpreters: 0 = success, 2 ="
+        " malformed program, 3 = invalid runtime operation.",
         "",
     ]
     for directory, pattern, names, heading in _EXTRA_DIRS:

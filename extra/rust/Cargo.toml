@@ -16,18 +16,6 @@ name = "unsquare"
 path = "unsquare.rs"
 
 [[bin]]
-name = "kak"
-path = "kak.rs"
-
-[[bin]]
-name = "trash"
-path = "trash.rs"
-
-[[bin]]
-name = "number_seventy_four"
-path = "number_seventy_four.rs"
-
-[[bin]]
 name = "pct_squared_minus_one"
 path = "pct_squared_minus_one.rs"
 

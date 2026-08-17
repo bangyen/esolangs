@@ -41,3 +41,20 @@ Outputs `0` and halts when given `0`, and outputs `1` forever when given `1`:
 
 - `modulous.txt` and `brainif.txt`.  The tests exercise only the terminating
   `0` branch; the `1` branch loops forever by definition.
+- `minifuck.txt` echoes the input bit (its identity boolean function) and
+  halts; Minifuck's generator has no looping branch, so the file is a
+  boolean-function truth table rather than a loop-on-1 machine.
+- `arrowqueue.txt` is the halt-vs-hang ring template: the committed program
+  is the `0` branch (halts on an empty-queue pop), and replacing the center
+  cell's space with `~` makes the ring hang forever — the `1` branch.  This
+  is the language's boolean convention (see `docs/walls.md`).
+
+## multiply
+
+Reads two sentinel-delimited decimal operands (the digits of the first, a
+`*` line, the digits of the second, a `#` line) and prints their product:
+
+- `jaune.txt` is what `esolangs.tools.boolean.jaune_multiply()` generates —
+  Jaune's sentinel construction works for any operand length, which is why
+  the multiply capability takes no digit-count parameter (see
+  `docs/walls.md`).

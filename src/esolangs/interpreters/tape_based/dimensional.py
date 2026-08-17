@@ -154,77 +154,95 @@ def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
     return default, ind
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Dimensional v3.0 program."""
-    m = _matches(code)
-    machine = _Machine()
-    ind = 0
-    comment = False
+class _Runner:
+    """One Dimensional run: the code position, comment mode, and machine."""
 
-    while ind < len(code):
-        c = code[ind]
-        ind += 1
-        if comment:
+    def __init__(self, code: str, io: IO) -> None:
+        self.code = code
+        self.io = io
+        self.m = _matches(code)
+        self.machine = _Machine()
+        self.ind = 0
+        self.comment = False
+
+    @property
+    def halted(self) -> bool:
+        return self.ind >= len(self.code)
+
+    def step(self) -> None:
+        """Execute one command (or comment character), advancing the position."""
+        code = self.code
+        machine = self.machine
+        c = code[self.ind]
+        self.ind += 1
+        if self.comment:
             if c == "*":
-                comment = False
-            continue
+                self.comment = False
+            return
         if c == "*":
-            comment = True
+            self.comment = True
         elif c == ">":
-            dim, ind = _number(code, ind, None)
+            dim, self.ind = _number(code, self.ind, None)
             machine.move(machine.value() if dim is None else dim, 1)
         elif c == "<":
-            dim, ind = _number(code, ind, None)
+            dim, self.ind = _number(code, self.ind, None)
             machine.move(machine.value() if dim is None else dim, -1)
         elif c == "+":
             machine.set_value(machine.value() + 1)
         elif c == "-":
             machine.set_value(machine.value() - 1)
         elif c == ".":
-            io.print_char(chr(machine.value()))
+            self.io.print_char(chr(machine.value()))
         elif c == ",":
-            machine.set_value(io.input_char())
+            machine.set_value(self.io.input_char())
         elif c == "d":
-            machine.set_value(io.input_num())
+            machine.set_value(self.io.input_num())
         elif c == "x":
-            machine.set_value(int(io.input_str(), 16))
+            machine.set_value(int(self.io.input_str(), 16))
         elif c == ":":
-            if ind >= len(code):
+            if self.ind >= len(code):
                 raise ValueError("':' must be followed by a character")
-            machine.set_value(ord(code[ind]))
-            ind += 1
+            machine.set_value(ord(code[self.ind]))
+            self.ind += 1
         elif c == "=":
-            if ind + 2 > len(code):
+            if self.ind + 2 > len(code):
                 raise ValueError("'=' must be followed by two hex digits")
             try:
-                machine.set_value(int(code[ind : ind + 2], 16))
+                machine.set_value(int(code[self.ind : self.ind + 2], 16))
             except ValueError as exc:
                 raise ValueError(
-                    f"invalid hex literal {code[ind : ind + 2]!r}"
+                    f"invalid hex literal {code[self.ind : self.ind + 2]!r}"
                 ) from exc
-            ind += 2
+            self.ind += 2
         elif c == "$":
-            axis, ind = _number(code, ind, 2)
+            axis, self.ind = _number(code, self.ind, 2)
             machine.axis = max(2, axis if axis is not None else 2)
         elif c == "[":
             if machine.value() == 0:
-                ind = m[ind - 1] + 1
+                self.ind = self.m[self.ind - 1] + 1
         elif c == "]":
-            ind = m[ind - 1]
+            self.ind = self.m[self.ind - 1]
         elif c == "{":
-            open_i = ind - 1
-            dim, ind = _number(code, ind, 0)
+            open_i = self.ind - 1
+            dim, self.ind = _number(code, self.ind, 0)
             if machine.coord(dim if dim is not None else 0) == 0:
-                ind = m[open_i] + 1
+                self.ind = self.m[open_i] + 1
         elif c == "}":
-            ind = m[ind - 1]
+            self.ind = self.m[self.ind - 1]
         elif c == "?":
-            dim, ind = _number(code, ind, 0)
+            dim, self.ind = _number(code, self.ind, 0)
             machine.set_value(machine.coord(dim if dim is not None else 0) % 256)
         elif c == "!":
-            dim, ind = _number(code, ind, 0)
+            dim, self.ind = _number(code, self.ind, 0)
             machine.clear(dim if dim is not None else 0)
         # any other character is not a command and is ignored
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Dimensional v3.0 program."""
+    runner = _Runner(code, io)
+    while not runner.halted:
+        runner.step()
 
 
 if __name__ == "__main__":

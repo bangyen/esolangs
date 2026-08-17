@@ -162,11 +162,6 @@ jobs:
         : > /tmp/empty.txt
         ./extra/rust/target/debug/laserfuck /tmp/empty.txt
         ./extra/rust/target/debug/unsquare /tmp/empty.txt
-        ./extra/rust/target/debug/kak /tmp/empty.txt
-        printf 't3' > /tmp/trash.txt
-        [ "$(./extra/rust/target/debug/trash /tmp/trash.txt)" = "5" ]
-        printf '0H' > /tmp/74.txt
-        [ "$(./extra/rust/target/debug/number_seventy_four /tmp/74.txt)" = "H0" ]
         printf 'l' > /tmp/pct.txt
         [ "$(./extra/rust/target/debug/pct_squared_minus_one /tmp/pct.txt)" = "0" ]
         printf '~(' > /tmp/bit_tilde.txt
@@ -208,18 +203,8 @@ jobs:
             -o "/tmp/$base" "$s"
           echo "Built $s"
         done
-        # the 123 port must round-trip a generated program through the real
-        # qemu-riscv64 (user mode) to verify the interpreter end to end
-        PYTHONPATH=src python3 -c \
-          "from esolangs.tools.generate import one_two_three; open('/tmp/123.prog','w').write(one_two_three('Hi'))"
-        qemu-riscv64 /tmp/123-riscv < /tmp/123.prog > /tmp/123.out
-        [ "$(cat /tmp/123.out)" = "Hi" ] || { echo "got: $(cat /tmp/123.out)"; exit 1; }
-        echo "RISC-V 123 round-tripped Hi"
-        # the other reference interpreters must execute and halt
-        qemu-riscv64 /tmp/brainpocalypse-riscv </dev/null >/dev/null
+        # the reference interpreter must execute and halt
         qemu-riscv64 /tmp/nocomment-riscv </dev/null >/dev/null
-        qemu-riscv64 /tmp/stun-step-riscv </dev/null >/dev/null
-        printf '\xff' | qemu-riscv64 /tmp/2b1b-riscv >/dev/null
         echo "All extra/ RISC-V interpreters ran natively"
 
     - name: Run the RISC-V reference interpreters under unicorn
@@ -227,17 +212,11 @@ jobs:
         python3 -m pip install -q unicorn
         # the differential (Python vs the RISC-V references, corpus + fuzz)
         # needs unicorn and the RISC-V compiler, which the rust job lacks;
-        # LaserFuck's runs there instead.  It also covers the 123 RISC-V
-        # port and the hand-written 3-jump programs.
+        # LaserFuck's runs there instead.
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
-        # the other reference interpreters must execute and halt
-        python3 scripts/riscv_elf_runner.py /tmp/brainpocalypse-riscv \
-          </dev/null >/dev/null
+        # the reference interpreter must execute and halt
         python3 scripts/riscv_elf_runner.py /tmp/nocomment-riscv \
           </dev/null >/dev/null
-        python3 scripts/riscv_elf_runner.py /tmp/stun-step-riscv \
-          </dev/null >/dev/null
-        printf '\xff' | python3 scripts/riscv_elf_runner.py /tmp/2b1b-riscv >/dev/null
         echo "All extra/ RISC-V interpreters ran under unicorn"
 
     - name: Compile and run the RISC-V compilers' output

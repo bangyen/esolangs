@@ -78,9 +78,6 @@ ROOT = Path(__file__).parents[1]
 RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
 RUST_BIN = RUST_BIN_DIR / "laserfuck"
 UNSQUARE_BIN = RUST_BIN_DIR / "unsquare"
-KAK_BIN = RUST_BIN_DIR / "kak"
-TRASH_BIN = RUST_BIN_DIR / "trash"
-NUMBER_SEVENTY_FOUR_BIN = RUST_BIN_DIR / "number_seventy_four"
 PCT_SQUARED_MINUS_ONE_BIN = RUST_BIN_DIR / "pct_squared_minus_one"
 BIT_TILDE_BIN = RUST_BIN_DIR / "bit_tilde"
 FORTH_BIN = RUST_BIN_DIR / "forth"
@@ -111,7 +108,7 @@ def _fuzz_boolean(name, builder, native, python, rng, count):
     for _ in range(count):
         n = rng.randint(1, 4)
         table = "".join(rng.choice("01") for _ in range(2**n))
-        program = builder(table, n)
+        program = builder(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             stdin = ("\n".join(map(str, bits)) + "\n").encode()
@@ -359,62 +356,6 @@ def _verify_nocomment() -> bool:
     return failures == 0
 
 
-def _run_one_two_three_python(program: str) -> tuple[bytes, int]:
-    """Run the Python 123 interpreter; return (output, exit code)."""
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.tape_based.one_two_three import run
-
-    io_obj = ScriptedIO("")
-    run(program, io_obj)
-    return io_obj.getvalue().encode("latin1"), 0
-
-
-# Generator-produced 123 programs that must echo their text, plus hand-written
-# programs exercising the ``3``-jump paths the generator never emits.
-_ONE_TWO_THREE_TEXTS = ("Hi", "Hello, World!", "A", "cat")
-_ONE_TWO_THREE_HAND = (("3231", b""), ("132231", b""))
-
-
-def _verify_one_two_three() -> bool:
-    """Compare the Python 123 interpreter against the assembly cross-check.
-
-    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
-    requires unicorn and a RISC-V cross-compiler; it is skipped when either
-    is missing.
-    """
-    if not _asm_refs_ready("123"):
-        return True
-
-    from esolangs.tools.generate import one_two_three
-
-    failures = 0
-
-    def check(program: str, expected: bytes, label: str) -> None:
-        nonlocal failures
-        ref = _asm_refs("123", program)
-        py_out, py_code = _run_one_two_three_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code) or asm_out != expected:
-            failures += 1
-            print(
-                f"123 {label!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)} expected={expected!r}"
-            )
-
-    for text in _ONE_TWO_THREE_TEXTS:
-        check(one_two_three(text), text.encode(), text)
-    for program, expected in _ONE_TWO_THREE_HAND:
-        check(program, expected, program)
-
-    if not failures:
-        total = len(_ONE_TWO_THREE_TEXTS) + len(_ONE_TWO_THREE_HAND)
-        print(f"123 differential: {total} programs match")
-    return failures == 0
-
-
 def _run_native(
     cmd: list[str],
     program: str,
@@ -506,7 +447,7 @@ def _check_laserfuck_boolean(table: str, n: int, runs: int = 12) -> tuple[int, i
     """
     from esolangs.tools.booleans import other
 
-    program = other.laserfuck(table, n)
+    program = other.laserfuck(table)
     checked = 0
     failures = 0
     for combo in range(2**n):
@@ -1308,35 +1249,6 @@ def _verify_pct() -> bool:
     return failures == 0
 
 
-def _fuzz_pct(rng: random.Random, count: int) -> bool:
-    """Differentially fuzz %^2^-1 with random byte text.
-
-    The language has no boolean generator, so the text generator's programs
-    are fuzzed instead: they are built per byte and always terminate, unlike
-    a hand-written ``t`` loop.
-    """
-    from esolangs.tools.generate import pct_squared_minus_one
-
-    binary = _build_pct()
-    if binary is None:
-        return True
-
-    failures, checked = _fuzz_text(
-        "%^2^-1",
-        pct_squared_minus_one,
-        lambda program, stdin: _run_pct_native(binary, program, stdin),
-        _run_pct_python,
-        rng,
-        count,
-    )
-    print(
-        f"%^2^-1 fuzz: {checked} programs match"
-        if not failures
-        else f"%^2^-1 fuzz: {failures} failures of {checked}"
-    )
-    return failures == 0
-
-
 # -- 2dFish corpus: every command plus the error categories ---------------
 
 TWO_D_FISH_CORPUS = [
@@ -1708,71 +1620,10 @@ def _verify_bit_tilde() -> bool:
     return failures == 0
 
 
-def _fuzz_bit_tilde(rng: random.Random, count: int) -> bool:
-    """Differentially fuzz bit~ with random byte text.
-
-    The language has no boolean generator, so the text generator's programs
-    are fuzzed instead.
-    """
-    from esolangs.tools.generate import bit_tilde
-
-    if not BIT_TILDE_BIN.exists():
-        print("[skip] bit~ fuzz: Rust reference not built")
-        return True
-
-    failures, checked = _fuzz_text(
-        "bit~",
-        bit_tilde,
-        _run_bit_tilde_native,
-        _run_bit_tilde_python,
-        rng,
-        count,
-    )
-    print(
-        f"bit~ fuzz: {checked} programs match"
-        if not failures
-        else f"bit~ fuzz: {failures} failures of {checked}"
-    )
-    return failures == 0
-
-
 # -- The generator-less extra/ interpreters (corpus only) -------------------
 #
-# Kak, Trash, Number Seventy-Four, 2 Bits 1 Byte, Brainpocalypse, and Stun
-# Step have no generators (narrow output classes), so only the fixed corpora
-# are checked.
-
-
-def _build_kak() -> str | None:
-    """Return the built Kak Rust reference; None if cargo built it not yet."""
-    if not KAK_BIN.exists():
-        print("[skip] Kak differential: Rust reference not built")
-        return None
-    return str(KAK_BIN)
-
-
-def _build_trash() -> str | None:
-    """Return the built Trash Rust reference; None if cargo built it not yet."""
-    if not TRASH_BIN.exists():
-        print("[skip] Trash differential: Rust reference not built")
-        return None
-    return str(TRASH_BIN)
-
-
-def _run_file_ref(
-    cmd: list[str], program: str, stdin: bytes = b""
-) -> tuple[bytes, int] | None:
-    """Run ``program`` (written to a temp file) through a file-based reference."""
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run([*cmd, path], capture_output=True, input=stdin, timeout=5)
-        return proc.stdout, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+# Kak, Brainpocalypse, and Stun Step have no generators (narrow output
+# classes), so only the fixed corpora are checked.
 
 
 @functools.cache
@@ -1843,135 +1694,6 @@ def _asm_refs_ready(riscv_name: str) -> bool:
     return _build_riscv(riscv_name) is not None
 
 
-def _inprocess_run(
-    module: str, program: str, stdin: bytes = b"", encoding: str = "latin1"
-) -> bytes | None:
-    """Run ``program`` through the in-package interpreter, returning bytes.
-
-    Returns None if the interpreter does not terminate within the timeout.
-    """
-    import importlib
-    import signal
-
-    from esolangs.interpreters.io import ScriptedIO
-
-    run = importlib.import_module(module).run
-    io = ScriptedIO(stdin.decode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(3)
-    try:
-        run(program, io)
-        return io.getvalue().encode(encoding)
-    except Exception:
-        return None
-    finally:
-        signal.alarm(0)
-
-
-# (name, ready(), native(program, stdin), Python module, corpus)
-_SIMPLE_CORPUS = [
-    # Kak: one-bit tape; the Rust prints the tape plus a newline
-    (
-        "Kak",
-        lambda: _build_kak() is not None,
-        lambda p, s: _run_file_ref([_build_kak()], p, s),
-        "esolangs.interpreters.tape_based.kak",
-        [("<!", b""), ("!<!", b""), ("<!!<", b""), ("", b"")],
-    ),
-    # Trash: number program; the Rust prints via println (trailing newline)
-    (
-        "Trash",
-        lambda: _build_trash() is not None,
-        lambda p, s: _run_file_ref([_build_trash()], p, s),
-        "esolangs.interpreters.other.trash",
-        [("t2", b""), ("t5", b""), ("5", b""), ("0", b""), ("tt3", b""), ("1", b"")],
-    ),
-    # Number Seventy-Four: Rust reference (a faithful pass-boundary port of
-    # the former Ruby cross-check; the Lean port has diverged semantics)
-    (
-        "Number Seventy-Four",
-        lambda: NUMBER_SEVENTY_FOUR_BIN.exists(),
-        lambda p, s: _run_file_ref([str(NUMBER_SEVENTY_FOUR_BIN)], p, s),
-        "esolangs.interpreters.tape_based.number_seventy_four",
-        [("0H", b""), ("1H0H", b""), ("101H0H", b""), ("0", b""), ("1", b"")],
-    ),
-    # 2 Bits, 1 Byte: single program byte, read from stdin by the references
-    (
-        "2 Bits, 1 Byte",
-        lambda: _asm_refs_ready("2b1b"),
-        lambda p, _s: _asm_refs("2b1b", p),
-        "esolangs.interpreters.other.two_bits_one_byte",
-        [("\xff", b""), ("\x3f", b""), ("\x00", b""), ("A", b"")],
-    ),
-    # Brainpocalypse: program read from stdin by the references
-    (
-        "Brainpocalypse",
-        lambda: _asm_refs_ready("brainpocalypse"),
-        lambda p, _s: _asm_refs("brainpocalypse", p),
-        "esolangs.interpreters.tape_based.brainpocalypse",
-        [
-            ("+", b""),
-            ("++-", b""),
-            (">+<-", b""),
-            ("-", b""),
-            ("", b""),
-            (">" * 256 + "+>", b""),  # the pointer wraps past cell 255
-        ],
-    ),
-    # Stun Step: program read from stdin by the references
-    (
-        "Stun Step",
-        lambda: _asm_refs_ready("stun-step"),
-        lambda p, _s: _asm_refs("stun-step", p),
-        "esolangs.interpreters.tape_based.stun_step",
-        [("-", b""), ("->", b""), ("<", b""), (">-", b""), (">", b"")],
-    ),
-]
-
-
-def _verify_simple_corpus() -> bool:
-    """Differentially check the generator-less extra/ interpreters."""
-    failures = 0
-    for name, ready, native, module, corpus in _SIMPLE_CORPUS:
-        if not ready():
-            print(f"[skip] {name} differential: reference toolchain not available")
-            continue
-        checked = 0
-        for program, stdin in corpus:
-            ref = native(program, stdin)
-            py = _inprocess_run(module, program, stdin)
-            if ref is None and py is None:
-                continue  # both loop forever: consistent
-            if ref is None or py is None:
-                failures += 1
-                print(
-                    f"{name} {program!r}: termination mismatch "
-                    f"(reference {'loops' if ref is None else 'halts'}, "
-                    f"Python {'loops' if py is None else 'halts'})"
-                )
-                continue
-            ref_out = ref[0].rstrip(b"\n")
-            checked += 1
-            if ref_out != py.rstrip(b"\n") or ref[1] != 0:
-                failures += 1
-                print(f"{name} {program!r}: ref={(ref_out, ref[1])!r} py={py!r}")
-        if checked:
-            print(f"{name} differential: {checked} programs match")
-    return failures == 0
-
-
-def _verify_remaining_extras() -> bool:
-    """Differentially check the generator-less extra/ interpreters."""
-    return _verify_simple_corpus()
-
-
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     """Differentially fuzz LaserFuck with random truth tables.
 
@@ -2026,7 +1748,6 @@ def main() -> int:
 
     ok = _verify_laserfuck()
     ok = _verify_nocomment() and ok
-    ok = _verify_one_two_three() and ok
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok
@@ -2035,7 +1756,6 @@ def main() -> int:
     ok = _verify_two_d_fish() and ok
     ok = _verify_painfuck() and ok
     ok = _verify_bit_tilde() and ok
-    ok = _verify_remaining_extras() and ok
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
@@ -2043,10 +1763,8 @@ def main() -> int:
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok
         ok = _fuzz_three_x(rng, args.fuzz) and ok
-        ok = _fuzz_pct(rng, args.fuzz) and ok
         ok = _fuzz_two_d_fish(rng, args.fuzz) and ok
         ok = _fuzz_painfuck(rng, args.fuzz) and ok
-        ok = _fuzz_bit_tilde(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.

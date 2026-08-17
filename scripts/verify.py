@@ -2,13 +2,16 @@
 
 Everything that can be checked on a dev machine without a Linux host:
 
-1. pre-commit (lint, format, types)
-2. pytest (the test suite)
+1. pre-commit (lint, format, types) and pytest (the test suite)
+2. bandit (via uv), cargo fmt/test (the Rust cross-checks), and the
+   interpreter-vs-native differential corpora
 3. unicorn-based round-trips (RISC-V assembly compilers, RISC-V cross-check
-   generators, and the interpreter-vs-native differential corpora)
+   generators, and the differential corpora) — skipped when unicorn or the
+   RISC-V cross-compiler is missing
 
 The native qemu-riscv64 checks need Linux, so they run only in CI (see
-.github/workflows/ci.yml).
+.github/workflows/ci.yml).  ``scripts/check_all.sh`` is a thin wrapper around
+this script.
 
 Usage:
     python scripts/verify.py
@@ -44,6 +47,15 @@ PY = python_cmd()
 STEPS = [
     ("pre-commit", [*PY, "-m", "pre_commit", "run", "--all-files"]),
     ("pytest", [*PY, "-m", "pytest", "-q"]),
+    ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
+    (
+        "cargo fmt",
+        ["cargo", "fmt", "--manifest-path", "extra/rust/Cargo.toml", "--check"],
+    ),
+    (
+        "cargo test",
+        ["cargo", "test", "--manifest-path", "extra/rust/Cargo.toml"],
+    ),
     (
         "ztoalc anchor table is reproducible",
         [*PY, "scripts/make_ztoalc_table.py", "--check"],
@@ -59,6 +71,10 @@ STEPS = [
     (
         "interpreter vs native differential corpora",
         [*PY, "scripts/verify_differential.py"],
+    ),
+    (
+        "docstring check",
+        [*PY, "scripts/check_docstrings.py"],
     ),
     (
         "duplicate-code check",
@@ -90,6 +106,12 @@ def main() -> int:
             continue
         if not have_riscv_gcc and "assembly" in name:
             print(f"[skip] {name}: RISC-V cross-compiler not installed")
+            continue
+        if shutil.which("uv") is None and "bandit" in name:
+            print(f"[skip] {name}: uv not installed")
+            continue
+        if shutil.which("cargo") is None and "cargo" in name:
+            print(f"[skip] {name}: Rust toolchain (cargo) not installed")
             continue
         result = subprocess.run(cmd, env=env)
         ok = result.returncode == 0

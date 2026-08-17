@@ -322,14 +322,6 @@ class TestGeneratorRoundTrips:
         ).run
         assert roundtrip(sixfive_run, gen.six_five("Hello, World!")) == "Hello, World!"
 
-    def test_ascii_art(self) -> None:
-        """A brainfuck program encoded as drawing blocks prints the text."""
-        ascii_run = importlib.import_module(
-            "esolangs.interpreters.tape_based.ascii_art"
-        ).run
-        assert roundtrip(ascii_run, gen.ascii_art("Hi")) == "Hi"
-        assert roundtrip(ascii_run, gen.ascii_art("")) == ""
-
     def test_minifuck(self) -> None:
         """Each character is printed by flipping the differing tape bits."""
         minifuck_run = importlib.import_module(
@@ -608,7 +600,6 @@ class TestGeneratorBranches:
         assert "--- The Temporary Stack ---" in out
         assert "--- ZTOALC L ---" in out
         assert "--- 6-5 ---" in out
-        assert "--- ASCII art ---" in out
         assert "--- Dig ---" in out
         assert "--- Dotlang ---" in out
         assert "--- Eval ---" in out
@@ -641,7 +632,6 @@ class TestGeneratorBranches:
             gen.sophie,
             gen.bio,
             gen.six_five,
-            gen.ascii_art,
             gen.wii2d,
             gen.clockwise,
             gen.slow_acv_mammalian,
