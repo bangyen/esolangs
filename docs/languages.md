@@ -61,7 +61,6 @@ into a template) rather than the program reading input.
 | MyScript | yes | yes |  | yes |  | hello |
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
-| Number Seventy-Four |  | yes |  |  |  |  |
 | Painfuck | yes | yes | yes | yes |  | hello |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
@@ -74,7 +73,6 @@ into a template) rather than the program reading input.
 | Suffolk | yes | yes |  |  | yes | hello |
 | Taglate | yes | yes |  | yes |  | hello |
 | The Temporary Stack | yes | yes |  |  |  | hello |
-| Trash |  | yes |  |  |  |  |
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  |  |  | hello |
 | ZTOALC L | yes | yes |  | yes |  | hello |

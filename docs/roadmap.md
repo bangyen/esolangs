@@ -85,15 +85,15 @@ they are the weakest additions.
 **Candidate to remove, once decided.**  The roadmap's planned no-output
 candidates (Point Break, State and Main, Crement, Your Time Is Up) would be
 dropped under the same policy.  The I/O-capable interpreter-only languages
-(Number Seventy-Four, Trash, Grapheme, Movesum, Lightlang)
+(Grapheme, Movesum, Lightlang)
 are not in this tier.
 
-**Generator story is mostly absent.**  None of the eighteen
+**Generator story is mostly absent.**  None of the sixteen
 interpreter-only languages has a text generator.  Six have boolean
 generators (A Painter Ant, ABCDirection, Back, BF-PDA, Jaune, Lamfunc);
 ArrowQueue realizes
 the halt-vs-hang *termination* convention for AND/OR-class functions (a ring
-template committed as its truth-machine example); and the other twelve
+template committed as its truth-machine example); and the other nine
 have no boolean story at all (each hits a documented wall in
 `docs/walls.md`).  So the generator-story criterion is failed by most of the
 interpreter-only set, and the distinction below is only how observable
@@ -168,9 +168,10 @@ texts + 2 hand-written jumps, no fuzz) and verified programs the round-trip
 test already covers.  All seven added little over the Python unit tests at
 real toolchain cost (cargo + RISC-V cross-compiler + unicorn in CI); the
 *languages* all stayed (they have generators or pass the admission criteria
-as distinct interpreters); only the redundant cross-checks went.  2 Bits 1
-Byte's interpreter was itself removed later (see `docs/limitations.md`), on
-top of its already-removed cross-check.
+as distinct interpreters); only the redundant cross-checks went.  The 2
+Bits 1 Byte, Trash, and Number Seventy-Four interpreters were themselves
+removed later (see `docs/limitations.md`), on top of their already-removed
+cross-checks.
 
 ## VM / debugging interface (remaining work)
 
