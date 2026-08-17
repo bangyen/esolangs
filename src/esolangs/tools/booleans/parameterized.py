@@ -17,7 +17,9 @@ increment that loads the raw bit into a register and ``{Ci}`` with a runtime
 complement computation; :func:`back` replaces ``{Xi}`` with a ``\\`` or
 ``/`` mirror so the beam is reflected toward the correct subtree;
 :func:`nocomment` replaces ``{Xi}`` with a constant-length tape setter
-(``c``/``i``) and routes a decision tree with the ``s`` skip.
+(``c``/``i``) and routes a decision tree with the ``s`` skip; :func:`bitdeque`,
+:func:`ram0`, and :func:`minsky_swap` replace ``{Xi}`` with fixed-length
+setters and route a ``POP``/``GOTO``, ``C``/``goto``, or ``~`` decision tree.
 """
 
 from collections.abc import Callable
@@ -25,7 +27,17 @@ from typing import TypeAlias
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
 
-__all__ = ["back", "bfpda", "bio", "instantiate", "lamfunc", "nocomment"]
+__all__ = [
+    "back",
+    "bfpda",
+    "bio",
+    "bitdeque",
+    "instantiate",
+    "lamfunc",
+    "minsky_swap",
+    "nocomment",
+    "ram0",
+]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
 # ("node", node_id, level, zero_subtree, one_subtree).
@@ -389,3 +401,213 @@ def lamfunc(truth_table: str) -> str:
         )
 
     return node(0, 0, 2**n)
+
+
+def bitdeque(truth_table: str) -> str:
+    """Build a Bitdeque template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Bitdeque has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders become a *fixed-length* two-command
+    setter per bit, and the harness instantiates one program per input
+    combination.  The earlier wall said the absolute ``GOTO N`` targets shift
+    because the setter had variable length (``INVERT`` vs nothing); the fixed
+    setter removes that: each bit is pushed as exactly ``INVERT PUSH`` when
+    it differs from the register and ``PUSH INVERT`` when it matches, and
+    the register flips after every block, so the load is always ``2n``
+    commands and no absolute index moves between instantiations.
+
+    Bits are pushed in reverse order so ``POP`` (LIFO) yields the most
+    significant bit first, matching the contiguous MSB-first decision-tree
+    splits.  A node pops one bit and ``GOTO``s to the one-subtree when it is
+    one, with the zero-subtree falling through in place.  A leaf drains the
+    deque with ``n+1`` ``POP``s (so the register is exactly zero even for a
+    collapsed tree), pushes the answer, forces the register back to one with
+    a trailing ``INVERT``, and ``GOTO``s past the program end to halt -- so
+    every leaf always routes and the deque printed at halt holds exactly the
+    answer.
+    """
+    n = _validate_truth_table(truth_table)
+
+    def leaf(answer: str) -> list[str]:
+        out = ["POP"] * (n + 1)
+        if answer == "1":
+            out.append("INVERT")
+        out.append("PUSH")
+        if answer == "0":
+            out.append("INVERT")
+        out.append("GOTO@END")
+        return out
+
+    # the load block, most significant placeholder first (so the first POP
+    # after the load is the MSB); each placeholder expands to two commands
+    head = ["{X" + str(i) + "}" for i in range(n - 1, -1, -1)]
+    tree: list[str] = []
+
+    def emit(level: int, lo: int, hi: int, start: int) -> int:
+        """Emit the subtree for rows ``[lo, hi)``; return the next index.
+
+        ``start`` is the instantiated command index where this subtree begins
+        (the load block occupies ``2n`` commands), so the emitted ``GOTO``
+        operands are correct after substitution.
+        """
+        vals = {truth_table[r] for r in range(lo, hi)}
+        if level == n or len(vals) == 1:
+            answer = vals.pop() if level < n else truth_table[lo]
+            sub = leaf(answer)
+            tree.extend(sub)
+            return start + len(sub)
+        half = (hi - lo) // 2
+        tree.append("POP")
+        marker = len(tree)
+        tree.append("GOTO@ONE")
+        start += 2
+        start = emit(level + 1, lo, lo + half, start)  # zero subtree in place
+        tree[marker] = f"GOTO {start}"  # the one subtree starts here
+        return emit(level + 1, lo + half, hi, start)
+
+    end = emit(0, 0, 2**n, 2 * n)
+    return " ".join(head + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree])
+
+
+def ram0(truth_table: str) -> str:
+    """Build a RAM0 template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    RAM0 has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders become a fixed-length two-command
+    setter — ``Z Z`` for a zero, ``Z A`` for a one — independent of the
+    incoming register (``Z`` resets absolutely).  The earlier wall's
+    variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
+    ``goto`` operands; the padded setter removes that.
+
+    A load phase stores each bit once in its own RAM cell (address ``i``),
+    so the inputs are embedded exactly ``n`` times; the decision tree then
+    *loads* each bit with RAM0's indirect ``L`` (``z := ram[z]``) rather than
+    re-embedding it, so the tree nodes contain no substitution.  Each node
+    sets ``z`` to its address, loads the bit, and ``C`` skips the following
+    ``goto`` when ``z`` is zero (the zero-subtree falls through in place)
+    while the ``goto`` jumps to the one-subtree otherwise.  A leaf sets
+    ``z`` to the answer and uses RAM0's *unconditional* ``goto`` to run off
+    the program end, so the final ``z`` read from the state dump is the
+    answer.
+    """
+    n = _validate_truth_table(truth_table)
+
+    tokens: list[str] = []
+    pos = 0  # instantiated command index of the next command
+
+    # load phase: ram[i] = bit i, embedded exactly once each
+    for i in range(n):
+        tokens.append("Z")
+        tokens.extend("A" for _ in range(i))
+        tokens.append("N")
+        pos += 1 + i + 1
+        tokens.append("{X" + str(i) + "}")  # expands to "Z A" / "Z Z"
+        pos += 2
+        tokens.append("S")
+        pos += 1
+
+    def leaf(answer: str) -> None:
+        nonlocal pos
+        tokens.append("Z")
+        tokens.append("A" if answer == "1" else "Z")
+        pos += 2
+        tokens.append("END@")
+        pos += 1
+
+    def emit(level: int, lo: int, hi: int) -> None:
+        nonlocal pos
+        vals = {truth_table[r] for r in range(lo, hi)}
+        if level == n or len(vals) == 1:
+            leaf(vals.pop() if level < n else truth_table[lo])
+            return
+        half = (hi - lo) // 2
+        tokens.append("Z")  # z = the address, then load ram[z]
+        tokens.extend("A" for _ in range(level))
+        tokens.append("L")
+        pos += 1 + level + 1
+        tokens.append("C")
+        pos += 1
+        marker = len(tokens)
+        tokens.append("ONE@")
+        pos += 1
+        emit(level + 1, lo, lo + half)  # zero subtree in place (MSB = 0)
+        tokens[marker] = f"ONE@{pos + 1}"  # 1-based, after the zero subtree
+        emit(level + 1, lo + half, hi)
+
+    emit(0, 0, 2**n)
+    end = pos + 1  # 1-based goto operand just past the last command
+    return " ".join(
+        str(end) if t == "END@" else str(int(t[4:])) if t.startswith("ONE@") else t
+        for t in tokens
+    )
+
+
+def minsky_swap(truth_table: str) -> str:
+    """Build a Minsky Swap template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Minsky Swap has no input command, so this is a parameterized generator:
+    the template's ``{Xi}`` placeholders become *fixed-length* setters that
+    assemble the input's numeric index into ``reg[0]`` — one block per bit,
+    so the inputs are embedded exactly ``n`` times.  Each non-LSB bit's block
+    is ``2**n`` commands long: ``+`` repeated for its weight followed by
+    ``*``-padding to length (both runs are even, so the pointer is restored),
+    or ``*``-padding alone for a zero.  The LSB block is the length-4
+    ``+*+*`` (adds one, and leaves ``reg[1]`` polluted with a one) or
+    ``****`` (a no-op), so the setter length is fixed without an odd pad.
+
+    A cascade of ``2**n`` ``~``s then routes the assembled value *v* to leaf
+    *v* — each ``~`` decrements a nonzero register and jumps on zero, so the
+    (v+1)-th one sees the value hit zero.  A leaf flips the polluted
+    ``reg[1]`` (which holds the LSB) to the answer, then ``~``s on the
+    (zeroed) ``reg[0]`` to run off the program end, so the dumped registers
+    read ``0 {answer}``.
+    """
+    n = _validate_truth_table(truth_table)
+
+    tokens: list[str] = []
+    targets: list[int] = []
+    pos = 0  # instantiated command index of the next command
+
+    # load: bits MSB first; every non-LSB setter is a length-2^n block, the
+    # LSB a length-4 block
+    for i in range(n - 1):
+        tokens.append("{X" + str(i) + "}")
+        pos += 2**n
+    tokens.append("{X" + str(n - 1) + "}")
+    pos += 4
+
+    for _ in range(2**n):  # cascade: route the assembled value to leaf v
+        tokens.append("~")
+        targets.append(0)
+        pos += 1
+    for v in range(2**n):  # leaves: reg[1] holds the LSB; make it the answer
+        targets[v] = pos + 1
+        tokens.append("*")  # pointer onto reg[1]
+        pos += 1
+        lsb = v & 1
+        if lsb == 1 and truth_table[v] == "0":
+            tokens.append("~")  # reg[1] is 1 here, so it decrements, no jump
+            targets.append(0)
+            pos += 1
+        elif lsb == 0 and truth_table[v] == "1":
+            tokens.append("+")
+            pos += 1
+        tokens.append("*")  # pointer back onto reg[0]
+        pos += 1
+        tokens.append("~")  # reg[0] is 0, so this always jumps to the end
+        targets.append(0)
+        pos += 1
+
+    end = pos + 1  # 1-based target just past the last command
+    return (
+        " ".join(tokens) + "\n" + " ".join(str(end if t == 0 else t) for t in targets)
+    )

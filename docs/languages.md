@@ -31,7 +31,7 @@ into a template) rather than the program reading input.
 | Back |  | yes |  | yes |  |  |
 | Basicfuck | yes | yes | yes | yes |  | hello |
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
-| Bitdeque |  | yes |  |  |  |  |
+| Bitdeque |  | yes |  | yes |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
 | Brainpocalypse |  | yes |  |  |  |  |
 | Circlefuck | yes | yes |  | yes |  | hello truth-machine |
@@ -55,7 +55,7 @@ into a template) rather than the program reading input.
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  |  |
 | Minifuck | yes | yes |  | yes |  | hello truth-machine |
-| Minsky Swap |  | yes |  |  |  |  |
+| Minsky Swap |  | yes |  | yes |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |
 | MyScript | yes | yes |  | yes |  | hello |
@@ -64,7 +64,7 @@ into a template) rather than the program reading input.
 | Painfuck | yes | yes | yes | yes |  | hello |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
-| RAM0 |  | yes |  |  | yes |  |
+| RAM0 |  | yes |  | yes | yes |  |
 | ROTfuck | yes | yes |  | yes |  | hello |
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
