@@ -72,6 +72,14 @@ def test_example_files_match_generator() -> None:
         assert path.read_text(encoding="utf-8") == generator("Hello, World!")
 
 
+def test_multiply_example_matches_generator() -> None:
+    """The committed multiply program is exactly what the generator produces."""
+    from esolangs.tools.boolean import jaune_multiply
+
+    path = BASE_DIR / "examples" / "multiply" / "jaune.txt"
+    assert path.read_text(encoding="utf-8") == jaune_multiply()
+
+
 # name -> (interpreter module, input lines, expected output, split lines)
 CAT_EXAMPLES = {
     "between": ("register_based.between", ["hi"], "hi", True),
@@ -94,8 +102,20 @@ TRUTH_MACHINE_EXAMPLES = {
 BASE_DIR = Path(__file__).parent.parent
 
 
+# name -> (interpreter module, input lines, expected output, split lines)
+# The multiply examples feed two sentinel-delimited decimal operands: the
+# digits of the first operand, a "*" line, the digits of the second, and a
+# "#" line.  The program prints their product (see docs/walls.md).
+MULTIPLY_EXAMPLES = {
+    "jaune": ("tape_based.jaune", ["1", "2", "*", "3", "4", "#"], "408", False),
+}
+
+
 def run_with_input(name: str, subdir: str) -> None:
-    examples = CAT_EXAMPLES if subdir == "cat" else TRUTH_MACHINE_EXAMPLES
+    if subdir == "multiply":
+        examples = MULTIPLY_EXAMPLES
+    else:
+        examples = CAT_EXAMPLES if subdir == "cat" else TRUTH_MACHINE_EXAMPLES
     module, inputs, expected, splitlines = examples[name]
     run = importlib.import_module("esolangs.interpreters." + module).run
     program = (
@@ -119,3 +139,8 @@ def test_cat_example(name: str) -> None:
 @pytest.mark.parametrize("name", sorted(TRUTH_MACHINE_EXAMPLES))
 def test_truth_machine_example(name: str) -> None:
     run_with_input(name, "truth-machine")
+
+
+@pytest.mark.parametrize("name", sorted(MULTIPLY_EXAMPLES))
+def test_multiply_example(name: str) -> None:
+    run_with_input(name, "multiply")
