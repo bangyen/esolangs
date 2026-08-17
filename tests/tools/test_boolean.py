@@ -2108,18 +2108,20 @@ class TestParameterizedBfpda:
         assert "{X1}" in template
 
     def test_program_structure(self) -> None:
-        """Each node pushes a complement+bit guard pair and pops both."""
+        """Each input is embedded once (pre-loaded), not re-embedded per node."""
+        import re
+
         from esolangs.tools.booleans import parameterized
 
         template = parameterized.bfpda("0110")
-        # XOR has three internal nodes (X0, X1, X1), each pushing two guards
         assert template.count("{X0}") == 1
-        assert template.count("{X1}") == 2
+        assert template.count("{X1}") == 1
         assert template.count("{C0}") == 1
-        assert template.count("{C1}") == 2
+        assert template.count("{C1}") == 1
+        assert len(re.findall(r"\{X\d+\}", template)) == 2  # n embeds
 
     def test_leaf_print_is_balanced(self) -> None:
-        """A leaf pushes the answer bit, prints it, and pops it."""
+        """A leaf pops the remaining bits, prints the answer, and pops it."""
         from esolangs.tools.booleans import parameterized
 
         template = parameterized.bfpda("10")  # NOT: one-leaf prints 1

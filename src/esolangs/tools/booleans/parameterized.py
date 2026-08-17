@@ -304,51 +304,42 @@ def bfpda(truth_table: str) -> str:
 
     BF-PDA has no input command, so this is a parameterized generator: the
     template's ``{Xi}``/``{Ci}`` placeholders become a push of the bit and of
-    its complement onto the bit stack, and the harness instantiates one
-    program per input combination.
+    its complement, and the harness instantiates one program per input
+    combination.  Each input is embedded once: the load phase pushes every
+    ``{Ci} {Xi}`` pair (complement then bit) up front, so the stack holds all
+    ``n`` bits and their complements with ``b0`` on top.
 
-    The tree uses the stack as independent guard storage, which the earlier
-    assessment missed: a node pushes the complement then the bit (so the bit
-    is on top), runs the one-side loop ``[ sub1 @ ]`` when the bit is one,
-    pops the bit, runs the zero-side loop ``[ sub0 @ ]`` when the complement
-    is one, and pops the complement.  Each subtree is stack-balanced (it
-    pushes and pops its own guards, and a leaf pushes the answer bit, prints
-    it with ``.``, and pops it), so the outer ``]`` always re-tests its own
-    guard.  The one loop clears its guard with ``@`` before exiting, so the
-    other side's guard is untouched and the if/else separates cleanly.
+    A node tests its bit and *consumes* it for the next level using a
+    ``<``-break loop ``[ > one < ] > [ > zero < ] >``: ``[`` enters when the
+    bit is one, ``>`` pops it, the one-branch pops the complement (to expose
+    the next bit), and ``<`` pushes a fresh zero to break the loop -- which
+    works because the guard was already popped, unlike ``[ sub @ ]`` where
+    ``@`` needs the guard still on top.  The zero-branch is selected by the
+    second loop testing the complement.  A leaf pops the remaining pre-loaded
+    bits (``2*(n-level)`` of them) and prints the constant answer.
     """
     n = _validate_truth_table(truth_table)
 
-    def leaf(value: str) -> str:
-        # push the answer bit, print it, pop it (balanced)
-        return ("<@" if value == "1" else "<") + ". > "
+    # load: push every complement then bit, so top = b0
+    head = " ".join("{C" + str(i) + "} {X" + str(i) + "}" for i in range(n - 1, -1, -1))
+
+    def leaf(level: int, value: str) -> str:
+        # consume the remaining pre-loaded bits, then print the answer
+        return "> " * (2 * (n - level)) + ("<@" if value == "1" else "<") + ". > "
 
     def node(i: int, rows: list[int]) -> str:
         results = {truth_table[r] for r in rows}
-        if len(results) == 1:
-            return leaf(results.pop())
+        if i == n or len(results) == 1:
+            return leaf(i, results.pop() if i < n else truth_table[rows[0]])
         zero = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 0]
         one = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 1]
         sub0 = node(i + 1, zero)
         sub1 = node(i + 1, one)
-        return (
-            "{C"
-            + str(i)
-            + "}"
-            + "{X"
-            + str(i)
-            + "}"
-            + "[ "
-            + sub1
-            + " @ ]"
-            + " > "
-            + "[ "
-            + sub0
-            + " @ ]"
-            + " > "
-        )
+        # one-branch pops ~bi first (expose next bit); zero-branch has it popped
+        # by the node's own loop
+        return "[ > " + "> " + sub1 + " < ] > [ > " + sub0 + " < ] >"
 
-    return node(0, list(range(2**n)))
+    return head + " " + node(0, list(range(2**n)))
 
 
 def lamfunc(truth_table: str) -> str:
