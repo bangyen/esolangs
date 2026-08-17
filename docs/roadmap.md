@@ -222,3 +222,24 @@ cap to arbitrary ``n``.  Until then, A Painter Ant sits on the
 deferred-removal list (above) as a language whose boolean generator is
 severely constrained, and this open problem is exactly the work that would
 take it off.
+
+## Severely constrained boolean generators (remove or lift)
+
+Each boolean generator with a low cap is tracked here so the decision is
+deliberate rather than implicit: either lift the cap (an open construction)
+or, where the language has no other generator story, remove it.  The caps
+are documented in `docs/limitations.md` and `docs/walls.md`.
+
+| Language | Boolean cap | Also has text generator? | Deferred-removal candidate? | Resolution |
+| --- | --- | --- | --- | --- |
+| A Painter Ant | `n <= 2` (raises for `n >= 3`) | no | yes | lift (open, see the section above) or remove. |
+| Minifuck | `n <= 3`, 0-preserving two-input only | yes | no | lift (structural wall, `docs/walls.md`); has a text generator so not a removal candidate. |
+| Home Row | `n <= 2` | yes | no | lift (language cap, fixed 5x5 torus); has a text generator so not a removal candidate. |
+| 123 | one input only | yes | no | lift (structural wall, single data byte); has a text generator so not a removal candidate. |
+| NoComment | `n <= 8` | yes | no | lift (genuine wall, byte-indexed skip); cap is high enough for practical use. |
+| Polynomial | `n <= 4` | yes | no | lift (performance cap on exact factorization); cap is high enough for practical use. |
+
+Only A Painter Ant is a deferred-removal candidate, because it is the only
+one of these with no text generator too.  The rest have a text generator, so
+their constrained boolean generator is a capability gap but not a removal
+ground; the work there is purely to lift the cap.
