@@ -28,9 +28,12 @@ these:
 - **A generator story.**  Either a text generator that can emit arbitrary
   bytes, or a boolean generator, or a documented reason the language cannot
   have one.  The generator is what makes the language testable end-to-end;
-  a language with no plausible generator is a weaker addition (though a
-  no-I/O self-contained interpreter can still be admitted, as A Painter Ant
-  is).
+  a language with no plausible generator is a weaker addition.  A documented
+  wall excuses the missing generator only when the language's output is
+  still spec-defined and verifiable by hand; a language whose only
+  observable result is an interpreter-invented state dump (no
+  language-defined output at all) is admitted only as a self-contained
+  interpreter, and is a standing candidate for removal.
 
 Two judgment calls are applied case by case and recorded, rather than being
 absolute rules:
