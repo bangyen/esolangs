@@ -63,8 +63,9 @@ the table:
 
 ## Deferred-removal candidates
 
-**Deferred — not yet removed.**  Four languages have **neither a text
-generator nor a boolean generator**, so they cannot be round-trip or
+**Deferred — not yet removed.**  Five languages have no usable text or
+boolean generator — either none at all, or one so severely constrained it is
+effectively absent for any non-trivial use — so they cannot be round-trip or
 differentially verified and are the weakest additions.  They are grouped
 together regardless of I/O; the presence of usable I/O is an argument
 *against* removal, so the no-output ArrowQueue is the strongest candidate
@@ -73,6 +74,7 @@ and the I/O-capable Grapheme, Lightlang, and Movesum are weaker ones.
 | Language | Output | Why it is on the list |
 | --- | --- | --- |
 | ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
+| A Painter Ant | No I/O; visited-grid bounding box (`#`/`.` raster) | no text generator; boolean generator capped at `n <= 2` (raises for `n >= 3`), so effectively no general boolean generator. |
 | Grapheme | I/O-capable, but text is unspellable (no `E`, no concatenation) | no text generator; boolean wall. |
 | Lightlang | Prints only the single bit as a number | no text generator; boolean wall (AND/OR-class only). |
 | Movesum | Prints `n ` (numbers with a trailing space) | no text generator; no conditional, so no boolean generator. |
@@ -80,9 +82,17 @@ and the I/O-capable Grapheme, Lightlang, and Movesum are weaker ones.
 The I/O-capable members (Grapheme, Lightlang, Movesum) were previously
 excluded from this tier as "I/O-capable" — they stay on the list because
 they still fail both generator gates, but their real language-defined output
-counts against removing them.  The other interpreter-only languages
-(A Painter Ant, ABCDirection, Back, BF-PDA, Bitdeque, Jaune, Lamfunc,
-Minsky Swap, RAM0) all have a boolean generator, so they are **not**
+counts against removing them.  A Painter Ant is here because, although it
+has a boolean generator, that generator only covers one- and two-input
+tables (`n <= 2`), so for any higher arity it is effectively without a
+generator; the ``n >= 3`` construction is open (see `docs/walls.md`).  No
+text generator is severely constrained — even the most restricted ones
+(Dig's letter/digit/``.,!?`` alphabet, MyScript's printable ASCII) still
+cover a substantial output range, so no language is added on the text side.
+The other interpreter-only languages
+(ABCDirection, Back, BF-PDA, Bitdeque, Jaune, Lamfunc,
+Minsky Swap, RAM0) all have a working boolean generator with no severe cap,
+so they are **not**
 deferred-removal candidates; their only weakness is an interpreter-invented
 state dump where the wiki defines no text output.
 
@@ -93,10 +103,11 @@ dropped under the same policy.
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
-admission criteria treat as a genuine gap.  ArrowQueue, Grapheme, Lightlang,
-and Movesum are all Bangyen-only sole implementations with no external
-implementations.  ArrowQueue is additionally Turing-complete (Tag system,
-Cyclic tag system, and Minsky machine translations are on the wiki).  (Kak
+admission criteria treat as a genuine gap.  ArrowQueue, A Painter Ant,
+Grapheme, Lightlang, and Movesum are all Bangyen-only sole implementations
+with no external implementations.  ArrowQueue and A Painter Ant are each
+Turing-complete (ArrowQueue via Tag/Cyclic tag/Minsky machine translations;
+A Painter Ant via a compiled Exasperation Machine, both on the wiki).  (Kak
 and Brainpocalypse, the two externally-implemented members, and Stun Step —
 a sole implementation removed anyway, see `docs/limitations.md` — were
 removed.)  The tradeoff is
@@ -207,4 +218,7 @@ inputs are one, not just *how many* — e.g. a way to encode each of the
 ``2**n`` combos into a distinguishable ant state (position, painted pattern,
 or box content) with a cycle-stable template.  This is the documented wall
 in `docs/walls.md`; a successful construction would lift the generator's
-cap to arbitrary ``n``.
+cap to arbitrary ``n``.  Until then, A Painter Ant sits on the
+deferred-removal list (above) as a language whose boolean generator is
+severely constrained, and this open problem is exactly the work that would
+take it off.
