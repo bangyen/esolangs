@@ -425,11 +425,6 @@ LANGUAGES: dict[str, Language] = {
         id="suffolk",
         kwargs=_kw(limit=1),
     ),
-    "Stun Step": Language(
-        "Stun Step",
-        id="stun_step",
-        interpreter="tape_based.stun_step",
-    ),
     "The Temporary Stack": Language(
         "The Temporary Stack",
         _generate.the_temporary_stack,

@@ -51,7 +51,6 @@ predictable across languages:
 | Minsky Swap | Prints the registers as numbers. |
 | Movesum | Prints `n ` (numbers with a trailing space). |
 | RAM0 | Prints a state dump. |
-| Stun Step | Prints the reached cells as space-separated decimal numbers. |
 
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
@@ -86,7 +85,6 @@ per-character encoding can be meaningfully shortened:
 | Grapheme | `V` jumps forward on falsy with no mid-tree halt, so the truthy branch falls through both leaves. |
 | Lightlang | `&` skips one character, so it cannot route to a multi-character leaf; only the AND/OR-class tables are expressible (each bit's skip covers exactly the single `#` halt), with no XOR or arbitrary table (see `docs/walls.md`). |
 | Movesum | No conditional; the loop repeats until the array stops changing. |
-| Stun Step | The loop-back re-runs the code with a shifted pointer, corrupting the bit bakes. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 | WII2D | The accumulator never affects control flow. |
 
@@ -287,3 +285,25 @@ repeated.
   *nontrivial* boolean generator — the ``-``-on-zero rewind is the only
   branch, and a working multi-bit construction (beyond the corrupting bake
   pattern) has not been found.
+- **Stun Step: removed.**  A four-command (``+``/``-``/``>``/``<``) tape
+  language where ``>``/``<`` move the pointer only while the current cell is
+  nonzero, and execution loops back to the start after the program text
+  unless the current cell is 0, in which case the machine halts.  It has no
+  input command, and its only observable result is the reached cells printed
+  as space-separated decimal values at halt — an interpreter-invented state
+  dump rather than a language-defined output, so it can never have a text
+  generator.  Its boolean wall is the pass-boundary halt: it gives a
+  halt-vs-loop convention for one bit (``>`` moves only when the cell is
+  nonzero), but the loop-back re-runs the code with a shifted pointer,
+  corrupting multi-bit bakes, so no general boolean generator exists.  This
+  removal differs from Kak and Brainpocalypse in one important respect:
+  Stun Step is a *sole implementation* — the wiki lists only this repo's
+  interpreter and no external ones — so removing it does leave the language
+  with no implementation at all, a gap the admission criteria normally
+  weigh against removal.  The decision to remove it anyway weighed that gap
+  against the total absence of input, a text generator, or a language-defined
+  output class, and a boolean generator that would be *nontrivial* to build
+  (the shifted-pointer loop-back defeats every straightforward multi-bit
+  construction).  Stun Step is Turing-complete (a Delta Relay compilation is
+  proven on the wiki); if it were ever readded, the open work is that
+  nontrivial boolean generator.

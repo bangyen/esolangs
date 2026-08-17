@@ -200,10 +200,6 @@ input bits satisfy the function — was explored for the languages with a
 built-in infinite-loop branch.  It expresses one-input functions, and some
 languages reach multi-input threshold functions:
 
-- **Stun Step**: the machine halts iff the current cell is 0 at a pass
-  boundary, so `>` (moves only when the cell is nonzero) gives
-  halt-for-0/loop-for-1; but the loop-back re-runs the code with a shifted
-  pointer, corrupting multi-bit bakes.
 - **ArrowQueue**: a queue-sustaining ring (``[" ~*", "+~*", "*~+"]``) hangs
   iff its center `~` is present, so the ring is a one-input identity gadget
   under the convention.  With bit cells spread across the ring it becomes
