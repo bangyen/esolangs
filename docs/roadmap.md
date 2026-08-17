@@ -88,17 +88,16 @@ dropped under the same policy.  The I/O-capable interpreter-only languages
 (2 Bits 1 Byte, Number Seventy-Four, Trash, Grapheme, Movesum, Lightlang)
 are not in this tier.
 
-**Generator story is mostly absent.**  None of the fourteen
-interpreter-only languages has a text generator.  Jaune and A Painter Ant
-now have full boolean generators for small arities (Jaune's reads input; A
-Painter Ant's uses the parameterized convention — exact tables for n <= 2),
+**Generator story is mostly absent.**  None of the nineteen
+interpreter-only languages has a text generator.  Six have boolean
+generators (A Painter Ant, ABCDirection, Back, BF-PDA, Jaune, Lamfunc);
 ArrowQueue realizes
 the halt-vs-hang *termination* convention for AND/OR-class functions (a ring
-template committed as its truth-machine example), and the rest have no
-boolean story at all (each hits a documented wall in `docs/walls.md`).  So
-the generator-story criterion is failed by most of the interpreter-only set,
-and the distinction below is only how observable their non-generator output
-is.
+template committed as its truth-machine example); and the other thirteen
+have no boolean story at all (each hits a documented wall in
+`docs/walls.md`).  So the generator-story criterion is failed by most of the
+interpreter-only set, and the distinction below is only how observable
+their non-generator output is.
 
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
