@@ -82,7 +82,6 @@ per-character encoding can be meaningfully shortened:
 | Dotlang | The `W~` warp re-enters the first-match markers, losing branch history. |
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
-| Grapheme | `V` jumps forward on falsy with no mid-tree halt, so the truthy branch falls through both leaves. |
 | Lightlang | `&` skips one character, so it cannot route to a multi-character leaf; only the AND/OR-class tables are expressible (each bit's skip covers exactly the single `#` halt), with no XOR or arbitrary table (see `docs/walls.md`). |
 | Movesum | No conditional; the loop repeats until the array stops changing. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
@@ -95,7 +94,7 @@ per-character encoding can be meaningfully shortened:
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
-| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0 | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
+| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
 Removed for being trivial: the boolean generators for Home Row (`n <= 2`),
 Minifuck (`n <= 3`, 0-preserving two-input only), and A Painter Ant
