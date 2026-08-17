@@ -26,7 +26,8 @@ DELTA = [(1, 0), (0, 1), (-1, 0), (0, -1)]
 
 def run(
     code: list[str],
-    _io: IO,
+    io: IO,  # noqa: ARG001 - ArrowQueue defines no I/O; the param follows the
+    # repo convention so `esolangs.run` and the example harness pass it uniformly
 ) -> None:
     """Run an ArrowQueue program, halting on an empty-queue pop or off-grid."""
     if not code:
