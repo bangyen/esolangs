@@ -97,6 +97,7 @@ per-character encoding can be meaningfully shortened:
 | Home Row | `n <= 2` | Language cap: the fixed 5x5 torus cannot route `2**n` combinations past `n == 2`. |
 | Minifuck | `n <= 3`, 0-preserving two-input only | Structural wall: the decode suffix fixes the pointer orientation. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
+| A Painter Ant | `n <= 2` | Open: a box-height method reaches most `n == 3` tables but not the balanced ones; the general `n` construction is open (`docs/roadmap.md`). |
 | Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0 | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
 The parameterized no-input generators (bio, back, nocomment, bfpda, lamfunc,
