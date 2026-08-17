@@ -24,12 +24,21 @@ setters and route a ``POP``/``GOTO``, ``C``/``goto``, or ``~`` decision tree.
 **Every input must be embedded exactly once.**  An input-capable language
 reads each of its ``n`` inputs exactly once per run; a no-input language's
 parameterized generator should match that, so a template may contain each
-``{Xi}`` placeholder at most once (and its ``{Ci}`` complement, if used, at
-most once too).  Re-embedding a bit at multiple decision nodes would let a
-no-input program "read" an input more than its input-capable counterpart
-does, which muddies the generator API.  Each generator below therefore
-stores every input once (a tape load, a register pack, a deque/stack push,
-a variable, or a mirror) and reads it back, rather than re-substituting it.
+``{Xi}`` placeholder at most once.  Re-embedding a bit at multiple decision
+nodes would let a no-input program "read" an input more than its
+input-capable counterpart does, which muddies the generator API.  Each
+generator below therefore stores every input once (a tape load, a register
+pack, a deque/stack push, a variable, or a mirror) and reads it back, rather
+than re-substituting it.
+
+The ``{Ci}`` complement placeholder is the exception: ``nocomment`` and
+``bfpda`` embed each input's complement once, because their if/else branch
+needs a gate that is nonzero exactly when the bit is zero, and neither
+language can compute that complement at runtime -- ``nocomment`` has no flip
+(only inc/dec/clear) and ``bfpda``'s ``@`` flips the bit in place, destroying
+it, so a decision node cannot hold both ``bi`` and ``~bi`` simultaneously.
+So those two emit ``n`` ``{Xi}`` plus ``n`` ``{Ci}``; the other generators
+emit only the ``n`` ``{Xi}``.
 """
 
 from collections.abc import Callable
