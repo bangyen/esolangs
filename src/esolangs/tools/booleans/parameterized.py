@@ -109,75 +109,75 @@ def back(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Back is a no-input grid language: a beam bounces across a grid, ``\\``
-    and ``/`` reflect its direction, and ``*`` halts, printing the tape.  A
-    beam moving right hits ``\\`` and turns down (toward higher rows) or hits
-    ``/`` and turns up (toward lower rows, wrapping around).  The generator
-    turns that reflection into a decision tree: each ``{Xi}`` placeholder is
-    replaced by ``\\`` when bit ``i`` is one and by ``/`` when it is zero, so
-    the beam is sent *down* on a one and *up* on a zero.  A ``/`` or ``\\``
-    parked at each child row turns the beam back to moving right into that
-    child's own region, and each leaf sets the tape bit (``-``) when its
-    table entry is one and halts (``*``) printing the tape.
+    Back is a no-input grid language: a beam travels the grid and ``-`` flips
+    the current tape bit, ``+`` steps the beam forward when the current bit
+    is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
+    and ``*`` halts printing the tape.  Each input is embedded once by
+    filling its tape cell: ``{Xi}`` becomes ``-`` for a one bit and a space
+    for a zero, so cells ``0..n-1`` hold the inputs; cells ``n`` and ``n+1``
+    are a 0-answer and a 1-answer cell.
+
+    A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
+    the beam straight past the ``\`` when it is 0) and ``\`` reflects the
+    beam down when it is 1, while ``>`` advances the tape pointer to the next
+    input.  Both branches advance the pointer once, so a leaf at depth ``d``
+    has the pointer at cell ``d``.  A leaf routes the pointer to the 0- or
+    1-answer cell and halts; the cell under the head at halt is the result.
     """
     n = _validate_truth_table(truth_table)
-    rows: int = 2 ** (n + 1) - 1
-    center: int = 2**n - 1
-    # a full tree has 2**(n+1)-1 nodes, each taking two columns
-    width = 2 * (2 ** (n + 1) - 1)
-    grid = [[" "] * width for _ in range(rows)]
 
-    def row(i: int, j: int) -> int:
-        # dig-style placement: a full binary tree of node rows, with the root
-        # at row 0 so the beam starts on it
-        return int(((2 * j + 1) * 2 ** (n - i) - 1 - center) % rows)
+    # load (row 0): fill cells 0..n-1 with the inputs, then the 0/1 answer
+    # cells.  A '\' at column `base` (past the load, with a space gap the beam
+    # travels through) sends the beam down to the tree on row 1.  The tree
+    # lives at columns >= base on rows >= 1, so row 0's placeholder shrink on
+    # instantiation does not misalign it.
+    load_line = (
+        "".join("{X" + str(i) + "}" + (">" if i < n - 1 else "") for i in range(n))
+        + ">>-"
+        + "<" * (n + 1)
+    )
+    # The load's placeholders shrink on instantiation, so the tree lives on
+    # rows >= 1 (immune to row 0's shrink).  A '\' at row 0 col len(load_line)
+    # sends the beam down; it shrinks to tree_col on instantiation.  A '\' on
+    # row 1 at tree_col turns the descending beam right into the tree.
+    tree_col = 3 * n + 3
 
-    # assign each node a column via a preorder walk: node, then the zero
-    # subtree, then the one subtree.  Children sit to the right of their
-    # parent, so a beam turned right travels into a child through empty cells.
-    cols: dict[tuple[int, int], int] = {}
+    grid: dict[tuple[int, int], str] = {}
+    next_row = [2]
 
-    def assign_col(i: int, j: int) -> int:
-        if (i, j) in cols:
-            return cols[(i, j)]  # pragma: no cover - a tree node is never revisited
-        c = len(cols) * 2
-        cols[(i, j)] = c
-        if i < n:
-            assign_col(i + 1, 2 * j)
-            assign_col(i + 1, 2 * j + 1)
-        return c
+    def leaf(level: int, value: str, row: int, col: int) -> None:
+        target = n + (1 if value == "1" else 0)
+        delta = target - level
+        move = (">" if delta >= 0 else "<") * abs(delta)
+        for k, ch in enumerate(move + "*"):
+            grid[(row, col + k)] = ch
 
-    assign_col(0, 0)
-
-    def build(i: int, j: int) -> None:
-        r = row(i, j)
-        c = cols[(i, j)]
-        lo = j * 2 ** (n - i)
-        hi = lo + 2 ** (n - i)
-        results = {truth_table[k] for k in range(lo, hi)}
-        if i == n or len(results) == 1:
-            # leaf (or a constant subtree collapsed to a leaf)
-            value = results.pop() if i < n else truth_table[j]
-            if value == "1":
-                grid[r][c] = "-"
-                grid[r][c + 1] = "*"
-            else:
-                grid[r][c] = "*"
+    def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
+        vals = {truth_table[r] for r in range(lo, hi)}
+        if level == n or len(vals) == 1:
+            leaf(level, vals.pop() if level < n else truth_table[lo], row, col)
             return
-        # internal node: the placeholder mirror reflects the beam down (one)
-        # or up (zero) into a child region
-        grid[r][c] = "{X" + str(i) + "}"
-        for child in (0, 1):
-            cr = row(i + 1, 2 * j + child)
-            # the child row turns the vertical beam back to moving right
-            grid[cr][c] = "\\" if child else "/"
-        build(i + 1, 2 * j)
-        build(i + 1, 2 * j + 1)
+        mid = lo + (hi - lo) // 2
+        grid[(row, col)] = "+"
+        grid[(row, col + 1)] = "\\"
+        grid[(row, col + 2)] = ">"
+        emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
+        nrow = next_row[0]
+        next_row[0] += 1
+        grid[(nrow, col + 1)] = "\\"
+        grid[(nrow, col + 2)] = ">"
+        emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
 
-    build(0, 0)
-
-    lines = ["".join(ln).rstrip() for ln in grid]
-    return "\n".join(lines)
+    grid[(0, len(load_line))] = "\\"  # transition down (shrinks to tree_col)
+    grid[(1, tree_col)] = "\\"  # turn the descending beam right
+    emit(0, 0, 2**n, 1, tree_col + 1)  # tree root on row 1, moving right
+    maxrow = max(r for r, _ in grid)
+    maxcol = max(c for _, c in grid)
+    rows = [[" "] * (maxcol + 1) for _ in range(maxrow + 1)]
+    rows[0][: len(load_line)] = list(load_line)
+    for (r, c), ch in grid.items():
+        rows[r][c] = ch
+    return "\n".join("".join(r).rstrip() for r in rows)
 
 
 _byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"

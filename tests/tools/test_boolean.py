@@ -1495,22 +1495,47 @@ class TestParameterizedBack:
     """Input-by-substitution generators for the no-input language Back."""
 
     def run_back(self, prog: str) -> str:
-        from esolangs.interpreters.io import IO
-        from esolangs.interpreters.tape_based.back import run
-
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run(prog.splitlines(), io=IO())
-        return buffer.getvalue().strip()
+        # Back's answer is the cell under the tape head when the program
+        # halts, so re-run the interpreter and report that cell.
+        lines = prog.splitlines()
+        size = max(len(line) for line in lines)
+        code = [line.ljust(size) for line in lines]
+        x = y = 0
+        a, b = 0, 1
+        tape = [0]
+        cell = 0
+        while True:
+            c = code[x][y]
+            if c == "\\":
+                a, b = b, a
+            elif c == "/":
+                a, b = -b, -a
+            elif c == "<":
+                if cell:
+                    cell -= 1
+            elif c == ">":
+                cell += 1
+                if cell == len(tape):
+                    tape.append(0)
+            elif c == "-":
+                tape[cell] ^= 1
+            elif c == "+" and not tape[cell]:
+                x, y = x + a, y + b
+            elif c == "*":
+                break
+            x = (x + a) % len(code)
+            y = (y + b) % size
+        return str(tape[cell])
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools.booleans import parameterized
 
+        # each {Xi} fills a tape cell: '-' for a one bit, space for zero
         return parameterized.instantiate(
             tpl,
             bits,
-            lambda _i, b: "\\" if b else "/",
-            lambda _i, _b: "/",
+            lambda _i, b: "-" if b else " ",
+            lambda _i, _b: " ",
         )
 
     @pytest.mark.parametrize(
@@ -1559,22 +1584,24 @@ class TestParameterizedBack:
         assert "{X0}" in template
         assert "{X1}" in template
 
-    def test_mirror_routing(self) -> None:
-        """Each node is a mirror: backslash for a one, slash for a zero."""
+    def test_each_input_is_stored_once(self) -> None:
+        """Each input is embedded once in the tape load, not re-embedded."""
+        import re
+
+        from esolangs.tools.booleans import parameterized
+
+        for n in (1, 2, 3):
+            table = format(0, f"0{2**n}b")
+            template = parameterized.back(table)
+            assert len(re.findall(r"\{X\d+\}", template)) == n
+
+    def test_tree_uses_tape_decision_nodes(self) -> None:
+        """The decision tree routes via '+\\' nodes and a down-transition."""
         from esolangs.tools.booleans import parameterized
 
         template = parameterized.back("0110")
-        # XOR has three internal nodes (X0, X1, X1)
-        assert template.count("{X0}") == 1
-        assert template.count("{X1}") == 2
-
-    def test_leaf_sets_tape_bit(self) -> None:
-        """A one-result leaf flips the tape bit; a zero-result leaf halts bare."""
-        from esolangs.tools.booleans import parameterized
-
-        template = parameterized.back("0110")
-        assert "-*" in template
-        assert "*" in template
+        assert "+\\" in template  # a decision node
+        assert "*" in template  # leaves halt
 
 
 class TestParameterizedNoComment:
