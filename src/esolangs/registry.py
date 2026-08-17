@@ -305,11 +305,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.huf",
         id="huf",
     ),
-    "Kak": Language(
-        "Kak",
-        id="kak",
-        interpreter="tape_based.kak",
-    ),
     "Jaune": Language(
         "Jaune",
         id="jaune",

@@ -50,7 +50,6 @@ into a template) rather than the program reading input.
 | Grapheme |  | yes |  |  |  |  |
 | Home Row | yes | yes |  | yes | yes | hello |
 | Jaune |  | yes |  | yes | yes |  |
-| Kak |  | yes |  |  |  |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
 | Lightlang |  | yes |  |  |  | boolean |
