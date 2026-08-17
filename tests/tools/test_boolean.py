@@ -1754,6 +1754,274 @@ class TestParameterizedLamfunc:
             parameterized.lamfunc("011")
 
 
+class TestParameterizedBitdeque:
+    """Input-by-substitution boolean generator for the no-input language Bitdeque."""
+
+    def run_bitdeque(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.queue_based.bitdeque import run
+
+        io = ScriptedIO()
+        run(prog, io)
+        return io.getvalue().strip()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        n = len(bits)
+        # The register flips after every load block, so bit i is pushed at
+        # load position n-1-i with incoming register (n-1-i) % 2.
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda i, b: "PUSH INVERT" if b == (n - 1 - i) % 2 else "INVERT PUSH",
+            lambda _i, _b: "PUSH INVERT",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bitdeque(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_bitdeque(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.booleans import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.bitdeque(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_bitdeque(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bitdeque("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_constant_table_is_a_leaf(self) -> None:
+        """A constant table emits a drain-and-push leaf with no branching."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.bitdeque("0000")
+        assert "POP" in template
+        assert "GOTO" in template
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.bitdeque("011")
+
+
+class TestParameterizedRam0:
+    """Input-by-substitution boolean generator for the no-input language RAM0.
+
+    RAM0 prints a full state dump at halt; the generator's answer is the
+    final ``z`` value, read from the dump's ``z: N`` line.
+    """
+
+    def run_ram0(self, prog: str) -> str:
+        import re
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.ram0 import run
+
+        io = ScriptedIO()
+        run(prog, io)
+        m = re.search(r"^z: (\d+)", io.getvalue(), re.MULTILINE)
+        assert m is not None
+        return m.group(1)
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        # Z resets absolutely, so the setter is the same at every position:
+        # "Z A" for a one, "Z Z" for a zero, each exactly two commands.
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "Z A" if b else "Z Z",
+            lambda _i, _b: "Z Z",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.ram0(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_ram0(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.booleans import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.ram0(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_ram0(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.ram0("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_constant_table_is_a_leaf(self) -> None:
+        """A constant table emits a single leaf with no branching."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.ram0("0000")
+        assert "C" not in template
+        assert "Z" in template
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.ram0("011")
+
+
+class TestParameterizedMinskySwap:
+    """Input-by-substitution boolean generator for the no-input language Minsky Swap.
+
+    Minsky Swap prints the two registers at halt; the generator's answer is
+    stored in ``reg[1]``, so it is the second number of the dump line.
+    """
+
+    def run_minsky_swap(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.minsky_swap import run
+
+        io = ScriptedIO()
+        run(prog, io)
+        return io.getvalue().split()[1]
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.booleans import parameterized
+
+        n = len(bits)
+
+        def set_bit(i: int, b: int) -> str:
+            if i == n - 1:  # LSB: length-4 block, no "~"
+                return "+*+*" if b else "****"
+            w = 2 ** (n - 1 - i)  # this bit's weight
+            if b:
+                return "+" * w + "*" * (2**n - w)
+            return "*" * 2**n
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            set_bit,
+            lambda _i, _b: "*" * 2**n,
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.minsky_swap(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_minsky_swap(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.booleans import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.minsky_swap(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_minsky_swap(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.booleans import parameterized
+
+        template = parameterized.minsky_swap("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.booleans import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.minsky_swap("011")
+
+
 class TestParameterizedBfpda:
     """Input-by-substitution boolean generator for the no-input language BF-PDA."""
 

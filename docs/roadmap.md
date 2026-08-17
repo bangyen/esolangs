@@ -67,8 +67,9 @@ the table:
 wiki defines no I/O, so their only observable output is an interpreter-
 invented state dump (the tape, registers, deque, or grid printed at halt to
 make the run testable) — not a language output command.  They cannot
-generate text, compute a boolean, be differentially verified, or step
-through input, so by the admission criteria' "usable file-based I/O" test
+generate text, be differentially verified, or step through input (only
+Bitdeque, Minsky Swap, and RAM0 compute booleans, via their parameterized
+generators), so by the admission criteria' "usable file-based I/O" test
 they are the weakest additions.
 
 | Language | Output |
@@ -77,10 +78,10 @@ they are the weakest additions.
 | A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (exact n <= 2). |
 | Brainpocalypse | Final tape dump. |
 | Kak | Final tape dump. |
-| Minsky Swap | Final register dump. |
-| RAM0 | Final state dump. |
+| Minsky Swap | Final register dump; has a boolean generator. |
+| RAM0 | Final state dump; has a boolean generator. |
 | Stun Step | Final reached-cells dump. |
-| Bitdeque | Final register/deque dump. |
+| Bitdeque | Final register/deque dump; has a boolean generator. |
 
 **Candidate to remove, once decided.**  The roadmap's planned no-output
 candidates (Point Break, State and Main, Crement, Your Time Is Up) would be
@@ -89,11 +90,12 @@ dropped under the same policy.  The I/O-capable interpreter-only languages
 are not in this tier.
 
 **Generator story is mostly absent.**  None of the sixteen
-interpreter-only languages has a text generator.  Six have boolean
-generators (A Painter Ant, ABCDirection, Back, BF-PDA, Jaune, Lamfunc);
+interpreter-only languages has a text generator.  Nine have boolean
+generators (A Painter Ant, ABCDirection, Back, BF-PDA, Bitdeque, Jaune,
+Lamfunc, Minsky Swap, RAM0);
 ArrowQueue realizes
 the halt-vs-hang *termination* convention for AND/OR-class functions (a ring
-template committed as its truth-machine example); and the other nine
+template committed as its truth-machine example); and the other six
 have no boolean story at all (each hits a documented wall in
 `docs/walls.md`).  So the generator-story criterion is failed by most of the
 interpreter-only set, and the distinction below is only how observable

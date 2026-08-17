@@ -59,16 +59,20 @@ the single data byte makes multi-bit state impossible (every read overwrites
 it).  The four one-input programs were too trivial to keep, so the boolean
 generator was removed.
 
-## RAM0, Bitdeque, Minsky Swap (parameterized template blocked)
+## RAM0, Bitdeque, Minsky Swap (parameterized template blocked — resolved)
 
-These three have value-testable branches and clean setters, but their jumps
-are *absolute token indices*: RAM0's digit-`GOTO`, Bitdeque's `GOTO N`, and
-Minsky Swap's `~` targets are all fixed positions in the token/command
-stream.  The parameterized template's bit setter has variable length (e.g.
-RAM0's `Z` for a zero bit vs `Z A` for a one bit; Bitdeque's `INVERT` vs
-nothing), so substitution changes the token count and every jump target
-shifts — a fixed template cannot be correct for all instantiations.  Only
-Back avoids token-index jumps (its `+`-advance condition is positional).
+These three were once thought blocked because their jumps are *absolute*
+positions in the token/command stream — RAM0's digit-`goto`, Bitdeque's
+`GOTO N`, and Minsky Swap's `~` (the Nth tilde jumps to the Nth number on
+the jump line) — and the bit setter had variable length (`Z` vs `Z A`;
+`INVERT` vs nothing; `+` vs nothing), so substitution changed the token
+count and every jump target shifted.  A *fixed-length* setter breaks the
+wall for all three: RAM0 sets ``z`` with `Z A`/`Z Z`, Bitdeque pushes each
+bit with `INVERT PUSH`/`PUSH INVERT`, and Minsky Swap needs only one
+command — `+` for a one, or `*` to point the ``~`` at the other still-zero
+register — so no absolute index moves between instantiations (see the
+`ram0`, `bitdeque`, and `minsky_swap` generators in
+`esolangs.tools.booleans.parameterized`).
 
 ## Eval (nested parameterized trees)
 
