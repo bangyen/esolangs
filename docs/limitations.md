@@ -42,7 +42,7 @@ predictable across languages:
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). |
+| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a boolean generator (origin colour, n <= 2), not a text one. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | Bitdeque | Prints the register/deque contents as numbers. |
@@ -83,7 +83,6 @@ per-character encoding can be meaningfully shortened:
 | 2 Bits 1 Byte | Program is a single byte; `JMP`/`ACT` target fixed fields, so there is no value-testable branch. |
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
-| A Painter Ant | Prints a `#`/`.` grid, not a `0`/`1`. |
 | ArrowQueue | No output; only the halt-vs-hang outcome is observable, which expresses AND/OR/threshold functions but no XOR (see `docs/walls.md`). |
 | Bitdeque | `GOTO N` is an absolute token index that shifts under parameterized substitution. |
 | Brainpocalypse | `-`-on-zero rewinds to the program start; re-running the `+` bake increments cells unboundedly. |

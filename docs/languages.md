@@ -21,7 +21,7 @@ into a template) rather than the program reading input.
 | 3D Brainfuck | yes | yes |  | yes |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |
-| A Painter Ant |  | yes |  |  |  |  |
+| A Painter Ant |  | yes |  | yes |  |  |
 | ABCDirection |  | yes |  | yes |  |  |
 | AddSubJump | yes | yes |  | yes |  | hello |
 | Albabet | yes | yes |  |  |  | hello |
