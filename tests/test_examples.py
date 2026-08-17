@@ -89,13 +89,11 @@ CAT_EXAMPLES = {
 }
 
 TRUTH_MACHINE_EXAMPLES = {
-    "arrowqueue": ("grid_based.arrowqueue", ["0"], "", True),
     "between": ("register_based.between", ["0"], "0", True),
     "brainif": ("tape_based.brainif", ["0"], "0", True),
     "circlefuck": ("tape_based.circlefuck", ["0"], "0", False),
     "factor": ("tape_based.factor", ["0"], "0", False),
     "forbin": ("other.forbin", ["0"], "0", False),
-    "minifuck": ("tape_based.minifuck", ["0"], "0", False),
     "modulous": ("stack_based.modulous", ["0"], "0", False),
 }
 
@@ -110,10 +108,32 @@ MULTIPLY_EXAMPLES = {
     "jaune": ("tape_based.jaune", ["1", "2", "*", "3", "4", "#"], "408", False),
 }
 
+# name -> (interpreter module, input lines, expected output, split lines)
+# The boolean examples demonstrate a language's boolean-function capability
+# that is not an I/O truth machine (see docs/walls.md).  Lightlang reads
+# each input as a line (empty = 1, non-empty = 0) and realizes the AND/OR
+# class; the committed program is OR4.  Minifuck's generator covers the
+# 0-preserving two-input tables, so the committed AND2 program reads two
+# input bits (0/1 lines) and prints their AND.  ArrowQueue has no output
+# and no runtime input: the committed ring is the halt-vs-hang `0` branch
+# (halts on an empty-queue pop), with the `1` branch hanging instead.
+BOOLEAN_EXAMPLES = {
+    "arrowqueue": ("grid_based.arrowqueue", ["0"], "", True),
+    "lightlang": (
+        "register_based.lightlang",
+        ["x", "", "x", "x"],  # 0 1 0 0
+        "1",
+        False,
+    ),
+    "minifuck": ("tape_based.minifuck", ["0", "1"], "0", False),
+}
+
 
 def run_with_input(name: str, subdir: str) -> None:
     if subdir == "multiply":
         examples = MULTIPLY_EXAMPLES
+    elif subdir == "boolean":
+        examples = BOOLEAN_EXAMPLES
     else:
         examples = CAT_EXAMPLES if subdir == "cat" else TRUTH_MACHINE_EXAMPLES
     module, inputs, expected, splitlines = examples[name]
@@ -139,6 +159,11 @@ def test_cat_example(name: str) -> None:
 @pytest.mark.parametrize("name", sorted(TRUTH_MACHINE_EXAMPLES))
 def test_truth_machine_example(name: str) -> None:
     run_with_input(name, "truth-machine")
+
+
+@pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
+def test_boolean_example(name: str) -> None:
+    run_with_input(name, "boolean")
 
 
 @pytest.mark.parametrize("name", sorted(MULTIPLY_EXAMPLES))

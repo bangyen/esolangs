@@ -24,7 +24,7 @@ into a template) rather than the program reading input.
 | ABCDirection |  | yes |  | yes |  |  |
 | AddSubJump | yes | yes |  | yes |  | hello |
 | Albabet | yes | yes |  |  |  | hello |
-| ArrowQueue |  | yes |  |  |  | truth-machine |
+| ArrowQueue |  | yes |  |  |  | boolean |
 | BF-PDA |  | yes |  | yes | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
@@ -53,8 +53,8 @@ into a template) rather than the program reading input.
 | Kak |  | yes |  |  |  |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
-| Lightlang |  | yes |  |  |  |  |
-| Minifuck | yes | yes |  | yes |  | hello truth-machine |
+| Lightlang |  | yes |  |  |  | boolean |
+| Minifuck | yes | yes |  | yes |  | hello boolean |
 | Minsky Swap |  | yes |  | yes |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |

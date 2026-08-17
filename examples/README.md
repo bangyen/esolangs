@@ -39,11 +39,21 @@ Echoes input to output, for a curated set of input-capable languages:
 
 Outputs `0` and halts when given `0`, and outputs `1` forever when given `1`:
 
-- `modulous.txt` and `brainif.txt`.  The tests exercise only the terminating
-  `0` branch; the `1` branch loops forever by definition.
-- `minifuck.txt` echoes the input bit (its identity boolean function) and
-  halts; Minifuck's generator has no looping branch, so the file is a
-  boolean-function truth table rather than a loop-on-1 machine.
+- `modulous.txt`, `brainif.txt`, `between.txt`, `circlefuck.txt`, and
+  `factor.txt`.  The tests exercise only the terminating `0` branch; the `1`
+  branch loops forever by definition.
+
+## boolean
+
+Demonstrates a language's boolean-function capability that is not an I/O
+truth machine (see `docs/walls.md`):
+
+- `lightlang.txt` realizes the AND/OR class: each `&` skip covers exactly the
+  single `#` halt, so an n-input AND (`?&!&#` repeated) and OR (`?&?&?!`)
+  are expressible; the committed program is OR4.
+- `minifuck.txt` is a two-input AND from Minifuck's boolean generator (it
+  covers the 0-preserving two-input tables), reading `0`/`1` input lines;
+  the committed inputs `0 1` exercise the "one input zero" AND row.
 - `arrowqueue.txt` is the halt-vs-hang ring template: the committed program
   is the `0` branch (halts on an empty-queue pop), and replacing the center
   cell's space with `~` makes the ring hang forever — the `1` branch.  This

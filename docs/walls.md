@@ -181,12 +181,17 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   (always a trailing space) and the addition-only arithmetic cannot express a
   general boolean function.
 - **Lightlang**: `?` reads a bit (an empty line gives 1, any non-empty line
-  gives 0), so a bit is readable — but `&` (skip the next instruction when
-  the bit is 1) skips exactly one character, so a decision-tree node cannot
-  route to a multi-character subtree.  Only a one-sided AND-like cascade is
-  expressible (each level's zero-branch is the fixed ``!&#`` "print 0,
-  halt"), not a general truth table; XOR and OR were both searched and
-  rejected.  Its ``@`` command is also non-deterministic (a random bit).
+  gives 0), so a bit is readable, and `&` (skip the next instruction when
+  the bit is 1) skips exactly one character.  That single-character skip is
+  enough to route the *AND/OR class* for any arity: each `&` skips precisely
+  the single `#` halt, so a bit of 1 continues past a "print 0, halt" block
+  and a bit of 0 falls into it.  ``?&!&#`` (repeated per bit, ending in
+  ``?!``) computes AND; ``?&?!`` (``?&`` per bit) computes OR — both verified
+  to n = 4 on the interpreter.  What is *not* expressible is a non-monotone
+  table (XOR, NAND, or any arbitrary table): those need a multi-character
+  leaf that `&` cannot skip past, so a decision-tree node cannot route to a
+  general subtree.  Its ``@`` command is also non-deterministic (a random
+  bit).
 
 ## Termination-based convention (partial, not a boolean generator)
 
