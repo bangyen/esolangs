@@ -104,6 +104,13 @@ per-character encoding can be meaningfully shortened:
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
 | Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0 | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
+The parameterized no-input generators (bio, back, nocomment, bfpda, lamfunc,
+bitdeque, ram0, minsky_swap) each embed every input **exactly once**, never
+re-embedding a bit at multiple decision nodes — an input-capable language
+reads each of its `n` inputs once per run, and the no-input generators
+mirror that (see `esolangs.tools.booleans.parameterized` and its regression
+test).
+
 ## Fell-through candidates
 
 Assessments of unimplemented languages from the wiki that did not make the

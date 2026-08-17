@@ -10,6 +10,47 @@ from esolangs.interpreters.io import IO
 from esolangs.tools import boolean
 
 
+def _parameterized_generators():
+    from esolangs.tools.booleans import parameterized
+
+    return [
+        (name, parameterized.__dict__[name])
+        for name in (
+            "bio",
+            "back",
+            "nocomment",
+            "bfpda",
+            "lamfunc",
+            "bitdeque",
+            "ram0",
+            "minsky_swap",
+        )
+    ]
+
+
+def test_parameterized_generators_embed_each_input_once() -> None:
+    """Every no-input generator embeds each input exactly once.
+
+    An input-capable language reads each of its n inputs exactly once per
+    run; a no-input language's parameterized generator should match, so each
+    {Xi} (and {Ci}, if used) appears exactly once -- never re-embedded at
+    multiple decision nodes.
+    """
+    import re
+
+    for name, gen in _parameterized_generators():
+        for n in (1, 2, 3, 4):
+            table = format(0, f"0{2**n}b")
+            template = gen(table)
+            xs = re.findall(r"\{X(\d+)\}", template)
+            cs = re.findall(r"\{C(\d+)\}", template)
+            assert sorted(xs) == [str(i) for i in range(n)], (name, n, xs)
+            assert len(xs) == n, (name, n, xs)
+            if cs:
+                assert sorted(cs) == [str(i) for i in range(n)], (name, n, cs)
+                assert len(cs) == n, (name, n, cs)
+
+
 def run_dig(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.grid_based.dig import run
 
