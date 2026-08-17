@@ -63,21 +63,22 @@ the table:
 
 ## No-output interpreters (deferred removal)
 
-**Deferred — not yet removed.**  Eight interpreters are for languages whose
+**Deferred — not yet removed.**  Seven interpreters are for languages whose
 wiki defines no I/O, so their only observable output is an interpreter-
 invented state dump (the tape, registers, deque, or grid printed at halt to
 make the run testable) — not a language output command.  They cannot
-generate text, be differentially verified, or step through input (only
-Bitdeque, Minsky Swap, and RAM0 compute booleans, via their parameterized
-generators), so by the admission criteria' "usable file-based I/O" test
-they are the weakest additions.
+generate text, be differentially verified, or step through input, so by
+the admission criteria' "usable file-based I/O" test they are the weakest
+additions.  Four of them (A Painter Ant, Bitdeque, Minsky Swap, RAM0)
+still have boolean generators, and ArrowQueue realizes the halt-vs-hang
+termination convention, so the remaining gap is the other two
+(Brainpocalypse, Stun Step) that have no boolean story at all.
 
 | Language | Output |
 | --- | --- |
 | ArrowQueue | None; only halt-vs-hang, which expresses AND/OR-class boolean functions (see `docs/walls.md`). |
 | A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (exact n <= 2). |
 | Brainpocalypse | Final tape dump. |
-| Kak | Final tape dump. |
 | Minsky Swap | Final register dump; has a boolean generator. |
 | RAM0 | Final state dump; has a boolean generator. |
 | Stun Step | Final reached-cells dump. |
@@ -104,10 +105,11 @@ their non-generator output is.
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
-admission criteria treat as a genuine gap.  Of the eight, only Brainpocalypse
-and Kak have external implementations (Ruby/Crystal/Python and Common
-Lisp/Scratch/C respectively); the other six (ArrowQueue, A Painter Ant,
-Minsky Swap, RAM0, Stun Step, Bitdeque) are Bangyen-only.  The tradeoff is
+admission criteria treat as a genuine gap.  Of the seven, only Brainpocalypse
+has external implementations (Ruby/Crystal/Python); the other six (ArrowQueue,
+A Painter Ant, Minsky Swap, RAM0, Stun Step, Bitdeque) are Bangyen-only.
+(Kak, the other externally-implemented member, was removed: see
+`docs/limitations.md`.)  The tradeoff is
 between "no I/O ⇒ cannot participate in the repo's verification machinery"
 and "sole implementation ⇒ removing creates a gap"; the removal is recorded
 here as a candidate to resolve deliberately rather than by default.
@@ -171,9 +173,9 @@ test already covers.  All seven added little over the Python unit tests at
 real toolchain cost (cargo + RISC-V cross-compiler + unicorn in CI); the
 *languages* all stayed (they have generators or pass the admission criteria
 as distinct interpreters); only the redundant cross-checks went.  The 2
-Bits 1 Byte, Trash, and Number Seventy-Four interpreters were themselves
-removed later (see `docs/limitations.md`), on top of their already-removed
-cross-checks.
+Bits 1 Byte, Trash, Number Seventy-Four, and Kak interpreters were
+themselves removed later (see `docs/limitations.md`), on top of their
+already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 

@@ -47,7 +47,6 @@ predictable across languages:
 | Back | Prints the tape as a number list. |
 | Bitdeque | Prints the register/deque contents as numbers. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
-| Kak | Prints the tape as a `0`/`1` bit-string; exact bytes are unspellable. |
 | Lightlang | Prints only the single bit as a number. |
 | Minsky Swap | Prints the registers as numbers. |
 | Movesum | Prints `n ` (numbers with a trailing space). |
@@ -86,7 +85,6 @@ per-character encoding can be meaningfully shortened:
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
 | Grapheme | `V` jumps forward on falsy with no mid-tree halt, so the truthy branch falls through both leaves. |
-| Kak | Prints the whole tape, not a single `0`/`1`. |
 | Lightlang | `&` skips one character, so it cannot route to a multi-character leaf; only the AND/OR-class tables are expressible (each bit's skip covers exactly the single `#` halt), with no XOR or arbitrary table (see `docs/walls.md`). |
 | Movesum | No conditional; the loop repeats until the array stops changing. |
 | Stun Step | The loop-back re-runs the code with a shifted pointer, corrupting the bit bakes. |
@@ -255,3 +253,17 @@ repeated.
   already dropped.  The interpreter resolved real spec details (trial
   division, 2-is-prime, leading-digit and prefix parsing) but the language's
   triviality and missing generator story outweighed the gap.
+- **Kak: removed.**  A minimal three-command (``!``/``?``/``<``) bit-tape
+  language with no input command, whose only observable result is the tape
+  printed as a ``0``/``1`` bit-string at the end of each pass — an
+  interpreter-invented state dump rather than a language-defined output.  It
+  can never have a text generator (only the tape bit-string is printable,
+  so exact bytes are unspellable) or a boolean generator (it prints the whole
+  tape, not a single ``0``/``1``, and has no input to branch on).  Unlike the
+  other no-output interpreters it is not a sole implementation — the wiki
+  already lists Common Lisp, Scratch, and C interpreters by other authors —
+  so removing this interpreter leaves no gap, and its Rust cross-check had
+  already been dropped.  The interpreter faithfully ported the semantics
+  (the ``?`` skip read on the fly, the halt-on-zero-cell restart), but the
+  absence of any input, generator, or language-defined output class outweighed
+  keeping it.
