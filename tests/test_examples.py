@@ -81,11 +81,13 @@ CAT_EXAMPLES = {
 }
 
 TRUTH_MACHINE_EXAMPLES = {
+    "arrowqueue": ("grid_based.arrowqueue", ["0"], "", True),
     "between": ("register_based.between", ["0"], "0", True),
     "brainif": ("tape_based.brainif", ["0"], "0", True),
     "circlefuck": ("tape_based.circlefuck", ["0"], "0", False),
     "factor": ("tape_based.factor", ["0"], "0", False),
     "forbin": ("other.forbin", ["0"], "0", False),
+    "minifuck": ("tape_based.minifuck", ["0"], "0", False),
     "modulous": ("stack_based.modulous", ["0"], "0", False),
 }
 
