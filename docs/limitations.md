@@ -42,14 +42,14 @@ predictable across languages:
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a boolean generator (exact n <= 2), not a text one. |
+| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Had a boolean generator (exact n <= 2) that was removed as trivial; no text generator. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | Bitdeque | Prints the register/deque contents as numbers. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
 | Lightlang | Prints only the single bit as a number. |
 | Minsky Swap | Prints the registers as numbers. |
-| Movesum | Prints `n ` (numbers with a trailing space). |
+| Movesum | Prints numbers space-separated with no trailing space. |
 | RAM0 | Prints a state dump. |
 
 The straight-line generators are also at their length floor — no
@@ -94,11 +94,14 @@ per-character encoding can be meaningfully shortened:
 | --- | --- | --- |
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
-| Home Row | `n <= 2` | Language cap: the fixed 5x5 torus cannot route `2**n` combinations past `n == 2`. |
-| Minifuck | `n <= 3`, 0-preserving two-input only | Structural wall: the decode suffix fixes the pointer orientation. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
-| A Painter Ant | `n <= 2` | Open: a box-height method reaches most `n == 3` tables but not the balanced ones; the general `n` construction is open (`docs/roadmap.md`). |
 | Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0 | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
+
+Removed for being trivial: the boolean generators for Home Row (`n <= 2`),
+Minifuck (`n <= 3`, 0-preserving two-input only), and A Painter Ant
+(`n <= 2`; also no text generator) were dropped — their caps left them able
+to express only a small fraction of the two-input boolean functions.  Their
+languages and text generators remain; see `docs/roadmap.md`.
 
 The parameterized no-input generators (bio, back, nocomment, bfpda, lamfunc,
 bitdeque, ram0, minsky_swap) each embed every input **exactly once**, never

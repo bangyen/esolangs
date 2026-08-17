@@ -51,9 +51,10 @@ truth machine (see `docs/walls.md`):
 - `lightlang.txt` realizes the AND/OR class: each `&` skip covers exactly the
   single `#` halt, so an n-input AND (`?&!&#` repeated) and OR (`?&?&?!`)
   are expressible; the committed program is OR4.
-- `minifuck.txt` is a two-input AND from Minifuck's boolean generator (it
-  covers the 0-preserving two-input tables), reading `0`/`1` input lines;
-  the committed inputs `0 1` exercise the "one input zero" AND row.
+- `minifuck.txt` is a committed two-input AND, recorded from Minifuck's
+  (now-removed) boolean generator that covered the 0-preserving two-input
+  tables, reading `0`/`1` input lines; the committed inputs `0 1` exercise
+  the "one input zero" AND row.
 - `arrowqueue.txt` is the halt-vs-hang ring template: the committed program
   is the `0` branch (halts on an empty-queue pop), and replacing the center
   cell's space with `~` makes the ring hang forever — the `1` branch.  This

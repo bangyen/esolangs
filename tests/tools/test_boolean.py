@@ -124,26 +124,8 @@ def run_circlefuck(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
-def run_home_row(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.home_row import run
-
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
-
-
 def run_bit_tilde(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.bit_tilde import run
-
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program, io=IO())
-    return buffer.getvalue()
-
-
-def run_minifuck(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.tape_based.minifuck import run
 
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
@@ -1010,52 +992,6 @@ class TestBitTilde:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.bit_tilde("02")
-
-
-class TestMinifuck:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("00", 1),  # constant zero
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("11", 1),  # constant one
-            ("0000", 2),  # constant zero
-            ("0001", 2),  # AND
-            ("0011", 2),  # echo b0
-            ("0101", 2),  # echo b1
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.minifuck(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_minifuck(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_unreachable_two_input_tables_are_rejected(self) -> None:
-        """The non-0-preserving two-input tables are a documented wall."""
-        for table in ("1000", "1110", "1001", "1100", "1010", "1111"):
-            with pytest.raises(ValueError, match="non-0-preserving"):
-                boolean.minifuck(table)
-
-    def test_n_three_rejected(self) -> None:
-        """No general construction exists for three or more inputs."""
-        with pytest.raises(ValueError, match="n >= 3"):
-            boolean.minifuck("00000000")
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.minifuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.minifuck("02")
 
 
 class TestJaune:
@@ -2776,83 +2712,3 @@ class TestRotfuck:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.rotfuck("02")
-
-
-class TestHomeRow:
-    """The Home Row boolean generator (parameterized, n <= 2).
-
-    Home Row's ``j`` skips the next instruction when the current cell is
-    zero, so ``jf``/``jd`` are guarded moves that route a decision tree
-    without the ``l`` loops (which pair by order and cannot nest).  The
-    template bakes the answer bytes into leaf cells and the ``{Xi}`` bits
-    at cells 0..n-1, then routes the beam with a ``j``-guarded sequence and
-    prints with ``k``.
-    """
-
-    def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
-
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "a" if b else "",
-            lambda _i, _b: "",
-        )
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0111", 2),  # OR
-            ("0110", 2),  # XOR
-            ("1110", 2),  # NAND
-            ("0000", 2),  # constant zero
-            ("1111", 2),  # constant one
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
-        template = boolean.home_row(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_home_row(self.instantiate(template, bits), [])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    @pytest.mark.parametrize("n", [1, 2])
-    def test_all_small_tables(self, n: int) -> None:
-        """Every table up to two inputs produces the right result."""
-        for table_int in range(2 ** (2**n)):
-            table = format(table_int, f"0{2**n}b")
-            template = boolean.home_row(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = run_home_row(self.instantiate(template, bits), [])
-                assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
-    def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
-        template = boolean.home_row("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
-
-    def test_routes_with_guarded_moves(self) -> None:
-        """The routing uses j-guarded moves, not nested l loops."""
-        template = boolean.home_row("0110")
-        assert "jf" in template
-        assert template.count("l") == 0
-
-    def test_rejects_n_greater_than_two(self) -> None:
-        with pytest.raises(ValueError, match="n >= 3"):
-            boolean.home_row("00000001")
-
-    def test_rejects_bad_table(self) -> None:
-        with pytest.raises(ValueError, match="entries"):
-            boolean.home_row("011")
-
-    def test_rejects_non_binary(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.home_row("02")

@@ -216,16 +216,18 @@ No existing boolean generator uses this convention; it would require a new
 harness contract (termination as the answer) and still does not unlock a
 general multi-input generator in any of these languages.
 
-## A Painter Ant boolean generator (exact n <= 2; n >= 3 is open)
+## A Painter Ant boolean generator (n >= 3 is open; generator removed)
 
 A Painter Ant has no I/O, so its boolean generator (in
-:mod:`esolangs.tools.booleans.a_painter_ant`) uses the parameterized
+:mod:`esolangs.tools.booleans.a_painter_ant`) used the parameterized
 convention, read by a semantic grid model (the interpreter's own output is
 the visited-cell bounding box, which carries no coordinates).  The answer
-for the supported arities is the **origin's colour** (white is one, black is
-zero), giving *exact* truth tables.
+for the supported arities was the **origin's colour** (white is one, black is
+zero), giving *exact* truth tables.  The generator was **removed** because
+its `n <= 2` cap made it trivial (see ``docs/roadmap.md``); this page keeps
+the wall recorded so the work to re-add it is understood.
 
-The input encoding is the lowercase/uppercase movement *pair*: ``n`` and
+The input encoding was the lowercase/uppercase movement *pair*: ``n`` and
 ``N`` both point north but ``n`` moves onto a black cell while ``N`` moves
 onto a white one, so exactly one succeeds at a given target.  Each input
 bit is filled into the template as its pair, and the ant's resulting
@@ -248,8 +250,8 @@ This is cycle-stable and expresses *most* n == 3 tables — a search found
 196 of 256, including AND3, OR3, XOR3 (via height parity), and majority —
 but the ~60 unreachable ones are exactly the balanced, non-monotone tables
 (such as equality), and no general construction is known that reaches *all*
-functions of an arity.  ``a_painter_ant`` therefore raises for ``n >= 3``;
-lifting the cap to a general method is recorded in ``docs/roadmap.md``.
+functions of an arity.  Lifting the cap to a general method is recorded in
+``docs/roadmap.md`` and would warrant re-adding the generator.
 
 ## Multiply capability (Jaune realizes it)
 
