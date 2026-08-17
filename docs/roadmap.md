@@ -35,9 +35,9 @@ that work starts.  Revisit if the wiki (or its successor Pure) defines the
 rest of the operator set.
 
 **Point Break, State and Main, Your Time Is Up, Crement — no-output tier.**
-None have I/O, so like Crement and A Painter Ant they can only be
-self-contained interpreters without a generator; they would inherit the
-no-output removal policy below.
+None have I/O, so they can only be self-contained interpreters without a
+generator; they would inherit the deferred-removal policy below (no text or
+boolean generator, with the absence of I/O strengthening the case).
 
 **COD, Suptiftam — heavier, riskier.**  COD's random branches (like
 LaserFuck) make output non-deterministic but the interpreter can still be
@@ -61,58 +61,49 @@ the table:
   byte I/O) shares ABCDrection's bit-tape model; Minifuck's
   flip-and-conditional-skip is further away.
 
-## No-output interpreters (deferred removal)
+## Deferred-removal candidates
 
-**Deferred — not yet removed.**  Five interpreters are for languages whose
-wiki defines no I/O, so their only observable output is an interpreter-
-invented state dump (the tape, registers, deque, or grid printed at halt to
-make the run testable) — not a language output command.  They cannot
-generate text, be differentially verified, or step through input, so by
-the admission criteria' "usable file-based I/O" test they are the weakest
-additions.  Four of them (A Painter Ant, Bitdeque, Minsky Swap, RAM0)
-still have boolean generators, and ArrowQueue realizes the halt-vs-hang
-termination convention, so every member of this tier retains at least a
-boolean story.
+**Deferred — not yet removed.**  Four languages have **neither a text
+generator nor a boolean generator**, so they cannot be round-trip or
+differentially verified and are the weakest additions.  They are grouped
+together regardless of I/O; the presence of usable I/O is an argument
+*against* removal, so the no-output ArrowQueue is the strongest candidate
+and the I/O-capable Grapheme, Lightlang, and Movesum are weaker ones.
 
-| Language | Output |
-| --- | --- |
-| ArrowQueue | None; only halt-vs-hang, which expresses AND/OR-class boolean functions (see `docs/walls.md`). |
-| A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (exact n <= 2). |
-| Minsky Swap | Final register dump; has a boolean generator. |
-| RAM0 | Final state dump; has a boolean generator. |
-| Bitdeque | Final register/deque dump; has a boolean generator. |
+| Language | Output | Why it is on the list |
+| --- | --- | --- |
+| ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
+| Grapheme | I/O-capable, but text is unspellable (no `E`, no concatenation) | no text generator; boolean wall. |
+| Lightlang | Prints only the single bit as a number | no text generator; boolean wall (AND/OR-class only). |
+| Movesum | Prints `n ` (numbers with a trailing space) | no text generator; no conditional, so no boolean generator. |
 
-**Candidate to remove, once decided.**  The roadmap's planned no-output
+The I/O-capable members (Grapheme, Lightlang, Movesum) were previously
+excluded from this tier as "I/O-capable" — they stay on the list because
+they still fail both generator gates, but their real language-defined output
+counts against removing them.  The other interpreter-only languages
+(A Painter Ant, ABCDirection, Back, BF-PDA, Bitdeque, Jaune, Lamfunc,
+Minsky Swap, RAM0) all have a boolean generator, so they are **not**
+deferred-removal candidates; their only weakness is an interpreter-invented
+state dump where the wiki defines no text output.
+
+**Candidate to add, once decided.**  The roadmap's planned no-output
 candidates (Point Break, State and Main, Crement, Your Time Is Up) would be
-dropped under the same policy.  The I/O-capable interpreter-only languages
-(Grapheme, Movesum, Lightlang)
-are not in this tier.
-
-**Generator story is mostly absent.**  None of the thirteen
-interpreter-only languages has a text generator.  Nine have boolean
-generators (A Painter Ant, ABCDirection, Back, BF-PDA, Bitdeque, Jaune,
-Lamfunc, Minsky Swap, RAM0);
-ArrowQueue realizes
-the halt-vs-hang *termination* convention for AND/OR-class functions (a ring
-template committed as its truth-machine example); and the other three
-(Grapheme, Lightlang, Movesum)
-have no boolean story at all (each hits a documented wall in
-`docs/walls.md`).  So the generator-story criterion is failed by most of the
-interpreter-only set, and the distinction below is only how observable
-their non-generator output is.
+dropped under the same policy.
 
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
-admission criteria treat as a genuine gap.  None of the remaining five
-(ArrowQueue, A Painter Ant, Minsky Swap, RAM0, Bitdeque) has an
-external implementation — all are Bangyen-only sole implementations.
-(Kak and Brainpocalypse, the two externally-implemented members, and Stun
-Step — a sole implementation removed anyway, see `docs/limitations.md` —
-were removed.)  The tradeoff is
-between "no I/O ⇒ cannot participate in the repo's verification machinery"
-and "sole implementation ⇒ removing creates a gap"; the removal is recorded
-here as a candidate to resolve deliberately rather than by default.
+admission criteria treat as a genuine gap.  ArrowQueue, Grapheme, Lightlang,
+and Movesum are all Bangyen-only sole implementations with no external
+implementations.  ArrowQueue is additionally Turing-complete (Tag system,
+Cyclic tag system, and Minsky machine translations are on the wiki).  (Kak
+and Brainpocalypse, the two externally-implemented members, and Stun Step —
+a sole implementation removed anyway, see `docs/limitations.md` — were
+removed.)  The tradeoff is
+between "no generator ⇒ cannot participate in the repo's verification
+machinery" and "sole implementation ⇒ removing creates a gap"; the removal
+is recorded here as a candidate to resolve deliberately rather than by
+default.
 
 ## Extra implementations (cross-checks)
 
