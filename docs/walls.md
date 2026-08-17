@@ -222,6 +222,39 @@ No existing boolean generator uses this convention; it would require a new
 harness contract (termination as the answer) and still does not unlock a
 general multi-input generator in any of these languages.
 
+## A Painter Ant boolean generator (n <= 2)
+
+A Painter Ant has no I/O, so its boolean generator (in
+:mod:`esolangs.tools.booleans.a_painter_ant`) uses the parameterized
+convention and the **origin's colour** as the answer (white is one, black is
+zero), read by a semantic grid model (the interpreter's own output is the
+visited-cell bounding box, which carries no coordinates).
+
+The input encoding is the lowercase/uppercase movement *pair*: ``n`` and
+``N`` both point north but ``n`` moves onto a black cell while ``N`` moves
+onto a white one, so exactly one succeeds at a given target.  Each input
+bit is filled into the template as its pair, and the ant's resulting
+position routes the computation.  Every template is a *fixed point*: after
+each whole cycle the ant returns to the origin with the grid in the same
+state, so the box is identical for any limit that is a whole number of
+cycles (the discriminator ``P{X0}pS`` is the minimal such gate).
+
+Supported and verified exhaustively against the interpreter:
+
+- **n == 1**: all four one-input functions.
+- **n == 2**: all sixteen two-input functions (five base templates plus the
+  two constant programs, with per-bit plain/complemented slots).
+
+**n >= 3 is a wall.**  The discriminator's conditional read works by moving
+the ant onto an adjacent cell and testing the cell *behind* it; the two
+input values therefore leave the ant at *different positions*, and a second
+gate cannot read the first gate's result because the branches do not
+re-converge on a shared stable path (a repaint that would restore the origin
+colour is a constant, not a function of the carried bit, so a stable
+origin-flip gadget does not exist).  A search of over a million random
+three-slot templates found no 3-input AND.  The cap matches Minifuck's
+``n <= 2``: a documented structural limit, not a missing construction.
+
 ## Multiply capability (Jaune realizes it)
 
 A *multiply* program reads two decimal operands (most-significant first, one
