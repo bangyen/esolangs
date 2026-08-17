@@ -63,26 +63,30 @@ the table:
 
 ## Deferred-removal candidates
 
-**Deferred — not yet removed.**  Five languages have no usable text or
+**Deferred — not yet removed.**  Four languages have no usable text or
 boolean generator — either none at all, or one so severely constrained it is
 effectively absent for any non-trivial use — so they cannot be round-trip or
 differentially verified and are the weakest additions.  They are grouped
 together regardless of I/O; the presence of usable I/O is an argument
 *against* removal, so the no-output ArrowQueue is the strongest candidate
-and the I/O-capable Grapheme, Lightlang, and Movesum are weaker ones.
+and the I/O-capable Lightlang and Movesum are weaker ones.
 
 | Language | Output | Why it is on the list |
 | --- | --- | --- |
 | ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
 | A Painter Ant | No I/O; visited-grid bounding box (`#`/`.` raster) | no text generator; boolean generator was removed as trivial (`n <= 2`), so no boolean generator at all. |
-| Grapheme | I/O-capable, but text is unspellable (no `E`, no concatenation) | no text generator; boolean wall. |
 | Lightlang | Prints only the single bit as a number | no text generator; boolean wall (AND/OR-class only). |
 | Movesum | Prints numbers space-separated with no trailing space | no text generator; no conditional, so no boolean generator. |
 
-The I/O-capable members (Grapheme, Lightlang, Movesum) were previously
+The I/O-capable members (Lightlang, Movesum) were previously
 excluded from this tier as "I/O-capable" — they stay on the list because
 they still fail both generator gates, but their real language-defined output
-counts against removing them.  A Painter Ant was here because its boolean
+counts against removing them.  Grapheme has since been taken **off** this
+list: its boolean wall was not a hard limit — the language is Turing-complete
+with arithmetic and conditionals — and a working boolean generator now
+exists (see the constrained-generators section below), so like the other
+interpreter-only languages it is no longer a removal candidate even though
+it still has no text generator.  A Painter Ant was here because its boolean
 generator only covered one- and two-input tables (`n <= 2`); that generator
 has since been **removed** as trivial (see the constrained-generators
 section below), so A Painter Ant now has no generator at all — it sits in
@@ -92,7 +96,8 @@ text generator is severely constrained — even the most restricted ones
 cover a substantial output range, so no language is added on the text side.
 The other interpreter-only languages
 (ABCDirection, Back, BF-PDA, Bitdeque, Jaune, Lamfunc,
-Minsky Swap, RAM0) all have a working boolean generator with no severe cap,
+Minsky Swap, RAM0, Grapheme) all have a working boolean generator with no
+severe cap,
 so they are **not**
 deferred-removal candidates; their only weakness is an interpreter-invented
 state dump where the wiki defines no text output.
@@ -105,7 +110,7 @@ dropped under the same policy.
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
 admission criteria treat as a genuine gap.  ArrowQueue, A Painter Ant,
-Grapheme, Lightlang, and Movesum are all Bangyen-only sole implementations
+Lightlang, and Movesum are all Bangyen-only sole implementations
 with no external implementations.  ArrowQueue and A Painter Ant are each
 Turing-complete (ArrowQueue via Tag/Cyclic tag/Minsky machine translations;
 A Painter Ant via a compiled Exasperation Machine, both on the wiki).  (Kak
@@ -250,3 +255,10 @@ Borderline, kept for now: **ZTOALC L** raises for dense, non-symmetric
 tables past `n == 3` but still covers symmetric and structured tables at
 `n == 4`, so it is a candidate to revisit if a general construction or a
 decision to drop it lands.
+
+Resolved: **Grapheme's** boolean "wall" was a stale note from an incomplete
+decision-tree construction, not a hard limit.  A total generator
+(`esolangs.tools.booleans.stack.grapheme`) now evaluates the table as an
+arithmetic sum of minterms (`A`/`B`/`S`/`T`, no jumps), reading each input
+from a two-character alphabet, and Grapheme has come off the
+deferred-removal list.

@@ -46,7 +46,7 @@ from esolangs.tools.booleans.register import (
     qoibl,
     sophie,
 )
-from esolangs.tools.booleans.stack import bfstack, forth, modulous, unsquare
+from esolangs.tools.booleans.stack import bfstack, forth, grapheme, modulous, unsquare
 from esolangs.tools.booleans.tape import (
     basicfuck,
     bf_tree,
@@ -92,6 +92,7 @@ __all__ = [
     "dimensional_tree",
     "forbin_boolean",
     "forth",
+    "grapheme",
     "instantiate",
     "jaune",
     "jaune_multiply",
@@ -147,6 +148,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "Decleq",
         "Forbin",
         "Forþ",
+        "Grapheme",
         "Jaune",
         "Lamfunc",
         "LaserFuck",
