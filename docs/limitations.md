@@ -109,7 +109,11 @@ bitdeque, ram0, minsky_swap) each embed every input **exactly once**, never
 re-embedding a bit at multiple decision nodes — an input-capable language
 reads each of its `n` inputs once per run, and the no-input generators
 mirror that (see `esolangs.tools.booleans.parameterized` and its regression
-test).
+test).  Two of them, `nocomment` and `bfpda`, also embed each input's
+complement (`{Ci}`) once, because their if/else branch needs a gate that is
+nonzero exactly when the bit is zero and neither language can compute that
+complement at runtime (`nocomment` has no flip; `bfpda`'s `@` destroys the
+bit) — a documented wall, not a superfluous read.
 
 ## Fell-through candidates
 
