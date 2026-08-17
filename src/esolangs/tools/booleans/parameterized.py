@@ -72,54 +72,35 @@ def bio(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    BIO has three registers (``x``, ``y``, ``z``).  ``{Xi}`` is replaced by
-    ``0ox`` (increment ``x``) when bit ``i`` is one and by nothing when it
-    is zero, so the raw bit lands in ``x``; ``{Ci}`` is the program's
-    *runtime* computation of the complement (``0oy 0ix 1oy 1ox }``, which
-    sets ``y = 1 - x`` and clears ``x``).  A node tests ``0iy`` for the
-    zero-side and reloads ``{Xi}`` for the one-side, clearing each register
-    before its loop exits.  Every leaf clears ``x`` and ``y`` so the
-    ancestor loops unwind, and builds the result in ``z`` before printing
-    it with ``1iz``.
+    BIO has three registers (``x``, ``y``, ``z``) and no absolute jumps —
+    its ``{``/``}`` loops are structurally matched — so a variable-length
+    setter is safe.  Each input is embedded once by packing it into ``x``:
+    ``{Xi}`` becomes ``0ox`` repeated by the input's binary weight (``2**w``)
+    for a one bit and nothing for a zero, so ``x = sum 2**w_i * bit_i`` is
+    the input's numeric index.
+
+    ``y`` is initialized to the table's first entry (``table[0]``), then
+    ``2**n - 1`` *nested* loops each decrement ``x`` once (``0ix { 1ox ... }``)
+    and, on the transition ``table[j-1] -> table[j]``, adjust ``y``: ``0oy``
+    for a 0-to-1 rise, ``1oy`` for a 1-to-0 fall, nothing for a flat edge.
+    The j-th level fires iff ``x >= j``, so for the packed value ``V`` the
+    ops telescope to ``y = table[0] + sum_{j=1}^{V} (table[j] - table[j-1]) =
+    table[V]``.  The result is printed with ``1iy``.
     """
     n = _validate_truth_table(truth_table)
 
-    def leaf(value: str) -> str:
-        # build the result in z, print it, then clear x and y so every
-        # ancestor loop (which checks x or y) unwinds cleanly
-        return "0oz" * (48 + int(value)) + "1iz" + "0ix" + "1ox" + "}0iy" + "1oy" + "}"
+    def yop(a: str, b: str) -> str:
+        if a == b:
+            return ""
+        return "0oy" if a == "0" else "1oy"
 
-    def node(i: int, rows: list[int]) -> str:
-        results = {truth_table[r] for r in rows}
-        if len(results) == 1:
-            return leaf(results.pop())
-        zero = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 0]
-        one = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 1]
-        sub0 = node(i + 1, zero)
-        sub1 = node(i + 1, one)
-        # x = bit, y = 1 - bit; test y for the zero-side, then reload x for
-        # the one-side
-        return (
-            "{X"
-            + str(i)
-            + "}"
-            + "{C"
-            + str(i)
-            + "}"
-            + "0iy"
-            + "1oy"
-            + sub0
-            + "}"
-            + "{X"
-            + str(i)
-            + "}"
-            + "0ix"
-            + "1ox"
-            + sub1
-            + "}"
-        )
-
-    return node(0, list(range(2**n)))
+    pack = " ".join("{X" + str(i) + "}" for i in range(n))
+    inner = ""
+    for j in range(2**n - 1, 0, -1):
+        body = "1ox" + yop(truth_table[j - 1], truth_table[j]) + inner
+        inner = "0ix{" + body + "}"
+    init = "0oy" if truth_table[0] == "1" else ""
+    return pack + " " + init + inner + "0oy" * 48 + "1iy"
 
 
 def back(truth_table: str) -> str:
@@ -380,11 +361,13 @@ def lamfunc(truth_table: str) -> str:
     template's ``{Xi}`` placeholders become the binary literal for each input
     bit, and the harness instantiates one program per input combination.
 
-    The template is a decision tree of ``i`` builtins — ``i x y z`` returns
-    ``y`` when ``x`` is nonzero else ``z`` — over the embedded bit constants,
-    with ``p 0``/``p 1`` at the leaves printing the table's result as binary.
-    A subtree whose table slice is a constant collapses to a single leaf, so
-    constant rows emit no branching.
+    Each input is stored once in a variable (``vs v{i} {Xi}``), so the inputs
+    are embedded exactly ``n`` times; the decision tree then reads each bit
+    back with ``vg v{i}`` instead of re-embedding it at every node.  The tree
+    is a chain of ``i`` builtins — ``i x y z`` returns ``y`` when ``x`` is
+    nonzero else ``z`` — with ``p 0``/``p 1`` at the leaves printing the
+    table's result as binary.  A subtree whose table slice is a constant
+    collapses to a single leaf, so constant rows emit no branching.
     """
     n = _validate_truth_table(truth_table)
 
@@ -395,12 +378,13 @@ def lamfunc(truth_table: str) -> str:
         mid = (lo + hi) // 2
         # i x y z returns y when x is nonzero else z: y is the one-case
         return (
-            f"i {{X{level}}} "
+            f"i vg v{level} "
             f"{node(level + 1, mid, hi)} "
             f"{node(level + 1, lo, mid)}"
         )
 
-    return node(0, 0, 2**n)
+    head = " ".join(f"vs v{i} {{X{i}}}" for i in range(n))
+    return head + " " + node(0, 0, 2**n)
 
 
 def bitdeque(truth_table: str) -> str:
