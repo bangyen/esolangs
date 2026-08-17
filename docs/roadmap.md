@@ -74,7 +74,7 @@ they are the weakest additions.
 | Language | Output |
 | --- | --- |
 | ArrowQueue | None; only halt-vs-hang, which expresses AND/OR-class boolean functions (see `docs/walls.md`). |
-| A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (origin colour, n <= 2). |
+| A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (exact n <= 2, weight-threshold n >= 3). |
 | Brainpocalypse | Final tape dump. |
 | Kak | Final tape dump. |
 | Minsky Swap | Final register dump. |
@@ -91,7 +91,8 @@ are not in this tier.
 **Generator story is mostly absent.**  None of the fourteen
 interpreter-only languages has a text generator.  Jaune and A Painter Ant
 now have full boolean generators (Jaune's reads input; A Painter Ant's uses
-the origin-colour parameterized convention, n <= 2), ArrowQueue realizes
+the parameterized convention — exact tables for n <= 2, weight-threshold
+for n >= 3), ArrowQueue realizes
 the halt-vs-hang *termination* convention for AND/OR-class functions (a ring
 template committed as its truth-machine example), and the rest have no
 boolean story at all (each hits a documented wall in `docs/walls.md`).  So
