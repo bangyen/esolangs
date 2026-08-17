@@ -111,11 +111,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.one_two_three",
         id="one_two_three",
     ),
-    "2 Bits, 1 Byte": Language(
-        "2 Bits, 1 Byte",
-        id="two_bits_one_byte",
-        interpreter="other.two_bits_one_byte",
-    ),
     "2dFish": Language(
         "2dFish",
         _generate.two_d_fish,
@@ -139,12 +134,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.albabet,
         "register_based.albabet",
         id="albabet",
-    ),
-    "ASCII art": Language(
-        "ASCII art",
-        _generate.ascii_art,
-        "tape_based.ascii_art",
-        id="ascii_art",
     ),
     "ArrowQueue": Language(
         "ArrowQueue",
@@ -269,12 +258,6 @@ LANGUAGES: dict[str, Language] = {
         id="dotlang",
         split=True,
     ),
-    "DSDLAI": Language(
-        "DSDLAI",
-        id="dsdlai",
-        interpreter="grid_based.dsdlai",
-        split=True,
-    ),
     "Eval": Language(
         "Eval",
         _generate.eval,
@@ -327,11 +310,15 @@ LANGUAGES: dict[str, Language] = {
         id="kak",
         interpreter="tape_based.kak",
     ),
-    "Keys": Language(
-        "Keys",
-        id="keys",
-        interpreter="other.keys",
-        split=True,
+    "Jaune": Language(
+        "Jaune",
+        id="jaune",
+        interpreter="tape_based.jaune",
+    ),
+    "Lamfunc": Language(
+        "Lamfunc",
+        id="lamfunc",
+        interpreter="other.lamfunc",
     ),
     "LaserFuck": Language(
         "LaserFuck",
@@ -392,11 +379,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.nocomment,
         "tape_based.nocomment",
         id="nocomment",
-    ),
-    "Number Seventy-Four": Language(
-        "Number Seventy-Four",
-        id="number_seventy_four",
-        interpreter="tape_based.number_seventy_four",
     ),
     "Painfuck": Language(
         "Painfuck",
@@ -463,11 +445,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.the_temporary_stack,
         "stack_based.the_temporary_stack",
         id="the_temporary_stack",
-    ),
-    "Trash": Language(
-        "Trash",
-        id="trash",
-        interpreter="other.trash",
     ),
     "3x": Language(
         "3x",

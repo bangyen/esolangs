@@ -48,7 +48,7 @@ Documented divergences from the cross-check:
 Invalid runtime operations halt with :class:`~esolangs.exceptions.HaltError`.
 """
 
-import random
+import secrets
 import sys
 
 from esolangs.exceptions import HaltError
@@ -168,7 +168,7 @@ def run(code: str, io: IO) -> None:
             elif c == "y":
                 # The wiki specifies a random skip; match the cross-check's
                 # coin flip (the generator and differential avoid `y`).
-                if random.randrange(2) and ind < n:  # nosec B311
+                if secrets.randbelow(2) and ind < n:
                     c = prog[ind]
                     ind += 1
             elif c == "e":

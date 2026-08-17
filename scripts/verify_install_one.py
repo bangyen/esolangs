@@ -28,16 +28,14 @@ INSTALLER = ROOT / "scripts" / "install_one.sh"
 
 # A language with no dependencies beyond io/exceptions, one with a transitive
 # interpreter import, and one that shares the bracket helper.
-_LANGUAGES = ("brainfuck", "ASCII art", "3D Brainfuck")
+_LANGUAGES = ("brainfuck", "Factor", "3D Brainfuck")
 
 # (program file contents, expected stdout) per language, run through the
 # bundled file.  The programs come from the interpreter unit tests so the
 # bundled file must reproduce exactly what the package produces.
-_PLUS_BLOCK = "|\n|\n|\n|\n|"
-_DOT_BLOCK = "##\n##"
 _PROGRAMS = {
     "brainfuck": ("++++++++[>++++++++<-]>.", "@"),
-    "ASCII art": ((_PLUS_BLOCK + "\n\n") * 65 + _DOT_BLOCK, "A"),
+    "Factor": ("21666143160021789415877957258569906604219402892572113", "A"),
     "3D Brainfuck": ("+" * 72 + ".", "H"),
 }
 

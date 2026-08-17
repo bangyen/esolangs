@@ -1,7 +1,9 @@
 """Public API for the esolangs package.
 
 Provides ``generate`` (produce a program that prints a text), ``run``
-(execute a program through an interpreter), ``transpile`` (rewrite a
+(execute a program through an interpreter), ``make_vm`` (a step-and-inspect
+wrapper around the step-capable interpreters), ``make_debugger`` (a
+breakpoint/watch layer over the VM), ``transpile`` (rewrite a
 program between languages), ``describe`` (a structured language summary),
 and ``list_languages``.
 """
@@ -13,6 +15,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
+from esolangs.debug import Debugger, make_debugger
 from esolangs.exceptions import (
     HaltError,
     UnknownLanguageError,
@@ -22,6 +25,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
 from esolangs.tools.boolean import BOOLEAN
 from esolangs.tools.transpilers import TRANSPILERS
+from esolangs.vm import VM, make_vm
 
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
 
@@ -80,7 +84,7 @@ def _run(
 ) -> None:
     """Run ``run_fn``, applying the wall-clock ``timeout`` guard when set."""
     if timeout is None:
-        run_fn(program, io=io_obj, **kwargs)
+        run_fn(program, io_obj, **kwargs)
     elif threading.current_thread() is threading.main_thread() and hasattr(
         signal, "SIGALRM"
     ):
@@ -104,7 +108,7 @@ def _run_timed_signal(
     old = signal.signal(signal.SIGALRM, _timeout_handler)
     signal.setitimer(signal.ITIMER_REAL, timeout)
     try:
-        run_fn(program, io=io_obj, **kwargs)
+        run_fn(program, io_obj, **kwargs)
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old)

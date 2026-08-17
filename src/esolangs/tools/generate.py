@@ -49,7 +49,6 @@ from esolangs.tools.generators.register import (
 )
 from esolangs.tools.generators.stack import modulous, the_temporary_stack
 from esolangs.tools.generators.tape import (
-    ascii_art,
     bfstack,
     brainfuck,
     brainif,
@@ -68,7 +67,6 @@ __all__ = [
     "_ilog",
     "addsubjump",
     "albabet",
-    "ascii_art",
     "basicfuck",
     "between",
     "bfstack",

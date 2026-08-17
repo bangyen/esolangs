@@ -271,13 +271,13 @@ def _leaf(
     b.set(sink_col, b.height - 1, "D")
 
 
-def abcdirection(truth_table: str, n: int) -> str:
+def abcdirection(truth_table: str) -> str:
     """Build an ABCDirection program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first), and ``n`` is the number of inputs.
+    inputs (most significant first); the table length implies ``n``.
     """
-    _validate_truth_table(truth_table, n)
+    n = _validate_truth_table(truth_table)
     width = 100 + 60 * (2**n - 1) + 60
     sp = 36
     center = 100 + 2 ** (n - 1) * sp

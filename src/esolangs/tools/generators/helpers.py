@@ -86,7 +86,8 @@ def _extend_plans(maxval: int) -> None:
                     need |= _PLAN[rem][0]
                 if best is None or len(need) < len(best[0]):
                     best = (need, {m: (b, a, rem)})
-        assert best is not None  # nosec B101  # b = 1 always yields a finite plan
+        if best is None:
+            raise AssertionError("b = 1 always yields a finite plan")
         plan = dict(best[1])
         for v in best[0]:
             if v >= 3 and v != m:

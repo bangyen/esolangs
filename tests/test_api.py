@@ -18,7 +18,7 @@ def test_generate_round_trips(language: str) -> None:
 
 
 def test_run_feeds_stdin() -> None:
-    program = boolean.circlefuck("1101", 2)
+    program = boolean.circlefuck("1101")
     assert esolangs.run("Circlefuck", program, stdin="1\n0\n") == "0"
     assert esolangs.run("Circlefuck", program, stdin="0\n1\n") == "1"
 
@@ -40,23 +40,15 @@ def test_unknown_language_raises() -> None:
 
 
 def test_run_eof_when_input_runs_out() -> None:
-    program = boolean.circlefuck("10", 1)  # reads one input bit
+    program = boolean.circlefuck("10")  # reads one input bit
     with pytest.raises(EOFError):
         esolangs.run("Circlefuck", program, stdin="")
 
 
 def test_transpile_round_trips() -> None:
     program = esolangs.generate("brainfuck", "Hi")
-    art = esolangs.transpile("brainfuck", "ASCII art", program)
-    assert esolangs.run("ASCII art", art) == "Hi"
-
-
-def test_transpile_reverse_round_trips() -> None:
-    program = esolangs.generate("brainfuck", "Hi")
-    art = esolangs.transpile("brainfuck", "ASCII art", program)
-    recovered = esolangs.transpile("ASCII art", "brainfuck", art)
-    assert recovered == program
-    assert esolangs.run("brainfuck", recovered) == "Hi"
+    circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
+    assert esolangs.run("Circlefuck", circlefuck) == "Hi"
 
 
 def test_transpile_unsupported_pair_raises() -> None:

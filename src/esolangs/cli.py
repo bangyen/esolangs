@@ -26,7 +26,7 @@ examples:
   esolangs list
   esolangs generate Circlefuck "Hello, World!"
   esolangs run Circlefuck hello.txt
-  esolangs transpile BF "ASCII art" hello.bf
+  esolangs transpile brainfuck Circlefuck hello.bf
 """
 
 

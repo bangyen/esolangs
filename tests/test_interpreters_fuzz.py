@@ -21,16 +21,15 @@ from esolangs.interpreters.io import IO
 # left out so the fuzz stays fast, and input is mocked below.
 FUZZ = {
     "queue_based.bitdeque": "PUSHINJECTEJECTPOPINVERT",
-    "other.keys": "-_\\/",
     "register_based.minsky_swap": "+~*",
     "tape_based.movesum": "move sum0123456789",
-    "grid_based.dsdlai": ".!?$~;:#@",
+    "other.lamfunc": "p eq i cb lb fb vs vg F . x 0 1",
 }
 
-# ArrowQueue, back, Between, lightlang, and RAM0 are not fuzzed here: they
-# have unconditional, goto, or directional loops, so a random program may
-# legitimately never terminate and the "terminates" invariant does not apply
-# to them.
+# ArrowQueue, back, Between, Jaune, lightlang, and RAM0 are not fuzzed here:
+# they have unconditional, goto, or directional loops (Jaune's ?/! jumps), so
+# a random program may legitimately never terminate and the "terminates"
+# invariant does not apply to them.
 
 
 class _TimeoutError(Exception):
