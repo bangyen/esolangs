@@ -81,7 +81,6 @@ per-character encoding can be meaningfully shortened:
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | ArrowQueue | No output; only the halt-vs-hang outcome is observable, which expresses AND/OR/threshold functions but no XOR (see `docs/walls.md`). |
-| Bitdeque | `GOTO N` is an absolute token index that shifts under parameterized substitution. |
 | Brainpocalypse | `-`-on-zero rewinds to the program start; re-running the `+` bake increments cells unboundedly. |
 | Dotlang | The `W~` warp re-enters the first-match markers, losing branch history. |
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
@@ -89,9 +88,7 @@ per-character encoding can be meaningfully shortened:
 | Grapheme | `V` jumps forward on falsy with no mid-tree halt, so the truthy branch falls through both leaves. |
 | Kak | Prints the whole tape, not a single `0`/`1`. |
 | Lightlang | `&` skips one character, so a decision-tree node cannot route to a multi-character subtree. |
-| Minsky Swap | `~` targets are absolute indices that shift under substitution. |
 | Movesum | No conditional; the loop repeats until the array stops changing. |
-| RAM0 | `goto` is an absolute token index that shifts under substitution. |
 | Stun Step | The loop-back re-runs the code with a shifted pointer, corrupting the bit bakes. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 | WII2D | The accumulator never affects control flow. |
@@ -105,7 +102,7 @@ per-character encoding can be meaningfully shortened:
 | Home Row | `n <= 2` | Language cap: the fixed 5x5 torus cannot route `2**n` combinations past `n == 2`. |
 | Minifuck | `n <= 3`, 0-preserving two-input only | Structural wall: the decode suffix fixes the pointer orientation. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
-| Circlefuck, ROTfuck, ABCDirection, BF-PDA | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
+| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0 | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
 ## Fell-through candidates
 
