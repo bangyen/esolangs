@@ -111,11 +111,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.one_two_three",
         id="one_two_three",
     ),
-    "2 Bits, 1 Byte": Language(
-        "2 Bits, 1 Byte",
-        id="two_bits_one_byte",
-        interpreter="other.two_bits_one_byte",
-    ),
     "2dFish": Language(
         "2dFish",
         _generate.two_d_fish,
