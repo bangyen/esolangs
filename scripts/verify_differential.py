@@ -1622,8 +1622,8 @@ def _verify_bit_tilde() -> bool:
 
 # -- The generator-less extra/ interpreters (corpus only) -------------------
 #
-# Brainpocalypse and Stun Step have no generators (narrow output classes), so
-# only the fixed corpora are checked.
+# Stun Step has no generator (narrow output class), so only the fixed corpus
+# is checked.
 
 
 @functools.cache
