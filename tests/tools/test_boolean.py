@@ -1441,11 +1441,13 @@ class TestParameterizedBIO:
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools.booleans import parameterized
 
+        n = len(bits)
+        # pack each input once by its binary weight
         return parameterized.instantiate(
             tpl,
             bits,
-            lambda _i, b: "0ox" * b,
-            lambda _i, _b: "0oy0ix1oy1ox}",
+            lambda i, b: "0ox" * (2 ** (n - 1 - i)) if b else "",
+            lambda _i, _b: "",
         )
 
     @pytest.mark.parametrize(
@@ -1470,20 +1472,23 @@ class TestParameterizedBIO:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi}/{Ci} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.booleans import parameterized
 
         template = parameterized.bio("0110")
         assert "{X0}" in template
         assert "{X1}" in template
-        assert "{C0}" in template
 
-    def test_runtime_complement(self) -> None:
-        """The {Ci} placeholder computes 1 - x in the program, not a constant."""
+    def test_each_input_is_stored_once(self) -> None:
+        """The packing scheme embeds each input exactly once."""
+        import re
+
         from esolangs.tools.booleans import parameterized
 
-        template = parameterized.bio("10")
-        assert "0ix" in template  # the complement computation is emitted, not a literal
+        for n in (1, 2, 3):
+            table = format(0, f"0{2**n}b")
+            template = parameterized.bio(table)
+            assert len(re.findall(r"\{X\d+\}", template)) == n
 
 
 class TestParameterizedBack:
@@ -1688,11 +1693,12 @@ class TestParameterizedLamfunc:
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools.booleans import parameterized
 
+        # each {Xi} fills a `vs v{i}` store with the binary literal
         return parameterized.instantiate(
             tpl,
             bits,
-            lambda _i, b: str(b),
-            lambda _i, b: str(b),
+            lambda _i, b: "0b" + str(b),
+            lambda _i, b: "0b" + str(b),
         )
 
     @pytest.mark.parametrize(
@@ -1740,12 +1746,23 @@ class TestParameterizedLamfunc:
         assert "{X0}" in template
         assert "{X1}" in template
 
-    def test_constant_table_is_a_leaf(self) -> None:
-        """A constant table emits a single p with no branching."""
+    def test_each_input_is_stored_once(self) -> None:
+        """The store-once scheme embeds each input exactly once."""
+        import re
+
         from esolangs.tools.booleans import parameterized
 
-        assert parameterized.lamfunc("0000") == "p 0"
-        assert parameterized.lamfunc("1111") == "p 1"
+        for n in (1, 2, 3):
+            table = format(0, f"0{2**n}b")
+            template = parameterized.lamfunc(table)
+            assert len(re.findall(r"\{X\d+\}", template)) == n
+
+    def test_constant_table_is_a_leaf(self) -> None:
+        """A constant table emits the stores plus a single p with no branching."""
+        from esolangs.tools.booleans import parameterized
+
+        assert parameterized.lamfunc("0000") == "vs v0 {X0} vs v1 {X1} p 0"
+        assert parameterized.lamfunc("1111") == "vs v0 {X0} vs v1 {X1} p 1"
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.booleans import parameterized
