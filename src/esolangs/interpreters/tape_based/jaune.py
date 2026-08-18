@@ -165,7 +165,7 @@ class _Machine:
         elif c == ":":
             pass  # a label position; execution falls through
         elif c == "?":
-            if cmd.arg is None:
+            if cmd.arg is None:  # pragma: no cover - _parse rejects bare operators
                 raise HaltError(f"{c} requires a number")
             target = self._label(cmd.arg)
             if target is None:
@@ -174,7 +174,7 @@ class _Machine:
                 self._pos = target
                 return
         elif c == "!":
-            if cmd.arg is None:
+            if cmd.arg is None:  # pragma: no cover - _parse rejects bare operators
                 raise HaltError(f"{c} requires a number")
             target = self._label(cmd.arg)
             if target is None:
@@ -185,7 +185,7 @@ class _Machine:
         elif c == "$":
             pass  # a subroutine definition; execution falls through in place
         elif c == "@":
-            if cmd.arg is None:
+            if cmd.arg is None:  # pragma: no cover - _parse rejects bare operators
                 raise HaltError(f"{c} requires a number")
             target = self._subroutine(cmd.arg)
             if target is None:
