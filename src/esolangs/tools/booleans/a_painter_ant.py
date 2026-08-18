@@ -26,21 +26,27 @@ programs cycle-stable.  The ``body`` then funnels the ant (from whichever
 corner it ends cycle 2 at) to a canonical routing point, and the final
 input's embedding does the last east/west route onto the output leaf.
 
-The head is built generically: leaves sit on the axes (the final input on
-``x = +-2``, the first on ``y = +-2`` for two inputs or ``0`` for one),
-visited in an opposite-corner order so the ``_leg`` staircases between them
-pass through the clean origin.  Every non-first leg carries an uppercase
-``W``/``E`` prefix that points away from the origin -- a blocked no-op on
-cycle 1, but the anchor of the closed cycle-2 dance.  This one ``_head``
-handles both ``n == 1`` and ``n == 2``.
+The head is built generically: for one and two inputs the leaves sit on
+the axes (the final input on ``x = +-2``, the first on ``y = +-2`` or
+``0``), visited in an opposite-corner order so the ``_leg`` staircases
+between them pass through the clean origin.  Every non-first leg carries an
+uppercase ``W``/``E`` prefix that points away from the origin -- a blocked
+no-op on cycle 1, but the anchor of the closed cycle-2 dance.  For three
+inputs the head paints a single row of eight leaves at ``y = -2`` (``x =
++-4 +-8 +-16``), detouring onto the clean row ``y = -3`` to cross between
+the west and east halves.  This one ``_head`` handles ``n == 1``, ``n ==
+2``, and ``n == 3``.
 
 The template routes the first ``n-1`` inputs north/south (``nn``/``ss``)
 before the body and the final input east/west after it (``WWwWWEEe`` for a
 one bit and ``NENEESWw`` for a zero, an 8-character complement pair that
 lands on the opposite-coloured leaf).  Every one- and two-input table is
 supported and every instantiated program is a cycle-stable fixed point (the
-bounding box is identical for any whole number of cycles).  ``n >= 3`` is
-still open (``docs/roadmap.md``) and raises :class:`ValueError`.
+bounding box is identical for any whole number of cycles).  The ``n == 3``
+single-line head is exact for cycle 1 on every three-input table but is
+**not yet cycle-stable** -- the cycle-2 dance for that layout is still open
+(``docs/a_painter_ant_generator.md``) -- so ``n >= 3`` raises
+:class:`ValueError`.
 """
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
@@ -72,26 +78,44 @@ def _leaf_color(truth_table: str, bits: list[int]) -> str:
 def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
     """Return ``(x, y, bits)`` for every leaf in head-visit order.
 
-    The final input sits on the east/west axis (``x = +-2``), the first on
-    the north/south axis (``y = +-2`` for two inputs, ``0`` for one).  The
-    visit order keeps consecutive leaves opposite corners so the ``_leg``
-    staircases through the clean origin (``docs/a_painter_ant_generator.md``).
+    For one and two inputs the leaves sit on the axes (the final input on
+    ``x = +-2``, the first on ``y = +-2`` or ``0``) and the visit order
+    keeps consecutive leaves opposite corners so the ``_leg`` staircases
+    pass through the clean origin.  For three inputs the leaves sit on one
+    row ``y = -2`` at ``x = +-4 +-8 +-16``, walked west half-then-half so
+    the single-line head crosses between them on the clean row ``y = -3``
+    (``docs/a_painter_ant_generator.md``).
     """
     order: tuple[tuple[int, ...], ...]
     if n == 1:
         order = ((1,), (0,))
     elif n == 2:
         order = ((1, 1), (0, 0), (1, 0), (0, 1))
+    elif n == 3:
+        order = (
+            (1, 1, 0),
+            (0, 1, 0),
+            (1, 0, 0),
+            (0, 0, 0),
+            (1, 1, 1),
+            (0, 1, 1),
+            (1, 0, 1),
+            (0, 0, 1),
+        )
     else:
         raise ValueError(
-            "the A Painter Ant head generator supports n == 1 and n == 2; "
-            "n >= 3 is an open problem (see docs/roadmap.md)",
+            "the A Painter Ant head generator supports n == 1, n == 2, and "
+            "n == 3; n >= 4 is an open problem (see docs/roadmap.md)",
         )
     out: list[tuple[int, int, tuple[int, ...]]] = []
     for bits in order:
-        x = 2 if bits[-1] == 0 else -2
-        y = 0 if n == 1 else (2 if bits[0] == 0 else -2)
-        out.append((x, y, bits))
+        if n == 3:
+            x = sum((2 * b - 1) * w for b, w in zip(bits, (4, 8, 16), strict=True))
+            out.append((x, -2, bits))
+        else:
+            x = 2 if bits[-1] == 0 else -2
+            y = 0 if n == 1 else (2 if bits[0] == 0 else -2)
+            out.append((x, y, bits))
     return out
 
 
@@ -131,17 +155,35 @@ def _leg(px: int, py: int, qx: int, qy: int) -> str:
 
 
 def _head(truth_table: str, bits: list[int]) -> str:
-    """Build the A Painter Ant head for a one- or two-input truth table.
+    """Build the A Painter Ant head for a one-, two-, or three-input table.
 
-    The head paints every leaf and returns to the origin.  It walks each
-    ``_leg`` with an uppercase prefix before it that points *away* from the
-    origin (``W`` for a west leaf, ``E`` for an east leaf); those prefixes
-    are blocked no-ops on cycle 1 but anchor the closed cycle-2 dance, which
-    is what makes every instantiated program cycle-stable.
+    The head paints every leaf and returns to the origin.  For one and two
+    inputs it walks each ``_leg`` with an uppercase prefix before it that
+    points *away* from the origin (``W`` for a west leaf, ``E`` for an east
+    leaf); those prefixes are blocked no-ops on cycle 1 but anchor the
+    closed cycle-2 dance, which is what makes every instantiated program
+    cycle-stable.  For three inputs it walks the single leaf row, detouring
+    onto the clean row ``y = -3`` to cross from the west half to the east
+    half (the cycle-2 dance for that layout is still open, see
+    ``docs/a_painter_ant_generator.md``).
     """
+    n = len(bits)
+    if n == 3:
+        out = ["nn"]
+        x = 0
+        for i, (lx, _ly, leaf_bits) in enumerate(_leaf_positions(3)):
+            if i == 4:  # cross east on the clean row y = -3
+                out.append("n" + "e" * 56 + "s")
+                x = 28
+            out.append("w" * (x - lx))
+            out.append(_leaf_color(truth_table, list(leaf_bits)))
+            x = lx
+        out.append("n" + "w" * 4 + "sss")  # return via y = -3
+        return "".join(out)
+
     out = ["N"]
     cx = cy = 0
-    for x, y, leaf_bits in _leaf_positions(len(bits)):
+    for x, y, leaf_bits in _leaf_positions(n):
         if (cx, cy) != (0, 0):
             out.append("W" if cx < 0 else "E")
         out.append(_leg(cx, cy, x, y))
@@ -170,6 +212,10 @@ def a_painter_ant(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > 2:
+        # The n == 3 single-line head exists (_head builds it and it is
+        # cycle-1 exact on every table), but the cycle-2 dance is still an
+        # open problem (docs/a_painter_ant_generator.md), and the boolean
+        # harness requires every program to be a cycle-stable fixed point.
         raise ValueError(
             "the A Painter Ant boolean generator supports n == 1 and n == 2; "
             "n >= 3 is an open problem (see docs/roadmap.md)",
@@ -188,13 +234,24 @@ def a_painter_ant(truth_table: str) -> str:
 def instantiate(template: str, bits: list[int]) -> str:
     """Fill an A Painter Ant template's ``{Xi}`` placeholders.
 
-    Every input except the final one routes north/south (``nn`` for a one
-    bit, ``ss`` for a zero); the final (least-significant) input routes
-    east/west (``WWwWWEEe`` for a one, ``NENEESWw`` for a zero).  ``bits``
-    must have length 1 or 2, matching the template built by
+    For one- and two-input templates every input except the final one routes
+    north/south (``nn`` for a one bit, ``ss`` for a zero) and the final
+    (least-significant) input routes east/west (``WWwWWEEe`` for a one,
+    ``NENEESWw`` for a zero).  For a three-input single-line template every
+    input routes east/west by its weight (``4``, ``8``, ``16``) on the clean
+    routing row.  ``bits`` must match the template built by
     :func:`a_painter_ant`.
     """
     from esolangs.tools.booleans.parameterized import instantiate as _sub
+
+    if len(bits) == 3:
+        weights = (4, 8, 16)
+        return _sub(
+            template,
+            bits,
+            lambda i, bit: ("e" * weights[i] if bit else "w" * weights[i]),
+            lambda _i, _b: "",
+        )
 
     return _sub(
         template,

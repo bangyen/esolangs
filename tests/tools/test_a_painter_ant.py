@@ -144,6 +144,47 @@ def test_three_input_xor_rejected() -> None:
         a_painter_ant("01101001")  # XOR3
 
 
+def test_three_input_head_is_cycle_one_exact() -> None:
+    """The n == 3 single-line head is exact for cycle 1 on every table.
+
+    The template is ``head + n + {X0}{X1}{X2} + Pn``: the head paints the
+    eight leaves on ``y = -2``, then the inputs route east/west by their
+    weights (4, 8, 16) on the clean row ``y = -1`` and the ant reads the
+    leaf one step north of its routing cell.  Cycle 2 is still open
+    (``docs/a_painter_ant_generator.md``), so :func:`a_painter_ant` keeps
+    raising for ``n >= 3``.
+    """
+    from itertools import product
+
+    from esolangs.tools.booleans.a_painter_ant import _head
+
+    def _landing_after_one_cycle(program: str) -> int:
+        """Landing cell colour after exactly one cycle (unstable past it)."""
+        prog = [c for c in program if not c.isspace()]
+        grid: dict[tuple[int, int], int] = {}
+        x = y = 0
+        for command in prog:
+            if command == "p":
+                grid[(x, y)] = 0
+            elif command == "P":
+                grid[(x, y)] = 1
+            else:
+                dx, dy = _MOVE[command.lower()]
+                if (grid.get((x + dx, y + dy), 0) == 1) == command.isupper():
+                    x += dx
+                    y += dy
+        return grid.get((x, y), 0)
+
+    for value in range(256):
+        table = format(value, "08b")
+        template = _head(table, [0, 0, 0]) + "n" + "{X0}{X1}{X2}" + "Pn"
+        for bits in product([0, 1], repeat=3):
+            program = instantiate(template, list(bits))
+            assert _landing_after_one_cycle(program) == int(
+                table[bits[0] * 4 + bits[1] * 2 + bits[2]],
+            ), f"table {table} bits {bits}"
+
+
 def test_bad_table_rejected() -> None:
     with pytest.raises(ValueError, match="power-of-two"):
         a_painter_ant("011")
