@@ -99,6 +99,16 @@ class IO:
         """Read a line and parse it as an integer."""
         return int(self.input_str(prompt))
 
+    def position(self) -> int:
+        """Report the input cursor, or 0 for a source with no cursor.
+
+        ``ScriptedIO`` overrides this with the number of lines consumed;
+        an interactive source has no cursor to report, so the base returns
+        0.  The state-cycle hang detector snapshots this so a loop that
+        keeps reading input is not mistaken for a repeat.
+        """
+        return 0
+
 
 class ScriptedIO(IO):
     """An :class:`IO` that reads from a string and captures output.
@@ -114,13 +124,20 @@ class ScriptedIO(IO):
         """Read input from ``stdin`` and capture all output internally."""
         super().__init__()
         self._lines = iter(stdin.splitlines())
+        self._reads = 0
         self._buffer = _stdlib_io.StringIO()
 
     def _read(self, _prompt: str) -> str:
         try:
-            return next(self._lines)
+            value = next(self._lines)
         except StopIteration:
             raise EOFError from None
+        self._reads += 1
+        return value
+
+    def position(self) -> int:
+        """Report the number of input lines consumed so far."""
+        return self._reads
 
     def _write(self, value: object) -> None:
         self._buffer.write(str(value))

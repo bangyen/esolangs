@@ -1,20 +1,19 @@
 """Unit tests for the Point Break interpreter.
 
 Point Break has no output, so behavior is asserted through the
-halt-vs-loop convention: a program that halts is distinguishable from one
-that loops forever by a wall-clock bound.  The looping side is checked in
-an untraced subprocess -- raising from the SIGALRM handler under the
-coverage tracer corrupts the tracer's lock, so the bound belongs in a
-plain subprocess where the timeout works deterministically.
+halt-vs-loop convention.  The looping side is decided deterministically by
+state-cycle detection: the interpreter is step-capable, and a run that
+revisits its complete internal state has looped forever, so ``assert_loops``
+needs no wall-clock bound at all.
 """
-
-import subprocess
-import sys
 
 import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
+from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.register_based.point_break import _Machine
+from esolangs.vm import run_until_halt_or_cycle
 
 TRUTH_MACHINE = """\
 LET n:=?
@@ -36,23 +35,6 @@ END check
 LET n:=n-1
 END while"""
 
-_LOOP_PROBE = (
-    "import sys\n"
-    "import esolangs\n"
-    "program = sys.stdin.read()\n"
-    "stdin_data = sys.argv[1]\n"
-    "try:\n"
-    "    esolangs.run('Point Break', program, stdin=stdin_data, timeout=1)\n"
-    "except esolangs.HaltError as exc:\n"
-    "    if 'timeout' not in str(exc):\n"
-    "        print(exc)\n"
-    "        sys.exit(1)\n"
-    "else:\n"
-    "    print('expected a loop but the program halted')\n"
-    "    sys.exit(1)\n"
-    "sys.exit(0)\n"
-)
-
 
 def run_until_halt(program: str, stdin: str = "") -> str:
     """Run ``program``; the timeout backstop only fires if it loops."""
@@ -60,15 +42,9 @@ def run_until_halt(program: str, stdin: str = "") -> str:
 
 
 def assert_loops(program: str, stdin: str = "") -> None:
-    """Assert ``program`` loops forever, checked in a plain subprocess."""
-    result = subprocess.run(
-        [sys.executable, "-c", _LOOP_PROBE, stdin],
-        input=program,
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
+    """Assert ``program`` loops forever, via deterministic cycle detection."""
+    machine = _Machine(program, ScriptedIO(stdin))
+    assert run_until_halt_or_cycle(machine) is False
 
 
 class TestWikiExamples:
