@@ -50,6 +50,7 @@ predictable across languages:
 | Lightlang | Prints only the single bit as a number. |
 | Minsky Swap | Prints the registers as numbers. |
 | Movesum | Prints numbers space-separated with no trailing space. |
+| Point Break | No output at all; a program only halts or loops. Has a termination-convention boolean generator (halt for 0, loop for 1); no text generator. |
 | RAM0 | Prints a state dump. |
 
 The straight-line generators are also at their length floor — no
