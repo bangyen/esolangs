@@ -53,10 +53,6 @@ from esolangs.tools.booleans.helpers import _validate_truth_table
 
 __all__ = ["a_painter_ant"]
 
-# The fixed routing body: it paints the ring and funnels the ant to the
-# canonical pre-final-route point (the final input routes east/west after it).
-_BODY = "NwPnPwnPEsPwPswPWWePsPesPSSnPePeePNNsePSSnPePnePEEwPnPwnPNNsPwPsPwPS"
-
 # ``{X0}``: non-final inputs route north/south.
 _X0 = {1: "nn", 0: "ss"}
 # ``{XF}``: the final (least-significant) input routes east/west.
@@ -195,6 +191,33 @@ def _head(truth_table: str, bits: list[int]) -> str:
     return "".join(out)
 
 
+def _body() -> str:
+    """Generate the two-star routing body.
+
+    The body paints two two-layer stars -- one around the output leaf and
+    one around its y-mirror -- so the final input never has to be
+    re-embedded: it only routes to whichever star is already painted.  Each
+    star is walked as a clockwise spiral of ``P`` paints (the ring cells at
+    distance 1 and the axis cells at distance 2), and the two stars are
+    connected by the black gap between their rings: the star centres are
+    four cells apart and each ring reaches one cell toward the other, so
+    the gap is ``4 - 2`` east moves on the row above.  The body starts and
+    ends on the shared cell at ``(0, +-2)`` -- the canonical point the final
+    input's east/west routing leaves from -- and its blocked-uppercase
+    returns are the anchors of the cycle-2 dance.
+    """
+    # West star, entered from the shared cell: east ring cell, then the
+    # clockwise spiral (single ring steps, L-shaped detours out to the axis
+    # cells, and blocked-uppercase returns from the axis cells), ending on
+    # the south-east diagonal.
+    west = ("wP", "nP", "wnP", "EsP", "wP", "swP", "WWeP", "sP", "esP", "SSnP", "eP")
+    # East (mirror) star, entered after the gap on the south-west diagonal
+    # and walked clockwise to the shared west axis cell.
+    east = ("NNseP", "SSnP", "eP", "neP", "EEwP", "nP", "wnP", "NNsP", "wP", "sP", "wP")
+    gap = 4 - 2  # star centres 4 apart; each ring reaches 1 cell inward
+    return "N" + "".join(west) + "e" * gap + "P" + "".join(east) + "S"
+
+
 def a_painter_ant(truth_table: str) -> str:
     """Build an A Painter Ant template for a one- or two-input Boolean function.
 
@@ -221,14 +244,14 @@ def a_painter_ant(truth_table: str) -> str:
             "n >= 3 is an open problem (see docs/roadmap.md)",
         )
 
-    # The head paints every leaf; the first n-1 inputs route north/south
-    # before the body, and the final (least-significant) input routes
-    # east/west onto its leaf after it.
+    # The head paints every leaf; the body paints the two stars; the first
+    # n-1 inputs route north/south before the body, and the final
+    # (least-significant) input routes east/west onto its leaf after it.
     head = _head(truth_table, [0] * n)
     prefix = "".join("{X" + str(i) + "}" for i in range(n - 1))
     suffix = "{X" + str(n - 1) + "}"
 
-    return head + prefix + _BODY + suffix
+    return head + prefix + _body() + suffix
 
 
 def instantiate(template: str, bits: list[int]) -> str:
