@@ -275,10 +275,18 @@ of an arity; a leaf-paint n == 3 generalization is the active work (below).
 
 A **leaf-paint n == 3 generalization is in progress** (see
 `docs/a_painter_ant_generator.md`): a single-row eight-leaf construction is
-exact for cycle 1 on all 256 tables but is not yet cycle-stable (the head
-is origin-relative and the ant starts cycle 2 at the output leaf).  Cycle-1
-exactness was the easy part; extending the star/ring dance to the n == 3
-layout is the open work.
+exact for cycle 1 on all 256 tables but is not yet cycle-stable.  The
+remaining blocker is now characterized precisely: the ant must land on the
+output leaf for *both* output colours (a colour-dependent landing gives
+the head two cycle-2 starts and no single dance works from both), which
+forces a mixed-case closing walk that must run from a ring cell rather
+than the leaf; the body walk that paints the lower ring cells then needs
+``s`` moves that, evaluated from the N ring on cycle 2, fire a one-output
+onto the leaf too early.  A step tracer and stability checker
+(`esolangs.tools.boolean.a_painter_ant_trace`) ships and pinpoints the
+first diverging instruction, and a complete 8-leaf head dance is designed
+(see the doc).  Cycle-1 exactness was the easy part; extending the
+star/ring dance to the n == 3 layout is the open work.
 
 **Goal: find a general construction such that for any ``n``, *every*
 ``n``-ary boolean function is expressible.**  A general solution needs to
