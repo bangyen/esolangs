@@ -139,6 +139,14 @@ def test_three_input_rejected() -> None:
         a_painter_ant("00000001")  # AND3
 
 
+def test_four_input_head_rejected() -> None:
+    """The head's leaf layout stops at three inputs."""
+    from esolangs.tools.booleans.a_painter_ant import _leaf_positions
+
+    with pytest.raises(ValueError, match="open problem"):
+        _leaf_positions(4)
+
+
 def test_three_input_xor_rejected() -> None:
     with pytest.raises(ValueError, match="open problem"):
         a_painter_ant("01101001")  # XOR3

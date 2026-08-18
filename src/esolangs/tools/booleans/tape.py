@@ -1432,18 +1432,6 @@ def jaune_multiply() -> str:
     def cmd(s: str) -> None:
         out.append(s)
 
-    def fold(operand: int) -> None:
-        # accumulate the digit in the scratch cell into the operand cell
-        move(operand)
-        cmd("#")
-        cmd("&" * 9)
-        move(1)
-        cmd("#")
-        move(operand)
-        cmd("&")
-        move(4)
-        cmd(f"{4 if operand == 2 else 1}?")
-
     move(4)
     cmd("1+")  # cell 4 = 1: the unconditional loop-back trigger
     # read the first operand until '*': label 1 at cell 4

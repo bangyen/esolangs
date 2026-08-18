@@ -784,6 +784,10 @@ class TestCirclefuck:
             got = run_circlefuck(program, [str(b) for b in bits])
             assert got == chr(values[combo]), f"inputs {bits}"
 
+    def test_byte_values_require_a_power_of_two_table(self) -> None:
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.circlefuck_byte([1, 2, 3])
+
 
 class TestBf:
     @pytest.mark.parametrize(
