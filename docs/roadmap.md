@@ -122,6 +122,29 @@ machinery" and "sole implementation ⇒ removing creates a gap"; the removal
 is recorded here as a candidate to resolve deliberately rather than by
 default.
 
+**Redemption path (termination-convention generator).**  ArrowQueue has no
+output, so its only boolean option is the termination-based convention
+(documented in `docs/walls.md`): the program *hangs* iff the embedded inputs
+satisfy the function.  The hang structure is a queue-sustaining ring that
+survives iff its single sustainer cell is present, so each input adds a
+"must be present" literal and one ring is one AND of literals; the OR and
+NOR tables are expressible in other layouts (verified by search), but
+multiple rings cannot be OR'd on the IP's single path, so XOR/XNOR are not —
+the convention realizes the threshold/AND/OR-class, not arbitrary tables.
+
+This is the only path that could take ArrowQueue off this list.  It would
+still be a *permanently* constrained generator: unlike A Painter Ant's
+n == 2 cap — which is not a language limit but an open construction
+(generalizing the generator to higher arities is the active roadmap work,
+see the A Painter Ant section below) — ArrowQueue's threshold ceiling is
+supported only by a structural argument and a bounded 200,000-grid search
+(see `docs/walls.md`), not a proof, so it may be a genuine wall or just an
+undiscovered construction.  Adopting the convention
+is also a real harness lift: the boolean tooling and tests read output
+bytes, while the termination convention makes "does it halt?" the answer,
+and no generator uses that contract yet.  Recorded here so the
+removal-vs-redemption call is deliberate rather than by default.
+
 ## Extra implementations (cross-checks)
 
 The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
@@ -202,6 +225,33 @@ watches over the VM) shipped.  The medium-priority work that remains:
   currently the active call frame's cursor; a language with nested calls
   should expose the call stack, not fold it into one frame's position.
 
+## Hanging-test optimization via state-cycle detection
+
+Hanging programs are currently bounded with wall-clock timeouts (SIGALRM in
+the robustness tests and on the differential fuzzer's Python side, and
+instruction-count caps on the native references).  A deterministic,
+step-capable machine that revisits an exact internal state has looped
+forever, so a repeated state is a *proof* of a hang that can be reported
+immediately instead of waiting out the timeout.
+
+Scope and constraints:
+
+- the snapshot must be the **complete** state — the machine's internal
+  fields, not the VM's language-shaped ``ip``/``memory``/``stack`` view —
+  including the input-cursor position, or a "repeat" is not a real cycle;
+- deterministic machines only (LaserFuck's random heading and Lightlang's
+  ``@`` are excluded);
+- only interpreters with a ``step()``/``halted`` state object can be checked
+  (the VM set; whole-program ``run()``s expose no internal state to hash);
+- it catches *cycles*, not every hang — an unbounded-growth loop
+  (``+[>+]``, the tape grows forever) never revisits a state, so the
+  timeout stays as the backstop for that class.
+
+Not started.  A shared step-and-hash helper (a visited-state ``set``, or
+Floyd/Brent two-pointer detection for O(1) memory) would slot into
+``scripts/verify_differential.py``'s termination checks and
+``tests/test_interpreters_robustness.py``.
+
 ## A Painter Ant: general n-input boolean generator (n >= 3 open)
 
 A two-input boolean generator now ships
@@ -220,14 +270,8 @@ construction resolved the ``n == 2`` case that the earlier, origin-colour
 generator covered; the full construction is recorded in
 `docs/a_painter_ant_generator.md`.
 
-**n >= 3 is open.**  The cap is not "unreachable": a search-found
-*box-height* method extends the range — each one-input makes the ant step
-one cell further north, so its depth equals the input weight, and a
-paint/return section turns that depth into a box height or its parity.
-This is cycle-stable and expresses **most** n == 3 tables (196 of 256 in a
-search, including AND3, OR3, XOR3 via parity, and majority); the ~60
-unreachable ones are exactly the balanced, non-monotone tables (e.g.
-equality).
+**n >= 3 is open.**  No construction is known that expresses *all* functions
+of an arity; a leaf-paint n == 3 generalization is the active work (below).
 
 A **leaf-paint n == 3 generalization is in progress** (see
 `docs/a_painter_ant_generator.md`): a two-row eight-leaf construction is
@@ -237,13 +281,12 @@ exactness was the easy part; extending the star/ring dance to the n == 3
 layout is the open work.
 
 **Goal: find a general construction such that for any ``n``, *every*
-``n``-ary boolean function is expressible.**  The box-height method loses
-the "which inputs" information (it only measures the weight), so it cannot
-reach the balanced tables; a general solution needs to route on *which*
-inputs are one, not just *how many* — e.g. a way to encode each of the
-``2**n`` combos into a distinguishable ant state (position, painted pattern,
-or box content) with a cycle-stable template.  This is the documented wall
-in `docs/walls.md`; a successful construction would lift the cap.
+``n``-ary boolean function is expressible.**  A general solution needs to
+route on *which* inputs are one, not merely how many — e.g. a way to encode
+each of the ``2**n`` combos into a distinguishable ant state (position,
+painted pattern, or box content) with a cycle-stable template.  This is the
+documented wall in `docs/walls.md`; a successful construction would lift the
+cap.
 
 ## Severely constrained boolean generators (remove or lift)
 
