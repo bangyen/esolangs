@@ -208,13 +208,17 @@ A two-input boolean generator now ships
 (:func:`esolangs.tools.booleans.a_painter_ant`): it paints one leaf per
 input combination (``P`` for a one table entry, a space — left unpainted —
 for a zero, so only monotone ``P`` is ever used) and routes the ant to its
-leaf.  Every two-input table is exact and every instantiated program is a
-cycle-stable fixed point, read by a semantic grid model as the **landing
-cell's colour** (the interpreter's own output is the visited-cell bounding
-box, which carries no coordinates).  ``n == 1`` is also supported, by
-padding the one-input table to ``[f(0), f(0), f(1), f(1)]`` and fixing the
-second input to zero.  This construction resolved the
-``n == 2`` case that the earlier, origin-colour generator covered.
+leaf.  The body paints a two-layer star around the output leaf and its
+y-mirror, and on cycle 2 the ant dances on the pre-painted stars (the
+"top-middle/middle-left ring rule": a leafward move would split the ants,
+so only an ``S/s``-style dual may move leafward), making every instantiated
+program a cycle-stable fixed point, read by a semantic grid model as the
+**landing cell's colour** (the interpreter's own output is the
+visited-cell bounding box, which carries no coordinates).  ``n == 1`` is
+also supported, with a two-leaf head and the same star body.  This
+construction resolved the ``n == 2`` case that the earlier, origin-colour
+generator covered; the full construction is recorded in
+`docs/a_painter_ant_generator.md`.
 
 **n >= 3 is open.**  The cap is not "unreachable": a search-found
 *box-height* method extends the range — each one-input makes the ant step
@@ -226,11 +230,11 @@ unreachable ones are exactly the balanced, non-monotone tables (e.g.
 equality).
 
 A **leaf-paint n == 3 generalization is in progress** (see
-`docs/a_painter_ant_generator.md`): a single-line eight-leaf draft is exact
+`docs/a_painter_ant_generator.md`): a single-line eight-leaf head is exact
 for cycle 1 on all 256 tables but is not yet cycle-stable (the head is
 origin-relative and the ant starts cycle 2 at the output leaf).  Cycle-1
-exactness was the easy part; making the runtime/star layout cycle-stable is
-the open work.
+exactness was the easy part; extending the star/ring dance to the n == 3
+layout is the open work.
 
 **Goal: find a general construction such that for any ``n``, *every*
 ``n``-ary boolean function is expressible.**  The box-height method loses

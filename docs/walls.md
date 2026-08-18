@@ -228,18 +228,22 @@ is one, black is zero).
 The construction paints one decision-tree leaf per input combination and
 routes the ant to the leaf for its inputs.  Each leaf is painted ``P``
 (white) for a one table entry and **left unpainted** (a space, ignored by
-the interpreter) for a zero.  Only ``P`` is ever used — the generator never
+the interpreter) for a zero.  The body paints a two-layer **star** around
+the output leaf and its y-mirror; on cycle 2 the ant dances on the
+pre-painted stars (uppercase prefixes fire onto the ring, the legs are
+no-ops, and only the ``S/s`` synchronizer moves leafward), so the dance is
+closed and zero-paint.  Only ``P`` is ever used — the generator never
 paints a cell black — so the white cells are monotone increasing: cycle 1
 establishes them and every later cycle only re-confirms a subset, which is
 what makes every instantiated program a cycle-stable fixed point (the box
-is identical for any whole number of cycles).
+is identical for any whole number of cycles).  The full construction is
+recorded in ``docs/a_painter_ant_generator.md``.
 
 Supported and verified exhaustively against the interpreter:
 
 - **n == 2**: all sixteen two-input functions, exact and cycle-stable.
-- **n == 1**: the four one-input functions, exact and cycle-stable, by
-  padding to ``[f(0), f(0), f(1), f(1)]`` and fixing the second input to
-  zero (reusing the n == 2 construction).
+- **n == 1**: the four one-input functions, exact and cycle-stable, with a
+  two-leaf head and the same star body and final-input routing as n == 2.
 
 **n >= 3 is open.**  A *box-height* method found by search extends the
 range: each one-input makes the ant step one cell further north
@@ -254,8 +258,9 @@ functions of an arity.  Lifting the cap to a general method is recorded in
 
 An **in-progress leaf-paint generalization** (a different approach from
 box-height) is exact for cycle 1 on all 256 n == 3 tables but is not yet
-cycle-stable; see ``docs/a_painter_ant_generator.md`` for the draft layout
-and the open stability work.
+cycle-stable; see ``docs/a_painter_ant_generator.md`` for the single-line
+layout, the star/ring stability mechanism it is meant to extend, and the
+open work.
 
 ## Multiply capability (Jaune realizes it)
 
