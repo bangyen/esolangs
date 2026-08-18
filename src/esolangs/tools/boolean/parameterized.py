@@ -662,7 +662,31 @@ def minsky_swap(truth_table: str) -> str:
 _X0 = {1: "nn", 0: "ss"}
 # ``{XF}``: the final (least-significant) input routes east/west.
 _XF = {1: "WWwWWEEe", 0: "NENEESWw"}
+# The inverse of each move direction, for retracing a path.
+_OPP = {
+    "n": "s", "s": "n", "e": "w", "w": "e",
+    "N": "S", "S": "N", "E": "W", "W": "E",
+}
 
+
+def _bit_move(n: int, k: int, bit: int) -> str:
+    """Return the moves that input bit ``k`` contributes.
+
+    ``bits`` are most-significant first, so bit ``k`` carries weight
+    ``2 ** (n - k)`` and moves on the axis chosen by index parity (``k % 2
+    != n % 2`` -> horizontal, else vertical); a set bit moves west/north, a
+    cleared bit east/south.  The head walks these moves out to each leaf
+    and the routing walks them to read it, so the two always agree.
+    """
+    mag = 2 ** (n - k)
+    if k % 2 != n % 2:
+        return ("w" if bit else "e") * mag
+    return ("n" if bit else "s") * mag
+
+
+def _reverse_moves(moves: str) -> str:
+    """Return ``moves`` reversed with every direction inverted."""
+    return "".join(_OPP[c] for c in reversed(moves))
 
 def _leaf_color(truth_table: str, bits: list[int]) -> bool:
     """Return whether to paint the leaf for the input ``bits``.
@@ -679,14 +703,12 @@ def _leaf_color(truth_table: str, bits: list[int]) -> bool:
 def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
     """Return ``(x, y, bits)`` for every leaf in head-visit order.
 
-    For one and two inputs the leaves sit on the axes (the final input on
-    ``x = +-2``, the first on ``y = +-2`` or ``0``) and the visit order
-    keeps consecutive leaves opposite corners so the head's legs pass
-    through the clean origin.  For three inputs the leaves sit on one row
-    ``y = -2`` at ``x = (2*b0-1)*2 + (2*b1-1)*4 + (2*b2-1)*8`` in
-    ``{-14,-10,-6,-2,2,6,10,14}`` -- four cells apart, so adjacent stars
-    share their axis cells, and symmetric across the y-axis so the star
-    body's mirror trick works (``docs/a_painter_ant_generator.md``).
+    The coordinates come from the same weighted rule the head walks and the
+    routing reads: each bit ``k`` contributes ``+-2 ** (n-k)`` on the axis
+    chosen by index parity, with a cleared bit negative.  The head only
+    uses the ``bits`` (and the ``n >= 4`` guard); it reaches each leaf by
+    walking those weights, so ``(x, y)`` is the mirror position the
+    routing reads.
     """
     if n >= 4:
         raise ValueError(
@@ -720,44 +742,29 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
 def _head(truth_table: str, bits: list[int]) -> str:
     """Build the A Painter Ant head for a one-, two-, or three-input table.
 
-    The head paints every leaf and returns to the origin.  For one and two
-    inputs the cycle-2 ant dances on the pre-painted stars: an uppercase
-    prefix fires it from the output leaf onto the ring -- ``N`` onto the
-    top-middle cell, where the following moves flow horizontally, or ``W``
-    onto the middle-left cell, where they flow vertically.  A leafward
-    move from either cell would split the ants: a south move from the
-    top-middle returns the black-output ant to the leaf while the
-    white-output ant stays on the ring (and symmetrically an east move
-    from the middle-left), so the dance alternates the two cells through
-    the ring's diagonals, and only the ``Ssn`` ending may move leafward
-    (``S`` fires a white output onto the leaf, ``s`` moves a black one
-    onto it).  For three inputs it walks the two leaf rows, detouring onto
-    the clean outer row to cross from the west half to the east half of
-    each row (the cycle-2 dance for that layout is still open, see
-    ``docs/a_painter_ant_generator.md``).
+    The head paints every white leaf and returns to the origin.  It walks
+    each leaf out and back piecewise -- one weighted move per input bit
+    (:func:`_bit_move`), in the same order and direction the routing uses,
+    so the outbound path never crosses a previously painted leaf (the
+    intermediate cells are never leaf positions) and the reverse path
+    retraces it cleanly.  The ``N`` prefix and ``Ssn`` ending are no-ops
+    on the empty first cycle; the cycle-2+ dance on the pre-painted stars
+    is the separate open problem (``docs/a_painter_ant_generator.md``).
     """
     n = len(bits)
-    out = ['N']
+    out = ["N"]
 
-    for x, y, leaf_bits in _leaf_positions(n):
-        color = _leaf_color(truth_table, list(leaf_bits))
-
-        if not color:
-            out.append(' ')
+    for _x, _y, leaf_bits in _leaf_positions(n):
+        if not _leaf_color(truth_table, list(leaf_bits)):
+            out.append(" ")
             continue
-
-        north = 'n' * abs(y)
-        south = 's' * abs(y)
-        west = 'w' * abs(x)
-        east = 'e' * abs(x)
-
-        if y < 0:
-            north, south = south, north
-
-        if x < 0:
-            west, east = east, west
-
-        out.append(f'WS{north}NE{west}PWS{south}NE{east}')
+        outbound = "".join(
+            ("NE" if k % 2 != n % 2 else "WS") + _bit_move(n, k, b)
+            if n >= 2
+            else _bit_move(n, k, b)
+            for k, b in enumerate(leaf_bits)
+        )
+        out.append(outbound + "P" + _reverse_moves(outbound))
 
     out.append("Ssn")
     return "".join(out)
@@ -830,29 +837,19 @@ def a_painter_ant(truth_table: str) -> str:
 def _instantiate_apa(template: str, bits: list[int]) -> str:
     """Fill an A Painter Ant template's ``{Xi}`` placeholders.
 
-    For one- and two-input templates every input except the final one routes
-    north/south (``nn`` for a one bit, ``ss`` for a zero) and the final
-    (least-significant) input routes east/west (``WWwWWEEe`` for a one,
-    ``NENEESWw`` for a zero).  For a three-input single-row template every
-    input routes east/west by its weight (``2``, ``4``, ``8``) on the
-    body-painted routing row, and the ``Pn`` landing trick reads the leaf.
-    ``bits`` must match the template built by :func:`a_painter_ant`.
+    Every input except the final one routes piecewise by its weight
+    (``2 ** (n - i)`` cells along the index-parity axis, west/north for a
+    one bit, east/south for a zero -- :func:`_bit_move`), and the final
+    (least-significant) input routes east/west with the ``WWwWWEEe`` /
+    ``NENEESWw`` landing dance onto its leaf.  ``bits`` must match the
+    template built by :func:`a_painter_ant`.
     """
     n = len(bits)
 
     def replace(i, bit):
         if i == len(bits) - 1:
             return _XF[bit]
-
-        weight = 2 ** (n - i)
-
-        if i % 2 != n % 2:
-            if bit:
-                return 'w' * weight
-            return 'e' * weight
-        if bit:
-            return 'n' * weight
-        return 's' * weight
+        return _bit_move(n, i, bit)
 
     return instantiate(
         template,
