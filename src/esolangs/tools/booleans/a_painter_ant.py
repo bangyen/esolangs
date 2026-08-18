@@ -115,50 +115,21 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
     return out
 
 
-def _leg(px: int, py: int, qx: int, qy: int) -> str:
-    """Lowercase path from ``(px, py)`` to ``(qx, qy)``.
-
-    A purely horizontal run goes straight along the x-axis.  Any other leg
-    is a staircase of alternating two-cell y/x chunks through the origin
-    (leaves sit at ``+-2`` on both axes, so the origin is the one clean cell
-    the lower-case moves can always reach).
-    """
-    dy = qy - py
-    dx = qx - px
-    if dy == 0:
-        return ("e" if dx > 0 else "w") * abs(dx)
-
-    m = max(abs(dy), abs(dx)) // 2
-    ny = abs(dy) // 2
-    nx = abs(dx) // 2
-    yd = "s" if dy > 0 else "n"
-    xd = "e" if dx > 0 else "w"
-    ychunks = [yd] * ny
-    xchunks = [xd] * nx
-    for _ in range(m - ny):  # extra y chunks detour out and back
-        ychunks.append("n" if py > 0 else "s")
-        ychunks.append("s" if py > 0 else "n")
-    for _ in range(m - nx):  # extra x chunks detour out and back
-        xchunks.append("w" if px > 0 else "e")
-        xchunks.append("e" if px > 0 else "w")
-    ychunks = ychunks[:m]
-    xchunks = xchunks[:m]
-    out = []
-    for i in range(m):
-        out.append(ychunks[i] * 2)
-        out.append(xchunks[i] * 2)
-    return "".join(out)
-
-
 def _head(truth_table: str, bits: list[int]) -> str:
     """Build the A Painter Ant head for a one-, two-, or three-input table.
 
     The head paints every leaf and returns to the origin.  For one and two
-    inputs it walks each ``_leg`` with an uppercase prefix before it that
-    points *away* from the origin (``W`` for a west leaf, ``E`` for an east
-    leaf); those prefixes are blocked no-ops on cycle 1 but anchor the
-    closed cycle-2 dance, which is what makes every instantiated program
-    cycle-stable.  For three inputs it walks the single leaf row, detouring
+    inputs the cycle-2 ant dances on the pre-painted stars: an uppercase
+    prefix fires it from the output leaf onto the ring -- ``N`` onto the
+    top-middle cell, where the following moves flow horizontally, or ``W``
+    onto the middle-left cell, where they flow vertically.  A leafward
+    move from either cell would split the ants: a south move from the
+    top-middle returns the black-output ant to the leaf while the
+    white-output ant stays on the ring (and symmetrically an east move
+    from the middle-left), so the dance alternates the two cells through
+    the ring's diagonals, and only the ``Ssn`` ending may move leafward
+    (``S`` fires a white output onto the leaf, ``s`` moves a black one
+    onto it).  For three inputs it walks the single leaf row, detouring
     onto the clean row ``y = -3`` to cross from the west half to the east
     half (the cycle-2 dance for that layout is still open, see
     ``docs/a_painter_ant_generator.md``).
@@ -177,16 +148,33 @@ def _head(truth_table: str, bits: list[int]) -> str:
         out.append("n" + "w" * 4 + "sss")  # return via y = -3
         return "".join(out)
 
-    out = ["N"]
-    cx = cy = 0
-    for x, y, leaf_bits in _leaf_positions(n):
-        if (cx, cy) != (0, 0):
-            out.append("W" if cx < 0 else "E")
-        out.append(_leg(cx, cy, x, y))
+    # The cycle-2 dance circuits, one ``prefix + leg`` pair per leaf plus
+    # the return leg; every leg is a no-op from its dance cell:
+    #   n == 1: leaf -N-> top -W-> west diag -E-> top -S/s-> leaf
+    #   n == 2: leaf -W-> middle-left -N-> NW diag -E-> top-middle
+    #           -E-> NE diag -W-> top-middle -S/s-> leaf
+    # A leafward move from the top-middle (south) or the middle-left (east)
+    # would split the ants -- the black-output ant returns to the leaf
+    # while the white-output ant stays on the ring -- so the legs dancing
+    # on those cells (``nnww`` on the middle-left, ``nnnn``/``nnee`` on the
+    # top-middle) never move leafward, and only the ``Ssn`` ending may.
+    prefixes: tuple[str, ...]
+    legs: tuple[str, ...]
+    if n == 1:
+        prefixes = ("N", "W", "E")
+        legs = ("ww", "eeee", "ww")
+    else:
+        prefixes = ("W", "N", "E", "E", "W")
+        legs = ("nnww", "sseessee", "nnnn", "sswwssww", "nnee")
+
+    out = [prefixes[0]]
+    for i, (_x, _y, leaf_bits) in enumerate(_leaf_positions(n)):
+        if i:
+            out.append(prefixes[i])
+        out.append(legs[i])
         out.append(_leaf_color(truth_table, list(leaf_bits)))
-        cx, cy = x, y
-    out.append("W" if cx < 0 else "E")
-    out.append(_leg(cx, cy, 0, 0))
+    out.append(prefixes[len(legs) - 1])
+    out.append(legs[-1])
     out.append("Ssn")
     return "".join(out)
 
