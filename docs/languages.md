@@ -55,7 +55,6 @@ into a template) rather than the program reading input.
 | Minifuck | yes | yes |  |  |  | hello boolean |
 | Minsky Swap |  | yes |  | yes |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
-| Movesum |  | yes |  |  |  |  |
 | MyScript | yes | yes |  | yes |  | hello |
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |

@@ -345,12 +345,6 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.modulous",
         id="modulous",
     ),
-    "Movesum": Language(
-        "Movesum",
-        id="movesum",
-        interpreter="tape_based.movesum",
-        split=True,
-    ),
     "MyScript": Language(
         "MyScript",
         _generate.myscript,

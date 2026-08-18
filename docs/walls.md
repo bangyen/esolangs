@@ -176,10 +176,6 @@ past `n == 2` (the search caps at 6 of 8 combinations).
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.
-- **Movesum**: only `move` (copy) and `sum` (add), with no conditional — the
-  loop repeats commands until the array stops changing.  The numeric output
-  (always a trailing space) and the addition-only arithmetic cannot express a
-  general boolean function.
 - **Lightlang**: `?` reads a bit (an empty line gives 1, any non-empty line
   gives 0), so a bit is readable, and `&` (skip the next instruction when
   the bit is 1) skips exactly one character.  That single-character skip is
