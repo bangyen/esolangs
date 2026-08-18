@@ -47,7 +47,6 @@ predictable across languages:
 | Back | Prints the tape as a number list. |
 | Bitdeque | Prints the register/deque contents as numbers. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
-| Lightlang | Prints only the single bit as a number. |
 | Minsky Swap | Prints the registers as numbers. |
 | Point Break | No output at all; a program only halts or loops. Has a termination-convention boolean generator (halt for 0, loop for 1); no text generator. |
 | RAM0 | Prints a state dump. |
@@ -82,7 +81,6 @@ per-character encoding can be meaningfully shortened:
 | Dotlang | The `W~` warp re-enters the first-match markers, losing branch history. |
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
-| Lightlang | `&` skips one character, so it cannot route to a multi-character leaf; only the AND/OR-class tables are expressible (each bit's skip covers exactly the single `#` halt), with no XOR or arbitrary table (see `docs/walls.md`). |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 | WII2D | The accumulator never affects control flow. |
 
@@ -346,3 +344,16 @@ repeated.
   generator).  The removal weighed the genuine numeric I/O and the
   sole-implementation gap against the complete absence of any generator
   story.
+- **Lightlang: removed.**  A tiny register language whose output is exactly
+  the single bit (the accumulator) printed as a number; `?` reads a bit (an
+  empty line gives 1, any non-empty line gives 0) and `&` skips the next
+  instruction when the bit is 1.  The single-character skip routes the
+  AND/OR class (each `&` covers exactly the one `#` halt, verified to n = 4)
+  but cannot reach a multi-character leaf, so no XOR or arbitrary table —
+  a genuine boolean *wall*, not a missing construction.  Its bit I/O is
+  real, which is the language-defined output the deferred-removal policy
+  weighs against removal, but it fails both generator gates: no text
+  generator (only one bit is ever printed) and no boolean generator beyond
+  the AND/OR class, which is not shipped as a generator.  The removal
+  weighed the genuine bit I/O and the sole-implementation gap against the
+  capped boolean class and the absence of a text generator.

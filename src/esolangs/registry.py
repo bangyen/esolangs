@@ -317,11 +317,6 @@ LANGUAGES: dict[str, Language] = {
         id="laserfuck",
         split=True,
     ),
-    "Lightlang": Language(
-        "Lightlang",
-        id="lightlang",
-        interpreter="register_based.lightlang",
-    ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
         _generate.slow_acv_mammalian,
