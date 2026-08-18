@@ -211,7 +211,9 @@ for a zero, so only monotone ``P`` is ever used) and routes the ant to its
 leaf.  Every two-input table is exact and every instantiated program is a
 cycle-stable fixed point, read by a semantic grid model as the **landing
 cell's colour** (the interpreter's own output is the visited-cell bounding
-box, which carries no coordinates).  This construction resolved the
+box, which carries no coordinates).  ``n == 1`` is also supported, by
+padding the one-input table to ``[f(0), f(0), f(1), f(1)]`` and fixing the
+second input to zero.  This construction resolved the
 ``n == 2`` case that the earlier, origin-colour generator covered.
 
 **n >= 3 is open.**  The cap is not "unreachable": a search-found
