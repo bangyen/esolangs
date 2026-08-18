@@ -208,8 +208,10 @@ languages reach multi-input threshold functions:
   sustains iff its single sustainer cell is `~` — each bit can only add a
   "must be present" literal, so a single ring is one AND of literals (one
   minterm), and multiple rings cannot be OR'd on the IP's single path.
-  XOR/XNOR (two disjunct minterms) are therefore not expressible, and a
-  200,000-grid search never produced them.  So ArrowQueue realizes the
+  XOR/XNOR (two disjunct minterms) would need to OR two rings, which the
+  IP's single path cannot host, and a 200,000-grid search never produced
+  them — strong evidence for a threshold/AND/OR-class ceiling, though not a
+  proof.  So ArrowQueue realizes the
   convention for threshold/AND/OR-class functions, not arbitrary tables.
 
 No existing boolean generator uses this convention; it would require a new
@@ -245,20 +247,13 @@ Supported and verified exhaustively against the interpreter:
 - **n == 1**: the four one-input functions, exact and cycle-stable, with a
   two-leaf head and the same star body and final-input routing as n == 2.
 
-**n >= 3 is open.**  A *box-height* method found by search extends the
-range: each one-input makes the ant step one cell further north
-(*accumulative travel*), so the ant's depth equals the input weight and a
-paint/return section turns that depth into a box height (or its parity).
-This is cycle-stable and expresses *most* n == 3 tables — a search found
-196 of 256, including AND3, OR3, XOR3 (via height parity), and majority —
-but the ~60 unreachable ones are exactly the balanced, non-monotone tables
-(such as equality), and no general construction is known that reaches *all*
-functions of an arity.  Lifting the cap to a general method is recorded in
+**n >= 3 is open.**  No construction is known that reaches *all* functions
+of an arity.  Lifting the cap to a general method is recorded in
 ``docs/roadmap.md``.
 
-An **in-progress leaf-paint generalization** (a different approach from
-box-height) is exact for cycle 1 on all 256 n == 3 tables but is not yet
-cycle-stable; see ``docs/a_painter_ant_generator.md`` for the single-row
+An **in-progress leaf-paint generalization** is exact for cycle 1 on all
+256 n == 3 tables but is not yet cycle-stable; see
+``docs/a_painter_ant_generator.md`` for the single-row
 layout, the star/ring stability mechanism it is meant to extend, and the
 open work.
 

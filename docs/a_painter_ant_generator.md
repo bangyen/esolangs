@@ -226,9 +226,6 @@ ring cells, is the open work.
   their targets must be white.  Does the y-axis symmetry let the legs'
   targets use the *mirror* star's cells (painted by the body) so the legs
   can be longer than the output star alone allows?
-- The `docs/walls.md` *box-height* method (a different approach) reaches
-  196/256 n == 3 tables cycle-stably but cannot express the balanced,
-  non-monotone tables.
 
 ## Design principles (reusable summary)
 
