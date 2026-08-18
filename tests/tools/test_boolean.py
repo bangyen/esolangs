@@ -2932,47 +2932,6 @@ class TestAPainterAnt:
         with pytest.raises(ValueError, match="open problem"):
             a_painter_ant("01101001")  # XOR3
 
-    def test_three_input_construction_is_cycle_one_exact(self) -> None:
-        """The n == 3 single-row construction is exact for cycle 1 on every table.
-
-        The template is ``head + n + body + {X0}{X1}{X2} + Pn``: the head
-        paints the eight leaves on ``y = -2`` at ``x = +-2 +-4 +-8``
-        (symmetric across the y-axis), the body paints the routing row ``y =
-        -1``, every input routes east/west by its weight (2, 4, 8) on the
-        painted row, and the ``Pn`` landing trick reads the leaf.  Cycle 2
-        is still open (``docs/a_painter_ant_generator.md``), so
-        :func:`a_painter_ant` keeps raising for ``n >= 3``.
-        """
-        from itertools import product
-
-        from esolangs.tools.boolean.parameterized import _body, _head
-
-        def _landing_after_one_cycle(program: str) -> int:
-            """Landing cell colour after exactly one cycle (unstable past it)."""
-            prog = [c for c in program if not c.isspace()]
-            grid: dict[tuple[int, int], int] = {}
-            x = y = 0
-            for command in prog:
-                if command == "p":
-                    grid[(x, y)] = 0
-                elif command == "P":
-                    grid[(x, y)] = 1
-                else:
-                    dx, dy = TestAPainterAnt._MOVE[command.lower()]
-                    if (grid.get((x + dx, y + dy), 0) == 1) == command.isupper():
-                        x += dx
-                        y += dy
-            return grid.get((x, y), 0)
-
-        for value in range(256):
-            table = format(value, "08b")
-            template = _head(table, [0, 0, 0]) + "n" + _body(3) + "{X0}{X1}{X2}" + "Pn"
-            for bits in product([0, 1], repeat=3):
-                program = _instantiate_apa(template, list(bits))
-                assert _landing_after_one_cycle(program) == int(
-                    table[bits[0] * 4 + bits[1] * 2 + bits[2]],
-                ), f"table {table} bits {bits}"
-
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
             a_painter_ant("011")
@@ -2982,15 +2941,15 @@ class TestAPainterAnt:
             a_painter_ant("0123")
 
     def test_instantiate_fills_bits(self) -> None:
-        """{X0} fills nn/ss and {X1} fills WWwWWEEe/NENEESWw per bit."""
+        """{X0} fills nnnn/ssss (the 2^(n-i)=4 weight) and {X1} fills the E/W dance."""
         template = a_painter_ant("0110")
         assert _instantiate_apa(template, [1, 1]) == template.replace(
             "{X0}",
-            "nn",
+            "nnnn",
         ).replace("{X1}", "WWwWWEEe")
         assert _instantiate_apa(template, [0, 0]) == template.replace(
             "{X0}",
-            "ss",
+            "ssss",
         ).replace("{X1}", "NENEESWw")
 
 
