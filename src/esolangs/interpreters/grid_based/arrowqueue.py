@@ -24,34 +24,73 @@ from esolangs.interpreters.io import IO
 DELTA = [(1, 0), (0, 1), (-1, 0), (0, -1)]
 
 
+class _Machine:
+    """Per-run ArrowQueue state: position, heading, and the direction queue.
+
+    ``step()`` advances the IP by one grid cell and ``halted`` says whether
+    it has run off the grid or popped an empty queue — the shape the VM
+    wrapper and the state-cycle hang detector expect.  :meth:`snapshot`
+    returns the position, heading, and queue, so a repeated snapshot proves
+    a deterministic run loops forever (the queue stays bounded on the
+    rings that sustain).
+    """
+
+    def __init__(self, code: list[str]) -> None:
+        """Pad ``code`` to a rectangle and reset the machine to the corner."""
+        self.code = code
+        self._done = False
+        self.x = self.y = self.d = 0
+        self.queue: list[int] = []
+        if code:
+            self.width = max(len(line) for line in code)
+            self.grid = [line.ljust(self.width) for line in code]
+        else:
+            self.width = 0
+            self.grid = []
+            self._done = True
+
+    @property
+    def halted(self) -> bool:
+        """Whether the IP has left the grid or halted on an empty pop."""
+        return self._done
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.x, self.y, self.d, tuple(self.queue))
+
+    def step(self) -> None:
+        """Execute one grid cell, advancing the IP."""
+        if self.halted:
+            return
+        if not 0 <= self.x < self.width or not 0 <= self.y < len(self.grid):
+            self._done = True
+            return
+        cell = self.grid[self.y][self.x]
+        if cell == "*":
+            self.d = (self.d + 1) % 4
+        elif cell == "~":
+            self.queue.append(self.d)
+        elif cell == "+":
+            if not self.queue:
+                self._done = True
+                return
+            self.d = self.queue.pop(0)
+        dx, dy = DELTA[self.d]
+        self.x += dx
+        self.y += dy
+        if not 0 <= self.x < self.width or not 0 <= self.y < len(self.grid):
+            self._done = True
+
+
 def run(
     code: list[str],
     io: IO,  # noqa: ARG001 - ArrowQueue defines no I/O; the param follows the
     # repo convention so `esolangs.run` and the example harness pass it uniformly
 ) -> None:
     """Run an ArrowQueue program, halting on an empty-queue pop or off-grid."""
-    if not code:
-        return
-    width = max(len(line) for line in code)
-    grid = [line.ljust(width) for line in code]
-    x = y = d = 0
-    queue: list[int] = []
-
-    while True:
-        if not 0 <= x < width or not 0 <= y < len(grid):
-            return
-        cell = grid[y][x]
-        if cell == "*":
-            d = (d + 1) % 4
-        elif cell == "~":
-            queue.append(d)
-        elif cell == "+":
-            if not queue:
-                return
-            d = queue.pop(0)
-        dx, dy = DELTA[d]
-        x += dx
-        y += dy
+    machine = _Machine(code)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

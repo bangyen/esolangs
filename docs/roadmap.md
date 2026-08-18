@@ -222,15 +222,16 @@ already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
-`esolangs.make_vm` (step-and-inspect wrappers for ten interpreters:
+`esolangs.make_vm` (step-and-inspect wrappers for twelve interpreters:
 brainfuck, S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
-Temporary Stack, LaserFuck, Point Break) and `esolangs.make_debugger`
-(breakpoints and watches over the VM) shipped.  The medium-priority work
-that remains:
+Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123) and
+`esolangs.make_debugger` (breakpoints and watches over the VM) shipped.
+The medium-priority work that remains:
 
 - **More step-capable interpreters.**  Convert more of the registry to a
   step()/halted state object, growing the VM set per state model.  Point
-  Break joined the set with the cycle-detection work below; the
+  Break, ArrowQueue, and 123 joined the set with the cycle-detection work
+  below; the
   other grid languages (2dFish, Dotlang, A Painter Ant, ...) are the
   natural next batch: their position/direction is the ``ip``, as LaserFuck
   demonstrated.
@@ -260,18 +261,32 @@ Scope and constraints:
   (``+[>+]``, the tape grows forever) never revisits a state, so the
   timeout stays as the backstop for that class.
 
-Started for Point Break.  ``esolangs.vm.run_until_halt_or_cycle`` — a
-shared step-and-hash helper (a visited-state ``set``; Floyd/Brent
-two-pointer detection for O(1) memory would be the follow-up) — steps a
-step-capable machine and returns ``False`` the moment a repeated snapshot
-proves it is looping.  Point Break was made step-capable (a ``_Machine``
-state object) to be checkable, and its termination-convention boolean
-tests now decide the looping side deterministically — no wall-clock bound,
-no subprocess, and no coverage-tracer exposure at all.  Slots that remain
-to wire in: ``scripts/verify_differential.py``'s termination checks and
-``tests/test_interpreters_robustness.py``, which still run whole-program
-``run()``s for languages that are not yet step-capable (see the
-step-capable-interpreters item in the VM section above).
+Started for Point Break, ArrowQueue, 123, and brainfuck.
+``esolangs.vm.run_until_halt_or_cycle`` — a shared step-and-hash helper (a
+visited-state ``set``; Floyd/Brent two-pointer detection for O(1) memory
+would be the follow-up) — steps a step-capable machine and returns
+``False`` the moment a repeated snapshot proves it is looping, and
+``True`` as soon as a step halts.  The four interpreters were made
+step-capable (a ``_Machine`` state object each, with ``snapshot()``
+including the input cursor) and every hand-written hang test in the suite
+now decides the looping side deterministically — no wall-clock bound, no
+subprocess, and no coverage-tracer exposure at all.
+
+**Design rule: hand-written hang tests always use loops that revisit
+state.**  Since the test chooses the program, it can pick a finite-state
+cycle, and cycle detection is then complete (not just sound) for that
+test.  ArrowQueue's sustaining truth-machine ring is a 12-state cycle,
+123's state is bounded so every loop is a cycle, and brainfuck's ``+[]``
+wraps its cell.  The "catches cycles, not every hang" caveat — e.g. an
+unbounded-growth ``+[>+]`` whose tape grows forever — only bites when the
+suite does *not* control the programs, i.e. the fuzzers, so the timeout
+backstop stays there and is not a hazard for the hand-written tests.
+
+Slots that remain to wire in: ``scripts/verify_differential.py``'s
+termination checks and ``tests/test_interpreters_robustness.py``, which
+still run whole-program ``run()``s for languages that are not yet
+step-capable (see the step-capable-interpreters item in the VM section
+above).
 
 **Why the wall-clock backstop is also broken under ``pytest --cov``.**
 Raising from the SIGALRM handler while the coverage C tracer is active can
@@ -287,7 +302,11 @@ raises once per process).  Point Break's loop side was at first verified
 in untraced subprocesses, where the raise is safe; the cycle detector
 replaced that entirely, and it is the reason the remaining hangs can rely
 on the timeout backstop without the coverage-tracer deadlock becoming a
-test-suite hazard again.
+test-suite hazard again.  The one alarm that stays by design is
+``test_api.py``'s ``+[]`` case: it is a feature test of ``esolangs.run``'s
+``timeout`` parameter (the backstop for unbounded-growth loops), not a
+hang-detection strategy, so it keeps raising from the handler once per
+process.
 
 ## A Painter Ant: general n-input boolean generator (n >= 3 open)
 
