@@ -216,31 +216,28 @@ No existing boolean generator uses this convention; it would require a new
 harness contract (termination as the answer) and still does not unlock a
 general multi-input generator in any of these languages.
 
-## A Painter Ant boolean generator (n >= 3 is open; generator removed)
+## A Painter Ant boolean generator (n == 2 solved; n >= 3 open)
 
 A Painter Ant has no I/O, so its boolean generator (in
-:mod:`esolangs.tools.booleans.a_painter_ant`) used the parameterized
+:mod:`esolangs.tools.booleans.a_painter_ant`) uses the parameterized
 convention, read by a semantic grid model (the interpreter's own output is
 the visited-cell bounding box, which carries no coordinates).  The answer
-for the supported arities was the **origin's colour** (white is one, black is
-zero), giving *exact* truth tables.  The generator was **removed** because
-its `n <= 2` cap made it trivial (see ``docs/roadmap.md``); this page keeps
-the wall recorded so the work to re-add it is understood.
+is the **colour of the cell the ant lands on** at the end of a cycle (white
+is one, black is zero).
 
-The input encoding was the lowercase/uppercase movement *pair*: ``n`` and
-``N`` both point north but ``n`` moves onto a black cell while ``N`` moves
-onto a white one, so exactly one succeeds at a given target.  Each input
-bit is filled into the template as its pair, and the ant's resulting
-position routes the computation.  Every template is a *fixed point*: after
-each whole cycle the ant returns to the origin with the grid in the same
-state, so the box is identical for any limit that is a whole number of
-cycles (the discriminator ``P{X0}pS`` is the minimal such gate).
+The construction paints one decision-tree leaf per input combination and
+routes the ant to the leaf for its inputs.  Each leaf is painted ``P``
+(white) for a one table entry and **left unpainted** (a space, ignored by
+the interpreter) for a zero.  Only ``P`` is ever used — the generator never
+paints a cell black — so the white cells are monotone increasing: cycle 1
+establishes them and every later cycle only re-confirms a subset, which is
+what makes every instantiated program a cycle-stable fixed point (the box
+is identical for any whole number of cycles).
 
 Supported and verified exhaustively against the interpreter:
 
-- **n == 1**: all four one-input functions.
-- **n == 2**: all sixteen two-input functions (five base templates plus the
-  two constant programs, with per-bit plain/complemented slots).
+- **n == 2**: all sixteen two-input functions, exact and cycle-stable.
+- **n == 1** is not constructed (raises); the head is built for two inputs.
 
 **n >= 3 is open.**  A *box-height* method found by search extends the
 range: each one-input makes the ant step one cell further north
@@ -251,7 +248,7 @@ This is cycle-stable and expresses *most* n == 3 tables — a search found
 but the ~60 unreachable ones are exactly the balanced, non-monotone tables
 (such as equality), and no general construction is known that reaches *all*
 functions of an arity.  Lifting the cap to a general method is recorded in
-``docs/roadmap.md`` and would warrant re-adding the generator.
+``docs/roadmap.md``.
 
 ## Multiply capability (Jaune realizes it)
 
