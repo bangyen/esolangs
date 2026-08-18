@@ -2991,3 +2991,155 @@ class TestAPainterAnt:
             "{X0}",
             "ss",
         ).replace("{X1}", "NENEESWw")
+
+
+class TestAPainterAntTrace:
+    """The A Painter Ant step tracer and cycle-stability checker.
+
+    The tracer exposes the semantic grid model the generator reads its
+    answer from, with per-instruction step records so a diverging cycle can
+    be pinned to the exact instruction.  Its bounding-box renderer must
+    agree with the interpreter's, and its stability verdict must agree with
+    the interpreter's box across cycle counts.
+    """
+
+    def test_run_records_moves_blocks_and_paints(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import run
+
+        outcome = run("nNPp", 1)
+        assert [s.action for s in outcome.steps] == [
+            "moved",
+            "blocked",
+            "paint_white",
+            "paint_black",
+        ]
+        assert outcome.steps[0].target == (0, -1)
+        assert outcome.steps[1].position == (0, -1)
+        assert outcome.steps[2].position == (0, -1)
+        assert outcome.steps[3].position == (0, -1)
+        assert outcome.steps[0].command == "n"
+        assert outcome.steps[0].index == 0
+        assert outcome.grid[(0, -1)] == 0  # p repaints the white cell black
+        assert outcome.visited == {(0, 0), (0, -1)}
+        assert outcome.position == (0, -1)
+
+    def test_run_ignores_whitespace(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import run
+
+        assert [s.command for s in run("n n  P", 1).steps] == ["n", "n", "P"]
+
+    def test_run_rejects_unknown_instruction(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import run
+
+        with pytest.raises(ValueError, match="unknown instruction"):
+            run("nPx", 1)
+
+    def test_run_records_landings_per_cycle(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import run
+
+        assert run("nP", 3).landings == [(0, -1), (0, -2), (0, -3)]
+
+    def test_landing_colour(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import run
+
+        assert run("nP", 1).landing_colour() == 1  # (0,-1) was painted white
+        assert run("n", 1).landing_colour() == 0  # (0,-1) is still black
+
+    def test_box_matches_the_interpreter(self) -> None:
+        from itertools import product
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean.a_painter_ant_trace import box
+
+        for value in range(16):
+            table = format(value, "04b")
+            for bits in product([0, 1], repeat=2):
+                program = _instantiate_apa(a_painter_ant(table), list(bits))
+                io = ScriptedIO()
+                run_a_painter_ant(program, io, limit=len(program))
+                assert box(program, 1) == io.getvalue().rstrip("\n"), (
+                    table,
+                    bits,
+                )
+
+    def test_cycle_stable_agrees_with_the_interpreter(self) -> None:
+        from itertools import product
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean.a_painter_ant_trace import cycle_stable
+
+        for value in range(16):
+            table = format(value, "04b")
+            for bits in product([0, 1], repeat=2):
+                program = _instantiate_apa(a_painter_ant(table), list(bits))
+                assert cycle_stable(program), (table, bits)
+                io = ScriptedIO()
+                run_a_painter_ant(program, io, limit=len(program))
+                reference = io.getvalue()
+                io = ScriptedIO()
+                run_a_painter_ant(program, io, limit=10 * len(program))
+                assert io.getvalue() == reference, (table, bits)
+
+    def test_cycle_stable_detects_a_divergence(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import cycle_stable
+
+        assert not cycle_stable("nPn")  # each cycle paints one cell further
+
+    def test_landing_after(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import landing_after
+
+        assert landing_after(_instantiate_apa(a_painter_ant("0110"), [0, 1])) == 1
+        assert landing_after(_instantiate_apa(a_painter_ant("0110"), [1, 1])) == 0
+
+    def test_first_divergence_stable_program_is_none(self) -> None:
+        from itertools import product
+
+        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+
+        for bits in product([0, 1], repeat=2):
+            program = _instantiate_apa(a_painter_ant("0110"), list(bits))
+            assert first_divergence(program) is None, bits
+
+    def test_first_divergence_pins_a_box_escape(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+
+        divergence = first_divergence("nPn")  # cycle 2 moves to (0,-3), outside
+        assert divergence is not None
+        assert divergence.index == 0
+        assert divergence.command == "n"
+        assert divergence.position == (0, -3)
+        assert divergence.step1.position == (0, -1)
+        assert divergence.step2.position == (0, -3)
+
+    def test_first_divergence_pins_a_paint_break(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+
+        divergence = first_divergence("Pn")  # cycle 2 paints the black (0,-1)
+        assert divergence is not None
+        assert divergence.index == 0
+        assert divergence.command == "P"
+        assert divergence.step1.position == (0, 0)
+        assert divergence.step2.position == (0, -1)
+
+    def test_first_divergence_pins_a_changed_answer(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+
+        # cycle 1 lands white on (0,-1); cycle 2 slides onto the black (0,0)
+        divergence = first_divergence("nPnPsS")
+        assert divergence is not None
+        assert divergence.index == 5
+        assert divergence.command == "S"
+        assert divergence.step1.position == (0, -1)
+        assert divergence.step2.position == (0, 0)
+
+    def test_first_divergence_pins_a_drifting_dance(self) -> None:
+        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+
+        # cycle 2 lands on (0,0) instead of (0,1): same colour, but the dance
+        # is not a fixed point and cycle 3 differs from cycle 2
+        divergence = first_divergence("NPsP")
+        assert divergence is not None
+        assert divergence.index == 0
+        assert divergence.command == "N"
+        assert divergence.step1.action == "moved"
+        assert divergence.step2.action == "blocked"
