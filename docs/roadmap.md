@@ -18,6 +18,7 @@ and the languages already implemented elsewhere) is in the commit history and
 | Language | Priority | Why it is on the table |
 | --- | --- | --- |
 | Suptiftam | low | 2D tape-tapes; complete spec but undefined behaviors. |
+| COD | low | 2D concurrency-heavy cods; numeric output + value gates make a boolean generator plausible but unbuilt. |
 
 **Point Break shipped with the first termination-convention generator.**
 Point Break has no output, so it would have inherited the no-output tier
@@ -28,17 +29,23 @@ boolean generator (any arity, any table), not the structural ceiling the
 convention hits elsewhere.  The interpreter and generator shipped; see
 `docs/walls.md`.
 
-**Suptiftam — the only candidate left.**  The other five candidates were
-assessed and ruled out; the assessments are in `docs/limitations.md`.
+**Suptiftam, COD — the only candidates left.**  The other four candidates
+were assessed and ruled out; the assessments are in `docs/limitations.md`.
 Procedure is deferred on its arithmetic spec gap (only `the sum of ...`
 is defined, so a faithful interpreter cannot implement the rest without
 inventing semantics); State and Main, Your Time Is Up, and Crement have no
 I/O and no plausible generator (State and Main's single `main` argument
 cannot express an arbitrary boolean function, Your Time Is Up's rule
-choice is random, and Crement has no standard I/O at all); COD outputs
-only numbers and its only boolean option is a nondeterministic
-termination-convention construction.  Suptiftam's spec is complete but has
-undefined behaviors and untested examples.
+choice is random, and Crement has no standard I/O at all).  Suptiftam's
+spec is complete but has undefined behaviors and untested examples.  COD's
+only output is numbers, so it can never have a text generator — but a
+single 0/1 printed as the cod's value is a valid boolean output, so a
+boolean generator is the live question: it would route one cod through the
+`_` (reflect iff nonzero) and `<` (remove iff zero) value gates into a
+decision tree, laid out branch-free so the cod never hits a random
+junction.  That is a heavy, unbuilt 2D construction, and the interpreter
+needs a seeded-randomness decision first (the LaserFuck precedent), so COD
+stays low-priority and risky rather than ruled out.
 
 ## Transpilers
 
