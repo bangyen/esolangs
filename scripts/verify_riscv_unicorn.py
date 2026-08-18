@@ -21,7 +21,7 @@ import sys
 
 from riscv_elf_runner import assemble_source, run_elf
 
-from esolangs.tools import generate as gen
+from esolangs.tools import text as gen
 
 # Generators whose cross-check interpreter lives in extra/assembly/: the
 # generated program must reproduce its text when run as machine code.

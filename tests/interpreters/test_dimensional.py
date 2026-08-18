@@ -8,8 +8,8 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.tools.booleans.tape import dimensional as bool_gen
-from esolangs.tools.generators.other import dimensional as text_gen
+from esolangs.tools.boolean.tape import dimensional as bool_gen
+from esolangs.tools.text.other import dimensional as text_gen
 
 dim = importlib.import_module("esolangs.interpreters.tape_based.dimensional")
 

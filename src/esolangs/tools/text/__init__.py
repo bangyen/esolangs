@@ -1,14 +1,14 @@
-"""Text generators (re-exported from the generators package).
+"""Text generators (re-exported from the text package).
 
-The generators live in ``esolangs.tools.generators``, split by language
+The generators live in ``esolangs.tools.text``, split by language
 family; this module re-exports them for compatibility and provides the
-``python -m esolangs.tools.generate`` CLI.
+``python -m esolangs.tools.text`` CLI.
 """
 
 import sys
 
-from esolangs.tools.generators.helpers import _ilog
-from esolangs.tools.generators.other import (
+from esolangs.tools.text.helpers import _ilog
+from esolangs.tools.text.other import (
     basicfuck,
     between,
     bit_tilde,
@@ -32,7 +32,7 @@ from esolangs.tools.generators.other import (
     unsquare,
     ztoalc_l,
 )
-from esolangs.tools.generators.register import (
+from esolangs.tools.text.register import (
     addsubjump,
     albabet,
     bio,
@@ -47,8 +47,8 @@ from esolangs.tools.generators.register import (
     sophie,
     wii2d,
 )
-from esolangs.tools.generators.stack import modulous, the_temporary_stack
-from esolangs.tools.generators.tape import (
+from esolangs.tools.text.stack import modulous, the_temporary_stack
+from esolangs.tools.text.tape import (
     bfstack,
     brainfuck,
     brainif,
@@ -122,15 +122,11 @@ def main() -> None:
     from esolangs.registry import GENERATORS  # local import avoids a cycle
 
     if len(sys.argv) < 2:
-        print("usage: python -m esolangs.tools.generate <text>")
-        print('example: python -m esolangs.tools.generate "Hello, World!"')
+        print("usage: python -m esolangs.tools.text <text>")
+        print('example: python -m esolangs.tools.text "Hello, World!"')
         sys.exit(1)
 
     text = sys.argv[1]
     for name, gen in GENERATORS.items():
         print(f"--- {name} ---")
         print(gen(text))
-
-
-if __name__ == "__main__":
-    main()

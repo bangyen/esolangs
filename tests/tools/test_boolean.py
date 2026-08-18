@@ -10,11 +10,11 @@ import pytest
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.interpreters.io import IO
 from esolangs.tools import boolean
-from esolangs.tools.booleans.parameterized import _instantiate_apa, a_painter_ant
+from esolangs.tools.boolean.parameterized import _instantiate_apa, a_painter_ant
 
 
 def _parameterized_generators():
-    from esolangs.tools.booleans import parameterized
+    from esolangs.tools.boolean import parameterized
 
     return [
         (name, parameterized.__dict__[name])
@@ -672,7 +672,7 @@ class TestForth:
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
-        from esolangs.tools.booleans.stack import _forth_const
+        from esolangs.tools.boolean.stack import _forth_const
 
         assert _forth_const(0) == "0"
         assert len(_forth_const(300)) > len(_forth_const(48))
@@ -1486,7 +1486,7 @@ class TestParameterizedBIO:
         return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         n = len(bits)
         # pack each input once by its binary weight
@@ -1510,7 +1510,7 @@ class TestParameterizedBIO:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bio(table)
         for combo in range(2**n):
@@ -1520,7 +1520,7 @@ class TestParameterizedBIO:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bio("0110")
         assert "{X0}" in template
@@ -1530,7 +1530,7 @@ class TestParameterizedBIO:
         """The packing scheme embeds each input exactly once."""
         import re
 
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for n in (1, 2, 3):
             table = format(0, f"0{2**n}b")
@@ -1575,7 +1575,7 @@ class TestParameterizedBack:
         return str(tape[cell])
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         # each {Xi} fills a tape cell: '-' for a one bit, space for zero
         return parameterized.instantiate(
@@ -1602,7 +1602,7 @@ class TestParameterizedBack:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.back(table)
         for combo in range(2**n):
@@ -1613,7 +1613,7 @@ class TestParameterizedBack:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
@@ -1625,7 +1625,7 @@ class TestParameterizedBack:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.back("0110")
         assert "{X0}" in template
@@ -1635,7 +1635,7 @@ class TestParameterizedBack:
         """Each input is embedded once in the tape load, not re-embedded."""
         import re
 
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for n in (1, 2, 3):
             table = format(0, f"0{2**n}b")
@@ -1644,7 +1644,7 @@ class TestParameterizedBack:
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
         """The decision tree routes via '+\\' nodes and a down-transition."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.back("0110")
         assert "+\\" in template  # a decision node
@@ -1664,7 +1664,7 @@ class TestParameterizedNoComment:
         return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         return parameterized.instantiate(
             tpl,
@@ -1689,7 +1689,7 @@ class TestParameterizedNoComment:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.nocomment(table)
         for combo in range(2**n):
@@ -1700,7 +1700,7 @@ class TestParameterizedNoComment:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
@@ -1712,7 +1712,7 @@ class TestParameterizedNoComment:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.nocomment("0110")
         assert "{X0}" in template
@@ -1720,7 +1720,7 @@ class TestParameterizedNoComment:
 
     def test_program_structure(self) -> None:
         """A one-bit template computes the index then skips to the output."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.nocomment("10")
         assert template.startswith("{X0}")
@@ -1731,7 +1731,7 @@ class TestParameterizedNoComment:
 
     def test_four_input_works(self) -> None:
         """A dense four-input table assembles and runs correctly."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for combo in range(16):
             bits = [(combo >> (3 - i)) & 1 for i in range(4)]
@@ -1741,13 +1741,13 @@ class TestParameterizedNoComment:
 
     def test_cap_rejected(self) -> None:
         """n > 8 needs an index beyond a byte and is rejected."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="n <= 8"):
             parameterized.nocomment("0" * (2**9))
 
     def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.nocomment("011")
@@ -1765,7 +1765,7 @@ class TestParameterizedLamfunc:
         return io.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         # each {Xi} fills a `vs v{i}` store with the binary literal
         return parameterized.instantiate(
@@ -1791,7 +1791,7 @@ class TestParameterizedLamfunc:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.lamfunc(table)
         for combo in range(2**n):
@@ -1802,7 +1802,7 @@ class TestParameterizedLamfunc:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
@@ -1814,7 +1814,7 @@ class TestParameterizedLamfunc:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.lamfunc("0110")
         assert "{X0}" in template
@@ -1824,7 +1824,7 @@ class TestParameterizedLamfunc:
         """The store-once scheme embeds each input exactly once."""
         import re
 
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for n in (1, 2, 3):
             table = format(0, f"0{2**n}b")
@@ -1833,13 +1833,13 @@ class TestParameterizedLamfunc:
 
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits the stores plus a single p with no branching."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         assert parameterized.lamfunc("0000") == "vs v0 {X0} vs v1 {X1} p 0"
         assert parameterized.lamfunc("1111") == "vs v0 {X0} vs v1 {X1} p 1"
 
     def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.lamfunc("011")
@@ -1857,7 +1857,7 @@ class TestParameterizedBitdeque:
         return io.getvalue().strip()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         n = len(bits)
         # The register flips after every load block, so bit i is pushed at
@@ -1887,7 +1887,7 @@ class TestParameterizedBitdeque:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bitdeque(table)
         for combo in range(2**n):
@@ -1898,7 +1898,7 @@ class TestParameterizedBitdeque:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
@@ -1910,7 +1910,7 @@ class TestParameterizedBitdeque:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bitdeque("0110")
         assert "{X0}" in template
@@ -1918,14 +1918,14 @@ class TestParameterizedBitdeque:
 
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits a drain-and-push leaf with no branching."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bitdeque("0000")
         assert "POP" in template
         assert "GOTO" in template
 
     def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.bitdeque("011")
@@ -1951,7 +1951,7 @@ class TestParameterizedRam0:
         return m.group(1)
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         # Z resets absolutely, so the setter is the same at every position:
         # "Z A" for a one, "Z Z" for a zero, each exactly two commands.
@@ -1980,7 +1980,7 @@ class TestParameterizedRam0:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.ram0(table)
         for combo in range(2**n):
@@ -1991,7 +1991,7 @@ class TestParameterizedRam0:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
@@ -2003,7 +2003,7 @@ class TestParameterizedRam0:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.ram0("0110")
         assert "{X0}" in template
@@ -2011,14 +2011,14 @@ class TestParameterizedRam0:
 
     def test_constant_table_is_a_leaf(self) -> None:
         """A constant table emits a single leaf with no branching."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.ram0("0000")
         assert "C" not in template
         assert "Z" in template
 
     def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.ram0("011")
@@ -2040,7 +2040,7 @@ class TestParameterizedMinskySwap:
         return io.getvalue().split()[1]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         n = len(bits)
 
@@ -2077,7 +2077,7 @@ class TestParameterizedMinskySwap:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.minsky_swap(table)
         for combo in range(2**n):
@@ -2088,7 +2088,7 @@ class TestParameterizedMinskySwap:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
@@ -2100,14 +2100,14 @@ class TestParameterizedMinskySwap:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.minsky_swap("0110")
         assert "{X0}" in template
         assert "{X1}" in template
 
     def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.minsky_swap("011")
@@ -2125,7 +2125,7 @@ class TestParameterizedBfpda:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         return parameterized.instantiate(
             tpl,
@@ -2152,7 +2152,7 @@ class TestParameterizedBfpda:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda(table)
         for combo in range(2**n):
@@ -2163,7 +2163,7 @@ class TestParameterizedBfpda:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
@@ -2175,7 +2175,7 @@ class TestParameterizedBfpda:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda("0110")
         assert "{X0}" in template
@@ -2185,7 +2185,7 @@ class TestParameterizedBfpda:
         """Each input is embedded once (pre-loaded), not re-embedded per node."""
         import re
 
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda("0110")
         assert template.count("{X0}") == 1
@@ -2196,14 +2196,14 @@ class TestParameterizedBfpda:
 
     def test_leaf_print_is_balanced(self) -> None:
         """A leaf pops the remaining bits, prints the answer, and pops it."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda("10")  # NOT: one-leaf prints 1
         assert "<@. >" in template
         assert "<. >" in template
 
     def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.bfpda("011")
@@ -2426,7 +2426,7 @@ class TestThreeX:
 
     def test_digit_constant_encodings(self) -> None:
         """The base-3 digit seeds are the closed-form minimal programs."""
-        from esolangs.tools.booleans import other
+        from esolangs.tools.boolean import other
 
         assert other._const(0) == "333x"  # noqa: SLF001
         assert other._const(1) == "3333x3x"  # noqa: SLF001
@@ -2434,7 +2434,7 @@ class TestThreeX:
 
     def test_base_three_digits_accumulate(self) -> None:
         """Each base-3 digit past the first appends the 3v+d affine step."""
-        from esolangs.tools.booleans import other
+        from esolangs.tools.boolean import other
 
         # 12 is "110" in base 3: seed 1, then d=1, then d=0.  Each transform
         # adds exactly one `#` (the swap before the `x`), and no seed has one.
@@ -2444,7 +2444,7 @@ class TestThreeX:
 
     def test_formula_scales_logarithmically(self) -> None:
         """The closed form grows with the digit count, not the value."""
-        from esolangs.tools.booleans import other
+        from esolangs.tools.boolean import other
 
         small, large = other._const(100), other._const(1_000_000)  # noqa: SLF001
         assert len(small) < 120  # 100 is "10201": 5 digits
@@ -2555,7 +2555,7 @@ class TestGeneratorEdgePaths:
 
     def test_parameterized_validation(self) -> None:
         """bio/back reject malformed truth tables."""
-        from esolangs.tools.booleans import parameterized
+        from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.bio("011")
@@ -2573,7 +2573,7 @@ class TestGeneratorEdgePaths:
 
     def test_six_five_helper_edges(self) -> None:
         """Same-cell navigation and the +5 tail of the constant encoder."""
-        from esolangs.tools.booleans.tape import _six_five_const, _six_five_nav
+        from esolangs.tools.boolean.tape import _six_five_const, _six_five_nav
 
         assert _six_five_nav(3, 3) == ""
         assert _six_five_const(5) == "5"
@@ -2581,14 +2581,14 @@ class TestGeneratorEdgePaths:
 
     def test_ztoalc_simulator_rejects_bad_program(self) -> None:
         """An empty or non-numeric first line fails the fast simulator."""
-        from esolangs.tools.booleans.other import _ztoalc_ok
+        from esolangs.tools.boolean.other import _ztoalc_ok
 
         assert _ztoalc_ok({}, 0, "", "") is False
         assert _ztoalc_ok({0: "not-a-number"}, 0, "", "") is False
 
     def test_ztoalc_simulator_input_exhausted(self) -> None:
         """A '=' instruction with no input left fails the fast simulator."""
-        from esolangs.tools.booleans.other import _ztoalc_ok
+        from esolangs.tools.boolean.other import _ztoalc_ok
 
         assert _ztoalc_ok({0: "2", 1: "a = 1"}, 1, "", "") is False
 
@@ -2922,7 +2922,7 @@ class TestAPainterAnt:
 
     def test_four_input_head_rejected(self) -> None:
         """The head's leaf layout stops at three inputs."""
-        from esolangs.tools.booleans.parameterized import _leaf_positions
+        from esolangs.tools.boolean.parameterized import _leaf_positions
 
         with pytest.raises(ValueError, match="open problem"):
             _leaf_positions(4)
@@ -2944,7 +2944,7 @@ class TestAPainterAnt:
         """
         from itertools import product
 
-        from esolangs.tools.booleans.parameterized import _body, _head
+        from esolangs.tools.boolean.parameterized import _body, _head
 
         def _landing_after_one_cycle(program: str) -> int:
             """Landing cell colour after exactly one cycle (unstable past it)."""

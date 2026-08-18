@@ -255,7 +255,7 @@ Floyd/Brent two-pointer detection for O(1) memory) would slot into
 ## A Painter Ant: general n-input boolean generator (n >= 3 open)
 
 A two-input boolean generator now ships
-(:func:`esolangs.tools.booleans.parameterized.a_painter_ant`): it paints one leaf per
+(:func:`esolangs.tools.boolean.parameterized.a_painter_ant`): it paints one leaf per
 input combination (``P`` for a one table entry, a space — left unpainted —
 for a zero, so only monotone ``P`` is ever used) and routes the ant to its
 leaf.  The body paints a two-layer star around the output leaf and its
@@ -316,7 +316,7 @@ decision to drop it lands.
 
 Resolved: **Grapheme's** boolean "wall" was a stale note from an incomplete
 decision-tree construction, not a hard limit.  A total generator
-(`esolangs.tools.booleans.stack.grapheme`) now evaluates the table as an
+(`esolangs.tools.boolean.stack.grapheme`) now evaluates the table as an
 arithmetic sum of minterms (`A`/`B`/`S`/`T`, no jumps), reading each input
 from a two-character alphabet, and Grapheme has come off the
 deferred-removal list.

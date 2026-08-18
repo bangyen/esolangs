@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
-from esolangs.tools.generators.helpers import (
+from esolangs.tools.text.helpers import (
     _cm_constants,
     _factor_triple,
     _require_bytes,

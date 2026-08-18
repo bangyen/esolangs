@@ -15,7 +15,7 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from esolangs.tools import generate as _generate
+from esolangs.tools import text as _generate
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``,

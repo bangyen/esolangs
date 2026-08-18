@@ -97,6 +97,6 @@ class TestLoop:
 
 class TestGenerator:
     def test_generated_program(self) -> None:
-        from esolangs.tools.generators.other import home_row
+        from esolangs.tools.text.other import home_row
 
         assert run_program(home_row("Hello, World!")) == "Hello, World!"

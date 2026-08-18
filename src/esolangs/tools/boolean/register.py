@@ -2,8 +2,8 @@
 
 from typing import Any
 
-from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
-from esolangs.tools.generators.helpers import _cm_constants
+from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.text.helpers import _cm_constants
 
 # Dig blocks for one level of the decision tree.
 _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it

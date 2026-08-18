@@ -301,11 +301,11 @@ documented subset, like Minifuck's 0-preserving and one-input tables).
 
 ### Program Generator
 
-The `generate.py` module builds a program that prints a given string in each
+The `text` package builds a program that prints a given string in each
 language with a text generator:
 
 ```bash
-python -m esolangs.tools.generate "Hello, World!"
+python -m esolangs.tools.text "Hello, World!"
 ```
 
 Every generator is also available through `esolangs list` and

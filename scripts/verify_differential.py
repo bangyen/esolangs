@@ -445,7 +445,7 @@ def _check_laserfuck_boolean(table: str, n: int, runs: int = 12) -> tuple[int, i
     heading, so the set is effectively a singleton and a couple of runs are
     enough to catch a divergence.
     """
-    from esolangs.tools.booleans import other
+    from esolangs.tools.boolean import other
 
     program = other.laserfuck(table)
     checked = 0
@@ -1353,7 +1353,7 @@ def _fuzz_two_d_fish(rng: random.Random, count: int) -> bool:
     The language has no boolean generator, so the text generator's programs
     are fuzzed instead.
     """
-    from esolangs.tools.generate import two_d_fish
+    from esolangs.tools.text import two_d_fish
 
     binary = _build_two_d_fish()
     if binary is None:
@@ -1504,7 +1504,7 @@ def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
     The language has no boolean generator, so the text generator's programs
     (which avoid the nondeterministic `y`) are fuzzed instead.
     """
-    from esolangs.tools.generate import painfuck
+    from esolangs.tools.text import painfuck
 
     binary = _build_painfuck()
     if binary is None:

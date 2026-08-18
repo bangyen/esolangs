@@ -7,7 +7,7 @@ import pytest
 
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.bit_tilde import run
-from esolangs.tools import generate as gen
+from esolangs.tools import text as gen
 
 
 def run_and_capture(code: str) -> str:

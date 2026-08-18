@@ -44,7 +44,7 @@ emit only the ``n`` ``{Xi}``.
 from collections.abc import Callable
 from typing import TypeAlias
 
-from esolangs.tools.booleans.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import _validate_truth_table
 
 __all__ = [
     "a_painter_ant",
@@ -846,7 +846,7 @@ def a_painter_ant(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
     returned template contains ``{X0}``..``{Xn-1}`` placeholders that
-    :func:`~esolangs.tools.booleans.parameterized.instantiate` fills with
+    :func:`~esolangs.tools.boolean.parameterized.instantiate` fills with
     the per-bit routing.  The answer is the colour of the cell the ant lands
     on after a cycle (white is one, black is zero).
 
