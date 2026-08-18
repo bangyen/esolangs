@@ -1620,10 +1620,10 @@ def _verify_bit_tilde() -> bool:
     return failures == 0
 
 
-# -- The generator-less extra/ interpreters (corpus only) -------------------
+# -- RISC-V reference helpers ----------------------------------------------
 #
-# Kak, Brainpocalypse, and Stun Step have no generators (narrow output
-# classes), so only the fixed corpora are checked.
+# Assemble and run the RISC-V port of an interpreter under unicorn as an
+# independent reference for the generator-based differential fuzzers.
 
 
 @functools.cache

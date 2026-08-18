@@ -42,17 +42,15 @@ predictable across languages:
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a boolean generator (exact n <= 2), not a text one. |
+| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a two-input boolean generator; no text generator. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | Bitdeque | Prints the register/deque contents as numbers. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
-| Kak | Prints the tape as a `0`/`1` bit-string; exact bytes are unspellable. |
 | Lightlang | Prints only the single bit as a number. |
 | Minsky Swap | Prints the registers as numbers. |
-| Movesum | Prints `n ` (numbers with a trailing space). |
+| Movesum | Prints numbers space-separated with no trailing space. |
 | RAM0 | Prints a state dump. |
-| Stun Step | Prints the reached cells as space-separated decimal numbers. |
 
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
@@ -81,18 +79,11 @@ per-character encoding can be meaningfully shortened:
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | ArrowQueue | No output; only the halt-vs-hang outcome is observable, which expresses AND/OR/threshold functions but no XOR (see `docs/walls.md`). |
-| Bitdeque | `GOTO N` is an absolute token index that shifts under parameterized substitution. |
-| Brainpocalypse | `-`-on-zero rewinds to the program start; re-running the `+` bake increments cells unboundedly. |
 | Dotlang | The `W~` warp re-enters the first-match markers, losing branch history. |
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
-| Grapheme | `V` jumps forward on falsy with no mid-tree halt, so the truthy branch falls through both leaves. |
-| Kak | Prints the whole tape, not a single `0`/`1`. |
-| Lightlang | `&` skips one character, so a decision-tree node cannot route to a multi-character subtree. |
-| Minsky Swap | `~` targets are absolute indices that shift under substitution. |
+| Lightlang | `&` skips one character, so it cannot route to a multi-character leaf; only the AND/OR-class tables are expressible (each bit's skip covers exactly the single `#` halt), with no XOR or arbitrary table (see `docs/walls.md`). |
 | Movesum | No conditional; the loop repeats until the array stops changing. |
-| RAM0 | `goto` is an absolute token index that shifts under substitution. |
-| Stun Step | The loop-back re-runs the code with a shifted pointer, corrupting the bit bakes. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 | WII2D | The accumulator never affects control flow. |
 
@@ -102,10 +93,26 @@ per-character encoding can be meaningfully shortened:
 | --- | --- | --- |
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
-| Home Row | `n <= 2` | Language cap: the fixed 5x5 torus cannot route `2**n` combinations past `n == 2`. |
-| Minifuck | `n <= 3`, 0-preserving two-input only | Structural wall: the decode suffix fixes the pointer orientation. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
-| Circlefuck, ROTfuck, ABCDirection, BF-PDA | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
+| A Painter Ant | `n == 2` | Open at `n >= 3`: the two-input leaf-paint construction is exact and cycle-stable; a leaf-paint n == 3 generalization is in progress (cycle-1 exact for all 256 tables, not yet cycle-stable) and a search-found box-height method reaches 196/256 n == 3 tables. No general method for all functions of an arity is known yet (see `docs/roadmap.md` and `docs/a_painter_ant_generator.md`). |
+| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
+
+Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
+Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps
+left them able to express only a small fraction of the two-input boolean
+functions.  Their
+languages and text generators remain; see `docs/roadmap.md`.
+
+The parameterized no-input generators (bio, back, nocomment, bfpda, lamfunc,
+bitdeque, ram0, minsky_swap) each embed every input **exactly once**, never
+re-embedding a bit at multiple decision nodes — an input-capable language
+reads each of its `n` inputs once per run, and the no-input generators
+mirror that (see `esolangs.tools.booleans.parameterized` and its regression
+test).  Two of them, `nocomment` and `bfpda`, also embed each input's
+complement (`{Ci}`) once, because their if/else branch needs a gate that is
+nonzero exactly when the bit is zero and neither language can compute that
+complement at runtime (`nocomment` has no flip; `bfpda`'s `@` destroys the
+bit) — a documented wall, not a superfluous read.
 
 ## Fell-through candidates
 
@@ -247,3 +254,60 @@ repeated.
   already dropped.  The interpreter resolved real spec details (trial
   division, 2-is-prime, leading-digit and prefix parsing) but the language's
   triviality and missing generator story outweighed the gap.
+- **Kak: removed.**  A minimal three-command (``!``/``?``/``<``) bit-tape
+  language with no input command, whose only observable result is the tape
+  printed as a ``0``/``1`` bit-string at the end of each pass — an
+  interpreter-invented state dump rather than a language-defined output.  It
+  can never have a text generator (only the tape bit-string is printable,
+  so exact bytes are unspellable) or a boolean generator (it prints the whole
+  tape, not a single ``0``/``1``, and has no input to branch on).  Unlike the
+  other no-output interpreters it is not a sole implementation — the wiki
+  already lists Common Lisp, Scratch, and C interpreters by other authors —
+  so removing this interpreter leaves no gap, and its Rust cross-check had
+  already been dropped.  The interpreter faithfully ported the semantics
+  (the ``?`` skip read on the fly, the halt-on-zero-cell restart), but the
+  absence of any input, generator, or language-defined output class outweighed
+  keeping it.
+- **Brainpocalypse: removed.**  A brainfuck-like tape language (``+``/``-``
+  adjust the current cell, ``>``/``<`` move the pointer) whose only control
+  flow is ``-``-on-zero rewinding the instruction pointer to the start of the
+  program.  It has no input command, and its only observable result is the
+  tape printed as space-separated decimal values at halt — an
+  interpreter-invented state dump rather than a language-defined output, so
+  it can never have a text generator.  Its boolean wall is the ``-``-on-zero
+  rewind: it gives a halt-vs-loop convention for one bit (``-`` loops for
+  bit 0, ``+-`` halts for bit 1), but the rewind restarts the prefix and
+  re-running ``+`` increments already-set cells, so multi-input bakes corrupt
+  and no general boolean generator exists.  Unlike the other no-output
+  interpreters it is not a sole implementation — the wiki lists Ruby, Crystal,
+  and Python interpreters by other authors — so removing this interpreter
+  leaves no gap, and its RISC-V cross-check had already been dropped.  The
+  counterweight is stronger than for Kak: Brainpocalypse is Turing-complete
+  (a Waterfall Model construction is proven on the wiki) and by a notable
+  author, but the no-I/O admission criterion applies regardless of
+  computational class.  If it were ever readded, the open work is a
+  *nontrivial* boolean generator — the ``-``-on-zero rewind is the only
+  branch, and a working multi-bit construction (beyond the corrupting bake
+  pattern) has not been found.
+- **Stun Step: removed.**  A four-command (``+``/``-``/``>``/``<``) tape
+  language where ``>``/``<`` move the pointer only while the current cell is
+  nonzero, and execution loops back to the start after the program text
+  unless the current cell is 0, in which case the machine halts.  It has no
+  input command, and its only observable result is the reached cells printed
+  as space-separated decimal values at halt — an interpreter-invented state
+  dump rather than a language-defined output, so it can never have a text
+  generator.  Its boolean wall is the pass-boundary halt: it gives a
+  halt-vs-loop convention for one bit (``>`` moves only when the cell is
+  nonzero), but the loop-back re-runs the code with a shifted pointer,
+  corrupting multi-bit bakes, so no general boolean generator exists.  This
+  removal differs from Kak and Brainpocalypse in one important respect:
+  Stun Step is a *sole implementation* — the wiki lists only this repo's
+  interpreter and no external ones — so removing it does leave the language
+  with no implementation at all, a gap the admission criteria normally
+  weigh against removal.  The decision to remove it anyway weighed that gap
+  against the total absence of input, a text generator, or a language-defined
+  output class, and a boolean generator that would be *nontrivial* to build
+  (the shifted-pointer loop-back defeats every straightforward multi-bit
+  construction).  Stun Step is Turing-complete (a Delta Relay compilation is
+  proven on the wiki); if it were ever readded, the open work is that
+  nontrivial boolean generator.

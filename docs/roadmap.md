@@ -35,9 +35,9 @@ that work starts.  Revisit if the wiki (or its successor Pure) defines the
 rest of the operator set.
 
 **Point Break, State and Main, Your Time Is Up, Crement — no-output tier.**
-None have I/O, so like Crement and A Painter Ant they can only be
-self-contained interpreters without a generator; they would inherit the
-no-output removal policy below.
+None have I/O, so they can only be self-contained interpreters without a
+generator; they would inherit the deferred-removal policy below (no text or
+boolean generator, with the absence of I/O strengthening the case).
 
 **COD, Suptiftam — heavier, riskier.**  COD's random branches (like
 LaserFuck) make output non-deterministic but the interpreter can still be
@@ -61,54 +61,66 @@ the table:
   byte I/O) shares ABCDrection's bit-tape model; Minifuck's
   flip-and-conditional-skip is further away.
 
-## No-output interpreters (deferred removal)
+## Deferred-removal candidates
 
-**Deferred — not yet removed.**  Eight interpreters are for languages whose
-wiki defines no I/O, so their only observable output is an interpreter-
-invented state dump (the tape, registers, deque, or grid printed at halt to
-make the run testable) — not a language output command.  They cannot
-generate text, compute a boolean, be differentially verified, or step
-through input, so by the admission criteria' "usable file-based I/O" test
-they are the weakest additions.
+**Deferred — not yet removed.**  Three languages have no usable text or
+boolean generator — either none at all, or one so severely constrained it is
+effectively absent for any non-trivial use — so they cannot be round-trip or
+differentially verified and are the weakest additions.  They are grouped
+together regardless of I/O; the presence of usable I/O is an argument
+*against* removal, so the no-output ArrowQueue is the strongest candidate
+and the I/O-capable Lightlang and Movesum are weaker ones.
 
-| Language | Output |
-| --- | --- |
-| ArrowQueue | None; only halt-vs-hang, which expresses AND/OR-class boolean functions (see `docs/walls.md`). |
-| A Painter Ant | Visited-grid bounding box (`#`/`.` raster); has a boolean generator (exact n <= 2). |
-| Brainpocalypse | Final tape dump. |
-| Kak | Final tape dump. |
-| Minsky Swap | Final register dump. |
-| RAM0 | Final state dump. |
-| Stun Step | Final reached-cells dump. |
-| Bitdeque | Final register/deque dump. |
+| Language | Output | Why it is on the list |
+| --- | --- | --- |
+| ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
+| Lightlang | Prints only the single bit as a number | no text generator; boolean wall (AND/OR-class only). |
+| Movesum | Prints numbers space-separated with no trailing space | no text generator; no conditional, so no boolean generator. |
 
-**Candidate to remove, once decided.**  The roadmap's planned no-output
+The I/O-capable members (Lightlang, Movesum) were previously
+excluded from this tier as "I/O-capable" — they stay on the list because
+they still fail both generator gates, but their real language-defined output
+counts against removing them.  Grapheme has since been taken **off** this
+list: its boolean wall was not a hard limit — the language is Turing-complete
+with arithmetic and conditionals — and a working boolean generator now
+exists (see the constrained-generators section below), so like the other
+interpreter-only languages it is no longer a removal candidate even though
+it still has no text generator.  A Painter Ant has likewise come **off** this
+list: a working two-input boolean generator now exists (see the
+constrained-generators section below), so like the other interpreter-only
+languages it is no longer a removal candidate even though it still has no
+text generator.  No
+text generator is severely constrained — even the most restricted ones
+(Dig's letter/digit/``.,!?`` alphabet, MyScript's printable ASCII) still
+cover a substantial output range, so no language is added on the text side.
+The other interpreter-only languages
+(ABCDirection, Back, BF-PDA, Bitdeque, Jaune, Lamfunc,
+Minsky Swap, RAM0, Grapheme, A Painter Ant) all have a working boolean
+generator with no
+severe cap,
+so they are **not**
+deferred-removal candidates; their only weakness is an interpreter-invented
+state dump where the wiki defines no text output.
+
+**Candidate to add, once decided.**  The roadmap's planned no-output
 candidates (Point Break, State and Main, Crement, Your Time Is Up) would be
-dropped under the same policy.  The I/O-capable interpreter-only languages
-(Grapheme, Movesum, Lightlang)
-are not in this tier.
-
-**Generator story is mostly absent.**  None of the sixteen
-interpreter-only languages has a text generator.  Six have boolean
-generators (A Painter Ant, ABCDirection, Back, BF-PDA, Jaune, Lamfunc);
-ArrowQueue realizes
-the halt-vs-hang *termination* convention for AND/OR-class functions (a ring
-template committed as its truth-machine example); and the other nine
-have no boolean story at all (each hits a documented wall in
-`docs/walls.md`).  So the generator-story criterion is failed by most of the
-interpreter-only set, and the distinction below is only how observable
-their non-generator output is.
+dropped under the same policy.
 
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
-admission criteria treat as a genuine gap.  Of the eight, only Brainpocalypse
-and Kak have external implementations (Ruby/Crystal/Python and Common
-Lisp/Scratch/C respectively); the other six (ArrowQueue, A Painter Ant,
-Minsky Swap, RAM0, Stun Step, Bitdeque) are Bangyen-only.  The tradeoff is
-between "no I/O ⇒ cannot participate in the repo's verification machinery"
-and "sole implementation ⇒ removing creates a gap"; the removal is recorded
-here as a candidate to resolve deliberately rather than by default.
+admission criteria treat as a genuine gap.  ArrowQueue, Lightlang, and
+Movesum are all Bangyen-only sole implementations
+with no external implementations.  ArrowQueue is
+Turing-complete (ArrowQueue via Tag/Cyclic tag/Minsky machine translations,
+on the wiki).  (Kak
+and Brainpocalypse, the two externally-implemented members, and Stun Step —
+a sole implementation removed anyway, see `docs/limitations.md` — were
+removed.)  The tradeoff is
+between "no generator ⇒ cannot participate in the repo's verification
+machinery" and "sole implementation ⇒ removing creates a gap"; the removal
+is recorded here as a candidate to resolve deliberately rather than by
+default.
 
 ## Extra implementations (cross-checks)
 
@@ -169,9 +181,10 @@ test already covers.  All seven added little over the Python unit tests at
 real toolchain cost (cargo + RISC-V cross-compiler + unicorn in CI); the
 *languages* all stayed (they have generators or pass the admission criteria
 as distinct interpreters); only the redundant cross-checks went.  The 2
-Bits 1 Byte, Trash, and Number Seventy-Four interpreters were themselves
-removed later (see `docs/limitations.md`), on top of their already-removed
-cross-checks.
+Bits 1 Byte, Trash, Number Seventy-Four, Kak, Brainpocalypse, and Stun Step
+interpreters were
+themselves removed later (see `docs/limitations.md`), on top of their
+already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
@@ -189,19 +202,35 @@ watches over the VM) shipped.  The medium-priority work that remains:
   currently the active call frame's cursor; a language with nested calls
   should expose the call stack, not fold it into one frame's position.
 
-## A Painter Ant: general n-input boolean generator (open)
+## A Painter Ant: general n-input boolean generator (n >= 3 open)
 
-`esolangs.tools.booleans.a_painter_ant` expresses every one- and two-input
-truth table exactly (answer = the origin's colour after a whole cycle, all
-templates cycle-stable), and raises for `n >= 3`.
+A two-input boolean generator now ships
+(:func:`esolangs.tools.booleans.a_painter_ant`): it paints one leaf per
+input combination (``P`` for a one table entry, a space — left unpainted —
+for a zero, so only monotone ``P`` is ever used) and routes the ant to its
+leaf.  Every two-input table is exact and every instantiated program is a
+cycle-stable fixed point, read by a semantic grid model as the **landing
+cell's colour** (the interpreter's own output is the visited-cell bounding
+box, which carries no coordinates).  ``n == 1`` is also supported, by
+padding the one-input table to ``[f(0), f(0), f(1), f(1)]`` and fixing the
+second input to zero.  This construction resolved the
+``n == 2`` case that the earlier, origin-colour generator covered.
 
-The cap is not "unreachable": a search-found *box-height* method extends
-the range — each one-input makes the ant step one cell further north, so
-its depth equals the input weight, and a paint/return section turns that
-depth into a box height or its parity.  This is cycle-stable and expresses
-**most** n == 3 tables (196 of 256 in a search, including AND3, OR3, XOR3
-via parity, and majority); the ~60 unreachable ones are exactly the
-balanced, non-monotone tables (e.g. equality).
+**n >= 3 is open.**  The cap is not "unreachable": a search-found
+*box-height* method extends the range — each one-input makes the ant step
+one cell further north, so its depth equals the input weight, and a
+paint/return section turns that depth into a box height or its parity.
+This is cycle-stable and expresses **most** n == 3 tables (196 of 256 in a
+search, including AND3, OR3, XOR3 via parity, and majority); the ~60
+unreachable ones are exactly the balanced, non-monotone tables (e.g.
+equality).
+
+A **leaf-paint n == 3 generalization is in progress** (see
+`docs/a_painter_ant_generator.md`): a single-line eight-leaf draft is exact
+for cycle 1 on all 256 tables but is not yet cycle-stable (the head is
+origin-relative and the ant starts cycle 2 at the output leaf).  Cycle-1
+exactness was the easy part; making the runtime/star layout cycle-stable is
+the open work.
 
 **Goal: find a general construction such that for any ``n``, *every*
 ``n``-ary boolean function is expressible.**  The box-height method loses
@@ -210,5 +239,37 @@ reach the balanced tables; a general solution needs to route on *which*
 inputs are one, not just *how many* — e.g. a way to encode each of the
 ``2**n`` combos into a distinguishable ant state (position, painted pattern,
 or box content) with a cycle-stable template.  This is the documented wall
-in `docs/walls.md`; a successful construction would lift the generator's
-cap to arbitrary ``n``.
+in `docs/walls.md`; a successful construction would lift the cap.
+
+## Severely constrained boolean generators (remove or lift)
+
+Each boolean generator with a low cap is tracked here so the decision is
+deliberate rather than implicit: either lift the cap (an open construction)
+or, where the language has no other generator story, remove it.  The caps
+are documented in `docs/limitations.md` and `docs/walls.md`.
+
+| Language | Boolean cap | Also has text generator? | Resolution |
+| --- | --- | --- | --- |
+| 123 | one input only | yes | lift (structural wall, single data byte); has a text generator so not a removal candidate. |
+| NoComment | `n <= 8` | yes | lift (genuine wall, byte-indexed skip); cap is high enough for practical use. |
+| Polynomial | `n <= 4` | yes | lift (performance cap on exact factorization); cap is high enough for practical use. |
+| A Painter Ant | `n == 2` | no | lift (open at `n >= 3`); the two-input leaf-paint construction is exact and cycle-stable, a leaf-paint n == 3 generalization is in progress, and no general method for all functions of an arity is known yet (see the open-problem section above). |
+
+Removed (constraints made them trivial): the boolean generators for
+Minifuck (`n <= 3`, only
+0-preserving two-input tables), and Home Row (`n <= 2`) were dropped because
+their low caps left them only able to express the four one-input and a small
+fraction of the two-input boolean functions — too small a subset to be
+interesting.  Their languages and text generators remain.
+
+Borderline, kept for now: **ZTOALC L** raises for dense, non-symmetric
+tables past `n == 3` but still covers symmetric and structured tables at
+`n == 4`, so it is a candidate to revisit if a general construction or a
+decision to drop it lands.
+
+Resolved: **Grapheme's** boolean "wall" was a stale note from an incomplete
+decision-tree construction, not a hard limit.  A total generator
+(`esolangs.tools.booleans.stack.grapheme`) now evaluates the table as an
+arithmetic sum of minterms (`A`/`B`/`S`/`T`, no jumps), reading each input
+from a two-character alphabet, and Grapheme has come off the
+deferred-removal list.
