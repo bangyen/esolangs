@@ -7,7 +7,8 @@ the ant lands on at the end of a cycle (white is one, black is zero), read
 after any whole number of cycles since every instantiated program is a
 cycle-stable fixed point.
 
-The generator supports every two-input table.  ``n >= 3`` is an open
+The generator supports every one- and two-input table (``n == 1`` pads to a
+two-input table with the second input fixed to zero).  ``n >= 3`` is an open
 problem (``docs/roadmap.md``) and raises.
 """
 
@@ -111,6 +112,31 @@ def test_leaf_paint_uses_space_for_zero() -> None:
     assert "p" not in program
 
 
+def test_all_one_input_functions() -> None:
+    """Every one-input table is exact and cycle-stable for both inputs.
+
+    n == 1 is supported by fixing the padded second input to zero and using
+    the n == 2 construction with b1 == 0 (see :func:`a_painter_ant`).
+    """
+    for value in range(4):
+        table = format(value, "02b")
+        for bit in [0, 1]:
+            assert _check(table, [bit]) == int(table[bit]), f"table {table} bit {bit}"
+
+
+def test_instantiate_one_bit_fixes_second_input() -> None:
+    """{X1} in an n == 1 template is the fixed b1 == 0 routing."""
+    template = a_painter_ant("01")  # f(0)=0, f(1)=1
+    assert instantiate(template, [1]) == template.replace(
+        "{X0}",
+        "nn",
+    ).replace("{X1}", "NENEESWw")
+    assert instantiate(template, [0]) == template.replace(
+        "{X0}",
+        "ss",
+    ).replace("{X1}", "NENEESWw")
+
+
 def test_three_input_rejected() -> None:
     """n >= 3 is an open problem and raises."""
     with pytest.raises(ValueError, match="open problem"):
@@ -120,12 +146,6 @@ def test_three_input_rejected() -> None:
 def test_three_input_xor_rejected() -> None:
     with pytest.raises(ValueError, match="open problem"):
         a_painter_ant("01101001")  # XOR3
-
-
-def test_one_input_rejected() -> None:
-    """The construction is for two inputs; n == 1 raises."""
-    with pytest.raises(ValueError, match="supports n == 2"):
-        a_painter_ant("01")
 
 
 def test_bad_table_rejected() -> None:

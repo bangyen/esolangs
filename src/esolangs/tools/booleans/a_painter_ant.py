@@ -33,7 +33,11 @@ opposite-coloured leaf.  Every table of two inputs is supported and every
 instantiated program is a cycle-stable fixed point (the bounding box is
 identical for any whole number of cycles).
 
-``n >= 3`` is still open (``docs/roadmap.md``) and raises :class:`ValueError`.
+``n == 1`` is supported by fixing the (padded) second input to zero: the
+one-input table is padded to the two-input table ``[f(0), f(0), f(1), f(1)]``
+and the ``n == 2`` construction runs with ``b1 == 0``, so the single ``{X0}``
+routes onto the ``f(b0)`` leaf.  ``n >= 3`` is still open
+(``docs/roadmap.md``) and raises :class:`ValueError`.
 """
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
@@ -56,7 +60,7 @@ def _leaf_color(truth_table: str, b0: int, b1: int) -> str:
 
 
 def a_painter_ant(truth_table: str) -> str:
-    """Build an A Painter Ant template for a two-input Boolean function.
+    """Build an A Painter Ant template for a one- or two-input Boolean function.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
@@ -65,14 +69,22 @@ def a_painter_ant(truth_table: str) -> str:
     the per-bit routing.  The answer is the colour of the cell the ant lands
     on after a cycle (white is one, black is zero).
 
-    Every two-input table is supported; ``n`` other than 2 raises
-    :class:`ValueError` (``n >= 3`` is an open problem, see
-    ``docs/roadmap.md``).
+    Every one- and two-input table is supported; ``n >= 3`` raises
+    :class:`ValueError` (an open problem, see ``docs/roadmap.md``).  A
+    one-input table is padded to the two-input table ``[f(0), f(0), f(1),
+    f(1)]`` and instantiated with the second bit fixed to zero, so ``{X1}``
+    in an ``n == 1`` template is always the fixed ``b1 == 0`` routing.
     """
     n = _validate_truth_table(truth_table)
+    if n == 1:
+        # Fix the (padded) least-significant input to 0: the one-input table
+        # becomes the two-input table [f(0), f(0), f(1), f(1)] and the n == 2
+        # construction runs with b1 == 0, so bits [b0, 0] select f(b0).
+        truth_table = truth_table[0] * 2 + truth_table[1] * 2
+        n = 2
     if n != 2:
         raise ValueError(
-            "the A Painter Ant boolean generator supports n == 2; "
+            "the A Painter Ant boolean generator supports n == 1 and n == 2; "
             "n >= 3 is an open problem (see docs/roadmap.md)",
         )
 
@@ -91,10 +103,15 @@ def instantiate(template: str, bits: list[int]) -> str:
 
     ``{X0}`` becomes ``nn`` for a one bit and ``ss`` for a zero (the first
     input, most significant); ``{X1}`` becomes ``WWwWWEEe`` for a one and
-    ``NENEESWw`` for a zero (the second input).  ``bits`` must have length 2.
+    ``NENEESWw`` for a zero (the second input).  ``bits`` must have length 2
+    (or length 1 for an ``n == 1`` template, whose second input is fixed to
+    zero -- see :func:`a_painter_ant`).
     """
     from esolangs.tools.booleans.parameterized import instantiate as _sub
 
+    if len(bits) == 1:
+        # n == 1 template: the padded second input is fixed to zero.
+        bits = [bits[0], 0]
     return _sub(
         template,
         bits,
