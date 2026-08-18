@@ -225,12 +225,12 @@ languages reach multi-input threshold functions:
   semantics.  No other language in the repo needed the new harness
   contract (termination as the answer); Point Break is the only one where
   the convention unlocks an arbitrary table rather than hitting a
-  structural ceiling.  The contract is *not* read through
-  ``esolangs.run``'s timeout directly in the tests: raising from the
-  SIGALRM handler under the coverage C tracer deadlocks the tracer, so the
-  looping side is verified in untraced subprocesses (see the roadmap's
-  hang-detection section), with the in-process halting runs carrying the
-  interpreter coverage.
+  structural ceiling.  The looping side is decided deterministically by
+  state-cycle detection: Point Break is step-capable and a repeated
+  complete-state snapshot proves the loop (see the roadmap's
+  hang-detection section), so the boolean tests need no wall-clock bound
+  at all — which also sidesteps the coverage-tracer deadlock that a
+  timeout backstop would invite.
 
 ## A Painter Ant boolean generator (n == 2 solved; n >= 3 open)
 

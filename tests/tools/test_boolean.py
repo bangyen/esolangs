@@ -2,8 +2,6 @@
 
 import io
 import random
-import subprocess
-import sys
 from contextlib import redirect_stdout, suppress
 from typing import ClassVar
 from unittest.mock import patch
@@ -3148,63 +3146,22 @@ class TestAPainterAntTrace:
         assert divergence.step2.action == "blocked"
 
 
-def run_point_break_halts(program: str, inputs: list[str]) -> None:
-    """In-process check that a Point Break program halts on ``inputs``.
+def point_break_result(program: str, inputs: list[str]) -> str:
+    """Run a Point Break program; return "0" if it halts and "1" if it loops.
 
     Point Break has no output, so the boolean generator's result is read
-    from the termination convention: the "0" outputs halt.  The timeout
-    backstop only fires if the generator is broken, so the alarm's
-    raise-in-handler path stays an error path (the same shape as the
-    existing timeout tests).
+    from the termination convention (halt for 0, loop for 1).  The run is
+    bounded by state-cycle detection instead of a wall-clock timeout: the
+    interpreter is step-capable, and a deterministic run that revisits its
+    complete internal state has looped forever, so the repeated state is a
+    proof of the "1" output and is reported immediately.
     """
-    import esolangs
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.register_based.point_break import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
 
-    try:
-        esolangs.run("Point Break", program, stdin="\n".join(inputs), timeout=5)
-    except esolangs.HaltError as exc:
-        if "timeout" in str(exc):
-            pytest.fail(f"program looped instead of halting for inputs {inputs}")
-        raise
-
-
-def verify_loop_branches(tables: list[str]) -> None:
-    """Verify every "1" combo of each table loops, in an untraced subprocess.
-
-    The "1" outputs of the termination-convention generator loop forever,
-    so they need a wall-clock bound.  Raising from the SIGALRM handler
-    under the coverage tracer corrupts the tracer's lock, so the runs
-    happen in a plain subprocess where the timeout works deterministically.
-    """
-    script = (
-        "import sys\n"
-        "import esolangs\n"
-        "from esolangs.tools import boolean\n"
-        "problems = []\n"
-        "for table in sys.argv[1:]:\n"
-        "    n = len(table).bit_length() - 1\n"
-        "    program = boolean.point_break(table)\n"
-        "    for combo in range(2**n):\n"
-        "        if table[combo] != '1':\n"
-        "            continue\n"
-        "        bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]\n"
-        "        try:\n"
-        "            esolangs.run('Point Break', program, stdin='\\n'.join(bits),\n"
-        "                        timeout=0.1)\n"
-        "            problems.append(f'expected a loop but halted: '\n"
-        "                           f'{table} inputs {bits}')\n"
-        "        except esolangs.HaltError as exc:\n"
-        "            if 'timeout' not in str(exc):\n"
-        "                problems.append(f'{table} inputs {bits}: {exc}')\n"
-        "print('\\n'.join(problems))\n"
-        "sys.exit(1 if problems else 0)\n"
-    )
-    result = subprocess.run(
-        [sys.executable, "-c", script, *tables],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert result.returncode == 0, result.stdout
+    machine = _Machine(program, ScriptedIO("\n".join(inputs)))
+    return "0" if run_until_halt_or_cycle(machine) else "1"
 
 
 _PB_TABLES = {
@@ -3234,34 +3191,33 @@ def _pb_combo_bits(combo: int, n: int) -> list[str]:
 
 class TestPointBreak:
     @pytest.mark.parametrize(("table", "n"), sorted(_PB_TABLES.items()))
-    def test_halting_branches(self, table: str, n: int) -> None:
-        """Every 0 output halts; the 1 outputs loop (checked separately)."""
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination halts or loops per its table entry."""
         program = boolean.point_break(table)
         for combo in range(2**n):
-            if table[combo] == "0":
-                run_point_break_halts(program, _pb_combo_bits(combo, n))
+            got = point_break_result(program, _pb_combo_bits(combo, n))
+            assert got == table[combo], f"inputs {_pb_combo_bits(combo, n)}"
 
-    def test_constant_tables_halting_branches(self) -> None:
+    @pytest.mark.parametrize("table", _PB_CONSTANTS)
+    def test_constant_tables(self, table: str) -> None:
         """Constant tables skip the reads and never vary with the inputs."""
-        for table in _PB_CONSTANTS:
-            n = len(table).bit_length() - 1
-            program = boolean.point_break(table)
-            for combo in range(2**n):
-                if table[combo] == "0":
-                    run_point_break_halts(program, _pb_combo_bits(combo, n))
+        n = len(table).bit_length() - 1
+        program = boolean.point_break(table)
+        for combo in range(2**n):
+            got = point_break_result(program, _pb_combo_bits(combo, n))
+            assert (
+                got == table[combo]
+            ), f"table {table} inputs {_pb_combo_bits(combo, n)}"
 
-    def test_random_halting_branches(self) -> None:
+    def test_random_tables(self) -> None:
         for table in _pb_random_tables():
             n = len(table).bit_length() - 1
             program = boolean.point_break(table)
             for combo in range(2**n):
-                if table[combo] == "0":
-                    run_point_break_halts(program, _pb_combo_bits(combo, n))
-
-    def test_loop_branches(self) -> None:
-        """Every 1 output loops forever (untraced subprocess)."""
-        tables = [*_PB_TABLES, *_PB_CONSTANTS, *_pb_random_tables()]
-        verify_loop_branches(tables)
+                got = point_break_result(program, _pb_combo_bits(combo, n))
+                assert (
+                    got == table[combo]
+                ), f"table {table} inputs {_pb_combo_bits(combo, n)}"
 
     def test_program_structure(self) -> None:
         """One read per input, complemented bits, a minterm sum, the template."""

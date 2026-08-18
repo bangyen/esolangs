@@ -14,11 +14,53 @@ ones the VM can wrap; the rest of the registry runs whole programs only.
 
 from __future__ import annotations
 
+from collections.abc import Hashable
 from typing import Protocol, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import RUNNERS
+
+
+@runtime_checkable
+class _StepMachine(Protocol):
+    """The minimal step-capable surface the hang detector steps on.
+
+    ``snapshot()`` must return a hashable tuple of the machine's *complete*
+    internal state — including the input cursor — or a "repeat" is not a
+    real cycle.
+    """
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+    def snapshot(self) -> Hashable:
+        """Return the complete internal state, hashable for cycle detection."""
+
+
+def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
+    """Step ``machine`` until it halts or revisits an exact state.
+
+    A deterministic machine that revisits its complete internal state has
+    looped forever, so a repeated snapshot is a *proof* of a hang that is
+    reported immediately instead of waiting out a wall-clock timeout.
+    Returns ``True`` when the machine halts and ``False`` the moment a
+    repeated state proves it is looping.  It catches *cycles*, not every
+    hang — an unbounded-growth loop never revisits a state, so callers
+    keep a timeout as the backstop for that class.
+    """
+    seen: set[Hashable] = set()
+    while not machine.halted:
+        machine.step()
+        key = machine.snapshot()
+        if key in seen:
+            return False
+        seen.add(key)
+    return True
 
 
 @runtime_checkable
@@ -379,6 +421,35 @@ class _LaserFuckVM(_BaseVM):
         return []
 
 
+class _PointBreakVM(_BaseVM):
+    """Variable store + loop frames; ``ip`` is the statement cursor."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.point_break import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.pc
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.variables[k] for k in sorted(self._machine.variables)]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -391,6 +462,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Modulous": _ModulousVM,
     "The Temporary Stack": _TemporaryStackVM,
     "LaserFuck": _LaserFuckVM,
+    "Point Break": _PointBreakVM,
 }
 
 

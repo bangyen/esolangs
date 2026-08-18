@@ -248,6 +248,76 @@ def _eval(expr: list[Token], variables: dict[str, int], io: IO) -> int:
     return add()
 
 
+class _Machine:
+    """Per-run Point Break state: statements, variables, frames, cursor.
+
+    ``step()`` executes one statement and ``halted`` says whether the
+    program is done, the shape the VM wrapper and the state-cycle hang
+    detector expect.  :meth:`snapshot` returns the complete internal state
+    — the cursor, variables, open loop frames, and the input cursor — so a
+    repeated snapshot is a *proof* that a deterministic run loops forever.
+    """
+
+    def __init__(self, code: str | list[str], io: IO) -> None:
+        """Parse ``code`` into statements.
+
+        A malformed program raises :class:`ValueError` here; the runtime
+        :class:`HaltError`s fire during ``step`` instead.
+        """
+        self.io = io
+        lines = code.splitlines() if isinstance(code, str) else code
+        stmts: list[Statement] = []
+        for line in lines:
+            tokens = _tokenize(line)
+            if tokens:
+                stmts.append(_parse_statement(tokens))
+        self.stmts = stmts
+        self.ends = _structure(stmts)
+        self.variables: dict[str, int] = {}
+        self.frames: list[tuple[str, int]] = []
+        self.pc = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has run past the last statement."""
+        return self.pc >= len(self.stmts)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.pc,
+            tuple(sorted(self.variables.items())),
+            tuple(self.frames),
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one statement, advancing the machine."""
+        stmt = self.stmts[self.pc]
+        if stmt[0] == "let":
+            self.variables[stmt[1]] = _eval(stmt[2], self.variables, self.io)
+            self.pc += 1
+        elif stmt[0] == "point":
+            self.frames.append((stmt[1], self.pc))
+            self.pc += 1
+        elif stmt[0] == "end":
+            label = stmt[1]
+            pos = _frame_index(self.frames, label)
+            self.pc = self.frames[pos][1]
+            del self.frames[pos:]
+        else:  # if_break
+            _, var, label = stmt
+            if var not in self.variables:
+                raise HaltError(f"undefined variable {var!r}")
+            if self.variables[var]:
+                pos = _frame_index(self.frames, label)
+                end, implicit = self.ends[self.frames[pos][1]]
+                del self.frames[pos:]
+                self.pc = end if implicit else end + 1
+            else:
+                self.pc += 1
+
+
 def run(code: str | list[str], io: IO) -> None:
     """Execute a Point Break program.
 
@@ -255,40 +325,9 @@ def run(code: str | list[str], io: IO) -> None:
     starting a line comment; ``code`` may be a single string or a list of
     lines.
     """
-    lines = code.splitlines() if isinstance(code, str) else code
-    stmts: list[Statement] = []
-    for line in lines:
-        tokens = _tokenize(line)
-        if tokens:
-            stmts.append(_parse_statement(tokens))
-    ends = _structure(stmts)
-    variables: dict[str, int] = {}
-    frames: list[tuple[str, int]] = []
-    pc = 0
-    while pc < len(stmts):
-        stmt = stmts[pc]
-        if stmt[0] == "let":
-            variables[stmt[1]] = _eval(stmt[2], variables, io)
-            pc += 1
-        elif stmt[0] == "point":
-            frames.append((stmt[1], pc))
-            pc += 1
-        elif stmt[0] == "end":
-            label = stmt[1]
-            pos = _frame_index(frames, label)
-            pc = frames[pos][1]
-            del frames[pos:]
-        else:  # if_break
-            _, var, label = stmt
-            if var not in variables:
-                raise HaltError(f"undefined variable {var!r}")
-            if variables[var]:
-                pos = _frame_index(frames, label)
-                end, implicit = ends[frames[pos][1]]
-                del frames[pos:]
-                pc = end if implicit else end + 1
-            else:
-                pc += 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
