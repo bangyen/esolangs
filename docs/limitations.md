@@ -152,6 +152,31 @@ roadmap.  The viable candidates are in `docs/roadmap.md`.
   **Streetcode**, **Unary Filesystem**, **Phile**: particle/map/file- or
   OS-based languages with no portable file-based I/O protocol.
 - **Welcome To...**: a work-in-progress.
+- **Procedure**: Turing-complete pseudonatural English whose only documented
+  arithmetic operator is `the sum of ...`; subtraction, multiplication, and
+  division are never defined, so a faithful interpreter would have to invent
+  the semantics behind the comparisons and GOTOs that make it
+  Turing-complete.  Both a text generator (literal `Write "..."` output)
+  and a boolean generator (comparisons + conditional GOTO) would be easy,
+  but neither is verifiable without the interpreter, and the spec gap is a
+  non-starter under the admission criteria.  Revisit if the wiki or its
+  successor Pure defines the rest of the operator set.
+- **State and Main**: `main` reads a single integer argument and states only
+  change unconditionally (`(state n!)`), so the sole "branch" is routing on
+  that one input; there is no output command at all.  No text generator,
+  and a boolean generator could express at most one-input functions —
+  weaker than the Home Row (`n <= 2`) generator that was dropped as
+  uninteresting.
+- **Your Time Is Up**: binary string-rewriting with a random rule choice on
+  every step and no I/O; nondeterministic, so nothing can be verified.
+- **COD**: 2D concurrency-heavy cods with numeric-only output (`---` prints
+  the cod's value, no bytes), so no text generator; the only boolean option
+  is a termination-convention construction over random branch choices,
+  which is heavy and nondeterministic.
+- **Crement**: self-modifying ADDRESS/DATA/JUMP with no I/O (the wiki's only
+  nod to I/O is that "some implementations may use" negative addresses);
+  no text generator and no standard input to branch on, so only a
+  speculative parameterized termination-convention generator could apply.
 
 ## Transpiler walls
 
