@@ -223,9 +223,14 @@ languages reach multi-input threshold functions:
   ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` — halts iff ``f`` is
   0 and loops forever iff ``f`` is 1, exactly the wiki's own truth-machine
   semantics.  No other language in the repo needed the new harness
-  contract (termination as the answer, read as ``esolangs.run``'s timeout
-  ``HaltError``); Point Break is the only one where the convention unlocks
-  an arbitrary table rather than hitting a structural ceiling.
+  contract (termination as the answer); Point Break is the only one where
+  the convention unlocks an arbitrary table rather than hitting a
+  structural ceiling.  The contract is *not* read through
+  ``esolangs.run``'s timeout directly in the tests: raising from the
+  SIGALRM handler under the coverage C tracer deadlocks the tracer, so the
+  looping side is verified in untraced subprocesses (see the roadmap's
+  hang-detection section), with the in-process halting runs carrying the
+  interpreter coverage.
 
 ## A Painter Ant boolean generator (n == 2 solved; n >= 3 open)
 

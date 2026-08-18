@@ -150,10 +150,11 @@ supported only by a structural argument and a bounded 200,000-grid search
 undiscovered construction.  Adopting the convention
 is also a real harness lift: the boolean tooling and tests read output
 bytes, while the termination convention makes "does it halt?" the answer.
-Point Break has since established that contract — its generator is read
-as `esolangs.run`'s timeout `HaltError` — but ArrowQueue would still be
-stuck at the threshold class where Point Break expresses arbitrary tables.
-Recorded here so the
+Point Break has since established that contract (verified in untraced
+subprocesses, since the timeout backstop deadlocks under the coverage
+tracer — see the hang-detection section below), but ArrowQueue would still
+be stuck at the threshold class where Point Break expresses arbitrary
+tables.  Recorded here so the
 removal-vs-redemption call is deliberate rather than by default.
 
 ## Extra implementations (cross-checks)
@@ -262,6 +263,22 @@ Not started.  A shared step-and-hash helper (a visited-state ``set``, or
 Floyd/Brent two-pointer detection for O(1) memory) would slot into
 ``scripts/verify_differential.py``'s termination checks and
 ``tests/test_interpreters_robustness.py``.
+
+**Why the wall-clock backstop is also broken under ``pytest --cov``.**
+Raising from the SIGALRM handler while the coverage C tracer is active can
+deadlock the tracer: the exception unwinds through the tracer's C code
+while it holds its internal lock, so the *next* traced run spins forever
+instead of finishing.  An interpreter that evaluates a ``next(genexpr)`` in
+its hot loop makes it near-deterministic — the signal lands inside the
+suspended generator frame and leaves the lock held — while a genexpr-free
+loop reduces it to a rare race (Point Break's ``test_interpreters/
+test_point_break.py`` hung ~every run with a genexpr in the loop and ~1 in
+12 without; brainfuck's ``+[]`` timeout test is stable only because it
+raises once per process).  Point Break's loop side is therefore verified
+in untraced subprocesses, where the raise is safe, rather than through
+``esolangs.run``'s timeout.  This is the concrete motivation for the
+deterministic cycle check: it would replace the fragile raise-with-timeout
+backstop, not just the wait.
 
 ## A Painter Ant: general n-input boolean generator (n >= 3 open)
 
