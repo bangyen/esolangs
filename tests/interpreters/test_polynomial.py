@@ -304,7 +304,7 @@ class TestPolynomialHighPrecisionRoots:
 
     def test_wide_codepoint_deltas_round_trip(self) -> None:
         """ASCII followed by CJK/emoji spans several orders of magnitude."""
-        from esolangs.tools.generators.register import polynomial as gen
+        from esolangs.tools.text.register import polynomial as gen
 
         for text in ["😀t", "a中", "1😀+", "a日a日", "A中B"]:
             buffer = io.StringIO()
@@ -315,7 +315,7 @@ class TestPolynomialHighPrecisionRoots:
     def test_repeated_wide_deltas_round_trip(self) -> None:
         """The same wide delta repeated (a pathological root spread for any
         numeric solver) is recovered exactly by factoring."""
-        from esolangs.tools.generators.register import polynomial as gen
+        from esolangs.tools.text.register import polynomial as gen
 
         text = "aあbいcう" * 3
         buffer = io.StringIO()
@@ -327,7 +327,7 @@ class TestPolynomialHighPrecisionRoots:
         """A mixed program where float64 silently corrupted one delta (19977
         -> 19971) is recovered exactly; the old numpy path emitted a wrong
         character."""
-        from esolangs.tools.generators.register import polynomial as gen
+        from esolangs.tools.text.register import polynomial as gen
 
         text = "aWg{<$中Z一t"
         buffer = io.StringIO()

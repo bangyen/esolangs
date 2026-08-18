@@ -72,7 +72,7 @@ bit with `INVERT PUSH`/`PUSH INVERT`, and Minsky Swap needs only one
 command — `+` for a one, or `*` to point the ``~`` at the other still-zero
 register — so no absolute index moves between instantiations (see the
 `ram0`, `bitdeque`, and `minsky_swap` generators in
-`esolangs.tools.booleans.parameterized`).
+`esolangs.tools.boolean.parameterized`).
 
 ## Eval (nested parameterized trees)
 
@@ -221,7 +221,7 @@ general multi-input generator in any of these languages.
 ## A Painter Ant boolean generator (n == 2 solved; n >= 3 open)
 
 A Painter Ant has no I/O, so its boolean generator (in
-:mod:`esolangs.tools.booleans.parameterized.a_painter_ant`) uses the parameterized
+:mod:`esolangs.tools.boolean.parameterized.a_painter_ant`) uses the parameterized
 convention, read by a semantic grid model (the interpreter's own output is
 the visited-cell bounding box, which carries no coordinates).  The answer
 is the **colour of the cell the ant lands on** at the end of a cycle (white

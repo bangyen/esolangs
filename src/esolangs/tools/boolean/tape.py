@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 from typing import cast
 
-from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.transpilers import _six_five_label
 
 
