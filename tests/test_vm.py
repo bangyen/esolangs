@@ -142,6 +142,70 @@ class TestLaserFuck:
         assert _run_all(vm) == io_obj.getvalue()
 
 
+class TestPointBreak:
+    def test_statement_cursor_and_variables(self) -> None:
+        vm = esolangs.make_vm(
+            "Point Break",
+            "LET x:=2+3\nPOINT loop\nIF x BREAK loop\nEND loop",
+        )
+        assert vm.ip == 0
+        assert vm.memory == []
+        vm.step()
+        assert vm.ip == 1
+        assert vm.memory == [5]
+        vm.step()
+        assert vm.ip == 2
+        assert vm.stack == []
+        vm.step()  # IF x BREAK loop fires (x=5) and exits past the END
+        assert vm.halted
+        assert vm.output == ""
+
+
+class TestRunUntilHaltOrCycle:
+    def test_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.point_break import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("LET zero:=0", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.point_break import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(
+            "LET zero:=0\nPOINT loop\nIF zero BREAK loop\nEND loop",
+            ScriptedIO(),
+        )
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_input_cursor_is_part_of_the_snapshot(self) -> None:
+        """A loop that reads fresh input each pass is not a false cycle.
+
+        The program re-reads ``n`` on every pass, so the cursor, variables,
+        and frames repeat while the input cursor advances; were the input
+        position absent from the snapshot, this would be misreported as a
+        cycle before the program reached its nonzero input and halted.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.point_break import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        program = "POINT loop\nLET n:=?\nIF n BREAK loop\nEND loop"
+        machine = _Machine(program, ScriptedIO("0\n0\n1"))
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_snapshot_with_plain_io(self) -> None:
+        """A source with no cursor reports position 0 in the snapshot."""
+        from esolangs.interpreters.io import IO
+        from esolangs.interpreters.register_based.point_break import _Machine
+
+        machine = _Machine("LET zero:=0", IO())
+        assert machine.snapshot() == (0, (), (), 0)
+
+
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
         with pytest.raises(UnknownLanguageError):
@@ -161,6 +225,7 @@ class TestFactory:
         ("Eval", "0+."),
         ("Modulous", "[PSH INT 5][DUP][PRT INT]"),
         ("The Temporary Stack", "v5 *AB"),
+        ("Point Break", "LET zero:=0"),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:
