@@ -188,44 +188,123 @@ re-crosses a painted leaf.
 
 ## Work in progress: generalizing to n = 3
 
-The **single-row construction** is built by `_head`/`_body`: eight leaves
-on one row at `y = -2`, `x = ±2 ±4 ±8` in `{-14,-10,-6,-2,2,6,10,14}` —
-four cells apart (so adjacent stars share their axis cells) and
-**symmetric across the y-axis** (so the star body's mirror trick works).
-The head walks the row west painting the leaves, detours north to the
-clean row `y = -3`, crosses east, walks the row west again, and returns to
-the origin.  Every input routes east/west by its weight (2, 4, 8) on the
-body-painted routing row `y = -1` with uppercase moves (they fire on the
-painted cells), and the **landing trick** reads the leaf: paint the
-routing cell `P`, then `n` — a black leaf lets the `n` move onto it
-(read 0), a white leaf blocks it so the ant rests on the painted cell
-(read 1).
+The **single-row layout** is fixed: eight leaves on one row at `y = -2`,
+`x = ±2 ±4 ±8` in `{-14,-10,-6,-2,2,6,10,14}` — four cells apart (so
+adjacent stars share their axis cells) and symmetric across the y-axis.
+The current `_head`/`_body` still build the older per-leaf construction
+that is **exact for cycle 1 for all 256 tables x 8 inputs (2048/2048)** on
+the interpreter semantics but **not cycle-stable** (0/2048).
 
-This is **exact for cycle 1 for all 256 tables x 8 inputs (2048/2048)** on
-the interpreter semantics, but **not yet cycle-stable** (0/2048) — cycle 2
-diverges because the head is origin-relative and the ant starts cycle 2 at
-the output leaf, not the origin.
+### The debugger (shipped)
 
-**The blocker:** a leg can only be a cycle-2 no-op if every one of its
-targets is white, and the leaves bound the white runs: the head's legs
-between leaves are four moves long, but the longest run of white cells on
-a row is three (the leaves themselves break the runs).  So the dance
-cannot simply re-run the head.  The intended fix is the n == 2 star
-mechanism: pre-painted stars plus a closed zero-paint dance, with only the
-`S/s`-style dual allowed to move leafward.  The body currently paints only
-the routing row (not the full stars); painting the full stars and the
-connecting white runs, and designing the legs so they are no-ops from the
-ring cells, is the open work.
+`esolangs.tools.boolean.a_painter_ant_trace` re-runs the semantic grid
+model with full step records:
+
+- `run`/`box`/`landing_after`/`cycle_stable` mirror the interpreter's
+  bounding box and the harness answer.
+- `first_divergence` reports the first instruction that breaks stability:
+  in order, a cycle-2 move leaving the cycle-1 box, a paint that changes a
+  cell's colour, a changed landing colour, or a dance that is not yet a
+  fixed point (cycle 2 vs cycle 3).
+
+One subtlety the tracer forced: **cycle 2 is *supposed* to be a different
+walk than cycle 1** (that is the whole point of the dance), so comparing
+per-instruction paths between cycles 1 and 2 is meaningless — the shipped
+n == 2 programs "differ" at step 0 every time and are still stable.  The
+real divergence criteria are the four above.  On the current n == 3
+construction the tracer pins every failing instance to the head's first
+north move escaping the box — the origin-relative-head failure documented
+below.
+
+### What cycle stability actually requires (verified for n == 2)
+
+The tracer confirmed that **every shipped n == 2 instance lands on the
+output leaf at the end of every cycle, for both output colours**, and that
+the cycle-2 path differs from cycle 1's yet the box and landing colour are
+unchanged.  The n == 2 closing is done by the `{X1}` routing, which is a
+*mixed-case closed walk from the E ring* (where the body dance ends), not
+a no-op: `WWwWWEEe` / `NENEESWw` wobble onto the leaf and back.  The
+uppercase moves are safe because they never run from the leaf itself —
+the ant is on the ring when they fire.
+
+This is the constraint that makes n == 3 hard:
+
+- The ant must end cycle 1 on the leaf for **both** colours so cycle 2
+  starts from a single cell; a colour-dependent landing (leaf for a zero,
+  a ring cell for a one) puts cycle 2 at two different starts, and the
+  head dance cannot work from both.
+- Landing on a *white* leaf requires an uppercase `S` (a lowercase move is
+  blocked by the white leaf).  But the leaf's four neighbours are white
+  ring cells, so **any uppercase move that runs from the leaf on cycle 2
+  fires** and breaks the dance.  The uppercase must therefore run from a
+  ring cell — the n == 2 closed-walk pattern.
+- A **post-body routing** of uppercase `E`/`W` walks on the painted strip
+  fires from the leaf on cycle 2 (breaks).  A lowercase post-body routing
+  is blocked by the white strip on cycle 1 (breaks).  A **pre-body
+  routing** must be lowercase on black cells; but the body is fixed text,
+  so it needs a fixed canonical point, which means the pre-body routing
+  cannot encode the bits.
+- The final input's two candidate leaves are `s-8` and `s+8` for
+  `s = ±2 ±4` — sixteen cells apart, **not** a mirror pair — so the n == 2
+  "paint the output star and its mirror" trick does not carry over.
+
+Architectures tried and why each fails:
+
+1. **Full-paint body + post-body uppercase routing** (paint all 8 stars
+   and the strip from `(0,-1)`, route `E`/`W` by weight, land `Nns`): the
+   routing's uppercase moves fire from the leaf on cycle 2.
+2. **Post-body lowercase routing on the strip**: blocked by the white
+   strip on cycle 1 (the strip must stay white for the S-ring/SW/SE cells
+   the head dance needs).
+3. **Pre-body routing + fixed body**: the body is fixed text, so the
+   canonical point must be fixed, so the routing cannot encode the bits.
+4. **Lowercase landing (ant rests on a ring cell for a one-output)**: the
+   cycle-2 start becomes two different cells, and the head dance from the
+   ring cell diverges from the leaf-start dance.
+5. **Body walk that contains `s` moves** (to paint the lower ring cells):
+   on cycle 2 every body move is evaluated from the N ring, so an `s`
+   targets the leaf — firing a one-output onto the leaf mid-dance, after
+   which the `Ssn` landing (which must run from the ring) breaks.
+
+### The current best design and its blocker
+
+The n == 2 pattern generalizes as:
+
+1. **Head** — paints the eight leaves, returns to the origin.  A complete
+   dance circuit is designed: prefixes `W ne ws se en nw ws se wn` over the
+   ring (W, NW, N, NE, E, SE, S, SW) with legs `wwss`, `wwww` x3,
+   `nn`+e*28+`ss` (the long west-to-east jump via `y = -4`), `wwww` x3,
+   `wwnn`, closing `Eew`.  It needs the full ring plus the W/E axes white.
+2. **`{X0}{X1}{X2}`** — route from the origin to `(x_out,-3)` (the N ring
+   of the output leaf) with lowercase `nnn` + east/west along the clean
+   row `y = -3`.  All-lowercase, so it is a no-op from the leaf on cycle 2.
+3. **Body** — from `(x_out,-3)`, paint the output star and return to the
+   N ring; the cycle-2 dance is `N` firing the leaf onto the N ring, the
+   walk blocked, ending back at the N ring.
+4. **Landing `Ssn`** — from the N ring onto the leaf; works on both
+   cycles because it always runs from the N ring, never the leaf.
+
+The remaining blocker is the body walk (step 3): painting the star's
+lower cells (S ring, SW, SE, W/E rings) needs `s` moves, but on cycle 2
+every walk move is evaluated from the N ring, so an `s` targets the leaf
+and fires a one-output onto it mid-dance, after which the `Ssn` landing
+breaks.  A no-`s` walk cannot reach the lower cells.  Two open resolutions:
+
+- paint the lower ring cells in the head's cycle-1 pass (the head already
+  walks past them between leaves) so the body walk needs no `s` at all;
+- or redesign the head dance to start from both the leaf and the N ring,
+  accepting the two-start landing.
 
 ### Open questions
 
-- Can the n == 3 dance be made closed for all 8 leaves x 256 tables?  The
-  n == 2 circuits were tuned per geometry; the n == 3 layout has four
-  mirror pairs of leaves, four cells apart.
-- The cycle-2 legs would run from the ring cells of the output's star;
-  their targets must be white.  Does the y-axis symmetry let the legs'
-  targets use the *mirror* star's cells (painted by the body) so the legs
-  can be longer than the output star alone allows?
+- Can the lower ring cells be painted by the head without breaking the
+  head's leaf-to-leaf legs (which must stay on black cells)?
+- The complete 8-leaf head dance above is designed but not yet verified on
+  the interpreter; the full-paint body walk (strip + all 8 stars) is also
+  designed.  The only open piece is the body walk's `s`-move conflict with
+  the `Ssn` landing.
+- Does the cycle-2 dance for all 8 leaves x 256 tables stay inside the
+  cycle-1 box when the head paints the lower ring cells?
 
 ## Design principles (reusable summary)
 
@@ -252,3 +331,16 @@ ring cells, is the open work.
    alternating axis for a collision-free leaf layout.
 8. **Make the last input east/west** — north routing for the final input is
    awkward; put it on the east/west axis.
+9. **The landing dual must run from a ring cell, never the leaf** — the
+   leaf's neighbours are white ring cells, so any uppercase move in the
+   text that runs from the leaf on cycle 2 fires.  End the body dance on a
+   ring cell and let a fixed mixed-case `Ssn`-style closing walk (n == 2's
+   `{X1}`) carry the ant onto the leaf, on every cycle.
+10. **Keep cycle-2 starts unique** — a colour-dependent landing (leaf for a
+    zero, a ring cell for a one) gives the head two different cycle-2
+    starts and no single dance works from both.  The ant must land on the
+    leaf for both colours.
+11. **Route on the clean rows** — lowercasing the routing is the only way
+    to keep it a cycle-2 no-op from the leaf, so it must fire on black
+    cells: route north/south or east/west on rows the body never paints
+    (`y = -3`, `y = -4`) rather than on the white routing row.
