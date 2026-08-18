@@ -3,9 +3,9 @@
 ## Is a language worth adding?
 
 Not every language on the esolangs wiki belongs in this repo; the
-fell-through lists in `docs/limitations.md` record the concrete cases that
-were assessed and rejected.  A language is a candidate if it meets all of
-these:
+assessed-and-rejected ledger in `docs/limitations.md` records the concrete
+cases that were assessed and rejected.  A language is a candidate if it
+meets all of these:
 
 - **Complete, stable specification.**  The wiki page must fully define the
   commands and behavior.  A stub, a work-in-progress, an "in-development"
@@ -50,10 +50,11 @@ absolute rules:
   interpreter in this repo (or whose own page documents a working
   implementation) is not a gap.
 
-If a candidate fails the criteria, record the assessment in the appropriate
-fell-through list in `docs/limitations.md` — the negative result is as
-valuable as the interpreter, because it stops the assessment from being
-redone.  The roadmap (`docs/roadmap.md`) tracks which candidates are still
+If a candidate fails the criteria, record the assessment in the
+assessed-and-rejected ledger in `docs/limitations.md` — the negative result
+is as valuable as the interpreter, because it stops the assessment from
+being redone.  The roadmap (`docs/roadmap.md`) tracks which candidates are
+still
 on the table.
 
 ## Layout
