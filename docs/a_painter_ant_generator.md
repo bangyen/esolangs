@@ -188,17 +188,18 @@ re-crosses a painted leaf.
 
 ## Work in progress: generalizing to n = 3
 
-The **two-row construction** is built by `_head`/`_body`: eight leaves on
-two rows at `y = ±2`, `x` in `{-6,-2,2,6}` (bit `b1` contributes a signed
-`x` weight 2, `b2` weight 4, so the leaves are four cells apart and
-adjacent stars share their axis cells).  The head walks each row west
-painting the leaves, detours one cell outward to the clean row, crosses
-east, walks the row west again, and returns to the origin.  `b0` routes
-north/south to the output row, the body paints the output row's cells the
-routings cross, and `b1`/`b2` route east/west onto the inner/outer leaf —
-each landing with the `E`/`e` (or `W`/`w`) **dual**, so a white leaf is
-approached by an uppercase move (which fires onto it) and a black leaf by
-the following lowercase move (which moves onto it).
+The **single-row construction** is built by `_head`/`_body`: eight leaves
+on one row at `y = -2`, `x = ±2 ±4 ±8` in `{-14,-10,-6,-2,2,6,10,14}` —
+four cells apart (so adjacent stars share their axis cells) and
+**symmetric across the y-axis** (so the star body's mirror trick works).
+The head walks the row west painting the leaves, detours north to the
+clean row `y = -3`, crosses east, walks the row west again, and returns to
+the origin.  Every input routes east/west by its weight (2, 4, 8) on the
+body-painted routing row `y = -1` with uppercase moves (they fire on the
+painted cells), and the **landing trick** reads the leaf: paint the
+routing cell `P`, then `n` — a black leaf lets the `n` move onto it
+(read 0), a white leaf blocks it so the ant rests on the painted cell
+(read 1).
 
 This is **exact for cycle 1 for all 256 tables x 8 inputs (2048/2048)** on
 the interpreter semantics, but **not yet cycle-stable** (0/2048) — cycle 2
@@ -212,21 +213,19 @@ a row is three (the leaves themselves break the runs).  So the dance
 cannot simply re-run the head.  The intended fix is the n == 2 star
 mechanism: pre-painted stars plus a closed zero-paint dance, with only the
 `S/s`-style dual allowed to move leafward.  The body currently paints only
-the row cells the routings cross (not the full stars); painting the full
-stars and the connecting white runs, and designing the legs so they are
-no-ops from the ring cells, is the open work.
+the routing row (not the full stars); painting the full stars and the
+connecting white runs, and designing the legs so they are no-ops from the
+ring cells, is the open work.
 
 ### Open questions
 
 - Can the n == 3 dance be made closed for all 8 leaves x 256 tables?  The
-  n == 2 circuits were tuned per geometry; the n == 3 layout has both rows
-  and four stars per row.
-- Do the `{X1}`/`{X2}` routings to the outer leaves (at `x = ±6`) need
-  their own dances, and can those dances stay no-op-safe through the
-  pre-painted stars?
-- Does the "paint one star per final-input value, not per leaf" insight
-  (two stars for n=2) scale — e.g. two stars per row, with `b1`/`b2`
-  routing within the selected star?
+  n == 2 circuits were tuned per geometry; the n == 3 layout has four
+  mirror pairs of leaves, four cells apart.
+- The cycle-2 legs would run from the ring cells of the output's star;
+  their targets must be white.  Does the y-axis symmetry let the legs'
+  targets use the *mirror* star's cells (painted by the body) so the legs
+  can be longer than the output star alone allows?
 - The `docs/walls.md` *box-height* method (a different approach) reaches
   196/256 n == 3 tables cycle-stably but cannot express the balanced,
   non-monotone tables.
