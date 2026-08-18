@@ -169,10 +169,6 @@ roadmap.  The viable candidates are in `docs/roadmap.md`.
   uninteresting.
 - **Your Time Is Up**: binary string-rewriting with a random rule choice on
   every step and no I/O; nondeterministic, so nothing can be verified.
-- **COD**: 2D concurrency-heavy cods with numeric-only output (`---` prints
-  the cod's value, no bytes), so no text generator; the only boolean option
-  is a termination-convention construction over random branch choices,
-  which is heavy and nondeterministic.
 - **Crement**: self-modifying ADDRESS/DATA/JUMP with no I/O (the wiki's only
   nod to I/O is that "some implementations may use" negative addresses);
   no text generator and no standard input to branch on, so only a
