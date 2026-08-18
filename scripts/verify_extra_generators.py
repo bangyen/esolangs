@@ -27,8 +27,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from esolangs.tools import boolean
-from esolangs.tools import generate as gen
-from esolangs.tools.booleans import other as other_bools
+from esolangs.tools import text as gen
+from esolangs.tools.boolean import other as other_bools
 
 ROOT = Path(__file__).parents[1]
 RUST_MANIFEST = ROOT / "extra" / "rust" / "Cargo.toml"

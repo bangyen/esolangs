@@ -4,7 +4,7 @@ import math
 import re
 from functools import cache
 
-from esolangs.tools.generators.helpers import (
+from esolangs.tools.text.helpers import (
     _factor_triple,
     _ilog,
     _require_ascii,

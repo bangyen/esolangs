@@ -1,4 +1,4 @@
-"""Boolean-function program generators (re-exported from the booleans package).
+"""Boolean-function program generators (re-exported from the boolean package).
 
 Each generator builds a program that reads n boolean inputs and prints the
 truth-table result for the combination it is given; the input count ``n``
@@ -7,12 +7,12 @@ only the table.  The parameterized generators (``bio``, ``back``,
 ``nocomment``, ``bfpda``) instead emit a template the harness instantiates
 per input combination, for the no-input languages.
 
-The generators live in ``esolangs.tools.booleans``, split by language family
+The generators live in ``esolangs.tools.boolean``, split by language family
 (``register``, ``stack``, ``tape``, ``other``, ``parameterized``); this
 module re-exports them for compatibility.
 """
 
-from esolangs.tools.booleans.other import (
+from esolangs.tools.boolean.other import (
     abcdirection,
     between,
     bit_tilde,
@@ -26,7 +26,7 @@ from esolangs.tools.booleans.other import (
     three_x,
     ztoalc_l_boolean,
 )
-from esolangs.tools.booleans.parameterized import (
+from esolangs.tools.boolean.parameterized import (
     a_painter_ant,
     back,
     bfpda,
@@ -38,7 +38,7 @@ from esolangs.tools.booleans.parameterized import (
     nocomment,
     ram0,
 )
-from esolangs.tools.booleans.register import (
+from esolangs.tools.boolean.register import (
     addsubjump,
     collatz_multiverse,
     decleq,
@@ -47,8 +47,8 @@ from esolangs.tools.booleans.register import (
     qoibl,
     sophie,
 )
-from esolangs.tools.booleans.stack import bfstack, forth, grapheme, modulous, unsquare
-from esolangs.tools.booleans.tape import (
+from esolangs.tools.boolean.stack import bfstack, forth, grapheme, modulous, unsquare
+from esolangs.tools.boolean.tape import (
     basicfuck,
     bf_tree,
     brainfuck,

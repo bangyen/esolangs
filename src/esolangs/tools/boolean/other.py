@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from esolangs.tools.booleans.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
 
 __all__ = [
     "abcdirection",

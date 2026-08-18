@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-import esolangs.tools.generate as gen
+import esolangs.tools.text as gen
 from esolangs.interpreters.grid_based.clockwise import run as clockwise_run
 from esolangs.interpreters.grid_based.dig import run as dig_run
 from esolangs.interpreters.grid_based.dotlang import run as dotlang_run
@@ -42,7 +42,7 @@ from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian_run
 from esolangs.interpreters.tape_based.suffolk import run as suffolk_run
 from esolangs.interpreters.tape_based.three_d_brainfuck import run as three_d_bf_run
-from esolangs.tools.generators import other
+from esolangs.tools.text import other
 
 
 def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
@@ -207,7 +207,7 @@ class TestGeneratorRoundTrips:
         """Report a character when no SEED/SPRINT walk can reach a value."""
         with (
             patch(
-                "esolangs.tools.generators.tape._mammalian_walk",
+                "esolangs.tools.text.tape._mammalian_walk",
                 return_value=[{} for _ in range(256)],
             ),
             pytest.raises(ValueError, match="cannot build"),
@@ -386,7 +386,7 @@ class TestGeneratorRoundTrips:
 
     def test_pct_path_formula(self) -> None:
         """_pct_path is a closed form: final p, halve-when-even greedy, bounds."""
-        from esolangs.tools.generators.other import _pct_path
+        from esolangs.tools.text.other import _pct_path
 
         assert _pct_path(0) == ""
         assert _pct_path(1) == "ips"
@@ -585,7 +585,7 @@ class TestGeneratorBranches:
         assert gen.forth("a\x00b") == "06F*7+.0.6F*8+."
 
     def test_main_prints_all(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with patch("sys.argv", ["esolangs.tools.generate", "Hi"]):
+        with patch("sys.argv", ["esolangs.tools.text", "Hi"]):
             gen.main()
         out = capsys.readouterr().out
         assert "--- BFStack ---" in out
@@ -612,10 +612,10 @@ class TestGeneratorBranches:
         assert "--- WII2D ---" in out
 
     def test_main_usage(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with patch("sys.argv", ["esolangs.tools.generate"]), pytest.raises(SystemExit):
+        with patch("sys.argv", ["esolangs.tools.text"]), pytest.raises(SystemExit):
             gen.main()
         out = capsys.readouterr().out
-        assert "usage: python -m esolangs.tools.generate" in out
+        assert "usage: python -m esolangs.tools.text" in out
 
     def test_edge_case_inputs(self) -> None:
         """Generators must not crash on edge-case inputs."""
@@ -675,15 +675,22 @@ class TestGeneratorBranches:
             roundtrip(_run_painfuck, gen.painfuck("Hello, World!")) == "Hello, World!"
         )
 
-    def test_module_entry_point(self) -> None:
-        """Python -m esolangs.tools.generate runs as a script."""
+    def test_module_entry_point(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """python -m esolangs.tools.text runs as a script."""
         import subprocess
         import sys
 
         result = subprocess.run(
-            [sys.executable, "-m", "esolangs.tools.generate", "Hi"],
+            [sys.executable, "-m", "esolangs.tools.text", "Hi"],
             capture_output=True,
             text=True,
         )
         assert result.returncode == 0
         assert "--- BFStack ---" in result.stdout
+
+        # run in-process via runpy so the entry point's own lines are traced
+        import runpy
+
+        with patch.object(sys, "argv", ["esolangs.tools.text", "Hi"]):
+            runpy.run_module("esolangs.tools.text", run_name="__main__")
+        assert "--- BFStack ---" in capsys.readouterr().out

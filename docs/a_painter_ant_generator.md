@@ -85,7 +85,7 @@ case (see below).
 ## The n = 2 construction (shipped)
 
 The shipped generator is
-`esolangs.tools.booleans.parameterized.a_painter_ant`.  It builds a template:
+`esolangs.tools.boolean.parameterized.a_painter_ant`.  It builds a template:
 
 ```
 Wnnww{f(1,1)}Nsseessee{f(0,0)}Ennnn{f(1,0)}Esswwssww{f(0,1)}WnneeSsn
