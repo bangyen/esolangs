@@ -48,7 +48,39 @@ origin-relative: its moves and paints are tuned to run from the origin on a
 black grid.  But the ant *ends* a cycle at its output leaf, not the origin.
 On cycle 2 the ant starts at the output, and the origin-relative setup
 commands misfire — unless the program is designed so the cycle-2 run is a
-no-op.
+closed, zero-paint dance back to the output.
+
+## The star
+
+The atom of the construction is the **two-layer star** painted around a
+center cell (the output leaf): the eight **ring cells** at distance 1 and
+the four **axis cells** at distance 2 are painted white:
+
+```
+  W
+ WWW
+WW?WW      ? = the center (the leaf, black or white per the table)
+ WWW
+  W
+```
+
+The star's white cells are what make the cycle-2 dance possible: every
+lowercase move from a ring cell is **blocked** (its target is white), and
+every uppercase move fires onto the ring.  The four "safe" moves from a
+ring cell are exactly the directions the star covers with white:
+
+- from the **top-middle** cell (north of the center), north/west/east are
+  blocked (the N-axis cell and the ring's top row) — only **south** points
+  back at the output;
+- from the **middle-left** cell (west of the center), north/south/west are
+  blocked (the ring's left column and the W-axis cell) — only **east**
+  points back at the output.
+
+A move that points back at the output **splits the ants**: the black-output
+ant moves onto the leaf while the white-output ant stays on the ring.  So
+the dance never moves leafward from the top-middle or the middle-left —
+except for the one `Ssn` synchronizer, which is designed for exactly that
+case (see below).
 
 ## The n = 2 construction (shipped)
 
@@ -56,10 +88,10 @@ The shipped generator is
 `esolangs.tools.booleans.a_painter_ant`.  It builds a template:
 
 ```
-Nnnww{f(1,1)}Wsseessee{f(0,0)}Ennwwnnee{f(1,0)}Esswwssww{f(0,1)}WnneeSsn
-                                  {X0}
+Wnnww{f(1,1)}Nsseessee{f(0,0)}Ennnn{f(1,0)}Esswwssww{f(0,1)}WnneeSsn
+                                   {X0}
 NwPnPwnPEsPwPswPWWePsPesPSSnPePeePNNsePSSnPePnePEEwPnPwnPNNsPwPsPwPS
-                                  {X1}
+                                   {X1}
 ```
 
 where:
@@ -73,63 +105,69 @@ where:
 It supports **all sixteen two-input tables**, exact and cycle-stable
 (verified on the interpreter, 1 vs 20 cycles, for all 64 instantiations).
 
-**n == 1** is supported by fixing the padded least-significant input to
-zero: the one-input table is padded to `[f(0), f(0), f(1), f(1)]` and the
-n == 2 construction runs with `b1 == 0` (see `docs/walls.md`).  All four
-one-input tables are exact and cycle-stable.
+**n == 1** uses a two-leaf head with the same star body and the same
+final-input routing:
+
+```
+Nww{f(1)}Weee{f(0)}EwwSsn
+                          {X0}
+NwPnPwnPEsPwPswPWWePsPesPSSnPePeePNNsePSSnPePnePEEwPnPwnPNNsPwPsPwPS
+```
+
+All four one-input tables are exact and cycle-stable.
 
 ### The flow
 
-1. **Head** — paints the four leaves (one per input combination, `P` for a
-   one entry, space for a zero) at the corners of a 4x4 square, and returns
-   to the origin.  The head also paints the two **crosses** that trap the
-   cycle-2 ant (see below).
-2. **`{X0}`** — routes the ant north (`nn`) or south (`ss`).
-3. **Body** — a fixed 68-character funnel that re-paints the ring and
-   funnels the ant to a canonical pre-`{X1}` routing point (for the north
-   row this is `(0,-2)`).
+1. **Head** — paints the leaves (one per input combination, `P` for a one
+   entry, space for a zero) and returns to the origin.
+2. **`{X0}`** — routes the ant north (`nn`) or south (`ss`) to the output
+   row, at the canonical point `(0,-2)` or `(0,2)`.
+3. **Body** — paints the two stars and returns the ant to `(0,±2)`.
 4. **`{X1}`** — routes east or west onto the output leaf.
 
-### Why it is cycle-stable: the cross trap
+### The two-star body (generated)
 
-The crucial mechanism is a white **cross** painted around each output cell
-(the actual 5x5 pattern, verified on the interpreter; `?` = the output
-cell, `.` = white, `#` = black):
+The body (`_body()`) paints **two stars**: one around the output leaf and
+one around its **y-mirror**, so the final input never has to be re-embedded
+— it only routes to whichever star is already painted.  The two stars share
+the cell at `(0,±2)` (the right axis cell of the west star and the left
+axis cell of the east star), which is also the canonical point the body
+starts and ends on.
+
+Each star is walked as a **clockwise spiral** of `P` paints: the east ring
+cell first, then the ring steps and L-shaped detours out to the axis cells,
+with blocked-uppercase returns from the axis cells (the `E`/`WW`/`SS` no-ops
+are the anchors of the cycle-2 dance).  The two spirals are connected by
+the **black gap** between the stars' rings: the star centers are four cells
+apart and each ring reaches one cell toward the other, so the gap is
+`4 - 2` east moves on the row above.  The west star's spiral ends on its
+south-east diagonal, the gap runs east, and the east star's spiral (its
+mirror) ends on the shared cell.
+
+### The cycle-2 dance
+
+On cycle 2 the ant starts at the output leaf, inside its star.  The head's
+uppercase prefixes fire it onto the ring and the legs are no-ops (every
+target is a white star cell), so the whole head+body+routing re-run is a
+closed walk that returns to the leaf painting nothing new.  For n == 2 the
+dance circuit is:
 
 ```
-##.##
-#...#
-..#..
-#...#
-##.##
+leaf -W-> middle-left -N-> NW diag -E-> top-middle -E-> NE diag
+     -W-> top-middle -S/s-> leaf
 ```
 
-The four **orthogonal neighbours** of the output are white (the diagonals
-are black).  On cycle 2 the ant sits at the output.  Every lowercase move
-(`n`/`s`/`w`/`e`), which requires a **black** target, is **blocked** by a
-white neighbour, so the ant cannot walk away.  This is what makes the ant
-"settle at the output".
+The n == 1 circuit is `leaf -N-> top -W-> west diag -E-> top -S/s-> leaf`.
+The circuits deliberately use **both** the top-middle (horizontal flow) and
+the middle-left (vertical flow): a leg dancing on the top-middle (`nnnn`,
+`nnee`) never moves south, and a leg dancing on the middle-left (`nnww`)
+never moves east — the two leafward directions that would split the ants.
 
-But stability is not just a static trap.  The program's first command is an
-uppercase move, which *does* fire on the white cross, so the cycle-2 ant
-performs a short **closed dance** out along the cross and back — traced
-instruction by instruction, it returns to the output cell and **paints
-nothing new** (all `P`s it executes re-confirm cycle-1 cells).  So the
-bounding box is identical for every whole number of cycles.  (The earlier
-note called this a "two-layer star" with a diamond shape and white
-diagonals; the shipped construction is actually the cross above.)
-
-### The "paint two crosses, don't re-embed the second input" insight
-
-The construction does **not** paint one cross at every leaf.  It paints
-**two** crosses — one for each possible value of the final input — so that
-the final input does not need to be re-embedded or trigger any painting.
-The final input just routes the ant to whichever cross is already painted.
-
-In the n=2 grid (north row), the two crosses are centred at `(-2,-2)` and
-`(2,-2)`: the `{X1}` input routes the ant to the left cross's output or the
-right cross's output.  Both crosses are pre-painted, so `{X1}` only
-*selects*.
+The **`Ssn` synchronizer** is the one leafward move, and it works because
+it is a *dual*: `S` fires a white output onto the leaf, while a black
+output blocks it and then `s` moves onto the leaf.  Either way the ant
+returns to the output, and the `n` is a no-op.  The same dual appears in
+the `{X1}` routing's final move.
 
 ### Monotone painting
 
@@ -150,138 +188,69 @@ re-crosses a painted leaf.
 
 ## Work in progress: generalizing to n = 3
 
-The **single-line leaf-paint draft below has been reconstructed and
-verified**: it is **exact for cycle 1 for all 256 n == 3 tables x 8 inputs
-(2048/2048)** on the interpreter semantics, but **not yet cycle-stable** —
-cycle 2 diverges because the head is origin-relative and the ant starts
-cycle 2 at the output leaf, not the origin (0/2048 cycle-stable).  The fix
-under investigation is the n == 2 cross mechanism (see `docs/walls.md`,
-which also records a separate search-found *box-height* method reaching
-196/256 n == 3 tables).
+The **single-line eight-leaf head** is built by `_head`: leaves at `(x,-2)`,
+`x` in `{-28,-20,-12,-4,4,12,20,28}` (bit `i` contributes a signed
+east/west weight `4*2**i`).  The head paints the negative leaves going west
+on `y = -2`, steps north to `y = -3` (the clean return row), crosses east,
+paints the positive leaves going west, then returns via `y = -3`.  The
+routing happens on the clean row `y = -1` with the **landing trick**: paint
+the routing cell `P`, then `n` — a black leaf lets the `n` move onto it
+(read 0), a white leaf blocks it so the ant rests on the painted cell
+(read 1).
 
-The architecture to try:
+This is **exact for cycle 1 for all 256 tables x 8 inputs (2048/2048)** on
+the interpreter semantics, but **not yet cycle-stable** (0/2048) — cycle 2
+diverges because the head is origin-relative and the ant starts cycle 2 at
+the output leaf, not the origin.
 
-### The flow (per the designer)
-
-1. **Head** — paint the tree (8 leaves) and return to the origin.
-2. **Route with the first n-1 inputs** (for n=3, `b0` and `b1`) to the
-   output leaf.
-3. **Paint the star** around that output.
-4. **Route with the last input** (`b2`) to enter the star.
-
-Note the difference from n=2: in n=3 the star is painted *at runtime* (after
-the first two inputs route to the output), not pre-painted in the head.
-**This runtime-star variant is now in doubt** — the n == 2 stability
-mechanism (a pre-painted cross + closed zero-paint dance) requires the
-cross to already exist on cycle 2, so a runtime-painted cross cannot trap
-the re-run head (see "Cycle 2 is the blocker" below).  The leading
-candidate is instead the single-line layout with **pre-painted** crosses.
-
-### Axis assignment — make the last input east/west
-
-Going north for the last input looked hard, so prefer to assign axes so the
-**last input is always `w`/`e`**.  For n=2 the last input (`{X1}`) is
-already east/west.  For n=3, assign:
-
-```
-b0 = n/s (weight 1)
-b1 = w/e (weight 2)
-b2 = w/e (weight 4)     <- last input is east/west
-```
-
-(One of several layouts; the superincreasing weights `1, 2, 4` guarantee
-distinct leaves on each axis.  All of
-`n/s,w/e,n/s` and `n/s,w/e,w/e` and `w/e,n/s,n/s` and `w/e,n/s,w/e` give 8
-distinct leaves.)
-
-### The "superincreasing weights" trick
-
-To lay out 2^n leaves collision-free on a 2D grid, give input `i` weight
-`2**i` on an alternating axis (`n/s` for even `i`, `w/e` for odd `i`).  The
-net displacement is then a unique weighted sum — no two input combinations
-share a leaf.  (The earlier `[n, n-1, ...]` weights collide at n >= 6;
-powers of two do not.)
-
-### The n = 3 head (verified working on cycle 1)
-
-A head that visits the 8 leaves and returns to the origin is achievable.
-Using the two-square layout (leaves at `(±2,±2)` and `(±6,±6)`), a head that
-travels out to each leaf along the `x=0` column, paints it, and returns
-through the origin works on cycle 1 (ends at `(0,0)`, all 8 leaves painted).
-
-### Current draft: a single-line leaf-paint layout
-
-The in-progress draft (see the "Work in progress" note above) uses a single
-horizontal line of eight leaves at `(x, -2)`, `x` in
-`{-28,-20,-12,-4,4,12,20,28}`.  Bit `i` contributes a signed east/west
-move of weight `4*2**i` (`eeee`/`wwww`, `eeeeeeee`/`wwwwwwww`,
-`eeeeeeeeeeeeeeee`/`wwwwwwwwwwwwwwww`), so the displacement is a unique
-weighted sum and the ant reaches a distinct leaf per input combination.
-
-The head paints the leaves monotonically (`P` for a one, a space for a
-zero) and returns through the origin, crossing no painted cell: it paints
-the negative leaves going west on `y = -2`, steps north to `y = -3` (the
-clean return row), crosses east, paints the positive leaves going west
-(including `+28` on arrival), then returns to the origin via `y = -3`.
-This head was reconstructed and verified: it ends at `(0,0)` with all eight
-leaves painted exactly per the table.
-
-**Landing trick that makes cycle 1 exact for all tables (verified):** route
-on the clean row `y = -1`, paint the ant's current cell `P`, then `n` —
-the leaf at `(x, -2)` is one step *north* of the routing row.  If the leaf
-is black (table 0) the lowercase `n` moves onto it and reads 0; if the
-leaf is white (table 1) the `n` is blocked and the ant rests on the white
-cell it painted, reading 1.  Either way the landing cell's colour equals
-the table entry.  (An earlier note said "then `s`"; with the leaves at
-`y = -2` that is direction-flipped — `s` would move away from the leaf.
-The `s` variant works only if the routing row is the clean return row
-`y = -3`, *above* the leaves.  Both verified combinations give 2048/2048
-cycle-1 exactness.)
-
-**Cycle 2 is the blocker:** the ant ends cycle 1 at the output leaf, not
-the origin, so re-running the origin-relative head on cycle 2 diverges and
-the bounding box changes (0/2048 cycle-stable).  The intended fix is the
-n == 2 cross mechanism — but the cross must be **pre-painted** in the head,
-because the n == 2 stability rests on the cycle-2 ant executing a *closed,
-zero-paint dance* along the pre-painted cross back to the output (see the
-cross-trap note above).  Pre-painting eight crosses and routing to the
-right one is large, and the docs' "paint the star at runtime" variant is
-unproven: a runtime-painted cross is not there when the cycle-2 head
-re-runs, so the head would clobber or escape it.
+**The blocker:** a leg can only be a cycle-2 no-op if every one of its
+targets is white, but the single-line head's legs traverse the leaf row
+itself, and a leaf is black for a zero table entry.  So the dance cannot
+simply re-run the head.  The intended fix is the n == 2 star mechanism:
+pre-painted stars plus a closed zero-paint dance, with only the `Ssn`-style
+dual allowed to move leafward.  The candidate layout is two rows at
+`y = ±2` with the leaves **four cells apart** (`x` in `{-6,-2,2,6}`) so
+adjacent stars share axis cells, the body's gap calculation stays `4 - 2`,
+and the two final routings are n == 2-style dances; `b0` selects the row
+north/south and `b1`/`b2` select within it east/west.
 
 ### Open questions
 
-- **The leading candidate**: pre-paint eight crosses (one per leaf) in the
-  head, route with all three inputs to the correct leaf, and read the
-  landing cell.  The single-line layout's leaves are 8 cells apart, so each
-  cross's orthogonal arms (1-2 cells long) fit without overlapping.  How
-  does the routing reach the leaf *through* the pre-painted crosses without
-  being blocked (lowercase moves need black targets, but the crosses are
-  white)?
-- How exactly do `b0` and `b1` route to the output before the star is
-  painted (if the runtime-star variant is pursued)?
-- Does the "paint one cross per final-input value, not per leaf" insight
-  (2 crosses for n=2) scale to n=3 — e.g. pre-painting 2 crosses and
-  routing the first two inputs to the right one?
-- Can the whole n=3 program be made cycle-stable for all 8 leaves × 256
-  tables?
+- Can the n == 3 dance be made closed for all 8 leaves x 256 tables?  The
+  n == 2 circuits were tuned per geometry; the n == 3 layout has both rows
+  and four stars per row.
+- Do the `{X1}`/`{X2}` routings to the outer leaves (at `x = ±6`) need
+  their own dances, and can those dances stay no-op-safe through the
+  pre-painted stars?
+- Does the "paint one star per final-input value, not per leaf" insight
+  (two stars for n=2) scale — e.g. two stars per row, with `b1`/`b2`
+  routing within the selected star?
+- The `docs/walls.md` *box-height* method (a different approach) reaches
+  196/256 n == 3 tables cycle-stably but cannot express the balanced,
+  non-monotone tables.
 
 ## Design principles (reusable summary)
 
 1. **Monotone painting** — use only `P`; represent a zero leaf as a space
    (unpainted), never `p`.  Non-monotone `p` reverts cells and breaks
    stability.
-2. **Cross containment, pre-painted** — paint a white cross (4 orthogonal
-   neighbours white, diagonals black) around an output **in the head** so
-   the cycle-2 ant (which uses black-requiring lowercase moves) is blocked
-   from walking away.  The cross must pre-exist for cycle 2: stability is a
-   *closed, zero-paint dance* along it, so a runtime-painted cross is not
+2. **Pre-painted two-layer stars** — paint the ring (distance 1) and axis
+   (distance 2) cells around each output in the body; stability is a
+   *closed, zero-paint dance* on the star, so a runtime-painted star is not
    usable.
-3. **Paint one cross per final-input value, not per leaf** — the final input
-   just routes to a pre-painted cross; it never re-embeds or re-paints.
-4. **Return through the origin** — head paths back to the origin must avoid
+3. **Paint one star per final-input value, not per leaf** — the final input
+   just routes to a pre-painted star; it never re-embeds or re-paints.
+4. **The ring rule** — from the top-middle, only north/west/east follow
+   safely; from the middle-left, only north/south/west.  A leafward move
+   (south from the top-middle, east from the middle-left) splits the ants:
+   the black-output ant returns to the leaf while the white-output ant
+   stays on the ring.  Use both ring cells so the flow direction always
+   matches, and let only an `S/s`-style dual move leafward.
+5. **Gap calculation** — the black moves between two stars are the center
+   distance minus 2 (each ring reaches one cell toward the other).
+6. **Return through the origin** — head paths back to the origin must avoid
    re-crossing painted cells (which block lowercase moves).
-5. **Superincreasing weights** — give input `i` weight `2**i` on an
+7. **Superincreasing weights** — give input `i` weight `2**i` on an
    alternating axis for a collision-free leaf layout.
-6. **Make the last input east/west** — north routing for the final input is
+8. **Make the last input east/west** — north routing for the final input is
    awkward; put it on the east/west axis.
