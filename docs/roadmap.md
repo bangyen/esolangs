@@ -18,7 +18,6 @@ and the languages already implemented elsewhere) is in the commit history and
 | Language | Priority | Why it is on the table |
 | --- | --- | --- |
 | Procedure | medium | Turing-complete pseudonatural English; deferred on a spec gap (see below). |
-| Point Break | low | Four commands simulating Minsky machines; no output at all. |
 | State and Main | low | `main` + numbered states; truth-machine is explicitly "No output". |
 | Your Time Is Up | low | Binary string-rewriting; random rule choice, no I/O. |
 | COD | low | 2D concurrency-heavy cods; random branches; has I/O. |
@@ -34,7 +33,16 @@ parser is heavy enough that the arithmetic question should be settled before
 that work starts.  Revisit if the wiki (or its successor Pure) defines the
 rest of the operator set.
 
-**Point Break, State and Main, Your Time Is Up, Crement — no-output tier.**
+**Point Break shipped with the first termination-convention generator.**
+Point Break has no output, so it would have inherited the no-output tier
+below — but the wiki's own truth-machine (halt for 0, loop for 1) is the
+*termination convention* the boolean tooling had never used, and the
+language's Turing-complete arithmetic makes that convention a fully general
+boolean generator (any arity, any table), not the structural ceiling the
+convention hits elsewhere.  The interpreter and generator shipped; see
+`docs/walls.md`.
+
+**State and Main, Your Time Is Up, Crement — no-output tier.**
 None have I/O, so they can only be self-contained interpreters without a
 generator; they would inherit the deferred-removal policy below (no text or
 boolean generator, with the absence of I/O strengthening the case).
@@ -103,7 +111,7 @@ deferred-removal candidates; their only weakness is an interpreter-invented
 state dump where the wiki defines no text output.
 
 **Candidate to add, once decided.**  The roadmap's planned no-output
-candidates (Point Break, State and Main, Crement, Your Time Is Up) would be
+candidates (State and Main, Crement, Your Time Is Up) would be
 dropped under the same policy.
 
 **Against removal (weighed, not decisive).**  Most of these are the *only*
@@ -141,8 +149,11 @@ supported only by a structural argument and a bounded 200,000-grid search
 (see `docs/walls.md`), not a proof, so it may be a genuine wall or just an
 undiscovered construction.  Adopting the convention
 is also a real harness lift: the boolean tooling and tests read output
-bytes, while the termination convention makes "does it halt?" the answer,
-and no generator uses that contract yet.  Recorded here so the
+bytes, while the termination convention makes "does it halt?" the answer.
+Point Break has since established that contract — its generator is read
+as `esolangs.run`'s timeout `HaltError` — but ArrowQueue would still be
+stuck at the threshold class where Point Break expresses arbitrary tables.
+Recorded here so the
 removal-vs-redemption call is deliberate rather than by default.
 
 ## Extra implementations (cross-checks)

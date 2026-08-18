@@ -1,0 +1,7 @@
+LET n:=?
+LET one:=1
+POINT truth
+POINT check
+IF n BREAK check
+IF one BREAK truth
+END truth

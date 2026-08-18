@@ -26,10 +26,11 @@ FUZZ = {
     "other.lamfunc": "p eq i cb lb fb vs vg F . x 0 1",
 }
 
-# ArrowQueue, back, Between, Jaune, lightlang, and RAM0 are not fuzzed here:
-# they have unconditional, goto, or directional loops (Jaune's ?/! jumps), so
-# a random program may legitimately never terminate and the "terminates"
-# invariant does not apply to them.
+# ArrowQueue, back, Between, Jaune, lightlang, Point Break, and RAM0 are
+# not fuzzed here: they have unconditional, goto, or directional loops
+# (Jaune's ?/! jumps, Point Break's POINT/END), so a random program may
+# legitimately never terminate and the "terminates" invariant does not
+# apply to them.
 
 
 class _TimeoutError(Exception):

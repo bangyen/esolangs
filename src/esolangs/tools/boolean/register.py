@@ -442,3 +442,77 @@ def polynomial(truth_table: str) -> str:
         else:
             coeffs = multiply(coeffs, [1, -(p ** instr[0])])
     return str(format_coeffs(coeffs))
+
+
+def _pb_name(index: int) -> str:
+    """Build the ``index``-th lowercase variable name (a, b, ..., z, aa, ...)."""
+    name = ""
+    index += 1
+    while index > 0:
+        index -= 1
+        name = chr(ord("a") + index % 26) + name
+        index //= 26
+    return name
+
+
+def point_break(truth_table: str) -> str:
+    """Build a Point Break program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Point Break has no output command, so the generator uses the
+    termination convention: the program halts iff the function's value is
+    0 and loops forever iff it is 1 -- the wiki's own truth-machine
+    semantics.  Each input is read with ``?``, every bit is complemented
+    (``1 - bit``), and the function is evaluated as the sum of its
+    minterms, each a product of bits and complements; every computation is
+    a single-operation ``LET`` so no expression-precedence rule is relied
+    on.  The result ``f`` feeds a fixed template -- ``LET g:=one-f`` then
+    ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` -- where ``g`` is
+    nonzero exactly when ``f`` is 0, so the loop breaks (and the program
+    halts) exactly on the 0 outputs and spins forever on the 1 outputs.
+    The constant tables skip the reads: all-0 emits a single no-op ``LET``
+    (always halts) and all-1 emits the loop with a never-firing break.
+    """
+    n = _validate_truth_table(truth_table)
+    if all(c == "0" for c in truth_table):
+        return f"LET {_pb_name(0)}:=1"
+    if all(c == "1" for c in truth_table):
+        return "\n".join(
+            [
+                f"LET {_pb_name(0)}:=0",
+                "POINT loop",
+                f"IF {_pb_name(0)} BREAK loop",
+                "END loop",
+            ]
+        )
+
+    lines = [f"LET {_pb_name(0)}:=1"]
+    for i in range(n):
+        lines.append(f"LET {_pb_name(1 + i)}:=?")
+    for i in range(n):
+        lines.append(f"LET {_pb_name(1 + n + i)}:={_pb_name(0)}-{_pb_name(1 + i)}")
+    lines.append(f"LET {_pb_name(1 + 2 * n)}:=0")
+    for k in range(2**n):
+        if truth_table[k] == "0":
+            continue
+        factors = [
+            _pb_name(1 + n + i) if not ((k >> (n - 1 - i)) & 1) else _pb_name(1 + i)
+            for i in range(n)
+        ]
+        lines.append(f"LET {_pb_name(2 + 2 * n)}:={factors[0]}")
+        for factor in factors[1:]:
+            lines.append(f"LET {_pb_name(2 + 2 * n)}:={_pb_name(2 + 2 * n)}*{factor}")
+        lines.append(
+            f"LET {_pb_name(1 + 2 * n)}:={_pb_name(1 + 2 * n)}+{_pb_name(2 + 2 * n)}"
+        )
+    lines.append(f"LET {_pb_name(3 + 2 * n)}:={_pb_name(0)}-{_pb_name(1 + 2 * n)}")
+    lines.extend(
+        [
+            "POINT loop",
+            f"IF {_pb_name(3 + 2 * n)} BREAK loop",
+            "END loop",
+        ]
+    )
+    return "\n".join(lines)

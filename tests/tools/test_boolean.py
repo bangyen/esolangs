@@ -1,6 +1,9 @@
 """Unit tests for the boolean-function program generators."""
 
 import io
+import random
+import subprocess
+import sys
 from contextlib import redirect_stdout, suppress
 from typing import ClassVar
 from unittest.mock import patch
@@ -3143,3 +3146,136 @@ class TestAPainterAntTrace:
         assert divergence.command == "N"
         assert divergence.step1.action == "moved"
         assert divergence.step2.action == "blocked"
+
+
+def run_point_break_halts(program: str, inputs: list[str]) -> None:
+    """In-process check that a Point Break program halts on ``inputs``.
+
+    Point Break has no output, so the boolean generator's result is read
+    from the termination convention: the "0" outputs halt.  The timeout
+    backstop only fires if the generator is broken, so the alarm's
+    raise-in-handler path stays an error path (the same shape as the
+    existing timeout tests).
+    """
+    import esolangs
+
+    try:
+        esolangs.run("Point Break", program, stdin="\n".join(inputs), timeout=5)
+    except esolangs.HaltError as exc:
+        if "timeout" in str(exc):
+            pytest.fail(f"program looped instead of halting for inputs {inputs}")
+        raise
+
+
+def verify_loop_branches(tables: list[str]) -> None:
+    """Verify every "1" combo of each table loops, in an untraced subprocess.
+
+    The "1" outputs of the termination-convention generator loop forever,
+    so they need a wall-clock bound.  Raising from the SIGALRM handler
+    under the coverage tracer corrupts the tracer's lock, so the runs
+    happen in a plain subprocess where the timeout works deterministically.
+    """
+    script = (
+        "import sys\n"
+        "import esolangs\n"
+        "from esolangs.tools import boolean\n"
+        "problems = []\n"
+        "for table in sys.argv[1:]:\n"
+        "    n = len(table).bit_length() - 1\n"
+        "    program = boolean.point_break(table)\n"
+        "    for combo in range(2**n):\n"
+        "        if table[combo] != '1':\n"
+        "            continue\n"
+        "        bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]\n"
+        "        try:\n"
+        "            esolangs.run('Point Break', program, stdin='\\n'.join(bits),\n"
+        "                        timeout=0.1)\n"
+        "            problems.append(f'expected a loop but halted: '\n"
+        "                           f'{table} inputs {bits}')\n"
+        "        except esolangs.HaltError as exc:\n"
+        "            if 'timeout' not in str(exc):\n"
+        "                problems.append(f'{table} inputs {bits}: {exc}')\n"
+        "print('\\n'.join(problems))\n"
+        "sys.exit(1 if problems else 0)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script, *tables],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stdout
+
+
+_PB_TABLES = {
+    "10": 1,  # NOT
+    "0110": 2,  # XOR
+    "0001": 2,  # AND
+    "1110": 2,  # NAND
+    "10100101": 3,  # mixed
+}
+
+_PB_CONSTANTS = ("0", "1", "00", "11", "0000", "1111")
+
+
+def _pb_random_tables() -> list[str]:
+    """The seeded random tables shared by the halting and loop checks."""
+    random.seed(7)
+    return [
+        "".join(random.choice("01") for _ in range(2**n))
+        for n in (1, 2, 3, 4)
+        for _ in range(2)
+    ]
+
+
+def _pb_combo_bits(combo: int, n: int) -> list[str]:
+    return [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+
+
+class TestPointBreak:
+    @pytest.mark.parametrize(("table", "n"), sorted(_PB_TABLES.items()))
+    def test_halting_branches(self, table: str, n: int) -> None:
+        """Every 0 output halts; the 1 outputs loop (checked separately)."""
+        program = boolean.point_break(table)
+        for combo in range(2**n):
+            if table[combo] == "0":
+                run_point_break_halts(program, _pb_combo_bits(combo, n))
+
+    def test_constant_tables_halting_branches(self) -> None:
+        """Constant tables skip the reads and never vary with the inputs."""
+        for table in _PB_CONSTANTS:
+            n = len(table).bit_length() - 1
+            program = boolean.point_break(table)
+            for combo in range(2**n):
+                if table[combo] == "0":
+                    run_point_break_halts(program, _pb_combo_bits(combo, n))
+
+    def test_random_halting_branches(self) -> None:
+        for table in _pb_random_tables():
+            n = len(table).bit_length() - 1
+            program = boolean.point_break(table)
+            for combo in range(2**n):
+                if table[combo] == "0":
+                    run_point_break_halts(program, _pb_combo_bits(combo, n))
+
+    def test_loop_branches(self) -> None:
+        """Every 1 output loops forever (untraced subprocess)."""
+        tables = [*_PB_TABLES, *_PB_CONSTANTS, *_pb_random_tables()]
+        verify_loop_branches(tables)
+
+    def test_program_structure(self) -> None:
+        """One read per input, complemented bits, a minterm sum, the template."""
+        program = boolean.point_break("0110").splitlines()
+        assert program[:3] == ["LET a:=1", "LET b:=?", "LET c:=?"]
+        assert program[3:5] == ["LET d:=a-b", "LET e:=a-c"]
+        assert sum(":=?" in line for line in program) == 2  # one read per input
+        assert program.count("LET f:=f+g") == 2  # one minterm per 1 row
+        assert program[-3:] == ["POINT loop", "IF h BREAK loop", "END loop"]
+
+    def test_mismatched_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.point_break("011")
+
+    def test_bad_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.point_break("0123")
