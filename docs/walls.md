@@ -258,7 +258,7 @@ functions of an arity.  Lifting the cap to a general method is recorded in
 
 An **in-progress leaf-paint generalization** (a different approach from
 box-height) is exact for cycle 1 on all 256 n == 3 tables but is not yet
-cycle-stable; see ``docs/a_painter_ant_generator.md`` for the single-line
+cycle-stable; see ``docs/a_painter_ant_generator.md`` for the two-row
 layout, the star/ring stability mechanism it is meant to extend, and the
 open work.
 

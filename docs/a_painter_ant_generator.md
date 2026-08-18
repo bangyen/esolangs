@@ -188,15 +188,17 @@ re-crosses a painted leaf.
 
 ## Work in progress: generalizing to n = 3
 
-The **single-line eight-leaf head** is built by `_head`: leaves at `(x,-2)`,
-`x` in `{-28,-20,-12,-4,4,12,20,28}` (bit `i` contributes a signed
-east/west weight `4*2**i`).  The head paints the negative leaves going west
-on `y = -2`, steps north to `y = -3` (the clean return row), crosses east,
-paints the positive leaves going west, then returns via `y = -3`.  The
-routing happens on the clean row `y = -1` with the **landing trick**: paint
-the routing cell `P`, then `n` — a black leaf lets the `n` move onto it
-(read 0), a white leaf blocks it so the ant rests on the painted cell
-(read 1).
+The **two-row construction** is built by `_head`/`_body`: eight leaves on
+two rows at `y = ±2`, `x` in `{-6,-2,2,6}` (bit `b1` contributes a signed
+`x` weight 2, `b2` weight 4, so the leaves are four cells apart and
+adjacent stars share their axis cells).  The head walks each row west
+painting the leaves, detours one cell outward to the clean row, crosses
+east, walks the row west again, and returns to the origin.  `b0` routes
+north/south to the output row, the body paints the output row's cells the
+routings cross, and `b1`/`b2` route east/west onto the inner/outer leaf —
+each landing with the `E`/`e` (or `W`/`w`) **dual**, so a white leaf is
+approached by an uppercase move (which fires onto it) and a black leaf by
+the following lowercase move (which moves onto it).
 
 This is **exact for cycle 1 for all 256 tables x 8 inputs (2048/2048)** on
 the interpreter semantics, but **not yet cycle-stable** (0/2048) — cycle 2
@@ -204,15 +206,15 @@ diverges because the head is origin-relative and the ant starts cycle 2 at
 the output leaf, not the origin.
 
 **The blocker:** a leg can only be a cycle-2 no-op if every one of its
-targets is white, but the single-line head's legs traverse the leaf row
-itself, and a leaf is black for a zero table entry.  So the dance cannot
-simply re-run the head.  The intended fix is the n == 2 star mechanism:
-pre-painted stars plus a closed zero-paint dance, with only the `Ssn`-style
-dual allowed to move leafward.  The candidate layout is two rows at
-`y = ±2` with the leaves **four cells apart** (`x` in `{-6,-2,2,6}`) so
-adjacent stars share axis cells, the body's gap calculation stays `4 - 2`,
-and the two final routings are n == 2-style dances; `b0` selects the row
-north/south and `b1`/`b2` select within it east/west.
+targets is white, and the leaves bound the white runs: the head's legs
+between leaves are four moves long, but the longest run of white cells on
+a row is three (the leaves themselves break the runs).  So the dance
+cannot simply re-run the head.  The intended fix is the n == 2 star
+mechanism: pre-painted stars plus a closed zero-paint dance, with only the
+`S/s`-style dual allowed to move leafward.  The body currently paints only
+the row cells the routings cross (not the full stars); painting the full
+stars and the connecting white runs, and designing the legs so they are
+no-ops from the ring cells, is the open work.
 
 ### Open questions
 
