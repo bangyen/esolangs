@@ -42,7 +42,7 @@ predictable across languages:
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Had a boolean generator (exact n <= 2) that was removed as trivial; no text generator. |
+| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a two-input boolean generator; no text generator. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | Bitdeque | Prints the register/deque contents as numbers. |
@@ -94,12 +94,13 @@ per-character encoding can be meaningfully shortened:
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
+| A Painter Ant | `n == 2` | Open: the two-input leaf-paint construction is exact, but no general method for all functions of an arity is known at `n >= 3` (see `docs/roadmap.md`). |
 | Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
-Removed for being trivial: the boolean generators for Home Row (`n <= 2`),
-Minifuck (`n <= 3`, 0-preserving two-input only), and A Painter Ant
-(`n <= 2`; also no text generator) were dropped — their caps left them able
-to express only a small fraction of the two-input boolean functions.  Their
+Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
+Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps
+left them able to express only a small fraction of the two-input boolean
+functions.  Their
 languages and text generators remain; see `docs/roadmap.md`.
 
 The parameterized no-input generators (bio, back, nocomment, bfpda, lamfunc,
