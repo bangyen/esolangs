@@ -25,7 +25,7 @@ predictable across languages:
   reads past the end of `stdin` is almost always a bug, and the loud error
   surfaces it (and lets `,[.,]`-style cat loops terminate).  Languages whose
   spec defines EOF behavior follow the spec instead and document it: S*bleq
-  and Movesum read `0` at EOF (both per the wiki), and every other
+  reads `0` at EOF (per the wiki), and every other
   interpreter raises `EOFError`.  Malformed programs raise `ValueError` and
   runtime halts raise :class:`HaltError`, never a raw Python exception.
 - **Byte input is line-delimited.**  ``io.input_char`` reads a whole input
@@ -49,7 +49,6 @@ predictable across languages:
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
 | Lightlang | Prints only the single bit as a number. |
 | Minsky Swap | Prints the registers as numbers. |
-| Movesum | Prints numbers space-separated with no trailing space. |
 | Point Break | No output at all; a program only halts or loops. Has a termination-convention boolean generator (halt for 0, loop for 1); no text generator. |
 | RAM0 | Prints a state dump. |
 
@@ -84,7 +83,6 @@ per-character encoding can be meaningfully shortened:
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
 | Lightlang | `&` skips one character, so it cannot route to a multi-character leaf; only the AND/OR-class tables are expressible (each bit's skip covers exactly the single `#` halt), with no XOR or arbitrary table (see `docs/walls.md`). |
-| Movesum | No conditional; the loop repeats until the array stops changing. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 | WII2D | The accumulator never affects control flow. |
 
@@ -333,3 +331,18 @@ repeated.
   construction).  Stun Step is Turing-complete (a Delta Relay compilation is
   proven on the wiki); if it were ever readded, the open work is that
   nontrivial boolean generator.
+- **Movesum: removed.**  A two-command (``move``/``sum``) language over a
+  right-unbounded array of unbounded unsigned integers: ``move`` copies
+  values between positions or handles I/O, ``sum`` sets position 0 to the
+  sum of positions 1-4, and the program halts automatically when the array
+  is unchanged after two commands.  It reads numbers and prints them
+  space-separated with no trailing space — real, language-defined numeric
+  output, which is the I/O the deferred-removal policy weighs against
+  removal.  But it has **no conditional at all**, so it can never branch on
+  an input: no boolean generator, not even a capped class, and numbers-only
+  output rules out a text generator, so it fails both generator gates and
+  cannot participate in the round-trip or differential verification
+  machinery (its fuzz programs terminate and print, but fuzzing is not a
+  generator).  The removal weighed the genuine numeric I/O and the
+  sole-implementation gap against the complete absence of any generator
+  story.

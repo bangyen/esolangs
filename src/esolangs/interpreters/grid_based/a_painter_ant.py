@@ -9,8 +9,8 @@ program runs in an implicit loop: after the final instruction, the pointer
 returns to the first.
 
 The wiki defines no I/O, so following the repo convention for
-interpreter-only languages (Minsky Swap prints its registers, Movesum its
-values), :func:`run` executes ``limit`` instructions and then prints the
+interpreter-only languages (Minsky Swap prints its registers), :func:`run`
+executes ``limit`` instructions and then prints the
 bounding box of the cells the ant has visited: a rectangle of ``#`` (black)
 and ``.`` (white) cells, one row per line.  White space is ignored, any
 other instruction is a malformed program (:class:`ValueError`, exit 2), and
