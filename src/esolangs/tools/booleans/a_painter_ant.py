@@ -28,14 +28,11 @@ input's embedding does the last east/west route onto the output leaf.
 
 The head is built generically: for one and two inputs the leaves sit on
 the axes (the final input on ``x = +-2``, the first on ``y = +-2`` or
-``0``), visited in an opposite-corner order so the ``_leg`` staircases
-between them pass through the clean origin.  Every non-first leg carries an
-uppercase ``W``/``E`` prefix that points away from the origin -- a blocked
-no-op on cycle 1, but the anchor of the closed cycle-2 dance.  For three
-inputs the head paints a single row of eight leaves at ``y = -2`` (``x =
-+-4 +-8 +-16``), detouring onto the clean row ``y = -3`` to cross between
-the west and east halves.  This one ``_head`` handles ``n == 1``, ``n ==
-2``, and ``n == 3``.
+``0``) and the cycle-2 ant dances on the pre-painted stars (see
+``docs/a_painter_ant_generator.md`` for the ring rule).  For three inputs
+the leaves sit on two rows ``y = +-2`` with ``x`` in ``{-6,-2,2,6}``,
+four cells apart so adjacent stars share their axis cells.  This one
+``_head`` handles ``n == 1``, ``n == 2``, and ``n == 3``.
 
 The template routes the first ``n-1`` inputs north/south (``nn``/``ss``)
 before the body and the final input east/west after it (``WWwWWEEe`` for a
@@ -43,7 +40,7 @@ one bit and ``NENEESWw`` for a zero, an 8-character complement pair that
 lands on the opposite-coloured leaf).  Every one- and two-input table is
 supported and every instantiated program is a cycle-stable fixed point (the
 bounding box is identical for any whole number of cycles).  The ``n == 3``
-single-line head is exact for cycle 1 on every three-input table but is
+two-row construction is exact for cycle 1 on every three-input table but is
 **not yet cycle-stable** -- the cycle-2 dance for that layout is still open
 (``docs/a_painter_ant_generator.md``) -- so ``n >= 3`` raises
 :class:`ValueError`.
@@ -76,28 +73,33 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
 
     For one and two inputs the leaves sit on the axes (the final input on
     ``x = +-2``, the first on ``y = +-2`` or ``0``) and the visit order
-    keeps consecutive leaves opposite corners so the ``_leg`` staircases
-    pass through the clean origin.  For three inputs the leaves sit on one
-    row ``y = -2`` at ``x = +-4 +-8 +-16``, walked west half-then-half so
-    the single-line head crosses between them on the clean row ``y = -3``
+    keeps consecutive leaves opposite corners so the head's legs pass
+    through the clean origin.  For three inputs the leaves sit on two rows
+    ``y = +-2`` with ``x = (2*b1-1)*2 + (2*b2-1)*4`` in ``{-6,-2,2,6}``:
+    four cells apart, so adjacent stars share their axis cells
     (``docs/a_painter_ant_generator.md``).
     """
+    if n == 3:
+        positions: list[tuple[int, int, tuple[int, ...]]] = []
+        for b0, b1, b2 in (
+            (1, 1, 0),
+            (0, 1, 0),
+            (1, 1, 1),
+            (0, 1, 1),
+            (1, 0, 0),
+            (0, 0, 0),
+            (1, 0, 1),
+            (0, 0, 1),
+        ):
+            x = (2 * b1 - 1) * 2 + (2 * b2 - 1) * 4
+            y = -2 if b0 == 1 else 2
+            positions.append((x, y, (b0, b1, b2)))
+        return positions
     order: tuple[tuple[int, ...], ...]
     if n == 1:
         order = ((1,), (0,))
     elif n == 2:
         order = ((1, 1), (0, 0), (1, 0), (0, 1))
-    elif n == 3:
-        order = (
-            (1, 1, 0),
-            (0, 1, 0),
-            (1, 0, 0),
-            (0, 0, 0),
-            (1, 1, 1),
-            (0, 1, 1),
-            (1, 0, 1),
-            (0, 0, 1),
-        )
     else:
         raise ValueError(
             "the A Painter Ant head generator supports n == 1, n == 2, and "
@@ -105,13 +107,9 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
         )
     out: list[tuple[int, int, tuple[int, ...]]] = []
     for bits in order:
-        if n == 3:
-            x = sum((2 * b - 1) * w for b, w in zip(bits, (4, 8, 16), strict=True))
-            out.append((x, -2, bits))
-        else:
-            x = 2 if bits[-1] == 0 else -2
-            y = 0 if n == 1 else (2 if bits[0] == 0 else -2)
-            out.append((x, y, bits))
+        x = 2 if bits[-1] == 0 else -2
+        y = 0 if n == 1 else (2 if bits[0] == 0 else -2)
+        out.append((x, y, bits))
     return out
 
 
@@ -129,23 +127,37 @@ def _head(truth_table: str, bits: list[int]) -> str:
     from the middle-left), so the dance alternates the two cells through
     the ring's diagonals, and only the ``Ssn`` ending may move leafward
     (``S`` fires a white output onto the leaf, ``s`` moves a black one
-    onto it).  For three inputs it walks the single leaf row, detouring
-    onto the clean row ``y = -3`` to cross from the west half to the east
-    half (the cycle-2 dance for that layout is still open, see
+    onto it).  For three inputs it walks the two leaf rows, detouring onto
+    the clean outer row to cross from the west half to the east half of
+    each row (the cycle-2 dance for that layout is still open, see
     ``docs/a_painter_ant_generator.md``).
     """
     n = len(bits)
     if n == 3:
-        out = ["nn"]
-        x = 0
-        for i, (lx, _ly, leaf_bits) in enumerate(_leaf_positions(3)):
-            if i == 4:  # cross east on the clean row y = -3
-                out.append("n" + "e" * 56 + "s")
-                x = 28
-            out.append("w" * (x - lx))
-            out.append(_leaf_color(truth_table, list(leaf_bits)))
-            x = lx
-        out.append("n" + "w" * 4 + "sss")  # return via y = -3
+        # Two rows at y = +-2: walk each row west, painting the leaves,
+        # detour one cell outward to the clean row, cross east, walk the
+        # row west again, and return to the origin (cycle 1 only; the
+        # cycle-2 dance for this layout is still open -- see
+        # docs/a_painter_ant_generator.md).
+        out: list[str] = []
+        for b0 in (1, 0):
+            detour = "n" if b0 else "s"
+            cross = "s" if b0 else "n"
+            back = "sss" if b0 else "nnn"
+            row_bits: list[list[int]] = [
+                [b0, 1, 0],
+                [b0, 0, 0],
+                [b0, 1, 1],
+                [b0, 0, 1],
+            ]
+            out.append("nn" if b0 else "ss")
+            out.append("ww" + _leaf_color(truth_table, row_bits[0]))
+            out.append("wwww" + _leaf_color(truth_table, row_bits[1]))
+            out.append(
+                detour + "e" * 12 + cross + _leaf_color(truth_table, row_bits[2])
+            )
+            out.append("wwww" + _leaf_color(truth_table, row_bits[3]))
+            out.append(detour + "ww" + back)
         return "".join(out)
 
     # The cycle-2 dance circuits, one ``prefix + leg`` pair per leaf plus
@@ -179,21 +191,38 @@ def _head(truth_table: str, bits: list[int]) -> str:
     return "".join(out)
 
 
-def _body() -> str:
-    """Generate the two-star routing body.
+def _body(n: int = 2) -> str:
+    """Generate the routing body for ``n`` inputs.
 
-    The body paints two two-layer stars -- one around the output leaf and
-    one around its y-mirror -- so the final input never has to be
-    re-embedded: it only routes to whichever star is already painted.  Each
-    star is walked as a clockwise spiral of ``P`` paints (the ring cells at
-    distance 1 and the axis cells at distance 2), and the two stars are
-    connected by the black gap between their rings: the star centres are
-    four cells apart and each ring reaches one cell toward the other, so
-    the gap is ``4 - 2`` east moves on the row above.  The body starts and
-    ends on the shared cell at ``(0, +-2)`` -- the canonical point the final
-    input's east/west routing leaves from -- and its blocked-uppercase
-    returns are the anchors of the cycle-2 dance.
+    For ``n == 2`` the body paints two two-layer stars -- one around the
+    output leaf and one around its y-mirror -- so the final input never has
+    to be re-embedded: it only routes to whichever star is already painted.
+    Each star is walked as a clockwise spiral of ``P`` paints (the ring
+    cells at distance 1 and the axis cells at distance 2), and the two
+    stars are connected by the black gap between their rings: the star
+    centres are four cells apart and each ring reaches one cell toward the
+    other, so the gap is ``4 - 2`` east moves on the row above.  The body
+    starts and ends on the shared cell at ``(0, +-2)`` -- the canonical
+    point the final input's east/west routing leaves from -- and its
+    blocked-uppercase returns are the anchors of the cycle-2 dance.
+
+    For ``n == 3`` the body paints the output row's cells that the
+    ``{X1}``/``{X2}`` dances cross (one ring or axis cell per leaf, walked
+    around the leaves on the clean row above) -- enough for cycle 1; the
+    full stars and the cycle-2 dance are still open (see
+    ``docs/a_painter_ant_generator.md``).
     """
+    if n == 3:
+        out: list[str] = []
+        x = 0
+        for tx in (-1, -3, -4, -5, -7, 1, 3, 4, 5, 7, 0):
+            out.append("n")
+            out.append(("e" if tx > x else "w") * abs(tx - x))
+            out.append("s")
+            out.append("P")
+            x = tx
+        return "".join(out)
+
     # West star, entered from the shared cell: east ring cell, then the
     # clockwise spiral (single ring steps, L-shaped detours out to the axis
     # cells, and blocked-uppercase returns from the axis cells), ending on
@@ -223,10 +252,11 @@ def a_painter_ant(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > 2:
-        # The n == 3 single-line head exists (_head builds it and it is
-        # cycle-1 exact on every table), but the cycle-2 dance is still an
-        # open problem (docs/a_painter_ant_generator.md), and the boolean
-        # harness requires every program to be a cycle-stable fixed point.
+        # The n == 3 two-row construction exists (_head/_body build it and
+        # it is cycle-1 exact on every table), but the cycle-2 dance is
+        # still an open problem (docs/a_painter_ant_generator.md), and the
+        # boolean harness requires every program to be a cycle-stable fixed
+        # point.
         raise ValueError(
             "the A Painter Ant boolean generator supports n == 1 and n == 2; "
             "n >= 3 is an open problem (see docs/roadmap.md)",
@@ -248,19 +278,32 @@ def instantiate(template: str, bits: list[int]) -> str:
     For one- and two-input templates every input except the final one routes
     north/south (``nn`` for a one bit, ``ss`` for a zero) and the final
     (least-significant) input routes east/west (``WWwWWEEe`` for a one,
-    ``NENEESWw`` for a zero).  For a three-input single-line template every
-    input routes east/west by its weight (``4``, ``8``, ``16``) on the clean
-    routing row.  ``bits`` must match the template built by
+    ``NENEESWw`` for a zero).  For a three-input two-row template ``b0``
+    routes north/south to the output row and ``b1``/``b2`` route east/west
+    onto the inner/outer leaf with the ``E``/``e`` (or ``W``/``w``) landing
+    dual.  ``bits`` must match the template built by
     :func:`a_painter_ant`.
     """
     from esolangs.tools.booleans.parameterized import instantiate as _sub
 
     if len(bits) == 3:
-        weights = (4, 8, 16)
+        # n == 3 two-row template: b0 routes north/south to the output
+        # row, b1 routes east/west to the inner leaf (``EEe``/``WWw``), and
+        # b2 routes east/west to the outer leaf (``EEEEe``/``WWWWw``), each
+        # landing with the E/e (or W/w) dual so both output colours land
+        # on the leaf.
         return _sub(
             template,
             bits,
-            lambda i, bit: ("e" * weights[i] if bit else "w" * weights[i]),
+            lambda i, bit: (
+                ("nn" if bit else "ss")
+                if i == 0
+                else (
+                    ("EEe" if bit else "WWw")
+                    if i == 1
+                    else ("EEEEe" if bit else "WWWWw")
+                )
+            ),
             lambda _i, _b: "",
         )
 

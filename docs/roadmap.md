@@ -230,9 +230,9 @@ unreachable ones are exactly the balanced, non-monotone tables (e.g.
 equality).
 
 A **leaf-paint n == 3 generalization is in progress** (see
-`docs/a_painter_ant_generator.md`): a single-line eight-leaf head is exact
-for cycle 1 on all 256 tables but is not yet cycle-stable (the head is
-origin-relative and the ant starts cycle 2 at the output leaf).  Cycle-1
+`docs/a_painter_ant_generator.md`): a two-row eight-leaf construction is
+exact for cycle 1 on all 256 tables but is not yet cycle-stable (the head
+is origin-relative and the ant starts cycle 2 at the output leaf).  Cycle-1
 exactness was the easy part; extending the star/ring dance to the n == 3
 layout is the open work.
 
