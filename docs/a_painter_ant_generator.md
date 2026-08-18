@@ -73,11 +73,16 @@ where:
 It supports **all sixteen two-input tables**, exact and cycle-stable
 (verified on the interpreter, 1 vs 20 cycles, for all 64 instantiations).
 
+**n == 1** is supported by fixing the padded least-significant input to
+zero: the one-input table is padded to `[f(0), f(0), f(1), f(1)]` and the
+n == 2 construction runs with `b1 == 0` (see `docs/walls.md`).  All four
+one-input tables are exact and cycle-stable.
+
 ### The flow
 
 1. **Head** — paints the four leaves (one per input combination, `P` for a
    one entry, space for a zero) at the corners of a 4x4 square, and returns
-   to the origin.  The head also paints the two **stars** that trap the
+   to the origin.  The head also paints the two **crosses** that trap the
    cycle-2 ant (see below).
 2. **`{X0}`** — routes the ant north (`nn`) or south (`ss`).
 3. **Body** — a fixed 68-character funnel that re-paints the ring and
@@ -85,35 +90,46 @@ It supports **all sixteen two-input tables**, exact and cycle-stable
    row this is `(0,-2)`).
 4. **`{X1}`** — routes east or west onto the output leaf.
 
-### Why it is cycle-stable: the two-layer star
+### Why it is cycle-stable: the cross trap
 
-The crucial mechanism is the **two-layer star** painted around an output
-cell.  Around each output, the head/body paints a white cross/star:
+The crucial mechanism is a white **cross** painted around each output cell
+(the actual 5x5 pattern, verified on the interpreter; `?` = the output
+cell, `.` = white, `#` = black):
 
 ```
-  W
- WWW
-WW?WW      ? = the output cell
- WWW
-  W
+##.##
+#...#
+..#..
+#...#
+##.##
 ```
 
-On cycle 2 the ant sits at the output.  Every adjacent cell is white, and
-the lowercase moves (`n`/`s`/`w`/`e`), which require a **black** target, are
-all **blocked** — the ant is trapped on the output and cannot escape.  This
-is what makes the ant "settle at the output" and keeps the program
-cycle-stable.
+The four **orthogonal neighbours** of the output are white (the diagonals
+are black).  On cycle 2 the ant sits at the output.  Every lowercase move
+(`n`/`s`/`w`/`e`), which requires a **black** target, is **blocked** by a
+white neighbour, so the ant cannot walk away.  This is what makes the ant
+"settle at the output".
 
-### The "paint two stars, don't re-embed the second input" insight
+But stability is not just a static trap.  The program's first command is an
+uppercase move, which *does* fire on the white cross, so the cycle-2 ant
+performs a short **closed dance** out along the cross and back — traced
+instruction by instruction, it returns to the output cell and **paints
+nothing new** (all `P`s it executes re-confirm cycle-1 cells).  So the
+bounding box is identical for every whole number of cycles.  (The earlier
+note called this a "two-layer star" with a diamond shape and white
+diagonals; the shipped construction is actually the cross above.)
 
-The construction does **not** paint one star at every leaf.  It paints
-**two** stars — one for each possible value of the final input — so that
+### The "paint two crosses, don't re-embed the second input" insight
+
+The construction does **not** paint one cross at every leaf.  It paints
+**two** crosses — one for each possible value of the final input — so that
 the final input does not need to be re-embedded or trigger any painting.
-The final input just routes the ant to whichever star is already painted.
+The final input just routes the ant to whichever cross is already painted.
 
-In the n=2 grid (north row), the two stars are centred at `(-2,-2)` and
-`(2,-2)`: the `{X1}` input routes the ant to the left star's output or the
-right star's output.  Both stars are pre-painted, so `{X1}` only *selects*.
+In the n=2 grid (north row), the two crosses are centred at `(-2,-2)` and
+`(2,-2)`: the `{X1}` input routes the ant to the left cross's output or the
+right cross's output.  Both crosses are pre-painted, so `{X1}` only
+*selects*.
 
 ### Monotone painting
 
@@ -134,14 +150,14 @@ re-crosses a painted leaf.
 
 ## Work in progress: generalizing to n = 3
 
-An **in-progress** leaf-paint generalization is being drafted.  Status: a
-construction that is **exact for cycle 1 for all 256 n == 3 tables** (it
-paints eight leaves and routes the ant onto the selected leaf, reading the
-landing cell's colour), but **not yet cycle-stable** — cycle 2 diverges
-because the head is origin-relative and the ant starts cycle 2 at the output
-leaf, not the origin.  The fix under investigation is the n == 2 star
-mechanism (see `docs/walls.md`, which also records a separate search-found
-*box-height* method reaching 196/256 n == 3 tables).
+The **single-line leaf-paint draft below has been reconstructed and
+verified**: it is **exact for cycle 1 for all 256 n == 3 tables x 8 inputs
+(2048/2048)** on the interpreter semantics, but **not yet cycle-stable** —
+cycle 2 diverges because the head is origin-relative and the ant starts
+cycle 2 at the output leaf, not the origin (0/2048 cycle-stable).  The fix
+under investigation is the n == 2 cross mechanism (see `docs/walls.md`,
+which also records a separate search-found *box-height* method reaching
+196/256 n == 3 tables).
 
 The architecture to try:
 
@@ -155,6 +171,11 @@ The architecture to try:
 
 Note the difference from n=2: in n=3 the star is painted *at runtime* (after
 the first two inputs route to the output), not pre-painted in the head.
+**This runtime-star variant is now in doubt** — the n == 2 stability
+mechanism (a pre-painted cross + closed zero-paint dance) requires the
+cross to already exist on cycle 2, so a runtime-painted cross cannot trap
+the re-run head (see "Cycle 2 is the blocker" below).  The leading
+candidate is instead the single-line layout with **pre-painted** crosses.
 
 ### Axis assignment — make the last input east/west
 
@@ -200,31 +221,48 @@ weighted sum and the ant reaches a distinct leaf per input combination.
 The head paints the leaves monotonically (`P` for a one, a space for a
 zero) and returns through the origin, crossing no painted cell: it paints
 the negative leaves going west on `y = -2`, steps north to `y = -3` (the
-clean return row), crosses east, paints the positive leaves going west,
-then returns to the origin via `y = -3`.
+clean return row), crosses east, paints the positive leaves going west
+(including `+28` on arrival), then returns to the origin via `y = -3`.
+This head was reconstructed and verified: it ends at `(0,0)` with all eight
+leaves painted exactly per the table.
 
-**Landing trick that makes cycle 1 exact for all tables:** route on the
-clean row `y = -1`, paint the cell above the leaf `P`, then `s`.  If the
-leaf is black (table 0) the lowercase `s` moves onto it and reads 0; if
-the leaf is white (table 1) the `s` is blocked and the ant rests on the
-white cell above, reading 1.  Either way the landing cell's colour equals
-the table entry.
+**Landing trick that makes cycle 1 exact for all tables (verified):** route
+on the clean row `y = -1`, paint the ant's current cell `P`, then `n` —
+the leaf at `(x, -2)` is one step *north* of the routing row.  If the leaf
+is black (table 0) the lowercase `n` moves onto it and reads 0; if the
+leaf is white (table 1) the `n` is blocked and the ant rests on the white
+cell it painted, reading 1.  Either way the landing cell's colour equals
+the table entry.  (An earlier note said "then `s`"; with the leaves at
+`y = -2` that is direction-flipped — `s` would move away from the leaf.
+The `s` variant works only if the routing row is the clean return row
+`y = -3`, *above* the leaves.  Both verified combinations give 2048/2048
+cycle-1 exactness.)
 
 **Cycle 2 is the blocker:** the ant ends cycle 1 at the output leaf, not
 the origin, so re-running the origin-relative head on cycle 2 diverges and
-the bounding box changes.  The n == 2 star mechanism (trap + star-aware
-mixed-case entry dance) is the intended fix, but pre-painting eight stars
-and routing to the right one is large, and the runtime star still must
-contain the ant on cycle 2.
+the bounding box changes (0/2048 cycle-stable).  The intended fix is the
+n == 2 cross mechanism — but the cross must be **pre-painted** in the head,
+because the n == 2 stability rests on the cycle-2 ant executing a *closed,
+zero-paint dance* along the pre-painted cross back to the output (see the
+cross-trap note above).  Pre-painting eight crosses and routing to the
+right one is large, and the docs' "paint the star at runtime" variant is
+unproven: a runtime-painted cross is not there when the cycle-2 head
+re-runs, so the head would clobber or escape it.
 
 ### Open questions
 
+- **The leading candidate**: pre-paint eight crosses (one per leaf) in the
+  head, route with all three inputs to the correct leaf, and read the
+  landing cell.  The single-line layout's leaves are 8 cells apart, so each
+  cross's orthogonal arms (1-2 cells long) fit without overlapping.  How
+  does the routing reach the leaf *through* the pre-painted crosses without
+  being blocked (lowercase moves need black targets, but the crosses are
+  white)?
 - How exactly do `b0` and `b1` route to the output before the star is
-  painted?
-- How does the runtime-painted star interact with cycle-2 stability (the
-  star is not pre-painted, so the cycle-2 head re-run must not clobber it)?
-- Does the "paint two stars, don't re-embed the last input" insight carry
-  over to the runtime-painted star?
+  painted (if the runtime-star variant is pursued)?
+- Does the "paint one cross per final-input value, not per leaf" insight
+  (2 crosses for n=2) scale to n=3 — e.g. pre-painting 2 crosses and
+  routing the first two inputs to the right one?
 - Can the whole n=3 program be made cycle-stable for all 8 leaves × 256
   tables?
 
@@ -233,11 +271,14 @@ contain the ant on cycle 2.
 1. **Monotone painting** — use only `P`; represent a zero leaf as a space
    (unpainted), never `p`.  Non-monotone `p` reverts cells and breaks
    stability.
-2. **Star containment** — paint a white two-layer star around an output so
-   the cycle-2 ant (which uses black-requiring lowercase moves) is trapped
-   and cannot escape.
-3. **Paint one star per final-input value, not per leaf** — the final input
-   just routes to a pre-painted star; it never re-embeds or re-paints.
+2. **Cross containment, pre-painted** — paint a white cross (4 orthogonal
+   neighbours white, diagonals black) around an output **in the head** so
+   the cycle-2 ant (which uses black-requiring lowercase moves) is blocked
+   from walking away.  The cross must pre-exist for cycle 2: stability is a
+   *closed, zero-paint dance* along it, so a runtime-painted cross is not
+   usable.
+3. **Paint one cross per final-input value, not per leaf** — the final input
+   just routes to a pre-painted cross; it never re-embeds or re-paints.
 4. **Return through the origin** — head paths back to the origin must avoid
    re-crossing painted cells (which block lowercase moves).
 5. **Superincreasing weights** — give input `i` weight `2**i` on an
