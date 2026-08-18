@@ -31,7 +31,7 @@ jobs:
       run: uv run --with pylint python scripts/check_duplicates.py
 
     - name: Verify the single-interpreter installer
-      run: python scripts/verify_install_one.py
+      run: uv run python scripts/verify_install_one.py
 
   test:
     runs-on: ubuntu-latest

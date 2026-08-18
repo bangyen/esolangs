@@ -39,7 +39,7 @@ class TestBrainfuck:
 class TestSbleq:
     def test_oisc_cells_and_ip(self) -> None:
         vm = esolangs.make_vm("S*bleq", "-3 11 3")
-        assert (vm.ip, vm.halted) == (0, False)
+        assert (vm.ip, vm.memory, vm.stack) == (0, [-3, 11, 3], [])
         vm.step()
         assert (vm.ip, vm.halted, vm.output) == (3, True, "\x00")
 
@@ -47,7 +47,7 @@ class TestSbleq:
 class TestDimensional:
     def test_byte_value_exposed(self) -> None:
         vm = esolangs.make_vm("Dimensional", "++.")
-        assert vm.memory == [0]
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
         vm.step()
         assert vm.memory == [1]
         vm.step()
@@ -59,7 +59,7 @@ class TestDimensional:
 class TestGrapheme:
     def test_stack_exposed(self) -> None:
         vm = esolangs.make_vm("Grapheme", "FAFY")
-        assert vm.stack == []
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
         vm.step()  # F starts int mode
         vm.step()  # A accumulates
         vm.step()  # F ends int mode, pushes 10
@@ -67,6 +67,8 @@ class TestGrapheme:
         vm.step()  # Y prints
         assert vm.output == "10"
         assert vm.halted
+        assert vm.ip == len("FAFY")  # frames are gone once halted
+        assert vm.memory == []
 
     def test_rejects_non_uppercase(self) -> None:
         with pytest.raises(ValueError, match="uppercase"):
@@ -78,6 +80,8 @@ class TestQoibl:
         vm = esolangs.make_vm("Qoibl", "et")
         assert vm.ip == 0
         assert not vm.halted
+        assert vm.memory == [0] * 256
+        assert vm.stack == []
         with pytest.raises(EOFError):
             vm.step()
 
@@ -95,7 +99,8 @@ class TestModulous:
     def test_token_cursor_and_stack(self) -> None:
         vm = esolangs.make_vm("Modulous", "[PSH INT 5][PRT INT]")
         vm.step()
-        assert vm.stack == [5]
+        assert (vm.ip, vm.stack) == (1, [5])
+        assert vm.memory == []
         vm.step()
         assert vm.output == "5"
         assert vm.halted
@@ -105,7 +110,8 @@ class TestTemporaryStack:
     def test_word_pointer_and_stack(self) -> None:
         vm = esolangs.make_vm("The Temporary Stack", "v5 +")
         vm.step()
-        assert vm.stack == [5]
+        assert (vm.ip, vm.stack) == (1, [5])
+        assert vm.memory == []
         vm.step()
         assert vm.stack == [5, 5]
 
@@ -122,6 +128,8 @@ class TestLaserFuck:
         assert vm.ip == (0, 4, 0)  # moved up onto the 'x', died
         assert vm.halted
         assert vm.output == "\x01"
+        assert vm.stack == []
+        vm.step()  # stepping a halted VM is a no-op
 
     def test_dump_output_matches_interpreter(self) -> None:
         from esolangs.interpreters.grid_based.laserfuck import run as lf_run

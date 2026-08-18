@@ -103,7 +103,10 @@ def _run_timed_signal(
     """Run ``run_fn`` under a ``SIGALRM`` wall-clock guard (main thread only)."""
 
     def _timeout_handler(_signum: int, _frame: object) -> None:
-        raise HaltError(f"execution exceeded the {timeout}-second timeout")
+        # coverage cannot trace a raise inside a signal handler
+        raise HaltError(
+            f"execution exceeded the {timeout}-second timeout"
+        )  # pragma: no cover
 
     old = signal.signal(signal.SIGALRM, _timeout_handler)
     signal.setitimer(signal.ITIMER_REAL, timeout)

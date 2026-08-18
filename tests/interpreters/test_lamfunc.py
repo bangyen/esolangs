@@ -64,6 +64,37 @@ class TestFunctions:
         # f g x y is f(g(x), y): p takes one arg, so p p 5 prints twice
         assert run_program("p p 5") == "101101"
 
+    def test_reference_a_definition_by_name(self) -> None:
+        # .name outside a call returns the function itself (a def here)
+        assert run_program("F f x - x\np .f") == "f"
+
+    def test_dot_function_as_a_call(self) -> None:
+        # .name at the top level is a call site for the following tokens
+        assert run_program("F add a b - p a p b\n.add 1 2") == "110"
+
+
+class TestPartialApplication:
+    def test_prints_a_partial_application_by_name(self) -> None:
+        # p i 5 is a partial of i with only its condition bound; p prints "i.."
+        assert run_program("p i 5") == "i.."
+
+    def test_partial_returned_by_a_function_completes_at_top_level(self) -> None:
+        # F f - i 5 returns a partial of i; the trailing 1 2 fill its branches
+        assert run_program("F f - i 5\nf 1 2") == ""
+
+    def test_i_branch_scanning_off_the_end(self) -> None:
+        # the chosen branch's scan may run past the last token (a partial)
+        assert run_program("i 1 p") == ""
+
+
+class TestValues:
+    def test_print_a_bare_name_prints_it_as_a_string(self) -> None:
+        # an undefined trailing identifier is a string value, printed as text
+        assert run_program("p abc") == "abc"
+
+    def test_blank_lines_are_ignored(self) -> None:
+        assert run_program("p 5\n\np 6") == "101110"
+
 
 class TestErrors:
     def test_redefinition_is_malformed(self) -> None:
@@ -77,3 +108,8 @@ class TestErrors:
     def test_definition_needs_dash(self) -> None:
         with pytest.raises(ValueError, match="'-'"):
             run_program("F f x x")
+
+    def test_bit_builtin_on_a_function_halts(self) -> None:
+        # lb of a function value is not a number
+        with pytest.raises(HaltError, match="expected a number"):
+            run_program("lb .p")

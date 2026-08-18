@@ -124,6 +124,10 @@ class TestFunctions:
     def test_z_runs_while_stack_nonempty(self) -> None:
         assert run_program("FAFHYHZ") == "10"
 
+    def test_z_repeats_until_the_stack_empties(self) -> None:
+        # K duplicates the 10, so the Z body runs twice before the stack empties
+        assert run_program("FAFKHYHZ") == "1010"
+
     def test_q_conditional_execution(self) -> None:
         # truthy 10 on the stack, fn Y: Q pops fn and the 10, then Y pops empty
         with pytest.raises(HaltError, match="popped"):

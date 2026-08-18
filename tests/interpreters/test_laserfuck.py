@@ -120,3 +120,11 @@ class TestLaserFuck:
     def test_decimal_mode_multiple_values(self) -> None:
         # two touched cells print one value per line in decimal mode
         assert run_and_capture(["o+>+x"]) == "1\n1"
+
+    def test_step_on_an_already_halted_machine(self) -> None:
+        # a second start halts the machine before any step; stepping is a no-op
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+
+        machine = _Machine(["oo"], IO(), heading=3)
+        assert machine.halted
+        machine.step()  # must not raise
