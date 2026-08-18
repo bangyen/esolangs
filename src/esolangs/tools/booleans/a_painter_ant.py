@@ -30,8 +30,9 @@ The head is built generically: for one and two inputs the leaves sit on
 the axes (the final input on ``x = +-2``, the first on ``y = +-2`` or
 ``0``) and the cycle-2 ant dances on the pre-painted stars (see
 ``docs/a_painter_ant_generator.md`` for the ring rule).  For three inputs
-the leaves sit on two rows ``y = +-2`` with ``x`` in ``{-6,-2,2,6}``,
-four cells apart so adjacent stars share their axis cells.  This one
+the leaves sit on one row ``y = -2`` at ``x = +-2 +-4 +-8``,
+four cells apart so adjacent stars share their axis cells and symmetric
+across the y-axis.  This one
 ``_head`` handles ``n == 1``, ``n == 2``, and ``n == 3``.
 
 The template routes the first ``n-1`` inputs north/south (``nn``/``ss``)
@@ -40,7 +41,7 @@ one bit and ``NENEESWw`` for a zero, an 8-character complement pair that
 lands on the opposite-coloured leaf).  Every one- and two-input table is
 supported and every instantiated program is a cycle-stable fixed point (the
 bounding box is identical for any whole number of cycles).  The ``n == 3``
-two-row construction is exact for cycle 1 on every three-input table but is
+single-row construction is exact for cycle 1 on every three-input table but is
 **not yet cycle-stable** -- the cycle-2 dance for that layout is still open
 (``docs/a_painter_ant_generator.md``) -- so ``n >= 3`` raises
 :class:`ValueError`.
@@ -74,26 +75,26 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
     For one and two inputs the leaves sit on the axes (the final input on
     ``x = +-2``, the first on ``y = +-2`` or ``0``) and the visit order
     keeps consecutive leaves opposite corners so the head's legs pass
-    through the clean origin.  For three inputs the leaves sit on two rows
-    ``y = +-2`` with ``x = (2*b1-1)*2 + (2*b2-1)*4`` in ``{-6,-2,2,6}``:
-    four cells apart, so adjacent stars share their axis cells
-    (``docs/a_painter_ant_generator.md``).
+    through the clean origin.  For three inputs the leaves sit on one row
+    ``y = -2`` at ``x = (2*b0-1)*2 + (2*b1-1)*4 + (2*b2-1)*8`` in
+    ``{-14,-10,-6,-2,2,6,10,14}`` -- four cells apart, so adjacent stars
+    share their axis cells, and symmetric across the y-axis so the star
+    body's mirror trick works (``docs/a_painter_ant_generator.md``).
     """
     if n == 3:
         positions: list[tuple[int, int, tuple[int, ...]]] = []
         for b0, b1, b2 in (
             (1, 1, 0),
             (0, 1, 0),
-            (1, 1, 1),
-            (0, 1, 1),
             (1, 0, 0),
             (0, 0, 0),
+            (1, 1, 1),
+            (0, 1, 1),
             (1, 0, 1),
             (0, 0, 1),
         ):
-            x = (2 * b1 - 1) * 2 + (2 * b2 - 1) * 4
-            y = -2 if b0 == 1 else 2
-            positions.append((x, y, (b0, b1, b2)))
+            x = (2 * b0 - 1) * 2 + (2 * b1 - 1) * 4 + (2 * b2 - 1) * 8
+            positions.append((x, -2, (b0, b1, b2)))
         return positions
     order: tuple[tuple[int, ...], ...]
     if n == 1:
@@ -134,30 +135,26 @@ def _head(truth_table: str, bits: list[int]) -> str:
     """
     n = len(bits)
     if n == 3:
-        # Two rows at y = +-2: walk each row west, painting the leaves,
-        # detour one cell outward to the clean row, cross east, walk the
-        # row west again, and return to the origin (cycle 1 only; the
-        # cycle-2 dance for this layout is still open -- see
+        # For each leaf: travel north to the clean row y = -3, cross to the
+        # leaf's column, descend onto the leaf, paint it, and return to the
+        # origin the same way -- a per-leaf "go out, paint, return" leg that
+        # never crosses the other leaves (cycle 1 only; the cycle-2 dance
+        # for this layout is still open -- see
         # docs/a_painter_ant_generator.md).
         out: list[str] = []
-        for b0 in (1, 0):
-            detour = "n" if b0 else "s"
-            cross = "s" if b0 else "n"
-            back = "sss" if b0 else "nnn"
-            row_bits: list[list[int]] = [
-                [b0, 1, 0],
-                [b0, 0, 0],
-                [b0, 1, 1],
-                [b0, 0, 1],
-            ]
-            out.append("nn" if b0 else "ss")
-            out.append("ww" + _leaf_color(truth_table, row_bits[0]))
-            out.append("wwww" + _leaf_color(truth_table, row_bits[1]))
-            out.append(
-                detour + "e" * 12 + cross + _leaf_color(truth_table, row_bits[2])
+        for _x, _y, leaf_bits in _leaf_positions(3):
+            x = (
+                (2 * leaf_bits[0] - 1) * 2
+                + (2 * leaf_bits[1] - 1) * 4
+                + (2 * leaf_bits[2] - 1) * 8
             )
-            out.append("wwww" + _leaf_color(truth_table, row_bits[3]))
-            out.append(detour + "ww" + back)
+            out.append("nnn")
+            out.append(("w" if x < 0 else "e") * abs(x))
+            out.append("s")
+            out.append(_leaf_color(truth_table, list(leaf_bits)))
+            out.append("n")
+            out.append(("e" if x < 0 else "w") * abs(x))
+            out.append("sss")
         return "".join(out)
 
     # The cycle-2 dance circuits, one ``prefix + leg`` pair per leaf plus
@@ -206,21 +203,22 @@ def _body(n: int = 2) -> str:
     point the final input's east/west routing leaves from -- and its
     blocked-uppercase returns are the anchors of the cycle-2 dance.
 
-    For ``n == 3`` the body paints the output row's cells that the
-    ``{X1}``/``{X2}`` dances cross (one ring or axis cell per leaf, walked
-    around the leaves on the clean row above) -- enough for cycle 1; the
-    full stars and the cycle-2 dance are still open (see
-    ``docs/a_painter_ant_generator.md``).
+    For ``n == 3`` the body paints the routing row ``y = -1`` the inputs
+    route on: each side is walked with lowercase moves (black cells) and
+    the return crosses the freshly painted cells with uppercase moves --
+    enough for cycle 1; the full stars and the cycle-2 dance are still
+    open (see ``docs/a_painter_ant_generator.md``).
     """
     if n == 3:
-        out: list[str] = []
-        x = 0
-        for tx in (-1, -3, -4, -5, -7, 1, 3, 4, 5, 7, 0):
-            out.append("n")
-            out.append(("e" if tx > x else "w") * abs(tx - x))
-            out.append("s")
-            out.append("P")
-            x = tx
+        out: list[str] = ["P"]
+        for _ in range(14):
+            out.append("wP")
+        for _ in range(14):
+            out.append("EP")
+        for _ in range(14):
+            out.append("eP")
+        for _ in range(14):
+            out.append("WP")
         return "".join(out)
 
     # West star, entered from the shared cell: east ring cell, then the
@@ -252,7 +250,7 @@ def a_painter_ant(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > 2:
-        # The n == 3 two-row construction exists (_head/_body build it and
+        # The n == 3 single-row construction exists (_head/_body build it and
         # it is cycle-1 exact on every table), but the cycle-2 dance is
         # still an open problem (docs/a_painter_ant_generator.md), and the
         # boolean harness requires every program to be a cycle-stable fixed
@@ -278,32 +276,19 @@ def instantiate(template: str, bits: list[int]) -> str:
     For one- and two-input templates every input except the final one routes
     north/south (``nn`` for a one bit, ``ss`` for a zero) and the final
     (least-significant) input routes east/west (``WWwWWEEe`` for a one,
-    ``NENEESWw`` for a zero).  For a three-input two-row template ``b0``
-    routes north/south to the output row and ``b1``/``b2`` route east/west
-    onto the inner/outer leaf with the ``E``/``e`` (or ``W``/``w``) landing
-    dual.  ``bits`` must match the template built by
-    :func:`a_painter_ant`.
+    ``NENEESWw`` for a zero).  For a three-input single-row template every
+    input routes east/west by its weight (``2``, ``4``, ``8``) on the
+    body-painted routing row, and the ``Pn`` landing trick reads the leaf.
+    ``bits`` must match the template built by :func:`a_painter_ant`.
     """
     from esolangs.tools.booleans.parameterized import instantiate as _sub
 
     if len(bits) == 3:
-        # n == 3 two-row template: b0 routes north/south to the output
-        # row, b1 routes east/west to the inner leaf (``EEe``/``WWw``), and
-        # b2 routes east/west to the outer leaf (``EEEEe``/``WWWWw``), each
-        # landing with the E/e (or W/w) dual so both output colours land
-        # on the leaf.
+        weights = (2, 4, 8)
         return _sub(
             template,
             bits,
-            lambda i, bit: (
-                ("nn" if bit else "ss")
-                if i == 0
-                else (
-                    ("EEe" if bit else "WWw")
-                    if i == 1
-                    else ("EEEEe" if bit else "WWWWw")
-                )
-            ),
+            lambda i, bit: ("E" * weights[i] if bit else "W" * weights[i]),
             lambda _i, _b: "",
         )
 

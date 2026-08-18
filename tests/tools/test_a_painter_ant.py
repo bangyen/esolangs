@@ -145,14 +145,13 @@ def test_three_input_xor_rejected() -> None:
 
 
 def test_three_input_construction_is_cycle_one_exact() -> None:
-    """The n == 3 two-row construction is exact for cycle 1 on every table.
+    """The n == 3 single-row construction is exact for cycle 1 on every table.
 
-    The template is ``head + {X0} + body + {X1} + {X2}``: the head paints
-    the eight leaves on two rows ``y = +-2`` (``x`` in ``{-6,-2,2,6}``),
-    the body paints the output row's cells the ``{X1}``/``{X2}`` dances
-    cross, ``b0`` routes north/south to the row, and ``b1``/``b2`` route
-    east/west onto the inner/outer leaf, landing with the ``E``/``e``
-    (``W``/``w``) dual.  Cycle 2 is still open
+    The template is ``head + n + body + {X0}{X1}{X2} + Pn``: the head paints
+    the eight leaves on ``y = -2`` at ``x = +-2 +-4 +-8`` (symmetric across
+    the y-axis), the body paints the routing row ``y = -1``, every input
+    routes east/west by its weight (2, 4, 8) on the painted row, and the
+    ``Pn`` landing trick reads the leaf.  Cycle 2 is still open
     (``docs/a_painter_ant_generator.md``), so :func:`a_painter_ant` keeps
     raising for ``n >= 3``.
     """
@@ -179,7 +178,7 @@ def test_three_input_construction_is_cycle_one_exact() -> None:
 
     for value in range(256):
         table = format(value, "08b")
-        template = _head(table, [0, 0, 0]) + "{X0}" + _body(3) + "{X1}" + "{X2}"
+        template = _head(table, [0, 0, 0]) + "n" + _body(3) + "{X0}{X1}{X2}" + "Pn"
         for bits in product([0, 1], repeat=3):
             program = instantiate(template, list(bits))
             assert _landing_after_one_cycle(program) == int(
