@@ -193,7 +193,7 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   general subtree.  Its ``@`` command is also non-deterministic (a random
   bit).
 
-## Termination-based convention (partial, not a boolean generator)
+## Termination-based convention (Point Break is a full generator; the rest partial)
 
 A "halt vs. loop forever" convention — the program halts iff the embedded
 input bits satisfy the function — was explored for the languages with a
@@ -214,9 +214,18 @@ languages reach multi-input threshold functions:
   proof.  So ArrowQueue realizes the
   convention for threshold/AND/OR-class functions, not arbitrary tables.
 
-No existing boolean generator uses this convention; it would require a new
-harness contract (termination as the answer) and still does not unlock a
-general multi-input generator in any of these languages.
+- **Point Break** is the one language where the convention is a *general*
+  boolean generator, the first under this contract
+  (`esolangs.tools.boolean.point_break`): the language has no output, but
+  its Turing-complete arithmetic makes every ``n``-ary table a sum of
+  minterms (a product of bits and complements computed with single-
+  operation ``LET``s), and a fixed template — ``LET g:=one-f`` then
+  ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` — halts iff ``f`` is
+  0 and loops forever iff ``f`` is 1, exactly the wiki's own truth-machine
+  semantics.  No other language in the repo needed the new harness
+  contract (termination as the answer, read as ``esolangs.run``'s timeout
+  ``HaltError``); Point Break is the only one where the convention unlocks
+  an arbitrary table rather than hitting a structural ceiling.
 
 ## A Painter Ant boolean generator (n == 2 solved; n >= 3 open)
 

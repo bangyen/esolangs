@@ -382,6 +382,12 @@ LANGUAGES: dict[str, Language] = {
         "register_based.polynomial",
         id="polynomial",
     ),
+    "Point Break": Language(
+        "Point Break",
+        id="point_break",
+        interpreter="register_based.point_break",
+        split=True,
+    ),
     "Qoibl": Language(
         "Qoibl",
         _generate.qoibl,

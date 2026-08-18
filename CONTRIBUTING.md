@@ -21,10 +21,14 @@ these:
 - **A usable file-based I/O protocol.**  The language must read input and
   write output as characters/lines through the repo's `IO` seam (see the
   interpreter conventions in `docs/limitations.md`).  Languages with no
-  output (Point Break, State and Main, Vandevelo), stderr-only output
+  output (State and Main, Vandevelo), stderr-only output
   (Conveyor), or file/OS-based I/O (Unary Filesystem, Streetcode) do not
   fit.  A no-output language is admitted only as a self-contained
-  interpreter with no generator.
+  interpreter with no generator — with one exception: Point Break was
+  admitted with the first *termination-convention* boolean generator
+  (halt for 0, loop for 1; see `docs/walls.md`), which the wiki's own
+  truth-machine example defines and its Turing-complete arithmetic makes
+  fully general.
 - **A generator story.**  Either a text generator that can emit arbitrary
   bytes, or a boolean generator, or a documented reason the language cannot
   have one.  The generator is what makes the language testable end-to-end;
