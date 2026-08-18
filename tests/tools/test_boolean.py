@@ -2916,21 +2916,33 @@ class TestAPainterAnt:
         assert _instantiate_apa(template, [1]) == template.replace("{X0}", "WWwWWEEe")
         assert _instantiate_apa(template, [0]) == template.replace("{X0}", "NENEESWw")
 
-    def test_three_input_rejected(self) -> None:
-        """n >= 3 is an open problem and raises."""
-        with pytest.raises(ValueError, match="open problem"):
-            a_painter_ant("00000001")  # AND3
+    def test_three_input_works(self) -> None:
+        """AND3 is exact and cycle-stable on every input."""
+        from itertools import product
 
-    def test_four_input_head_rejected(self) -> None:
-        """The head's leaf layout stops at three inputs."""
+        for bits in product([0, 1], repeat=3):
+            table = "00000001"
+            assert self._check(table, list(bits)) == int(
+                table[bits[0] * 4 + bits[1] * 2 + bits[2]]
+            ), f"AND3 bits {bits}"
+
+    def test_four_input_head_works(self) -> None:
+        """The head's leaf layout generalizes past three inputs."""
         from esolangs.tools.boolean.parameterized import _leaf_positions
 
-        with pytest.raises(ValueError, match="open problem"):
-            _leaf_positions(4)
+        positions = _leaf_positions(4)
+        assert len(positions) == 16
+        assert len({(x, y) for x, y, _ in positions}) == 16  # all distinct
 
-    def test_three_input_xor_rejected(self) -> None:
-        with pytest.raises(ValueError, match="open problem"):
-            a_painter_ant("01101001")  # XOR3
+    def test_three_input_xor_works(self) -> None:
+        """XOR3 is exact and cycle-stable on every input."""
+        from itertools import product
+
+        for bits in product([0, 1], repeat=3):
+            table = "01101001"
+            assert self._check(table, list(bits)) == int(
+                table[bits[0] * 4 + bits[1] * 2 + bits[2]]
+            ), f"XOR3 bits {bits}"
 
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
