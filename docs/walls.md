@@ -250,6 +250,11 @@ but the ~60 unreachable ones are exactly the balanced, non-monotone tables
 functions of an arity.  Lifting the cap to a general method is recorded in
 ``docs/roadmap.md``.
 
+An **in-progress leaf-paint generalization** (a different approach from
+box-height) is exact for cycle 1 on all 256 n == 3 tables but is not yet
+cycle-stable; see ``docs/a_painter_ant_generator.md`` for the draft layout
+and the open stability work.
+
 ## Multiply capability (Jaune realizes it)
 
 A *multiply* program reads two decimal operands (most-significant first, one

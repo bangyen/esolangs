@@ -223,6 +223,13 @@ search, including AND3, OR3, XOR3 via parity, and majority); the ~60
 unreachable ones are exactly the balanced, non-monotone tables (e.g.
 equality).
 
+A **leaf-paint n == 3 generalization is in progress** (see
+`docs/a_painter_ant_generator.md`): a single-line eight-leaf draft is exact
+for cycle 1 on all 256 tables but is not yet cycle-stable (the head is
+origin-relative and the ant starts cycle 2 at the output leaf).  Cycle-1
+exactness was the easy part; making the runtime/star layout cycle-stable is
+the open work.
+
 **Goal: find a general construction such that for any ``n``, *every*
 ``n``-ary boolean function is expressible.**  The box-height method loses
 the "which inputs" information (it only measures the weight), so it cannot
@@ -244,7 +251,7 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 | 123 | one input only | yes | lift (structural wall, single data byte); has a text generator so not a removal candidate. |
 | NoComment | `n <= 8` | yes | lift (genuine wall, byte-indexed skip); cap is high enough for practical use. |
 | Polynomial | `n <= 4` | yes | lift (performance cap on exact factorization); cap is high enough for practical use. |
-| A Painter Ant | `n == 2` | no | lift (open at `n >= 3`); the two-input leaf-paint construction is exact and cycle-stable, but no general method for all functions of an arity is known (see the open-problem section above). |
+| A Painter Ant | `n == 2` | no | lift (open at `n >= 3`); the two-input leaf-paint construction is exact and cycle-stable, a leaf-paint n == 3 generalization is in progress, and no general method for all functions of an arity is known yet (see the open-problem section above). |
 
 Removed (constraints made them trivial): the boolean generators for
 Minifuck (`n <= 3`, only
