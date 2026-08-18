@@ -51,7 +51,6 @@ into a template) rather than the program reading input.
 | Jaune |  | yes |  | yes | yes |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
-| Lightlang |  | yes |  |  |  | boolean |
 | Minifuck | yes | yes |  |  |  | hello boolean |
 | Minsky Swap |  | yes |  | yes |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |

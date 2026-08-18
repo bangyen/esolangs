@@ -176,18 +176,6 @@ past `n == 2` (the search caps at 6 of 8 combinations).
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.
-- **Lightlang**: `?` reads a bit (an empty line gives 1, any non-empty line
-  gives 0), so a bit is readable, and `&` (skip the next instruction when
-  the bit is 1) skips exactly one character.  That single-character skip is
-  enough to route the *AND/OR class* for any arity: each `&` skips precisely
-  the single `#` halt, so a bit of 1 continues past a "print 0, halt" block
-  and a bit of 0 falls into it.  ``?&!&#`` (repeated per bit, ending in
-  ``?!``) computes AND; ``?&?!`` (``?&`` per bit) computes OR — both verified
-  to n = 4 on the interpreter.  What is *not* expressible is a non-monotone
-  table (XOR, NAND, or any arbitrary table): those need a multi-character
-  leaf that `&` cannot skip past, so a decision-tree node cannot route to a
-  general subtree.  Its ``@`` command is also non-deterministic (a random
-  bit).
 
 ## Termination-based convention (Point Break is a full generator; the rest partial)
 

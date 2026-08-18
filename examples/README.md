@@ -48,9 +48,6 @@ Outputs `0` and halts when given `0`, and outputs `1` forever when given `1`:
 Demonstrates a language's boolean-function capability that is not an I/O
 truth machine (see `docs/walls.md`):
 
-- `lightlang.txt` realizes the AND/OR class: each `&` skip covers exactly the
-  single `#` halt, so an n-input AND (`?&!&#` repeated) and OR (`?&?&?!`)
-  are expressible; the committed program is OR4.
 - `minifuck.txt` is a committed two-input AND, recorded from Minifuck's
   (now-removed) boolean generator that covered the 0-preserving two-input
   tables, reading `0`/`1` input lines; the committed inputs `0 1` exercise

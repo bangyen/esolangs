@@ -66,26 +66,20 @@ the table:
 
 ## Deferred-removal candidates
 
-**Deferred — not yet removed.**  Two languages have no usable text or
+**Deferred — not yet removed.**  One language has no usable text or
 boolean generator — either none at all, or one so severely constrained it is
-effectively absent for any non-trivial use — so they cannot be round-trip or
-differentially verified and are the weakest additions.  They are grouped
-together regardless of I/O; the presence of usable I/O is an argument
-*against* removal, so the no-output ArrowQueue is the stronger candidate
-and the I/O-capable Lightlang is the weaker one.
+effectively absent for any non-trivial use — so it cannot be round-trip or
+differentially verified and is the weakest kind of addition.
 
 | Language | Output | Why it is on the list |
 | --- | --- | --- |
 | ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
-| Lightlang | Prints only the single bit as a number | no text generator; boolean wall (AND/OR-class only). |
 
-The I/O-capable Lightlang was previously
-excluded from this tier as "I/O-capable" — it stays on the list because
-it still fails both generator gates, but its real language-defined output
-counts against removing it.  Movesum was removed (see `docs/limitations.md`):
-its numeric output is also real language-defined output, but it has no
-conditional at all, so it fails both generator gates with no partial class
-to fall back on.  Grapheme has since been taken **off** this
+Movesum and Lightlang were removed (see `docs/limitations.md`): both had
+real language-defined output (numbers, and a single bit, respectively),
+but Movesum has no conditional at all and Lightlang's boolean capability
+caps at the AND/OR class, so neither had a generator beyond what the
+output convention alone provides.  Grapheme has since been taken **off** this
 list: its boolean wall was not a hard limit — the language is Turing-complete
 with arithmetic and conditionals — and a working boolean generator now
 exists (see the constrained-generators section below), so like the other
@@ -113,14 +107,14 @@ Your Time Is Up) were dropped and recorded in `docs/limitations.md`.
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
-admission criteria treat as a genuine gap.  ArrowQueue and
-Lightlang are both Bangyen-only sole implementations
-with no external implementations.  ArrowQueue is
+admission criteria treat as a genuine gap.  ArrowQueue is
+a Bangyen-only sole implementation
+with no external implementations and is
 Turing-complete (ArrowQueue via Tag/Cyclic tag/Minsky machine translations,
 on the wiki).  (Kak
 and Brainpocalypse, the two externally-implemented members, Stun Step —
 a sole implementation removed anyway, see `docs/limitations.md` — and
-Movesum were
+Movesum and Lightlang were
 removed.)  The tradeoff is
 between "no generator ⇒ cannot participate in the repo's verification
 machinery" and "sole implementation ⇒ removing creates a gap"; the removal
@@ -250,8 +244,7 @@ Scope and constraints:
 - the snapshot must be the **complete** state — the machine's internal
   fields, not the VM's language-shaped ``ip``/``memory``/``stack`` view —
   including the input-cursor position, or a "repeat" is not a real cycle;
-- deterministic machines only (LaserFuck's random heading and Lightlang's
-  ``@`` are excluded);
+- deterministic machines only (LaserFuck's random heading is excluded);
 - only interpreters with a ``step()``/``halted`` state object can be checked
   (the VM set; whole-program ``run()``s expose no internal state to hash);
 - it catches *cycles*, not every hang — an unbounded-growth loop
