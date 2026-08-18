@@ -12,9 +12,8 @@ The generators live in ``esolangs.tools.booleans``, split by language family
 module re-exports them for compatibility.
 """
 
-from esolangs.tools.booleans.a_painter_ant import a_painter_ant
-from esolangs.tools.booleans.abcdirection import abcdirection
 from esolangs.tools.booleans.other import (
+    abcdirection,
     between,
     bit_tilde,
     clockwise,
@@ -28,6 +27,7 @@ from esolangs.tools.booleans.other import (
     ztoalc_l_boolean,
 )
 from esolangs.tools.booleans.parameterized import (
+    a_painter_ant,
     back,
     bfpda,
     bio,

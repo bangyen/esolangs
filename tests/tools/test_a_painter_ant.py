@@ -16,7 +16,7 @@ import pytest
 
 from esolangs.interpreters.grid_based.a_painter_ant import run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.booleans.a_painter_ant import a_painter_ant, instantiate
+from esolangs.tools.booleans.parameterized import _instantiate_apa, a_painter_ant
 
 _MOVE = {"n": (0, -1), "e": (1, 0), "s": (0, 1), "w": (-1, 0)}
 
@@ -56,7 +56,7 @@ def _cycle_stable(program: str) -> bool:
 
 
 def _check(table: str, bits: list[int]) -> int:
-    program = instantiate(a_painter_ant(table), bits)
+    program = _instantiate_apa(a_painter_ant(table), bits)
     assert _cycle_stable(program), f"{table} {bits}: not cycle-stable"
     return _landing_after(program)
 
@@ -108,7 +108,7 @@ def test_leaf_paint_uses_space_for_zero() -> None:
     template = a_painter_ant("0110")  # f(1,1)=0, f(0,0)=0, f(1,0)=1, f(0,1)=1
     assert " " in template  # zero leaves are spaces
     # no paint-black anywhere in any instantiated program
-    program = instantiate(template, [1, 1])
+    program = _instantiate_apa(template, [1, 1])
     assert "p" not in program
 
 
@@ -129,8 +129,8 @@ def test_instantiate_one_bit_fills_single_placeholder() -> None:
     template = a_painter_ant("01")  # f(0)=0, f(1)=1
     assert "{X0}" in template
     assert "{X1}" not in template
-    assert instantiate(template, [1]) == template.replace("{X0}", "WWwWWEEe")
-    assert instantiate(template, [0]) == template.replace("{X0}", "NENEESWw")
+    assert _instantiate_apa(template, [1]) == template.replace("{X0}", "WWwWWEEe")
+    assert _instantiate_apa(template, [0]) == template.replace("{X0}", "NENEESWw")
 
 
 def test_three_input_rejected() -> None:
@@ -141,7 +141,7 @@ def test_three_input_rejected() -> None:
 
 def test_four_input_head_rejected() -> None:
     """The head's leaf layout stops at three inputs."""
-    from esolangs.tools.booleans.a_painter_ant import _leaf_positions
+    from esolangs.tools.booleans.parameterized import _leaf_positions
 
     with pytest.raises(ValueError, match="open problem"):
         _leaf_positions(4)
@@ -165,7 +165,7 @@ def test_three_input_construction_is_cycle_one_exact() -> None:
     """
     from itertools import product
 
-    from esolangs.tools.booleans.a_painter_ant import _body, _head
+    from esolangs.tools.booleans.parameterized import _body, _head
 
     def _landing_after_one_cycle(program: str) -> int:
         """Landing cell colour after exactly one cycle (unstable past it)."""
@@ -188,7 +188,7 @@ def test_three_input_construction_is_cycle_one_exact() -> None:
         table = format(value, "08b")
         template = _head(table, [0, 0, 0]) + "n" + _body(3) + "{X0}{X1}{X2}" + "Pn"
         for bits in product([0, 1], repeat=3):
-            program = instantiate(template, list(bits))
+            program = _instantiate_apa(template, list(bits))
             assert _landing_after_one_cycle(program) == int(
                 table[bits[0] * 4 + bits[1] * 2 + bits[2]],
             ), f"table {table} bits {bits}"
@@ -207,11 +207,11 @@ def test_non_binary_rejected() -> None:
 def test_instantiate_fills_bits() -> None:
     """{X0} fills nn/ss and {X1} fills WWwWWEEe/NENEESWw per bit."""
     template = a_painter_ant("0110")
-    assert instantiate(template, [1, 1]) == template.replace(
+    assert _instantiate_apa(template, [1, 1]) == template.replace(
         "{X0}",
         "nn",
     ).replace("{X1}", "WWwWWEEe")
-    assert instantiate(template, [0, 0]) == template.replace(
+    assert _instantiate_apa(template, [0, 0]) == template.replace(
         "{X0}",
         "ss",
     ).replace("{X1}", "NENEESWw")
