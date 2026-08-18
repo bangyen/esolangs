@@ -124,17 +124,13 @@ def test_all_one_input_functions() -> None:
             assert _check(table, [bit]) == int(table[bit]), f"table {table} bit {bit}"
 
 
-def test_instantiate_one_bit_fixes_second_input() -> None:
-    """{X1} in an n == 1 template is the fixed b1 == 0 routing."""
+def test_instantiate_one_bit_fills_single_placeholder() -> None:
+    """An n == 1 template carries only {X0}, filled per bit."""
     template = a_painter_ant("01")  # f(0)=0, f(1)=1
-    assert instantiate(template, [1]) == template.replace(
-        "{X0}",
-        "nn",
-    ).replace("{X1}", "NENEESWw")
-    assert instantiate(template, [0]) == template.replace(
-        "{X0}",
-        "ss",
-    ).replace("{X1}", "NENEESWw")
+    assert "{X0}" in template
+    assert "{X1}" not in template
+    assert instantiate(template, [1]) == template.replace("{X0}", "WWwWWEEe")
+    assert instantiate(template, [0]) == template.replace("{X0}", "NENEESWw")
 
 
 def test_three_input_rejected() -> None:
