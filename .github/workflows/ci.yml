@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v10
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
@@ -41,13 +41,13 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v10
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -59,7 +59,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.12'
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v7
       with:
         file: ./coverage.xml
         flags: unittests
@@ -68,7 +68,7 @@ jobs:
 
     - name: Upload coverage report for the badge
       if: matrix.python-version == '3.12'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-xml
         path: coverage.xml
@@ -80,19 +80,19 @@ jobs:
     timeout-minutes: 10
     needs: test
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Download coverage report
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: coverage-xml
         path: .
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v10
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
@@ -122,13 +122,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@v10
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
@@ -145,7 +145,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Build extra/ Rust implementations
       run: |
@@ -191,7 +191,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Build and run the RISC-V reference interpreters
       run: |
@@ -235,7 +235,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Install elan
       run: |
