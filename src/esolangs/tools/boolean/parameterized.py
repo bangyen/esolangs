@@ -758,7 +758,11 @@ def _head(truth_table: str, bits: list[int]) -> str:
         if not _leaf_color(truth_table, list(leaf_bits)):
             out.append(" ")
             continue
-        outbound = "".join(
+        # Odd n starts on a horizontal bit, so its outbound would lead with
+        # NE and the reverse path would end on an orphan WS anchor; a
+        # leading WS (no moves) flips it to start WS / end NE like n == 2.
+        outbound = "WS" if n >= 3 and n % 2 == 1 else ""
+        outbound += "".join(
             ("NE" if k % 2 != n % 2 else "WS") + _bit_move(n, k, b)
             if n >= 2
             else _bit_move(n, k, b)
