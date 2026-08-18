@@ -664,8 +664,8 @@ _X0 = {1: "nn", 0: "ss"}
 _XF = {1: "WWwWWEEe", 0: "NENEESWw"}
 
 
-def _leaf_color(truth_table: str, bits: list[int]) -> str:
-    """Return the ``P``/space to paint the leaf for the input ``bits``.
+def _leaf_color(truth_table: str, bits: list[int]) -> bool:
+    """Return whether to paint the leaf for the input ``bits``.
 
     ``bits`` is listed most-significant first, so the table index is the
     packed binary value ``sum(bit << (n-1-i))``.
@@ -673,7 +673,7 @@ def _leaf_color(truth_table: str, bits: list[int]) -> str:
     index = 0
     for n, b in enumerate(bits):
         index += b << (len(bits) - n - 1)
-    return "P" if truth_table[index] == "1" else " "
+    return truth_table[index] == "1"
 
 
 def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
@@ -688,36 +688,32 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
     share their axis cells, and symmetric across the y-axis so the star
     body's mirror trick works (``docs/a_painter_ant_generator.md``).
     """
-    if n == 3:
-        positions: list[tuple[int, int, tuple[int, ...]]] = []
-        for b0, b1, b2 in (
-            (1, 1, 0),
-            (0, 1, 0),
-            (1, 0, 0),
-            (0, 0, 0),
-            (1, 1, 1),
-            (0, 1, 1),
-            (1, 0, 1),
-            (0, 0, 1),
-        ):
-            x = (2 * b0 - 1) * 2 + (2 * b1 - 1) * 4 + (2 * b2 - 1) * 8
-            positions.append((x, -2, (b0, b1, b2)))
-        return positions
-    order: tuple[tuple[int, ...], ...]
-    if n == 1:
-        order = ((1,), (0,))
-    elif n == 2:
-        order = ((1, 1), (0, 0), (1, 0), (0, 1))
-    else:
+    if n >= 4:
         raise ValueError(
             "the A Painter Ant head generator supports n == 1, n == 2, and "
             "n == 3; n >= 4 is an open problem (see docs/roadmap.md)",
         )
     out: list[tuple[int, int, tuple[int, ...]]] = []
-    for bits in order:
-        x = 2 if bits[-1] == 0 else -2
-        y = 0 if n == 1 else (2 if bits[0] == 0 else -2)
+
+    for i in range(2 ** n):
+        pads = bin(i)[2:].rjust(n, '0')
+        bits = [int(k) for k in pads]
+        x = 0
+        y = 0
+
+        for k, b in enumerate(bits):
+            mag = 2 ** (n - k)
+
+            if not b:
+                mag *= -1
+
+            if k % 2 != n % 2:
+                x += mag
+            else:
+                y += mag
+
         out.append((x, y, bits))
+
     return out
 
 
@@ -741,66 +737,38 @@ def _head(truth_table: str, bits: list[int]) -> str:
     ``docs/a_painter_ant_generator.md``).
     """
     n = len(bits)
-    if n == 3:
-        # For each leaf: travel north to the clean row y = -3, cross to the
-        # leaf's column, descend onto the leaf, paint it, and return to the
-        # origin the same way -- a per-leaf "go out, paint, return" leg that
-        # never crosses the other leaves (cycle 1 only; the cycle-2 dance
-        # for this layout is still open -- see
-        # docs/a_painter_ant_generator.md).
-        out: list[str] = []
-        for _x, _y, leaf_bits in _leaf_positions(3):
-            x = (
-                (2 * leaf_bits[0] - 1) * 2
-                + (2 * leaf_bits[1] - 1) * 4
-                + (2 * leaf_bits[2] - 1) * 8
-            )
-            out.append("nnn")
-            out.append(("w" if x < 0 else "e") * abs(x))
-            out.append("s")
-            out.append(_leaf_color(truth_table, list(leaf_bits)))
-            out.append("n")
-            out.append(("e" if x < 0 else "w") * abs(x))
-            out.append("sss")
-        return "".join(out)
+    out = ['N']
 
-    # The cycle-2 dance circuits, one ``prefix + leg`` pair per leaf plus
-    # the return leg; every leg is a no-op from its dance cell:
-    #   n == 1: leaf -N-> top -W-> west diag -E-> top -S/s-> leaf
-    #   n == 2: leaf -W-> middle-left -N-> NW diag -E-> top-middle
-    #           -E-> NE diag -W-> top-middle -S/s-> leaf
-    # A leafward move from the top-middle (south) or the middle-left (east)
-    # would split the ants -- the black-output ant returns to the leaf
-    # while the white-output ant stays on the ring -- so the legs dancing
-    # on those cells (``nnww`` on the middle-left, ``nnnn``/``nnee`` on the
-    # top-middle) never move leafward, and only the ``Ssn`` ending may.
-    prefixes: tuple[str, ...]
-    legs: tuple[str, ...]
-    if n == 1:
-        prefixes = ("N", "W", "E")
-        legs = ("ww", "eeee", "ww")
-    else:
-        prefixes = ("W", "N", "E", "E", "W")
-        legs = ("nnww", "sseessee", "nnnn", "sswwssww", "nnee")
+    for x, y, leaf_bits in _leaf_positions(n):
+        color = _leaf_color(truth_table, list(leaf_bits))
 
-    out = [prefixes[0]]
-    for i, (_x, _y, leaf_bits) in enumerate(_leaf_positions(n)):
-        if i:
-            out.append(prefixes[i])
-        out.append(legs[i])
-        out.append(_leaf_color(truth_table, list(leaf_bits)))
-    out.append(prefixes[len(legs) - 1])
-    out.append(legs[-1])
+        if not color:
+            out.append(' ')
+            continue
+
+        north = 'n' * abs(y)
+        south = 's' * abs(y)
+        west = 'w' * abs(x)
+        east = 'e' * abs(x)
+
+        if y < 0:
+            north, south = south, north
+
+        if x < 0:
+            west, east = east, west
+
+        out.append(f'WS{north}NE{west}PWS{south}NE{east}')
+
     out.append("Ssn")
     return "".join(out)
 
 
-def _body(n: int = 2) -> str:
-    """Generate the routing body for ``n`` inputs.
+def _body() -> str:
+    """Generate the routing body.
 
-    For ``n == 2`` the body paints two two-layer stars -- one around the
-    output leaf and one around its y-mirror -- so the final input never has
-    to be re-embedded: it only routes to whichever star is already painted.
+    The body paints two two-layer stars -- one around the output leaf and
+    one around its y-mirror -- so the final input never has to be
+    re-embedded: it only routes to whichever star is already painted.
     Each star is walked as a clockwise spiral of ``P`` paints (the ring
     cells at distance 1 and the axis cells at distance 2), and the two
     stars are connected by the black gap between their rings: the star
@@ -809,25 +777,7 @@ def _body(n: int = 2) -> str:
     starts and ends on the shared cell at ``(0, +-2)`` -- the canonical
     point the final input's east/west routing leaves from -- and its
     blocked-uppercase returns are the anchors of the cycle-2 dance.
-
-    For ``n == 3`` the body paints the routing row ``y = -1`` the inputs
-    route on: each side is walked with lowercase moves (black cells) and
-    the return crosses the freshly painted cells with uppercase moves --
-    enough for cycle 1; the full stars and the cycle-2 dance are still
-    open (see ``docs/a_painter_ant_generator.md``).
     """
-    if n == 3:
-        out: list[str] = ["P"]
-        for _ in range(14):
-            out.append("wP")
-        for _ in range(14):
-            out.append("EP")
-        for _ in range(14):
-            out.append("eP")
-        for _ in range(14):
-            out.append("WP")
-        return "".join(out)
-
     # West star, entered from the shared cell: east ring cell, then the
     # clockwise spiral (single ring steps, L-shaped detours out to the axis
     # cells, and blocked-uppercase returns from the axis cells), ending on
@@ -888,18 +838,25 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
     body-painted routing row, and the ``Pn`` landing trick reads the leaf.
     ``bits`` must match the template built by :func:`a_painter_ant`.
     """
-    if len(bits) == 3:
-        weights = (2, 4, 8)
-        return instantiate(
-            template,
-            bits,
-            lambda i, bit: ("E" * weights[i] if bit else "W" * weights[i]),
-            lambda _i, _b: "",
-        )
+    n = len(bits)
+
+    def replace(i, bit):
+        if i == len(bits) - 1:
+            return _XF[bit]
+
+        weight = 2 ** (n - i)
+
+        if i % 2 != n % 2:
+            if bit:
+                return 'w' * weight
+            return 'e' * weight
+        if bit:
+            return 'n' * weight
+        return 's' * weight
 
     return instantiate(
         template,
         bits,
-        lambda i, bit: (_XF[bit] if i == len(bits) - 1 else _X0[bit]),
+        replace,
         lambda _i, _b: "",
     )
