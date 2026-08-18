@@ -111,32 +111,46 @@ nonzero exactly when the bit is zero and neither language can compute that
 complement at runtime (`nocomment` has no flip; `bfpda`'s `@` destroys the
 bit) — a documented wall, not a superfluous read.
 
-## Fell-through candidates
+## Assessed and rejected
 
-Assessments of unimplemented languages from the wiki that did not make the
-roadmap.  The viable candidates are in `docs/roadmap.md`; the full rationale
-is in the commit history.
+Languages from the wiki that were assessed against the admission criteria
+and did not make the repo — whether they were never implemented (the
+roadmap's fell-through) or were removed after being implemented.  The
+viable candidates are in `docs/roadmap.md`; the full rationale for each
+verdict is in the commit history.  ``(removed)`` marks languages whose
+interpreter, generator, and tests were deleted from the repo.
 
-- **Gravity**: non-computable evolution; nothing verifiable.
-- **Earfuck**: trivial brainfuck reskin (notes for instructions).
-- **Conveyor**: no input command, stderr-only output.
-- **Chainlang**: AI-generated spec its own author calls unfinished.
-- **Binary ///**: stub with no usable specification.
-- **Fourfuck**: incomplete, a stub with a couple of commands.
+- **2 Bits 1 Byte** (removed): joke; single-byte program, no text or boolean generator, externally implemented.
 - **Aaargh++**: 4D work-in-progress with a partial spec.
+- **ASCII art** (removed): brainfuck with an art alphabet; a trivial reskin.
+- **Binary ///**: stub with no usable specification.
 - **Bitwise Cyclic Teast**: work-in-progress, interpreter still in development.
-- **N Refine**: probabilistic self-rewriting OISC with no I/O; already implemented elsewhere.
-- **something positive**: explicitly uncomputable.
+- **Brainpocalypse** (removed): no input; invented dump and a one-bit halt-vs-loop wall; externally implemented.
+- **Chainlang**: AI-generated spec its own author calls unfinished.
+- **Conveyor**: no input command, stderr-only output.
+- **Crement**: self-modifying, no I/O; no input to branch on.
+- **DSDLAI** (removed): trivial Dig reskin with a random death chance; non-deterministic.
+- **Earfuck**: trivial brainfuck reskin (notes for instructions).
+- **Fourfuck**: incomplete, a stub with a couple of commands.
+- **Gravity**: non-computable evolution; nothing verifiable.
+- **Kak** (removed): no input; only the tape bit-string (an invented dump); externally implemented.
+- **Keys** (removed): a two-line equality comparison; a gadget, not a language model.
+- **Lightlang** (removed): boolean capability caps at the AND/OR class; only a single bit is ever printed.
 - **LogicF---**: joke, non-deterministic and non-functional commands.
+- **Movesum** (removed): no conditional at all, so no boolean generator; numbers-only output.
+- **N Refine**: probabilistic self-rewriting OISC with no I/O; already implemented elsewhere.
+- **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**, **Writeover**: joke or vaguely specified, no usable spec or I/O.
+- **Number Seventy-Four** (removed): string-rewriting with no input; output alphabet `0`/`1`/`H`.
+- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Streetcode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
+- **Procedure**: only `the sum of ...` arithmetic is defined, so a faithful interpreter would have to invent the rest. Revisit if the wiki or Pure defines the operators.
+- **something positive**: explicitly uncomputable.
+- **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
+- **Stun Step** (removed): no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
+- **Trash** (removed): advance-to-next-prime gadget; can never print `1`.
 - **Vandevelo**: input-only, no output at all.
 - **Varigen**: explicitly "uncomputable" joke language.
-- **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**, **Writeover**: joke or vaguely specified, no usable spec or I/O.
-- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Streetcode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
 - **Welcome To...**: work-in-progress.
-- **Procedure**: only `the sum of ...` arithmetic is defined, so a faithful interpreter would have to invent the rest. Revisit if the wiki or Pure defines the operators.
-- **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
 - **Your Time Is Up**: random rule choice, no I/O; nondeterministic.
-- **Crement**: self-modifying, no I/O; no input to branch on.
 
 ## Transpiler walls
 
@@ -176,21 +190,3 @@ round-trip test suite.  The one open theorem, if more Lean work is ever
 wanted, is the Minifuck boolean reachability characterization: a
 language-power statement (exactly the four one-input functions plus the
 eight 0-preserving two-input tables), not a generator-correctness proof.
-
-## Removed languages
-
-Languages removed from the repo, and why.  The interpreter, generator, and
-tests were deleted; the negative result is recorded so the assessment is not
-repeated.  The full rationale is in the commit history.
-
-- **DSDLAI**: trivial Dig reskin with a random death chance; non-deterministic.
-- **ASCII art**: brainfuck with an art alphabet; a trivial reskin.
-- **Keys**: a two-line equality comparison; a gadget, not a language model.
-- **2 Bits 1 Byte**: joke; single-byte program, no text or boolean generator, externally implemented.
-- **Number Seventy-Four**: string-rewriting with no input; output alphabet `0`/`1`/`H`.
-- **Trash**: advance-to-next-prime gadget; can never print `1`.
-- **Kak**: no input; only the tape bit-string (an invented dump); externally implemented.
-- **Brainpocalypse**: no input; invented dump and a one-bit halt-vs-loop wall; externally implemented.
-- **Stun Step**: no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
-- **Movesum**: no conditional at all, so no boolean generator; numbers-only output.
-- **Lightlang**: boolean capability caps at the AND/OR class; only a single bit is ever printed.
