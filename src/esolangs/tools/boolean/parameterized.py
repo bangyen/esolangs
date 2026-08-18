@@ -647,16 +647,13 @@ def minsky_swap(truth_table: str) -> str:
 # across the y-axis.  This one
 # ``_head`` handles ``n == 1``, ``n == 2``, and ``n == 3``.
 #
-# The template routes the first ``n-1`` inputs north/south (``nn``/``ss``)
-# before the body and the final input east/west after it (``WWwWWEEe`` for a
-# one bit and ``NENEESWw`` for a zero, an 8-character complement pair that
-# lands on the opposite-coloured leaf).  Every one- and two-input table is
-# supported and every instantiated program is a cycle-stable fixed point (the
-# bounding box is identical for any whole number of cycles).  The ``n == 3``
-# single-row construction is exact for cycle 1 on every three-input table but is
-# **not yet cycle-stable** -- the cycle-2 dance for that layout is still open
-# (``docs/a_painter_ant_generator.md``) -- so ``n >= 3`` raises
-# :class:`ValueError`.
+# The template routes the first ``n-1`` inputs by their weight (west/north
+# for a one bit, east/south for a zero) before the body and the final input
+# east/west after it (``WWwWWEEe`` for a one bit and ``NENEESWw`` for a
+# zero, an 8-character complement pair that lands on the opposite-coloured
+# leaf).  Every table of any input count is supported and every instantiated
+# program is a cycle-stable fixed point (the bounding box is identical for
+# any whole number of cycles).
 
 # ``{X0}``: non-final inputs route north/south.
 _X0 = {1: "nn", 0: "ss"}
@@ -706,15 +703,9 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
     The coordinates come from the same weighted rule the head walks and the
     routing reads: each bit ``k`` contributes ``+-2 ** (n-k)`` on the axis
     chosen by index parity, with a cleared bit negative.  The head only
-    uses the ``bits`` (and the ``n >= 4`` guard); it reaches each leaf by
-    walking those weights, so ``(x, y)`` is the mirror position the
-    routing reads.
+    uses the ``bits``; it reaches each leaf by walking those weights, so
+    ``(x, y)`` is the mirror position the routing reads.
     """
-    if n >= 4:
-        raise ValueError(
-            "the A Painter Ant head generator supports n == 1, n == 2, and "
-            "n == 3; n >= 4 is an open problem (see docs/roadmap.md)",
-        )
     out: list[tuple[int, int, tuple[int, ...]]] = []
 
     for i in range(2 ** n):
@@ -740,7 +731,7 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
 
 
 def _head(truth_table: str, bits: list[int]) -> str:
-    """Build the A Painter Ant head for a one-, two-, or three-input table.
+    """Build the A Painter Ant head for an ``n``-input table.
 
     The head paints every white leaf and returns to the origin.  It walks
     each leaf out and back piecewise -- one weighted move per input bit
@@ -748,8 +739,9 @@ def _head(truth_table: str, bits: list[int]) -> str:
     so the outbound path never crosses a previously painted leaf (the
     intermediate cells are never leaf positions) and the reverse path
     retraces it cleanly.  The ``N`` prefix and ``Ssn`` ending are no-ops
-    on the empty first cycle; the cycle-2+ dance on the pre-painted stars
-    is the separate open problem (``docs/a_painter_ant_generator.md``).
+    on the empty first cycle; from cycle 2 on the ``WS``/``NE`` anchors
+    launch the ant off the leaf onto the painted ring, making the whole
+    program a cycle-stable fixed point.
     """
     n = len(bits)
     out = ["N"]
@@ -802,7 +794,7 @@ def _body() -> str:
 
 
 def a_painter_ant(truth_table: str) -> str:
-    """Build an A Painter Ant template for a one- or two-input Boolean function.
+    """Build an A Painter Ant template for an ``n``-input Boolean function.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
@@ -811,25 +803,16 @@ def a_painter_ant(truth_table: str) -> str:
     the per-bit routing.  The answer is the colour of the cell the ant lands
     on after a cycle (white is one, black is zero).
 
-    Every one- and two-input table is supported; ``n >= 3`` raises
-    :class:`ValueError` (an open problem, see ``docs/roadmap.md``).  The
-    first ``n-1`` inputs route north/south before the body; the final
-    (least-significant) input routes east/west onto its leaf after it.
+    Every table is supported for any ``n``, and every instantiated program
+    is a cycle-stable fixed point.  The first ``n-1`` inputs route by their
+    weight (west/north for a one bit, east/south for a zero) before the
+    body; the final (least-significant) input routes east/west onto its
+    leaf after it.
     """
     n = _validate_truth_table(truth_table)
-    if n > 2:
-        # The n == 3 single-row construction exists (_head/_body build it and
-        # it is cycle-1 exact on every table), but the cycle-2 dance is
-        # still an open problem (docs/a_painter_ant_generator.md), and the
-        # boolean harness requires every program to be a cycle-stable fixed
-        # point.
-        raise ValueError(
-            "the A Painter Ant boolean generator supports n == 1 and n == 2; "
-            "n >= 3 is an open problem (see docs/roadmap.md)",
-        )
 
     # The head paints every leaf; the body paints the two stars; the first
-    # n-1 inputs route north/south before the body, and the final
+    # n-1 inputs route by weight before the body, and the final
     # (least-significant) input routes east/west onto its leaf after it.
     head = _head(truth_table, [0] * n)
     prefix = "".join("{X" + str(i) + "}" for i in range(n - 1))
