@@ -161,6 +161,42 @@ class TestPointBreak:
         assert vm.output == ""
 
 
+class TestArrowQueue:
+    def test_ip_is_position_and_heading(self) -> None:
+        vm = esolangs.make_vm("ArrowQueue", "~+*")
+        assert vm.ip == (0, 0, 0)
+        vm.step()
+        assert vm.ip == (1, 0, 0)
+        assert vm.stack == [0]
+        vm.step()  # + pops the queued direction (right) and keeps going
+        assert vm.ip == (2, 0, 0)
+        assert vm.stack == []
+        vm.step()  # * turns down off the single row and halts
+        assert vm.halted
+        assert vm.memory == []
+        vm.step()  # stepping a halted VM is a no-op
+
+
+class Test123:
+    def test_data_byte_and_cursor(self) -> None:
+        vm = esolangs.make_vm("123", "121")
+        assert vm.ip == 0
+        assert vm.memory == [0]
+        vm.step()  # 1 flips the bit at the pointer
+        assert vm.ip == 1
+        assert vm.memory == [128]
+        vm.step()  # 2 at a data position moves the pointer right
+        assert vm.ip == 2
+        assert vm.memory == [128]
+        vm.step()  # 1 flips bit 7 back; the cursor runs off the program
+        assert vm.ip == 3
+        assert vm.memory == [0]
+        vm.step()  # the loop-or-halt check: pointer below 0 halts the run
+        assert vm.halted
+        assert vm.stack == []
+        vm.step()  # stepping a halted VM is a no-op
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -226,6 +262,8 @@ class TestFactory:
         ("Modulous", "[PSH INT 5][DUP][PRT INT]"),
         ("The Temporary Stack", "v5 *AB"),
         ("Point Break", "LET zero:=0"),
+        ("ArrowQueue", "~*+"),
+        ("123", "3231"),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:

@@ -51,27 +51,11 @@ class Test123:
 
     def test_true_jump_skips_backward(self) -> None:
         """A TRUE 3 jumps back to the previous 3 (or the start) and loops."""
-        import os
-        import signal
-
-        import pytest
-
-        if os.name != "posix":
-            pytest.skip("signal.alarm is POSIX-only")
-
-        class _TimeoutError(Exception):
-            pass
-
-        def _alarm(_signum: int, _frame: object) -> None:
-            raise _TimeoutError
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
 
         # 2 1 2 reaches position 0 with bit 7 set; the 3 is TRUE and loops.
-        old_handler = signal.signal(signal.SIGALRM, _alarm)
-        signal.setitimer(signal.ITIMER_REAL, 0.2)
-        try:
-            run_program("21232131")
-        except _TimeoutError:
-            pass  # the TRUE jump loops back to the start, as expected
-        finally:
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
+        # 123's state is bounded, so the loop is a cycle: the deterministic
+        # state-cycle detector decides it with no wall-clock bound.
+        machine = _Machine("21232131", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False

@@ -54,13 +54,14 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     keep a timeout as the backstop for that class.
     """
     seen: set[Hashable] = set()
-    while not machine.halted:
-        machine.step()
+    while True:
+        if machine.halted:
+            return True
         key = machine.snapshot()
         if key in seen:
             return False
         seen.add(key)
-    return True
+        machine.step()
 
 
 @runtime_checkable
@@ -450,6 +451,64 @@ class _PointBreakVM(_BaseVM):
         return []
 
 
+class _ArrowQueueVM(_BaseVM):
+    """Direction queue; ``ip`` is the IP's (x, y, heading)."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.arrowqueue import _Machine
+
+        self._machine = _Machine(program.splitlines())
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (self._machine.x, self._machine.y, self._machine.d)
+
+    @property
+    def memory(self) -> list[int]:
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.queue)
+
+
+class _OneTwoThreeVM(_BaseVM):
+    """Single data byte + pointer mask; ``ip`` is the code cursor."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ip
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.data & 0xFF]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -463,6 +522,8 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "The Temporary Stack": _TemporaryStackVM,
     "LaserFuck": _LaserFuckVM,
     "Point Break": _PointBreakVM,
+    "ArrowQueue": _ArrowQueueVM,
+    "123": _OneTwoThreeVM,
 }
 
 

@@ -59,6 +59,15 @@ class TestBrainfuck:
         """A doubly-nested loop leaves a known value in the printed cell."""
         assert run_and_capture("+++[>++[>+<-]<-]>+++.") == "\x03"
 
+    def test_cycle_detection_proves_an_infinite_loop(self) -> None:
+        """`+[]` loops forever, decided deterministically by a state cycle."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("+[]", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
+
     def test_unmatched_bracket_rejected(self) -> None:
         """Unbalanced brackets are a malformed program, not a halt."""
         import pytest

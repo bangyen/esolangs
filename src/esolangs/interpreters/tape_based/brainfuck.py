@@ -40,6 +40,10 @@ class _Machine:
     def halted(self) -> bool:
         return self.ind >= len(self.code)
 
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ind, self.ptr, tuple(self.tape), self.io.position())
+
     def step(self) -> None:
         """Execute one command, advancing the code position."""
         char = self.code[self.ind]
