@@ -63,7 +63,7 @@ the table:
 
 ## Deferred-removal candidates
 
-**Deferred — not yet removed.**  Four languages have no usable text or
+**Deferred — not yet removed.**  Three languages have no usable text or
 boolean generator — either none at all, or one so severely constrained it is
 effectively absent for any non-trivial use — so they cannot be round-trip or
 differentially verified and are the weakest additions.  They are grouped
@@ -74,7 +74,6 @@ and the I/O-capable Lightlang and Movesum are weaker ones.
 | Language | Output | Why it is on the list |
 | --- | --- | --- |
 | ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
-| A Painter Ant | No I/O; visited-grid bounding box (`#`/`.` raster) | no text generator; boolean generator was removed as trivial (`n <= 2`), so no boolean generator at all. |
 | Lightlang | Prints only the single bit as a number | no text generator; boolean wall (AND/OR-class only). |
 | Movesum | Prints numbers space-separated with no trailing space | no text generator; no conditional, so no boolean generator. |
 
@@ -86,17 +85,18 @@ list: its boolean wall was not a hard limit — the language is Turing-complete
 with arithmetic and conditionals — and a working boolean generator now
 exists (see the constrained-generators section below), so like the other
 interpreter-only languages it is no longer a removal candidate even though
-it still has no text generator.  A Painter Ant was here because its boolean
-generator only covered one- and two-input tables (`n <= 2`); that generator
-has since been **removed** as trivial (see the constrained-generators
-section below), so A Painter Ant now has no generator at all — it sits in
-the same fully-generator-less tier as ArrowQueue.  No
+it still has no text generator.  A Painter Ant has likewise come **off** this
+list: a working two-input boolean generator now exists (see the
+constrained-generators section below), so like the other interpreter-only
+languages it is no longer a removal candidate even though it still has no
+text generator.  No
 text generator is severely constrained — even the most restricted ones
 (Dig's letter/digit/``.,!?`` alphabet, MyScript's printable ASCII) still
 cover a substantial output range, so no language is added on the text side.
 The other interpreter-only languages
 (ABCDirection, Back, BF-PDA, Bitdeque, Jaune, Lamfunc,
-Minsky Swap, RAM0, Grapheme) all have a working boolean generator with no
+Minsky Swap, RAM0, Grapheme, A Painter Ant) all have a working boolean
+generator with no
 severe cap,
 so they are **not**
 deferred-removal candidates; their only weakness is an interpreter-invented
@@ -109,11 +109,11 @@ dropped under the same policy.
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
-admission criteria treat as a genuine gap.  ArrowQueue, A Painter Ant,
-Lightlang, and Movesum are all Bangyen-only sole implementations
-with no external implementations.  ArrowQueue and A Painter Ant are each
-Turing-complete (ArrowQueue via Tag/Cyclic tag/Minsky machine translations;
-A Painter Ant via a compiled Exasperation Machine, both on the wiki).  (Kak
+admission criteria treat as a genuine gap.  ArrowQueue, Lightlang, and
+Movesum are all Bangyen-only sole implementations
+with no external implementations.  ArrowQueue is
+Turing-complete (ArrowQueue via Tag/Cyclic tag/Minsky machine translations,
+on the wiki).  (Kak
 and Brainpocalypse, the two externally-implemented members, and Stun Step —
 a sole implementation removed anyway, see `docs/limitations.md` — were
 removed.)  The tradeoff is
@@ -202,24 +202,26 @@ watches over the VM) shipped.  The medium-priority work that remains:
   currently the active call frame's cursor; a language with nested calls
   should expose the call stack, not fold it into one frame's position.
 
-## A Painter Ant: general n-input boolean generator (open)
+## A Painter Ant: general n-input boolean generator (n >= 3 open)
 
-The A Painter Ant boolean generator was removed (see the constrained-
-generators section below) because it was capped at `n <= 2`.  This open
-problem records what a *general* construction would need, should it be
-re-added.
+A two-input boolean generator now ships
+(:func:`esolangs.tools.booleans.a_painter_ant`): it paints one leaf per
+input combination (``P`` for a one table entry, a space — left unpainted —
+for a zero, so only monotone ``P`` is ever used) and routes the ant to its
+leaf.  Every two-input table is exact and every instantiated program is a
+cycle-stable fixed point, read by a semantic grid model as the **landing
+cell's colour** (the interpreter's own output is the visited-cell bounding
+box, which carries no coordinates).  This construction resolved the
+``n == 2`` case that the earlier, origin-colour generator covered.
 
-The removed generator expressed every one- and two-input truth table exactly
-(answer = the origin's colour after a whole cycle, all templates
-cycle-stable), and raised for `n >= 3`.
-
-The cap is not "unreachable": a search-found *box-height* method extends
-the range — each one-input makes the ant step one cell further north, so
-its depth equals the input weight, and a paint/return section turns that
-depth into a box height or its parity.  This is cycle-stable and expresses
-**most** n == 3 tables (196 of 256 in a search, including AND3, OR3, XOR3
-via parity, and majority); the ~60 unreachable ones are exactly the
-balanced, non-monotone tables (e.g. equality).
+**n >= 3 is open.**  The cap is not "unreachable": a search-found
+*box-height* method extends the range — each one-input makes the ant step
+one cell further north, so its depth equals the input weight, and a
+paint/return section turns that depth into a box height or its parity.
+This is cycle-stable and expresses **most** n == 3 tables (196 of 256 in a
+search, including AND3, OR3, XOR3 via parity, and majority); the ~60
+unreachable ones are exactly the balanced, non-monotone tables (e.g.
+equality).
 
 **Goal: find a general construction such that for any ``n``, *every*
 ``n``-ary boolean function is expressible.**  The box-height method loses
@@ -228,8 +230,7 @@ reach the balanced tables; a general solution needs to route on *which*
 inputs are one, not just *how many* — e.g. a way to encode each of the
 ``2**n`` combos into a distinguishable ant state (position, painted pattern,
 or box content) with a cycle-stable template.  This is the documented wall
-in `docs/walls.md`; a successful construction would warrant re-adding the
-generator.
+in `docs/walls.md`; a successful construction would lift the cap.
 
 ## Severely constrained boolean generators (remove or lift)
 
@@ -243,9 +244,10 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 | 123 | one input only | yes | lift (structural wall, single data byte); has a text generator so not a removal candidate. |
 | NoComment | `n <= 8` | yes | lift (genuine wall, byte-indexed skip); cap is high enough for practical use. |
 | Polynomial | `n <= 4` | yes | lift (performance cap on exact factorization); cap is high enough for practical use. |
+| A Painter Ant | `n == 2` | no | lift (open at `n >= 3`); the two-input leaf-paint construction is exact and cycle-stable, but no general method for all functions of an arity is known (see the open-problem section above). |
 
-Removed (constraints made them trivial): the boolean generators for A
-Painter Ant (`n <= 2`, no text generator), Minifuck (`n <= 3`, only
+Removed (constraints made them trivial): the boolean generators for
+Minifuck (`n <= 3`, only
 0-preserving two-input tables), and Home Row (`n <= 2`) were dropped because
 their low caps left them only able to express the four one-input and a small
 fraction of the two-input boolean functions — too small a subset to be
