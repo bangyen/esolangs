@@ -237,7 +237,9 @@ is identical for any whole number of cycles).
 Supported and verified exhaustively against the interpreter:
 
 - **n == 2**: all sixteen two-input functions, exact and cycle-stable.
-- **n == 1** is not constructed (raises); the head is built for two inputs.
+- **n == 1**: the four one-input functions, exact and cycle-stable, by
+  padding to ``[f(0), f(0), f(1), f(1)]`` and fixing the second input to
+  zero (reusing the n == 2 construction).
 
 **n >= 3 is open.**  A *box-height* method found by search extends the
 range: each one-input makes the ant step one cell further north
