@@ -17,7 +17,28 @@ increment that loads the raw bit into a register and ``{Ci}`` with a runtime
 complement computation; :func:`back` replaces ``{Xi}`` with a ``\\`` or
 ``/`` mirror so the beam is reflected toward the correct subtree;
 :func:`nocomment` replaces ``{Xi}`` with a constant-length tape setter
-(``c``/``i``) and routes a decision tree with the ``s`` skip.
+(``c``/``i``) and routes a decision tree with the ``s`` skip; :func:`bitdeque`,
+:func:`ram0`, and :func:`minsky_swap` replace ``{Xi}`` with fixed-length
+setters and route a ``POP``/``GOTO``, ``C``/``goto``, or ``~`` decision tree.
+
+**Every input must be embedded exactly once.**  An input-capable language
+reads each of its ``n`` inputs exactly once per run; a no-input language's
+parameterized generator should match that, so a template may contain each
+``{Xi}`` placeholder at most once.  Re-embedding a bit at multiple decision
+nodes would let a no-input program "read" an input more than its
+input-capable counterpart does, which muddies the generator API.  Each
+generator below therefore stores every input once (a tape load, a register
+pack, a deque/stack push, a variable, or a mirror) and reads it back, rather
+than re-substituting it.
+
+The ``{Ci}`` complement placeholder is the exception: ``nocomment`` and
+``bfpda`` embed each input's complement once, because their if/else branch
+needs a gate that is nonzero exactly when the bit is zero, and neither
+language can compute that complement at runtime -- ``nocomment`` has no flip
+(only inc/dec/clear) and ``bfpda``'s ``@`` flips the bit in place, destroying
+it, so a decision node cannot hold both ``bi`` and ``~bi`` simultaneously.
+So those two emit ``n`` ``{Xi}`` plus ``n`` ``{Ci}``; the other generators
+emit only the ``n`` ``{Xi}``.
 """
 
 from collections.abc import Callable
@@ -25,7 +46,17 @@ from typing import TypeAlias
 
 from esolangs.tools.booleans.helpers import _validate_truth_table
 
-__all__ = ["back", "bfpda", "bio", "instantiate", "lamfunc", "nocomment"]
+__all__ = [
+    "back",
+    "bfpda",
+    "bio",
+    "bitdeque",
+    "instantiate",
+    "lamfunc",
+    "minsky_swap",
+    "nocomment",
+    "ram0",
+]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
 # ("node", node_id, level, zero_subtree, one_subtree).
@@ -60,54 +91,35 @@ def bio(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    BIO has three registers (``x``, ``y``, ``z``).  ``{Xi}`` is replaced by
-    ``0ox`` (increment ``x``) when bit ``i`` is one and by nothing when it
-    is zero, so the raw bit lands in ``x``; ``{Ci}`` is the program's
-    *runtime* computation of the complement (``0oy 0ix 1oy 1ox }``, which
-    sets ``y = 1 - x`` and clears ``x``).  A node tests ``0iy`` for the
-    zero-side and reloads ``{Xi}`` for the one-side, clearing each register
-    before its loop exits.  Every leaf clears ``x`` and ``y`` so the
-    ancestor loops unwind, and builds the result in ``z`` before printing
-    it with ``1iz``.
+    BIO has three registers (``x``, ``y``, ``z``) and no absolute jumps —
+    its ``{``/``}`` loops are structurally matched — so a variable-length
+    setter is safe.  Each input is embedded once by packing it into ``x``:
+    ``{Xi}`` becomes ``0ox`` repeated by the input's binary weight (``2**w``)
+    for a one bit and nothing for a zero, so ``x = sum 2**w_i * bit_i`` is
+    the input's numeric index.
+
+    ``y`` is initialized to the table's first entry (``table[0]``), then
+    ``2**n - 1`` *nested* loops each decrement ``x`` once (``0ix { 1ox ... }``)
+    and, on the transition ``table[j-1] -> table[j]``, adjust ``y``: ``0oy``
+    for a 0-to-1 rise, ``1oy`` for a 1-to-0 fall, nothing for a flat edge.
+    The j-th level fires iff ``x >= j``, so for the packed value ``V`` the
+    ops telescope to ``y = table[0] + sum_{j=1}^{V} (table[j] - table[j-1]) =
+    table[V]``.  The result is printed with ``1iy``.
     """
     n = _validate_truth_table(truth_table)
 
-    def leaf(value: str) -> str:
-        # build the result in z, print it, then clear x and y so every
-        # ancestor loop (which checks x or y) unwinds cleanly
-        return "0oz" * (48 + int(value)) + "1iz" + "0ix" + "1ox" + "}0iy" + "1oy" + "}"
+    def yop(a: str, b: str) -> str:
+        if a == b:
+            return ""
+        return "0oy" if a == "0" else "1oy"
 
-    def node(i: int, rows: list[int]) -> str:
-        results = {truth_table[r] for r in rows}
-        if len(results) == 1:
-            return leaf(results.pop())
-        zero = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 0]
-        one = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 1]
-        sub0 = node(i + 1, zero)
-        sub1 = node(i + 1, one)
-        # x = bit, y = 1 - bit; test y for the zero-side, then reload x for
-        # the one-side
-        return (
-            "{X"
-            + str(i)
-            + "}"
-            + "{C"
-            + str(i)
-            + "}"
-            + "0iy"
-            + "1oy"
-            + sub0
-            + "}"
-            + "{X"
-            + str(i)
-            + "}"
-            + "0ix"
-            + "1ox"
-            + sub1
-            + "}"
-        )
-
-    return node(0, list(range(2**n)))
+    pack = " ".join("{X" + str(i) + "}" for i in range(n))
+    inner = ""
+    for j in range(2**n - 1, 0, -1):
+        body = "1ox" + yop(truth_table[j - 1], truth_table[j]) + inner
+        inner = "0ix{" + body + "}"
+    init = "0oy" if truth_table[0] == "1" else ""
+    return pack + " " + init + inner + "0oy" * 48 + "1iy"
 
 
 def back(truth_table: str) -> str:
@@ -116,75 +128,75 @@ def back(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Back is a no-input grid language: a beam bounces across a grid, ``\\``
-    and ``/`` reflect its direction, and ``*`` halts, printing the tape.  A
-    beam moving right hits ``\\`` and turns down (toward higher rows) or hits
-    ``/`` and turns up (toward lower rows, wrapping around).  The generator
-    turns that reflection into a decision tree: each ``{Xi}`` placeholder is
-    replaced by ``\\`` when bit ``i`` is one and by ``/`` when it is zero, so
-    the beam is sent *down* on a one and *up* on a zero.  A ``/`` or ``\\``
-    parked at each child row turns the beam back to moving right into that
-    child's own region, and each leaf sets the tape bit (``-``) when its
-    table entry is one and halts (``*``) printing the tape.
+    Back is a no-input grid language: a beam travels the grid and ``-`` flips
+    the current tape bit, ``+`` steps the beam forward when the current bit
+    is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
+    and ``*`` halts printing the tape.  Each input is embedded once by
+    filling its tape cell: ``{Xi}`` becomes ``-`` for a one bit and a space
+    for a zero, so cells ``0..n-1`` hold the inputs; cells ``n`` and ``n+1``
+    are a 0-answer and a 1-answer cell.
+
+    A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
+    the beam straight past the ``\`` when it is 0) and ``\`` reflects the
+    beam down when it is 1, while ``>`` advances the tape pointer to the next
+    input.  Both branches advance the pointer once, so a leaf at depth ``d``
+    has the pointer at cell ``d``.  A leaf routes the pointer to the 0- or
+    1-answer cell and halts; the cell under the head at halt is the result.
     """
     n = _validate_truth_table(truth_table)
-    rows: int = 2 ** (n + 1) - 1
-    center: int = 2**n - 1
-    # a full tree has 2**(n+1)-1 nodes, each taking two columns
-    width = 2 * (2 ** (n + 1) - 1)
-    grid = [[" "] * width for _ in range(rows)]
 
-    def row(i: int, j: int) -> int:
-        # dig-style placement: a full binary tree of node rows, with the root
-        # at row 0 so the beam starts on it
-        return int(((2 * j + 1) * 2 ** (n - i) - 1 - center) % rows)
+    # load (row 0): fill cells 0..n-1 with the inputs, then the 0/1 answer
+    # cells.  A '\' at column `base` (past the load, with a space gap the beam
+    # travels through) sends the beam down to the tree on row 1.  The tree
+    # lives at columns >= base on rows >= 1, so row 0's placeholder shrink on
+    # instantiation does not misalign it.
+    load_line = (
+        "".join("{X" + str(i) + "}" + (">" if i < n - 1 else "") for i in range(n))
+        + ">>-"
+        + "<" * (n + 1)
+    )
+    # The load's placeholders shrink on instantiation, so the tree lives on
+    # rows >= 1 (immune to row 0's shrink).  A '\' at row 0 col len(load_line)
+    # sends the beam down; it shrinks to tree_col on instantiation.  A '\' on
+    # row 1 at tree_col turns the descending beam right into the tree.
+    tree_col = 3 * n + 3
 
-    # assign each node a column via a preorder walk: node, then the zero
-    # subtree, then the one subtree.  Children sit to the right of their
-    # parent, so a beam turned right travels into a child through empty cells.
-    cols: dict[tuple[int, int], int] = {}
+    grid: dict[tuple[int, int], str] = {}
+    next_row = [2]
 
-    def assign_col(i: int, j: int) -> int:
-        if (i, j) in cols:
-            return cols[(i, j)]  # pragma: no cover - a tree node is never revisited
-        c = len(cols) * 2
-        cols[(i, j)] = c
-        if i < n:
-            assign_col(i + 1, 2 * j)
-            assign_col(i + 1, 2 * j + 1)
-        return c
+    def leaf(level: int, value: str, row: int, col: int) -> None:
+        target = n + (1 if value == "1" else 0)
+        delta = target - level
+        move = (">" if delta >= 0 else "<") * abs(delta)
+        for k, ch in enumerate(move + "*"):
+            grid[(row, col + k)] = ch
 
-    assign_col(0, 0)
-
-    def build(i: int, j: int) -> None:
-        r = row(i, j)
-        c = cols[(i, j)]
-        lo = j * 2 ** (n - i)
-        hi = lo + 2 ** (n - i)
-        results = {truth_table[k] for k in range(lo, hi)}
-        if i == n or len(results) == 1:
-            # leaf (or a constant subtree collapsed to a leaf)
-            value = results.pop() if i < n else truth_table[j]
-            if value == "1":
-                grid[r][c] = "-"
-                grid[r][c + 1] = "*"
-            else:
-                grid[r][c] = "*"
+    def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
+        vals = {truth_table[r] for r in range(lo, hi)}
+        if level == n or len(vals) == 1:
+            leaf(level, vals.pop() if level < n else truth_table[lo], row, col)
             return
-        # internal node: the placeholder mirror reflects the beam down (one)
-        # or up (zero) into a child region
-        grid[r][c] = "{X" + str(i) + "}"
-        for child in (0, 1):
-            cr = row(i + 1, 2 * j + child)
-            # the child row turns the vertical beam back to moving right
-            grid[cr][c] = "\\" if child else "/"
-        build(i + 1, 2 * j)
-        build(i + 1, 2 * j + 1)
+        mid = lo + (hi - lo) // 2
+        grid[(row, col)] = "+"
+        grid[(row, col + 1)] = "\\"
+        grid[(row, col + 2)] = ">"
+        emit(level + 1, lo, mid, row, col + 3)  # zero (bit=0) straight
+        nrow = next_row[0]
+        next_row[0] += 1
+        grid[(nrow, col + 1)] = "\\"
+        grid[(nrow, col + 2)] = ">"
+        emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
 
-    build(0, 0)
-
-    lines = ["".join(ln).rstrip() for ln in grid]
-    return "\n".join(lines)
+    grid[(0, len(load_line))] = "\\"  # transition down (shrinks to tree_col)
+    grid[(1, tree_col)] = "\\"  # turn the descending beam right
+    emit(0, 0, 2**n, 1, tree_col + 1)  # tree root on row 1, moving right
+    maxrow = max(r for r, _ in grid)
+    maxcol = max(c for _, c in grid)
+    rows = [[" "] * (maxcol + 1) for _ in range(maxrow + 1)]
+    rows[0][: len(load_line)] = list(load_line)
+    for (r, c), ch in grid.items():
+        rows[r][c] = ch
+    return "\n".join("".join(r).rstrip() for r in rows)
 
 
 _byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"
@@ -311,51 +323,42 @@ def bfpda(truth_table: str) -> str:
 
     BF-PDA has no input command, so this is a parameterized generator: the
     template's ``{Xi}``/``{Ci}`` placeholders become a push of the bit and of
-    its complement onto the bit stack, and the harness instantiates one
-    program per input combination.
+    its complement, and the harness instantiates one program per input
+    combination.  Each input is embedded once: the load phase pushes every
+    ``{Ci} {Xi}`` pair (complement then bit) up front, so the stack holds all
+    ``n`` bits and their complements with ``b0`` on top.
 
-    The tree uses the stack as independent guard storage, which the earlier
-    assessment missed: a node pushes the complement then the bit (so the bit
-    is on top), runs the one-side loop ``[ sub1 @ ]`` when the bit is one,
-    pops the bit, runs the zero-side loop ``[ sub0 @ ]`` when the complement
-    is one, and pops the complement.  Each subtree is stack-balanced (it
-    pushes and pops its own guards, and a leaf pushes the answer bit, prints
-    it with ``.``, and pops it), so the outer ``]`` always re-tests its own
-    guard.  The one loop clears its guard with ``@`` before exiting, so the
-    other side's guard is untouched and the if/else separates cleanly.
+    A node tests its bit and *consumes* it for the next level using a
+    ``<``-break loop ``[ > one < ] > [ > zero < ] >``: ``[`` enters when the
+    bit is one, ``>`` pops it, the one-branch pops the complement (to expose
+    the next bit), and ``<`` pushes a fresh zero to break the loop -- which
+    works because the guard was already popped, unlike ``[ sub @ ]`` where
+    ``@`` needs the guard still on top.  The zero-branch is selected by the
+    second loop testing the complement.  A leaf pops the remaining pre-loaded
+    bits (``2*(n-level)`` of them) and prints the constant answer.
     """
     n = _validate_truth_table(truth_table)
 
-    def leaf(value: str) -> str:
-        # push the answer bit, print it, pop it (balanced)
-        return ("<@" if value == "1" else "<") + ". > "
+    # load: push every complement then bit, so top = b0
+    head = " ".join("{C" + str(i) + "} {X" + str(i) + "}" for i in range(n - 1, -1, -1))
+
+    def leaf(level: int, value: str) -> str:
+        # consume the remaining pre-loaded bits, then print the answer
+        return "> " * (2 * (n - level)) + ("<@" if value == "1" else "<") + ". > "
 
     def node(i: int, rows: list[int]) -> str:
         results = {truth_table[r] for r in rows}
-        if len(results) == 1:
-            return leaf(results.pop())
+        if i == n or len(results) == 1:
+            return leaf(i, results.pop() if i < n else truth_table[rows[0]])
         zero = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 0]
         one = [r for r in rows if ((r >> (n - 1 - i)) & 1) == 1]
         sub0 = node(i + 1, zero)
         sub1 = node(i + 1, one)
-        return (
-            "{C"
-            + str(i)
-            + "}"
-            + "{X"
-            + str(i)
-            + "}"
-            + "[ "
-            + sub1
-            + " @ ]"
-            + " > "
-            + "[ "
-            + sub0
-            + " @ ]"
-            + " > "
-        )
+        # one-branch pops ~bi first (expose next bit); zero-branch has it popped
+        # by the node's own loop
+        return "[ > " + "> " + sub1 + " < ] > [ > " + sub0 + " < ] >"
 
-    return node(0, list(range(2**n)))
+    return head + " " + node(0, list(range(2**n)))
 
 
 def lamfunc(truth_table: str) -> str:
@@ -368,11 +371,13 @@ def lamfunc(truth_table: str) -> str:
     template's ``{Xi}`` placeholders become the binary literal for each input
     bit, and the harness instantiates one program per input combination.
 
-    The template is a decision tree of ``i`` builtins — ``i x y z`` returns
-    ``y`` when ``x`` is nonzero else ``z`` — over the embedded bit constants,
-    with ``p 0``/``p 1`` at the leaves printing the table's result as binary.
-    A subtree whose table slice is a constant collapses to a single leaf, so
-    constant rows emit no branching.
+    Each input is stored once in a variable (``vs v{i} {Xi}``), so the inputs
+    are embedded exactly ``n`` times; the decision tree then reads each bit
+    back with ``vg v{i}`` instead of re-embedding it at every node.  The tree
+    is a chain of ``i`` builtins — ``i x y z`` returns ``y`` when ``x`` is
+    nonzero else ``z`` — with ``p 0``/``p 1`` at the leaves printing the
+    table's result as binary.  A subtree whose table slice is a constant
+    collapses to a single leaf, so constant rows emit no branching.
     """
     n = _validate_truth_table(truth_table)
 
@@ -383,9 +388,220 @@ def lamfunc(truth_table: str) -> str:
         mid = (lo + hi) // 2
         # i x y z returns y when x is nonzero else z: y is the one-case
         return (
-            f"i {{X{level}}} "
+            f"i vg v{level} "
             f"{node(level + 1, mid, hi)} "
             f"{node(level + 1, lo, mid)}"
         )
 
-    return node(0, 0, 2**n)
+    head = " ".join(f"vs v{i} {{X{i}}}" for i in range(n))
+    return head + " " + node(0, 0, 2**n)
+
+
+def bitdeque(truth_table: str) -> str:
+    """Build a Bitdeque template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Bitdeque has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders become a *fixed-length* two-command
+    setter per bit, and the harness instantiates one program per input
+    combination.  The earlier wall said the absolute ``GOTO N`` targets shift
+    because the setter had variable length (``INVERT`` vs nothing); the fixed
+    setter removes that: each bit is pushed as exactly ``INVERT PUSH`` when
+    it differs from the register and ``PUSH INVERT`` when it matches, and
+    the register flips after every block, so the load is always ``2n``
+    commands and no absolute index moves between instantiations.
+
+    Bits are pushed in reverse order so ``POP`` (LIFO) yields the most
+    significant bit first, matching the contiguous MSB-first decision-tree
+    splits.  A node pops one bit and ``GOTO``s to the one-subtree when it is
+    one, with the zero-subtree falling through in place.  A leaf drains the
+    deque with ``n+1`` ``POP``s (so the register is exactly zero even for a
+    collapsed tree), pushes the answer, forces the register back to one with
+    a trailing ``INVERT``, and ``GOTO``s past the program end to halt -- so
+    every leaf always routes and the deque printed at halt holds exactly the
+    answer.
+    """
+    n = _validate_truth_table(truth_table)
+
+    def leaf(answer: str) -> list[str]:
+        out = ["POP"] * (n + 1)
+        if answer == "1":
+            out.append("INVERT")
+        out.append("PUSH")
+        if answer == "0":
+            out.append("INVERT")
+        out.append("GOTO@END")
+        return out
+
+    # the load block, most significant placeholder first (so the first POP
+    # after the load is the MSB); each placeholder expands to two commands
+    head = ["{X" + str(i) + "}" for i in range(n - 1, -1, -1)]
+    tree: list[str] = []
+
+    def emit(level: int, lo: int, hi: int, start: int) -> int:
+        """Emit the subtree for rows ``[lo, hi)``; return the next index.
+
+        ``start`` is the instantiated command index where this subtree begins
+        (the load block occupies ``2n`` commands), so the emitted ``GOTO``
+        operands are correct after substitution.
+        """
+        vals = {truth_table[r] for r in range(lo, hi)}
+        if level == n or len(vals) == 1:
+            answer = vals.pop() if level < n else truth_table[lo]
+            sub = leaf(answer)
+            tree.extend(sub)
+            return start + len(sub)
+        half = (hi - lo) // 2
+        tree.append("POP")
+        marker = len(tree)
+        tree.append("GOTO@ONE")
+        start += 2
+        start = emit(level + 1, lo, lo + half, start)  # zero subtree in place
+        tree[marker] = f"GOTO {start}"  # the one subtree starts here
+        return emit(level + 1, lo + half, hi, start)
+
+    end = emit(0, 0, 2**n, 2 * n)
+    return " ".join(head + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree])
+
+
+def ram0(truth_table: str) -> str:
+    """Build a RAM0 template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    RAM0 has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders become a fixed-length two-command
+    setter — ``Z Z`` for a zero, ``Z A`` for a one — independent of the
+    incoming register (``Z`` resets absolutely).  The earlier wall's
+    variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
+    ``goto`` operands; the padded setter removes that.
+
+    A load phase stores each bit once in its own RAM cell (address ``i``),
+    so the inputs are embedded exactly ``n`` times; the decision tree then
+    *loads* each bit with RAM0's indirect ``L`` (``z := ram[z]``) rather than
+    re-embedding it, so the tree nodes contain no substitution.  Each node
+    sets ``z`` to its address, loads the bit, and ``C`` skips the following
+    ``goto`` when ``z`` is zero (the zero-subtree falls through in place)
+    while the ``goto`` jumps to the one-subtree otherwise.  A leaf sets
+    ``z`` to the answer and uses RAM0's *unconditional* ``goto`` to run off
+    the program end, so the final ``z`` read from the state dump is the
+    answer.
+    """
+    n = _validate_truth_table(truth_table)
+
+    tokens: list[str] = []
+    pos = 0  # instantiated command index of the next command
+
+    # load phase: ram[i] = bit i, embedded exactly once each
+    for i in range(n):
+        tokens.append("Z")
+        tokens.extend("A" for _ in range(i))
+        tokens.append("N")
+        pos += 1 + i + 1
+        tokens.append("{X" + str(i) + "}")  # expands to "Z A" / "Z Z"
+        pos += 2
+        tokens.append("S")
+        pos += 1
+
+    def leaf(answer: str) -> None:
+        nonlocal pos
+        tokens.append("Z")
+        tokens.append("A" if answer == "1" else "Z")
+        pos += 2
+        tokens.append("END@")
+        pos += 1
+
+    def emit(level: int, lo: int, hi: int) -> None:
+        nonlocal pos
+        vals = {truth_table[r] for r in range(lo, hi)}
+        if level == n or len(vals) == 1:
+            leaf(vals.pop() if level < n else truth_table[lo])
+            return
+        half = (hi - lo) // 2
+        tokens.append("Z")  # z = the address, then load ram[z]
+        tokens.extend("A" for _ in range(level))
+        tokens.append("L")
+        pos += 1 + level + 1
+        tokens.append("C")
+        pos += 1
+        marker = len(tokens)
+        tokens.append("ONE@")
+        pos += 1
+        emit(level + 1, lo, lo + half)  # zero subtree in place (MSB = 0)
+        tokens[marker] = f"ONE@{pos + 1}"  # 1-based, after the zero subtree
+        emit(level + 1, lo + half, hi)
+
+    emit(0, 0, 2**n)
+    end = pos + 1  # 1-based goto operand just past the last command
+    return " ".join(
+        str(end) if t == "END@" else str(int(t[4:])) if t.startswith("ONE@") else t
+        for t in tokens
+    )
+
+
+def minsky_swap(truth_table: str) -> str:
+    """Build a Minsky Swap template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Minsky Swap has no input command, so this is a parameterized generator:
+    the template's ``{Xi}`` placeholders become *fixed-length* setters that
+    assemble the input's numeric index into ``reg[0]`` — one block per bit,
+    so the inputs are embedded exactly ``n`` times.  Each non-LSB bit's block
+    is ``2**n`` commands long: ``+`` repeated for its weight followed by
+    ``*``-padding to length (both runs are even, so the pointer is restored),
+    or ``*``-padding alone for a zero.  The LSB block is the length-4
+    ``+*+*`` (adds one, and leaves ``reg[1]`` polluted with a one) or
+    ``****`` (a no-op), so the setter length is fixed without an odd pad.
+
+    A cascade of ``2**n`` ``~``s then routes the assembled value *v* to leaf
+    *v* — each ``~`` decrements a nonzero register and jumps on zero, so the
+    (v+1)-th one sees the value hit zero.  A leaf flips the polluted
+    ``reg[1]`` (which holds the LSB) to the answer, then ``~``s on the
+    (zeroed) ``reg[0]`` to run off the program end, so the dumped registers
+    read ``0 {answer}``.
+    """
+    n = _validate_truth_table(truth_table)
+
+    tokens: list[str] = []
+    targets: list[int] = []
+    pos = 0  # instantiated command index of the next command
+
+    # load: bits MSB first; every non-LSB setter is a length-2^n block, the
+    # LSB a length-4 block
+    for i in range(n - 1):
+        tokens.append("{X" + str(i) + "}")
+        pos += 2**n
+    tokens.append("{X" + str(n - 1) + "}")
+    pos += 4
+
+    for _ in range(2**n):  # cascade: route the assembled value to leaf v
+        tokens.append("~")
+        targets.append(0)
+        pos += 1
+    for v in range(2**n):  # leaves: reg[1] holds the LSB; make it the answer
+        targets[v] = pos + 1
+        tokens.append("*")  # pointer onto reg[1]
+        pos += 1
+        lsb = v & 1
+        if lsb == 1 and truth_table[v] == "0":
+            tokens.append("~")  # reg[1] is 1 here, so it decrements, no jump
+            targets.append(0)
+            pos += 1
+        elif lsb == 0 and truth_table[v] == "1":
+            tokens.append("+")
+            pos += 1
+        tokens.append("*")  # pointer back onto reg[0]
+        pos += 1
+        tokens.append("~")  # reg[0] is 0, so this always jumps to the end
+        targets.append(0)
+        pos += 1
+
+    end = pos + 1  # 1-based target just past the last command
+    return (
+        " ".join(tokens) + "\n" + " ".join(str(end if t == 0 else t) for t in targets)
+    )

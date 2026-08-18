@@ -59,16 +59,20 @@ the single data byte makes multi-bit state impossible (every read overwrites
 it).  The four one-input programs were too trivial to keep, so the boolean
 generator was removed.
 
-## RAM0, Bitdeque, Minsky Swap (parameterized template blocked)
+## RAM0, Bitdeque, Minsky Swap (parameterized template blocked — resolved)
 
-These three have value-testable branches and clean setters, but their jumps
-are *absolute token indices*: RAM0's digit-`GOTO`, Bitdeque's `GOTO N`, and
-Minsky Swap's `~` targets are all fixed positions in the token/command
-stream.  The parameterized template's bit setter has variable length (e.g.
-RAM0's `Z` for a zero bit vs `Z A` for a one bit; Bitdeque's `INVERT` vs
-nothing), so substitution changes the token count and every jump target
-shifts — a fixed template cannot be correct for all instantiations.  Only
-Back avoids token-index jumps (its `+`-advance condition is positional).
+These three were once thought blocked because their jumps are *absolute*
+positions in the token/command stream — RAM0's digit-`goto`, Bitdeque's
+`GOTO N`, and Minsky Swap's `~` (the Nth tilde jumps to the Nth number on
+the jump line) — and the bit setter had variable length (`Z` vs `Z A`;
+`INVERT` vs nothing; `+` vs nothing), so substitution changed the token
+count and every jump target shifted.  A *fixed-length* setter breaks the
+wall for all three: RAM0 sets ``z`` with `Z A`/`Z Z`, Bitdeque pushes each
+bit with `INVERT PUSH`/`PUSH INVERT`, and Minsky Swap needs only one
+command — `+` for a one, or `*` to point the ``~`` at the other still-zero
+register — so no absolute index moves between instantiations (see the
+`ram0`, `bitdeque`, and `minsky_swap` generators in
+`esolangs.tools.booleans.parameterized`).
 
 ## Eval (nested parameterized trees)
 
@@ -177,12 +181,17 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   (always a trailing space) and the addition-only arithmetic cannot express a
   general boolean function.
 - **Lightlang**: `?` reads a bit (an empty line gives 1, any non-empty line
-  gives 0), so a bit is readable — but `&` (skip the next instruction when
-  the bit is 1) skips exactly one character, so a decision-tree node cannot
-  route to a multi-character subtree.  Only a one-sided AND-like cascade is
-  expressible (each level's zero-branch is the fixed ``!&#`` "print 0,
-  halt"), not a general truth table; XOR and OR were both searched and
-  rejected.  Its ``@`` command is also non-deterministic (a random bit).
+  gives 0), so a bit is readable, and `&` (skip the next instruction when
+  the bit is 1) skips exactly one character.  That single-character skip is
+  enough to route the *AND/OR class* for any arity: each `&` skips precisely
+  the single `#` halt, so a bit of 1 continues past a "print 0, halt" block
+  and a bit of 0 falls into it.  ``?&!&#`` (repeated per bit, ending in
+  ``?!``) computes AND; ``?&?!`` (``?&`` per bit) computes OR — both verified
+  to n = 4 on the interpreter.  What is *not* expressible is a non-monotone
+  table (XOR, NAND, or any arbitrary table): those need a multi-character
+  leaf that `&` cannot skip past, so a decision-tree node cannot route to a
+  general subtree.  Its ``@`` command is also non-deterministic (a random
+  bit).
 
 ## Termination-based convention (partial, not a boolean generator)
 
@@ -191,13 +200,6 @@ input bits satisfy the function — was explored for the languages with a
 built-in infinite-loop branch.  It expresses one-input functions, and some
 languages reach multi-input threshold functions:
 
-- **Brainpocalypse**: `-`-on-zero rewinds and loops, so `-` loops for bit 0
-  and `+-` halts for bit 1; but the rewind restarts the prefix and re-running
-  `+` increments already-set cells, so multi-input bakes corrupt.
-- **Stun Step**: the machine halts iff the current cell is 0 at a pass
-  boundary, so `>` (moves only when the cell is nonzero) gives
-  halt-for-0/loop-for-1; but the loop-back re-runs the code with a shifted
-  pointer, corrupting multi-bit bakes.
 - **ArrowQueue**: a queue-sustaining ring (``[" ~*", "+~*", "*~+"]``) hangs
   iff its center `~` is present, so the ring is a one-input identity gadget
   under the convention.  With bit cells spread across the ring it becomes
@@ -214,29 +216,30 @@ No existing boolean generator uses this convention; it would require a new
 harness contract (termination as the answer) and still does not unlock a
 general multi-input generator in any of these languages.
 
-## A Painter Ant boolean generator (exact n <= 2; n >= 3 is open)
+## A Painter Ant boolean generator (n == 2 solved; n >= 3 open)
 
 A Painter Ant has no I/O, so its boolean generator (in
 :mod:`esolangs.tools.booleans.a_painter_ant`) uses the parameterized
 convention, read by a semantic grid model (the interpreter's own output is
 the visited-cell bounding box, which carries no coordinates).  The answer
-for the supported arities is the **origin's colour** (white is one, black is
-zero), giving *exact* truth tables.
+is the **colour of the cell the ant lands on** at the end of a cycle (white
+is one, black is zero).
 
-The input encoding is the lowercase/uppercase movement *pair*: ``n`` and
-``N`` both point north but ``n`` moves onto a black cell while ``N`` moves
-onto a white one, so exactly one succeeds at a given target.  Each input
-bit is filled into the template as its pair, and the ant's resulting
-position routes the computation.  Every template is a *fixed point*: after
-each whole cycle the ant returns to the origin with the grid in the same
-state, so the box is identical for any limit that is a whole number of
-cycles (the discriminator ``P{X0}pS`` is the minimal such gate).
+The construction paints one decision-tree leaf per input combination and
+routes the ant to the leaf for its inputs.  Each leaf is painted ``P``
+(white) for a one table entry and **left unpainted** (a space, ignored by
+the interpreter) for a zero.  Only ``P`` is ever used — the generator never
+paints a cell black — so the white cells are monotone increasing: cycle 1
+establishes them and every later cycle only re-confirms a subset, which is
+what makes every instantiated program a cycle-stable fixed point (the box
+is identical for any whole number of cycles).
 
 Supported and verified exhaustively against the interpreter:
 
-- **n == 1**: all four one-input functions.
-- **n == 2**: all sixteen two-input functions (five base templates plus the
-  two constant programs, with per-bit plain/complemented slots).
+- **n == 2**: all sixteen two-input functions, exact and cycle-stable.
+- **n == 1**: the four one-input functions, exact and cycle-stable, by
+  padding to ``[f(0), f(0), f(1), f(1)]`` and fixing the second input to
+  zero (reusing the n == 2 construction).
 
 **n >= 3 is open.**  A *box-height* method found by search extends the
 range: each one-input makes the ant step one cell further north
@@ -246,8 +249,13 @@ This is cycle-stable and expresses *most* n == 3 tables — a search found
 196 of 256, including AND3, OR3, XOR3 (via height parity), and majority —
 but the ~60 unreachable ones are exactly the balanced, non-monotone tables
 (such as equality), and no general construction is known that reaches *all*
-functions of an arity.  ``a_painter_ant`` therefore raises for ``n >= 3``;
-lifting the cap to a general method is recorded in ``docs/roadmap.md``.
+functions of an arity.  Lifting the cap to a general method is recorded in
+``docs/roadmap.md``.
+
+An **in-progress leaf-paint generalization** (a different approach from
+box-height) is exact for cycle 1 on all 256 n == 3 tables but is not yet
+cycle-stable; see ``docs/a_painter_ant_generator.md`` for the draft layout
+and the open stability work.
 
 ## Multiply capability (Jaune realizes it)
 

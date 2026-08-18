@@ -24,16 +24,15 @@ into a template) rather than the program reading input.
 | ABCDirection |  | yes |  | yes |  |  |
 | AddSubJump | yes | yes |  | yes |  | hello |
 | Albabet | yes | yes |  |  |  | hello |
-| ArrowQueue |  | yes |  |  |  | truth-machine |
+| ArrowQueue |  | yes |  |  |  | boolean |
 | BF-PDA |  | yes |  | yes | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
 | Back |  | yes |  | yes |  |  |
 | Basicfuck | yes | yes | yes | yes |  | hello |
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
-| Bitdeque |  | yes |  |  |  |  |
+| Bitdeque |  | yes |  | yes |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
-| Brainpocalypse |  | yes |  |  |  |  |
 | Circlefuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
 | Collatz Multiverse | yes | yes |  | yes |  | hello |
@@ -47,15 +46,14 @@ into a template) rather than the program reading input.
 | Factor | yes | yes |  |  |  | hello truth-machine |
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
-| Grapheme |  | yes |  |  |  |  |
-| Home Row | yes | yes |  | yes | yes | hello |
+| Grapheme |  | yes |  | yes |  |  |
+| Home Row | yes | yes |  |  | yes | hello |
 | Jaune |  | yes |  | yes | yes |  |
-| Kak |  | yes |  |  |  |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
-| Lightlang |  | yes |  |  |  |  |
-| Minifuck | yes | yes |  | yes |  | hello truth-machine |
-| Minsky Swap |  | yes |  |  |  |  |
+| Lightlang |  | yes |  |  |  | boolean |
+| Minifuck | yes | yes |  |  |  | hello boolean |
+| Minsky Swap |  | yes |  | yes |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
 | Movesum |  | yes |  |  |  |  |
 | MyScript | yes | yes |  | yes |  | hello |
@@ -64,12 +62,11 @@ into a template) rather than the program reading input.
 | Painfuck | yes | yes | yes | yes |  | hello |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
-| RAM0 |  | yes |  |  | yes |  |
+| RAM0 |  | yes |  | yes | yes |  |
 | ROTfuck | yes | yes |  | yes |  | hello |
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
-| Stun Step |  | yes |  |  |  |  |
 | Suffolk | yes | yes |  |  | yes | hello |
 | Taglate | yes | yes |  | yes |  | hello |
 | The Temporary Stack | yes | yes |  |  |  | hello |

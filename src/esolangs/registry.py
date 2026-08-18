@@ -201,11 +201,6 @@ LANGUAGES: dict[str, Language] = {
         id="brainif",
         split=True,
     ),
-    "Brainpocalypse": Language(
-        "Brainpocalypse",
-        id="brainpocalypse",
-        interpreter="tape_based.brainpocalypse",
-    ),
     "Circlefuck": Language(
         "Circlefuck",
         _generate.circlefuck,
@@ -304,11 +299,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.huf,
         "register_based.huf",
         id="huf",
-    ),
-    "Kak": Language(
-        "Kak",
-        id="kak",
-        interpreter="tape_based.kak",
     ),
     "Jaune": Language(
         "Jaune",
@@ -434,11 +424,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.suffolk",
         id="suffolk",
         kwargs=_kw(limit=1),
-    ),
-    "Stun Step": Language(
-        "Stun Step",
-        id="stun_step",
-        interpreter="tape_based.stun_step",
     ),
     "The Temporary Stack": Language(
         "The Temporary Stack",
