@@ -27,9 +27,19 @@ Semantics match the Rust cross-check (``extra/rust/forth.rs``):
   rather than the wiki's "print as a unicode character" -- the byte model is
   baked into the arithmetic (``~`` complements, so ``.`` on ``-1`` prints the
   byte 0xFF).
+
+The interpreter runs on a :class:`_Machine` with an explicit call stack (one
+frame per active scope), so it is step-capable: ``step()`` executes one
+command of the active frame, ``halted`` is true once no frame remains, and a
+repeated :meth:`_Machine.snapshot` proves a loop (e.g. a ``[`` loop whose top
+never reaches zero).  A scope that aborts on an invalid operation pops back
+to its caller, whose ``;``/``(``/``[`` discards the status; a top-level abort
+sets ``_Machine.error`` so :func:`run` raises :class:`HaltError`, matching
+the original status-returning ``_execute``.
 """
 
 import sys
+from dataclasses import dataclass
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -50,105 +60,179 @@ def _trunc_mod(a: int, b: int) -> int:
     return a - _trunc_div(a, b) * b
 
 
-def _execute(code: str, stack: list[int], table: dict[int, str], io: IO) -> int:
-    """Run ``code`` on ``stack``/``table``, returning the cross-check status.
+@dataclass
+class _Frame:
+    """One active scope: its code, cursor, and whether it is a ``[`` loop body."""
 
-    The status is 3 (invalid operation) when a scope aborts on an error; the
-    callers of ``;`` and ``(``/``[`` discard it, mirroring the cross-check,
-    while an empty-stack pop raises :class:`HaltError` instead, mirroring its
-    ``exit()`` which terminates the whole program.
+    code: str
+    pc: int = 0
+    loop: bool = False
+
+
+class _Machine:
+    """Per-run Forþ state: the shared stack, scope table, and call stack.
+
+    ``step()`` executes one command of the active frame; ``halted`` is true
+    once no frame remains.  A ``[`` loop body re-starts while the stack top is
+    nonzero, so a loop that never exhausts its top is a finite-state cycle
+    the state-cycle hang detector can prove.  The VM and the hang detector
+    expose this object.
     """
 
-    def top() -> int:
-        if not stack:
-            raise HaltError
-        return stack[-1]
+    def __init__(self, code: str, io: IO) -> None:
+        """Start with the top-level ``code`` as the only frame."""
+        self.io = io
+        self.stack: list[int] = []
+        self.table: dict[int, str] = {}
+        self.frames: list[_Frame] = [_Frame(code)]
+        self.error = False  # the top-level scope aborted (status 3)
 
-    def pop() -> int:
-        value = top()
-        stack.pop()
+    @property
+    def halted(self) -> bool:
+        """Whether every scope has completed."""
+        return not self.frames
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            tuple(self.stack),
+            frozenset(self.table.items()),
+            tuple((f.code, f.pc, f.loop) for f in self.frames),
+            self.io.position(),
+        )
+
+    def _top(self) -> int:
+        if not self.stack:
+            raise HaltError
+        return self.stack[-1]
+
+    def _pop(self) -> int:
+        value = self._top()
+        self.stack.pop()
         return value
 
-    k = 0
-    n = len(code)
-    while k < n:
-        char = code[k]
-        k += 1
+    def _finalize_finished(self) -> None:
+        """Pop completed frames, re-running a ``[`` loop body while it holds.
+
+        Only the top frame can be finished at a time; a loop body that still
+        has a nonzero top starts a fresh pass (finalized by a later step, so
+        an empty body is a no-op step whose repeated snapshot proves a hang).
+        """
+        while self.frames and self.frames[-1].pc >= len(self.frames[-1].code):
+            frame = self.frames[-1]
+            if frame.loop and self._top() != 0:
+                self.frames[-1] = _Frame(frame.code, 0, loop=True)
+                return
+            self.frames.pop()
+
+    def _abort(self) -> None:
+        """Abort the innermost scope on an invalid operation (status 3).
+
+        The abort behaves like the scope completing: a loop body re-checks
+        its condition, a nested scope pops back to its caller (which
+        discards the status), and a top-level scope halts with ``error``.
+        """
+        top_level = len(self.frames) == 1
+        self.frames[-1].pc = len(self.frames[-1].code)
+        self._finalize_finished()
+        if top_level:
+            self.error = True
+
+    def step(self) -> None:
+        """Execute one command of the active frame."""
+        if self.halted:
+            return
+        self._finalize_finished()
+        if not self.frames:
+            return
+        frame = self.frames[-1]
+        if frame.pc >= len(frame.code):
+            return  # a finished pass (an empty loop body) is a no-op step
+        char = frame.code[frame.pc]
+        frame.pc += 1
+
         if "0" <= char <= "9":
-            stack.append(ord(char) - 48)
+            self.stack.append(ord(char) - 48)
         elif "A" <= char <= "F":
-            stack.append(ord(char) - 55)
+            self.stack.append(ord(char) - 55)
         elif char == ":":
-            stack.append(top())
+            self.stack.append(self._top())
         elif char == "~":
-            stack.append(~pop())
+            self.stack.append(~self._pop())
         elif char == ".":
-            io.print_char(chr(pop() & 0xFF))
+            self.io.print_char(chr(self._pop() & 0xFF))
         elif char == ",":
-            for ch in io.input_str("Input: "):
-                stack.append(ord(ch) & 0xFF)
+            for ch in self.io.input_str("Input: "):
+                self.stack.append(ord(ch) & 0xFF)
         elif char == ";":
-            scope = table.get(pop(), "")
-            _execute(scope, stack, table, io)
+            scope = self.table.get(self._pop(), "")
+            self.frames.append(_Frame(scope))
         elif char == "o":
-            stack.reverse()
+            self.stack.reverse()
         elif char == "c":
-            if len(stack) < 3:
-                return 3
-            stack.append(stack.pop(-3))
+            if len(self.stack) < 3:
+                self._abort()
+            else:
+                self.stack.append(self.stack.pop(-3))
         elif char in "([{":
             add = char
             sub = ")" if char == "(" else "]" if char == "[" else "}"
-            start = k - 1
+            start = frame.pc - 1
             match = 1
             while True:
-                if k >= n:
-                    return 3  # unterminated bracket
-                inner = code[k]
-                k += 1
+                if frame.pc >= len(frame.code):
+                    self._abort()
+                    return
+                inner = frame.code[frame.pc]
+                frame.pc += 1
                 if inner == add:
                     match += 1
                 elif inner == sub:
                     match -= 1
                 if match == 0:
                     break
-            scope = code[start + 1 : k - 1]
+            scope = frame.code[start + 1 : frame.pc - 1]
             if add == "(":
-                if top():
-                    _execute(scope, stack, table, io)
+                if self._top():
+                    self.frames.append(_Frame(scope))
             elif add == "[":
-                while top():
-                    _execute(scope, stack, table, io)
+                if self._top():
+                    self.frames.append(_Frame(scope, 0, loop=True))
             else:
-                table[top()] = scope
+                self.table[self._top()] = scope
         elif char in "+-*/%v":
-            if len(stack) < 2:
-                return 3
-            two = pop()
-            one = pop()
-            if char == "+":
-                stack.append(_wrap32(one + two))
-            elif char == "-":
-                stack.append(_wrap32(one - two))
-            elif char == "*":
-                stack.append(_wrap32(one * two))
-            elif char == "/":
-                if two == 0:
-                    return 3
-                stack.append(_wrap32(_trunc_div(one, two)))
-            elif char == "%":
-                if two == 0:
-                    return 3
-                stack.append(_wrap32(_trunc_mod(one, two)))
-            elif char == "v":
-                stack.append(two)
-                stack.append(one)
-    return 0
+            if len(self.stack) < 2:
+                self._abort()
+            else:
+                two = self._pop()
+                one = self._pop()
+                if char == "+":
+                    self.stack.append(_wrap32(one + two))
+                elif char == "-":
+                    self.stack.append(_wrap32(one - two))
+                elif char == "*":
+                    self.stack.append(_wrap32(one * two))
+                elif char == "/":
+                    if two == 0:
+                        self._abort()
+                    else:
+                        self.stack.append(_wrap32(_trunc_div(one, two)))
+                elif char == "%":
+                    if two == 0:
+                        self._abort()
+                    else:
+                        self.stack.append(_wrap32(_trunc_mod(one, two)))
+                elif char == "v":
+                    self.stack.append(two)
+                    self.stack.append(one)
 
 
 def run(code: str, io: IO) -> None:
     """Run a Forþ program."""
-    if _execute(code, [], {}, io):
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
+    if machine.error:
         raise HaltError
 
 
