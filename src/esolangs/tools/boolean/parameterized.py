@@ -1179,10 +1179,9 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
             return out
 
         deadline = time.monotonic() + budget
-        for start in range(10):
-            result = _wii2d_search_start(n, t, start, seqs, pre, index, deadline)
-            if result is not None:
-                return start, result
+        result = _wii2d_search_start(n, t, seqs, pre, index, deadline)
+        if result is not None:
+            return result
     return None
 
 
@@ -1209,28 +1208,41 @@ def _wii2d_n2_closed_form(table: str) -> list[tuple[str, str]]:
 def _wii2d_search_start(
     n: int,
     t: list[int],
-    start: int,
     seqs: list[str],
     pre: Callable[[int, int], int],
     index: dict[int, int],
     deadline: float,
-) -> list[tuple[str, str]] | None:
-    """Search the junction routes for one fixed starting accumulator value.
+) -> tuple[int, list[tuple[str, str]]] | None:
+    """Search the junction routes, returning ``(start, routes)``.
 
     The requirement sets are bit-vectors over the domain; ``pre`` maps a
     requirement bit-vector to the bit-vector of incoming values a route can
-    produce it from.
+    produce it from.  The whole search tree (the route pairs tried at every
+    junction) is independent of the starting accumulator value -- ``start``
+    only decides whether a complete chain is accepted at the leaf -- so the
+    chain is searched once and the leaf's requirement set yields every start
+    value the chain works for.  A junction's sub-search depends only on its
+    requirement set, so results are memoized by ``(junction, requirement set)``
+    to avoid re-solving the same sub-problem reached through different parents.
     """
     import time
 
-    start_bit = 1 << index[start]
-    chosen: list[tuple[str, str]] = []
+    start_bits = 0
+    for v in range(10):
+        if v in index:
+            start_bits |= 1 << index[v]
+    memo: dict[
+        tuple[int, tuple[int, ...]], tuple[list[tuple[str, str]], int] | None
+    ] = {}
     reqsets = [[1 << index[t[c]] for c in range(2**n)]]
 
-    def search(i: int) -> bool:
+    def search(i: int) -> tuple[list[tuple[str, str]], int] | None:
         if time.monotonic() > deadline:
             raise TimeoutError
         cur = reqsets[0]  # 2**(i+1) requirements
+        key = (i, tuple(cur))
+        if key in memo:
+            return memo[key]
         # Two routes are interchangeable at this junction when they share the
         # same preimage effect on every requirement (they allow exactly the
         # same incoming values), so deduplicate by that effect to collapse the
@@ -1241,27 +1253,48 @@ def _wii2d_search_start(
         eff1: dict[tuple[int, ...], str] = {}
         for si, s in enumerate(seqs):
             eff1.setdefault(tuple(pre(si, cur[2 * p + 1]) for p in range(2**i)), s)
-        for e0, r0 in eff0.items():
-            for e1, r1 in eff1.items():
-                nxt = [e0[p] & e1[p] for p in range(2**i)]
-                if not all(nxt):
+        # Try the least-constraining effects first (largest coverage: the most
+        # incoming values they accept), so a solution is reached after a handful
+        # of sub-problems instead of hundreds of dead ends.
+        e0 = sorted(eff0.items(), key=lambda kv: -sum(x.bit_count() for x in kv[0]))
+        e1 = sorted(eff1.items(), key=lambda kv: -sum(x.bit_count() for x in kv[0]))
+        m = 2**i
+        for a, r0 in e0:
+            for b, r1 in e1:
+                nxt = [0] * m
+                ok = True
+                for p in range(m):
+                    w = a[p] & b[p]
+                    if not w:
+                        ok = False
+                        break
+                    nxt[p] = w
+                if not ok:
                     continue
-                chosen.append((r0, r1))
-                reqsets.insert(0, nxt)
                 if i == 0:
-                    if start_bit & nxt[0]:
-                        return True
-                elif search(i - 1):
-                    return True
-                reqsets.pop(0)
-                chosen.pop()
-        return False
+                    if nxt[0] & start_bits:
+                        memo[key] = ([(r0, r1)], nxt[0])
+                        return memo[key]
+                else:
+                    reqsets.insert(0, nxt)
+                    sub = search(i - 1)
+                    reqsets.pop(0)
+                    if sub is not None:
+                        memo[key] = (sub[0] + [(r0, r1)], sub[1])
+                        return memo[key]
+        memo[key] = None
+        return None
 
     try:
-        if search(n - 1):
-            return list(reversed(chosen))
+        result = search(n - 1)
     except TimeoutError:
         return None
+    if result is None:
+        return None
+    routes, start_set = result
+    for v in range(10):
+        if v in index and (start_set >> index[v]) & 1:
+            return v, routes
     return None
 
 
@@ -1319,16 +1352,15 @@ def _wii2d_sequences(maxlen: int, domain: list[int]) -> list[str]:
     for b in behaviour_index:
         ops: list[str] = []
         cur = b
-        while parent[cur][0] is not None:
-            cur, op = parent[cur]
+        while (prev := parent[cur][0]) is not None:
+            op = parent[cur][1]
+            cur = prev
             ops.append(op)
         out.append("".join(reversed(ops)))
     return out
 
 
-def _wii2d_layout(
-    n: int, start: int, routes: list[tuple[str, str]]
-) -> list[str]:
+def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str]:
     """Lay out the junction chain template.
 
     ``{Xi}`` placeholders on row 0, each branch's op cells on row 0 (bit 0)
