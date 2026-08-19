@@ -107,7 +107,13 @@ class TestRun:
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
+        from esolangs.vm import _VM_ADAPTERS
+
         with pytest.raises(UnknownLanguageError):
             esolangs.make_debugger("NoSuchLanguage", "+")
+        # a registry language that still lacks a step-capable interpreter
+        not_step_capable = next(
+            lang for lang in esolangs.list_languages() if lang not in _VM_ADAPTERS
+        )
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_debugger("Minifuck", "+")
+            esolangs.make_debugger(not_step_capable, "+")

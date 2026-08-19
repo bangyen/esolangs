@@ -757,6 +757,93 @@ class _Wii2dVM(_BaseVM):
         return []
 
 
+class _BrainIfVM(_BaseVM):
+    """Cell tape + line cursor; ``ip`` the cursor, ``memory`` the cells."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.brainif import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.cells)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _MinifuckVM(_BaseVM):
+    """Binary tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.minifuck import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _TaglateVM(_BaseVM):
+    """Queue + token cursor; ``ip`` the cursor, ``memory`` the queue."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.queue_based.taglate import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.queue)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _OneTwoThreeVM(_BaseVM):
     """Single data byte + pointer mask; ``ip`` is the code cursor."""
 
@@ -810,6 +897,9 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Forþ": _ForthVM,
     "AddSubJump": _AddSubJumpVM,
     "Bitdeque": _BitdequeVM,
+    "BrainIf": _BrainIfVM,
+    "Minifuck": _MinifuckVM,
+    "Taglate": _TaglateVM,
 }
 
 

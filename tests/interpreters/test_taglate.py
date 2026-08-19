@@ -115,3 +115,40 @@ class TestTaglate:
             run_and_capture(["", "a"])
         with pytest.raises(HaltError):
             run_and_capture(["", "i"])
+
+
+class TestStepMachine:
+    def test_step_tracks_queue_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.queue_based.taglate import _Machine
+
+        machine = _Machine(["abc", "i"], ScriptedIO())
+        assert (machine.ind, machine.queue) == (0, [97, 98, 99])
+        machine.step()  # i pops the front and prints it
+        assert machine.io.getvalue() == "a"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 1
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.queue_based.taglate import _Machine
+
+        assert hash(_Machine(["abc", "i"], ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.queue_based.taglate import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(["abc", "i"], ScriptedIO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        """A gz whose head never zeroes re-enters itself forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.queue_based.taglate import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert (
+            run_until_halt_or_cycle(_Machine(["1", "gy", "gz"], ScriptedIO())) is False
+        )
