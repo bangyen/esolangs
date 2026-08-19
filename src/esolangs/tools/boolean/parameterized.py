@@ -1135,18 +1135,46 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
     budget runs out.
 
     ``n == 2`` uses a closed form (:func:`_wii2d_n2_closed_form`) instead of
-    searching.  Larger ``n`` tries the op strings at length 2 through 6 with an
-    increasing per-length budget; length 2 suffices for every table through
-    three inputs, length 3 for sampled dense tables at four, and length 5-6
-    for sampled tables at five.  The requirement sets and preimages are
-    bit-vectors (one bit per reachable accumulator value), and routes that
-    share a preimage effect are deduplicated, so the search stays tractable at
-    the longer lengths.
+    searching.  Parity and its complement (symmetric tables where the entry
+    is the popcount's low bit) get an exact O(1) closed form
+    (:func:`_wii2d_parity_routes`) up front: the general search below *can*
+    reach parity at maxlen == 2 for every arity tested (up to n == 20), but
+    its cost still grows with n (0.01s at n == 12, ~2s at n == 20), so the
+    closed form is a speed win, not a reachability one.  Every other
+    symmetric table (AND/OR/majority/threshold-k of any arity) is left to the
+    general search first, because it is usually faster there too (its
+    preimage-effect pruning makes monotone tables cheap); only if every
+    length in the general ladder fails does :func:`_wii2d_symmetric_search`
+    get a turn, reducing a symmetric table to a popcount accumulator plus a
+    length-``n`` decode lookup instead of the full ``2**n``-row table.  That
+    reduction is not just a speed trick: no chain with op strings bounded by
+    a fixed length L can represent every table once n is large enough.  There
+    are at most ``10 * 15 ** (2*n*(L+1))`` distinct chains (2n routes times
+    (L+1) choices of alphabet-15 op per cell, times 10 start values) against
+    ``2 ** (2**n)`` tables, so universality needs ``L >~ 2**n / (7.8*n)`` --
+    vacuous at small n, but it forces L >= 12 at n == 10 and L >= 43 at
+    n == 12, both well past the length-6 ladder below.  So the general search
+    is *guaranteed* to eventually fail on some tables at high arity
+    (majority/threshold-k among them) regardless of how it is tuned, which is
+    where the popcount reduction earns its keep.
+
+    For non-symmetric tables, larger ``n`` tries the op strings at length 2
+    through 6 with an increasing per-length budget; length 2 suffices for
+    every table through three inputs, length 3 for sampled dense tables at
+    four, and length 5-6 for sampled tables at five.  The requirement sets
+    and preimages are bit-vectors (one bit per reachable accumulator value),
+    and routes that share a preimage effect are deduplicated, so the search
+    stays tractable at the longer lengths.
     """
     import time
 
     if n == 2:
         return 0, _wii2d_n2_closed_form(table)
+    popcount_map = _wii2d_symmetric_popcount_map(n, table)
+    if popcount_map is not None:
+        parity_result = _wii2d_parity_routes(n, popcount_map)
+        if parity_result is not None:
+            return parity_result
     t = [int(c) for c in table]
 
     # Longer op strings cover denser tables (every table through n == 4 at
@@ -1182,6 +1210,8 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
         result = _wii2d_search_start(n, t, seqs, pre, index, deadline)
         if result is not None:
             return result
+    if popcount_map is not None:
+        return _wii2d_symmetric_search(n, popcount_map)
     return None
 
 
@@ -1203,6 +1233,100 @@ def _wii2d_n2_closed_form(table: str) -> list[tuple[str, str]]:
             _WII2D_N2_DECODE[(t[1], t[3])],  # column for a one last bit
         ),
     ]
+
+
+def _wii2d_symmetric_popcount_map(n: int, table: str) -> list[int] | None:
+    """Return ``table`` as a function of popcount, or ``None`` if not symmetric.
+
+    A table is symmetric when every combo with the same number of set bits
+    has the same entry (the language's version of a boolean function that
+    doesn't care which inputs are set, only how many).  The returned list has
+    ``n + 1`` entries, ``map[p]`` the shared entry for popcount ``p``.
+    """
+    result: list[int | None] = [None] * (n + 1)
+    for combo in range(2**n):
+        p = bin(combo).count("1")
+        v = int(table[combo])
+        if result[p] is None:
+            result[p] = v
+        elif result[p] != v:
+            return None
+    return [v for v in result if v is not None]  # every p in 0..n is reachable
+
+
+def _wii2d_parity_routes(
+    n: int, popcount_map: list[int]
+) -> tuple[int, list[tuple[str, str]]] | None:
+    """Return the exact chain for parity or its complement, else ``None``.
+
+    Parity chains bit 0 straight in (``('', '+')``), then folds every later
+    bit with ``('', '-s')``: ``-s`` sends the running value ``v`` to
+    ``(v - 1)**2``, which maps 0 -> 1 and 1 -> 0, so a zero bit leaves the
+    running parity alone and a one bit flips it, keeping the value in
+    ``{0, 1}`` throughout.  The complement (XNOR-of-n) swaps bit 0's branches
+    so the chain starts from the flipped bit instead.
+    """
+    if popcount_map == [p % 2 for p in range(n + 1)]:
+        first = ("", "+")
+    elif popcount_map == [1 - p % 2 for p in range(n + 1)]:
+        first = ("+", "")
+    else:
+        return None
+    routes = [first] + [("", "-s")] * (n - 1)
+    return 0, routes
+
+
+def _wii2d_symmetric_search(
+    n: int, popcount_map: list[int]
+) -> tuple[int, list[tuple[str, str]]] | None:
+    """Reduce a symmetric table to a popcount accumulator plus a small decode.
+
+    The first ``n - 1`` junctions all use ``('', '+')``, so the accumulator
+    equals the popcount of the first ``n - 1`` bits (0 through ``n - 1``)
+    regardless of the table.  The last junction only has to turn that
+    popcount into the table entry, so its two branches are searched over a
+    domain of size ``n`` instead of the full ``2**n`` rows the general search
+    fits -- a much cheaper problem that stays tractable well past where the
+    general chain search starts to struggle, though it can still fail (e.g.
+    non-monotone symmetric tables like "exactly k of n ones" for large ``n``)
+    since a single op string cannot express every popcount -> bit map.
+    """
+    import time
+
+    domain_size = n  # popcount before the last bit ranges over 0..n-1
+    deadline = time.monotonic() + 8.0
+    for maxlen in range(0, 7):
+        if time.monotonic() > deadline:
+            return None
+        dom = _wii2d_domain(maxlen, cap=10**6)
+        if not all(p in dom for p in range(domain_size)):
+            continue  # op strings this short can't even reach every popcount
+        seqs = _wii2d_sequences(maxlen, dom)
+        last0 = next(
+            (
+                s
+                for s in seqs
+                if all(
+                    _wii2d_apply(s, p) == popcount_map[p] for p in range(domain_size)
+                )
+            ),
+            None,
+        )
+        last1 = next(
+            (
+                s
+                for s in seqs
+                if all(
+                    _wii2d_apply(s, p) == popcount_map[p + 1]
+                    for p in range(domain_size)
+                )
+            ),
+            None,
+        )
+        if last0 is not None and last1 is not None:
+            routes = [("", "+")] * (n - 1) + [(last0, last1)]
+            return 0, routes
+    return None
 
 
 def _wii2d_search_start(
