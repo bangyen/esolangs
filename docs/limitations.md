@@ -92,8 +92,6 @@ per-character encoding can be meaningfully shortened:
 | 6-5 | `n <= 5` exact; dense large-`T` tables (e.g. AND-6) rejected past that | Genuine wall: the decision tree is total through `n == 5` (35 branch labels); the arithmetic fallback needs the table (or its complement) as a single integer, so a dense table with no cheap complement needs an unbuildable ~O(2**(2**n))-character setup. |
 | ZTOALC L | `n <= 3` exact; popcount-symmetric tables lifted further (e.g. XOR4 at `n == 4`); dense non-symmetric `n == 4` rejected | Genuine wall: every Collatz trajectory converges to the `16, 8, 4, 2, 1` tail, so a dense non-symmetric tree has leaf collisions past `n == 3`; symmetric tables fall back to a branch-free linear program instead. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
-| A Painter Ant | total (no cap) | Lifted: the piecewise leaf-paint head with WS/NE anchors is exact and cycle-stable for every arity (see `docs/a_painter_ant_generator.md`). |
-| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue, Dotlang, Eval, WII2D, 3x | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
 Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps
