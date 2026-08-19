@@ -112,6 +112,8 @@ class TestStepMachine:
         machine.step()  # o
         machine.step()  # @ halts
         assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.x == 4  # the pointer did not move
 
     def test_snapshot_includes_the_input_cursor(self) -> None:
         from esolangs.interpreters.grid_based.two_d_fish import _Machine
