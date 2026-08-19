@@ -142,17 +142,15 @@ def test_boolean_generators_random_tables() -> None:
 
 
 def test_dotlang_boolean_random_tables() -> None:
-    """Random tables round-trip through the fork-and-kill termination tree.
+    """Random tables round-trip through the fork-and-kill decision tree.
 
-    Dotlang's boolean generator is parameterized and termination-based: each
-    instantiated program halts (0) or hangs (1) per its table entry, read
-    through the state-cycle detector rather than from output.
+    Dotlang's boolean generator is parameterized: each instantiated program
+    prints its table entry and halts.
     """
-    from esolangs.interpreters.grid_based.dotlang import _Machine
     from esolangs.tools.boolean import parameterized
-    from esolangs.vm import run_until_halt_or_cycle
 
     random.seed(5)
+    run = importlib.import_module("esolangs.interpreters.grid_based.dotlang").run
     for n in (1, 2, 3, 4):
         for _ in range(3):
             table = "".join(random.choice("01") for _ in range(2**n))
@@ -165,9 +163,10 @@ def test_dotlang_boolean_random_tables() -> None:
                     lambda _i, b: "aaaa" if b == 0 else " aaa",
                     lambda _i, b: " aaa" if b == 0 else "aaaa",
                 )
-                machine = _Machine(program.splitlines(), IO())
-                halts = run_until_halt_or_cycle(machine)
-                assert halts == (table[combo] == "0")
+                buffer = io.StringIO()
+                with redirect_stdout(buffer):
+                    run(program.splitlines(), io=IO())
+                assert buffer.getvalue() == table[combo]
 
 
 def test_byte_function_generator_random_tables() -> None:
