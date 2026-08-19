@@ -40,7 +40,7 @@ into a template) rather than the program reading input.
 | Decleq | yes | yes |  | yes |  | hello |
 | Dig | yes | yes |  | yes |  | hello |
 | Dimensional | yes | yes |  | yes |  | hello |
-| Dotlang | yes | yes |  |  |  | hello |
+| Dotlang | yes | yes |  | yes |  | hello boolean |
 | EXCON | yes | yes |  |  | yes | hello |
 | Eval | yes | yes |  | yes |  | hello boolean |
 | Factor | yes | yes |  |  |  | hello truth-machine |

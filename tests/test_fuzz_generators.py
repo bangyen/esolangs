@@ -141,6 +141,37 @@ def test_boolean_generators_random_tables() -> None:
                     assert buffer.getvalue() == str(int(table[combo])) + suffix
 
 
+def test_dotlang_boolean_random_tables() -> None:
+    """Random tables round-trip: warp names route each combination correctly.
+
+    Dotlang's ``W~`` reads a warp name, so the input for a combination is
+    the name sequence the generator's preorder-index scheme assigns to each
+    read site (the user cannot type plain ``0``/``1`` lines).
+    """
+    from esolangs.tools.boolean.other import _dotlang_suffix
+
+    random.seed(5)
+    run = importlib.import_module("esolangs.interpreters.grid_based.dotlang").run
+    for n in (1, 2, 3, 4):
+        for _ in range(3):
+            table = "".join(random.choice("01") for _ in range(2**n))
+            program = boolean.dotlang(table)
+            for combo in range(2**n):
+                names: list[str] = []
+                idx = 0
+                for d in range(n):
+                    bit = (combo >> (n - 1 - d)) & 1
+                    names.append(f"{bit}{_dotlang_suffix(idx)}")
+                    idx = idx + 1 + (bit * (2 ** (n - d - 1) - 1))
+                buffer = io.StringIO()
+                with (
+                    patch("builtins.input", side_effect=names),
+                    redirect_stdout(buffer),
+                ):
+                    run(program.splitlines(), io=IO())
+                assert buffer.getvalue() == str(int(table[combo]))
+
+
 def test_byte_function_generator_random_tables() -> None:
     random.seed(4)
     run = importlib.import_module("esolangs.interpreters.tape_based.circlefuck").run
