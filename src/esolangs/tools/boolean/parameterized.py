@@ -40,11 +40,9 @@ it, so a decision node cannot hold both ``bi`` and ``~bi`` simultaneously.
 So those two emit ``n`` ``{Xi}`` plus ``n`` ``{Ci}``; the other generators
 emit only the ``n`` ``{Xi}``.
 
-:func:`dotlang` is the exception in two ways: it reads its answer from
-*termination* (a leaf is a halt or a 2x2 hang ring, so ``0``/``1`` is
-halt/hang rather than output), and it re-embeds each ``{Xi}``/``{Ci}`` at
-every decision node (a dotlang decision tree has no way to store a bit and
-read it back, so the junctions are the storage).
+:func:`dotlang` is the exception in one way: it re-embeds each
+``{Xi}``/``{Ci}`` at every decision node (a dotlang decision tree has no way
+to store a bit and read it back, so the junctions are the storage).
 """
 
 from collections.abc import Callable
@@ -1527,7 +1525,7 @@ def instantiate_wii2d_tree(template: str, bits: list[int]) -> str:
 
 
 def dotlang(truth_table: str) -> str:
-    """Build a Dotlang template that evaluates the table by termination.
+    """Build a Dotlang template that computes the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
@@ -1537,11 +1535,10 @@ def dotlang(truth_table: str) -> str:
     kills one of them.  Each ``{Xi}`` gate (and its ``{Ci}`` complement) is
     filled with four cells of pass-through (``a``) or an empty cell (`` ``,
     which pops the dot), so exactly the branch whose gate is open survives;
-    it turns down (``v``) and right (``>``) into its subtree.  A leaf is
-    either an empty cell (the program halts = 0) or a 2x2 ``v</>^`` loop
-    ring (the program hangs = 1), so the harness reads the answer from
-    termination via :func:`esolangs.vm.run_until_halt_or_cycle` rather than
-    from output (the convention Point Break and ArrowQueue use).
+    it turns down (``v``) and right (``>``) into its subtree.  Each leaf is
+    a ``#0#``/``#1#`` literal (the first ``#`` loads it, the second prints
+    it) followed by an empty cell that pops the dot, so the instantiated
+    program prints the table entry for its input and halts.
 
     ``{Xi}`` is a four-character token in a 2D grid, so the template
     reserves four cells per gate and ``set_bit``/``set_comp`` must return
@@ -1557,14 +1554,11 @@ def dotlang(truth_table: str) -> str:
 
     def build(row: int, col: int, depth: int, combo: int) -> int:
         if depth == n:
-            if truth_table[combo] == "0":
-                put(row, col, " ")  # halt: the survivor dies on the empty cell
-                return 1
-            put(row, col, "v")
-            put(row, col + 1, "<")
-            put(row + 1, col, ">")
-            put(row + 1, col + 1, "^")  # hang: a 2x2 loop ring
-            return 2
+            put(row, col, "#")
+            put(row, col + 1, truth_table[combo])
+            put(row, col + 2, "#")
+            put(row, col + 3, " ")  # the dot prints, then dies on the empty cell
+            return 4
         put(row, col, "(")
         put(row, col + 1, "(")
         put(row, col + 2, " ")  # the forking dot dies here

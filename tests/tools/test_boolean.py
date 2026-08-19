@@ -601,15 +601,9 @@ class TestDig:
 
 
 def run_dotlang(template: str, bits: list[int]) -> str:
-    """Instantiate a Dotlang template; report 0 (halt) or 1 (hang).
-
-    The generator is parameterized and termination-based: each instantiated
-    program halts or hangs per its table entry, read through the state-cycle
-    detector rather than from output.
-    """
-    from esolangs.interpreters.grid_based.dotlang import _Machine
+    """Instantiate a Dotlang template, run it, and return its output."""
+    from esolangs.interpreters.grid_based.dotlang import run
     from esolangs.tools.boolean import parameterized
-    from esolangs.vm import run_until_halt_or_cycle
 
     program = parameterized.instantiate(
         template,
@@ -617,8 +611,10 @@ def run_dotlang(template: str, bits: list[int]) -> str:
         lambda _i, b: _DOTLANG_PASS if b == 0 else _DOTLANG_KILL,
         lambda _i, b: _DOTLANG_KILL if b == 0 else _DOTLANG_PASS,
     )
-    machine = _Machine(program.splitlines(), IO())
-    return "0" if run_until_halt_or_cycle(machine) else "1"
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
 
 
 # A gate is four cells wide (the {Xi} token occupies four grid columns); the
@@ -645,7 +641,7 @@ class TestDotlang:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination halts (0) or hangs (1) per the table."""
+        """Every input combination produces the truth-table result."""
         template = boolean.dotlang(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -671,11 +667,13 @@ class TestDotlang:
         assert template.count("{X0}") == template.count("{C0}") == 1
         assert template.count("{X1}") == template.count("{C1}") == 2
 
-    def test_termination_leaves(self) -> None:
-        """Halt leaves are empty cells, hang leaves are 2x2 loop rings."""
-        lines = boolean.dotlang("0001").splitlines()  # AND: only 11 hangs
-        assert lines[-1].rstrip().endswith("^")
-        assert any("v<" in ln for ln in lines[:-1])
+    def test_output_leaves(self) -> None:
+        """Each leaf is a #0#/#1# literal followed by a killing empty cell."""
+        lines = boolean.dotlang("0001").splitlines()  # AND: only 11 prints 1
+        assert "".join(lines).count("#0#") == 3
+        assert "".join(lines).count("#1#") == 1
+        assert lines[-1].rstrip().endswith("#1#")
+        assert run_dotlang(boolean.dotlang("0001"), [1, 1]) == "1"
 
     def test_scales(self) -> None:
         """More inputs mean more junctions and re-embedded gates."""
