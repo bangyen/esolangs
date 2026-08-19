@@ -414,3 +414,46 @@ class TestIntegration:
         with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
             run(code, IO())
             assert mock_stdout.getvalue() == "2"
+
+
+class TestStepMachine:
+    def test_step_tracks_dot_position_and_value(self) -> None:
+        from esolangs.interpreters.grid_based.dotlang import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(["•#42#"], ScriptedIO())
+        assert machine.curr == 0
+        machine.step()  # • no-op, dot steps right
+        assert machine.dots[0].y == 1
+        machine.step()  # #42 stores 42
+        assert machine.dots[0].val == 42
+        machine.step()  # # prints 42 and the dot walks off the row
+        assert machine.halted
+        assert machine.io.getvalue() == "42"
+
+    def test_snapshot_captures_dots_and_input_cursor(self) -> None:
+        from esolangs.interpreters.grid_based.dotlang import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(["•~#"], ScriptedIO("hi\n"))
+        before = machine.snapshot()
+        assert hash(before) is not None
+        machine.step()  # • no-op
+        machine.step()  # ~ reads the input line onto the dot
+        assert machine.snapshot() != before
+        assert machine.io.position() == 1  # the cursor advanced past "hi"
+
+    def test_direction_loop_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.grid_based.dotlang import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # a 2x2 ring of direction cells cycles the dot forever
+        assert run_until_halt_or_cycle(_Machine(["•v", ">^"], ScriptedIO())) is False
+
+    def test_printing_program_halts(self) -> None:
+        from esolangs.interpreters.grid_based.dotlang import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(["•#42#"], ScriptedIO())) is True
