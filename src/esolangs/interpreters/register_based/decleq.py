@@ -29,11 +29,9 @@ memory (every instruction decrements a cell, so a loop never revisits a
 snapshot and the ``limit`` stays as the run() backstop for that class).
 """
 
-import sys
-
-from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
+from esolangs.interpreters.oisc_cli import main_with_limit, run_with_limit
 
 _OUT = -2
 _IN = -1
@@ -90,19 +88,8 @@ class _Machine:
 
 def run(code: str, io: IO, limit: int = 10_000) -> None:
     """Run a Decleq program, halting after ``limit`` instructions."""
-    machine = _Machine(code, io)
-    for _ in range(limit):
-        if machine.halted:
-            return
-        machine.step()
-    raise HaltError(f"execution exceeded the {limit}-instruction limit")
+    run_with_limit(_Machine(code, io), limit)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            if len(sys.argv) > 2:
-                run(data, IO(), limit=int(sys.argv[2]))
-            else:
-                run(data, IO())
+    main_with_limit(run)
