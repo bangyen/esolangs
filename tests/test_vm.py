@@ -408,6 +408,42 @@ class TestBFStack:
         assert vm.halted
 
 
+class TestAlbabet:
+    def test_registers_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Albabet", "ai")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
+        vm.step()  # a increments x
+        assert vm.memory == [1, 0]
+        vm.step()  # i prints x
+        assert vm.output == "\x01"
+        assert vm.halted
+
+
+class TestDecleq:
+    def test_memory_and_pointer(self) -> None:
+        vm = esolangs.make_vm("Decleq", "-2 5 9 9 9 65 0 0")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [-2, 5, 9, 9, 9, 65, 0, 0], [])
+        vm.step()  # a=-2 outputs memory[5]
+        assert vm.output == "A"
+        assert vm.ip == 3
+        vm.step()  # the countdown then jumps off the end of memory
+        assert vm.halted
+        assert vm.ip == 65
+
+
+class TestSixFive:
+    def test_tape_and_cursor(self) -> None:
+        vm = esolangs.make_vm("6-5", "55A")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # 5 adds 5 to the cell
+        assert vm.memory == [5]
+        vm.step()  # 5 adds 5 more
+        assert vm.memory == [10]
+        vm.step()  # A prints the cell
+        assert vm.output == "\n"
+        assert vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -493,6 +529,9 @@ class TestFactory:
         ("ROTfuck", "."),
         ("Circlefuck", "+.@"),
         ("BFStack", ">+."),
+        ("Albabet", "ai"),
+        ("Decleq", "-2 5 9 9 9 65 0 0"),
+        ("6-5", "55A"),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:

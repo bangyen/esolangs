@@ -14,6 +14,11 @@ NUL instead.  The values are unbounded natural numbers and the output is
 that character's UTF-8 encoding.  Every character is a defined operation or
 a no-op, so there is no malformed program (no :class:`ValueError`) and no
 invalid runtime operation (no :class:`~esolangs.exceptions.HaltError`).
+
+The interpreter runs on a :class:`_Machine` (the two registers and the code
+cursor), so it is step-capable: ``step()`` executes one character and
+``halted`` is true once the cursor reaches the end of the code (execution is
+linear, so every program halts).
 """
 
 import sys
@@ -21,34 +26,67 @@ import sys
 from esolangs.interpreters.io import IO
 
 
+class _Machine:
+    """Per-run AlbaBet state: the two registers and the code cursor.
+
+    ``step()`` executes one character; ``halted`` is true once the cursor
+    reaches the end of the code.  The VM and the state-cycle hang detector
+    expose this object (execution is linear, so every program halts).
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Start with both registers at zero."""
+        self.io = io
+        self.code = code
+        self.x = 0
+        self.y = 0
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the code."""
+        return self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.x, self.y, self.ind, self.io.position())
+
+    def step(self) -> None:
+        """Execute one character, advancing the cursor."""
+        if self.halted:
+            return
+        c = self.code[self.ind]
+        self.ind += 1
+        if c == "a":
+            self.x += 1
+        elif c == "b":
+            if self.x:
+                self.x -= 1  # natural-number subtraction clamps at 0
+        elif c == "c":
+            self.x = 0
+        elif c == "d":
+            self.x, self.y = 0, self.x
+        elif c == "e":
+            self.y = self.x
+        elif c == "f":
+            self.y = 0
+        elif c == "j":
+            self.y += self.x
+        elif c == "g":
+            self.x *= self.y
+        elif c == "h":
+            self.x *= self.x
+        elif c == "i":
+            if not (self.x < 0xD800 or 0xDFFF < self.x < 0x110000):
+                self.x = 0  # invalid scalar -> Char.ofNat yields NUL
+            self.io.print_char(chr(self.x))
+
+
 def run(code: str, io: IO) -> None:
     """Run an AlbaBet program, printing each ``i`` as a character."""
-    x = 0
-    y = 0
-    for c in code:
-        if c == "a":
-            x += 1
-        elif c == "b":
-            if x:
-                x -= 1  # natural-number subtraction clamps at 0
-        elif c == "c":
-            x = 0
-        elif c == "d":
-            x, y = 0, x
-        elif c == "e":
-            y = x
-        elif c == "f":
-            y = 0
-        elif c == "j":
-            y += x
-        elif c == "g":
-            x *= y
-        elif c == "h":
-            x *= x
-        elif c == "i":
-            if not (x < 0xD800 or 0xDFFF < x < 0x110000):
-                x = 0  # invalid scalar -> Char.ofNat yields NUL
-            io.print_char(chr(x))
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

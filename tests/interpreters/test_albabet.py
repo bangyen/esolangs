@@ -111,3 +111,33 @@ class TestAlbabet:
         interpreter never raises (total semantics)."""
         for code in ("", "a", "b", "abcdefghij", "x", "a" * 10 + "h" + "i"):
             run_scripted(code)
+
+
+class TestStepMachine:
+    def test_step_tracks_registers_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.albabet import _Machine
+
+        machine = _Machine("ai", ScriptedIO())
+        assert (machine.x, machine.y, machine.ind) == (0, 0, 0)
+        machine.step()  # a increments x
+        assert (machine.x, machine.ind) == (1, 1)
+        machine.step()  # i prints x
+        assert machine.io.getvalue() == "\x01"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 2
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.albabet import _Machine
+
+        assert hash(_Machine("ai", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.albabet import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # execution is linear, so every program halts
+        assert run_until_halt_or_cycle(_Machine("ai", ScriptedIO())) is True
