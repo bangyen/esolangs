@@ -373,6 +373,41 @@ class TestBrainIf:
         assert vm.halted
 
 
+class TestROTFuck:
+    def test_tape_and_cursor(self) -> None:
+        vm = esolangs.make_vm("ROTfuck", ".")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # . prints the current cell
+        assert vm.output == "\x00"
+        assert vm.halted
+
+
+class TestCirclefuck:
+    def test_cells_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Circlefuck", "+.@")
+        assert (vm.ip, vm.memory) == (0, [43, 46, 64])
+        vm.step()  # + sets the cell
+        assert vm.memory == [44, 46, 64]
+        vm.step()  # . prints it
+        assert vm.output == ","
+        vm.step()  # @ halts
+        assert vm.halted
+        assert vm.stack == []
+
+
+class TestBFStack:
+    def test_stack_and_cursor(self) -> None:
+        vm = esolangs.make_vm("BFStack", ">+.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
+        vm.step()  # > pushes 0
+        assert vm.stack == [0]
+        vm.step()  # + increments the top
+        assert vm.stack == [1]
+        vm.step()  # . prints it
+        assert vm.output == "\x01"
+        assert vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -455,6 +490,9 @@ class TestFactory:
         ("BrainIf", "if 0 output"),
         ("Minifuck", "."),
         ("Taglate", "abc\ni"),
+        ("ROTfuck", "."),
+        ("Circlefuck", "+.@"),
+        ("BFStack", ">+."),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:

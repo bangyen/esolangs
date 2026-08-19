@@ -121,3 +121,30 @@ class TestBrackets:
     def test_unmatched_bracket_that_never_runs_is_fine(self) -> None:
         """Unbalanced sources are legal; only execution matters."""
         assert run_program(build(".")) == "\x00"
+
+
+class TestStepMachine:
+    def test_step_tracks_tape_cursor_and_rotation(self) -> None:
+        from esolangs.interpreters.tape_based.rotfuck import _Machine
+
+        machine = _Machine(build("+."), ScriptedIO())
+        assert (machine.ind, machine.ptr, list(machine.tape)) == (0, 0, [0])
+        machine.step()  # + increments the cell and rotates the program
+        assert machine.tape == [1]
+        assert machine.prog.rotation() == 1
+        machine.step()  # . prints the cell and rotates again
+        assert machine.io.getvalue() == "\x01"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 2
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.tape_based.rotfuck import _Machine
+
+        assert hash(_Machine(".", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.tape_based.rotfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(".", ScriptedIO())) is True

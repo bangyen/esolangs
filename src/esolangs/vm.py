@@ -757,6 +757,93 @@ class _Wii2dVM(_BaseVM):
         return []
 
 
+class _ROTFuckVM(_BaseVM):
+    """Rotating tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.rotfuck import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _CirclefuckVM(_BaseVM):
+    """Self-modifying circular tape + cursor; ``ip`` cursor, ``memory`` cells."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.circlefuck import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.cells)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _BFStackVM(_BaseVM):
+    """Data stack + loop stack + cursor; ``ip`` the cursor, ``stack`` the data."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stk)
+
+
 class _BrainIfVM(_BaseVM):
     """Cell tape + line cursor; ``ip`` the cursor, ``memory`` the cells."""
 
@@ -900,6 +987,9 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "BrainIf": _BrainIfVM,
     "Minifuck": _MinifuckVM,
     "Taglate": _TaglateVM,
+    "ROTfuck": _ROTFuckVM,
+    "Circlefuck": _CirclefuckVM,
+    "BFStack": _BFStackVM,
 }
 
 
