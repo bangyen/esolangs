@@ -1304,17 +1304,24 @@ def _run_two_d_fish_native(
 
 
 def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
-    """Run ``program`` through the in-package interpreter."""
-    import importlib
+    """Run ``program`` through the in-package interpreter.
 
+    The interpreter is step-capable, so the run is bounded by state-cycle
+    detection (:func:`esolangs.vm.run_until_halt_or_cycle`) instead of an
+    unbounded whole-program ``run()``: a repeated snapshot proves a loop and
+    is reported as a non-termination rather than hanging the fuzzer.
+    """
     from esolangs.exceptions import HaltError
+    from esolangs.interpreters.grid_based.two_d_fish import _Machine
     from esolangs.interpreters.io import ScriptedIO
-
-    run = importlib.import_module("esolangs.interpreters.grid_based.two_d_fish").run
+    from esolangs.vm import run_until_halt_or_cycle
 
     io = ScriptedIO(stdin.decode("latin1"))
     try:
-        run(program, io)
+        machine = _Machine(program, io)
+        run_until_halt_or_cycle(machine)
+        if machine.off_grid:  # the documented exit-3 halt
+            raise HaltError
     except HaltError:
         return io.getvalue().encode("latin1"), 3
     except EOFError:
