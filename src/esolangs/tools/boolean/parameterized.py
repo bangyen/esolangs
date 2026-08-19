@@ -661,8 +661,14 @@ _X0 = {1: "nn", 0: "ss"}
 _XF = {1: "WWwWWEEe", 0: "NENEESWw"}
 # The inverse of each move direction, for retracing a path.
 _OPP = {
-    "n": "s", "s": "n", "e": "w", "w": "e",
-    "N": "S", "S": "N", "E": "W", "W": "E",
+    "n": "s",
+    "s": "n",
+    "e": "w",
+    "w": "e",
+    "N": "S",
+    "S": "N",
+    "E": "W",
+    "W": "E",
 }
 
 
@@ -675,7 +681,7 @@ def _bit_move(n: int, k: int, bit: int) -> str:
     cleared bit east/south.  The head walks these moves out to each leaf
     and the routing walks them to read it, so the two always agree.
     """
-    mag = 2 ** (n - k)
+    mag: int = 2 ** (n - k)
     if k % 2 != n % 2:
         return ("w" if bit else "e") * mag
     return ("n" if bit else "s") * mag
@@ -684,6 +690,7 @@ def _bit_move(n: int, k: int, bit: int) -> str:
 def _reverse_moves(moves: str) -> str:
     """Return ``moves`` reversed with every direction inverted."""
     return "".join(_OPP[c] for c in reversed(moves))
+
 
 def _leaf_color(truth_table: str, bits: list[int]) -> bool:
     """Return whether to paint the leaf for the input ``bits``.
@@ -708,8 +715,8 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
     """
     out: list[tuple[int, int, tuple[int, ...]]] = []
 
-    for i in range(2 ** n):
-        pads = bin(i)[2:].rjust(n, '0')
+    for i in range(2**n):
+        pads = bin(i)[2:].rjust(n, "0")
         bits = [int(k) for k in pads]
         x = 0
         y = 0
@@ -725,7 +732,7 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
             else:
                 y += mag
 
-        out.append((x, y, bits))
+        out.append((x, y, tuple(bits)))
 
     return out
 
@@ -755,9 +762,11 @@ def _head(truth_table: str, bits: list[int]) -> str:
         # leading WS (no moves) flips it to start WS / end NE like n == 2.
         outbound = "WS" if n >= 3 and n % 2 == 1 else ""
         outbound += "".join(
-            ("NE" if k % 2 != n % 2 else "WS") + _bit_move(n, k, b)
-            if n >= 2
-            else _bit_move(n, k, b)
+            (
+                ("NE" if k % 2 != n % 2 else "WS") + _bit_move(n, k, b)
+                if n >= 2
+                else _bit_move(n, k, b)
+            )
             for k, b in enumerate(leaf_bits)
         )
         out.append(outbound + "P" + _reverse_moves(outbound))
@@ -833,7 +842,7 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
     """
     n = len(bits)
 
-    def replace(i, bit):
+    def replace(i: int, bit: int) -> str:
         if i == len(bits) - 1:
             return _XF[bit]
         return _bit_move(n, i, bit)
