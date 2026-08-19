@@ -74,7 +74,7 @@ register — so no absolute index moves between instantiations (see the
 `ram0`, `bitdeque`, and `minsky_swap` generators in
 `esolangs.tools.boolean.parameterized`).
 
-## Eval (nested parameterized trees)
+## Eval (nested parameterized trees — resolved)
 
 Building a decision tree requires nesting: each subtree must be a string
 evaluated with `!`.  This is a **spec** limitation (the interpreter matches
@@ -82,6 +82,17 @@ the wiki exactly): the wiki defines stringmode with no way to escape a
 backtick or include a literal one, so a pushed string can never contain a
 backtick and a nested `!`-evaluated subtree cannot survive more than one
 wrap.  The wiki's examples only ever use single-level `!`.
+
+The shipped generator
+(:func:`esolangs.tools.boolean.parameterized.eval`) resolves the wall by
+avoiding nesting altogether: the tree is stored as a flat, full binary tree
+in heap (BFS) order on the tree stack, with each node's two children pinned
+at fixed heap offsets (a node is ``~=~?`` plus ``i+1`` semicolons and a
+``!`` — the ``?`` skip discards the right number of elements, so ``!`` pops
+the 0- or 1-child), and each leaf prints its table entry.  No node or leaf
+contains a quote or backtick, so the strings need no escaping and the tree
+grows to any ``n``.  It is a parameterized generator, total for any arity
+and table, and embeds each input exactly once.
 
 ## SLOW ACV MAMMALIAN (general n-bit open)
 
@@ -122,8 +133,9 @@ branch the bit selects.  The survivor turns down and right into its
 subtree, and each leaf is a ``#0#``/``#1#`` literal that prints the table
 entry before the dot dies, so the instantiated program prints its answer
 and halts.  It is a parameterized generator, total for any arity and table;
-the tree re-embeds each input at `2**i` junctions, so it is the one
-parameterized generator that does not embed each input exactly once.
+the tree re-embeds each input at `2**i` junctions — one of the two
+parameterized generators that do not embed each input exactly once
+(`wii2d_tree` is the other, at `2**n - 1` junctions).
 
 ## Polynomial (numeric root-finding ruled out; caps at n <= 4)
 
