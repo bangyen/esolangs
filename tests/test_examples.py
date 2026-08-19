@@ -130,6 +130,7 @@ BOOLEAN_EXAMPLES = {
     "eval": ("stack_based.eval", [], "0", False),
     "minifuck": ("tape_based.minifuck", ["0", "1"], "0", False),
     "point-break": ("register_based.point_break", ["0"], "", False),
+    "wii2d": ("grid_based.wii2d", [], "1", True),
 }
 
 
