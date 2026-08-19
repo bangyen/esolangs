@@ -213,19 +213,20 @@ already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
-`esolangs.make_vm` (step-and-inspect wrappers for thirteen interpreters:
+`esolangs.make_vm` (step-and-inspect wrappers for fifteen interpreters:
 brainfuck, S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
-Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123, A Painter Ant)
+Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123, A Painter Ant,
+2dFish, Dotlang)
 and
 `esolangs.make_debugger` (breakpoints and watches over the VM) shipped.
 The medium-priority work that remains:
 
 - **More step-capable interpreters.**  Convert more of the registry to a
   step()/halted state object, growing the VM set per state model.  Point
-  Break, ArrowQueue, 123, and A Painter Ant joined the set with the
-  cycle-detection work
+  Break, ArrowQueue, 123, A Painter Ant, 2dFish, and Dotlang joined the
+  set with the cycle-detection work
   below; the
-  other grid languages (2dFish, Dotlang, ...) are the
+  other grid languages (Clockwise, Dig, Wii2d, ...) are the
   natural next batch: their position/direction is the ``ip``, as LaserFuck
   demonstrated.
 - **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is

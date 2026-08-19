@@ -87,30 +87,50 @@ class Dot:
         return False
 
 
-def run(code: list[str], io: IO) -> None:
-    """Execute a Dotlang program with 2D dot movement and command execution."""
-    if code == [" "]:
-        io.print_str(" ")
-        return
+class _Machine:
+    """Per-run Dotlang state: the grid, the live dots, and the current dot.
 
-    size = max(len(lne) for lne in code)
-    code = [c.ljust(size) for c in code]
-    dots: list[Dot] = []
-    curr = 0
+    ``step()`` executes one command for the current dot and advances it;
+    ``halted`` is true once no dots remain (the program ended, the last dot
+    left the grid, or a warp was not found).  The VM and the state-cycle
+    hang detector expose this object.
+    """
 
-    for num, val in enumerate(code):
-        if "•" in val:
-            k = val.find("•")
-            d = "^>v<".find(v) if k and (v := val[k - 1]) in "^>v<" else 1
-            dots.append(Dot(num, k, d))
-            Dot.set(code)
-            break
-    else:
-        return
+    def __init__(self, code: list[str], io: IO) -> None:
+        """Pad ``code``, find the starting ``•``, and spawn its dot."""
+        self.io = io
+        self.size = max(len(lne) for lne in code)
+        self.code = [c.ljust(self.size) for c in code]
+        self.dots: list[Dot] = []
+        self.curr = 0
 
-    while dots:
-        dot = dots[curr]
-        val = code[dot.x][dot.y]
+        for num, val in enumerate(self.code):
+            if "•" in val:
+                k = val.find("•")
+                d = "^>v<".find(v) if k and (v := val[k - 1]) in "^>v<" else 1
+                self.dots.append(Dot(num, k, d))
+                Dot.set(self.code)
+                break
+
+    @property
+    def halted(self) -> bool:
+        """Whether every dot has been consumed."""
+        return not self.dots
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            tuple((d.x, d.y, d.dir, d.val) for d in self.dots),
+            self.curr,
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one command for the current dot, then advance it."""
+        if not self.dots:
+            return
+        dot = self.dots[self.curr]
+        val = self.code[dot.x][dot.y]
 
         if val in "^>v<":
             dot.dir = "^>v<".find(val)
@@ -125,45 +145,51 @@ def run(code: list[str], io: IO) -> None:
                 if dot.dir == 1:
                     dot.y += len(g[0]) - 1
             elif dot.val is not None:
-                io.print_value(dot.val)
+                self.io.print_value(dot.val)
             else:
+                self.dots.clear()
                 return
         elif val == "~":
-            dot.new(io.input_str())
+            dot.new(self.io.input_str())
         elif val == "(":
             if g := dot.match(r"\(`\w+"):
                 name = ")" + g[0][1:]
                 dest = dot.find(name, return_dot=True)
                 if not dest:
+                    self.dots.clear()
                     return
                 if not isinstance(dest, Dot):
                     raise RuntimeError("warp destination not found")  # pragma: no cover
-                dots.append(dest)
+                self.dots.append(dest)
             else:
                 match = 1
                 x, y = dot.x, dot.y
                 while match:
                     if dot.dir % 2:
                         y += 1
-                        if y == size:
+                        if y == self.size:
+                            self.dots.clear()
                             return
                     else:
                         x += 1
                         if x == Dot.mx:
+                            self.dots.clear()
                             return
-                    if (c := code[x][y]) == "(":
+                    if (c := self.code[x][y]) == "(":
                         match += 1
                     elif c == ")":
                         match -= 1
-                dots.append(Dot(x, y, dot.dir))
+                self.dots.append(Dot(x, y, dot.dir))
         elif val == "W":
             if dot.match("W~"):
-                warp = io.input_str("Warp: ")
+                warp = self.io.input_str("Warp: ")
                 if not dot.find(f"W{warp}`s"):
+                    self.dots.clear()
                     return
             elif g := dot.match(r"W\w+`s"):
                 warp = g[0][:-1] + "e"
                 if not dot.find(warp):
+                    self.dots.clear()
                     return
         elif val in "!?:":
             t = (str, float, int)["!?:".find(val)]
@@ -174,11 +200,22 @@ def run(code: list[str], io: IO) -> None:
                     dot.dir += 1
 
         if val not in " \n" and dot.move():
-            curr = (curr + 1) % len(dots)
+            self.curr = (self.curr + 1) % len(self.dots)
         else:
-            dots.pop(curr)
-            if dots:
-                curr %= len(dots)
+            self.dots.pop(self.curr)
+            if self.dots:
+                self.curr %= len(self.dots)
+
+
+def run(code: list[str], io: IO) -> None:
+    """Execute a Dotlang program with 2D dot movement and command execution."""
+    if code == [" "]:
+        io.print_str(" ")
+        return
+
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

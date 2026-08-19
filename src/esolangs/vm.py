@@ -85,11 +85,12 @@ class VM(Protocol):
         """Everything the machine has written so far."""
 
     @property
-    def ip(self) -> int | tuple[int, ...]:
+    def ip(self) -> int | tuple[int, ...] | None:
         """The current code/instruction position, or (position, direction).
 
         A linear language's ``ip`` is an index into its program; a 2D
-        language's is the moving agent's ``(x, y, heading)``.
+        language's is the moving agent's ``(x, y, heading)``; a language
+        whose agent has been consumed reports ``None``.
         """
 
     @property
@@ -125,7 +126,7 @@ class _BaseVM:
         raise NotImplementedError
 
     @property
-    def ip(self) -> int | tuple[int, ...]:
+    def ip(self) -> int | tuple[int, ...] | None:
         raise NotImplementedError
 
     @property
@@ -514,6 +515,67 @@ class _APainterAntVM(_BaseVM):
         return []
 
 
+class _TwoDFishVM(_BaseVM):
+    """2D grid; ``ip`` is the (x, y, direction), ``memory`` the accumulator."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.two_d_fish import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (self._machine.x, self._machine.y, "/\\v^".find(self._machine.d or ""))
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _DotlangVM(_BaseVM):
+    """2D grid of dots; ``ip`` is the current dot's (x, y, direction)."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.dotlang import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...] | None:
+        if not self._machine.dots:
+            return None
+        dot = self._machine.dots[self._machine.curr]
+        return (dot.x, dot.y, dot.dir)
+
+    @property
+    def memory(self) -> list[int]:
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        return [d.val for d in self._machine.dots]
+
+
 class _OneTwoThreeVM(_BaseVM):
     """Single data byte + pointer mask; ``ip`` is the code cursor."""
 
@@ -522,7 +584,6 @@ class _OneTwoThreeVM(_BaseVM):
         from esolangs.interpreters.tape_based.one_two_three import _Machine
 
         self._machine = _Machine(program, self._io)
-
     @property
     def halted(self) -> bool:
         return self._machine.halted
@@ -558,6 +619,8 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
+    "2dFish": _TwoDFishVM,
+    "Dotlang": _DotlangVM,
     "123": _OneTwoThreeVM,
 }
 

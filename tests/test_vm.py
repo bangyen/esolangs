@@ -212,6 +212,37 @@ class TestAPainterAnt:
         assert vm.stack == []
 
 
+class TestTwoDFish:
+    def test_ip_position_direction_and_accumulator(self) -> None:
+        vm = esolangs.make_vm("2dFish", "/iio@")
+        assert vm.ip == (1, 0, 0)  # after the initial direction step (heading right)
+        vm.step()  # i increments the accumulator
+        assert vm.memory == [1]
+        assert vm.ip == (2, 0, 0)
+        vm.step()  # i increments again
+        assert vm.memory == [2]
+        vm.step()  # o prints 2
+        assert vm.output == "2"
+        vm.step()  # @ halts
+        assert vm.halted
+        assert vm.stack == []
+
+
+class TestDotlang:
+    def test_ip_dot_position_and_value_stack(self) -> None:
+        vm = esolangs.make_vm("Dotlang", "•#42#")
+        assert vm.ip == (0, 0, 1)  # the starting dot, heading right
+        vm.step()  # the • is a no-op and the dot steps right
+        assert vm.ip == (0, 1, 1)
+        vm.step()  # #42 stores 42 on the dot and steps past the literal
+        assert vm.stack == [42]
+        assert vm.ip == (0, 4, 1)
+        vm.step()  # the trailing # prints 42, then the dot steps off the row
+        assert vm.output == "42"
+        assert vm.halted
+        assert vm.memory == []
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
