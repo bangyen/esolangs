@@ -1,0 +1,6 @@
+fd tmach x:
+term=x
+right(:term:)
+tmach(:x:)if(x)
+fi
+tmach(:%-[read]22%:)

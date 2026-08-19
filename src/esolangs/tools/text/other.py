@@ -30,6 +30,7 @@ __all__ = [
     "painfuck",
     "pct_squared_minus_one",
     "sbleq",
+    "suptiftam",
     "three_x",
     "two_d_fish",
     "unsquare",
@@ -861,3 +862,21 @@ def sbleq(text: str) -> str:
     cells += [ord(c) for c in text]
     cells += [len(cells) + 1]
     return " ".join(map(str, cells))
+
+
+def suptiftam(text: str) -> str:
+    """Build a Suptiftam program that outputs ``text``.
+
+    Each character is written to the ``term`` tape's current cell as a byte
+    literal and the head moves right, one statement pair per character.
+    A byte literal is a single printable non-whitespace ASCII character, so
+    the alphabet is printable ASCII plus space; the single quote (the
+    literal's delimiter) and tab (a comment marker) cannot be emitted.
+    """
+    for c in text:
+        if not 32 <= ord(c) <= 126 or c == "'":
+            raise ValueError(
+                "Suptiftam can only output printable non-quote ASCII "
+                "(32-126 except ')"
+            )
+    return "\n".join(f"term='{c}'\nright(:term:)" for c in text)

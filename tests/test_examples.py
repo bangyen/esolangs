@@ -86,6 +86,7 @@ CAT_EXAMPLES = {
     "nevermind": ("register_based.nevermind", ["hi"], "hi\n", True),
     "6-5": ("tape_based.six_five", ["h"], "h", False),
     "modulous": ("stack_based.modulous", ["hi"], "hi", False),
+    "suptiftam": ("other.suptiftam", ["hi"], "hi", False),
 }
 
 TRUTH_MACHINE_EXAMPLES = {
@@ -95,6 +96,7 @@ TRUTH_MACHINE_EXAMPLES = {
     "factor": ("tape_based.factor", ["0"], "0", False),
     "forbin": ("other.forbin", ["0"], "0", False),
     "modulous": ("stack_based.modulous", ["0"], "0", False),
+    "suptiftam": ("other.suptiftam", ["0"], "0", False),
 }
 
 BASE_DIR = Path(__file__).parent.parent
