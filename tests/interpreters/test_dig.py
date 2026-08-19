@@ -14,7 +14,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.grid_based.dig import run
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -171,3 +171,42 @@ class TestDigEdgeCases:
         with redirect_stdout(buffer):
             run([">$5:@", " 2 "], io=IO(), func=lambda: True)
         assert buffer.getvalue() == ""
+
+
+class TestStepMachine:
+    def test_step_tracks_position_direction_and_mole(self) -> None:
+        from esolangs.interpreters.grid_based.dig import _Machine
+
+        machine = _Machine([">$5:", " 2 "], IO())
+        assert (machine.x, machine.y, machine.move, machine.mole) == (0, 0, 1, 0)
+        machine.step()  # > keeps facing right
+        assert (machine.x, machine.y, machine.move) == (0, 1, 1)
+        machine.step()  # $ digs: reads the adjacent digit (5) as the count
+        assert machine.num == 5
+        machine.step()  # 5 sets the mole and consumes one count
+        assert (machine.mole, machine.num) == (5, 4)
+
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.grid_based.dig import _Machine
+
+        machine = _Machine([">$=:", " 2 "], ScriptedIO("A"))
+        for _ in range(2):  # move over, dig
+            machine.step()
+        before = machine.snapshot()
+        machine.step()  # = reads the input line into the mole
+        assert machine.snapshot() != before
+        assert machine.mole == ord("A")
+        assert machine.io.position() == 1
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine([">@"], IO())) is True
+
+    def test_looping_ring_is_detected_as_a_cycle(self) -> None:
+        """A mole orbiting a closed direction ring never halts or leaves."""
+        from esolangs.interpreters.grid_based.dig import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine([">'", "^<"], IO())) is False

@@ -576,6 +576,93 @@ class _DotlangVM(_BaseVM):
         return [d.val for d in self._machine.dots]
 
 
+class _ClockwiseVM(_BaseVM):
+    """2D ring; ``ip`` is the pointer's (x, y, heading), ``memory`` the accumulator."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.clockwise import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (self._machine.x, self._machine.y, self._machine.r)
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _DigVM(_BaseVM):
+    """2D mole grid; ``ip`` is the mole's (x, y, heading), ``memory`` the mole."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.dig import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (self._machine.x, self._machine.y, self._machine.move)
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.mole]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _Wii2dVM(_BaseVM):
+    """2D wrap-around grid; ``ip`` is (x, y, heading), ``memory`` the accumulator."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (self._machine.x, self._machine.y, self._machine.vel)
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _OneTwoThreeVM(_BaseVM):
     """Single data byte + pointer mask; ``ip`` is the code cursor."""
 
@@ -584,6 +671,7 @@ class _OneTwoThreeVM(_BaseVM):
         from esolangs.interpreters.tape_based.one_two_three import _Machine
 
         self._machine = _Machine(program, self._io)
+
     @property
     def halted(self) -> bool:
         return self._machine.halted
@@ -621,6 +709,9 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "A Painter Ant": _APainterAntVM,
     "2dFish": _TwoDFishVM,
     "Dotlang": _DotlangVM,
+    "Clockwise": _ClockwiseVM,
+    "Dig": _DigVM,
+    "WII2D": _Wii2dVM,
     "123": _OneTwoThreeVM,
 }
 
