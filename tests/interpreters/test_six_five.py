@@ -86,3 +86,42 @@ class TestSixFive:
 
         with pytest.raises(HaltError):
             run_and_capture("2A")
+
+
+class TestStepMachine:
+    def test_step_tracks_tape_cell_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+
+        machine = _Machine("55A", ScriptedIO())
+        assert (machine.ind, machine.cell, machine.tape) == (0, 0, [0])
+        machine.step()  # 5 adds 5 to the cell
+        assert machine.tape == [5]
+        machine.step()  # 5 adds 5 more
+        assert machine.tape == [10]
+        machine.step()  # A prints the cell
+        assert machine.io.getvalue() == "\n"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 3
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+
+        assert hash(_Machine("55A", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("55A", ScriptedIO())) is True
+
+    def test_8_jump_is_detected_as_a_cycle(self) -> None:
+        """A 8n jump back to a 4 marker that never fires loops forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.six_five import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("481", ScriptedIO())) is False

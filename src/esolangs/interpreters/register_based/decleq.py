@@ -21,6 +21,12 @@ Documented decisions for gaps in the wiki stub:
   instructions is rejected with :class:`HaltError`.
 
 Malformed programs raise :class:`ValueError`.
+
+The interpreter runs on a :class:`_Machine` (the self-modifying memory and
+the instruction pointer), so it is step-capable: ``step()`` executes one
+instruction and ``halted`` is true once the pointer moves off the end of
+memory (every instruction decrements a cell, so a loop never revisits a
+snapshot and the ``limit`` stays as the run() backstop for that class).
 """
 
 import sys
@@ -33,37 +39,62 @@ _OUT = -2
 _IN = -1
 
 
-def run(code: str, io: IO, limit: int = 10_000) -> None:
-    """Run a Decleq program, halting after ``limit`` instructions."""
-    memory = _parse(code)
-    pc = 0
-    steps = 0
+class _Machine:
+    """Per-run Decleq state: the self-modifying memory and the pointer.
 
-    while steps < limit:
-        if pc < 0 or pc >= len(memory):
+    ``step()`` executes one instruction; ``halted`` is true once the pointer
+    moves off the end of memory.  The VM and the state-cycle hang detector
+    expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Parse ``code`` into memory and reset the pointer."""
+        self.io = io
+        self.memory: list[int] = _parse(code)
+        self.pc = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the pointer has moved off the end of memory."""
+        return self.pc < 0 or self.pc >= len(self.memory)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (tuple(self.memory), self.pc, self.io.position())
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the pointer."""
+        if self.halted:
             return
-        a = memory[pc]
-        b = memory[pc + 1] if pc + 1 < len(memory) else 0
-        c = memory[pc + 2] if pc + 2 < len(memory) else 0
+        a = self.memory[self.pc]
+        b = self.memory[self.pc + 1] if self.pc + 1 < len(self.memory) else 0
+        c = self.memory[self.pc + 2] if self.pc + 2 < len(self.memory) else 0
 
         if a == _OUT:
-            value = memory[b] if 0 <= b < len(memory) else 0
-            io.print_char(chr(value & 0xFF))
-            pc += 3
+            value = self.memory[b] if 0 <= b < len(self.memory) else 0
+            self.io.print_char(chr(value & 0xFF))
+            self.pc += 3
         elif a == _IN:
-            byte = io.input_char()
-            if b >= len(memory):
-                memory.extend([0] * (b + 1 - len(memory)))
-            memory[b] = byte
-            pc += 3
+            byte = self.io.input_char()
+            if b >= len(self.memory):
+                self.memory.extend([0] * (b + 1 - len(self.memory)))
+            self.memory[b] = byte
+            self.pc += 3
         else:
-            if b >= len(memory):
-                memory.extend([0] * (b + 1 - len(memory)))
-            va = memory[a] if 0 <= a < len(memory) else 0
-            memory[b] = va - 1
-            pc = c if memory[b] <= 0 else pc + 3
-        steps += 1
+            if b >= len(self.memory):
+                self.memory.extend([0] * (b + 1 - len(self.memory)))
+            va = self.memory[a] if 0 <= a < len(self.memory) else 0
+            self.memory[b] = va - 1
+            self.pc = c if self.memory[b] <= 0 else self.pc + 3
 
+
+def run(code: str, io: IO, limit: int = 10_000) -> None:
+    """Run a Decleq program, halting after ``limit`` instructions."""
+    machine = _Machine(code, io)
+    for _ in range(limit):
+        if machine.halted:
+            return
+        machine.step()
     raise HaltError(f"execution exceeded the {limit}-instruction limit")
 
 
