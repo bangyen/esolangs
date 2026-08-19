@@ -2453,6 +2453,19 @@ class TestEvalBoolean:
         # leaves are the XOR table in heap order: 0 1 1 0
         assert template.endswith('"0.""0+.""0+.""0."*!')
 
+    def test_scales_to_more_inputs(self) -> None:
+        """The heap tree grows to any n (spot-checked at n = 6)."""
+        from esolangs.tools.boolean import parameterized
+
+        n = 6
+        table = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
+        template = parameterized.eval(table)
+        assert len(template) < 3000
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_eval(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.boolean import parameterized
 
