@@ -27,3 +27,31 @@ class TestMinifuck:
     def test_comment_characters_ignored(self) -> None:
         """Non-command characters are ignored."""
         assert run_and_capture("abc", inputs=["A"]) == ""
+
+
+class TestStepMachine:
+    def test_step_tracks_tape_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import _Machine
+
+        machine = _Machine(".", ScriptedIO())
+        assert (machine.ind, machine.ptr) == (0, 0)
+        machine.step()  # . advances, flips the second cell, prints the byte
+        assert machine.io.getvalue() == "@"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 1
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import _Machine
+
+        assert hash(_Machine(".", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.minifuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # the tape never rewinds, so every Minifuck program halts
+        assert run_until_halt_or_cycle(_Machine(".", ScriptedIO())) is True

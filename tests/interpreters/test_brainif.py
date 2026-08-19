@@ -67,3 +67,45 @@ class TestBrainIfGeneratedHelloWorld:
 
         with pytest.raises(ValueError, match="goto requires"):
             run_and_capture(["if 0 goto"])
+
+
+class TestStepMachine:
+    def test_step_tracks_cells_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import _Machine
+
+        machine = _Machine(["if 0 increment", "if 1 output"], ScriptedIO())
+        assert (machine.ind, machine.cells) == (0, [0])
+        machine.step()  # cell 0 is 0: increment
+        assert machine.cells == [1]
+        machine.step()  # cell 1 is 1: output
+        assert machine.io.getvalue() == "\x01"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 2
+
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import _Machine
+
+        machine = _Machine(["if 0 input"], ScriptedIO("A"))
+        before = machine.snapshot()
+        machine.step()  # input reads the line into the cell
+        assert machine.snapshot() != before
+        assert machine.cells == [ord("A")]
+        assert machine.io.position() == 1
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(["if 0 output"], ScriptedIO())) is True
+
+    def test_goto_loop_is_detected_as_a_cycle(self) -> None:
+        """A goto back to itself with the cell unchanged loops forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainif import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(["if 0 goto 1"], ScriptedIO())) is False
