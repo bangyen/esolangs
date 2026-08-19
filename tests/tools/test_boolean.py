@@ -3695,9 +3695,7 @@ class TestWII2D:
             t = [int(c) for c in table]
             for b0 in (0, 1):
                 for b1 in (0, 1):
-                    value = _wii2d_apply(
-                        routes[1][b1], _wii2d_apply(routes[0][b0], 0)
-                    )
+                    value = _wii2d_apply(routes[1][b1], _wii2d_apply(routes[0][b0], 0))
                     assert value == t[b0 * 2 + b1], table
             # and the generated template uses the closed-form routes
             template = boolean.wii2d(table)
