@@ -91,8 +91,8 @@ per-character encoding can be meaningfully shortened:
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
-| A Painter Ant | `n == 2` | Open at `n >= 3`: the two-input leaf-paint construction is exact and cycle-stable; a leaf-paint n == 3 generalization is in progress (cycle-1 exact for all 256 tables, not yet cycle-stable). No general method for all functions of an arity is known yet (see `docs/roadmap.md` and `docs/a_painter_ant_generator.md`). |
-| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
+| A Painter Ant | total (no cap) | Lifted: the piecewise leaf-paint head with WS/NE anchors is exact and cycle-stable for every arity (see `docs/roadmap.md` and `docs/a_painter_ant_generator.md`). |
+| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme, A Painter Ant | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
 Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps

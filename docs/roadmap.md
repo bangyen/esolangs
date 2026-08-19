@@ -298,49 +298,39 @@ test-suite hazard again.  The one alarm that stays by design is
 hang-detection strategy, so it keeps raising from the handler once per
 process.
 
-## A Painter Ant: general n-input boolean generator (n >= 3 open)
+## A Painter Ant: general n-input boolean generator (cap lifted)
 
-A two-input boolean generator now ships
+A general ``n``-input boolean generator ships
 (:func:`esolangs.tools.boolean.parameterized.a_painter_ant`): it paints one leaf per
 input combination (``P`` for a one table entry, a space — left unpainted —
 for a zero, so only monotone ``P`` is ever used) and routes the ant to its
-leaf.  The body paints a two-layer star around the output leaf and its
-y-mirror, and on cycle 2 the ant dances on the pre-painted stars (the
-"top-middle/middle-left ring rule": a leafward move would split the ants,
-so only an ``S/s``-style dual may move leafward), making every instantiated
-program a cycle-stable fixed point, read by a semantic grid model as the
-**landing cell's colour** (the interpreter's own output is the
-visited-cell bounding box, which carries no coordinates).  ``n == 1`` is
-also supported, with a two-leaf head and the same star body.  This
-construction resolved the ``n == 2`` case that the earlier, origin-colour
-generator covered; the full construction is recorded in
+leaf.  The head walks each leaf out and back piecewise — one weighted move
+per input bit, in the same order and direction the routing uses, so the
+outbound path never crosses a previously painted leaf — with ``WS``/``NE``
+uppercase anchors (for ``n >= 2``, plus a leading anchor for odd ``n``)
+that launch the cycle-2 ant off the leaf onto the painted ring.  The body
+paints a two-layer star around the output leaf and its y-mirror, and the
+final input's ``WWwWWEEe``/``NENEESWw`` dance closes the walk onto the
+leaf, making every instantiated program a **cycle-stable fixed point** for
+*any* ``n``, read by a semantic grid model as the **landing cell's colour**
+(the interpreter's own output is the visited-cell bounding box, which
+carries no coordinates).  ``n == 1`` uses the same construction with a
+single bit.  The full construction is recorded in
 `docs/a_painter_ant_generator.md`.
 
-**n >= 3 is open.**  No construction is known that expresses *all* functions
-of an arity; a leaf-paint n == 3 generalization is the active work (below).
+This resolves the earlier ``n == 3`` open problem and lifts the cap
+entirely: the construction is verified cycle-stable and exact for every
+arity spot-checked (all ``n <= 3`` tables exhaustively, ``n == 4``-``7``
+sampled plus edge cases).  The step tracer and stability checker
+(the test suite's `a_painter_ant_trace` semantic-grid model) ships and verifies the fixed
+point.
 
-A **leaf-paint n == 3 generalization is in progress** (see
-`docs/a_painter_ant_generator.md`): a single-row eight-leaf construction is
-exact for cycle 1 on all 256 tables but is not yet cycle-stable.  The
-remaining blocker is now characterized precisely: the ant must land on the
-output leaf for *both* output colours (a colour-dependent landing gives
-the head two cycle-2 starts and no single dance works from both), which
-forces a mixed-case closing walk that must run from a ring cell rather
-than the leaf; the body walk that paints the lower ring cells then needs
-``s`` moves that, evaluated from the N ring on cycle 2, fire a one-output
-onto the leaf too early.  A step tracer and stability checker
-(`esolangs.tools.boolean.a_painter_ant_trace`) ships and pinpoints the
-first diverging instruction, and a complete 8-leaf head dance is designed
-(see the doc).  Cycle-1 exactness was the easy part; extending the
-star/ring dance to the n == 3 layout is the open work.
-
-**Goal: find a general construction such that for any ``n``, *every*
-``n``-ary boolean function is expressible.**  A general solution needs to
-route on *which* inputs are one, not merely how many — e.g. a way to encode
-each of the ``2**n`` combos into a distinguishable ant state (position,
-painted pattern, or box content) with a cycle-stable template.  This is the
-documented wall in `docs/walls.md`; a successful construction would lift the
-cap.
+**Goal reached:** for any ``n``, *every* ``n``-ary boolean function is
+expressible by the same template.  The earlier
+"route on which inputs are one, not merely how many" question is answered
+by the piecewise bit-navigation: each combination encodes a distinct leaf
+position reached by the weighted moves, and the ``WS``/``NE`` anchors make
+the cycle-2 run a closed zero-paint dance back to that leaf.
 
 ## Severely constrained boolean generators (remove or lift)
 
@@ -354,7 +344,7 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 | 123 | one input only | yes | lift (structural wall, single data byte); has a text generator so not a removal candidate. |
 | NoComment | `n <= 8` | yes | lift (genuine wall, byte-indexed skip); cap is high enough for practical use. |
 | Polynomial | `n <= 4` | yes | lift (performance cap on exact factorization); cap is high enough for practical use. |
-| A Painter Ant | `n == 2` | no | lift (open at `n >= 3`); the two-input leaf-paint construction is exact and cycle-stable, a leaf-paint n == 3 generalization is in progress, and no general method for all functions of an arity is known yet (see the open-problem section above). |
+| A Painter Ant | total (no cap) | no | lifted: the piecewise leaf-paint head with WS/NE anchors is exact and cycle-stable for every arity (see the A Painter Ant section above). |
 
 Removed (constraints made them trivial): the boolean generators for
 Minifuck (`n <= 3`, only
