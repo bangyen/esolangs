@@ -197,6 +197,21 @@ class Test123:
         vm.step()  # stepping a halted VM is a no-op
 
 
+class TestAPainterAnt:
+    def test_ip_cursor_and_grid_memory(self) -> None:
+        vm = esolangs.make_vm("A Painter Ant", "Pnn")
+        assert vm.ip == 0
+        vm.step()  # P whites the origin
+        assert vm.ip == 1
+        assert vm.memory == [1]
+        vm.step()  # n moves north
+        assert vm.ip == 2
+        vm.step()  # n moves north
+        assert vm.ip == 0  # the implicit loop wraps the cursor
+        assert vm.halted is False  # the language never halts
+        assert vm.stack == []
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO

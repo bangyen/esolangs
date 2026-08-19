@@ -18,7 +18,6 @@ the origin cell counts as visited.
 """
 
 import sys
-from itertools import cycle, islice
 
 from esolangs.interpreters.io import IO
 
@@ -31,42 +30,77 @@ _MOVE = {
 _INSTRUCTIONS = "nNeEsSwWpP"
 
 
+class _Machine:
+    """Per-run A Painter Ant state.
+
+    Holds the grid, the ant's position, and the implicit-loop instruction
+    pointer.  ``step()`` executes one instruction (paint or conditional
+    move) and advances the instruction pointer cyclically; ``halted`` is
+    always ``False`` because the program runs in an implicit loop forever,
+    so the VM and the state-cycle hang detector treat a repeated
+    :meth:`snapshot` as the proof of a loop.  Every program the boolean
+    generator emits is exactly such a cycle.
+    """
+
+    def __init__(self, code: str) -> None:
+        """Validate ``code`` and reset the machine to the origin."""
+        self.prog = "".join(c for c in code if not c.isspace())
+        for c in self.prog:
+            if c not in _INSTRUCTIONS:
+                raise ValueError(f"unknown instruction {c!r}")
+        self.grid: dict[tuple[int, int], int] = {}
+        self.visited: set[tuple[int, int]] = {(0, 0)}
+        self.x = self.y = 0
+        self.ip = 0
+
+    @property
+    def halted(self) -> bool:
+        """The implicit loop never halts; only a repeated state proves a loop."""
+        return False
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (frozenset(self.grid.items()), self.x, self.y, self.ip)
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the pointer cyclically."""
+        if not self.prog:
+            return
+        command = self.prog[self.ip]
+        if command == "p":
+            self.grid[(self.x, self.y)] = 0
+        elif command == "P":
+            self.grid[(self.x, self.y)] = 1
+        else:
+            dx, dy = _MOVE[command.lower()]
+            target = self.grid.get((self.x + dx, self.y + dy), 0)
+            if (target == 1) == command.isupper():
+                self.x += dx
+                self.y += dy
+                self.visited.add((self.x, self.y))
+        self.ip = (self.ip + 1) % len(self.prog)
+
+    def render(self) -> str:
+        """Render the visited bounding box as a ``#``/``.`` raster."""
+        min_x = min(vx for vx, _ in self.visited)
+        max_x = max(vx for vx, _ in self.visited)
+        min_y = min(vy for _, vy in self.visited)
+        max_y = max(vy for _, vy in self.visited)
+        return "\n".join(
+            "".join(
+                "." if self.grid.get((xx, yy), 0) == 1 else "#"
+                for xx in range(min_x, max_x + 1)
+            )
+            for yy in range(min_y, max_y + 1)
+        )
+
+
 def run(code: str, io: IO, limit: int = 10_000) -> None:
     """Run an A Painter Ant program for ``limit`` instructions."""
-    prog = "".join(c for c in code if not c.isspace())
-    for c in prog:
-        if c not in _INSTRUCTIONS:
-            raise ValueError(f"unknown instruction {c!r}")
-
-    grid: dict[tuple[int, int], int] = {}
-    x = y = 0
-    visited = {(x, y)}
-
-    for c in islice(cycle(prog), limit):
-        if c == "p":
-            grid[(x, y)] = 0
-        elif c == "P":
-            grid[(x, y)] = 1
-        else:
-            dx, dy = _MOVE[c.lower()]
-            target = grid.get((x + dx, y + dy), 0)
-            want = c.isupper()
-            if (target == 1) == want:
-                x += dx
-                y += dy
-                visited.add((x, y))
-
-    min_x = min(vx for vx, _ in visited)
-    max_x = max(vx for vx, _ in visited)
-    min_y = min(vy for _, vy in visited)
-    max_y = max(vy for _, vy in visited)
-    rows = [
-        "".join(
-            "." if grid.get((xx, yy), 0) == 1 else "#" for xx in range(min_x, max_x + 1)
-        )
-        for yy in range(min_y, max_y + 1)
-    ]
-    io.print_line("\n".join(rows))
+    machine = _Machine(code)
+    for _ in range(limit):
+        machine.step()
+    io.print_line(machine.render())
 
 
 if __name__ == "__main__":
