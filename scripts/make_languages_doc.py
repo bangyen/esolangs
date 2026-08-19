@@ -196,7 +196,7 @@ def render() -> str:
         "Cross-check means an implementation in `extra/` that runs as a",
         "standalone program (Rust, Lean, or RISC-V assembly), used to",
         "differentially verify the Python interpreter.  The Boolean",
-        "column marks the boolean-function generators; Back, BIO, and",
+        "column marks the boolean-function generators; Back, BIO, Eval, and",
         "NoComment's are parameterized (the harness substitutes input bits",
         "into a template) rather than the program reading input.",
         "",

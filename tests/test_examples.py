@@ -121,9 +121,13 @@ MULTIPLY_EXAMPLES = {
 # both inputs one would loop forever instead (the `1` branch is not
 # executed).  Point Break likewise has no output: the committed program is
 # the wiki's own truth-machine, which halts for a 0 input and loops forever
-# for any nonzero input (the `1` branch is not executed).
+# for any nonzero input (the `1` branch is not executed).  Eval likewise has
+# no runtime input: the committed program is the generated AND2 template
+# instantiated with one input zero (``instantiate(eval("0001"), [0, 1])``),
+# which prints the result 0.
 BOOLEAN_EXAMPLES = {
     "arrowqueue": ("grid_based.arrowqueue", [], "", True),
+    "eval": ("stack_based.eval", [], "0", False),
     "minifuck": ("tape_based.minifuck", ["0", "1"], "0", False),
     "point-break": ("register_based.point_break", ["0"], "", False),
 }

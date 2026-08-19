@@ -53,6 +53,7 @@ __all__ = [
     "bfpda",
     "bio",
     "bitdeque",
+    "eval",
     "instantiate",
     "lamfunc",
     "minsky_swap",
@@ -122,6 +123,55 @@ def bio(truth_table: str) -> str:
         inner = "0ix{" + body + "}"
     init = "0oy" if truth_table[0] == "1" else ""
     return pack + " " + init + inner + "0oy" * 48 + "1iy"
+
+
+def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
+    """Build an Eval template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.  The
+    program prints ``'0'`` or ``'1'``.
+
+    Eval has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders become a bit push on the input stack
+    (``0`` for a zero, ```+`` for a one) and the harness instantiates one
+    program per input combination.  The tree is stored as a flat, full
+    binary tree in heap (BFS) order on the tree stack; a node at index
+    ``i`` tests the next input and the heap layout pins its two children at
+    fixed offsets.
+
+    A node is ``~=~?`` followed by ``i+1`` semicolons and a ``!``: ``~``
+    switches to the input stack, ``=`` moves the top input onto the tree
+    stack, ``~`` switches back, and ``?`` pops it -- skipping the next
+    command when it is zero.  The ``;``s discard ``i+1`` elements when the
+    bit is one (the skip makes it ``i`` when zero), so ``!`` pops the
+    0-child (heap index ``2i+1``) for a zero bit and the 1-child (``2i+2``)
+    for a one.  A leaf is ``0+.`` (prints 1) or ``0.`` (prints 0).  The
+    template pushes the tree in BFS order, reverses the stack so the root
+    is on top, and ``!`` evaluates it; each path keeps popping bits until a
+    leaf prints.  No node or leaf contains a quote or backtick, so the
+    strings need no escaping and the tree grows to any ``n``.
+    """
+    n = _validate_truth_table(truth_table)
+
+    def combo(leaf: int) -> tuple[int, ...]:
+        """Input bits (most significant first) reaching the heap ``leaf``."""
+        path: list[int] = []
+        while leaf > 0:
+            path.append(0 if leaf % 2 else 1)  # odd = left child = 0 branch
+            leaf = (leaf - 1) // 2
+        return tuple(reversed(path))
+
+    tree: list[str] = []
+    for i in range(2 ** (n + 1) - 1):
+        if i < 2**n - 1:  # internal node: test the next input
+            tree.append("~=~?" + ";" * (i + 1) + "!")
+        else:  # leaf: print the table entry for this path
+            index = sum(b << (n - 1 - k) for k, b in enumerate(combo(i)))
+            tree.append("0+." if truth_table[index] == "1" else "0.")
+
+    bits = "".join("{X" + str(i) + "}" for i in range(n - 1, -1, -1))
+    return f"~{bits}~" + "".join(f'"{t}"' for t in tree) + "*!"
 
 
 def back(truth_table: str) -> str:
