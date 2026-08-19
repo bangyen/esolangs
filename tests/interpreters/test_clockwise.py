@@ -4,8 +4,10 @@ import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+import pytest
+
 from esolangs.interpreters.grid_based.clockwise import run
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -28,14 +30,60 @@ class TestClockwise:
 
     def test_empty_program_rejected(self) -> None:
         """An empty program is malformed."""
-        import pytest
-
         with pytest.raises(ValueError, match="empty"):
             run_and_capture([])
 
     def test_unclosed_ring_rejected(self) -> None:
         """A pointer that walks off the ring is a malformed program."""
-        import pytest
-
         with pytest.raises(ValueError, match="not closed"):
             run_and_capture(["+;S"])
+
+
+class TestStepMachine:
+    def test_step_tracks_position_heading_and_accumulator(self) -> None:
+        from esolangs.interpreters.grid_based.clockwise import _Machine
+
+        machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
+        assert (machine.x, machine.y, machine.r, machine.acc) == (0, 0, 0, 0)
+        machine.step()  # + at the origin: acc 1, head right
+        assert (machine.x, machine.y, machine.r, machine.acc) == (1, 0, 0, 1)
+        machine.step()  # ; at (1,0): parity bit queued
+        assert (machine.x, machine.y, machine.r) == (2, 0, 0)
+        machine.step()  # S at (2,0): acc zeroed
+        assert (machine.x, machine.y, machine.r, machine.acc) == (3, 0, 0, 0)
+
+    def test_halting_ring_is_detected(self) -> None:
+        from esolangs.interpreters.grid_based.clockwise import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_looping_ring_is_detected_as_a_cycle(self) -> None:
+        """A ring whose orbit never re-enters the origin loops forever.
+
+        The halt condition is a return to the origin with a non-zero heading,
+        so this ring's closed orbit is a finite-state cycle the detector can
+        prove without waiting out a timeout.
+        """
+        from esolangs.interpreters.grid_based.clockwise import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(["SS?R ", "+?+S-", "R!!RS"], IO())
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_snapshot_includes_the_input_bits_and_their_rotation(self) -> None:
+        """A consuming ``.`` rotates the input bit list, changing the snapshot."""
+        from esolangs.interpreters.grid_based.clockwise import _Machine
+
+        machine = _Machine(
+            ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"],
+            ScriptedIO("0"),
+        )
+        assert machine.io.position() == 1  # the whole input line was read up front
+        for _ in range(3):
+            machine.step()  # no '.' yet: the input is untouched
+        before = machine.snapshot()
+        machine.step()  # the '.' at (4,0) consumes the first bit and rotates it
+        assert machine.snapshot() != before
+        assert "".join(machine.inp) == "1100000"

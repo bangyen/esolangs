@@ -240,7 +240,67 @@ class TestDotlang:
         vm.step()  # the trailing # prints 42, then the dot steps off the row
         assert vm.output == "42"
         assert vm.halted
+        assert vm.ip is None  # the dot has been consumed
         assert vm.memory == []
+
+
+class TestClockwise:
+    def test_ip_position_heading_and_accumulator(self) -> None:
+        vm = esolangs.make_vm("Clockwise", "+;S;S;S;S;S;+;R\nR             R")
+        assert vm.ip == (0, 0, 0)  # the pointer starts at the origin heading right
+        assert vm.memory == [0]
+        vm.step()  # + at the origin increments the accumulator
+        assert vm.ip == (1, 0, 0)
+        assert vm.memory == [1]
+        vm.step()  # ; queues a parity bit
+        assert vm.ip == (2, 0, 0)
+        assert vm.output == ""
+        assert vm.stack == []
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("Clockwise", "+;S;S;S;S;S;+;R\nR             R")
+        assert _run_all(vm) == "A"
+        vm.step()  # no-op
+        assert vm.output == "A"
+
+
+class TestDig:
+    def test_ip_mole_position_and_value(self) -> None:
+        vm = esolangs.make_vm("Dig", ">$5:\n 2 ")
+        assert vm.ip == (0, 0, 1)  # facing right
+        assert vm.memory == [0]
+        vm.step()  # > keeps facing right
+        assert vm.ip == (0, 1, 1)
+        vm.step()  # $ digs (reads the adjacent 5)
+        vm.step()  # 5 loads the mole
+        assert vm.memory == [5]
+        assert vm.stack == []
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("Dig", ">$5:\n 2 ")
+        assert _run_all(vm) == "5"
+        vm.step()  # no-op
+        assert vm.output == "5"
+
+
+class TestWii2d:
+    def test_ip_position_velocity_and_accumulator(self) -> None:
+        vm = esolangs.make_vm("WII2D", ">~.\n!")
+        assert vm.ip == (0, 0, 0)  # starts above the ! heading north
+        assert vm.memory == [0]
+        vm.step()  # > sets the heading east
+        assert vm.ip == (0, 1, 3)
+        vm.step()  # ~ prints the accumulator
+        assert vm.output == "\x00"
+        vm.step()  # . halts
+        assert vm.halted
+        assert vm.stack == []
+
+    def test_stepping_a_halted_vm_is_a_noop(self) -> None:
+        vm = esolangs.make_vm("WII2D", ">~.\n!")
+        assert _run_all(vm) == "\x00"
+        vm.step()  # no-op
+        assert vm.output == "\x00"
 
 
 class TestRunUntilHaltOrCycle:
@@ -310,6 +370,9 @@ class TestFactory:
         ("Point Break", "LET zero:=0"),
         ("ArrowQueue", "~*+"),
         ("123", "3231"),
+        ("Clockwise", "+;S;S;S;S;S;+;R\nR             R"),
+        ("Dig", ">$5:\n 2 "),
+        ("WII2D", ">~.\n!"),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:

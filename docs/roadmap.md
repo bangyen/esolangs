@@ -219,22 +219,26 @@ already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
-`esolangs.make_vm` (step-and-inspect wrappers for fifteen interpreters:
+`esolangs.make_vm` (step-and-inspect wrappers for eighteen interpreters:
 brainfuck, S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
 Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123, A Painter Ant,
-2dFish, Dotlang)
+2dFish, Dotlang, Clockwise, Dig, WII2D)
 and
 `esolangs.make_debugger` (breakpoints and watches over the VM) shipped.
 The medium-priority work that remains:
 
 - **More step-capable interpreters.**  Convert more of the registry to a
-  step()/halted state object, growing the VM set per state model.  Point
+  step()/halted state object, growing the VM set per state model.  The grid
+  family is now fully converted: Point
   Break, ArrowQueue, 123, A Painter Ant, 2dFish, and Dotlang joined the
   set with the cycle-detection work
-  below; the
-  other grid languages (Clockwise, Dig, Wii2d, ...) are the
-  natural next batch: their position/direction is the ``ip``, as LaserFuck
-  demonstrated.
+  below, and Clockwise, Dig, and WII2D closed it out (their
+  position/direction is the ``ip``, as LaserFuck
+  demonstrated).  The
+  natural next batches are the other families still on whole-program
+  ``run()``s — the tape-based OISCs, the remaining queue/stack/register
+  languages (e.g. Bitdeque, Forþ, AddSubJump) whose state is a
+  cursor plus cells or a stack.
 - **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
   currently the active call frame's cursor; a language with nested calls
   should expose the call stack, not fold it into one frame's position.
@@ -265,19 +269,23 @@ Started for Point Break, ArrowQueue, 123, and brainfuck.
 visited-state ``set``; Floyd/Brent two-pointer detection for O(1) memory
 would be the follow-up) — steps a step-capable machine and returns
 ``False`` the moment a repeated snapshot proves it is looping, and
-``True`` as soon as a step halts.  The four interpreters were made
-step-capable (a ``_Machine`` state object each, with ``snapshot()``
-including the input cursor) and every hand-written hang test in the suite
-now decides the looping side deterministically — no wall-clock bound, no
-subprocess, and no coverage-tracer exposure at all.
+``True`` as soon as a step halts.  Every hand-written hang test in the
+suite now decides the looping side deterministically — no wall-clock bound,
+no subprocess, and no coverage-tracer exposure at all.  The grid family's
+step machines (Clockwise, Dig, WII2D) carry a ``snapshot()`` that includes
+the input cursor (Clockwise's consumed-and-rotated bit list, Dig's mole and
+mutable grid); WII2D's ``?`` draws a random heading, so like LaserFuck it
+is excluded from the deterministic check.
 
 **Design rule: hand-written hang tests always use loops that revisit
 state.**  Since the test chooses the program, it can pick a finite-state
 cycle, and cycle detection is then complete (not just sound) for that
 test.  ArrowQueue's sustaining truth-machine ring is a 12-state cycle,
 123's state is bounded so every loop is a cycle, and brainfuck's ``+[]``
-wraps its cell.  The "catches cycles, not every hang" caveat — e.g. an
-unbounded-growth ``+[>+]`` whose tape grows forever — only bites when the
+wraps its cell; Clockwise's orbit that never re-enters the origin and
+Dig's closed direction ring are 6- and 4-state cycles respectively.  The
+"catches cycles, not every hang" caveat — e.g. an unbounded-growth
+``+[>+]`` whose tape grows forever — only bites when the
 suite does *not* control the programs, i.e. the fuzzers, so the timeout
 backstop stays there and is not a hazard for the hand-written tests.
 

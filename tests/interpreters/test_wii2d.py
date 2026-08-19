@@ -387,5 +387,37 @@ class TestWII2DMathematicalOperations:
         )  # The program outputs 16 as a character, but 16 is processed as 1 then 6
 
 
+class TestStepMachine:
+    def test_step_tracks_position_velocity_and_accumulator(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+
+        machine = _Machine([">~.", "!"], IO())
+        assert (machine.x, machine.y, machine.vel, machine.acc) == (0, 0, 0, 0)
+        machine.step()  # > sets the heading east, then moves one cell
+        assert (machine.x, machine.y, machine.vel) == (0, 1, 3)
+        machine.step()  # ~ prints the accumulator (0)
+        assert (machine.x, machine.y) == (0, 2)
+        machine.step()  # . halts
+        assert machine.halted
+        assert machine.acc == 0
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine([">~.", "!"], IO())) is True
+
+    def test_snapshot_is_hashable_and_tracks_the_accumulator(self) -> None:
+        from esolangs.interpreters.grid_based.wii2d import _Machine
+
+        machine = _Machine([">+~.", "!"], IO())
+        before = machine.snapshot()
+        assert hash(before) is not None
+        machine.step()  # > east
+        machine.step()  # + increments
+        assert machine.snapshot() != before
+        assert machine.acc == 1
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -47,7 +47,7 @@ class Debugger:
         return self.vm.output
 
     @property
-    def ip(self) -> int | tuple[int, ...]:
+    def ip(self) -> int | tuple[int, ...] | None:
         """The wrapped VM's current position."""
         return self.vm.ip
 
