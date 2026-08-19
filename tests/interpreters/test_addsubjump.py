@@ -150,3 +150,37 @@ class TestHaltAndErrors:
 
     def test_empty_program(self) -> None:
         assert _run("") == ""
+
+
+class TestStepMachine:
+    def test_step_tracks_ip_and_memory(self) -> None:
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        machine = _Machine("-1 1 0 -7", ScriptedIO())
+        assert (machine.ip, list(machine.memory)) == (0, [-1, 1, 0, -7])
+        machine.step()  # writes *b to I/O and jumps via *c (a special address)
+        assert machine.io.getvalue() == "\x01"
+        assert machine.ip == -1
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ip == -1
+
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        machine = _Machine("0 0 0 0", ScriptedIO())
+        assert hash(machine.snapshot()) is not None
+        assert machine.io.position() == 0
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("-1 1 0 -7", ScriptedIO())) is True
+
+    def test_looping_program_is_detected_as_a_cycle(self) -> None:
+        """0 0 0 0 adds zero to cell 0 and jumps to itself forever."""
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("0 0 0 0", ScriptedIO())) is False

@@ -26,6 +26,12 @@ Documented decisions for gaps in the wiki spec:
   that has not halted after ``limit`` instructions is rejected with
   :class:`HaltError` (the wiki has no termination convention beyond falling
   off the special addresses).
+
+The interpreter runs on a :class:`_Machine` (memory, instruction pointer,
+and flags), so it is step-capable: ``step()`` executes one instruction and
+``halted`` is true once the pointer lands on a special address or off the
+end of memory, making a repeating program a finite-state cycle the state
+cycle detector can prove.
 """
 
 import sys
@@ -41,24 +47,50 @@ _FUM = -9
 _SPECIAL = set(range(_FUM, _IO + 1))
 
 
-def run(code: str, io: IO, limit: int = 10_000) -> None:
-    """Run an AddSubJump program, halting after ``limit`` instructions."""
-    memory = _parse(code)
-    cf = zf = nf = of = fum = 0
-    ip = 0
-    steps = 0
+class _Machine:
+    """Per-run ASJ state: the self-modifying memory, ip, and flags.
 
-    def read(addr: int) -> int:
+    ``step()`` executes one instruction; ``halted`` is true once the
+    instruction pointer lands on a special address or off the end of memory.
+    The VM and the state-cycle hang detector expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Parse ``code`` into memory and reset the pointer and flags."""
+        self.io = io
+        self.memory: list[int] = _parse(code)
+        self.cf = self.zf = self.nf = self.of = self.fum = 0
+        self.ip = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the pointer is off the end of memory or a special address."""
+        return self.ip < 0 or self.ip >= len(self.memory)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            tuple(self.memory),
+            self.ip,
+            self.cf,
+            self.zf,
+            self.nf,
+            self.of,
+            self.fum,
+            self.io.position(),
+        )
+
+    def _read(self, addr: int) -> int:
         if addr == _IO:
-            return io.input_char()
+            return self.io.input_char()
         if addr == _CF:
-            return cf
+            return self.cf
         if addr == _ZF:
-            return zf
+            return self.zf
         if addr == _NF:
-            return nf
+            return self.nf
         if addr == _OF:
-            return of
+            return self.of
         if addr == _ONE:
             return 1
         if addr == _ZERO:
@@ -66,53 +98,58 @@ def run(code: str, io: IO, limit: int = 10_000) -> None:
         if addr == _NEG:
             return -1
         if addr == _FUM:
-            return fum
-        if 0 <= addr < len(memory):
-            return memory[addr]
+            return self.fum
+        if 0 <= addr < len(self.memory):
+            return self.memory[addr]
         return 0
 
-    def write(addr: int, value: int) -> None:
-        nonlocal fum
+    def _write(self, addr: int, value: int) -> None:
         if addr == _IO:
-            io.print_char(chr(value & 0xFF))
+            self.io.print_char(chr(value & 0xFF))
         elif addr in _SPECIAL:
             if addr == _FUM:
-                fum = value
+                self.fum = value
         else:
-            if addr >= len(memory):
-                memory.extend([0] * (addr + 1 - len(memory)))
-            memory[addr] = value
+            if addr >= len(self.memory):
+                self.memory.extend([0] * (addr + 1 - len(self.memory)))
+            self.memory[addr] = value
 
-    while steps < limit:
-        if ip < 0 or ip >= len(memory):
+    def step(self) -> None:
+        """Execute one instruction, advancing the pointer."""
+        if self.halted:
             return
-        a = memory[ip]
-        b = memory[ip + 1] if ip + 1 < len(memory) else 0
-        c = memory[ip + 2] if ip + 2 < len(memory) else 0
-        d = memory[ip + 3] if ip + 3 < len(memory) else 0
+        a = self.memory[self.ip]
+        b = self.memory[self.ip + 1] if self.ip + 1 < len(self.memory) else 0
+        c = self.memory[self.ip + 2] if self.ip + 2 < len(self.memory) else 0
+        d = self.memory[self.ip + 3] if self.ip + 3 < len(self.memory) else 0
 
-        vd = read(d)
-        vb = read(b)
+        vd = self._read(d)
+        vb = self._read(b)
         if a == _IO:
             new = vb
-            write(_IO, new)
+            self._write(_IO, new)
         elif vd > 0:
-            new = read(a) - vb
-            write(a, new)
+            new = self._read(a) - vb
+            self._write(a, new)
         else:
-            new = read(a) + vb
-            write(a, new)
+            new = self._read(a) + vb
+            self._write(a, new)
 
-        if fum:
-            zf = 1 if new == 0 else 0
-            nf = 1 if new < 0 else 0
-            cf = of = 0
+        if self.fum:
+            self.zf = 1 if new == 0 else 0
+            self.nf = 1 if new < 0 else 0
+            self.cf = self.of = 0
 
-        ip = read(c)
-        if _FUM <= ip <= _IO:
+        self.ip = self._read(c)
+
+
+def run(code: str, io: IO, limit: int = 10_000) -> None:
+    """Run an AddSubJump program, halting after ``limit`` instructions."""
+    machine = _Machine(code, io)
+    for _ in range(limit):
+        if machine.halted:
             return
-        steps += 1
-
+        machine.step()
     raise HaltError(f"execution exceeded the {limit}-instruction limit")
 
 

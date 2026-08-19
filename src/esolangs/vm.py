@@ -385,6 +385,37 @@ class _TemporaryStackVM(_BaseVM):
         return list(self._state.stk)
 
 
+class _ForthVM(_BaseVM):
+    """Stack + scope table; ``ip`` is the active frame's cursor."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return (
+            self._machine.frames[-1].pc if self._machine.frames else len(self._program)
+        )
+
+    @property
+    def memory(self) -> list[int]:
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stack)
+
+
 class _LaserFuckVM(_BaseVM):
     """2D grid; ``ip`` is the active laser's (x, y, heading).
 
@@ -452,6 +483,35 @@ class _PointBreakVM(_BaseVM):
         return []
 
 
+class _AddSubJumpVM(_BaseVM):
+    """Self-modifying memory + instruction pointer; ``memory`` is the cells."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ip
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.memory)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _ArrowQueueVM(_BaseVM):
     """Direction queue; ``ip`` is the IP's (x, y, heading)."""
 
@@ -479,6 +539,40 @@ class _ArrowQueueVM(_BaseVM):
     @property
     def stack(self) -> list[object]:
         return list(self._machine.queue)
+
+
+class _BitdequeVM(_BaseVM):
+    """Token cursor + deque; ``ip`` cursor, ``memory`` deque, ``stack`` register."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.queue_based.bitdeque import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        machine = self._machine
+        if machine.halted:
+            return
+        machine.step()
+        if machine.ind >= len(machine.tokens):
+            machine.render()  # the deque is printed once the program ends
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.deq)
+
+    @property
+    def stack(self) -> list[object]:
+        return [self._machine.reg]
 
 
 class _APainterAntVM(_BaseVM):
@@ -713,6 +807,9 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Dig": _DigVM,
     "WII2D": _Wii2dVM,
     "123": _OneTwoThreeVM,
+    "Forþ": _ForthVM,
+    "AddSubJump": _AddSubJumpVM,
+    "Bitdeque": _BitdequeVM,
 }
 
 

@@ -109,3 +109,55 @@ class TestForth:
 
     def test_empty_program(self) -> None:
         assert run_program("") == ""
+
+
+class TestStepMachine:
+    def test_step_tracks_stack_and_active_frame_cursor(self) -> None:
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine("65.", ScriptedIO())
+        assert (machine.stack, machine.frames[0].pc) == ([], 0)
+        machine.step()  # 6 pushes
+        assert (machine.stack, machine.frames[0].pc) == ([6], 1)
+        machine.step()  # 5 pushes
+        assert machine.stack == [6, 5]
+        machine.step()  # . pops and prints the low byte
+        assert machine.io.getvalue() == "\x05"
+        machine.step()  # finalizing the finished frame halts the machine
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.frames == []
+
+    def test_nested_scope_pushes_a_frame_and_aborts_discard_the_error(self) -> None:
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine("1{/}1;", ScriptedIO())
+        for _ in range(4):  # 1 {/} 1 ; -> the ; pushes the "/" scope
+            machine.step()
+        assert len(machine.frames) == 2
+        machine.step()  # the "/" underflow aborts the scope (and ends the run)
+        assert machine.halted
+        assert machine.error is False  # the nested error is discarded
+
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine(",", ScriptedIO("hi"))
+        before = machine.snapshot()
+        machine.step()  # , reads the line, pushing each byte
+        assert machine.snapshot() != before
+        assert machine.io.position() == 1
+        assert machine.stack == [104, 105]
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("65.", ScriptedIO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        """1[] : the empty loop body never clears the top, so it spins."""
+        from esolangs.interpreters.stack_based.forth import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("1[]", ScriptedIO())) is False
