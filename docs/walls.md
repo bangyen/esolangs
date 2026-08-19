@@ -72,7 +72,7 @@ bit with `INVERT PUSH`/`PUSH INVERT`, and Minsky Swap needs only one
 command — `+` for a one, or `*` to point the ``~`` at the other still-zero
 register — so no absolute index moves between instantiations (see the
 `ram0`, `bitdeque`, and `minsky_swap` generators in
-`esolangs.tools.booleans.parameterized`).
+`esolangs.tools.boolean.parameterized`).
 
 ## Eval (nested parameterized trees)
 
@@ -176,24 +176,8 @@ past `n == 2` (the search caps at 6 of 8 combinations).
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.
-- **Movesum**: only `move` (copy) and `sum` (add), with no conditional — the
-  loop repeats commands until the array stops changing.  The numeric output
-  (always a trailing space) and the addition-only arithmetic cannot express a
-  general boolean function.
-- **Lightlang**: `?` reads a bit (an empty line gives 1, any non-empty line
-  gives 0), so a bit is readable, and `&` (skip the next instruction when
-  the bit is 1) skips exactly one character.  That single-character skip is
-  enough to route the *AND/OR class* for any arity: each `&` skips precisely
-  the single `#` halt, so a bit of 1 continues past a "print 0, halt" block
-  and a bit of 0 falls into it.  ``?&!&#`` (repeated per bit, ending in
-  ``?!``) computes AND; ``?&?!`` (``?&`` per bit) computes OR — both verified
-  to n = 4 on the interpreter.  What is *not* expressible is a non-monotone
-  table (XOR, NAND, or any arbitrary table): those need a multi-character
-  leaf that `&` cannot skip past, so a decision-tree node cannot route to a
-  general subtree.  Its ``@`` command is also non-deterministic (a random
-  bit).
 
-## Termination-based convention (partial, not a boolean generator)
+## Termination-based convention (Point Break is a full generator; the rest partial)
 
 A "halt vs. loop forever" convention — the program halts iff the embedded
 input bits satisfy the function — was explored for the languages with a
@@ -208,18 +192,34 @@ languages reach multi-input threshold functions:
   sustains iff its single sustainer cell is `~` — each bit can only add a
   "must be present" literal, so a single ring is one AND of literals (one
   minterm), and multiple rings cannot be OR'd on the IP's single path.
-  XOR/XNOR (two disjunct minterms) are therefore not expressible, and a
-  200,000-grid search never produced them.  So ArrowQueue realizes the
+  XOR/XNOR (two disjunct minterms) would need to OR two rings, which the
+  IP's single path cannot host, and a 200,000-grid search never produced
+  them — strong evidence for a threshold/AND/OR-class ceiling, though not a
+  proof.  So ArrowQueue realizes the
   convention for threshold/AND/OR-class functions, not arbitrary tables.
 
-No existing boolean generator uses this convention; it would require a new
-harness contract (termination as the answer) and still does not unlock a
-general multi-input generator in any of these languages.
+- **Point Break** is the one language where the convention is a *general*
+  boolean generator, the first under this contract
+  (`esolangs.tools.boolean.point_break`): the language has no output, but
+  its Turing-complete arithmetic makes every ``n``-ary table a sum of
+  minterms (a product of bits and complements computed with single-
+  operation ``LET``s), and a fixed template — ``LET g:=one-f`` then
+  ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` — halts iff ``f`` is
+  0 and loops forever iff ``f`` is 1, exactly the wiki's own truth-machine
+  semantics.  No other language in the repo needed the new harness
+  contract (termination as the answer); Point Break is the only one where
+  the convention unlocks an arbitrary table rather than hitting a
+  structural ceiling.  The looping side is decided deterministically by
+  state-cycle detection: Point Break is step-capable and a repeated
+  complete-state snapshot proves the loop (see the roadmap's
+  hang-detection section), so the boolean tests need no wall-clock bound
+  at all — which also sidesteps the coverage-tracer deadlock that a
+  timeout backstop would invite.
 
-## A Painter Ant boolean generator (n == 2 solved; n >= 3 open)
+## A Painter Ant boolean generator (general; any n)
 
 A Painter Ant has no I/O, so its boolean generator (in
-:mod:`esolangs.tools.booleans.a_painter_ant`) uses the parameterized
+:mod:`esolangs.tools.boolean.parameterized.a_painter_ant`) uses the parameterized
 convention, read by a semantic grid model (the interpreter's own output is
 the visited-cell bounding box, which carries no coordinates).  The answer
 is the **colour of the cell the ant lands on** at the end of a cycle (white
@@ -228,34 +228,27 @@ is one, black is zero).
 The construction paints one decision-tree leaf per input combination and
 routes the ant to the leaf for its inputs.  Each leaf is painted ``P``
 (white) for a one table entry and **left unpainted** (a space, ignored by
-the interpreter) for a zero.  Only ``P`` is ever used — the generator never
-paints a cell black — so the white cells are monotone increasing: cycle 1
-establishes them and every later cycle only re-confirms a subset, which is
-what makes every instantiated program a cycle-stable fixed point (the box
-is identical for any whole number of cycles).
+the interpreter) for a zero.  The head walks each leaf out and back
+piecewise — one weighted move per input bit, in the same order and
+direction the routing uses, so the outbound path never crosses a
+previously painted leaf — with ``WS``/``NE`` uppercase anchors (for
+``n >= 2``, plus a leading anchor for odd ``n``) that launch the cycle-2
+ant off the leaf onto the painted ring.  The body paints a two-layer
+**star** around the output leaf and its y-mirror, and the final input's
+``WWwWWEEe``/``NENEESWw`` dance closes the walk onto the leaf.  Only ``P``
+is ever used — the generator never paints a cell black — so the white cells
+are monotone increasing: cycle 1 establishes them and every later cycle
+only re-confirms a subset, which is what makes every instantiated program
+a cycle-stable fixed point (the box is identical for any whole number of
+cycles).  The full construction is recorded in
+``docs/a_painter_ant_generator.md``.
 
-Supported and verified exhaustively against the interpreter:
-
-- **n == 2**: all sixteen two-input functions, exact and cycle-stable.
-- **n == 1**: the four one-input functions, exact and cycle-stable, by
-  padding to ``[f(0), f(0), f(1), f(1)]`` and fixing the second input to
-  zero (reusing the n == 2 construction).
-
-**n >= 3 is open.**  A *box-height* method found by search extends the
-range: each one-input makes the ant step one cell further north
-(*accumulative travel*), so the ant's depth equals the input weight and a
-paint/return section turns that depth into a box height (or its parity).
-This is cycle-stable and expresses *most* n == 3 tables — a search found
-196 of 256, including AND3, OR3, XOR3 (via height parity), and majority —
-but the ~60 unreachable ones are exactly the balanced, non-monotone tables
-(such as equality), and no general construction is known that reaches *all*
-functions of an arity.  Lifting the cap to a general method is recorded in
-``docs/roadmap.md``.
-
-An **in-progress leaf-paint generalization** (a different approach from
-box-height) is exact for cycle 1 on all 256 n == 3 tables but is not yet
-cycle-stable; see ``docs/a_painter_ant_generator.md`` for the draft layout
-and the open stability work.
+Supported for **every arity** and verified cycle-stable and exact: all
+``n <= 3`` tables exhaustively (including n == 1 and n == 2), with
+``n == 4``-``7`` sampled plus structured and constant edge tables.  The
+general method — encode each combination as a distinct leaf position
+reached by the weighted bit-moves, and anchor the cycle-2 run back onto
+that leaf — is recorded in ``docs/roadmap.md``.
 
 ## Multiply capability (Jaune realizes it)
 

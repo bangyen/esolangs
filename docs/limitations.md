@@ -25,7 +25,7 @@ predictable across languages:
   reads past the end of `stdin` is almost always a bug, and the loud error
   surfaces it (and lets `,[.,]`-style cat loops terminate).  Languages whose
   spec defines EOF behavior follow the spec instead and document it: S*bleq
-  and Movesum read `0` at EOF (both per the wiki), and every other
+  reads `0` at EOF (per the wiki), and every other
   interpreter raises `EOFError`.  Malformed programs raise `ValueError` and
   runtime halts raise :class:`HaltError`, never a raw Python exception.
 - **Byte input is line-delimited.**  ``io.input_char`` reads a whole input
@@ -42,14 +42,13 @@ predictable across languages:
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a two-input boolean generator; no text generator. |
+| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a general (any-arity) boolean generator; no text generator. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | Bitdeque | Prints the register/deque contents as numbers. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
-| Lightlang | Prints only the single bit as a number. |
 | Minsky Swap | Prints the registers as numbers. |
-| Movesum | Prints numbers space-separated with no trailing space. |
+| Point Break | No output at all; a program only halts or loops. Has a termination-convention boolean generator (halt for 0, loop for 1); no text generator. |
 | RAM0 | Prints a state dump. |
 
 The straight-line generators are also at their length floor — no
@@ -82,8 +81,6 @@ per-character encoding can be meaningfully shortened:
 | Dotlang | The `W~` warp re-enters the first-match markers, losing branch history. |
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
-| Lightlang | `&` skips one character, so it cannot route to a multi-character leaf; only the AND/OR-class tables are expressible (each bit's skip covers exactly the single `#` halt), with no XOR or arbitrary table (see `docs/walls.md`). |
-| Movesum | No conditional; the loop repeats until the array stops changing. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 | WII2D | The accumulator never affects control flow. |
 
@@ -94,8 +91,8 @@ per-character encoding can be meaningfully shortened:
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
-| A Painter Ant | `n == 2` | Open at `n >= 3`: the two-input leaf-paint construction is exact and cycle-stable; a leaf-paint n == 3 generalization is in progress (cycle-1 exact for all 256 tables, not yet cycle-stable) and a search-found box-height method reaches 196/256 n == 3 tables. No general method for all functions of an arity is known yet (see `docs/roadmap.md` and `docs/a_painter_ant_generator.md`). |
-| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
+| A Painter Ant | total (no cap) | Lifted: the piecewise leaf-paint head with WS/NE anchors is exact and cycle-stable for every arity (see `docs/roadmap.md` and `docs/a_painter_ant_generator.md`). |
+| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme, A Painter Ant | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
 Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps
@@ -107,50 +104,53 @@ The parameterized no-input generators (bio, back, nocomment, bfpda, lamfunc,
 bitdeque, ram0, minsky_swap) each embed every input **exactly once**, never
 re-embedding a bit at multiple decision nodes — an input-capable language
 reads each of its `n` inputs once per run, and the no-input generators
-mirror that (see `esolangs.tools.booleans.parameterized` and its regression
+mirror that (see `esolangs.tools.boolean.parameterized` and its regression
 test).  Two of them, `nocomment` and `bfpda`, also embed each input's
 complement (`{Ci}`) once, because their if/else branch needs a gate that is
 nonzero exactly when the bit is zero and neither language can compute that
 complement at runtime (`nocomment` has no flip; `bfpda`'s `@` destroys the
 bit) — a documented wall, not a superfluous read.
 
-## Fell-through candidates
+## Assessed and rejected
 
-Assessments of unimplemented languages from the wiki that did not make the
-roadmap.  The viable candidates are in `docs/roadmap.md`.
+Languages from the wiki that were assessed against the admission criteria
+and did not make the repo — whether they were never implemented (the
+roadmap's fell-through) or were removed after being implemented.  The
+viable candidates are in `docs/roadmap.md`; the full rationale for each
+verdict is in the commit history.  ``(removed)`` marks languages whose
+interpreter, generator, and tests were deleted from the repo.
 
-- **Gravity**: particle-collision simulation whose evolution is in general
-  non-computable, so no interpreter can be verified against expected output.
-- **Earfuck**: a trivial brainfuck reskin that renames each instruction to a
-  pentatonic-scale note; too easy to be worth a dedicated interpreter.
-- **Conveyor**: multi-worker language with belts, stacks, and a hand, but no
-  input command and only stderr output, so it cannot support the repo's
-  file-based I/O protocol.
-- **Chainlang**: an AI-generated graph-based spec whose own author warns it is
-  unfinished ("don't expect it to be perfect").
-- **Binary ///**: a stub with no usable specification beyond "only uses `1`
-  and `0`".
-- **Fourfuck**: an incomplete language whose spec is a stub with only a couple
-  of core commands documented.
-- **Aaargh++**: a 4D work-in-progress with a partial spec.
-- **Bitwise Cyclic Teast**: a work-in-progress with a still-in-development
-  interpreter definition.
-- **N Refine**: probabilistic self-rewriting OISC with no I/O; also already
-  implemented per its wiki page, so it is not a gap either way.
-- **something positive**: explicitly uncomputable (its halting depends on
-  program equivalence), so no interpreter can be verified.
-- **LogicF---**: a joke language whose commands are non-deterministic and
-  non-functional (a 2% chance to increment, a 67% chance to throw a
-  KeyError, and so on), with no usable protocol.
-- **Vandevelo**: input-only, with no output at all.
-- **Varigen**: an explicitly "uncomputable" joke language.
-- **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**,
-  **Writeover**: joke or vaguely specified languages with no usable
-  specification or I/O protocol.
-- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**,
-  **Streetcode**, **Unary Filesystem**, **Phile**: particle/map/file- or
-  OS-based languages with no portable file-based I/O protocol.
-- **Welcome To...**: a work-in-progress.
+- **2 Bits 1 Byte** (removed): joke; single-byte program, no text or boolean generator, externally implemented.
+- **Aaargh++**: 4D work-in-progress with a partial spec.
+- **ASCII art** (removed): brainfuck with an art alphabet; a trivial reskin.
+- **Binary ///**: stub with no usable specification.
+- **Bitwise Cyclic Teast**: work-in-progress, interpreter still in development.
+- **Brainpocalypse** (removed): no input; invented dump and a one-bit halt-vs-loop wall; externally implemented.
+- **Chainlang**: AI-generated spec its own author calls unfinished.
+- **Conveyor**: no input command, stderr-only output.
+- **Crement**: self-modifying, no I/O; no input to branch on.
+- **DSDLAI** (removed): trivial Dig reskin with a random death chance; non-deterministic.
+- **Earfuck**: trivial brainfuck reskin (notes for instructions).
+- **Fourfuck**: incomplete, a stub with a couple of commands.
+- **Gravity**: non-computable evolution; nothing verifiable.
+- **Kak** (removed): no input; only the tape bit-string (an invented dump); externally implemented.
+- **Keys** (removed): a two-line equality comparison; a gadget, not a language model.
+- **Lightlang** (removed): boolean capability caps at the AND/OR class; only a single bit is ever printed.
+- **LogicF---**: joke, non-deterministic and non-functional commands.
+- **Movesum** (removed): no conditional at all, so no boolean generator; numbers-only output.
+- **N Refine**: probabilistic self-rewriting OISC with no I/O; already implemented elsewhere.
+- **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**, **Writeover**: joke or vaguely specified, no usable spec or I/O.
+- **Number Seventy-Four** (removed): string-rewriting with no input; output alphabet `0`/`1`/`H`.
+- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Streetcode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
+- **Procedure**: only `the sum of ...` arithmetic is defined, so a faithful interpreter would have to invent the rest. Revisit if the wiki or Pure defines the operators.
+- **something positive**: explicitly uncomputable.
+- **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
+- **Stun Step** (removed): no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
+- **Trash** (removed): advance-to-next-prime gadget; can never print `1`.
+- **Vandevelo**: input-only, no output at all.
+- **Varigen**: explicitly "uncomputable" joke language.
+- **Welcome To...**: work-in-progress.
+- **Your Time Is Up**: random rule choice, no I/O; nondeterministic.
 
 ## Transpiler walls
 
@@ -190,124 +190,3 @@ round-trip test suite.  The one open theorem, if more Lean work is ever
 wanted, is the Minifuck boolean reachability characterization: a
 language-power statement (exactly the four one-input functions plus the
 eight 0-preserving two-input tables), not a generator-correctness proof.
-
-## Removed languages
-
-Languages removed from the repo, and why.  The interpreter, generator, and
-tests were deleted; the negative result is recorded so the assessment is not
-repeated.
-
-- **DSDLAI: removed.**  A Dig variant whose dig commands carry a random
-  20-90% death chance (printing "You died." and halting).  It was a trivial
-  reskin of Dig (its interpreter delegated to ``dig.run``) with irreducibly
-  random behavior, so a program's output was non-deterministic and could not
-  be verified against expected output — it failed the admission criteria in
-  `CONTRIBUTING.md` (deterministic computable behavior, not a trivial
-  reskin).
-- **ASCII art: removed.**  Brainfuck with an art alphabet — each of the eight
-  commands replaced by a block of repeated characters, and the interpreter
-  decoded the blocks then delegated to ``brainfuck.run``.  The transpiler
-  pair was a character-to-block string substitution, and the text/boolean
-  generators simply ran the brainfuck generators through that substitution.
-  It added no capability beyond a visual encoding, so it failed the "not a
-  trivial reskin" admission criterion and was removed along with its
-  transpiler pair and generators.
-- **Keys: removed.**  The program was two lines compared for equality (and
-  the absence of ``- _ / \\``), printing "Accept." or "Reject." — no loops,
-  no memory, no computation beyond one comparison.  It was a trivial
-  comparison gadget rather than a language model, so like Earfuck (a
-  brainfuck reskin "too easy to be worth a dedicated interpreter") it failed
-  the non-triviality admission criterion.
-- **2 Bits 1 Byte: removed.**  A joke language (wiki categories: joke,
-  unusable for programming) whose program is a single byte, so it can never
-  have a text generator (the output is always one byte) or a boolean
-  generator (``JMP``/``ACT`` target fixed fields, so there is no
-  value-testable branch).  Its wiki page already documents six external
-  implementations (JavaScript, C++, Haskell, Snap!, HTML, and Bangyen's
-  Python), so removing this interpreter leaves no gap, and its RISC-V
-  cross-check had already been dropped.  The counterweight — it was one of
-  the few interpreters hand-verifiable against a complete spec enumeration
-  (the wiki lists every one of the 256 possible programs' output) and it
-  resolved the wiki's ACT ambiguity (the command table contradicts the
-  disassembly example, and the interpreter followed the example to match
-  Hakerh400's reference) — was weighed and did not outweigh the absence of
-  any generator, gap, or unique verification value.
-- **Number Seventy-Four: removed.**  A string-rewriting language whose three
-  commands ``0``/``1``/``H`` only ever *prepend* to an output string, run in
-  repeated passes until the output starts with ``H``; it has no input
-  command.  It can never have a text generator (the output alphabet is
-  ``0``/``1``/``H``) or a boolean generator (the halt depends only on the
-  front-most output character).  Unlike 2 Bits 1 Byte it is a genuine gap to
-  remove — the wiki categorizes it Unimplemented, so this interpreter was
-  the only one — and its Rust cross-check had already been dropped.  The
-  interpreter was hand-verifiable (it resolved the pass-boundary halting
-  check and the restart-forever behavior), but the absence of any input,
-  generator, or non-trivial output class was weighed against the gap and won.
-- **Trash: removed.**  The wiki defines a single function — advance to the
-  next prime, or print ``0`` for a non-prime start — applied to a number,
-  so a program is just a value with leading ``t`` step counts: a gadget
-  rather than a language model (it exists to satisfy CGCC's definition of a
-  programming language).  It can never have a text generator (only
-  prime-advanced output) or a boolean generator (it can never print ``1``).
-  It is also a genuine gap to remove (the wiki categorizes it Unimplemented;
-  this interpreter was the only implementation) and its Rust cross-check was
-  already dropped.  The interpreter resolved real spec details (trial
-  division, 2-is-prime, leading-digit and prefix parsing) but the language's
-  triviality and missing generator story outweighed the gap.
-- **Kak: removed.**  A minimal three-command (``!``/``?``/``<``) bit-tape
-  language with no input command, whose only observable result is the tape
-  printed as a ``0``/``1`` bit-string at the end of each pass — an
-  interpreter-invented state dump rather than a language-defined output.  It
-  can never have a text generator (only the tape bit-string is printable,
-  so exact bytes are unspellable) or a boolean generator (it prints the whole
-  tape, not a single ``0``/``1``, and has no input to branch on).  Unlike the
-  other no-output interpreters it is not a sole implementation — the wiki
-  already lists Common Lisp, Scratch, and C interpreters by other authors —
-  so removing this interpreter leaves no gap, and its Rust cross-check had
-  already been dropped.  The interpreter faithfully ported the semantics
-  (the ``?`` skip read on the fly, the halt-on-zero-cell restart), but the
-  absence of any input, generator, or language-defined output class outweighed
-  keeping it.
-- **Brainpocalypse: removed.**  A brainfuck-like tape language (``+``/``-``
-  adjust the current cell, ``>``/``<`` move the pointer) whose only control
-  flow is ``-``-on-zero rewinding the instruction pointer to the start of the
-  program.  It has no input command, and its only observable result is the
-  tape printed as space-separated decimal values at halt — an
-  interpreter-invented state dump rather than a language-defined output, so
-  it can never have a text generator.  Its boolean wall is the ``-``-on-zero
-  rewind: it gives a halt-vs-loop convention for one bit (``-`` loops for
-  bit 0, ``+-`` halts for bit 1), but the rewind restarts the prefix and
-  re-running ``+`` increments already-set cells, so multi-input bakes corrupt
-  and no general boolean generator exists.  Unlike the other no-output
-  interpreters it is not a sole implementation — the wiki lists Ruby, Crystal,
-  and Python interpreters by other authors — so removing this interpreter
-  leaves no gap, and its RISC-V cross-check had already been dropped.  The
-  counterweight is stronger than for Kak: Brainpocalypse is Turing-complete
-  (a Waterfall Model construction is proven on the wiki) and by a notable
-  author, but the no-I/O admission criterion applies regardless of
-  computational class.  If it were ever readded, the open work is a
-  *nontrivial* boolean generator — the ``-``-on-zero rewind is the only
-  branch, and a working multi-bit construction (beyond the corrupting bake
-  pattern) has not been found.
-- **Stun Step: removed.**  A four-command (``+``/``-``/``>``/``<``) tape
-  language where ``>``/``<`` move the pointer only while the current cell is
-  nonzero, and execution loops back to the start after the program text
-  unless the current cell is 0, in which case the machine halts.  It has no
-  input command, and its only observable result is the reached cells printed
-  as space-separated decimal values at halt — an interpreter-invented state
-  dump rather than a language-defined output, so it can never have a text
-  generator.  Its boolean wall is the pass-boundary halt: it gives a
-  halt-vs-loop convention for one bit (``>`` moves only when the cell is
-  nonzero), but the loop-back re-runs the code with a shifted pointer,
-  corrupting multi-bit bakes, so no general boolean generator exists.  This
-  removal differs from Kak and Brainpocalypse in one important respect:
-  Stun Step is a *sole implementation* — the wiki lists only this repo's
-  interpreter and no external ones — so removing it does leave the language
-  with no implementation at all, a gap the admission criteria normally
-  weigh against removal.  The decision to remove it anyway weighed that gap
-  against the total absence of input, a text generator, or a language-defined
-  output class, and a boolean generator that would be *nontrivial* to build
-  (the shifted-pointer loop-back defeats every straightforward multi-bit
-  construction).  Stun Step is Turing-complete (a Delta Relay compilation is
-  proven on the wiki); if it were ever readded, the open work is that
-  nontrivial boolean generator.

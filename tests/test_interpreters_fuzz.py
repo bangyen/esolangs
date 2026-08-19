@@ -17,19 +17,18 @@ import pytest
 
 from esolangs.interpreters.io import IO
 
-# interpreter module -> instruction alphabet. lightlang's "_" (sleep) is
-# left out so the fuzz stays fast, and input is mocked below.
+# interpreter module -> instruction alphabet; input is mocked below.
 FUZZ = {
     "queue_based.bitdeque": "PUSHINJECTEJECTPOPINVERT",
     "register_based.minsky_swap": "+~*",
-    "tape_based.movesum": "move sum0123456789",
     "other.lamfunc": "p eq i cb lb fb vs vg F . x 0 1",
 }
 
-# ArrowQueue, back, Between, Jaune, lightlang, and RAM0 are not fuzzed here:
-# they have unconditional, goto, or directional loops (Jaune's ?/! jumps), so
-# a random program may legitimately never terminate and the "terminates"
-# invariant does not apply to them.
+# ArrowQueue, back, Between, Jaune, Point Break, and RAM0 are
+# not fuzzed here: they have unconditional, goto, or directional loops
+# (Jaune's ?/! jumps, Point Break's POINT/END), so a random program may
+# legitimately never terminate and the "terminates" invariant does not
+# apply to them.
 
 
 class _TimeoutError(Exception):

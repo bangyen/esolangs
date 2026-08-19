@@ -66,13 +66,6 @@ def _read_lines(code: str) -> list[str]:
     return rows
 
 
-def _get(grid: list[str], x: int, y: int) -> str:
-    """Return the cell at ``(x, y)``, or halt if the pointer left the grid."""
-    if y < 0 or x < 0 or y >= len(grid) or x >= len(grid[y]):
-        raise HaltError("pointer moved off the grid")
-    return grid[y][x]
-
-
 def _direct(c: str, x: int, y: int, d: str | None) -> tuple[int, int, str | None]:
     """If ``c`` sets a direction, adopt it, then take one step in it."""
     if c in _DIRS:
@@ -88,68 +81,119 @@ def _direct(c: str, x: int, y: int, d: str | None) -> tuple[int, int, str | None
     return x, y, d
 
 
+class _Machine:
+    """Per-run 2dFish state: position, direction, accumulator, string mode.
+
+    ``step()`` executes the cell under the pointer and advances it;
+    ``halted`` is true once the pointer hits ``@`` or leaves the grid.  A
+    pointer that runs off the grid halts with the documented
+    :class:`HaltError` in :func:`run` (it is *not* a normal halt).  The
+    VM and the state-cycle hang detector expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Parse ``code`` and set the initial direction from the top-left."""
+        self.io = io
+        self.grid = _read_lines(code)
+        self.acc = 0
+        self.string = ""
+        self.mode = False
+        self._done = False
+        self._off_grid = False
+
+        # the top-left cell only sets the initial direction (an empty first
+        # row reads as the NUL char, which is not a direction)
+        first = "\0" if not self.grid[0] else self.grid[0][0]
+        self.x, self.y, self.d = _direct(first, 0, 0, None)
+        if self.d is None:
+            raise ValueError("program does not set an initial direction")
+
+    @property
+    def halted(self) -> bool:
+        """Whether the pointer hit ``@`` or left the grid."""
+        return self._done
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.x,
+            self.y,
+            self.d,
+            self.acc,
+            self.string,
+            self.mode,
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one command, advancing the pointer."""
+        if self._done:
+            return
+        if (
+            self.y < 0
+            or self.x < 0
+            or self.y >= len(self.grid)
+            or self.x >= len(self.grid[self.y])
+        ):
+            self._done = True
+            self._off_grid = True
+            return
+
+        c = self.grid[self.y][self.x]
+        if c == "@":
+            self._done = True
+            return
+
+        if c == "i":
+            self.mode = False
+            self.acc += 1
+        elif c == "d":
+            self.mode = False
+            self.acc -= 1
+        elif c == "s":
+            self.mode = False
+            self.acc *= self.acc
+        elif c == "o":
+            self.io.print_num(self.acc)
+        elif c == "a":
+            if self.mode:
+                if not self.string:
+                    raise HaltError("a on an empty string")
+                self.io.print_char(self.string[-1])
+                self.string = self.string[:-1]
+            else:
+                self.io.print_char(chr(self.acc % 256))
+        elif c == "$":
+            self.string = self.io.input_str("Input: ")
+        elif c == "%":
+            self.mode = False
+            self.acc = self.io.input_num("Input: ")
+        elif c == "(":
+            self.string = ""
+            self.mode = True
+            if ")" not in self.grid[self.y][self.x :]:
+                raise ValueError("unterminated ( string capture")
+            temp = self.x
+            self.x += 1
+            while self.grid[self.y][self.x] != ")":
+                self.string += self.grid[self.y][self.x]
+                self.x += 1
+            if self.d != "/":
+                self.x = temp
+        elif c == "*":
+            self.io.print_str(self.string)
+            self.string = ""
+
+        self.x, self.y, self.d = _direct(c, self.x, self.y, self.d)
+
+
 def run(code: str, io: IO) -> None:
     """Run a 2dFish program."""
-    grid = _read_lines(code)
-
-    x = y = 0
-    acc = 0
-    string = ""
-    mode = False
-    d: str | None = None
-
-    # the top-left cell only sets the initial direction (an empty first row
-    # reads as the NUL char, which is not a direction)
-    first = "\0" if not grid[0] else grid[0][0]
-    x, y, d = _direct(first, x, y, d)
-    if d is None:
-        raise ValueError("program does not set an initial direction")
-
-    c = _get(grid, x, y)
-
-    while c != "@":
-        if c == "i":
-            mode = False
-            acc += 1
-        elif c == "d":
-            mode = False
-            acc -= 1
-        elif c == "s":
-            mode = False
-            acc *= acc
-        elif c == "o":
-            io.print_num(acc)
-        elif c == "a":
-            if mode:
-                if not string:
-                    raise HaltError("a on an empty string")
-                io.print_char(string[-1])
-                string = string[:-1]
-            else:
-                io.print_char(chr(acc % 256))
-        elif c == "$":
-            string = io.input_str("Input: ")
-        elif c == "%":
-            mode = False
-            acc = io.input_num("Input: ")
-        elif c == "(":
-            string = ""
-            mode = True
-            if ")" not in grid[y][x:]:
-                raise ValueError("unterminated ( string capture")
-            temp = x
-            x += 1
-            while grid[y][x] != ")":
-                string += grid[y][x]
-                x += 1
-            if d != "/":
-                x = temp
-        elif c == "*":
-            io.print_str(string)
-            string = ""
-
-        x, y, d = _direct(c, x, y, d)
-        c = _get(grid, x, y)
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
+    if machine._off_grid:  # noqa: SLF001 - mirrors the documented exit-3 halt
+        raise HaltError("pointer moved off the grid")
 
 
 if __name__ == "__main__":

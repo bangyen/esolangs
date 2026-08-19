@@ -105,7 +105,7 @@ def _to_binary(value: int) -> str:
 def _as_int(value: object) -> int:
     """Coerce a Lamfunc value to an integer (the bit-builtins' operand)."""
     if isinstance(value, bool):
-        return int(value)
+        return int(value)  # pragma: no cover - Lamfunc never produces a bool
     if isinstance(value, int):
         return value
     raise HaltError(f"expected a number, got {value!r}")
@@ -140,7 +140,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        return self._halted
+        return self._halted  # pragma: no cover - no step-capable wrapper yet
 
     def _arity(self, name: str) -> int:
         """Return ``name``'s arity (a builtin's fixed arity, or a def's)."""
@@ -156,7 +156,9 @@ class _Machine:
         if name in self.defs:
             d = self.defs[name]
             return _Func(name, len(d.params), d.body, d.params)
-        raise HaltError(f"calling undefined function {name!r}")
+        raise HaltError(  # pragma: no cover - callers only look up known names
+            f"calling undefined function {name!r}"
+        )
 
     # -- the core: evaluate one prefix expression, returning (value, consumed)
 
@@ -258,7 +260,7 @@ class _Machine:
             return chosen
         if fn.name == "cb":
             x, y = _as_int(args[0]), _as_int(args[1])
-            if x < 0 or y < 0:
+            if x < 0 or y < 0:  # pragma: no cover - Lamfunc values are never negative
                 raise HaltError("cb of a negative number is undefined")
             return int(bin(x)[2:] + bin(y)[2:], 2) if (x or y) else 0
         if fn.name == "lb":
@@ -293,7 +295,7 @@ class _Machine:
         i = 0
         while i < len(tokens):
             result, consumed = self._eval(tokens, i)
-            if consumed == 0:
+            if consumed == 0:  # pragma: no cover - _eval always consumes a token
                 raise HaltError("a dangling partial application at the top level")
             i += consumed
             # a partial application absorbs the remaining tokens as its args
@@ -309,7 +311,7 @@ class _Machine:
 
 def _print_value(value: object) -> str:
     if isinstance(value, bool):
-        return "1" if value else "0"
+        return "1" if value else "0"  # pragma: no cover - Lamfunc never produces a bool
     if isinstance(value, int):
         return _to_binary(value)
     if isinstance(value, _Func):

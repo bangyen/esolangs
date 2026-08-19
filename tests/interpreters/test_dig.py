@@ -162,3 +162,12 @@ class TestDigEdgeCases:
     def test_empty_input_line_reads_zero(self) -> None:
         """An empty input line stores 0 in the mole."""
         assert run_and_capture([">$=:", " 2 "], inputs=[""]) == "0"
+
+    def test_func_callback_breaks_out(self) -> None:
+        """A func callback returning True halts the run at the next ``$``."""
+        from esolangs.interpreters.grid_based.dig import run
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run([">$5:@", " 2 "], io=IO(), func=lambda: True)
+        assert buffer.getvalue() == ""

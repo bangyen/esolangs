@@ -3,9 +3,9 @@
 ## Is a language worth adding?
 
 Not every language on the esolangs wiki belongs in this repo; the
-fell-through lists in `docs/limitations.md` record the concrete cases that
-were assessed and rejected.  A language is a candidate if it meets all of
-these:
+assessed-and-rejected ledger in `docs/limitations.md` records the concrete
+cases that were assessed and rejected.  A language is a candidate if it
+meets all of these:
 
 - **Complete, stable specification.**  The wiki page must fully define the
   commands and behavior.  A stub, a work-in-progress, an "in-development"
@@ -21,10 +21,14 @@ these:
 - **A usable file-based I/O protocol.**  The language must read input and
   write output as characters/lines through the repo's `IO` seam (see the
   interpreter conventions in `docs/limitations.md`).  Languages with no
-  output (Point Break, State and Main, Vandevelo), stderr-only output
+  output (State and Main, Vandevelo), stderr-only output
   (Conveyor), or file/OS-based I/O (Unary Filesystem, Streetcode) do not
   fit.  A no-output language is admitted only as a self-contained
-  interpreter with no generator.
+  interpreter with no generator — with one exception: Point Break was
+  admitted with the first *termination-convention* boolean generator
+  (halt for 0, loop for 1; see `docs/walls.md`), which the wiki's own
+  truth-machine example defines and its Turing-complete arithmetic makes
+  fully general.
 - **A generator story.**  Either a text generator that can emit arbitrary
   bytes, or a boolean generator, or a documented reason the language cannot
   have one.  The generator is what makes the language testable end-to-end;
@@ -46,10 +50,11 @@ absolute rules:
   interpreter in this repo (or whose own page documents a working
   implementation) is not a gap.
 
-If a candidate fails the criteria, record the assessment in the appropriate
-fell-through list in `docs/limitations.md` — the negative result is as
-valuable as the interpreter, because it stops the assessment from being
-redone.  The roadmap (`docs/roadmap.md`) tracks which candidates are still
+If a candidate fails the criteria, record the assessment in the
+assessed-and-rejected ledger in `docs/limitations.md` — the negative result
+is as valuable as the interpreter, because it stops the assessment from
+being redone.  The roadmap (`docs/roadmap.md`) tracks which candidates are
+still
 on the table.
 
 ## Layout
