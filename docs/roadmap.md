@@ -85,7 +85,7 @@ with arithmetic and conditionals — and a working boolean generator now
 exists (see the constrained-generators section below), so like the other
 interpreter-only languages it is no longer a removal candidate even though
 it still has no text generator.  A Painter Ant has likewise come **off** this
-list: a working two-input boolean generator now exists (see the
+list: a working any-arity boolean generator now exists (see the
 constrained-generators section below), so like the other interpreter-only
 languages it is no longer a removal candidate even though it still has no
 text generator.  No
@@ -133,9 +133,9 @@ the convention realizes the threshold/AND/OR-class, not arbitrary tables.
 
 This is the only path that could take ArrowQueue off this list.  It would
 still be a *permanently* constrained generator: unlike A Painter Ant's
-n == 2 cap — which is not a language limit but an open construction
-(generalizing the generator to higher arities is the active roadmap work,
-see the A Painter Ant section below) — ArrowQueue's threshold ceiling is
+n == 2 cap — which was not a language limit but an open construction, and
+has since been lifted by a general any-arity generator (see the A Painter
+Ant section below) — ArrowQueue's threshold ceiling is
 supported only by a structural argument and a bounded 200,000-grid search
 (see `docs/walls.md`), not a proof, so it may be a genuine wall or just an
 undiscovered construction.  Adopting the convention
