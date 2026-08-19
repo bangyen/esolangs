@@ -106,24 +106,24 @@ after the `b1`-normalize prefix reaches only the 0-preserving two-input
 tables, matching the structural argument.  (Unlike Minifuck, this wall
 holds.)
 
-## Dotlang (warp first-match; now total)
+## Dotlang (fork-and-kill; parameterized, termination-based)
 
-The `W~` warp reads a line and teleports the dot to the *first* `W<name>`s`
-marker in the grid.  A plain decision tree re-enters those same first-match
-markers at every deeper level, so the branch history is lost: the second
-`W~` lands back on the first markers and loops.  The type conditionals
-(`!?:`) cannot help — input digits are converted to `int` 0/1, so both bits
-share the same type — and there is no value comparison or arithmetic.
+A plain decision tree fails on Dotlang: `W~` warps to the *first* `W<name>`s`
+marker, so deeper levels re-enter the same markers and lose branch history;
+the type conditionals (`!?:`) cannot help — input digits become `int` 0/1,
+so both bits share a type — and there is no value comparison or arithmetic.
 
 The shipped generator (`esolangs.tools.boolean.dotlang`) sidesteps the wall
-by giving every read site its own pair of warp names (`0a`/`1a` for the
-first input, then `0b`/`1b` or `0c`/`1c` for the second depending on the
-first bit, and so on, with the suffix the tree's preorder index), so the
-first match is always the right branch.  The user answers each `W~` with
-the site's name rather than a bare `0`/`1`, and the grid lays the tree out
-one row per node with rows partitioned between subtrees, so no path crosses
-another branch's marker.  The scheme is total: any arity and any table, at
-the cost of O(`2**n`) grid rows.
+by embedding the bits and forking: ``(`` spawns a dot at the matching ``)``
+while the caller continues, so a junction forks the dot into two and the
+embedded gate (``{Xi}`` or its ``{Ci}`` complement, filled with a
+pass-through ``a`` or an empty cell) kills one of them, leaving exactly the
+branch the bit selects.  The survivor turns down and right into its
+subtree, and each leaf is either an empty cell (halt = 0) or a 2x2 loop
+ring (hang = 1), so the answer is read from termination rather than output.
+It is a parameterized generator, total for any arity and table; the tree
+re-embeds each input at `2**i` junctions, so it is the one parameterized
+generator that does not embed each input exactly once.
 
 ## Polynomial (numeric root-finding ruled out; caps at n <= 4)
 

@@ -39,10 +39,15 @@ language can compute that complement at runtime -- ``nocomment`` has no flip
 it, so a decision node cannot hold both ``bi`` and ``~bi`` simultaneously.
 So those two emit ``n`` ``{Xi}`` plus ``n`` ``{Ci}``; the other generators
 emit only the ``n`` ``{Xi}``.
+
+:func:`dotlang` is the exception in two ways: it reads its answer from
+*termination* (a leaf is a halt or a 2x2 hang ring, so ``0``/``1`` is
+halt/hang rather than output), and it re-embeds each ``{Xi}``/``{Ci}`` at
+every decision node (a dotlang decision tree has no way to store a bit and
+read it back, so the junctions are the storage).
 """
 
 from collections.abc import Callable
-from itertools import product
 from typing import TypeAlias
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
@@ -54,6 +59,7 @@ __all__ = [
     "bfpda",
     "bio",
     "bitdeque",
+    "dotlang",
     "eval",
     "instantiate",
     "lamfunc",
@@ -1457,3 +1463,70 @@ def instantiate_wii2d_tree(template: str, bits: list[int]) -> str:
 
     fill(0, 1, 2, 0, 2**n)
     return "\n".join("".join(r).rstrip() for r in rows)
+
+
+def dotlang(truth_table: str) -> str:
+    """Build a Dotlang template that evaluates the table by termination.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Dotlang's ``(`` spawns a dot at the matching ``)`` while the caller
+    continues, so a junction forks the dot into two and the embedded bit
+    kills one of them.  Each ``{Xi}`` gate (and its ``{Ci}`` complement) is
+    filled with four cells of pass-through (``a``) or an empty cell (`` ``,
+    which pops the dot), so exactly the branch whose gate is open survives;
+    it turns down (``v``) and right (``>``) into its subtree.  A leaf is
+    either an empty cell (the program halts = 0) or a 2x2 ``v</>^`` loop
+    ring (the program hangs = 1), so the harness reads the answer from
+    termination via :func:`esolangs.vm.run_until_halt_or_cycle` rather than
+    from output (the convention Point Break and ArrowQueue use).
+
+    ``{Xi}`` is a four-character token in a 2D grid, so the template
+    reserves four cells per gate and ``set_bit``/``set_comp`` must return
+    four characters to keep the columns aligned.  The tree re-embeds input
+    ``i`` at ``2**i`` junctions, so unlike the other parameterized
+    generators a template holds each ``{Xi}`` (and ``{Ci}``) more than once.
+    """
+    n = _validate_truth_table(truth_table)
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(row: int, col: int, char: str) -> None:
+        cells[(row, col)] = char
+
+    def build(row: int, col: int, depth: int, combo: int) -> int:
+        if depth == n:
+            if truth_table[combo] == "0":
+                put(row, col, " ")  # halt: the survivor dies on the empty cell
+                return 1
+            put(row, col, "v")
+            put(row, col + 1, "<")
+            put(row + 1, col, ">")
+            put(row + 1, col + 1, "^")  # hang: a 2x2 loop ring
+            return 2
+        put(row, col, "(")
+        put(row, col + 1, "(")
+        put(row, col + 2, " ")  # the forking dot dies here
+        put(row, col + 3, ")")
+        for k, char in enumerate(f"{{X{depth}}}"):
+            put(row, col + 4 + k, char)
+        put(row, col + 8, "v")
+        put(row + 1, col + 8, ">")
+        width0 = build(row + 1, col + 9, depth + 1, combo * 2)
+        close = col + 9 + width0
+        put(row, close, ")")
+        for k, char in enumerate(f"{{C{depth}}}"):
+            put(row, close + 1 + k, char)
+        put(row, close + 5, "v")
+        put(row + 1, close + 5, ">")
+        width1 = build(row + 1, close + 6, depth + 1, combo * 2 + 1)
+        return close + 6 + width1 - col
+
+    put(0, 0, "\u2022")
+    build(0, 1, 0, 0)
+    max_row = max(r for r, _ in cells) + 1
+    max_col = max(c for _, c in cells) + 1
+    grid = [[" "] * max_col for _ in range(max_row)]
+    for (r, c), char in cells.items():
+        grid[r][c] = char
+    return "\n".join("".join(row) for row in grid)

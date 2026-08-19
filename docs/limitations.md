@@ -78,7 +78,7 @@ per-character encoding can be meaningfully shortened:
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | ArrowQueue | No output; only the halt-vs-hang outcome is observable, which capped the ring template at AND/OR/threshold functions.  **Lifted:** the shipped decision-tree generator reads the bits from the queue (see `docs/walls.md`). |
-| Dotlang | The `W~` warp re-enters the first-match markers, losing branch history.  **Lifted:** unique per-node warp names make the first match the right branch (see `docs/walls.md`). |
+| Dotlang | The `W~` warp re-enters the first-match markers, losing branch history.  **Lifted:** the parameterized fork-and-kill generator embeds the bits and kills one of two forked dots per junction, reading the answer from termination (see `docs/walls.md`). |
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
