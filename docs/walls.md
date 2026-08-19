@@ -177,29 +177,46 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.
 
-## Termination-based convention (Point Break is a full generator; the rest partial)
+## Termination-based convention (Point Break and ArrowQueue are full generators; the rest partial)
 
 A "halt vs. loop forever" convention — the program halts iff the embedded
 input bits satisfy the function — was explored for the languages with a
 built-in infinite-loop branch.  It expresses one-input functions, and some
 languages reach multi-input threshold functions:
 
-- **ArrowQueue**: a queue-sustaining ring (``[" ~*", "+~*", "*~+"]``) hangs
-  iff its center `~` is present, so the ring is a one-input identity gadget
-  under the convention.  With bit cells spread across the ring it becomes
-  an *n*-ary AND (hang iff all bits present); the OR and NOR tables are
-  expressible in other layouts (verified by search).  But the hang structure
-  sustains iff its single sustainer cell is `~` — each bit can only add a
-  "must be present" literal, so a single ring is one AND of literals (one
-  minterm), and multiple rings cannot be OR'd on the IP's single path.
-  XOR/XNOR (two disjunct minterms) would need to OR two rings, which the
-  IP's single path cannot host, and a 200,000-grid search never produced
-  them — strong evidence for a threshold/AND/OR-class ceiling, though not a
-  proof.  So ArrowQueue realizes the
-  convention for threshold/AND/OR-class functions, not arbitrary tables.
+- **ArrowQueue**: the ring-template analysis below hit a
+  threshold/AND/OR-class ceiling, and the shipped generator
+  (:func:`esolangs.tools.boolean.parameterized.arrowqueue`) **resolves it**
+  by leaving the ring template entirely.  A queue-sustaining ring
+  (``[" ~*", "+~*", "*~+"]``) hangs iff its center `~` is present, so the
+  ring is a one-input identity gadget under the convention; with bit cells
+  spread across the ring it becomes an *n*-ary AND (hang iff all bits
+  present), and the OR and NOR tables are expressible in other layouts
+  (verified by search).  But the hang structure sustains iff its single
+  sustainer cell is `~` — each bit can only add a "must be present"
+  literal, so a single ring is one AND of literals (one minterm), and
+  multiple rings cannot be OR'd on the IP's single path.  XOR/XNOR (two
+  disjunct minterms) would need to OR two rings, which the IP's single path
+  cannot host, and a 200,000-grid search never produced them — strong
+  evidence for a threshold/AND/OR-class ceiling, though not a proof.
 
-- **Point Break** is the one language where the convention is a *general*
-  boolean generator, the first under this contract
+  The generator breaks the ceiling by using the queue itself as the
+  decision state instead of the ring's center cell.  The header embeds each
+  input bit once as a direction (right is 0, down is 1), the next rows
+  queue the right/down/left/up loop components, and a **full decision tree**
+  pops one bit per level at a ``+`` branch, routing the pointer right for a
+  0 and down for a 1 (a ``+`` pop replaces the heading entirely, so the
+  route works from any approach).  A ``0`` leaf is an empty 3x3 block (the
+  pointer runs off the grid, which halts) and a ``1`` leaf is a
+  self-sustaining ring that pushes on every edge and pops on every corner.
+  The tree is deliberately full — constant slices are not collapsed —
+  because the ring's corner pops must consume exactly the four loop
+  components, so every path pops all ``n`` bits first.  Every table is
+  supported: all ``n <= 3`` tables exhaustively, with ``n == 4``-``5``
+  sampled; program size doubles per input level.
+
+- **Point Break** is the first language where the convention is a *general*
+  boolean generator
   (`esolangs.tools.boolean.point_break`): the language has no output, but
   its Turing-complete arithmetic makes every ``n``-ary table a sum of
   minterms (a product of bits and complements computed with single-
@@ -207,7 +224,7 @@ languages reach multi-input threshold functions:
   ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` — halts iff ``f`` is
   0 and loops forever iff ``f`` is 1, exactly the wiki's own truth-machine
   semantics.  No other language in the repo needed the new harness
-  contract (termination as the answer); Point Break is the only one where
+  contract (termination as the answer); Point Break is the first where
   the convention unlocks an arbitrary table rather than hitting a
   structural ceiling.  The looping side is decided deterministically by
   state-cycle detection: Point Break is step-capable and a repeated

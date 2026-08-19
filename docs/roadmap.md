@@ -66,14 +66,10 @@ the table:
 
 ## Deferred-removal candidates
 
-**Deferred — not yet removed.**  One language has no usable text or
-boolean generator — either none at all, or one so severely constrained it is
-effectively absent for any non-trivial use — so it cannot be round-trip or
-differentially verified and is the weakest kind of addition.
-
-| Language | Output | Why it is on the list |
-| --- | --- | --- |
-| ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
+**Deferred — not yet removed.**  No language is currently on this list: the
+one-time candidate below either was removed or was taken **off** once it got a
+usable generator, so there is no language left that cannot be round-trip or
+differentially verified.
 
 Movesum and Lightlang were removed (see `docs/limitations.md`): both had
 real language-defined output (numbers, and a single bit, respectively),
@@ -88,7 +84,14 @@ it still has no text generator.  A Painter Ant has likewise come **off** this
 list: a working any-arity boolean generator now exists (see the
 constrained-generators section below), so like the other interpreter-only
 languages it is no longer a removal candidate even though it still has no
-text generator.  No
+text generator.  ArrowQueue has likewise come **off** this
+list: it was the sole remaining candidate (no text generator, and its
+halt-vs-hang ring capped at the AND/OR class), but a working *arbitrary-table*
+boolean generator now exists — the termination-convention decision tree in
+`esolangs.tools.boolean.parameterized.arrowqueue`, whose header embeds the
+bits as directions and whose ``+`` branches pop them to route a full tree
+(see the constrained-generators section below).  So it is no longer a
+removal candidate even though it still has no text generator.  No
 text generator is severely constrained — even the most restricted ones
 (Dig's letter/digit/``.,!?`` alphabet, MyScript's printable ASCII) still
 cover a substantial output range, so no language is added on the text side.
@@ -107,11 +110,13 @@ Your Time Is Up) were dropped and recorded in `docs/limitations.md`.
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
-admission criteria treat as a genuine gap.  ArrowQueue is
-a Bangyen-only sole implementation
+admission criteria treat as a genuine gap.  ArrowQueue
+was a Bangyen-only sole implementation
 with no external implementations and is
 Turing-complete (ArrowQueue via Tag/Cyclic tag/Minsky machine translations,
-on the wiki).  (Kak
+on the wiki), and its removal was only on the table while it had no
+boolean generator; with the generator shipped the removal is off the table.
+(Kak
 and Brainpocalypse, the two externally-implemented members, Stun Step —
 a sole implementation removed anyway, see `docs/limitations.md` — and
 Movesum and Lightlang were
@@ -123,29 +128,30 @@ default.
 
 **Redemption path (termination-convention generator).**  ArrowQueue has no
 output, so its only boolean option is the termination-based convention
-(documented in `docs/walls.md`): the program *hangs* iff the embedded inputs
-satisfy the function.  The hang structure is a queue-sustaining ring that
-survives iff its single sustainer cell is present, so each input adds a
-"must be present" literal and one ring is one AND of literals; the OR and
-NOR tables are expressible in other layouts (verified by search), but
-multiple rings cannot be OR'd on the IP's single path, so XOR/XNOR are not —
-the convention realizes the threshold/AND/OR-class, not arbitrary tables.
+(documented in `docs/walls.md`): the program *halts* iff the embedded inputs
+satisfy the function.  The earlier hang structure was a queue-sustaining
+ring that survives iff its single sustainer cell is present, so each input
+adds a "must be present" literal and one ring is one AND of literals; the
+OR and NOR tables are expressible in other layouts (verified by search),
+but multiple rings cannot be OR'd on the IP's single path, so XOR/XNOR were
+not — the ring convention realizes the threshold/AND/OR-class, not
+arbitrary tables.
 
-This is the only path that could take ArrowQueue off this list.  It would
-still be a *permanently* constrained generator: unlike A Painter Ant's
-n == 2 cap — which was not a language limit but an open construction, and
-has since been lifted by a general any-arity generator (see the A Painter
-Ant section below) — ArrowQueue's threshold ceiling is
-supported only by a structural argument and a bounded 200,000-grid search
-(see `docs/walls.md`), not a proof, so it may be a genuine wall or just an
-undiscovered construction.  Adopting the convention
-is also a real harness lift: the boolean tooling and tests read output
-bytes, while the termination convention makes "does it halt?" the answer.
-Point Break has since established that contract (verified by deterministic
-state-cycle detection, see the hang-detection section below), but ArrowQueue would still
-be stuck at the threshold class where Point Break expresses arbitrary
-tables.  Recorded here so the
-removal-vs-redemption call is deliberate rather than by default.
+That ceiling is what kept ArrowQueue on this list.  It has since been
+**redeemed**: the shipped generator in
+`esolangs.tools.boolean.parameterized.arrowqueue` leaves the ring template
+entirely.  The header embeds each bit once as a direction (right is 0,
+down is 1), the next rows queue the right/down/left/up loop components, and
+a full decision tree pops one bit per level at a ``+`` branch — the pointer
+routes right for a 0 and down for a 1 — reaching a 3x3 leaf block.  A ``0``
+leaf is empty, so the pointer runs off the grid and halts; a ``1`` leaf is
+a ring that pushes on every edge and pops on every corner, sustaining
+forever.  Every table is supported (all ``n <= 3`` tables exhaustively,
+``n == 4``-``5`` sampled), so ArrowQueue is a total boolean generator like
+the other interpreter-only languages.  The harness side of the convention
+(termination as the answer, decided by deterministic state-cycle
+detection — see the hang-detection section below) was established by Point
+Break and is shared by the two generators.
 
 ## Extra implementations (cross-checks)
 

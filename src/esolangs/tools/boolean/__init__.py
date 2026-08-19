@@ -28,6 +28,7 @@ from esolangs.tools.boolean.other import (
 )
 from esolangs.tools.boolean.parameterized import (
     a_painter_ant,
+    arrowqueue,
     back,
     bfpda,
     bio,
@@ -73,6 +74,7 @@ __all__ = [
     "a_painter_ant",
     "abcdirection",
     "addsubjump",
+    "arrowqueue",
     "back",
     "basicfuck",
     "between",
@@ -134,6 +136,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "AddSubJump",
         "3D Brainfuck",
         "6-5",
+        "ArrowQueue",
         "Back",
         "Basicfuck",
         "Between",

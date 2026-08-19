@@ -113,13 +113,15 @@ MULTIPLY_EXAMPLES = {
 # that is not an I/O truth machine (see docs/walls.md).  Minifuck's
 # generator covers the 0-preserving two-input tables, so the committed AND2
 # program reads two input bits (0/1 lines) and prints their AND.  ArrowQueue
-# has no output and no runtime input: the committed ring is the halt-vs-hang
-# `0` branch (halts on an empty-queue pop), with the `1` branch hanging
-# instead.  Point Break likewise has no output: the committed program is the
-# wiki's own truth-machine, which halts for a 0 input and loops forever for
-# any nonzero input (the `1` branch is not executed).
+# has no output and no runtime input: the committed program is the generated
+# halt-vs-loop AND with one input zero (``_instantiate_arrowqueue(arrowqueue
+# ("0001"), [0, 1])``), which halts (the `0` branch); the same table with
+# both inputs one would loop forever instead (the `1` branch is not
+# executed).  Point Break likewise has no output: the committed program is
+# the wiki's own truth-machine, which halts for a 0 input and loops forever
+# for any nonzero input (the `1` branch is not executed).
 BOOLEAN_EXAMPLES = {
-    "arrowqueue": ("grid_based.arrowqueue", ["0"], "", True),
+    "arrowqueue": ("grid_based.arrowqueue", [], "", True),
     "minifuck": ("tape_based.minifuck", ["0", "1"], "0", False),
     "point-break": ("register_based.point_break", ["0"], "", False),
 }
