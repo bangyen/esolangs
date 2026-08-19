@@ -299,14 +299,30 @@ def _run_nocomment_python_limited(
     """Run the Python NoComment interpreter with a wall-clock budget.
 
     Returns ``(output, exit_code)`` like :func:`_run_nocomment_python`, or
-    None if the program did not terminate within ``timeout`` seconds (the
-    fuzzer's analog of the assembly's instruction-count cap).  The alarm is
-    only meaningful on POSIX; the interpreter is skipped (None) elsewhere.
+    None if the program did not terminate (the fuzzer's analog of the
+    assembly's instruction-count cap).  The interpreter is step-capable, so
+    the run is bounded by state-cycle detection
+    (:func:`esolangs.vm.run_until_halt_or_cycle`): a repeated snapshot
+    proves a loop and is reported as non-termination immediately.  The alarm
+    stays as the backstop for the unbounded-growth class (a loop that keeps
+    pushing the stack never revisits a state), and is only meaningful on
+    POSIX; the interpreter is skipped (None) elsewhere.
     """
     import signal
 
     if not hasattr(signal, "SIGALRM"):
         return None
+
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.tape_based.nocomment import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_char(self, char: str) -> None:
+            buffer.write(char.encode("latin1"))
 
     class _TimeoutError(Exception):
         pass
@@ -317,7 +333,14 @@ def _run_nocomment_python_limited(
     signal.signal(signal.SIGALRM, _alarm)
     signal.alarm(int(timeout))
     try:
-        return _run_nocomment_python(program)
+        machine = _Machine(program, _IO())
+        if not run_until_halt_or_cycle(machine):
+            return None
+        return buffer.getvalue(), 0
+    except HaltError:
+        return buffer.getvalue(), 3
+    except ValueError:
+        return buffer.getvalue(), 2
     except _TimeoutError:
         return None
     finally:

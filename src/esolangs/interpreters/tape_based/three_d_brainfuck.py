@@ -25,6 +25,14 @@ Documented decisions filling those gaps:
   ``"``/``'`` do not affect execution, and any other character is a comment;
 - ``,`` raises :class:`EOFError` when input runs out (repo-wide convention);
   an unbalanced bracket pair is malformed (:class:`ValueError`).
+
+The interpreter runs on a :class:`_Machine` (the block grid, the array
+cells, and the two pointers), so it is step-capable: ``step()`` executes one
+block and ``halted`` is true once the instruction pointer leaves the source
+line.  A loop that returns to an exact state (e.g. a bracket pair around a
+cell that wraps) is a cycle the state-cycle hang detector proves; the
+``run()`` backstop stays for the unbounded-growth class (a loop whose body
+keeps growing the array).
 """
 
 import sys
@@ -58,48 +66,77 @@ _GENERATION = {
 }
 
 
-def run(code: str, io: IO) -> None:
-    """Run a 3D Brainfuck program."""
-    grid = {(i, 0, 0): char for i, char in enumerate(code)}
-    m = _matches(code)
-    cells: dict[tuple[int, int, int], int] = {}
-    ap = (0, 0, 0)
-    ip = (0, 0, 0)
-    heading = (1, 0, 0)
+class _Machine:
+    """Per-run 3D Brainfuck state: the blocks, the array, and the pointers.
 
-    while ip in grid:
-        char = grid[ip]
+    ``step()`` executes one block; ``halted`` is true once the instruction
+    pointer leaves the source line.  The VM and the state-cycle hang detector
+    expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Lay the blocks along +X and start the pointers at the origin."""
+        self.io = io
+        self.grid = {(i, 0, 0): char for i, char in enumerate(code)}
+        self.m = _matches(code)
+        self.cells: dict[tuple[int, int, int], int] = {}
+        self.ap = (0, 0, 0)
+        self.ip = (0, 0, 0)
+        self.heading = (1, 0, 0)
+
+    @property
+    def halted(self) -> bool:
+        """Whether the instruction pointer has left the source line."""
+        return self.ip not in self.grid
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            tuple(sorted(self.cells.items())),
+            self.ap,
+            self.ip,
+            self.heading,
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one block, moving the instruction pointer."""
+        if self.halted:
+            return
+        char = self.grid[self.ip]
         if char in _HEADING:
-            heading = _HEADING[char]
+            self.heading = _HEADING[char]
         elif char in _ARRAY:
             dx, dy, dz = _ARRAY[char]
-            ap = (ap[0] + dx, ap[1] + dy, ap[2] + dz)
+            self.ap = (self.ap[0] + dx, self.ap[1] + dy, self.ap[2] + dz)
         elif char in "+-.,":
             if char == "+":
-                cells[ap] = (cells.get(ap, 0) + 1) % 256
+                self.cells[self.ap] = (self.cells.get(self.ap, 0) + 1) % 256
             elif char == "-":
-                cells[ap] = (cells.get(ap, 0) - 1) % 256
+                self.cells[self.ap] = (self.cells.get(self.ap, 0) - 1) % 256
             elif char == ".":
-                io.print_char(chr(cells.get(ap, 0)))
+                self.io.print_char(chr(self.cells.get(self.ap, 0)))
             else:
-                cells[ap] = io.input_char()
+                self.cells[self.ap] = self.io.input_char()
         elif char == "[":
-            if cells.get(ap, 0) == 0:
-                ip = (m[ip[0]] + 1, 0, 0)
-                continue
-        elif char == "]":
-            if cells.get(ap, 0) != 0:
-                ip = (m[ip[0]] + 1, 0, 0)
-                continue
-        elif char in _GENERATION:
-            pass  # the generation heading is tracked but nothing is emitted
-        else:
-            pass  # any other character is a comment
-        ip = (
-            ip[0] + heading[0],
-            ip[1] + heading[1],
-            ip[2] + heading[2],
+            if self.cells.get(self.ap, 0) == 0:
+                self.ip = (self.m[self.ip[0]] + 1, 0, 0)
+                return
+        elif char == "]" and self.cells.get(self.ap, 0) != 0:
+            self.ip = (self.m[self.ip[0]] + 1, 0, 0)
+            return
+        self.ip = (
+            self.ip[0] + self.heading[0],
+            self.ip[1] + self.heading[1],
+            self.ip[2] + self.heading[2],
         )
+
+
+def run(code: str, io: IO) -> None:
+    """Run a 3D Brainfuck program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

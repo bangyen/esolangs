@@ -20,6 +20,11 @@ Decisions for gaps in the wiki spec (documented):
 - ``,`` reads a whole input line and takes its first byte, raising
   :class:`EOFError` when input runs out (the brainfuck interpreter's
   documented behavior).
+
+The interpreter runs on a :class:`_Machine` wrapping the decoded brainfuck
+machine, so it is step-capable: ``step()`` executes one decoded command and
+``halted`` is the underlying brainfuck machine's.  The state-cycle hang
+detector and the VM expose this object.
 """
 
 import re
@@ -28,7 +33,7 @@ import sys
 import sympy
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.tape_based.brainfuck import run as run_bf
+from esolangs.interpreters.tape_based.brainfuck import _Machine as _BFMachine
 
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 
@@ -39,11 +44,38 @@ def decode(number: int) -> str:
     return "".join(_RESIDUE[p % 11] * exp for p, exp in factors if p % 11 in _RESIDUE)
 
 
+class _Machine:
+    """Per-run Factor state: the decoded brainfuck machine.
+
+    ``step()`` executes one decoded command; ``halted`` is the underlying
+    brainfuck machine's.  The VM and the state-cycle hang detector expose
+    this object (the decoded program is fixed, so the brainfuck machine's
+    snapshot is the complete state).
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Decode ``code`` and reset the underlying brainfuck machine."""
+        self.io = io
+        digits = re.sub(r"[^0-9]", "", code)
+        number = int(digits) if digits else 1
+        self.bf = _BFMachine(decode(number), io)
+
+    @property
+    def halted(self) -> bool:
+        return self.bf.halted
+
+    def step(self) -> None:
+        self.bf.step()
+
+    def snapshot(self) -> tuple[object, ...]:
+        return self.bf.snapshot()
+
+
 def run(code: str, io: IO) -> None:
     """Run a Factor program, executing the brainfuck it decodes to."""
-    digits = re.sub(r"[^0-9]", "", code)
-    number = int(digits) if digits else 1
-    run_bf(decode(number), io)
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

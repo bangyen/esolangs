@@ -46,6 +46,12 @@ Documented divergences from the cross-check:
   cast for cell values outside the byte range.
 
 Invalid runtime operations halt with :class:`~esolangs.exceptions.HaltError`.
+
+The interpreter runs on a :class:`_Machine` (the tape, the loop stack, the
+pointer, and the code cursor), so it is step-capable: ``step()`` executes one
+command and ``halted`` is true once the cursor reaches the end of the code.
+``y`` draws a random skip, so like LaserFuck and WII2D the machine is
+non-deterministic and is excluded from the state-cycle hang check.
 """
 
 import secrets
@@ -88,110 +94,150 @@ def _trunc2(n: int) -> int:
     return n // 2 if n >= 0 else -((-n) // 2)
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Painfuck program."""
-    prog = _translate(code)
-    n = len(prog)
+class _Machine:
+    """Per-run Painfuck state: the tape, loop stack, pointer, and cursor.
 
-    tape: list[int] = [0]
-    loop: list[int] = []
-    ptr = ind = 0
-    rep = 1
+    ``step()`` executes one command; ``halted`` is true once the cursor
+    reaches the end of the code.  The VM and the state-cycle hang detector
+    expose this object (``y`` makes the machine non-deterministic, so the
+    hang detector must exclude it).
+    """
 
-    while ind < n:
-        c = prog[ind]
-        ind += 1
+    def __init__(self, code: str, io: IO) -> None:
+        """Translate ``code`` and start at the first command."""
+        self.io = io
+        self.prog = _translate(code)
+        self.n = len(self.prog)
+        self.tape: list[int] = [0]
+        self.loop: list[int] = []
+        self.ptr = 0
+        self.ind = 0
+        self.rep = 1
 
-        while rep > 0:
-            rep -= 1
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the code."""
+        return self.ind >= self.n
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            tuple(self.tape),
+            tuple(self.loop),
+            self.ptr,
+            self.ind,
+            self.rep,
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one command, advancing the cursor."""
+        if self.halted:
+            return
+        c = self.prog[self.ind]
+        self.ind += 1
+
+        while self.rep > 0:
+            self.rep -= 1
 
             if c == "p":
-                tape[ptr] += 2
+                self.tape[self.ptr] += 2
             elif c == "s":
-                tape[ptr] -= 1
+                self.tape[self.ptr] -= 1
             elif c == "r":
-                ptr += 2
-                while ptr >= len(tape):
-                    tape.append(0)
+                self.ptr += 2
+                while self.ptr >= len(self.tape):
+                    self.tape.append(0)
             elif c == "l":
-                if ptr:
-                    ptr -= 1
+                if self.ptr:
+                    self.ptr -= 1
             elif c == "i":
-                line = io.input_str("Input: ")
+                line = self.io.input_str("Input: ")
                 try:
-                    tape[ptr] = int(line)
+                    self.tape[self.ptr] = int(line)
                 except ValueError:
                     raise HaltError from None
             elif c == "j":
-                tape[ptr] = io.input_char()
+                self.tape[self.ptr] = self.io.input_char()
                 # The cross-check's discard-to-end-of-line loop leaves the
                 # main command variable holding '\n', so a ``c``/``t``-repeated
                 # ``j`` only reads once and then no-ops.
                 c = "\n"
             elif c == "o":
-                io.print_num(tape[ptr])
+                self.io.print_num(self.tape[self.ptr])
             elif c == "u":
-                io.print_char(chr(tape[ptr] & 0xFF))
+                self.io.print_char(chr(self.tape[self.ptr] & 0xFF))
             elif c == "a":
-                if tape[ptr] != 0:
-                    loop.append(ind - 1)
+                if self.tape[self.ptr] != 0:
+                    self.loop.append(self.ind - 1)
                 else:
                     val = 1
-                    while val != 0 and ind < n:
-                        ch = prog[ind]
-                        ind += 1
+                    while val != 0 and self.ind < self.n:
+                        ch = self.prog[self.ind]
+                        self.ind += 1
                         if ch == "a":
                             val += 1
                         elif ch == "b":
                             val -= 1
             elif c == "b":
-                if not loop:
+                if not self.loop:
                     raise HaltError("unmatched 'b': the loop stack is empty")
-                ind = loop.pop()
+                self.ind = self.loop.pop()
             elif c == "k":
-                tape[ptr] = tape[ptr] * tape[ptr]
+                self.tape[self.ptr] = self.tape[self.ptr] * self.tape[self.ptr]
             elif c == "z":
-                tape[ptr] = 0
+                self.tape[self.ptr] = 0
             elif c == "h":
-                tape[ptr] = _trunc2(tape[ptr])
+                self.tape[self.ptr] = _trunc2(self.tape[self.ptr])
             elif c == "w":
-                tape[ptr] = tape[ptr + 1] if ptr + 1 < len(tape) else 0
+                self.tape[self.ptr] = (
+                    self.tape[self.ptr + 1] if self.ptr + 1 < len(self.tape) else 0
+                )
             elif c == "q":
-                if ptr:
-                    tape[ptr] = tape[ptr - 1]
+                if self.ptr:
+                    self.tape[self.ptr] = self.tape[self.ptr - 1]
             elif c == "c":
-                rep = 1
+                self.rep = 1
                 while c == "c":
-                    c = prog[ind] if ind < n else _NUL
-                    ind += 1
-                    rep *= 7
+                    c = self.prog[self.ind] if self.ind < self.n else _NUL
+                    self.ind += 1
+                    self.rep *= 7
             elif c == "y":
                 # The wiki specifies a random skip; match the cross-check's
                 # coin flip (the generator and differential avoid `y`).
-                if secrets.randbelow(2) and ind < n:
-                    c = prog[ind]
-                    ind += 1
+                if secrets.randbelow(2) and self.ind < self.n:
+                    c = self.prog[self.ind]
+                    self.ind += 1
             elif c == "e":
+                self.ind = self.n
+                self.rep = 0
                 return
-            elif c == "v" and tape[ptr] != 0 and ind < n:
-                c = prog[ind]
-                ind += 1
+            elif c == "v" and self.tape[self.ptr] != 0 and self.ind < self.n:
+                c = self.prog[self.ind]
+                self.ind += 1
             elif c == "d":
-                ptr = 0
+                self.ptr = 0
             elif c == "t":
-                val = ind
-                rep = 1
+                val = self.ind
+                self.rep = 1
                 found = False
-                while ind > 0:
-                    ind -= 1
-                    if prog[ind] != "t":
+                while self.ind > 0:
+                    self.ind -= 1
+                    if self.prog[self.ind] != "t":
                         found = True
                         break
-                    rep *= 3
-                c = prog[ind] if found else _NUL
-                ind = val
+                    self.rep *= 3
+                c = self.prog[self.ind] if found else _NUL
+                self.ind = val
 
-        rep += 1
+        self.rep += 1
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Painfuck program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

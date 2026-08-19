@@ -22,6 +22,13 @@ Documented decisions for gaps in the wiki spec:
   convention);
 - a malformed line, a numeric literal, or an attempt to redefine ``input``
   is malformed (:class:`ValueError`).
+
+The interpreter runs on a :class:`_Machine` (the registers, the arrays, and
+the line pointer), so it is step-capable: ``step()`` executes one line and
+``halted`` is true once the pointer leaves the program.  A ``lineNumber``
+jump that returns to an exact state is a cycle the state-cycle hang detector
+proves; the ``run()`` backstop stays for the unbounded-growth class (a
+register that keeps growing).
 """
 
 import re
@@ -37,52 +44,86 @@ _LINE = re.compile(
 )
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Collatz Multiverse program."""
-    lines = [ln for ln in code.splitlines() if ln.strip()]
-    n = len(lines)
-    parsed = []
-    for ln in lines:
-        m = _LINE.fullmatch(ln)
-        if not m:
-            raise ValueError(f"malformed line: {ln!r}")
-        parsed.append(m.groups())
+class _Machine:
+    """Per-run Collatz Multiverse state: registers, arrays, and the pointer.
 
-    registers: dict[str, int] = {"negativeOne": -1}
-    arrays: dict[str, dict[int, int]] = {}
-    ip = 1
+    ``step()`` executes one line; ``halted`` is true once the pointer leaves
+    the program.  The VM and the state-cycle hang detector expose this
+    object.
+    """
 
-    def read(spec: tuple[str, str | None]) -> int:
+    def __init__(self, code: str, io: IO) -> None:
+        """Parse ``code`` into lines and start at line 1."""
+        self.io = io
+        lines = [ln for ln in code.splitlines() if ln.strip()]
+        self.n = len(lines)
+        self.parsed = []
+        for ln in lines:
+            m = _LINE.fullmatch(ln)
+            if not m:
+                raise ValueError(f"malformed line: {ln!r}")
+            self.parsed.append(m.groups())
+        self.registers: dict[str, int] = {"negativeOne": -1}
+        self.arrays: dict[str, dict[int, int]] = {}
+        self.ip = 1
+
+    @property
+    def halted(self) -> bool:
+        """Whether the pointer has left the program."""
+        return not (1 <= self.ip <= self.n)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            frozenset(self.registers.items()),
+            frozenset(
+                (name, frozenset(cells.items())) for name, cells in self.arrays.items()
+            ),
+            self.ip,
+            self.io.position(),
+        )
+
+    def _read(self, spec: tuple[str, str | None]) -> int:
         name, index = spec
         if name == "input":
-            return io.input_num("Input: ")
+            return self.io.input_num("Input: ")
         if name == "lineNumber":
-            return ip
+            return self.ip
         if index is not None:
-            return arrays.setdefault(name, {}).get(read((index, None)), 0)
-        return registers.get(name, 0)
+            return self.arrays.setdefault(name, {}).get(self._read((index, None)), 0)
+        return self.registers.get(name, 0)
 
-    while 1 <= ip <= n:
-        var1, idx1, var2, idx2, var3, idx3, do_print = parsed[ip - 1]
+    def step(self) -> None:
+        """Execute one line, moving the pointer."""
+        if self.halted:
+            return
+        var1, idx1, var2, idx2, var3, idx3, do_print = self.parsed[self.ip - 1]
         if var1 == "input":
             raise ValueError("input cannot be redefined")
 
-        t = read((var1, idx1))
-        a = read((var2, idx2))
-        b = read((var3, idx3))
+        t = self._read((var1, idx1))
+        a = self._read((var2, idx2))
+        b = self._read((var3, idx3))
         t = t * a + b if t == 0 or t % 2 != 0 else t // 2
 
-        next_ip = ip + 1
+        next_ip = self.ip + 1
         if var1 == "lineNumber":
             next_ip = t
         elif idx1 is not None:
-            arrays.setdefault(var1, {})[read((idx1, None))] = t
+            self.arrays.setdefault(var1, {})[self._read((idx1, None))] = t
         else:
-            registers[var1] = t
+            self.registers[var1] = t
 
         if do_print == "DO":
-            io.print_char(chr(t & 0xFF))
-        ip = next_ip
+            self.io.print_char(chr(t & 0xFF))
+        self.ip = next_ip
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Collatz Multiverse program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

@@ -114,3 +114,31 @@ class TestPainfuck:
 
     def test_empty_program(self) -> None:
         assert run_program("") == ""
+
+
+class TestStepMachine:
+    def test_step_tracks_tape_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+
+        machine = _Machine("pp", ScriptedIO())
+        assert (machine.ind, list(machine.tape)) == (0, [0])
+        machine.step()  # p adds 2
+        assert list(machine.tape) == [2]
+        machine.step()  # e halts
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 2
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+
+        assert hash(_Machine("pp", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("pp", ScriptedIO())) is True

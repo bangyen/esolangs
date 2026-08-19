@@ -130,3 +130,46 @@ class TestBasicfuck:
             run_program(ub + "write <- a->5 ;")
         with pytest.raises(HaltError):
             run_program(ub + "read -> a->5 ;", "A\n")
+
+
+class TestStepMachine:
+    def test_step_tracks_tape_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.basicfuck import _Machine
+
+        prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
+        machine = _Machine(prog + "a += 65;\nwrite <- a ;", ScriptedIO())
+        assert (machine.frames[-1].ptr, list(machine.tape.cells())) == (0, [0])
+        machine.step()  # a += 65
+        assert list(machine.tape.cells()) == [65]
+        machine.step()  # write prints a
+        assert machine.io.getvalue() == "A"
+        machine.step()  # the finished frame is finalized
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.frames == []
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.basicfuck import _Machine
+
+        prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
+        assert hash(_Machine(prog, ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.basicfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
+        assert run_until_halt_or_cycle(_Machine(prog + "a += 1;", ScriptedIO())) is True
+
+    def test_while_loop_is_detected_as_a_cycle(self) -> None:
+        """A while loop whose body never changes its condition loops forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.basicfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        prog = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\n"
+        code = prog + "a += 1;\nwhile (a) { }"
+        assert run_until_halt_or_cycle(_Machine(code, ScriptedIO())) is False

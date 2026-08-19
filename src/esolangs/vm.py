@@ -844,6 +844,299 @@ class _SixFiveVM(_BaseVM):
         return []
 
 
+class _BackVM(_BaseVM):
+    """2D beam; ``ip`` is the beam's (x, y, direction), ``memory`` the bit tape."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.back import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (self._machine.x, self._machine.y, self._machine.a, self._machine.b)
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _BIOVM(_BaseVM):
+    """Registers + loop stack + cursor; ``ip`` the cursor, ``memory`` the regs."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.bio import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.reg)
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stk)
+
+
+class _NoCommentVM(_BaseVM):
+    """Byte tape + stack + cursor; ``ip`` the cursor, ``memory`` the tape."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stack)
+
+
+class _ThreeDBrainfuckVM(_BaseVM):
+    """2D block grid; ``ip`` is the pointer's position + heading, ``memory`` cells."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (
+            *self._machine.ip,
+            *self._machine.heading,
+        )
+
+    @property
+    def memory(self) -> list[int]:
+        return [v for _, v in sorted(self._machine.cells.items())]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _FactorVM(_BaseVM):
+    """Decoded brainfuck machine; ``ip`` the cursor, ``memory`` the tape."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.factor import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.bf.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.bf.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _BasicfuckVM(_BaseVM):
+    """Compiled code + frame stack; ``ip`` the top frame's cursor, ``memory`` tape."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.basicfuck import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int | None:
+        return self._machine.frames[-1].ptr if self._machine.frames else None
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.tape.cells())
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _PainfuckVM(_BaseVM):
+    """Translated tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.painfuck import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.loop)
+
+
+class _BitTildeVM(_BaseVM):
+    """Bit pool + pointer; ``ip`` the cursor, ``memory`` the pool."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.bit_tilde import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _CollatzMultiverseVM(_BaseVM):
+    """Named registers + line pointer; ``ip`` the line, ``memory`` the regs."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ip
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.registers[k] for k in sorted(self._machine.registers)]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _PolynomialVM(_BaseVM):
+    """Single register + cursor; ``ip`` the cursor, ``memory`` the register."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.polynomial import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.reg]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _ROTFuckVM(_BaseVM):
     """Rotating tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
 
@@ -1080,6 +1373,16 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Albabet": _AlbabetVM,
     "Decleq": _DecleqVM,
     "6-5": _SixFiveVM,
+    "Back": _BackVM,
+    "BIO": _BIOVM,
+    "NoComment": _NoCommentVM,
+    "3D Brainfuck": _ThreeDBrainfuckVM,
+    "Factor": _FactorVM,
+    "Basicfuck": _BasicfuckVM,
+    "Painfuck": _PainfuckVM,
+    "bit~": _BitTildeVM,
+    "Collatz Multiverse": _CollatzMultiverseVM,
+    "Polynomial": _PolynomialVM,
 }
 
 
