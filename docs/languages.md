@@ -8,7 +8,7 @@ Python means an in-repo interpreter under `esolangs.interpreters`;
 Cross-check means an implementation in `extra/` that runs as a
 standalone program (Rust, Lean, or RISC-V assembly), used to
 differentially verify the Python interpreter.  The Boolean
-column marks the boolean-function generators; Back, BIO, and
+column marks the boolean-function generators; Back, BIO, Eval, and
 NoComment's are parameterized (the harness substitutes input bits
 into a template) rather than the program reading input.
 
@@ -42,7 +42,7 @@ into a template) rather than the program reading input.
 | Dimensional | yes | yes |  | yes |  | hello |
 | Dotlang | yes | yes |  |  |  | hello |
 | EXCON | yes | yes |  |  | yes | hello |
-| Eval | yes | yes |  |  |  | hello |
+| Eval | yes | yes |  | yes |  | hello boolean |
 | Factor | yes | yes |  |  |  | hello truth-machine |
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
