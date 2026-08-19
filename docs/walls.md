@@ -216,7 +216,7 @@ languages reach multi-input threshold functions:
   at all — which also sidesteps the coverage-tracer deadlock that a
   timeout backstop would invite.
 
-## A Painter Ant boolean generator (n == 2 solved; n >= 3 open)
+## A Painter Ant boolean generator (general; any n)
 
 A Painter Ant has no I/O, so its boolean generator (in
 :mod:`esolangs.tools.boolean.parameterized.a_painter_ant`) uses the parameterized
@@ -228,32 +228,27 @@ is one, black is zero).
 The construction paints one decision-tree leaf per input combination and
 routes the ant to the leaf for its inputs.  Each leaf is painted ``P``
 (white) for a one table entry and **left unpainted** (a space, ignored by
-the interpreter) for a zero.  The body paints a two-layer **star** around
-the output leaf and its y-mirror; on cycle 2 the ant dances on the
-pre-painted stars (uppercase prefixes fire onto the ring, the legs are
-no-ops, and only the ``S/s`` synchronizer moves leafward), so the dance is
-closed and zero-paint.  Only ``P`` is ever used — the generator never
-paints a cell black — so the white cells are monotone increasing: cycle 1
-establishes them and every later cycle only re-confirms a subset, which is
-what makes every instantiated program a cycle-stable fixed point (the box
-is identical for any whole number of cycles).  The full construction is
-recorded in ``docs/a_painter_ant_generator.md``.
+the interpreter) for a zero.  The head walks each leaf out and back
+piecewise — one weighted move per input bit, in the same order and
+direction the routing uses, so the outbound path never crosses a
+previously painted leaf — with ``WS``/``NE`` uppercase anchors (for
+``n >= 2``, plus a leading anchor for odd ``n``) that launch the cycle-2
+ant off the leaf onto the painted ring.  The body paints a two-layer
+**star** around the output leaf and its y-mirror, and the final input's
+``WWwWWEEe``/``NENEESWw`` dance closes the walk onto the leaf.  Only ``P``
+is ever used — the generator never paints a cell black — so the white cells
+are monotone increasing: cycle 1 establishes them and every later cycle
+only re-confirms a subset, which is what makes every instantiated program
+a cycle-stable fixed point (the box is identical for any whole number of
+cycles).  The full construction is recorded in
+``docs/a_painter_ant_generator.md``.
 
-Supported and verified exhaustively against the interpreter:
-
-- **n == 2**: all sixteen two-input functions, exact and cycle-stable.
-- **n == 1**: the four one-input functions, exact and cycle-stable, with a
-  two-leaf head and the same star body and final-input routing as n == 2.
-
-**n >= 3 is open.**  No construction is known that reaches *all* functions
-of an arity.  Lifting the cap to a general method is recorded in
-``docs/roadmap.md``.
-
-An **in-progress leaf-paint generalization** is exact for cycle 1 on all
-256 n == 3 tables but is not yet cycle-stable; see
-``docs/a_painter_ant_generator.md`` for the single-row
-layout, the star/ring stability mechanism it is meant to extend, and the
-open work.
+Supported for **every arity** and verified cycle-stable and exact: all
+``n <= 3`` tables exhaustively (including n == 1 and n == 2), with
+``n == 4``-``7`` sampled plus structured and constant edge tables.  The
+general method — encode each combination as a distinct leaf position
+reached by the weighted bit-moves, and anchor the cycle-2 run back onto
+that leaf — is recorded in ``docs/roadmap.md``.
 
 ## Multiply capability (Jaune realizes it)
 

@@ -2976,7 +2976,7 @@ class TestAPainterAntTrace:
     """
 
     def test_run_records_moves_blocks_and_paints(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import run
+        from tests.tools.a_painter_ant_trace import run
 
         outcome = run("nNPp", 1)
         assert [s.action for s in outcome.steps] == [
@@ -2996,23 +2996,23 @@ class TestAPainterAntTrace:
         assert outcome.position == (0, -1)
 
     def test_run_ignores_whitespace(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import run
+        from tests.tools.a_painter_ant_trace import run
 
         assert [s.command for s in run("n n  P", 1).steps] == ["n", "n", "P"]
 
     def test_run_rejects_unknown_instruction(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import run
+        from tests.tools.a_painter_ant_trace import run
 
         with pytest.raises(ValueError, match="unknown instruction"):
             run("nPx", 1)
 
     def test_run_records_landings_per_cycle(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import run
+        from tests.tools.a_painter_ant_trace import run
 
         assert run("nP", 3).landings == [(0, -1), (0, -2), (0, -3)]
 
     def test_landing_colour(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import run
+        from tests.tools.a_painter_ant_trace import run
 
         assert run("nP", 1).landing_colour() == 1  # (0,-1) was painted white
         assert run("n", 1).landing_colour() == 0  # (0,-1) is still black
@@ -3021,7 +3021,7 @@ class TestAPainterAntTrace:
         from itertools import product
 
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.boolean.a_painter_ant_trace import box
+        from tests.tools.a_painter_ant_trace import box
 
         for value in range(16):
             table = format(value, "04b")
@@ -3038,7 +3038,7 @@ class TestAPainterAntTrace:
         from itertools import product
 
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.boolean.a_painter_ant_trace import cycle_stable
+        from tests.tools.a_painter_ant_trace import cycle_stable
 
         for value in range(16):
             table = format(value, "04b")
@@ -3053,12 +3053,12 @@ class TestAPainterAntTrace:
                 assert io.getvalue() == reference, (table, bits)
 
     def test_cycle_stable_detects_a_divergence(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import cycle_stable
+        from tests.tools.a_painter_ant_trace import cycle_stable
 
         assert not cycle_stable("nPn")  # each cycle paints one cell further
 
     def test_landing_after(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import landing_after
+        from tests.tools.a_painter_ant_trace import landing_after
 
         assert landing_after(_instantiate_apa(a_painter_ant("0110"), [0, 1])) == 1
         assert landing_after(_instantiate_apa(a_painter_ant("0110"), [1, 1])) == 0
@@ -3066,14 +3066,14 @@ class TestAPainterAntTrace:
     def test_first_divergence_stable_program_is_none(self) -> None:
         from itertools import product
 
-        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+        from tests.tools.a_painter_ant_trace import first_divergence
 
         for bits in product([0, 1], repeat=2):
             program = _instantiate_apa(a_painter_ant("0110"), list(bits))
             assert first_divergence(program) is None, bits
 
     def test_first_divergence_pins_a_box_escape(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+        from tests.tools.a_painter_ant_trace import first_divergence
 
         divergence = first_divergence("nPn")  # cycle 2 moves to (0,-3), outside
         assert divergence is not None
@@ -3084,7 +3084,7 @@ class TestAPainterAntTrace:
         assert divergence.step2.position == (0, -3)
 
     def test_first_divergence_pins_a_paint_break(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+        from tests.tools.a_painter_ant_trace import first_divergence
 
         divergence = first_divergence("Pn")  # cycle 2 paints the black (0,-1)
         assert divergence is not None
@@ -3094,7 +3094,7 @@ class TestAPainterAntTrace:
         assert divergence.step2.position == (0, -1)
 
     def test_first_divergence_pins_a_changed_answer(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+        from tests.tools.a_painter_ant_trace import first_divergence
 
         # cycle 1 lands white on (0,-1); cycle 2 slides onto the black (0,0)
         divergence = first_divergence("nPnPsS")
@@ -3105,7 +3105,7 @@ class TestAPainterAntTrace:
         assert divergence.step2.position == (0, 0)
 
     def test_first_divergence_pins_a_drifting_dance(self) -> None:
-        from esolangs.tools.boolean.a_painter_ant_trace import first_divergence
+        from tests.tools.a_painter_ant_trace import first_divergence
 
         # cycle 2 lands on (0,0) instead of (0,1): same colour, but the dance
         # is not a fixed point and cycle 3 differs from cycle 2
