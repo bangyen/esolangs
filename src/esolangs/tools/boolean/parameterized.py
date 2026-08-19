@@ -1137,10 +1137,13 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
     budget runs out.
 
     ``n == 2`` uses a closed form (:func:`_wii2d_n2_closed_form`) instead of
-    searching.  Larger ``n`` tries the op strings at length 2, then 3, then 4
-    with an increasing per-length budget; this covers every table through
-    three inputs (length 2 suffices) and sampled dense tables at four (length
-    3), and generally fails past ``n == 4``.
+    searching.  Larger ``n`` tries the op strings at length 2 through 6 with an
+    increasing per-length budget; length 2 suffices for every table through
+    three inputs, length 3 for sampled dense tables at four, and length 5-6
+    for sampled tables at five.  The requirement sets and preimages are
+    bit-vectors (one bit per reachable accumulator value), and routes that
+    share a preimage effect are deduplicated, so the search stays tractable at
+    the longer lengths.
     """
     import time
 
@@ -1148,28 +1151,38 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
         return 0, _wii2d_n2_closed_form(table)
     t = [int(c) for c in table]
 
-    for maxlen, budget in ((2, 4.0), (3, 8.0), (4, 12.0)):
+    # Longer op strings cover denser tables (every table through n == 4 at
+    # length 3, sampled n == 5 at length 5-6); the budgets grow accordingly.
+    for maxlen, budget in ((2, 4.0), (3, 8.0), (4, 12.0), (5, 30.0), (6, 60.0)):
         domain = _wii2d_domain(maxlen, cap=10**6)
+        index = {v: i for i, v in enumerate(domain)}
         seqs = _wii2d_sequences(maxlen, domain)
-        inv = [
-            {
-                y: {v for v in domain if _wii2d_apply(s, v) == y}
-                for y in {_wii2d_apply(s, v) for v in domain}
-            }
-            for s in seqs
-        ]
+        inv = []
+        for s in seqs:
+            m: dict[int, int] = {}
+            for v in domain:
+                y = _wii2d_apply(s, v)
+                m[y] = m.get(y, 0) | (1 << index[v])
+            inv.append(m)
 
         def pre(
-            sidx: int, targets: set[int], inv: list[dict[int, set[int]]] = inv
-        ) -> set[int]:
-            out: set[int] = set()
-            for y in targets:
-                out |= inv[sidx].get(y, set())
+            sidx: int,
+            targets: int,
+            inv: list[dict[int, int]] = inv,
+            domain: list[int] = domain,
+        ) -> int:
+            out = 0
+            m = inv[sidx]
+            bits = targets
+            while bits:
+                low = bits & -bits
+                out |= m.get(domain[low.bit_length() - 1], 0)
+                bits ^= low
             return out
 
         deadline = time.monotonic() + budget
         for start in range(10):
-            result = _wii2d_search_start(n, t, start, seqs, pre, deadline)
+            result = _wii2d_search_start(n, t, start, seqs, pre, index, deadline)
             if result is not None:
                 return start, result
     return None
@@ -1200,34 +1213,45 @@ def _wii2d_search_start(
     t: list[int],
     start: int,
     seqs: list[str],
-    pre: Callable[[int, set[int]], set[int]],
+    pre: Callable[[int, int], int],
+    index: dict[int, int],
     deadline: float,
 ) -> list[tuple[str, str]] | None:
-    """Search the junction routes for one fixed starting accumulator value."""
+    """Search the junction routes for one fixed starting accumulator value.
+
+    The requirement sets are bit-vectors over the domain; ``pre`` maps a
+    requirement bit-vector to the bit-vector of incoming values a route can
+    produce it from.
+    """
     import time
 
+    start_bit = 1 << index[start]
     chosen: list[tuple[str, str]] = []
-    reqsets = [[{t[c]} for c in range(2**n)]]
+    reqsets = [[1 << index[t[c]] for c in range(2**n)]]
 
     def search(i: int) -> bool:
         if time.monotonic() > deadline:
             raise TimeoutError
         cur = reqsets[0]  # 2**(i+1) requirements
-        r0_sets = [
-            [pre(si, cur[2 * p]) for p in range(2**i)] for si in range(len(seqs))
-        ]
-        r1_sets = [
-            [pre(si, cur[2 * p + 1]) for p in range(2**i)] for si in range(len(seqs))
-        ]
-        for a in range(len(seqs)):
-            for b in range(len(seqs)):
-                nxt = [r0_sets[a][p] & r1_sets[b][p] for p in range(2**i)]
+        # Two routes are interchangeable at this junction when they share the
+        # same preimage effect on every requirement (they allow exactly the
+        # same incoming values), so deduplicate by that effect to collapse the
+        # |seqs|**2 pair search -- dense n == 5 tables exhaust this way.
+        eff0: dict[tuple[int, ...], str] = {}
+        for si, s in enumerate(seqs):
+            eff0.setdefault(tuple(pre(si, cur[2 * p]) for p in range(2**i)), s)
+        eff1: dict[tuple[int, ...], str] = {}
+        for si, s in enumerate(seqs):
+            eff1.setdefault(tuple(pre(si, cur[2 * p + 1]) for p in range(2**i)), s)
+        for e0, r0 in eff0.items():
+            for e1, r1 in eff1.items():
+                nxt = [e0[p] & e1[p] for p in range(2**i)]
                 if not all(nxt):
                     continue
-                chosen.append((seqs[a], seqs[b]))
+                chosen.append((r0, r1))
                 reqsets.insert(0, nxt)
                 if i == 0:
-                    if start in nxt[0]:
+                    if start_bit & nxt[0]:
                         return True
                 elif search(i - 1):
                     return True
@@ -1260,13 +1284,48 @@ def _wii2d_domain(maxlen: int, cap: int) -> list[int]:
 
 
 def _wii2d_sequences(maxlen: int, domain: list[int]) -> list[str]:
-    """All op strings up to ``maxlen`` long, deduplicated by behaviour on the domain."""
-    seqs: dict[tuple[int, ...], str] = {}
-    for length in range(1, maxlen + 1):
-        for seq in product(_WII2D_OPS, repeat=length):
-            sig = tuple(_wii2d_apply(seq, v) for v in domain)
-            seqs.setdefault(sig, "".join(seq))
-    return list(seqs.values())
+    """All op strings up to ``maxlen`` long, deduplicated by behaviour on the domain.
+
+    The distinct behaviours are reached by breadth-first search (each step
+    appends one op and re-dedupes), rather than enumerating the full 15**maxlen
+    strings, so the pool stays cheap at the lengths the search ladder needs.
+    """
+    size = len(domain)
+    identity = tuple(range(size))  # the empty string leaves every value alone
+    behaviour_index = {identity: ""}  # behaviour (on domain positions) -> op string
+    frontier = [identity]
+    for _ in range(maxlen):
+        nxt: list[tuple[int, ...]] = []
+        for b in frontier:
+            for op in _WII2D_OPS:
+                nb = tuple(_wii2d_apply(op, b[i]) for i in range(size))
+                if nb not in behaviour_index:
+                    behaviour_index[nb] = ""
+                    nxt.append(nb)
+        frontier = nxt
+    # recover one op string per behaviour by walking BFS parents
+    parent: dict[tuple[int, ...], tuple[tuple[int, ...] | None, str]] = {
+        identity: (None, "")
+    }
+    frontier = [identity]
+    for _ in range(maxlen):
+        nxt = []
+        for b in frontier:
+            for op in _WII2D_OPS:
+                nb = tuple(_wii2d_apply(op, b[i]) for i in range(size))
+                if nb in behaviour_index and nb not in parent:
+                    parent[nb] = (b, op)
+                    nxt.append(nb)
+        frontier = nxt
+    out: list[str] = []
+    for b in behaviour_index:
+        ops: list[str] = []
+        cur = b
+        while parent[cur][0] is not None:
+            cur, op = parent[cur]
+            ops.append(op)
+        out.append("".join(reversed(ops)))
+    return out
 
 
 def _wii2d_layout(
@@ -1329,12 +1388,14 @@ def wii2d(truth_table: str) -> str:
 
     Two inputs use a closed form (:func:`_wii2d_n2_closed_form`): bit 0 is
     packed as -1/0 and each column of the table is decoded by a single op.
-    Larger ``n`` searches for the branch op strings, trying length 2 then 3
-    then 4; length 2 covers every table through three inputs, length 3 covers
-    sampled dense and structured tables at four, and the search generally
-    fails past ``n == 4`` (the last junction would have to decode 2**(n-1)
-    distinct incoming values with one op string, which a short string cannot
-    for dense tables).  When it fails it raises :class:`ValueError`.
+    Larger ``n`` searches for the branch op strings, trying lengths 2 through
+    6 with increasing budgets; length 2 covers every table through three
+    inputs, length 3 sampled dense tables at four, and lengths 5-6 sampled
+    dense tables at five (the earlier ``n == 4`` wall was a length cap, not a
+    representation limit).  The requirement sets and preimages are bit-vectors
+    and routes that share a preimage effect are deduplicated, keeping the
+    longer lengths tractable.  When the search cannot fit the table in its
+    budget it raises :class:`ValueError`.
 
     The guaranteed universal alternative is :func:`wii2d_tree`, which
     re-embeds each input at every node of a decision tree (2**n - 1
