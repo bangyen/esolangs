@@ -420,6 +420,12 @@ LANGUAGES: dict[str, Language] = {
         id="suffolk",
         kwargs=_kw(limit=1),
     ),
+    "Suptiftam": Language(
+        "Suptiftam",
+        _generate.suptiftam,
+        "other.suptiftam",
+        id="suptiftam",
+    ),
     "The Temporary Stack": Language(
         "The Temporary Stack",
         _generate.the_temporary_stack,

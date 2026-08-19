@@ -22,6 +22,7 @@ from esolangs.tools.boolean.other import (
     laserfuck,
     myscript,
     nevermind,
+    suptiftam,
     taglate,
     three_x,
     ztoalc_l_boolean,
@@ -49,7 +50,7 @@ from esolangs.tools.boolean.register import (
     qoibl,
     sophie,
 )
-from esolangs.tools.boolean.stack import bfstack, forth, grapheme, modulous, unsquare
+from esolangs.tools.boolean.stack import bfstack, eval, forth, grapheme, modulous, unsquare
 from esolangs.tools.boolean.tape import (
     basicfuck,
     bf_tree,
@@ -95,6 +96,7 @@ __all__ = [
     "dig",
     "dimensional",
     "dimensional_tree",
+    "eval",
     "forbin_boolean",
     "forth",
     "grapheme",
@@ -118,6 +120,7 @@ __all__ = [
     "six_five",
     "six_five_arithmetic",
     "sophie",
+    "suptiftam",
     "taglate",
     "three_d_brainfuck",
     "three_x",
@@ -154,6 +157,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "Dig",
         "Dimensional",
         "Decleq",
+        "Eval",
         "Forbin",
         "Forþ",
         "Grapheme",
@@ -173,6 +177,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "ROTfuck",
         "S*bleq",
         "Sophie",
+        "Suptiftam",
         "Taglate",
         "Unsquare",
         "ZTOALC L",

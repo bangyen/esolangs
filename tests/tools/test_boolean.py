@@ -33,6 +33,7 @@ def _parameterized_generators():
             "bitdeque",
             "ram0",
             "minsky_swap",
+            "eval",
         )
     ]
 
@@ -186,6 +187,72 @@ def run_forbin_boolean(program: str, inputs: list[str]) -> str:
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
     return buffer.getvalue()
+
+
+def run_suptiftam(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.other.suptiftam import run
+
+    io = ScriptedIO("\n".join(inputs) + ("\n" if inputs else ""))
+    run(program, io)
+    return io.getvalue()
+
+
+class TestSuptiftam:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.suptiftam(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_suptiftam(program, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_minterm_structure(self) -> None:
+        """The program reads one row per input and sums the minterms."""
+        program = boolean.suptiftam("0001")
+        assert program.startswith("sum=0\np=1\nfd mulStep :x")
+        assert program.count("%-[read]22%") == 2  # one normalized read per input
+        assert program.count("down(:read:)") == 2
+        assert program.endswith("term=sum")
+
+    def test_constant_tables_skip_the_minterms(self) -> None:
+        """A constant-zero table has no minterm rows at all."""
+        program = boolean.suptiftam("0000")
+        assert "mulStep(:p:)if(p)" not in program
+
+    def test_bit_names_extend_beyond_the_alphabet(self) -> None:
+        """Identifiers are alphabetical, so past 'z' the names grow a prefix."""
+        from esolangs.tools.boolean.other import _suptiftam_bit
+
+        assert _suptiftam_bit(0) == "b"
+        assert _suptiftam_bit(24) == "z"
+        assert _suptiftam_bit(25) == "bb"
+        assert _suptiftam_bit(49) == "bz"
+        assert _suptiftam_bit(50) == "bbb"
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.suptiftam("011")
+
+    def test_rejects_non_binary(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.suptiftam("02")
 
 
 class TestForbinBoolean:
@@ -2300,6 +2367,103 @@ class TestParameterizedBfpda:
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.bfpda("011")
+
+
+class TestEvalBoolean:
+    """Input-by-substitution boolean generator for the no-input language Eval."""
+
+    def run_eval(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.eval import run
+
+        io_ = ScriptedIO("")
+        run(prog, io_)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean import parameterized
+
+        # on the input stack (index 1), `` pushes 0 and + bumps it to 1
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "`+" if b else "0",
+            lambda _i, _b: "",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.eval(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_eval(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.eval(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_eval(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.eval("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_heap_tree_structure(self) -> None:
+        """The template is a flat heap tree pushed BFS-order then reversed."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.eval("0110")
+        assert template.startswith("~{X1}{X0}~")  # inputs MSB-first on stack 1
+        assert template.endswith("*!")
+        assert '"~=~?;!"' in template  # root node: one discard
+        assert '"~=~?;;!"' in template  # BFS index 1: two discards
+        assert template.count('"~=~?') == 3  # 2**2 - 1 internal nodes
+        assert template.count('"0+.') + template.count('"0.') == 4  # leaves
+        # leaves are the XOR table in heap order: 0 1 1 0
+        assert template.endswith('"0.""0+.""0+.""0."*!')
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.eval("011")
+
+    def test_non_binary_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            parameterized.eval("02")
 
 
 class TestZtoalc:

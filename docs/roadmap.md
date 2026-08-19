@@ -17,7 +17,6 @@ and the languages already implemented elsewhere) is in the commit history and
 
 | Language | Priority | Why it is on the table |
 | --- | --- | --- |
-| Suptiftam | low | 2D tape-tapes; complete spec but undefined behaviors. |
 | COD | low | 2D concurrency-heavy cods; numeric output + value gates make a boolean generator plausible but unbuilt. |
 
 **Point Break shipped with the first termination-convention generator.**
@@ -29,15 +28,24 @@ boolean generator (any arity, any table), not the structural ceiling the
 convention hits elsewhere.  The interpreter and generator shipped; see
 `docs/walls.md`.
 
-**Suptiftam, COD — the only candidates left.**  The other four candidates
+**Suptiftam shipped with its interpreter and both generators.**  Suptiftam
+is a statement-per-line language of one-argument functions and 2D tape-tapes
+whose spec is complete but had undefined behaviors and untested examples; the
+interpreter pins those down (documented in its docstring) and both generators
+landed: the text generator is the wiki's own Hello World pattern (a byte
+literal to ``term`` followed by a head move per character), and the boolean
+generator evaluates the table as a sum of minterms, building AND by repeated
+addition under an ``if``-guarded recursion and reading each input from its
+own row of ``read``.
+
+**COD — the only candidate left.**  The other four candidates
 were assessed and ruled out; the assessments are in `docs/limitations.md`.
 Procedure is deferred on its arithmetic spec gap (only `the sum of ...`
 is defined, so a faithful interpreter cannot implement the rest without
 inventing semantics); State and Main, Your Time Is Up, and Crement have no
 I/O and no plausible generator (State and Main's single `main` argument
 cannot express an arbitrary boolean function, Your Time Is Up's rule
-choice is random, and Crement has no standard I/O at all).  Suptiftam's
-spec is complete but has undefined behaviors and untested examples.  COD's
+choice is random, and Crement has no standard I/O at all).  COD's
 only output is numbers, so it can never have a text generator — but a
 single 0/1 printed as the cod's value is a valid boolean output, so a
 boolean generator is the live question: it would route one cod through the
@@ -219,12 +227,13 @@ already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
-`esolangs.make_vm` (step-and-inspect wrappers for thirty interpreters:
+`esolangs.make_vm` (step-and-inspect wrappers for thirty-eight interpreters:
 brainfuck, S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
 Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123, A Painter Ant,
 2dFish, Dotlang, Clockwise, Dig, WII2D, Forþ, AddSubJump, Bitdeque,
 BrainIf, Minifuck, Taglate, ROTfuck, Circlefuck, BFStack, Albabet, Decleq,
-6-5)
+6-5, Back, BIO, NoComment, 3D Brainfuck, Factor, Basicfuck, Painfuck,
+bit~)
 and
 `esolangs.make_debugger` (breakpoints and watches over the VM) shipped.
 The medium-priority work that remains:
@@ -242,11 +251,24 @@ The medium-priority work that remains:
   Minifuck, and Taglate joined the tape/queue families, ROTfuck (a rotating
   program), Circlefuck (a circular self-modifying tape), and BFStack (a
   data stack over a loop stack) closed out the brainfuck-family batch, and
-  Albabet (two registers), Decleq (a self-modifying-memory OISC), and 6-5
-  (a token tape with ``8n`` jumps) joined the register/tape families.
+  Albabet (two registers), Decleq (a self-modifying-memory OISC), 6-5
+  (a token tape with ``8n`` jumps), Back (a bouncing beam over a bit tape),
+  BIO (three registers with a loop stack), NoComment (a byte tape with a
+  byte stack and stack-indexed jumps), 3D Brainfuck (a 3D block grid with
+  array and instruction pointers), Factor (a decoded brainfuck machine),
+  Basicfuck (a compiled source with an explicit frame stack for its nested
+  if/while scopes), Painfuck (a translated tape with run-length repetition),
+  and bit~ (a bit pool with a movable pointer) joined the register/tape
+  families.
   The remaining batch is the other languages still on whole-program
-  ``run()``s (e.g. the remaining tape OISCs, the boolean-parameterized
-  Back/BIO/NoComment).
+  ``run()``s (the boolean-parameterized machines without a state object yet,
+  and the remaining tape/stack OISCs).
+- **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
+  currently the active call frame's cursor (and its machine has no
+  ``snapshot()``, so it still uses the wall-clock hang backstop); a
+  language with nested calls should expose the call stack, not fold it
+  into one frame's position.  Forþ's VM exposes the same single
+  active-frame cursor shape (its machine does have a ``snapshot()``).
 - **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
   currently the active call frame's cursor (and its machine has no
   ``snapshot()``, so it still uses the wall-clock hang backstop); a
@@ -302,16 +324,21 @@ backstop stays there and is not a hazard for the hand-written tests.
 
 The robustness test slot is wired in: ``tests/test_interpreters_robustness.py``
 now decides the empty-program invariant by state-cycle detection for the
-twenty-one string-based step-capable machines (brainfuck, S*bleq,
+twenty-eight string-based step-capable machines (brainfuck, S*bleq,
 Dimensional, 123, Eval, Modulous, The Temporary Stack, Qoibl, Point Break,
 Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate, ROTfuck, Circlefuck,
-BFStack, Albabet, Decleq, 6-5) — no wall-clock bound and no POSIX skip —
+BFStack, Albabet, Decleq, 6-5, Back, BIO, NoComment, 3D Brainfuck, Factor,
+Basicfuck, bit~) — no wall-clock bound
+and no POSIX skip —
 and keeps the SIGALRM backstop for the rest
-(Grapheme's machine has no ``snapshot()`` yet).  ``scripts/verify_differential.py``'s
-2dFish Python side is likewise bounded by state-cycle detection (its machine
-is step-capable and deterministic); the remaining differential Python sides
-stay on SIGALRM because they are not yet step-capable (NoComment) or are
-non-deterministic (LaserFuck).
+(Grapheme's machine has no ``snapshot()`` yet, and Painfuck's ``y`` is
+non-deterministic).  ``scripts/verify_differential.py``'s
+2dFish and NoComment Python sides are likewise bounded by state-cycle
+detection (both machines are step-capable and deterministic), with NoComment
+keeping the alarm as the backstop for its unbounded-growth class (a loop
+that keeps pushing the stack never revisits a state); the remaining
+differential Python sides on SIGALRM alone are LaserFuck and Painfuck,
+whose headings/skips are random.
 
 **Why the wall-clock backstop is also broken under ``pytest --cov``.**
 Raising from the SIGALRM handler while the coverage C tracer is active can

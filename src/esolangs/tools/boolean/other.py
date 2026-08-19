@@ -13,6 +13,7 @@ __all__ = [
     "forbin_boolean",
     "laserfuck",
     "nevermind",
+    "suptiftam",
     "taglate",
     "three_x",
     "ztoalc_l_boolean",
@@ -1293,3 +1294,52 @@ def abcdirection(truth_table: str) -> str:
     )
     _build_node(b, n, truth_table, 0, 0, root_x, 709, 0, (), leaf_params)
     return "\n".join(b.grid())
+
+
+def _suptiftam_bit(i: int) -> str:
+    """Variable name for input bit ``i`` (identifiers must be alphabetical)."""
+    if i < 25:
+        return chr(ord("b") + i)
+    return "b" + _suptiftam_bit(i - 25)
+
+
+def suptiftam(truth_table: str) -> str:
+    """Build a Suptiftam program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.  The
+    program prints ``'0'`` or ``'1'``.
+
+    Suptiftam has only ``+``/``-``/``/`` and no equality test, so the table
+    is evaluated as a sum of minterms: each bit is read from its own input
+    row and normalized to 0/1 with ``%-[read]22%`` (the literal ``22``
+    parses in base 23 to 48), each minterm multiplies its bits (AND, via a
+    recursive add-until-zero ``mulStep`` guarded by ``if``), and the sum is
+    written to ``term``.  Exactly one minterm is 1 for any input, so the
+    sum is the table entry.
+    """
+    n = _validate_truth_table(truth_table)
+    names = [_suptiftam_bit(i) for i in range(n)]
+    lines = [
+        "sum=0",
+        "p=1",
+        "fd mulStep :x",
+        "prod=%+[prod]a%",
+        "x=%-[x]1%",
+        "mulStep(:x:)if(x)",
+        "fi",
+    ]
+    for name in names:
+        lines.append(f"{name}=%-[read]22%")
+        lines.append("down(:read:)")
+    for row in range(2**n):
+        if truth_table[row] != "1":
+            continue
+        lines.append("p=1")
+        for i in range(n):
+            bit = (row >> (n - 1 - i)) & 1
+            factor = names[i] if bit else f"%-[1]{names[i]}%"
+            lines += ["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"]
+        lines.append("sum=%+[sum]p%")
+    lines.append("term=sum")
+    return "\n".join(lines)
