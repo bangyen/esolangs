@@ -76,3 +76,38 @@ class TestRun:
         """7 decodes to '[' alone, which is malformed."""
         with pytest.raises(ValueError, match="unmatched"):
             run_program(7)
+
+
+class TestStepMachine:
+    def test_step_tracks_the_decoded_tape(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.factor import _Machine
+
+        machine = _Machine("15", ScriptedIO())
+        assert (machine.bf.ind, list(machine.bf.tape)) == (0, [0])
+        machine.step()  # + increments the cell
+        assert list(machine.bf.tape) == [1]
+        machine.step()  # . prints it
+        assert machine.io.getvalue() == "\x01"
+        assert machine.halted
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.factor import _Machine
+
+        assert hash(_Machine("15", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.factor import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("15", ScriptedIO())) is True
+
+    def test_looping_decoded_program_is_detected_as_a_cycle(self) -> None:
+        """3567 = 3 * 29 * 41 decodes to +[] (residues 3, 7, 8)."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.factor import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("3567", ScriptedIO())) is False

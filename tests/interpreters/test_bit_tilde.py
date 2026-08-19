@@ -119,3 +119,40 @@ class TestBitTilde:
         """A ``}`` that would jump to a missing ``{`` is malformed."""
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture("~}")
+
+
+class TestStepMachine:
+    def test_step_tracks_pool_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.bit_tilde import _Machine
+
+        machine = _Machine("~(", ScriptedIO())
+        assert (machine.ind, list(machine.tape)) == (0, [0] * 8)
+        machine.step()  # ~ flips the MSB
+        assert machine.tape[0] == 1
+        machine.step()  # ( prints the byte
+        assert machine.io.getvalue() == "\x80"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 2
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.bit_tilde import _Machine
+
+        assert hash(_Machine("~(", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.bit_tilde import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("~(", ScriptedIO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        """A loop whose condition bit never clears loops forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.bit_tilde import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("~{}", ScriptedIO())) is False

@@ -227,13 +227,13 @@ already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
-`esolangs.make_vm` (step-and-inspect wrappers for thirty-eight interpreters:
+`esolangs.make_vm` (step-and-inspect wrappers for forty interpreters:
 brainfuck, S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
 Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123, A Painter Ant,
 2dFish, Dotlang, Clockwise, Dig, WII2D, Forþ, AddSubJump, Bitdeque,
 BrainIf, Minifuck, Taglate, ROTfuck, Circlefuck, BFStack, Albabet, Decleq,
 6-5, Back, BIO, NoComment, 3D Brainfuck, Factor, Basicfuck, Painfuck,
-bit~)
+bit~, Collatz Multiverse, Polynomial)
 and
 `esolangs.make_debugger` (breakpoints and watches over the VM) shipped.
 The medium-priority work that remains:
@@ -258,7 +258,9 @@ The medium-priority work that remains:
   array and instruction pointers), Factor (a decoded brainfuck machine),
   Basicfuck (a compiled source with an explicit frame stack for its nested
   if/while scopes), Painfuck (a translated tape with run-length repetition),
-  and bit~ (a bit pool with a movable pointer) joined the register/tape
+  bit~ (a bit pool with a movable pointer), Collatz Multiverse (named
+  registers and arrays with a line pointer), and Polynomial (a recovered
+  instruction list over a single register) joined the register/tape
   families.
   The remaining batch is the other languages still on whole-program
   ``run()``s (the boolean-parameterized machines without a state object yet,
@@ -324,11 +326,11 @@ backstop stays there and is not a hazard for the hand-written tests.
 
 The robustness test slot is wired in: ``tests/test_interpreters_robustness.py``
 now decides the empty-program invariant by state-cycle detection for the
-twenty-eight string-based step-capable machines (brainfuck, S*bleq,
+thirty string-based step-capable machines (brainfuck, S*bleq,
 Dimensional, 123, Eval, Modulous, The Temporary Stack, Qoibl, Point Break,
 Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate, ROTfuck, Circlefuck,
 BFStack, Albabet, Decleq, 6-5, Back, BIO, NoComment, 3D Brainfuck, Factor,
-Basicfuck, bit~) — no wall-clock bound
+Basicfuck, bit~, Collatz Multiverse, Polynomial) — no wall-clock bound
 and no POSIX skip —
 and keeps the SIGALRM backstop for the rest
 (Grapheme's machine has no ``snapshot()`` yet, and Painfuck's ``y`` is

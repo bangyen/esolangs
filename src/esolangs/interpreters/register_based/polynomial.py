@@ -15,7 +15,9 @@ The language features:
 The wiki's cat program notes that output ignores negative register values;
 this interpreter clamps them to zero (printing a NUL) instead, and it raises
 :class:`EOFError` on exhausted input rather than halting with -1.  A
-10000-step cap guards non-terminating programs.
+10000-step cap guards non-terminating programs (the machine is step-capable,
+so the state-cycle hang detector proves the cycle class immediately and the
+cap stays as the ``run()`` backstop for the rest).
 
 Root recovery: every instruction contributes a factor of a known shape to the
 program's monic integer polynomial -- a complex instruction ``[a, b]`` is the
@@ -27,6 +29,11 @@ instruction values straight off the factors, exactly -- no floating point, so
 the wide root spreads that defeated float64 root-finding are irrelevant.
 
 Malformed programs raise :class:`ValueError`.
+
+The interpreter runs on a :class:`_Machine` (the recovered instructions, the
+integer register, and the instruction cursor), so it is step-capable:
+``step()`` executes one instruction and ``halted`` is true once the cursor
+reaches the end of the instructions.
 """
 
 import functools
@@ -199,62 +206,89 @@ def _find_roots(coefficients: list[int]) -> list[complex]:
     return list(_factor_roots(tuple(coefficients)))
 
 
-def run(code: str, io: IO) -> None:
-    """Execute a Polynomial program by finding and processing its zeroes."""
-    # Clean the input code
-    cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
-    if cleaned_code[:5] != "f(x)=":
-        raise ValueError("Polynomial program must start with 'f(x) = '")
+class _Machine:
+    """Per-run Polynomial state: the instructions, the register, and the cursor.
 
-    # Parse polynomial and get coefficients
-    coefficients = sanitize(cleaned_code)
+    ``step()`` executes one instruction; ``halted`` is true once the cursor
+    reaches the end of the instructions.  The VM and the state-cycle hang
+    detector expose this object (the instruction list is fixed, so the
+    register and cursor are the complete state).
+    """
 
-    # Find roots and filter for non-negative imaginary parts
-    roots = [k for k in _find_roots(coefficients) if k.imag >= 0]
+    def __init__(self, code: str, io: IO) -> None:
+        """Recover ``code``'s instructions and start with a zero register."""
+        self.io = io
+        # Clean the input code
+        cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
+        if cleaned_code[:5] != "f(x)=":
+            raise ValueError("Polynomial program must start with 'f(x) = '")
 
-    # Convert roots to instruction codes
-    instructions = convert(roots)
+        # Parse polynomial and get coefficients
+        coefficients = sanitize(cleaned_code)
 
-    ind = reg = 0
-    # Use Any to avoid complex type checking issues with mixed lambda types
-    sym: list[Any] = [
-        lambda r, a: r + a,  # +=
-        lambda r, a: r - a,  # -=
-        lambda r, a: r * a,  # *=
-        lambda r, a: r // a,  # /=
-        lambda r, a: r % a,  # %=
-        lambda r, a: r**a,  # ^
-        lambda: reg > 0,  # if > 0
-        0,  # endif
-        lambda: reg < 0,  # if < 0
-        lambda: not reg,  # if == 0
-    ]
+        # Find roots and filter for non-negative imaginary parts
+        roots = [k for k in _find_roots(coefficients) if k.imag >= 0]
 
-    # Safety counter to prevent infinite loops
-    max_steps = 10000
-    step_count = 0
+        # Convert roots to instruction codes
+        self.instructions = convert(roots)
 
-    while ind < len(instructions) and step_count < max_steps:
-        instruction = instructions[ind]
+        self.ind = 0
+        self.reg = 0
+        # Use Any to avoid complex type checking issues with mixed lambda types
+        self._sym: list[Any] = [
+            lambda r, a: r + a,  # +=
+            lambda r, a: r - a,  # -=
+            lambda r, a: r * a,  # *=
+            lambda r, a: r // a,  # /=
+            lambda r, a: r % a,  # %=
+            lambda r, a: r**a,  # ^
+            lambda: self.reg > 0,  # if > 0
+            0,  # endif
+            lambda: self.reg < 0,  # if < 0
+            lambda: not self.reg,  # if == 0
+        ]
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the instructions."""
+        return self.ind >= len(self.instructions)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ind, self.reg, self.io.position())
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the cursor."""
+        if self.halted:
+            return
+        instruction = self.instructions[self.ind]
         one = instruction[0]
         rest = instruction[1:] if len(instruction) > 1 else []
 
         if two := ([*rest, 0])[0]:
             if one:
-                reg = sym[two - 1](reg, one)
+                self.reg = self._sym[two - 1](self.reg, one)
             elif two - 1:
-                val = io.input_str() + chr(0)
-                reg = ord(val[0]) or -1
+                val = self.io.input_str() + chr(0)
+                self.reg = ord(val[0]) or -1
             else:
-                io.print_char(chr(max(0, reg)))
+                self.io.print_char(chr(max(0, self.reg)))
         elif one in [2, 6]:
-            beg = instructions[brackets(instructions, ind)][0]
-            if beg > 4 and sym[(beg - 1) % 4 + 6]():
-                ind = brackets(instructions, ind)
-        elif not sym[((one - 1) % 4) + 6]():
-            ind = brackets(instructions, ind)
-        ind += 1
-        step_count += 1
+            beg = self.instructions[brackets(self.instructions, self.ind)][0]
+            if beg > 4 and self._sym[(beg - 1) % 4 + 6]():
+                self.ind = brackets(self.instructions, self.ind)
+        elif not self._sym[((one - 1) % 4) + 6]():
+            self.ind = brackets(self.instructions, self.ind)
+        self.ind += 1
+
+
+def run(code: str, io: IO, limit: int = 10_000) -> None:
+    """Execute a Polynomial program, halting after ``limit`` instructions."""
+    machine = _Machine(code, io)
+    for _ in range(limit):
+        if machine.halted:
+            return
+        machine.step()
 
 
 if __name__ == "__main__":

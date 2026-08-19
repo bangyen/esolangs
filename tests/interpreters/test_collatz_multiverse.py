@@ -208,3 +208,51 @@ class TestMalformed:
     def test_blank_lines_are_skipped(self) -> None:
         program = CONSTANTS + "\n\nx = negativeOne x + one, DO PRINT.\n"
         assert run_program(program) == "\x01"
+
+
+class TestStepMachine:
+    def test_step_tracks_registers_and_pointer(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
+
+        machine = _Machine("x = negativeOne x + negativeOne, DO PRINT.", ScriptedIO())
+        assert (machine.ip, machine.registers) == (1, {"negativeOne": -1})
+        machine.step()  # x = 0*(-1)+(-1) = -1, printed as a byte
+        assert machine.io.getvalue() == "\xff"
+        assert machine.registers == {"negativeOne": -1, "x": -1}
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ip == 2
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
+
+        assert (
+            hash(_Machine("x = y x + z, DO PRINT.", ScriptedIO()).snapshot())
+            is not None
+        )
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert (
+            run_until_halt_or_cycle(_Machine("x = y x + z, DO PRINT.", ScriptedIO()))
+            is True
+        )
+
+    def test_line_number_jump_is_detected_as_a_cycle(self) -> None:
+        """A jump back to a line that never changes state loops forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        program = "\n".join(
+            [
+                "z = z x + z, NOT PRINT.",
+                "lineNumber = lineNumber x + z, NOT PRINT.",
+            ]
+        )
+        assert run_until_halt_or_cycle(_Machine(program, ScriptedIO())) is False
