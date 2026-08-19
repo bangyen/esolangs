@@ -56,6 +56,10 @@ class _Program:
         """Advance the rotation count by one (a command executed)."""
         self._rot += 1
 
+    def rotation(self) -> int:
+        """Return how many commands have executed (the implicit rotation)."""
+        return self._rot
+
     def at(self, i: int) -> str:
         """Return the effective command at ``i`` under the current rotation."""
         ch = self._chars[i]
@@ -94,46 +98,86 @@ class _Program:
         return None
 
 
-def run(code: str, io: IO) -> None:
-    """Run a ROTfuck program."""
-    prog = _Program(code)
-    tape: list[int] = [0]
-    ptr = ind = 0
+class _Machine:
+    """Per-run ROTfuck state: the rotating program, tape, pointer, and cursor.
 
-    while ind < len(code):
-        char = prog.at(ind)
+    ``step()`` executes one command (rotating the program as its side
+    effect); ``halted`` is true once the cursor reaches the end of the
+    source.  The rotation count, tape, and cursor fully determine the next
+    command, so a program that revisits them is a finite-state cycle the
+    hang detector can prove.  The VM and the hang detector expose this
+    object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Start with an empty tape at the origin and a fresh program."""
+        self.io = io
+        self.prog = _Program(code)
+        self.tape: list[int] = [0]
+        self.ptr = 0
+        self.ind = 0
+        self._size = len(code)
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the source."""
+        return self.ind >= self._size
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.prog.rotation(),
+            tuple(self.tape),
+            self.ptr,
+            self.ind,
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one command, advancing the cursor and rotation."""
+        if self.halted:
+            return
+        prog = self.prog
+        char = prog.at(self.ind)
         if char == ">":
-            ptr += 1
-            if ptr == len(tape):
-                tape.append(0)
+            self.ptr += 1
+            if self.ptr == len(self.tape):
+                self.tape.append(0)
         elif char == "<":
-            if ptr:
-                ptr -= 1
+            if self.ptr:
+                self.ptr -= 1
         elif char == "+":
-            tape[ptr] = (tape[ptr] + 1) % 256
+            self.tape[self.ptr] = (self.tape[self.ptr] + 1) % 256
         elif char == "-":
-            tape[ptr] = (tape[ptr] - 1) % 256
+            self.tape[self.ptr] = (self.tape[self.ptr] - 1) % 256
         elif char == ".":
-            io.print_char(chr(tape[ptr]))
+            self.io.print_char(chr(self.tape[self.ptr]))
         elif char == ",":
-            tape[ptr] = io.input_char()
-        elif char == "[" and tape[ptr] == 0:
+            self.tape[self.ptr] = self.io.input_char()
+        elif char == "[" and self.tape[self.ptr] == 0:
             prog.rotate()
-            partner = prog.forward(ind)
+            partner = prog.forward(self.ind)
             if partner is None:
                 raise HaltError("an executed '[' has no bracket partner")
-            ind = partner + 1
-            continue
-        elif char == "]" and tape[ptr] != 0:
+            self.ind = partner + 1
+            return
+        elif char == "]" and self.tape[self.ptr] != 0:
             prog.rotate()
-            partner = prog.backward(ind)
+            partner = prog.backward(self.ind)
             if partner is None:
                 raise HaltError("an executed ']' has no bracket partner")
-            ind = partner + 1
-            continue
+            self.ind = partner + 1
+            return
 
         prog.rotate()
-        ind += 1
+        self.ind += 1
+
+
+def run(code: str, io: IO) -> None:
+    """Run a ROTfuck program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

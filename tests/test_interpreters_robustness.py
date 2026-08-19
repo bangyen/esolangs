@@ -105,6 +105,18 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.queue_based.taglate import _Machine
 
         return _Machine([], io)
+    if module == "esolangs.interpreters.tape_based.rotfuck":
+        from esolangs.interpreters.tape_based.rotfuck import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.circlefuck":
+        from esolangs.interpreters.tape_based.circlefuck import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.stack_based.bfstack":
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -126,6 +138,9 @@ _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.minifuck",
     "esolangs.interpreters.tape_based.brainif",
     "esolangs.interpreters.queue_based.taglate",
+    "esolangs.interpreters.tape_based.rotfuck",
+    "esolangs.interpreters.tape_based.circlefuck",
+    "esolangs.interpreters.stack_based.bfstack",
 }
 
 
