@@ -480,6 +480,40 @@ class _ArrowQueueVM(_BaseVM):
         return list(self._machine.queue)
 
 
+class _APainterAntVM(_BaseVM):
+    """2D grid; ``ip`` is the instruction cursor, ``memory`` the cell colours.
+
+    The program never halts (implicit loop), so the debugger's ``halted``
+    stays ``False`` and the state-cycle hang detector is the only way to
+    prove a program loops.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
+
+        self._machine = _Machine(program)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ip
+
+    @property
+    def memory(self) -> list[int]:
+        return [v for _, v in sorted(self._machine.grid.items())]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _OneTwoThreeVM(_BaseVM):
     """Single data byte + pointer mask; ``ip`` is the code cursor."""
 
@@ -523,6 +557,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "LaserFuck": _LaserFuckVM,
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
+    "A Painter Ant": _APainterAntVM,
     "123": _OneTwoThreeVM,
 }
 

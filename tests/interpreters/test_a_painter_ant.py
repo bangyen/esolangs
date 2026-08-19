@@ -90,3 +90,42 @@ ePwPsPN"""
         output = run_program(counter, 2000)
         assert output  # runs without error and dumps a grid
         assert len(output.splitlines()) >= 1
+
+
+class TestStepMachine:
+    def test_step_tracks_ip_grid_and_position(self) -> None:
+        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
+
+        machine = _Machine("Pn")
+        assert machine.halted is False
+        assert machine.ip == 0
+        machine.step()  # P whites the origin
+        assert machine.ip == 1
+        assert machine.grid[(0, 0)] == 1
+        machine.step()  # n moves north
+        assert machine.ip == 0  # wrapped past the last instruction
+        assert (machine.x, machine.y) == (0, -1)
+
+    def test_snapshot_is_a_hashable_complete_state(self) -> None:
+        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
+
+        machine = _Machine("Pn")
+        first = machine.snapshot()
+        assert hash(first) is not None
+        machine.step()
+        assert machine.snapshot() != first  # the paint changed the state
+
+    def test_blocked_instruction_loops_and_is_a_cycle(self) -> None:
+        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # N never fires (all cells start black), so the run revisits state.
+        assert run_until_halt_or_cycle(_Machine("N")) is False
+
+    def test_generated_boolean_program_is_a_cycle(self) -> None:
+        from esolangs.interpreters.grid_based.a_painter_ant import _Machine
+        from esolangs.tools.boolean.parameterized import _instantiate_apa, a_painter_ant
+        from esolangs.vm import run_until_halt_or_cycle
+
+        program = _instantiate_apa(a_painter_ant("0110"), [1, 0])  # XOR, f=1
+        assert run_until_halt_or_cycle(_Machine(program)) is False
