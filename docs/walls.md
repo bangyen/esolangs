@@ -117,6 +117,17 @@ after the `b1`-normalize prefix reaches only the 0-preserving two-input
 tables, matching the structural argument.  (Unlike Minifuck, this wall
 holds.)
 
+## NoComment, BF-PDA (complement embedding is a wall, not a superfluous read)
+
+Both languages' if/else branch needs a gate that is nonzero exactly when
+the input bit is zero, and neither can compute that complement at runtime:
+`nocomment` has no flip instruction, and `bfpda`'s `@` destroys the bit it
+reads.  So the `nocomment` and `bfpda` parameterized generators embed each
+input's complement (`{Ci}`) once alongside the bit itself (`{Xi}`) — the
+extra embed is a documented wall, not a redundant read (contrast Eval and
+most other parameterized generators, which embed each input exactly once
+with no complement).
+
 ## Dotlang (fork-and-kill; parameterized)
 
 A plain decision tree fails on Dotlang: `W~` warps to the *first* `W<name>`s`
@@ -298,7 +309,7 @@ Supported for **every arity** and verified cycle-stable and exact: all
 ``n == 4``-``7`` sampled plus structured and constant edge tables.  The
 general method — encode each combination as a distinct leaf position
 reached by the weighted bit-moves, and anchor the cycle-2 run back onto
-that leaf — is recorded in ``docs/roadmap.md``.
+that leaf — is recorded in ``docs/a_painter_ant_generator.md``.
 
 ## Multiply capability (Jaune realizes it)
 
@@ -353,3 +364,65 @@ folds each digit with ``v+`` plus a run of nine ``&`` after a ``#``
 on zero, then loops the repeated addition of the first operand over the
 second.  Verified exhaustively for single-digit operands (all 100 pairs)
 and spot-checked through ten-digit operands.
+
+## Cross-check removals (why seven were dropped)
+
+Seven `extra/` cross-checks (Rust and RISC-V ports run against the Python
+interpreters by `scripts/verify_differential.py`) were removed for not
+meeting the independent-and-broad bar: Kak, Trash, Number Seventy-Four
+(Rust) and Brainpocalypse, Stun Step, 2 Bits 1 Byte (RISC-V) had no
+generator at all, so their differentials were a hand-written 4-6 program
+corpus each, and the references were ports of (or ported to) the Python,
+so agreement was not independent evidence.  123 had a generator but its
+RISC-V cross-check was corpus-only (4 generated texts + 2 hand-written
+jumps, no fuzz) and verified programs the round-trip test already covers.
+All seven added little over the Python unit tests at real toolchain cost
+(cargo + RISC-V cross-compiler + unicorn in CI).  The *languages* all
+stayed except the six later removed outright (2 Bits 1 Byte, Trash, Number
+Seventy-Four, Kak, Brainpocalypse, Stun Step — see the assessed-and-rejected
+ledger in `docs/limitations.md`); only the redundant cross-checks went for
+the rest.  Live candidates for new cross-checks are in `docs/roadmap.md`.
+
+## State-cycle detection coverage (hang detection without a wall-clock timeout)
+
+`esolangs.vm.run_until_halt_or_cycle` proves a hang immediately for
+deterministic, step-capable machines that revisit an exact internal state,
+instead of waiting out a wall-clock timeout.  It requires: a **complete**
+snapshot (the machine's internal fields, including the input-cursor
+position — the VM's language-shaped `ip`/`memory`/`stack` view is not
+enough); determinism (LaserFuck's random heading, WII2D's `?`, and
+Painfuck's `y` are excluded); and a `step()`/`halted` state object (only
+the VM set qualifies — whole-program `run()`s expose no internal state to
+hash).  It catches *cycles*, not every hang: an unbounded-growth loop
+(`+[>+]`, the tape grows forever) never revisits a state, so the wall-clock
+timeout stays as the backstop for that class, and for the fuzzers (which
+don't control the program shape the way hand-written tests do).
+
+`tests/test_interpreters_robustness.py` decides the empty-program invariant
+by state-cycle detection for thirty string-based step-capable machines
+(brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, The Temporary Stack,
+Qoibl, Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
+ROTfuck, Circlefuck, BFStack, Albabet, Decleq, 6-5, Back, BIO, NoComment,
+3D Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial), and
+keeps the SIGALRM backstop for the rest (Grapheme's machine has no
+`snapshot()` yet, and Painfuck's `y` is non-deterministic).
+`scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
+likewise bounded by state-cycle detection, with NoComment keeping the
+alarm as backstop for its unbounded-growth class (a loop that keeps
+pushing the stack never revisits a state); the remaining differential
+Python sides on SIGALRM alone are LaserFuck and Painfuck, whose
+headings/skips are random.
+
+**The wall-clock backstop is broken under `pytest --cov`.**  Raising from
+the SIGALRM handler while the coverage C tracer is active can deadlock the
+tracer: the exception unwinds through the tracer's C code while it holds
+its internal lock, so the *next* traced run spins forever instead of
+finishing.  An interpreter that evaluates a `next(genexpr)` in its hot loop
+makes it near-deterministic — the signal lands inside the suspended
+generator frame and leaves the lock held — while a genexpr-free loop
+reduces it to a rare race.  This is why state-cycle detection matters
+beyond speed: it removes the deadlock hazard entirely for the machines it
+covers.  The one alarm that stays by design is `test_api.py`'s `+[]` case:
+it is a feature test of `esolangs.run`'s `timeout` parameter (the backstop
+for unbounded-growth loops), not a hang-detection strategy, so it keeps
+raising from the handler once per process.

@@ -85,7 +85,7 @@ per-character encoding can be meaningfully shortened:
 | Eval | Nested parameterized trees need backtick escaping the spec forbids.  **Lifted:** the parameterized heap-order tree stores the decision tree flat on the tree stack, so no node or leaf needs a nested backtick at all (see `docs/walls.md`). |
 | EXCON / Huf | Straight-line, no input, no branch. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
-| WII2D | The accumulator never affects control flow.  **Lifted:** the n-embedding chain decodes the input with accumulator arithmetic (see `docs/walls.md` and `docs/roadmap.md`). |
+| WII2D | The accumulator never affects control flow.  **Lifted:** the n-embedding chain decodes the input with accumulator arithmetic (see `docs/walls.md`). |
 
 ## Generator caps (shipped)
 
@@ -94,31 +94,20 @@ per-character encoding can be meaningfully shortened:
 | NoComment | `n <= 8` | Genuine wall: the `s` skip is byte-indexed, capping every jump at 255. |
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
-| A Painter Ant | total (no cap) | Lifted: the piecewise leaf-paint head with WS/NE anchors is exact and cycle-stable for every arity (see `docs/roadmap.md` and `docs/a_painter_ant_generator.md`). |
+| A Painter Ant | total (no cap) | Lifted: the piecewise leaf-paint head with WS/NE anchors is exact and cycle-stable for every arity (see `docs/a_painter_ant_generator.md`). |
 | Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue, Dotlang, Eval, WII2D | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
 Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps
 left them able to express only a small fraction of the two-input boolean
-functions.  Their
-languages and text generators remain; see `docs/roadmap.md`.
+functions.  Their languages and text generators remain; see `docs/roadmap.md`.
 
-The parameterized no-input generators (bio, back, nocomment, bfpda, lamfunc,
-bitdeque, ram0, minsky_swap, eval, arrowqueue, a_painter_ant, wii2d) each
-embed every input **exactly once**, never re-embedding a bit at multiple
-decision nodes — an input-capable language reads each of its `n` inputs once
-per run, and the no-input generators mirror that (see
-`esolangs.tools.boolean.parameterized` and its regression test).  Two of
-them, `nocomment` and `bfpda`, also embed each input's complement (`{Ci}`)
-once, because their if/else branch needs a gate that is nonzero exactly when
-the bit is zero and neither language can compute that complement at runtime
-(`nocomment` has no flip; `bfpda`'s `@` destroys the bit) — a documented
-wall, not a superfluous read.  `dotlang` and `wii2d_tree` are the
-exceptions: `dotlang` re-embeds each input (and its complement) at every
-junction, because a Dotlang decision tree has no way to store a bit and read
-it back, and `wii2d_tree` re-embeds each input at every node (`2**n - 1`
-junctions) as the guaranteed fallback for tables the `wii2d` chain search
-cannot fit.
+The parameterized no-input generators embed every input exactly once rather
+than re-embedding a bit at multiple decision nodes, mirroring how an
+input-capable language reads each input once per run; `dotlang` and
+`wii2d_tree` are documented exceptions.  The per-language reasoning (why
+`nocomment` and `bfpda` also embed each input's complement, why Dotlang and
+the `wii2d` fallback re-embed) is in [`docs/walls.md`](walls.md).
 
 ## Assessed and rejected
 
@@ -160,6 +149,24 @@ interpreter, generator, and tests were deleted from the repo.
 - **Varigen**: explicitly "uncomputable" joke language.
 - **Welcome To...**: work-in-progress.
 - **Your Time Is Up**: random rule choice, no I/O; nondeterministic.
+
+## Cross-check removals
+
+Seven `extra/` cross-checks (Rust and RISC-V ports) were removed for not
+meeting the independent-and-broad bar — no generator, or a corpus-only
+cross-check that added nothing over the round-trip tests.  The languages
+themselves mostly stayed; the full reasoning and the per-cross-check list
+is in [`docs/walls.md`](walls.md#cross-check-removals-why-seven-were-dropped).
+
+## Hang detection
+
+Wall-clock timeouts (SIGALRM, instruction-count caps) bound hanging
+programs by default; deterministic, step-capable machines instead get an
+immediate cycle-detection proof (`esolangs.vm.run_until_halt_or_cycle`).
+Which interpreters are covered, why a few stay on the timeout (random
+headings, no `snapshot()` yet), and the `pytest --cov` deadlock this also
+sidesteps are in
+[`docs/walls.md`](walls.md#state-cycle-detection-coverage-hang-detection-without-a-wall-clock-timeout).
 
 ## Transpiler walls
 
