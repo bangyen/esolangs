@@ -106,7 +106,7 @@ after the `b1`-normalize prefix reaches only the 0-preserving two-input
 tables, matching the structural argument.  (Unlike Minifuck, this wall
 holds.)
 
-## Dotlang (fork-and-kill; parameterized, termination-based)
+## Dotlang (fork-and-kill; parameterized)
 
 A plain decision tree fails on Dotlang: `W~` warps to the *first* `W<name>`s`
 marker, so deeper levels re-enter the same markers and lose branch history;
@@ -119,11 +119,11 @@ while the caller continues, so a junction forks the dot into two and the
 embedded gate (``{Xi}`` or its ``{Ci}`` complement, filled with a
 pass-through ``a`` or an empty cell) kills one of them, leaving exactly the
 branch the bit selects.  The survivor turns down and right into its
-subtree, and each leaf is either an empty cell (halt = 0) or a 2x2 loop
-ring (hang = 1), so the answer is read from termination rather than output.
-It is a parameterized generator, total for any arity and table; the tree
-re-embeds each input at `2**i` junctions, so it is the one parameterized
-generator that does not embed each input exactly once.
+subtree, and each leaf is a ``#0#``/``#1#`` literal that prints the table
+entry before the dot dies, so the instantiated program prints its answer
+and halts.  It is a parameterized generator, total for any arity and table;
+the tree re-embeds each input at `2**i` junctions, so it is the one
+parameterized generator that does not embed each input exactly once.
 
 ## Polynomial (numeric root-finding ruled out; caps at n <= 4)
 
