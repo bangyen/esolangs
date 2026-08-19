@@ -3701,6 +3701,56 @@ class TestWII2D:
             template = boolean.wii2d(table)
             assert template.startswith(">{X0}- > {X1}"), table
 
+    @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
+    def test_chain_parity_closed_form(self, n: int) -> None:
+        """Parity and its complement use the exact closed form for any arity."""
+        from esolangs.tools.boolean.parameterized import (
+            _wii2d_apply,
+            _wii2d_parity_routes,
+            _wii2d_symmetric_popcount_map,
+        )
+
+        for complement in (False, True):
+            table = "".join(
+                str((bin(c).count("1") % 2) ^ complement) for c in range(2**n)
+            )
+            popcount_map = _wii2d_symmetric_popcount_map(n, table)
+            assert popcount_map is not None, table
+            result = _wii2d_parity_routes(n, popcount_map)
+            assert result is not None, table
+            start, routes = result
+            assert routes[1:] == [("", "-s")] * (n - 1), table
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                v = start
+                for i in range(n):
+                    v = _wii2d_apply(routes[i][bits[i]], v)
+                assert str(v) == table[combo], (table, bits)
+
+    def test_symmetric_search_reduces_to_popcount_decode(self) -> None:
+        """Non-parity symmetric tables use a popcount prefix plus a decode."""
+        from esolangs.tools.boolean.parameterized import (
+            _wii2d_apply,
+            _wii2d_symmetric_search,
+        )
+
+        n = 10
+        # majority-of-10: general search's length-6 ladder cannot fit this
+        # table (see _wii2d_search's docstring for the counting bound), so
+        # this exercises the fallback directly rather than via the full
+        # (slow) _wii2d_search ladder.
+        popcount_map = [1 if p > n // 2 else 0 for p in range(n + 1)]
+        result = _wii2d_symmetric_search(n, popcount_map)
+        assert result is not None
+        start, routes = result
+        assert routes[:-1] == [("", "+")] * (n - 1)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            v = start
+            for i in range(n):
+                v = _wii2d_apply(routes[i][bits[i]], v)
+            assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
