@@ -24,6 +24,13 @@ Semantics match the Rust cross-check (``extra/rust/bit_tilde.rs``):
 - an empty input line yields no character (the cross-check would read a
   newline), so ``)`` on an empty line raises :class:`IndexError` through
   :meth:`esolangs.interpreters.io.IO.input_char`.
+
+The interpreter runs on a :class:`_Machine` (the bit pool, the pointer, and
+the code cursor), so it is step-capable: ``step()`` executes one character
+and ``halted`` is true once the cursor reaches the end of the code.  A
+bracket loop that returns to an exact state is a cycle the state-cycle hang
+detector proves; the ``run()`` backstop stays for the unbounded-growth class
+(a loop whose body keeps extending the pool).
 """
 
 import sys
@@ -50,38 +57,67 @@ def _match(code: str, ind: int, step: int) -> int:
     return ind
 
 
+class _Machine:
+    """Per-run bit~ state: the bit pool, the pointer, and the cursor.
+
+    ``step()`` executes one character; ``halted`` is true once the cursor
+    reaches the end of the code.  The VM and the state-cycle hang detector
+    expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Start with an eight-cell pool at the origin."""
+        self.io = io
+        self.code = code
+        self.tape: list[int] = [0] * 8
+        self.cell = 0
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the code."""
+        return self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (tuple(self.tape), self.cell, self.ind, self.io.position())
+
+    def step(self) -> None:
+        """Execute one character, advancing the cursor."""
+        if self.halted:
+            return
+        c = self.code[self.ind]
+        if c == "~":
+            self.tape[self.cell] ^= 1
+        elif c == ">":
+            if self.cell + 8 > len(self.tape):
+                self.tape.append(0)
+            self.cell += 1
+        elif c == "<":
+            if self.cell:
+                self.cell -= 1
+        elif c == ")":
+            byte = self.io.input_char()
+            bits = [int(b) for b in f"{byte:08b}"]
+            if self.cell + 8 > len(self.tape):
+                self.tape.extend([0] * (self.cell + 8 - len(self.tape)))
+            self.tape[self.cell : self.cell + 8] = bits
+        elif c == "(":
+            val = self.tape[self.cell : self.cell + 8]
+            self.io.print_char(chr(int("".join(map(str, val)), 2)))
+        elif c == "{":
+            if not self.tape[self.cell]:
+                self.ind = _match(self.code, self.ind, 1)
+        elif c == "}" and self.tape[self.cell]:
+            self.ind = _match(self.code, self.ind, -1)
+        self.ind += 1
+
+
 def run(code: str, io: IO) -> None:
     """Run a bit~ program."""
-    tape: list[int] = [0] * 8
-    cell = 0
-    ind = 0
-
-    while ind < len(code):
-        c = code[ind]
-        if c == "~":
-            tape[cell] ^= 1
-        elif c == ">":
-            if cell + 8 > len(tape):
-                tape.append(0)
-            cell += 1
-        elif c == "<":
-            if cell:
-                cell -= 1
-        elif c == ")":
-            byte = io.input_char()
-            bits = [int(b) for b in f"{byte:08b}"]
-            if cell + 8 > len(tape):
-                tape.extend([0] * (cell + 8 - len(tape)))
-            tape[cell : cell + 8] = bits
-        elif c == "(":
-            val = tape[cell : cell + 8]
-            io.print_char(chr(int("".join(map(str, val)), 2)))
-        elif c == "{":
-            if not tape[cell]:
-                ind = _match(code, ind, 1)
-        elif c == "}" and tape[cell]:
-            ind = _match(code, ind, -1)
-        ind += 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

@@ -15,6 +15,12 @@ Per the wiki, any character that is not a command is an error (there are no
 comments), and popping an empty stack is an error.  A malformed program
 (unrecognized character) raises :class:`ValueError`; an invalid operation
 (stack underflow) raises :class:`~esolangs.exceptions.HaltError`.
+
+The interpreter runs on a :class:`_Machine` (the byte tape, the stack, and
+the code cursor), so it is step-capable: ``step()`` executes one command and
+``halted`` is true once the cursor reaches the end of the code.  A jump back
+to a command that never changes state is a cycle the state-cycle hang
+detector proves; the ``run()`` backstop stays for the unbounded-growth class.
 """
 
 import sys
@@ -29,50 +35,85 @@ _COMMANDS = "idclrnfsbo"
 _TAPE = 4096
 
 
-def run(code: str, io: IO) -> None:
-    """Run a NoComment program."""
-    tape: list[int] = [0] * _TAPE
-    stack: list[int] = []
-    ptr = 0
-    ind = 0
+class _Machine:
+    """Per-run NoComment state: the byte tape, the stack, and the cursor.
 
-    while ind < len(code):
-        c = code[ind]
+    ``step()`` executes one command; ``halted`` is true once the cursor
+    reaches the end of the code.  The VM and the state-cycle hang detector
+    expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Start with a cleared tape at the origin."""
+        self.io = io
+        self.code = code
+        self.tape: list[int] = [0] * _TAPE
+        self.stack: list[int] = []
+        self.ptr = 0
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the code."""
+        return self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            tuple(self.tape),
+            tuple(self.stack),
+            self.ptr,
+            self.ind,
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one command, advancing the cursor."""
+        if self.halted:
+            return
+        c = self.code[self.ind]
         if c == "i":
-            tape[ptr] = (tape[ptr] + 1) % 256
+            self.tape[self.ptr] = (self.tape[self.ptr] + 1) % 256
         elif c == "d":
-            tape[ptr] = (tape[ptr] - 1) % 256
+            self.tape[self.ptr] = (self.tape[self.ptr] - 1) % 256
         elif c == "c":
-            tape[ptr] = 0
+            self.tape[self.ptr] = 0
         elif c == "l":
-            ptr = (ptr - 1) % _TAPE  # pointer overflow wraps per the wiki
+            self.ptr = (self.ptr - 1) % _TAPE  # pointer overflow wraps per the wiki
         elif c == "r":
-            ptr = (ptr + 1) % _TAPE
+            self.ptr = (self.ptr + 1) % _TAPE
         elif c == "n":
-            stack.append(tape[ptr])
+            self.stack.append(self.tape[self.ptr])
         elif c == "f":
-            if not stack:
+            if not self.stack:
                 raise HaltError
-            tape[ptr] = stack.pop()
+            self.tape[self.ptr] = self.stack.pop()
         elif c == "s":
-            if tape[ptr] and stack:
+            if self.tape[self.ptr] and self.stack:
                 # skip X forward: the next command is at ind + X + 1
-                target = ind + stack[-1] + 1
-                if not 0 <= target < len(code):
+                target = self.ind + self.stack[-1] + 1
+                if not 0 <= target < len(self.code):
                     raise HaltError
-                ind += stack[-1]
+                self.ind += self.stack[-1]
         elif c == "b":
-            if tape[ptr] and stack:
+            if self.tape[self.ptr] and self.stack:
                 # jump back X-1: the next command is at ind - X + 1
-                target = ind - stack[-1] + 1
-                if not 0 <= target < len(code):
+                target = self.ind - self.stack[-1] + 1
+                if not 0 <= target < len(self.code):
                     raise HaltError
-                ind -= stack[-1]
+                self.ind -= self.stack[-1]
         elif c == "o":
-            io.print_char(chr(tape[ptr]))
+            self.io.print_char(chr(self.tape[self.ptr]))
         else:
             raise ValueError(f"unrecognized NoComment command {c!r}")
-        ind += 1
+        self.ind += 1
+
+
+def run(code: str, io: IO) -> None:
+    """Run a NoComment program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

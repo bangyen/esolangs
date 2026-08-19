@@ -60,3 +60,44 @@ class Test3DBrainfuck:
 
     def test_empty_program(self) -> None:
         assert run_program("") == ""
+
+
+class TestStepMachine:
+    def test_step_tracks_pointer_and_cells(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
+
+        machine = _Machine("+.", ScriptedIO())
+        assert (machine.ip, machine.ap, machine.heading) == (
+            (0, 0, 0),
+            (0, 0, 0),
+            (1, 0, 0),
+        )
+        machine.step()  # + sets the origin cell to 1
+        assert machine.cells == {(0, 0, 0): 1}
+        machine.step()  # . prints it
+        assert machine.io.getvalue() == "\x01"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ip == (2, 0, 0)
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
+
+        assert hash(_Machine("+.", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("+.", ScriptedIO())) is True
+
+    def test_bracket_loop_is_detected_as_a_cycle(self) -> None:
+        """A bracket pair around a cell that never clears loops forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("+[]", ScriptedIO())) is False

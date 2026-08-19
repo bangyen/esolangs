@@ -129,6 +129,42 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.tape_based.six_five import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.back":
+        from esolangs.interpreters.tape_based.back import _Machine
+
+        return _Machine([], io)
+    if module == "esolangs.interpreters.register_based.bio":
+        from esolangs.interpreters.register_based.bio import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.nocomment":
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.three_d_brainfuck":
+        from esolangs.interpreters.tape_based.three_d_brainfuck import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.factor":
+        from esolangs.interpreters.tape_based.factor import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.basicfuck":
+        from esolangs.interpreters.tape_based.basicfuck import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.bit_tilde":
+        from esolangs.interpreters.tape_based.bit_tilde import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.register_based.collatz_multiverse":
+        from esolangs.interpreters.register_based.collatz_multiverse import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.register_based.polynomial":
+        from esolangs.interpreters.register_based.polynomial import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -156,6 +192,15 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.albabet",
     "esolangs.interpreters.register_based.decleq",
     "esolangs.interpreters.tape_based.six_five",
+    "esolangs.interpreters.tape_based.back",
+    "esolangs.interpreters.register_based.bio",
+    "esolangs.interpreters.tape_based.nocomment",
+    "esolangs.interpreters.tape_based.three_d_brainfuck",
+    "esolangs.interpreters.tape_based.factor",
+    "esolangs.interpreters.tape_based.basicfuck",
+    "esolangs.interpreters.tape_based.bit_tilde",
+    "esolangs.interpreters.register_based.collatz_multiverse",
+    "esolangs.interpreters.register_based.polynomial",
 }
 
 

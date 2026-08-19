@@ -85,3 +85,42 @@ class TestNoComment:
             assert (
                 esolangs.run("NoComment", esolangs.generate("NoComment", text)) == text
             )
+
+
+class TestStepMachine:
+    def test_step_tracks_tape_stack_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+
+        machine = _Machine("cino", ScriptedIO())
+        assert (machine.ptr, machine.ind, machine.stack) == (0, 0, [])
+        machine.step()  # c clears the cell
+        machine.step()  # i increments it
+        machine.step()  # n pushes the cell
+        assert machine.stack == [1]
+        machine.step()  # o prints the cell
+        assert machine.io.getvalue() == "\x01"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 4
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+
+        assert hash(_Machine("co", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("ciio", ScriptedIO())) is True
+
+    def test_back_jump_is_detected_as_a_cycle(self) -> None:
+        """A jump back to a command that never changes state loops forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.nocomment import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("inbb", ScriptedIO())) is False

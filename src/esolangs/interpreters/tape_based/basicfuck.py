@@ -20,6 +20,15 @@ Semantics match the Rust cross-check (``extra/rust/basicfuck.rs``):
 - ``,`` (read) stores the first byte of a line and raises
   :class:`EOFError` when input runs out, where the cross-check exits with
   status 3.
+
+The interpreter runs on a :class:`_Machine` (the compiled instructions, the
+tape, and an explicit frame stack for the nested if/while scopes), so it is
+step-capable: ``step()`` executes one instruction and ``halted`` is true once
+no frame remains.  A while loop whose body never changes its condition is a
+finite-state cycle the state-cycle hang detector can prove (an empty body
+loop is a no-op step whose repeated snapshot proves a hang); the ``run()``
+backstop stays for the unbounded-growth class (a loop whose body keeps
+growing a tape cell).
 """
 
 from __future__ import annotations
@@ -119,8 +128,8 @@ def _lexer(program: str) -> list[str]:
     return tokens
 
 
-def _parser(tokens: list[str], var: list[tuple[str, int]]) -> list[int]:
-    """Compile the tokens to the flat instruction list the executor runs.
+def _parser(tokens: list[str], var: list[tuple[str, int]]) -> tuple[int, ...]:
+    """Compile the tokens to the flat instruction tuple the machine runs.
 
     Prefix notation mirrors the Rust cross-check: ``+=`` -1, ``-=`` -2, ``if``
     -3, ``while`` -4, ``write`` -5, ``read`` -6, ``!`` -7, ``{`` -8, ``}``
@@ -203,25 +212,139 @@ def _parser(tokens: list[str], var: list[tuple[str, int]]) -> list[int]:
             fail()
     if pair != 0:
         fail()
-    return result
+    return tuple(result)
 
 
-def _execute(
-    prog: list[int],
-    tape: _BoundedTape,
-    mode: str,
-    bot: int,
-    top: int,
-    io: IO,
-    ptr: int,
-) -> None:
-    """Run the compiled ``prog`` starting at ``ptr`` (mirrors the Rust run())."""
-    size = len(prog)
-    while ptr < size:
-        op = prog[ptr]
-        ptr += 1
+class _Frame:
+    """One active scope: its code, cursor, and the while loop it serves.
+
+    A frame whose ``loop`` is True is the owner of a running ``while`` body
+    (the body itself is a separate frame on top of it); when that body
+    completes, the owner re-checks its condition and re-runs the body or
+    continues past the loop.
+    """
+
+    __slots__ = ("body", "cond_pos", "loop", "neg", "prog", "ptr")
+
+    def __init__(
+        self,
+        prog: tuple[int, ...],
+        ptr: int = 0,
+        *,
+        loop: bool = False,
+        cond_pos: int = -1,
+        neg: bool = False,
+        body: tuple[int, ...] | None = None,
+    ) -> None:
+        self.prog = prog
+        self.ptr = ptr
+        self.loop = loop
+        self.cond_pos = cond_pos
+        self.neg = neg
+        self.body = body
+
+
+class _Machine:
+    """Per-run Basicfuck state: the compiled code, tape, and frame stack.
+
+    ``step()`` executes one instruction of the active frame; ``halted`` is
+    true once no frame remains.  A while loop whose body never changes its
+    condition is a finite-state cycle the state-cycle hang detector can
+    prove.  The VM and the hang detector expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Parse and compile ``code`` and start the top-level frame."""
+        self.io = io
+        lines = code.split("\n")
+        directive = lines[0] if lines else ""
+        allocate = lines[1] if len(lines) > 1 else ""
+        body = "\n".join(lines[2:])
+
+        m = _DIRECTIVE.fullmatch(directive)
+        if not m:
+            raise ValueError("Missing/Invalid directives.")
+        lim = -1 if m.group(1) == "unbounded" else int(m.group(1))
+        mode_count = (1 if m.group(2) else 0) + (1 if m.group(3) else 0)
+        if mode_count != 0 and m.group(4) is None:
+            raise ValueError("Missing overflow directive.")
+        if mode_count != 2 and m.group(5) == "wrap":
+            raise ValueError("Invalid overflow directive.")
+        bot = int(m.group(2)) if m.group(2) else -(2**31)
+        top = int(m.group(3)) if m.group(3) else 2**31 - 1
+        mode = m.group(5)[0] if m.group(5) else "n"
+
+        var, tape = _parse_allocate(allocate)
+
+        body = re.sub(r"//[^\n]*", "", body)
+        # the cross-check reserves a cell for variable-variable arithmetic
+        if _ASSIGN.search(body) and lim != -1:
+            lim -= 1
+        if lim != -1 and lim < len(tape):
+            raise ValueError("Insufficient memory.")
+
+        instructions = _parser(_lexer(body), var)
+        self.mode = mode
+        self.bot = bot
+        self.top = top
+        self.tape = _BoundedTape(tape)
+        self.frames: list[_Frame] = [_Frame(instructions)]
+
+    @property
+    def halted(self) -> bool:
+        """Whether every scope has completed."""
+        return not self.frames
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.tape.cells(),
+            tuple(
+                (f.prog, f.ptr, f.loop, f.cond_pos, f.neg, f.body) for f in self.frames
+            ),
+            self.io.position(),
+        )
+
+    def _cond(self, frame: _Frame, cond_pos: int, *, neg: bool) -> bool:
+        """Evaluate the condition at ``cond_pos`` in ``frame``'s code."""
+        return bool(self.tape[frame.prog[cond_pos]]) ^ neg
+
+    def _finalize_finished(self) -> None:
+        """Pop completed frames, re-running a while body while it holds.
+
+        Only the top frame can be finished at a time; a loop body that still
+        has its condition met starts a fresh pass (finalized by a later step,
+        so an empty body is a no-op step whose repeated snapshot proves a
+        hang).
+        """
+        while self.frames:
+            frame = self.frames[-1]
+            if frame.ptr < len(frame.prog):
+                return  # an active frame is still running
+            self.frames.pop()
+            if self.frames and self.frames[-1].loop:
+                parent = self.frames[-1]
+                if self._cond(parent, parent.cond_pos, neg=parent.neg):
+                    self.frames.append(_Frame(parent.body or ()))
+                    return
+                parent.loop = False
+
+    def step(self) -> None:
+        """Execute one instruction of the active frame."""
+        if self.halted:
+            return
+        self._finalize_finished()
+        if not self.frames:
+            return
+        frame = self.frames[-1]
+        prog = frame.prog
+        if frame.ptr >= len(prog):
+            return  # a finished empty loop body is a no-op step
+        op = prog[frame.ptr]
+        frame.ptr += 1
+
         if op > -3:  # += / -=
-            num = prog[ptr + 1]
+            num = prog[frame.ptr + 1]
             if num < 0:  # a constant, encoded below -10
                 num += 10
                 if num % 2:
@@ -229,29 +352,31 @@ def _execute(
                 else:
                     num //= 2
             else:  # a variable: read its current value
-                num = tape[num]
+                num = self.tape[num]
             if op == -2:
                 num = -num
-            cell = prog[ptr]
-            value = tape[cell] + num
-            if value < bot:
-                if mode == "h":
+            cell = prog[frame.ptr]
+            value = self.tape[cell] + num
+            if value < self.bot:
+                if self.mode == "h":
                     raise HaltError("Underflow error.")
-                value = top if mode == "w" else bot
-            if value > top:
-                if mode == "h":
+                value = self.top if self.mode == "w" else self.bot
+            if value > self.top:
+                if self.mode == "h":
                     raise HaltError("Overflow error.")
-                value = bot if mode == "w" else top
-            tape[cell] = value
-            ptr += 2
+                value = self.bot if self.mode == "w" else self.top
+            self.tape[cell] = value
+            frame.ptr += 2
         elif op > -5:  # if / while
+            cond_pos = frame.ptr  # the position of the condition variable
             neg = False
-            if prog[ptr] == -7:
+            if prog[frame.ptr] == -7:
                 neg = True
-                ptr += 1
-            ptr += 1
-            end = ptr
-            ptr += 1
+                frame.ptr += 1
+            frame.ptr += 1  # past the condition variable, at the body start
+            body_start = frame.ptr
+            end = body_start
+            frame.ptr += 1
             pair = 1
             while pair != 0:
                 end += 1
@@ -260,55 +385,33 @@ def _execute(
                     pair += 1
                 elif inner == -9:
                     pair -= 1
-            body = prog[ptr:end]
-            cond = bool(tape[prog[ptr - 2]]) ^ neg
-            if op == -3:
+            body = prog[frame.ptr : end]
+            cond = self._cond(frame, cond_pos + (1 if neg else 0), neg=neg)
+            if op == -3:  # if
                 if cond:
-                    _execute(body, tape, mode, bot, top, io, 0)
-            else:
-                while cond:
-                    _execute(body, tape, mode, bot, top, io, 0)
-                    cond = bool(tape[prog[ptr - 2]]) ^ neg
-            ptr = end + 1
+                    self.frames.append(_Frame(body))
+                frame.ptr = end + 1
+            else:  # while
+                frame.ptr = end + 1  # the continuation past the loop
+                frame.loop = True
+                frame.cond_pos = cond_pos + (1 if neg else 0)
+                frame.neg = neg
+                frame.body = body
+                if cond:
+                    self.frames.append(_Frame(body))
         elif op == -5:  # write
-            io.print_char(chr(tape[prog[ptr]] & 0xFF))
-            ptr += 1
+            self.io.print_char(chr(self.tape[prog[frame.ptr]]))
+            frame.ptr += 1
         else:  # read
-            tape[prog[ptr]] = io.input_char()
-            ptr += 1
+            self.tape[prog[frame.ptr]] = self.io.input_char()
+            frame.ptr += 1
 
 
 def run(code: str, io: IO) -> None:
     """Run a Basicfuck program."""
-    lines = code.split("\n")
-    directive = lines[0] if lines else ""
-    allocate = lines[1] if len(lines) > 1 else ""
-    body = "\n".join(lines[2:])
-
-    m = _DIRECTIVE.fullmatch(directive)
-    if not m:
-        raise ValueError("Missing/Invalid directives.")
-    lim = -1 if m.group(1) == "unbounded" else int(m.group(1))
-    mode_count = (1 if m.group(2) else 0) + (1 if m.group(3) else 0)
-    if mode_count != 0 and m.group(4) is None:
-        raise ValueError("Missing overflow directive.")
-    if mode_count != 2 and m.group(5) == "wrap":
-        raise ValueError("Invalid overflow directive.")
-    bot = int(m.group(2)) if m.group(2) else -(2**31)
-    top = int(m.group(3)) if m.group(3) else 2**31 - 1
-    mode = m.group(5)[0] if m.group(5) else "n"
-
-    var, tape = _parse_allocate(allocate)
-
-    body = re.sub(r"//[^\n]*", "", body)
-    # the cross-check reserves a cell for variable-variable arithmetic
-    if _ASSIGN.search(body) and lim != -1:
-        lim -= 1
-    if lim != -1 and lim < len(tape):
-        raise ValueError("Insufficient memory.")
-
-    instructions = _parser(_lexer(body), var)
-    _execute(instructions, _BoundedTape(tape), mode, bot, top, io, 0)
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 class _BoundedTape:
@@ -322,6 +425,10 @@ class _BoundedTape:
     def __init__(self, cells: list[int]) -> None:
         """Wrap the allocated ``cells`` with bounds checks."""
         self._cells = cells
+
+    def cells(self) -> tuple[int, ...]:
+        """Return the allocated cells as a tuple (hashable for snapshots)."""
+        return tuple(self._cells)
 
     def __getitem__(self, index: int) -> int:
         if not 0 <= index < len(self._cells):
