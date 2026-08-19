@@ -48,6 +48,7 @@ from esolangs.tools.boolean.helpers import _validate_truth_table
 
 __all__ = [
     "a_painter_ant",
+    "arrowqueue",
     "back",
     "bfpda",
     "bio",
@@ -606,6 +607,164 @@ def minsky_swap(truth_table: str) -> str:
     return (
         " ".join(tokens) + "\n" + " ".join(str(end if t == 0 else t) for t in targets)
     )
+
+
+# --- ArrowQueue (no-input grid language; parameterized + termination convention) ---
+#
+# Boolean generator for ArrowQueue.
+#
+# ArrowQueue is a 2D grid language with a queue: ``*`` turns the pointer
+# clockwise, ``~`` pushes the current direction onto the queue, and ``+``
+# pops the queue and points the pointer in the popped direction (halting on
+# an empty pop).  It has no input and no output, so the generator follows
+# the parameterized convention (like ``bitdeque``/``minsky_swap``) AND the
+# termination convention (like ``point_break``): the template carries
+# ``{Xi}`` placeholders for the input bits, :func:`_instantiate_arrowqueue`
+# fills each with the language's per-bit embedding, and the result is read
+# from whether the instantiated program *halts* (a ``0`` table entry) or
+# *loops forever* (a ``1`` entry) -- the same convention as the committed
+# halt-vs-hang ring (see ``docs/walls.md``).
+#
+# The template is a grid:
+#
+# - the first rows embed each input once, one ``{Xi}`` placeholder per bit
+#   (the queue stores bits as directions: right is 0, down is 1);
+# - the next rows queue the right/down/left/up loop components (a ``0``
+#   leaf pops them all and then halts on the empty pop; a ``1`` leaf's ring
+#   sustains on them);
+# - the decision tree then pops each bit at a ``+`` branch and routes the
+#   pointer right for a 0 bit or down for a 1 bit.  A ``0`` leaf is empty,
+#   so the pointer runs off the grid and halts; a ``1`` leaf is a ring that
+#   pushes on every edge and pops on every corner, sustaining forever.
+#
+# The tree is a full binary tree built from 3x3 blocks: a 0-branch
+# (``" + "``) pops the next bit, sending the pointer right for 0 and down
+# for 1; a 1-branch (``"*  "``/``"** "``) reflects the down-route back to
+# the right; and each leaf is a 3x3 output block.  Connecting two subtrees
+# places a 0-branch at the top-left, the first subtree at its right exit,
+# the second at the 1-branch's right exit, and the 1-branch at the bottom
+# left (one row below the first subtree), filling the rest with spaces.
+# The pointer enters the whole tree by descending column 1 from the loop
+# section, which pops the top-left 0-branch's ``+`` directly.
+
+_TREE_1 = ["+~+", "~ ~", "+~+"]  # the ``1`` leaf: a self-sustaining ring
+_TREE_0 = ["   ", "   ", "   "]  # the ``0`` leaf: empty, runs off-grid to halt
+_TREE_BRANCH_0 = [" + ", "   ", "   "]  # pops a bit; 0 goes right, 1 goes down
+_TREE_BRANCH_1 = ["*  ", "** ", "   "]  # reflects the down-route back to the right
+
+# Input-embedding blocks.  A ``1`` bit pushes down (1) and a ``0`` bit pushes
+# right (0).  The first block is one row taller: the pointer enters it
+# heading right from the top-left corner and the ``*`` turns it down onto
+# the ``~``, while every later block is entered heading down from the
+# previous block's exit (each block leaves the pointer heading down at
+# column 3, one row below itself).
+_FIRST_ONE = ["   *", "   ~", "    ", "    ", "    "]
+_FIRST_ZERO = ["   *", "*~* ", "*  *", "*  *", "* * "]
+_NEXT_ONE = ["   ~", "    ", "    ", "    "]
+_NEXT_ZERO = ["*~* ", "*  *", "*  *", "* * "]
+
+# The loop-component section: entered heading down at column 3 from the last
+# embedding block, it queues right, down, left, and up (in that order, so
+# the queue holds ``[bits..., R, D, L, U]`` at the tree) and routes the
+# pointer down column 1 into the tree.
+_MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
+
+
+def _header_rows(bits: list[int]) -> list[str]:
+    """Build the input-embedding rows for ``bits`` (most significant first)."""
+    rows = list(_FIRST_ONE if bits[0] else _FIRST_ZERO)
+    for bit in bits[1:]:
+        rows.extend(_NEXT_ONE if bit else _NEXT_ZERO)
+    return rows
+
+
+def _connect(t0: list[str], t1: list[str]) -> list[str]:
+    """Connect two decision subtrees into one.
+
+    Places a 0-branch at the top-left, ``t0`` at its right exit, a 1-branch
+    at the bottom left (just below ``t0``, catching the down-route), and
+    ``t1`` at the 1-branch's right exit; everything else is spaces.
+    """
+    yb = len(t0)  # the 1-branch's top row: one row below ``t0``
+    width = max(3 + len(t0[0]), 3 + len(t1[0]))
+    height = max(3, yb + 3, yb + len(t1))
+    grid = [[" "] * width for _ in range(height)]
+    for r, line in enumerate(_TREE_BRANCH_0):
+        for c, ch in enumerate(line):
+            grid[r][c] = ch
+    for r, line in enumerate(_TREE_BRANCH_1):
+        for c, ch in enumerate(line):
+            grid[yb + r][c] = ch
+    for r, line in enumerate(t0):
+        for c, ch in enumerate(line):
+            grid[r][3 + c] = ch
+    for r, line in enumerate(t1):
+        for c, ch in enumerate(line):
+            grid[yb + r][3 + c] = ch
+    return ["".join(row) for row in grid]
+
+
+def _tree(values: list[str]) -> list[str]:
+    """Build the full decision tree for the ``2**n`` table values.
+
+    The tree is full (it never collapses a constant slice): every path pops
+    all ``n`` bits, so the queue holds exactly the four loop components at
+    every leaf, which both leaf types rely on (the ring's corner pops must
+    be R, D, L, U in order).
+    """
+    if len(values) == 2:
+        return _connect(
+            _TREE_1 if values[0] == "1" else _TREE_0,
+            _TREE_1 if values[1] == "1" else _TREE_0,
+        )
+    half = len(values) // 2
+    return _connect(_tree(values[:half]), _tree(values[half:]))
+
+
+def arrowqueue(truth_table: str) -> str:
+    """Build an ArrowQueue template for an ``n``-input Boolean function.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    ArrowQueue has no input command, so this is a parameterized generator:
+    the returned template's ``{Xi}`` placeholders become the per-bit
+    embedding blocks, and the harness instantiates one program per input
+    combination (see :func:`_instantiate_arrowqueue`).  Since ArrowQueue has
+    no output, the result is read from the termination convention: the
+    instantiated program halts iff the table entry for the embedded bits is
+    ``0`` and loops forever iff it is ``1``.
+
+    The construction embeds each bit once in the header rows (a ``1`` bit
+    pushes down, a ``0`` bit pushes right), queues the right/down/left/up
+    loop components, and routes a full decision tree by popping the bits at
+    ``+`` branches.  Each leaf is a 3x3 block: a ``1`` entry is a
+    self-sustaining ring and a ``0`` entry is empty (the pointer runs off
+    the grid, which halts).
+    """
+    n = _validate_truth_table(truth_table)
+    header = ["{X0}"]
+    header.extend(["    "] * 4)
+    for i in range(1, n):
+        header.append("{X" + str(i) + "}")
+        header.extend(["    "] * 3)
+    rows = header + _MIDDLE + _tree(list(truth_table))
+    return "\n".join(row.rstrip() for row in rows)
+
+
+def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
+    """Fill an ArrowQueue template's ``{Xi}`` placeholders with the bits.
+
+    ``bits`` is listed most-significant first and must match the template
+    built by :func:`arrowqueue`.  Each ``{Xi}`` placeholder is replaced by
+    the embedding block that pushes input ``i`` as a direction: a ``1``
+    bit's block pushes down and a ``0`` bit's block pushes right, exactly
+    once each (the header is a fixed ``4n + 1`` rows, so the middle and tree
+    rows below it stay aligned).
+    """
+    n = len(bits)
+    rows = template.split("\n")
+    return "\n".join(_header_rows(bits) + rows[4 * n + 1 :]).rstrip("\n")
 
 
 # --- A Painter Ant (no-input grid language; parameterized convention) ---

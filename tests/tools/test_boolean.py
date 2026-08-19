@@ -11,7 +11,11 @@ import pytest
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.interpreters.io import IO
 from esolangs.tools import boolean
-from esolangs.tools.boolean.parameterized import _instantiate_apa, a_painter_ant
+from esolangs.tools.boolean.parameterized import (
+    _instantiate_apa,
+    _instantiate_arrowqueue,
+    a_painter_ant,
+)
 
 
 def _parameterized_generators():
@@ -20,6 +24,7 @@ def _parameterized_generators():
     return [
         (name, parameterized.__dict__[name])
         for name in (
+            "arrowqueue",
             "bio",
             "back",
             "nocomment",
@@ -2112,6 +2117,93 @@ class TestParameterizedMinskySwap:
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.minsky_swap("011")
+
+
+class TestParameterizedArrowQueue:
+    """Input-by-substitution boolean generator for the no-input language ArrowQueue.
+
+    ArrowQueue has no output, so the generator's answer is read from the
+    termination convention: an instantiated program halts for a ``0`` table
+    entry and loops forever for a ``1`` entry.  The run is bounded by
+    state-cycle detection (the queue stays bounded on the sustaining rings),
+    so the repeated-snapshot proof reports the ``1`` cases immediately.
+    """
+
+    def run_arrowqueue(self, prog: str) -> str:
+        from esolangs.interpreters.grid_based.arrowqueue import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        return "0" if run_until_halt_or_cycle(_Machine(prog.splitlines())) else "1"
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        return _instantiate_arrowqueue(tpl, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input halts or loops per its table entry."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.arrowqueue(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_arrowqueue(self.instantiate(template, bits))
+            assert got == table[combo], f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.arrowqueue(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_arrowqueue(self.instantiate(template, bits))
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_random_tables(self) -> None:
+        """Seeded random tables through five inputs produce the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        random.seed(13)
+        for n in (1, 2, 3, 4, 5):
+            for _ in range(2):
+                table = "".join(random.choice("01") for _ in range(2**n))
+                template = parameterized.arrowqueue(table)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    got = self.run_arrowqueue(self.instantiate(template, bits))
+                    assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.arrowqueue("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.arrowqueue("011")
 
 
 class TestParameterizedBfpda:

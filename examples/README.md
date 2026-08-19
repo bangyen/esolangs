@@ -52,10 +52,12 @@ truth machine (see `docs/walls.md`):
   (now-removed) boolean generator that covered the 0-preserving two-input
   tables, reading `0`/`1` input lines; the committed inputs `0 1` exercise
   the "one input zero" AND row.
-- `arrowqueue.txt` is the halt-vs-hang ring template: the committed program
-  is the `0` branch (halts on an empty-queue pop), and replacing the center
-  cell's space with `~` makes the ring hang forever — the `1` branch.  This
-  is the language's boolean convention (see `docs/walls.md`).
+- `arrowqueue.txt` is what
+  `_instantiate_arrowqueue(arrowqueue("0001"), [0, 1])` produces — a
+  two-input AND with one input zero, which halts (the `0` branch of the
+  halt-vs-loop convention).  The same table with both inputs one would loop
+  forever instead (the `1` branch is not executed).  This is the language's
+  boolean convention (see `docs/walls.md`).
 
 ## multiply
 
