@@ -345,6 +345,34 @@ class TestBitdeque:
         assert vm.output == "0\n"
 
 
+class TestTaglate:
+    def test_queue_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Taglate", "abc\ni")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [97, 98, 99], [])
+        vm.step()  # i pops the front and prints it
+        assert vm.output == "a"
+        assert vm.halted
+
+
+class TestMinifuck:
+    def test_tape_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Minifuck", ".")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0] * 8, [])
+        vm.step()  # . advances, flips the second cell, and prints the byte
+        assert vm.output == "@"
+        assert vm.halted
+        assert vm.ip == 1
+
+
+class TestBrainIf:
+    def test_cells_and_cursor(self) -> None:
+        vm = esolangs.make_vm("BrainIf", "if 0 output")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # cell 0 is 0, so output prints it
+        assert vm.output == "\x00"
+        assert vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -392,10 +420,16 @@ class TestRunUntilHaltOrCycle:
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
+        from esolangs.vm import _VM_ADAPTERS
+
         with pytest.raises(UnknownLanguageError):
             esolangs.make_vm("NoSuchLanguage", "+")
+        # a registry language that still lacks a step-capable interpreter
+        not_step_capable = next(
+            lang for lang in esolangs.list_languages() if lang not in _VM_ADAPTERS
+        )
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_vm("Minifuck", "+")  # no step-capable interpreter
+            esolangs.make_vm(not_step_capable, "+")
 
 
 @pytest.mark.parametrize(
@@ -418,6 +452,9 @@ class TestFactory:
         ("Forþ", "65."),
         ("AddSubJump", "-1 1 0 -7"),
         ("Bitdeque", "PUSH INVERT"),
+        ("BrainIf", "if 0 output"),
+        ("Minifuck", "."),
+        ("Taglate", "abc\ni"),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:

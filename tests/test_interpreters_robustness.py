@@ -93,6 +93,18 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.queue_based.bitdeque import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.minifuck":
+        from esolangs.interpreters.tape_based.minifuck import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.brainif":
+        from esolangs.interpreters.tape_based.brainif import _Machine
+
+        return _Machine([], io)
+    if module == "esolangs.interpreters.queue_based.taglate":
+        from esolangs.interpreters.queue_based.taglate import _Machine
+
+        return _Machine([], io)
     raise KeyError(module)
 
 
@@ -111,6 +123,9 @@ _STEP_MACHINES = {
     "esolangs.interpreters.stack_based.forth",
     "esolangs.interpreters.register_based.addsubjump",
     "esolangs.interpreters.queue_based.bitdeque",
+    "esolangs.interpreters.tape_based.minifuck",
+    "esolangs.interpreters.tape_based.brainif",
+    "esolangs.interpreters.queue_based.taglate",
 }
 
 
