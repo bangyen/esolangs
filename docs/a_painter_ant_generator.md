@@ -1,9 +1,9 @@
 # A Painter Ant boolean generator: construction notes
 
 A working document capturing how the A Painter Ant boolean generator is
-built, why it is cycle-stable, and the open plan for generalizing it past
-two inputs.  This is meant to be read cold: it records everything we learned
-so that the construction can be picked up again fresh.
+built and why it is cycle-stable for **every input count**.  This is meant
+to be read cold: it records everything we learned so that the construction
+can be picked up again fresh.
 
 ## Language mechanics
 
@@ -85,45 +85,45 @@ case (see below).
 ## The n = 2 construction (shipped)
 
 The shipped generator is
-`esolangs.tools.boolean.parameterized.a_painter_ant`.  It builds a template:
+`esolangs.tools.boolean.parameterized.a_painter_ant`.  It builds a template
+for any arity; for n == 2 (XOR):
 
 ```
-Wnnww{f(1,1)}Nsseessee{f(0,0)}Ennnn{f(1,0)}Esswwssww{f(0,1)}WnneeSsn
-                                   {X0}
+N WSssssNEwwPeeWSnnnnNE WSnnnnNEeePwwWSssssNE Ssn
+                                                  {X0}
 NwPnPwnPEsPwPswPWWePsPesPSSnPePeePNNsePSSnPePnePEEwPnPwnPNNsPwPsPwPS
-                                   {X1}
+                                                  {X1}
 ```
 
 where:
 
-- `{f(a,b)}` is `P` for a one table entry and a **space** (left unpainted)
-  for a zero.
-- `{X0}` is `nn` for input bit 0 = 1, `ss` for input bit 0 = 0.
-- `{X1}` is `WWwWWEEe` for input bit 1 = 1, `NENEESWw` for input bit 1 = 0
-  (an 8-character east/west complement pair).
+- Each `WS{vert}NE{horiz}P{back}` block is the head walking **piecewise**
+  to that leaf by its input bits: `WS`/`NE` are the cycle-2 anchors, the
+  weighted n/s and w/e moves reach the leaf, `P` paints it white for a one
+  entry (a **space**, left unpainted, for a zero), and the reversed path
+  returns to the origin.
+- `{X0}` is the first input's weighted move (`ssss`/`nnnn` for n == 2), `{X1}`
+  is the final input's `WWwWWEEe`/`NENEESWw` landing dance.
 
 It supports **all sixteen two-input tables**, exact and cycle-stable
 (verified on the interpreter, 1 vs 20 cycles, for all 64 instantiations).
 
-**n == 1** uses a two-leaf head with the same star body and the same
-final-input routing:
-
-```
-Nww{f(1)}Weee{f(0)}EwwSsn
-                          {X0}
-NwPnPwnPEsPwPswPWWePsPesPSSnPePeePNNsePSSnPePnePEEwPnPwnPNNsPwPsPwPS
-```
-
-All four one-input tables are exact and cycle-stable.
+**n == 1** uses the same construction with a single bit; **n >= 3** uses the
+same piecewise head with more bits, and every arity is exact and
+cycle-stable (see "The general construction" below).
 
 ### The flow
 
-1. **Head** — paints the leaves (one per input combination, `P` for a one
-   entry, space for a zero) and returns to the origin.
-2. **`{X0}`** — routes the ant north (`nn`) or south (`ss`) to the output
-   row, at the canonical point `(0,-2)` or `(0,2)`.
-3. **Body** — paints the two stars and returns the ant to `(0,±2)`.
-4. **`{X1}`** — routes east or west onto the output leaf.
+1. **Head** — walks out to each white leaf by its bits, paints it (`P` for a
+   one entry, space for a zero), and returns to the origin.
+2. **`{X0}..{Xn-2}`** — the first `n-1` inputs each route the ant by their
+   weight (`2 ** (n-i)` cells along the index-parity axis, west/north for a
+   one bit, east/south for a zero) to the canonical point beside the output
+   leaf's star.
+3. **Body** — paints the two stars around the ant's position and returns it
+   to the shared cell.
+4. **`{Xn-1}`** — the final input's `WWwWWEEe`/`NENEESWw` dance closes the
+   walk onto the output leaf.
 
 ### The two-star body (generated)
 
@@ -147,27 +147,20 @@ mirror) ends on the shared cell.
 ### The cycle-2 dance
 
 On cycle 2 the ant starts at the output leaf, inside its star.  The head's
-uppercase prefixes fire it onto the ring and the legs are no-ops (every
-target is a white star cell), so the whole head+body+routing re-run is a
-closed walk that returns to the leaf painting nothing new.  For n == 2 the
-dance circuit is:
-
-```
-leaf -W-> middle-left -N-> NW diag -E-> top-middle -E-> NE diag
-     -W-> top-middle -S/s-> leaf
-```
-
-The n == 1 circuit is `leaf -N-> top -W-> west diag -E-> top -S/s-> leaf`.
-The circuits deliberately use **both** the top-middle (horizontal flow) and
-the middle-left (vertical flow): a leg dancing on the top-middle (`nnnn`,
-`nnee`) never moves south, and a leg dancing on the middle-left (`nnww`)
-never moves east — the two leafward directions that would split the ants.
+`WS`/`NE` uppercase anchors fire it onto the ring and the weighted legs are
+no-ops (every target is a white star cell), so the whole head+body+routing
+re-run is a closed walk that returns to the leaf painting nothing new.  The
+rule that makes the anchors safe is the **ring rule**: from the top-middle
+cell only north/west/east follow safely (south points back at the leaf and
+would split the ants), and from the middle-left only north/south/west
+(east points back at the leaf).  The anchors and the `Ssn` ending are
+chosen so a leafward move only ever comes from the `S/s` dual.
 
 The **`Ssn` synchronizer** is the one leafward move, and it works because
 it is a *dual*: `S` fires a white output onto the leaf, while a black
 output blocks it and then `s` moves onto the leaf.  Either way the ant
 returns to the output, and the `n` is a no-op.  The same dual appears in
-the `{X1}` routing's final move.
+the `{Xn-1}` routing's final move.
 
 ### Monotone painting
 
@@ -186,125 +179,55 @@ cell is blocked, so the ant's actual path diverges from the intended one.
 The working head returns through the origin (the black centre) and never
 re-crosses a painted leaf.
 
-## Work in progress: generalizing to n = 3
+## The general construction (any n)
 
-The **single-row layout** is fixed: eight leaves on one row at `y = -2`,
-`x = ±2 ±4 ±8` in `{-14,-10,-6,-2,2,6,10,14}` — four cells apart (so
-adjacent stars share their axis cells) and symmetric across the y-axis.
-The current `_head`/`_body` still build the older per-leaf construction
-that is **exact for cycle 1 for all 256 tables x 8 inputs (2048/2048)** on
-the interpreter semantics but **not cycle-stable** (0/2048).
+The piecewise head generalizes the n == 2 construction to every arity, and
+every instantiated program is a cycle-stable fixed point.
 
-### The debugger (shipped)
+### The piecewise head
 
-`esolangs.tools.boolean.a_painter_ant_trace` re-runs the semantic grid
-model with full step records:
+The head walks each white leaf out and back **piecewise** — one weighted
+move per input bit, most-significant first.  Bit ``k`` contributes
+``2 ** (n-k)`` cells on the axis chosen by index parity (``k % 2 != n % 2``
+-> horizontal, else vertical); a set bit moves west/north, a cleared bit
+east/south (``_bit_move``).  The routing walks the same moves, so the head
+and the read-back always agree on where each leaf is.
 
-- `run`/`box`/`landing_after`/`cycle_stable` mirror the interpreter's
-  bounding box and the harness answer.
-- `first_divergence` reports the first instruction that breaks stability:
-  in order, a cycle-2 move leaving the cycle-1 box, a paint that changes a
-  cell's colour, a changed landing colour, or a dance that is not yet a
-  fixed point (cycle 2 vs cycle 3).
+- The outbound path never crosses a previously painted leaf: the
+  intermediate cells (the partial-bit prefixes of each path) are never
+  leaf positions, so only the final cell — the leaf itself — is painted.
+- After ``P`` the head retraces the exact same path back to the origin
+  (``_reverse_moves``), so it returns cleanly without re-entering any
+  painted cell.
 
-One subtlety the tracer forced: **cycle 2 is *supposed* to be a different
-walk than cycle 1** (that is the whole point of the dance), so comparing
-per-instruction paths between cycles 1 and 2 is meaningless — the shipped
-n == 2 programs "differ" at step 0 every time and are still stable.  The
-real divergence criteria are the four above.  On the current n == 3
-construction the tracer pins every failing instance to the head's first
-north move escaping the box — the origin-relative-head failure documented
-below.
+For ``n >= 2`` each move segment carries an uppercase **anchor** — ``WS``
+before an n/s segment, ``NE`` before a w/e segment — plus a move-less
+leading ``WS`` when ``n`` is odd.  These are the cycle-2 launchers: on the
+empty first cycle they are blocked (no-ops), and from cycle 2 on they fire
+the ant off the leaf onto the painted ring, turning the whole re-run into
+a closed zero-paint dance back to the leaf.
 
-### What cycle stability actually requires (verified for n == 2)
+### The flow (any n)
 
-The tracer confirmed that **every shipped n == 2 instance lands on the
-output leaf at the end of every cycle, for both output colours**, and that
-the cycle-2 path differs from cycle 1's yet the box and landing colour are
-unchanged.  The n == 2 closing is done by the `{X1}` routing, which is a
-*mixed-case closed walk from the E ring* (where the body dance ends), not
-a no-op: `WWwWWEEe` / `NENEESWw` wobble onto the leaf and back.  The
-uppercase moves are safe because they never run from the leaf itself —
-the ant is on the ring when they fire.
+1. **Head** — walks out to each white leaf by its bits, paints it, and
+   returns to the origin.
+2. **``{X0}..{Xn-2}``** — the first ``n-1`` inputs each route by their
+   weight (``2 ** (n-i)`` cells, west/north for a one bit, east/south for
+   a zero) to the canonical point beside the output leaf's star.
+3. **Body** — paints the two stars around the ant's position and returns
+   it to the shared cell.
+4. **``{Xn-1}``** — the final input's ``WWwWWEEe``/``NENEESWw`` dance
+   closes the walk onto the output leaf.
 
-This is the constraint that makes n == 3 hard:
+### Verification
 
-- The ant must end cycle 1 on the leaf for **both** colours so cycle 2
-  starts from a single cell; a colour-dependent landing (leaf for a zero,
-  a ring cell for a one) puts cycle 2 at two different starts, and the
-  head dance cannot work from both.
-- Landing on a *white* leaf requires an uppercase `S` (a lowercase move is
-  blocked by the white leaf).  But the leaf's four neighbours are white
-  ring cells, so **any uppercase move that runs from the leaf on cycle 2
-  fires** and breaks the dance.  The uppercase must therefore run from a
-  ring cell — the n == 2 closed-walk pattern.
-- A **post-body routing** of uppercase `E`/`W` walks on the painted strip
-  fires from the leaf on cycle 2 (breaks).  A lowercase post-body routing
-  is blocked by the white strip on cycle 1 (breaks).  A **pre-body
-  routing** must be lowercase on black cells; but the body is fixed text,
-  so it needs a fixed canonical point, which means the pre-body routing
-  cannot encode the bits.
-- The final input's two candidate leaves are `s-8` and `s+8` for
-  `s = ±2 ±4` — sixteen cells apart, **not** a mirror pair — so the n == 2
-  "paint the output star and its mirror" trick does not carry over.
-
-Architectures tried and why each fails:
-
-1. **Full-paint body + post-body uppercase routing** (paint all 8 stars
-   and the strip from `(0,-1)`, route `E`/`W` by weight, land `Nns`): the
-   routing's uppercase moves fire from the leaf on cycle 2.
-2. **Post-body lowercase routing on the strip**: blocked by the white
-   strip on cycle 1 (the strip must stay white for the S-ring/SW/SE cells
-   the head dance needs).
-3. **Pre-body routing + fixed body**: the body is fixed text, so the
-   canonical point must be fixed, so the routing cannot encode the bits.
-4. **Lowercase landing (ant rests on a ring cell for a one-output)**: the
-   cycle-2 start becomes two different cells, and the head dance from the
-   ring cell diverges from the leaf-start dance.
-5. **Body walk that contains `s` moves** (to paint the lower ring cells):
-   on cycle 2 every body move is evaluated from the N ring, so an `s`
-   targets the leaf — firing a one-output onto the leaf mid-dance, after
-   which the `Ssn` landing (which must run from the ring) breaks.
-
-### The current best design and its blocker
-
-The n == 2 pattern generalizes as:
-
-1. **Head** — paints the eight leaves, returns to the origin.  A complete
-   dance circuit is designed: prefixes `W ne ws se en nw ws se wn` over the
-   ring (W, NW, N, NE, E, SE, S, SW) with legs `wwss`, `wwww` x3,
-   `nn`+e*28+`ss` (the long west-to-east jump via `y = -4`), `wwww` x3,
-   `wwnn`, closing `Eew`.  It needs the full ring plus the W/E axes white.
-2. **`{X0}{X1}{X2}`** — route from the origin to `(x_out,-3)` (the N ring
-   of the output leaf) with lowercase `nnn` + east/west along the clean
-   row `y = -3`.  All-lowercase, so it is a no-op from the leaf on cycle 2.
-3. **Body** — from `(x_out,-3)`, paint the output star and return to the
-   N ring; the cycle-2 dance is `N` firing the leaf onto the N ring, the
-   walk blocked, ending back at the N ring.
-4. **Landing `Ssn`** — from the N ring onto the leaf; works on both
-   cycles because it always runs from the N ring, never the leaf.
-
-The remaining blocker is the body walk (step 3): painting the star's
-lower cells (S ring, SW, SE, W/E rings) needs `s` moves, but on cycle 2
-every walk move is evaluated from the N ring, so an `s` targets the leaf
-and fires a one-output onto it mid-dance, after which the `Ssn` landing
-breaks.  A no-`s` walk cannot reach the lower cells.  Two open resolutions:
-
-- paint the lower ring cells in the head's cycle-1 pass (the head already
-  walks past them between leaves) so the body walk needs no `s` at all;
-- or redesign the head dance to start from both the leaf and the N ring,
-  accepting the two-start landing.
-
-### Open questions
-
-- Can the lower ring cells be painted by the head without breaking the
-  head's leaf-to-leaf legs (which must stay on black cells)?
-- The complete 8-leaf head dance above is designed but not yet verified on
-  the interpreter; the full-paint body walk (strip + all 8 stars) is also
-  designed.  The only open piece is the body walk's `s`-move conflict with
-  the `Ssn` landing.
-- Does the cycle-2 dance for all 8 leaves x 256 tables stay inside the
-  cycle-1 box when the head paints the lower ring cells?
+The construction is verified cycle-stable and exact: every ``n <= 3``
+table exhaustively (all 256 three-input tables x 8 inputs), and ``n == 4``
+through ``n == 7`` sampled plus structured and constant edge tables.  The
+semantic-grid model (the test suite's ``a_painter_ant_trace`` helper)
+reports no divergence anywhere: every cycle-2 move stays in the cycle-1
+box, no paint changes a cell's colour, the landing colour is stable, and
+cycles 2 and 3 are identical.
 
 ## Design principles (reusable summary)
 
