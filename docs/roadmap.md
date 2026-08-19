@@ -289,11 +289,13 @@ Dig's closed direction ring are 6- and 4-state cycles respectively.  The
 suite does *not* control the programs, i.e. the fuzzers, so the timeout
 backstop stays there and is not a hazard for the hand-written tests.
 
-Slots that remain to wire in: ``scripts/verify_differential.py``'s
-termination checks and ``tests/test_interpreters_robustness.py``, which
-still run whole-program ``run()``s for languages that are not yet
-step-capable (see the step-capable-interpreters item in the VM section
-above).
+The robustness test slot is wired in: ``tests/test_interpreters_robustness.py``
+now decides the empty-program invariant by state-cycle detection for the nine
+string-based step-capable machines (brainfuck, S*bleq, Dimensional, 123,
+Eval, Modulous, The Temporary Stack, Qoibl, Point Break) — no wall-clock
+bound and no POSIX skip — and keeps the SIGALRM backstop for the rest
+(Grapheme's machine has no ``snapshot()`` yet).  ``scripts/verify_differential.py``'s
+termination checks remain to wire in.
 
 **Why the wall-clock backstop is also broken under ``pytest --cov``.**
 Raising from the SIGALRM handler while the coverage C tracer is active can
