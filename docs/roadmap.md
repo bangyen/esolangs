@@ -17,32 +17,35 @@ and the languages already implemented elsewhere) is in the commit history and
 
 | Language | Priority | Why it is on the table |
 | --- | --- | --- |
-| Procedure | medium | Turing-complete pseudonatural English; deferred on a spec gap (see below). |
-| Point Break | low | Four commands simulating Minsky machines; no output at all. |
-| State and Main | low | `main` + numbered states; truth-machine is explicitly "No output". |
-| Your Time Is Up | low | Binary string-rewriting; random rule choice, no I/O. |
-| COD | low | 2D concurrency-heavy cods; random branches; has I/O. |
 | Suptiftam | low | 2D tape-tapes; complete spec but undefined behaviors. |
-| Crement | low | Self-modifying ADDRESS/DATA/JUMP; no I/O. |
+| COD | low | 2D concurrency-heavy cods; numeric output + value gates make a boolean generator plausible but unbuilt. |
 
-**Procedure — deferred on a spec gap.**  The only arithmetic operator the
-wiki defines is `the sum of ...` (in the ``addthree`` example); there is no
-documented subtraction, multiplication, or division.  A faithful interpreter
-cannot implement the comparisons and GOTOs that make it Turing-complete
-without inventing arithmetic semantics the spec never gives, and the English
-parser is heavy enough that the arithmetic question should be settled before
-that work starts.  Revisit if the wiki (or its successor Pure) defines the
-rest of the operator set.
+**Point Break shipped with the first termination-convention generator.**
+Point Break has no output, so it would have inherited the no-output tier
+below — but the wiki's own truth-machine (halt for 0, loop for 1) is the
+*termination convention* the boolean tooling had never used, and the
+language's Turing-complete arithmetic makes that convention a fully general
+boolean generator (any arity, any table), not the structural ceiling the
+convention hits elsewhere.  The interpreter and generator shipped; see
+`docs/walls.md`.
 
-**Point Break, State and Main, Your Time Is Up, Crement — no-output tier.**
-None have I/O, so they can only be self-contained interpreters without a
-generator; they would inherit the deferred-removal policy below (no text or
-boolean generator, with the absence of I/O strengthening the case).
-
-**COD, Suptiftam — heavier, riskier.**  COD's random branches (like
-LaserFuck) make output non-deterministic but the interpreter can still be
-faithful to the spec.  Suptiftam's spec is complete but has undefined
-behaviors and untested examples.
+**Suptiftam, COD — the only candidates left.**  The other four candidates
+were assessed and ruled out; the assessments are in `docs/limitations.md`.
+Procedure is deferred on its arithmetic spec gap (only `the sum of ...`
+is defined, so a faithful interpreter cannot implement the rest without
+inventing semantics); State and Main, Your Time Is Up, and Crement have no
+I/O and no plausible generator (State and Main's single `main` argument
+cannot express an arbitrary boolean function, Your Time Is Up's rule
+choice is random, and Crement has no standard I/O at all).  Suptiftam's
+spec is complete but has undefined behaviors and untested examples.  COD's
+only output is numbers, so it can never have a text generator — but a
+single 0/1 printed as the cod's value is a valid boolean output, so a
+boolean generator is the live question: it would route one cod through the
+`_` (reflect iff nonzero) and `<` (remove iff zero) value gates into a
+decision tree, laid out branch-free so the cod never hits a random
+junction.  That is a heavy, unbuilt 2D construction, and the interpreter
+needs a seeded-randomness decision first (the LaserFuck precedent), so COD
+stays low-priority and risky rather than ruled out.
 
 ## Transpilers
 
@@ -63,30 +66,26 @@ the table:
 
 ## Deferred-removal candidates
 
-**Deferred — not yet removed.**  Three languages have no usable text or
+**Deferred — not yet removed.**  One language has no usable text or
 boolean generator — either none at all, or one so severely constrained it is
-effectively absent for any non-trivial use — so they cannot be round-trip or
-differentially verified and are the weakest additions.  They are grouped
-together regardless of I/O; the presence of usable I/O is an argument
-*against* removal, so the no-output ArrowQueue is the strongest candidate
-and the I/O-capable Lightlang and Movesum are weaker ones.
+effectively absent for any non-trivial use — so it cannot be round-trip or
+differentially verified and is the weakest kind of addition.
 
 | Language | Output | Why it is on the list |
 | --- | --- | --- |
 | ArrowQueue | None (no I/O) | no text or boolean generator; only the halt-vs-hang convention (AND/OR-class, see `docs/walls.md`). |
-| Lightlang | Prints only the single bit as a number | no text generator; boolean wall (AND/OR-class only). |
-| Movesum | Prints numbers space-separated with no trailing space | no text generator; no conditional, so no boolean generator. |
 
-The I/O-capable members (Lightlang, Movesum) were previously
-excluded from this tier as "I/O-capable" — they stay on the list because
-they still fail both generator gates, but their real language-defined output
-counts against removing them.  Grapheme has since been taken **off** this
+Movesum and Lightlang were removed (see `docs/limitations.md`): both had
+real language-defined output (numbers, and a single bit, respectively),
+but Movesum has no conditional at all and Lightlang's boolean capability
+caps at the AND/OR class, so neither had a generator beyond what the
+output convention alone provides.  Grapheme has since been taken **off** this
 list: its boolean wall was not a hard limit — the language is Turing-complete
 with arithmetic and conditionals — and a working boolean generator now
 exists (see the constrained-generators section below), so like the other
 interpreter-only languages it is no longer a removal candidate even though
 it still has no text generator.  A Painter Ant has likewise come **off** this
-list: a working two-input boolean generator now exists (see the
+list: a working any-arity boolean generator now exists (see the
 constrained-generators section below), so like the other interpreter-only
 languages it is no longer a removal candidate even though it still has no
 text generator.  No
@@ -102,25 +101,51 @@ so they are **not**
 deferred-removal candidates; their only weakness is an interpreter-invented
 state dump where the wiki defines no text output.
 
-**Candidate to add, once decided.**  The roadmap's planned no-output
-candidates (Point Break, State and Main, Crement, Your Time Is Up) would be
-dropped under the same policy.
+**Dropped.**  The planned no-output candidates (State and Main, Crement,
+Your Time Is Up) were dropped and recorded in `docs/limitations.md`.
 
 **Against removal (weighed, not decisive).**  Most of these are the *only*
 implementation on the wiki (only this repo's interpreter is listed), so
 removing them leaves the language with no implementation at all — which the
-admission criteria treat as a genuine gap.  ArrowQueue, Lightlang, and
-Movesum are all Bangyen-only sole implementations
-with no external implementations.  ArrowQueue is
+admission criteria treat as a genuine gap.  ArrowQueue is
+a Bangyen-only sole implementation
+with no external implementations and is
 Turing-complete (ArrowQueue via Tag/Cyclic tag/Minsky machine translations,
 on the wiki).  (Kak
-and Brainpocalypse, the two externally-implemented members, and Stun Step —
-a sole implementation removed anyway, see `docs/limitations.md` — were
+and Brainpocalypse, the two externally-implemented members, Stun Step —
+a sole implementation removed anyway, see `docs/limitations.md` — and
+Movesum and Lightlang were
 removed.)  The tradeoff is
 between "no generator ⇒ cannot participate in the repo's verification
 machinery" and "sole implementation ⇒ removing creates a gap"; the removal
 is recorded here as a candidate to resolve deliberately rather than by
 default.
+
+**Redemption path (termination-convention generator).**  ArrowQueue has no
+output, so its only boolean option is the termination-based convention
+(documented in `docs/walls.md`): the program *hangs* iff the embedded inputs
+satisfy the function.  The hang structure is a queue-sustaining ring that
+survives iff its single sustainer cell is present, so each input adds a
+"must be present" literal and one ring is one AND of literals; the OR and
+NOR tables are expressible in other layouts (verified by search), but
+multiple rings cannot be OR'd on the IP's single path, so XOR/XNOR are not —
+the convention realizes the threshold/AND/OR-class, not arbitrary tables.
+
+This is the only path that could take ArrowQueue off this list.  It would
+still be a *permanently* constrained generator: unlike A Painter Ant's
+n == 2 cap — which was not a language limit but an open construction, and
+has since been lifted by a general any-arity generator (see the A Painter
+Ant section below) — ArrowQueue's threshold ceiling is
+supported only by a structural argument and a bounded 200,000-grid search
+(see `docs/walls.md`), not a proof, so it may be a genuine wall or just an
+undiscovered construction.  Adopting the convention
+is also a real harness lift: the boolean tooling and tests read output
+bytes, while the termination convention makes "does it halt?" the answer.
+Point Break has since established that contract (verified by deterministic
+state-cycle detection, see the hang-detection section below), but ArrowQueue would still
+be stuck at the threshold class where Point Break expresses arbitrary
+tables.  Recorded here so the
+removal-vs-redemption call is deliberate rather than by default.
 
 ## Extra implementations (cross-checks)
 
@@ -188,58 +213,127 @@ already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
-`esolangs.make_vm` (step-and-inspect wrappers for nine interpreters:
+`esolangs.make_vm` (step-and-inspect wrappers for fifteen interpreters:
 brainfuck, S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
-Temporary Stack, LaserFuck) and `esolangs.make_debugger` (breakpoints and
-watches over the VM) shipped.  The medium-priority work that remains:
+Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123, A Painter Ant,
+2dFish, Dotlang)
+and
+`esolangs.make_debugger` (breakpoints and watches over the VM) shipped.
+The medium-priority work that remains:
 
 - **More step-capable interpreters.**  Convert more of the registry to a
-  step()/halted state object, growing the VM set per state model.  The
-  other grid languages (2dFish, Dotlang, A Painter Ant, ...) are the
+  step()/halted state object, growing the VM set per state model.  Point
+  Break, ArrowQueue, 123, A Painter Ant, 2dFish, and Dotlang joined the
+  set with the cycle-detection work
+  below; the
+  other grid languages (Clockwise, Dig, Wii2d, ...) are the
   natural next batch: their position/direction is the ``ip``, as LaserFuck
   demonstrated.
 - **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
   currently the active call frame's cursor; a language with nested calls
   should expose the call stack, not fold it into one frame's position.
 
-## A Painter Ant: general n-input boolean generator (n >= 3 open)
+## Hanging-test optimization via state-cycle detection
 
-A two-input boolean generator now ships
-(:func:`esolangs.tools.booleans.a_painter_ant`): it paints one leaf per
+Hanging programs are currently bounded with wall-clock timeouts (SIGALRM in
+the robustness tests and on the differential fuzzer's Python side, and
+instruction-count caps on the native references).  A deterministic,
+step-capable machine that revisits an exact internal state has looped
+forever, so a repeated state is a *proof* of a hang that can be reported
+immediately instead of waiting out the timeout.
+
+Scope and constraints:
+
+- the snapshot must be the **complete** state — the machine's internal
+  fields, not the VM's language-shaped ``ip``/``memory``/``stack`` view —
+  including the input-cursor position, or a "repeat" is not a real cycle;
+- deterministic machines only (LaserFuck's random heading is excluded);
+- only interpreters with a ``step()``/``halted`` state object can be checked
+  (the VM set; whole-program ``run()``s expose no internal state to hash);
+- it catches *cycles*, not every hang — an unbounded-growth loop
+  (``+[>+]``, the tape grows forever) never revisits a state, so the
+  timeout stays as the backstop for that class.
+
+Started for Point Break, ArrowQueue, 123, and brainfuck.
+``esolangs.vm.run_until_halt_or_cycle`` — a shared step-and-hash helper (a
+visited-state ``set``; Floyd/Brent two-pointer detection for O(1) memory
+would be the follow-up) — steps a step-capable machine and returns
+``False`` the moment a repeated snapshot proves it is looping, and
+``True`` as soon as a step halts.  The four interpreters were made
+step-capable (a ``_Machine`` state object each, with ``snapshot()``
+including the input cursor) and every hand-written hang test in the suite
+now decides the looping side deterministically — no wall-clock bound, no
+subprocess, and no coverage-tracer exposure at all.
+
+**Design rule: hand-written hang tests always use loops that revisit
+state.**  Since the test chooses the program, it can pick a finite-state
+cycle, and cycle detection is then complete (not just sound) for that
+test.  ArrowQueue's sustaining truth-machine ring is a 12-state cycle,
+123's state is bounded so every loop is a cycle, and brainfuck's ``+[]``
+wraps its cell.  The "catches cycles, not every hang" caveat — e.g. an
+unbounded-growth ``+[>+]`` whose tape grows forever — only bites when the
+suite does *not* control the programs, i.e. the fuzzers, so the timeout
+backstop stays there and is not a hazard for the hand-written tests.
+
+Slots that remain to wire in: ``scripts/verify_differential.py``'s
+termination checks and ``tests/test_interpreters_robustness.py``, which
+still run whole-program ``run()``s for languages that are not yet
+step-capable (see the step-capable-interpreters item in the VM section
+above).
+
+**Why the wall-clock backstop is also broken under ``pytest --cov``.**
+Raising from the SIGALRM handler while the coverage C tracer is active can
+deadlock the tracer: the exception unwinds through the tracer's C code
+while it holds its internal lock, so the *next* traced run spins forever
+instead of finishing.  An interpreter that evaluates a ``next(genexpr)`` in
+its hot loop makes it near-deterministic — the signal lands inside the
+suspended generator frame and leaves the lock held — while a genexpr-free
+loop reduces it to a rare race (Point Break's ``test_interpreters/
+test_point_break.py`` hung ~every run with a genexpr in the loop and ~1 in
+12 without; brainfuck's ``+[]`` timeout test is stable only because it
+raises once per process).  Point Break's loop side was at first verified
+in untraced subprocesses, where the raise is safe; the cycle detector
+replaced that entirely, and it is the reason the remaining hangs can rely
+on the timeout backstop without the coverage-tracer deadlock becoming a
+test-suite hazard again.  The one alarm that stays by design is
+``test_api.py``'s ``+[]`` case: it is a feature test of ``esolangs.run``'s
+``timeout`` parameter (the backstop for unbounded-growth loops), not a
+hang-detection strategy, so it keeps raising from the handler once per
+process.
+
+## A Painter Ant: general n-input boolean generator (cap lifted)
+
+A general ``n``-input boolean generator ships
+(:func:`esolangs.tools.boolean.parameterized.a_painter_ant`): it paints one leaf per
 input combination (``P`` for a one table entry, a space — left unpainted —
 for a zero, so only monotone ``P`` is ever used) and routes the ant to its
-leaf.  Every two-input table is exact and every instantiated program is a
-cycle-stable fixed point, read by a semantic grid model as the **landing
-cell's colour** (the interpreter's own output is the visited-cell bounding
-box, which carries no coordinates).  ``n == 1`` is also supported, by
-padding the one-input table to ``[f(0), f(0), f(1), f(1)]`` and fixing the
-second input to zero.  This construction resolved the
-``n == 2`` case that the earlier, origin-colour generator covered.
+leaf.  The head walks each leaf out and back piecewise — one weighted move
+per input bit, in the same order and direction the routing uses, so the
+outbound path never crosses a previously painted leaf — with ``WS``/``NE``
+uppercase anchors (for ``n >= 2``, plus a leading anchor for odd ``n``)
+that launch the cycle-2 ant off the leaf onto the painted ring.  The body
+paints a two-layer star around the output leaf and its y-mirror, and the
+final input's ``WWwWWEEe``/``NENEESWw`` dance closes the walk onto the
+leaf, making every instantiated program a **cycle-stable fixed point** for
+*any* ``n``, read by a semantic grid model as the **landing cell's colour**
+(the interpreter's own output is the visited-cell bounding box, which
+carries no coordinates).  ``n == 1`` uses the same construction with a
+single bit.  The full construction is recorded in
+`docs/a_painter_ant_generator.md`.
 
-**n >= 3 is open.**  The cap is not "unreachable": a search-found
-*box-height* method extends the range — each one-input makes the ant step
-one cell further north, so its depth equals the input weight, and a
-paint/return section turns that depth into a box height or its parity.
-This is cycle-stable and expresses **most** n == 3 tables (196 of 256 in a
-search, including AND3, OR3, XOR3 via parity, and majority); the ~60
-unreachable ones are exactly the balanced, non-monotone tables (e.g.
-equality).
+This resolves the earlier ``n == 3`` open problem and lifts the cap
+entirely: the construction is verified cycle-stable and exact for every
+arity spot-checked (all ``n <= 3`` tables exhaustively, ``n == 4``-``7``
+sampled plus edge cases).  The step tracer and stability checker
+(the test suite's `a_painter_ant_trace` semantic-grid model) ships and verifies the fixed
+point.
 
-A **leaf-paint n == 3 generalization is in progress** (see
-`docs/a_painter_ant_generator.md`): a single-line eight-leaf draft is exact
-for cycle 1 on all 256 tables but is not yet cycle-stable (the head is
-origin-relative and the ant starts cycle 2 at the output leaf).  Cycle-1
-exactness was the easy part; making the runtime/star layout cycle-stable is
-the open work.
-
-**Goal: find a general construction such that for any ``n``, *every*
-``n``-ary boolean function is expressible.**  The box-height method loses
-the "which inputs" information (it only measures the weight), so it cannot
-reach the balanced tables; a general solution needs to route on *which*
-inputs are one, not just *how many* — e.g. a way to encode each of the
-``2**n`` combos into a distinguishable ant state (position, painted pattern,
-or box content) with a cycle-stable template.  This is the documented wall
-in `docs/walls.md`; a successful construction would lift the cap.
+**Goal reached:** for any ``n``, *every* ``n``-ary boolean function is
+expressible by the same template.  The earlier
+"route on which inputs are one, not merely how many" question is answered
+by the piecewise bit-navigation: each combination encodes a distinct leaf
+position reached by the weighted moves, and the ``WS``/``NE`` anchors make
+the cycle-2 run a closed zero-paint dance back to that leaf.
 
 ## Severely constrained boolean generators (remove or lift)
 
@@ -253,7 +347,7 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 | 123 | one input only | yes | lift (structural wall, single data byte); has a text generator so not a removal candidate. |
 | NoComment | `n <= 8` | yes | lift (genuine wall, byte-indexed skip); cap is high enough for practical use. |
 | Polynomial | `n <= 4` | yes | lift (performance cap on exact factorization); cap is high enough for practical use. |
-| A Painter Ant | `n == 2` | no | lift (open at `n >= 3`); the two-input leaf-paint construction is exact and cycle-stable, a leaf-paint n == 3 generalization is in progress, and no general method for all functions of an arity is known yet (see the open-problem section above). |
+| A Painter Ant | total (no cap) | no | lifted: the piecewise leaf-paint head with WS/NE anchors is exact and cycle-stable for every arity (see the A Painter Ant section above). |
 
 Removed (constraints made them trivial): the boolean generators for
 Minifuck (`n <= 3`, only
@@ -269,7 +363,7 @@ decision to drop it lands.
 
 Resolved: **Grapheme's** boolean "wall" was a stale note from an incomplete
 decision-tree construction, not a hard limit.  A total generator
-(`esolangs.tools.booleans.stack.grapheme`) now evaluates the table as an
+(`esolangs.tools.boolean.stack.grapheme`) now evaluates the table as an
 arithmetic sum of minterms (`A`/`B`/`S`/`T`, no jumps), reading each input
 from a two-character alphabet, and Grapheme has come off the
 deferred-removal list.

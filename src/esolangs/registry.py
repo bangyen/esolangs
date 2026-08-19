@@ -15,7 +15,7 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from esolangs.tools import generate as _generate
+from esolangs.tools import text as _generate
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``,
@@ -317,11 +317,6 @@ LANGUAGES: dict[str, Language] = {
         id="laserfuck",
         split=True,
     ),
-    "Lightlang": Language(
-        "Lightlang",
-        id="lightlang",
-        interpreter="register_based.lightlang",
-    ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
         _generate.slow_acv_mammalian,
@@ -344,12 +339,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.modulous,
         "stack_based.modulous",
         id="modulous",
-    ),
-    "Movesum": Language(
-        "Movesum",
-        id="movesum",
-        interpreter="tape_based.movesum",
-        split=True,
     ),
     "MyScript": Language(
         "MyScript",
@@ -381,6 +370,12 @@ LANGUAGES: dict[str, Language] = {
         _generate.polynomial,
         "register_based.polynomial",
         id="polynomial",
+    ),
+    "Point Break": Language(
+        "Point Break",
+        id="point_break",
+        interpreter="register_based.point_break",
+        split=True,
     ),
     "Qoibl": Language(
         "Qoibl",

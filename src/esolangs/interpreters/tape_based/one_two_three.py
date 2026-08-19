@@ -37,50 +37,79 @@ _WRITE = 512  # position -2
 _START = 128  # position 0
 
 
+class _Machine:
+    """Per-run 123 state: data byte, pointer mask, and the code cursor.
+
+    ``step()`` executes one command and ``halted`` says whether the program
+    ended — the shape the VM wrapper and the state-cycle hang detector
+    expect.  :meth:`snapshot` returns the cursor, mask, data byte, and
+    input cursor, so a repeated snapshot proves a deterministic run loops
+    forever (the state is bounded, so every 123 loop is a cycle).
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Store ``code`` and reset the tape; a command-less program halts."""
+        self.code = code
+        self.io = io
+        self.n = len(code)
+        self.data = 0
+        self.mask = _START
+        self.ip = 0
+        self._done = not any(c in "123" for c in code)
+
+    @property
+    def halted(self) -> bool:
+        """Whether the run has ended (or has no commands to run)."""
+        return self._done
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ip, self.mask, self.data, self.io.position())
+
+    def step(self) -> None:
+        """Execute one command (or the loop-or-halt check), advancing."""
+        if self.halted:
+            return
+        if self.ip >= self.n:
+            if self.mask > _START:
+                self._done = True
+            else:
+                self.ip = 0
+            return
+        char = self.code[self.ip]
+        if char == "1":
+            self.data ^= self.mask
+            self.mask = _START if self.mask >= _READ else self.mask << 1
+        elif char == "2":
+            if self.mask == _READ:
+                self.data = self.io.input_char()
+                self.mask = _START
+            elif self.mask == _WRITE:
+                self.io.print_char(chr(self.data & 0xFF))
+                self.mask = _START
+            else:
+                self.mask >>= 1
+        elif char == "3":
+            if self.mask <= _START:
+                if self.data & self.mask:
+                    j = self.ip - 1
+                    while j >= 0 and self.code[j] != "3":
+                        j -= 1
+                    self.ip = j + 1
+                else:
+                    j = self.ip + 1
+                    while j < self.n and self.code[j] != "3":
+                        j += 1
+                    self.ip = j + 1
+                return
+        self.ip += 1
+
+
 def run(code: str, io: IO) -> None:
     """Run a 123 program."""
-    if not any(c in "123" for c in code):
-        return
-
-    data = 0
-    mask = _START
-    ip = 0
-    n = len(code)
-
-    while True:
-        if ip >= n:
-            if mask > _START:
-                return
-            ip = 0
-            continue
-
-        char = code[ip]
-        if char == "1":
-            data ^= mask
-            mask = _START if mask >= _READ else mask << 1
-        elif char == "2":
-            if mask == _READ:
-                data = io.input_char()
-                mask = _START
-            elif mask == _WRITE:
-                io.print_char(chr(data & 0xFF))
-                mask = _START
-            else:
-                mask >>= 1
-        elif char == "3":
-            if mask <= _START:
-                if data & mask:
-                    j = ip - 1
-                    while j >= 0 and code[j] != "3":
-                        j -= 1
-                    ip = j + 1
-                else:
-                    j = ip + 1
-                    while j < n and code[j] != "3":
-                        j += 1
-                    ip = j + 1
-                continue
-        ip += 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

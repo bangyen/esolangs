@@ -1,6 +1,6 @@
 """Boolean-function generators for stack-based languages."""
 
-from esolangs.tools.booleans.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import _validate_truth_table
 
 
 def _grapheme_push0() -> str:

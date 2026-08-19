@@ -51,6 +51,10 @@ class TestMemory:
     def test_zero_cell(self) -> None:
         assert run_program("5+%^.") == "0"
 
+    def test_pointer_left_of_zero_inserts_a_cell(self) -> None:
+        # '<' at cell 0 inserts a fresh zero cell to the left
+        assert run_program("<^.") == "0"
+
 
 class TestControlFlow:
     def test_loop_adder(self) -> None:
@@ -74,6 +78,19 @@ class TestControlFlow:
         assert run_program("v+>v+1@^.1$#<&;", "3\n4\n") == "7"
 
 
+class TestParsing:
+    def test_bare_number_is_ignored(self) -> None:
+        # a number with no following operator is a no-op
+        assert run_program("123^.") == "0"
+
+    def test_unknown_characters_are_ignored(self) -> None:
+        assert run_program("x^.") == "0"
+
+    def test_bare_operator_requires_a_number(self) -> None:
+        with pytest.raises(ValueError, match="requires a number"):
+            run_program("?")
+
+
 class TestErrors:
     def test_undefined_label(self) -> None:
         with pytest.raises(HaltError, match="undefined label"):
@@ -82,3 +99,22 @@ class TestErrors:
     def test_undefined_subroutine(self) -> None:
         with pytest.raises(HaltError, match="undefined subroutine"):
             run_program("1@^.")
+
+    def test_jump_on_zero_to_undefined_label(self) -> None:
+        with pytest.raises(HaltError, match="undefined label"):
+            run_program("1!")
+
+    def test_return_without_a_call(self) -> None:
+        with pytest.raises(HaltError, match="no active subroutine"):
+            run_program(";^")
+
+
+class TestMachine:
+    def test_step_after_halt_is_a_no_op(self) -> None:
+        from esolangs.interpreters.tape_based.jaune import _Machine
+
+        machine = _Machine("^", ScriptedIO())
+        assert not machine.halted
+        machine.step()
+        assert machine.halted
+        machine.step()  # must not raise

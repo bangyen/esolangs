@@ -51,15 +51,14 @@ into a template) rather than the program reading input.
 | Jaune |  | yes |  | yes | yes |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
-| Lightlang |  | yes |  |  |  | boolean |
 | Minifuck | yes | yes |  |  |  | hello boolean |
 | Minsky Swap |  | yes |  | yes |  |  |
 | Modulous | yes | yes |  | yes |  | hello cat truth-machine |
-| Movesum |  | yes |  |  |  |  |
 | MyScript | yes | yes |  | yes |  | hello |
 | Nevermind | yes | yes |  | yes |  | hello cat |
 | NoComment | yes | yes | yes | yes |  | hello |
 | Painfuck | yes | yes | yes | yes |  | hello |
+| Point Break |  | yes |  | yes |  | boolean |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes |  | yes | yes |  |

@@ -2,7 +2,7 @@
 
 import math
 
-from esolangs.tools.generators.helpers import (
+from esolangs.tools.text.helpers import (
     _factor_triple,
     _require_ascii,
     _require_bytes,
