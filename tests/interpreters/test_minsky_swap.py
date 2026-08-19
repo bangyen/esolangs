@@ -6,25 +6,11 @@ Minsky Swap is a Turing-complete esoteric language based on Minsky machines
 with two registers.
 """
 
-import importlib.util
 import io
-import sys
 from contextlib import redirect_stdout
-from pathlib import Path
 
 from esolangs.interpreters.io import IO
-
-spec = importlib.util.spec_from_file_location(
-    "minsky_swap",
-    Path(__file__).parents[2]
-    / "src/esolangs/interpreters/register_based/minsky_swap.py",
-)
-assert spec is not None, "Failed to load module spec"
-minsky_swap = importlib.util.module_from_spec(spec)
-sys.modules["minsky_swap"] = minsky_swap
-assert spec.loader is not None, "Module spec has no loader"
-spec.loader.exec_module(minsky_swap)
-run = minsky_swap.run
+from esolangs.interpreters.register_based.minsky_swap import run
 
 
 class TestMinskySwapBasicCommands:
