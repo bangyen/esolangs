@@ -10,7 +10,6 @@ __all__ = [
     "bit_tilde",
     "clockwise",
     "container",
-    "dotlang",
     "forbin_boolean",
     "laserfuck",
     "nevermind",
@@ -790,56 +789,6 @@ def clockwise(truth_table: str) -> str:
         if 0 <= x < width and 0 <= y < height:
             grid[y][x] = ch
     return "\n".join("".join(row) for row in grid)
-
-
-def _dotlang_suffix(idx: int) -> str:
-    """Bijective base-26 node suffix: 0 -> a, 25 -> z, 26 -> aa, 27 -> ab."""
-    out = ""
-    while True:
-        out = chr(97 + idx % 26) + out
-        idx = idx // 26 - 1
-        if idx < 0:
-            return out
-
-
-def dotlang(truth_table: str) -> str:
-    """Build a Dotlang program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Dotlang's ``W~`` reads a warp name and teleports the dot to the grid's
-    first ``W{name}`s`` marker, so two decision-tree nodes cannot share a
-    name (the lookup always finds the first occurrence).  Each read site
-    therefore gets two unique names ``{0|1}{suffix}``: the first input reads
-    ``0a``/``1a``, and the second reads ``0b``/``1b`` after a zero first bit
-    or ``0c``/``1c`` after a one (the suffix is the tree's preorder index).
-    The user answers each ``W~`` with the matching name.
-
-    The grid lays the tree out one row per node: ``W~`` reads a name, the
-    warp lands the dot on the chosen child's marker and it continues right
-    into the child row; each leaf prints its table entry with ``#0#``/``#1#``
-    and walks off the right edge.  Rows are partitioned between subtrees, so
-    no path ever crosses another branch's marker.
-    """
-    n = _validate_truth_table(truth_table)
-
-    def build(idx: int, depth: int, combo: int, entry: str) -> list[str]:
-        if depth == n:
-            return [entry + "#" + truth_table[combo] + "#"]
-        suffix = _dotlang_suffix(idx)
-        zero = f"W0{suffix}`s"
-        one = f"W1{suffix}`s"
-        left = build(idx + 1, depth + 1, combo * 2, zero)
-        right = build(
-            idx + 1 + (2 ** (n - depth - 1) - 1),
-            depth + 1,
-            combo * 2 + 1,
-            one,
-        )
-        return [entry + "W~", *left, *right]
-
-    return "\n".join(build(0, 0, 0, "\u2022"))
 
 
 def container(truth_table: str) -> str:

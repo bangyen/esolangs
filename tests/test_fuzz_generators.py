@@ -142,34 +142,32 @@ def test_boolean_generators_random_tables() -> None:
 
 
 def test_dotlang_boolean_random_tables() -> None:
-    """Random tables round-trip: warp names route each combination correctly.
+    """Random tables round-trip through the fork-and-kill termination tree.
 
-    Dotlang's ``W~`` reads a warp name, so the input for a combination is
-    the name sequence the generator's preorder-index scheme assigns to each
-    read site (the user cannot type plain ``0``/``1`` lines).
+    Dotlang's boolean generator is parameterized and termination-based: each
+    instantiated program halts (0) or hangs (1) per its table entry, read
+    through the state-cycle detector rather than from output.
     """
-    from esolangs.tools.boolean.other import _dotlang_suffix
+    from esolangs.interpreters.grid_based.dotlang import _Machine
+    from esolangs.tools.boolean import parameterized
+    from esolangs.vm import run_until_halt_or_cycle
 
     random.seed(5)
-    run = importlib.import_module("esolangs.interpreters.grid_based.dotlang").run
     for n in (1, 2, 3, 4):
         for _ in range(3):
             table = "".join(random.choice("01") for _ in range(2**n))
-            program = boolean.dotlang(table)
+            template = boolean.dotlang(table)
             for combo in range(2**n):
-                names: list[str] = []
-                idx = 0
-                for d in range(n):
-                    bit = (combo >> (n - 1 - d)) & 1
-                    names.append(f"{bit}{_dotlang_suffix(idx)}")
-                    idx = idx + 1 + (bit * (2 ** (n - d - 1) - 1))
-                buffer = io.StringIO()
-                with (
-                    patch("builtins.input", side_effect=names),
-                    redirect_stdout(buffer),
-                ):
-                    run(program.splitlines(), io=IO())
-                assert buffer.getvalue() == str(int(table[combo]))
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                program = parameterized.instantiate(
+                    template,
+                    bits,
+                    lambda _i, b: "aaaa" if b == 0 else " aaa",
+                    lambda _i, b: " aaa" if b == 0 else "aaaa",
+                )
+                machine = _Machine(program.splitlines(), IO())
+                halts = run_until_halt_or_cycle(machine)
+                assert halts == (table[combo] == "0")
 
 
 def test_byte_function_generator_random_tables() -> None:

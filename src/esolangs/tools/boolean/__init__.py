@@ -4,8 +4,9 @@ Each generator builds a program that reads n boolean inputs and prints the
 truth-table result for the combination it is given; the input count ``n``
 is implied by the table length (``2**n`` entries), so the generators take
 only the table.  The parameterized generators (``bio``, ``back``,
-``nocomment``, ``bfpda``) instead emit a template the harness instantiates
-per input combination, for the no-input languages.
+``nocomment``, ``bfpda``, ``dotlang``) instead emit a template the harness
+instantiates per input combination; ``dotlang`` reads its answer from
+termination (halt = 0, hang = 1) rather than printing.
 
 The generators live in ``esolangs.tools.boolean``, split by language family
 (``register``, ``stack``, ``tape``, ``other``, ``parameterized``); this
@@ -18,7 +19,6 @@ from esolangs.tools.boolean.other import (
     bit_tilde,
     clockwise,
     container,
-    dotlang,
     forbin_boolean,
     laserfuck,
     myscript,
@@ -35,6 +35,7 @@ from esolangs.tools.boolean.parameterized import (
     bfpda,
     bio,
     bitdeque,
+    dotlang,
     eval,  # noqa: A004 - the language is named "Eval"
     instantiate,
     instantiate_wii2d_tree,
