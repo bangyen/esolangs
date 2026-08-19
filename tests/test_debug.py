@@ -110,4 +110,4 @@ class TestFactory:
         with pytest.raises(UnknownLanguageError):
             esolangs.make_debugger("NoSuchLanguage", "+")
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_debugger("Forþ", "1 1 + .")
+            esolangs.make_debugger("Minifuck", "+")

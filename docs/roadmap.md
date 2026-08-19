@@ -219,10 +219,10 @@ already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
-`esolangs.make_vm` (step-and-inspect wrappers for eighteen interpreters:
+`esolangs.make_vm` (step-and-inspect wrappers for twenty-one interpreters:
 brainfuck, S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
 Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123, A Painter Ant,
-2dFish, Dotlang, Clockwise, Dig, WII2D)
+2dFish, Dotlang, Clockwise, Dig, WII2D, Forþ, AddSubJump, Bitdeque)
 and
 `esolangs.make_debugger` (breakpoints and watches over the VM) shipped.
 The medium-priority work that remains:
@@ -232,16 +232,19 @@ The medium-priority work that remains:
   family is now fully converted: Point
   Break, ArrowQueue, 123, A Painter Ant, 2dFish, and Dotlang joined the
   set with the cycle-detection work
-  below, and Clockwise, Dig, and WII2D closed it out (their
+  below, Clockwise, Dig, and WII2D closed the grid family out (their
   position/direction is the ``ip``, as LaserFuck
-  demonstrated).  The
-  natural next batches are the other families still on whole-program
-  ``run()``s — the tape-based OISCs, the remaining queue/stack/register
-  languages (e.g. Bitdeque, Forþ, AddSubJump) whose state is a
-  cursor plus cells or a stack.
+  demonstrated), and Forþ (an explicit frame stack for its nested scopes),
+  AddSubJump (a self-modifying-memory OISC), and Bitdeque (a token cursor
+  over a deque) joined on the stack/register/queue sides.  The
+  remaining batch is the other languages still on whole-program ``run()``s
+  (e.g. the tape OISCs, Taglate, the boolean-parameterized Back/BIO/NoComment).
 - **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
-  currently the active call frame's cursor; a language with nested calls
-  should expose the call stack, not fold it into one frame's position.
+  currently the active call frame's cursor (and its machine has no
+  ``snapshot()``, so it still uses the wall-clock hang backstop); a
+  language with nested calls should expose the call stack, not fold it
+  into one frame's position.  Forþ's VM exposes the same single
+  active-frame cursor shape (its machine does have a ``snapshot()``).
 
 ## Hanging-test optimization via state-cycle detection
 
@@ -290,10 +293,11 @@ suite does *not* control the programs, i.e. the fuzzers, so the timeout
 backstop stays there and is not a hazard for the hand-written tests.
 
 The robustness test slot is wired in: ``tests/test_interpreters_robustness.py``
-now decides the empty-program invariant by state-cycle detection for the nine
-string-based step-capable machines (brainfuck, S*bleq, Dimensional, 123,
-Eval, Modulous, The Temporary Stack, Qoibl, Point Break) — no wall-clock
-bound and no POSIX skip — and keeps the SIGALRM backstop for the rest
+now decides the empty-program invariant by state-cycle detection for the
+twelve string-based step-capable machines (brainfuck, S*bleq, Dimensional,
+123, Eval, Modulous, The Temporary Stack, Qoibl, Point Break, Forþ,
+AddSubJump, Bitdeque) — no wall-clock bound and no POSIX skip — and keeps
+the SIGALRM backstop for the rest
 (Grapheme's machine has no ``snapshot()`` yet).  ``scripts/verify_differential.py``'s
 2dFish Python side is likewise bounded by state-cycle detection (its machine
 is step-capable and deterministic); the remaining differential Python sides

@@ -303,6 +303,48 @@ class TestWii2d:
         assert vm.output == "\x00"
 
 
+class TestForth:
+    def test_stack_and_active_frame_cursor(self) -> None:
+        vm = esolangs.make_vm("Forþ", "65.")
+        assert vm.ip == 0
+        assert vm.stack == []
+        vm.step()  # 6 pushes
+        assert (vm.ip, vm.stack) == (1, [6])
+        vm.step()  # 5 pushes
+        assert vm.stack == [6, 5]
+        vm.step()  # . pops and prints the low byte
+        assert vm.output == "\x05"
+        vm.step()  # finalizing the finished frame halts the machine
+        assert vm.halted
+        assert vm.ip == len("65.")  # frames are gone once halted
+        assert vm.memory == []
+
+
+class TestAddSubJump:
+    def test_memory_and_instruction_pointer(self) -> None:
+        vm = esolangs.make_vm("AddSubJump", "-1 1 0 -7")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [-1, 1, 0, -7], [])
+        vm.step()  # write to -1 prints *b = cell 1
+        assert vm.output == "\x01"
+        assert vm.halted
+        assert vm.ip == -1  # the jump off the special address halts
+        vm.step()  # stepping a halted VM is a no-op
+
+
+class TestBitdeque:
+    def test_cursor_deque_and_register(self) -> None:
+        vm = esolangs.make_vm("Bitdeque", "PUSH INVERT")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [0])
+        vm.step()  # PUSH appends the register
+        assert (vm.ip, vm.memory) == (1, [0])
+        vm.step()  # INVERT flips the register, then the run renders
+        assert vm.stack == [1]
+        assert vm.halted
+        assert vm.output == "0\n"
+        vm.step()  # stepping a halted VM is a no-op
+        assert vm.output == "0\n"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -353,7 +395,7 @@ class TestFactory:
         with pytest.raises(UnknownLanguageError):
             esolangs.make_vm("NoSuchLanguage", "+")
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_vm("Forþ", "1 1 + .")  # no step-capable interpreter
+            esolangs.make_vm("Minifuck", "+")  # no step-capable interpreter
 
 
 @pytest.mark.parametrize(
@@ -373,6 +415,9 @@ class TestFactory:
         ("Clockwise", "+;S;S;S;S;S;+;R\nR             R"),
         ("Dig", ">$5:\n 2 "),
         ("WII2D", ">~.\n!"),
+        ("Forþ", "65."),
+        ("AddSubJump", "-1 1 0 -7"),
+        ("Bitdeque", "PUSH INVERT"),
     ],
 )
 def test_vm_output_matches_run(language: str, program: str) -> None:

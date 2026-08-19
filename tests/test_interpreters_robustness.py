@@ -27,7 +27,7 @@ from esolangs.vm import run_until_halt_or_cycle
 INTERPRETER_DIR = Path(__file__).parents[1] / "src" / "esolangs" / "interpreters"
 
 MODULES = []
-for category in ("tape_based", "stack_based", "register_based", "other"):
+for category in ("tape_based", "stack_based", "register_based", "queue_based", "other"):
     for path in sorted((INTERPRETER_DIR / category).glob("*.py")):
         if path.name.startswith("_"):
             continue
@@ -81,6 +81,18 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.register_based.point_break import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.stack_based.forth":
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.register_based.addsubjump":
+        from esolangs.interpreters.register_based.addsubjump import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.queue_based.bitdeque":
+        from esolangs.interpreters.queue_based.bitdeque import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -96,6 +108,9 @@ _STEP_MACHINES = {
     "esolangs.interpreters.stack_based.the_temporary_stack",
     "esolangs.interpreters.register_based.qoibl",
     "esolangs.interpreters.register_based.point_break",
+    "esolangs.interpreters.stack_based.forth",
+    "esolangs.interpreters.register_based.addsubjump",
+    "esolangs.interpreters.queue_based.bitdeque",
 }
 
 
