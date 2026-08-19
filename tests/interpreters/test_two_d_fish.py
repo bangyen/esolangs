@@ -95,3 +95,38 @@ class Test2dFish:
     def test_non_right_capture_resumes_from_the_paren(self) -> None:
         # a downward pointer resumes moving from the '(' after capturing
         assert run_program("v\n(a)\n@") == ""
+
+
+class TestStepMachine:
+    def test_step_tracks_position_and_accumulator(self) -> None:
+        from esolangs.interpreters.grid_based.two_d_fish import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine("/iio@", ScriptedIO())
+        assert (machine.x, machine.y, machine.d) == (1, 0, "/")
+        machine.step()  # i
+        assert machine.acc == 1
+        assert (machine.x, machine.y) == (2, 0)
+        machine.step()  # i
+        assert machine.acc == 2
+        machine.step()  # o
+        machine.step()  # @ halts
+        assert machine.halted
+
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.grid_based.two_d_fish import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine("/%o@", ScriptedIO("42\n"))
+        before = machine.snapshot()
+        assert hash(before) is not None
+        machine.step()  # % reads the input line
+        assert machine.snapshot() != before
+        assert machine.io.position() == 1  # the cursor advanced past "42"
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.grid_based.two_d_fish import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("/io@", ScriptedIO())) is True
