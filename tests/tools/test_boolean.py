@@ -2934,6 +2934,26 @@ class TestAPainterAnt:
         assert len(positions) == 16
         assert len({(x, y) for x, y, _ in positions}) == 16  # all distinct
 
+    def test_four_and_five_input_generator_works(self) -> None:
+        """The generator handles n == 4 and n == 5, exact and cycle-stable."""
+        from itertools import product
+
+        from tests.tools.a_painter_ant_trace import cycle_stable, landing_after
+
+        tables = {
+            4: ["0000000000000001", "0110100110010110", "1111111111111111"],
+            5: ["00000000000000000000000000000001"],
+        }
+        for n, table_list in tables.items():
+            for table in table_list:
+                template = a_painter_ant(table)
+                for bits in product([0, 1], repeat=n):
+                    program = _instantiate_apa(template, list(bits))
+                    assert cycle_stable(program), f"n={n} bits {bits} not stable"
+                    assert landing_after(program, 1) == int(
+                        table[sum(bits[k] << (n - 1 - k) for k in range(n))]
+                    ), f"n={n} table {table} bits {bits}"
+
     def test_three_input_xor_works(self) -> None:
         """XOR3 is exact and cycle-stable on every input."""
         from itertools import product
