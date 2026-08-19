@@ -175,7 +175,21 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   input-dependent branch either.
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
-  value-testable branch to route a decision tree on.
+  value-testable branch to route a decision tree on.  **Resolved by the
+  n-embedding chain** (:func:`esolangs.tools.boolean.parameterized.wii2d`):
+  the branches are routing, not value tests, and the *accumulator arithmetic*
+  decodes the input.  Each input is embedded exactly once as a junction whose
+  two branches are op strings that transform the accumulator before re-merging
+  ahead of the next junction; the final accumulator is the table entry.  The
+  ops are not monotone (`s` sends -1 to 1), so the decoding works for any
+  table at small arity (every table through three inputs is verified against
+  the interpreter; two inputs use a closed form — bit 0 packed as -1/0, each
+  column decoded by a single op).  The search tries op strings of length 2,
+  3, then 4 and generally fails past `n == 4`.  The guaranteed fallback is
+  the decision tree
+  (:func:`esolangs.tools.boolean.parameterized.wii2d_tree`), which
+  re-embeds each input at every node (2**n - 1 junctions) and works for any
+  arity.
 
 ## Termination-based convention (Point Break and ArrowQueue are full generators; the rest partial)
 

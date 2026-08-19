@@ -42,6 +42,7 @@ emit only the ``n`` ``{Xi}``.
 """
 
 from collections.abc import Callable
+from itertools import product
 from typing import TypeAlias
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
@@ -59,6 +60,8 @@ __all__ = [
     "minsky_swap",
     "nocomment",
     "ram0",
+    "wii2d",
+    "wii2d_tree",
 ]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
@@ -1062,3 +1065,395 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
         replace,
         lambda _i, _b: "",
     )
+
+
+# --- WII2D (no-input grid language; parameterized convention) ---
+#
+# WII2D's only I/O is the ``~`` output; it has no input command, so the
+# boolean generator follows the parameterized convention: the template's
+# ``{Xi}`` placeholders are junction cells, and the harness instantiates one
+# program per input combination by filling each placeholder with ``>`` (bit
+# 0, the pointer continues east) or ``v`` (bit 1, the pointer turns south).
+#
+# A full decision tree needs each input re-embedded at every node of its
+# level (2**n - 1 junctions), since the pointer visits each junction at most
+# once.  WII2D has no memory, so it cannot store each input once and re-read
+# it like the tape/register parameterized generators (``bio``/``back``/
+# ``ram0``) do; the 2**n - 1 tree is therefore the guaranteed universal
+# construction (:func:`wii2d_tree`).  The primary generator (:func:`wii2d`)
+# does better by exploiting the accumulator arithmetic: the junctions form a
+# *merging chain* (each branch's op cells transform the accumulator and the
+# branches re-merge before the next junction), so each input is embedded
+# exactly once and the final accumulator decodes to the table entry.  WII2D's
+# ops are not monotone (``s`` sends -1 to 1), so the decoding routes can
+# distinguish any table -- every 1- and 2-input table and all sampled 3-input
+# tables are reachable (verified against the interpreter).  The route op
+# sequences are searched per table, and the search may fail for large dense
+# tables; the tree is the fallback.
+
+# The op alphabet the search composes per junction branch: digits set the
+# accumulator, ``+ - * / s`` are arithmetic, and a space is a no-op.
+_WII2D_OPS = ["+", "-", "*", "/", "s"] + [str(d) for d in range(10)]
+
+
+def _wii2d_apply(ops: str, value: int) -> int:
+    """Apply a WII2D op string to an accumulator value (the op cell order)."""
+    for op in ops:
+        if op == "+":
+            value += 1
+        elif op == "-":
+            value -= 1
+        elif op == "*":
+            value *= 2
+        elif op == "/":
+            value //= 2
+        elif op == "s":
+            value *= value
+        elif op != " ":
+            value = int(op)
+    return value
+
+
+def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | None:
+    """Search for the per-junction branch op sequences realizing ``table``.
+
+    A junction chain of length ``n`` (one per input) computes
+
+        acc = R[n-1][b_n-1] ( ... R[0][b_0] ( start ) ... )
+
+    for each input combo, where each ``R[i][b]`` is an op string applied when
+    input ``i`` takes value ``b``.  The search finds the ``2n`` op strings and
+    a starting accumulator value such that the composition equals the table
+    entry for every combo.  It works backward from the last junction (the
+    most constrained: its two branches must map the up to 2**(n-1) incoming
+    values to the table's two columns), propagating the set of acceptable
+    values for each prefix; returns ``(start, routes)`` or ``None`` if the
+    budget runs out.
+
+    ``n == 2`` uses a closed form (:func:`_wii2d_n2_closed_form`) instead of
+    searching.  Larger ``n`` tries the op strings at length 2, then 3, then 4
+    with an increasing per-length budget; this covers every table through
+    three inputs (length 2 suffices) and sampled dense tables at four (length
+    3), and generally fails past ``n == 4``.
+    """
+    import time
+
+    if n == 2:
+        return 0, _wii2d_n2_closed_form(table)
+    t = [int(c) for c in table]
+
+    for maxlen, budget in ((2, 4.0), (3, 8.0), (4, 12.0)):
+        domain = _wii2d_domain(maxlen, cap=10**6)
+        seqs = _wii2d_sequences(maxlen, domain)
+        inv = [
+            {
+                y: {v for v in domain if _wii2d_apply(s, v) == y}
+                for y in {_wii2d_apply(s, v) for v in domain}
+            }
+            for s in seqs
+        ]
+
+        def pre(
+            sidx: int, targets: set[int], inv: list[dict[int, set[int]]] = inv
+        ) -> set[int]:
+            out: set[int] = set()
+            for y in targets:
+                out |= inv[sidx].get(y, set())
+            return out
+
+        deadline = time.monotonic() + budget
+        for start in range(10):
+            result = _wii2d_search_start(n, t, start, seqs, pre, deadline)
+            if result is not None:
+                return start, result
+    return None
+
+
+# For n == 2 a closed form exists: ``R0 = (-, *)`` packs bit 0 as -1 (a zero
+# bit) or 0 (a one bit), and each branch of the last junction decodes one of
+# the table's two columns from that packed value.  On the pair (-1, 0) the
+# column pattern maps to a single op: both zero -> the digit 0, 0 then 1 ->
+# ``+``, 1 then 0 -> ``s`` (squaring sends -1 to 1), both one -> the digit 1.
+_WII2D_N2_DECODE = {(0, 0): "0", (0, 1): "+", (1, 0): "s", (1, 1): "1"}
+
+
+def _wii2d_n2_closed_form(table: str) -> list[tuple[str, str]]:
+    """Return the two-junction routes for a 2-input table, closed form."""
+    t = [int(c) for c in table]
+    return [
+        ("-", "*"),
+        (
+            _WII2D_N2_DECODE[(t[0], t[2])],  # column for a zero last bit
+            _WII2D_N2_DECODE[(t[1], t[3])],  # column for a one last bit
+        ),
+    ]
+
+
+def _wii2d_search_start(
+    n: int,
+    t: list[int],
+    start: int,
+    seqs: list[str],
+    pre: Callable[[int, set[int]], set[int]],
+    deadline: float,
+) -> list[tuple[str, str]] | None:
+    """Search the junction routes for one fixed starting accumulator value."""
+    import time
+
+    chosen: list[tuple[str, str]] = []
+    reqsets = [[{t[c]} for c in range(2**n)]]
+
+    def search(i: int) -> bool:
+        if time.monotonic() > deadline:
+            raise TimeoutError
+        cur = reqsets[0]  # 2**(i+1) requirements
+        r0_sets = [
+            [pre(si, cur[2 * p]) for p in range(2**i)] for si in range(len(seqs))
+        ]
+        r1_sets = [
+            [pre(si, cur[2 * p + 1]) for p in range(2**i)] for si in range(len(seqs))
+        ]
+        for a in range(len(seqs)):
+            for b in range(len(seqs)):
+                nxt = [r0_sets[a][p] & r1_sets[b][p] for p in range(2**i)]
+                if not all(nxt):
+                    continue
+                chosen.append((seqs[a], seqs[b]))
+                reqsets.insert(0, nxt)
+                if i == 0:
+                    if start in nxt[0]:
+                        return True
+                elif search(i - 1):
+                    return True
+                reqsets.pop(0)
+                chosen.pop()
+        return False
+
+    try:
+        if search(n - 1):
+            return list(reversed(chosen))
+    except TimeoutError:
+        return None
+    return None
+
+
+def _wii2d_domain(maxlen: int, cap: int) -> list[int]:
+    """Return the values reachable from 0 by op strings up to ``maxlen`` long."""
+    dom = {0}
+    frontier = {0}
+    for _ in range(maxlen):
+        nxt: set[int] = set()
+        for v in frontier:
+            for op in _WII2D_OPS:
+                w = _wii2d_apply(op, v)
+                if abs(w) <= cap:
+                    nxt.add(w)
+        frontier = nxt
+        dom |= nxt
+    return sorted(dom)
+
+
+def _wii2d_sequences(maxlen: int, domain: list[int]) -> list[str]:
+    """All op strings up to ``maxlen`` long, deduplicated by behaviour on the domain."""
+    seqs: dict[tuple[int, ...], str] = {}
+    for length in range(1, maxlen + 1):
+        for seq in product(_WII2D_OPS, repeat=length):
+            sig = tuple(_wii2d_apply(seq, v) for v in domain)
+            seqs.setdefault(sig, "".join(seq))
+    return list(seqs.values())
+
+
+def _wii2d_layout(
+    n: int, start: int, routes: list[tuple[str, str]]
+) -> list[str]:
+    """Lay out the junction chain template.
+
+    ``{Xi}`` placeholders on row 0, each branch's op cells on row 0 (bit 0)
+    or on a dedicated detour row below (bit 1), re-merging before the next
+    junction.
+    """
+    c = [0] * n
+    c[0] = 4 if start != 0 else 1  # '>' at (0,0), optional digit at (0,1)
+    m = [0] * n
+    for i in range(n):
+        r0, r1 = routes[i]
+        m[i] = c[i] + max(4 + len(r0), len(r1) + 1) + 1
+        if i + 1 < n:
+            c[i + 1] = m[i] + 2
+    total_cols = m[n - 1] + 51  # merge + 48 '+' + '~' + '.'
+    grid = [[" "] * total_cols for _ in range(n + 1)]
+    grid[0][0] = ">"
+    if start:
+        grid[0][1] = str(start)
+    for i in range(n):
+        ph = "{X" + str(i) + "}"
+        for k, ch in enumerate(ph):
+            grid[0][c[i] + k] = ch
+        r0, r1 = routes[i]
+        for k, ch in enumerate(r0):
+            grid[0][c[i] + 4 + k] = ch
+        # 1-branch: descend to row i+1, travel east, ascend to the merge
+        grid[i + 1][c[i]] = ">"
+        for k, ch in enumerate(r1):
+            grid[i + 1][c[i] + 1 + k] = ch
+        grid[i + 1][m[i]] = "^"
+        grid[0][m[i]] = ">"
+    base = m[n - 1] + 1
+    for k in range(48):
+        grid[0][base + k] = "+"
+    grid[0][base + 48] = "~"
+    grid[0][base + 49] = "."
+    grid[1][0] = "!"
+    return ["".join(row).rstrip() for row in grid]
+
+
+def wii2d(truth_table: str) -> str:
+    """Build a WII2D template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    WII2D has no input command, so this is a parameterized generator: the
+    template's ``{Xi}`` placeholders are junction cells that the harness
+    fills with ``>`` (bit 0) or ``v`` (bit 1), one program per input
+    combination.  Each input is embedded exactly once: the junctions form a
+    *merging chain* whose branch op cells transform the accumulator, so the
+    final accumulator is the table entry (printed as ``'0'``/``'1'`` after a
+    48-shift).
+
+    Two inputs use a closed form (:func:`_wii2d_n2_closed_form`): bit 0 is
+    packed as -1/0 and each column of the table is decoded by a single op.
+    Larger ``n`` searches for the branch op strings, trying length 2 then 3
+    then 4; length 2 covers every table through three inputs, length 3 covers
+    sampled dense and structured tables at four, and the search generally
+    fails past ``n == 4`` (the last junction would have to decode 2**(n-1)
+    distinct incoming values with one op string, which a short string cannot
+    for dense tables).  When it fails it raises :class:`ValueError`.
+
+    The guaranteed universal alternative is :func:`wii2d_tree`, which
+    re-embeds each input at every node of a decision tree (2**n - 1
+    junctions) and works for any table of any arity.
+    """
+    n = _validate_truth_table(truth_table)
+    result = _wii2d_search(n, truth_table)
+    if result is None:
+        raise ValueError(
+            "the WII2D n-embedding search found no route within its budget; "
+            "use wii2d_tree for the guaranteed 2**n - 1 embedding tree"
+        )
+    start, routes = result
+    return "\n".join(_wii2d_layout(n, start, routes))
+
+
+def _wii2d_tree_layout(n: int, table: str) -> list[str]:
+    """Lay out a full decision tree: a junction per tree node.
+
+    One junction per input level, with the leaves holding the table entries.
+    The leaf cells are a uniform 7 wide, so the layout is independent of the
+    table values and the harness re-mirrors the recursion to fill the
+    junction cells.
+    """
+    t = list(table)
+    grid: dict[tuple[int, int], str] = {}
+
+    def out_cells(value: str) -> str:
+        # uniform 7 cells so the layout is independent of the table values:
+        # 6*** = 48, then a space (0) or '+' (1) yields 48/49 for the '~'
+        return "6***" + ("+" if value == "1" else " ") + "~."
+
+    def size(level: int, lo: int, hi: int) -> tuple[int, int]:
+        if level == n:
+            return (len(out_cells(t[lo])), 1)
+        mid = lo + (hi - lo) // 2
+        w0, h0 = size(level + 1, lo, mid)
+        w1, h1 = size(level + 1, mid, hi)
+        return (w0 + 2 + w1, max(h0, h1 + 1))
+
+    def place(level: int, row: int, col: int, lo: int, hi: int) -> None:
+        if level == n:
+            cells = out_cells(t[lo])
+            for k, ch in enumerate(cells):
+                grid[(row, col + k)] = ch
+            return
+        mid = lo + (hi - lo) // 2
+        grid[(row, col)] = "X"  # single-char junction placeholder
+        w0, h0 = size(level + 1, lo, mid)
+        conn_col = col + 1 + w0
+        # the 1-branch descends below the left subtree, travels east, and
+        # ascends just left of the right subtree; the 0-branch continues east
+        # into the left subtree in place
+        grid[(row + 1 + h0, col)] = ">"  # turn east on the corridor row
+        for c in range(col + 1, conn_col):
+            grid[(row + 1 + h0, c)] = " "  # corridor travel
+        grid[(row + 1 + h0, conn_col)] = "^"  # turn north
+        grid[(row + 1, conn_col)] = ">"  # turn east into the right subtree
+        place(level + 1, row, col + 1, lo, mid)  # 0-child on this row
+        place(level + 1, row + 1, conn_col + 1, mid, hi)  # 1-child below
+
+    place(0, 1, 2, 0, 2**n)
+    grid[(0, 0)] = ">"
+    grid[(0, 1)] = "v"  # descend to the root
+    grid[(1, 1)] = ">"  # turn east into the root
+    grid[(1, 0)] = "!"
+    maxr = max(r for r, _ in grid)
+    maxc = max(c for _, c in grid)
+    rows = [[" "] * (maxc + 1) for _ in range(maxr + 1)]
+    for (r, c), ch in grid.items():
+        rows[r][c] = ch
+    return ["".join(r).rstrip() for r in rows]
+
+
+def wii2d_tree(truth_table: str) -> str:
+    """Build a WII2D decision-tree template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    WII2D has no input command, so this is a parameterized generator: the
+    template's single-character junction cells are filled with ``>`` (bit 0)
+    or ``v`` (bit 1) by the harness.  This is the guaranteed universal
+    construction: a full binary decision tree re-embeds each input at every
+    node of its level, so the template has ``2**n - 1`` junction cells and
+    works for any table of any arity.  It is the fallback the primary
+    :func:`wii2d` notes; that one embeds each input exactly once instead.
+
+    The ``X`` junction cells are ordered by the recursion (root, left
+    subtree, right subtree); the harness fills the ``k``-th level's cells
+    with the ``k``-th input's bit.
+    """
+    n = _validate_truth_table(truth_table)
+    rows = _wii2d_tree_layout(n, truth_table)
+    return "\n".join(rows)
+
+
+def instantiate_wii2d_tree(template: str, bits: list[int]) -> str:
+    """Fill a WII2D decision-tree template's junction cells with the bits.
+
+    ``bits`` is listed most-significant first; the junction cells are filled
+    in the recursion order the template was laid out in (root, left subtree,
+    right subtree), so each level's cells receive that input's bit.
+    """
+    rows = [list(r) for r in template.split("\n")]
+    n = len(bits)
+    depth = n
+
+    def size(level: int, lo: int, hi: int) -> tuple[int, int]:
+        if level == depth:
+            return (7, 1)  # every leaf is a uniform 7 cells
+        mid = lo + (hi - lo) // 2
+        w0, h0 = size(level + 1, lo, mid)
+        w1, h1 = size(level + 1, mid, hi)
+        return (w0 + 2 + w1, max(h0, h1 + 1))
+
+    def fill(level: int, row: int, col: int, lo: int, hi: int) -> None:
+        if level == depth:
+            return
+        mid = lo + (hi - lo) // 2
+        rows[row][col] = "v" if bits[level] else ">"
+        w0, _ = size(level + 1, lo, mid)
+        conn_col = col + 1 + w0
+        fill(level + 1, row, col + 1, lo, mid)
+        fill(level + 1, row + 1, conn_col + 1, mid, hi)
+
+    fill(0, 1, 2, 0, 2**n)
+    return "\n".join("".join(r).rstrip() for r in rows)

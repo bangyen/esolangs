@@ -71,7 +71,7 @@ into a template) rather than the program reading input.
 | Taglate | yes | yes |  | yes |  | hello |
 | The Temporary Stack | yes | yes |  |  |  | hello |
 | Unsquare | yes | yes | yes | yes | yes | hello |
-| WII2D | yes | yes |  |  |  | hello |
+| WII2D | yes | yes |  | yes |  | hello boolean |
 | ZTOALC L | yes | yes |  | yes |  | hello |
 | bit~ | yes | yes | yes | yes |  | hello |
 | brainfuck | yes | yes |  | yes |  | hello |

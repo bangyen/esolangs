@@ -3495,3 +3495,149 @@ class TestPointBreak:
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.point_break("0123")
+
+
+class TestWII2D:
+    """Boolean generator for the no-input grid language WII2D."""
+
+    def run_chain(self, tpl: str, bits: list[int]) -> str:
+        """Instantiate the n-embedding chain template and run the interpreter."""
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.tools.boolean import parameterized
+
+        program = parameterized.instantiate(
+            tpl, bits, lambda _i, b: "v   " if b else ">   ", lambda _i, _b: "    "
+        )
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run_wii2d(program.splitlines(), io=IO())
+        return buffer.getvalue()
+
+    def run_tree(self, tpl: str, bits: list[int]) -> str:
+        """Instantiate the decision-tree template and run the interpreter."""
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.tools.boolean import parameterized
+
+        program = parameterized.instantiate_wii2d_tree(tpl, bits)
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run_wii2d(program.splitlines(), io=IO())
+        return buffer.getvalue()
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("0000000000000001", 4),  # AND4
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_chain_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        template = boolean.wii2d(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_chain(template, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_chain_all_small_tables(self, n: int) -> None:
+        """Every table up to two inputs works with the n-embedding chain."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = boolean.wii2d(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_chain(template, bits)
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    @pytest.mark.parametrize("n", [3, 4])
+    def test_chain_sample_tables(self, n: int) -> None:
+        """Sampled dense and structured tables at n = 3 and n = 4."""
+        for table in (
+            "01101001",  # XOR3
+            "11101110",  # NOT-b0
+            "10010110",  # XNOR3
+            "1111111111111111",  # constant one
+            "0000000100000010",  # a two-1 table
+        ):
+            if len(table) != 2**n:
+                continue
+            template = boolean.wii2d(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_chain(template, bits)
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_chain_embeds_each_input_once(self) -> None:
+        """The n-embedding chain has each {Xi} placeholder exactly once."""
+        import re
+
+        for n in (1, 2, 3):
+            template = boolean.wii2d(format(0, f"0{2**n}b"))
+            xs = re.findall(r"\{X\d+\}", template)
+            assert sorted(xs) == [f"{{X{i}}}" for i in range(n)], (n, xs)
+            assert len(xs) == n, (n, xs)
+
+    def test_chain_n2_closed_form(self) -> None:
+        """Two-input tables use the closed form, not the search."""
+        from esolangs.tools.boolean.parameterized import (
+            _wii2d_apply,
+            _wii2d_n2_closed_form,
+        )
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            routes = _wii2d_n2_closed_form(table)
+            # bit 0 is packed as -1 (zero) or 0 (one); each column decodes
+            # with a single op
+            assert routes[0] == ("-", "*"), table
+            t = [int(c) for c in table]
+            for b0 in (0, 1):
+                for b1 in (0, 1):
+                    value = _wii2d_apply(
+                        routes[1][b1], _wii2d_apply(routes[0][b0], 0)
+                    )
+                    assert value == t[b0 * 2 + b1], table
+            # and the generated template uses the closed-form routes
+            template = boolean.wii2d(table)
+            assert template.startswith(">{X0}- > {X1}"), table
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),
+            ("10", 1),
+            ("0110", 2),
+            ("0001", 2),
+            ("01101001", 3),
+            ("0000000000000001", 4),
+        ],
+    )
+    def test_tree_truth_table(self, table: str, n: int) -> None:
+        """The decision-tree generator works for any table."""
+        template = boolean.wii2d_tree(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_tree(template, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_tree_has_full_junction_count(self) -> None:
+        """The tree re-embeds each input at every node: 2**n - 1 junctions."""
+        for n in (1, 2, 3):
+            template = boolean.wii2d_tree(format(0, f"0{2**n}b"))
+            assert template.count("X") == 2**n - 1, (n, template.count("X"))
+
+    def test_tree_notes_the_chain_alternative(self) -> None:
+        """The tree docstring points at the n-embedding chain generator."""
+        doc = boolean.wii2d_tree.__doc__ or ""
+        assert "wii2d" in doc
+        assert "2**n - 1" in doc
