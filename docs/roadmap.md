@@ -428,3 +428,26 @@ decision-tree construction, not a hard limit.  A total generator
 arithmetic sum of minterms (`A`/`B`/`S`/`T`, no jumps), reading each input
 from a two-character alphabet, and Grapheme has come off the
 deferred-removal list.
+
+## WII2D: n-embedding chain (cap lifted)
+
+The WII2D wall in `docs/walls.md` claimed no value-testable branch exists to
+route a decision tree on.  **The wall is resolved by the n-embedding chain**
+(`esolangs.tools.boolean.parameterized.wii2d`): the routing *is* the branch
+(the input bits choose which branch cells the pointer visits), and the
+accumulator arithmetic decodes the input.  Each input is embedded exactly
+once as a junction; its two branches are op strings (digits and `+ - * / s`)
+that transform the accumulator, and the branches re-merge before the next
+junction.  The ops are not monotone (`s` sends -1 to 1), so a short sequence
+of branches can reproduce any table: every table through three inputs
+(verified exhaustively) and sampled dense and structured tables at four.
+Two inputs have a **closed form** (bit 0 is packed as -1/0 and each column
+of the table is decoded by a single op, `0`/`+`/`s`/`1`); larger tables use
+a search over branch op strings of length 2, 3, and then 4, which generally
+fails past `n == 4` (the last junction would have to decode `2**(n-1)`
+distinct incoming values with one op string, which a short string cannot for
+dense tables).  When it fails the generator raises `ValueError`; the
+guaranteed fallback is the decision tree
+(`esolangs.tools.boolean.parameterized.wii2d_tree`), which re-embeds each
+input at every node of its level (`2**n - 1` junctions) and works for any
+table of any arity.

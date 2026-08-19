@@ -82,7 +82,7 @@ per-character encoding can be meaningfully shortened:
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
-| WII2D | The accumulator never affects control flow. |
+| WII2D | The accumulator never affects control flow.  **Lifted:** the n-embedding chain decodes the input with accumulator arithmetic (see `docs/walls.md` and `docs/roadmap.md`). |
 
 ## Generator caps (shipped)
 
