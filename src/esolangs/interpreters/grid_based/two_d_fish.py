@@ -113,6 +113,11 @@ class _Machine:
         """Whether the pointer hit ``@`` or left the grid."""
         return self._done
 
+    @property
+    def off_grid(self) -> bool:
+        """Whether the pointer ran off the grid (the documented exit-3 halt)."""
+        return self._off_grid
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
@@ -192,7 +197,7 @@ def run(code: str, io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
-    if machine._off_grid:  # noqa: SLF001 - mirrors the documented exit-3 halt
+    if machine.off_grid:  # mirrors the documented exit-3 halt
         raise HaltError("pointer moved off the grid")
 
 

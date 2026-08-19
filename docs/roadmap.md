@@ -295,7 +295,10 @@ string-based step-capable machines (brainfuck, S*bleq, Dimensional, 123,
 Eval, Modulous, The Temporary Stack, Qoibl, Point Break) — no wall-clock
 bound and no POSIX skip — and keeps the SIGALRM backstop for the rest
 (Grapheme's machine has no ``snapshot()`` yet).  ``scripts/verify_differential.py``'s
-termination checks remain to wire in.
+2dFish Python side is likewise bounded by state-cycle detection (its machine
+is step-capable and deterministic); the remaining differential Python sides
+stay on SIGALRM because they are not yet step-capable (NoComment) or are
+non-deterministic (LaserFuck).
 
 **Why the wall-clock backstop is also broken under ``pytest --cov``.**
 Raising from the SIGALRM handler while the coverage C tracer is active can
