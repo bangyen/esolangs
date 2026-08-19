@@ -73,43 +73,76 @@ def find(code: list[int], ind: int, ptr: int) -> int:
     return ind
 
 
-def run(code: str, io: IO) -> None:
-    """Run a Circlefuck program."""
-    cells: list[int] = parse(code)
-    if not cells:
-        raise ValueError("Circlefuck program cannot be empty")
-    ind = ptr = 0
+class _Machine:
+    """Per-run Circlefuck state: the tape (which is the program), and pointers.
 
-    while True:
-        if (char := chr(cells[ind])) == ">":
-            ptr = (ptr + 1) % len(cells)
+    ``step()`` executes one cell and wraps the instruction pointer around the
+    circular tape; ``halted`` is true once the pointer hits ``@``.  The tape
+    and both pointers fully determine the next step, so a program that never
+    halts is a finite-state cycle the hang detector can prove.  The VM and
+    the hang detector expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Parse ``code``; an empty program is malformed."""
+        self.io = io
+        self.cells: list[int] = parse(code)
+        if not self.cells:
+            raise ValueError("Circlefuck program cannot be empty")
+        self.ind = 0
+        self.ptr = 0
+        self._done = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether the pointer hit ``@``."""
+        return self._done
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (tuple(self.cells), self.ind, self.ptr, self.io.position())
+
+    def step(self) -> None:
+        """Execute one cell, advancing the pointers."""
+        if self._done:
+            return
+        char = chr(self.cells[self.ind])
+        if char == ">":
+            self.ptr = (self.ptr + 1) % len(self.cells)
         elif char == "<":
-            ptr = (ptr - 1) % len(cells)
+            self.ptr = (self.ptr - 1) % len(self.cells)
         elif char == "+":
-            cells[ptr] = (cells[ptr] + 1) % 256
+            self.cells[self.ptr] = (self.cells[self.ptr] + 1) % 256
         elif char == "-":
-            cells[ptr] = (cells[ptr] - 1) % 256
+            self.cells[self.ptr] = (self.cells[self.ptr] - 1) % 256
         elif char == ",":
-            cells[ptr] = io.input_char()
+            self.cells[self.ptr] = self.io.input_char()
         elif char in "[]":
-            ind = find(cells, ind, ptr)
+            self.ind = find(self.cells, self.ind, self.ptr)
         elif char == ".":
-            val = chr(cells[ptr])
-            io.print_char(val)
+            self.io.print_char(chr(self.cells[self.ptr]))
         elif char == "@":
+            self._done = True
             return
         elif char == "#":
-            ind += 1
+            self.ind += 1
         elif char == "{":
-            cells.insert(ptr, 0)
-            ind += 1
+            self.cells.insert(self.ptr, 0)
+            self.ind += 1
         elif char == "}":
-            if len(cells) == 1:
+            if len(self.cells) == 1:
                 raise HaltError
-            cells.pop(ptr)
-            ptr %= len(cells)
+            self.cells.pop(self.ptr)
+            self.ptr %= len(self.cells)
 
-        ind = (ind + 1) % len(cells)
+        self.ind = (self.ind + 1) % len(self.cells)
+
+
+def run(code: str, io: IO) -> None:
+    """Run a Circlefuck program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

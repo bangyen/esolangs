@@ -219,11 +219,11 @@ already-removed cross-checks.
 
 ## VM / debugging interface (remaining work)
 
-`esolangs.make_vm` (step-and-inspect wrappers for twenty-four interpreters:
+`esolangs.make_vm` (step-and-inspect wrappers for twenty-seven interpreters:
 brainfuck, S*bleq, Dimensional, Grapheme, Qoibl, Eval, Modulous, The
 Temporary Stack, LaserFuck, Point Break, ArrowQueue, 123, A Painter Ant,
 2dFish, Dotlang, Clockwise, Dig, WII2D, Forþ, AddSubJump, Bitdeque,
-BrainIf, Minifuck, Taglate)
+BrainIf, Minifuck, Taglate, ROTfuck, Circlefuck, BFStack)
 and
 `esolangs.make_debugger` (breakpoints and watches over the VM) shipped.
 The medium-priority work that remains:
@@ -237,11 +237,13 @@ The medium-priority work that remains:
   position/direction is the ``ip``, as LaserFuck
   demonstrated), Forþ (an explicit frame stack for its nested scopes),
   AddSubJump (a self-modifying-memory OISC), and Bitdeque (a token cursor
-  over a deque) joined on the stack/register/queue sides, and BrainIf,
+  over a deque) joined on the stack/register/queue sides, BrainIf,
   Minifuck, and Taglate joined the tape/queue families (their cursor over
-  cells/tape/queue is the ``ip``).  The
+  cells/tape/queue is the ``ip``), and ROTfuck (a rotating program),
+  Circlefuck (a circular self-modifying tape), and BFStack (a data stack
+  over a loop stack) closed out the brainfuck-family batch.  The
   remaining batch is the other languages still on whole-program ``run()``s
-  (e.g. the tape OISCs, the boolean-parameterized Back/BIO/NoComment).
+  (e.g. the remaining tape OISCs, the boolean-parameterized Back/BIO/NoComment).
 - **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
   currently the active call frame's cursor (and its machine has no
   ``snapshot()``, so it still uses the wall-clock hang backstop); a
@@ -297,10 +299,11 @@ backstop stays there and is not a hazard for the hand-written tests.
 
 The robustness test slot is wired in: ``tests/test_interpreters_robustness.py``
 now decides the empty-program invariant by state-cycle detection for the
-fifteen string-based step-capable machines (brainfuck, S*bleq, Dimensional,
+eighteen string-based step-capable machines (brainfuck, S*bleq, Dimensional,
 123, Eval, Modulous, The Temporary Stack, Qoibl, Point Break, Forþ,
-AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate) — no wall-clock bound and
-no POSIX skip — and keeps the SIGALRM backstop for the rest
+AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate, ROTfuck, Circlefuck,
+BFStack) — no wall-clock bound and no POSIX skip — and keeps the SIGALRM
+backstop for the rest
 (Grapheme's machine has no ``snapshot()`` yet).  ``scripts/verify_differential.py``'s
 2dFish Python side is likewise bounded by state-cycle detection (its machine
 is step-capable and deterministic); the remaining differential Python sides
