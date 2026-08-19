@@ -429,6 +429,8 @@ class TestStepMachine:
         assert machine.dots[0].val == 42
         machine.step()  # # prints 42 and the dot walks off the row
         assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert not machine.dots
         assert machine.io.getvalue() == "42"
 
     def test_snapshot_captures_dots_and_input_cursor(self) -> None:
