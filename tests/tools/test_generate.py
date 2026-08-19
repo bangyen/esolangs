@@ -322,6 +322,30 @@ class TestGeneratorRoundTrips:
         ).run
         assert roundtrip(sixfive_run, gen.six_five("Hello, World!")) == "Hello, World!"
 
+    def test_suptiftam(self) -> None:
+        """Each character is a term= byte literal followed by a head move."""
+        suptiftam_run = importlib.import_module(
+            "esolangs.interpreters.other.suptiftam"
+        ).run
+        assert roundtrip(suptiftam_run, gen.suptiftam("Hi")) == "Hi"
+        assert (
+            roundtrip(suptiftam_run, gen.suptiftam("Hello, World!")) == "Hello, World!"
+        )
+        assert roundtrip(suptiftam_run, gen.suptiftam("")) == ""
+        assert gen.suptiftam("Hello, World!").splitlines()[:4] == [
+            "term='H'",
+            "right(:term:)",
+            "term='e'",
+            "right(:term:)",
+        ]
+
+    def test_suptiftam_alphabet_limits(self) -> None:
+        """A tab, newline, quote, or non-ASCII char cannot be emitted."""
+        for bad in ("a\tb", "a\nb", "a'b", "\x7f", "\x00", "é", "😀"):
+            with pytest.raises(ValueError, match="printable non-quote ASCII"):
+                gen.suptiftam(bad)
+        assert gen.suptiftam("a b")  # a space is fine
+
     def test_minifuck(self) -> None:
         """Each character is printed by flipping the differing tape bits."""
         minifuck_run = importlib.import_module(

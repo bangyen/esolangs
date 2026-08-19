@@ -1,0 +1,7 @@
+fd cat :x
+term=read
+right(:term:)
+right(:read:)
+cat(:x:)if(:read:)
+fi
+cat(:read:)
