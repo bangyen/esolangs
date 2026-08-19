@@ -443,11 +443,14 @@ of branches can reproduce any table: every table through three inputs
 (verified exhaustively) and sampled dense and structured tables at four.
 Two inputs have a **closed form** (bit 0 is packed as -1/0 and each column
 of the table is decoded by a single op, `0`/`+`/`s`/`1`); larger tables use
-a search over branch op strings of length 2, 3, and then 4, which generally
-fails past `n == 4` (the last junction would have to decode `2**(n-1)`
-distinct incoming values with one op string, which a short string cannot for
-dense tables).  When it fails the generator raises `ValueError`; the
-guaranteed fallback is the decision tree
+a search over branch op strings of length 2 through 6 (the requirement sets
+and preimages are bit-vectors, and routes that share a preimage effect are
+deduplicated, so the longer lengths stay tractable).  Length 2 covers every
+table through three inputs, length 3 sampled dense tables at four, and
+lengths 5-6 sampled dense tables at five — the earlier `n == 4` wall was a
+length cap, not a representation limit (dense five-input tables were later
+solved at length 5-6).  When the search cannot fit a table in its budget it
+raises `ValueError`; the guaranteed fallback is the decision tree
 (`esolangs.tools.boolean.parameterized.wii2d_tree`), which re-embeds each
 input at every node of its level (`2**n - 1` junctions) and works for any
 table of any arity.
