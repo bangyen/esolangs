@@ -600,31 +600,32 @@ class TestDig:
         assert boolean.dig("0110") == expected
 
 
-def run_dotlang(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.grid_based.dotlang import run
+def run_dotlang(template: str, bits: list[int]) -> str:
+    """Instantiate a Dotlang template; report 0 (halt) or 1 (hang).
 
-    buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(program.splitlines(), io=IO())
-    return buffer.getvalue()
-
-
-def _dotlang_names(combo: int, n: int) -> list[str]:
-    """The warp names a Dotlang boolean program expects for ``combo``.
-
-    Reading bit ``d`` happens at the tree's preorder node ``idx``, whose two
-    names are ``{0|1}{_dotlang_suffix(idx)}``; the next node is ``idx + 1``
-    on a zero bit and ``idx + 1 + (2 ** (n - d - 1) - 1)`` on a one bit.
+    The generator is parameterized and termination-based: each instantiated
+    program halts or hangs per its table entry, read through the state-cycle
+    detector rather than from output.
     """
-    from esolangs.tools.boolean.other import _dotlang_suffix
+    from esolangs.interpreters.grid_based.dotlang import _Machine
+    from esolangs.tools.boolean import parameterized
+    from esolangs.vm import run_until_halt_or_cycle
 
-    names: list[str] = []
-    idx = 0
-    for d in range(n):
-        bit = (combo >> (n - 1 - d)) & 1
-        names.append(f"{bit}{_dotlang_suffix(idx)}")
-        idx = idx + 1 + (bit * (2 ** (n - d - 1) - 1))
-    return names
+    program = parameterized.instantiate(
+        template,
+        bits,
+        lambda _i, b: _DOTLANG_PASS if b == 0 else _DOTLANG_KILL,
+        lambda _i, b: _DOTLANG_KILL if b == 0 else _DOTLANG_PASS,
+    )
+    machine = _Machine(program.splitlines(), IO())
+    return "0" if run_until_halt_or_cycle(machine) else "1"
+
+
+# A gate is four cells wide (the {Xi} token occupies four grid columns); the
+# pass-through fills them with no-ops, the kill leads with an empty cell,
+# which pops the dot before it can reach the following cells.
+_DOTLANG_PASS = "a" * 4
+_DOTLANG_KILL = " " + "a" * 3
 
 
 class TestDotlang:
@@ -644,54 +645,43 @@ class TestDotlang:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.dotlang(table)
+        """Every input combination halts (0) or hangs (1) per the table."""
+        template = boolean.dotlang(table)
         for combo in range(2**n):
-            names = _dotlang_names(combo, n)
-            got = run_dotlang(program, names)
-            assert got == str(int(table[combo])), f"inputs {names}"
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_dotlang(template, bits)
+            assert got == table[combo], f"table {table} inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2])
     def test_all_small_tables(self, n: int) -> None:
         """Every one- and two-input table produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            program = boolean.dotlang(table)
+            template = boolean.dotlang(table)
             for combo in range(2**n):
-                names = _dotlang_names(combo, n)
-                got = run_dotlang(program, names)
-                assert got == str(int(table[combo])), f"{table} inputs {names}"
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_dotlang(template, bits)
+                assert got == table[combo], f"{table} inputs {bits}"
 
-    def test_warp_layout(self) -> None:
-        """Each read site and leaf sits on its own row, markers unique."""
-        program = boolean.dotlang("0110")
-        assert program.splitlines() == [
-            "\u2022W~",
-            "W0a`sW~",
-            "W0b`s#0#",
-            "W1b`s#1#",
-            "W1a`sW~",
-            "W0c`s#1#",
-            "W1c`s#0#",
-        ]
+    def test_junction_layout(self) -> None:
+        """Each node forks via nested parens and routes the survivor down."""
+        template = boolean.dotlang("0110")
+        assert template.startswith("\u2022(( ){X0}v")
+        assert template.count("(( ") == 3  # 2**2 - 1 junctions
+        assert template.count("{X0}") == template.count("{C0}") == 1
+        assert template.count("{X1}") == template.count("{C1}") == 2
 
-    def test_markers_are_unique(self) -> None:
-        """No two nodes share a warp name, so routing is unambiguous."""
-        program = boolean.dotlang("0110100110010110")  # XOR4, 15 read nodes
-        markers = [
-            row.split("`")[0] + "`s" for row in program.splitlines() if "`s" in row
-        ]
-        assert len(markers) == len(set(markers))
-        assert len(markers) == 2 ** (4 + 1) - 2  # 2 markers per read node
+    def test_termination_leaves(self) -> None:
+        """Halt leaves are empty cells, hang leaves are 2x2 loop rings."""
+        lines = boolean.dotlang("0001").splitlines()  # AND: only 11 hangs
+        assert lines[-1].rstrip().endswith("^")
+        assert any("v<" in ln for ln in lines[:-1])
 
-    def test_names_extend_past_the_alphabet(self) -> None:
-        """Suffixes go aa, ab, ... past 26 nodes (bijective base-26)."""
-        from esolangs.tools.boolean.other import _dotlang_suffix
-
-        assert _dotlang_suffix(0) == "a"
-        assert _dotlang_suffix(25) == "z"
-        assert _dotlang_suffix(26) == "aa"
-        assert _dotlang_suffix(27) == "ab"
+    def test_scales(self) -> None:
+        """More inputs mean more junctions and re-embedded gates."""
+        template = boolean.dotlang("0" * 8 + "1" * 8)  # n = 4
+        assert template.count("(( ") == 2**4 - 1
+        assert template.count("{X3}") == 8  # bit 3 tested at 2**3 nodes
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
