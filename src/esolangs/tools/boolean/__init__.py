@@ -34,6 +34,7 @@ from esolangs.tools.boolean.parameterized import (
     bfpda,
     bio,
     bitdeque,
+    eval,  # noqa: A004 - the language is named "Eval"
     instantiate,
     lamfunc,
     minsky_swap,
@@ -50,7 +51,7 @@ from esolangs.tools.boolean.register import (
     qoibl,
     sophie,
 )
-from esolangs.tools.boolean.stack import bfstack, eval, forth, grapheme, modulous, unsquare
+from esolangs.tools.boolean.stack import bfstack, forth, grapheme, modulous, unsquare
 from esolangs.tools.boolean.tape import (
     basicfuck,
     bf_tree,
