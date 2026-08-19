@@ -600,6 +600,110 @@ class TestDig:
         assert boolean.dig("0110") == expected
 
 
+def run_dotlang(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.grid_based.dotlang import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
+def _dotlang_names(combo: int, n: int) -> list[str]:
+    """The warp names a Dotlang boolean program expects for ``combo``.
+
+    Reading bit ``d`` happens at the tree's preorder node ``idx``, whose two
+    names are ``{0|1}{_dotlang_suffix(idx)}``; the next node is ``idx + 1``
+    on a zero bit and ``idx + 1 + (2 ** (n - d - 1) - 1)`` on a one bit.
+    """
+    from esolangs.tools.boolean.other import _dotlang_suffix
+
+    names: list[str] = []
+    idx = 0
+    for d in range(n):
+        bit = (combo >> (n - 1 - d)) & 1
+        names.append(f"{bit}{_dotlang_suffix(idx)}")
+        idx = idx + 1 + (bit * (2 ** (n - d - 1) - 1))
+    return names
+
+
+class TestDotlang:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.dotlang(table)
+        for combo in range(2**n):
+            names = _dotlang_names(combo, n)
+            got = run_dotlang(program, names)
+            assert got == str(int(table[combo])), f"inputs {names}"
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every one- and two-input table produces the right result."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.dotlang(table)
+            for combo in range(2**n):
+                names = _dotlang_names(combo, n)
+                got = run_dotlang(program, names)
+                assert got == str(int(table[combo])), f"{table} inputs {names}"
+
+    def test_warp_layout(self) -> None:
+        """Each read site and leaf sits on its own row, markers unique."""
+        program = boolean.dotlang("0110")
+        assert program.splitlines() == [
+            "\u2022W~",
+            "W0a`sW~",
+            "W0b`s#0#",
+            "W1b`s#1#",
+            "W1a`sW~",
+            "W0c`s#1#",
+            "W1c`s#0#",
+        ]
+
+    def test_markers_are_unique(self) -> None:
+        """No two nodes share a warp name, so routing is unambiguous."""
+        program = boolean.dotlang("0110100110010110")  # XOR4, 15 read nodes
+        markers = [
+            row.split("`")[0] + "`s" for row in program.splitlines() if "`s" in row
+        ]
+        assert len(markers) == len(set(markers))
+        assert len(markers) == 2 ** (4 + 1) - 2  # 2 markers per read node
+
+    def test_names_extend_past_the_alphabet(self) -> None:
+        """Suffixes go aa, ab, ... past 26 nodes (bijective base-26)."""
+        from esolangs.tools.boolean.other import _dotlang_suffix
+
+        assert _dotlang_suffix(0) == "a"
+        assert _dotlang_suffix(25) == "z"
+        assert _dotlang_suffix(26) == "aa"
+        assert _dotlang_suffix(27) == "ab"
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.dotlang("011")
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.dotlang("02")
+
+
 def run_sophie(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.sophie import run
 

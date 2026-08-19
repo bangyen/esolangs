@@ -78,7 +78,7 @@ per-character encoding can be meaningfully shortened:
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | ArrowQueue | No output; only the halt-vs-hang outcome is observable, which capped the ring template at AND/OR/threshold functions.  **Lifted:** the shipped decision-tree generator reads the bits from the queue (see `docs/walls.md`). |
-| Dotlang | The `W~` warp re-enters the first-match markers, losing branch history. |
+| Dotlang | The `W~` warp re-enters the first-match markers, losing branch history.  **Lifted:** unique per-node warp names make the first match the right branch (see `docs/walls.md`). |
 | Eval | Nested parameterized trees need backtick escaping the spec forbids. |
 | EXCON / Huf | Straight-line, no input, no branch. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
@@ -92,7 +92,7 @@ per-character encoding can be meaningfully shortened:
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
 | A Painter Ant | total (no cap) | Lifted: the piecewise leaf-paint head with WS/NE anchors is exact and cycle-stable for every arity (see `docs/roadmap.md` and `docs/a_painter_ant_generator.md`). |
-| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
+| Circlefuck, ROTfuck, ABCDirection, BF-PDA, Bitdeque, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue, Dotlang | total (no cap) | Verified exhaustively to `n <= 3`-`4`, sampled beyond. |
 
 Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps

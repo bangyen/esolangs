@@ -106,17 +106,24 @@ after the `b1`-normalize prefix reaches only the 0-preserving two-input
 tables, matching the structural argument.  (Unlike Minifuck, this wall
 holds.)
 
-## Dotlang (not viable)
+## Dotlang (warp first-match; now total)
 
-The `W~` warp reads a line and teleports the dot to the *first* `W<bit>`s`
-marker in the grid.  A single-bit program works, but every deeper level of a
-decision tree re-enters those same first-match markers, so the branch
-history is lost: the second `W~` lands back on the first markers and loops.
-The type conditionals (`!?:`) cannot help — input digits are converted to
-`int` 0/1, so both bits share the same type — and there is no value
-comparison or arithmetic.  Only a fragile direction-routing trick could
-express more, and it caps at three inputs before the eight (marker, heading)
-states run out.
+The `W~` warp reads a line and teleports the dot to the *first* `W<name>`s`
+marker in the grid.  A plain decision tree re-enters those same first-match
+markers at every deeper level, so the branch history is lost: the second
+`W~` lands back on the first markers and loops.  The type conditionals
+(`!?:`) cannot help — input digits are converted to `int` 0/1, so both bits
+share the same type — and there is no value comparison or arithmetic.
+
+The shipped generator (`esolangs.tools.boolean.dotlang`) sidesteps the wall
+by giving every read site its own pair of warp names (`0a`/`1a` for the
+first input, then `0b`/`1b` or `0c`/`1c` for the second depending on the
+first bit, and so on, with the suffix the tree's preorder index), so the
+first match is always the right branch.  The user answers each `W~` with
+the site's name rather than a bare `0`/`1`, and the grid lays the tree out
+one row per node with rows partitioned between subtrees, so no path crosses
+another branch's marker.  The scheme is total: any arity and any table, at
+the cost of O(`2**n`) grid rows.
 
 ## Polynomial (numeric root-finding ruled out; caps at n <= 4)
 
