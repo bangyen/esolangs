@@ -13,13 +13,14 @@ decision tree over constants rather than a reader of input.
 This is a separate class from the input-reading generators: it is useful
 exactly for the no-input languages, and it does not make them read input —
 the harness performs the injection.  :func:`bio` replaces ``{Xi}`` with an
-increment that loads the raw bit into a register and ``{Ci}`` with a runtime
-complement computation; :func:`back` replaces ``{Xi}`` with a ``\\`` or
-``/`` mirror so the beam is reflected toward the correct subtree;
-:func:`nocomment` replaces ``{Xi}`` with a constant-length tape setter
-(``c``/``i``) and routes a decision tree with the ``s`` skip; :func:`bitdeque`,
-:func:`ram0`, and :func:`minsky_swap` replace ``{Xi}`` with fixed-length
-setters and route a ``POP``/``GOTO``, ``C``/``goto``, or ``~`` decision tree.
+increment that loads the raw bit into a register; :func:`back` replaces
+``{Xi}`` with a ``\\`` or ``/`` mirror so the beam is reflected toward the
+correct subtree; :func:`nocomment` replaces ``{Xi}`` with a constant-length
+tape setter (``c``/``i``) and routes a decision tree with the ``s`` skip
+(a runtime prologue computes each bit's complement via ``s``-as-NOT-gate,
+so no ``{Ci}`` is needed); :func:`bitdeque`, :func:`ram0`, and
+:func:`minsky_swap` replace ``{Xi}`` with fixed-length setters and route a
+``POP``/``GOTO``, ``C``/``goto``, or ``~`` decision tree.
 
 **Every input must be embedded exactly once.**  An input-capable language
 reads each of its ``n`` inputs exactly once per run; a no-input language's
@@ -31,18 +32,17 @@ generator below therefore stores every input once (a tape load, a register
 pack, a deque/stack push, a variable, or a mirror) and reads it back, rather
 than re-substituting it.
 
-The ``{Ci}`` complement placeholder is the exception: ``nocomment`` and
-``bfpda`` embed each input's complement once, because their if/else branch
-needs a gate that is nonzero exactly when the bit is zero, and neither
-language can compute that complement at runtime -- ``nocomment`` has no flip
-(only inc/dec/clear) and ``bfpda``'s ``@`` flips the bit in place, destroying
-it, so a decision node cannot hold both ``bi`` and ``~bi`` simultaneously.
-So those two emit ``n`` ``{Xi}`` plus ``n`` ``{Ci}``; the other generators
-emit only the ``n`` ``{Xi}``.
-
-:func:`dotlang` is the exception in one way: it re-embeds each
-``{Xi}``/``{Ci}`` at every decision node (a dotlang decision tree has no way
-to store a bit and read it back, so the junctions are the storage).
+The ``{Ci}`` complement placeholder exists for :func:`dotlang`, which
+re-embeds each ``{Xi}``/``{Ci}`` at every decision node (a dotlang decision
+tree has no way to store a bit and read it back, so the junctions are the
+storage) -- a separate, documented exception to the exactly-once rule
+itself, not just to the placeholder count.  Every other generator, including
+``bfpda`` and ``nocomment``, emits only the ``n`` ``{Xi}`` placeholders:
+``bfpda``'s node structure needs a truthy marker to stay on the stack after
+each bit is consumed, but the marker's value never depends on the bit, so it
+is a constant embedded directly in the template rather than a second
+per-input placeholder; ``nocomment`` computes each bit's complement from
+``{Xi}`` at runtime instead of embedding it.
 """
 
 from collections.abc import Callable
@@ -268,9 +268,16 @@ def nocomment(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     NoComment has no input command, so this is a parameterized generator: the
-    template's ``{Xi}``/``{Ci}`` placeholders become a constant-length setter
-    for each input bit and its complement, and the harness instantiates one
-    program per input combination.
+    template's ``{Xi}`` placeholders become a constant-length setter for each
+    input bit, and the harness instantiates one program per input
+    combination.  Unlike an earlier version of this generator, the
+    complement is *not* embedded: NoComment's ``s`` (skip the next block iff
+    the tested cell is nonzero) doubles as a NOT gate, because the skipped
+    block only runs when the cell is zero.  A short runtime prologue pushes
+    a fixed skip length, tests each raw bit cell, and increments a fresh
+    complement cell in the skipped block -- so ``comp_i = 1 - bit_i`` is
+    computed once per input from the embedded bit, with no ``{Ci}``
+    placeholder and no second embed.
 
     Rather than routing a decision tree, the program **computes the input's
     numeric index** and uses it as a byte-sized ``s`` skip into a staircase of
@@ -294,6 +301,7 @@ def nocomment(truth_table: str) -> str:
     skip_base = index + 1  # one skip cell per input bit
     tbase = skip_base + n  # the output cells
     sentinel = tbase + k  # non-zero cell the final ``s`` gates on
+    scratch = sentinel + 1  # reused per bit to push each NOT gate's skip length
 
     # Emit the index computation and the output staircase.  Each bit's
     # guarded increment ends with the pointer back on its complement cell,
@@ -331,7 +339,9 @@ def nocomment(truth_table: str) -> str:
     commands.extend(["l"] * k)
     commands.append("o")
 
-    # Setup: bits, complements, index, skip cells, output cells, sentinel.
+    # Setup: bits, complements, index, skip cells, output cells, sentinel,
+    # scratch.  The complement cells (n..2n-1) start at zero and are filled
+    # by the NOT-gate prologue below, not by a {Ci} placeholder.
     setup: list[str] = []
     setup_ptr = [0]
 
@@ -346,10 +356,30 @@ def nocomment(truth_table: str) -> str:
     for i in range(n):
         setup.append("{X" + str(i) + "}")
         setup.append("r")
+    setup_ptr[0] = n
+
+    # NOT-gate prologue: for each bit i, comp_i = 1 - bit_i.  ``s`` at the
+    # bit cell skips a fixed-length block (move to comp_i, set it, move back)
+    # exactly when the bit is nonzero, so the block runs -- and increments
+    # the complement cell -- only when the bit is zero.  Both the skip and
+    # fall-through paths leave the pointer back on the bit cell, so the
+    # next bit's prologue starts from a known position.
     for i in range(n):
-        setup.append("{C" + str(i) + "}")
-        setup.append("r")
-    setup_ptr[0] = 2 * n
+        comp = n + i
+        # comp is always to the right of bit i (comp - i == n), so the gate
+        # is a straight-line move-set-return with no branching to track.
+        dist = comp - i
+        gate = ["r"] * dist + ["i"] + ["l"] * dist
+        gate_len = len(gate)
+
+        setup_move(scratch)
+        setup.append("c")
+        setup.extend(["i"] * gate_len)
+        setup.append("n")  # push gate_len
+        setup_move(i)
+        setup.append("s")
+        setup.extend(gate)
+
     setup_move(index)
     setup.append("c")  # index starts at zero
     cells: list[tuple[int, int]] = list(skip_vals.items())
@@ -381,25 +411,31 @@ def bfpda(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     BF-PDA has no input command, so this is a parameterized generator: the
-    template's ``{Xi}``/``{Ci}`` placeholders become a push of the bit and of
-    its complement, and the harness instantiates one program per input
-    combination.  Each input is embedded once: the load phase pushes every
-    ``{Ci} {Xi}`` pair (complement then bit) up front, so the stack holds all
-    ``n`` bits and their complements with ``b0`` on top.
+    template's ``{Xi}`` placeholders become a push of the bit, and the
+    harness instantiates one program per input combination.  Each input is
+    embedded once: the load phase pushes every ``<@ {Xi}`` pair (a constant
+    1 marker, then the bit) up front, so the stack holds all ``n`` bits and
+    markers with ``b0`` on top.
 
     A node tests its bit and *consumes* it for the next level using a
     ``<``-break loop ``[ > one < ] > [ > zero < ] >``: ``[`` enters when the
-    bit is one, ``>`` pops it, the one-branch pops the complement (to expose
-    the next bit), and ``<`` pushes a fresh zero to break the loop -- which
+    bit is one, ``>`` pops it, the one-branch pops the marker (to expose the
+    next bit), and ``<`` pushes a fresh zero to break the loop -- which
     works because the guard was already popped, unlike ``[ sub @ ]`` where
     ``@`` needs the guard still on top.  The zero-branch is selected by the
-    second loop testing the complement.  A leaf pops the remaining pre-loaded
-    bits (``2*(n-level)`` of them) and prints the constant answer.
+    second loop testing the marker: when the bit is zero, ``[`` never
+    entered, so the outer ``>`` pops the *bit* instead (it was never
+    consumed), exposing the marker as the new top.  The marker's role is
+    only to be truthy there -- its value never depends on the input, so a
+    constant 1 (not the input's complement) is correct, and it is embedded
+    directly in the template rather than through the bit-value substitution.
+    A leaf pops the remaining pre-loaded bits (``2*(n-level)`` of them) and
+    prints the constant answer.
     """
     n = _validate_truth_table(truth_table)
 
-    # load: push every complement then bit, so top = b0
-    head = " ".join("{C" + str(i) + "} {X" + str(i) + "}" for i in range(n - 1, -1, -1))
+    # load: push a constant-1 marker then the bit, so top = b0
+    head = " ".join("<@ {X" + str(i) + "}" for i in range(n - 1, -1, -1))
 
     def leaf(level: int, value: str) -> str:
         # consume the remaining pre-loaded bits, then print the answer

@@ -117,16 +117,44 @@ after the `b1`-normalize prefix reaches only the 0-preserving two-input
 tables, matching the structural argument.  (Unlike Minifuck, this wall
 holds.)
 
-## NoComment, BF-PDA (complement embedding is a wall, not a superfluous read)
+## NoComment, BF-PDA (a `{Ci}` embed was not actually needed)
 
-Both languages' if/else branch needs a gate that is nonzero exactly when
-the input bit is zero, and neither can compute that complement at runtime:
-`nocomment` has no flip instruction, and `bfpda`'s `@` destroys the bit it
-reads.  So the `nocomment` and `bfpda` parameterized generators embed each
-input's complement (`{Ci}`) once alongside the bit itself (`{Xi}`) — the
-extra embed is a documented wall, not a redundant read (contrast Eval and
-most other parameterized generators, which embed each input exactly once
-with no complement).
+Both generators previously embedded a second placeholder (`{Ci}`) alongside
+each bit (`{Xi}`), reasoned as "the if/else branch needs a gate that is
+nonzero exactly when the input bit is zero, and neither language can
+compute that complement at runtime."  That reasoning does not survive
+closer reading of either instruction set:
+
+- **NoComment**: `s` skips the next fixed-length block *iff the tested cell
+  is nonzero* — which makes the *skipped* block a "run iff zero" gate, i.e.
+  a NOT gate, for free.  A short prologue tests each raw bit cell with `s`
+  and increments a fresh complement cell inside the skipped block, so
+  `comp_i = 1 - bit_i` is computed once per input at runtime from the
+  embedded `{Xi}` alone.  Both the skip path and the fall-through path end
+  with the pointer back on the bit cell (the guarded block's last move),
+  so the next bit's prologue starts from a known position — the same
+  convention the rest of the generator already uses for its guarded
+  increments.
+- **BF-PDA**: the `{Ci}` push was never actually read *as a value*.  Tracing
+  the generated control flow shows the one-arm (`[ > sub1 < ] >`) is
+  entered and exits via a fresh `0` push that also pops the guard; the
+  zero-arm is reached only because, when the one-arm is skipped, the
+  *un-consumed bit itself* gets popped by the trailing `>`, exposing
+  whatever was pushed just before it as the new top.  That value only
+  needs to be truthy there — it never depends on the bit — so a constant
+  `1` marker (`<@`, embedded directly in the template, not through
+  `{Ci}`/`instantiate`) is correct.  Verified against the interpreter: a
+  constant-`1` marker reproduces every table through `n == 3` exhaustively
+  and `n == 4` spot checks; a constant-`0` marker (the discriminating
+  negative control) fails on every combination with a zero bit, pinning
+  that the marker must be truthy but confirming its *value* was never
+  input-dependent.
+
+Both generators now embed each input exactly once, with no `{Ci}`, matching
+Eval and most other parameterized generators.  `dotlang` remains the
+documented exception that legitimately needs `{Ci}` (see below) — its
+re-embedding is a different problem (no way to store a bit and read it
+back), not a complement-at-runtime problem.
 
 ## Dotlang (fork-and-kill; parameterized)
 
