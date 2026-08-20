@@ -67,3 +67,30 @@ class TestUnsquare:
 
     def test_empty_program(self) -> None:
         assert run_program("") == ""
+
+
+class TestStepMachine:
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+
+        machine = _Machine("i", ScriptedIO("hi"))
+        before = machine.snapshot()
+        machine.step()  # i reads a line, pushing its first character
+        assert machine.snapshot() != before
+        assert machine.io.position() == 1
+        assert machine.stack == [ord("h")]
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("Io", ScriptedIO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # IIAx pushes 1 twice, pops to acc=1, then doubles to acc=2 (outside
+        # {0, 1}); the empty-body >< loop then repeats forever with every
+        # field unchanged -- a genuine state cycle, not unbounded growth.
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("IIAx><", ScriptedIO())) is False
