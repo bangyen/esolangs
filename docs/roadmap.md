@@ -169,14 +169,18 @@ exclusion below.  What remains:
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
   non-deterministic, so all three stay on the wall-clock backstop
   regardless of `snapshot()` coverage.
-- Lamfunc, Forbin, and Suptiftam's cycle detection is sound (the call
-  stack a recursive call builds is never live across a `step()`
-  boundary, so `snapshot()`'s top-level view is complete) but never
-  fires: each one's top-level cursor only increases across `step()`
-  calls, since none has a top-level backward jump, so a real infinite
-  loop would have to live entirely inside recursion depth — already
-  capped by `_MAX_DEPTH` or Python's own `RecursionError`.  See
-  `docs/walls.md` for the full argument.
+- Lamfunc, Forbin, and Suptiftam's cycle detection only tracks the
+  outermost call's cursor; a nested call's own frames never enter
+  `snapshot()`, since it runs to completion inside one `step()` through
+  the original recursive evaluator.  That is a scoping choice, not an
+  inherent limit — infinite recursion is a real cycle in principle, and
+  a `snapshot()` covering the whole call stack (extending the frame
+  stack the way MyScript's and Forbin's already unroll a top-level
+  loop) would catch it.  Not built that far because the payoff is
+  small: unbounded recursion already halts on its own via `_MAX_DEPTH`
+  (Forbin/Suptiftam) or Python's own `RecursionError` (Lamfunc), a
+  cheaper and more direct bound on that hang class than cycle detection
+  would be.  See `docs/walls.md` for the full argument.
 - **Branching cycle detection for `y`/`?` (considered, not started).**
   Forking the walk at every random decision and requiring *every* branch to
   prove a cycle would soundly prove "this program hangs no matter how the
