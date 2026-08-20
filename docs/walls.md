@@ -248,6 +248,62 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   counting-bound wall; it relocates a smaller copy of the same pigeonhole
   problem (arbitrary lookup table, short formula) to that junction.
 
+## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
+
+2dFish can host a WII2D-style parameterized generator: its direction cells
+(`/` east, `v` south, `^` north) steer a pointer carrying a single
+accumulator, and there is no runtime conditional nor a way to combine two
+`%` reads (each overwrites the accumulator).  The WII2D merging-chain
+technique transfers almost verbatim — junction cells filled `/` (bit 0,
+continue east) or `v` (bit 1, detour onto a lower row and remerge ahead),
+branch op strings from the fish alphabet `i d s` (increment, decrement,
+square) transforming the accumulator, and the BFS behavior-dedup /
+backward requirement-set search
+(:func:`esolangs.tools.boolean.parameterized`'s `_wii2d_sequences` /
+`_wii2d_domain` / `_wii2d_search_start`) is op-agnostic — but the chain is
+**strictly weaker** than WII2D's.
+
+The chain must finish with the accumulator **exactly** 0 or 1 (`o` prints
+the decimal value, so a leftover 2, 16, or 81 would print as garbage, and
+2dFish has no value-testable branch to fix it up).  With only `i`/`d`
+(injective shifts) and `s` (collapses exactly the pair `{x, -x}`), a
+decoding op string can only merge values that meet by a sign at the moment
+of a square, so the reachable tables are exactly the **affine functions over
+GF(2)** — the XOR of any subset of the inputs (the empty subset giving the
+constant 0) and the complement of each, `2**(n+1)` tables in all.  Verified
+exhaustively against the interpreter: all four one-input tables round-trip,
+but of the sixteen two-input tables only the eight affine ones do — AND, OR,
+NAND, NOR, and the two single-input-and-not gates are unreachable at any
+op-string length (exact 0/1 brute force to length 5, search to length 8) —
+and the search's reachable count at `n == 3` and `n == 4` is exactly
+`2**(n+1)` (16 and 32).  So a chain-only generator would raise on the most
+common tables.
+
+The universal construction is therefore the **decision tree** (the
+`wii2d_tree` analog): re-embed each input at every node, with uniform-width
+leaves holding `i o @` (entry 1) or `o @` (entry 0).  That is total and was
+verified against the interpreter for every table through `n == 4` (all
+combinations, all 65536 four-input tables).
+
+Four 2dFish mechanics differ from WII2D and must be handled by the layout:
+
+- **No `>`/`<`.**  2dFish's direction cells are `/ \ v ^` only; east is `/`.
+  Every `>` becomes `/`, and there is no `!` start marker — the top-left
+  cell must be `/` to set the initial heading (the interpreter reads it
+  before any command).
+- **Ragged grid.**  WII2D's interpreter pads every row to the grid width, so
+  its rstrip'd rows are safe; 2dFish's interpreter does not pad, so a
+  northward ascent or a `v` descent can fall off a short row and halt with
+  `HaltError`.  Every row must be emitted at the full grid width.
+- **No digit-set op.**  WII2D's layout sets the chain's starting accumulator
+  with a single digit cell; in 2dFish digits are no-ops (the accumulator
+  starts at 0), so the start value is a preamble of `i` repeated (`i*start`)
+  before the first junction.
+- **Fixed-width placeholders.**  The chain template must use single-character
+  junction cells filled in place (as `wii2d_tree` does), not WII2D's
+  `{Xi}`-to-4-char replacement, which shifts the row one cell per junction —
+  WII2D absorbs the shift with its wrapping and row padding, 2dFish does not.
+
 ## Termination-based convention (Point Break and ArrowQueue are full generators; the rest partial)
 
 A "halt vs. loop forever" convention — the program halts iff the embedded
