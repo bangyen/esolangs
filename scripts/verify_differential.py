@@ -24,7 +24,13 @@ Languages with both an in-package interpreter and a native cross-check:
   (6 commands over a bit stack whose top is the current cell, with comments).
   The assembly is run under unicorn via ``riscv_elf_runner`` and must agree
   with the Python interpreter on the full corpus; both error on empty
-  programs and unbalanced brackets.
+  programs and unbalanced brackets as malformed (exit 2).
+* **RAM0** — ``register_based/ram0.py`` vs
+  ``extra/assembly/ram0-riscv.s``.  Both implement the full wiki language
+  (7 tokens over two registers and RAM, with digit gotos and comments).  The
+  assembly is run under unicorn via ``riscv_elf_runner`` and must agree with
+  the Python interpreter on the full corpus and the insertion-order state
+  dump.
 * **Forþ** — ``stack_based/forth.py`` vs ``extra/rust/forth.rs``.  The Rust
   reference writes its ``Input: `` prompt to stdout (the Python side routes
   it through the IO layer), which is stripped before comparing; both agree
@@ -276,14 +282,52 @@ BFPDA_CORPUS = [
     "abc.",  # comments, then print '0'
     "@..",  # "11"
     "<@<@[.>]",  # loop prints each bit -> "11"
-    # error categories: an empty program is malformed (exit 2); unbalanced
-    # brackets are invalid operations (exit 3) in both
+    # error categories: an empty program and unbalanced brackets are both
+    # malformed (exit 2) in the Python interpreter and the assembly
     "",  # empty program: malformed, exit 2
-    "[",  # unbalanced '[': invalid op, exit 3
-    "]",  # unbalanced ']': invalid op, exit 3
-    "<@[",  # unbalanced '[': invalid op, exit 3
-    "@]",  # unbalanced ']': invalid op, exit 3
-    "][",  # ']' below depth 0: invalid op, exit 3
+    "[",  # unbalanced '[': malformed, exit 2
+    "]",  # unbalanced ']': malformed, exit 2
+    "<@[",  # unbalanced '[': malformed, exit 2
+    "@]",  # unbalanced ']': malformed, exit 2
+    "][",  # ']' below depth 0: malformed, exit 2
+]
+
+
+# -- RAM0 corpus: the full 7-token wiki language --------------------------
+
+# Every token over two registers (z, n) plus unbounded RAM.  `Z` zeroes z,
+# `A` increments z, `N` copies z into n, `L` loads z := ram[z], `S` stores
+# ram[n] := z, `C` skips the next token when z == 0, and a digit string
+# ``[1-9]``\ d* is an unconditional goto to token ``d - 1`` (running off
+# either end halts).  Any other character is a comment, including a lone
+# ``0``.  RAM0 has no error categories: every run dumps the final state and
+# exits 0.  Programs must terminate (a goto back to a repeating point loops
+# forever).
+RAM0_CORPUS = [
+    "",  # empty program: dumps the zero state
+    "Z",  # zero z
+    "A",  # increment z
+    "N",  # copy z into n
+    "L",  # load from ram[0] (uninitialized -> 0)
+    "S",  # store ram[0] = 0
+    "A A A",  # z: 3
+    "A A A Z",  # Z resets z
+    "A A A N",  # n: 3
+    "A C A",  # C does not skip when z is nonzero
+    "C A",  # C skips the next token when z is zero
+    "A A N A A A S",  # store 5 at address 2
+    "A A N A A A S A A L",  # L from an uninitialized address returns 0
+    "A A N A A A S A A A A A N L",  # L loads the stored value into z
+    "A N A S A A N A A S",  # two cells, insertion order
+    "A N A S A A N A S",  # overwrite keeps the first insertion position
+    "A 3 A A",  # goto to token 3
+    "A 999 A",  # goto past the end dumps
+    "A A 0 A",  # lone '0' is a comment, not a token
+    "A A 12 A",  # multi-digit goto past the end dumps
+    "A /* comment */ A",  # comments are ignored
+    "A A N S",  # store 2 at address 2
+    "A A A A A N A A A S A A A A A N L",  # load from an uninitialized address
+    "A N S A A N S A A A N S A A A A N S A A A A A N S",  # insertion order
 ]
 
 
@@ -437,7 +481,8 @@ def _run_bfpda_python(program: str) -> tuple[bytes, int]:
     """Run the Python BF-PDA interpreter; return (output, exit code).
 
     Exit codes follow the cross-check convention: 0 = success, 2 = malformed
-    program (ValueError), 3 = invalid operation (HaltError).
+    program (ValueError: empty or unbalanced brackets).  BF-PDA has no
+    invalid runtime operations, so exit 3 is unused.
     """
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.io import IO
@@ -538,6 +583,104 @@ def _verify_bfpda() -> bool:
 
     if not failures:
         print(f"BF-PDA differential: {len(BFPDA_CORPUS)} programs match")
+    return failures == 0
+
+
+def _run_ram0_python(program: str) -> tuple[bytes, int]:
+    """Run the Python RAM0 interpreter; return (output, exit code).
+
+    RAM0 has no error categories, so the exit code is always 0; the state
+    dump is printed once, on the step that halts the machine.
+    """
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.ram0 import run
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_line(self, s: str) -> None:
+            buffer.write(s.encode("latin1") + b"\n")
+
+    run(program, _IO())
+    return buffer.getvalue(), 0
+
+
+def _run_ram0_python_limited(program: str, timeout: float) -> tuple[bytes, int] | None:
+    """Run the Python RAM0 interpreter with a wall-clock budget.
+
+    Returns ``(output, exit_code)`` like :func:`_run_ram0_python`, or None
+    if the program did not terminate (the fuzzer's analog of the assembly's
+    instruction-count cap).  The interpreter is step-capable, so the run is
+    bounded by state-cycle detection
+    (:func:`esolangs.vm.run_until_halt_or_cycle`): a repeated snapshot
+    proves a loop and is reported as non-termination immediately.  The alarm
+    stays as the backstop for the unbounded-growth class (a loop that keeps
+    incrementing a register never revisits a state), and is only meaningful
+    on POSIX; the interpreter is skipped (None) elsewhere.
+    """
+    import signal
+
+    if not hasattr(signal, "SIGALRM"):
+        return None
+
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.ram0 import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_line(self, s: str) -> None:
+            buffer.write(s.encode("latin1") + b"\n")
+
+    class _TimeoutError(Exception):
+        pass
+
+    def _alarm(_signum: int, _frame: object) -> None:
+        raise _TimeoutError
+
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(int(timeout))
+    try:
+        machine = _Machine(program, _IO())
+        if not run_until_halt_or_cycle(machine):
+            return None
+        machine.step()  # the dump happens on the step after halting
+        return buffer.getvalue(), 0
+    except _TimeoutError:
+        return None
+    finally:
+        signal.alarm(0)
+
+
+def _verify_ram0() -> bool:
+    """Compare the Python RAM0 interpreter against the assembly cross-check.
+
+    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
+    requires unicorn and a RISC-V cross-compiler; it is skipped when either
+    is missing.  Both implementations tokenize the same way, dump the same
+    insertion-order state, and must agree on the valid-program corpus.
+    """
+    if not _asm_refs_ready("ram0"):
+        return True
+
+    failures = 0
+    for program in RAM0_CORPUS:
+        ref = _asm_refs("ram0", program)
+        py_out, py_code = _run_ram0_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
+        if (asm_out, asm_code) != (py_out, py_code):
+            failures += 1
+            print(
+                f"RAM0 {program!r}: asm={(asm_out, asm_code)} "
+                f"py={(py_out, py_code)}"
+            )
+
+    if not failures:
+        print(f"RAM0 differential: {len(RAM0_CORPUS)} programs match")
     return failures == 0
 
 
@@ -851,6 +994,58 @@ def _fuzz_bfpda(rng: random.Random, count: int) -> bool:
         f"BF-PDA fuzz: {checked} programs match, {loops} consistent loops"
         if not failures
         else f"BF-PDA fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    )
+    return failures == 0
+
+
+def _fuzz_ram0(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz RAM0 with random programs.
+
+    A random digit-goto may loop forever (e.g. ``1``): the assembly
+    references raise or fault when they exhaust their instruction-count cap
+    (or write past the fixed RAM buffer), and Python times out under SIGALRM
+    (or proves a state cycle); ``None`` means "did not terminate" on that
+    side.  A program that halts on one side but loops on the other is a
+    divergence.
+    """
+    if not _asm_refs_ready("ram0"):
+        return True
+
+    # The reference's RAM is a fixed mapped region; a program that pushes an
+    # address past it writes unmapped and unicorn raises UcError, which the
+    # runner folds into None.  That is a resource limit, the same class as
+    # the instruction-count cap: a matching Python loop is not a divergence.
+    alphabet = "ZANCLS123456789"
+    failures = checked = loops = 0
+    for _ in range(count):
+        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
+        py = _run_ram0_python_limited(program, timeout=3)
+        asm = _asm_refs("ram0", program)
+        if py is None and asm is None:
+            loops += 1
+            continue
+        if py is None and asm is not None:
+            # Python's 3s budget is a heuristic; the assembly is far faster,
+            # so confirm a genuinely-looping program with a longer budget
+            # before calling the termination mismatch a divergence.
+            py = _run_ram0_python_limited(program, timeout=30)
+        if py is None or asm is None:
+            failures += 1
+            print(
+                f"RAM0 fuzz {program!r}: termination mismatch "
+                f"(python {'loops' if py is None else 'halts'}, "
+                f"asm {'loops' if asm is None else 'halts'})"
+            )
+            continue
+        checked += 1
+        if py != asm:
+            failures += 1
+            print(f"RAM0 fuzz {program!r}: asm={asm!r} py={py!r}")
+
+    print(
+        f"RAM0 fuzz: {checked} programs match, {loops} consistent loops"
+        if not failures
+        else f"RAM0 fuzz: {failures} failures of {checked} (plus {loops} loops)"
     )
     return failures == 0
 
@@ -2001,6 +2196,7 @@ def main() -> int:
     ok = _verify_laserfuck()
     ok = _verify_nocomment() and ok
     ok = _verify_bfpda() and ok
+    ok = _verify_ram0() and ok
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok
@@ -2013,6 +2209,7 @@ def main() -> int:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
         ok = _fuzz_bfpda(rng, args.fuzz) and ok
+        ok = _fuzz_ram0(rng, args.fuzz) and ok
         ok = _fuzz_forth(rng, args.fuzz) and ok
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok
