@@ -22,6 +22,14 @@ Decisions for gaps in the wiki spec (documented):
   exhausted;
 - a function value is the command string between its ``H``s, so ``N`` on a
   function returns exactly that body.
+
+The interpreter runs on a :class:`_Machine` with an explicit call stack (one
+frame per active ``G``/``I``/``Q``/``Z`` call), so it is step-capable:
+``step()`` executes one command, ``halted`` is true once no frame remains,
+and a repeated :meth:`_Machine.snapshot` proves a loop (e.g. ``Z`` re-running
+a function whose net effect on the stack is a no-op).  A program whose stack
+keeps growing without repeating a state is not caught this way and needs a
+wall-clock bound instead.
 """
 
 from __future__ import annotations
@@ -125,6 +133,23 @@ class _Machine:
     @property
     def halted(self) -> bool:
         return not self.frames
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection.
+
+        ``steps`` is excluded: it only counts toward the execution-limit
+        guard and increases every step, so including it would mean no state
+        ever repeats and defeat cycle detection entirely.
+        """
+        return (
+            tuple(self.stack),
+            frozenset(self.vars.items()),
+            tuple(
+                (f.code, f.depth, f.pc, f.mode, tuple(f.buf), f.pending_at, f.repeat)
+                for f in self.frames
+            ),
+            self.io.position(),
+        )
 
     def pop(self) -> object:
         if not self.stack:
