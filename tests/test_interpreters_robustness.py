@@ -187,6 +187,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.tape_based.suffolk import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.other.container":
+        from esolangs.interpreters.other.container import _Machine
+
+        return _Machine([], io)
     raise KeyError(module)
 
 
@@ -228,6 +232,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.stack_based.unsquare",
     "esolangs.interpreters.register_based.pct_squared_minus_one",
     "esolangs.interpreters.tape_based.suffolk",
+    "esolangs.interpreters.other.container",
 }
 
 

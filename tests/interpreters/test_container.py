@@ -77,3 +77,36 @@ class TestContainer:
     def test_empty_program_halts(self) -> None:
         """An empty program halts immediately with no output."""
         run([], IO())
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine(["A=0:", "+1 A>=0"], IO())
+        before = machine.snapshot()
+        machine.step()
+        assert machine.snapshot() != before
+        assert machine.var == {"A": 1}
+
+    def test_exit_sets_halted_and_exit_code(self) -> None:
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine(HELLO_WORLD, IO())
+        while not machine.halted:
+            machine.step()
+        assert machine.exit_code == 0
+
+    def test_empty_program_is_halted(self) -> None:
+        from esolangs.interpreters.other.container import _Machine
+
+        assert _Machine([], IO()).halted is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # A oscillates 0 -> 1 -> 0 forever with no EXIT rule: a genuine
+        # state cycle since the containers' values repeat exactly.
+        from esolangs.interpreters.other.container import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        code = ["A=0:", "+1 A<=0", "-1 A>=1"]
+        assert run_until_halt_or_cycle(_Machine(code, IO())) is False
