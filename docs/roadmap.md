@@ -30,6 +30,41 @@ is a heavy, unbuilt 2D construction, and the interpreter needs a
 seeded-randomness decision first (the LaserFuck precedent), so COD stays
 low-priority and risky rather than ruled out.
 
+## Boolean generators not yet attempted
+
+Languages with a text generator but no boolean generator, where a
+construction has not been built — distinct from the genuine walls in
+`docs/limitations.md`'s boolean-blockers table, which document why no
+construction can work.
+
+- **2dFish — confirmed constructible.**  2dFish has no runtime way to
+  combine two separately-read inputs (each `%` overwrites the single
+  accumulator), but a *parameterized* generator sidesteps that: verified by
+  construction that two independent junction cells (`/` skip vs. `v`
+  detour-and-remerge, mirroring WII2D's merging-chain technique) each
+  independently gate an extra `i` before merging back onto the same
+  accumulator, giving distinct output per two-bit input combination
+  (`(0,0)->0, (0,1)->1, (1,0)->1, (1,1)->2`).  Building the actual
+  generator (arbitrary `n`, decision-tree or closed-form construction) is
+  unbuilt work, not a research question.
+- **Factor — plausible, unbuilt.**  Decodes to and delegates to brainfuck,
+  which is Turing-complete with real conditional branching (`[`/`]`); the
+  obstacle is constructing an integer whose prime factorization decodes to
+  a working boolean-table brainfuck program, a harder search than the text
+  generator's (which only needs *some* integer decoding to *a* working
+  hello-world).
+- **SLOW ACV MAMMALIAN — plausible, unbuilt.**  LEAPFROG is a genuine
+  data-dependent conditional jump fed by ACCEPT (input), so the machine is
+  structurally capable; nobody has attempted a boolean-table construction
+  against its 23-array model.  The language already has a Lean-proved
+  total generator search for text output, so the same search machinery
+  could plausibly be pointed at boolean tables.
+- **Suffolk — unassessed.**  `,.` computes `ord(input) - 1` directly (a
+  working input-to-output arithmetic path), so it is not walled the way
+  the boolean-blockers table's entries are; whether two inputs can compose
+  within the `!`/`<`/`,`/`.` instruction set and the 10-pass loop cap has
+  not been checked.
+
 ## Transpilers
 
 A direct transpile between languages with no shared core is not a rewrite —
