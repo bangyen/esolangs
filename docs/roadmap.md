@@ -153,6 +153,32 @@ ones (Lamfunc, Forbin, Suptiftam) needed an explicit resumable frame in
 place of Python's own call stack, documented in `docs/walls.md`'s
 state-cycle-detection section.  Nothing is tracked here as remaining.
 
+## Forbin's expression-position recursion (remaining depth-cap gap)
+
+Suptiftam's calls, Forbin's *statement-position* calls (`f(y);`), and all
+of Lamfunc's calls were converted to an explicit frame stack, removing an
+invented 250-level cap (or, for Lamfunc, Python's own default recursion
+limit) as a correctness bug — a correct, terminating program recursing
+deeper than that no longer halts wrongly.  Forbin's *expression-position*
+calls (`x = f(y)`, where the assignment needs the callee's return value
+back synchronously mid-expression) were deliberately left out of that
+conversion and still recurse natively, bounded only by Python's own
+default limit rather than a documented cap.  See `docs/walls.md`'s
+state-cycle-detection section for the full reasoning: Forbin has no
+realistic program shape that recurses this way (`return` exits a call
+immediately, so there is no return-value-threading idiom that would
+produce deep expression-position recursion in practice), which is why this
+was scoped out rather than built as part of the original conversion.
+
+**Not pursued unless a concrete program needs it.**  Closing this gap
+would mean extending `_eval` itself into a resumable continuation stack
+(an `_EvalTask`-per-expression design, sketched and rejected in
+`docs/walls.md`'s history) — materially more machinery than the
+statement-position conversion for a case with no known real-world Forbin
+program that hits it.  Worth revisiting only if a program surfaces that
+needs deep expression-position recursion and Python's default limit is
+insufficient.
+
 ## Hanging-test optimization via state-cycle detection
 
 Hanging programs are bounded with wall-clock timeouts (SIGALRM in the
@@ -169,22 +195,15 @@ exclusion below.  What remains:
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
   non-deterministic, so all three stay on the wall-clock backstop
   regardless of `snapshot()` coverage.
-- Forbin's *expression-position* calls (`x = f(y)`, which need a return
-  value back synchronously mid-expression) still implement recursion as
-  native Python recursion, bounded only by Python's own default limit —
-  not a documented cap, but still an implementation limit with no basis in
-  the wiki.  Deliberately left out of scope: Forbin has no realistic
-  program shape that recurses this way (see `docs/walls.md`), so the
-  larger continuation-stack machinery it would need was not worth building.
-  Suptiftam's calls, Forbin's *statement-position* calls (`f(y);`, the
-  language's only real recursion idiom), and all of Lamfunc's calls were
-  converted to an explicit frame stack (`_Machine.frames`), removing the
-  cap entirely for those — confirmed while doing the conversions, this
-  does *not* make infinite recursion cycle-detectable.  A call that never
-  returns pushes one new frame per `step()` and none is ever popped, so
-  `snapshot()`'s frame tuple strictly grows and two snapshots can never
-  compare equal: unbounded growth, the same class `+[>+]` already falls
-  into, not a repeating state.  See `docs/walls.md` for the full argument.
+- Suptiftam's calls, Forbin's statement-position calls, and all of
+  Lamfunc's calls now run on an explicit frame stack (see the section
+  above) instead of native Python recursion — confirmed while doing those
+  conversions, this does *not* make infinite recursion cycle-detectable.  A
+  call that never returns pushes one new frame per `step()` and none is
+  ever popped, so `snapshot()`'s frame tuple strictly grows and two
+  snapshots can never compare equal: unbounded growth, the same class
+  `+[>+]` already falls into, not a repeating state.  See `docs/walls.md`
+  for the full argument.
 - **Branching cycle detection for `y`/`?` (considered, not started).**
   Forking the walk at every random decision and requiring *every* branch to
   prove a cycle would soundly prove "this program hangs no matter how the
