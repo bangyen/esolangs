@@ -593,9 +593,11 @@ def _for_rows(
         if not wilds:
             rows.append(
                 [
-                    _eval(p[1], frame, globals_, reader, depth)
-                    if p[0] == "value"
-                    else 0
+                    (
+                        _eval(p[1], frame, globals_, reader, depth)
+                        if p[0] == "value"
+                        else 0
+                    )
                     for p in items
                 ]
             )
