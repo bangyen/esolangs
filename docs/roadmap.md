@@ -54,12 +54,6 @@ construction can work.
   cells) are documented in `docs/walls.md`.  Building the actual generator
   (arbitrary `n`, tree or chain-with-tree-fallback) is unbuilt work, not a
   research question.
-- **SLOW ACV MAMMALIAN — plausible, unbuilt.**  LEAPFROG is a genuine
-  data-dependent conditional jump fed by ACCEPT (input), so the machine is
-  structurally capable; nobody has attempted a boolean-table construction
-  against its 23-array model.  The language already has a Lean-proved
-  total generator search for text output, so the same search machinery
-  could plausibly be pointed at boolean tables.
 
 ## Transpilers
 
