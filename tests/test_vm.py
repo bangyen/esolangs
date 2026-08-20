@@ -802,6 +802,17 @@ class TestLamfunc:
         assert vm.output == "101"
 
 
+class TestForbin:
+    def test_locals_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Forbin", "main { x = 1; }")
+        assert vm.ip == 0
+        assert vm.memory == []
+        vm.step()
+        assert vm.ip == 1
+        assert vm.memory == [1]
+        assert vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -995,6 +1006,25 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         machine = _Machine("p 5", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_forbin_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("main { x = 1; }", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_forbin_for_loop_halts_without_a_false_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # each row sets the same local to the same value, so only the loop's
+        # own row index (part of the snapshot) keeps this from reading as a
+        # repeat before the finite range is exhausted
+        machine = _Machine("main { for i:0..1 { x = 0; } }", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is True
 
 
