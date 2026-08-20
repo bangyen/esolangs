@@ -19,11 +19,23 @@ out-of-range ``itemat`` are invalid operations that halt the program with
 :class:`~esolangs.exceptions.HaltError`; a ``while yes`` loop runs forever
 unless the program ends, and ``ask`` raises :class:`EOFError` when input
 runs out (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine`: an explicit stack of
+``_Frame``s (a block's statement list, cursor, and scope) stands in for
+top-level block sequencing, so a top-level ``while`` -- the common case,
+and the one the wiki's truth-machine example uses -- is resumed one pass
+through its body at a time instead of looping natively in Python.  This
+makes ``step()`` interruptible between top-level statements and between
+passes of a top-level ``while``.  A statement nested inside a function
+call still runs to completion inside the ``step()`` that invokes the
+call (through the original recursive ``_call_function``/``_run_block``),
+since that nesting is bounded by the call depth in a working program;
+only a top-level ``while`` is unbounded by construction, and that is
+the one the frame stack unrolls.
 """
 
 import re
 import sys
-from contextlib import suppress
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -184,6 +196,29 @@ class Scope:
         raise HaltError(f"assignment to undefined variable: {name}")
 
 
+class _Frame:
+    """One block on the machine's explicit call stack.
+
+    ``nodes``/``pos`` is the statement list and cursor a block is
+    executing; ``scope`` is the variables in effect; ``while_head`` is the
+    condition tokens to re-check when a ``while`` body's frame finishes
+    (``None`` for a plain block or function body).
+    """
+
+    __slots__ = ("nodes", "pos", "scope", "while_head")
+
+    def __init__(
+        self,
+        nodes: list[Node],
+        scope: "Scope",
+        while_head: list[str] | None = None,
+    ) -> None:
+        self.nodes = nodes
+        self.pos = 0
+        self.scope = scope
+        self.while_head = while_head
+
+
 def _run_block(nodes: list[Node], io: IO, scope: Scope) -> None:
     """Execute every statement in an indentation block."""
     for tokens, children in nodes:
@@ -332,10 +367,78 @@ def _run_statement(
     _parse_expr(tokens, 0, io, scope)
 
 
+class _Machine:
+    """One MyScript run: the frame stack, I/O, and the root scope."""
+
+    def __init__(self, code: str, io: IO) -> None:
+        self.io = io
+        self.scope = Scope()
+        self.stack: list[_Frame] = [_Frame(_block_tree(code), self.scope)]
+
+    @property
+    def halted(self) -> bool:
+        """Whether the frame stack has emptied (or a top-level return fired)."""
+        return not self.stack
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection.
+
+        Scopes and function values are not meaningfully hashable (a
+        function closes over a live, mutable scope), so the snapshot
+        captures each frame's position and a shallow, ``repr``-based view
+        of its scope chain -- sufficient for the state-cycle detector's
+        purpose, since a genuine hang re-executes the same frame position
+        with the same variable bindings on every lap.
+        """
+        return (
+            tuple(
+                (id(frame.nodes), frame.pos, self._scope_key(frame.scope))
+                for frame in self.stack
+            ),
+            self.io.position(),
+        )
+
+    @staticmethod
+    def _scope_key(scope: "Scope | None") -> tuple[object, ...]:
+        chain = []
+        while scope is not None:
+            chain.append(tuple(sorted((k, repr(v)) for k, v in scope.vars.items())))
+            scope = scope.parent
+        return tuple(chain)
+
+    def step(self) -> None:
+        """Execute one top-level-block statement, advancing the frame stack."""
+        if self.halted:
+            return
+        frame = self.stack[-1]
+        if frame.pos >= len(frame.nodes):
+            self.stack.pop()
+            if frame.while_head is not None:
+                cond, _ = _parse_expr(frame.while_head, 0, self.io, frame.scope)
+                if _truthy(cond):
+                    while_head = frame.while_head
+                    self.stack.append(_Frame(frame.nodes, frame.scope, while_head))
+            return
+
+        tokens, children = frame.nodes[frame.pos]
+        frame.pos += 1
+        head = tokens[0]
+        if head == "while":
+            cond, _ = _parse_expr(tokens[1:-1], 0, self.io, frame.scope)
+            if _truthy(cond):
+                self.stack.append(_Frame(children, frame.scope, tokens[1:-1]))
+            return
+        try:
+            _run_statement(tokens, children, self.io, frame.scope)
+        except _ReturnError:
+            self.stack.clear()  # a top-level return ends the program
+
+
 def run(code: str, io: IO) -> None:
     """Run a MyScript program."""
-    with suppress(_ReturnError):  # a top-level return ends the program
-        _run_block(_block_tree(code), io, Scope())
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
