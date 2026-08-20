@@ -34,6 +34,7 @@ from esolangs.tools.boolean.parameterized import (
     bfpda,
     bio,
     bitdeque,
+    cod,
     eval,  # noqa: A004 - the language is named "Eval"
     instantiate,
     lamfunc,
@@ -94,6 +95,7 @@ __all__ = [
     "circlefuck",
     "circlefuck_byte",
     "clockwise",
+    "cod",
     "collatz_multiverse",
     "container",
     "decleq",
@@ -159,6 +161,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "BrainIf",
         "Circlefuck",
         "Clockwise",
+        "COD",
         "Collatz Multiverse",
         "Container",
         "Dig",

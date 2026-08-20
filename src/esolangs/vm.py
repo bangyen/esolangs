@@ -457,6 +457,62 @@ class _LaserFuckVM(_BaseVM):
         return []
 
 
+class _FirstChoiceRNG:
+    """A deterministic stand-in for COD's random-junction chooser.
+
+    Always takes the first (lexicographically, since ``_open_dirs`` iterates
+    ``N``/``S``/``E``/``W`` in that fixed order) option, so VM stepping is
+    reproducible instead of drawing from ``secrets`` on every genuine
+    junction.
+    """
+
+    def choice(self, options: list[str]) -> str:
+        return options[0]
+
+
+_COD_HEADINGS = {"N": 0, "S": 1, "E": 2, "W": 3}
+
+
+class _CODVM(_BaseVM):
+    """2D grid with possibly many live cods.
+
+    ``ip`` is every cod's ``(row, col, heading, value)`` flattened into one
+    tuple (heading coded ``N=0``/``S=1``/``E=2``/``W=3``), sorted for a
+    stable order.  Random junctions (not exercised by the boolean
+    generator's branch-free programs) are resolved deterministically via
+    :class:`_FirstChoiceRNG` so stepping is reproducible.
+    """
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.grid_based.cod import _Machine
+
+        self._machine = _Machine(program, self._io, rng=_FirstChoiceRNG())
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        cods = sorted(
+            (cod.r, cod.c, _COD_HEADINGS[cod.d], cod.value)
+            for cod in self._machine.cods
+        )
+        return tuple(v for cod in cods for v in cod)
+
+    @property
+    def memory(self) -> list[int]:
+        return [cod.value for cod in self._machine.cods]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _PointBreakVM(_BaseVM):
     """Variable store + loop frames; ``ip`` is the statement cursor."""
 
@@ -1894,6 +1950,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Eval": _EvalVM,
     "Modulous": _ModulousVM,
     "LaserFuck": _LaserFuckVM,
+    "COD": _CODVM,
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,

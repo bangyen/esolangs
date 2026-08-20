@@ -7,32 +7,28 @@ the commit history.  This file only tracks what is still on the table.
 ## New interpreters (in priority order)
 
 Candidates from re-scanning the esolangs wiki's Category:Unimplemented and
-from User:PythonshellDebugwindow's language list.  The original scan is
+from User:PythonshellDebugwindow's language list.  The scan is now fully
 exhausted: every candidate with a usable file-based I/O protocol, a complete
-specification, and a plausible generator or boolean story now has an
-interpreter.  What shipped and what was ruled out (Gravity, Earfuck,
-Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast,
-and the languages already implemented elsewhere) is in the commit history and
-`docs/limitations.md`.
+specification, and a plausible generator or boolean story has an
+interpreter, including COD (the last one on the table).  What shipped and
+what was ruled out (Gravity, Earfuck, Conveyor, Chainlang, Binary ///,
+Fourfuck, Aaargh++, Bitwise Cyclic Teast, and the languages already
+implemented elsewhere) is in the commit history and `docs/limitations.md`.
+Nothing is tracked here as remaining.
 
-| Language | Priority | Why it is on the table |
-| --- | --- | --- |
-| COD | low | 2D concurrency-heavy cods; numeric output + value gates make a boolean generator plausible but unbuilt. |
-
-**COD — the only candidate left.**  The other candidates were assessed and
-ruled out; the assessments are in `docs/limitations.md`.  COD's only output
-is numbers, so it can never have a text generator — but a single 0/1
-printed as the cod's value is a valid boolean output, so a boolean
-generator is the live question: it would route one cod through the `_`
-(reflect iff nonzero) and `<` (remove iff zero) value gates into a decision
-tree, laid out branch-free so the cod never hits a random junction.  That
-is a heavy, unbuilt 2D construction, and the interpreter needs a
-seeded-randomness decision first (the LaserFuck precedent), so COD stays
-low-priority and risky rather than ruled out.  The construction is pinned
-down in detail — a single-cod, `_`-only decision tree with `...` inputs on
-the bottom edge and `---` outputs on the left/right edges — in
-`docs/cod_boolean_generator.md`; what remains is the interpreter and the
-branch-free layout algorithm, not open design questions.
+**COD shipped** with a two-input (`n <= 2`) boolean generator
+(`esolangs.tools.boolean.parameterized.cod`); the interpreter, VM adapter,
+and generator are in the commit history.  The shipped construction differs
+from the design this roadmap originally sketched: rather than a
+branch-free `_`-gate decision tree, each input bit gets its own `+` fork
+(one branch continues forward, the other peels off) with a short
+`(...)<` gauntlet on each branch that only the matching value's copy
+survives — the wiki's "two/three branches" rule for `+` makes this
+deterministic, so it needs no seeded-randomness decision and never touches
+COD's random-junction rule.  `n == 1` reuses the same routing with its
+second input fixed to a literal `0`.  Generalizing past `n == 2` (a
+`2**n`-leaf layout) is unbuilt; see `docs/cod_boolean_generator.md` for the
+full construction and what a general-`n` version would need.
 
 ## Transpilers
 
