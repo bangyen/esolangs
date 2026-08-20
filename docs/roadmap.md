@@ -49,16 +49,28 @@ the table:
 
 ## Deferred-removal candidates
 
-**No language is currently on this list.**  A language becomes a candidate
-when it has real language-defined output but no generator that uses it (no
-conditional to drive a boolean generator, or a boolean cap too low to be
-interesting) — see `docs/limitations.md` for the removed cases and the
+A language becomes a candidate when it has real language-defined output but
+no generator that uses it (no conditional to drive a boolean generator, or a
+boolean cap too low to be interesting), or when its only boolean construction
+would break a documented convention and its text generator is too thin to
+stand alone — see `docs/limitations.md` for the removed cases and the
 criteria.  The interpreter-only languages with no text generator but a
 working, uncapped boolean generator (ABCDirection, Back, BF-PDA, Bitdeque,
 Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue) are
 **not** candidates: they participate fully in the repo's verification
 machinery via the boolean generator, and their only weakness is an
 interpreter-invented state dump where the wiki defines no text output.
+
+- **2dFish — deferred.**  Its text generator is a straight-line delta
+  encoder (the thinnest computational category), and it has no total
+  once-embedding boolean generator: the decision tree would need multiple
+  embedding (the exactly-once exception Dotlang was removed for) and the
+  once-embedding chain is affine-only (constants, XOR/XNOR, projections —
+  see `docs/walls.md`).  It stays for now because the delta encoder is
+  genuine arithmetic (the current criterion's line is literal-embed), but
+  if the criterion is ever tightened to "real computation only"
+  (branching/search, not straight-line deltas), it becomes the final
+  removal — nothing else is thin.
 
 **Against removal (the standing argument, for when a candidate reappears).**
 Most interpreter-only languages are the *only* implementation on the wiki,
