@@ -62,7 +62,7 @@ per-character encoding can be meaningfully shortened:
 - **Delta- and cell-reuse** (brainfuck, Circlefuck) keep a running cell and
   emit only the difference, so consecutive close bytes cost a couple of
   tokens.
-- **Literal-embed** (Taglate, Eval, Between, Dotlang, MyScript, Nevermind)
+- **Literal-embed** (Taglate, Eval, Between, MyScript, Nevermind)
   put the text in the program directly (a string/queue literal); the text
   *is* the data.
 - **Literal-load with no arithmetic** (Sophie, Dimensional) reload the byte
@@ -102,14 +102,12 @@ functions.  Their languages and text generators remain; see `docs/roadmap.md`.
 
 The parameterized no-input generators embed every input exactly once rather
 than re-embedding a bit at multiple decision nodes, mirroring how an
-input-capable language reads each input once per run; `dotlang` is the
-documented exception.  `nocomment` and `bfpda` were
-previously counted as a second kind of exception (embedding each input's
+input-capable language reads each input once per run.  `nocomment` and
+`bfpda` were previously counted as exceptions (embedding each input's
 complement too), but neither actually needed it — `nocomment` computes the
 complement from the bit at runtime, and `bfpda`'s second push turned out to
 be a bit-independent constant, not a complement.  The per-language reasoning
-(why Dotlang re-embeds) is in
-[`docs/walls.md`](walls.md).
+is in [`docs/walls.md`](walls.md).
 
 ## Assessed and rejected
 
@@ -130,6 +128,15 @@ interpreter, generator, and tests were deleted from the repo.
 - **Chainlang**: AI-generated spec its own author calls unfinished.
 - **Conveyor**: no input command, stderr-only output.
 - **Crement**: self-modifying, no I/O; no input to branch on.
+- **Dotlang** (removed): its boolean generator was the only one that could
+  not embed each input exactly once — Dotlang has no storage, value test, or
+  arithmetic, so a decision tree has to re-embed every bit at every junction
+  (2**i gates) and its text generator is a plain literal-embed; the
+  convention-breaking re-embedding (and the ``{Ci}`` complement placeholder
+  it needed) was the workaround for that lack of state, so the language was
+  too thin to justify being the sole exception to the exactly-once rule.
+  The fork-and-kill construction that made it work is recorded in the
+  `docs/walls.md` ledger entry.
 - **DSDLAI** (removed): trivial Dig reskin with a random death chance; non-deterministic.
 - **Earfuck**: trivial brainfuck reskin (notes for instructions).
 - **EXCON** (removed): straight-line 8-cell bit pool; no conditional at all (only reset/flip/pointer/print), so no boolean generator.

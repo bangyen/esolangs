@@ -32,17 +32,11 @@ generator below therefore stores every input once (a tape load, a register
 pack, a deque/stack push, a variable, or a mirror) and reads it back, rather
 than re-substituting it.
 
-The ``{Ci}`` complement placeholder exists for :func:`dotlang`, which
-re-embeds each ``{Xi}``/``{Ci}`` at every decision node (a dotlang decision
-tree has no way to store a bit and read it back, so the junctions are the
-storage) -- a separate, documented exception to the exactly-once rule
-itself, not just to the placeholder count.  Every other generator, including
-``bfpda`` and ``nocomment``, emits only the ``n`` ``{Xi}`` placeholders:
-``bfpda``'s node structure needs a truthy marker to stay on the stack after
-each bit is consumed, but the marker's value never depends on the bit, so it
-is a constant embedded directly in the template rather than a second
-per-input placeholder; ``nocomment`` computes each bit's complement from
-``{Xi}`` at runtime instead of embedding it.
+No generator emits a ``{Ci}`` complement placeholder: ``bfpda``'s node
+structure needs a truthy marker to stay on the stack after each bit is
+consumed, but the marker's value never depends on the bit, so it is a
+constant embedded directly in the template; ``nocomment`` computes each
+bit's complement from ``{Xi}`` at runtime instead of embedding it.
 """
 
 from collections.abc import Callable
@@ -57,7 +51,6 @@ __all__ = [
     "bfpda",
     "bio",
     "bitdeque",
-    "dotlang",
     "eval",
     "instantiate",
     "lamfunc",
@@ -1600,66 +1593,3 @@ def wii2d(truth_table: str) -> str:
         )
     start, routes = result
     return "\n".join(_wii2d_layout(n, start, routes))
-
-
-def dotlang(truth_table: str) -> str:
-    """Build a Dotlang template that computes the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Dotlang's ``(`` spawns a dot at the matching ``)`` while the caller
-    continues, so a junction forks the dot into two and the embedded bit
-    kills one of them.  Each ``{Xi}`` gate (and its ``{Ci}`` complement) is
-    filled with four cells of pass-through (``a``) or an empty cell (`` ``,
-    which pops the dot), so exactly the branch whose gate is open survives;
-    it turns down (``v``) and right (``>``) into its subtree.  Each leaf is
-    a ``#0#``/``#1#`` literal (the first ``#`` loads it, the second prints
-    it) followed by an empty cell that pops the dot, so the instantiated
-    program prints the table entry for its input and halts.
-
-    ``{Xi}`` is a four-character token in a 2D grid, so the template
-    reserves four cells per gate and ``set_bit``/``set_comp`` must return
-    four characters to keep the columns aligned.  The tree re-embeds input
-    ``i`` at ``2**i`` junctions, so unlike the other parameterized
-    generators a template holds each ``{Xi}`` (and ``{Ci}``) more than once.
-    """
-    n = _validate_truth_table(truth_table)
-    cells: dict[tuple[int, int], str] = {}
-
-    def put(row: int, col: int, char: str) -> None:
-        cells[(row, col)] = char
-
-    def build(row: int, col: int, depth: int, combo: int) -> int:
-        if depth == n:
-            put(row, col, "#")
-            put(row, col + 1, truth_table[combo])
-            put(row, col + 2, "#")
-            put(row, col + 3, " ")  # the dot prints, then dies on the empty cell
-            return 4
-        put(row, col, "(")
-        put(row, col + 1, "(")
-        put(row, col + 2, " ")  # the forking dot dies here
-        put(row, col + 3, ")")
-        for k, char in enumerate(f"{{X{depth}}}"):
-            put(row, col + 4 + k, char)
-        put(row, col + 8, "v")
-        put(row + 1, col + 8, ">")
-        width0 = build(row + 1, col + 9, depth + 1, combo * 2)
-        close = col + 9 + width0
-        put(row, close, ")")
-        for k, char in enumerate(f"{{C{depth}}}"):
-            put(row, close + 1 + k, char)
-        put(row, close + 5, "v")
-        put(row + 1, close + 5, ">")
-        width1 = build(row + 1, close + 6, depth + 1, combo * 2 + 1)
-        return close + 6 + width1 - col
-
-    put(0, 0, "\u2022")
-    build(0, 1, 0, 0)
-    max_row = max(r for r, _ in cells) + 1
-    max_col = max(c for _, c in cells) + 1
-    grid = [[" "] * max_col for _ in range(max_row)]
-    for (r, c), char in cells.items():
-        grid[r][c] = char
-    return "\n".join("".join(row) for row in grid)

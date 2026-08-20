@@ -197,7 +197,7 @@ def render() -> str:
         "differentially verify the Python interpreter.  The Boolean",
         "column marks the boolean-function generators; the no-input "
         "languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, "
-        "Minsky Swap, Eval, ArrowQueue, A Painter Ant, Dotlang, WII2D) use "
+        "Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use "
         "parameterized generators (the harness substitutes input bits into "
         "a template).",
         "",

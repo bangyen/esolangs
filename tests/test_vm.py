@@ -254,22 +254,6 @@ class TestTwoDFish:
         assert vm.stack == []
 
 
-class TestDotlang:
-    def test_ip_dot_position_and_value_stack(self) -> None:
-        vm = esolangs.make_vm("Dotlang", "•#42#")
-        assert vm.ip == (0, 0, 1)  # the starting dot, heading right
-        vm.step()  # the • is a no-op and the dot steps right
-        assert vm.ip == (0, 1, 1)
-        vm.step()  # #42 stores 42 on the dot and steps past the literal
-        assert vm.stack == [42]
-        assert vm.ip == (0, 4, 1)
-        vm.step()  # the trailing # prints 42, then the dot steps off the row
-        assert vm.output == "42"
-        assert vm.halted
-        assert vm.ip is None  # the dot has been consumed
-        assert vm.memory == []
-
-
 class TestClockwise:
     def test_ip_position_heading_and_accumulator(self) -> None:
         vm = esolangs.make_vm("Clockwise", "+;S;S;S;S;S;+;R\nR             R")
