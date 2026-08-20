@@ -189,6 +189,10 @@ deliberate rather than implicit: either lift the cap (an open construction)
 or, where the language has no other generator story, remove it.  The caps
 are documented in `docs/limitations.md` and `docs/walls.md`.
 
-**Open: ZTOALC L.**  Raises for dense, non-symmetric tables past `n == 3`
-but still covers symmetric and structured tables at `n == 4`.  Candidate to
-revisit if a general construction is found; otherwise a candidate to drop.
+**No language is currently on this list.**  ZTOALC L was assessed and kept:
+its tree-shaped construction is walled past dense, non-symmetric `n == 3`
+(re-verified in `docs/walls.md`, not just the original argument), so lifting
+the cap is closed, but the generator still covers every `n <= 3` table plus
+popcount-symmetric tables at any `n` — materially more than the two
+generators removed under this section's precedent (Home Row at `n <= 2`,
+Minifuck's `n <= 3` 0-preserving-only), so it stays.
