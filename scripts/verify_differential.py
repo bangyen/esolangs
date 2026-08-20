@@ -39,6 +39,16 @@ Languages with both an in-package interpreter and a native cross-check:
   control flow exactly (a loop guard only raises when its skip path scans
   off the end of the program, so a ``}`` that halts first, exit 3, can
   pre-empt a later unmatched guard, exit 2).
+* **Minsky Swap** — ``register_based/minsky_swap.py`` vs
+  ``extra/assembly/minsky_swap-riscv.s``.  Both implement the compact
+  notation (a `+`/`~`/`*` command line plus a jump-target line, one number
+  per `~` in program order).  Each `~` token keeps its own fixed target
+  across every visit, even when a jump revisits it -- the reference builds
+  a token-indexed target table rather than consuming targets in execution
+  order, matching the Python interpreter's ``self.targets[self.ind]``
+  lookup.  The assembly is run under unicorn via ``riscv_elf_runner`` and
+  must agree with the Python interpreter on the full corpus; both error on
+  a `~` with no corresponding jump-line number (exit 2).
 * **Forþ** — ``stack_based/forth.py`` vs ``extra/rust/forth.rs``.  The Rust
   reference writes its ``Input: `` prompt to stdout (the Python side routes
   it through the IO layer), which is stripped before comparing; both agree
@@ -375,6 +385,44 @@ BIO_CORPUS = [
     "0iy{0ox;",  # unmatched guard, skipped: malformed, exit 2
     "0ix{0iy{};",  # unmatched outer guard, skipped: malformed, exit 2
     ";x1Ox{{}0Iy",  # a halting `}` pre-empts a later unmatched guard: exit 3
+]
+
+
+# -- Minsky Swap corpus: the full compact-notation wiki language ----------
+
+# A command line of `+`/`~`/`*` plus a jump-target line, one number per `~`
+# in program order (1-based: target N resumes at command N; 0 means "no
+# jump on zero", a `~` fallthrough).  `+` increments the pointed-to
+# register, `*` flips the pointer, `~` decrements the pointed-to register
+# if nonzero, else looks up its own fixed target (a revisited tilde always
+# uses the same entry, regardless of execution order).  Any other
+# character on the command line is ignored; the jump line is scanned for
+# digit runs only.  Error category: a `~` with no corresponding number on
+# the jump line is malformed (exit 2).  Programs must terminate (a jump
+# back to a repeating point loops forever).
+MINSKY_SWAP_CORPUS = [
+    "",  # empty program: dumps "0 0"
+    "+",  # increment reg[0]
+    "++",  # reg[0] = 2
+    "*+",  # swap, then increment reg[1]
+    "+*+",  # reg[0] = 1, swap, reg[1] = 1
+    "+~\n1",  # decrement reg[0] to 0
+    "~+\n2",  # zero register jumps past the +, landing back on it
+    "~+~\n2 1",  # two tildes, two targets
+    "  +  \n  ",  # whitespace around commands and an empty jump line
+    "+++~\n1",  # counting loop
+    "+*+*+",  # register-swapping sequence
+    "++~+~\n2 1",  # conditional jump based on register value
+    "++*++*+++",  # reg[0] = 5, reg[1] = 2
+    "~\n999",  # target far past the program end halts immediately
+    "~+~+~\n3 2 1",  # multiple tildes with distinct targets
+    "+++*+++",  # reg[0] = 3, reg[1] = 3
+    "+++*+++*~+~\n2 1",  # register copy pattern
+    "~\n0",  # target 0 is a fallthrough, not a jump
+    "~\n12 34",  # multi-digit jump targets
+    "~*+*~\n3 1",  # a tilde revisited via a jump keeps its own fixed target
+    "~~\n1",  # unmatched second tilde: malformed, exit 2
+    "~\n",  # tilde with an empty jump line: malformed, exit 2
 ]
 
 
@@ -841,6 +889,113 @@ def _verify_bio() -> bool:
     return failures == 0
 
 
+def _run_minsky_swap_python(program: str) -> tuple[bytes, int]:
+    """Run the Python Minsky Swap interpreter; return (output, exit code).
+
+    Exit codes follow the cross-check convention: 0 = success, 2 =
+    malformed program (ValueError: a `~` with no jump-line target).  Minsky
+    Swap has no invalid runtime operations, so exit 3 is unused.
+    """
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.minsky_swap import run
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_line(self, s: str = "") -> None:
+            buffer.write(s.encode("latin1") + b"\n")
+
+    try:
+        run(program, _IO())
+    except ValueError:
+        return buffer.getvalue(), 2
+    return buffer.getvalue(), 0
+
+
+def _run_minsky_swap_python_limited(
+    program: str, timeout: float
+) -> tuple[bytes, int] | None:
+    """Run the Python Minsky Swap interpreter with a wall-clock budget.
+
+    Returns ``(output, exit_code)`` like :func:`_run_minsky_swap_python`, or
+    None if the program did not terminate (the fuzzer's analog of the
+    assembly's instruction-count cap).  The interpreter is step-capable, so
+    the run is bounded by state-cycle detection
+    (:func:`esolangs.vm.run_until_halt_or_cycle`): a repeated snapshot
+    proves a loop and is reported as non-termination immediately.  The alarm
+    stays as the backstop for the unbounded-growth class (a loop that keeps
+    incrementing a register never revisits a state), and is only meaningful
+    on POSIX; the interpreter is skipped (None) elsewhere.
+    """
+    import signal
+
+    if not hasattr(signal, "SIGALRM"):
+        return None
+
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.minsky_swap import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_line(self, s: str = "") -> None:
+            buffer.write(s.encode("latin1") + b"\n")
+
+    class _TimeoutError(Exception):
+        pass
+
+    def _alarm(_signum: int, _frame: object) -> None:
+        raise _TimeoutError
+
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(int(timeout))
+    try:
+        machine = _Machine(program, _IO())
+        if not run_until_halt_or_cycle(machine):
+            return None
+        machine.step()  # the dump happens on the step after halting
+        return buffer.getvalue(), 0
+    except ValueError:
+        return buffer.getvalue(), 2
+    except _TimeoutError:
+        return None
+    finally:
+        signal.alarm(0)
+
+
+def _verify_minsky_swap() -> bool:
+    """Compare the Python Minsky Swap interpreter against the assembly cross-check.
+
+    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
+    requires unicorn and a RISC-V cross-compiler; it is skipped when either
+    is missing.  Both implementations parse the compact notation the same
+    way and give each `~` a fixed target independent of execution order,
+    and must agree on the valid-program and error-category corpus.
+    """
+    if not _asm_refs_ready("minsky_swap"):
+        return True
+
+    failures = 0
+    for program in MINSKY_SWAP_CORPUS:
+        ref = _asm_refs("minsky_swap", program)
+        py_out, py_code = _run_minsky_swap_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
+        if (asm_out, asm_code) != (py_out, py_code):
+            failures += 1
+            print(
+                f"Minsky Swap {program!r}: asm={(asm_out, asm_code)} "
+                f"py={(py_out, py_code)}"
+            )
+
+    if not failures:
+        print(f"Minsky Swap differential: {len(MINSKY_SWAP_CORPUS)} programs match")
+    return failures == 0
+
+
 def _run_native(
     cmd: list[str],
     program: str,
@@ -1251,6 +1406,71 @@ def _fuzz_bio(rng: random.Random, count: int) -> bool:
         f"BIO fuzz: {checked} programs match, {loops} consistent loops"
         if not failures
         else f"BIO fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    )
+    return failures == 0
+
+
+def _gen_minsky_swap_program(rng: random.Random) -> str:
+    """Draw a random command line plus a (usually matching) jump-target line.
+
+    Jump targets are drawn independently of the command length, so most
+    programs are well-formed (each `~` gets a number) but some are
+    deliberately over- or under-provided to exercise the malformed-program
+    path (a `~` with no target) alongside ordinary execution.
+    """
+    cmd_len = rng.randint(0, 25)
+    cmds = "".join(rng.choice("+~*") for _ in range(cmd_len))
+    tilde_count = cmds.count("~")
+    num_count = max(0, tilde_count + rng.choice([-1, 0, 0, 0, 1]))
+    nums = " ".join(str(rng.randint(0, cmd_len + 2)) for _ in range(num_count))
+    if rng.random() < 0.9:
+        return cmds + "\n" + nums
+    return cmds  # no jump line at all
+
+
+def _fuzz_minsky_swap(rng: random.Random, count: int) -> bool:
+    r"""Differentially fuzz Minsky Swap with random programs.
+
+    A random `~` whose target lands on a repeating point may loop forever
+    (e.g. ``~\n1``): the assembly reference raises or faults when it
+    exhausts its instruction-count cap (or writes past a fixed buffer), and
+    Python times out under SIGALRM (or proves a state cycle); ``None``
+    means "did not terminate" on that side.  A program that halts on one
+    side but loops on the other is a divergence.
+    """
+    if not _asm_refs_ready("minsky_swap"):
+        return True
+
+    failures = checked = loops = 0
+    for _ in range(count):
+        program = _gen_minsky_swap_program(rng)
+        py = _run_minsky_swap_python_limited(program, timeout=3)
+        asm = _asm_refs("minsky_swap", program)
+        if py is None and asm is None:
+            loops += 1
+            continue
+        if py is None and asm is not None:
+            # Python's 3s budget is a heuristic; the assembly is far faster,
+            # so confirm a genuinely-looping program with a longer budget
+            # before calling the termination mismatch a divergence.
+            py = _run_minsky_swap_python_limited(program, timeout=30)
+        if py is None or asm is None:
+            failures += 1
+            print(
+                f"Minsky Swap fuzz {program!r}: termination mismatch "
+                f"(python {'loops' if py is None else 'halts'}, "
+                f"asm {'loops' if asm is None else 'halts'})"
+            )
+            continue
+        checked += 1
+        if py != asm:
+            failures += 1
+            print(f"Minsky Swap fuzz {program!r}: asm={asm!r} py={py!r}")
+
+    print(
+        f"Minsky Swap fuzz: {checked} programs match, {loops} consistent loops"
+        if not failures
+        else f"Minsky Swap fuzz: {failures} failures of {checked} (plus {loops} loops)"
     )
     return failures == 0
 
@@ -2403,6 +2623,7 @@ def main() -> int:
     ok = _verify_bfpda() and ok
     ok = _verify_ram0() and ok
     ok = _verify_bio() and ok
+    ok = _verify_minsky_swap() and ok
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok
@@ -2417,6 +2638,7 @@ def main() -> int:
         ok = _fuzz_bfpda(rng, args.fuzz) and ok
         ok = _fuzz_ram0(rng, args.fuzz) and ok
         ok = _fuzz_bio(rng, args.fuzz) and ok
+        ok = _fuzz_minsky_swap(rng, args.fuzz) and ok
         ok = _fuzz_forth(rng, args.fuzz) and ok
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok

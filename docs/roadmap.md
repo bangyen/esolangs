@@ -118,7 +118,7 @@ Rust column, where the reference gets input bits directly.
 
 | Toolchain | Languages |
 | --- | --- |
-| RISC-V assembly | NoComment (tape + stack with a byte-indexed skip), BF-PDA (bit stack + tape), RAM0 (register machine), BIO (three registers plus a loop stack, guards checked lazily to match the Python interpreter's control flow). |
+| RISC-V assembly | NoComment (tape + stack with a byte-indexed skip), BF-PDA (bit stack + tape), RAM0 (register machine), BIO (three registers plus a loop stack, guards checked lazily to match the Python interpreter's control flow), Minsky Swap (two registers, a swap pointer, and a jump-on-zero `~`; each `~` keeps a fixed target across every visit via a token-indexed table, not a running execution-order cursor). |
 | Rust | Forþ, Basicfuck, Unsquare, 3x, 2dFish, Painfuck, LaserFuck (stacks, typed registers, 2D grids); %^2^-1 and bit~ keep corpus cross-checks but lost their straight-line text-generator fuzzes. |
 
 **Worth adding (audited).**  These languages have complex-output generators
@@ -128,7 +128,6 @@ round-trip corpus, so a cross-check would add real verification.
 
 | Toolchain | Languages |
 | --- | --- |
-| RISC-V assembly | Minsky Swap (two registers, a swap pointer, and a jump-on-zero `~`; a decision-tree cascade boolean generator and a trivial ``r0 r1`` dump).  A no-input parameterized generator that maps 1:1 onto RISC-V registers/branches. |
 | Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), S*bleq (tape OISC with a `<= 0` branch), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), ABCDirection (2D grid + Boolfuck input), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
