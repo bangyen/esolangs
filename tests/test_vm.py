@@ -797,8 +797,8 @@ class TestLamfunc:
         vm = esolangs.make_vm("Lamfunc", "p 5")
         assert vm.ip == 0
         assert vm.memory == []
-        vm.step()
-        assert vm.halted
+        while not vm.halted:
+            vm.step()
         assert vm.output == "101"
 
 
@@ -1031,6 +1031,18 @@ class TestRunUntilHaltOrCycle:
         from esolangs.vm import run_until_halt_or_cycle
 
         machine = _Machine("p 5", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_lamfunc_recursive_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # loop halves x each call until it reaches 0; a real, terminating
+        # recursion whose call sits inside i's lazy branch, not just a flat
+        # top-level program
+        code = "F loop x - i x loop fb x 0\nloop 0b1000"
+        machine = _Machine(code, ScriptedIO())
         assert run_until_halt_or_cycle(machine) is True
 
     def test_forbin_halting_run_returns_true(self) -> None:
