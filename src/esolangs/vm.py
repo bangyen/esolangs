@@ -243,7 +243,15 @@ class _DimensionalVM(_BaseVM):
 
 
 class _GraphemeVM(_BaseVM):
-    """Stack + variables; ``ip`` is the active call frame's cursor."""
+    """Stack + variables; ``ip`` is the call stack's cursors, root-to-leaf.
+
+    Each active call frame (``G``/``I``/``Q``/``Z`` push one) contributes its
+    ``pc`` to the tuple, so ``ip`` grows and shrinks with recursion depth
+    instead of folding every frame into the active one's position.  A
+    breakpoint on a specific ``ip`` is therefore depth-sensitive: ``(5,)``
+    matches only a single top-level frame at pc 5, not pc 5 one call deeper
+    (``(2, 5)``).
+    """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -264,10 +272,11 @@ class _GraphemeVM(_BaseVM):
         self._machine.step()
 
     @property
-    def ip(self) -> int:
-        return (
-            self._machine.frames[-1].pc if self._machine.frames else len(self._program)
-        )
+    def ip(self) -> tuple[int, ...]:
+        # a frame is only ever popped once its own pc reaches len(code), so
+        # frames == [] implies the top-level frame finished at len(program).
+        frames = self._machine.frames
+        return tuple(f.pc for f in frames) if frames else (len(self._program),)
 
     @property
     def memory(self) -> list[int]:
@@ -402,7 +411,14 @@ class _TemporaryStackVM(_BaseVM):
 
 
 class _ForthVM(_BaseVM):
-    """Stack + scope table; ``ip`` is the active frame's cursor."""
+    """Stack + scope table; ``ip`` is the call stack's cursors, root-to-leaf.
+
+    Each active scope (``;``/``(``/``[`` pushes one) contributes its ``pc``
+    to the tuple, so ``ip`` grows and shrinks with call depth instead of
+    folding every frame into the active one's position.  A breakpoint on a
+    specific ``ip`` is therefore depth-sensitive: ``(5,)`` matches only a
+    single top-level frame at pc 5, not pc 5 one call deeper (``(2, 5)``).
+    """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -418,10 +434,11 @@ class _ForthVM(_BaseVM):
         self._machine.step()
 
     @property
-    def ip(self) -> int:
-        return (
-            self._machine.frames[-1].pc if self._machine.frames else len(self._program)
-        )
+    def ip(self) -> tuple[int, ...]:
+        # a frame is only ever popped once its own pc reaches len(code), so
+        # frames == [] implies the top-level frame finished at len(program).
+        frames = self._machine.frames
+        return tuple(f.pc for f in frames) if frames else (len(self._program),)
 
     @property
     def memory(self) -> list[int]:
