@@ -663,6 +663,15 @@ class TestSuffolk:
         assert vm.output == "A"
 
 
+class TestContainer:
+    def test_named_values_and_tick(self) -> None:
+        vm = esolangs.make_vm("Container", "A=0:\n+1 A>=0")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # A>=0 always holds, so A increments every tick
+        assert (vm.ip, vm.memory) == (1, [1])
+        assert not vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
