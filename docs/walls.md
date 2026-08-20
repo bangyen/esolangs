@@ -18,14 +18,31 @@ size guard.  The shipped decision tree stays primary (total through
 `n <= 5`); the arithmetic kernel is the fallback for small-`T` tables past
 that.
 
-## ZTOALC L (dense non-symmetric n > 3 wall)
+## ZTOALC L (dense non-symmetric n > 3 wall, re-verified)
 
 All Collatz trajectories converge to the `16, 8, 4, 2, 1` tail, so a dense
 full tree like XOR4 has every leaf's tail sweep through another leaf.  For
 **popcount-symmetric** tables the generator falls back to a branch-free
-*linear* program, which is `2**L` lines (XOR4 is 524,288; gated at `2**22`).
-Only dense, non-symmetric tables past `n == 3` still raise `ValueError`;
-those need a full `2**n` result table, which would be `2**(2**n)` lines.
+*linear* program: sum the input bits into one accumulator and look the
+result up in a small `n + 1`-entry table (XOR4's linear program is 524,288
+lines, `2**19`, under the `2**22` gate).  That shape does not carry over to
+dense **non-symmetric** tables, and not just because the result table is
+bigger: a non-symmetric table needs each combination's raw *position*
+(`0..2**n - 1`), not its popcount, and ZTOALC L's expression grammar has no
+multiply, so computing a positional index from `n` bits would need a
+weighted accumulation (`bit_i * 2**(n-1-i)`) that `+`/`-`/`=` cannot
+express in one step.  Even approximating it with repeated addition and a
+full `2**n`-entry result table (one distinct literal per combination,
+instead of the symmetric case's shared `n + 1` values) reaches `2**33`
+lines at `n == 4` — past the `2**22` gate by a wide margin, not under it.
+
+Re-verified against the interpreter: sweeping the tree placement's search
+parameter (`b1`) to ~500,000 values per table (125x the shipped budget) found
+no collision-free placement for three independent dense, non-symmetric
+`n == 4` tables, each exhausting in under a minute — a search-budget problem
+would show as a timeout, not a fast, complete exhaustion.  The wall holds;
+`n <= 3` exact plus popcount-symmetric tables at higher `n` is the ceiling
+for the tree-shaped construction.
 
 ## 3x (constant-bit guard skip is unsafe)
 
