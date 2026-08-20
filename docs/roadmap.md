@@ -128,6 +128,7 @@ round-trip corpus, so a cross-check would add real verification.
 
 | Toolchain | Languages |
 | --- | --- |
+| RISC-V assembly | BF-PDA (bit stack + tape), RAM0 (register machine).  Both are no-input parameterized generators and already have RISC-V compilers to reuse for the syscall/ELF scaffolding. |
 | Rust | AddSubJump (branch-and-goto OISC), BIO (register counter loops), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program).  Both read input via `,`, which the no-input RISC-V rule above excludes. |
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
