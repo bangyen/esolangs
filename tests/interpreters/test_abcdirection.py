@@ -228,3 +228,11 @@ class TestStepMachine:
 
         machine = _Machine("DDDDDD", ScriptedIO(), limit=10_000)
         assert run_until_halt_or_cycle(machine) is False
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.tape_based.abcdirection import _Machine
+
+        machine = _Machine(ZERO_BYTE, ScriptedIO(), limit=0)
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.out_bits == []

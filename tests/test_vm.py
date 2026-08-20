@@ -658,6 +658,8 @@ class TestSuffolk:
         for _ in range(66):
             vm.step()  # each ! sets the cell to the accumulator-derived value
         assert vm.memory == [66]
+        assert vm.stack == []
+        assert vm.halted is False
         vm.step()  # < sums the cell into the accumulator
         vm.step()  # . prints the accumulator minus one
         assert vm.output == "A"
@@ -744,6 +746,7 @@ class TestSlowAcvMammalian:
         vm = esolangs.make_vm("SLOW ACV MAMMALIAN", "SEED SEED SEED CONSUME PRONOUNCE")
         assert vm.ip == 0
         assert vm.memory == [0]
+        assert vm.stack == [0] * 23  # all 23 arrays flattened, each a single 0
         for _ in range(3):
             vm.step()
         assert vm.memory == [3]  # three SEEDs add 1 to lst[0]'s head each time
@@ -759,6 +762,7 @@ class TestZtoalcL:
         vm = esolangs.make_vm("ZTOALC L", "\n".join(["10", "print 65"]))
         assert vm.ip == 10
         assert vm.memory == []
+        assert vm.stack == []
         while not vm.halted:
             vm.step()
         assert vm.output == "A"
@@ -768,6 +772,7 @@ class TestBetween:
     def test_counter_and_variables(self) -> None:
         vm = esolangs.make_vm("Between", "'a'v.\n[a]s|3|\n[a]p.\n.x.")
         assert (vm.ip, vm.memory) == (0, [])
+        assert vm.stack == []
         vm.step()  # declares variable 'a' = 0
         assert vm.memory == [0]
         vm.step()  # [a]s|3| stores 3 into a
@@ -783,6 +788,7 @@ class TestMyScript:
         vm = esolangs.make_vm("MyScript", "var a is 5\nsay a")
         assert vm.ip == (1, 0)
         assert vm.memory == []
+        assert vm.stack == []
         vm.step()  # declares a = 5
         assert vm.ip == (1, 1)
         assert vm.memory == [5]
@@ -790,6 +796,8 @@ class TestMyScript:
         assert vm.output == "5"
         vm.step()  # the root frame's statements are exhausted; it pops
         assert vm.halted
+        assert vm.ip is None  # the frame stack has emptied
+        assert vm.memory == []
 
 
 class TestLamfunc:
@@ -797,6 +805,7 @@ class TestLamfunc:
         vm = esolangs.make_vm("Lamfunc", "p 5")
         assert vm.ip == 0
         assert vm.memory == []
+        assert vm.stack == []
         while not vm.halted:
             vm.step()
         assert vm.output == "101"
@@ -807,11 +816,13 @@ class TestForbin:
         vm = esolangs.make_vm("Forbin", "main { x = 1; }")
         assert vm.ip == (0,)
         assert vm.memory == []
+        assert vm.stack == []
         vm.step()
         assert vm.ip == (1,)
         assert vm.memory == [1]
         vm.step()  # main's body is exhausted; the frame pops
         assert vm.halted
+        assert vm.memory == []  # the frame stack has emptied
 
     def test_ip_exposes_the_call_stack(self) -> None:
         # a statement-position call pushes a new frame, deepening ip
@@ -832,6 +843,7 @@ class TestSuptiftam:
         vm = esolangs.make_vm("Suptiftam", "x=7")
         assert vm.ip == 0
         assert vm.memory == []
+        assert vm.stack == []
         vm.step()
         assert vm.ip == 1
         assert vm.memory == [7]

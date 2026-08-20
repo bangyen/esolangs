@@ -110,3 +110,11 @@ class TestStepMachine:
 
         code = ["A=0:", "+1 A<=0", "-1 A>=1"]
         assert run_until_halt_or_cycle(_Machine(code, IO())) is False
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.other.container import _Machine
+
+        machine = _Machine([], IO())
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.tick == 0

@@ -344,3 +344,21 @@ class TestArraysOfArrays:
 
         with pytest.raises(HaltError):
             run_and_capture(["0"])
+
+
+class TestMachine:
+    def test_snapshot_freezes_array_variables(self) -> None:
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+
+        machine = _Machine(["2", "x = [2]"], IO())
+        machine.step()
+        snap = machine.snapshot()
+        assert snap[1] == (("x", (0, 0)),)
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+
+        machine = _Machine(["1"], IO())
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.halted

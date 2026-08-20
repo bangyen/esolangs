@@ -102,6 +102,43 @@ class TestLoops:
         code = "main { for _:0..1 { out 0,1,0,0,0,0,0,1; } }"
         assert run_program(code) == "AA"
 
+    def test_wildcard_iteration_loop_inside_an_expression_position_call(self) -> None:
+        """An expression-position call (``(f 0)``) natively recurses through
+        ``_run``/``_exec_stmt``, which has its own ``for`` handling separate
+        from ``_Machine.step()``'s frame-stack version -- this exercises the
+        iteration (non-range) loop and wildcard-pattern expansion there.
+        """
+        code = """
+            f {
+              s = 0;
+              for (i, j):((1, *)) { for _:!i..i { s = j; } }
+              return s;
+            }
+            main {
+              r = (f 0);
+              out 0,0,0,0,0,0,0,r;
+            }
+        """
+        assert run_program(code) == "\x01"
+
+    def test_non_wildcard_iteration_loop_inside_an_expression_position_call(
+        self,
+    ) -> None:
+        """Same as above, but the pattern has no wildcard (the plain
+        value-row branch of ``_exec_stmt``'s own ``for`` handling)."""
+        code = """
+            f {
+              s = 0;
+              for i:(0, 1) { s = i; }
+              return s;
+            }
+            main {
+              r = (f 0);
+              out 0,0,0,0,0,0,0,r;
+            }
+        """
+        assert run_program(code) == "\x01"
+
 
 class TestFunctions:
     def test_not(self) -> None:
@@ -264,3 +301,72 @@ class TestParserErrors:
     def test_multi_assignment(self) -> None:
         code = "main { a, b = 1, 0; " "out 0,0,0,0,0,0,0,a; out 0,0,0,0,0,0,0,b; }"
         assert run_program(code) == "\x01\x00"
+
+
+class TestStepMachine:
+    def test_main_with_parameters_defaults_to_zero(self) -> None:
+        # main's own parameters are set to 0 (per the wiki), same as any
+        # other function's unpassed arguments
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+
+        machine = _Machine("main a { out 0,0,0,0,0,0,0,a; }", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == "\x00"
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+
+        machine = _Machine("main { }", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.halted
+
+    def test_statement_call_inside_a_for_loop_body_pushes_a_frame(self) -> None:
+        # a statement-position call inside a for-loop body is stepped
+        # through _step_for's own frame-push, not _exec_stmt's
+        code = """
+            helper { out 0,1,0,0,1,0,0,0; }
+            main { for _:0..0 { helper 0; } }
+        """
+        assert run_program(code) == "H"
+
+    def test_bare_return_at_top_level_pops_the_frame(self) -> None:
+        # a return statement run directly by step() (not through a pushed
+        # frame) still pops the current frame via its own got-is-not-None path
+        code = "main { return 1; out 0,0,0,0,0,0,0,1; }"
+        assert run_program(code) == ""
+
+    def test_return_inside_a_for_loop_body_pops_the_frame(self) -> None:
+        # a return statement inside a for-loop body, run through
+        # _step_for's own statement handling, also pops the frame
+        code = "main { for _:0..0 { return 1; } out 0,0,0,0,0,0,0,1; }"
+        assert run_program(code) == ""
+
+    def test_return_inside_a_non_range_for_loop_in_a_nested_call(self) -> None:
+        # a return inside a for-loop body, reached through the recursive
+        # _run/_exec_stmt/_exec_block path (an expression-position call),
+        # propagates out through _exec_block's own got-is-not-None return
+        code = """
+            f {
+              for i:(1, 0) { return i; }
+              return 0;
+            }
+            main {
+              r = (f 0);
+              out 0,0,0,0,0,0,0,r;
+            }
+        """
+        assert run_program(code) == "\x01"
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+
+        machine = _Machine("main { out 0,0,0,0,0,0,0,1; }", ScriptedIO())
+        assert hash(machine.snapshot()) is not None
+        machine.step()
+        assert hash(machine.snapshot()) is not None

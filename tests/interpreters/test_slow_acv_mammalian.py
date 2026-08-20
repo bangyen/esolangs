@@ -27,3 +27,13 @@ class TestMammalian:
         """Hello World program from the language docs."""
         program = Path(__file__).parents[2] / "tests/fixtures/mammalian.txt"
         assert run_and_capture(program.read_text()) == "Hello, world!\n"
+
+
+class TestStepMachine:
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        machine = _Machine("", IO())
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.lst == [[0] for _ in range(23)]

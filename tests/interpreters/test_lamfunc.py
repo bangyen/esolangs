@@ -137,3 +137,15 @@ class TestErrors:
         # lb of a function value is not a number
         with pytest.raises(HaltError, match="expected a number"):
             run_program("lb .p")
+
+
+class TestMachine:
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.other.lamfunc import _Machine
+
+        machine = _Machine("p 5", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.io.getvalue() == "101"
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.io.getvalue() == "101"

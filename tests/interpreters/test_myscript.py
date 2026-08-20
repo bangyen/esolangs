@@ -142,6 +142,33 @@ class TestErrors:
         code = "var i is 1\nvar f is func\n  var i is 2\nwhile i,\n  var i is 0\nsay i"
         assert run_and_capture(code) == "0"
 
+    def test_while_loop_inside_a_function_body(self) -> None:
+        # a while loop nested in a function body runs through _run_statement's
+        # own while handling, not the top-level frame stack's
+        code = (
+            "var f is func\n"
+            "  var i is 2\n"
+            "  while i,\n"
+            "    say i\n"
+            "    var i is subtract i 1\n"
+            "say f"
+        )
+        assert run_and_capture(code) == "21None"
+
+    def test_top_level_return_ends_the_program(self) -> None:
+        assert run_and_capture("say 1\nreturn\nsay 2") == "1"
+
+
+class TestStepMachine:
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        machine = _Machine("", IO())
+        while not machine.halted:
+            machine.step()
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.halted
+
     def test_malformed_var_declaration_is_rejected(self) -> None:
         with pytest.raises(ValueError, match="malformed"):
             run_and_capture("var x 5")
