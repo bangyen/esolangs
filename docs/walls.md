@@ -214,12 +214,39 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   ops are not monotone (`s` sends -1 to 1), so the decoding works for any
   table at small arity (every table through three inputs is verified against
   the interpreter; two inputs use a closed form — bit 0 packed as -1/0, each
-  column decoded by a single op).  The search tries op strings of length 2,
-  3, then 4 and generally fails past `n == 4`.  The guaranteed fallback is
-  the decision tree
+  column decoded by a single op).  The search tries op strings of length 2
+  through 6 with a growing budget and generally fails past `n == 5` for dense
+  non-symmetric tables.  Symmetric tables (AND/OR/XOR/majority/threshold-k of
+  any arity) get their own closed forms first: parity/XNOR is exact and O(1)
+  at any `n` (pack bit 0, then fold every later bit with `-s`, which flips
+  0/1 since `(v-1)**2` sends 0->1 and 1->0), and other symmetric tables
+  reduce to a popcount-accumulator prefix plus a decode search over `n`
+  points instead of the full `2**n` rows — see `_wii2d_search`'s docstring
+  for the counting-bound proof that the general (non-symmetric) search must
+  eventually fail at high arity regardless of tuning, and why parity's exact
+  case is a speed win rather than a reachability one.  The guaranteed
+  fallback is the decision tree
   (:func:`esolangs.tools.boolean.parameterized.wii2d_tree`), which
   re-embeds each input at every node (2**n - 1 junctions) and works for any
   arity.
+
+  **A search-free chain (no BFS/DFS at all, just a formula) was assessed and
+  found not to generalize.**  The idea: pack the first `n - 1` bits into a
+  single non-negative integer with a fixed, table-independent prefix
+  (`("*", "*+")` per junction — double on a 0 bit, double-and-increment on a
+  1 bit), leaving only the last junction's two op-strings to depend on the
+  table.  At `n == 3` this is total (a decode search up to length 7 covers
+  all 256 tables, including non-monotone ones like XOR3, since the *decode
+  string* can dip negative even though the packing prefix stays
+  non-negative).  It collapses fast past that: the decode step must hit one
+  specific function out of `2**(2**(n-1))` possible 0/1-valued functions on
+  the `2**(n-1)`-point packed domain, and the count of *usable* (pure
+  0/1-output) op-strings up to length 6 barely grows with length (8, 15, 24
+  at lengths 4, 5, 6) while the target count doubles-of-doubles — coverage
+  falls from 94% at `n == 3` to 9% at `n == 4` to 0.04% at `n == 5`.  Moving
+  the hard part into a single final decode junction does not avoid the
+  counting-bound wall; it relocates a smaller copy of the same pigeonhole
+  problem (arbitrary lookup table, short formula) to that junction.
 
 ## Termination-based convention (Point Break and ArrowQueue are full generators; the rest partial)
 
