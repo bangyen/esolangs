@@ -739,6 +739,21 @@ class TestJaune:
         assert vm.output == "2"
 
 
+class TestSlowAcvMammalian:
+    def test_arrays_pointer_and_cursor(self) -> None:
+        vm = esolangs.make_vm("SLOW ACV MAMMALIAN", "SEED SEED SEED CONSUME PRONOUNCE")
+        assert vm.ip == 0
+        assert vm.memory == [0]
+        for _ in range(3):
+            vm.step()
+        assert vm.memory == [3]  # three SEEDs add 1 to lst[0]'s head each time
+        vm.step()  # CONSUME pops the array's middle element into the accumulator
+        assert vm.memory == []
+        vm.step()
+        assert vm.halted
+        assert vm.output == "\x03"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -853,6 +868,25 @@ class TestRunUntilHaltOrCycle:
         # a closed ring of mirrors the laser circles forever
         grid = ["/ \\", "\\o/", "//\\"]
         machine = _Machine(grid, ScriptedIO(), heading=2)
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_slow_acv_mammalian_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("PRONOUNCE", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_slow_acv_mammalian_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # LEAPFROG jumps back to a point that reproduces the exact same state
+        machine = _Machine(
+            "CONFLAGRATE SEED SEED DIGEST FISSION LEAPFROG", ScriptedIO()
+        )
         assert run_until_halt_or_cycle(machine) is False
 
 
