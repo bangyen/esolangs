@@ -142,3 +142,25 @@ class TestNevermind:
 
         with pytest.raises(ValueError, match="prompt"):
             run_and_capture(["input"])
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.register_based.nevermind import _Machine
+
+        machine = _Machine(["make,x,5"], IO())
+        before = machine.snapshot()
+        machine.step()
+        assert machine.snapshot() != before
+        assert machine.var == {"x": 5}
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.register_based.nevermind import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(["make,x,5"], IO())) is True
+
+    def test_empty_program_is_halted(self) -> None:
+        from esolangs.interpreters.register_based.nevermind import _Machine
+
+        assert _Machine([], IO()).halted is True
