@@ -73,6 +73,7 @@ from esolangs.tools.boolean.tape import (
     sbleq,
     six_five,
     six_five_arithmetic,
+    suffolk,
     three_d_brainfuck,
 )
 
@@ -129,6 +130,7 @@ __all__ = [
     "six_five",
     "six_five_arithmetic",
     "sophie",
+    "suffolk",
     "suptiftam",
     "taglate",
     "three_d_brainfuck",
@@ -190,6 +192,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "ROTfuck",
         "S*bleq",
         "Sophie",
+        "Suffolk",
         "Suptiftam",
         "Taglate",
         "Unsquare",

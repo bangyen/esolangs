@@ -116,6 +116,15 @@ def run_factor(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_suffolk(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.suffolk import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO(), limit=1)
+    return buffer.getvalue()
+
+
 def run_painfuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.painfuck import run
 
@@ -1136,6 +1145,47 @@ class TestFactor:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.factor("02")
+
+
+class TestSuffolk:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # top half
+            ("1000000000000000", 4),  # single one (AND4)
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.suffolk(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_suffolk(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_constant_tables_need_no_reads(self) -> None:
+        """An all-zero or all-one table never touches ','."""
+        assert "," not in boolean.suffolk("00")
+        assert "," not in boolean.suffolk("11")
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.suffolk("011")
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.suffolk("02")
 
 
 class TestPainfuck:
