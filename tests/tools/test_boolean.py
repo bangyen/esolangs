@@ -2002,9 +2002,9 @@ class TestParameterizedNoComment:
 
         template = parameterized.nocomment("10")
         assert template.startswith("{X0}")
-        assert "{C0}" in template  # the complement is injected too
+        assert "{C0}" not in template  # the complement is computed at runtime
         assert template.endswith("o")  # a single final output
-        assert template.count("s") == 2  # one guarded increment + the index skip
+        assert template.count("s") == 3  # NOT gate + guarded increment + index skip
         assert template.count("o") == 1
 
     def test_four_input_works(self) -> None:
@@ -2555,8 +2555,8 @@ class TestParameterizedBfpda:
         template = parameterized.bfpda("0110")
         assert template.count("{X0}") == 1
         assert template.count("{X1}") == 1
-        assert template.count("{C0}") == 1
-        assert template.count("{C1}") == 1
+        assert "{C0}" not in template  # the marker is a constant, not a complement
+        assert "{C1}" not in template
         assert len(re.findall(r"\{X\d+\}", template)) == 2  # n embeds
 
     def test_leaf_print_is_balanced(self) -> None:
