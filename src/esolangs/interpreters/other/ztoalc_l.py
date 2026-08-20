@@ -9,11 +9,12 @@ Expressions follow the wiki's grammar: ``input`` (read a character's ASCII
 value), a variable, a number, ``[size]`` to create an array of ``size``
 elements, and ``array[index]`` where ``array`` is any expression evaluating
 to an array -- so nested indexing and arrays-of-arrays (an element that is
-itself an array) are supported.  A command missing a required operand is a
-malformed program and is rejected with :class:`ValueError`; referencing an
-undefined variable, indexing out of range, reaching a negative pointer, or
-using an array where a number is required are invalid operations that halt
-the program with :class:`~esolangs.exceptions.HaltError`.
+itself an array) are supported.  A command missing a required operand, an
+empty or unbalanced index expression (``a[]``, ``a[1``), is a malformed
+program and is rejected with :class:`ValueError`; referencing an undefined
+variable, indexing out of range, reaching a negative pointer, or using an
+array where a number is required are invalid operations that halt the
+program with :class:`~esolangs.exceptions.HaltError`.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 
@@ -81,7 +82,7 @@ class _Machine:
         creation), the ``input`` keyword, a number, or a variable name.
         """
         if not exp:
-            raise HaltError
+            raise ValueError("missing expression")
         if exp[pos] == "[":
             size, pos = self._eval(exp, pos + 1)
             pos += 1  # the closing ']'
@@ -140,7 +141,7 @@ class _Machine:
             j = pos + 1
             while depth:
                 if j >= len(lhs):
-                    raise HaltError  # unbalanced brackets in the lhs
+                    raise ValueError(f"unbalanced brackets in {lhs!r}")
                 if lhs[j] == "[":
                     depth += 1
                 elif lhs[j] == "]":

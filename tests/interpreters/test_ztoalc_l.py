@@ -258,15 +258,13 @@ class TestArraysOfArrays:
         with pytest.raises(HaltError):
             run_and_capture(code)
 
-    def test_malformed_index_halts(self) -> None:
-        """An unbalanced or empty index on the lhs is invalid, not a crash."""
+    def test_malformed_index_is_rejected(self) -> None:
+        """An unbalanced or empty index on the lhs is a malformed program."""
         import pytest
 
-        from esolangs.exceptions import HaltError
-
-        with pytest.raises(HaltError):
+        with pytest.raises(ValueError, match="unbalanced"):
             run_and_capture(["3", "jump y 0", "a = [2]", "a[1 = 5"])
-        with pytest.raises(HaltError):
+        with pytest.raises(ValueError, match="missing expression"):
             run_and_capture(["3", "jump y 0", "a = [2]", "a[] = 5"])
 
     def test_nested_write_through_a_scalar_middle_halts(self) -> None:

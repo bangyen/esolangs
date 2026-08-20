@@ -10,7 +10,6 @@ import importlib
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
@@ -103,18 +102,18 @@ class TestMalformed:
         with pytest.raises(ValueError, match="cannot be empty"):
             run_program("")
 
-    def test_unmatched_brackets_halt(self) -> None:
-        with pytest.raises(HaltError, match="unmatched"):
+    def test_unmatched_brackets_rejected(self) -> None:
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("[")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("]")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("<[")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("<@]")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("][")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("<@[.")
 
 
