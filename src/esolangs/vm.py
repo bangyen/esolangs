@@ -1724,6 +1724,35 @@ class _ZtoalcLVM(_BaseVM):
         return []
 
 
+class _BetweenVM(_BaseVM):
+    """Goto-based variables; ``ip`` the program counter, ``memory`` the ints."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.between import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.pc
+
+    @property
+    def memory(self) -> list[int]:
+        return [v for v in self._machine.state.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1779,6 +1808,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Jaune": _JauneVM,
     "SLOW ACV MAMMALIAN": _SlowAcvMammalianVM,
     "ZTOALC L": _ZtoalcLVM,
+    "Between": _BetweenVM,
 }
 
 
