@@ -205,6 +205,7 @@ jobs:
         done
         # the reference interpreter must execute and halt
         qemu-riscv64 /tmp/nocomment-riscv </dev/null >/dev/null
+        qemu-riscv64 /tmp/bfpda-riscv </dev/null >/dev/null
         echo "All extra/ RISC-V interpreters ran natively"
 
     - name: Run the RISC-V reference interpreters under unicorn
@@ -216,6 +217,8 @@ jobs:
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
         # the reference interpreter must execute and halt
         python3 scripts/riscv_elf_runner.py /tmp/nocomment-riscv \
+          </dev/null >/dev/null
+        python3 scripts/riscv_elf_runner.py /tmp/bfpda-riscv \
           </dev/null >/dev/null
         echo "All extra/ RISC-V interpreters ran under unicorn"
 

@@ -62,6 +62,7 @@ _EXTRA_DIRS = [
         "*-riscv.s",
         {
             "nocomment": "NoComment",
+            "bfpda": "BF-PDA",
         },
         "RISC-V Assembly Implementations",
     ),
