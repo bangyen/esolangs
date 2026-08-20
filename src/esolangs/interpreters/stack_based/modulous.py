@@ -42,6 +42,16 @@ class State:
         """Whether the instruction pointer has run off the program."""
         return self._halted or self.ind >= len(self.tokens)
 
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ind,
+            tuple(self.stk),
+            tuple(sorted(self.var.items())),
+            self.io.position(),
+            self._halted,
+        )
+
     def step(self) -> None:
         """Execute one ``[OP arg]`` token, advancing the pointer."""
         mod = self.tokens[self.ind]

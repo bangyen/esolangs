@@ -63,6 +63,18 @@ class _Level:
             self.slots[key] = child
         return child
 
+    def freeze(self) -> tuple[object, ...]:
+        """Return a hashable snapshot of this level's position and slots."""
+        return (
+            self.key(),
+            tuple(
+                sorted(
+                    (k, v.freeze() if isinstance(v, _Level) else v)
+                    for k, v in self.slots.items()
+                )
+            ),
+        )
+
 
 class _Machine:
     """The pointer hierarchy, current axis, and the byte it addresses."""
@@ -168,6 +180,17 @@ class _Runner:
     @property
     def halted(self) -> bool:
         return self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ind,
+            self.comment,
+            self.machine.axis,
+            self.machine.top.level,
+            self.machine.top.freeze(),
+            self.io.position(),
+        )
 
     def step(self) -> None:
         """Execute one command (or comment character), advancing the position."""
