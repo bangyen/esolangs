@@ -102,9 +102,13 @@ functions.  Their languages and text generators remain; see `docs/roadmap.md`.
 The parameterized no-input generators embed every input exactly once rather
 than re-embedding a bit at multiple decision nodes, mirroring how an
 input-capable language reads each input once per run; `dotlang` and
-`wii2d_tree` are documented exceptions.  The per-language reasoning (why
-`nocomment` and `bfpda` also embed each input's complement, why Dotlang and
-the `wii2d` fallback re-embed) is in [`docs/walls.md`](walls.md).
+`wii2d_tree` are documented exceptions.  `nocomment` and `bfpda` were
+previously counted as a second kind of exception (embedding each input's
+complement too), but neither actually needed it — `nocomment` computes the
+complement from the bit at runtime, and `bfpda`'s second push turned out to
+be a bit-independent constant, not a complement.  The per-language reasoning
+(why Dotlang and the `wii2d` fallback re-embed) is in
+[`docs/walls.md`](walls.md).
 
 ## Assessed and rejected
 
