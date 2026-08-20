@@ -683,6 +683,19 @@ class TestNevermind:
         assert vm.output == "5\n"
 
 
+class TestBFPDA:
+    def test_bit_stack_and_cursor(self) -> None:
+        vm = esolangs.make_vm("BF-PDA", "<@.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
+        vm.step()  # < pushes a zero
+        assert (vm.ip, vm.stack) == (1, [0])
+        vm.step()  # @ flips the top bit
+        assert vm.stack == [1]
+        vm.step()  # . prints the top bit
+        assert vm.halted
+        assert vm.output == "1"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO

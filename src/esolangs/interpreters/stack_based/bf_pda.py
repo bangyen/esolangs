@@ -15,6 +15,10 @@ empty the stack run forever.
 Invalid runtime operations halt with
 :class:`~esolangs.exceptions.HaltError`; malformed programs raise
 :class:`ValueError`.
+
+The interpreter runs on a :class:`_Machine` (the code, the bit stack, and
+the instruction pointer), so it is step-capable: ``step()`` executes one
+command and ``halted`` is true once the cursor reaches the end of the code.
 """
 
 import sys
@@ -49,54 +53,83 @@ def _backward(code: str, i: int) -> int:
     return j + 1
 
 
+class _Machine:
+    """Per-run BF-PDA state: the code, the bit stack, and the cursor."""
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Validate ``code``'s brackets and start with an empty stack.
+
+        ``code`` must be non-empty and its brackets balanced; both are
+        malformed-program conditions raised eagerly, before any command
+        runs.
+        """
+        if not code:
+            raise ValueError("BF-PDA program cannot be empty")
+        depth = 0
+        for pos, ch in enumerate(code):
+            if ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+                if depth < 0:
+                    raise HaltError(f"unmatched ']' at position {pos}")
+        if depth:
+            raise HaltError(f"unmatched '[' at position {code.rfind('[')}")
+
+        self.io = io
+        self.code = code
+        self.stack: list[int] = []
+        self.ip = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the code."""
+        return self.ip >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ip, tuple(self.stack))
+
+    def step(self) -> None:
+        """Execute one command, advancing (or jumping) the cursor."""
+        if self.halted:
+            return
+        c = self.code[self.ip]
+        if c == "@":
+            if self.stack:
+                self.stack[-1] ^= 1
+            else:
+                self.stack.append(1)  # auto-push the zero, then flip it
+            self.ip += 1
+        elif c == ".":
+            self.io.print_char("01"[self.stack[-1] if self.stack else 0])
+            self.ip += 1
+        elif c == "<":
+            self.stack.append(0)
+            self.ip += 1
+        elif c == ">":
+            if self.stack:
+                self.stack.pop()
+            self.ip += 1
+        elif c == "[":
+            if not self.stack or self.stack[-1] == 0:
+                self.ip = _forward(self.code, self.ip)
+            else:
+                self.ip += 1
+        elif c == "]":
+            if self.stack and self.stack[-1] == 1:
+                self.ip = _backward(self.code, self.ip)
+            else:
+                self.ip += 1
+        else:
+            self.ip += 1
+
+
 def run(code: str, io: IO) -> None:
     """Run a BF-PDA program, halting when it reaches the end of the code."""
-    if not code:
-        raise ValueError("BF-PDA program cannot be empty")
-    depth = 0
-    for pos, ch in enumerate(code):
-        if ch == "[":
-            depth += 1
-        elif ch == "]":
-            depth -= 1
-            if depth < 0:
-                raise HaltError(f"unmatched ']' at position {pos}")
-    if depth:
-        raise HaltError(f"unmatched '[' at position {code.rfind('[')}")
-
-    n = len(code)
-    stack: list[int] = []
-    ip = 0
-    while ip < n:
-        c = code[ip]
-        if c == "@":
-            if stack:
-                stack[-1] ^= 1
-            else:
-                stack.append(1)  # auto-push the zero, then flip it
-            ip += 1
-        elif c == ".":
-            io.print_char("01"[stack[-1] if stack else 0])
-            ip += 1
-        elif c == "<":
-            stack.append(0)
-            ip += 1
-        elif c == ">":
-            if stack:
-                stack.pop()
-            ip += 1
-        elif c == "[":
-            if not stack or stack[-1] == 0:
-                ip = _forward(code, ip)
-            else:
-                ip += 1
-        elif c == "]":
-            if stack and stack[-1] == 1:
-                ip = _backward(code, ip)
-            else:
-                ip += 1
-        else:
-            ip += 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
