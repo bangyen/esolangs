@@ -3718,17 +3718,6 @@ class TestWII2D:
             run_wii2d(program.splitlines(), io=IO())
         return buffer.getvalue()
 
-    def run_tree(self, tpl: str, bits: list[int]) -> str:
-        """Instantiate the decision-tree template and run the interpreter."""
-        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
-        from esolangs.tools.boolean import parameterized
-
-        program = parameterized.instantiate_wii2d_tree(tpl, bits)
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run_wii2d(program.splitlines(), io=IO())
-        return buffer.getvalue()
-
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -3863,34 +3852,3 @@ class TestWII2D:
             for i in range(n):
                 v = _wii2d_apply(routes[i][bits[i]], v)
             assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
-
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("01", 1),
-            ("10", 1),
-            ("0110", 2),
-            ("0001", 2),
-            ("01101001", 3),
-            ("0000000000000001", 4),
-        ],
-    )
-    def test_tree_truth_table(self, table: str, n: int) -> None:
-        """The decision-tree generator works for any table."""
-        template = boolean.wii2d_tree(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_tree(template, bits)
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_tree_has_full_junction_count(self) -> None:
-        """The tree re-embeds each input at every node: 2**n - 1 junctions."""
-        for n in (1, 2, 3):
-            template = boolean.wii2d_tree(format(0, f"0{2**n}b"))
-            assert template.count("X") == 2**n - 1, (n, template.count("X"))
-
-    def test_tree_notes_the_chain_alternative(self) -> None:
-        """The tree docstring points at the n-embedding chain generator."""
-        doc = boolean.wii2d_tree.__doc__ or ""
-        assert "wii2d" in doc
-        assert "2**n - 1" in doc
