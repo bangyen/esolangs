@@ -10,6 +10,11 @@ LEAPFROG with a negative jump target is undefined by the wiki, so the
 interpreter halts instead of jumping.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the 23 arrays, pointer,
+accumulator, and token cursor), so it is step-capable: ``step()`` executes
+one token and ``halted`` is true once the cursor reaches the end of the
+token stream.
 """
 
 import functools
@@ -73,47 +78,80 @@ def partial(op: int, curr: list[int], acc: int) -> int:
     return acc
 
 
+_INS = (
+    "SEED",
+    "CONFLAGRATE",
+    "EXCRETE",
+    "CONSUME",
+    "FISSION",
+    "DIGEST",
+    "SPRINT",
+    "LEAPFROG",
+    "ACCEPT",
+    "PRONOUNCE",
+)
+
+
+class _Machine:
+    """One SLOW ACV MAMMALIAN run: the 23 arrays, pointer, acc, and cursor."""
+
+    def __init__(self, code: str, io: IO) -> None:
+        self.io = io
+        self.tokens = re.findall(f"({'|'.join(_INS)})", code)
+        self.lst: list[list[int]] = [[0] for _ in range(23)]
+        self.ind = self.ptr = self.acc = 0
+        self._halted_by_command = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether a negative LEAPFROG fired or the cursor reached the end."""
+        return self._halted_by_command or self.ind >= len(self.tokens)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ind,
+            tuple(tuple(row) for row in self.lst),
+            self.ptr,
+            self.acc,
+            self.io.position(),
+            self._halted_by_command,
+        )
+
+    def step(self) -> None:
+        """Execute one token, advancing (or jumping) the cursor."""
+        if self.halted:
+            return
+        n = _INS.index(self.tokens[self.ind])
+        curr = self.lst[self.ptr]
+        if n < 2:
+            total(n, self.lst)
+        elif n < 6:
+            self.acc = partial(n, curr, self.acc)
+        elif n == 6 and self.acc < len(curr):
+            self.ptr = (self.ptr + curr[self.acc]) % 23
+        elif n == 7 and curr and curr[-1]:
+            target = self.acc - curr[0] - 1
+            if target < 0:
+                self._halted_by_command = True
+                return
+            self.ind = target
+        elif n == 8:
+            val = self.io.input_str()
+            if val:
+                m = ord(val[0]) ^ self.acc
+                self.lst[0].append(m % 256)
+        elif n == 9:
+            self.io.print_char(chr(self.acc % 256))
+
+        self.ind += 1
+
+
 def run(code: str, io: IO) -> None:
     """Run a SLOW ACV MAMMALIAN program."""
-    ins = (
-        "SEED",
-        "CONFLAGRATE",
-        "EXCRETE",
-        "CONSUME",
-        "FISSION",
-        "DIGEST",
-        "SPRINT",
-        "LEAPFROG",
-        "ACCEPT",
-        "PRONOUNCE",
-    )
-
-    tokens = re.findall(f"({'|'.join(ins)})", code)
-    lst: list[list[int]] = [[0] for _ in range(23)]
-    ind = ptr = acc = 0
-
-    while ind < len(tokens):
-        n = ins.index(tokens[ind])
-        curr = lst[ptr]
-        if n < 2:
-            total(n, lst)
-        elif n < 6:
-            acc = partial(n, curr, acc)
-        elif n == 6 and acc < len(curr):
-            ptr = (ptr + curr[acc]) % 23
-        elif n == 7 and curr and curr[-1]:
-            ind = acc - curr[0] - 1
-            if ind < 0:
-                break
-        elif n == 8:
-            val = io.input_str()
-            if val:
-                m = ord(val[0]) ^ acc
-                lst[0].append(m % 256)
-        elif n == 9:
-            io.print_char(chr(acc % 256))
-
-        ind += 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
