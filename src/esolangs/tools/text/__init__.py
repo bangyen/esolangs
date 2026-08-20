@@ -35,7 +35,6 @@ from esolangs.tools.text.other import (
 )
 from esolangs.tools.text.register import (
     addsubjump,
-    albabet,
     bio,
     collatz_multiverse,
     decleq,
@@ -65,7 +64,6 @@ from esolangs.tools.text.tape import (
 __all__ = [
     "_ilog",
     "addsubjump",
-    "albabet",
     "basicfuck",
     "between",
     "bfstack",
