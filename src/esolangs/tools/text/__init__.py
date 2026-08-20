@@ -45,7 +45,7 @@ from esolangs.tools.text.register import (
     sophie,
     wii2d,
 )
-from esolangs.tools.text.stack import modulous, the_temporary_stack
+from esolangs.tools.text.stack import modulous
 from esolangs.tools.text.tape import (
     bfstack,
     brainfuck,
@@ -101,7 +101,6 @@ __all__ = [
     "suffolk",
     "suptiftam",
     "taglate",
-    "the_temporary_stack",
     "three_d_brainfuck",
     "three_x",
     "two_d_fish",

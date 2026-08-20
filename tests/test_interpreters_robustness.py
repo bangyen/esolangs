@@ -65,12 +65,6 @@ def _empty_machine(module: str, io: IO) -> object:
         state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
         state.tokens = []
         return state
-    if module == "esolangs.interpreters.stack_based.the_temporary_stack":
-        from esolangs.interpreters.stack_based.the_temporary_stack import State
-
-        state = State(io=io)
-        state.code = []
-        return state
     if module == "esolangs.interpreters.register_based.qoibl":
         from esolangs.interpreters.register_based.qoibl import State
 
@@ -175,6 +169,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.register_based.minsky_swap import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.home_row":
+        from esolangs.interpreters.tape_based.home_row import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -187,7 +185,6 @@ _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.one_two_three",
     "esolangs.interpreters.stack_based.eval",
     "esolangs.interpreters.stack_based.modulous",
-    "esolangs.interpreters.stack_based.the_temporary_stack",
     "esolangs.interpreters.register_based.qoibl",
     "esolangs.interpreters.register_based.point_break",
     "esolangs.interpreters.stack_based.forth",
@@ -213,6 +210,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.stack_based.grapheme",
     "esolangs.interpreters.register_based.ram0",
     "esolangs.interpreters.register_based.minsky_swap",
+    "esolangs.interpreters.tape_based.home_row",
 }
 
 

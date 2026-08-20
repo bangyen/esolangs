@@ -100,3 +100,29 @@ class TestGenerator:
         from esolangs.tools.text.other import home_row
 
         assert run_program(home_row("Hello, World!")) == "Hello, World!"
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.tape_based.home_row import _Machine
+
+        machine = _Machine("a", ScriptedIO())
+        before = machine.snapshot()
+        machine.step()  # a increments the current cell
+        assert machine.snapshot() != before
+        assert machine.grid[0] == 1
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.tape_based.home_row import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("ak;", ScriptedIO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # all: a increments cell 0 to 1, then the loop body is empty, so
+        # the closing l jumps back to itself forever with the cell
+        # unchanged -- a genuine state cycle, not unbounded growth.
+        from esolangs.interpreters.tape_based.home_row import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("all", ScriptedIO())) is False
