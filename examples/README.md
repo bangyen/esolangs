@@ -58,6 +58,11 @@ truth machine (see `docs/walls.md`):
   halt-vs-loop convention).  The same table with both inputs one would loop
   forever instead (the `1` branch is not executed).  This is the language's
   boolean convention (see `docs/walls.md`).
+- `cod.txt` is what `instantiate(cod("0110"), [1, 1])` produces — a
+  two-input XOR with both inputs one, printing `0`.  COD has no runtime
+  input (the bits are embedded in the program text, not read via `...`),
+  and no I/O other than a printed number, so this is the whole boolean
+  story for the language (see `docs/cod_boolean_generator.md`).
 
 ## multiply
 
