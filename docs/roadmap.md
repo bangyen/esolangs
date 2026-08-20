@@ -47,12 +47,6 @@ construction can work.
   (`(0,0)->0, (0,1)->1, (1,0)->1, (1,1)->2`).  Building the actual
   generator (arbitrary `n`, decision-tree or closed-form construction) is
   unbuilt work, not a research question.
-- **Factor — plausible, unbuilt.**  Decodes to and delegates to brainfuck,
-  which is Turing-complete with real conditional branching (`[`/`]`); the
-  obstacle is constructing an integer whose prime factorization decodes to
-  a working boolean-table brainfuck program, a harder search than the text
-  generator's (which only needs *some* integer decoding to *a* working
-  hello-world).
 - **SLOW ACV MAMMALIAN — plausible, unbuilt.**  LEAPFROG is a genuine
   data-dependent conditional jump fed by ACCEPT (input), so the machine is
   structurally capable; nobody has attempted a boolean-table construction
