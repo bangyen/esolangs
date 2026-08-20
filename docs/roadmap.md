@@ -53,11 +53,6 @@ construction can work.
   against its 23-array model.  The language already has a Lean-proved
   total generator search for text output, so the same search machinery
   could plausibly be pointed at boolean tables.
-- **Suffolk — unassessed.**  `,.` computes `ord(input) - 1` directly (a
-  working input-to-output arithmetic path), so it is not walled the way
-  the boolean-blockers table's entries are; whether two inputs can compose
-  within the `!`/`<`/`,`/`.` instruction set and the 10-pass loop cap has
-  not been checked.
 
 ## Transpilers
 

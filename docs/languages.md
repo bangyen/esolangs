@@ -62,7 +62,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
-| Suffolk | yes | yes |  |  | yes | hello |
+| Suffolk | yes | yes |  | yes | yes | hello |
 | Suptiftam | yes | yes |  | yes |  | hello cat truth-machine |
 | Taglate | yes | yes |  | yes |  | hello |
 | The Temporary Stack | yes | yes |  |  |  | hello |
