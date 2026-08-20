@@ -198,12 +198,19 @@ exclusion below.  What remains:
 - Suptiftam's calls, Forbin's statement-position calls, and all of
   Lamfunc's calls now run on an explicit frame stack (see the section
   above) instead of native Python recursion — confirmed while doing those
-  conversions, this does *not* make infinite recursion cycle-detectable.  A
-  call that never returns pushes one new frame per `step()` and none is
-  ever popped, so `snapshot()`'s frame tuple strictly grows and two
-  snapshots can never compare equal: unbounded growth, the same class
-  `+[>+]` already falls into, not a repeating state.  See `docs/walls.md`
-  for the full argument.
+  conversions, this does *not* make infinite recursion cycle-detectable via
+  `run_until_halt_or_cycle`.  A call that never returns pushes one new
+  frame per `step()` and none is ever popped, so `snapshot()`'s frame
+  tuple strictly grows and two whole-machine snapshots can never compare
+  equal: unbounded growth, the same class `+[>+]` already falls into for
+  that specific mechanism.  A separate, narrower check — comparing a
+  newly-pushed frame's own local state against ancestor frames already on
+  the stack, rather than whole-machine snapshots across time — could catch
+  the common case of a call whose local state repeats exactly relative to
+  an ancestor (e.g. an accidental unconditional self-call), but not every
+  infinite recursion, and it doesn't fit the existing `snapshot()`
+  protocol; not built, revisit only if a concrete program needs it.  See
+  `docs/walls.md` for the full argument.
 - **Branching cycle detection for `y`/`?` (considered, not started).**
   Forking the walk at every random decision and requiring *every* branch to
   prove a cycle would soundly prove "this program hangs no matter how the
