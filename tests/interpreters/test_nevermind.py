@@ -164,3 +164,11 @@ class TestStepMachine:
         from esolangs.interpreters.register_based.nevermind import _Machine
 
         assert _Machine([], IO()).halted is True
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.register_based.nevermind import _Machine
+
+        machine = _Machine([], IO())
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.halted

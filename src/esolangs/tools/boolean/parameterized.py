@@ -1448,7 +1448,11 @@ def _wii2d_search_start(
     for v in range(10):
         if v in index and (start_set >> index[v]) & 1:
             return v, routes
-    return None
+    # every accepted `result` has `start_set & start_bits` nonzero (the i == 0
+    # acceptance check above requires it, and start_set is that same value
+    # threaded back up unchanged), and start_bits is built from exactly the
+    # v in range(10) with v in index, so the loop above always returns
+    return None  # pragma: no cover
 
 
 def _wii2d_domain(maxlen: int, cap: int) -> list[int]:

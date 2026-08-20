@@ -92,3 +92,13 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("mipt", ScriptedIO(""))) is False
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.register_based.pct_squared_minus_one import (
+            _Machine,
+        )
+
+        machine = _Machine("", ScriptedIO(""))
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.acc == 0

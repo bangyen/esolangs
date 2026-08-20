@@ -3760,3 +3760,161 @@ class TestWII2D:
             for i in range(n):
                 v = _wii2d_apply(routes[i][bits[i]], v)
             assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
+
+    def test_search_falls_back_to_symmetric_search_when_the_ladder_fails(
+        self,
+    ) -> None:
+        """A symmetric table that the general ladder can't fit still resolves
+        through :func:`_wii2d_symmetric_search`, and a non-symmetric table
+        that the ladder can't fit gives up entirely.  The general ladder's
+        real failure only shows up at large arity (see
+        ``test_symmetric_search_reduces_to_popcount_decode``), so this stubs
+        :func:`_wii2d_search_start` to fail unconditionally and caps the
+        ladder's own op-string length at 4 (maxlen 5-6 are real but
+        expensive to enumerate and irrelevant here, since the stubbed
+        ``_wii2d_search_start`` ignores them anyway), isolating the fallback
+        decision in :func:`_wii2d_search` itself.  The fallback's own
+        :func:`_wii2d_symmetric_search` call still runs for real (uncapped),
+        so it must still succeed.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.parameterized import _wii2d_domain, _wii2d_search
+
+        def capped_domain(maxlen: int, cap: int) -> list[int]:
+            return _wii2d_domain(min(maxlen, 4), cap)
+
+        n = 4
+        symmetric_table = "".join(
+            "1" if bin(c).count("1") > n // 2 else "0" for c in range(2**n)
+        )
+        with (
+            patch.object(parameterized, "_wii2d_search_start", return_value=None),
+            patch.object(parameterized, "_wii2d_domain", side_effect=capped_domain),
+        ):
+            result = _wii2d_search(n, symmetric_table)
+        assert result is not None
+
+        non_symmetric_table = "0001001000110100"
+        with (
+            patch.object(parameterized, "_wii2d_search_start", return_value=None),
+            patch.object(parameterized, "_wii2d_domain", side_effect=capped_domain),
+        ):
+            result = _wii2d_search(n, non_symmetric_table)
+        assert result is None
+
+    def test_symmetric_search_deadline_stops_the_ladder(self) -> None:
+        """The per-``maxlen`` deadline check aborts the ladder early."""
+        from esolangs.tools.boolean.parameterized import _wii2d_symmetric_search
+
+        calls = [0.0, 100.0]
+
+        def fake_monotonic() -> float:
+            return calls.pop(0) if calls else 100.0
+
+        with patch("time.monotonic", side_effect=fake_monotonic):
+            result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
+        assert result is None
+
+    def test_symmetric_search_gives_up_after_the_full_ladder(self) -> None:
+        """No decode is found once every ``maxlen`` in the ladder is tried."""
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.parameterized import _wii2d_symmetric_search
+
+        with patch.object(parameterized, "_wii2d_sequences", return_value=[]):
+            result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
+        assert result is None
+
+    @staticmethod
+    def _build_search_start_args(maxlen: int, table: str):  # type: ignore[no-untyped-def]
+        """Build the ``(t, seqs, pre, index)`` args ``_wii2d_search_start`` needs."""
+        from esolangs.tools.boolean.parameterized import (
+            _wii2d_apply,
+            _wii2d_domain,
+            _wii2d_sequences,
+        )
+
+        domain = _wii2d_domain(maxlen, cap=10**6)
+        index = {v: i for i, v in enumerate(domain)}
+        seqs = _wii2d_sequences(maxlen, domain)
+        inv = []
+        for s in seqs:
+            m: dict[int, int] = {}
+            for v in domain:
+                y = _wii2d_apply(s, v)
+                m[y] = m.get(y, 0) | (1 << index[v])
+            inv.append(m)
+
+        def pre(sidx: int, targets: int) -> int:
+            out = 0
+            m = inv[sidx]
+            bits = targets
+            while bits:
+                low = bits & -bits
+                out |= m.get(domain[low.bit_length() - 1], 0)
+                bits ^= low
+            return out
+
+        t = [int(c) for c in table]
+        return t, seqs, pre, index
+
+    def test_search_start_timeout_returns_none(self) -> None:
+        """An already-expired deadline aborts the search immediately."""
+        import time
+
+        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+
+        n = 3
+        t, seqs, pre, index = self._build_search_start_args(2, "01101001")
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() - 1.0)
+        assert result is None
+
+    def test_search_start_clean_failure_returns_none(self) -> None:
+        """A deadline with plenty of time left can still fail cleanly (no
+        route pair fits every requirement), exercising the dead-end and
+        final-``None`` paths instead of the timeout path."""
+        import time
+
+        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+
+        n = 3
+        # maxlen=1 gives too small an op-string pool to realize XOR3
+        t, seqs, pre, index = self._build_search_start_args(1, "01101001")
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        assert result is None
+
+    def test_search_start_memoizes_repeated_subproblems(self) -> None:
+        """A junction's sub-search is memoized by its requirement set so a
+        repeated subproblem returns the cached result instead of re-solving."""
+        import time
+
+        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+
+        n = 4
+        table = "0000000000111101"
+        t, seqs, pre, index = self._build_search_start_args(2, table)
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        assert result is not None
+
+    def test_wii2d_raises_when_the_search_finds_no_route(self) -> None:
+        """``wii2d`` surfaces a search failure as a ``ValueError``."""
+        from esolangs.tools.boolean import parameterized
+
+        with (
+            patch.object(parameterized, "_wii2d_search", return_value=None),
+            pytest.raises(ValueError, match="no route"),
+        ):
+            parameterized.wii2d("0110")
+
+    def test_layout_embeds_a_nonzero_start_digit(self) -> None:
+        """A nonzero ``start`` writes an initial digit before the chain runs.
+
+        ``_wii2d_search`` happens not to need a nonzero start for the small
+        tables sampled elsewhere in this file, so this drives
+        :func:`_wii2d_layout` directly with one and confirms the produced
+        template actually runs correctly through the real interpreter.
+        """
+        from esolangs.tools.boolean.parameterized import _wii2d_layout
+
+        template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
+        for bit, expected in ((0, "5"), (1, "6")):
+            assert self.run_chain(template, [bit]) == expected

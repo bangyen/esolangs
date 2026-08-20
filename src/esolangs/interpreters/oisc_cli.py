@@ -9,13 +9,11 @@ up to a fixed instruction ``limit`` and raise :class:`HaltError` past it.
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING, Protocol
+from collections.abc import Callable
+from typing import Protocol
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 
 class _StepMachine(Protocol):

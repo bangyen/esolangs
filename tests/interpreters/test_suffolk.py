@@ -73,3 +73,11 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("!!!!", IO(), limit=3)) is True
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine("!", IO(), limit=0)
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.tape == [0]

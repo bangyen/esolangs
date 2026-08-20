@@ -140,3 +140,12 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("<@[@@]", ScriptedIO())) is False
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.stack_based.bf_pda import _Machine
+
+        machine = _Machine("<", ScriptedIO())
+        machine.step()  # < pushes a zero
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.stack == [0]
