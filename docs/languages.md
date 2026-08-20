@@ -24,7 +24,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | ArrowQueue |  | yes |  | yes |  | boolean |
 | BF-PDA |  | yes | yes | yes | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
-| BIO | yes | yes |  | yes |  | hello |
+| BIO | yes | yes | yes | yes |  | hello |
 | Back |  | yes |  | yes |  |  |
 | Basicfuck | yes | yes | yes | yes |  | hello |
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
