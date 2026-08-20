@@ -19,6 +19,12 @@ Languages with both an in-package interpreter and a native cross-check:
   via ``riscv_elf_runner`` and must agree with the Python interpreter on the
   full corpus; both error on non-commands, stack underflow, and out-of-range
   jumps.
+* **BF-PDA** — ``stack_based/bf_pda.py`` vs
+  ``extra/assembly/bfpda-riscv.s``.  Both implement the full wiki language
+  (6 commands over a bit stack whose top is the current cell, with comments).
+  The assembly is run under unicorn via ``riscv_elf_runner`` and must agree
+  with the Python interpreter on the full corpus; both error on empty
+  programs and unbalanced brackets.
 * **Forþ** — ``stack_based/forth.py`` vs ``extra/rust/forth.rs``.  The Rust
   reference writes its ``Input: `` prompt to stdout (the Python side routes
   it through the IO layer), which is stripped before comparing; both agree
@@ -247,6 +253,40 @@ LASERFUCK_BOOLEAN = [
 ]
 
 
+# -- BF-PDA corpus: the full 6-command wiki language ----------------------
+
+# Every command over a bit stack (top = current cell).  `@` flips the top,
+# `.` prints it as '0'/'1', `<` pushes a zero, `>` pops, and `[`/`]` are
+# brainfuck-style while loops; any other character is a comment.  An empty
+# stack reads as a zero.  Programs must terminate (a `]` back-jumping to a
+# repeating point loops forever).
+BFPDA_CORPUS = [
+    "@",  # empty stack: @ auto-pushes a fresh 1
+    ".",  # empty stack: prints '0'
+    "<.",  # push 0, print '0'
+    "<@.",  # push 0, flip, print '1'
+    "<@@.",  # push 0, flip twice, print '0'
+    ">@.",  # pop empty (no-op), push 1, print '1'
+    "<>@.",  # push 0, pop, push 1, print '1'
+    "<.>@.",  # "01"
+    "<@>@.",  # push-flip, pop, push, print -> "1"
+    "[]",  # `[` on an empty stack skips the body
+    "[@].",  # skipped body, then print '0'
+    "<@[>].",  # loop runs once (pops the guard), print '0'
+    "abc.",  # comments, then print '0'
+    "@..",  # "11"
+    "<@<@[.>]",  # loop prints each bit -> "11"
+    # error categories: an empty program is malformed (exit 2); unbalanced
+    # brackets are invalid operations (exit 3) in both
+    "",  # empty program: malformed, exit 2
+    "[",  # unbalanced '[': invalid op, exit 3
+    "]",  # unbalanced ']': invalid op, exit 3
+    "<@[",  # unbalanced '[': invalid op, exit 3
+    "@]",  # unbalanced ']': invalid op, exit 3
+    "][",  # ']' below depth 0: invalid op, exit 3
+]
+
+
 # -- NoComment corpus: the full 10-command wiki language ------------------
 
 # Every command over a byte tape and stack.  `s`/`b` jump by a peeked stack
@@ -390,6 +430,114 @@ def _verify_nocomment() -> bool:
 
     if not failures:
         print(f"NoComment differential: {len(NOCOMMENT_CORPUS)} programs match")
+    return failures == 0
+
+
+def _run_bfpda_python(program: str) -> tuple[bytes, int]:
+    """Run the Python BF-PDA interpreter; return (output, exit code).
+
+    Exit codes follow the cross-check convention: 0 = success, 2 = malformed
+    program (ValueError), 3 = invalid operation (HaltError).
+    """
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.stack_based.bf_pda import run
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_char(self, char: str) -> None:
+            buffer.write(char.encode("latin1"))
+
+    try:
+        run(program, _IO())
+    except HaltError:
+        return buffer.getvalue(), 3
+    except ValueError:
+        return buffer.getvalue(), 2
+    return buffer.getvalue(), 0
+
+
+def _run_bfpda_python_limited(program: str, timeout: float) -> tuple[bytes, int] | None:
+    """Run the Python BF-PDA interpreter with a wall-clock budget.
+
+    Returns ``(output, exit_code)`` like :func:`_run_bfpda_python`, or None
+    if the program did not terminate (the fuzzer's analog of the assembly's
+    instruction-count cap).  The interpreter is step-capable, so the run is
+    bounded by state-cycle detection
+    (:func:`esolangs.vm.run_until_halt_or_cycle`): a repeated snapshot
+    proves a loop and is reported as non-termination immediately.  The alarm
+    stays as the backstop for the unbounded-growth class (a loop that keeps
+    pushing the stack never revisits a state), and is only meaningful on
+    POSIX; the interpreter is skipped (None) elsewhere.
+    """
+    import signal
+
+    if not hasattr(signal, "SIGALRM"):
+        return None
+
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.stack_based.bf_pda import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_char(self, char: str) -> None:
+            buffer.write(char.encode("latin1"))
+
+    class _TimeoutError(Exception):
+        pass
+
+    def _alarm(_signum: int, _frame: object) -> None:
+        raise _TimeoutError
+
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(int(timeout))
+    try:
+        machine = _Machine(program, _IO())
+        if not run_until_halt_or_cycle(machine):
+            return None
+        return buffer.getvalue(), 0
+    except HaltError:
+        return buffer.getvalue(), 3
+    except ValueError:
+        return buffer.getvalue(), 2
+    except _TimeoutError:
+        return None
+    finally:
+        signal.alarm(0)
+
+
+def _verify_bfpda() -> bool:
+    """Compare the Python BF-PDA interpreter against the assembly cross-check.
+
+    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
+    requires unicorn and a RISC-V cross-compiler; it is skipped when either
+    is missing.  Both implementations error on empty programs and unbalanced
+    brackets, and must agree on the valid-program corpus.
+    """
+    if not _asm_refs_ready("bfpda"):
+        return True
+
+    failures = 0
+    for program in BFPDA_CORPUS:
+        ref = _asm_refs("bfpda", program)
+        py_out, py_code = _run_bfpda_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
+        if (asm_out, asm_code) != (py_out, py_code):
+            failures += 1
+            print(
+                f"BF-PDA {program!r}: asm={(asm_out, asm_code)} "
+                f"py={(py_out, py_code)}"
+            )
+
+    if not failures:
+        print(f"BF-PDA differential: {len(BFPDA_CORPUS)} programs match")
     return failures == 0
 
 
@@ -656,6 +804,53 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
         f"NoComment fuzz: {checked} programs match, {loops} consistent loops"
         if not failures
         else f"NoComment fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    )
+    return failures == 0
+
+
+def _fuzz_bfpda(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz BF-PDA with random programs.
+
+    A random ``[``/``]`` program may loop forever (e.g. ``<@[]``): the
+    assembly references raise or fault when they exhaust their
+    instruction-count cap (or write past the fixed stack buffer), and Python
+    times out under SIGALRM; ``None`` means "did not terminate" on that side.
+    A program that halts on one side but loops on the other is a divergence.
+    """
+    if not _asm_refs_ready("bfpda"):
+        return True
+
+    alphabet = "@.<>[]"
+    failures = checked = loops = 0
+    for _ in range(count):
+        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
+        py = _run_bfpda_python_limited(program, timeout=3)
+        asm = _asm_refs("bfpda", program)
+        if py is None and asm is None:
+            loops += 1
+            continue
+        if py is None and asm is not None:
+            # Python's 3s budget is a heuristic; the assembly is far faster,
+            # so confirm a genuinely-looping program with a longer budget
+            # before calling the termination mismatch a divergence.
+            py = _run_bfpda_python_limited(program, timeout=30)
+        if py is None or asm is None:
+            failures += 1
+            print(
+                f"BF-PDA fuzz {program!r}: termination mismatch "
+                f"(python {'loops' if py is None else 'halts'}, "
+                f"asm {'loops' if asm is None else 'halts'})"
+            )
+            continue
+        checked += 1
+        if py != asm:
+            failures += 1
+            print(f"BF-PDA fuzz {program!r}: asm={asm!r} py={py!r}")
+
+    print(
+        f"BF-PDA fuzz: {checked} programs match, {loops} consistent loops"
+        if not failures
+        else f"BF-PDA fuzz: {failures} failures of {checked} (plus {loops} loops)"
     )
     return failures == 0
 
@@ -1805,6 +2000,7 @@ def main() -> int:
 
     ok = _verify_laserfuck()
     ok = _verify_nocomment() and ok
+    ok = _verify_bfpda() and ok
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok
@@ -1816,6 +2012,7 @@ def main() -> int:
     if args.fuzz:
         rng = random.Random(args.seed)
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
+        ok = _fuzz_bfpda(rng, args.fuzz) and ok
         ok = _fuzz_forth(rng, args.fuzz) and ok
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok
