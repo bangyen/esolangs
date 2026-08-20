@@ -34,20 +34,26 @@ Decisions for gaps in the wiki spec (documented):
   function, or an overflowed bit combine) raises
   :class:`~esolangs.exceptions.HaltError`.
 
-``_Machine.step()`` evaluates one top-level call expression (including any
-partial application it absorbs), advancing the top-level token cursor --
-the same granularity ``run_main`` already looped at.  A call's own
-argument evaluation, and any user function body it invokes, still runs to
-completion inside that one ``step()`` through the original recursive
-``_eval``/``_apply``, since Lamfunc has no looping construct other than
-function recursion (unbounded recursion raises Python's own
-``RecursionError``, not a hang cycle detection needs to catch).
+``_Machine`` runs on an explicit stack of ``_Frame``s (``self.frames``),
+each representing one ``_eval``-equivalent expression evaluation in
+progress: scanning for a leading token, gathering a callable's arguments,
+or running a user function's body / a forced ``i``-branch as a token
+span.  A call in any position -- not just at the top level or a function
+body's own sequence, but nested inside another call's argument list --
+pushes a new frame instead of recursing natively, since Lamfunc has no
+"statement" position whose value is always discarded (unlike languages
+with real statements): a recursive call reached through the lazy ``i``
+builtin's chosen branch is exactly as likely to need this as one at
+plain argument position.  This removes recursion depth as a correctness
+limit entirely; only ``_scan`` (sizing an unevaluated ``i`` branch, bounded
+by the *program text*'s own nesting rather than by how many times it
+runs) is left as native recursion, a narrower and much less likely limit.
 """
 
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import cast
 
 from esolangs.exceptions import HaltError
@@ -121,52 +127,88 @@ def _as_int(value: object) -> int:
 
 
 class _Thunk:
-    """An unevaluated ``i`` branch: evaluate only when selected."""
+    """An unevaluated ``i`` branch: a token span, forced only when selected."""
 
-    __slots__ = ("end", "machine", "start", "tokens")
+    __slots__ = ("end", "start", "tokens")
 
-    def __init__(
-        self, machine: _Machine, tokens: list[str], start: int, end: int
-    ) -> None:
-        self.machine = machine
+    def __init__(self, tokens: list[str], start: int, end: int) -> None:
         self.tokens = tokens
         self.start = start
         self.end = end
 
-    def force(self) -> object:
-        value, _ = self.machine._eval(self.tokens, self.start)  # noqa: SLF001
-        return value
+
+@dataclass
+class _Frame:
+    """One ``_eval``-equivalent expression evaluation in progress.
+
+    ``phase`` is ``"scan"`` (looking for the leading token at ``pos``),
+    ``"gather"`` (a callable ``fn`` is resolved; collecting ``args`` up to
+    its arity), or ``"body"`` (running a user function's body as a
+    sequence, threading ``result`` forward).  ``awaiting`` is set while a
+    pushed child frame's value is pending; ``awaiting_result`` further
+    distinguishes "the child's value directly becomes mine" (forcing an
+    ``i`` branch, or a call's body finishing) from "append the child's
+    value to my own ``args``" (gathering an ordinary argument).
+    """
+
+    tokens: list[str]
+    pos: int
+    start: int = 0
+    phase: str = "scan"
+    fn: _Func | None = None
+    args: list[object] = field(default_factory=list)
+    result: object = 0
+    saved: dict[str, object] = field(default_factory=dict)
+    awaiting: bool = False
+    awaiting_result: bool = False
 
 
 class _Machine:
-    """One Lamfunc run: the definitions, variables, and top-level cursor."""
+    """One Lamfunc run: the definitions, variables, cursor, and call stack."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.defs, self.main = _parse_program(code)
         self.vars: dict[str, object] = {}
         self.ind = 0
-        self._halted = False
+        self.frames: list[_Frame] = []
+        if self.main:
+            self.frames.append(_Frame(self.main, 0, start=0))
 
     @property
     def halted(self) -> bool:
         """Whether the top-level cursor has run off the call sequence."""
-        return self._halted or self.ind >= len(self.main)
+        return self.ind >= len(self.main) and not self.frames
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
         Function values are not meaningfully hashable (a closure captures
-        live definitions), so variable values are captured via ``repr()``
-        -- sufficient for the state-cycle detector's purpose, since a
-        genuine hang re-evaluates the same top-level position with the
-        same bindings on every lap.
+        live definitions), so argument/result values are captured via
+        ``repr()`` -- sufficient for the state-cycle detector's purpose,
+        since a genuine hang re-evaluates the same position with the same
+        bindings on every lap.  A call that never returns pushes one new
+        frame per step and none is ever popped, so this cannot mistake
+        unbounded recursion for a repeat: the frame tuple's length
+        strictly grows.
         """
         return (
             self.ind,
             tuple(sorted((k, repr(v)) for k, v in self.vars.items())),
+            tuple(
+                (
+                    id(f.tokens),
+                    f.pos,
+                    f.phase,
+                    f.fn.name if f.fn else "",
+                    tuple(repr(a) for a in f.args),
+                    repr(f.result),
+                    f.awaiting,
+                    f.awaiting_result,
+                )
+                for f in self.frames
+            ),
             self.io.position(),
-            self._halted,
         )
 
     def _arity(self, name: str) -> int:
@@ -186,58 +228,6 @@ class _Machine:
         raise HaltError(  # pragma: no cover - callers only look up known names
             f"calling undefined function {name!r}"
         )
-
-    # -- the core: evaluate one prefix expression, returning (value, consumed)
-
-    def _eval(self, tokens: list[str], i: int) -> tuple[object, int]:
-        """Evaluate ``tokens[i:]``; return ``(value, tokens consumed)``."""
-        tok = tokens[i]
-        if tok.startswith("."):
-            name = tok[1:]
-            # a bound parameter (e.g. ``id f - .f``) returns its value
-            if name in self.vars:
-                return self.vars[name], 1
-            return _Func(name, self._arity(name), *self._def_fields(name)), 1
-        if _is_int(tok):
-            return _parse_int(tok), 1
-        # a bound variable holding a function is a call site (``a b`` calls a)
-        if tok in self.vars and isinstance(self.vars[tok], _Func):
-            fn = cast(_Func, self.vars[tok])
-        elif tok in _BUILTINS or tok in self.defs:
-            fn = self._lookup(tok)
-        # a bound variable: return its value (a number or a string)
-        elif tok in self.vars:
-            return self.vars[tok], 1
-        # an undefined identifier followed by more tokens is a call to an
-        # undefined function; a bare one is a variable NAME (for vs/vg)
-        elif i + 1 < len(tokens):
-            raise HaltError(f"calling undefined function {tok!r}")
-        else:
-            return tok, 1
-
-        arity = fn.arity
-        args: list[object] = []
-        pos = i + 1
-        for _ in range(arity):
-            if pos >= len(tokens):
-                # partial application: return a lambda for the missing args
-                return self._partial(fn, args), pos - i
-            # vs/vg take their variable NAME as a literal token, never a value
-            if fn.name in ("vs", "vg") and not args:
-                args.append(tokens[pos])
-                pos += 1
-                continue
-            # i is lazy in its second and third arguments: only the chosen
-            # branch is evaluated, so a branch may recurse (the while loop).
-            if fn.name == "i" and len(args) >= 1:
-                end = self._scan(tokens, pos)
-                args.append(_Thunk(self, tokens, pos, end))
-                pos = end
-                continue
-            value, consumed = self._eval(tokens, pos)
-            args.append(value)
-            pos += consumed
-        return self._apply(fn, args), pos - i
 
     def _scan(self, tokens: list[str], i: int) -> int:
         """Return how many tokens the expression at ``i`` occupies."""
@@ -272,19 +262,17 @@ class _Machine:
             orig=fn,
         )
 
-    def _apply(self, fn: _Func, args: list[object]) -> object:
-        """Apply a builtin or user function to its (evaluated) arguments."""
+    def _apply_builtin(self, fn: _Func, args: list[object]) -> object:
+        """Apply a non-``i``, non-user builtin to its evaluated arguments.
+
+        Never recurses: every one of these builtins is a single, bounded
+        computation on already-evaluated values.
+        """
         if fn.name == "p":
             self.io.print_str(_print_value(args[0]))
             return args[0]
         if fn.name == "eq":
             return 1 if args[0] == args[1] else 0
-        if fn.name == "i":
-            cond, branch_t, branch_f = args[0], args[1], args[2]
-            chosen = branch_t if cond != 0 else branch_f
-            if isinstance(chosen, _Thunk):
-                return chosen.force()
-            return chosen
         if fn.name == "cb":
             x, y = _as_int(args[0]), _as_int(args[1])
             if x < 0 or y < 0:  # pragma: no cover - Lamfunc values are never negative
@@ -299,47 +287,189 @@ class _Machine:
             return args[1]
         if fn.name == "vg":
             return self.vars.get(str(args[0]), 0)
+        # pragma: no cover - callers only pass a name from _BUILTINS
+        raise AssertionError(f"unexpected non-user builtin {fn.name!r}")
 
-        # user-defined (or a partial application completing): bind params to
-        # args (given + new) in a fresh scope and run the body
+    def _push_scan(self, tokens: list[str], pos: int) -> None:
+        """Push a fresh ``"scan"`` frame to evaluate one expression at ``pos``."""
+        self.frames.append(_Frame(tokens, pos, start=pos))
+
+    def _resolve(self, frame: _Frame) -> None:
+        """Advance a ``"scan"`` frame: classify the token at ``frame.pos``.
+
+        Resolves immediately to a value (popping the frame) for a literal,
+        a bound variable, or a bare trailing name; otherwise identifies the
+        callable and switches the frame to ``"gather"``.
+        """
+        tokens, i = frame.tokens, frame.pos
+        tok = tokens[i]
+        if tok.startswith("."):
+            name = tok[1:]
+            if name in self.vars:
+                self._finish(frame, self.vars[name], 1)
+                return
+            value = _Func(name, self._arity(name), *self._def_fields(name))
+            self._finish(frame, value, 1)
+            return
+        if _is_int(tok):
+            self._finish(frame, _parse_int(tok), 1)
+            return
+        if tok in self.vars and isinstance(self.vars[tok], _Func):
+            fn = cast(_Func, self.vars[tok])
+        elif tok in _BUILTINS or tok in self.defs:
+            fn = self._lookup(tok)
+        elif tok in self.vars:
+            self._finish(frame, self.vars[tok], 1)
+            return
+        elif i + 1 < len(tokens):
+            raise HaltError(f"calling undefined function {tok!r}")
+        else:
+            self._finish(frame, tok, 1)
+            return
+        frame.fn = fn
+        frame.pos = i + 1
+        frame.phase = "gather"
+
+    def _gather(self, frame: _Frame) -> None:
+        """Advance a ``"gather"`` frame by one argument, or dispatch the call."""
+        fn = cast(_Func, frame.fn)
+        if len(frame.args) == fn.arity:
+            self._dispatch(frame, fn)
+            return
+        tokens, pos = frame.tokens, frame.pos
+        if pos >= len(tokens):
+            # partial application: not enough tokens left for the remaining args
+            value = self._partial(fn, frame.args)
+            self._finish(frame, value, pos - frame.start)
+            return
+        # vs/vg take their variable NAME as a literal token, never a value
+        if fn.name in ("vs", "vg") and not frame.args:
+            frame.args.append(tokens[pos])
+            frame.pos = pos + 1
+            return
+        # i is lazy in its second and third arguments: only the chosen
+        # branch is evaluated, via a pushed frame once i is dispatched.
+        if fn.name == "i" and len(frame.args) >= 1:
+            end = self._scan(tokens, pos)
+            frame.args.append(_Thunk(tokens, pos, end))
+            frame.pos = end
+            return
+        frame.awaiting = True
+        self._push_scan(tokens, pos)
+
+    def _dispatch(self, frame: _Frame, fn: _Func) -> None:
+        """Apply a fully-gathered call, or push a body frame to run it.
+
+        A partial application completing (``fn.orig is not None``) resolves
+        to its original definition plus the accumulated arguments (the
+        partial's own ``given`` prefix, then this gather's ``args``) before
+        dispatching, the same way the un-partial call would have.
+        """
         if fn.orig is not None:
-            return self._apply(fn.orig, fn.given + args)
-        saved = {p: self.vars.get(p) for p in (fn.params or [])}
-        self.vars.update(dict(zip(fn.params or [], args, strict=True)))
-        result: object = 0
-        i = 0
-        body = fn.body or []
-        while i < len(body):
-            result, consumed = self._eval(body, i)
-            i += consumed
-        for p in fn.params or []:
-            self.vars.pop(p, None)
-        self.vars.update({p: v for p, v in saved.items() if v is not None})
-        return result
+            target = fn.orig
+            args = fn.given + frame.args
+        else:
+            target = fn
+            args = frame.args
+        if target.name == "i":
+            cond, branch_t, branch_f = args[0], args[1], args[2]
+            chosen = branch_t if cond != 0 else branch_f
+            if isinstance(chosen, _Thunk):
+                frame.awaiting = True
+                frame.awaiting_result = True
+                thunk_frame = _Frame(chosen.tokens, chosen.start, start=chosen.start)
+                self.frames.append(thunk_frame)
+                return
+            self._finish(frame, chosen, frame.pos - frame.start)
+            return
+        if target.name in _BUILTINS:
+            value = self._apply_builtin(target, args)
+            self._finish(frame, value, frame.pos - frame.start)
+            return
+        # a user-defined function: bind params to args in a fresh scope and
+        # push a body frame to run it
+        saved = {p: self.vars.get(p) for p in (target.params or [])}
+        self.vars.update(dict(zip(target.params or [], args, strict=True)))
+        body_frame = _Frame(target.body or [], 0, phase="body", saved=saved)
+        frame.awaiting = True
+        frame.awaiting_result = True
+        self.frames.append(body_frame)
+
+    def _step_body(self, frame: _Frame) -> None:
+        """Advance a ``"body"`` frame: run its next expression, or finish."""
+        if frame.pos >= len(frame.tokens):
+            for p in frame.saved:
+                self.vars.pop(p, None)
+            self.vars.update({p: v for p, v in frame.saved.items() if v is not None})
+            self._finish(frame, frame.result, frame.pos - frame.start)
+            return
+        frame.awaiting = True
+        self._push_scan(frame.tokens, frame.pos)
+
+    def _finish(self, frame: _Frame, value: object, consumed: int) -> None:
+        """Pop ``frame`` (already the top of the stack) and deliver its value."""
+        if self.frames[-1] is not frame:  # pragma: no cover - internal invariant
+            raise AssertionError("_finish called on a frame that is not on top")
+        self.frames.pop()
+        if not self.frames:
+            self._toplevel_result(value, consumed)
+            return
+        caller = self.frames[-1]
+        if caller.awaiting_result:
+            # the child's value IS the caller's own result (i's forced
+            # branch, or a call's body finishing) -- the caller's own pos
+            # already reflects its full consumption in its own tokens, so
+            # the child's consumed (a different token context) is unused
+            caller.awaiting = False
+            caller.awaiting_result = False
+            self._finish(caller, value, caller.pos - caller.start)
+        elif caller.phase == "gather":
+            caller.awaiting = False
+            caller.args.append(value)
+            caller.pos += consumed
+        elif caller.phase == "body":
+            caller.awaiting = False
+            caller.result = value
+            caller.pos += consumed
+        else:  # pragma: no cover - "scan" never awaits a pushed child
+            raise AssertionError(f"unexpected caller phase {caller.phase!r}")
+
+    def _toplevel_result(self, value: object, consumed: int) -> None:
+        """Resolve one top-level call's value, advancing the cursor.
+
+        A partial application absorbs the remaining top-level tokens as
+        its outstanding arguments: push a fresh ``"gather"`` frame for the
+        same (still-partial) function, reusing its own remaining arity and
+        an empty ``args`` list -- ``_dispatch`` merges ``fn.given`` back in
+        once that gather completes.  This can chain (a still-partial
+        result absorbs further arguments the same way) until either the
+        arity is fully satisfied or the top-level tokens run out.
+        """
+        self.ind += consumed
+        if isinstance(value, _Func) and value.arity > 0 and self.ind < len(self.main):
+            gather_frame = _Frame(
+                self.main, self.ind, start=self.ind, phase="gather", fn=value
+            )
+            self.frames.append(gather_frame)
 
     def step(self) -> None:
-        """Evaluate one top-level call, advancing the top-level cursor.
-
-        A partial application that absorbs more of the top-level tokens
-        as its remaining arguments is resolved within the same step.
-        """
+        """Advance the topmost pending frame by one unit of work."""
         if self.halted:
             return
-        tokens = self.main
-        i = self.ind
-        result, consumed = self._eval(tokens, i)
-        if consumed == 0:  # pragma: no cover - _eval always consumes a token
-            raise HaltError("a dangling partial application at the top level")
-        i += consumed
-        # a partial application absorbs the remaining tokens as its args
-        while isinstance(result, _Func) and result.arity > 0 and i < len(tokens):
-            args: list[object] = []
-            for _ in range(result.arity):
-                value, consumed = self._eval(tokens, i)
-                args.append(value)
-                i += consumed
-            result = self._apply(result, args)
-        self.ind = i
+        if not self.frames:
+            # the previous top-level call finished plainly (not a partial
+            # application); start evaluating the next one
+            self._push_scan(self.main, self.ind)
+            return
+        frame = self.frames[-1]
+        if frame.phase == "scan":
+            self._resolve(frame)
+        elif frame.phase == "gather":
+            self._gather(frame)
+        elif frame.phase == "body":
+            self._step_body(frame)
+        else:  # pragma: no cover - only the three phases above are ever set
+            raise AssertionError(f"unexpected frame phase {frame.phase!r}")
 
 
 def _print_value(value: object) -> str:
