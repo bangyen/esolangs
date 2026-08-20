@@ -22,6 +22,18 @@ Decisions for gaps in the wiki spec (documented):
 - a call that resolves to no function is an invalid operation
   (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
   :class:`ValueError`.
+
+``_Machine`` runs ``main``'s body on a resumable ``_Frame`` (a statement
+cursor, and, while a ``for`` loop is active, its row iterator) standing
+in for the top-level statement/loop sequencing Python's own ``for``
+would otherwise carry.  This makes ``step()`` interruptible between
+``main``'s own statements and between a ``for`` loop's rows there -- the
+granularity a hang can actually occur at, since Forbin has no other
+looping construct (recursion is capped at a fixed depth, so it halts
+rather than hangs).  A statement's own expression evaluation, and any
+function call it makes (including one nested inside a ``for`` loop's
+body), still runs to completion inside that one ``step()`` through the
+original recursive ``_eval``/``_call``/``_run``.
 """
 
 from __future__ import annotations
@@ -326,14 +338,33 @@ class _BitReader:
 
 
 class _Frame:
-    """One function invocation: its function, the caller, and its locals."""
+    """One function invocation: its function, the caller, and its locals.
 
-    __slots__ = ("fn", "locals", "parent")
+    ``body``/``pos`` is the statement list a frame is executing and its
+    cursor; ``for_rows``/``for_names``/``for_ind`` track a ``for`` loop
+    in progress at that cursor, one row resumed per step.
+    """
+
+    __slots__ = (
+        "body",
+        "fn",
+        "for_ind",
+        "for_names",
+        "for_rows",
+        "locals",
+        "parent",
+        "pos",
+    )
 
     def __init__(self, fn: _Function, parent: _Frame | None) -> None:
         self.fn = fn
         self.parent = parent
         self.locals: dict[str, object] = {}
+        self.body = fn.body
+        self.pos = 0
+        self.for_rows: list[list[object]] | None = None
+        self.for_names: list[str] = []
+        self.for_ind = 0
 
 
 def _lookup(frame: _Frame | None, name: str, globals_: dict[str, _Function]) -> object:
@@ -519,13 +550,135 @@ def _exec_block(
     return None
 
 
+def _for_rows(
+    spec: _Node,
+    frame: _Frame,
+    globals_: dict[str, _Function],
+    reader: _BitReader,
+    depth: int,
+) -> tuple[list[list[object]], list[str]]:
+    """Compute a ``for`` statement's iteration rows and bound variable names."""
+    if spec[0] == "range":
+        _, name, start_node, end_node = spec
+        start = _eval(start_node, frame, globals_, reader, depth)
+        end = _eval(end_node, frame, globals_, reader, depth)
+        range_rows: list[list[object]] = (
+            [[v] for v in range(cast(int, start), cast(int, end) + 1)]
+            if cast(int, start) <= cast(int, end)
+            else []
+        )
+        return range_rows, [name]
+    _, names, patterns = spec
+    rows: list[list[object]] = []
+    for pat in patterns:
+        items = pat[1] if pat[0] == "group" else [pat]
+        wilds = [j for j, p in enumerate(items) if p[0] == "*"]
+        if not wilds:
+            rows.append(
+                [
+                    _eval(p[1], frame, globals_, reader, depth)
+                    if p[0] == "value"
+                    else 0
+                    for p in items
+                ]
+            )
+        else:
+            import itertools
+
+            for combo in itertools.product((0, 1), repeat=len(wilds)):
+                row: list[object] = []
+                w = 0
+                for p in items:
+                    if p[0] == "*":
+                        row.append(combo[w])
+                        w += 1
+                    else:
+                        row.append(_eval(p[1], frame, globals_, reader, depth))
+                rows.append(row)
+    return rows, names
+
+
+class _Machine:
+    """One Forbin run: ``main``'s resumable top-level frame."""
+
+    def __init__(self, code: str, io: IO) -> None:
+        self.io = io
+        self.globals = _Parser(code).parse()
+        if "main" not in self.globals:
+            raise ValueError("Forbin program has no main function")
+        self.reader = _BitReader(io)
+        main_fn = self.globals["main"]
+        self.frame = _Frame(main_fn, None)
+        # unpassed parameters are set to 0 (per the wiki); main is called
+        # with a single dummy argument 0, so every parameter ends up 0
+        for name in main_fn.args:
+            self.frame.locals[name] = 0
+        self._halted = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether ``main`` returned or ran off its top-level statements."""
+        return self._halted or self.frame.pos >= len(self.frame.body)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection.
+
+        Locals are captured via ``repr()`` since a function value is not
+        meaningfully hashable (it closes over live, mutable frames) --
+        sufficient for the state-cycle detector's purpose, since a
+        genuine hang re-executes the same cursor with the same bindings
+        on every lap.
+        """
+        frame = self.frame
+        return (
+            frame.pos,
+            tuple(sorted((k, repr(v)) for k, v in frame.locals.items())),
+            frame.for_ind if frame.for_rows is not None else -1,
+            self.io.position(),
+            self._halted,
+        )
+
+    def step(self) -> None:
+        """Execute one top-level statement (or one ``for``-loop row)."""
+        if self.halted:
+            return
+        frame = self.frame
+        if frame.for_rows is not None:
+            if frame.for_ind >= len(frame.for_rows):
+                frame.for_rows = None
+                frame.pos += 1
+                return
+            row = frame.for_rows[frame.for_ind]
+            frame.for_ind += 1
+            for name, value in zip(frame.for_names, row, strict=False):
+                if name != "_":
+                    frame.locals[name] = value
+            body = frame.body[frame.pos][2]
+            got = _exec_block(body, frame, self.globals, self.reader, 0)
+            if got is not None:
+                self._halted = True
+            return
+
+        stmt = frame.body[frame.pos]
+        if stmt[0] == "for":
+            spec = stmt[1]
+            rows, names = _for_rows(spec, frame, self.globals, self.reader, 0)
+            frame.for_rows = rows
+            frame.for_names = names
+            frame.for_ind = 0
+            return
+
+        got = _exec_stmt(stmt, frame, self.globals, self.reader, 0)
+        frame.pos += 1
+        if got is not None:
+            self._halted = True
+
+
 def run(code: str, io: IO) -> None:
     """Run a Forbin program, calling ``main`` with a dummy argument."""
-    funcs = _Parser(code).parse()
-    if "main" not in funcs:
-        raise ValueError("Forbin program has no main function")
-    reader = _BitReader(io)
-    _call(funcs["main"], [0], None, funcs, reader, 0)
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
