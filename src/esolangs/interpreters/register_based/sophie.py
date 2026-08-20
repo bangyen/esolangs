@@ -11,6 +11,11 @@ invalid operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the code, accumulator, loop
+stack, and skip flag), so it is step-capable: ``step()`` executes one
+command and ``halted`` is true once ``&`` fires or the cursor reaches the
+end of the code.
 """
 
 import re
@@ -75,48 +80,79 @@ def find(code: str, ind: int) -> int:
     return ind
 
 
-def run(code: str, io: IO) -> None:
-    """Execute Sophie program code."""
-    matches(code)
-    acc = ind = 0
-    skp = False
-    stk: list[int] = []
+class _Machine:
+    """Per-run Sophie state: the code, accumulator, loop stack, and cursor."""
 
-    while ind < len(code):
+    def __init__(self, code: str, io: IO) -> None:
+        """Validate ``code``'s brackets and start with a zero accumulator.
+
+        Unbalanced brackets are a malformed program, raised eagerly before
+        any command runs.
+        """
+        matches(code)
+        self.io = io
+        self.code = code
+        self.acc = self.ind = 0
+        self.skp = False
+        self.stk: list[int] = []
+        self._halted_by_command = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether ``&`` fired or the cursor reached the end of the code."""
+        return self._halted_by_command or self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ind,
+            self.acc,
+            self.skp,
+            tuple(self.stk),
+            self._halted_by_command,
+        )
+
+    def step(self) -> None:
+        """Execute one command, advancing (or jumping) the cursor."""
+        if self.halted:
+            return
+        code = self.code
+        ind = self.ind
         if (c := code[ind]) == "[":
-            if skp:
+            if self.skp:
                 ind = find(code, ind)
-                if not stk:
-                    skp = False
+                if not self.stk:
+                    self.skp = False
             else:
-                stk.append(ind)
+                self.stk.append(ind)
         elif c in "]*":
-            if not stk:
+            if not self.stk:
                 raise HaltError
-            ind = stk.pop() - 1
+            ind = self.stk.pop() - 1
             if c == "*":
-                skp = True
+                self.skp = True
         elif c == ".":
-            io.print_num(acc)
+            self.io.print_num(self.acc)
         elif c == ":":
-            num = io.input_str()
+            num = self.io.input_str()
             if num.isdigit():
-                acc = int(num)
+                self.acc = int(num)
         elif c == ",":
-            io.print_char(chr(acc))
+            self.io.print_char(chr(self.acc))
         elif c == ";":
-            val = io.input_str()
+            val = self.io.input_str()
             if val:
-                acc = ord(val[0])
+                self.acc = ord(val[0])
         elif c == "{":
             ind = find(code, ind)
         elif c == "&":
+            self._halted_by_command = True
             return
         else:
             val = code[ind:]
             if m := re.match(r"@\$(\d+){", val):
                 n = m.end() - 1
-                if acc == int(m[1]):
+                if self.acc == int(m[1]):
                     ind += n
                 else:
                     end = find(code, ind + n)
@@ -126,7 +162,7 @@ def run(code: str, io: IO) -> None:
                         ind = end
             elif m := re.match(r"@\$?(.){", val):
                 n = m.end() - 1
-                if acc == ord(m[1]):
+                if self.acc == ord(m[1]):
                     ind += n
                 else:
                     end = find(code, ind + n)
@@ -135,13 +171,20 @@ def run(code: str, io: IO) -> None:
                     else:
                         ind = end
             elif m := re.match(r"#\$(\d+)", val):
-                acc = int(m[1])
+                self.acc = int(m[1])
                 ind += m.end() - 1
             elif m := re.match(r"#\$?(.)", val):
-                acc = ord(m[1])
+                self.acc = ord(m[1])
                 ind += m.end() - 1
 
-        ind += 1
+        self.ind = ind + 1
+
+
+def run(code: str, io: IO) -> None:
+    """Execute Sophie program code."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
