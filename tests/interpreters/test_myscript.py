@@ -142,19 +142,19 @@ class TestErrors:
         code = "var i is 1\nvar f is func\n  var i is 2\nwhile i,\n  var i is 0\nsay i"
         assert run_and_capture(code) == "0"
 
-    def test_malformed_var_declaration_halts(self) -> None:
-        with pytest.raises(HaltError):
+    def test_malformed_var_declaration_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="malformed"):
             run_and_capture("var x 5")
 
-    def test_malformed_check_case_halts(self) -> None:
-        with pytest.raises(HaltError):
+    def test_malformed_check_case_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="malformed"):
             run_and_capture('check 5,\n  whatever,\n    say "y"')
 
     def test_check_with_no_matching_case(self) -> None:
         assert run_and_capture('check 5,\n  if 1,\n    say "a"') == ""
 
     def test_is_head_is_malformed(self) -> None:
-        with pytest.raises(HaltError):
+        with pytest.raises(ValueError, match="malformed"):
             run_and_capture("is 5")
 
     def test_top_level_assignment(self) -> None:
