@@ -583,7 +583,11 @@ the way MyScript's frame stack was extended to unroll a top-level
 that far because the payoff is small -- unbounded recursion already
 halts on its own, via `_MAX_DEPTH` (Forbin/Suptiftam) or Python's own
 `RecursionError` (Lamfunc), which is a cheaper and more direct bound on
-that specific hang class than cycle detection would be.  Because only
+that specific hang class than cycle detection would be.  That bound is
+not free, though -- `_MAX_DEPTH` is an invented cap with no basis in
+either wiki, so it also wrongly halts a *terminating* program whose
+correct recursion happens to run deeper than 250; see
+`docs/limitations.md`'s interpreter-conventions section.  Because only
 the outer cursor is tracked, and it strictly increases across `step()`
 calls (none of the three has a top-level backward jump), a repeated
 snapshot is currently impossible; the interpreters' `step()`/
