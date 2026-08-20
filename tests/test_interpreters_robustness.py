@@ -215,6 +215,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.other.ztoalc_l":
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+
+        return _Machine([], io)
     raise KeyError(module)
 
 
@@ -263,6 +267,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.sophie",
     "esolangs.interpreters.tape_based.jaune",
     "esolangs.interpreters.tape_based.slow_acv_mammalian",
+    "esolangs.interpreters.other.ztoalc_l",
 }
 
 
