@@ -108,6 +108,14 @@ languages (a tape/pointer/instruction-counter maps 1:1 onto cells,
 registers, and jumps); Rust fits the semantic ones (stacks, typed registers,
 bit manipulation, 2D grids, where hand-written assembly would be unreadable).
 
+**No input in RISC-V.**  RISC-V cross-checks are for no-input/output-only
+languages only.  The fuzzer feeds the generated *program* to the RISC-V ELF
+as its stdin (`scripts/verify_differential.py`), and the Python side reads
+whole lines while the unicorn runner does raw byte reads, so an input-reading
+port would need to rewire input-bit passing and match the line-delimited
+`input_char` semantics.  Languages whose generators read input belong in the
+Rust column, where the reference gets input bits directly.
+
 | Toolchain | Languages |
 | --- | --- |
 | RISC-V assembly | NoComment (tape + stack with a byte-indexed skip). |
@@ -120,8 +128,7 @@ round-trip corpus, so a cross-check would add real verification.
 
 | Toolchain | Languages |
 | --- | --- |
-| RISC-V assembly | 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program). |
-| Rust | AddSubJump (branch-and-goto OISC), BIO (register counter loops), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution). |
+| Rust | AddSubJump (branch-and-goto OISC), BIO (register counter loops), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program).  Both read input via `,`, which the no-input RISC-V rule above excludes. |
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
 its output is a fixed pattern the round-trip already covers, so a cross-check
