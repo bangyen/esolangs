@@ -206,11 +206,11 @@ jobs:
         # the reference interpreter must execute and halt; feed each a valid
         # program (an empty stdin is malformed for some, e.g. BF-PDA, and
         # would exit nonzero under `set -e`)
-        qemu-riscv64 /tmp/nocomment-riscv <<<'o' >/dev/null
-        qemu-riscv64 /tmp/bfpda-riscv <<<'.' >/dev/null
-        qemu-riscv64 /tmp/ram0-riscv <<<'A' >/dev/null
-        qemu-riscv64 /tmp/bio-riscv <<<'0ox' >/dev/null
-        qemu-riscv64 /tmp/minsky_swap-riscv <<<'+' >/dev/null
+        printf 'o' | qemu-riscv64 /tmp/nocomment-riscv >/dev/null
+        printf '.' | qemu-riscv64 /tmp/bfpda-riscv >/dev/null
+        printf 'A' | qemu-riscv64 /tmp/ram0-riscv >/dev/null
+        printf '0ox' | qemu-riscv64 /tmp/bio-riscv >/dev/null
+        printf '+' | qemu-riscv64 /tmp/minsky_swap-riscv >/dev/null
         echo "All extra/ RISC-V interpreters ran natively"
 
     - name: Run the RISC-V reference interpreters under unicorn
@@ -223,16 +223,16 @@ jobs:
         # the reference interpreter must execute and halt; feed each a valid
         # program (an empty stdin is malformed for some, e.g. BF-PDA, and
         # would exit nonzero under `set -e`)
-        python3 scripts/riscv_elf_runner.py /tmp/nocomment-riscv \
-          <<<'o' >/dev/null
-        python3 scripts/riscv_elf_runner.py /tmp/bfpda-riscv \
-          <<<'.' >/dev/null
-        python3 scripts/riscv_elf_runner.py /tmp/ram0-riscv \
-          <<<'A' >/dev/null
-        python3 scripts/riscv_elf_runner.py /tmp/bio-riscv \
-          <<<'0ox' >/dev/null
-        python3 scripts/riscv_elf_runner.py /tmp/minsky_swap-riscv \
-          <<<'+' >/dev/null
+        printf 'o' | python3 scripts/riscv_elf_runner.py /tmp/nocomment-riscv \
+          >/dev/null
+        printf '.' | python3 scripts/riscv_elf_runner.py /tmp/bfpda-riscv \
+          >/dev/null
+        printf 'A' | python3 scripts/riscv_elf_runner.py /tmp/ram0-riscv \
+          >/dev/null
+        printf '0ox' | python3 scripts/riscv_elf_runner.py /tmp/bio-riscv \
+          >/dev/null
+        printf '+' | python3 scripts/riscv_elf_runner.py /tmp/minsky_swap-riscv \
+          >/dev/null
         echo "All extra/ RISC-V interpreters ran under unicorn"
 
     - name: Compile and run the RISC-V compilers' output
