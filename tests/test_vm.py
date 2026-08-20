@@ -132,16 +132,6 @@ class TestModulous:
         assert vm.halted
 
 
-class TestTemporaryStack:
-    def test_word_pointer_and_stack(self) -> None:
-        vm = esolangs.make_vm("The Temporary Stack", "v5 +")
-        vm.step()
-        assert (vm.ip, vm.stack) == (1, [5])
-        assert vm.memory == []
-        vm.step()
-        assert vm.stack == [5, 5]
-
-
 class TestLaserFuck:
     def test_ip_is_position_and_heading(self) -> None:
         # heading is fixed to 0 (up), so the laser at (2,4) moves up
@@ -626,6 +616,18 @@ class TestMinskySwap:
         assert vm.output == "1 0\n"
 
 
+class TestHomeRow:
+    def test_grid_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Home Row", "ak;")
+        assert (vm.ip, vm.memory[:3], vm.stack) == (0, [0, 0, 0], [])
+        vm.step()  # a increments the current cell
+        assert (vm.ip, vm.memory[:3]) == (1, [1, 0, 0])
+        vm.step()  # k prints the cell and resets it; the cursor lands on ';'
+        assert vm.memory[:3] == [0, 0, 0]
+        assert vm.output == "\x01"
+        assert vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -695,7 +697,6 @@ class TestFactory:
         ("Qoibl", "we y we yyeeee we\ntt qe y qe tt"),
         ("Eval", "0+."),
         ("Modulous", "[PSH INT 5][DUP][PRT INT]"),
-        ("The Temporary Stack", "v5 *AB"),
         ("Point Break", "LET zero:=0"),
         ("ArrowQueue", "~*+"),
         ("123", "3231"),

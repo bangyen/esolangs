@@ -26,7 +26,6 @@ from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.stack_based.forth import run as forth_run
 from esolangs.interpreters.stack_based.modulous import run as modulous_run
-from esolangs.interpreters.stack_based.the_temporary_stack import run as temporary_run
 from esolangs.interpreters.stack_based.three_x import run as three_x_run
 from esolangs.interpreters.stack_based.unsquare import run as unsquare_run
 from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
@@ -445,21 +444,6 @@ class TestGeneratorRoundTrips:
         assert roundtrip(ztoalc_run, gen.ztoalc_l("Hi").splitlines()) == "Hi"
         assert roundtrip(ztoalc_run, gen.ztoalc_l("").splitlines()) == ""
 
-    def test_temporary(self) -> None:
-        """The The Temporary Stack Stack squish prints each character."""
-        assert roundtrip(temporary_run, gen.the_temporary_stack("Hi")) == "Hi"
-        assert roundtrip(temporary_run, gen.the_temporary_stack("")) == ""
-
-    def test_temporary_long_text(self) -> None:
-        """Text longer than 13 characters is split across stack resets."""
-        text = "".join(chr(33 + (i % 94)) for i in range(30))
-        assert roundtrip(temporary_run, gen.the_temporary_stack(text)) == text
-
-    def test_temporary_control_characters(self) -> None:
-        """Characters whose increment is whitespace are pushed with vN."""
-        text = "a\tb \n\x00\x7f"
-        assert roundtrip(temporary_run, gen.the_temporary_stack(text)) == text
-
     def test_ztoalc_compact(self) -> None:
         """The program is far smaller than the 2**n power-of-2 scheme."""
         program = gen.ztoalc_l("Hello, World!")
@@ -583,7 +567,6 @@ class TestGeneratorBranches:
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
         assert "--- Sophie ---" in out
-        assert "--- The Temporary Stack ---" in out
         assert "--- ZTOALC L ---" in out
         assert "--- 6-5 ---" in out
         assert "--- Dig ---" in out
@@ -610,7 +593,6 @@ class TestGeneratorBranches:
             gen.suffolk,
             gen.modulous,
             gen.qoibl,
-            gen.the_temporary_stack,
             gen.sophie,
             gen.bio,
             gen.six_five,

@@ -64,7 +64,6 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Suffolk | yes | yes |  | yes | yes | hello |
 | Suptiftam | yes | yes |  | yes |  | hello cat truth-machine |
 | Taglate | yes | yes |  | yes |  | hello |
-| The Temporary Stack | yes | yes |  |  |  | hello |
 | Unsquare | yes | yes | yes | yes | yes | hello |
 | WII2D | yes | yes |  | yes |  | hello boolean |
 | ZTOALC L | yes | yes |  | yes |  | hello |

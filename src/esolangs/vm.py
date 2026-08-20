@@ -380,36 +380,6 @@ class _ModulousVM(_BaseVM):
         return list(self._state.stk)
 
 
-class _TemporaryStackVM(_BaseVM):
-    """Single stack + output mode; ``ip`` is the word pointer."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.the_temporary_stack import State
-
-        self._state = State(io=self._io)
-        self._state.code = program.split()
-
-    @property
-    def halted(self) -> bool:
-        return self._state.halted
-
-    def step(self) -> None:
-        self._state.step()
-
-    @property
-    def ip(self) -> int:
-        return self._state.ptr
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._state.stk)
-
-
 class _ForthVM(_BaseVM):
     """Stack + scope table; ``ip`` is the call stack's cursors, root-to-leaf.
 
@@ -1168,6 +1138,35 @@ class _MinskySwapVM(_BaseVM):
         return []
 
 
+class _HomeRowVM(_BaseVM):
+    """5x5 torus grid + pointer; ``ip`` the cursor, ``memory`` the 25 cells."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.home_row import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.grid)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _ROTFuckVM(_BaseVM):
     """Rotating tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
 
@@ -1381,7 +1380,6 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Qoibl": _QoiblVM,
     "Eval": _EvalVM,
     "Modulous": _ModulousVM,
-    "The Temporary Stack": _TemporaryStackVM,
     "LaserFuck": _LaserFuckVM,
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
@@ -1414,6 +1412,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Polynomial": _PolynomialVM,
     "RAM0": _RAM0VM,
     "Minsky Swap": _MinskySwapVM,
+    "Home Row": _HomeRowVM,
 }
 
 

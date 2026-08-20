@@ -22,6 +22,15 @@ Documented decisions for gaps and divergences:
   the RISC-V compiler's ``loop // 2`` numbering rather than BF-style
   nesting; an unbalanced trailing ``l`` is a malformed program
   (:class:`ValueError`).
+
+The interpreter runs on a :class:`_Machine` (the fixed 25-cell grid, the
+pointer, and the code cursor), so it is step-capable: ``step()`` executes
+one command and ``halted`` is true once the cursor reaches the end of the
+program or hits ``;``.  A loop whose body never changes the tested cell
+(e.g. ``all``: increment once, then loop on a cell the body never touches)
+is a genuine state cycle a repeated :meth:`_Machine.snapshot` proves; a
+loop that keeps incrementing the tested cell is unbounded growth and needs
+the wall-clock backstop instead.
 """
 
 import sys
@@ -49,42 +58,68 @@ def _matches(code: str) -> tuple[dict[int, int], set[int]]:
     return match, open_l
 
 
+class _Machine:
+    """Per-run Home Row state: the grid, pointer, and code cursor.
+
+    ``step()`` executes one command; ``halted`` is true once the cursor
+    reaches the end of the program or hits ``;``.  The state-cycle hang
+    detector and the VM expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Match ``code``'s loop pairs and start the grid at all zeros."""
+        self.io = io
+        self.code = code
+        self.match, self.open_l = _matches(code)
+        self.grid = [0] * 25
+        self.ptr = 0
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has run off the program or hit ``;``."""
+        return self.ind >= len(self.code) or self.code[self.ind] == ";"
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ind, self.ptr, tuple(self.grid))
+
+    def step(self) -> None:
+        """Execute one command, advancing the cursor."""
+        if self.halted:
+            return
+        c = self.code[self.ind]
+        if c == "a":
+            self.grid[self.ptr] += 1
+        elif c == "s":
+            self.grid[self.ptr] -= 1
+        elif c == "d":
+            self.ptr = (self.ptr + 5) % 25
+        elif c == "f":
+            self.ptr += 1
+            if self.ptr % 5 == 0:
+                self.ptr -= 5
+        elif c == "j":
+            if self.grid[self.ptr] == 0:
+                self.ind += 1
+        elif c == "k":
+            self.io.print_char(chr(self.grid[self.ptr] & 0xFF))
+            self.grid[self.ptr] = 0
+        elif c == "l":
+            partner = self.match[self.ind]
+            if self.ind in self.open_l:
+                if self.grid[self.ptr] == 0:
+                    self.ind = partner
+            elif self.grid[self.ptr] != 0:
+                self.ind = partner
+        self.ind += 1
+
+
 def run(code: str, io: IO) -> None:
     """Run a Home Row program."""
-    match, open_l = _matches(code)
-    grid = [0] * 25
-    ptr = 0
-    i = 0
-    n = len(code)
-
-    while i < n:
-        c = code[i]
-        if c == "a":
-            grid[ptr] += 1
-        elif c == "s":
-            grid[ptr] -= 1
-        elif c == "d":
-            ptr = (ptr + 5) % 25
-        elif c == "f":
-            ptr += 1
-            if ptr % 5 == 0:
-                ptr -= 5
-        elif c == "j":
-            if grid[ptr] == 0:
-                i += 1
-        elif c == "k":
-            io.print_char(chr(grid[ptr] & 0xFF))
-            grid[ptr] = 0
-        elif c == "l":
-            partner = match[i]
-            if i in open_l:
-                if grid[ptr] == 0:
-                    i = partner
-            elif grid[ptr] != 0:
-                i = partner
-        elif c == ";":
-            return
-        i += 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":
