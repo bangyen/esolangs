@@ -56,7 +56,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Point Break |  | yes |  | yes |  | boolean |
 | Polynomial | yes | yes |  | yes |  | hello |
 | Qoibl | yes | yes |  | yes |  | hello |
-| RAM0 |  | yes |  | yes | yes |  |
+| RAM0 |  | yes | yes | yes | yes |  |
 | ROTfuck | yes | yes |  | yes |  | hello |
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
