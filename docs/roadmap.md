@@ -30,31 +30,6 @@ is a heavy, unbuilt 2D construction, and the interpreter needs a
 seeded-randomness decision first (the LaserFuck precedent), so COD stays
 low-priority and risky rather than ruled out.
 
-## Boolean generators not yet attempted
-
-Languages with a text generator but no boolean generator, where a
-construction has not been built — distinct from the genuine walls in
-`docs/limitations.md`'s boolean-blockers table, which document why no
-construction can work.
-
-- **2dFish — constructible (decision tree); the WII2D-style chain is
-  affine-only.**  2dFish has no runtime way to combine two separately-read
-  inputs (each `%` overwrites the single accumulator), so a parameterized
-  generator is required.  The WII2D merging-chain construction does **not**
-  transfer as a primary generator: the chain must finish with the
-  accumulator exactly 0 or 1 (`o` prints the decimal value) and the `i d s`
-  ops can only collapse a sign pair via `s`, so the chain realizes exactly
-  the affine functions (`2**(n+1)` tables — verified exhaustively: 8 of 16
-  two-input tables, with AND/OR/NAND/NOR unreachable at any op-string
-  length).  The **decision tree** (re-embed each input at every node, leaves
-  `i o @` / `o @`) is the universal construction
-  and was verified for every table through `n == 4` against the interpreter.
-  The 2dFish mechanics (``/`` in place of ``>``, full-width rows for the
-  ragged grid, an `i`-preamble for the start value, single-char junction
-  cells) are documented in `docs/walls.md`.  Building the actual generator
-  (arbitrary `n`, tree or chain-with-tree-fallback) is unbuilt work, not a
-  research question.
-
 ## Transpilers
 
 A direct transpile between languages with no shared core is not a rewrite —
@@ -155,10 +130,6 @@ registry.  What remains:
 - **More step-capable interpreters.**  Convert the rest of the registry to
   a step()/halted state object: the boolean-parameterized machines without
   a state object yet, and the remaining tape/stack OISCs.
-- **Grapheme has no ``snapshot()``.**  Its machine still uses the
-  wall-clock hang backstop instead of state-cycle detection; a snapshot
-  would need to hash the full call stack (each frame's code, cursor, mode,
-  buffer, and pending skip), not just the active frame.
 
 ## Hanging-test optimization via state-cycle detection
 
@@ -173,9 +144,8 @@ rest.  What remains:
 - **Extend state-cycle detection to more interpreters.**  Only step-capable
   machines can be checked; converting more of the registry (see the VM
   section above) grows this set too.
-- Grapheme's machine has no `snapshot()` yet, and Painfuck's `y` and
-  WII2D's `?` are non-deterministic, so all three stay on the wall-clock
-  backstop regardless of how far the conversion goes.
+- Painfuck's `y` and WII2D's `?` are non-deterministic, so both stay on
+  the wall-clock backstop regardless of how far the conversion goes.
 
 ## Severely constrained boolean generators (remove or lift)
 
