@@ -46,8 +46,8 @@ construction can work.
   ops can only collapse a sign pair via `s`, so the chain realizes exactly
   the affine functions (`2**(n+1)` tables — verified exhaustively: 8 of 16
   two-input tables, with AND/OR/NAND/NOR unreachable at any op-string
-  length).  The **decision tree** (the `wii2d_tree` analog: re-embed each
-  input at every node, leaves `i o @` / `o @`) is the universal construction
+  length).  The **decision tree** (re-embed each input at every node, leaves
+  `i o @` / `o @`) is the universal construction
   and was verified for every table through `n == 4` against the interpreter.
   The 2dFish mechanics (``/`` in place of ``>``, full-width rows for the
   ragged grid, an `i`-preamble for the start value, single-char junction

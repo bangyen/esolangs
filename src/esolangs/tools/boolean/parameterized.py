@@ -65,7 +65,6 @@ __all__ = [
     "nocomment",
     "ram0",
     "wii2d",
-    "wii2d_tree",
 ]
 
 # A decision-tree node: ("leaf", leaf_id, value, None, None) or
@@ -1115,21 +1114,22 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
 # program per input combination by filling each placeholder with ``>`` (bit
 # 0, the pointer continues east) or ``v`` (bit 1, the pointer turns south).
 #
-# A full decision tree needs each input re-embedded at every node of its
+# A full decision tree would need each input re-embedded at every node of its
 # level (2**n - 1 junctions), since the pointer visits each junction at most
-# once.  WII2D has no memory, so it cannot store each input once and re-read
-# it like the tape/register parameterized generators (``bio``/``back``/
-# ``ram0``) do; the 2**n - 1 tree is therefore the guaranteed universal
-# construction (:func:`wii2d_tree`).  The primary generator (:func:`wii2d`)
-# does better by exploiting the accumulator arithmetic: the junctions form a
-# *merging chain* (each branch's op cells transform the accumulator and the
-# branches re-merge before the next junction), so each input is embedded
-# exactly once and the final accumulator decodes to the table entry.  WII2D's
-# ops are not monotone (``s`` sends -1 to 1), so the decoding routes can
-# distinguish any table -- every 1- and 2-input table and all sampled 3-input
-# tables are reachable (verified against the interpreter).  The route op
-# sequences are searched per table, and the search may fail for large dense
-# tables; the tree is the fallback.
+# once, but WII2D has no memory to store each input once and re-read it the
+# way the tape/register parameterized generators (``bio``/``back``/``ram0``)
+# do.  Instead :func:`wii2d` exploits the accumulator arithmetic: the
+# junctions form a *merging chain* (each branch's op cells transform the
+# accumulator and the branches re-merge before the next junction), so each
+# input is embedded exactly once and the final accumulator decodes to the
+# table entry.  WII2D's ops are not monotone (``s`` sends -1 to 1), so the
+# decoding routes can distinguish any table -- every table through four
+# inputs (exhaustively at one through three, sampled dense at four) and
+# sampled dense five-input tables are reachable (verified against the
+# interpreter), and symmetric tables of any arity are covered by closed
+# forms.  The route op sequences are searched per table; the search raises
+# :class:`ValueError` when it cannot fit a table in its budget (large dense
+# non-symmetric tables past ``n == 5``).
 
 # The op alphabet the search composes per junction branch: digits set the
 # accumulator, ``+ - * / s`` are arithmetic, and a space is a no-op.
@@ -1585,135 +1585,21 @@ def wii2d(truth_table: str) -> str:
     representation limit).  The requirement sets and preimages are bit-vectors
     and routes that share a preimage effect are deduplicated, keeping the
     longer lengths tractable.  When the search cannot fit the table in its
-    budget it raises :class:`ValueError`.
-
-    The guaranteed universal alternative is :func:`wii2d_tree`, which
-    re-embeds each input at every node of a decision tree (2**n - 1
-    junctions) and works for any table of any arity.
+    budget it raises :class:`ValueError` -- a genuine cap, not a
+    representation limit: the counting-bound argument in :func:`_wii2d_search`
+    shows no chain with bounded op strings can represent every table once
+    ``n`` is large (dense non-symmetric tables past ``n == 5``), so
+    large-arity tables are simply out of reach.
     """
     n = _validate_truth_table(truth_table)
     result = _wii2d_search(n, truth_table)
     if result is None:
         raise ValueError(
             "the WII2D n-embedding search found no route within its budget; "
-            "use wii2d_tree for the guaranteed 2**n - 1 embedding tree"
+            "dense non-symmetric tables past n == 5 are out of reach"
         )
     start, routes = result
     return "\n".join(_wii2d_layout(n, start, routes))
-
-
-def _wii2d_tree_layout(n: int, table: str) -> list[str]:
-    """Lay out a full decision tree: a junction per tree node.
-
-    One junction per input level, with the leaves holding the table entries.
-    The leaf cells are a uniform 7 wide, so the layout is independent of the
-    table values and the harness re-mirrors the recursion to fill the
-    junction cells.
-    """
-    t = list(table)
-    grid: dict[tuple[int, int], str] = {}
-
-    def out_cells(value: str) -> str:
-        # uniform 7 cells so the layout is independent of the table values:
-        # 6*** = 48, then a space (0) or '+' (1) yields 48/49 for the '~'
-        return "6***" + ("+" if value == "1" else " ") + "~."
-
-    def size(level: int, lo: int, hi: int) -> tuple[int, int]:
-        if level == n:
-            return (len(out_cells(t[lo])), 1)
-        mid = lo + (hi - lo) // 2
-        w0, h0 = size(level + 1, lo, mid)
-        w1, h1 = size(level + 1, mid, hi)
-        return (w0 + 2 + w1, max(h0, h1 + 1))
-
-    def place(level: int, row: int, col: int, lo: int, hi: int) -> None:
-        if level == n:
-            cells = out_cells(t[lo])
-            for k, ch in enumerate(cells):
-                grid[(row, col + k)] = ch
-            return
-        mid = lo + (hi - lo) // 2
-        grid[(row, col)] = "X"  # single-char junction placeholder
-        w0, h0 = size(level + 1, lo, mid)
-        conn_col = col + 1 + w0
-        # the 1-branch descends below the left subtree, travels east, and
-        # ascends just left of the right subtree; the 0-branch continues east
-        # into the left subtree in place
-        grid[(row + 1 + h0, col)] = ">"  # turn east on the corridor row
-        for c in range(col + 1, conn_col):
-            grid[(row + 1 + h0, c)] = " "  # corridor travel
-        grid[(row + 1 + h0, conn_col)] = "^"  # turn north
-        grid[(row + 1, conn_col)] = ">"  # turn east into the right subtree
-        place(level + 1, row, col + 1, lo, mid)  # 0-child on this row
-        place(level + 1, row + 1, conn_col + 1, mid, hi)  # 1-child below
-
-    place(0, 1, 2, 0, 2**n)
-    grid[(0, 0)] = ">"
-    grid[(0, 1)] = "v"  # descend to the root
-    grid[(1, 1)] = ">"  # turn east into the root
-    grid[(1, 0)] = "!"
-    maxr = max(r for r, _ in grid)
-    maxc = max(c for _, c in grid)
-    rows = [[" "] * (maxc + 1) for _ in range(maxr + 1)]
-    for (r, c), ch in grid.items():
-        rows[r][c] = ch
-    return ["".join(r).rstrip() for r in rows]
-
-
-def wii2d_tree(truth_table: str) -> str:
-    """Build a WII2D decision-tree template for the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    WII2D has no input command, so this is a parameterized generator: the
-    template's single-character junction cells are filled with ``>`` (bit 0)
-    or ``v`` (bit 1) by the harness.  This is the guaranteed universal
-    construction: a full binary decision tree re-embeds each input at every
-    node of its level, so the template has ``2**n - 1`` junction cells and
-    works for any table of any arity.  It is the fallback the primary
-    :func:`wii2d` notes; that one embeds each input exactly once instead.
-
-    The ``X`` junction cells are ordered by the recursion (root, left
-    subtree, right subtree); the harness fills the ``k``-th level's cells
-    with the ``k``-th input's bit.
-    """
-    n = _validate_truth_table(truth_table)
-    rows = _wii2d_tree_layout(n, truth_table)
-    return "\n".join(rows)
-
-
-def instantiate_wii2d_tree(template: str, bits: list[int]) -> str:
-    """Fill a WII2D decision-tree template's junction cells with the bits.
-
-    ``bits`` is listed most-significant first; the junction cells are filled
-    in the recursion order the template was laid out in (root, left subtree,
-    right subtree), so each level's cells receive that input's bit.
-    """
-    rows = [list(r) for r in template.split("\n")]
-    n = len(bits)
-    depth = n
-
-    def size(level: int, lo: int, hi: int) -> tuple[int, int]:
-        if level == depth:
-            return (7, 1)  # every leaf is a uniform 7 cells
-        mid = lo + (hi - lo) // 2
-        w0, h0 = size(level + 1, lo, mid)
-        w1, h1 = size(level + 1, mid, hi)
-        return (w0 + 2 + w1, max(h0, h1 + 1))
-
-    def fill(level: int, row: int, col: int, lo: int, hi: int) -> None:
-        if level == depth:
-            return
-        mid = lo + (hi - lo) // 2
-        rows[row][col] = "v" if bits[level] else ">"
-        w0, _ = size(level + 1, lo, mid)
-        conn_col = col + 1 + w0
-        fill(level + 1, row, col + 1, lo, mid)
-        fill(level + 1, row + 1, conn_col + 1, mid, hi)
-
-    fill(0, 1, 2, 0, 2**n)
-    return "\n".join("".join(r).rstrip() for r in rows)
 
 
 def dotlang(truth_table: str) -> str:
