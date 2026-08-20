@@ -10,7 +10,6 @@ import pytest
 import esolangs.tools.text as gen
 from esolangs.interpreters.grid_based.clockwise import run as clockwise_run
 from esolangs.interpreters.grid_based.dig import run as dig_run
-from esolangs.interpreters.grid_based.dotlang import run as dotlang_run
 from esolangs.interpreters.grid_based.wii2d import run as wii2d_run
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run as container_run
@@ -211,22 +210,6 @@ class TestGeneratorRoundTrips:
         """Eval cannot output a literal backtick."""
         with pytest.raises(ValueError, match="backtick"):
             gen.eval("a`b")
-
-    def test_dotlang(self) -> None:
-        """A single dot prints one backtick-wrapped string literal."""
-        assert (
-            roundtrip(dotlang_run, gen.dotlang("Hello, World!").splitlines())
-            == "Hello, World!"
-        )
-        assert roundtrip(dotlang_run, gen.dotlang("123").splitlines()) == "123"
-        assert roundtrip(dotlang_run, gen.dotlang("").splitlines()) == ""
-
-    def test_dotlang_multiline(self) -> None:
-        """A newline would split the program into a second grid row."""
-        with pytest.raises(ValueError, match="single line"):
-            gen.dotlang("a\nb")
-        with pytest.raises(ValueError, match="single line"):
-            gen.dotlang("a`b")
 
     def test_nevermind(self) -> None:
         """Print joins its arguments; nevermind always adds a trailing newline."""
@@ -604,7 +587,6 @@ class TestGeneratorBranches:
         assert "--- ZTOALC L ---" in out
         assert "--- 6-5 ---" in out
         assert "--- Dig ---" in out
-        assert "--- Dotlang ---" in out
         assert "--- Eval ---" in out
         assert "--- LaserFuck ---" in out
         assert "--- SLOW ACV MAMMALIAN ---" in out

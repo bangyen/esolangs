@@ -671,38 +671,6 @@ class _TwoDFishVM(_BaseVM):
         return []
 
 
-class _DotlangVM(_BaseVM):
-    """2D grid of dots; ``ip`` is the current dot's (x, y, direction)."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.dotlang import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...] | None:
-        if not self._machine.dots:
-            return None
-        dot = self._machine.dots[self._machine.curr]
-        return (dot.x, dot.y, dot.dir)
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return [d.val for d in self._machine.dots]
-
-
 class _ClockwiseVM(_BaseVM):
     """2D ring; ``ip`` is the pointer's (x, y, heading), ``memory`` the accumulator."""
 
@@ -1419,7 +1387,6 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
     "2dFish": _TwoDFishVM,
-    "Dotlang": _DotlangVM,
     "Clockwise": _ClockwiseVM,
     "Dig": _DigVM,
     "WII2D": _Wii2dVM,

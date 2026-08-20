@@ -240,13 +240,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.dimensional",
         id="dimensional",
     ),
-    "Dotlang": Language(
-        "Dotlang",
-        _generate.dotlang,
-        "grid_based.dotlang",
-        id="dotlang",
-        split=True,
-    ),
     "Eval": Language(
         "Eval",
         _generate.eval,

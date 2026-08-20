@@ -141,34 +141,6 @@ def test_boolean_generators_random_tables() -> None:
                     assert buffer.getvalue() == str(int(table[combo])) + suffix
 
 
-def test_dotlang_boolean_random_tables() -> None:
-    """Random tables round-trip through the fork-and-kill decision tree.
-
-    Dotlang's boolean generator is parameterized: each instantiated program
-    prints its table entry and halts.
-    """
-    from esolangs.tools.boolean import parameterized
-
-    random.seed(5)
-    run = importlib.import_module("esolangs.interpreters.grid_based.dotlang").run
-    for n in (1, 2, 3, 4):
-        for _ in range(3):
-            table = "".join(random.choice("01") for _ in range(2**n))
-            template = boolean.dotlang(table)
-            for combo in range(2**n):
-                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                program = parameterized.instantiate(
-                    template,
-                    bits,
-                    lambda _i, b: "aaaa" if b == 0 else " aaa",
-                    lambda _i, b: " aaa" if b == 0 else "aaaa",
-                )
-                buffer = io.StringIO()
-                with redirect_stdout(buffer):
-                    run(program.splitlines(), io=IO())
-                assert buffer.getvalue() == table[combo]
-
-
 def test_byte_function_generator_random_tables() -> None:
     random.seed(4)
     run = importlib.import_module("esolangs.interpreters.tape_based.circlefuck").run

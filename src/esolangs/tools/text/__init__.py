@@ -39,7 +39,6 @@ from esolangs.tools.text.register import (
     collatz_multiverse,
     decleq,
     dig,
-    dotlang,
     eval,  # noqa: A004 - the language is named "Eval"
     polynomial,
     qoibl,
@@ -78,7 +77,6 @@ __all__ = [
     "decleq",
     "dig",
     "dimensional",
-    "dotlang",
     "eval",
     "factor",
     "forbin",

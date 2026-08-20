@@ -168,29 +168,34 @@ closer reading of either instruction set:
   input-dependent.
 
 Both generators now embed each input exactly once, with no `{Ci}`, matching
-Eval and most other parameterized generators.  `dotlang` remains the
-documented exception that legitimately needs `{Ci}` (see below) — its
-re-embedding is a different problem (no way to store a bit and read it
-back), not a complement-at-runtime problem.
+Eval and every other parameterized generator: the exactly-once rule holds
+without exception.
 
-## Dotlang (fork-and-kill; parameterized)
+## Dotlang (removed: its boolean construction could not embed each input once)
 
 A plain decision tree fails on Dotlang: `W~` warps to the *first* `W<name>`s`
 marker, so deeper levels re-enter the same markers and lose branch history;
 the type conditionals (`!?:`) cannot help — input digits become `int` 0/1,
 so both bits share a type — and there is no value comparison or arithmetic.
+Worse, Dotlang has no storage at all (no register, tape, or accumulator to
+hold a bit and re-read it), so *no* once-embedding boolean generator exists:
+a bit has to be re-embedded at every junction that tests it.
 
-The shipped generator (`esolangs.tools.boolean.dotlang`) sidesteps the wall
-by embedding the bits and forking: ``(`` spawns a dot at the matching ``)``
-while the caller continues, so a junction forks the dot into two and the
-embedded gate (``{Xi}`` or its ``{Ci}`` complement, filled with a
-pass-through ``a`` or an empty cell) kills one of them, leaving exactly the
-branch the bit selects.  The survivor turns down and right into its
+The generator resolved the wall by forking: ``(`` spawns a dot at the
+matching ``)`` while the caller continues, so a junction forks the dot into
+two and the embedded gate (``{Xi}`` or its ``{Ci}`` complement, filled with
+a pass-through ``a`` or an empty cell) kills one of them, leaving exactly
+the branch the bit selects.  The survivor turns down and right into its
 subtree, and each leaf is a ``#0#``/``#1#`` literal that prints the table
-entry before the dot dies, so the instantiated program prints its answer
-and halts.  It is a parameterized generator, total for any arity and table;
-the tree re-embeds each input at `2**i` junctions — the only parameterized
-generator that does not embed each input exactly once.
+entry before the dot dies.  The tree re-embedded each input at `2**i`
+junctions — the only parameterized generator that did not embed each input
+exactly once.
+
+The language was removed: that re-embedding (and the ``{Ci}`` placeholder it
+needed) is the workaround for having no state, and the text generator is a
+plain literal-embed, so Dotlang was too thin to justify being the sole
+exception to the exactly-once rule.  The construction is recorded here as a
+negative result so the assessment is not redone.
 
 ## Polynomial (numeric root-finding ruled out; caps at n <= 4)
 
