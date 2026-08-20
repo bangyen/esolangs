@@ -60,3 +60,35 @@ class TestPct:
 
     def test_empty_program(self) -> None:
         assert run_program("") == ""
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.register_based.pct_squared_minus_one import (
+            _Machine,
+        )
+
+        machine = _Machine("i", ScriptedIO(""))
+        before = machine.snapshot()
+        machine.step()  # i subtracts 3 from the accumulator
+        assert machine.snapshot() != before
+        assert machine.acc == -3
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.register_based.pct_squared_minus_one import (
+            _Machine,
+        )
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("i", ScriptedIO(""))) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # 'mipt' settles into a genuine 4-state cycle: (0,3) -> (1,6) ->
+        # (2,3) -> (3,-3) -> back to (0,3), so the accumulator never grows
+        # without bound and the state repeats exactly.
+        from esolangs.interpreters.register_based.pct_squared_minus_one import (
+            _Machine,
+        )
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("mipt", ScriptedIO(""))) is False

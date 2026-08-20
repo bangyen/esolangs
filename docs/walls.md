@@ -546,13 +546,13 @@ returning — callers only get the True/False verdict, not the machine's
 state at the moment of detection.
 
 `tests/test_interpreters_robustness.py` decides the empty-program invariant
-by state-cycle detection for thirty-three string-based step-capable
+by state-cycle detection for thirty-four string-based step-capable
 machines (brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, Qoibl,
 Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
 ROTfuck, Circlefuck, BFStack, Decleq, 6-5, Back, BIO, NoComment,
 3D Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial,
-Grapheme, RAM0, Minsky Swap, Home Row, Unsquare), and keeps the SIGALRM
-backstop for the rest (Painfuck's `y` is non-deterministic).
+Grapheme, RAM0, Minsky Swap, Home Row, Unsquare, %^2^-1), and keeps the
+SIGALRM backstop for the rest (Painfuck's `y` is non-deterministic).
 `scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
 likewise bounded by state-cycle detection, with NoComment keeping the
 alarm as backstop for its unbounded-growth class (a loop that keeps
