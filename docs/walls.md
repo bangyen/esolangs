@@ -569,39 +569,46 @@ resumes `main`'s own statements and top-level `for`-loop rows the same
 way; a nested call or a `for` loop inside a function body still runs
 to completion within one `step()`.
 
-Lamfunc's cycle detection, and Forbin's for its *expression-position*
-calls, only sees the *outermost* frame: `_Machine` tracks one cursor for
-the single resumable frame, and a nested function call invoked from inside
-an expression still runs to completion inside one `step()` through the
-original recursive `_eval`/`_call`/`_run` -- its own frames are never part
-of `snapshot()`.  That bound is not free for Lamfunc -- Python's own
-`RecursionError` is not a documented cap, but it is still an implementation
-limit with no basis in the wiki, so a correct, terminating deep recursion
-can still fail; see `docs/limitations.md`'s interpreter-conventions
-section.
+Forbin's *expression-position* calls (`x = f(y)`) are the one remaining
+gap: `_Machine` tracks one cursor for the single resumable frame there, and
+a nested function call invoked from inside an expression still runs to
+completion inside one `step()` through the original recursive
+`_eval`/`_call`/`_run` -- its own frames are never part of `snapshot()`.
+This was deliberately left native-recursive: the language has no realistic
+program shape that recurses that way (`return` exits a call immediately,
+so there is no return-value-threading idiom to convert), so building the
+larger continuation-stack machinery that would be needed to resume
+mid-expression was not worth it for a case Forbin programs do not actually
+use.  It is still bounded only by Python's own default recursion limit, not
+a documented cap.
 
-**Suptiftam's call machinery, and Forbin's statement-position calls, were
-converted to an explicit frame stack** (`_Machine.frames`, replacing native
-Python recursion for that path the same way Forth/Grapheme already track a
-call stack of `_Frame`s) so that recursion is uncapped -- a correct,
-terminating recursion of any depth now completes, confirmed by a 300-level
-chained-function test for each.  This does *not* make infinite recursion
-cycle-detectable, though: unlike a backward jump in a loop, a call that
-never returns pushes exactly one new frame per `step()` and none is ever
-popped, so `snapshot()`'s frame tuple grows by one element every step and
-two snapshots can never compare equal.  This is the same unbounded-growth
-class as a brainfuck `+[>+]` tape loop (below) -- proven, not caught, is
-out of cycle detection's reach by construction, regardless of how much of
-the call stack `snapshot()` covers.  Forbin's *expression-position* calls
-(`x = f(y)`) were deliberately left native-recursive: the language has no
-realistic program shape that recurses that way (`return` exits a call
-immediately, so there is no return-value-threading idiom to convert), so
-building the larger continuation-stack machinery that would be needed to
-resume mid-expression was not worth it for a case Forbin programs do not
-actually use.  A future conversion of Lamfunc to the explicit-stack pattern
-would still be worth doing to remove its dependence on `RecursionError`
-and fix the same wrongly-halted-deep-program bug, but should not be sold
-as adding cycle coverage for infinite recursion -- there is none to add.
+**Suptiftam's call machinery, Forbin's statement-position calls, and all of
+Lamfunc's calls were converted to an explicit frame stack**
+(`_Machine.frames`, replacing native Python recursion for that path the
+same way Forth/Grapheme already track a call stack of `_Frame`s) so that
+recursion is uncapped -- a correct, terminating recursion of any depth now
+completes, confirmed by a 300-level chained-function test for Suptiftam and
+Forbin and a 2000-level one (past Python's own default 1000-frame limit)
+for Lamfunc.  Lamfunc needed the fuller design: unlike Forbin and
+Suptiftam, it has no statement/expression split whose "statement" side
+always discards its value -- every prefix call is a value, and a realistic
+recursive call (e.g. `loop`'s self-call inside `i x loop fb x 0`) sits in
+*argument position* relative to `i`, not in some safely-discardable
+position, since the lazy `i` builtin is the language's only conditional.
+So every call, at any nesting depth, pushes a `_Frame` (`"scan"` -> resolve
+the leading token; `"gather"` -> collect arguments up to arity, pushing a
+child frame per non-literal argument; `"body"` -> run a callee's body or a
+forced `i`-branch as a token sequence) rather than only the outermost or
+only a discardable-statement subset.
+
+This does *not* make infinite recursion cycle-detectable, though, for any
+of the three: unlike a backward jump in a loop, a call that never returns
+pushes exactly one new frame per `step()` and none is ever popped, so
+`snapshot()`'s frame tuple grows by one element every step and two
+snapshots can never compare equal.  This is the same unbounded-growth class
+as a brainfuck `+[>+]` tape loop (below) -- proven, not caught, is out of
+cycle detection's reach by construction, regardless of how much of the call
+stack `snapshot()` covers.
 `scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
 likewise bounded by state-cycle detection, with NoComment keeping the
 alarm as backstop for its unbounded-growth class (a loop that keeps

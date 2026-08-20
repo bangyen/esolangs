@@ -169,19 +169,18 @@ exclusion below.  What remains:
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
   non-deterministic, so all three stay on the wall-clock backstop
   regardless of `snapshot()` coverage.
-- Lamfunc still implements every function call as native Python recursion,
-  bounded only by Python's own default `RecursionError` — not a documented
-  cap, but still an implementation limit with no basis in the wiki, so a
-  correct, terminating program recursing deep enough can still fail; see
-  `docs/limitations.md`.  Suptiftam's calls, and Forbin's *statement-position*
-  calls (`f(y);`, the language's only real recursion idiom), were converted
-  to an explicit frame stack (`_Machine.frames`), removing the cap for that
-  pattern; the same conversion for Lamfunc, and for Forbin's
-  *expression-position* calls (`x = f(y)`, which need a return value back
-  synchronously mid-expression and so were deliberately left out of scope —
-  Forbin has no realistic program shape that recurses that way), is real
-  future work, but — confirmed while doing Suptiftam's conversion — it
-  would *not* make infinite recursion cycle-detectable.  A call that never
+- Forbin's *expression-position* calls (`x = f(y)`, which need a return
+  value back synchronously mid-expression) still implement recursion as
+  native Python recursion, bounded only by Python's own default limit —
+  not a documented cap, but still an implementation limit with no basis in
+  the wiki.  Deliberately left out of scope: Forbin has no realistic
+  program shape that recurses this way (see `docs/walls.md`), so the
+  larger continuation-stack machinery it would need was not worth building.
+  Suptiftam's calls, Forbin's *statement-position* calls (`f(y);`, the
+  language's only real recursion idiom), and all of Lamfunc's calls were
+  converted to an explicit frame stack (`_Machine.frames`), removing the
+  cap entirely for those — confirmed while doing the conversions, this
+  does *not* make infinite recursion cycle-detectable.  A call that never
   returns pushes one new frame per `step()` and none is ever popped, so
   `snapshot()`'s frame tuple strictly grows and two snapshots can never
   compare equal: unbounded growth, the same class `+[>+]` already falls
