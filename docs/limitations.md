@@ -37,20 +37,24 @@ predictable across languages:
   step limit: interpreters run until the program halts naturally or loops
   forever.  Suffolk is the sole interpreter that ships with a fixed
   instruction limit, and callers cannot set one through the public API.
-- **Recursion depth is capped at a fixed, invented limit for three
-  interpreters.**  Forbin and Suptiftam (`_MAX_DEPTH = 250`) implement
-  function calls as native Python recursion, so a program whose correct,
-  terminating behavior needs more than 250 nested calls is wrongly halted
-  with `HaltError` rather than allowed to finish — neither language's wiki
-  specifies a recursion limit, so 250 is not derived from the spec.  It
-  exists purely so a runaway (or merely deep) Python call chain fails with
-  a documented `HaltError` instead of an undocumented `RecursionError`
-  leaking out of the interpreter.  Lamfunc has no such guard and instead
-  lets a `RecursionError` propagate directly, which is the same
-  implementation limit surfacing without a clean error type.  None of the
-  three raises Python's `sys.setrecursionlimit` to compensate, so the
-  effective ceiling is whichever is smaller: the language-level guard (for
-  Forbin/Suptiftam) or Python's own default limit (for Lamfunc).
+- **Recursion depth is capped at a fixed, invented limit for two remaining
+  interpreters.**  Forbin (`_MAX_DEPTH = 250`) implements function calls as
+  native Python recursion, so a program whose correct, terminating behavior
+  needs more than 250 nested calls is wrongly halted with `HaltError`
+  rather than allowed to finish — the wiki specifies no recursion limit, so
+  250 is not derived from the spec; it exists purely so a runaway (or
+  merely deep) Python call chain fails with a documented `HaltError`
+  instead of an undocumented `RecursionError` leaking out of the
+  interpreter.  Lamfunc has no such guard and instead lets a
+  `RecursionError` propagate directly, which is the same implementation
+  limit surfacing without a clean error type.  **Suptiftam is uncapped**:
+  its call machinery was converted to an explicit frame stack
+  (`_Machine.frames: list[_CallFrame]`, replacing native Python recursion
+  for calls — see `docs/walls.md`), so a correct, terminating recursion of
+  any depth now completes; a genuinely infinite recursion becomes an
+  uncaught hang (unbounded growth of `frames`, the same class as a
+  brainfuck `+[>+]` tape loop) rather than a wrongly-early `HaltError` or a
+  cycle-detection catch.
 
 ## Text generator blockers
 

@@ -169,18 +169,19 @@ exclusion below.  What remains:
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
   non-deterministic, so all three stay on the wall-clock backstop
   regardless of `snapshot()` coverage.
-- Lamfunc, Forbin, and Suptiftam's cycle detection only tracks the
-  outermost call's cursor; a nested call's own frames never enter
-  `snapshot()`, since it runs to completion inside one `step()` through
-  the original recursive evaluator.  That is a scoping choice, not an
-  inherent limit — infinite recursion is a real cycle in principle, and
-  a `snapshot()` covering the whole call stack (extending the frame
-  stack the way MyScript's and Forbin's already unroll a top-level
-  loop) would catch it.  Not built that far because the payoff is
-  small: unbounded recursion already halts on its own via `_MAX_DEPTH`
-  (Forbin/Suptiftam) or Python's own `RecursionError` (Lamfunc), a
-  cheaper and more direct bound on that hang class than cycle detection
-  would be.  See `docs/walls.md` for the full argument.
+- Lamfunc and Forbin still implement function calls as native Python
+  recursion, capped at an invented limit (`_MAX_DEPTH` for Forbin, Python's
+  own `RecursionError` for Lamfunc) that wrongly halts a correct,
+  terminating program recursing deeper than the cap — see
+  `docs/limitations.md`.  Suptiftam's calls were converted to an explicit
+  frame stack (`_Machine.frames`), removing that cap; the same conversion
+  for Lamfunc/Forbin is real future work, but — confirmed while doing
+  Suptiftam's conversion — it would *not* make infinite recursion
+  cycle-detectable.  A call that never returns pushes one new frame per
+  `step()` and none is ever popped, so `snapshot()`'s frame tuple strictly
+  grows and two snapshots can never compare equal: unbounded growth, the
+  same class `+[>+]` already falls into, not a repeating state.  See
+  `docs/walls.md` for the full argument.
 - **Branching cycle detection for `y`/`?` (considered, not started).**
   Forking the walk at every random decision and requiring *every* branch to
   prove a cycle would soundly prove "this program hangs no matter how the
