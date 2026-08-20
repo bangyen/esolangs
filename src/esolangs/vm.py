@@ -1753,6 +1753,41 @@ class _BetweenVM(_BaseVM):
         return []
 
 
+class _MyScriptVM(_BaseVM):
+    """Frame stack + scopes; ``ip`` is (frame depth, position in top frame)."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, int] | None:
+        if not self._machine.stack:
+            return None
+        top = self._machine.stack[-1]
+        return len(self._machine.stack), top.pos
+
+    @property
+    def memory(self) -> list[int]:
+        if not self._machine.stack:
+            return []
+        scope = self._machine.stack[-1].scope
+        return [v for v in scope.vars.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1809,6 +1844,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "SLOW ACV MAMMALIAN": _SlowAcvMammalianVM,
     "ZTOALC L": _ZtoalcLVM,
     "Between": _BetweenVM,
+    "MyScript": _MyScriptVM,
 }
 
 
