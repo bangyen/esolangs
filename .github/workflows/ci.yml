@@ -210,6 +210,7 @@ jobs:
         qemu-riscv64 /tmp/bfpda-riscv <<<'.' >/dev/null
         qemu-riscv64 /tmp/ram0-riscv <<<'A' >/dev/null
         qemu-riscv64 /tmp/bio-riscv <<<'0ox' >/dev/null
+        qemu-riscv64 /tmp/minsky_swap-riscv <<<'+' >/dev/null
         echo "All extra/ RISC-V interpreters ran natively"
 
     - name: Run the RISC-V reference interpreters under unicorn
@@ -230,6 +231,8 @@ jobs:
           <<<'A' >/dev/null
         python3 scripts/riscv_elf_runner.py /tmp/bio-riscv \
           <<<'0ox' >/dev/null
+        python3 scripts/riscv_elf_runner.py /tmp/minsky_swap-riscv \
+          <<<'+' >/dev/null
         echo "All extra/ RISC-V interpreters ran under unicorn"
 
     - name: Compile and run the RISC-V compilers' output

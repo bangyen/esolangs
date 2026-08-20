@@ -59,6 +59,14 @@ REFERENCE_CASES = [
         "0ox;" * 66 + "1ix;",
         "B",
     ),
+    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "+++~\n1", "2 0\n"),
+    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "++*++*+++", "5 2\n"),
+    (
+        "minsky_swap",
+        "extra/assembly/minsky_swap-riscv.s",
+        "+++*+++*~+~\n2 1",
+        "2 3\n",
+    ),
 ]
 
 # (name, compiler module, source program, expected output).  Compilers with

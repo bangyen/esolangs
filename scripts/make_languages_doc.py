@@ -65,6 +65,7 @@ _EXTRA_DIRS = [
             "bfpda": "BF-PDA",
             "ram0": "RAM0",
             "bio": "BIO",
+            "minsky_swap": "Minsky Swap",
         },
         "RISC-V Assembly Implementations",
     ),
