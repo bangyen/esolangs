@@ -203,11 +203,13 @@ jobs:
             -o "/tmp/$base" "$s"
           echo "Built $s"
         done
-        # the reference interpreter must execute and halt
-        qemu-riscv64 /tmp/nocomment-riscv </dev/null >/dev/null
-        qemu-riscv64 /tmp/bfpda-riscv </dev/null >/dev/null
-        qemu-riscv64 /tmp/ram0-riscv </dev/null >/dev/null
-        qemu-riscv64 /tmp/bio-riscv </dev/null >/dev/null
+        # the reference interpreter must execute and halt; feed each a valid
+        # program (an empty stdin is malformed for some, e.g. BF-PDA, and
+        # would exit nonzero under `set -e`)
+        qemu-riscv64 /tmp/nocomment-riscv <<<'o' >/dev/null
+        qemu-riscv64 /tmp/bfpda-riscv <<<'.' >/dev/null
+        qemu-riscv64 /tmp/ram0-riscv <<<'A' >/dev/null
+        qemu-riscv64 /tmp/bio-riscv <<<'0ox' >/dev/null
         echo "All extra/ RISC-V interpreters ran natively"
 
     - name: Run the RISC-V reference interpreters under unicorn
@@ -217,15 +219,17 @@ jobs:
         # needs unicorn and the RISC-V compiler, which the rust job lacks;
         # LaserFuck's runs there instead.
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
-        # the reference interpreter must execute and halt
+        # the reference interpreter must execute and halt; feed each a valid
+        # program (an empty stdin is malformed for some, e.g. BF-PDA, and
+        # would exit nonzero under `set -e`)
         python3 scripts/riscv_elf_runner.py /tmp/nocomment-riscv \
-          </dev/null >/dev/null
+          <<<'o' >/dev/null
         python3 scripts/riscv_elf_runner.py /tmp/bfpda-riscv \
-          </dev/null >/dev/null
+          <<<'.' >/dev/null
         python3 scripts/riscv_elf_runner.py /tmp/ram0-riscv \
-          </dev/null >/dev/null
+          <<<'A' >/dev/null
         python3 scripts/riscv_elf_runner.py /tmp/bio-riscv \
-          </dev/null >/dev/null
+          <<<'0ox' >/dev/null
         echo "All extra/ RISC-V interpreters ran under unicorn"
 
     - name: Compile and run the RISC-V compilers' output
