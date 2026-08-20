@@ -651,6 +651,18 @@ class TestPctSquaredMinusOne:
         assert vm.output == "\xfd"
 
 
+class TestSuffolk:
+    def test_tape_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Suffolk", "!" * 66 + "<.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        for _ in range(66):
+            vm.step()  # each ! sets the cell to the accumulator-derived value
+        assert vm.memory == [66]
+        vm.step()  # < sums the cell into the accumulator
+        vm.step()  # . prints the accumulator minus one
+        assert vm.output == "A"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO

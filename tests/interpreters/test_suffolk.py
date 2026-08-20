@@ -48,3 +48,28 @@ class TestSuffolk:
 
         with pytest.raises(ValueError, match="empty"):
             run("", IO())
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine("!", IO())
+        before = machine.snapshot()
+        machine.step()  # ! sets the current cell from the accumulator
+        assert machine.snapshot() != before
+        assert machine.tape == [1]
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("!", IO())) is True
+
+    def test_bounded_pass_limit_always_halts(self) -> None:
+        # Suffolk has no backward jump: the pass counter strictly increases
+        # toward `limit`, so every program halts and none can cycle.
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("!!!!", IO(), limit=3)) is True
