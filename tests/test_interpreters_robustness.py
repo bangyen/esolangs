@@ -171,6 +171,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.register_based.ram0 import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.register_based.minsky_swap":
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -208,6 +212,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.polynomial",
     "esolangs.interpreters.stack_based.grapheme",
     "esolangs.interpreters.register_based.ram0",
+    "esolangs.interpreters.register_based.minsky_swap",
 }
 
 
