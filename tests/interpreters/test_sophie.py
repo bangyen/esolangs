@@ -269,6 +269,8 @@ class TestSophieEdgeCases:
             run("#{,", io=IO())
         assert f.getvalue() == "{"
 
+
+class TestMiscCommands:
     @pytest.mark.usefixtures("timeout_protection")
     def test_dollar_char_loaded_as_data(self) -> None:
         """A ``#$<char>`` load skips the character as data."""
@@ -482,6 +484,14 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine("[]", IO())) is False
+
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.register_based.sophie import _Machine
+
+        machine = _Machine("", IO())
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.halted
 
 
 if __name__ == "__main__":
