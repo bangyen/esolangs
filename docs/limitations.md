@@ -79,6 +79,8 @@ per-character encoding can be meaningfully shortened:
 | Language | Why it cannot compute a truth table |
 | --- | --- |
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
+| 2dFish | Single accumulator, every `%` overwrites it; the string variable holds a second input but no instruction moves it into the accumulator arithmetically — only one-input functions. |
+| Albabet | No input command at all; output is a fixed function of the program text. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 
