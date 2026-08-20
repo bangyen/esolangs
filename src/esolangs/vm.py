@@ -48,20 +48,36 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     A deterministic machine that revisits its complete internal state has
     looped forever, so a repeated snapshot is a *proof* of a hang that is
     reported immediately instead of waiting out a wall-clock timeout.
-    Returns ``True`` when the machine halts and ``False`` the moment a
-    repeated state proves it is looping.  It catches *cycles*, not every
-    hang — an unbounded-growth loop never revisits a state, so callers
-    keep a timeout as the backstop for that class.
+    Returns ``True`` when the machine halts and ``False`` once a cycle is
+    proven.  It catches *cycles*, not every hang — an unbounded-growth loop
+    never revisits a state, so callers keep a timeout as the backstop for
+    that class.
+
+    Uses Brent's cycle-detection algorithm: O(1) snapshots held at once
+    (one "tortoise" checkpoint compared against the live machine's state on
+    every step) instead of a hash set of every state visited, at the cost of
+    stepping up to ~2x further past the cycle's start before ``False`` is
+    returned — callers must not rely on the machine's state at the moment
+    of detection, only on the True/False verdict.
     """
-    seen: set[Hashable] = set()
-    while True:
-        if machine.halted:
-            return True
-        key = machine.snapshot()
-        if key in seen:
-            return False
-        seen.add(key)
+    tortoise = machine.snapshot()
+    power = 1
+    length = 0
+    while not machine.halted:
         machine.step()
+        length += 1
+        # mypy narrows `machine.halted` to Literal[False] from the loop guard
+        # and won't re-widen it across `step()`; the explicit local defeats that.
+        halted: bool = machine.halted
+        if halted:
+            return True
+        if machine.snapshot() == tortoise:
+            return False
+        if length == power:
+            tortoise = machine.snapshot()
+            power *= 2
+            length = 0
+    return True
 
 
 @runtime_checkable

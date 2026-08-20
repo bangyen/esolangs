@@ -526,6 +526,14 @@ hash).  It catches *cycles*, not every hang: an unbounded-growth loop
 timeout stays as the backstop for that class, and for the fuzzers (which
 don't control the program shape the way hand-written tests do).
 
+Detection uses Brent's two-pointer algorithm rather than a hash set of
+every visited state: one stored "tortoise" snapshot is compared against
+the live machine on every step, doubling the gap between checkpoints each
+time the gap is closed.  This holds O(1) snapshots instead of O(cycle
+length), at the cost of stepping up to ~2x past the cycle's start before
+returning — callers only get the True/False verdict, not the machine's
+state at the moment of detection.
+
 `tests/test_interpreters_robustness.py` decides the empty-program invariant
 by state-cycle detection for twenty-nine string-based step-capable machines
 (brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, The Temporary Stack,
