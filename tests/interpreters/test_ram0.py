@@ -407,5 +407,31 @@ class TestRAM0Integration:
         assert "15: 15" in output
 
 
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        machine = _Machine("A", IO())
+        before = machine.snapshot()
+        machine.step()  # A increments z
+        assert machine.snapshot() != before
+        assert machine.z == 1
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.register_based.ram0 import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("ZA", IO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # Z1: Z zeroes z (already zero, a net no-op), then the goto to
+        # token 1 sets ind back to 0 -- a genuine state cycle, not
+        # unbounded growth.
+        from esolangs.interpreters.register_based.ram0 import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("Z1", IO())) is False
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

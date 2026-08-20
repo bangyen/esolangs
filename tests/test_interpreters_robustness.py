@@ -167,6 +167,10 @@ def _empty_machine(module: str, io: IO) -> object:
         machine = _Machine(io, 1_000_000)
         machine.frames.append(_Frame("", 0))
         return machine
+    if module == "esolangs.interpreters.register_based.ram0":
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -203,6 +207,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.collatz_multiverse",
     "esolangs.interpreters.register_based.polynomial",
     "esolangs.interpreters.stack_based.grapheme",
+    "esolangs.interpreters.register_based.ram0",
 }
 
 
