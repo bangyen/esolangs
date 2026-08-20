@@ -1579,6 +1579,35 @@ class _ThreeXVM(_BaseVM):
         return list(self._machine.stack)
 
 
+class _ABCDirectionVM(_BaseVM):
+    """Bit tape + donut grid pointer; ``ip`` is (x, y, direction)."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.abcdirection import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (self._machine.x, self._machine.y, self._machine.d)
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.tape.get(k, 0) for k in sorted(self._machine.tape)]
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.queue)
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1629,6 +1658,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Nevermind": _NevermindVM,
     "BF-PDA": _BFPDAVM,
     "3x": _ThreeXVM,
+    "ABCDirection": _ABCDirectionVM,
 }
 
 
