@@ -34,33 +34,33 @@ Decisions for gaps in the wiki spec (documented):
   committed example and the boolean generator use ``%-[read]22%`` (the
   literal ``22`` parses to 48) instead;
 - undefined behavior is pinned: passing a non-tape to a move builtin,
-  calling an undefined function, an undeclared identifier, exceeding the
-  recursion limit (250), and division by zero all raise
-  :class:`~esolangs.exceptions.HaltError`; ``include`` raises
+  calling an undefined function, an undeclared identifier, and division by
+  zero all raise :class:`~esolangs.exceptions.HaltError`; ``include`` raises
   :class:`~esolangs.exceptions.HaltError` because file-based I/O is not
   supported;
 - malformed programs (unbalanced call tokens, a stray ``fi``, a header
   missing its colon) raise :class:`ValueError`.
 
 ``_Machine`` runs on the parsed top-level statement list and an explicit
-cursor, so it is step-capable: ``step()`` executes one top-level
-statement and ``halted`` is true once the cursor reaches the end.  A
-statement's own function call still runs to completion inside that one
-``step()`` through the original recursive ``_call``/``_run_statement``,
-since Suptiftam has no looping construct other than function recursion
-(already capped at ``_MAX_DEPTH``, so it halts rather than hangs).
+call stack (``_CallFrame``), so it is step-capable: ``step()`` executes one
+statement -- either the top-level statement at ``ind``, or the next
+statement of the call in progress at the top of ``frames`` -- and ``halted``
+is true once the top-level cursor reaches the end with no call left running.
+Recursion has no depth cap: a call pushes a ``_CallFrame`` instead of
+recursing natively, so the call stack lives in ``frames`` (a Python list)
+rather than in nested Python calls, and a program's own recursion depth is
+bounded only by memory, not by Python's C stack.
 """
 
 from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from typing import Any
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
-
-_MAX_DEPTH = 250
 
 _OPERATORS = "+-/"
 _LITERAL_DIGITS = {ch: i for i, ch in enumerate("0123456789ABCD")}
@@ -124,7 +124,6 @@ class _State:
         self.globals: dict[str, object] = {}
         self.functions: dict[str, list[tuple[str, list[_Node]]]] = {}
         self._rows: list[list[int] | None] = []
-        self.depth = 0
         self.read = _Tape(reader=self._read_cell)
         self.term = _Tape()
         self.globals["read"] = self.read
@@ -537,13 +536,59 @@ def _assign(
         _put(name, _Var(kind, wrapped), state, frame)
 
 
-def _call(
+@dataclass
+class _CallFrame:
+    """One function call in progress.
+
+    Tracks which extension block, which statement, and the argument value
+    to (re)bind per block.  A function name can map to several
+    ``(param, body)`` blocks (an "extension"); each runs in sequence with a
+    fresh local scope binding its own parameter name to the call's
+    (shared) argument value.
+    """
+
+    name: str
+    blocks: list[tuple[str, list[_Node]]]  # never empty (checked before construction)
+    value: _Var | _Tape
+    block_ind: int = 0
+    stmt_ind: int = 0
+    local: dict[str, object] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.local = {self.blocks[0][0]: self.value}
+
+
+def _dispatch(
+    statement: _Node,
+    state: _State,
+    frame: dict[str, object] | None,
+) -> _CallFrame | None:
+    """Execute one parsed statement, returning a pushed call frame if any."""
+    kind = statement[0]
+    if kind == "call":
+        _, name, argument, condition = statement
+        if condition is not None and not _truth(_eval_value(condition, state, frame)):
+            return None
+        return _start_call(name, argument, state, frame)
+    if kind == "assign":
+        _, name, value = statement
+        _assign(name, _eval_value(value, state, frame), state, frame)
+        return None
+    if kind == "tapedecl":
+        _, name, tape_kind = statement
+        if _lookup(name, state, frame) is None:
+            _put(name, _Tape(tape_kind), state, frame)
+        return None
+    raise AssertionError(f"unexpected statement {statement!r}")
+
+
+def _start_call(
     name: str,
     argument: _Node,
     state: _State,
     frame: dict[str, object] | None,
-) -> None:
-    """Run a call statement: a builtin, ``include``, or a user function."""
+) -> _CallFrame | None:
+    """Run a builtin/``include`` inline, or return a frame for a user call."""
     if name in ("down", "left", "right", "up"):
         value = _eval_value(argument, state, frame)
         if not isinstance(value, _Tape):
@@ -556,46 +601,14 @@ def _call(
             value.x += 1
         else:
             value.y -= 1
-        return
+        return None
     if name == "include":
         raise HaltError("include is not supported (file-based I/O)")
     blocks = state.functions.get(name)
     if not blocks:
         raise HaltError(f"call to undefined function {name!r}")
-    if state.depth >= _MAX_DEPTH:
-        raise HaltError("recursion limit exceeded")
     value = _eval_value(argument, state, frame)
-    state.depth += 1
-    try:
-        for param, body in blocks:
-            local: dict[str, object] = {param: value}
-            for statement in body:
-                _run_statement(statement, state, local)
-    finally:
-        state.depth -= 1
-
-
-def _run_statement(
-    statement: _Node,
-    state: _State,
-    frame: dict[str, object] | None,
-) -> None:
-    """Execute one parsed statement."""
-    kind = statement[0]
-    if kind == "call":
-        _, name, argument, condition = statement
-        if condition is not None and not _truth(_eval_value(condition, state, frame)):
-            return
-        _call(name, argument, state, frame)
-    elif kind == "assign":
-        _, name, value = statement
-        _assign(name, _eval_value(value, state, frame), state, frame)
-    elif kind == "tapedecl":
-        _, name, tape_kind = statement
-        if _lookup(name, state, frame) is None:
-            _put(name, _Tape(tape_kind), state, frame)
-    else:
-        raise AssertionError(f"unexpected statement {statement!r}")
+    return _CallFrame(name, blocks, value)
 
 
 def _render_term(term: _Tape) -> str:
@@ -615,7 +628,7 @@ def _render_term(term: _Tape) -> str:
 
 
 class _Machine:
-    """One Suptiftam run: the parsed program, state, and top-level cursor."""
+    """One Suptiftam run: the parsed program, state, cursor, and call stack."""
 
     def __init__(self, code: str, io: IO) -> None:
         functions, top = _parse(code.splitlines())
@@ -623,42 +636,84 @@ class _Machine:
         self.state.functions = functions
         self.top = top
         self.ind = 0
+        self.frames: list[_CallFrame] = []
         self._rendered = False
 
     @property
     def halted(self) -> bool:
         """Whether the cursor has run off the top-level statements."""
-        return self.ind >= len(self.top)
+        return self.ind >= len(self.top) and not self.frames
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
-        Globals are captured via ``repr()`` since a tape's cells are an
-        unbounded, mutable dict -- sufficient for the state-cycle
+        Globals and locals are captured via ``repr()`` since a tape's cells
+        are an unbounded, mutable dict -- sufficient for the state-cycle
         detector's purpose, since a genuine hang re-executes the same
-        top-level statement with the same bindings on every lap.
+        statement position with the same bindings on every lap.
         """
         return (
             self.ind,
             tuple(sorted((k, repr(v)) for k, v in self.state.globals.items())),
+            tuple(
+                (
+                    f.name,
+                    f.block_ind,
+                    f.stmt_ind,
+                    tuple(sorted((k, repr(v)) for k, v in f.local.items())),
+                )
+                for f in self.frames
+            ),
             self.state.io.position(),
         )
 
     def step(self) -> None:
-        """Execute one top-level statement, advancing the cursor.
+        """Execute one statement, advancing the call stack or the cursor.
 
-        Rendering ``term`` happens once, on the step that finishes the
-        program, matching ``run()``'s original print-after-the-loop.
+        A call in progress (``self.frames``) is resumed first, one
+        statement at a time; a ``call`` statement pushes a new frame instead
+        of recursing.  Rendering ``term`` happens once, on the step that
+        finishes the program, matching ``run()``'s original
+        print-after-the-loop.
         """
         if self.halted:
             return
-        _run_statement(self.top[self.ind], self.state, None)
-        self.ind += 1
-        if self.ind >= len(self.top) and not self._rendered:
+        if self.frames:
+            self._step_frame()
+        else:
+            statement = self.top[self.ind]
+            self.ind += 1
+            pushed = _dispatch(statement, self.state, None)
+            if pushed is not None:
+                self.frames.append(pushed)
+        # mypy narrows `self.halted` to Literal[False] from the guard above
+        # and won't re-widen it across the mutations just made; the explicit
+        # local defeats that.
+        halted: bool = self.halted
+        if halted and not self._rendered:
             self._rendered = True
             rendered = _render_term(self.state.term)
             if rendered:
                 self.state.io.print_str(rendered)
+
+    def _step_frame(self) -> None:
+        """Advance the call frame at the top of the stack by one statement."""
+        top = self.frames[-1]
+        if top.block_ind >= len(top.blocks):
+            self.frames.pop()
+            return
+        _, body = top.blocks[top.block_ind]
+        if top.stmt_ind >= len(body):
+            top.block_ind += 1
+            top.stmt_ind = 0
+            if top.block_ind < len(top.blocks):
+                top.local = {top.blocks[top.block_ind][0]: top.value}
+            return
+        statement = body[top.stmt_ind]
+        top.stmt_ind += 1
+        pushed = _dispatch(statement, self.state, top.local)
+        if pushed is not None:
+            self.frames.append(pushed)
 
 
 def run(code: str, io: IO) -> None:
