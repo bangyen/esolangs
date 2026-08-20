@@ -31,6 +31,14 @@ Languages with both an in-package interpreter and a native cross-check:
   assembly is run under unicorn via ``riscv_elf_runner`` and must agree with
   the Python interpreter on the full corpus and the insertion-order state
   dump.
+* **BIO** — ``register_based/bio.py`` vs ``extra/assembly/bio-riscv.s``.
+  Both implement the full wiki language (3 registers x/y/z, while loops
+  guarded by ``0i[xyz]``/``}``, with comments).  The assembly is run under
+  unicorn via ``riscv_elf_runner`` and must agree with the Python
+  interpreter on the full corpus; both error lazily, matching the Python
+  control flow exactly (a loop guard only raises when its skip path scans
+  off the end of the program, so a ``}`` that halts first, exit 3, can
+  pre-empt a later unmatched guard, exit 2).
 * **Forþ** — ``stack_based/forth.py`` vs ``extra/rust/forth.rs``.  The Rust
   reference writes its ``Input: `` prompt to stdout (the Python side routes
   it through the IO layer), which is stripped before comparing; both agree
@@ -328,6 +336,45 @@ RAM0_CORPUS = [
     "A A N S",  # store 2 at address 2
     "A A A A A N A A A S A A A A A N L",  # load from an uninitialized address
     "A N S A A N S A A A N S A A A A N S A A A A A N S",  # insertion order
+]
+
+
+# -- BIO corpus: the full 3-register wiki language -------------------------
+
+# Every command over three registers x/y/z.  `0o[xyz]` increments, `1o[xyz]`
+# decrements, `1i[xyz]` prints the register's low byte, `0i[xyz]` is a
+# while-loop guard, and `}` closes the innermost loop; matching is
+# case-insensitive and any other text (including `;` separators) is a
+# comment.  Error categories: a loop guard that is skipped (register zero)
+# and never finds its matching `}` is malformed (exit 2, raised lazily on
+# the skip scan, not eagerly); a `}` with no open loop is an invalid
+# runtime operation (exit 3).  Programs must terminate (a loop whose body
+# never changes its guard register loops forever).
+BIO_CORPUS = [
+    "",  # empty program: no output
+    "   \n\t  ",  # whitespace only: no output
+    "0ox;invalid;1ix;",  # non-command text is a comment
+    "0ox;1ix;",  # increment then output x
+    "0oy;0oy;0oy;1iy;",  # increment y three times
+    "0oz;1iz;",  # increment then output z
+    "1ox;1ix;",  # decrement from zero wraps to 0xff
+    "0ox;1ox;1ix;",  # net zero
+    "0OX;1IX;",  # uppercase commands
+    "0ox;0ix{0oy;1ox;};1iy;",  # loop runs once
+    "0ix{0oy;};1iy;",  # loop skipped when register is zero
+    "0ix{};1ix;",  # empty loop body, skipped
+    "0ox;0ix{0oy;0iy{0oz;1oy;};1ox;};1iz;",  # nested loops
+    "0ox;0ox;0ix{1ix;1ox;};",  # loop with output inside
+    "0ox;" * 5 + "0ix{1ox;" + "0oy;" * 5 + "};1iy;",  # 5*5 = 25
+    "0ox;" * 66 + "1ix;",  # 66 = 'B'
+    "0ox;" * 300 + "1ix;",  # wraps mod 256
+    "0ox;0oy;0oz;1ix;1iy;1iz;",  # registers are independent
+    # error categories
+    "}",  # bare close: invalid runtime op, exit 3
+    "0ox;}",  # close with no open loop: exit 3
+    "0iy{0ox;",  # unmatched guard, skipped: malformed, exit 2
+    "0ix{0iy{};",  # unmatched outer guard, skipped: malformed, exit 2
+    ";x1Ox{{}0Iy",  # a halting `}` pre-empts a later unmatched guard: exit 3
 ]
 
 
@@ -681,6 +728,116 @@ def _verify_ram0() -> bool:
 
     if not failures:
         print(f"RAM0 differential: {len(RAM0_CORPUS)} programs match")
+    return failures == 0
+
+
+def _run_bio_python(program: str) -> tuple[bytes, int]:
+    """Run the Python BIO interpreter; return (output, exit code).
+
+    Exit codes follow the cross-check convention: 0 = success, 2 = malformed
+    program (ValueError: a skipped loop guard never finds its matching
+    `}`), 3 = invalid runtime operation (HaltError: `}` with an empty loop
+    stack).
+    """
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.bio import run
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_char(self, char: str) -> None:
+            buffer.write(char.encode("latin1"))
+
+    try:
+        run(program, _IO())
+    except HaltError:
+        return buffer.getvalue(), 3
+    except ValueError:
+        return buffer.getvalue(), 2
+    return buffer.getvalue(), 0
+
+
+def _run_bio_python_limited(program: str, timeout: float) -> tuple[bytes, int] | None:
+    """Run the Python BIO interpreter with a wall-clock budget.
+
+    Returns ``(output, exit_code)`` like :func:`_run_bio_python`, or None if
+    the program did not terminate (the fuzzer's analog of the assembly's
+    instruction-count cap).  The interpreter is step-capable, so the run is
+    bounded by state-cycle detection
+    (:func:`esolangs.vm.run_until_halt_or_cycle`): a repeated snapshot
+    proves a loop and is reported as non-termination immediately.  The alarm
+    stays as the backstop for the unbounded-growth class (a loop that keeps
+    incrementing a register never revisits a state), and is only meaningful
+    on POSIX; the interpreter is skipped (None) elsewhere.
+    """
+    import signal
+
+    if not hasattr(signal, "SIGALRM"):
+        return None
+
+    from esolangs.exceptions import HaltError
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.register_based.bio import _Machine
+    from esolangs.vm import run_until_halt_or_cycle
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        def print_char(self, char: str) -> None:
+            buffer.write(char.encode("latin1"))
+
+    class _TimeoutError(Exception):
+        pass
+
+    def _alarm(_signum: int, _frame: object) -> None:
+        raise _TimeoutError
+
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(int(timeout))
+    try:
+        machine = _Machine(program, _IO())
+        if not run_until_halt_or_cycle(machine):
+            return None
+        return buffer.getvalue(), 0
+    except HaltError:
+        return buffer.getvalue(), 3
+    except ValueError:
+        return buffer.getvalue(), 2
+    except _TimeoutError:
+        return None
+    finally:
+        signal.alarm(0)
+
+
+def _verify_bio() -> bool:
+    """Compare the Python BIO interpreter against the assembly cross-check.
+
+    The RISC-V reference is run under unicorn (``riscv_elf_runner``), which
+    requires unicorn and a RISC-V cross-compiler; it is skipped when either
+    is missing.  Both implementations tokenize the same way and error
+    lazily on the same control-flow path, and must agree on the
+    valid-program and error-category corpus.
+    """
+    if not _asm_refs_ready("bio"):
+        return True
+
+    failures = 0
+    for program in BIO_CORPUS:
+        ref = _asm_refs("bio", program)
+        py_out, py_code = _run_bio_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
+        if (asm_out, asm_code) != (py_out, py_code):
+            failures += 1
+            print(
+                f"BIO {program!r}: asm={(asm_out, asm_code)} " f"py={(py_out, py_code)}"
+            )
+
+    if not failures:
+        print(f"BIO differential: {len(BIO_CORPUS)} programs match")
     return failures == 0
 
 
@@ -1046,6 +1203,54 @@ def _fuzz_ram0(rng: random.Random, count: int) -> bool:
         f"RAM0 fuzz: {checked} programs match, {loops} consistent loops"
         if not failures
         else f"RAM0 fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    )
+    return failures == 0
+
+
+def _fuzz_bio(rng: random.Random, count: int) -> bool:
+    """Differentially fuzz BIO with random programs.
+
+    A random loop whose body never flips its guard register may loop
+    forever (e.g. ``0ox;0ix{0ix;}``): the assembly reference raises or
+    faults when it exhausts its instruction-count cap (or writes past a
+    fixed buffer), and Python times out under SIGALRM (or proves a state
+    cycle); ``None`` means "did not terminate" on that side.  A program
+    that halts on one side but loops on the other is a divergence.
+    """
+    if not _asm_refs_ready("bio"):
+        return True
+
+    alphabet = "01OoIiXxYyZz{}; "
+    failures = checked = loops = 0
+    for _ in range(count):
+        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 40)))
+        py = _run_bio_python_limited(program, timeout=3)
+        asm = _asm_refs("bio", program)
+        if py is None and asm is None:
+            loops += 1
+            continue
+        if py is None and asm is not None:
+            # Python's 3s budget is a heuristic; the assembly is far faster,
+            # so confirm a genuinely-looping program with a longer budget
+            # before calling the termination mismatch a divergence.
+            py = _run_bio_python_limited(program, timeout=30)
+        if py is None or asm is None:
+            failures += 1
+            print(
+                f"BIO fuzz {program!r}: termination mismatch "
+                f"(python {'loops' if py is None else 'halts'}, "
+                f"asm {'loops' if asm is None else 'halts'})"
+            )
+            continue
+        checked += 1
+        if py != asm:
+            failures += 1
+            print(f"BIO fuzz {program!r}: asm={asm!r} py={py!r}")
+
+    print(
+        f"BIO fuzz: {checked} programs match, {loops} consistent loops"
+        if not failures
+        else f"BIO fuzz: {failures} failures of {checked} (plus {loops} loops)"
     )
     return failures == 0
 
@@ -2197,6 +2402,7 @@ def main() -> int:
     ok = _verify_nocomment() and ok
     ok = _verify_bfpda() and ok
     ok = _verify_ram0() and ok
+    ok = _verify_bio() and ok
     ok = _verify_forth() and ok
     ok = _verify_basicfuck() and ok
     ok = _verify_unsquare() and ok
@@ -2210,6 +2416,7 @@ def main() -> int:
         ok = _fuzz_nocomment(rng, args.fuzz) and ok
         ok = _fuzz_bfpda(rng, args.fuzz) and ok
         ok = _fuzz_ram0(rng, args.fuzz) and ok
+        ok = _fuzz_bio(rng, args.fuzz) and ok
         ok = _fuzz_forth(rng, args.fuzz) and ok
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok

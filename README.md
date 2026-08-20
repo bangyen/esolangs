@@ -184,13 +184,14 @@ Languages that don't fit into the above categories.
 <details>
 <!-- EXTRA:START -->
 
-<summary>Show all 12 implementations</summary>
+<summary>Show all 13 implementations</summary>
 
 Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
 
 ### RISC-V Assembly Implementations
 
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
+- [BIO](https://esolangs.org/wiki/BIO)
 - [NoComment](https://esolangs.org/wiki/NoComment)
 - [RAM0](https://esolangs.org/wiki/RAM0)
 

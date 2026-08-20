@@ -370,4 +370,3 @@ values:  .zero 32768   # 4096 tokens * 8 bytes
 ram:     .zero 16384   # 4096 cells * 4 bytes
 setflags: .zero 4096
 order:   .zero 16384   # 4096 * 4 bytes
-

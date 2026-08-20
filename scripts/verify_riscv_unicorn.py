@@ -46,6 +46,19 @@ REFERENCE_CASES = [
         "z: 5\nn: 2\nram: {\n    2: 5\n}\n",
     ),
     ("ram0", "extra/assembly/ram0-riscv.s", "A 3 A A", "z: 3\nn: 0\nram: {}\n"),
+    ("bio", "extra/assembly/bio-riscv.s", "0ox;0ox;0ox;1ix;", "\x03"),
+    (
+        "bio",
+        "extra/assembly/bio-riscv.s",
+        "0ox;0ix{0oy;1ox;};1iy;",
+        "\x01",
+    ),
+    (
+        "bio",
+        "extra/assembly/bio-riscv.s",
+        "0ox;" * 66 + "1ix;",
+        "B",
+    ),
 ]
 
 # (name, compiler module, source program, expected output).  Compilers with
