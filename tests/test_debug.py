@@ -107,13 +107,20 @@ class TestRun:
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
-        from esolangs.vm import _VM_ADAPTERS
-
         with pytest.raises(UnknownLanguageError):
             esolangs.make_debugger("NoSuchLanguage", "+")
-        # a registry language that still lacks a step-capable interpreter
-        not_step_capable = next(
-            lang for lang in esolangs.list_languages() if lang not in _VM_ADAPTERS
-        )
+
+    def test_registered_language_without_an_adapter_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A registry language missing from ``_VM_ADAPTERS`` also raises.
+
+        Every current registry language has an adapter, so this exercises
+        ``make_vm``'s defensive fallback (not just the unregistered-name
+        check) by removing one adapter for the duration of the test.
+        """
+        from esolangs.vm import _VM_ADAPTERS
+
+        monkeypatch.delitem(_VM_ADAPTERS, "brainfuck")
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_debugger(not_step_capable, "+")
+            esolangs.make_debugger("brainfuck", "+")

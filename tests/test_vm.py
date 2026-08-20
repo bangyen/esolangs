@@ -813,6 +813,17 @@ class TestForbin:
         assert vm.halted
 
 
+class TestSuptiftam:
+    def test_globals_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Suptiftam", "x=7")
+        assert vm.ip == 0
+        assert vm.memory == []
+        vm.step()
+        assert vm.ip == 1
+        assert vm.memory == [7]
+        assert vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -1027,19 +1038,34 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine("main { for i:0..1 { x = 0; } }", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is True
 
+    def test_suptiftam_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.suptiftam import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("x=7", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
-        from esolangs.vm import _VM_ADAPTERS
-
         with pytest.raises(UnknownLanguageError):
             esolangs.make_vm("NoSuchLanguage", "+")
-        # a registry language that still lacks a step-capable interpreter
-        not_step_capable = next(
-            lang for lang in esolangs.list_languages() if lang not in _VM_ADAPTERS
-        )
+
+    def test_registered_language_without_an_adapter_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A registry language missing from ``_VM_ADAPTERS`` also raises.
+
+        Every current registry language has an adapter, so this exercises
+        ``make_vm``'s defensive fallback (not just the unregistered-name
+        check) by removing one adapter for the duration of the test.
+        """
+        from esolangs.vm import _VM_ADAPTERS
+
+        monkeypatch.delitem(_VM_ADAPTERS, "brainfuck")
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_vm(not_step_capable, "+")
+            esolangs.make_vm("brainfuck", "+")
 
 
 @pytest.mark.parametrize(

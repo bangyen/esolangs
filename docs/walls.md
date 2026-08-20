@@ -546,15 +546,20 @@ returning — callers only get the True/False verdict, not the machine's
 state at the moment of detection.
 
 `tests/test_interpreters_robustness.py` decides the empty-program invariant
-by state-cycle detection for forty-seven string-based step-capable
+by state-cycle detection for forty-eight string-based step-capable
 machines (brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, Qoibl,
 Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
 ROTfuck, Circlefuck, BFStack, Decleq, 6-5, Back, BIO, NoComment, 3D
 Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial,
 Grapheme, RAM0, Minsky Swap, Home Row, Unsquare, %^2^-1, Suffolk,
 Container, Nevermind, BF-PDA, 3x, Sophie, Jaune, SLOW ACV MAMMALIAN,
-ZTOALC L, Between, MyScript, Lamfunc, Forbin), and keeps the SIGALRM
-backstop for the rest (Painfuck's `y` is non-deterministic).
+ZTOALC L, Between, MyScript, Lamfunc, Forbin, Suptiftam), and keeps the
+SIGALRM backstop for the rest (Painfuck's `y`, WII2D's `?`, and
+LaserFuck's random heading are non-deterministic).  Every registry
+language is now step-capable: `_VM_ADAPTERS` in `esolangs.vm` covers
+the whole registry, so `make_vm`'s `KeyError` -> `UnknownLanguageError`
+fallback for a registered-but-uncovered language is exercised in the
+tests by temporarily removing an adapter, not by a real example.
 MyScript's frame stack only unrolls a *top-level* `while` into
 resumable steps; a `while` nested inside a function call still runs to
 completion within one `step()` via the original recursive evaluator,
