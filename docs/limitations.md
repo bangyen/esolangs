@@ -91,6 +91,7 @@ per-character encoding can be meaningfully shortened:
 | 6-5 | `n <= 5` exact; dense large-`T` tables (e.g. AND-6) rejected past that | Genuine wall: the decision tree is total through `n == 5` (35 branch labels); the arithmetic fallback needs the table (or its complement) as a single integer, so a dense table with no cheap complement needs an unbuildable ~O(2**(2**n))-character setup. |
 | ZTOALC L | `n <= 3` exact; popcount-symmetric tables lifted further (e.g. XOR4 at `n == 4`); dense non-symmetric `n == 4` rejected | Genuine wall: every Collatz trajectory converges to the `16, 8, 4, 2, 1` tail, so a dense non-symmetric tree has leaf collisions past `n == 3`; symmetric tables fall back to a branch-free linear program instead. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
+| Factor | program-size cap, not `n`-driven: sparse tables (e.g. constant-0/1) stay under the cap at any tested `n`, dense tables (e.g. XOR4, AND4 at `n == 4`) don't | Liftable by host config: the encoded integer's decimal length is checked against `sys.get_int_max_str_digits()` (CPython's int-to-string DoS guard, default 4300 digits) before rendering — the Factor *interpreter* parses its program the same way, so a caller who raises the process-wide limit gets both the generator and the interpreter working past it. |
 
 Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps

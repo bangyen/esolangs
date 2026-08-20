@@ -107,6 +107,15 @@ def run_three_d_brainfuck(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_factor(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.factor import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_painfuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.painfuck import run
 
@@ -1073,6 +1082,60 @@ class TestThreeDBf:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.three_d_brainfuck("02")
+
+
+class TestFactor:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.factor(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_factor(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_is_the_decimal_encoding_of_the_bf_program(self) -> None:
+        """factor delegates to the brainfuck generator and encodes its
+        output, same as the text generator's factor()."""
+        from esolangs.tools.text.tape import _factor_encode
+
+        table = "0110"
+        assert boolean.factor(table) == str(_factor_encode(boolean.brainfuck(table)))
+
+    def test_sparse_tables_stay_small_at_n_four(self) -> None:
+        """Sparse tables (few one-rows) encode a short brainfuck program,
+        so they stay well under the digit cap even at n == 4."""
+        assert boolean.factor("0" * 16).isdigit()
+        assert boolean.factor("1" * 16).isdigit()
+
+    def test_dense_table_past_the_digit_cap_is_rejected(self) -> None:
+        """A dense n == 4 table (XOR4) encodes a brainfuck program whose
+        Factor integer exceeds CPython's int-to-string digit limit; the
+        generator raises instead of letting that ValueError leak from
+        str() with its raw CPython wording."""
+        xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
+        with pytest.raises(ValueError, match="digit limit"):
+            boolean.factor(xor4)
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.factor("011")
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.factor("02")
 
 
 class TestPainfuck:
