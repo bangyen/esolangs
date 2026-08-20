@@ -189,9 +189,8 @@ branch the bit selects.  The survivor turns down and right into its
 subtree, and each leaf is a ``#0#``/``#1#`` literal that prints the table
 entry before the dot dies, so the instantiated program prints its answer
 and halts.  It is a parameterized generator, total for any arity and table;
-the tree re-embeds each input at `2**i` junctions — one of the two
-parameterized generators that do not embed each input exactly once
-(`wii2d_tree` is the other, at `2**n - 1` junctions).
+the tree re-embeds each input at `2**i` junctions — the only parameterized
+generator that does not embed each input exactly once.
 
 ## Polynomial (numeric root-finding ruled out; caps at n <= 4)
 
@@ -257,9 +256,10 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   two branches are op strings that transform the accumulator before re-merging
   ahead of the next junction; the final accumulator is the table entry.  The
   ops are not monotone (`s` sends -1 to 1), so the decoding works for any
-  table at small arity (every table through three inputs is verified against
-  the interpreter; two inputs use a closed form — bit 0 packed as -1/0, each
-  column decoded by a single op).  The search tries op strings of length 2
+  table at small arity (every table through four inputs is verified against
+  the interpreter — exhaustively through three, sampled dense at four; two
+  inputs use a closed form — bit 0 packed as -1/0, each column decoded by a
+  single op).  The search tries op strings of length 2
   through 6 with a growing budget and generally fails past `n == 5` for dense
   non-symmetric tables.  Symmetric tables (AND/OR/XOR/majority/threshold-k of
   any arity) get their own closed forms first: parity/XNOR is exact and O(1)
@@ -269,11 +269,13 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   points instead of the full `2**n` rows — see `_wii2d_search`'s docstring
   for the counting-bound proof that the general (non-symmetric) search must
   eventually fail at high arity regardless of tuning, and why parity's exact
-  case is a speed win rather than a reachability one.  The guaranteed
-  fallback is the decision tree
-  (:func:`esolangs.tools.boolean.parameterized.wii2d_tree`), which
-  re-embeds each input at every node (2**n - 1 junctions) and works for any
-  arity.
+  case is a speed win rather than a reachability one.  When the search
+  cannot fit a table in its budget the generator raises :class:`ValueError`
+  — a genuine cap, not a representation limit: the counting bound shows no
+  chain with bounded op strings can represent every table once ``n`` is
+  large, so large dense non-symmetric tables (past ``n == 5``) are out of
+  reach, and there is no universal fallback (a tree would need each input
+  re-embedded at every node, which WII2D has no way to store).
 
   **A search-free chain (no BFS/DFS at all, just a formula) was assessed and
   found not to generalize.**  The idea: pack the first `n - 1` bits into a
@@ -324,8 +326,8 @@ and the search's reachable count at `n == 3` and `n == 4` is exactly
 `2**(n+1)` (16 and 32).  So a chain-only generator would raise on the most
 common tables.
 
-The universal construction is therefore the **decision tree** (the
-`wii2d_tree` analog): re-embed each input at every node, with uniform-width
+The universal construction is therefore the **decision tree**: re-embed
+each input at every node (2**n - 1 junction cells), with uniform-width
 leaves holding `i o @` (entry 1) or `o @` (entry 0).  That is total and was
 verified against the interpreter for every table through `n == 4` (all
 combinations, all 65536 four-input tables).
@@ -345,7 +347,7 @@ Four 2dFish mechanics differ from WII2D and must be handled by the layout:
   starts at 0), so the start value is a preamble of `i` repeated (`i*start`)
   before the first junction.
 - **Fixed-width placeholders.**  The chain template must use single-character
-  junction cells filled in place (as `wii2d_tree` does), not WII2D's
+  junction cells filled in place, not WII2D's
   `{Xi}`-to-4-char replacement, which shifts the row one cell per junction —
   WII2D absorbs the shift with its wrapping and row padding, 2dFish does not.
 

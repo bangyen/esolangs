@@ -37,13 +37,11 @@ from esolangs.tools.boolean.parameterized import (
     dotlang,
     eval,  # noqa: A004 - the language is named "Eval"
     instantiate,
-    instantiate_wii2d_tree,
     lamfunc,
     minsky_swap,
     nocomment,
     ram0,
     wii2d,
-    wii2d_tree,
 )
 from esolangs.tools.boolean.register import (
     addsubjump,
@@ -110,7 +108,6 @@ __all__ = [
     "forth",
     "grapheme",
     "instantiate",
-    "instantiate_wii2d_tree",
     "jaune",
     "jaune_multiply",
     "lamfunc",
@@ -137,7 +134,6 @@ __all__ = [
     "three_x",
     "unsquare",
     "wii2d",
-    "wii2d_tree",
     "ztoalc_l_boolean",
 ]
 
