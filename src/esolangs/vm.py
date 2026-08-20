@@ -1171,6 +1171,35 @@ class _RAM0VM(_BaseVM):
         return []
 
 
+class _MinskySwapVM(_BaseVM):
+    """Two registers + pointer; ``ip`` the cursor, ``memory`` both registers."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.reg)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _ROTFuckVM(_BaseVM):
     """Rotating tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
 
@@ -1417,6 +1446,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Collatz Multiverse": _CollatzMultiverseVM,
     "Polynomial": _PolynomialVM,
     "RAM0": _RAM0VM,
+    "Minsky Swap": _MinskySwapVM,
 }
 
 
