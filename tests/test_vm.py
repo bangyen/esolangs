@@ -717,6 +717,17 @@ class TestABCDirection:
         assert not vm.halted
 
 
+class TestSophie:
+    def test_accumulator_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Sophie", "#$5.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # #$5 loads 5 into the accumulator
+        assert (vm.ip, vm.memory) == (3, [5])
+        vm.step()  # . prints the accumulator
+        assert vm.halted
+        assert vm.output == "5"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
