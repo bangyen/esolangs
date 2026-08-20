@@ -618,6 +618,19 @@ class TestPolynomial:
         assert vm.halted
 
 
+class TestRAM0:
+    def test_registers_and_cursor(self) -> None:
+        vm = esolangs.make_vm("RAM0", "ZA")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
+        vm.step()  # Z zeroes z
+        assert vm.ip == 1
+        vm.step()  # A increments z; the cursor runs off the end
+        assert (vm.ip, vm.memory, vm.halted) == (2, [1, 0], True)
+        assert vm.output == ""  # the dump happens on the next step
+        vm.step()
+        assert vm.output == "z: 1\nn: 0\nram: {}\n"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
