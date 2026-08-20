@@ -28,7 +28,11 @@ generator is the live question: it would route one cod through the `_`
 tree, laid out branch-free so the cod never hits a random junction.  That
 is a heavy, unbuilt 2D construction, and the interpreter needs a
 seeded-randomness decision first (the LaserFuck precedent), so COD stays
-low-priority and risky rather than ruled out.
+low-priority and risky rather than ruled out.  The construction is pinned
+down in detail — a single-cod, `_`-only decision tree with `...` inputs on
+the bottom edge and `---` outputs on the left/right edges — in
+`docs/cod_boolean_generator.md`; what remains is the interpreter and the
+branch-free layout algorithm, not open design questions.
 
 ## Transpilers
 
