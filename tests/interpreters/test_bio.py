@@ -257,5 +257,48 @@ class TestBIOIntegration:
         assert f.getvalue() == "B"
 
 
+class TestStepMachine:
+    def test_step_tracks_registers_stack_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.bio import _Machine
+
+        machine = _Machine("0ox;0ix{1ox;};", ScriptedIO())
+        assert (machine.reg, machine.stk, machine.ind) == ([0, 0, 0], [], 0)
+        machine.step()  # 0ox sets x to 1
+        assert machine.reg == [1, 0, 0]
+        machine.step()  # 0ix sees x nonzero and pushes the loop
+        assert machine.stk == [1]
+        machine.step()  # 1ox decrements x
+        assert machine.reg == [0, 0, 0]
+        machine.step()  # } pops the loop and lands back on the 0ix
+        assert machine.stk == []
+        assert machine.ind == 1
+        machine.step()  # 0ix sees x zero and skips the body
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 4
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.bio import _Machine
+
+        assert hash(_Machine("0ox;", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.bio import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("0ox;1ix;", ScriptedIO())) is True
+
+    def test_nonterminating_loop_is_detected_as_a_cycle(self) -> None:
+        """A loop whose body never changes a register revisits a snapshot."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.bio import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("0ox;0ix{0ix;}", ScriptedIO())) is False
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

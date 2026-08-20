@@ -84,62 +84,90 @@ def _google_url(queue: list[int]) -> str:
     return "".join(parts)
 
 
-def run(code: list[str], io: IO) -> None:
-    """Run a Taglate program seeded by the first line's queue."""
-    if not code:
-        return
-    queue = [ord(c) for c in code[0]]
-    tokens = _tokens("".join(code[1:]))
-    match = _match(tokens)
+class _Machine:
+    """Per-run Taglate state: the queue, the token list, and the cursor.
 
-    def pop() -> int:
+    ``step()`` executes one token; ``halted`` is true once the cursor passes
+    the last token.  ``t`` rebuilds the queue from the URL, and ``gy``/``gz``
+    move the cursor to a partner, so a loop whose head never zeroes is a
+    finite-state cycle the state-cycle hang detector can prove.  The VM and
+    the hang detector expose this object.
+    """
+
+    def __init__(self, code: list[str], io: IO) -> None:
+        """Seed the queue from the first line and tokenize the rest."""
+        self.io = io
+        self.queue: list[int] = [ord(c) for c in code[0]] if code else []
+        self.tokens = _tokens("".join(code[1:]))
+        self.match = _match(self.tokens)
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has passed the last token."""
+        return self.ind >= len(self.tokens)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (tuple(self.queue), self.ind, self.io.position())
+
+    def _pop(self) -> int:
         """Pop the front of the queue, halting when it is empty."""
-        if not queue:
+        if not self.queue:
             raise HaltError
-        return queue.pop(0)
+        return self.queue.pop(0)
 
-    ind = 0
-    while ind < len(tokens):
-        tok = tokens[ind]
+    def step(self) -> None:
+        """Execute one token, advancing the cursor."""
+        if self.halted:
+            return
+        tok = self.tokens[self.ind]
         if tok == "a":
-            queue.append((pop() + pop()) % 65536)
+            self.queue.append((self._pop() + self._pop()) % 65536)
         elif tok == "b":
-            x, y = pop(), pop()
-            queue.append((x - y) % 65536)
+            x, y = self._pop(), self._pop()
+            self.queue.append((x - y) % 65536)
         elif tok == "c":
-            queue.append((pop() * pop()) % 65536)
+            self.queue.append((self._pop() * self._pop()) % 65536)
         elif tok == "d":
-            x, y = pop(), pop()
+            x, y = self._pop(), self._pop()
             if not y:
                 raise HaltError
-            queue.append(x // y)
+            self.queue.append(x // y)
         elif tok == "e":
-            queue.append(pop())
+            self.queue.append(self._pop())
         elif tok == "f":
-            pop()
+            self._pop()
         elif tok == "gy":
-            if not queue or queue[0] == 0:
-                partner = match.get(ind)
+            if not self.queue or self.queue[0] == 0:
+                partner = self.match.get(self.ind)
                 if partner is None:
                     raise ValueError("unmatched 'gy'")
-                ind = partner
+                self.ind = partner
         elif tok == "gz":
-            if queue and queue[0] != 0:
-                partner = match.get(ind)
+            if self.queue and self.queue[0] != 0:
+                partner = self.match.get(self.ind)
                 if partner is None:
                     raise ValueError("unmatched 'gz'")
-                ind = partner
+                self.ind = partner
         elif tok == "h":
-            queue.append(io.input_char())
+            self.queue.append(self.io.input_char())
         elif tok == "i":
-            io.print_char(chr(pop()))
+            self.io.print_char(chr(self._pop()))
         elif tok == "j":
-            value = pop()
-            queue.append((value - 1) % 65536 if value else 1)
+            value = self._pop()
+            self.queue.append((value - 1) % 65536 if value else 1)
         else:  # "t"
-            queue = [ord(c) for c in _google_url(queue)]
+            self.queue = [ord(c) for c in _google_url(self.queue)]
 
-        ind += 1
+        self.ind += 1
+
+
+def run(code: list[str], io: IO) -> None:
+    """Run a Taglate program seeded by the first line's queue."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

@@ -16,10 +16,8 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run as container_run
 from esolangs.interpreters.other.forbin import run as forbin_run
 from esolangs.interpreters.other.ztoalc_l import run as ztoalc_run
-from esolangs.interpreters.register_based.albabet import run as albabet_run
 from esolangs.interpreters.register_based.between import run as between_run
 from esolangs.interpreters.register_based.bio import run as bio_run
-from esolangs.interpreters.register_based.huf import run as huf_run
 from esolangs.interpreters.register_based.myscript import run as myscript_run
 from esolangs.interpreters.register_based.nevermind import run as nevermind_run
 from esolangs.interpreters.register_based.polynomial import run as polynomial_run
@@ -35,7 +33,6 @@ from esolangs.interpreters.stack_based.unsquare import run as unsquare_run
 from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
-from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.factor import run as factor_run
 from esolangs.interpreters.tape_based.rotfuck import run as rotfuck_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
@@ -129,9 +126,6 @@ class TestGeneratorRoundTrips:
     def test_bfstack(self) -> None:
         assert roundtrip(bfstack_run, gen.bfstack("Hi")) == "Hi"
 
-    def test_excon(self) -> None:
-        assert roundtrip(excon_run, gen.excon("Hi")) == "Hi"
-
     def test_factor(self) -> None:
         """The integer's prime factors encode a brainfuck program."""
         assert roundtrip(factor_run, gen.factor("Hi")) == "Hi"
@@ -162,13 +156,6 @@ class TestGeneratorRoundTrips:
     def test_bio(self) -> None:
         """Registers walk to each character value, then 1ix prints it."""
         assert roundtrip(bio_run, gen.bio("Hello, World!")) == "Hello, World!"
-
-    def test_albabet(self) -> None:
-        """c zeroes the accumulator, an a-run sets it, i prints it."""
-        assert roundtrip(albabet_run, gen.albabet("Hi")) == "Hi"
-        assert roundtrip(albabet_run, gen.albabet("Hello, World!")) == "Hello, World!"
-        assert roundtrip(albabet_run, gen.albabet("")) == ""
-        assert roundtrip(albabet_run, gen.albabet("\x00\x80\xff")) == "\x00\x80\xff"
 
     def test_wii2d(self) -> None:
         """The accumulator is built with digits and squares, then ~ prints."""
@@ -213,13 +200,6 @@ class TestGeneratorRoundTrips:
             pytest.raises(ValueError, match="cannot build"),
         ):
             gen.slow_acv_mammalian("H")
-
-    def test_huf(self) -> None:
-        """Each # + inc >@ segment prints one character."""
-        assert roundtrip(huf_run, gen.huf("Hi")) == "Hi"
-        assert roundtrip(huf_run, gen.huf("Hello, World!")) == "Hello, World!"
-        assert roundtrip(huf_run, gen.huf("a\nb\x00")) == "a\nb\x00"
-        assert gen.huf("") == ""
 
     def test_eval(self) -> None:
         """A string literal prints on the dot instruction."""
@@ -321,6 +301,30 @@ class TestGeneratorRoundTrips:
             "esolangs.interpreters.tape_based.six_five"
         ).run
         assert roundtrip(sixfive_run, gen.six_five("Hello, World!")) == "Hello, World!"
+
+    def test_suptiftam(self) -> None:
+        """Each character is a term= byte literal followed by a head move."""
+        suptiftam_run = importlib.import_module(
+            "esolangs.interpreters.other.suptiftam"
+        ).run
+        assert roundtrip(suptiftam_run, gen.suptiftam("Hi")) == "Hi"
+        assert (
+            roundtrip(suptiftam_run, gen.suptiftam("Hello, World!")) == "Hello, World!"
+        )
+        assert roundtrip(suptiftam_run, gen.suptiftam("")) == ""
+        assert gen.suptiftam("Hello, World!").splitlines()[:4] == [
+            "term='H'",
+            "right(:term:)",
+            "term='e'",
+            "right(:term:)",
+        ]
+
+    def test_suptiftam_alphabet_limits(self) -> None:
+        """A tab, newline, quote, or non-ASCII char cannot be emitted."""
+        for bad in ("a\tb", "a\nb", "a'b", "\x7f", "\x00", "é", "😀"):
+            with pytest.raises(ValueError, match="printable non-quote ASCII"):
+                gen.suptiftam(bad)
+        assert gen.suptiftam("a b")  # a space is fine
 
     def test_minifuck(self) -> None:
         """Each character is printed by flipping the differing tape bits."""
@@ -593,7 +597,6 @@ class TestGeneratorBranches:
         assert "--- BrainIf ---" in out
         assert "--- Clockwise ---" in out
         assert "--- Container ---" in out
-        assert "--- EXCON ---" in out
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
         assert "--- Sophie ---" in out
@@ -603,7 +606,6 @@ class TestGeneratorBranches:
         assert "--- Dig ---" in out
         assert "--- Dotlang ---" in out
         assert "--- Eval ---" in out
-        assert "--- huf ---" in out
         assert "--- LaserFuck ---" in out
         assert "--- SLOW ACV MAMMALIAN ---" in out
         assert "--- Minifuck ---" in out
@@ -624,8 +626,6 @@ class TestGeneratorBranches:
             gen.painfuck,
             gen.laserfuck,
             gen.suffolk,
-            gen.excon,
-            gen.albabet,
             gen.modulous,
             gen.qoibl,
             gen.the_temporary_stack,
@@ -635,7 +635,6 @@ class TestGeneratorBranches:
             gen.wii2d,
             gen.clockwise,
             gen.slow_acv_mammalian,
-            gen.huf,
         ]
         inputs = [
             "\x01",

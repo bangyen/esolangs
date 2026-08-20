@@ -81,55 +81,79 @@ def update(op: str, acc: int, io: IO) -> int:
     return acc
 
 
-def run(code: list[str], io: IO) -> None:
-    """Execute a WII2D program."""
-    # Find the start marker (!)
-    starts = [(r, row.find("!")) for r, row in enumerate(code) if "!" in row]
-    if len(starts) != 1:
-        raise ValueError("WII2D program must contain exactly one '!' start marker")
-    x, y = starts[0]
+class _Machine:
+    """Per-run WII2D state: position, velocity, and accumulator.
 
-    # Normalize code grid to uniform width
-    max_width = max(len(row) for row in code)
-    code = [row.ljust(max_width) for row in code]
+    ``step()`` executes the cell under the pointer and advances it one cell
+    (wrapping around the grid); ``halted`` is true once the pointer hits
+    ``.``.  The VM and the state-cycle hang detector expose this object.
+    Note that ``?`` draws a random heading, so a program using it is not a
+    deterministic machine and the hang detector is unsound on it.
+    """
 
-    # Initialize helper functions
-    find_closest_at = close(code)
-    move_pointer = init(code)
+    def __init__(self, code: list[str], io: IO) -> None:
+        """Validate the ``!`` marker and start above it, like :func:`run`."""
+        self.io = io
+        starts = [(r, row.find("!")) for r, row in enumerate(code) if "!" in row]
+        if len(starts) != 1:
+            raise ValueError("WII2D program must contain exactly one '!' start marker")
+        x, y = starts[0]
 
-    # Start above the ! marker, moving northward
-    x -= 1
-    vel = 0  # 0 = north, 1 = south, 2 = west, 3 = east
-    acc = 0  # Accumulator
+        max_width = max(len(row) for row in code)
+        self.code = [row.ljust(max_width) for row in code]
 
-    while True:
-        op = code[x][y]
+        self._find_closest_at = close(self.code)
+        self._move_pointer = init(self.code)
 
-        # Movement commands
+        # start above the ! marker, moving northward
+        self.x = x - 1
+        self.y = y
+        self.vel = 0  # 0 = north, 1 = south, 2 = west, 3 = east
+        self.acc = 0
+        self._done = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether the pointer hit ``.``."""
+        return self._done
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.x, self.y, self.vel, self.acc, self.io.position())
+
+    def step(self) -> None:
+        """Execute the cell under the pointer, then move one cell."""
+        if self._done:
+            return
+        op = self.code[self.x][self.y]
+
         if op in "^v<>":
-            vel = "^v<>".index(op)
-        # Random direction
+            self.vel = "^v<>".index(op)
         elif op == "?":
-            vel = secrets.randbelow(4)
-        # Reverse direction
+            self.vel = secrets.randbelow(4)
         elif op == "|":
-            if vel % 2:  # If moving vertically
-                vel -= 1
+            if self.vel % 2:  # If moving vertically
+                self.vel -= 1
             else:  # If moving horizontally
-                vel += 1
-        # Jump to closest @
+                self.vel += 1
         elif op == "@":
-            if target := find_closest_at(x, y):
-                x, y = target
-                x -= 1  # Move to position above the @
-                continue
-        # Halt program
+            if target := self._find_closest_at(self.x, self.y):
+                self.x, self.y = target
+                self.x -= 1  # Move to position above the @
+                return
         elif op == ".":
+            self._done = True
             return
 
-        # Update accumulator and move
-        acc = update(op, acc, io)
-        x, y = move_pointer(x, y, vel)
+        self.acc = update(op, self.acc, self.io)
+        self.x, self.y = self._move_pointer(self.x, self.y, self.vel)
+
+
+def run(code: list[str], io: IO) -> None:
+    """Execute a WII2D program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

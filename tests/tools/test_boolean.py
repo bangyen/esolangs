@@ -11,7 +11,11 @@ import pytest
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.interpreters.io import IO
 from esolangs.tools import boolean
-from esolangs.tools.boolean.parameterized import _instantiate_apa, a_painter_ant
+from esolangs.tools.boolean.parameterized import (
+    _instantiate_apa,
+    _instantiate_arrowqueue,
+    a_painter_ant,
+)
 
 
 def _parameterized_generators():
@@ -20,6 +24,7 @@ def _parameterized_generators():
     return [
         (name, parameterized.__dict__[name])
         for name in (
+            "arrowqueue",
             "bio",
             "back",
             "nocomment",
@@ -28,6 +33,7 @@ def _parameterized_generators():
             "bitdeque",
             "ram0",
             "minsky_swap",
+            "eval",
         )
     ]
 
@@ -98,6 +104,24 @@ def run_three_d_brainfuck(program: str, inputs: list[str]) -> str:
     buffer = io.StringIO()
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_factor(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.factor import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
+def run_suffolk(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.tape_based.suffolk import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO(), limit=1)
     return buffer.getvalue()
 
 
@@ -181,6 +205,72 @@ def run_forbin_boolean(program: str, inputs: list[str]) -> str:
     with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
         run(program, io=IO())
     return buffer.getvalue()
+
+
+def run_suptiftam(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.other.suptiftam import run
+
+    io = ScriptedIO("\n".join(inputs) + ("\n" if inputs else ""))
+    run(program, io)
+    return io.getvalue()
+
+
+class TestSuptiftam:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+            ("1111111111111111", 4),  # constant one
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.suptiftam(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            got = run_suptiftam(program, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_minterm_structure(self) -> None:
+        """The program reads one row per input and sums the minterms."""
+        program = boolean.suptiftam("0001")
+        assert program.startswith("sum=0\np=1\nfd mulStep :x")
+        assert program.count("%-[read]22%") == 2  # one normalized read per input
+        assert program.count("down(:read:)") == 2
+        assert program.endswith("term=sum")
+
+    def test_constant_tables_skip_the_minterms(self) -> None:
+        """A constant-zero table has no minterm rows at all."""
+        program = boolean.suptiftam("0000")
+        assert "mulStep(:p:)if(p)" not in program
+
+    def test_bit_names_extend_beyond_the_alphabet(self) -> None:
+        """Identifiers are alphabetical, so past 'z' the names grow a prefix."""
+        from esolangs.tools.boolean.other import _suptiftam_bit
+
+        assert _suptiftam_bit(0) == "b"
+        assert _suptiftam_bit(24) == "z"
+        assert _suptiftam_bit(25) == "bb"
+        assert _suptiftam_bit(49) == "bz"
+        assert _suptiftam_bit(50) == "bbb"
+
+    def test_rejects_bad_table(self) -> None:
+        with pytest.raises(ValueError, match="entries"):
+            boolean.suptiftam("011")
+
+    def test_rejects_non_binary(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.suptiftam("02")
 
 
 class TestForbinBoolean:
@@ -526,6 +616,98 @@ class TestDig:
             "            > >$30:@"
         )
         assert boolean.dig("0110") == expected
+
+
+def run_dotlang(template: str, bits: list[int]) -> str:
+    """Instantiate a Dotlang template, run it, and return its output."""
+    from esolangs.interpreters.grid_based.dotlang import run
+    from esolangs.tools.boolean import parameterized
+
+    program = parameterized.instantiate(
+        template,
+        bits,
+        lambda _i, b: _DOTLANG_PASS if b == 0 else _DOTLANG_KILL,
+        lambda _i, b: _DOTLANG_KILL if b == 0 else _DOTLANG_PASS,
+    )
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
+# A gate is four cells wide (the {Xi} token occupies four grid columns); the
+# pass-through fills them with no-ops, the kill leads with an empty cell,
+# which pops the dot before it can reach the following cells.
+_DOTLANG_PASS = "a" * 4
+_DOTLANG_KILL = " " + "a" * 3
+
+
+class TestDotlang:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        template = boolean.dotlang(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_dotlang(template, bits)
+            assert got == table[combo], f"table {table} inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every one- and two-input table produces the right result."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = boolean.dotlang(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_dotlang(template, bits)
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_junction_layout(self) -> None:
+        """Each node forks via nested parens and routes the survivor down."""
+        template = boolean.dotlang("0110")
+        assert template.startswith("\u2022(( ){X0}v")
+        assert template.count("(( ") == 3  # 2**2 - 1 junctions
+        assert template.count("{X0}") == template.count("{C0}") == 1
+        assert template.count("{X1}") == template.count("{C1}") == 2
+
+    def test_output_leaves(self) -> None:
+        """Each leaf is a #0#/#1# literal followed by a killing empty cell."""
+        lines = boolean.dotlang("0001").splitlines()  # AND: only 11 prints 1
+        assert "".join(lines).count("#0#") == 3
+        assert "".join(lines).count("#1#") == 1
+        assert lines[-1].rstrip().endswith("#1#")
+        assert run_dotlang(boolean.dotlang("0001"), [1, 1]) == "1"
+
+    def test_scales(self) -> None:
+        """More inputs mean more junctions and re-embedded gates."""
+        template = boolean.dotlang("0" * 8 + "1" * 8)  # n = 4
+        assert template.count("(( ") == 2**4 - 1
+        assert template.count("{X3}") == 8  # bit 3 tested at 2**3 nodes
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.dotlang("011")
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.dotlang("02")
 
 
 def run_sophie(program: str, inputs: list[str]) -> str:
@@ -909,6 +1091,101 @@ class TestThreeDBf:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.three_d_brainfuck("02")
+
+
+class TestFactor:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.factor(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_factor(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_is_the_decimal_encoding_of_the_bf_program(self) -> None:
+        """factor delegates to the brainfuck generator and encodes its
+        output, same as the text generator's factor()."""
+        from esolangs.tools.text.tape import _factor_encode
+
+        table = "0110"
+        assert boolean.factor(table) == str(_factor_encode(boolean.brainfuck(table)))
+
+    def test_sparse_tables_stay_small_at_n_four(self) -> None:
+        """Sparse tables (few one-rows) encode a short brainfuck program,
+        so they stay well under the digit cap even at n == 4."""
+        assert boolean.factor("0" * 16).isdigit()
+        assert boolean.factor("1" * 16).isdigit()
+
+    def test_dense_table_past_the_digit_cap_is_rejected(self) -> None:
+        """A dense n == 4 table (XOR4) encodes a brainfuck program whose
+        Factor integer exceeds CPython's int-to-string digit limit; the
+        generator raises instead of letting that ValueError leak from
+        str() with its raw CPython wording."""
+        xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
+        with pytest.raises(ValueError, match="digit limit"):
+            boolean.factor(xor4)
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.factor("011")
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.factor("02")
+
+
+class TestSuffolk:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # top half
+            ("1000000000000000", 4),  # single one (AND4)
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.suffolk(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_suffolk(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_constant_tables_need_no_reads(self) -> None:
+        """An all-zero or all-one table never touches ','."""
+        assert "," not in boolean.suffolk("00")
+        assert "," not in boolean.suffolk("11")
+
+    def test_rejects_bad_table(self) -> None:
+        """A truth table of the wrong length is rejected."""
+        with pytest.raises(ValueError, match="entries"):
+            boolean.suffolk("011")
+
+    def test_rejects_non_binary(self) -> None:
+        """A truth table with a character other than 0/1 is rejected."""
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            boolean.suffolk("02")
 
 
 class TestPainfuck:
@@ -1725,9 +2002,9 @@ class TestParameterizedNoComment:
 
         template = parameterized.nocomment("10")
         assert template.startswith("{X0}")
-        assert "{C0}" in template  # the complement is injected too
+        assert "{C0}" not in template  # the complement is computed at runtime
         assert template.endswith("o")  # a single final output
-        assert template.count("s") == 2  # one guarded increment + the index skip
+        assert template.count("s") == 3  # NOT gate + guarded increment + index skip
         assert template.count("o") == 1
 
     def test_four_input_works(self) -> None:
@@ -2114,6 +2391,93 @@ class TestParameterizedMinskySwap:
             parameterized.minsky_swap("011")
 
 
+class TestParameterizedArrowQueue:
+    """Input-by-substitution boolean generator for the no-input language ArrowQueue.
+
+    ArrowQueue has no output, so the generator's answer is read from the
+    termination convention: an instantiated program halts for a ``0`` table
+    entry and loops forever for a ``1`` entry.  The run is bounded by
+    state-cycle detection (the queue stays bounded on the sustaining rings),
+    so the repeated-snapshot proof reports the ``1`` cases immediately.
+    """
+
+    def run_arrowqueue(self, prog: str) -> str:
+        from esolangs.interpreters.grid_based.arrowqueue import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        return "0" if run_until_halt_or_cycle(_Machine(prog.splitlines())) else "1"
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        return _instantiate_arrowqueue(tpl, bits)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input halts or loops per its table entry."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.arrowqueue(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_arrowqueue(self.instantiate(template, bits))
+            assert got == table[combo], f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.arrowqueue(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_arrowqueue(self.instantiate(template, bits))
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_random_tables(self) -> None:
+        """Seeded random tables through five inputs produce the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        random.seed(13)
+        for n in (1, 2, 3, 4, 5):
+            for _ in range(2):
+                table = "".join(random.choice("01") for _ in range(2**n))
+                template = parameterized.arrowqueue(table)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    got = self.run_arrowqueue(self.instantiate(template, bits))
+                    assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.arrowqueue("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.arrowqueue("011")
+
+
 class TestParameterizedBfpda:
     """Input-by-substitution boolean generator for the no-input language BF-PDA."""
 
@@ -2191,8 +2555,8 @@ class TestParameterizedBfpda:
         template = parameterized.bfpda("0110")
         assert template.count("{X0}") == 1
         assert template.count("{X1}") == 1
-        assert template.count("{C0}") == 1
-        assert template.count("{C1}") == 1
+        assert "{C0}" not in template  # the marker is a constant, not a complement
+        assert "{C1}" not in template
         assert len(re.findall(r"\{X\d+\}", template)) == 2  # n embeds
 
     def test_leaf_print_is_balanced(self) -> None:
@@ -2208,6 +2572,116 @@ class TestParameterizedBfpda:
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.bfpda("011")
+
+
+class TestEvalBoolean:
+    """Input-by-substitution boolean generator for the no-input language Eval."""
+
+    def run_eval(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.eval import run
+
+        io_ = ScriptedIO("")
+        run(prog, io_)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean import parameterized
+
+        # on the input stack (index 1), `` pushes 0 and + bumps it to 1
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "`+" if b else "0",
+            lambda _i, _b: "",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.eval(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_eval(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.eval(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_eval(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.eval("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_heap_tree_structure(self) -> None:
+        """The template is a flat heap tree pushed BFS-order then reversed."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.eval("0110")
+        assert template.startswith("~{X1}{X0}~")  # inputs MSB-first on stack 1
+        assert template.endswith("*!")
+        assert '"~=~?;!"' in template  # root node: one discard
+        assert '"~=~?;;!"' in template  # BFS index 1: two discards
+        assert template.count('"~=~?') == 3  # 2**2 - 1 internal nodes
+        assert template.count('"0+.') + template.count('"0.') == 4  # leaves
+        # leaves are the XOR table in heap order: 0 1 1 0
+        assert template.endswith('"0.""0+.""0+.""0."*!')
+
+    def test_scales_to_more_inputs(self) -> None:
+        """The heap tree grows to any n (spot-checked at n = 6)."""
+        from esolangs.tools.boolean import parameterized
+
+        n = 6
+        table = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
+        template = parameterized.eval(table)
+        assert len(template) < 3000
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_eval(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.eval("011")
+
+    def test_non_binary_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            parameterized.eval("02")
 
 
 class TestZtoalc:
@@ -3226,3 +3700,197 @@ class TestPointBreak:
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.point_break("0123")
+
+
+class TestWII2D:
+    """Boolean generator for the no-input grid language WII2D."""
+
+    def run_chain(self, tpl: str, bits: list[int]) -> str:
+        """Instantiate the n-embedding chain template and run the interpreter."""
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.tools.boolean import parameterized
+
+        program = parameterized.instantiate(
+            tpl, bits, lambda _i, b: "v   " if b else ">   ", lambda _i, _b: "    "
+        )
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run_wii2d(program.splitlines(), io=IO())
+        return buffer.getvalue()
+
+    def run_tree(self, tpl: str, bits: list[int]) -> str:
+        """Instantiate the decision-tree template and run the interpreter."""
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.tools.boolean import parameterized
+
+        program = parameterized.instantiate_wii2d_tree(tpl, bits)
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run_wii2d(program.splitlines(), io=IO())
+        return buffer.getvalue()
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("0000000000000001", 4),  # AND4
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_chain_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        template = boolean.wii2d(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_chain(template, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_chain_all_small_tables(self, n: int) -> None:
+        """Every table up to two inputs works with the n-embedding chain."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = boolean.wii2d(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_chain(template, bits)
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    @pytest.mark.parametrize("n", [3, 4])
+    def test_chain_sample_tables(self, n: int) -> None:
+        """Sampled dense and structured tables at n = 3 and n = 4."""
+        for table in (
+            "01101001",  # XOR3
+            "11101110",  # NOT-b0
+            "10010110",  # XNOR3
+            "1111111111111111",  # constant one
+            "0000000100000010",  # a two-1 table
+        ):
+            if len(table) != 2**n:
+                continue
+            template = boolean.wii2d(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_chain(template, bits)
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_chain_embeds_each_input_once(self) -> None:
+        """The n-embedding chain has each {Xi} placeholder exactly once."""
+        import re
+
+        for n in (1, 2, 3):
+            template = boolean.wii2d(format(0, f"0{2**n}b"))
+            xs = re.findall(r"\{X\d+\}", template)
+            assert sorted(xs) == [f"{{X{i}}}" for i in range(n)], (n, xs)
+            assert len(xs) == n, (n, xs)
+
+    def test_chain_n2_closed_form(self) -> None:
+        """Two-input tables use the closed form, not the search."""
+        from esolangs.tools.boolean.parameterized import (
+            _wii2d_apply,
+            _wii2d_n2_closed_form,
+        )
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            routes = _wii2d_n2_closed_form(table)
+            # bit 0 is packed as -1 (zero) or 0 (one); each column decodes
+            # with a single op
+            assert routes[0] == ("-", "*"), table
+            t = [int(c) for c in table]
+            for b0 in (0, 1):
+                for b1 in (0, 1):
+                    value = _wii2d_apply(routes[1][b1], _wii2d_apply(routes[0][b0], 0))
+                    assert value == t[b0 * 2 + b1], table
+            # and the generated template uses the closed-form routes
+            template = boolean.wii2d(table)
+            assert template.startswith(">{X0}- > {X1}"), table
+
+    @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
+    def test_chain_parity_closed_form(self, n: int) -> None:
+        """Parity and its complement use the exact closed form for any arity."""
+        from esolangs.tools.boolean.parameterized import (
+            _wii2d_apply,
+            _wii2d_parity_routes,
+            _wii2d_symmetric_popcount_map,
+        )
+
+        for complement in (False, True):
+            table = "".join(
+                str((bin(c).count("1") % 2) ^ complement) for c in range(2**n)
+            )
+            popcount_map = _wii2d_symmetric_popcount_map(n, table)
+            assert popcount_map is not None, table
+            result = _wii2d_parity_routes(n, popcount_map)
+            assert result is not None, table
+            start, routes = result
+            assert routes[1:] == [("", "-s")] * (n - 1), table
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                v = start
+                for i in range(n):
+                    v = _wii2d_apply(routes[i][bits[i]], v)
+                assert str(v) == table[combo], (table, bits)
+
+    def test_symmetric_search_reduces_to_popcount_decode(self) -> None:
+        """Non-parity symmetric tables use a popcount prefix plus a decode."""
+        from esolangs.tools.boolean.parameterized import (
+            _wii2d_apply,
+            _wii2d_symmetric_search,
+        )
+
+        n = 10
+        # majority-of-10: general search's length-6 ladder cannot fit this
+        # table (see _wii2d_search's docstring for the counting bound), so
+        # this exercises the fallback directly rather than via the full
+        # (slow) _wii2d_search ladder.
+        popcount_map = [1 if p > n // 2 else 0 for p in range(n + 1)]
+        result = _wii2d_symmetric_search(n, popcount_map)
+        assert result is not None
+        start, routes = result
+        assert routes[:-1] == [("", "+")] * (n - 1)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            v = start
+            for i in range(n):
+                v = _wii2d_apply(routes[i][bits[i]], v)
+            assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),
+            ("10", 1),
+            ("0110", 2),
+            ("0001", 2),
+            ("01101001", 3),
+            ("0000000000000001", 4),
+        ],
+    )
+    def test_tree_truth_table(self, table: str, n: int) -> None:
+        """The decision-tree generator works for any table."""
+        template = boolean.wii2d_tree(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_tree(template, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_tree_has_full_junction_count(self) -> None:
+        """The tree re-embeds each input at every node: 2**n - 1 junctions."""
+        for n in (1, 2, 3):
+            template = boolean.wii2d_tree(format(0, f"0{2**n}b"))
+            assert template.count("X") == 2**n - 1, (n, template.count("X"))
+
+    def test_tree_notes_the_chain_alternative(self) -> None:
+        """The tree docstring points at the n-embedding chain generator."""
+        doc = boolean.wii2d_tree.__doc__ or ""
+        assert "wii2d" in doc
+        assert "2**n - 1" in doc

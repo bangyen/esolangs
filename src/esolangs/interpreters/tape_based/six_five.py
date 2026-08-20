@@ -11,6 +11,12 @@ operation and halts the program with
 :class:`~esolangs.exceptions.HaltError`.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the token list, the cell, the
+tape, and the cursor), so it is step-capable: ``step()`` executes one token
+and ``halted`` is true once the cursor reaches the end of the program,
+making a ``8n`` jump back to a ``4`` marker a finite-state cycle the state
+cycle detector can prove.
 """
 
 import re
@@ -46,47 +52,78 @@ def _tokens(code: str) -> list[str]:
     return toks
 
 
-def run(code: str, io: IO) -> None:
-    """Run a 6-5 program."""
-    toks = _tokens(code)
-    cell = ind = 0
-    tape: list[int] = [0]
+class _Machine:
+    """Per-run 6-5 state: the tokens, cell, tape, and cursor.
 
-    while ind < len(toks):
-        tok = toks[ind]
+    ``step()`` executes one token; ``halted`` is true once the cursor passes
+    the last token.  A ``8n`` jump back to a ``4`` marker whose skip test
+    never fires is a finite-state cycle the hang detector can prove.  The VM
+    and the hang detector expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Tokenize ``code`` and reset the cell, tape, and cursor."""
+        self.io = io
+        self.toks = _tokens(code)
+        self.cell = 0
+        self.tape: list[int] = [0]
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has passed the last token."""
+        return self.ind >= len(self.toks)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.cell, tuple(self.tape), self.ind, self.io.position())
+
+    def step(self) -> None:
+        """Execute one token, advancing the cursor."""
+        if self.halted:
+            return
+        tok = self.toks[self.ind]
         if tok == "1":
-            cell += 2
-            while len(tape) < cell + 1:
-                tape.append(0)
-        elif tok == "3" and cell:
-            cell -= 1
+            self.cell += 2
+            while len(self.tape) < self.cell + 1:
+                self.tape.append(0)
+        elif tok == "3" and self.cell:
+            self.cell -= 1
         elif tok in ("5", "6"):
-            tape[cell] += int(tok)
+            self.tape[self.cell] += int(tok)
         elif tok in ("2", "9"):
-            tape[cell] -= int(tok) % 6 + 3
+            self.tape[self.cell] -= int(tok) % 6 + 3
         elif tok[0] == "8":
             val = num(tok[1]) if len(tok) > 1 else 0
             count = 0
-            for j, t in enumerate(toks):
+            for j, t in enumerate(self.toks):
                 if t == "4":
                     count += 1
                     if count == val:
-                        ind = j
+                        self.ind = j
                         break
         elif tok[0] == "7":
             val = num(tok[1]) if len(tok) > 1 else 0
-            if tape[cell] == val:
-                ind += 1  # skip the next instruction
+            if self.tape[self.cell] == val:
+                self.ind += 1  # skip the next instruction
         elif tok == "0":
+            self.ind = len(self.toks)  # halt
             return
         elif tok == "A":
-            if not 0 <= tape[cell] <= 0x10FFFF:
+            if not 0 <= self.tape[self.cell] <= 0x10FFFF:
                 raise HaltError
-            io.print_char(chr(tape[cell]))
+            self.io.print_char(chr(self.tape[self.cell]))
         elif tok == "B":
-            tape[cell] = io.input_char()
+            self.tape[self.cell] = self.io.input_char()
 
-        ind += 1
+        self.ind += 1
+
+
+def run(code: str, io: IO) -> None:
+    """Run a 6-5 program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

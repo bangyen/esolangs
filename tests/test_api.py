@@ -11,7 +11,7 @@ from esolangs.exceptions import (
 from esolangs.tools import boolean
 
 
-@pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack", "huf"])
+@pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack"])
 def test_generate_round_trips(language: str) -> None:
     program = esolangs.generate(language, "Hi")
     assert esolangs.run(language, program) == "Hi"

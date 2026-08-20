@@ -4,8 +4,8 @@ Each generator builds a program that reads n boolean inputs and prints the
 truth-table result for the combination it is given; the input count ``n``
 is implied by the table length (``2**n`` entries), so the generators take
 only the table.  The parameterized generators (``bio``, ``back``,
-``nocomment``, ``bfpda``) instead emit a template the harness instantiates
-per input combination, for the no-input languages.
+``nocomment``, ``bfpda``, ``dotlang``) instead emit a template the harness
+instantiates per input combination.
 
 The generators live in ``esolangs.tools.boolean``, split by language family
 (``register``, ``stack``, ``tape``, ``other``, ``parameterized``); this
@@ -22,21 +22,28 @@ from esolangs.tools.boolean.other import (
     laserfuck,
     myscript,
     nevermind,
+    suptiftam,
     taglate,
     three_x,
     ztoalc_l_boolean,
 )
 from esolangs.tools.boolean.parameterized import (
     a_painter_ant,
+    arrowqueue,
     back,
     bfpda,
     bio,
     bitdeque,
+    dotlang,
+    eval,  # noqa: A004 - the language is named "Eval"
     instantiate,
+    instantiate_wii2d_tree,
     lamfunc,
     minsky_swap,
     nocomment,
     ram0,
+    wii2d,
+    wii2d_tree,
 )
 from esolangs.tools.boolean.register import (
     addsubjump,
@@ -58,6 +65,7 @@ from esolangs.tools.boolean.tape import (
     circlefuck_byte,
     dimensional,
     dimensional_tree,
+    factor,
     jaune,
     jaune_multiply,
     painfuck,
@@ -65,6 +73,7 @@ from esolangs.tools.boolean.tape import (
     sbleq,
     six_five,
     six_five_arithmetic,
+    suffolk,
     three_d_brainfuck,
 )
 
@@ -73,6 +82,7 @@ __all__ = [
     "a_painter_ant",
     "abcdirection",
     "addsubjump",
+    "arrowqueue",
     "back",
     "basicfuck",
     "between",
@@ -93,10 +103,14 @@ __all__ = [
     "dig",
     "dimensional",
     "dimensional_tree",
+    "dotlang",
+    "eval",
+    "factor",
     "forbin_boolean",
     "forth",
     "grapheme",
     "instantiate",
+    "instantiate_wii2d_tree",
     "jaune",
     "jaune_multiply",
     "lamfunc",
@@ -116,10 +130,14 @@ __all__ = [
     "six_five",
     "six_five_arithmetic",
     "sophie",
+    "suffolk",
+    "suptiftam",
     "taglate",
     "three_d_brainfuck",
     "three_x",
     "unsquare",
+    "wii2d",
+    "wii2d_tree",
     "ztoalc_l_boolean",
 ]
 
@@ -134,6 +152,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "AddSubJump",
         "3D Brainfuck",
         "6-5",
+        "ArrowQueue",
         "Back",
         "Basicfuck",
         "Between",
@@ -151,6 +170,9 @@ BOOLEAN: frozenset[str] = frozenset(
         "Dig",
         "Dimensional",
         "Decleq",
+        "Dotlang",
+        "Eval",
+        "Factor",
         "Forbin",
         "Forþ",
         "Grapheme",
@@ -170,8 +192,11 @@ BOOLEAN: frozenset[str] = frozenset(
         "ROTfuck",
         "S*bleq",
         "Sophie",
+        "Suffolk",
+        "Suptiftam",
         "Taglate",
         "Unsquare",
+        "WII2D",
         "ZTOALC L",
     }
 )

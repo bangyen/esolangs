@@ -86,6 +86,7 @@ CAT_EXAMPLES = {
     "nevermind": ("register_based.nevermind", ["hi"], "hi\n", True),
     "6-5": ("tape_based.six_five", ["h"], "h", False),
     "modulous": ("stack_based.modulous", ["hi"], "hi", False),
+    "suptiftam": ("other.suptiftam", ["hi"], "hi", False),
 }
 
 TRUTH_MACHINE_EXAMPLES = {
@@ -95,6 +96,7 @@ TRUTH_MACHINE_EXAMPLES = {
     "factor": ("tape_based.factor", ["0"], "0", False),
     "forbin": ("other.forbin", ["0"], "0", False),
     "modulous": ("stack_based.modulous", ["0"], "0", False),
+    "suptiftam": ("other.suptiftam", ["0"], "0", False),
 }
 
 BASE_DIR = Path(__file__).parent.parent
@@ -112,16 +114,26 @@ MULTIPLY_EXAMPLES = {
 # The boolean examples demonstrate a language's boolean-function capability
 # that is not an I/O truth machine (see docs/walls.md).  Minifuck's
 # generator covers the 0-preserving two-input tables, so the committed AND2
-# program reads two input bits (0/1 lines) and prints their AND.  ArrowQueue
-# has no output and no runtime input: the committed ring is the halt-vs-hang
-# `0` branch (halts on an empty-queue pop), with the `1` branch hanging
-# instead.  Point Break likewise has no output: the committed program is the
-# wiki's own truth-machine, which halts for a 0 input and loops forever for
-# any nonzero input (the `1` branch is not executed).
+# program reads two input bits (0/1 lines) and prints their AND.  Dotlang's
+# boolean generator is parameterized, so its committed AND2 is the template
+# instantiated for a 00 input, which prints the result 0.  ArrowQueue
+# has no output and no runtime input: the committed program is the generated
+# halt-vs-loop AND with one input zero (``_instantiate_arrowqueue(arrowqueue
+# ("0001"), [0, 1])``), which halts (the `0` branch); the same table with
+# both inputs one would loop forever instead (the `1` branch is not
+# executed).  Point Break likewise has no output: the committed program is
+# the wiki's own truth-machine, which halts for a 0 input and loops forever
+# for any nonzero input (the `1` branch is not executed).  Eval likewise has
+# no runtime input: the committed program is the generated AND2 template
+# instantiated with one input zero (``instantiate(eval("0001"), [0, 1])``),
+# which prints the result 0.
 BOOLEAN_EXAMPLES = {
-    "arrowqueue": ("grid_based.arrowqueue", ["0"], "", True),
+    "arrowqueue": ("grid_based.arrowqueue", [], "", True),
+    "dotlang": ("grid_based.dotlang", [], "0", True),
+    "eval": ("stack_based.eval", [], "0", False),
     "minifuck": ("tape_based.minifuck", ["0", "1"], "0", False),
     "point-break": ("register_based.point_break", ["0"], "", False),
+    "wii2d": ("grid_based.wii2d", [], "1", True),
 }
 
 

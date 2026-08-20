@@ -74,3 +74,34 @@ class TestHaltAndErrors:
 
     def test_empty_program(self) -> None:
         assert _run("") == ""
+
+
+class TestStepMachine:
+    def test_step_tracks_memory_and_pointer(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.decleq import _Machine
+
+        machine = _Machine("-2 5 9 9 9 65 0 0", ScriptedIO())
+        assert (machine.pc, list(machine.memory)) == (0, [-2, 5, 9, 9, 9, 65, 0, 0])
+        machine.step()  # a=-2 outputs memory[5]
+        assert machine.io.getvalue() == "A"
+        assert machine.pc == 3
+        machine.step()  # the countdown then jumps off the end of memory
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.pc == 65
+
+    def test_snapshot_is_hashable(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.decleq import _Machine
+
+        assert hash(_Machine("-2 5 9 9 9 65 0 0", ScriptedIO()).snapshot()) is not None
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.decleq import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert (
+            run_until_halt_or_cycle(_Machine("-2 5 9 9 9 65 0 0", ScriptedIO())) is True
+        )

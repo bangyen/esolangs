@@ -8,9 +8,7 @@ Python means an in-repo interpreter under `esolangs.interpreters`;
 Cross-check means an implementation in `extra/` that runs as a
 standalone program (Rust, Lean, or RISC-V assembly), used to
 differentially verify the Python interpreter.  The Boolean
-column marks the boolean-function generators; Back, BIO, and
-NoComment's are parameterized (the harness substitutes input bits
-into a template) rather than the program reading input.
+column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, Dotlang, WII2D) use parameterized generators (the harness substitutes input bits into a template).
 
 | Language | Text generator | Python | Cross-check | Boolean | Compiler | Examples |
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -23,8 +21,7 @@ into a template) rather than the program reading input.
 | A Painter Ant |  | yes |  | yes |  |  |
 | ABCDirection |  | yes |  | yes |  |  |
 | AddSubJump | yes | yes |  | yes |  | hello |
-| Albabet | yes | yes |  |  |  | hello |
-| ArrowQueue |  | yes |  |  |  | boolean |
+| ArrowQueue |  | yes |  | yes |  | boolean |
 | BF-PDA |  | yes |  | yes | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
 | BIO | yes | yes |  | yes |  | hello |
@@ -40,10 +37,9 @@ into a template) rather than the program reading input.
 | Decleq | yes | yes |  | yes |  | hello |
 | Dig | yes | yes |  | yes |  | hello |
 | Dimensional | yes | yes |  | yes |  | hello |
-| Dotlang | yes | yes |  |  |  | hello |
-| EXCON | yes | yes |  |  | yes | hello |
-| Eval | yes | yes |  |  |  | hello |
-| Factor | yes | yes |  |  |  | hello truth-machine |
+| Dotlang | yes | yes |  | yes |  | hello boolean |
+| Eval | yes | yes |  | yes |  | hello boolean |
+| Factor | yes | yes |  | yes |  | hello truth-machine |
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes |  | hello |
 | Grapheme |  | yes |  | yes |  |  |
@@ -66,15 +62,15 @@ into a template) rather than the program reading input.
 | S*bleq | yes | yes |  | yes |  | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
-| Suffolk | yes | yes |  |  | yes | hello |
+| Suffolk | yes | yes |  | yes | yes | hello |
+| Suptiftam | yes | yes |  | yes |  | hello cat truth-machine |
 | Taglate | yes | yes |  | yes |  | hello |
 | The Temporary Stack | yes | yes |  |  |  | hello |
 | Unsquare | yes | yes | yes | yes | yes | hello |
-| WII2D | yes | yes |  |  |  | hello |
+| WII2D | yes | yes |  | yes |  | hello boolean |
 | ZTOALC L | yes | yes |  | yes |  | hello |
 | bit~ | yes | yes | yes | yes |  | hello |
 | brainfuck | yes | yes |  | yes |  | hello |
-| huf | yes | yes |  |  |  | hello |
 
 The `esolangs` command lists the languages with Python support:
 

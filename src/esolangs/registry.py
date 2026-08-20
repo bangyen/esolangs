@@ -129,12 +129,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.pct_squared_minus_one",
         id="pct_squared_minus_one",
     ),
-    "Albabet": Language(
-        "Albabet",
-        _generate.albabet,
-        "register_based.albabet",
-        id="albabet",
-    ),
     "ArrowQueue": Language(
         "ArrowQueue",
         id="arrowqueue",
@@ -259,12 +253,6 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.eval",
         id="eval",
     ),
-    "EXCON": Language(
-        "EXCON",
-        _generate.excon,
-        "tape_based.excon",
-        id="excon",
-    ),
     "Factor": Language(
         "Factor",
         _generate.factor,
@@ -293,12 +281,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.home_row,
         "tape_based.home_row",
         id="home_row",
-    ),
-    "huf": Language(
-        "huf",
-        _generate.huf,
-        "register_based.huf",
-        id="huf",
     ),
     "Jaune": Language(
         "Jaune",
@@ -419,6 +401,12 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.suffolk",
         id="suffolk",
         kwargs=_kw(limit=1),
+    ),
+    "Suptiftam": Language(
+        "Suptiftam",
+        _generate.suptiftam,
+        "other.suptiftam",
+        id="suptiftam",
     ),
     "The Temporary Stack": Language(
         "The Temporary Stack",
