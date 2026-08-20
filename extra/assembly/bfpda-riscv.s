@@ -9,8 +9,8 @@
 # a run ends when the instruction pointer reaches the end of the program.
 #
 # Exit codes follow the cross-check convention: 0 = success, 2 = malformed
-# program (empty), 3 = invalid runtime operation (unbalanced brackets).  The
-# program is read from stdin.
+# program (empty, or unbalanced brackets), 3 = invalid runtime operation
+# (unused by BF-PDA).  The program is read from stdin.
 #
 # Build: riscv64-elf-gcc -nostdlib -static -march=rv64i -mabi=lp64 -o bfpda-riscv bfpda-riscv.s
 #        (or riscv64-linux-gnu-gcc, as in CI)
@@ -52,7 +52,7 @@ _start:
     beqz s5, .err2          # empty program: malformed, exit 2
 
 # Eager bracket validation (the Python interpreter's): a `]` below depth 0,
-# or a nonzero depth at the end, is an unbalanced program (exit 3).
+# or a nonzero depth at the end, is a malformed program (exit 2).
     li   t2, 0              # depth
     li   s4, 0
 .validate:
@@ -71,11 +71,11 @@ _start:
     j    .validate
 .v_close:
     addi t2, t2, -1
-    blt  t2, zero, .err3
+    blt  t2, zero, .err2
     addi s4, s4, 1
     j    .validate
 .validate_done:
-    bnez t2, .err3
+    bnez t2, .err2
     li   s4, 0              # reset ip for the run
 
 .parse:
@@ -103,11 +103,6 @@ _start:
 
 .err2:
     li   a0, 2
-    li   a7, 93
-    ecall
-
-.err3:
-    li   a0, 3
     li   a7, 93
     ecall
 
@@ -171,7 +166,7 @@ _start:
     addi s4, s4, 1          # scan forward from ip+1
     li   t2, 1              # depth
 .open_scan:
-    bge  s4, s5, .err3      # defensive: validated programs never run off
+    bge  s4, s5, .err2      # defensive: validated programs never run off
     sub  t0, s3, s4
     lbu  t1, 0(t0)
     li   t0, '['
@@ -200,7 +195,7 @@ _start:
     addi s4, s4, -1         # scan backward from ip-1
     li   t2, 1              # depth
 .close_scan:
-    bltz s4, .err3          # defensive: validated programs never run off
+    bltz s4, .err2          # defensive: validated programs never run off
     sub  t0, s3, s4
     lbu  t1, 0(t0)
     li   t0, ']'

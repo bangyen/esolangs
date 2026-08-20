@@ -38,6 +38,14 @@ REFERENCE_CASES = [
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<.>@.", "01"),
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<@.", "1"),
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<@<@[.>]", "11"),
+    ("ram0", "extra/assembly/ram0-riscv.s", "A A A", "z: 3\nn: 0\nram: {}\n"),
+    (
+        "ram0",
+        "extra/assembly/ram0-riscv.s",
+        "A A N A A A S",
+        "z: 5\nn: 2\nram: {\n    2: 5\n}\n",
+    ),
+    ("ram0", "extra/assembly/ram0-riscv.s", "A 3 A A", "z: 3\nn: 0\nram: {}\n"),
 ]
 
 # (name, compiler module, source program, expected output).  Compilers with
