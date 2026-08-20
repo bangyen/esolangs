@@ -631,6 +631,17 @@ class TestRAM0:
         assert vm.output == "z: 1\nn: 0\nram: {}\n"
 
 
+class TestMinskySwap:
+    def test_registers_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Minsky Swap", "+")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
+        vm.step()  # + increments the active register; the cursor runs off
+        assert (vm.ip, vm.memory, vm.halted) == (1, [1, 0], True)
+        assert vm.output == ""  # the dump happens on the next step
+        vm.step()
+        assert vm.output == "1 0\n"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
