@@ -53,7 +53,9 @@ predictable across languages:
   default 1000-frame limit.  A genuinely infinite recursion becomes an
   uncaught hang (unbounded growth of `frames`, the same class as a
   brainfuck `+[>+]` tape loop) rather than a wrongly-early `HaltError` or a
-  cycle-detection catch.
+  `run_until_halt_or_cycle` catch — that detector compares whole-machine
+  snapshots, which a growing frame stack never repeats; see `docs/walls.md`
+  for a narrower, unbuilt mechanism that could catch the common case.
 
 ## Text generator blockers
 

@@ -601,14 +601,33 @@ child frame per non-literal argument; `"body"` -> run a callee's body or a
 forced `i`-branch as a token sequence) rather than only the outermost or
 only a discardable-statement subset.
 
-This does *not* make infinite recursion cycle-detectable, though, for any
-of the three: unlike a backward jump in a loop, a call that never returns
-pushes exactly one new frame per `step()` and none is ever popped, so
-`snapshot()`'s frame tuple grows by one element every step and two
-snapshots can never compare equal.  This is the same unbounded-growth class
-as a brainfuck `+[>+]` tape loop (below) -- proven, not caught, is out of
-cycle detection's reach by construction, regardless of how much of the call
-stack `snapshot()` covers.
+This does *not* make infinite recursion cycle-detectable via
+`run_until_halt_or_cycle`, though, for any of the three: unlike a backward
+jump in a loop, a call that never returns pushes exactly one new frame per
+`step()` and none is ever popped, so `snapshot()`'s frame tuple grows by
+one element every step and two *whole-machine* snapshots can never compare
+equal.  This is the same unbounded-growth class as a brainfuck `+[>+]`
+tape loop (below) as far as Brent's-algorithm-over-`snapshot()` is
+concerned -- that specific mechanism cannot catch it, regardless of how
+much of the call stack `snapshot()` covers.
+
+That is a statement about the *existing* detector, not a claim that
+infinite recursion is undetectable in general.  A narrower, separate check
+-- comparing a newly-pushed frame's own local state (code position,
+bindings) against the frames already on the stack, rather than comparing
+whole-machine snapshots across time -- would catch the common case of a
+call whose local state repeats identically relative to an ancestor (e.g.
+`f(x) { f(x) }`, an accidental unconditional or non-decrementing
+self-call): frame N+1 is then provably about to replay exactly what frame
+N already did.  It would not catch every infinite recursion (a call like
+`f(x) { f(x - 1) }` that recurses forever without any local state ever
+repeating exactly would still slip through), and it does not fit the
+existing `snapshot()`/Brent's-algorithm protocol -- it needs its own
+per-`step()`, per-frame comparison against the live stack (O(depth) per
+push, not the current mechanism's O(1)), so it would be new machinery, not
+a tweak to the existing one.  Not built: no concrete program has needed
+it yet, matching the same "revisit if a real case shows up" posture as
+Forbin's expression-position gap in `docs/roadmap.md`.
 `scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
 likewise bounded by state-cycle detection, with NoComment keeping the
 alarm as backstop for its unbounded-growth class (a loop that keeps
