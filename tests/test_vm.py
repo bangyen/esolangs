@@ -754,6 +754,16 @@ class TestSlowAcvMammalian:
         assert vm.output == "\x03"
 
 
+class TestZtoalcL:
+    def test_pointer_and_variables(self) -> None:
+        vm = esolangs.make_vm("ZTOALC L", "\n".join(["10", "print 65"]))
+        assert vm.ip == 10
+        assert vm.memory == []
+        while not vm.halted:
+            vm.step()
+        assert vm.output == "A"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -887,6 +897,24 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine(
             "CONFLAGRATE SEED SEED DIGEST FISSION LEAPFROG", ScriptedIO()
         )
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_ztoalc_l_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(["2"], ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_ztoalc_l_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # each "jump x 1" bumps the pointer past the 2-line program and back
+        # via a Collatz step, tracing 2 -> 3 -> 4 -> 2 forever
+        machine = _Machine(["2", "jump x 1", "jump x 1"], ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
 

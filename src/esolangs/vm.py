@@ -1695,6 +1695,35 @@ class _SlowAcvMammalianVM(_BaseVM):
         return [row for arr in self._machine.lst for row in arr]
 
 
+class _ZtoalcLVM(_BaseVM):
+    """Collatz-trajectory pointer; ``memory`` is the sorted variable values."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ptr
+
+    @property
+    def memory(self) -> list[int]:
+        return [v for _, v in sorted(self._machine.var.items()) if isinstance(v, int)]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1749,6 +1778,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Sophie": _SophieVM,
     "Jaune": _JauneVM,
     "SLOW ACV MAMMALIAN": _SlowAcvMammalianVM,
+    "ZTOALC L": _ZtoalcLVM,
 }
 
 
