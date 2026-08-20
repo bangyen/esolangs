@@ -567,13 +567,26 @@ since that nesting is bounded by call depth in a working program and
 only a top-level `while` is unbounded by construction.  Forbin's frame
 resumes `main`'s own statements and top-level `for`-loop rows the same
 way; a nested call or a `for` loop inside a function body still runs
-to completion within one `step()`.  Lamfunc, Forbin, and Suptiftam
-have no looping construct other than function recursion, already
-bounded by a depth guard (Forbin/Suptiftam) or Python's own
-`RecursionError` (Lamfunc) -- so a real hang is not structurally
-possible for them, and their `step()`/`snapshot()` exist for VM
-inspection parity with the rest of the registry rather than for
-hang-safety cycle detection to catch anything new.
+to completion within one `step()`.
+
+Lamfunc, Forbin, and Suptiftam's cycle detection is sound, not merely
+decorative -- the Python call stack a recursive call builds is never
+live across a `step()` boundary (each `step()` runs any recursion it
+triggers to completion before returning), so `snapshot()`'s top-level
+view is a complete description of everything that can affect future
+steps.  It just never *fires*: each interpreter's top-level cursor
+(Lamfunc's `ind`, Forbin's `(pos, for_ind)`, Suptiftam's `ind`) only
+ever increases across `step()` calls, because none of the three has a
+top-level backward jump (their only looping construct is function
+recursion, called from inside a statement and fully resolved within
+that statement's `step()`).  A strictly increasing cursor can never
+repeat a prior snapshot, so a real infinite loop would have to occur
+entirely inside recursion depth, and that is already capped -- by
+`_MAX_DEPTH` (Forbin/Suptiftam) or Python's own `RecursionError`
+(Lamfunc) -- so it halts before it could ever become the kind of hang
+cycle detection exists to catch.  Their `step()`/`snapshot()` still
+earn their keep for VM inspection parity with the rest of the
+registry.
 `scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
 likewise bounded by state-cycle detection, with NoComment keeping the
 alarm as backstop for its unbounded-growth class (a loop that keeps

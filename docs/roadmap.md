@@ -169,11 +169,14 @@ exclusion below.  What remains:
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
   non-deterministic, so all three stay on the wall-clock backstop
   regardless of `snapshot()` coverage.
-- Lamfunc, Forbin, and Suptiftam have `snapshot()` for VM-inspection
-  parity, but no native loop for a hang to occur in — their only
-  repetition is function recursion, already bounded by a depth guard or
-  Python's own `RecursionError` — so cycle detection cannot catch
-  anything new for them; see `docs/walls.md`.
+- Lamfunc, Forbin, and Suptiftam's cycle detection is sound (the call
+  stack a recursive call builds is never live across a `step()`
+  boundary, so `snapshot()`'s top-level view is complete) but never
+  fires: each one's top-level cursor only increases across `step()`
+  calls, since none has a top-level backward jump, so a real infinite
+  loop would have to live entirely inside recursion depth — already
+  capped by `_MAX_DEPTH` or Python's own `RecursionError`.  See
+  `docs/walls.md` for the full argument.
 - **Branching cycle detection for `y`/`?` (considered, not started).**
   Forking the walk at every random decision and requiring *every* branch to
   prove a cycle would soundly prove "this program hangs no matter how the
