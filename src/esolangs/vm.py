@@ -1488,6 +1488,39 @@ class _ContainerVM(_BaseVM):
         return []
 
 
+class _NevermindVM(_BaseVM):
+    """Named variables + line cursor; ``ip`` the line, ``memory`` the vars."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.nevermind import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [
+            int(v)
+            for v in (self._machine.var[k] for k in sorted(self._machine.var))
+            if isinstance(v, (int, float))
+        ]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1535,6 +1568,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "%^2^-1": _PctSquaredMinusOneVM,
     "Suffolk": _SuffolkVM,
     "Container": _ContainerVM,
+    "Nevermind": _NevermindVM,
 }
 
 
