@@ -401,12 +401,6 @@ LANGUAGES: dict[str, Language] = {
         "other.suptiftam",
         id="suptiftam",
     ),
-    "The Temporary Stack": Language(
-        "The Temporary Stack",
-        _generate.the_temporary_stack,
-        "stack_based.the_temporary_stack",
-        id="the_temporary_stack",
-    ),
     "3x": Language(
         "3x",
         _generate.three_x,

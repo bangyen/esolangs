@@ -251,7 +251,11 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   `input - 1` (47/48).  Neither is a `'0'`/`'1'`.  Exhaustive search to
   length 5 finds no identity or NOT program, and `\` (while nonempty) never
   terminates except via the fixed 15-command stack reset, so there is no
-  input-dependent branch either.
+  input-dependent branch either.  The language was removed: its text
+  generator is a literal-embed (the text is pushed as a `*` string literal)
+  and, with the boolean generator walled, it had no computational generator
+  to stand on — see the tightened generator-story criterion in
+  `docs/limitations.md`.
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.  **Resolved by the
@@ -542,13 +546,13 @@ returning — callers only get the True/False verdict, not the machine's
 state at the moment of detection.
 
 `tests/test_interpreters_robustness.py` decides the empty-program invariant
-by state-cycle detection for thirty-two string-based step-capable machines
-(brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, The Temporary Stack,
-Qoibl, Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
+by state-cycle detection for thirty-two string-based step-capable
+machines (brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, Qoibl,
+Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
 ROTfuck, Circlefuck, BFStack, Decleq, 6-5, Back, BIO, NoComment,
 3D Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial,
-Grapheme, RAM0, Minsky Swap), and keeps the SIGALRM backstop for the rest
-(Painfuck's `y` is non-deterministic).
+Grapheme, RAM0, Minsky Swap, Home Row), and keeps the SIGALRM
+backstop for the rest (Painfuck's `y` is non-deterministic).
 `scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
 likewise bounded by state-cycle detection, with NoComment keeping the
 alarm as backstop for its unbounded-growth class (a loop that keeps

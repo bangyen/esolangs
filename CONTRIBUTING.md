@@ -29,15 +29,23 @@ meets all of these:
   (halt for 0, loop for 1; see `docs/walls.md`), which the wiki's own
   truth-machine example defines and its Turing-complete arithmetic makes
   fully general.
-- **A generator story.**  Either a text generator that can emit arbitrary
-  bytes, or a boolean generator, or a documented reason the language cannot
-  have one.  The generator is what makes the language testable end-to-end;
-  a language with no plausible generator is a weaker addition.  A documented
-  wall excuses the missing generator only when the language's output is
-  still spec-defined and verifiable by hand; a language whose only
-  observable result is an interpreter-invented state dump (no
-  language-defined output at all) is admitted only as a self-contained
-  interpreter, and is a standing candidate for removal.
+- **A generator story.**  Either a boolean generator, or a text generator
+  that can emit arbitrary bytes, or a documented reason the language cannot
+  have one.  A text generator must exercise the language's computation
+  (arithmetic encoding, bit manipulation, data-dependent construction), not
+  merely embed the text as a literal: a literal-embed text generator is only
+  a generator story when the language also has a boolean generator.  The
+  generator is what makes the language testable end-to-end; a language with
+  no plausible generator is a weaker addition.  A documented wall excuses
+  the missing generator only when the language's output is still
+  spec-defined and verifiable by hand; a language whose only observable
+  result is an interpreter-invented state dump (no language-defined output
+  at all) is admitted only as a self-contained interpreter, and is a
+  standing candidate for removal.  A language with no data-dependent
+  control flow (no input, or no conditional, so output is a fixed function
+  of the program text) is likewise a standing removal candidate even with a
+  computational text generator, since its boolean generator is structurally
+  impossible.
 
 Two judgment calls are applied case by case and recorded, rather than being
 absolute rules:

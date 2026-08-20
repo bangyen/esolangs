@@ -80,7 +80,6 @@ per-character encoding can be meaningfully shortened:
 | --- | --- |
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions via runtime `,` reads. A parameterized generator (embedding each input in the program at compile time, as WII2D's does) has not been assessed. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
-| The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 | SLOW ACV MAMMALIAN | `ACCEPT` forces `ptr == 0` to consume a bit, but routing needs `SPRINT` to move the pointer away — reading and routing can't coexist; the constant source (`SEED` from an emptied array) accumulates rather than resets; `DIGEST` only recovers a bit as part of a sum. An exhaustive search over the branch-free tails reaches only 0-preserving two-input tables — the same class already removed for Minifuck as too weak to keep. Full argument in `docs/walls.md`. |
 
 ## Generator caps (shipped)
@@ -156,6 +155,7 @@ interpreter, generator, and tests were deleted from the repo.
 - **something positive**: explicitly uncomputable.
 - **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
 - **Stun Step** (removed): no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
+- **The Temporary Stack** (removed): its text generator is a literal-embed (the text is pushed as a `*` string literal), and its boolean generator was walled — the auto-drain's `front - 1` output can't be `'0'`/`'1'` and there is no input-dependent branch. Under the tightened generator-story criterion (a literal-embed text generator needs a boolean generator), that made it inadmissible; the full wall argument is in `docs/walls.md`.
 - **Trash** (removed): advance-to-next-prime gadget; can never print `1`.
 - **Vandevelo**: input-only, no output at all.
 - **Varigen**: explicitly "uncomputable" joke language.
