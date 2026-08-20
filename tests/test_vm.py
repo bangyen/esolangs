@@ -628,6 +628,18 @@ class TestHomeRow:
         assert vm.halted
 
 
+class TestUnsquare:
+    def test_stack_accumulator_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Unsquare", "Io")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # I pushes 1
+        assert (vm.ip, vm.stack) == (1, [1])
+        vm.step()  # o prints the top of stack without popping
+        assert vm.halted
+        assert vm.output == "\x01"
+        assert vm.stack == [1]
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO

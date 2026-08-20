@@ -17,6 +17,15 @@ Semantics match the Rust cross-check (``extra/rust/unsquare.rs``):
 - ``i`` raises :class:`EOFError` when input runs out, where the cross-check
   exits with status 3;
 - ``i`` re-prompts on blank input lines.
+
+The interpreter runs on a :class:`_Machine` (the stack, jump-return stack,
+accumulator, and code cursor), so it is step-capable: ``step()`` executes
+one command and ``halted`` is true once the cursor reaches the end of the
+program.  A ``>``/``<`` loop whose body leaves the accumulator, stack, and
+jump stack exactly as they were (e.g. ``><`` with the accumulator outside
+``{0, 1}``) is a genuine state cycle a repeated :meth:`_Machine.snapshot`
+proves; a loop that keeps pushing to the stack is unbounded growth and
+needs the wall-clock backstop instead.
 """
 
 import sys
@@ -25,69 +34,103 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
-def run(code: str, io: IO) -> None:
-    """Run an Unsquare program."""
-    stack: list[int] = []
-    jumps: list[int] = []
-    acc = 0
-    ind = 0
-    n = len(code)
+class _Machine:
+    """Per-run Unsquare state: the stack, jump stack, accumulator, cursor.
 
-    while ind < n:
-        char = code[ind]
+    ``step()`` executes one command; ``halted`` is true once the cursor
+    reaches the end of the program.  The state-cycle hang detector and the
+    VM expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Start with empty stacks, a zero accumulator, at the first token."""
+        self.io = io
+        self.code = code
+        self.stack: list[int] = []
+        self.jumps: list[int] = []
+        self.acc = 0
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the program."""
+        return self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ind,
+            self.acc,
+            tuple(self.stack),
+            tuple(self.jumps),
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one command, advancing the cursor."""
+        if self.halted:
+            return
+        char = self.code[self.ind]
         if char == "O":
-            stack.append(0)
+            self.stack.append(0)
         elif char == "I":
-            stack.append(1)
+            self.stack.append(1)
         elif char == "A":
-            if not stack:
+            if not self.stack:
                 raise HaltError("empty stack")
-            acc = stack.pop()
+            self.acc = self.stack.pop()
         elif char == "S":
-            if len(stack) < 2:
+            if len(self.stack) < 2:
                 raise HaltError("swap needs two elements")
-            stack[-1], stack[-2] = stack[-2], stack[-1]
+            self.stack[-1], self.stack[-2] = self.stack[-2], self.stack[-1]
         elif char == "+":
-            acc += 2
+            self.acc += 2
         elif char == "-":
-            acc -= 2
+            self.acc -= 2
         elif char == "x":
-            acc *= 2
+            self.acc *= 2
         elif char == "P":
-            stack.append(acc)
+            self.stack.append(self.acc)
         elif char == "o":
-            if not stack:
+            if not self.stack:
                 raise HaltError("empty stack")
-            value = stack[-1]
+            value = self.stack[-1]
             codepoint = value & 0xFFFFFFFF
             if codepoint <= 0x10FFFF and not 0xD800 <= codepoint <= 0xDFFF:
-                io.print_char(chr(codepoint))
+                self.io.print_char(chr(codepoint))
             else:
-                io.print_num(value)
+                self.io.print_num(value)
         elif char == "i":
-            line = io.input_str("Input: ")
+            line = self.io.input_str("Input: ")
             while not line.strip():
-                line = io.input_str("Input: ")
-            stack.append(ord(line[0]))
+                line = self.io.input_str("Input: ")
+            self.stack.append(ord(line[0]))
         elif char == ">":
-            if acc == 0 or acc == 1:
+            if self.acc == 0 or self.acc == 1:
                 num = 1
                 while num > 0:
-                    ind += 1
-                    if ind >= n:
+                    self.ind += 1
+                    if self.ind >= len(self.code):
                         raise HaltError("unmatched >")
-                    inner = code[ind]
+                    inner = self.code[self.ind]
                     if inner == ">":
                         num += 1
                     elif inner == "<":
                         num -= 1
             else:
-                jumps.append(ind - 1)
+                self.jumps.append(self.ind - 1)
         elif char == "<":
-            if not jumps:
+            if not self.jumps:
                 raise HaltError("unmatched <")
-            ind = jumps.pop()
-        ind += 1
+            self.ind = self.jumps.pop()
+        self.ind += 1
+
+
+def run(code: str, io: IO) -> None:
+    """Run an Unsquare program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

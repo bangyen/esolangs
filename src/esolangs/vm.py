@@ -1167,6 +1167,35 @@ class _HomeRowVM(_BaseVM):
         return []
 
 
+class _UnsquareVM(_BaseVM):
+    """Stack + accumulator; ``ip`` the cursor, ``memory`` the accumulator."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stack)
+
+
 class _ROTFuckVM(_BaseVM):
     """Rotating tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
 
@@ -1413,6 +1442,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "RAM0": _RAM0VM,
     "Minsky Swap": _MinskySwapVM,
     "Home Row": _HomeRowVM,
+    "Unsquare": _UnsquareVM,
 }
 
 
