@@ -81,6 +81,7 @@ per-character encoding can be meaningfully shortened:
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions via runtime `,` reads. A parameterized generator (embedding each input in the program at compile time, as WII2D's does) has not been assessed. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
+| SLOW ACV MAMMALIAN | `ACCEPT` forces `ptr == 0` to consume a bit, but routing needs `SPRINT` to move the pointer away — reading and routing can't coexist; the constant source (`SEED` from an emptied array) accumulates rather than resets; `DIGEST` only recovers a bit as part of a sum. An exhaustive search over the branch-free tails reaches only 0-preserving two-input tables — the same class already removed for Minifuck as too weak to keep. Full argument in `docs/walls.md`. |
 
 ## Generator caps (shipped)
 
