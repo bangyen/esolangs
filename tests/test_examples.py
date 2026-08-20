@@ -114,9 +114,7 @@ MULTIPLY_EXAMPLES = {
 # The boolean examples demonstrate a language's boolean-function capability
 # that is not an I/O truth machine (see docs/walls.md).  Minifuck's
 # generator covers the 0-preserving two-input tables, so the committed AND2
-# program reads two input bits (0/1 lines) and prints their AND.  Dotlang's
-# boolean generator is parameterized, so its committed AND2 is the template
-# instantiated for a 00 input, which prints the result 0.  ArrowQueue
+# program reads two input bits (0/1 lines) and prints their AND.  ArrowQueue
 # has no output and no runtime input: the committed program is the generated
 # halt-vs-loop AND with one input zero (``_instantiate_arrowqueue(arrowqueue
 # ("0001"), [0, 1])``), which halts (the `0` branch); the same table with
@@ -129,7 +127,6 @@ MULTIPLY_EXAMPLES = {
 # which prints the result 0.
 BOOLEAN_EXAMPLES = {
     "arrowqueue": ("grid_based.arrowqueue", [], "", True),
-    "dotlang": ("grid_based.dotlang", [], "0", True),
     "eval": ("stack_based.eval", [], "0", False),
     "minifuck": ("tape_based.minifuck", ["0", "1"], "0", False),
     "point-break": ("register_based.point_break", ["0"], "", False),

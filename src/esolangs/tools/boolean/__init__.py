@@ -4,7 +4,7 @@ Each generator builds a program that reads n boolean inputs and prints the
 truth-table result for the combination it is given; the input count ``n``
 is implied by the table length (``2**n`` entries), so the generators take
 only the table.  The parameterized generators (``bio``, ``back``,
-``nocomment``, ``bfpda``, ``dotlang``) instead emit a template the harness
+``nocomment``, ``bfpda``) instead emit a template the harness
 instantiates per input combination.
 
 The generators live in ``esolangs.tools.boolean``, split by language family
@@ -34,7 +34,6 @@ from esolangs.tools.boolean.parameterized import (
     bfpda,
     bio,
     bitdeque,
-    dotlang,
     eval,  # noqa: A004 - the language is named "Eval"
     instantiate,
     lamfunc,
@@ -101,7 +100,6 @@ __all__ = [
     "dig",
     "dimensional",
     "dimensional_tree",
-    "dotlang",
     "eval",
     "factor",
     "forbin_boolean",
@@ -166,7 +164,6 @@ BOOLEAN: frozenset[str] = frozenset(
         "Dig",
         "Dimensional",
         "Decleq",
-        "Dotlang",
         "Eval",
         "Factor",
         "Forbin",
