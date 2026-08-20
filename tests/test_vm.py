@@ -728,6 +728,17 @@ class TestSophie:
         assert vm.output == "5"
 
 
+class TestJaune:
+    def test_cells_hold_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Jaune", "++^")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # ++ increments the cell twice (a counted command)
+        assert (vm.ip, vm.memory) == (1, [2])
+        vm.step()  # ^ prints the cell as a decimal number
+        assert vm.halted
+        assert vm.output == "2"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
