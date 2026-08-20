@@ -1,9 +1,11 @@
 """Boolean-function generators for tape-based languages."""
 
+import sys
 from collections.abc import Sequence
 from typing import cast
 
 from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.text.tape import _factor_encode
 from esolangs.tools.transpilers import _six_five_label
 
 
@@ -553,6 +555,43 @@ def brainfuck(truth_table: str) -> str:
       dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
     """
     return min((_bf_minterm(truth_table), bf_tree(truth_table)), key=len)
+
+
+def factor(truth_table: str) -> str:
+    """Build a Factor program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    A Factor program is a single integer whose prime factorization decodes
+    to brainfuck, so the generator reuses :func:`brainfuck`'s truth-table
+    program unchanged and encodes it with :func:`_factor_encode` -- the same
+    prime-search the text generator uses (walk primes upward, handing each
+    instruction the next one with the right residue mod 11; Dirichlet's
+    theorem guarantees one always exists).
+
+    This is a program-size cap, not an ``n`` cap: sparse tables (e.g. an
+    all-zero or all-one table) stay small at any ``n``, while dense tables
+    grow the underlying brainfuck program (and so the encoded integer)
+    quickly.  CPython refuses to render an integer above
+    ``sys.get_int_max_str_digits()`` decimal digits (a DoS guard, not a
+    Factor property), and the Factor *interpreter* parses its input the
+    same way, so a program past that limit would not just fail to print
+    here -- it would fail to run.  The check estimates the digit count from
+    the integer's bit length (``log10(2) ~= 0.30103``) to avoid paying for
+    the same oversized conversion just to reject it.
+    """
+    number = _factor_encode(brainfuck(truth_table))
+    limit = sys.get_int_max_str_digits()
+    if limit and number.bit_length() * 0.30103 + 1 > limit:
+        raise ValueError(
+            "the Factor boolean generator's encoded integer would exceed "
+            f"Python's {limit}-digit limit for integer-to-string conversion "
+            "(sys.get_int_max_str_digits()) -- the Factor interpreter parses "
+            "its program the same way, so this table's encoding could not "
+            "be run even if it were rendered; try a sparser table",
+        )
+    return str(number)
 
 
 def three_d_brainfuck(truth_table: str) -> str:
