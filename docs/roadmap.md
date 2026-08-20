@@ -175,23 +175,6 @@ rest.  What remains:
 - **Extend state-cycle detection to more interpreters.**  Only step-capable
   machines can be checked; converting more of the registry (see the VM
   section above) grows this set too.
-- **2dFish's differential Python side silently truncates on a cycle
-  instead of reporting non-termination.**  `_run_two_d_fish_python` in
-  `scripts/verify_differential.py` calls `run_until_halt_or_cycle` but
-  discards its True/False verdict, then always returns
-  `(io.getvalue(), 0)` — so a program that actually cycles is reported as
-  a successful halt with whatever output had accumulated by the moment the
-  cycle was detected, rather than being treated as non-terminating (the
-  pattern NoComment's differential path already follows at the same file's
-  `_run_two_d_fish_native`-adjacent NoComment function, checking the
-  verdict and returning `None`).  Not currently a live bug — the text
-  generator only emits terminating programs, so no corpus or fuzz input
-  exercises the gap — but it means a Rust/Python mismatch on a genuinely
-  cycling adversarial program would show up as silently-matching exit-0
-  output rather than a flagged non-termination.  Fix: check the verdict
-  and return `None` on `False`, mirroring the NoComment path, then update
-  `_verify_two_d_fish`/`_fuzz_two_d_fish` to handle the `None` case like
-  they already do for the native side.
 - Grapheme's machine has no `snapshot()` yet, and Painfuck's `y` and
   WII2D's `?` are non-deterministic, so all three stay on the wall-clock
   backstop regardless of how far the conversion goes.

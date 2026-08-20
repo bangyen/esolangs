@@ -133,7 +133,16 @@ def _fuzz_boolean(name, builder, native, python, rng, count):
 
 
 def _fuzz_text(name, generator, native, python, rng, count):
-    """Fuzz ``count`` random byte texts through both implementations."""
+    """Fuzz ``count`` random byte texts through both implementations.
+
+    Either side may report ``None`` for "did not terminate" (the native
+    side via a subprocess timeout, the Python side via state-cycle
+    detection where the interpreter is step-capable, on languages whose
+    Python runner has one).  A text generator's programs are expected to
+    always halt, so both sides agreeing they loop is not itself a failure
+    (mirrors ``_run_nocomment_python_limited``'s fuzzer) — only one side
+    halting while the other loops is a real divergence.
+    """
     tasks = []
     for _ in range(count):
         text = "".join(chr(rng.randrange(256)) for _ in range(rng.randint(1, 10)))
@@ -141,13 +150,18 @@ def _fuzz_text(name, generator, native, python, rng, count):
     results = _run_parallel(lambda t: native(t[0], b""), tasks)
     failures = checked = 0
     for (program, text), result in zip(tasks, results, strict=True):
-        if result is None:
-            print(f"{name} {text!r}: reference did not terminate")
-            failures += 1
-            checked += 1
-            continue
-        py = python(program, b"")
         checked += 1
+        py = python(program, b"")
+        if result is None and py is None:
+            continue  # agreement: both sides prove the program loops
+        if result is None or py is None:
+            failures += 1
+            print(
+                f"{name} {text!r}: termination mismatch "
+                f"(reference {'looped' if result is None else 'halted'}, "
+                f"Python {'looped' if py is None else 'halted'})"
+            )
+            continue
         if result != py:
             failures += 1
             print(f"{name} {text!r}: reference {result!r} vs Python {py!r}")
@@ -1326,13 +1340,19 @@ def _run_two_d_fish_native(
         Path(path).unlink()
 
 
-def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
+def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int] | None:
     """Run ``program`` through the in-package interpreter.
 
     The interpreter is step-capable, so the run is bounded by state-cycle
     detection (:func:`esolangs.vm.run_until_halt_or_cycle`) instead of an
     unbounded whole-program ``run()``: a repeated snapshot proves a loop and
-    is reported as a non-termination rather than hanging the fuzzer.
+    is reported as a non-termination (``None``) rather than, previously,
+    returning whatever output had accumulated by the moment the cycle was
+    detected as if the program had halted there.  This catches *cycles*
+    only, not every hang — an unbounded-growth loop (the accumulator
+    keeps growing) never revisits a state and has no SIGALRM backstop on
+    this path, so it would still hang the fuzzer; the text generator this
+    is fuzzed against never produces one.
     """
     from esolangs.exceptions import HaltError
     from esolangs.interpreters.grid_based.two_d_fish import _Machine
@@ -1342,7 +1362,8 @@ def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int]:
     io = ScriptedIO(stdin.decode("latin1"))
     try:
         machine = _Machine(program, io)
-        run_until_halt_or_cycle(machine)
+        if not run_until_halt_or_cycle(machine):
+            return None
         if machine.off_grid:  # the documented exit-3 halt
             raise HaltError
     except HaltError:
@@ -1363,11 +1384,17 @@ def _verify_two_d_fish() -> bool:
     failures = 0
     for program, stdin in TWO_D_FISH_CORPUS:
         native = _run_two_d_fish_native(binary, program, stdin)
-        if native is None:
-            print(f"2dFish {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
         py = _run_two_d_fish_python(program, stdin)
+        if native is None and py is None:
+            continue  # agreement: both sides prove the program loops
+        if native is None or py is None:
+            failures += 1
+            print(
+                f"2dFish {program!r}: termination mismatch "
+                f"(Rust {'looped' if native is None else 'halted'}, "
+                f"Python {'looped' if py is None else 'halted'})"
+            )
+            continue
         if native != py:
             failures += 1
             print(f"2dFish {program!r}: Rust {native!r} vs Python {py!r}")
