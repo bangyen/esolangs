@@ -63,3 +63,47 @@ class TestBFStack:
         """] with no matching [ is an invalid operation."""
         with pytest.raises(HaltError):
             run_and_capture(">]")
+
+
+class TestStepMachine:
+    def test_step_tracks_stack_and_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+
+        machine = _Machine(">+.", ScriptedIO())
+        assert (machine.ind, machine.stk) == (0, [])
+        machine.step()  # > pushes 0
+        assert machine.stk == [0]
+        machine.step()  # + increments the top
+        assert machine.stk == [1]
+        machine.step()  # . prints it
+        assert machine.io.getvalue() == "\x01"
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.ind == 3
+
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+
+        machine = _Machine(">,", ScriptedIO("A\nB"))
+        before = machine.snapshot()
+        machine.step()  # > pushes 0
+        machine.step()  # , reads the first input byte
+        assert machine.snapshot() != before
+        assert machine.io.position() == 1
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(">+.", ScriptedIO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        """A [ loop whose top never zeroes spins forever."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine(">+[]", ScriptedIO())) is False

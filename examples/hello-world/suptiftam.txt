@@ -1,0 +1,26 @@
+term='H'
+right(:term:)
+term='e'
+right(:term:)
+term='l'
+right(:term:)
+term='l'
+right(:term:)
+term='o'
+right(:term:)
+term=','
+right(:term:)
+term=' '
+right(:term:)
+term='W'
+right(:term:)
+term='o'
+right(:term:)
+term='r'
+right(:term:)
+term='l'
+right(:term:)
+term='d'
+right(:term:)
+term='!'
+right(:term:)

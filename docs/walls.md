@@ -74,7 +74,7 @@ register — so no absolute index moves between instantiations (see the
 `ram0`, `bitdeque`, and `minsky_swap` generators in
 `esolangs.tools.boolean.parameterized`).
 
-## Eval (nested parameterized trees)
+## Eval (nested parameterized trees — resolved)
 
 Building a decision tree requires nesting: each subtree must be a string
 evaluated with `!`.  This is a **spec** limitation (the interpreter matches
@@ -82,6 +82,17 @@ the wiki exactly): the wiki defines stringmode with no way to escape a
 backtick or include a literal one, so a pushed string can never contain a
 backtick and a nested `!`-evaluated subtree cannot survive more than one
 wrap.  The wiki's examples only ever use single-level `!`.
+
+The shipped generator
+(:func:`esolangs.tools.boolean.parameterized.eval`) resolves the wall by
+avoiding nesting altogether: the tree is stored as a flat, full binary tree
+in heap (BFS) order on the tree stack, with each node's two children pinned
+at fixed heap offsets (a node is ``~=~?`` plus ``i+1`` semicolons and a
+``!`` — the ``?`` skip discards the right number of elements, so ``!`` pops
+the 0- or 1-child), and each leaf prints its table entry.  No node or leaf
+contains a quote or backtick, so the strings need no escaping and the tree
+grows to any ``n``.  It is a parameterized generator, total for any arity
+and table, and embeds each input exactly once.
 
 ## SLOW ACV MAMMALIAN (general n-bit open)
 
@@ -106,17 +117,64 @@ after the `b1`-normalize prefix reaches only the 0-preserving two-input
 tables, matching the structural argument.  (Unlike Minifuck, this wall
 holds.)
 
-## Dotlang (not viable)
+## NoComment, BF-PDA (a `{Ci}` embed was not actually needed)
 
-The `W~` warp reads a line and teleports the dot to the *first* `W<bit>`s`
-marker in the grid.  A single-bit program works, but every deeper level of a
-decision tree re-enters those same first-match markers, so the branch
-history is lost: the second `W~` lands back on the first markers and loops.
-The type conditionals (`!?:`) cannot help — input digits are converted to
-`int` 0/1, so both bits share the same type — and there is no value
-comparison or arithmetic.  Only a fragile direction-routing trick could
-express more, and it caps at three inputs before the eight (marker, heading)
-states run out.
+Both generators previously embedded a second placeholder (`{Ci}`) alongside
+each bit (`{Xi}`), reasoned as "the if/else branch needs a gate that is
+nonzero exactly when the input bit is zero, and neither language can
+compute that complement at runtime."  That reasoning does not survive
+closer reading of either instruction set:
+
+- **NoComment**: `s` skips the next fixed-length block *iff the tested cell
+  is nonzero* — which makes the *skipped* block a "run iff zero" gate, i.e.
+  a NOT gate, for free.  A short prologue tests each raw bit cell with `s`
+  and increments a fresh complement cell inside the skipped block, so
+  `comp_i = 1 - bit_i` is computed once per input at runtime from the
+  embedded `{Xi}` alone.  Both the skip path and the fall-through path end
+  with the pointer back on the bit cell (the guarded block's last move),
+  so the next bit's prologue starts from a known position — the same
+  convention the rest of the generator already uses for its guarded
+  increments.
+- **BF-PDA**: the `{Ci}` push was never actually read *as a value*.  Tracing
+  the generated control flow shows the one-arm (`[ > sub1 < ] >`) is
+  entered and exits via a fresh `0` push that also pops the guard; the
+  zero-arm is reached only because, when the one-arm is skipped, the
+  *un-consumed bit itself* gets popped by the trailing `>`, exposing
+  whatever was pushed just before it as the new top.  That value only
+  needs to be truthy there — it never depends on the bit — so a constant
+  `1` marker (`<@`, embedded directly in the template, not through
+  `{Ci}`/`instantiate`) is correct.  Verified against the interpreter: a
+  constant-`1` marker reproduces every table through `n == 3` exhaustively
+  and `n == 4` spot checks; a constant-`0` marker (the discriminating
+  negative control) fails on every combination with a zero bit, pinning
+  that the marker must be truthy but confirming its *value* was never
+  input-dependent.
+
+Both generators now embed each input exactly once, with no `{Ci}`, matching
+Eval and most other parameterized generators.  `dotlang` remains the
+documented exception that legitimately needs `{Ci}` (see below) — its
+re-embedding is a different problem (no way to store a bit and read it
+back), not a complement-at-runtime problem.
+
+## Dotlang (fork-and-kill; parameterized)
+
+A plain decision tree fails on Dotlang: `W~` warps to the *first* `W<name>`s`
+marker, so deeper levels re-enter the same markers and lose branch history;
+the type conditionals (`!?:`) cannot help — input digits become `int` 0/1,
+so both bits share a type — and there is no value comparison or arithmetic.
+
+The shipped generator (`esolangs.tools.boolean.dotlang`) sidesteps the wall
+by embedding the bits and forking: ``(`` spawns a dot at the matching ``)``
+while the caller continues, so a junction forks the dot into two and the
+embedded gate (``{Xi}`` or its ``{Ci}`` complement, filled with a
+pass-through ``a`` or an empty cell) kills one of them, leaving exactly the
+branch the bit selects.  The survivor turns down and right into its
+subtree, and each leaf is a ``#0#``/``#1#`` literal that prints the table
+entry before the dot dies, so the instantiated program prints its answer
+and halts.  It is a parameterized generator, total for any arity and table;
+the tree re-embeds each input at `2**i` junctions — one of the two
+parameterized generators that do not embed each input exactly once
+(`wii2d_tree` is the other, at `2**n - 1` junctions).
 
 ## Polynomial (numeric root-finding ruled out; caps at n <= 4)
 
@@ -175,31 +233,145 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   input-dependent branch either.
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
-  value-testable branch to route a decision tree on.
+  value-testable branch to route a decision tree on.  **Resolved by the
+  n-embedding chain** (:func:`esolangs.tools.boolean.parameterized.wii2d`):
+  the branches are routing, not value tests, and the *accumulator arithmetic*
+  decodes the input.  Each input is embedded exactly once as a junction whose
+  two branches are op strings that transform the accumulator before re-merging
+  ahead of the next junction; the final accumulator is the table entry.  The
+  ops are not monotone (`s` sends -1 to 1), so the decoding works for any
+  table at small arity (every table through three inputs is verified against
+  the interpreter; two inputs use a closed form — bit 0 packed as -1/0, each
+  column decoded by a single op).  The search tries op strings of length 2
+  through 6 with a growing budget and generally fails past `n == 5` for dense
+  non-symmetric tables.  Symmetric tables (AND/OR/XOR/majority/threshold-k of
+  any arity) get their own closed forms first: parity/XNOR is exact and O(1)
+  at any `n` (pack bit 0, then fold every later bit with `-s`, which flips
+  0/1 since `(v-1)**2` sends 0->1 and 1->0), and other symmetric tables
+  reduce to a popcount-accumulator prefix plus a decode search over `n`
+  points instead of the full `2**n` rows — see `_wii2d_search`'s docstring
+  for the counting-bound proof that the general (non-symmetric) search must
+  eventually fail at high arity regardless of tuning, and why parity's exact
+  case is a speed win rather than a reachability one.  The guaranteed
+  fallback is the decision tree
+  (:func:`esolangs.tools.boolean.parameterized.wii2d_tree`), which
+  re-embeds each input at every node (2**n - 1 junctions) and works for any
+  arity.
 
-## Termination-based convention (Point Break is a full generator; the rest partial)
+  **A search-free chain (no BFS/DFS at all, just a formula) was assessed and
+  found not to generalize.**  The idea: pack the first `n - 1` bits into a
+  single non-negative integer with a fixed, table-independent prefix
+  (`("*", "*+")` per junction — double on a 0 bit, double-and-increment on a
+  1 bit), leaving only the last junction's two op-strings to depend on the
+  table.  At `n == 3` this is total (a decode search up to length 7 covers
+  all 256 tables, including non-monotone ones like XOR3, since the *decode
+  string* can dip negative even though the packing prefix stays
+  non-negative).  It collapses fast past that: the decode step must hit one
+  specific function out of `2**(2**(n-1))` possible 0/1-valued functions on
+  the `2**(n-1)`-point packed domain, and the count of *usable* (pure
+  0/1-output) op-strings up to length 6 barely grows with length (8, 15, 24
+  at lengths 4, 5, 6) while the target count doubles-of-doubles — coverage
+  falls from 94% at `n == 3` to 9% at `n == 4` to 0.04% at `n == 5`.  Moving
+  the hard part into a single final decode junction does not avoid the
+  counting-bound wall; it relocates a smaller copy of the same pigeonhole
+  problem (arbitrary lookup table, short formula) to that junction.
+
+## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
+
+2dFish can host a WII2D-style parameterized generator: its direction cells
+(`/` east, `v` south, `^` north) steer a pointer carrying a single
+accumulator, and there is no runtime conditional nor a way to combine two
+`%` reads (each overwrites the accumulator).  The WII2D merging-chain
+technique transfers almost verbatim — junction cells filled `/` (bit 0,
+continue east) or `v` (bit 1, detour onto a lower row and remerge ahead),
+branch op strings from the fish alphabet `i d s` (increment, decrement,
+square) transforming the accumulator, and the BFS behavior-dedup /
+backward requirement-set search
+(:func:`esolangs.tools.boolean.parameterized`'s `_wii2d_sequences` /
+`_wii2d_domain` / `_wii2d_search_start`) is op-agnostic — but the chain is
+**strictly weaker** than WII2D's.
+
+The chain must finish with the accumulator **exactly** 0 or 1 (`o` prints
+the decimal value, so a leftover 2, 16, or 81 would print as garbage, and
+2dFish has no value-testable branch to fix it up).  With only `i`/`d`
+(injective shifts) and `s` (collapses exactly the pair `{x, -x}`), a
+decoding op string can only merge values that meet by a sign at the moment
+of a square, so the reachable tables are exactly the **affine functions over
+GF(2)** — the XOR of any subset of the inputs (the empty subset giving the
+constant 0) and the complement of each, `2**(n+1)` tables in all.  Verified
+exhaustively against the interpreter: all four one-input tables round-trip,
+but of the sixteen two-input tables only the eight affine ones do — AND, OR,
+NAND, NOR, and the two single-input-and-not gates are unreachable at any
+op-string length (exact 0/1 brute force to length 5, search to length 8) —
+and the search's reachable count at `n == 3` and `n == 4` is exactly
+`2**(n+1)` (16 and 32).  So a chain-only generator would raise on the most
+common tables.
+
+The universal construction is therefore the **decision tree** (the
+`wii2d_tree` analog): re-embed each input at every node, with uniform-width
+leaves holding `i o @` (entry 1) or `o @` (entry 0).  That is total and was
+verified against the interpreter for every table through `n == 4` (all
+combinations, all 65536 four-input tables).
+
+Four 2dFish mechanics differ from WII2D and must be handled by the layout:
+
+- **No `>`/`<`.**  2dFish's direction cells are `/ \ v ^` only; east is `/`.
+  Every `>` becomes `/`, and there is no `!` start marker — the top-left
+  cell must be `/` to set the initial heading (the interpreter reads it
+  before any command).
+- **Ragged grid.**  WII2D's interpreter pads every row to the grid width, so
+  its rstrip'd rows are safe; 2dFish's interpreter does not pad, so a
+  northward ascent or a `v` descent can fall off a short row and halt with
+  `HaltError`.  Every row must be emitted at the full grid width.
+- **No digit-set op.**  WII2D's layout sets the chain's starting accumulator
+  with a single digit cell; in 2dFish digits are no-ops (the accumulator
+  starts at 0), so the start value is a preamble of `i` repeated (`i*start`)
+  before the first junction.
+- **Fixed-width placeholders.**  The chain template must use single-character
+  junction cells filled in place (as `wii2d_tree` does), not WII2D's
+  `{Xi}`-to-4-char replacement, which shifts the row one cell per junction —
+  WII2D absorbs the shift with its wrapping and row padding, 2dFish does not.
+
+## Termination-based convention (Point Break and ArrowQueue are full generators; the rest partial)
 
 A "halt vs. loop forever" convention — the program halts iff the embedded
 input bits satisfy the function — was explored for the languages with a
 built-in infinite-loop branch.  It expresses one-input functions, and some
 languages reach multi-input threshold functions:
 
-- **ArrowQueue**: a queue-sustaining ring (``[" ~*", "+~*", "*~+"]``) hangs
-  iff its center `~` is present, so the ring is a one-input identity gadget
-  under the convention.  With bit cells spread across the ring it becomes
-  an *n*-ary AND (hang iff all bits present); the OR and NOR tables are
-  expressible in other layouts (verified by search).  But the hang structure
-  sustains iff its single sustainer cell is `~` — each bit can only add a
-  "must be present" literal, so a single ring is one AND of literals (one
-  minterm), and multiple rings cannot be OR'd on the IP's single path.
-  XOR/XNOR (two disjunct minterms) would need to OR two rings, which the
-  IP's single path cannot host, and a 200,000-grid search never produced
-  them — strong evidence for a threshold/AND/OR-class ceiling, though not a
-  proof.  So ArrowQueue realizes the
-  convention for threshold/AND/OR-class functions, not arbitrary tables.
+- **ArrowQueue**: the ring-template analysis below hit a
+  threshold/AND/OR-class ceiling, and the shipped generator
+  (:func:`esolangs.tools.boolean.parameterized.arrowqueue`) **resolves it**
+  by leaving the ring template entirely.  A queue-sustaining ring
+  (``[" ~*", "+~*", "*~+"]``) hangs iff its center `~` is present, so the
+  ring is a one-input identity gadget under the convention; with bit cells
+  spread across the ring it becomes an *n*-ary AND (hang iff all bits
+  present), and the OR and NOR tables are expressible in other layouts
+  (verified by search).  But the hang structure sustains iff its single
+  sustainer cell is `~` — each bit can only add a "must be present"
+  literal, so a single ring is one AND of literals (one minterm), and
+  multiple rings cannot be OR'd on the IP's single path.  XOR/XNOR (two
+  disjunct minterms) would need to OR two rings, which the IP's single path
+  cannot host, and a 200,000-grid search never produced them — strong
+  evidence for a threshold/AND/OR-class ceiling, though not a proof.
 
-- **Point Break** is the one language where the convention is a *general*
-  boolean generator, the first under this contract
+  The generator breaks the ceiling by using the queue itself as the
+  decision state instead of the ring's center cell.  The header embeds each
+  input bit once as a direction (right is 0, down is 1), the next rows
+  queue the right/down/left/up loop components, and a **full decision tree**
+  pops one bit per level at a ``+`` branch, routing the pointer right for a
+  0 and down for a 1 (a ``+`` pop replaces the heading entirely, so the
+  route works from any approach).  A ``0`` leaf is an empty 3x3 block (the
+  pointer runs off the grid, which halts) and a ``1`` leaf is a
+  self-sustaining ring that pushes on every edge and pops on every corner.
+  The tree is deliberately full — constant slices are not collapsed —
+  because the ring's corner pops must consume exactly the four loop
+  components, so every path pops all ``n`` bits first.  Every table is
+  supported: all ``n <= 3`` tables exhaustively, with ``n == 4``-``5``
+  sampled; program size doubles per input level.
+
+- **Point Break** is the first language where the convention is a *general*
+  boolean generator
   (`esolangs.tools.boolean.point_break`): the language has no output, but
   its Turing-complete arithmetic makes every ``n``-ary table a sum of
   minterms (a product of bits and complements computed with single-
@@ -207,7 +379,7 @@ languages reach multi-input threshold functions:
   ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` — halts iff ``f`` is
   0 and loops forever iff ``f`` is 1, exactly the wiki's own truth-machine
   semantics.  No other language in the repo needed the new harness
-  contract (termination as the answer); Point Break is the only one where
+  contract (termination as the answer); Point Break is the first where
   the convention unlocks an arbitrary table rather than hitting a
   structural ceiling.  The looping side is decided deterministically by
   state-cycle detection: Point Break is step-capable and a repeated
@@ -248,7 +420,7 @@ Supported for **every arity** and verified cycle-stable and exact: all
 ``n == 4``-``7`` sampled plus structured and constant edge tables.  The
 general method — encode each combination as a distinct leaf position
 reached by the weighted bit-moves, and anchor the cycle-2 run back onto
-that leaf — is recorded in ``docs/roadmap.md``.
+that leaf — is recorded in ``docs/a_painter_ant_generator.md``.
 
 ## Multiply capability (Jaune realizes it)
 
@@ -303,3 +475,65 @@ folds each digit with ``v+`` plus a run of nine ``&`` after a ``#``
 on zero, then loops the repeated addition of the first operand over the
 second.  Verified exhaustively for single-digit operands (all 100 pairs)
 and spot-checked through ten-digit operands.
+
+## Cross-check removals (why seven were dropped)
+
+Seven `extra/` cross-checks (Rust and RISC-V ports run against the Python
+interpreters by `scripts/verify_differential.py`) were removed for not
+meeting the independent-and-broad bar: Kak, Trash, Number Seventy-Four
+(Rust) and Brainpocalypse, Stun Step, 2 Bits 1 Byte (RISC-V) had no
+generator at all, so their differentials were a hand-written 4-6 program
+corpus each, and the references were ports of (or ported to) the Python,
+so agreement was not independent evidence.  123 had a generator but its
+RISC-V cross-check was corpus-only (4 generated texts + 2 hand-written
+jumps, no fuzz) and verified programs the round-trip test already covers.
+All seven added little over the Python unit tests at real toolchain cost
+(cargo + RISC-V cross-compiler + unicorn in CI).  The *languages* all
+stayed except the six later removed outright (2 Bits 1 Byte, Trash, Number
+Seventy-Four, Kak, Brainpocalypse, Stun Step — see the assessed-and-rejected
+ledger in `docs/limitations.md`); only the redundant cross-checks went for
+the rest.  Live candidates for new cross-checks are in `docs/roadmap.md`.
+
+## State-cycle detection coverage (hang detection without a wall-clock timeout)
+
+`esolangs.vm.run_until_halt_or_cycle` proves a hang immediately for
+deterministic, step-capable machines that revisit an exact internal state,
+instead of waiting out a wall-clock timeout.  It requires: a **complete**
+snapshot (the machine's internal fields, including the input-cursor
+position — the VM's language-shaped `ip`/`memory`/`stack` view is not
+enough); determinism (LaserFuck's random heading, WII2D's `?`, and
+Painfuck's `y` are excluded); and a `step()`/`halted` state object (only
+the VM set qualifies — whole-program `run()`s expose no internal state to
+hash).  It catches *cycles*, not every hang: an unbounded-growth loop
+(`+[>+]`, the tape grows forever) never revisits a state, so the wall-clock
+timeout stays as the backstop for that class, and for the fuzzers (which
+don't control the program shape the way hand-written tests do).
+
+`tests/test_interpreters_robustness.py` decides the empty-program invariant
+by state-cycle detection for twenty-nine string-based step-capable machines
+(brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, The Temporary Stack,
+Qoibl, Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
+ROTfuck, Circlefuck, BFStack, Decleq, 6-5, Back, BIO, NoComment,
+3D Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial), and
+keeps the SIGALRM backstop for the rest (Grapheme's machine has no
+`snapshot()` yet, and Painfuck's `y` is non-deterministic).
+`scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
+likewise bounded by state-cycle detection, with NoComment keeping the
+alarm as backstop for its unbounded-growth class (a loop that keeps
+pushing the stack never revisits a state); the remaining differential
+Python sides on SIGALRM alone are LaserFuck and Painfuck, whose
+headings/skips are random.
+
+**The wall-clock backstop is broken under `pytest --cov`.**  Raising from
+the SIGALRM handler while the coverage C tracer is active can deadlock the
+tracer: the exception unwinds through the tracer's C code while it holds
+its internal lock, so the *next* traced run spins forever instead of
+finishing.  An interpreter that evaluates a `next(genexpr)` in its hot loop
+makes it near-deterministic — the signal lands inside the suspended
+generator frame and leaves the lock held — while a genexpr-free loop
+reduces it to a rare race.  This is why state-cycle detection matters
+beyond speed: it removes the deadlock hazard entirely for the machines it
+covers.  The one alarm that stays by design is `test_api.py`'s `+[]` case:
+it is a feature test of `esolangs.run`'s `timeout` parameter (the backstop
+for unbounded-growth loops), not a hang-detection strategy, so it keeps
+raising from the handler once per process.

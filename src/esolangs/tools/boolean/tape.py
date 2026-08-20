@@ -1,9 +1,11 @@
 """Boolean-function generators for tape-based languages."""
 
+import sys
 from collections.abc import Sequence
 from typing import cast
 
 from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.text.tape import _factor_encode
 from esolangs.tools.transpilers import _six_five_label
 
 
@@ -553,6 +555,43 @@ def brainfuck(truth_table: str) -> str:
       dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
     """
     return min((_bf_minterm(truth_table), bf_tree(truth_table)), key=len)
+
+
+def factor(truth_table: str) -> str:
+    """Build a Factor program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    A Factor program is a single integer whose prime factorization decodes
+    to brainfuck, so the generator reuses :func:`brainfuck`'s truth-table
+    program unchanged and encodes it with :func:`_factor_encode` -- the same
+    prime-search the text generator uses (walk primes upward, handing each
+    instruction the next one with the right residue mod 11; Dirichlet's
+    theorem guarantees one always exists).
+
+    This is a program-size cap, not an ``n`` cap: sparse tables (e.g. an
+    all-zero or all-one table) stay small at any ``n``, while dense tables
+    grow the underlying brainfuck program (and so the encoded integer)
+    quickly.  CPython refuses to render an integer above
+    ``sys.get_int_max_str_digits()`` decimal digits (a DoS guard, not a
+    Factor property), and the Factor *interpreter* parses its input the
+    same way, so a program past that limit would not just fail to print
+    here -- it would fail to run.  The check estimates the digit count from
+    the integer's bit length (``log10(2) ~= 0.30103``) to avoid paying for
+    the same oversized conversion just to reject it.
+    """
+    number = _factor_encode(brainfuck(truth_table))
+    limit = sys.get_int_max_str_digits()
+    if limit and number.bit_length() * 0.30103 + 1 > limit:
+        raise ValueError(
+            "the Factor boolean generator's encoded integer would exceed "
+            f"Python's {limit}-digit limit for integer-to-string conversion "
+            "(sys.get_int_max_str_digits()) -- the Factor interpreter parses "
+            "its program the same way, so this table's encoding could not "
+            "be run even if it were rendered; try a sparser table",
+        )
+    return str(number)
 
 
 def three_d_brainfuck(truth_table: str) -> str:
@@ -1488,3 +1527,72 @@ def jaune_multiply() -> str:
     cmd("^")
     cmd(".")
     return "".join(out)
+
+
+def suffolk(truth_table: str) -> str:
+    """Build a Suffolk program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Suffolk has no branch and no data-dependent jump, so this is a
+    branch-free sum of minterms, run at ``limit=1`` (a single pass, one
+    read per input -- the default 10-pass rerun would replay every ``,``
+    with no more input left).  The only nonlinearity is ``!``, which
+    computes ``max(0, cell + 1 - acc)``: with a preloaded 48-cell and
+    ``acc = 48 + bit`` (one ``,`` read), it yields the complement
+    ``1 - bit``; a second ``!`` from a zero cell complements again to
+    recover ``bit``.  Summing ``n`` literals (complement when the row wants
+    a 0, raw bit when it wants a 1) into ``acc`` and applying ``!`` to a
+    zero cell gives ``max(0, 1 - sum)``, which is 1 only when every literal
+    matches (an AND of that row's minterm) and 0 otherwise.  Every row's
+    minterm cell is 0 except the one matching the actual inputs, so summing
+    all of them plus a preloaded 49-cell into ``acc`` and printing
+    (``.`` emits ``chr(acc - 1)``) prints ``48`` or ``49``.
+
+    Constant tables need no reads at all: ``.`` prints ``chr(acc - 1)``, so
+    the accumulator only has to hold 50 (all-ones, prints ``49``) or 49
+    (all-zeros, prints ``48``) at the print.
+    """
+    n = _validate_truth_table(truth_table)
+
+    def const(gap: int, value: int) -> str:
+        """``(gap '>'s then '!') * value`` builds ``value`` at that cell.
+
+        ``!`` resets the pointer to 0, so each repetition re-walks ``gap``
+        steps out to the same cell before incrementing it.
+        """
+        return (">" * gap + "!") * value
+
+    if all(c == "0" for c in truth_table):
+        return const(1, 49) + ">" + "<" + "."
+    if all(c == "1" for c in truth_table):
+        return const(1, 50) + ">" + "<" + "."
+
+    code = const(1, 49)  # cell 1: the final additive constant
+    # cells 2..2+n-1: complement of each input bit (1 - bit)
+    for i in range(n):
+        gap = 2 + i
+        code += const(gap, 48) + ">" * gap + "," + "!"
+    # cells 2+n..2+2n-1: the raw bit, recovered from the complement
+    for i in range(n):
+        gap = 2 + i
+        raw_gap = 2 + n + i
+        code += ">" * gap + "<" + ">" * raw_gap + "!"
+
+    minterm_cells: list[int] = []
+    next_cell = 2 + 2 * n
+    for row in range(2**n):
+        if truth_table[row] != "1":
+            continue
+        bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+        literals = [(2 + i) if v else (2 + n + i) for i, v in enumerate(bits)]
+        code += "".join(">" * c + "<" for c in literals)
+        code += ">" * next_cell + "!"
+        minterm_cells.append(next_cell)
+        next_cell += 1
+
+    code += "".join(">" * c + "<" for c in minterm_cells)
+    code += ">" + "<"  # add the constant cell
+    code += "."
+    return code

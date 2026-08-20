@@ -5,43 +5,22 @@ from collections.abc import Callable
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.text.helpers import (
     _cm_constants,
-    _factor_triple,
     _require_bytes,
 )
 
 __all__ = [
     "addsubjump",
-    "albabet",
     "bio",
     "collatz_multiverse",
     "decleq",
     "dig",
     "dotlang",
     "eval",
-    "huf",
     "polynomial",
     "qoibl",
     "sophie",
     "wii2d",
 ]
-
-
-def albabet(text: str) -> str:
-    """Build an AlbaBet program that outputs ``text``.
-
-    Each character is built as ``a * b + r`` and printed with ``i``: ``c``
-    zeroes ``x``, a run of ``a`` sets it, ``e`` copies it into ``y``, ``c``
-    zeroes ``x`` again, a run of ``b`` sets it, ``g`` multiplies (``x *= y``),
-    and a final run of ``r`` tops the product up.  ``a`` is searched near
-    ``sqrt(ord)`` so the program is O(sqrt) rather than O(ord).
-    """
-    _require_bytes(text, "AlbaBet")
-
-    def segment(value: int) -> str:
-        a, b, r = _factor_triple(value)
-        return "c" + "a" * a + "e" + "c" + "a" * b + "g" + "a" * r + "i"
-
-    return "".join(segment(ord(c)) for c in text)
 
 
 def bio(text: str) -> str:
@@ -221,24 +200,6 @@ def dotlang(text: str) -> str:
     if any(c in "\n\r\v\f\x1c\x1d\x1e\x85`" for c in text):
         raise ValueError("dotlang can only output a single line without backticks")
     return "\u2022#" + "`" + text + "`#"
-
-
-def huf(text: str) -> str:
-    """Each character is a multiply segment ``# +*a | +*b ! +*r >@``.
-
-    ``#`` resets num and mul, a run of ``a`` increments num, ``|`` starts the
-    multiplier, a run of ``b`` increments it to ``b + 1``, and ``!`` multiplies
-    num by ``mul - 1`` so it becomes ``a * b``; a final run of ``r`` tops it
-    up to the character code, then ``>@`` prints it and closes the segment.
-    ``a`` is searched near ``sqrt(ord)`` so the program is O(sqrt) rather than
-    O(ord).
-    """
-    return "".join(_huf_segment(ord(c)) for c in text)
-
-
-def _huf_segment(value: int) -> str:
-    a, b, r = _factor_triple(value)
-    return "#" + "+" * a + "|" + "+" * b + "!" + "+" * r + ">@"
 
 
 def eval(text: str) -> str:  # noqa: A001 - the language is named "Eval"

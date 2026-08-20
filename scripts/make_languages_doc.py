@@ -27,7 +27,6 @@ _COMPILER_NAMES = {
     "suffolk": "Suffolk",
     "unsquare": "Unsquare",
     "bf_pda": "BF-PDA",
-    "excon": "EXCON",
     "ram0": "RAM0",
 }
 
@@ -196,9 +195,11 @@ def render() -> str:
         "Cross-check means an implementation in `extra/` that runs as a",
         "standalone program (Rust, Lean, or RISC-V assembly), used to",
         "differentially verify the Python interpreter.  The Boolean",
-        "column marks the boolean-function generators; Back, BIO, and",
-        "NoComment's are parameterized (the harness substitutes input bits",
-        "into a template) rather than the program reading input.",
+        "column marks the boolean-function generators; the no-input "
+        "languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, "
+        "Minsky Swap, Eval, ArrowQueue, A Painter Ant, Dotlang, WII2D) use "
+        "parameterized generators (the harness substitutes input bits into "
+        "a template).",
         "",
         "| Language | Text generator | Python | Cross-check | Boolean | "
         "Compiler | Examples |",
