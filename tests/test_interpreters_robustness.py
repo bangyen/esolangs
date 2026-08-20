@@ -9,9 +9,9 @@ decided deterministically by state-cycle detection
 (:func:`esolangs.vm.run_until_halt_or_cycle`): a deterministic machine
 that revisits an exact internal state has looped forever, so the check
 needs no wall-clock bound and is not POSIX-only.  Languages without a
-step-capable machine (and Grapheme, whose machine has no ``snapshot()``
-yet) keep the SIGALRM backstop, which stays for the unbounded-growth
-hang class that cycle detection cannot catch.
+step-capable machine keep the SIGALRM backstop, which stays for the
+unbounded-growth hang class that cycle detection cannot catch (e.g. a
+Grapheme program that keeps pushing to the stack).
 """
 
 import importlib
@@ -161,6 +161,12 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.register_based.polynomial import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.stack_based.grapheme":
+        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+
+        machine = _Machine(io, 1_000_000)
+        machine.frames.append(_Frame("", 0))
+        return machine
     raise KeyError(module)
 
 
@@ -196,6 +202,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.bit_tilde",
     "esolangs.interpreters.register_based.collatz_multiverse",
     "esolangs.interpreters.register_based.polynomial",
+    "esolangs.interpreters.stack_based.grapheme",
 }
 
 
