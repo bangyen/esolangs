@@ -30,6 +30,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
 | Bitdeque |  | yes |  | yes |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
+| COD |  | yes |  | yes |  | boolean |
 | Circlefuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
 | Collatz Multiverse | yes | yes |  | yes |  | hello |

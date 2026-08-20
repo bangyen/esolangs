@@ -2482,6 +2482,129 @@ class TestParameterizedBfpda:
             parameterized.bfpda("011")
 
 
+class TestParameterizedCOD:
+    """Input-by-substitution boolean generator for the no-input language COD."""
+
+    def run_cod(self, prog: str) -> str:
+        from esolangs.interpreters.grid_based.cod import run
+        from esolangs.interpreters.io import ScriptedIO
+
+        io_ = ScriptedIO("")
+        run(prog, io_, limit=500)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean import parameterized
+
+        # each {Xi} sets the cod's value to the bit: ')' for one, space
+        # for zero, read at the start of that input's '+' fork
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: ")" if b else " ",
+            lambda _i, _b: " ",
+        )
+
+    @pytest.mark.parametrize(
+        "table",
+        [
+            "0000",  # constant zero
+            "1111",  # constant one
+            "0001",  # AND
+            "0111",  # OR
+            "0110",  # XOR
+            "1001",  # XNOR
+            "1110",  # NAND
+            "1000",  # NOR
+            "0100",  # A and not B
+            "1101",  # A or not B
+        ],
+    )
+    def test_truth_table(self, table: str) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod(table)
+        for combo in range(4):
+            bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
+            got = self.run_cod(self.instantiate(template, bits))
+            assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+
+    def test_all_two_input_tables(self) -> None:
+        """Every one of the sixteen two-input tables produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            template = parameterized.cod(table)
+            for combo in range(4):
+                bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
+                got = self.run_cod(self.instantiate(template, bits))
+                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+
+    def test_program_always_terminates_with_one_line(self) -> None:
+        """Every run prints exactly one line and leaves no cod alive."""
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod("0110")
+        for combo in range(4):
+            bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
+            code = self.instantiate(template, bits)
+            io_ = ScriptedIO("")
+            machine = _Machine(code, io_)
+            for _ in range(500):
+                if machine.halted:
+                    break
+                machine.step()
+            assert machine.halted
+            assert io_.getvalue().count("\n") == 1
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_each_input_is_embedded_once(self) -> None:
+        """The routing embeds each input exactly once, not per leaf."""
+        import re
+
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod("0110")
+        assert template.count("{X0}") == 1
+        assert template.count("{X1}") == 1
+        assert len(re.findall(r"\{X\d+\}", template)) == 2
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.cod("011")
+
+    def test_only_one_or_two_input_tables_supported(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="n == 1 or n == 2"):
+            parameterized.cod("11111110")  # n == 3
+
+    @pytest.mark.parametrize("table", ["10", "01", "00", "11"])
+    def test_one_input_truth_table(self, table: str) -> None:
+        """n == 1 reuses the two-input routing with X1 fixed to 0."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod(table)
+        assert "{X0}" in template
+        assert "{X1}" not in template
+        for x0 in range(2):
+            got = self.run_cod(self.instantiate(template, [x0]))
+            assert got == f"{table[x0]}\n", f"table {table} input {x0}"
+
+
 class TestEvalBoolean:
     """Input-by-substitution boolean generator for the no-input language Eval."""
 

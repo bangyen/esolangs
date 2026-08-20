@@ -124,9 +124,13 @@ MULTIPLY_EXAMPLES = {
 # for any nonzero input (the `1` branch is not executed).  Eval likewise has
 # no runtime input: the committed program is the generated AND2 template
 # instantiated with one input zero (``instantiate(eval("0001"), [0, 1])``),
-# which prints the result 0.
+# which prints the result 0.  COD likewise has no runtime input: the
+# committed program is the generated XOR template instantiated with both
+# inputs one (``instantiate(cod("0110"), [1, 1])``), which prints 0 (see
+# docs/cod_boolean_generator.md).
 BOOLEAN_EXAMPLES = {
     "arrowqueue": ("grid_based.arrowqueue", [], "", True),
+    "cod": ("grid_based.cod", [], "0\n", False),
     "eval": ("stack_based.eval", [], "0", False),
     "minifuck": ("tape_based.minifuck", ["0", "1"], "0", False),
     "point-break": ("register_based.point_break", ["0"], "", False),
