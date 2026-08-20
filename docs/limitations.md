@@ -57,8 +57,8 @@ predictable across languages:
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
 
-- **Sqrt-factorized** (AlbaBet, BIO) build each byte as ``a*b + r`` with
-  ``a`` near ``sqrt(byte)``, so they are O(sqrt) not O(byte).
+- **Sqrt-factorized** (BIO) builds each byte as ``a*b + r`` with ``a`` near
+  ``sqrt(byte)``, so it is O(sqrt) not O(byte).
 - **Delta- and cell-reuse** (brainfuck, Circlefuck) keep a running cell and
   emit only the difference, so consecutive close bytes cost a couple of
   tokens.
@@ -80,7 +80,6 @@ per-character encoding can be meaningfully shortened:
 | --- | --- |
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | 2dFish | Single accumulator, every `%` overwrites it; the string variable holds a second input but no instruction moves it into the accumulator arithmetically — only one-input functions. |
-| Albabet | No input command at all; output is a fixed function of the program text. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 
@@ -117,6 +116,7 @@ interpreter, generator, and tests were deleted from the repo.
 
 - **2 Bits 1 Byte** (removed): joke; single-byte program, no text or boolean generator, externally implemented.
 - **Aaargh++**: 4D work-in-progress with a partial spec.
+- **Albabet** (removed): straight-line two-register accumulator; no conditional at all (only reset/increment/copy/multiply/print), so no boolean generator.
 - **ASCII art** (removed): brainfuck with an art alphabet; a trivial reskin.
 - **Binary ///**: stub with no usable specification.
 - **Bitwise Cyclic Teast**: work-in-progress, interpreter still in development.

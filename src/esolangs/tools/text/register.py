@@ -5,13 +5,11 @@ from collections.abc import Callable
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.text.helpers import (
     _cm_constants,
-    _factor_triple,
     _require_bytes,
 )
 
 __all__ = [
     "addsubjump",
-    "albabet",
     "bio",
     "collatz_multiverse",
     "decleq",
@@ -23,24 +21,6 @@ __all__ = [
     "sophie",
     "wii2d",
 ]
-
-
-def albabet(text: str) -> str:
-    """Build an AlbaBet program that outputs ``text``.
-
-    Each character is built as ``a * b + r`` and printed with ``i``: ``c``
-    zeroes ``x``, a run of ``a`` sets it, ``e`` copies it into ``y``, ``c``
-    zeroes ``x`` again, a run of ``b`` sets it, ``g`` multiplies (``x *= y``),
-    and a final run of ``r`` tops the product up.  ``a`` is searched near
-    ``sqrt(ord)`` so the program is O(sqrt) rather than O(ord).
-    """
-    _require_bytes(text, "AlbaBet")
-
-    def segment(value: int) -> str:
-        a, b, r = _factor_triple(value)
-        return "c" + "a" * a + "e" + "c" + "a" * b + "g" + "a" * r + "i"
-
-    return "".join(segment(ord(c)) for c in text)
 
 
 def bio(text: str) -> str:
