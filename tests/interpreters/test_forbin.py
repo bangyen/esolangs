@@ -246,10 +246,20 @@ class TestParserErrors:
         with pytest.raises(HaltError, match="not a function"):
             run_program("main { x = 0; r = (x 1); }")
 
-    def test_recursion_limit_exceeded(self) -> None:
-        """Infinite recursion halts cleanly rather than leaking a RecursionError."""
-        with pytest.raises(HaltError, match="recursion"):
-            run_program("main { again 1; }\nagain { again 0; }")
+    def test_deep_recursion_no_longer_capped(self) -> None:
+        """A correct, terminating recursion past the old 250-level cap completes.
+
+        Statement-position calls (``f(y);``, the language's only recursion
+        idiom -- ``return`` exits a call immediately, so there is no
+        return-value-threading pattern) push an explicit frame instead of
+        recursing natively, so depth is no longer capped at all.
+        """
+        depth = 300
+        lines = ["main { f0 0; }"]
+        for i in range(depth):
+            body = f"f{i + 1} 0;" if i + 1 < depth else "out 0,0,0,0,0,0,0,1;"
+            lines.append(f"f{i} x {{ {body} }}")
+        assert run_program("\n".join(lines)) == "\x01"
 
     def test_multi_assignment(self) -> None:
         code = "main { a, b = 1, 0; " "out 0,0,0,0,0,0,0,a; out 0,0,0,0,0,0,0,b; }"
