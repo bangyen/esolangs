@@ -36,6 +36,12 @@ class TestNoCommentFuzz:
         assert set(program) <= set("idclrnfsbo")
 
 
+class TestBfPdaFuzz:
+    def test_program_alphabet(self, rng) -> None:
+        program = "".join(rng.choice("@.<>[]") for _ in range(rng.randint(0, 30)))
+        assert set(program) <= set("@.<>[]")
+
+
 class TestDivergenceDetection:
     """The fuzzer must fail when the two sides disagree."""
 
@@ -56,6 +62,24 @@ class TestDivergenceDetection:
 
         with patch.object(verify_differential, "_asm_refs", side_effect=tampered):
             assert not verify_differential._fuzz_nocomment(rng, 20)  # noqa: SLF001
+
+    @pytest.mark.skipif(
+        not verify_differential._asm_refs_ready("bfpda"),  # noqa: SLF001
+        reason="RISC-V cross-check not buildable",
+    )
+    def test_bfpda_catches_divergence(self, rng) -> None:
+        """A wrong output on the RISC-V side is reported as a failure."""
+        real_ref = verify_differential._asm_refs  # noqa: SLF001
+
+        def tampered(name, program):
+            result = real_ref(name, program)
+            if result is None:
+                return None
+            out, code = result
+            return out + b"!", code
+
+        with patch.object(verify_differential, "_asm_refs", side_effect=tampered):
+            assert not verify_differential._fuzz_bfpda(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(
         not verify_differential.FORTH_BIN.exists(), reason="Rust cross-check not built"

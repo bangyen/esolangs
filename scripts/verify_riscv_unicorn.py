@@ -5,9 +5,11 @@ Two kinds of round-trip run esolang programs as RISC-V ELF under unicorn:
 1. each assembly compiler in ``src/esolangs/compilers/assembly/`` translates
    an esolang program to RISC-V assembly, which is compiled and run;
 2. text generators whose interpreters live in ``extra/assembly/`` feed the
-   generated program to the cross-check machine code.
+   generated program to the cross-check machine code;
+3. fixed programs whose expected output pins the cross-check interpreters
+   without a text generator.
 
-Both must reproduce the expected output.
+All three must reproduce the expected output.
 
 Usage:
     python scripts/verify_riscv_unicorn.py
@@ -28,6 +30,14 @@ from esolangs.tools import text as gen
 REFERENCE_TEXTS = ["Hi", "Hello, World!", "esolangs!", "A\nB", "\x00"]
 GENERATOR_CASES = [
     ("nocomment", "extra/assembly/nocomment-riscv.s", gen.nocomment),
+]
+
+# Fixed programs for the cross-check interpreters without a text generator:
+# each must reproduce its expected output (and exit code) as machine code.
+REFERENCE_CASES = [
+    ("bfpda", "extra/assembly/bfpda-riscv.s", "<.>@.", "01"),
+    ("bfpda", "extra/assembly/bfpda-riscv.s", "<@.", "1"),
+    ("bfpda", "extra/assembly/bfpda-riscv.s", "<@<@[.>]", "11"),
 ]
 
 # (name, compiler module, source program, expected output).  Compilers with
@@ -58,6 +68,13 @@ def main() -> int:
             ok = out == text.encode()
             failures += not ok
             print(f"{name} {text!r}: {'ok' if ok else 'FAIL'} -> {out!r}")
+    for name, path, program, expected in REFERENCE_CASES:
+        with open(path) as f:
+            binary = assemble_source(f.read())
+        out, code = run_elf(binary, program.encode())
+        ok = out == expected.encode() and code == 0
+        failures += not ok
+        print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r} (exit {code})")
     for name, module, source, expected in COMPILER_CASES:
         comp = importlib.import_module(f"esolangs.compilers.assembly.{module}").comp
         args = (source, 1) if module == "suffolk" else (source,)
