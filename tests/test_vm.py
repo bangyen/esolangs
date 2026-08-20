@@ -696,6 +696,17 @@ class TestBFPDA:
         assert vm.output == "1"
 
 
+class TestThreeX:
+    def test_rational_stack_and_cursor(self) -> None:
+        vm = esolangs.make_vm("3x", "3!")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
+        vm.step()  # 3 pushes the rational 3
+        assert (vm.ip, vm.stack) == (1, [3])
+        vm.step()  # ! pops and prints the top
+        assert vm.halted
+        assert vm.output == "3"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
