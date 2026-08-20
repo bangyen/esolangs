@@ -2542,6 +2542,28 @@ class TestParameterizedCOD:
                 got = self.run_cod(self.instantiate(template, bits))
                 assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
 
+    def test_all_three_input_tables(self) -> None:
+        """Every one of the 256 three-input tables produces the right result.
+
+        Unlike the two-input template, whose forks always split directly
+        into leaves, the three-input template has forks whose zero-branch
+        is itself an internal node -- so a cod can rejoin an earlier
+        junction's row after a deeper fork, and that junction's own reset
+        gauntlet is what stops it from circulating forever instead of
+        halting.  This test is the only thing that would have caught that
+        class of bug (a "backflow" cod wandering junctions indefinitely),
+        since it is invisible from reading the grid.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(256):
+            table = format(table_int, "08b")
+            template = parameterized.cod(table)
+            for combo in range(8):
+                bits = [(combo >> (3 - 1 - i)) & 1 for i in range(3)]
+                got = self.run_cod(self.instantiate(template, bits))
+                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+
     def test_program_always_terminates_with_one_line(self) -> None:
         """Every run prints exactly one line and leaves no cod alive."""
         from esolangs.interpreters.grid_based.cod import _Machine
@@ -2551,6 +2573,25 @@ class TestParameterizedCOD:
         template = parameterized.cod("0110")
         for combo in range(4):
             bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
+            code = self.instantiate(template, bits)
+            io_ = ScriptedIO("")
+            machine = _Machine(code, io_)
+            for _ in range(500):
+                if machine.halted:
+                    break
+                machine.step()
+            assert machine.halted
+            assert io_.getvalue().count("\n") == 1
+
+    def test_three_input_program_always_terminates_with_one_line(self) -> None:
+        """Every three-input run prints exactly one line and halts."""
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod("01101001")
+        for combo in range(8):
+            bits = [(combo >> (3 - 1 - i)) & 1 for i in range(3)]
             code = self.instantiate(template, bits)
             io_ = ScriptedIO("")
             machine = _Machine(code, io_)
@@ -2586,11 +2627,11 @@ class TestParameterizedCOD:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.cod("011")
 
-    def test_only_one_or_two_input_tables_supported(self) -> None:
+    def test_only_up_to_three_input_tables_supported(self) -> None:
         from esolangs.tools.boolean import parameterized
 
-        with pytest.raises(ValueError, match="n == 1 or n == 2"):
-            parameterized.cod("11111110")  # n == 3
+        with pytest.raises(ValueError, match="n == 1, 2, or 3"):
+            parameterized.cod("1111111011111110")  # n == 4
 
     @pytest.mark.parametrize("table", ["10", "01", "00", "11"])
     def test_one_input_truth_table(self, table: str) -> None:

@@ -265,18 +265,49 @@ _COD_TEMPLATE = "\n".join(
     ],
 )
 
+_COD_TEMPLATE_3 = "\n".join(
+    [
+        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+        "~> {X0}+ (<) ))))<((((  +  {X1}+ (<((((<))))) ))))))<((((<((  + {X2}  ~ (<(<(<(<(<(<(< )))))))"  # noqa: E501
+        " {L000} ---",
+        "~~~~ ~~~~~~~~~~~~~~~~ ~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~ ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~",  # noqa: E501
+        "   ~ < )))          < ~ ~ <((((<)))) )        ))))<((((< ~ ~ ~ ~~ (<(<(<(<(<(< )))))) {L001}"  # noqa: E501
+        " ---",
+        "   ~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~ ~ ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~",  # noqa: E501
+        "                                                           ~ ~ ~~ ~~ (<(<(<(<(< ))))) {L010}"  # noqa: E501
+        " ---",
+        "                                                           ~ ~ ~~ ~~ ~~~~~~~~~~~~~~~~~~~~~~",  # noqa: E501
+        "                                                           ~ ~ ~~ ~~ ~~ (<(<(<(< )))) {L011}"  # noqa: E501
+        " ---",
+        "                                                           ~ ~ ~~ ~~ ~~ ~~~~~~~~~~~~~~~~~~~",  # noqa: E501
+        "                                                           ~ ~ ~~ ~~ ~~ ~~ (<(<(< ))) {L100}"  # noqa: E501
+        " ---",
+        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~~~~~~~~~~~~~~~",  # noqa: E501
+        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~ (<(< )) {L101}"  # noqa: E501
+        " ---",
+        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~ ~~~~~~~~~~~~~",  # noqa: E501
+        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~ ~~ (< ) {L110}"  # noqa: E501
+        " ---",
+        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~ ~~ ~~~~~~~~~~",  # noqa: E501
+        "                                                           ~  +<(+<(+<(+<(+<(+<(+<(   {L111}"  # noqa: E501
+        " ---",
+        "                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",  # noqa: E501
+    ],
+)
+
 
 def cod(truth_table: str) -> str:
-    """Build a COD template for a one- or two-input Boolean function.
+    """Build a COD template for a one-, two-, or three-input Boolean function.
 
-    ``truth_table`` is a binary string of length 2 or 4, indexed by its
-    inputs (most significant first); only ``n <= 2`` is supported.  The
-    template's ``{X0}``/``{X1}`` placeholders become the input bits (``)``
-    for a one bit, a space for a zero); the harness's :func:`instantiate`
-    fills them, matching every other no-input generator's convention.
-    ``n == 1`` reuses the two-input routing with its second input fixed to
-    the literal ``0`` (baked into the template, not a placeholder the
-    harness fills), so ``{X1}`` is absent and only ``{X0}`` remains.
+    ``truth_table`` is a binary string of length 2, 4, or 8, indexed by its
+    inputs (most significant first); only ``n <= 3`` is supported.  The
+    template's ``{X0}``/``{X1}``/``{X2}`` placeholders become the input bits
+    (``)`` for a one bit, a space for a zero); the harness's
+    :func:`instantiate` fills them, matching every other no-input
+    generator's convention.  ``n == 1`` reuses the two-input routing with
+    its second input fixed to the literal ``0`` (baked into the template,
+    not a placeholder the harness fills), so ``{X1}`` is absent and only
+    ``{X0}`` remains.
 
     Each input bit gets its own ``+`` fork: one branch continues forward,
     the other peels off to the side, and each branch carries a short
@@ -286,19 +317,46 @@ def cod(truth_table: str) -> str:
     routing is branch-free by construction and never touches COD's
     random-junction rule, exactly like the ``_``-gate design this
     construction replaces (see ``docs/cod_boolean_generator.md``).  After
-    both bits are consumed exactly one cod survives, on one of four rows
-    (one per input combination), each ending at a fixed value of 0 --
-    that row's own leaf then embeds the table's answer directly (``)`` for
-    a one entry, nothing for a zero) immediately before its ``---``, so
+    all bits are consumed exactly one cod survives, on one of ``2**n`` rows
+    (one per input combination), each ending at a fixed value of 0 -- that
+    row's own leaf then embeds the table's answer directly (``)`` for a
+    one entry, nothing for a zero) immediately before its ``---``, so
     every entry (not just the input routing) is a compile-time constant
     and the program always prints exactly one line.
+
+    The three-input template's second and third junctions each need a
+    ``(...)`` gauntlet on their *own* zero-branch to bring a rejoining cod's
+    value back down before the next fork reads it -- unlike the two-input
+    template, where a fork's two children are always leaves, three levels
+    of forking means a fork's zero-branch can itself be an internal node
+    whose own two children later rejoin the parent's row, so the rejoined
+    value needs its own reset gauntlet before the next input's fork; a
+    template built without those resets sends stray cods circulating
+    through earlier junctions forever instead of halting (a "backflow"
+    bug caught only by tracing every input combination against the real
+    interpreter, not by inspection).
     """
     n = _validate_truth_table(truth_table)
-    if n not in (1, 2):
-        raise ValueError(f"cod only supports n == 1 or n == 2, got n == {n}")
+    if n not in (1, 2, 3):
+        raise ValueError(f"cod only supports n == 1, 2, or 3, got n == {n}")
 
     def bit(entry: str) -> str:
         return ")" if entry == "1" else " "
+
+    if n == 3:
+        return _COD_TEMPLATE_3.format(
+            X0="{X0}",
+            X1="{X1}",
+            X2="{X2}",
+            L000=bit(truth_table[0]),
+            L001=bit(truth_table[1]),
+            L010=bit(truth_table[2]),
+            L011=bit(truth_table[3]),
+            L100=bit(truth_table[4]),
+            L101=bit(truth_table[5]),
+            L110=bit(truth_table[6]),
+            L111=bit(truth_table[7]),
+        )
 
     # X1 fixed to 0 for n == 1: only the even table entries are used.
     table = truth_table[0] + "0" + truth_table[1] + "0" if n == 1 else truth_table
