@@ -41,6 +41,14 @@ Decisions for gaps in the wiki spec (documented):
   supported;
 - malformed programs (unbalanced call tokens, a stray ``fi``, a header
   missing its colon) raise :class:`ValueError`.
+
+``_Machine`` runs on the parsed top-level statement list and an explicit
+cursor, so it is step-capable: ``step()`` executes one top-level
+statement and ``halted`` is true once the cursor reaches the end.  A
+statement's own function call still runs to completion inside that one
+``step()`` through the original recursive ``_call``/``_run_statement``,
+since Suptiftam has no looping construct other than function recursion
+(already capped at ``_MAX_DEPTH``, so it halts rather than hangs).
 """
 
 from __future__ import annotations
@@ -606,16 +614,58 @@ def _render_term(term: _Tape) -> str:
     return "\n".join(rows)
 
 
+class _Machine:
+    """One Suptiftam run: the parsed program, state, and top-level cursor."""
+
+    def __init__(self, code: str, io: IO) -> None:
+        functions, top = _parse(code.splitlines())
+        self.state = _State(io)
+        self.state.functions = functions
+        self.top = top
+        self.ind = 0
+        self._rendered = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has run off the top-level statements."""
+        return self.ind >= len(self.top)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection.
+
+        Globals are captured via ``repr()`` since a tape's cells are an
+        unbounded, mutable dict -- sufficient for the state-cycle
+        detector's purpose, since a genuine hang re-executes the same
+        top-level statement with the same bindings on every lap.
+        """
+        return (
+            self.ind,
+            tuple(sorted((k, repr(v)) for k, v in self.state.globals.items())),
+            self.state.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one top-level statement, advancing the cursor.
+
+        Rendering ``term`` happens once, on the step that finishes the
+        program, matching ``run()``'s original print-after-the-loop.
+        """
+        if self.halted:
+            return
+        _run_statement(self.top[self.ind], self.state, None)
+        self.ind += 1
+        if self.ind >= len(self.top) and not self._rendered:
+            self._rendered = True
+            rendered = _render_term(self.state.term)
+            if rendered:
+                self.state.io.print_str(rendered)
+
+
 def run(code: str, io: IO) -> None:
     """Run a Suptiftam program and print the ``term`` tape's written region."""
-    functions, top = _parse(code.splitlines())
-    state = _State(io)
-    state.functions = functions
-    for statement in top:
-        _run_statement(statement, state, None)
-    rendered = _render_term(state.term)
-    if rendered:
-        io.print_str(rendered)
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

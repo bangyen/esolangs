@@ -141,15 +141,17 @@ specific bug motivates one.
 for having no generator or only a corpus-only cross-check; see
 `docs/limitations.md` for the languages and reasoning.
 
-## VM / debugging interface (remaining work)
+## VM / debugging interface
 
 `esolangs.make_vm` (step-and-inspect wrappers) and `esolangs.make_debugger`
-(breakpoints and watches over the VM) cover most of the interpreter
-registry.  What remains:
-
-- **More step-capable interpreters.**  Convert the rest of the registry to
-  a step()/halted state object: the boolean-parameterized machines without
-  a state object yet, and the remaining tape/stack OISCs.
+(breakpoints and watches over the VM) now cover the whole interpreter
+registry: every language has a step()/halted/snapshot() state object and a
+VM adapter in `esolangs.vm._VM_ADAPTERS`.  The last conversions --
+Jaune, SLOW ACV MAMMALIAN, ZTOALC L, Between, MyScript, Lamfunc, Forbin,
+and Suptiftam -- are in the commit history; the recursive-tree-walker
+ones (Lamfunc, Forbin, Suptiftam) needed an explicit resumable frame in
+place of Python's own call stack, documented in `docs/walls.md`'s
+state-cycle-detection section.  Nothing is tracked here as remaining.
 
 ## Hanging-test optimization via state-cycle detection
 
@@ -159,13 +161,19 @@ instruction-count caps on the native references) except where state-cycle
 detection (`esolangs.vm.run_until_halt_or_cycle`) has replaced them for
 step-capable, deterministic machines — see `docs/limitations.md` for which
 interpreters are covered and why the wall-clock backstop remains for the
-rest.  What remains:
+rest.  Every step-capable interpreter (the whole registry, now that the VM
+section above is complete) has a `snapshot()`, so state-cycle detection
+coverage is as wide as it can get without weakening the non-determinism
+exclusion below.  What remains:
 
-- **Extend state-cycle detection to more interpreters.**  Only step-capable
-  machines can be checked; converting more of the registry (see the VM
-  section above) grows this set too.
-- Painfuck's `y` and WII2D's `?` are non-deterministic, so both stay on
-  the wall-clock backstop regardless of how far the conversion goes.
+- Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
+  non-deterministic, so all three stay on the wall-clock backstop
+  regardless of `snapshot()` coverage.
+- Lamfunc, Forbin, and Suptiftam have `snapshot()` for VM-inspection
+  parity, but no native loop for a hang to occur in — their only
+  repetition is function recursion, already bounded by a depth guard or
+  Python's own `RecursionError` — so cycle detection cannot catch
+  anything new for them; see `docs/walls.md`.
 - **Branching cycle detection for `y`/`?` (considered, not started).**
   Forking the walk at every random decision and requiring *every* branch to
   prove a cycle would soundly prove "this program hangs no matter how the

@@ -235,6 +235,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.other.forbin import _Machine
 
         return _Machine("main {}", io)
+    if module == "esolangs.interpreters.other.suptiftam":
+        from esolangs.interpreters.other.suptiftam import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -288,6 +292,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.myscript",
     "esolangs.interpreters.other.lamfunc",
     "esolangs.interpreters.other.forbin",
+    "esolangs.interpreters.other.suptiftam",
 }
 
 
