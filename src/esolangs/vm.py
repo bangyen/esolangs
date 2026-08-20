@@ -1818,7 +1818,7 @@ class _LamfuncVM(_BaseVM):
 
 
 class _ForbinVM(_BaseVM):
-    """``main``'s resumable frame; ``ip`` the statement cursor."""
+    """Call stack; ``ip`` is each frame's statement cursor, root-to-leaf."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1834,12 +1834,15 @@ class _ForbinVM(_BaseVM):
         self._machine.step()
 
     @property
-    def ip(self) -> int:
-        return self._machine.frame.pos
+    def ip(self) -> tuple[int, ...]:
+        frames = self._machine.frames
+        return tuple(f.pos for f in frames) if frames else (len(self._program),)
 
     @property
     def memory(self) -> list[int]:
-        return [v for v in self._machine.frame.locals.values() if type(v) is int]
+        if not self._machine.frames:
+            return []
+        return [v for v in self._machine.frames[-1].locals.values() if type(v) is int]
 
     @property
     def stack(self) -> list[object]:

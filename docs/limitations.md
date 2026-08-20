@@ -37,24 +37,24 @@ predictable across languages:
   step limit: interpreters run until the program halts naturally or loops
   forever.  Suffolk is the sole interpreter that ships with a fixed
   instruction limit, and callers cannot set one through the public API.
-- **Recursion depth is capped at a fixed, invented limit for two remaining
-  interpreters.**  Forbin (`_MAX_DEPTH = 250`) implements function calls as
-  native Python recursion, so a program whose correct, terminating behavior
-  needs more than 250 nested calls is wrongly halted with `HaltError`
-  rather than allowed to finish — the wiki specifies no recursion limit, so
-  250 is not derived from the spec; it exists purely so a runaway (or
-  merely deep) Python call chain fails with a documented `HaltError`
-  instead of an undocumented `RecursionError` leaking out of the
-  interpreter.  Lamfunc has no such guard and instead lets a
-  `RecursionError` propagate directly, which is the same implementation
-  limit surfacing without a clean error type.  **Suptiftam is uncapped**:
-  its call machinery was converted to an explicit frame stack
-  (`_Machine.frames: list[_CallFrame]`, replacing native Python recursion
-  for calls — see `docs/walls.md`), so a correct, terminating recursion of
-  any depth now completes; a genuinely infinite recursion becomes an
-  uncaught hang (unbounded growth of `frames`, the same class as a
-  brainfuck `+[>+]` tape loop) rather than a wrongly-early `HaltError` or a
-  cycle-detection catch.
+- **Lamfunc's recursion, and Forbin's expression-position recursion, are
+  still bounded by Python's own call stack.**  Neither wiki specifies a
+  recursion limit.  Lamfunc has no explicit guard and lets a
+  `RecursionError` propagate directly from Python's own default limit.
+  Forbin's *expression-position* calls (`x = f(y)`, where the assignment
+  needs the result back synchronously) still recurse natively for the same
+  reason and hit the same default limit — not a documented cap, but not
+  literally unbounded either.  **Suptiftam is fully uncapped, and Forbin is
+  uncapped for the pattern it actually uses**: Forbin's *statement-position*
+  calls (`f(y);`, the language's only real recursion idiom — `return` exits
+  a call immediately, so there is no return-value-threading pattern across
+  nested calls) and Suptiftam's calls (which never produce a return value at
+  all) were converted to an explicit frame stack (`_Machine.frames`,
+  replacing native Python recursion for that path — see `docs/walls.md`),
+  so a correct, terminating recursion of any depth now completes; a
+  genuinely infinite recursion becomes an uncaught hang (unbounded growth of
+  `frames`, the same class as a brainfuck `+[>+]` tape loop) rather than a
+  wrongly-early `HaltError` or a cycle-detection catch.
 
 ## Text generator blockers
 
