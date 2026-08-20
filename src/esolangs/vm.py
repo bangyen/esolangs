@@ -1666,6 +1666,35 @@ class _JauneVM(_BaseVM):
         return list(self._machine.call_stack)
 
 
+class _SlowAcvMammalianVM(_BaseVM):
+    """23 arrays + pointer; ``memory`` is the current array, ``stack`` all 23."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.lst[self._machine.ptr])
+
+    @property
+    def stack(self) -> list[object]:
+        return [row for arr in self._machine.lst for row in arr]
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1719,6 +1748,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "ABCDirection": _ABCDirectionVM,
     "Sophie": _SophieVM,
     "Jaune": _JauneVM,
+    "SLOW ACV MAMMALIAN": _SlowAcvMammalianVM,
 }
 
 
