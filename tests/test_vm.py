@@ -640,6 +640,17 @@ class TestUnsquare:
         assert vm.stack == [1]
 
 
+class TestPctSquaredMinusOne:
+    def test_accumulator_and_cursor(self) -> None:
+        vm = esolangs.make_vm("%^2^-1", "ie")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # i subtracts 3 from the accumulator
+        assert (vm.ip, vm.memory) == (1, [-3])
+        vm.step()  # e prints the low byte of the accumulator
+        assert vm.halted
+        assert vm.output == "\xfd"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO

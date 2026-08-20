@@ -177,6 +177,12 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.stack_based.unsquare import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.register_based.pct_squared_minus_one":
+        from esolangs.interpreters.register_based.pct_squared_minus_one import (
+            _Machine,
+        )
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -216,6 +222,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.minsky_swap",
     "esolangs.interpreters.tape_based.home_row",
     "esolangs.interpreters.stack_based.unsquare",
+    "esolangs.interpreters.register_based.pct_squared_minus_one",
 }
 
 

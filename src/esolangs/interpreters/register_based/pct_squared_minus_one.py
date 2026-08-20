@@ -13,6 +13,11 @@ Semantics match the Rust cross-check (``extra/rust/pct.rs``):
 - ``n`` raises :class:`EOFError` when input runs out, where the cross-check
   exits with status 3;
 - ``t`` on a nonzero magnitude loops the program forever (the only loop).
+
+The interpreter runs on a :class:`_Machine` (the code and the accumulator),
+so it is step-capable: ``step()`` executes one command, applying the
+over-3003 reset before the command as the original loop does, and ``halted``
+is true once the cursor reaches the end of the program.
 """
 
 import sys
@@ -20,37 +25,60 @@ import sys
 from esolangs.interpreters.io import IO
 
 
+class _Machine:
+    """Per-run %^2^-1 state: the code, the accumulator, and the cursor."""
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Store ``code`` and start the accumulator at zero."""
+        self.io = io
+        self.code = code
+        self.acc = 0
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the program."""
+        return self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ind, self.acc)
+
+    def step(self) -> None:
+        """Execute one command, resetting the accumulator first if too large."""
+        if self.halted:
+            return
+        if self.acc > 3003:
+            self.acc = 0
+
+        char = self.code[self.ind]
+        if char == "s":
+            self.acc -= 2
+        elif char == "i":
+            self.acc -= 3
+        elif char == "m":
+            self.acc *= 2
+        elif char == "p":
+            self.acc *= -1
+        elif char == "l":
+            self.io.print_num(self.acc)
+        elif char == "e":
+            self.io.print_char(chr(self.acc & 0xFF))
+        elif char == "n":
+            self.acc = self.io.input_char()
+        elif char == "'":
+            self.acc = 0
+        elif char == "t" and self.acc != 0:
+            self.ind = 0
+            return
+        self.ind += 1
+
+
 def run(code: str, io: IO) -> None:
     """Run a %^2^-1 program."""
-    acc = 0
-    ind = 0
-    n = len(code)
-
-    while ind < n:
-        if acc > 3003:
-            acc = 0
-
-        char = code[ind]
-        if char == "s":
-            acc -= 2
-        elif char == "i":
-            acc -= 3
-        elif char == "m":
-            acc *= 2
-        elif char == "p":
-            acc *= -1
-        elif char == "l":
-            io.print_num(acc)
-        elif char == "e":
-            io.print_char(chr(acc & 0xFF))
-        elif char == "n":
-            acc = io.input_char()
-        elif char == "'":
-            acc = 0
-        elif char == "t" and acc != 0:
-            ind = 0
-            continue
-        ind += 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

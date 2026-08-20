@@ -1399,6 +1399,37 @@ class _OneTwoThreeVM(_BaseVM):
         return []
 
 
+class _PctSquaredMinusOneVM(_BaseVM):
+    """Accumulator + cursor; ``ip`` the cursor, ``memory`` the accumulator."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.pct_squared_minus_one import (
+            _Machine,
+        )
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1443,6 +1474,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Minsky Swap": _MinskySwapVM,
     "Home Row": _HomeRowVM,
     "Unsquare": _UnsquareVM,
+    "%^2^-1": _PctSquaredMinusOneVM,
 }
 
 
