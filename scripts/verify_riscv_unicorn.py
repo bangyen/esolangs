@@ -31,7 +31,7 @@ GENERATOR_CASES = [
 ]
 
 # (name, compiler module, source program, expected output).  Compilers with
-# generators (bfstack, suffolk, unsquare, home_row, excon) round-trip them;
+# generators (bfstack, suffolk, unsquare, home_row) round-trip them;
 # the others (jaune, bf_pda, ram0) get fixed programs with known output.
 COMPILER_CASES = []
 for text in ["Hi", "Hello, World!", "esolangs!"]:
@@ -39,7 +39,6 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("suffolk", "suffolk", gen.suffolk(text), text))
     COMPILER_CASES.append(("unsquare", "unsquare", gen.unsquare(text), text))
     COMPILER_CASES.append(("home_row", "home_row", gen.home_row(text), text))
-    COMPILER_CASES.append(("excon", "excon", gen.excon(text), text))
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))

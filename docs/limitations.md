@@ -57,7 +57,7 @@ predictable across languages:
 The straight-line generators are also at their length floor — no
 per-character encoding can be meaningfully shortened:
 
-- **Sqrt-factorized** (AlbaBet, BIO, huf) build each byte as ``a*b + r`` with
+- **Sqrt-factorized** (AlbaBet, BIO) build each byte as ``a*b + r`` with
   ``a`` near ``sqrt(byte)``, so they are O(sqrt) not O(byte).
 - **Delta- and cell-reuse** (brainfuck, Circlefuck) keep a running cell and
   emit only the difference, so consecutive close bytes cost a couple of
@@ -80,7 +80,6 @@ per-character encoding can be meaningfully shortened:
 | --- | --- |
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
-| EXCON / Huf | Straight-line, no input, no branch. |
 | The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 
 ## Generator caps (shipped)
@@ -125,8 +124,10 @@ interpreter, generator, and tests were deleted from the repo.
 - **Crement**: self-modifying, no I/O; no input to branch on.
 - **DSDLAI** (removed): trivial Dig reskin with a random death chance; non-deterministic.
 - **Earfuck**: trivial brainfuck reskin (notes for instructions).
+- **EXCON** (removed): straight-line 8-cell bit pool; no conditional at all (only reset/flip/pointer/print), so no boolean generator.
 - **Fourfuck**: incomplete, a stub with a couple of commands.
 - **Gravity**: non-computable evolution; nothing verifiable.
+- **Huf** (removed): straight-line two-register accumulator; no conditional at all (only reset/increment/multiply/print), so no boolean generator.
 - **Kak** (removed): no input; only the tape bit-string (an invented dump); externally implemented.
 - **Keys** (removed): a two-line equality comparison; a gadget, not a language model.
 - **Lightlang** (removed): boolean capability caps at the AND/OR class; only a single bit is ever printed.
@@ -181,9 +182,8 @@ rewrite:
   Documented as research-level future work in `docs/roadmap.md`.
 - **2D-to-2D.**  No two 2D languages share a model: 2dFish is a deadfish
   accumulator, Dimensional a pointer-hierarchy tape, LaserFuck mirror-driven
-  control, ABCDrection a Boolfuck bit tape with a queue, EXCON a straight-line
-  bit pool.  Even the two bf-tape ones (Dimensional, LaserFuck) differ in
-  control flow.
+  control, ABCDrection a Boolfuck bit tape with a queue.  Even the two
+  bf-tape ones (Dimensional, LaserFuck) differ in control flow.
 - **Dropped transpilers.**  `nocomment_to_bf` silently dropped NoComment's
   stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
   `Circlefuck → bf` decoders only reversed the forward transpilers' canonical

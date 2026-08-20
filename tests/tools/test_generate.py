@@ -19,7 +19,6 @@ from esolangs.interpreters.other.ztoalc_l import run as ztoalc_run
 from esolangs.interpreters.register_based.albabet import run as albabet_run
 from esolangs.interpreters.register_based.between import run as between_run
 from esolangs.interpreters.register_based.bio import run as bio_run
-from esolangs.interpreters.register_based.huf import run as huf_run
 from esolangs.interpreters.register_based.myscript import run as myscript_run
 from esolangs.interpreters.register_based.nevermind import run as nevermind_run
 from esolangs.interpreters.register_based.polynomial import run as polynomial_run
@@ -35,7 +34,6 @@ from esolangs.interpreters.stack_based.unsquare import run as unsquare_run
 from esolangs.interpreters.tape_based.basicfuck import run as basicfuck_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
 from esolangs.interpreters.tape_based.circlefuck import run as circlefuck_run
-from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.factor import run as factor_run
 from esolangs.interpreters.tape_based.rotfuck import run as rotfuck_run
 from esolangs.interpreters.tape_based.sbleq import run as sbleq_run
@@ -129,9 +127,6 @@ class TestGeneratorRoundTrips:
     def test_bfstack(self) -> None:
         assert roundtrip(bfstack_run, gen.bfstack("Hi")) == "Hi"
 
-    def test_excon(self) -> None:
-        assert roundtrip(excon_run, gen.excon("Hi")) == "Hi"
-
     def test_factor(self) -> None:
         """The integer's prime factors encode a brainfuck program."""
         assert roundtrip(factor_run, gen.factor("Hi")) == "Hi"
@@ -213,13 +208,6 @@ class TestGeneratorRoundTrips:
             pytest.raises(ValueError, match="cannot build"),
         ):
             gen.slow_acv_mammalian("H")
-
-    def test_huf(self) -> None:
-        """Each # + inc >@ segment prints one character."""
-        assert roundtrip(huf_run, gen.huf("Hi")) == "Hi"
-        assert roundtrip(huf_run, gen.huf("Hello, World!")) == "Hello, World!"
-        assert roundtrip(huf_run, gen.huf("a\nb\x00")) == "a\nb\x00"
-        assert gen.huf("") == ""
 
     def test_eval(self) -> None:
         """A string literal prints on the dot instruction."""
@@ -617,7 +605,6 @@ class TestGeneratorBranches:
         assert "--- BrainIf ---" in out
         assert "--- Clockwise ---" in out
         assert "--- Container ---" in out
-        assert "--- EXCON ---" in out
         assert "--- Modulous ---" in out
         assert "--- Qoibl ---" in out
         assert "--- Sophie ---" in out
@@ -627,7 +614,6 @@ class TestGeneratorBranches:
         assert "--- Dig ---" in out
         assert "--- Dotlang ---" in out
         assert "--- Eval ---" in out
-        assert "--- huf ---" in out
         assert "--- LaserFuck ---" in out
         assert "--- SLOW ACV MAMMALIAN ---" in out
         assert "--- Minifuck ---" in out
@@ -648,7 +634,6 @@ class TestGeneratorBranches:
             gen.painfuck,
             gen.laserfuck,
             gen.suffolk,
-            gen.excon,
             gen.albabet,
             gen.modulous,
             gen.qoibl,
@@ -659,7 +644,6 @@ class TestGeneratorBranches:
             gen.wii2d,
             gen.clockwise,
             gen.slow_acv_mammalian,
-            gen.huf,
         ]
         inputs = [
             "\x01",

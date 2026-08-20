@@ -9,7 +9,6 @@ COMPILERS = [
     "esolangs.compilers.assembly.home_row",
     "esolangs.compilers.assembly.jaune",
     "esolangs.compilers.assembly.unsquare",
-    "esolangs.compilers.assembly.excon",
     "esolangs.compilers.assembly.bf_pda",
     "esolangs.compilers.assembly.ram0",
 ]
@@ -354,19 +353,6 @@ class TestSuffolkComp:
         assert "li   s5" in mod.comp("<<<<", 1)
 
 
-class TestExcon:
-    def test_reset_and_flip(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.excon")
-        output = mod.comp(":^")
-        assert "li   s1, 0" in output
-        assert "li   s2, 7" in output
-        assert "xor  s1, s1, t1" in output
-
-    def test_output_emits_syscall(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.excon")
-        assert "ecall" in mod.comp("!")
-
-
 class TestBFPDA:
     def test_push_flip_pop(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.bf_pda")
@@ -424,7 +410,6 @@ class TestCompilerFuzz:
             "esolangs.compilers.assembly.home_row",
             "esolangs.compilers.assembly.jaune",
             "esolangs.compilers.assembly.unsquare",
-            "esolangs.compilers.assembly.excon",
             "esolangs.compilers.assembly.bf_pda",
             "esolangs.compilers.assembly.ram0",
         ],

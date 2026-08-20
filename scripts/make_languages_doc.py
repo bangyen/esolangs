@@ -27,7 +27,6 @@ _COMPILER_NAMES = {
     "suffolk": "Suffolk",
     "unsquare": "Unsquare",
     "bf_pda": "BF-PDA",
-    "excon": "EXCON",
     "ram0": "RAM0",
 }
 

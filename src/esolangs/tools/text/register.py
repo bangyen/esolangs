@@ -18,7 +18,6 @@ __all__ = [
     "dig",
     "dotlang",
     "eval",
-    "huf",
     "polynomial",
     "qoibl",
     "sophie",
@@ -221,24 +220,6 @@ def dotlang(text: str) -> str:
     if any(c in "\n\r\v\f\x1c\x1d\x1e\x85`" for c in text):
         raise ValueError("dotlang can only output a single line without backticks")
     return "\u2022#" + "`" + text + "`#"
-
-
-def huf(text: str) -> str:
-    """Each character is a multiply segment ``# +*a | +*b ! +*r >@``.
-
-    ``#`` resets num and mul, a run of ``a`` increments num, ``|`` starts the
-    multiplier, a run of ``b`` increments it to ``b + 1``, and ``!`` multiplies
-    num by ``mul - 1`` so it becomes ``a * b``; a final run of ``r`` tops it
-    up to the character code, then ``>@`` prints it and closes the segment.
-    ``a`` is searched near ``sqrt(ord)`` so the program is O(sqrt) rather than
-    O(ord).
-    """
-    return "".join(_huf_segment(ord(c)) for c in text)
-
-
-def _huf_segment(value: int) -> str:
-    a, b, r = _factor_triple(value)
-    return "#" + "+" * a + "|" + "+" * b + "!" + "+" * r + ">@"
 
 
 def eval(text: str) -> str:  # noqa: A001 - the language is named "Eval"
