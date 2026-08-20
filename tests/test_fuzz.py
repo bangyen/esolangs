@@ -17,12 +17,10 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.queue_based.bitdeque import run as bitdeque_run
 from esolangs.interpreters.register_based.bio import run as bio_run
-from esolangs.interpreters.register_based.huf import run as huf_run
 from esolangs.interpreters.register_based.qoibl import run as qoibl_run
 from esolangs.interpreters.stack_based.bfstack import run as bfstack_run
 from esolangs.interpreters.stack_based.eval import run as eval_run
 from esolangs.interpreters.tape_based.brainif import run as brainif_run
-from esolangs.interpreters.tape_based.excon import run as excon_run
 from esolangs.interpreters.tape_based.minifuck import run as minifuck_run
 from esolangs.interpreters.tape_based.slow_acv_mammalian import run as mammalian_run
 
@@ -40,14 +38,6 @@ def run_safely(fn: Callable[..., Any], program: str | list[str]) -> None:
 
 def _random_string(alphabet: str, max_len: int) -> str:
     return "".join(random.choice(alphabet) for _ in range(random.randint(1, max_len)))
-
-
-def test_excon_random() -> None:
-    random.seed(0)
-    for _ in range(50):
-        # a pointer fault (too many <) is a valid HaltError outcome
-        with suppress(HaltError):
-            run_safely(excon_run, _random_string(":^!<", 30))
 
 
 def test_minifuck_random() -> None:
@@ -111,12 +101,6 @@ def test_bio_random() -> None:
         # pop from an empty stack is an accepted outcome
         with suppress(HaltError):
             run_safely(bio_run, _random_string("0O1Ixyz;{}", 30))
-
-
-def test_huf_random() -> None:
-    random.seed(8)
-    for _ in range(50):
-        run_safely(huf_run, _random_string("#@-*0123456789", 30))
 
 
 def test_minsky_random() -> None:

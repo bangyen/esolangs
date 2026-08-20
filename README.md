@@ -84,7 +84,7 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 62 languages</summary>
+<summary>Show all 60 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -135,7 +135,6 @@ Languages that operate on a tape (similar to Turing machines).
 - [BrainIf](https://esolangs.org/wiki/BrainIf) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/brainif.py))
 - [Circlefuck](https://esolangs.org/wiki/Circlefuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/circlefuck.py))
 - [Dimensional](https://esolangs.org/wiki/Dimensional) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/dimensional.py))
-- [EXCON](https://esolangs.org/wiki/EXCON) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/excon.py))
 - [Factor](https://esolangs.org/wiki/Factor) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/factor.py))
 - [Home Row](https://esolangs.org/wiki/Home_Row) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/home_row.py))
 - [Jaune](https://esolangs.org/wiki/Jaune) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/tape_based/jaune.py))
@@ -168,7 +167,6 @@ Languages that use registers to store and manipulate data.
 - [Qoibl](https://esolangs.org/wiki/Qoibl) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/qoibl.py))
 - [RAM0](https://esolangs.org/wiki/RAM0) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/ram0.py))
 - [Sophie](https://esolangs.org/wiki/Sophie) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/sophie.py))
-- [huf](https://esolangs.org/wiki/huf) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/register_based/huf.py))
 
 ### Other Languages
 
@@ -218,7 +216,7 @@ Implementations written in languages other than Python, used as cross-check refe
 <details>
 <!-- COMPILERS:START -->
 
-<summary>Show all 8 compilers</summary>
+<summary>Show all 7 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
@@ -226,7 +224,6 @@ Compilers that translate esoteric languages to other target languages.
 
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
 - [BFStack](https://esolangs.org/wiki/BFStack)
-- [EXCON](https://esolangs.org/wiki/EXCON)
 - [Home Row](https://esolangs.org/wiki/Home_Row)
 - [Jaune](https://esolangs.org/wiki/Jaune)
 - [RAM0](https://esolangs.org/wiki/RAM0)
@@ -251,7 +248,6 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 | BIO | → | BF |
 | Decleq | → | S*bleq |
 | Dimensional | → | LaserFuck |
-| huf | → | BF |
 
 Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
 

@@ -16,7 +16,6 @@ __all__ = [
     "brainfuck",
     "brainif",
     "circlefuck",
-    "excon",
     "factor",
     "minifuck",
     "rotfuck",
@@ -269,29 +268,6 @@ def suffolk(text: str) -> str:
         _, a, b, r = best
         res.append(f">><!>><>!{'!' * a}{'>!' * r}><{'<' * b}.")
     return ">>!" * big + "\n" + "\n".join(res)
-
-
-def excon(text: str) -> str:
-    """Build an EXCON program that outputs ``text``.
-
-    For each character, ``:`` resets the 8-cell pool, ``^`` flips the bits
-    that are 1 in the character's binary representation (moving left to the
-    next set bit with ``<``), and ``!`` prints the pool as a byte.
-    """
-    _require_bytes(text, "EXCON")
-    res = ""
-
-    for c in text:
-        bits = format(ord(c), "08b")
-        res += ":"
-        pos = 7
-        for j in range(7, -1, -1):
-            if bits[j] == "1":
-                res += "<" * (pos - j) + "^"
-                pos = j
-        res += "!"
-
-    return res
 
 
 def six_five(text: str) -> str:

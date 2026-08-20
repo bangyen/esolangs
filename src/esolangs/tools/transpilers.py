@@ -23,7 +23,6 @@ __all__ = [
     "bio_to_bf",
     "decleq_to_sbleq",
     "dimensional_to_laserfuck",
-    "huf_to_bf",
 ]
 
 
@@ -258,49 +257,6 @@ def bio_to_bf(program: str) -> str:
             res.append(">" * reg + "]" + "<" * reg)
     if loops:
         raise ValueError("BIO: unclosed '0i' loop")
-    return "".join(res)
-
-
-_HUF_MUL = (
-    ">>>[-]<<<"  # zero the refresh cell
-    ">>[-]<<"  # zero the temp cell
-    ">-<"  # mul -= 1
-    "[->>+<<]"  # num -> temp
-    ">"
-    "[->[-<<+>>>+<]>[-<+>]<<]"  # add temp to num, mul-1 times, refreshing it
-    "<"
-)
-
-
-def huf_to_bf(program: str) -> str:
-    """Rewrite a Huf program into brainfuck.
-
-    Huf's variables live in cells 0 (num) and 1 (mul).  ``#`` resets both,
-    ``>`` prints ``chr(num)`` and clears it, ``|`` sets mul to 1, and ``+``
-    increments num or mul depending on whether mul is set -- since Huf is
-    straight line, the transpiler tracks which.  ``!`` multiplies num by
-    ``mul - 1``: the multiplier is copied to a temp cell that each loop
-    iteration adds to num and refreshes from a running accumulator, so the
-    loop can run ``mul - 1`` times without destroying the multiplicand.
-    Anything outside a ``#...#@`` segment is a comment.
-    """
-    syms = "".join(re.findall(r"#[^#@]+@", program))
-    res: list[str] = []
-    mul = False
-    for sym in syms:
-        if sym == "#":
-            res.append("[-]>[-]<")
-            mul = False
-        elif sym == ">":
-            res.append(".[-]")
-        elif sym == "+":
-            res.append(">+<" if mul else "+")
-        elif sym == "|":
-            res.append(">[-]+<")
-            mul = True
-        else:  # "!"
-            res.append(_HUF_MUL)
-            mul = False
     return "".join(res)
 
 
@@ -1113,6 +1069,5 @@ TRANSPILERS: dict[tuple[str, str], Callable[..., str]] = {
     ("BFStack", "brainfuck"): bfstack_to_bf,
     ("BIO", "brainfuck"): bio_to_bf,
     ("Decleq", "S*bleq"): decleq_to_sbleq,
-    ("huf", "brainfuck"): huf_to_bf,
     ("Dimensional", "LaserFuck"): dimensional_to_laserfuck,
 }

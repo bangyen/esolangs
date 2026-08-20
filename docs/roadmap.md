@@ -89,7 +89,7 @@ nothing new.
 - **Stay (complex-output generators, fuzzed):** NoComment, Forþ, Basicfuck,
   Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck.
 - **No cross-check (straight-line generators):** 6-5, Albabet, Decleq,
-  Dimensional, huf, Qoibl, and the rest.
+  Dimensional, Qoibl, and the rest.
 
 **Toolchain follows the model.**  RISC-V assembly fits the machine-model
 languages (a tape/pointer/instruction-counter maps 1:1 onto cells,
