@@ -146,6 +146,20 @@ rest.  What remains:
   section above) grows this set too.
 - Painfuck's `y` and WII2D's `?` are non-deterministic, so both stay on
   the wall-clock backstop regardless of how far the conversion goes.
+- **Branching cycle detection for `y`/`?` (considered, not started).**
+  Forking the walk at every random decision and requiring *every* branch to
+  prove a cycle would soundly prove "this program hangs no matter how the
+  coin lands" without faking determinism (unlike forcing `y`/`?` to a fixed
+  outcome, which would prove things about a different, deterministic
+  program instead of the real one).  Not pursued: each random decision
+  doubles the live branches, undoing the O(1)-memory point of Brent's
+  algorithm; a branch can still hang via unbounded growth (the class cycle
+  detection already can't catch), so the branch tree needs its own bound
+  and doesn't fully replace the wall-clock backstop; and the common case —
+  hangs under *some* coin flips, halts under others — isn't proved either
+  way, only the all-branches-hang case is.  The wall-clock backstop already
+  handles both languages correctly, so this is only worth building if a
+  specific need for the "always hangs" guarantee comes up.
 
 ## Severely constrained boolean generators (remove or lift)
 
