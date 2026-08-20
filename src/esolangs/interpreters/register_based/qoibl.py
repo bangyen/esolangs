@@ -35,6 +35,10 @@ class State:
         """Whether the expression pointer has run off the program."""
         return self.ind >= len(self.code)
 
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ind, tuple(sorted(self.var.items())), self.io.position())
+
     def _parse(self, expr: str | list[str]) -> int:
         """Parse and execute a single Qoibl expression."""
         if not expr:

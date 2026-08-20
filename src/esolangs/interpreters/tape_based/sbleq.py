@@ -52,6 +52,10 @@ class _Machine:
         """Whether the instruction pointer has run off the program."""
         return self._halted or not (0 <= self.ip < len(self.mem) - 2)
 
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (tuple(self.mem), self.ip, self.io.position(), self._halted)
+
     def read(self, addr: int) -> int:
         """Read a value: a special address or a memory cell."""
         if addr == -1:

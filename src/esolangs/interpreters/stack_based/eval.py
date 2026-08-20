@@ -33,6 +33,15 @@ class State:
         """Whether the code cursor has run off the program."""
         return self.ind >= len(self.sym)
 
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ptr,
+            tuple(tuple(s) for s in self.stk),
+            self.ind,
+            self.io.position(),
+        )
+
     def __post_init__(self) -> None:
         """Wire the command dispatch to this state's stacks and I/O."""
         self._dct: dict[str, Callable[[], object]] = {

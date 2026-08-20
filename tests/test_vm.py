@@ -772,6 +772,78 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine("LET zero:=0", IO())
         assert machine.snapshot() == (0, (), (), 0)
 
+    def test_sbleq_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.sbleq import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # a=0 b=0 c=3: diff (0-0=0) jumps to mem[3], which is negative -> halts
+        machine = _Machine(io=ScriptedIO(), mem=[0, 0, 3, -1], store="a")
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_sbleq_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.sbleq import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
+        machine = _Machine(io=ScriptedIO(), mem=[0, 0, 0], store="a")
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_dimensional_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.vm import run_until_halt_or_cycle
+
+        runner = _Runner("+.", ScriptedIO())
+        assert run_until_halt_or_cycle(runner) is True
+
+    def test_dimensional_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # cell starts nonzero and the loop body never changes it, so it never exits
+        runner = _Runner("+[]", ScriptedIO())
+        assert run_until_halt_or_cycle(runner) is False
+
+    def test_modulous_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.vm import run_until_halt_or_cycle
+
+        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
+        state.tokens = ["END"]
+        assert run_until_halt_or_cycle(state) is True
+
+    def test_modulous_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # RST resets the pointer to the start of the program on every pass
+        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
+        state.tokens = ["RST"]
+        assert run_until_halt_or_cycle(state) is False
+
+    def test_laserfuck_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(["o"], ScriptedIO(), heading=0)
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_laserfuck_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # a closed ring of mirrors the laser circles forever
+        grid = ["/ \\", "\\o/", "//\\"]
+        machine = _Machine(grid, ScriptedIO(), heading=2)
+        assert run_until_halt_or_cycle(machine) is False
+
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:

@@ -58,6 +58,17 @@ class _Machine:
     def halted(self) -> bool:
         return self._second_start or not self.lsrs
 
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ptr,
+            tuple(tuple(cell) for cell in self.tape),
+            self.jmp,
+            self.ind,
+            tuple(tuple(laser) for laser in self.lsrs),
+            self.io.position(),
+        )
+
     def step(self) -> None:
         """Move the active laser one step and execute the command it lands on."""
         if self.halted:
