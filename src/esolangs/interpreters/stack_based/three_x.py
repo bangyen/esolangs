@@ -19,6 +19,10 @@ Semantics match the Rust cross-check (``extra/rust/three_x.rs``):
 - ``[`` with no closing ``]`` prints nothing.
 
 Malformed programs raise :class:`ValueError`.
+
+The interpreter runs on a :class:`_Machine` (the code, stack, jump stack,
+variables, and cursor), so it is step-capable: ``step()`` executes one
+command and ``halted`` is true once the cursor reaches the end of the code.
 """
 
 import re
@@ -33,88 +37,116 @@ from esolangs.interpreters.io import IO
 _RATIONAL = re.compile(r"^[+-]?\d+(?:/[+-]?\d+)?$")
 
 
-def run(code: str, io: IO) -> None:
-    """Run a 3x program."""
-    stack: list[Fraction] = []
-    jumps: list[int] = []
-    variables: dict[Fraction, Fraction] = {}
-    ind = 0
-    n = len(code)
+class _Machine:
+    """Per-run 3x state: the code, stack, jump stack, variables, and cursor."""
 
-    def pop() -> Fraction:
-        if not stack:
+    def __init__(self, code: str, io: IO) -> None:
+        """Store ``code`` and start with an empty stack and no variables."""
+        self.io = io
+        self.code = code
+        self.stack: list[Fraction] = []
+        self.jumps: list[int] = []
+        self.variables: dict[Fraction, Fraction] = {}
+        self.ind = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the code."""
+        return self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ind,
+            tuple(self.stack),
+            tuple(self.jumps),
+            tuple(sorted(self.variables.items())),
+        )
+
+    def _pop(self) -> Fraction:
+        if not self.stack:
             raise HaltError("empty stack")
-        return stack.pop()
+        return self.stack.pop()
 
-    while ind < n:
-        char = code[ind]
+    def step(self) -> None:
+        """Execute one command, advancing (or jumping) the cursor."""
+        if self.halted:
+            return
+        char = self.code[self.ind]
         if char == "3":
-            stack.append(Fraction(3))
+            self.stack.append(Fraction(3))
         elif char == "x":
-            c = pop()
-            b = pop()
-            a = pop()
+            c = self._pop()
+            b = self._pop()
+            a = self._pop()
             if a == 0:
                 raise HaltError("division by zero")
-            stack.append((c - b) / a)
+            self.stack.append((c - b) / a)
         elif char == "?":
-            line = io.input_str("Input: ").strip()
+            line = self.io.input_str("Input: ").strip()
             if not _RATIONAL.fullmatch(line):
                 raise ValueError("input must be an integer or a fraction")
             if "/" in line and int(line.rsplit("/", 1)[1]) == 0:
                 raise ValueError("input must be an integer or a fraction")
-            stack.append(Fraction(line))
+            self.stack.append(Fraction(line))
         elif char == "!":
-            value = pop()
+            value = self._pop()
             if value.denominator == 1:
-                io.print_num(value.numerator)
+                self.io.print_num(value.numerator)
             else:
-                io.print_str(str(value))
+                self.io.print_str(str(value))
         elif char == "v":
-            value = pop()
-            key = pop()
-            variables[key] = value
+            value = self._pop()
+            key = self._pop()
+            self.variables[key] = value
         elif char == "^":
-            key = pop()
-            stack.append(variables.get(key, Fraction(3)))
+            key = self._pop()
+            self.stack.append(self.variables.get(key, Fraction(3)))
         elif char == "#":
-            x = pop()
-            y = pop()
-            stack.append(x)
-            stack.append(y)
+            x = self._pop()
+            y = self._pop()
+            self.stack.append(x)
+            self.stack.append(y)
         elif char == "(":
-            if not stack:
+            if not self.stack:
                 raise HaltError("empty stack")
-            if stack[-1] != 0:
-                jumps.append(ind)
+            if self.stack[-1] != 0:
+                self.jumps.append(self.ind)
             else:
                 num = 1
                 while num > 0:
-                    ind += 1
-                    if ind >= n:
+                    self.ind += 1
+                    if self.ind >= len(self.code):
                         raise HaltError("unmatched (")
-                    inner = code[ind]
+                    inner = self.code[self.ind]
                     if inner == "(":
                         num += 1
                     elif inner == ")":
                         num -= 1
         elif char == ")":
-            if not stack:
+            if not self.stack:
                 raise HaltError("empty stack")
-            if stack[-1] != 0:
-                if not jumps:
+            if self.stack[-1] != 0:
+                if not self.jumps:
                     raise HaltError("unmatched )")
-                ind = jumps[-1]
-            elif jumps:
-                jumps.pop()
+                self.ind = self.jumps[-1]
+            elif self.jumps:
+                self.jumps.pop()
         elif char == "[":
-            close = code.find("]", ind + 1)
+            close = self.code.find("]", self.ind + 1)
             if close == -1:
-                io.print_str("")
+                self.io.print_str("")
             else:
-                io.print_str(code[ind + 1 : close])
-                ind = close
-        ind += 1
+                self.io.print_str(self.code[self.ind + 1 : close])
+                self.ind = close
+        self.ind += 1
+
+
+def run(code: str, io: IO) -> None:
+    """Run a 3x program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

@@ -94,3 +94,28 @@ class Test3x:
 
     def test_empty_program(self) -> None:
         assert run_program("") == ""
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.stack_based.three_x import _Machine
+
+        machine = _Machine("3", ScriptedIO())
+        before = machine.snapshot()
+        machine.step()  # 3 pushes the rational 3
+        assert machine.snapshot() != before
+        assert machine.stack == [3]
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.stack_based.three_x import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("3!", ScriptedIO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # 3() pushes a nonzero value then loops with an empty body forever:
+        # the stack never changes, a genuine state cycle.
+        from esolangs.interpreters.stack_based.three_x import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("3()", ScriptedIO())) is False

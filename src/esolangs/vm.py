@@ -1550,6 +1550,35 @@ class _BFPDAVM(_BaseVM):
         return list(self._machine.stack)
 
 
+class _ThreeXVM(_BaseVM):
+    """Rational stack + cursor; ``ip`` the cursor, ``stack`` the rationals."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.stack_based.three_x import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stack)
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1599,6 +1628,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Container": _ContainerVM,
     "Nevermind": _NevermindVM,
     "BF-PDA": _BFPDAVM,
+    "3x": _ThreeXVM,
 }
 
 

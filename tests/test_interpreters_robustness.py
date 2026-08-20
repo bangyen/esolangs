@@ -199,6 +199,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.stack_based.bf_pda import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.stack_based.three_x":
+        from esolangs.interpreters.stack_based.three_x import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -243,6 +247,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.other.container",
     "esolangs.interpreters.register_based.nevermind",
     "esolangs.interpreters.stack_based.bf_pda",
+    "esolangs.interpreters.stack_based.three_x",
 }
 
 
