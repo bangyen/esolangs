@@ -13,12 +13,14 @@ first-class values created with ``var f is func arg1 arg2`` whose body is
 the indented block after the declaration; calling ``f x y`` binds the
 parameters and runs the body.
 
-Errors: an undefined variable, a call with the wrong number of arguments,
-an ``if``/``else`` outside a ``check``, arithmetic on a non-number, and an
-out-of-range ``itemat`` are invalid operations that halt the program with
-:class:`~esolangs.exceptions.HaltError`; a ``while yes`` loop runs forever
-unless the program ends, and ``ask`` raises :class:`EOFError` when input
-runs out (the repo-wide convention).
+Errors: a ``var`` declaration missing ``is``, an unrecognized ``check``
+case, and a bare ``is`` at statement position are malformed programs and
+raise :class:`ValueError`; an undefined variable, a call with the wrong
+number of arguments, an ``if``/``else`` outside a ``check``, arithmetic on
+a non-number, and an out-of-range ``itemat`` are invalid operations that
+halt the program with :class:`~esolangs.exceptions.HaltError`; a
+``while yes`` loop runs forever unless the program ends, and ``ask``
+raises :class:`EOFError` when input runs out (the repo-wide convention).
 
 The interpreter runs on a :class:`_Machine`: an explicit stack of
 ``_Frame``s (a block's statement list, cursor, and scope) stands in for
@@ -324,7 +326,7 @@ def _run_statement(
     if head == "var":
         name = tokens[1]
         if tokens[2] != "is":
-            raise HaltError("malformed var declaration")
+            raise ValueError("malformed var declaration")
         rest = tokens[3:]
         if rest and rest[0] == "func":
             scope.declare(name, _Function(rest[1:], children, scope))
@@ -351,7 +353,7 @@ def _run_statement(
                 _run_block(case[1], io, scope)
                 return
             if case_tokens[0] != "if":
-                raise HaltError("malformed check case")
+                raise ValueError("malformed check case")
             case_value, _ = _parse_expr(case_tokens[1:-1], 0, io, scope)
             if value == case_value:
                 _run_block(case[1], io, scope)
@@ -360,7 +362,7 @@ def _run_statement(
     if head in ("if", "else"):
         raise HaltError("if/else outside a check")
     if head == "is":
-        raise HaltError("malformed statement")
+        raise ValueError("malformed statement")
     if len(tokens) >= 3 and tokens[1] == "is":
         scope.assign(head, _parse_expr(tokens[2:], 0, io, scope)[0])
         return

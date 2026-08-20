@@ -12,9 +12,10 @@ peek (``@``, ``.``, ``[``) reads 0 (``@`` pushes that zero and flips it to
 so the machine halts naturally like brainfuck; programs whose loops never
 empty the stack run forever.
 
-Invalid runtime operations halt with
-:class:`~esolangs.exceptions.HaltError`; malformed programs raise
-:class:`ValueError`.
+There are no invalid runtime operations to halt on: an empty stack reads
+as zero for every peek/pop, so every command is always well-defined once
+the program itself is validated.  Malformed programs (empty, or unbalanced
+brackets) raise :class:`ValueError`.
 
 The interpreter runs on a :class:`_Machine` (the code, the bit stack, and
 the instruction pointer), so it is step-capable: ``step()`` executes one
@@ -23,7 +24,6 @@ command and ``halted`` is true once the cursor reaches the end of the code.
 
 import sys
 
-from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
@@ -72,9 +72,9 @@ class _Machine:
             elif ch == "]":
                 depth -= 1
                 if depth < 0:
-                    raise HaltError(f"unmatched ']' at position {pos}")
+                    raise ValueError(f"unmatched ']' at position {pos}")
         if depth:
-            raise HaltError(f"unmatched '[' at position {code.rfind('[')}")
+            raise ValueError(f"unmatched '[' at position {code.rfind('[')}")
 
         self.io = io
         self.code = code
