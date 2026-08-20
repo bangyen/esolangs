@@ -207,6 +207,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.register_based.sophie import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.jaune":
+        from esolangs.interpreters.tape_based.jaune import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -253,6 +257,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.stack_based.bf_pda",
     "esolangs.interpreters.stack_based.three_x",
     "esolangs.interpreters.register_based.sophie",
+    "esolangs.interpreters.tape_based.jaune",
 }
 
 
