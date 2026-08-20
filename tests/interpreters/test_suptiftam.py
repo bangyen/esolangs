@@ -189,10 +189,21 @@ class TestCalls:
         )
         assert run_program(program) == "55"  # 10 + ... + 1
 
-    def test_recursion_limit_halts(self) -> None:
-        program = "fd f :x\nf(:x:)if(x)\nfi\nf(:1:)"
-        with pytest.raises(HaltError, match="recursion limit"):
-            run_program(program)
+    def test_deep_recursion_no_longer_capped(self) -> None:
+        """A correct, terminating recursion past the old 250-level cap completes."""
+        program = "\n".join(
+            [
+                "total=0",
+                "fd count :n",
+                "total=%+[total]n%",
+                "n=%-[n]1%",
+                "count(:n:)if(n)",
+                "fi",
+                "count(:0D1:)",  # 0D1 = 300 in base 23
+                "term=total",
+            ]
+        )
+        assert run_program(program) == "45150"  # 300 + ... + 1
 
     def test_undefined_function_halts(self) -> None:
         with pytest.raises(HaltError, match="undefined function"):
