@@ -227,6 +227,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.register_based.myscript import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.other.lamfunc":
+        from esolangs.interpreters.other.lamfunc import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -278,6 +282,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.other.ztoalc_l",
     "esolangs.interpreters.register_based.between",
     "esolangs.interpreters.register_based.myscript",
+    "esolangs.interpreters.other.lamfunc",
 }
 
 

@@ -33,6 +33,15 @@ Decisions for gaps in the wiki spec (documented):
   (:class:`ValueError`); an invalid runtime operation (e.g. printing a
   function, or an overflowed bit combine) raises
   :class:`~esolangs.exceptions.HaltError`.
+
+``_Machine.step()`` evaluates one top-level call expression (including any
+partial application it absorbs), advancing the top-level token cursor --
+the same granularity ``run_main`` already looped at.  A call's own
+argument evaluation, and any user function body it invokes, still runs to
+completion inside that one ``step()`` through the original recursive
+``_eval``/``_apply``, since Lamfunc has no looping construct other than
+function recursion (unbounded recursion raises Python's own
+``RecursionError``, not a hang cycle detection needs to catch).
 """
 
 from __future__ import annotations
@@ -130,17 +139,35 @@ class _Thunk:
 
 
 class _Machine:
-    """One Lamfunc run: the definitions, variables, and evaluation stack."""
+    """One Lamfunc run: the definitions, variables, and top-level cursor."""
 
-    def __init__(self, io: IO) -> None:
+    def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        self.defs: dict[str, _Def] = {}
+        self.defs, self.main = _parse_program(code)
         self.vars: dict[str, object] = {}
+        self.ind = 0
         self._halted = False
 
     @property
     def halted(self) -> bool:
-        return self._halted  # pragma: no cover - no step-capable wrapper yet
+        """Whether the top-level cursor has run off the call sequence."""
+        return self._halted or self.ind >= len(self.main)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection.
+
+        Function values are not meaningfully hashable (a closure captures
+        live definitions), so variable values are captured via ``repr()``
+        -- sufficient for the state-cycle detector's purpose, since a
+        genuine hang re-evaluates the same top-level position with the
+        same bindings on every lap.
+        """
+        return (
+            self.ind,
+            tuple(sorted((k, repr(v)) for k, v in self.vars.items())),
+            self.io.position(),
+            self._halted,
+        )
 
     def _arity(self, name: str) -> int:
         """Return ``name``'s arity (a builtin's fixed arity, or a def's)."""
@@ -290,23 +317,29 @@ class _Machine:
         self.vars.update({p: v for p, v in saved.items() if v is not None})
         return result
 
-    def run_main(self, tokens: list[str]) -> None:
-        """Evaluate the top-level call sequence."""
-        i = 0
-        while i < len(tokens):
-            result, consumed = self._eval(tokens, i)
-            if consumed == 0:  # pragma: no cover - _eval always consumes a token
-                raise HaltError("a dangling partial application at the top level")
-            i += consumed
-            # a partial application absorbs the remaining tokens as its args
-            while isinstance(result, _Func) and result.arity > 0 and i < len(tokens):
-                args: list[object] = []
-                for _ in range(result.arity):
-                    value, consumed = self._eval(tokens, i)
-                    args.append(value)
-                    i += consumed
-                result = self._apply(result, args)
-            self._halted = i >= len(tokens)
+    def step(self) -> None:
+        """Evaluate one top-level call, advancing the top-level cursor.
+
+        A partial application that absorbs more of the top-level tokens
+        as its remaining arguments is resolved within the same step.
+        """
+        if self.halted:
+            return
+        tokens = self.main
+        i = self.ind
+        result, consumed = self._eval(tokens, i)
+        if consumed == 0:  # pragma: no cover - _eval always consumes a token
+            raise HaltError("a dangling partial application at the top level")
+        i += consumed
+        # a partial application absorbs the remaining tokens as its args
+        while isinstance(result, _Func) and result.arity > 0 and i < len(tokens):
+            args: list[object] = []
+            for _ in range(result.arity):
+                value, consumed = self._eval(tokens, i)
+                args.append(value)
+                i += consumed
+            result = self._apply(result, args)
+        self.ind = i
 
 
 def _print_value(value: object) -> str:
@@ -348,10 +381,9 @@ def _parse_program(code: str) -> tuple[dict[str, _Def], list[str]]:
 
 def run(code: str, io: IO) -> None:
     """Run a Lamfunc program."""
-    machine = _Machine(io)
-    defs, main = _parse_program(code)
-    machine.defs = defs
-    machine.run_main(main)
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

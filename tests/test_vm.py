@@ -792,6 +792,16 @@ class TestMyScript:
         assert vm.halted
 
 
+class TestLamfunc:
+    def test_token_cursor_and_variables(self) -> None:
+        vm = esolangs.make_vm("Lamfunc", "p 5")
+        assert vm.ip == 0
+        assert vm.memory == []
+        vm.step()
+        assert vm.halted
+        assert vm.output == "101"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -978,6 +988,14 @@ class TestRunUntilHaltOrCycle:
         # while yes never becomes false; the body's own state never changes
         machine = _Machine("while yes,\n  var x is 1", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
+
+    def test_lamfunc_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("p 5", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
 
 
 class TestFactory:
