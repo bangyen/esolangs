@@ -764,6 +764,20 @@ class TestZtoalcL:
         assert vm.output == "A"
 
 
+class TestBetween:
+    def test_counter_and_variables(self) -> None:
+        vm = esolangs.make_vm("Between", "'a'v.\n[a]s|3|\n[a]p.\n.x.")
+        assert (vm.ip, vm.memory) == (0, [])
+        vm.step()  # declares variable 'a' = 0
+        assert vm.memory == [0]
+        vm.step()  # [a]s|3| stores 3 into a
+        assert (vm.ip, vm.memory) == (2, [3])
+        vm.step()  # prints a
+        assert vm.output == "3"
+        vm.step()  # .x. exits
+        assert vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -915,6 +929,23 @@ class TestRunUntilHaltOrCycle:
         # each "jump x 1" bumps the pointer past the 2-line program and back
         # via a Collatz step, tracing 2 -> 3 -> 4 -> 2 forever
         machine = _Machine(["2", "jump x 1", "jump x 1"], ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_between_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.between import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine([".x."], ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_between_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.between import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # |0|f. is an unconditional goto back to line 0
+        machine = _Machine(["|0|f."], ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
 
