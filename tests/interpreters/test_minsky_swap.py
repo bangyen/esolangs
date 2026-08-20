@@ -199,3 +199,29 @@ class TestMinskySwapExamples:
         with redirect_stdout(io.StringIO()) as f:
             run(program, io=IO())
         assert f.getvalue().strip() == "0 2"
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+
+        machine = _Machine("+", IO())
+        before = machine.snapshot()
+        machine.step()  # + increments the active register
+        assert machine.snapshot() != before
+        assert machine.reg == [1, 0]
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("+", IO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # '~' alone with reg[0] == 0 jumps to target 1, which lands back on
+        # the same tilde with the register unchanged -- a genuine state
+        # cycle, not unbounded growth.
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("~\n1", IO())) is False

@@ -11,6 +11,12 @@ A rule line before any container declaration is a malformed program and is
 rejected with :class:`ValueError`; an empty program halts immediately.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the containers, their current
+values, and the exit code once EXIT fires), so it is step-capable:
+``step()`` executes one full tick and ``halted`` is true once EXIT fires.
+:func:`run` still raises :class:`SystemExit` on halt, matching the
+original's direct ``sys.exit`` call.
 """
 
 import sys
@@ -54,49 +60,77 @@ class Con:
         return max(res, 0)
 
 
-def run(code: list[str], io: IO) -> None:
-    """Run a Container program by ticking its rules until EXIT fires."""
-    queue: list[str] = []
-    obj: list[Con] = []
-    var: dict[str, int] = {}
-    new: dict[str, int] = {}
+class _Machine:
+    """Per-run Container state: the containers, their values, and EXIT."""
 
-    for raw in code:
-        line = raw.strip()
-        if ":" in line:
-            line = line[:-1]
-            if "=" in line:
-                x, y = line.split("=")
-                var[x] = int(y)
-                obj.append(Con(x))
-            else:
-                var[line] = 0
-                obj.append(Con(line))
-        elif line:
-            if not obj:
-                raise ValueError("rule line before any container declaration")
-            obj[-1].add(line)
+    def __init__(self, code: list[str], io: IO) -> None:
+        """Parse ``code`` into containers and start every value at rest."""
+        self.io = io
+        self.queue: list[str] = []
+        self.obj: list[Con] = []
+        self.var: dict[str, int] = {}
+        self.exit_code: int | None = None
+        self.tick = 0
 
-    if not obj:
-        return  # nothing to evaluate: an empty program halts immediately
+        for raw in code:
+            line = raw.strip()
+            if ":" in line:
+                line = line[:-1]
+                if "=" in line:
+                    x, y = line.split("=")
+                    self.var[x] = int(y)
+                    self.obj.append(Con(x))
+                else:
+                    self.var[line] = 0
+                    self.obj.append(Con(line))
+            elif line:
+                if not self.obj:
+                    raise ValueError("rule line before any container declaration")
+                self.obj[-1].add(line)
 
-    while True:
-        for o in obj:
-            new[o.name] = o.update(var)
+    @property
+    def halted(self) -> bool:
+        """Whether EXIT has fired, or there was nothing to evaluate."""
+        return self.exit_code is not None or not self.obj
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            tuple(sorted(self.var.items())),
+            tuple(self.queue),
+            self.exit_code,
+        )  # tick is excluded: it counts steps, not state, and always differs
+
+    def step(self) -> None:
+        """Execute one full tick, updating every container's value."""
+        if self.halted:
+            return
+        var = self.var
+        new = {o.name: o.update(var) for o in self.obj}
 
         if "PRINT" in var and var["PRINT"] == 0 and bool(new["PRINT"]) and "OUT" in var:
-            io.print_char(chr(new["OUT"] % (1 << 7)))
+            self.io.print_char(chr(new["OUT"] % (1 << 7)))
         if "" in var and var[""] == 0 and bool(new[""]):
-            while not queue:
-                s = io.input_str()
-                queue += list(s)
+            while not self.queue:
+                s = self.io.input_str()
+                self.queue += list(s)
 
-            new["IN"] = ord(queue[0])
-            queue = queue[1:]
+            new["IN"] = ord(self.queue[0])
+            self.queue = self.queue[1:]
         if "EXIT" in var and var["EXIT"] != new["EXIT"]:
-            sys.exit(new["EXIT"])
+            self.exit_code = new["EXIT"]
 
-        var = new.copy()
+        self.var = new
+        self.tick += 1
+
+
+def run(code: list[str], io: IO) -> None:
+    """Run a Container program by ticking its rules until EXIT fires."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
+    if machine.exit_code is not None:
+        sys.exit(machine.exit_code)
 
 
 if __name__ == "__main__":

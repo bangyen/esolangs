@@ -48,20 +48,36 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
     A deterministic machine that revisits its complete internal state has
     looped forever, so a repeated snapshot is a *proof* of a hang that is
     reported immediately instead of waiting out a wall-clock timeout.
-    Returns ``True`` when the machine halts and ``False`` the moment a
-    repeated state proves it is looping.  It catches *cycles*, not every
-    hang — an unbounded-growth loop never revisits a state, so callers
-    keep a timeout as the backstop for that class.
+    Returns ``True`` when the machine halts and ``False`` once a cycle is
+    proven.  It catches *cycles*, not every hang — an unbounded-growth loop
+    never revisits a state, so callers keep a timeout as the backstop for
+    that class.
+
+    Uses Brent's cycle-detection algorithm: O(1) snapshots held at once
+    (one "tortoise" checkpoint compared against the live machine's state on
+    every step) instead of a hash set of every state visited, at the cost of
+    stepping up to ~2x further past the cycle's start before ``False`` is
+    returned — callers must not rely on the machine's state at the moment
+    of detection, only on the True/False verdict.
     """
-    seen: set[Hashable] = set()
-    while True:
-        if machine.halted:
-            return True
-        key = machine.snapshot()
-        if key in seen:
-            return False
-        seen.add(key)
+    tortoise = machine.snapshot()
+    power = 1
+    length = 0
+    while not machine.halted:
         machine.step()
+        length += 1
+        # mypy narrows `machine.halted` to Literal[False] from the loop guard
+        # and won't re-widen it across `step()`; the explicit local defeats that.
+        halted: bool = machine.halted
+        if halted:
+            return True
+        if machine.snapshot() == tortoise:
+            return False
+        if length == power:
+            tortoise = machine.snapshot()
+            power *= 2
+            length = 0
+    return True
 
 
 @runtime_checkable
@@ -227,7 +243,15 @@ class _DimensionalVM(_BaseVM):
 
 
 class _GraphemeVM(_BaseVM):
-    """Stack + variables; ``ip`` is the active call frame's cursor."""
+    """Stack + variables; ``ip`` is the call stack's cursors, root-to-leaf.
+
+    Each active call frame (``G``/``I``/``Q``/``Z`` push one) contributes its
+    ``pc`` to the tuple, so ``ip`` grows and shrinks with recursion depth
+    instead of folding every frame into the active one's position.  A
+    breakpoint on a specific ``ip`` is therefore depth-sensitive: ``(5,)``
+    matches only a single top-level frame at pc 5, not pc 5 one call deeper
+    (``(2, 5)``).
+    """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -248,10 +272,11 @@ class _GraphemeVM(_BaseVM):
         self._machine.step()
 
     @property
-    def ip(self) -> int:
-        return (
-            self._machine.frames[-1].pc if self._machine.frames else len(self._program)
-        )
+    def ip(self) -> tuple[int, ...]:
+        # a frame is only ever popped once its own pc reaches len(code), so
+        # frames == [] implies the top-level frame finished at len(program).
+        frames = self._machine.frames
+        return tuple(f.pc for f in frames) if frames else (len(self._program),)
 
     @property
     def memory(self) -> list[int]:
@@ -355,38 +380,15 @@ class _ModulousVM(_BaseVM):
         return list(self._state.stk)
 
 
-class _TemporaryStackVM(_BaseVM):
-    """Single stack + output mode; ``ip`` is the word pointer."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.stack_based.the_temporary_stack import State
-
-        self._state = State(io=self._io)
-        self._state.code = program.split()
-
-    @property
-    def halted(self) -> bool:
-        return self._state.halted
-
-    def step(self) -> None:
-        self._state.step()
-
-    @property
-    def ip(self) -> int:
-        return self._state.ptr
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return list(self._state.stk)
-
-
 class _ForthVM(_BaseVM):
-    """Stack + scope table; ``ip`` is the active frame's cursor."""
+    """Stack + scope table; ``ip`` is the call stack's cursors, root-to-leaf.
+
+    Each active scope (``;``/``(``/``[`` pushes one) contributes its ``pc``
+    to the tuple, so ``ip`` grows and shrinks with call depth instead of
+    folding every frame into the active one's position.  A breakpoint on a
+    specific ``ip`` is therefore depth-sensitive: ``(5,)`` matches only a
+    single top-level frame at pc 5, not pc 5 one call deeper (``(2, 5)``).
+    """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -402,10 +404,11 @@ class _ForthVM(_BaseVM):
         self._machine.step()
 
     @property
-    def ip(self) -> int:
-        return (
-            self._machine.frames[-1].pc if self._machine.frames else len(self._program)
-        )
+    def ip(self) -> tuple[int, ...]:
+        # a frame is only ever popped once its own pc reaches len(code), so
+        # frames == [] implies the top-level frame finished at len(program).
+        frames = self._machine.frames
+        return tuple(f.pc for f in frames) if frames else (len(self._program),)
 
     @property
     def memory(self) -> list[int]:
@@ -636,38 +639,6 @@ class _TwoDFishVM(_BaseVM):
     @property
     def stack(self) -> list[object]:
         return []
-
-
-class _DotlangVM(_BaseVM):
-    """2D grid of dots; ``ip`` is the current dot's (x, y, direction)."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.dotlang import _Machine
-
-        self._machine = _Machine(program.splitlines(), self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...] | None:
-        if not self._machine.dots:
-            return None
-        dot = self._machine.dots[self._machine.curr]
-        return (dot.x, dot.y, dot.dir)
-
-    @property
-    def memory(self) -> list[int]:
-        return []
-
-    @property
-    def stack(self) -> list[object]:
-        return [d.val for d in self._machine.dots]
 
 
 class _ClockwiseVM(_BaseVM):
@@ -1108,6 +1079,123 @@ class _PolynomialVM(_BaseVM):
         return []
 
 
+class _RAM0VM(_BaseVM):
+    """Two registers + RAM; ``ip`` the token cursor, ``memory`` z, n, then RAM."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        ram = self._machine.ram
+        return [self._machine.z, self._machine.n, *(ram[k] for k in sorted(ram))]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _MinskySwapVM(_BaseVM):
+    """Two registers + pointer; ``ip`` the cursor, ``memory`` both registers."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.reg)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _HomeRowVM(_BaseVM):
+    """5x5 torus grid + pointer; ``ip`` the cursor, ``memory`` the 25 cells."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.home_row import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.grid)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _UnsquareVM(_BaseVM):
+    """Stack + accumulator; ``ip`` the cursor, ``memory`` the accumulator."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stack)
+
+
 class _ROTFuckVM(_BaseVM):
     """Rotating tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
 
@@ -1311,6 +1399,490 @@ class _OneTwoThreeVM(_BaseVM):
         return []
 
 
+class _PctSquaredMinusOneVM(_BaseVM):
+    """Accumulator + cursor; ``ip`` the cursor, ``memory`` the accumulator."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.pct_squared_minus_one import (
+            _Machine,
+        )
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _SuffolkVM(_BaseVM):
+    """Tape + accumulator; ``ip`` the cursor, ``memory`` the tape."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.tape)
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _ContainerVM(_BaseVM):
+    """Named containers + tick count; ``ip`` the tick, ``memory`` the values."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.container import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.tick
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.var[k] for k in sorted(self._machine.var)]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _NevermindVM(_BaseVM):
+    """Named variables + line cursor; ``ip`` the line, ``memory`` the vars."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.nevermind import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [
+            int(v)
+            for v in (self._machine.var[k] for k in sorted(self._machine.var))
+            if isinstance(v, (int, float))
+        ]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _BFPDAVM(_BaseVM):
+    """Bit stack + cursor; ``ip`` the cursor, ``stack`` the bits."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.stack_based.bf_pda import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ip
+
+    @property
+    def memory(self) -> list[int]:
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stack)
+
+
+class _ThreeXVM(_BaseVM):
+    """Rational stack + cursor; ``ip`` the cursor, ``stack`` the rationals."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.stack_based.three_x import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return []
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stack)
+
+
+class _ABCDirectionVM(_BaseVM):
+    """Bit tape + donut grid pointer; ``ip`` is (x, y, direction)."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.abcdirection import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        return (self._machine.x, self._machine.y, self._machine.d)
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.tape.get(k, 0) for k in sorted(self._machine.tape)]
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.queue)
+
+
+class _SophieVM(_BaseVM):
+    """Accumulator + loop stack; ``ip`` the cursor, ``memory`` the acc."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.sophie import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [self._machine.acc]
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.stk)
+
+
+class _JauneVM(_BaseVM):
+    """Cell tape + hold register; ``ip`` the command position."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.jaune import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.pos
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.cells)
+
+    @property
+    def stack(self) -> list[object]:
+        return list(self._machine.call_stack)
+
+
+class _SlowAcvMammalianVM(_BaseVM):
+    """23 arrays + pointer; ``memory`` is the current array, ``stack`` all 23."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return list(self._machine.lst[self._machine.ptr])
+
+    @property
+    def stack(self) -> list[object]:
+        return [row for arr in self._machine.lst for row in arr]
+
+
+class _ZtoalcLVM(_BaseVM):
+    """Collatz-trajectory pointer; ``memory`` is the sorted variable values."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ptr
+
+    @property
+    def memory(self) -> list[int]:
+        return [v for _, v in sorted(self._machine.var.items()) if isinstance(v, int)]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _BetweenVM(_BaseVM):
+    """Goto-based variables; ``ip`` the program counter, ``memory`` the ints."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.between import _Machine
+
+        self._machine = _Machine(program.splitlines(), self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.pc
+
+    @property
+    def memory(self) -> list[int]:
+        return [v for v in self._machine.state.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _MyScriptVM(_BaseVM):
+    """Frame stack + scopes; ``ip`` is (frame depth, position in top frame)."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, int] | None:
+        if not self._machine.stack:
+            return None
+        top = self._machine.stack[-1]
+        return len(self._machine.stack), top.pos
+
+    @property
+    def memory(self) -> list[int]:
+        if not self._machine.stack:
+            return []
+        scope = self._machine.stack[-1].scope
+        return [v for v in scope.vars.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _LamfuncVM(_BaseVM):
+    """Prefix-call evaluator; ``ip`` is the top-level token cursor."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.lamfunc import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [v for v in self._machine.vars.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _ForbinVM(_BaseVM):
+    """Call stack; ``ip`` is each frame's statement cursor, root-to-leaf."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.forbin import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> tuple[int, ...]:
+        frames = self._machine.frames
+        return tuple(f.pos for f in frames) if frames else (len(self._program),)
+
+    @property
+    def memory(self) -> list[int]:
+        if not self._machine.frames:
+            return []
+        return [v for v in self._machine.frames[-1].locals.values() if type(v) is int]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
+class _SuptiftamVM(_BaseVM):
+    """Global scope + tapes; ``ip`` is the top-level statement cursor."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.other.suptiftam import _Machine, _Var
+
+        self._machine = _Machine(program, self._io)
+        self._Var = _Var
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        return [
+            v.value
+            for v in self._machine.state.globals.values()
+            if isinstance(v, self._Var) and v.kind == "int"
+        ]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 # Language name -> VM adapter.  Only interpreters with a step()/halted state
 # object are wrappable; the rest raise UnknownLanguageError.
 _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
@@ -1321,13 +1893,11 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Qoibl": _QoiblVM,
     "Eval": _EvalVM,
     "Modulous": _ModulousVM,
-    "The Temporary Stack": _TemporaryStackVM,
     "LaserFuck": _LaserFuckVM,
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
     "2dFish": _TwoDFishVM,
-    "Dotlang": _DotlangVM,
     "Clockwise": _ClockwiseVM,
     "Dig": _DigVM,
     "WII2D": _Wii2dVM,
@@ -1353,6 +1923,26 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "bit~": _BitTildeVM,
     "Collatz Multiverse": _CollatzMultiverseVM,
     "Polynomial": _PolynomialVM,
+    "RAM0": _RAM0VM,
+    "Minsky Swap": _MinskySwapVM,
+    "Home Row": _HomeRowVM,
+    "Unsquare": _UnsquareVM,
+    "%^2^-1": _PctSquaredMinusOneVM,
+    "Suffolk": _SuffolkVM,
+    "Container": _ContainerVM,
+    "Nevermind": _NevermindVM,
+    "BF-PDA": _BFPDAVM,
+    "3x": _ThreeXVM,
+    "ABCDirection": _ABCDirectionVM,
+    "Sophie": _SophieVM,
+    "Jaune": _JauneVM,
+    "SLOW ACV MAMMALIAN": _SlowAcvMammalianVM,
+    "ZTOALC L": _ZtoalcLVM,
+    "Between": _BetweenVM,
+    "MyScript": _MyScriptVM,
+    "Lamfunc": _LamfuncVM,
+    "Forbin": _ForbinVM,
+    "Suptiftam": _SuptiftamVM,
 }
 
 

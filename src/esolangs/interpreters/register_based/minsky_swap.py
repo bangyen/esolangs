@@ -10,6 +10,13 @@ as 1-based ("line N"), which this interpreter follows.
 
 A ``~`` with no corresponding jump number is a malformed program and is
 rejected with :class:`ValueError`.
+
+The interpreter runs on a :class:`_Machine` (the parsed program, both
+registers, and the instruction cursor), so it is step-capable: ``step()``
+executes one command and ``halted`` is true once the cursor reaches the end
+of the program.  The register dump is printed exactly once, on the step
+that halts the machine, matching the original's print-after-the-loop
+behavior.
 """
 
 import re
@@ -18,12 +25,10 @@ import sys
 from esolangs.interpreters.io import IO
 
 
-def run(code: str, io: IO) -> None:
-    """Execute a Minsky Swap program."""
-    ind = ptr = 0
-    reg = [0, 0]
-    nums = []
+def _parse(code: str) -> tuple[str, list[int]]:
+    """Return the compact-notation program and its jump-line numbers."""
     prog = ""
+    nums: list[int] = []
 
     if re.search(r"(inc|swap|decnz)\(", code):
         pattern = r"(inc|swap|decnz)\((\d*)\);"
@@ -48,29 +53,70 @@ def run(code: str, io: IO) -> None:
             nums = re.findall(r"\d+", s[1])
             nums = [int(k) for k in nums]
 
-    # Each tilde's jump target is fixed by its position in the code line:
-    # the Nth tilde jumps to the Nth number on the jump line, and targets
-    # are 1-based (so a jump to N runs the (N-1)th command).
-    targets: dict[int, int] = {}
-    for i, ch in enumerate(prog):
-        if ch == "~":
-            if len(targets) >= len(nums):
-                raise ValueError("unmatched '~' with no jump target")
-            targets[i] = nums[len(targets)]
+    return prog, nums
 
-    while ind < len(prog):
-        if (op := prog[ind]) == "+":
-            reg[ptr] += 1
+
+class _Machine:
+    """Per-run Minsky Swap state: the program, both registers, and the cursor.
+
+    ``step()`` executes one command; ``halted`` is true once the cursor
+    reaches the end of the program.  The state-cycle hang detector and the
+    VM expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Parse ``code`` and start both registers at zero."""
+        self.io = io
+        self.prog, nums = _parse(code)
+
+        # Each tilde's jump target is fixed by its position in the code
+        # line: the Nth tilde jumps to the Nth number on the jump line, and
+        # targets are 1-based (so a jump to N runs the (N-1)th command).
+        self.targets: dict[int, int] = {}
+        for i, ch in enumerate(self.prog):
+            if ch == "~":
+                if len(self.targets) >= len(nums):
+                    raise ValueError("unmatched '~' with no jump target")
+                self.targets[i] = nums[len(self.targets)]
+
+        self.ind = self.ptr = 0
+        self.reg = [0, 0]
+        self._dumped = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the program."""
+        return self.ind >= len(self.prog)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ind, self.ptr, tuple(self.reg))
+
+    def step(self) -> None:
+        """Execute one command, dumping the registers once the cursor ends."""
+        if self.halted:
+            if not self._dumped:
+                self.io.print_line(" ".join(map(str, self.reg)))
+                self._dumped = True
+            return
+        if (op := self.prog[self.ind]) == "+":
+            self.reg[self.ptr] += 1
         elif op == "~":
-            if reg[ptr]:
-                reg[ptr] -= 1
-            elif target := targets[ind]:
-                ind = target - 2
+            if self.reg[self.ptr]:
+                self.reg[self.ptr] -= 1
+            elif target := self.targets[self.ind]:
+                self.ind = target - 2
         elif op == "*":
-            ptr ^= 1
+            self.ptr ^= 1
+        self.ind += 1
 
-        ind += 1
-    io.print_line(" ".join(map(str, reg)))
+
+def run(code: str, io: IO) -> None:
+    """Execute a Minsky Swap program."""
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
+    machine.step()  # dump the final registers
 
 
 if __name__ == "__main__":

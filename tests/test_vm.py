@@ -59,7 +59,7 @@ class TestDimensional:
 class TestGrapheme:
     def test_stack_exposed(self) -> None:
         vm = esolangs.make_vm("Grapheme", "FAFY")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
+        assert (vm.ip, vm.memory, vm.stack) == ((0,), [], [])
         vm.step()  # F starts int mode
         vm.step()  # A accumulates
         vm.step()  # F ends int mode, pushes 10
@@ -67,12 +67,38 @@ class TestGrapheme:
         vm.step()  # Y prints
         assert vm.output == "10"
         assert vm.halted
-        assert vm.ip == len("FAFY")  # frames are gone once halted
+        assert vm.ip == (len("FAFY"),)  # frames are gone once halted
         assert vm.memory == []
 
     def test_rejects_non_uppercase(self) -> None:
         with pytest.raises(ValueError, match="uppercase"):
             esolangs.make_vm("Grapheme", "a")
+
+    def test_ip_exposes_the_call_stack(self) -> None:
+        # FAF pushes 10, EKE pushes the string "K"; G calls it as a nested
+        # frame (K dups the shared stack's top), so ip grows to (caller pc,
+        # callee pc) while that frame is active instead of folding it into
+        # one cursor.
+        vm = esolangs.make_vm("Grapheme", "FAFEKEG")
+        for _ in range(7):
+            vm.step()
+        assert vm.ip == (7, 0)  # caller's pc past G, callee's pc at its start
+        assert vm.stack == [10]
+        vm.step()  # the callee's K command runs, then the frame finishes
+        assert vm.halted
+        assert vm.ip == (7,)  # the callee frame is gone once it returns
+        assert vm.stack == [10, 10]
+
+    def test_caller_resumes_after_the_callee_returns(self) -> None:
+        # Y after G still has to run once the callee pops, proving the
+        # halted-``ip`` sentinel is the top-level frame's own end position,
+        # not an artifact of the callee finishing on the caller's last pc.
+        vm = esolangs.make_vm("Grapheme", "FAFEKEGY")
+        for _ in range(9):
+            vm.step()
+        assert vm.halted
+        assert vm.output == "10"  # Y printed the duplicated int 10
+        assert vm.ip == (len("FAFEKEGY"),)
 
 
 class TestQoibl:
@@ -104,16 +130,6 @@ class TestModulous:
         vm.step()
         assert vm.output == "5"
         assert vm.halted
-
-
-class TestTemporaryStack:
-    def test_word_pointer_and_stack(self) -> None:
-        vm = esolangs.make_vm("The Temporary Stack", "v5 +")
-        vm.step()
-        assert (vm.ip, vm.stack) == (1, [5])
-        assert vm.memory == []
-        vm.step()
-        assert vm.stack == [5, 5]
 
 
 class TestLaserFuck:
@@ -228,22 +244,6 @@ class TestTwoDFish:
         assert vm.stack == []
 
 
-class TestDotlang:
-    def test_ip_dot_position_and_value_stack(self) -> None:
-        vm = esolangs.make_vm("Dotlang", "•#42#")
-        assert vm.ip == (0, 0, 1)  # the starting dot, heading right
-        vm.step()  # the • is a no-op and the dot steps right
-        assert vm.ip == (0, 1, 1)
-        vm.step()  # #42 stores 42 on the dot and steps past the literal
-        assert vm.stack == [42]
-        assert vm.ip == (0, 4, 1)
-        vm.step()  # the trailing # prints 42, then the dot steps off the row
-        assert vm.output == "42"
-        assert vm.halted
-        assert vm.ip is None  # the dot has been consumed
-        assert vm.memory == []
-
-
 class TestClockwise:
     def test_ip_position_heading_and_accumulator(self) -> None:
         vm = esolangs.make_vm("Clockwise", "+;S;S;S;S;S;+;R\nR             R")
@@ -306,18 +306,34 @@ class TestWii2d:
 class TestForth:
     def test_stack_and_active_frame_cursor(self) -> None:
         vm = esolangs.make_vm("Forþ", "65.")
-        assert vm.ip == 0
+        assert vm.ip == (0,)
         assert vm.stack == []
         vm.step()  # 6 pushes
-        assert (vm.ip, vm.stack) == (1, [6])
+        assert (vm.ip, vm.stack) == ((1,), [6])
         vm.step()  # 5 pushes
         assert vm.stack == [6, 5]
         vm.step()  # . pops and prints the low byte
         assert vm.output == "\x05"
         vm.step()  # finalizing the finished frame halts the machine
         assert vm.halted
-        assert vm.ip == len("65.")  # frames are gone once halted
+        assert vm.ip == (len("65."),)  # frames are gone once halted
         assert vm.memory == []
+
+    def test_ip_exposes_the_call_stack(self) -> None:
+        # '1{:}1;' stores the scope ':' under key 1, then calls it; ip
+        # grows to (caller pc, callee pc) while the scope is active instead
+        # of folding it into one cursor.
+        vm = esolangs.make_vm("Forþ", "1{:}1;")
+        for _ in range(4):
+            vm.step()
+        assert vm.ip == (6, 0)  # caller's pc past ';', callee's pc at start
+        assert vm.stack == [1]
+        vm.step()  # the callee's ':' command runs (dup)
+        assert vm.ip == (6, 1)
+        assert vm.stack == [1, 1]
+        vm.step()  # finalizing the finished callee frame halts the machine
+        assert vm.halted
+        assert vm.ip == (6,)  # the callee frame is gone once it returns
 
 
 class TestAddSubJump:
@@ -576,6 +592,252 @@ class TestPolynomial:
         assert vm.halted
 
 
+class TestRAM0:
+    def test_registers_and_cursor(self) -> None:
+        vm = esolangs.make_vm("RAM0", "ZA")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
+        vm.step()  # Z zeroes z
+        assert vm.ip == 1
+        vm.step()  # A increments z; the cursor runs off the end
+        assert (vm.ip, vm.memory, vm.halted) == (2, [1, 0], True)
+        assert vm.output == ""  # the dump happens on the next step
+        vm.step()
+        assert vm.output == "z: 1\nn: 0\nram: {}\n"
+
+
+class TestMinskySwap:
+    def test_registers_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Minsky Swap", "+")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
+        vm.step()  # + increments the active register; the cursor runs off
+        assert (vm.ip, vm.memory, vm.halted) == (1, [1, 0], True)
+        assert vm.output == ""  # the dump happens on the next step
+        vm.step()
+        assert vm.output == "1 0\n"
+
+
+class TestHomeRow:
+    def test_grid_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Home Row", "ak;")
+        assert (vm.ip, vm.memory[:3], vm.stack) == (0, [0, 0, 0], [])
+        vm.step()  # a increments the current cell
+        assert (vm.ip, vm.memory[:3]) == (1, [1, 0, 0])
+        vm.step()  # k prints the cell and resets it; the cursor lands on ';'
+        assert vm.memory[:3] == [0, 0, 0]
+        assert vm.output == "\x01"
+        assert vm.halted
+
+
+class TestUnsquare:
+    def test_stack_accumulator_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Unsquare", "Io")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # I pushes 1
+        assert (vm.ip, vm.stack) == (1, [1])
+        vm.step()  # o prints the top of stack without popping
+        assert vm.halted
+        assert vm.output == "\x01"
+        assert vm.stack == [1]
+
+
+class TestPctSquaredMinusOne:
+    def test_accumulator_and_cursor(self) -> None:
+        vm = esolangs.make_vm("%^2^-1", "ie")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # i subtracts 3 from the accumulator
+        assert (vm.ip, vm.memory) == (1, [-3])
+        vm.step()  # e prints the low byte of the accumulator
+        assert vm.halted
+        assert vm.output == "\xfd"
+
+
+class TestSuffolk:
+    def test_tape_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Suffolk", "!" * 66 + "<.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        for _ in range(66):
+            vm.step()  # each ! sets the cell to the accumulator-derived value
+        assert vm.memory == [66]
+        vm.step()  # < sums the cell into the accumulator
+        vm.step()  # . prints the accumulator minus one
+        assert vm.output == "A"
+
+
+class TestContainer:
+    def test_named_values_and_tick(self) -> None:
+        vm = esolangs.make_vm("Container", "A=0:\n+1 A>=0")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # A>=0 always holds, so A increments every tick
+        assert (vm.ip, vm.memory) == (1, [1])
+        assert not vm.halted
+
+
+class TestNevermind:
+    def test_named_variables_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Nevermind", "make,x,5\nprint,$x")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
+        vm.step()  # make,x,5 stores x = 5
+        assert (vm.ip, vm.memory) == (1, [5])
+        vm.step()  # print,$x resolves $x and prints it
+        assert vm.halted
+        assert vm.output == "5\n"
+
+
+class TestBFPDA:
+    def test_bit_stack_and_cursor(self) -> None:
+        vm = esolangs.make_vm("BF-PDA", "<@.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
+        vm.step()  # < pushes a zero
+        assert (vm.ip, vm.stack) == (1, [0])
+        vm.step()  # @ flips the top bit
+        assert vm.stack == [1]
+        vm.step()  # . prints the top bit
+        assert vm.halted
+        assert vm.output == "1"
+
+
+class TestThreeX:
+    def test_rational_stack_and_cursor(self) -> None:
+        vm = esolangs.make_vm("3x", "3!")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
+        vm.step()  # 3 pushes the rational 3
+        assert (vm.ip, vm.stack) == (1, [3])
+        vm.step()  # ! pops and prints the top
+        assert vm.halted
+        assert vm.output == "3"
+
+
+class TestABCDirection:
+    def test_tape_queue_and_pointer(self) -> None:
+        program = "\n".join(["CBBBBB"] * 8 + ["DDDDDD"])
+        vm = esolangs.make_vm("ABCDirection", program)
+        assert (vm.ip, vm.memory, vm.stack) == ((0, 0, 1), [], [])
+        vm.step()  # the top-left C outputs the (zero) initial cell
+        assert vm.ip == (0, 1, 1)
+        assert not vm.halted
+
+
+class TestSophie:
+    def test_accumulator_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Sophie", "#$5.")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # #$5 loads 5 into the accumulator
+        assert (vm.ip, vm.memory) == (3, [5])
+        vm.step()  # . prints the accumulator
+        assert vm.halted
+        assert vm.output == "5"
+
+
+class TestJaune:
+    def test_cells_hold_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Jaune", "++^")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
+        vm.step()  # ++ increments the cell twice (a counted command)
+        assert (vm.ip, vm.memory) == (1, [2])
+        vm.step()  # ^ prints the cell as a decimal number
+        assert vm.halted
+        assert vm.output == "2"
+
+
+class TestSlowAcvMammalian:
+    def test_arrays_pointer_and_cursor(self) -> None:
+        vm = esolangs.make_vm("SLOW ACV MAMMALIAN", "SEED SEED SEED CONSUME PRONOUNCE")
+        assert vm.ip == 0
+        assert vm.memory == [0]
+        for _ in range(3):
+            vm.step()
+        assert vm.memory == [3]  # three SEEDs add 1 to lst[0]'s head each time
+        vm.step()  # CONSUME pops the array's middle element into the accumulator
+        assert vm.memory == []
+        vm.step()
+        assert vm.halted
+        assert vm.output == "\x03"
+
+
+class TestZtoalcL:
+    def test_pointer_and_variables(self) -> None:
+        vm = esolangs.make_vm("ZTOALC L", "\n".join(["10", "print 65"]))
+        assert vm.ip == 10
+        assert vm.memory == []
+        while not vm.halted:
+            vm.step()
+        assert vm.output == "A"
+
+
+class TestBetween:
+    def test_counter_and_variables(self) -> None:
+        vm = esolangs.make_vm("Between", "'a'v.\n[a]s|3|\n[a]p.\n.x.")
+        assert (vm.ip, vm.memory) == (0, [])
+        vm.step()  # declares variable 'a' = 0
+        assert vm.memory == [0]
+        vm.step()  # [a]s|3| stores 3 into a
+        assert (vm.ip, vm.memory) == (2, [3])
+        vm.step()  # prints a
+        assert vm.output == "3"
+        vm.step()  # .x. exits
+        assert vm.halted
+
+
+class TestMyScript:
+    def test_frame_position_and_scope(self) -> None:
+        vm = esolangs.make_vm("MyScript", "var a is 5\nsay a")
+        assert vm.ip == (1, 0)
+        assert vm.memory == []
+        vm.step()  # declares a = 5
+        assert vm.ip == (1, 1)
+        assert vm.memory == [5]
+        vm.step()  # say a
+        assert vm.output == "5"
+        vm.step()  # the root frame's statements are exhausted; it pops
+        assert vm.halted
+
+
+class TestLamfunc:
+    def test_token_cursor_and_variables(self) -> None:
+        vm = esolangs.make_vm("Lamfunc", "p 5")
+        assert vm.ip == 0
+        assert vm.memory == []
+        while not vm.halted:
+            vm.step()
+        assert vm.output == "101"
+
+
+class TestForbin:
+    def test_locals_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Forbin", "main { x = 1; }")
+        assert vm.ip == (0,)
+        assert vm.memory == []
+        vm.step()
+        assert vm.ip == (1,)
+        assert vm.memory == [1]
+        vm.step()  # main's body is exhausted; the frame pops
+        assert vm.halted
+
+    def test_ip_exposes_the_call_stack(self) -> None:
+        # a statement-position call pushes a new frame, deepening ip
+        vm = esolangs.make_vm("Forbin", "main { f 0; }\nf x { y = 1; }")
+        assert vm.ip == (0,)
+        vm.step()  # f 0; pushes a frame for f, advancing main's own cursor
+        assert vm.ip == (1, 0)
+        vm.step()  # y = 1; inside f
+        assert vm.ip == (1, 1)
+        vm.step()  # f's body is exhausted; the frame pops
+        assert vm.ip == (1,)
+        vm.step()  # main's body is exhausted; the frame pops
+        assert vm.halted
+
+
+class TestSuptiftam:
+    def test_globals_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Suptiftam", "x=7")
+        assert vm.ip == 0
+        assert vm.memory == []
+        vm.step()
+        assert vm.ip == 1
+        assert vm.memory == [7]
+        assert vm.halted
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -620,19 +882,216 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine("LET zero:=0", IO())
         assert machine.snapshot() == (0, (), (), 0)
 
+    def test_sbleq_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.sbleq import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # a=0 b=0 c=3: diff (0-0=0) jumps to mem[3], which is negative -> halts
+        machine = _Machine(io=ScriptedIO(), mem=[0, 0, 3, -1], store="a")
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_sbleq_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.sbleq import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # a=0 b=0 c=2: diff is always 0, so it jumps to mem[2] (address 0) forever
+        machine = _Machine(io=ScriptedIO(), mem=[0, 0, 0], store="a")
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_dimensional_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.vm import run_until_halt_or_cycle
+
+        runner = _Runner("+.", ScriptedIO())
+        assert run_until_halt_or_cycle(runner) is True
+
+    def test_dimensional_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.dimensional import _Runner
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # cell starts nonzero and the loop body never changes it, so it never exits
+        runner = _Runner("+[]", ScriptedIO())
+        assert run_until_halt_or_cycle(runner) is False
+
+    def test_modulous_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.vm import run_until_halt_or_cycle
+
+        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
+        state.tokens = ["END"]
+        assert run_until_halt_or_cycle(state) is True
+
+    def test_modulous_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.modulous import State
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # RST resets the pointer to the start of the program on every pass
+        state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=ScriptedIO())
+        state.tokens = ["RST"]
+        assert run_until_halt_or_cycle(state) is False
+
+    def test_laserfuck_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(["o"], ScriptedIO(), heading=0)
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_laserfuck_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.grid_based.laserfuck import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # a closed ring of mirrors the laser circles forever
+        grid = ["/ \\", "\\o/", "//\\"]
+        machine = _Machine(grid, ScriptedIO(), heading=2)
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_slow_acv_mammalian_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("PRONOUNCE", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_slow_acv_mammalian_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # LEAPFROG jumps back to a point that reproduces the exact same state
+        machine = _Machine(
+            "CONFLAGRATE SEED SEED DIGEST FISSION LEAPFROG", ScriptedIO()
+        )
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_ztoalc_l_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(["2"], ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_ztoalc_l_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # each "jump x 1" bumps the pointer past the 2-line program and back
+        # via a Collatz step, tracing 2 -> 3 -> 4 -> 2 forever
+        machine = _Machine(["2", "jump x 1", "jump x 1"], ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_between_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.between import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine([".x."], ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_between_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.between import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # |0|f. is an unconditional goto back to line 0
+        machine = _Machine(["|0|f."], ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_myscript_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.myscript import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("say 5", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_myscript_looping_run_is_detected_as_a_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.myscript import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # while yes never becomes false; the body's own state never changes
+        machine = _Machine("while yes,\n  var x is 1", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_lamfunc_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("p 5", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_lamfunc_recursive_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # loop halves x each call until it reaches 0; a real, terminating
+        # recursion whose call sits inside i's lazy branch, not just a flat
+        # top-level program
+        code = "F loop x - i x loop fb x 0\nloop 0b1000"
+        machine = _Machine(code, ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_forbin_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("main { x = 1; }", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_forbin_for_loop_halts_without_a_false_cycle(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        # each row sets the same local to the same value, so only the loop's
+        # own row index (part of the snapshot) keeps this from reading as a
+        # repeat before the finite range is exhausted
+        machine = _Machine("main { for i:0..1 { x = 0; } }", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_suptiftam_halting_run_returns_true(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.suptiftam import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("x=7", ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is True
+
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
-        from esolangs.vm import _VM_ADAPTERS
-
         with pytest.raises(UnknownLanguageError):
             esolangs.make_vm("NoSuchLanguage", "+")
-        # a registry language that still lacks a step-capable interpreter
-        not_step_capable = next(
-            lang for lang in esolangs.list_languages() if lang not in _VM_ADAPTERS
-        )
+
+    def test_registered_language_without_an_adapter_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A registry language missing from ``_VM_ADAPTERS`` also raises.
+
+        Every current registry language has an adapter, so this exercises
+        ``make_vm``'s defensive fallback (not just the unregistered-name
+        check) by removing one adapter for the duration of the test.
+        """
+        from esolangs.vm import _VM_ADAPTERS
+
+        monkeypatch.delitem(_VM_ADAPTERS, "brainfuck")
         with pytest.raises(UnknownLanguageError):
-            esolangs.make_vm(not_step_capable, "+")
+            esolangs.make_vm("brainfuck", "+")
 
 
 @pytest.mark.parametrize(
@@ -645,7 +1104,6 @@ class TestFactory:
         ("Qoibl", "we y we yyeeee we\ntt qe y qe tt"),
         ("Eval", "0+."),
         ("Modulous", "[PSH INT 5][DUP][PRT INT]"),
-        ("The Temporary Stack", "v5 *AB"),
         ("Point Break", "LET zero:=0"),
         ("ArrowQueue", "~*+"),
         ("123", "3231"),

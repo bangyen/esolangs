@@ -12,6 +12,11 @@ operations that halt the program with :class:`~esolangs.exceptions.HaltError`
 (or, for the missing prompt, :class:`ValueError`).
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the parsed program, the
+variables, and the loop/skip cursor state), so it is step-capable:
+``step()`` executes one line and ``halted`` is true once the cursor
+reaches the end of the program.
 """
 
 import sys
@@ -49,36 +54,57 @@ def find(code: list[list[str | int | float]], ind: int) -> int:
     return ind - 1
 
 
-def run(lines: list[str], io: IO) -> None:
-    """Run a Nevermind program given its comma-separated command lines."""
-    ind = 0
-    var: dict[str, int | float | str] = {}
-    skip = False
-    code: list[list[str | int | float]] = []
+class _Machine:
+    """Per-run Nevermind state: the parsed program, variables, and cursor."""
 
-    for raw in lines:
-        line = raw.lstrip().rstrip("\n").split(",")
-        code.append([v.replace("*44", ",") for v in line if v])
+    def __init__(self, lines: list[str], io: IO) -> None:
+        """Parse ``lines`` into comma-separated command tokens."""
+        self.io = io
+        self.ind = 0
+        self.var: dict[str, int | float | str] = {}
+        self.skip = False
+        self.code: list[list[str | int | float]] = []
 
-    while ind < len(code):
-        if (c := code[ind]) and not skip:
+        for raw in lines:
+            line = raw.lstrip().rstrip("\n").split(",")
+            self.code.append([v.replace("*44", ",") for v in line if v])
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has reached the end of the program."""
+        return self.ind >= len(self.code)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.ind,
+            self.skip,
+            tuple(sorted(self.var.items())),
+            tuple(tuple(c) for c in self.code),
+        )
+
+    def step(self) -> None:
+        """Execute one line, resolving ``$name`` references in place."""
+        if self.halted:
+            return
+        if (c := self.code[self.ind]) and not self.skip:
             for i, val in enumerate(c[1:]):
                 if isinstance(val, str):
                     if val[0] == "$":
                         name = val[1:].strip()
-                        if name not in var:
+                        if name not in self.var:
                             raise HaltError
-                        c[i + 1] = var[name]
+                        c[i + 1] = self.var[name]
                     nxt = c[i + 1]
                     if isinstance(nxt, str) and nxt.isascii() and nxt.isdigit():
                         c[i + 1] = int(nxt)
 
             if (op := c[0]) == "print":
-                io.print_line("".join(map(str, c[1:])))
+                self.io.print_line("".join(map(str, c[1:])))
             elif op == "input":
                 if len(c) < 2:
                     raise ValueError("input requires a prompt")
-                var["answer"] = io.input_str(cast(str, c[1]))
+                self.var["answer"] = self.io.input_str(cast(str, c[1]))
             elif op == "make":
                 if len(c) == 5:
                     v: int | float | str
@@ -95,9 +121,9 @@ def run(lines: list[str], io: IO) -> None:
                         if n == 0:
                             raise HaltError
                         v = cast(int | float, c[2]) / n
-                    var[cast(str, c[1])] = v
+                    self.var[cast(str, c[1])] = v
                 else:
-                    var[cast(str, c[1])] = c[2]
+                    self.var[cast(str, c[1])] = c[2]
             elif op == "if":
                 lhs, cmp_op, rhs = c[1:4]
                 if cmp_op == ">":
@@ -107,17 +133,24 @@ def run(lines: list[str], io: IO) -> None:
                 else:
                     b = lhs == rhs
                 if not b:
-                    ind = find(code, ind)
+                    self.ind = find(self.code, self.ind)
             elif op == "loop":
                 if c[1]:
                     c[1] = cast(int | float, c[1]) - 1
                 else:
-                    ind = find(code, ind)
-                    skip = True
+                    self.ind = find(self.code, self.ind)
+                    self.skip = True
             elif op == "endloop":
-                ind = find(code, ind) + 1
-        skip = False
-        ind += 1
+                self.ind = find(self.code, self.ind) + 1
+        self.skip = False
+        self.ind += 1
+
+
+def run(lines: list[str], io: IO) -> None:
+    """Run a Nevermind program given its comma-separated command lines."""
+    machine = _Machine(lines, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

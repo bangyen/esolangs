@@ -22,6 +22,24 @@ Decisions for gaps in the wiki spec (documented):
 - a call that resolves to no function is an invalid operation
   (:class:`~esolangs.exceptions.HaltError`), and malformed syntax raises
   :class:`ValueError`.
+
+``_Machine`` runs on an explicit stack of ``_Frame``s (``self.frames``, one
+per statement-position call in progress -- ``main`` initially, one more per
+nested call), each with a statement cursor and, while a ``for`` loop is
+active, its row iterator.  This makes ``step()`` interruptible between
+statements, between a ``for`` loop's rows, and between statement-position
+calls (``again 0;``, a call whose result is discarded) -- the granularity a
+hang can actually occur at, and the recursion pattern this language
+actually uses (there is no return-value-threading idiom across nested
+calls; ``return`` exits the whole function immediately).  A statement's own
+expression evaluation, and any *expression-position* call it contains
+(``x = f(y)``, where the assignment needs the result back synchronously),
+still runs to completion inside one ``step()`` through the original
+recursive ``_eval``/``_call``/``_run`` -- Forbin has no realistic program
+shape that recurses that way, so this narrower scope fixes the depth cap
+for the pattern the language is actually written in without the larger risk
+of converting expression evaluation itself into an explicit continuation
+stack.
 """
 
 from __future__ import annotations
@@ -326,14 +344,41 @@ class _BitReader:
 
 
 class _Frame:
-    """One function invocation: its function, the caller, and its locals."""
+    """One function invocation: its function, the caller, and its locals.
 
-    __slots__ = ("fn", "locals", "parent")
+    ``body``/``pos`` is the statement list a frame is executing and its
+    cursor; ``for_rows``/``for_names``/``for_ind`` track a ``for`` loop in
+    progress at that cursor, one row resumed per step, and
+    ``for_body``/``for_body_pos`` is the cursor into the *current* row's
+    body -- a nested resumable sequence sharing this frame's scope, not a
+    pushed frame, since loop-variable/outer-variable writes land in the
+    same ``locals``.
+    """
+
+    __slots__ = (
+        "body",
+        "fn",
+        "for_body",
+        "for_body_pos",
+        "for_ind",
+        "for_names",
+        "for_rows",
+        "locals",
+        "parent",
+        "pos",
+    )
 
     def __init__(self, fn: _Function, parent: _Frame | None) -> None:
         self.fn = fn
         self.parent = parent
         self.locals: dict[str, object] = {}
+        self.body = fn.body
+        self.pos = 0
+        self.for_rows: list[list[object]] | None = None
+        self.for_names: list[str] = []
+        self.for_ind = 0
+        self.for_body: list[_Node] = []
+        self.for_body_pos = 0
 
 
 def _lookup(frame: _Frame | None, name: str, globals_: dict[str, _Function]) -> object:
@@ -411,11 +456,14 @@ def _call(
 def _run(
     frame: _Frame, globals_: dict[str, _Function], reader: _BitReader, depth: int = 0
 ) -> object | None:
-    # each level costs about three Python frames (_call, _run, _exec_stmt), so
-    # 250 stays well under the interpreter's own recursion limit and fires
-    # before a raw RecursionError leaks out
-    if depth > 250:
-        raise HaltError("recursion limit exceeded")
+    """Run ``frame``'s body to completion, natively recursing into any call.
+
+    Only reached today for expression-position calls (``x = f(y)``), whose
+    own recursion depth is bounded by Python's default recursion limit
+    (not this module's old, invented 250 cap) -- a statement-position call
+    (``f(y);``) is stepped through ``_Machine``'s explicit ``frames`` stack
+    instead and is not depth-limited at all.
+    """
     for stmt in frame.fn.body:
         got = _exec_stmt(stmt, frame, globals_, reader, depth)
         if got is not None:
@@ -519,13 +567,213 @@ def _exec_block(
     return None
 
 
+def _for_rows(
+    spec: _Node,
+    frame: _Frame,
+    globals_: dict[str, _Function],
+    reader: _BitReader,
+    depth: int,
+) -> tuple[list[list[object]], list[str]]:
+    """Compute a ``for`` statement's iteration rows and bound variable names."""
+    if spec[0] == "range":
+        _, name, start_node, end_node = spec
+        start = _eval(start_node, frame, globals_, reader, depth)
+        end = _eval(end_node, frame, globals_, reader, depth)
+        range_rows: list[list[object]] = (
+            [[v] for v in range(cast(int, start), cast(int, end) + 1)]
+            if cast(int, start) <= cast(int, end)
+            else []
+        )
+        return range_rows, [name]
+    _, names, patterns = spec
+    rows: list[list[object]] = []
+    for pat in patterns:
+        items = pat[1] if pat[0] == "group" else [pat]
+        wilds = [j for j, p in enumerate(items) if p[0] == "*"]
+        if not wilds:
+            rows.append(
+                [
+                    (
+                        _eval(p[1], frame, globals_, reader, depth)
+                        if p[0] == "value"
+                        else 0
+                    )
+                    for p in items
+                ]
+            )
+        else:
+            import itertools
+
+            for combo in itertools.product((0, 1), repeat=len(wilds)):
+                row: list[object] = []
+                w = 0
+                for p in items:
+                    if p[0] == "*":
+                        row.append(combo[w])
+                        w += 1
+                    else:
+                        row.append(_eval(p[1], frame, globals_, reader, depth))
+                rows.append(row)
+    return rows, names
+
+
+def _start_statement_call(
+    stmt: _Node,
+    frame: _Frame,
+    globals_: dict[str, _Function],
+    reader: _BitReader,
+) -> _Frame | None:
+    """Evaluate a statement-position call and return a pushed frame, if any.
+
+    For a user function, returns a new pushed ``_Frame`` instead of calling
+    it natively.  A builtin (``in``/``out``) or a non-``call`` statement
+    returns ``None``;
+    the caller runs it through the unchanged, recursive ``_exec_stmt``.
+    """
+    if stmt[0] != "call":
+        return None
+    callee = _eval(stmt[1], frame, globals_, reader, 0)
+    if not isinstance(callee, _Function):
+        return None
+    args = [_eval(a, frame, globals_, reader, 0) for a in stmt[2]]
+    new_frame = _Frame(callee, frame)
+    # unpassed parameters are set to 0 (per the wiki)
+    for name in callee.args:
+        new_frame.locals[name] = 0
+    for name, value in zip(callee.args, args, strict=False):
+        new_frame.locals[name] = value
+    return new_frame
+
+
+class _Machine:
+    """One Forbin run: an explicit stack of resumable call frames.
+
+    ``self.frames`` holds one ``_Frame`` per statement-position call in
+    progress (``main`` initially); a call pushes a frame instead of
+    recursing, so that recursion pattern is uncapped.  Only the innermost
+    frame (``self.frames[-1]``) is ever touched per ``step()``.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        self.io = io
+        self.globals = _Parser(code).parse()
+        if "main" not in self.globals:
+            raise ValueError("Forbin program has no main function")
+        self.reader = _BitReader(io)
+        main_fn = self.globals["main"]
+        main_frame = _Frame(main_fn, None)
+        # unpassed parameters are set to 0 (per the wiki); main is called
+        # with a single dummy argument 0, so every parameter ends up 0
+        for name in main_fn.args:
+            main_frame.locals[name] = 0
+        self.frames: list[_Frame] = [main_frame]
+
+    @property
+    def halted(self) -> bool:
+        """Whether the frame stack has emptied (``main`` returned or ended)."""
+        return not self.frames
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection.
+
+        Locals are captured via ``repr()`` since a function value is not
+        meaningfully hashable (it closes over live, mutable frames) --
+        sufficient for the state-cycle detector's purpose, since a
+        genuine hang re-executes the same cursor with the same bindings
+        on every lap.  A call that never returns pushes one new frame per
+        step and none is ever popped, so this cannot mistake unbounded
+        recursion for a repeat: the frame tuple's length strictly grows.
+        """
+        return (
+            tuple(
+                (
+                    f.fn.name,
+                    f.pos,
+                    tuple(sorted((k, repr(v)) for k, v in f.locals.items())),
+                    f.for_ind if f.for_rows is not None else -1,
+                    f.for_body_pos if f.for_rows is not None else -1,
+                )
+                for f in self.frames
+            ),
+            self.io.position(),
+        )
+
+    def step(self) -> None:
+        """Execute one statement, one ``for``-loop row, or advance a call."""
+        if self.halted:
+            return
+        frame = self.frames[-1]
+
+        if frame.for_rows is not None:
+            self._step_for(frame)
+            return
+
+        if frame.pos >= len(frame.body):
+            self._pop()
+            return
+
+        stmt = frame.body[frame.pos]
+        if stmt[0] == "for":
+            spec = stmt[1]
+            rows, names = _for_rows(spec, frame, self.globals, self.reader, 0)
+            frame.for_rows = rows
+            frame.for_names = names
+            frame.for_ind = 0
+            return
+
+        pushed = _start_statement_call(stmt, frame, self.globals, self.reader)
+        if pushed is not None:
+            frame.pos += 1
+            self.frames.append(pushed)
+            return
+        got = _exec_stmt(stmt, frame, self.globals, self.reader, 0)
+        frame.pos += 1
+        if got is not None:
+            self._pop()
+
+    def _step_for(self, frame: _Frame) -> None:
+        """Advance a ``for`` loop already in progress.
+
+        One row-body statement, one new row, or the loop's own completion.
+        """
+        if frame.for_body_pos < len(frame.for_body):
+            stmt = frame.for_body[frame.for_body_pos]
+            pushed = _start_statement_call(stmt, frame, self.globals, self.reader)
+            if pushed is not None:
+                frame.for_body_pos += 1
+                self.frames.append(pushed)
+                return
+            got = _exec_stmt(stmt, frame, self.globals, self.reader, 0)
+            frame.for_body_pos += 1
+            if got is not None:
+                self._pop()
+            return
+        if frame.for_ind >= len(frame.for_rows or []):
+            frame.for_rows = None
+            frame.pos += 1
+            return
+        row = frame.for_rows[frame.for_ind] if frame.for_rows is not None else []
+        frame.for_ind += 1
+        for name, value in zip(frame.for_names, row, strict=False):
+            if name != "_":
+                frame.locals[name] = value
+        frame.for_body = frame.body[frame.pos][2]
+        frame.for_body_pos = 0
+
+    def _pop(self) -> None:
+        """Pop the finished top frame.
+
+        A statement-position call's return value is discarded, matching
+        the language's no-value-threading recursion idiom.
+        """
+        self.frames.pop()
+
+
 def run(code: str, io: IO) -> None:
     """Run a Forbin program, calling ``main`` with a dummy argument."""
-    funcs = _Parser(code).parse()
-    if "main" not in funcs:
-        raise ValueError("Forbin program has no main function")
-    reader = _BitReader(io)
-    _call(funcs["main"], [0], None, funcs, reader, 0)
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

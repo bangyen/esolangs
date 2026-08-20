@@ -39,6 +39,13 @@ each of these assumptions in the "Computational class" section):
 - exhausted input raises :class:`EOFError` (repo-wide convention), and an
   empty input line raises :class:`IndexError` through
   :meth:`esolangs.interpreters.io.IO.input_char`.
+
+The interpreter runs on a :class:`_Machine` (the grid, tape, queue, code
+pointer, and step count), so it is step-capable: ``step()`` executes one
+command and ``halted`` is true once ``limit`` steps have run.  Every
+program runs forever on the donut grid, so ``halted`` only ever becomes
+true at the step limit; :func:`run` still raises :class:`HaltError` there,
+matching the original's unconditional post-loop raise.
 """
 
 import sys
@@ -75,64 +82,101 @@ def _parse(code: str) -> list[str]:
     raise ValueError("program must contain a line with DDDDDD")
 
 
+class _Machine:
+    """Per-run ABCDirection state: the grid, tape, queue, and cursor."""
+
+    def __init__(self, code: str, io: IO, limit: int = 10_000) -> None:
+        """Parse ``code``'s grid and start the pointer at the top-left cell."""
+        self.io = io
+        self.limit = limit
+        self.grid = _parse(code)
+        self.width = len(self.grid[0])
+        self.height = len(self.grid)
+
+        self.tape: dict[int, int] = {}
+        self.cell = 0
+        self.queue: deque[int] = deque()
+        self.out_bits: list[int] = []
+        self.in_bits: list[int] = []
+
+        self.x = self.y = 0
+        self.d = DOWN
+        self.steps = 0
+
+    @property
+    def halted(self) -> bool:
+        """Whether ``limit`` steps have run.
+
+        The pointer never leaves the donut grid, so this is the only way
+        the machine halts.
+        """
+        return self.steps >= self.limit
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.x,
+            self.y,
+            self.d,
+            self.cell,
+            tuple(sorted(self.tape.items())),
+            tuple(self.queue),
+            tuple(self.out_bits),
+            tuple(self.in_bits),
+        )
+
+    def step(self) -> None:
+        """Execute one command, then advance the pointer along the grid."""
+        if self.halted:
+            return
+        c = self.grid[self.y][self.x]
+        if c == "A":
+            self.d = (self.d + 1) % 4
+        elif c == "C":
+            if self.d == RIGHT:
+                self.cell -= 1
+            elif self.d == LEFT:
+                self.cell += 1
+                self.tape[self.cell] = self.tape.get(self.cell, 0) ^ 1
+            elif self.d == UP:
+                if self.tape.get(self.cell, 0):
+                    self.d = (self.d - 1) % 4
+            elif self.d == DOWN:
+                self.out_bits.append(self.tape.get(self.cell, 0))
+                if len(self.out_bits) == 8:
+                    bits = self.out_bits
+                    self.io.print_char(chr(sum(b << i for i, b in enumerate(bits))))
+                    self.out_bits = []
+        elif c == "D":
+            if self.d == RIGHT:
+                self.queue.append(self.tape.get(self.cell, 0))
+            elif self.d == LEFT:
+                self.tape[self.cell] = self.queue.popleft() if self.queue else 0
+            elif self.d == UP:
+                if not self.in_bits:
+                    byte = self.io.input_char()
+                    self.in_bits = [(byte >> i) & 1 for i in range(8)]
+                self.tape[self.cell] = self.in_bits.pop(0)
+            elif self.d == DOWN:
+                if self.tape.get(self.cell, 0):
+                    self.d = DOWN
+                elif self.queue.popleft() if self.queue else 0:
+                    self.d = UP
+                elif self.queue.popleft() if self.queue else 0:
+                    self.d = RIGHT
+                else:
+                    self.d = LEFT
+
+        self.x = (self.x + _DIRS[self.d][0]) % self.width
+        self.y = (self.y + _DIRS[self.d][1]) % self.height
+        self.steps += 1
+
+
 def run(code: str, io: IO, limit: int = 10_000) -> None:
     """Run an ABCDirection program, halting after ``limit`` commands."""
-    grid = _parse(code)
-    width = len(grid[0])
-    height = len(grid)
-
-    tape: dict[int, int] = {}
-    cell = 0
-    queue: deque[int] = deque()
-    out_bits: list[int] = []
-    in_bits: list[int] = []
-
-    x = y = 0
-    d = DOWN
-    steps = 0
-
-    while steps < limit:
-        c = grid[y][x]
-        if c == "A":
-            d = (d + 1) % 4
-        elif c == "C":
-            if d == RIGHT:
-                cell -= 1
-            elif d == LEFT:
-                cell += 1
-                tape[cell] = tape.get(cell, 0) ^ 1
-            elif d == UP:
-                if tape.get(cell, 0):
-                    d = (d - 1) % 4
-            elif d == DOWN:
-                out_bits.append(tape.get(cell, 0))
-                if len(out_bits) == 8:
-                    io.print_char(chr(sum(b << i for i, b in enumerate(out_bits))))
-                    out_bits = []
-        elif c == "D":
-            if d == RIGHT:
-                queue.append(tape.get(cell, 0))
-            elif d == LEFT:
-                tape[cell] = queue.popleft() if queue else 0
-            elif d == UP:
-                if not in_bits:
-                    byte = io.input_char()
-                    in_bits = [(byte >> i) & 1 for i in range(8)]
-                tape[cell] = in_bits.pop(0)
-            elif d == DOWN:
-                if tape.get(cell, 0):
-                    d = DOWN
-                elif queue.popleft() if queue else 0:
-                    d = UP
-                elif queue.popleft() if queue else 0:
-                    d = RIGHT
-                else:
-                    d = LEFT
-
-        x = (x + _DIRS[d][0]) % width
-        y = (y + _DIRS[d][1]) % height
-        steps += 1
-
+    machine = _Machine(code, io, limit)
+    while not machine.halted:
+        machine.step()
     raise HaltError(f"execution exceeded the {limit}-command limit")
 
 

@@ -14,7 +14,6 @@ __all__ = [
     "collatz_multiverse",
     "decleq",
     "dig",
-    "dotlang",
     "eval",
     "polynomial",
     "qoibl",
@@ -188,18 +187,6 @@ def wii2d(text: str) -> str:
 
     prog = ">" + "".join(build(ord(c)) + "~" for c in text) + "."
     return f"{prog}\n!"
-
-
-def dotlang(text: str) -> str:
-    """Build a single-dot program that prints one backtick-wrapped string.
-
-    The interpreter's backtick match is greedy, so the text must fit on one
-    grid row; line-break characters would split the program into rows and a
-    backtick would be absorbed by the string match.
-    """
-    if any(c in "\n\r\v\f\x1c\x1d\x1e\x85`" for c in text):
-        raise ValueError("dotlang can only output a single line without backticks")
-    return "\u2022#" + "`" + text + "`#"
 
 
 def eval(text: str) -> str:  # noqa: A001 - the language is named "Eval"

@@ -106,12 +106,23 @@ class _Machine:
         self.cells: list[int] = [0]
         self.ptr = 0
         self.hold = 0
-        self._pos = 0
-        self._call_stack: list[int] = []
+        self.pos = 0
+        self.call_stack: list[int] = []
 
     @property
     def halted(self) -> bool:
-        return self._pos >= len(self.commands)
+        return self.pos >= len(self.commands)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.pos,
+            tuple(self.cells),
+            self.ptr,
+            self.hold,
+            tuple(self.call_stack),
+            self.io.position(),
+        )
 
     def _label(self, num: int) -> int | None:
         """Return the command index of the ``num`` label, or None."""
@@ -131,7 +142,7 @@ class _Machine:
         """Execute one command, advancing (or jumping) the position."""
         if self.halted:
             return
-        cmd = self.commands[self._pos]
+        cmd = self.commands[self.pos]
         c = cmd.op
 
         if c == "^":
@@ -171,7 +182,7 @@ class _Machine:
             if target is None:
                 raise HaltError(f"jump to undefined label {cmd.arg}")
             if self.cells[self.ptr] != 0:
-                self._pos = target
+                self.pos = target
                 return
         elif c == "!":
             if cmd.arg is None:  # pragma: no cover - _parse rejects bare operators
@@ -180,7 +191,7 @@ class _Machine:
             if target is None:
                 raise HaltError(f"jump to undefined label {cmd.arg}")
             if self.cells[self.ptr] == 0:
-                self._pos = target
+                self.pos = target
                 return
         elif c == "$":
             pass  # a subroutine definition; execution falls through in place
@@ -190,19 +201,19 @@ class _Machine:
             target = self._subroutine(cmd.arg)
             if target is None:
                 raise HaltError(f"call to undefined subroutine {cmd.arg}")
-            self._call_stack.append(self._pos + 1)
-            self._pos = target
+            self.call_stack.append(self.pos + 1)
+            self.pos = target
             return
         elif c == ";":
-            if not self._call_stack:
+            if not self.call_stack:
                 raise HaltError("; with no active subroutine call")
-            self._pos = self._call_stack.pop()
+            self.pos = self.call_stack.pop()
             return
         elif c == ".":
-            self._pos = len(self.commands)
+            self.pos = len(self.commands)
             return
 
-        self._pos += 1
+        self.pos += 1
 
 
 def run(code: str, io: IO) -> None:

@@ -237,3 +237,35 @@ class TestEdgeCases:
 
     def test_unterminated_func_mode(self) -> None:
         assert run_program("H") == ""
+
+
+class TestStepMachine:
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+
+        machine = _Machine(ScriptedIO("hi"), 1_000_000)
+        machine.frames.append(_Frame("W", 0))
+        before = machine.snapshot()
+        machine.step()  # W reads a line, pushing it
+        assert machine.snapshot() != before
+        assert machine.io.position() == 1
+        assert machine.stack == ["hi"]
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(ScriptedIO(), 1_000_000)
+        machine.frames.append(_Frame("FAFY", 0))
+        assert run_until_halt_or_cycle(machine) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # FAFHKMHZ: Z re-runs "KM" (dup then pop, a net no-op on the stack)
+        # forever since the stack never empties -- a genuine state cycle,
+        # not unbounded growth.
+        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine(ScriptedIO(), 1_000_000)
+        machine.frames.append(_Frame("FAFHKMHZ", 0))
+        assert run_until_halt_or_cycle(machine) is False
