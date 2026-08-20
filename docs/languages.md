@@ -39,7 +39,6 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Dig | yes | yes |  | yes |  | hello |
 | Dimensional | yes | yes |  | yes |  | hello |
 | Dotlang | yes | yes |  | yes |  | hello boolean |
-| EXCON | yes | yes |  |  | yes | hello |
 | Eval | yes | yes |  | yes |  | hello boolean |
 | Factor | yes | yes |  |  |  | hello truth-machine |
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
@@ -73,7 +72,6 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | ZTOALC L | yes | yes |  | yes |  | hello |
 | bit~ | yes | yes | yes | yes |  | hello |
 | brainfuck | yes | yes |  | yes |  | hello |
-| huf | yes | yes |  |  |  | hello |
 
 The `esolangs` command lists the languages with Python support:
 

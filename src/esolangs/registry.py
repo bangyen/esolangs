@@ -259,12 +259,6 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.eval",
         id="eval",
     ),
-    "EXCON": Language(
-        "EXCON",
-        _generate.excon,
-        "tape_based.excon",
-        id="excon",
-    ),
     "Factor": Language(
         "Factor",
         _generate.factor,
@@ -293,12 +287,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.home_row,
         "tape_based.home_row",
         id="home_row",
-    ),
-    "huf": Language(
-        "huf",
-        _generate.huf,
-        "register_based.huf",
-        id="huf",
     ),
     "Jaune": Language(
         "Jaune",

@@ -69,7 +69,6 @@ def test_compiler_sets_match_the_compiler_modules() -> None:
     assert {
         "BF-PDA",
         "BFStack",
-        "EXCON",
         "Home Row",
         "Jaune",
         "RAM0",
