@@ -37,16 +37,23 @@ construction has not been built — distinct from the genuine walls in
 `docs/limitations.md`'s boolean-blockers table, which document why no
 construction can work.
 
-- **2dFish — confirmed constructible.**  2dFish has no runtime way to
-  combine two separately-read inputs (each `%` overwrites the single
-  accumulator), but a *parameterized* generator sidesteps that: verified by
-  construction that two independent junction cells (`/` skip vs. `v`
-  detour-and-remerge, mirroring WII2D's merging-chain technique) each
-  independently gate an extra `i` before merging back onto the same
-  accumulator, giving distinct output per two-bit input combination
-  (`(0,0)->0, (0,1)->1, (1,0)->1, (1,1)->2`).  Building the actual
-  generator (arbitrary `n`, decision-tree or closed-form construction) is
-  unbuilt work, not a research question.
+- **2dFish — constructible (decision tree); the WII2D-style chain is
+  affine-only.**  2dFish has no runtime way to combine two separately-read
+  inputs (each `%` overwrites the single accumulator), so a parameterized
+  generator is required.  The WII2D merging-chain construction does **not**
+  transfer as a primary generator: the chain must finish with the
+  accumulator exactly 0 or 1 (`o` prints the decimal value) and the `i d s`
+  ops can only collapse a sign pair via `s`, so the chain realizes exactly
+  the affine functions (`2**(n+1)` tables — verified exhaustively: 8 of 16
+  two-input tables, with AND/OR/NAND/NOR unreachable at any op-string
+  length).  The **decision tree** (the `wii2d_tree` analog: re-embed each
+  input at every node, leaves `i o @` / `o @`) is the universal construction
+  and was verified for every table through `n == 4` against the interpreter.
+  The 2dFish mechanics (``/`` in place of ``>``, full-width rows for the
+  ragged grid, an `i`-preamble for the start value, single-char junction
+  cells) are documented in `docs/walls.md`.  Building the actual generator
+  (arbitrary `n`, tree or chain-with-tree-fallback) is unbuilt work, not a
+  research question.
 - **SLOW ACV MAMMALIAN — plausible, unbuilt.**  LEAPFROG is a genuine
   data-dependent conditional jump fed by ACCEPT (input), so the machine is
   structurally capable; nobody has attempted a boolean-table construction
