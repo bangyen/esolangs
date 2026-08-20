@@ -198,3 +198,33 @@ class TestEmptyProgram:
     def test_only_terminator_line(self) -> None:
         run_halts("DDDDDD")
         assert run_program("DDDDDD") == ""
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.tape_based.abcdirection import _Machine
+
+        machine = _Machine(ZERO_BYTE, ScriptedIO(), limit=10)
+        before = machine.snapshot()
+        machine.step()  # the top-left C outputs the (zero) cell
+        assert machine.snapshot() != before
+        assert machine.out_bits == [0]
+
+    def test_step_limit_sets_halted(self) -> None:
+        from esolangs.interpreters.tape_based.abcdirection import _Machine
+
+        machine = _Machine(ZERO_BYTE, ScriptedIO(), limit=5)
+        for _ in range(5):
+            assert not machine.halted
+            machine.step()
+        assert machine.halted
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # DDDDDD alone is a 1x6 donut: D-down sees an empty queue and empty
+        # cell, so it turns left forever, dequeueing zeros -- a genuine
+        # state cycle well before the step limit fires.
+        from esolangs.interpreters.tape_based.abcdirection import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        machine = _Machine("DDDDDD", ScriptedIO(), limit=10_000)
+        assert run_until_halt_or_cycle(machine) is False
