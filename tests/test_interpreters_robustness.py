@@ -191,6 +191,10 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.other.container import _Machine
 
         return _Machine([], io)
+    if module == "esolangs.interpreters.register_based.nevermind":
+        from esolangs.interpreters.register_based.nevermind import _Machine
+
+        return _Machine([], io)
     raise KeyError(module)
 
 
@@ -233,6 +237,7 @@ _STEP_MACHINES = {
     "esolangs.interpreters.register_based.pct_squared_minus_one",
     "esolangs.interpreters.tape_based.suffolk",
     "esolangs.interpreters.other.container",
+    "esolangs.interpreters.register_based.nevermind",
 }
 
 

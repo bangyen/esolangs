@@ -672,6 +672,17 @@ class TestContainer:
         assert not vm.halted
 
 
+class TestNevermind:
+    def test_named_variables_and_cursor(self) -> None:
+        vm = esolangs.make_vm("Nevermind", "make,x,5\nprint,$x")
+        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
+        vm.step()  # make,x,5 stores x = 5
+        assert (vm.ip, vm.memory) == (1, [5])
+        vm.step()  # print,$x resolves $x and prints it
+        assert vm.halted
+        assert vm.output == "5\n"
+
+
 class TestRunUntilHaltOrCycle:
     def test_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
