@@ -426,10 +426,10 @@ timeout stays as the backstop for that class, and for the fuzzers (which
 don't control the program shape the way hand-written tests do).
 
 `tests/test_interpreters_robustness.py` decides the empty-program invariant
-by state-cycle detection for thirty string-based step-capable machines
+by state-cycle detection for twenty-nine string-based step-capable machines
 (brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, The Temporary Stack,
 Qoibl, Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
-ROTfuck, Circlefuck, BFStack, Albabet, Decleq, 6-5, Back, BIO, NoComment,
+ROTfuck, Circlefuck, BFStack, Decleq, 6-5, Back, BIO, NoComment,
 3D Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial), and
 keeps the SIGALRM backstop for the rest (Grapheme's machine has no
 `snapshot()` yet, and Painfuck's `y` is non-deterministic).

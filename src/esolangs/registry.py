@@ -129,12 +129,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.pct_squared_minus_one",
         id="pct_squared_minus_one",
     ),
-    "Albabet": Language(
-        "Albabet",
-        _generate.albabet,
-        "register_based.albabet",
-        id="albabet",
-    ),
     "ArrowQueue": Language(
         "ArrowQueue",
         id="arrowqueue",

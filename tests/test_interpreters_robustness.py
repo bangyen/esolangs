@@ -117,10 +117,6 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.stack_based.bfstack import _Machine
 
         return _Machine("", io)
-    if module == "esolangs.interpreters.register_based.albabet":
-        from esolangs.interpreters.register_based.albabet import _Machine
-
-        return _Machine("", io)
     if module == "esolangs.interpreters.register_based.decleq":
         from esolangs.interpreters.register_based.decleq import _Machine
 
@@ -189,7 +185,6 @@ _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.rotfuck",
     "esolangs.interpreters.tape_based.circlefuck",
     "esolangs.interpreters.stack_based.bfstack",
-    "esolangs.interpreters.register_based.albabet",
     "esolangs.interpreters.register_based.decleq",
     "esolangs.interpreters.tape_based.six_five",
     "esolangs.interpreters.tape_based.back",

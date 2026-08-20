@@ -408,17 +408,6 @@ class TestBFStack:
         assert vm.halted
 
 
-class TestAlbabet:
-    def test_registers_and_cursor(self) -> None:
-        vm = esolangs.make_vm("Albabet", "ai")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0, 0], [])
-        vm.step()  # a increments x
-        assert vm.memory == [1, 0]
-        vm.step()  # i prints x
-        assert vm.output == "\x01"
-        assert vm.halted
-
-
 class TestDecleq:
     def test_memory_and_pointer(self) -> None:
         vm = esolangs.make_vm("Decleq", "-2 5 9 9 9 65 0 0")
@@ -672,7 +661,6 @@ class TestFactory:
         ("ROTfuck", "."),
         ("Circlefuck", "+.@"),
         ("BFStack", ">+."),
-        ("Albabet", "ai"),
         ("Decleq", "-2 5 9 9 9 65 0 0"),
         ("6-5", "55A"),
         ("Back", "-*"),
