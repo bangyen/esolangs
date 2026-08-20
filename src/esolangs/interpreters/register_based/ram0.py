@@ -2,6 +2,12 @@
 
 Computational model with two registers (z, n) and unbounded RAM.
 Seven commands: Z, A, N, C, L, S, and goto.
+
+The interpreter runs on a :class:`_Machine` (registers, RAM, and the token
+cursor), so it is step-capable: ``step()`` executes one token and ``halted``
+is true once the cursor runs off either end of the token list.  The state
+dump is printed exactly once, on the step that halts the machine, matching
+the original's print-after-the-loop behavior.
 """
 
 import re
@@ -36,24 +42,61 @@ def change(z: int, n: int, ram: dict[int, int], op: str) -> tuple[int, int, bool
     return z, n, not z
 
 
+class _Machine:
+    """Per-run RAM0 state: the registers, RAM, and the token cursor.
+
+    ``step()`` executes one token; ``halted`` is true once the cursor runs
+    off either end of the token list.  The state-cycle hang detector and the
+    VM expose this object.
+    """
+
+    def __init__(self, code: str, io: IO) -> None:
+        """Tokenize ``code`` and start both registers and RAM at zero."""
+        self.io = io
+        self.tokens = re.findall(r"([ZANCLS]|[1-9]\d*)", code)
+        self.z = self.n = 0
+        self.ram: dict[int, int] = {}
+        self.ind = 0
+        self._dumped = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether the cursor has run past the end of the token list.
+
+        Matches the original loop's sole condition (``ind < len(tokens)``):
+        a goto always lands with ``ind >= 0`` because the regex only
+        tokenizes digit strings starting ``1``-``9`` (so ``int(c) - 2 + 1``,
+        the post-increment value, is never negative) -- there is no path to
+        a negative index this needs to guard against separately.
+        """
+        return self.ind >= len(self.tokens)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (self.ind, self.z, self.n, frozenset(self.ram.items()))
+
+    def step(self) -> None:
+        """Execute one token, dumping the state once the cursor runs off."""
+        if self.halted:
+            if not self._dumped:
+                output(self.z, self.n, self.ram, self.io)
+                self._dumped = True
+            return
+        c = self.tokens[self.ind]
+        self.z, self.n, skip = change(self.z, self.n, self.ram, c)
+        if c == "C" and skip:
+            self.ind += 1
+        elif c.isdigit():
+            self.ind = int(c) - 2
+        self.ind += 1
+
+
 def run(code: str, io: IO) -> None:
     """Execute a RAM0 program by parsing commands and running them sequentially."""
-    expr = r"([ZANCLS]|[1-9]\d*)"
-    tokens = re.findall(expr, code)
-    z = n = 0
-    ram: dict[int, int] = {}
-    ind = 0
-
-    while ind < len(tokens):
-        c = tokens[ind]
-        z, n, skip = change(z, n, ram, c)
-        if c == "C" and skip:
-            ind += 1
-        elif c.isdigit():
-            ind = int(c) - 2
-        ind += 1
-
-    output(z, n, ram, io)
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
+    machine.step()  # dump the final state
 
 
 if __name__ == "__main__":

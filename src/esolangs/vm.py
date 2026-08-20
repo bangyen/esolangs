@@ -1141,6 +1141,36 @@ class _PolynomialVM(_BaseVM):
         return []
 
 
+class _RAM0VM(_BaseVM):
+    """Two registers + RAM; ``ip`` the token cursor, ``memory`` z, n, then RAM."""
+
+    def __init__(self, program: str, stdin: str = "") -> None:
+        super().__init__(program, stdin)
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        self._machine = _Machine(program, self._io)
+
+    @property
+    def halted(self) -> bool:
+        return self._machine.halted
+
+    def step(self) -> None:
+        self._machine.step()
+
+    @property
+    def ip(self) -> int:
+        return self._machine.ind
+
+    @property
+    def memory(self) -> list[int]:
+        ram = self._machine.ram
+        return [self._machine.z, self._machine.n, *(ram[k] for k in sorted(ram))]
+
+    @property
+    def stack(self) -> list[object]:
+        return []
+
+
 class _ROTFuckVM(_BaseVM):
     """Rotating tape + cursor; ``ip`` the cursor, ``memory`` the tape."""
 
@@ -1386,6 +1416,7 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "bit~": _BitTildeVM,
     "Collatz Multiverse": _CollatzMultiverseVM,
     "Polynomial": _PolynomialVM,
+    "RAM0": _RAM0VM,
 }
 
 
