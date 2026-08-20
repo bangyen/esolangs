@@ -30,31 +30,6 @@ is a heavy, unbuilt 2D construction, and the interpreter needs a
 seeded-randomness decision first (the LaserFuck precedent), so COD stays
 low-priority and risky rather than ruled out.
 
-## Boolean generators not yet attempted
-
-Languages with a text generator but no boolean generator, where a
-construction has not been built — distinct from the genuine walls in
-`docs/limitations.md`'s boolean-blockers table, which document why no
-construction can work.
-
-- **2dFish — constructible (decision tree); the WII2D-style chain is
-  affine-only.**  2dFish has no runtime way to combine two separately-read
-  inputs (each `%` overwrites the single accumulator), so a parameterized
-  generator is required.  The WII2D merging-chain construction does **not**
-  transfer as a primary generator: the chain must finish with the
-  accumulator exactly 0 or 1 (`o` prints the decimal value) and the `i d s`
-  ops can only collapse a sign pair via `s`, so the chain realizes exactly
-  the affine functions (`2**(n+1)` tables — verified exhaustively: 8 of 16
-  two-input tables, with AND/OR/NAND/NOR unreachable at any op-string
-  length).  The **decision tree** (the `wii2d_tree` analog: re-embed each
-  input at every node, leaves `i o @` / `o @`) is the universal construction
-  and was verified for every table through `n == 4` against the interpreter.
-  The 2dFish mechanics (``/`` in place of ``>``, full-width rows for the
-  ragged grid, an `i`-preamble for the start value, single-char junction
-  cells) are documented in `docs/walls.md`.  Building the actual generator
-  (arbitrary `n`, tree or chain-with-tree-fallback) is unbuilt work, not a
-  research question.
-
 ## Transpilers
 
 A direct transpile between languages with no shared core is not a rewrite —
@@ -74,16 +49,28 @@ the table:
 
 ## Deferred-removal candidates
 
-**No language is currently on this list.**  A language becomes a candidate
-when it has real language-defined output but no generator that uses it (no
-conditional to drive a boolean generator, or a boolean cap too low to be
-interesting) — see `docs/limitations.md` for the removed cases and the
+A language becomes a candidate when it has real language-defined output but
+no generator that uses it (no conditional to drive a boolean generator, or a
+boolean cap too low to be interesting), or when its only boolean construction
+would break a documented convention and its text generator is too thin to
+stand alone — see `docs/limitations.md` for the removed cases and the
 criteria.  The interpreter-only languages with no text generator but a
 working, uncapped boolean generator (ABCDirection, Back, BF-PDA, Bitdeque,
 Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue) are
 **not** candidates: they participate fully in the repo's verification
 machinery via the boolean generator, and their only weakness is an
 interpreter-invented state dump where the wiki defines no text output.
+
+- **2dFish — deferred.**  Its text generator is a straight-line delta
+  encoder (the thinnest computational category), and it has no total
+  once-embedding boolean generator: the decision tree would need multiple
+  embedding (the exactly-once exception Dotlang was removed for) and the
+  once-embedding chain is affine-only (constants, XOR/XNOR, projections —
+  see `docs/walls.md`).  It stays for now because the delta encoder is
+  genuine arithmetic (the current criterion's line is literal-embed), but
+  if the criterion is ever tightened to "real computation only"
+  (branching/search, not straight-line deltas), it becomes the final
+  removal — nothing else is thin.
 
 **Against removal (the standing argument, for when a candidate reappears).**
 Most interpreter-only languages are the *only* implementation on the wiki,
@@ -121,9 +108,17 @@ languages (a tape/pointer/instruction-counter maps 1:1 onto cells,
 registers, and jumps); Rust fits the semantic ones (stacks, typed registers,
 bit manipulation, 2D grids, where hand-written assembly would be unreadable).
 
+**No input in RISC-V.**  RISC-V cross-checks are for no-input/output-only
+languages only.  The fuzzer feeds the generated *program* to the RISC-V ELF
+as its stdin (`scripts/verify_differential.py`), and the Python side reads
+whole lines while the unicorn runner does raw byte reads, so an input-reading
+port would need to rewire input-bit passing and match the line-delimited
+`input_char` semantics.  Languages whose generators read input belong in the
+Rust column, where the reference gets input bits directly.
+
 | Toolchain | Languages |
 | --- | --- |
-| RISC-V assembly | NoComment (tape + stack with a byte-indexed skip). |
+| RISC-V assembly | NoComment (tape + stack with a byte-indexed skip), BF-PDA (bit stack + tape), RAM0 (register machine), BIO (three registers plus a loop stack, guards checked lazily to match the Python interpreter's control flow), Minsky Swap (two registers, a swap pointer, and a jump-on-zero `~`; each `~` keeps a fixed target across every visit via a token-indexed table, not a running execution-order cursor). |
 | Rust | Forþ, Basicfuck, Unsquare, 3x, 2dFish, Painfuck, LaserFuck (stacks, typed registers, 2D grids); %^2^-1 and bit~ keep corpus cross-checks but lost their straight-line text-generator fuzzes. |
 
 **Worth adding (audited).**  These languages have complex-output generators
@@ -133,8 +128,7 @@ round-trip corpus, so a cross-check would add real verification.
 
 | Toolchain | Languages |
 | --- | --- |
-| RISC-V assembly | 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program). |
-| Rust | AddSubJump (branch-and-goto OISC), BIO (register counter loops), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution). |
+| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), S*bleq (tape OISC with a `<= 0` branch), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), ABCDirection (2D grid + Boolfuck input), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
 its output is a fixed pattern the round-trip already covers, so a cross-check
@@ -146,21 +140,43 @@ specific bug motivates one.
 for having no generator or only a corpus-only cross-check; see
 `docs/limitations.md` for the languages and reasoning.
 
-## VM / debugging interface (remaining work)
+## VM / debugging interface
 
 `esolangs.make_vm` (step-and-inspect wrappers) and `esolangs.make_debugger`
-(breakpoints and watches over the VM) cover most of the interpreter
-registry.  What remains:
+(breakpoints and watches over the VM) now cover the whole interpreter
+registry: every language has a step()/halted/snapshot() state object and a
+VM adapter in `esolangs.vm._VM_ADAPTERS`.  The last conversions --
+Jaune, SLOW ACV MAMMALIAN, ZTOALC L, Between, MyScript, Lamfunc, Forbin,
+and Suptiftam -- are in the commit history; the recursive-tree-walker
+ones (Lamfunc, Forbin, Suptiftam) needed an explicit resumable frame in
+place of Python's own call stack, documented in `docs/walls.md`'s
+state-cycle-detection section.  Nothing is tracked here as remaining.
 
-- **More step-capable interpreters.**  Convert the rest of the registry to
-  a step()/halted state object: the boolean-parameterized machines without
-  a state object yet, and the remaining tape/stack OISCs.
-- **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
-  currently the active call frame's cursor (and its machine has no
-  ``snapshot()``, so it still uses the wall-clock hang backstop); a
-  language with nested calls should expose the call stack, not fold it
-  into one frame's position.  Forþ's VM exposes the same single
-  active-frame cursor shape (its machine does have a ``snapshot()``).
+## Forbin's expression-position recursion (remaining depth-cap gap)
+
+Suptiftam's calls, Forbin's *statement-position* calls (`f(y);`), and all
+of Lamfunc's calls were converted to an explicit frame stack, removing an
+invented 250-level cap (or, for Lamfunc, Python's own default recursion
+limit) as a correctness bug — a correct, terminating program recursing
+deeper than that no longer halts wrongly.  Forbin's *expression-position*
+calls (`x = f(y)`, where the assignment needs the callee's return value
+back synchronously mid-expression) were deliberately left out of that
+conversion and still recurse natively, bounded only by Python's own
+default limit rather than a documented cap.  See `docs/walls.md`'s
+state-cycle-detection section for the full reasoning: Forbin has no
+realistic program shape that recurses this way (`return` exits a call
+immediately, so there is no return-value-threading idiom that would
+produce deep expression-position recursion in practice), which is why this
+was scoped out rather than built as part of the original conversion.
+
+**Not pursued unless a concrete program needs it.**  Closing this gap
+would mean extending `_eval` itself into a resumable continuation stack
+(an `_EvalTask`-per-expression design, sketched and rejected in
+`docs/walls.md`'s history) — materially more machinery than the
+statement-position conversion for a case with no known real-world Forbin
+program that hits it.  Worth revisiting only if a program surfaces that
+needs deep expression-position recursion and Python's default limit is
+insufficient.
 
 ## Hanging-test optimization via state-cycle detection
 
@@ -170,17 +186,44 @@ instruction-count caps on the native references) except where state-cycle
 detection (`esolangs.vm.run_until_halt_or_cycle`) has replaced them for
 step-capable, deterministic machines — see `docs/limitations.md` for which
 interpreters are covered and why the wall-clock backstop remains for the
-rest.  What remains:
+rest.  Every step-capable interpreter (the whole registry, now that the VM
+section above is complete) has a `snapshot()`, so state-cycle detection
+coverage is as wide as it can get without weakening the non-determinism
+exclusion below.  What remains:
 
-- **Extend state-cycle detection to more interpreters.**  Only step-capable
-  machines can be checked; converting more of the registry (see the VM
-  section above) grows this set too.
-- **O(1)-memory cycle detection.**  `run_until_halt_or_cycle` currently
-  hashes every visited state into a set; Floyd/Brent two-pointer detection
-  would drop the memory cost to O(1) per run.
-- Grapheme's machine has no `snapshot()` yet, and Painfuck's `y` and
-  WII2D's `?` are non-deterministic, so all three stay on the wall-clock
-  backstop regardless of how far the conversion goes.
+- Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
+  non-deterministic, so all three stay on the wall-clock backstop
+  regardless of `snapshot()` coverage.
+- Suptiftam's calls, Forbin's statement-position calls, and all of
+  Lamfunc's calls now run on an explicit frame stack (see the section
+  above) instead of native Python recursion — confirmed while doing those
+  conversions, this does *not* make infinite recursion cycle-detectable via
+  `run_until_halt_or_cycle`.  A call that never returns pushes one new
+  frame per `step()` and none is ever popped, so `snapshot()`'s frame
+  tuple strictly grows and two whole-machine snapshots can never compare
+  equal: unbounded growth, the same class `+[>+]` already falls into for
+  that specific mechanism.  A separate, narrower check — comparing a
+  newly-pushed frame's own local state against ancestor frames already on
+  the stack, rather than whole-machine snapshots across time — could catch
+  the common case of a call whose local state repeats exactly relative to
+  an ancestor (e.g. an accidental unconditional self-call), but not every
+  infinite recursion, and it doesn't fit the existing `snapshot()`
+  protocol; not built, revisit only if a concrete program needs it.  See
+  `docs/walls.md` for the full argument.
+- **Branching cycle detection for `y`/`?` (considered, not started).**
+  Forking the walk at every random decision and requiring *every* branch to
+  prove a cycle would soundly prove "this program hangs no matter how the
+  coin lands" without faking determinism (unlike forcing `y`/`?` to a fixed
+  outcome, which would prove things about a different, deterministic
+  program instead of the real one).  Not pursued: each random decision
+  doubles the live branches, undoing the O(1)-memory point of Brent's
+  algorithm; a branch can still hang via unbounded growth (the class cycle
+  detection already can't catch), so the branch tree needs its own bound
+  and doesn't fully replace the wall-clock backstop; and the common case —
+  hangs under *some* coin flips, halts under others — isn't proved either
+  way, only the all-branches-hang case is.  The wall-clock backstop already
+  handles both languages correctly, so this is only worth building if a
+  specific need for the "always hangs" guarantee comes up.
 
 ## Severely constrained boolean generators (remove or lift)
 
@@ -189,6 +232,10 @@ deliberate rather than implicit: either lift the cap (an open construction)
 or, where the language has no other generator story, remove it.  The caps
 are documented in `docs/limitations.md` and `docs/walls.md`.
 
-**Open: ZTOALC L.**  Raises for dense, non-symmetric tables past `n == 3`
-but still covers symmetric and structured tables at `n == 4`.  Candidate to
-revisit if a general construction is found; otherwise a candidate to drop.
+**No language is currently on this list.**  ZTOALC L was assessed and kept:
+its tree-shaped construction is walled past dense, non-symmetric `n == 3`
+(re-verified in `docs/walls.md`, not just the original argument), so lifting
+the cap is closed, but the generator still covers every `n <= 3` table plus
+popcount-symmetric tables at any `n` — materially more than the two
+generators removed under this section's precedent (Home Row at `n <= 2`,
+Minifuck's `n <= 3` 0-preserving-only), so it stays.

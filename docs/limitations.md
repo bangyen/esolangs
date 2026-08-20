@@ -37,6 +37,25 @@ predictable across languages:
   step limit: interpreters run until the program halts naturally or loops
   forever.  Suffolk is the sole interpreter that ships with a fixed
   instruction limit, and callers cannot set one through the public API.
+- **Forbin's expression-position recursion is still bounded by Python's own
+  call stack.**  The wiki specifies no recursion limit.  Forbin's
+  *expression-position* calls (`x = f(y)`, where the assignment needs the
+  result back synchronously) recurse natively and hit Python's default
+  limit — not a documented cap, but not literally unbounded either; the
+  language has no realistic program shape that recurses this way (see
+  `docs/walls.md`), so this is a narrow, low-impact gap.  **Suptiftam,
+  Forbin's statement-position calls, and all of Lamfunc's calls are fully
+  uncapped**: their call machinery was converted to an explicit frame
+  stack (`_Machine.frames`, replacing native Python recursion for that
+  path — see `docs/walls.md`), so a correct, terminating recursion of any
+  depth now completes — confirmed by a 300-level chained-function test for
+  Suptiftam/Forbin and a 2000-level one for Lamfunc, past Python's own
+  default 1000-frame limit.  A genuinely infinite recursion becomes an
+  uncaught hang (unbounded growth of `frames`, the same class as a
+  brainfuck `+[>+]` tape loop) rather than a wrongly-early `HaltError` or a
+  `run_until_halt_or_cycle` catch — that detector compares whole-machine
+  snapshots, which a growing frame stack never repeats; see `docs/walls.md`
+  for a narrower, unbuilt mechanism that could catch the common case.
 
 ## Text generator blockers
 
@@ -62,7 +81,7 @@ per-character encoding can be meaningfully shortened:
 - **Delta- and cell-reuse** (brainfuck, Circlefuck) keep a running cell and
   emit only the difference, so consecutive close bytes cost a couple of
   tokens.
-- **Literal-embed** (Taglate, Eval, Between, Dotlang, MyScript, Nevermind)
+- **Literal-embed** (Taglate, Eval, Between, MyScript, Nevermind)
   put the text in the program directly (a string/queue literal); the text
   *is* the data.
 - **Literal-load with no arithmetic** (Sophie, Dimensional) reload the byte
@@ -80,7 +99,6 @@ per-character encoding can be meaningfully shortened:
 | --- | --- |
 | 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions via runtime `,` reads. A parameterized generator (embedding each input in the program at compile time, as WII2D's does) has not been assessed. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
-| The Temporary Stack | The auto-drain prints `front - 1`, which cannot be `'0'`/`'1'`; no input-dependent branch. |
 | SLOW ACV MAMMALIAN | `ACCEPT` forces `ptr == 0` to consume a bit, but routing needs `SPRINT` to move the pointer away — reading and routing can't coexist; the constant source (`SEED` from an emptied array) accumulates rather than resets; `DIGEST` only recovers a bit as part of a sum. An exhaustive search over the branch-free tails reaches only 0-preserving two-input tables — the same class already removed for Minifuck as too weak to keep. Full argument in `docs/walls.md`. |
 
 ## Generator caps (shipped)
@@ -91,6 +109,7 @@ per-character encoding can be meaningfully shortened:
 | Polynomial | `n <= 4` | Performance cap: exact factorization of huge coefficients is impractical past `n == 4`. |
 | 6-5 | `n <= 5` exact; dense large-`T` tables (e.g. AND-6) rejected past that | Genuine wall: the decision tree is total through `n == 5` (35 branch labels); the arithmetic fallback needs the table (or its complement) as a single integer, so a dense table with no cheap complement needs an unbuildable ~O(2**(2**n))-character setup. |
 | ZTOALC L | `n <= 3` exact; popcount-symmetric tables lifted further (e.g. XOR4 at `n == 4`); dense non-symmetric `n == 4` rejected | Genuine wall: every Collatz trajectory converges to the `16, 8, 4, 2, 1` tail, so a dense non-symmetric tree has leaf collisions past `n == 3`; symmetric tables fall back to a branch-free linear program instead. |
+| WII2D | `n <= 4` exact (exhaustive through three, sampled dense at four); symmetric tables of any arity via closed forms; dense non-symmetric past `n == 5` rejected | Genuine wall: the single-embedding chain's branch op strings are bounded, so the counting bound rules out representing every table once `n` is large; the search raises for dense non-symmetric tables past `n == 5`. |
 | 123 | one input only | Structural wall: single data byte, every read overwrites it. |
 | Factor | program-size cap, not `n`-driven: sparse tables (e.g. constant-0/1) stay under the cap at any tested `n`, dense tables (e.g. XOR4, AND4 at `n == 4`) don't | Liftable by host config: the encoded integer's decimal length is checked against `sys.get_int_max_str_digits()` (CPython's int-to-string DoS guard, default 4300 digits) before rendering — the Factor *interpreter* parses its program the same way, so a caller who raises the process-wide limit gets both the generator and the interpreter working past it. |
 
@@ -101,14 +120,12 @@ functions.  Their languages and text generators remain; see `docs/roadmap.md`.
 
 The parameterized no-input generators embed every input exactly once rather
 than re-embedding a bit at multiple decision nodes, mirroring how an
-input-capable language reads each input once per run; `dotlang` and
-`wii2d_tree` are documented exceptions.  `nocomment` and `bfpda` were
-previously counted as a second kind of exception (embedding each input's
+input-capable language reads each input once per run.  `nocomment` and
+`bfpda` were previously counted as exceptions (embedding each input's
 complement too), but neither actually needed it — `nocomment` computes the
 complement from the bit at runtime, and `bfpda`'s second push turned out to
 be a bit-independent constant, not a complement.  The per-language reasoning
-(why Dotlang and the `wii2d` fallback re-embed) is in
-[`docs/walls.md`](walls.md).
+is in [`docs/walls.md`](walls.md).
 
 ## Assessed and rejected
 
@@ -129,6 +146,15 @@ interpreter, generator, and tests were deleted from the repo.
 - **Chainlang**: AI-generated spec its own author calls unfinished.
 - **Conveyor**: no input command, stderr-only output.
 - **Crement**: self-modifying, no I/O; no input to branch on.
+- **Dotlang** (removed): its boolean generator was the only one that could
+  not embed each input exactly once — Dotlang has no storage, value test, or
+  arithmetic, so a decision tree has to re-embed every bit at every junction
+  (2**i gates) and its text generator is a plain literal-embed; the
+  convention-breaking re-embedding (and the ``{Ci}`` complement placeholder
+  it needed) was the workaround for that lack of state, so the language was
+  too thin to justify being the sole exception to the exactly-once rule.
+  The fork-and-kill construction that made it work is recorded in the
+  `docs/walls.md` ledger entry.
 - **DSDLAI** (removed): trivial Dig reskin with a random death chance; non-deterministic.
 - **Earfuck**: trivial brainfuck reskin (notes for instructions).
 - **EXCON** (removed): straight-line 8-cell bit pool; no conditional at all (only reset/flip/pointer/print), so no boolean generator.
@@ -148,6 +174,7 @@ interpreter, generator, and tests were deleted from the repo.
 - **something positive**: explicitly uncomputable.
 - **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
 - **Stun Step** (removed): no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
+- **The Temporary Stack** (removed): its text generator is a literal-embed (the text is pushed as a `*` string literal), and its boolean generator was walled — the auto-drain's `front - 1` output can't be `'0'`/`'1'` and there is no input-dependent branch. Under the tightened generator-story criterion (a literal-embed text generator needs a boolean generator), that made it inadmissible; the full wall argument is in `docs/walls.md`.
 - **Trash** (removed): advance-to-next-prime gadget; can never print `1`.
 - **Vandevelo**: input-only, no output at all.
 - **Varigen**: explicitly "uncomputable" joke language.

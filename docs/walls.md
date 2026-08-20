@@ -18,14 +18,31 @@ size guard.  The shipped decision tree stays primary (total through
 `n <= 5`); the arithmetic kernel is the fallback for small-`T` tables past
 that.
 
-## ZTOALC L (dense non-symmetric n > 3 wall)
+## ZTOALC L (dense non-symmetric n > 3 wall, re-verified)
 
 All Collatz trajectories converge to the `16, 8, 4, 2, 1` tail, so a dense
 full tree like XOR4 has every leaf's tail sweep through another leaf.  For
 **popcount-symmetric** tables the generator falls back to a branch-free
-*linear* program, which is `2**L` lines (XOR4 is 524,288; gated at `2**22`).
-Only dense, non-symmetric tables past `n == 3` still raise `ValueError`;
-those need a full `2**n` result table, which would be `2**(2**n)` lines.
+*linear* program: sum the input bits into one accumulator and look the
+result up in a small `n + 1`-entry table (XOR4's linear program is 524,288
+lines, `2**19`, under the `2**22` gate).  That shape does not carry over to
+dense **non-symmetric** tables, and not just because the result table is
+bigger: a non-symmetric table needs each combination's raw *position*
+(`0..2**n - 1`), not its popcount, and ZTOALC L's expression grammar has no
+multiply, so computing a positional index from `n` bits would need a
+weighted accumulation (`bit_i * 2**(n-1-i)`) that `+`/`-`/`=` cannot
+express in one step.  Even approximating it with repeated addition and a
+full `2**n`-entry result table (one distinct literal per combination,
+instead of the symmetric case's shared `n + 1` values) reaches `2**33`
+lines at `n == 4` — past the `2**22` gate by a wide margin, not under it.
+
+Re-verified against the interpreter: sweeping the tree placement's search
+parameter (`b1`) to ~500,000 values per table (125x the shipped budget) found
+no collision-free placement for three independent dense, non-symmetric
+`n == 4` tables, each exhausting in under a minute — a search-budget problem
+would show as a timeout, not a fast, complete exhaustion.  The wall holds;
+`n <= 3` exact plus popcount-symmetric tables at higher `n` is the ceiling
+for the tree-shaped construction.
 
 ## 3x (constant-bit guard skip is unsafe)
 
@@ -151,30 +168,34 @@ closer reading of either instruction set:
   input-dependent.
 
 Both generators now embed each input exactly once, with no `{Ci}`, matching
-Eval and most other parameterized generators.  `dotlang` remains the
-documented exception that legitimately needs `{Ci}` (see below) — its
-re-embedding is a different problem (no way to store a bit and read it
-back), not a complement-at-runtime problem.
+Eval and every other parameterized generator: the exactly-once rule holds
+without exception.
 
-## Dotlang (fork-and-kill; parameterized)
+## Dotlang (removed: its boolean construction could not embed each input once)
 
 A plain decision tree fails on Dotlang: `W~` warps to the *first* `W<name>`s`
 marker, so deeper levels re-enter the same markers and lose branch history;
 the type conditionals (`!?:`) cannot help — input digits become `int` 0/1,
 so both bits share a type — and there is no value comparison or arithmetic.
+Worse, Dotlang has no storage at all (no register, tape, or accumulator to
+hold a bit and re-read it), so *no* once-embedding boolean generator exists:
+a bit has to be re-embedded at every junction that tests it.
 
-The shipped generator (`esolangs.tools.boolean.dotlang`) sidesteps the wall
-by embedding the bits and forking: ``(`` spawns a dot at the matching ``)``
-while the caller continues, so a junction forks the dot into two and the
-embedded gate (``{Xi}`` or its ``{Ci}`` complement, filled with a
-pass-through ``a`` or an empty cell) kills one of them, leaving exactly the
-branch the bit selects.  The survivor turns down and right into its
+The generator resolved the wall by forking: ``(`` spawns a dot at the
+matching ``)`` while the caller continues, so a junction forks the dot into
+two and the embedded gate (``{Xi}`` or its ``{Ci}`` complement, filled with
+a pass-through ``a`` or an empty cell) kills one of them, leaving exactly
+the branch the bit selects.  The survivor turns down and right into its
 subtree, and each leaf is a ``#0#``/``#1#`` literal that prints the table
-entry before the dot dies, so the instantiated program prints its answer
-and halts.  It is a parameterized generator, total for any arity and table;
-the tree re-embeds each input at `2**i` junctions — one of the two
-parameterized generators that do not embed each input exactly once
-(`wii2d_tree` is the other, at `2**n - 1` junctions).
+entry before the dot dies.  The tree re-embedded each input at `2**i`
+junctions — the only parameterized generator that did not embed each input
+exactly once.
+
+The language was removed: that re-embedding (and the ``{Ci}`` placeholder it
+needed) is the workaround for having no state, and the text generator is a
+plain literal-embed, so Dotlang was too thin to justify being the sole
+exception to the exactly-once rule.  The construction is recorded here as a
+negative result so the assessment is not redone.
 
 ## Polynomial (numeric root-finding ruled out; caps at n <= 4)
 
@@ -230,7 +251,11 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   `input - 1` (47/48).  Neither is a `'0'`/`'1'`.  Exhaustive search to
   length 5 finds no identity or NOT program, and `\` (while nonempty) never
   terminates except via the fixed 15-command stack reset, so there is no
-  input-dependent branch either.
+  input-dependent branch either.  The language was removed: its text
+  generator is a literal-embed (the text is pushed as a `*` string literal)
+  and, with the boolean generator walled, it had no computational generator
+  to stand on — see the tightened generator-story criterion in
+  `docs/limitations.md`.
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.  **Resolved by the
@@ -240,9 +265,10 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   two branches are op strings that transform the accumulator before re-merging
   ahead of the next junction; the final accumulator is the table entry.  The
   ops are not monotone (`s` sends -1 to 1), so the decoding works for any
-  table at small arity (every table through three inputs is verified against
-  the interpreter; two inputs use a closed form — bit 0 packed as -1/0, each
-  column decoded by a single op).  The search tries op strings of length 2
+  table at small arity (every table through four inputs is verified against
+  the interpreter — exhaustively through three, sampled dense at four; two
+  inputs use a closed form — bit 0 packed as -1/0, each column decoded by a
+  single op).  The search tries op strings of length 2
   through 6 with a growing budget and generally fails past `n == 5` for dense
   non-symmetric tables.  Symmetric tables (AND/OR/XOR/majority/threshold-k of
   any arity) get their own closed forms first: parity/XNOR is exact and O(1)
@@ -252,11 +278,13 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   points instead of the full `2**n` rows — see `_wii2d_search`'s docstring
   for the counting-bound proof that the general (non-symmetric) search must
   eventually fail at high arity regardless of tuning, and why parity's exact
-  case is a speed win rather than a reachability one.  The guaranteed
-  fallback is the decision tree
-  (:func:`esolangs.tools.boolean.parameterized.wii2d_tree`), which
-  re-embeds each input at every node (2**n - 1 junctions) and works for any
-  arity.
+  case is a speed win rather than a reachability one.  When the search
+  cannot fit a table in its budget the generator raises :class:`ValueError`
+  — a genuine cap, not a representation limit: the counting bound shows no
+  chain with bounded op strings can represent every table once ``n`` is
+  large, so large dense non-symmetric tables (past ``n == 5``) are out of
+  reach, and there is no universal fallback (a tree would need each input
+  re-embedded at every node, which WII2D has no way to store).
 
   **A search-free chain (no BFS/DFS at all, just a formula) was assessed and
   found not to generalize.**  The idea: pack the first `n - 1` bits into a
@@ -307,8 +335,8 @@ and the search's reachable count at `n == 3` and `n == 4` is exactly
 `2**(n+1)` (16 and 32).  So a chain-only generator would raise on the most
 common tables.
 
-The universal construction is therefore the **decision tree** (the
-`wii2d_tree` analog): re-embed each input at every node, with uniform-width
+The universal construction is therefore the **decision tree**: re-embed
+each input at every node (2**n - 1 junction cells), with uniform-width
 leaves holding `i o @` (entry 1) or `o @` (entry 0).  That is total and was
 verified against the interpreter for every table through `n == 4` (all
 combinations, all 65536 four-input tables).
@@ -328,7 +356,7 @@ Four 2dFish mechanics differ from WII2D and must be handled by the layout:
   starts at 0), so the start value is a preamble of `i` repeated (`i*start`)
   before the first junction.
 - **Fixed-width placeholders.**  The chain template must use single-character
-  junction cells filled in place (as `wii2d_tree` does), not WII2D's
+  junction cells filled in place, not WII2D's
   `{Xi}`-to-4-char replacement, which shifts the row one cell per junction —
   WII2D absorbs the shift with its wrapping and row padding, 2dFish does not.
 
@@ -509,14 +537,97 @@ hash).  It catches *cycles*, not every hang: an unbounded-growth loop
 timeout stays as the backstop for that class, and for the fuzzers (which
 don't control the program shape the way hand-written tests do).
 
+Detection uses Brent's two-pointer algorithm rather than a hash set of
+every visited state: one stored "tortoise" snapshot is compared against
+the live machine on every step, doubling the gap between checkpoints each
+time the gap is closed.  This holds O(1) snapshots instead of O(cycle
+length), at the cost of stepping up to ~2x past the cycle's start before
+returning — callers only get the True/False verdict, not the machine's
+state at the moment of detection.
+
 `tests/test_interpreters_robustness.py` decides the empty-program invariant
-by state-cycle detection for twenty-nine string-based step-capable machines
-(brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, The Temporary Stack,
-Qoibl, Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
-ROTfuck, Circlefuck, BFStack, Decleq, 6-5, Back, BIO, NoComment,
-3D Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial), and
-keeps the SIGALRM backstop for the rest (Grapheme's machine has no
-`snapshot()` yet, and Painfuck's `y` is non-deterministic).
+by state-cycle detection for forty-eight string-based step-capable
+machines (brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, Qoibl,
+Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,
+ROTfuck, Circlefuck, BFStack, Decleq, 6-5, Back, BIO, NoComment, 3D
+Brainfuck, Factor, Basicfuck, bit~, Collatz Multiverse, Polynomial,
+Grapheme, RAM0, Minsky Swap, Home Row, Unsquare, %^2^-1, Suffolk,
+Container, Nevermind, BF-PDA, 3x, Sophie, Jaune, SLOW ACV MAMMALIAN,
+ZTOALC L, Between, MyScript, Lamfunc, Forbin, Suptiftam), and keeps the
+SIGALRM backstop for the rest (Painfuck's `y`, WII2D's `?`, and
+LaserFuck's random heading are non-deterministic).  Every registry
+language is now step-capable: `_VM_ADAPTERS` in `esolangs.vm` covers
+the whole registry, so `make_vm`'s `KeyError` -> `UnknownLanguageError`
+fallback for a registered-but-uncovered language is exercised in the
+tests by temporarily removing an adapter, not by a real example.
+MyScript's frame stack only unrolls a *top-level* `while` into
+resumable steps; a `while` nested inside a function call still runs to
+completion within one `step()` via the original recursive evaluator,
+since that nesting is bounded by call depth in a working program and
+only a top-level `while` is unbounded by construction.  Forbin's frame
+resumes `main`'s own statements and top-level `for`-loop rows the same
+way; a nested call or a `for` loop inside a function body still runs
+to completion within one `step()`.
+
+Forbin's *expression-position* calls (`x = f(y)`) are the one remaining
+gap: `_Machine` tracks one cursor for the single resumable frame there, and
+a nested function call invoked from inside an expression still runs to
+completion inside one `step()` through the original recursive
+`_eval`/`_call`/`_run` -- its own frames are never part of `snapshot()`.
+This was deliberately left native-recursive: the language has no realistic
+program shape that recurses that way (`return` exits a call immediately,
+so there is no return-value-threading idiom to convert), so building the
+larger continuation-stack machinery that would be needed to resume
+mid-expression was not worth it for a case Forbin programs do not actually
+use.  It is still bounded only by Python's own default recursion limit, not
+a documented cap.
+
+**Suptiftam's call machinery, Forbin's statement-position calls, and all of
+Lamfunc's calls were converted to an explicit frame stack**
+(`_Machine.frames`, replacing native Python recursion for that path the
+same way Forth/Grapheme already track a call stack of `_Frame`s) so that
+recursion is uncapped -- a correct, terminating recursion of any depth now
+completes, confirmed by a 300-level chained-function test for Suptiftam and
+Forbin and a 2000-level one (past Python's own default 1000-frame limit)
+for Lamfunc.  Lamfunc needed the fuller design: unlike Forbin and
+Suptiftam, it has no statement/expression split whose "statement" side
+always discards its value -- every prefix call is a value, and a realistic
+recursive call (e.g. `loop`'s self-call inside `i x loop fb x 0`) sits in
+*argument position* relative to `i`, not in some safely-discardable
+position, since the lazy `i` builtin is the language's only conditional.
+So every call, at any nesting depth, pushes a `_Frame` (`"scan"` -> resolve
+the leading token; `"gather"` -> collect arguments up to arity, pushing a
+child frame per non-literal argument; `"body"` -> run a callee's body or a
+forced `i`-branch as a token sequence) rather than only the outermost or
+only a discardable-statement subset.
+
+This does *not* make infinite recursion cycle-detectable via
+`run_until_halt_or_cycle`, though, for any of the three: unlike a backward
+jump in a loop, a call that never returns pushes exactly one new frame per
+`step()` and none is ever popped, so `snapshot()`'s frame tuple grows by
+one element every step and two *whole-machine* snapshots can never compare
+equal.  This is the same unbounded-growth class as a brainfuck `+[>+]`
+tape loop (below) as far as Brent's-algorithm-over-`snapshot()` is
+concerned -- that specific mechanism cannot catch it, regardless of how
+much of the call stack `snapshot()` covers.
+
+That is a statement about the *existing* detector, not a claim that
+infinite recursion is undetectable in general.  A narrower, separate check
+-- comparing a newly-pushed frame's own local state (code position,
+bindings) against the frames already on the stack, rather than comparing
+whole-machine snapshots across time -- would catch the common case of a
+call whose local state repeats identically relative to an ancestor (e.g.
+`f(x) { f(x) }`, an accidental unconditional or non-decrementing
+self-call): frame N+1 is then provably about to replay exactly what frame
+N already did.  It would not catch every infinite recursion (a call like
+`f(x) { f(x - 1) }` that recurses forever without any local state ever
+repeating exactly would still slip through), and it does not fit the
+existing `snapshot()`/Brent's-algorithm protocol -- it needs its own
+per-`step()`, per-frame comparison against the live stack (O(depth) per
+push, not the current mechanism's O(1)), so it would be new machinery, not
+a tweak to the existing one.  Not built: no concrete program has needed
+it yet, matching the same "revisit if a real case shows up" posture as
+Forbin's expression-position gap in `docs/roadmap.md`.
 `scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
 likewise bounded by state-cycle detection, with NoComment keeping the
 alarm as backstop for its unbounded-growth class (a loop that keeps

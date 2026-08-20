@@ -10,7 +10,6 @@ import importlib
 
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 
 run = importlib.import_module("esolangs.interpreters.stack_based.bf_pda").run
@@ -103,16 +102,41 @@ class TestMalformed:
         with pytest.raises(ValueError, match="cannot be empty"):
             run_program("")
 
-    def test_unmatched_brackets_halt(self) -> None:
-        with pytest.raises(HaltError, match="unmatched"):
+    def test_unmatched_brackets_rejected(self) -> None:
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("[")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("]")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("<[")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("<@]")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("][")
-        with pytest.raises(HaltError, match="unmatched"):
+        with pytest.raises(ValueError, match="unmatched"):
             run_program("<@[.")
+
+
+class TestStepMachine:
+    def test_snapshot_changes_after_a_step(self) -> None:
+        from esolangs.interpreters.stack_based.bf_pda import _Machine
+
+        machine = _Machine("<", ScriptedIO())
+        before = machine.snapshot()
+        machine.step()  # < pushes a zero
+        assert machine.snapshot() != before
+        assert machine.stack == [0]
+
+    def test_halting_program_is_detected(self) -> None:
+        from esolangs.interpreters.stack_based.bf_pda import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("<@.", ScriptedIO())) is True
+
+    def test_loop_is_detected_as_a_cycle(self) -> None:
+        # <@[@@] pushes a 1, then loops flipping the top bit twice each pass
+        # (a no-op), so ] always sees a 1 and jumps back forever.
+        from esolangs.interpreters.stack_based.bf_pda import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        assert run_until_halt_or_cycle(_Machine("<@[@@]", ScriptedIO())) is False

@@ -9,9 +9,9 @@ decided deterministically by state-cycle detection
 (:func:`esolangs.vm.run_until_halt_or_cycle`): a deterministic machine
 that revisits an exact internal state has looped forever, so the check
 needs no wall-clock bound and is not POSIX-only.  Languages without a
-step-capable machine (and Grapheme, whose machine has no ``snapshot()``
-yet) keep the SIGALRM backstop, which stays for the unbounded-growth
-hang class that cycle detection cannot catch.
+step-capable machine keep the SIGALRM backstop, which stays for the
+unbounded-growth hang class that cycle detection cannot catch (e.g. a
+Grapheme program that keeps pushing to the stack).
 """
 
 import importlib
@@ -64,12 +64,6 @@ def _empty_machine(module: str, io: IO) -> object:
 
         state = State(var={f"VAR{k}": 0 for k in range(1, 5)}, io=io)
         state.tokens = []
-        return state
-    if module == "esolangs.interpreters.stack_based.the_temporary_stack":
-        from esolangs.interpreters.stack_based.the_temporary_stack import State
-
-        state = State(io=io)
-        state.code = []
         return state
     if module == "esolangs.interpreters.register_based.qoibl":
         from esolangs.interpreters.register_based.qoibl import State
@@ -161,6 +155,90 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.register_based.polynomial import _Machine
 
         return _Machine("", io)
+    if module == "esolangs.interpreters.stack_based.grapheme":
+        from esolangs.interpreters.stack_based.grapheme import _Frame, _Machine
+
+        machine = _Machine(io, 1_000_000)
+        machine.frames.append(_Frame("", 0))
+        return machine
+    if module == "esolangs.interpreters.register_based.ram0":
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.register_based.minsky_swap":
+        from esolangs.interpreters.register_based.minsky_swap import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.home_row":
+        from esolangs.interpreters.tape_based.home_row import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.stack_based.unsquare":
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.register_based.pct_squared_minus_one":
+        from esolangs.interpreters.register_based.pct_squared_minus_one import (
+            _Machine,
+        )
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.suffolk":
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.other.container":
+        from esolangs.interpreters.other.container import _Machine
+
+        return _Machine([], io)
+    if module == "esolangs.interpreters.register_based.nevermind":
+        from esolangs.interpreters.register_based.nevermind import _Machine
+
+        return _Machine([], io)
+    if module == "esolangs.interpreters.stack_based.bf_pda":
+        from esolangs.interpreters.stack_based.bf_pda import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.stack_based.three_x":
+        from esolangs.interpreters.stack_based.three_x import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.register_based.sophie":
+        from esolangs.interpreters.register_based.sophie import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.jaune":
+        from esolangs.interpreters.tape_based.jaune import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.tape_based.slow_acv_mammalian":
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.other.ztoalc_l":
+        from esolangs.interpreters.other.ztoalc_l import _Machine
+
+        return _Machine([], io)
+    if module == "esolangs.interpreters.register_based.between":
+        from esolangs.interpreters.register_based.between import _Machine
+
+        return _Machine([], io)
+    if module == "esolangs.interpreters.register_based.myscript":
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.other.lamfunc":
+        from esolangs.interpreters.other.lamfunc import _Machine
+
+        return _Machine("", io)
+    if module == "esolangs.interpreters.other.forbin":
+        from esolangs.interpreters.other.forbin import _Machine
+
+        return _Machine("main {}", io)
+    if module == "esolangs.interpreters.other.suptiftam":
+        from esolangs.interpreters.other.suptiftam import _Machine
+
+        return _Machine("", io)
     raise KeyError(module)
 
 
@@ -173,7 +251,6 @@ _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.one_two_three",
     "esolangs.interpreters.stack_based.eval",
     "esolangs.interpreters.stack_based.modulous",
-    "esolangs.interpreters.stack_based.the_temporary_stack",
     "esolangs.interpreters.register_based.qoibl",
     "esolangs.interpreters.register_based.point_break",
     "esolangs.interpreters.stack_based.forth",
@@ -196,6 +273,26 @@ _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.bit_tilde",
     "esolangs.interpreters.register_based.collatz_multiverse",
     "esolangs.interpreters.register_based.polynomial",
+    "esolangs.interpreters.stack_based.grapheme",
+    "esolangs.interpreters.register_based.ram0",
+    "esolangs.interpreters.register_based.minsky_swap",
+    "esolangs.interpreters.tape_based.home_row",
+    "esolangs.interpreters.stack_based.unsquare",
+    "esolangs.interpreters.register_based.pct_squared_minus_one",
+    "esolangs.interpreters.tape_based.suffolk",
+    "esolangs.interpreters.other.container",
+    "esolangs.interpreters.register_based.nevermind",
+    "esolangs.interpreters.stack_based.bf_pda",
+    "esolangs.interpreters.stack_based.three_x",
+    "esolangs.interpreters.register_based.sophie",
+    "esolangs.interpreters.tape_based.jaune",
+    "esolangs.interpreters.tape_based.slow_acv_mammalian",
+    "esolangs.interpreters.other.ztoalc_l",
+    "esolangs.interpreters.register_based.between",
+    "esolangs.interpreters.register_based.myscript",
+    "esolangs.interpreters.other.lamfunc",
+    "esolangs.interpreters.other.forbin",
+    "esolangs.interpreters.other.suptiftam",
 }
 
 

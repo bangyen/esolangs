@@ -27,6 +27,11 @@ Decisions for gaps in the wiki spec (documented):
   :class:`ValueError`.
 
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the parsed program, variable
+state, and program counter), so it is step-capable: ``step()`` executes
+one instruction and ``halted`` is true once ``x`` fires or the counter
+runs off the program.
 """
 
 import sys
@@ -248,23 +253,53 @@ def _exec(
     raise AssertionError(f"unhandled operation {op!r}")
 
 
+class _Machine:
+    """One Between run: the parsed program, variables, and counter."""
+
+    def __init__(self, code: list[str], io: IO) -> None:
+        self.io = io
+        program: list[Node] = []
+        for line in code:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            program.append(_parse_line(stripped))
+        self.program = program
+        self.state: dict[str, ValueT] = {}
+        self.pc = 0
+        self._exited = False
+
+    @property
+    def halted(self) -> bool:
+        """Whether ``x`` fired or the counter ran off the program."""
+        return self._exited or not 0 <= self.pc < len(self.program)
+
+    def snapshot(self) -> tuple[object, ...]:
+        """Return the complete internal state, hashable for cycle detection."""
+        return (
+            self.pc,
+            tuple(sorted(self.state.items())),
+            self.io.position(),
+            self._exited,
+        )
+
+    def step(self) -> None:
+        """Execute one instruction, advancing (or jumping) the counter."""
+        if self.halted:
+            return
+        control: dict[str, Any] = {"jump": None, "exit": False}
+        _exec(self.program[self.pc], self.state, control, self.io)
+        if control["exit"]:
+            self._exited = True
+            return
+        self.pc = control["jump"] if control["jump"] is not None else self.pc + 1
+
+
 def run(code: list[str], io: IO) -> None:
     """Run a Between program, executing instructions until it exits or falls off."""
-    program: list[Node] = []
-    for line in code:
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        program.append(_parse_line(stripped))
-    state: dict[str, ValueT] = {}
-    control: dict[str, Any] = {"jump": None, "exit": False}
-    pc = 0
-    while 0 <= pc < len(program):
-        control["jump"] = None
-        _exec(program[pc], state, control, io)
-        if control["exit"]:
-            return
-        pc = control["jump"] if control["jump"] is not None else pc + 1
+    machine = _Machine(code, io)
+    while not machine.halted:
+        machine.step()
 
 
 if __name__ == "__main__":

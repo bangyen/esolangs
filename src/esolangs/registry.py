@@ -240,13 +240,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.dimensional",
         id="dimensional",
     ),
-    "Dotlang": Language(
-        "Dotlang",
-        _generate.dotlang,
-        "grid_based.dotlang",
-        id="dotlang",
-        split=True,
-    ),
     "Eval": Language(
         "Eval",
         _generate.eval,
@@ -407,12 +400,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.suptiftam,
         "other.suptiftam",
         id="suptiftam",
-    ),
-    "The Temporary Stack": Language(
-        "The Temporary Stack",
-        _generate.the_temporary_stack,
-        "stack_based.the_temporary_stack",
-        id="the_temporary_stack",
     ),
     "3x": Language(
         "3x",

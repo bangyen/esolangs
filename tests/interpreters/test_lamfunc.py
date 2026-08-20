@@ -73,6 +73,30 @@ class TestFunctions:
         assert run_program("F add a b - p a p b\n.add 1 2") == "110"
 
 
+class TestRecursion:
+    def test_self_call_through_lazy_if(self) -> None:
+        # loop halves x each call (via fb) until it reaches 0, printing
+        # each value along the way; the recursive call sits inside i's
+        # lazy second branch, not at a "statement" position
+        code = "F loop x - p x i x loop fb x 0\nloop 0b1000"
+        assert run_program(code) == "10001001010"
+
+    def test_deep_recursion_no_longer_capped(self) -> None:
+        """A correct, terminating recursion past Python's default 1000-frame
+        limit completes, since a call pushes an explicit frame instead of
+        recursing natively.
+        """
+        depth = 2000
+        lines = []
+        for i in range(depth):
+            if i + 1 < depth:
+                lines.append(f"F f{i} x - f{i + 1} x")
+            else:
+                lines.append(f"F f{i} x - p x")
+        lines.append("f0 1")
+        assert run_program("\n".join(lines)) == "1"
+
+
 class TestPartialApplication:
     def test_prints_a_partial_application_by_name(self) -> None:
         # p i 5 is a partial of i with only its condition bound; p prints "i.."

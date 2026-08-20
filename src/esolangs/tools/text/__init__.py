@@ -39,14 +39,13 @@ from esolangs.tools.text.register import (
     collatz_multiverse,
     decleq,
     dig,
-    dotlang,
     eval,  # noqa: A004 - the language is named "Eval"
     polynomial,
     qoibl,
     sophie,
     wii2d,
 )
-from esolangs.tools.text.stack import modulous, the_temporary_stack
+from esolangs.tools.text.stack import modulous
 from esolangs.tools.text.tape import (
     bfstack,
     brainfuck,
@@ -78,7 +77,6 @@ __all__ = [
     "decleq",
     "dig",
     "dimensional",
-    "dotlang",
     "eval",
     "factor",
     "forbin",
@@ -103,7 +101,6 @@ __all__ = [
     "suffolk",
     "suptiftam",
     "taglate",
-    "the_temporary_stack",
     "three_d_brainfuck",
     "three_x",
     "two_d_fish",
