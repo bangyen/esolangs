@@ -155,12 +155,10 @@ registry.  What remains:
 - **More step-capable interpreters.**  Convert the rest of the registry to
   a step()/halted state object: the boolean-parameterized machines without
   a state object yet, and the remaining tape/stack OISCs.
-- **A richer ``ip`` for the recursive languages.**  Grapheme's ``ip`` is
-  currently the active call frame's cursor (and its machine has no
-  ``snapshot()``, so it still uses the wall-clock hang backstop); a
-  language with nested calls should expose the call stack, not fold it
-  into one frame's position.  Forþ's VM exposes the same single
-  active-frame cursor shape (its machine does have a ``snapshot()``).
+- **Grapheme has no ``snapshot()``.**  Its machine still uses the
+  wall-clock hang backstop instead of state-cycle detection; a snapshot
+  would need to hash the full call stack (each frame's code, cursor, mode,
+  buffer, and pending skip), not just the active frame.
 
 ## Hanging-test optimization via state-cycle detection
 
