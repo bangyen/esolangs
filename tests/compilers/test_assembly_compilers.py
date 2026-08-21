@@ -407,6 +407,88 @@ class TestAddSubJump:
             mod.comp(code)  # must not raise
 
 
+class TestSBleq:
+    def test_compiles_to_assembly(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        output = mod.comp("0 0 2 -1")
+        assert ".global _start" in output
+        assert "read_cell:" in output
+        assert "write_cell:" in output
+
+    def test_initial_memory_embedded_as_dwords(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        output = mod.comp("-3 6 3 0 0 7 65 9")
+        assert ".dword" in output
+        assert "65" in output
+
+    def test_comments_and_blank_lines_ignored(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        base = mod.comp("0 0 2 -1")
+        commented = mod.comp("# a comment\n\n0 0 2 -1 # trailing\n")
+        assert base == commented
+
+    def test_empty_program(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        output = mod.comp("")
+        assert ".global _start" in output
+
+    def test_malformed_token_raises(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        with pytest.raises(ValueError, match="malformed memory token"):
+            mod.comp("0 0 x")
+
+    def test_random_int_input_does_not_crash(self) -> None:
+        import random
+
+        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        random.seed(3)
+        for _ in range(30):
+            n = random.randint(1, 40)
+            code = " ".join(str(random.randint(-3, 200)) for _ in range(n))
+            mod.comp(code)  # must not raise
+
+
+class TestDecleq:
+    def test_compiles_to_assembly(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        output = mod.comp("10 10 99")
+        assert ".global _start" in output
+        assert "read_cell:" in output
+        assert "write_cell:" in output
+
+    def test_initial_memory_embedded_as_dwords(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        output = mod.comp("-2 10 0 0 0 999 0 0 0 0 65")
+        assert ".dword" in output
+        assert "65" in output
+
+    def test_comments_and_blank_lines_ignored(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        base = mod.comp("10 10 99")
+        commented = mod.comp("# a comment\n\n10 10 99 # trailing\n")
+        assert base == commented
+
+    def test_empty_program(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        output = mod.comp("")
+        assert ".global _start" in output
+
+    def test_malformed_token_raises(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        with pytest.raises(ValueError, match="malformed memory token"):
+            mod.comp("10 10 x")
+
+    def test_random_int_input_does_not_crash(self) -> None:
+        import random
+
+        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        random.seed(3)
+        for _ in range(30):
+            n = random.randint(1, 40)
+            code = " ".join(str(random.randint(-2, 200)) for _ in range(n))
+            mod.comp(code)  # must not raise
+
+
 class TestCollatzMultiverse:
     def test_compiles_to_assembly(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")

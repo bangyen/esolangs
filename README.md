@@ -216,7 +216,7 @@ Implementations written in languages other than Python, used as cross-check refe
 <details>
 <!-- COMPILERS:START -->
 
-<summary>Show all 9 compilers</summary>
+<summary>Show all 11 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
@@ -226,9 +226,11 @@ Compilers that translate esoteric languages to other target languages.
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse)
+- [Decleq](https://esolangs.org/wiki/Decleq)
 - [Home Row](https://esolangs.org/wiki/Home_Row)
 - [Jaune](https://esolangs.org/wiki/Jaune)
 - [RAM0](https://esolangs.org/wiki/RAM0)
+- [S*bleq](https://esolangs.org/wiki/S*bleq)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 

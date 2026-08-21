@@ -34,7 +34,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Clockwise | yes | yes |  | yes |  | hello |
 | Collatz Multiverse | yes | yes |  | yes | yes | hello |
 | Container | yes | yes |  | yes |  | hello |
-| Decleq | yes | yes |  | yes |  | hello |
+| Decleq | yes | yes |  | yes | yes | hello |
 | Dig | yes | yes |  | yes |  | hello |
 | Dimensional | yes | yes |  | yes |  | hello |
 | Eval | yes | yes |  | yes |  | hello boolean |
@@ -58,7 +58,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes | yes | yes | yes |  |
 | ROTfuck | yes | yes |  | yes |  | hello |
-| S*bleq | yes | yes |  | yes |  | hello |
+| S*bleq | yes | yes |  | yes | yes | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
 | Suffolk | yes | yes |  | yes | yes | hello |

@@ -30,6 +30,8 @@ _COMPILER_NAMES = {
     "ram0": "RAM0",
     "addsubjump": "AddSubJump",
     "collatz_multiverse": "Collatz Multiverse",
+    "sbleq": "S*bleq",
+    "decleq": "Decleq",
 }
 
 _COMPILER_DIRS = {
