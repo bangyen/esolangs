@@ -161,6 +161,15 @@ Suffolk's `,` already emits a `read` syscall.  Candidates are still bound
 by the toolchain rule (RISC-V fits machine-model languages), just not by
 the input rule.
 
+A compiler is worth building for either of two reasons: **verification
+value** (a complex-output generator exercised through a compile-then-fuzz
+differential, the rationale above) or **intrinsic value** (the emitted code
+does genuine lowering — control flow, calls, memory, dispatch — rather than
+per-command transliteration, or the language is notable enough that the
+artifact stands alone).  The candidates below are on the intrinsic axis;
+their round-trip and hand cases are their verification, so they are not
+blocked on the harness note below.
+
 **AddSubJump shipped**, but not as unrolled per-token blocks like the other
 compilers: its jump target (`*c`) and even its operands are computed at
 runtime from self-modifying memory, so no compile-time control-flow graph
@@ -197,18 +206,34 @@ now sets `gp` from `__global_pointer$` up front — bare-metal `_start` has no
 libc to do it.  See
 `src/esolangs/compilers/assembly/collatz_multiverse.py`.
 
+- **S*bleq and Decleq — intrinsically the top candidates.**  Subleq-family
+  OISCs: the interesting lowering is the self-modifying memory (an in-place
+  subtract at a computed address, branch on the result), which becomes real
+  RISC-V memory ops and branches, with the memory-mapped I/O addresses
+  (`-3`/`-2`) emitting syscalls the way AddSubJump's `-1` does.  Their text
+  generators are straight-line mirrors, so the fuzz axis adds nothing — the
+  artifact is the point.
+- **Forþ — intrinsic value, no verification gain.**  A stack machine with
+  `[` loops and `;` calls lowers to a real call structure: a data stack in
+  memory, `jal`/`ret` through the link register, and loop branches.  It
+  already has a fuzzed Rust cross-check, so this is artifact-only — it adds
+  no differential value and should not duplicate the Rust reference's job.
 - **ZTOALC L stays in the Rust column.**  Heterogeneous int-or-array
   values, arrays-of-arrays, bounds checks, and trajectory-driven dispatch
-  are the semantic class the toolchain rule sends to Rust; emitting that in
-  assembly would be strictly harder and no more verifiable than the Rust
-  port already on the worth-adding table.
+  are the semantic class the toolchain rule sends to Rust; even on the
+  intrinsic axis, the one genuinely interesting piece (computed-goto
+  dispatch over the Collatz trajectory) is a small fraction of the emitted
+  code — the bulk would be an expression interpreter over heterogeneous
+  arrays, so emitting that in assembly would be strictly harder and no more
+  verifiable than the Rust port already on the worth-adding table.
 
-**The verification harness is the real scope.**  The differential
-(`scripts/verify_differential.py`) never compiles, and the compiler cases
-in `scripts/verify_riscv_unicorn.py` feed an empty stdin, so an
-input-reading compiler needs either fixed stdin cases via `run_elf` or a
-compile-then-fuzz differential feeding the program's input to the compiled
-ELF — that machinery is part of the work for either candidate.
+**Harness note (build only if a fuzz-dependent candidate lands).**  The
+differential (`scripts/verify_differential.py`) never compiles, and the
+compiler cases in `scripts/verify_riscv_unicorn.py` feed an empty stdin, so
+an input-reading compiler whose value depends on fuzzing needs either fixed
+stdin cases via `run_elf` or a compile-then-fuzz differential feeding the
+program's input to the compiled ELF.  Intrinsic-value compilers do not need
+that machinery, so this is not a prerequisite for any candidate above.
 
 ## VM / debugging interface
 
