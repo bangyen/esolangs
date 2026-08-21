@@ -115,6 +115,9 @@ Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps
 left them able to express only a small fraction of the two-input boolean
 functions.  Their languages and text generators remain; see `docs/roadmap.md`.
+Home Row's generator was later rebuilt with a closed-form construction
+(binary-pack the inputs into an accumulator, then walk a linear equality
+chain) that has no `n` cap at all — see `docs/walls.md`.
 
 The parameterized no-input generators embed every input exactly once rather
 than re-embedding a bit at multiple decision nodes, mirroring how an

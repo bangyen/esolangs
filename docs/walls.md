@@ -219,14 +219,38 @@ wall by never looping (a phantom-`]` block whose straight-line body is
 position-encoded), which keeps the generator total but makes the programs
 long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
 
-## Home Row (j-guarded-move boolean generator, n <= 2)
+## Home Row (resolved: closed-form binary-pack-and-compare, unbounded n)
 
 `l` loops pair strictly by order, so loops cannot nest and a bf-style
-decision tree is inexpressible.  The shipped generator routes with `j`
-(guarded moves) instead of loops, which works through `n == 2`.  `n >= 3`
-raises: an exhaustive search over `j`-guarded sequences shows no routing
-separates `2**n` combinations onto distinct cells of the fixed 5x5 torus
-past `n == 2` (the search caps at 6 of 8 combinations).
+decision tree is inexpressible.  The original generator routed with `j`
+(guarded moves) instead of loops, which worked only through `n == 2`: an
+exhaustive search over `j`-guarded sequences showed no routing separates
+`2**n` combinations onto distinct cells of the fixed 5x5 torus past
+`n == 2` (the search capped at 6 of 8 combinations) -- that routing
+approach tried to send the beam to one of `2**n` distinct *leaf cells*,
+which is a genuine capacity wall on a 25-cell grid.
+
+**Resolved by abandoning spatial routing for a closed-form value
+construction.**  The wall was specific to *that* construction, not to the
+language: Home Row's cells hold unbounded integers, so the fix packs the
+`n` input bits into a single binary accumulator instead of routing a beam.
+Each input bit gets its own position-stable gate -- `{Xi} l s ffff
+a{2**(n-1-i)} f l`, using the same "run once iff nonzero, consuming the
+guard" pattern the removed generator's `j`-tests approximated, but built
+from `l`/`s` so it needs no nesting -- that adds the bit's binary weight to
+the accumulator only when the bit is 1.  After all `n` gates the
+accumulator holds the combination's integer index `0 .. 2**n - 1`.  A
+linear chain of `2**n` equality checks then walks that index: each line
+fans the accumulator out into a working copy and a backup, subtracts its
+own index `k`, and gates on the difference to either print the baked
+answer and halt (a match) or restore the accumulator from the backup and
+fall through to test `k + 1`.  Since the packing and comparison both work
+on Home Row's unbounded cells (no byte masking happens until the final
+`'0'`/`'1'` answer print), there is no `n` cap at all: verified exhaustive
+through `n == 3` (2048/2048 checks) and sampled correct through `n == 10`.
+Program length grows `O(2**n)` from the leaf chain, the expected cost of a
+linear scan rather than a genuine representation limit.  See
+:func:`esolangs.tools.boolean.parameterized.home_row`.
 
 ## Assessed boolean candidates that fell through
 
