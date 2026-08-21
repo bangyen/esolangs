@@ -16,7 +16,7 @@ Fourfuck, Aaargh++, Bitwise Cyclic Teast, and the languages already
 implemented elsewhere) is in the commit history and `docs/limitations.md`.
 Nothing is tracked here as remaining.
 
-**COD shipped** with a two-input (`n <= 2`) boolean generator
+**COD shipped**, including a boolean generator for any `n >= 1`
 (`esolangs.tools.boolean.parameterized.cod`); the interpreter, VM adapter,
 and generator are in the commit history.  The shipped construction differs
 from the design this roadmap originally sketched: rather than a
@@ -25,10 +25,13 @@ branch-free `_`-gate decision tree, each input bit gets its own `+` fork
 `(...)<` gauntlet on each branch that only the matching value's copy
 survives — the wiki's "two/three branches" rule for `+` makes this
 deterministic, so it needs no seeded-randomness decision and never touches
-COD's random-junction rule.  `n == 1` reuses the same routing with its
-second input fixed to a literal `0`.  Generalizing past `n == 2` (a
-`2**n`-leaf layout) is unbuilt; see `docs/cod_boolean_generator.md` for the
-full construction and what a general-`n` version would need.
+COD's random-junction rule.  An initial `n <= 2` version (later `n <= 3`)
+was superseded once every fork's routing got its own private grid cells
+joined by plain concatenation, instead of sharing cells across forks via a
+"sacrificial retrace" merge that could not be proven safe past `n == 3`;
+see `docs/cod_boolean_generator.md` for the full construction, exhaustively
+verified through `n == 3` (all 256 three-input tables) and sample-verified
+at `n == 4`.
 
 ## Transpilers
 
