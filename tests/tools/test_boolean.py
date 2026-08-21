@@ -2627,15 +2627,27 @@ class TestParameterizedCOD:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.cod("011")
 
-    def test_only_up_to_three_input_tables_supported(self) -> None:
+    def test_constant_table_rejected(self) -> None:
+        """n == 0 (a single-entry table, no inputs) is not supported."""
         from esolangs.tools.boolean import parameterized
 
-        with pytest.raises(ValueError, match="n == 1, 2, or 3"):
-            parameterized.cod("1111111011111110")  # n == 4
+        with pytest.raises(ValueError, match="n >= 1"):
+            parameterized.cod("0")
+
+    def test_four_input_tables(self) -> None:
+        """n == 4 (beyond the old n <= 3 cap) produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table in ("1111111011111110", "0110100110010110", "1000000000000000"):
+            template = parameterized.cod(table)
+            for combo in range(16):
+                bits = [(combo >> (4 - 1 - i)) & 1 for i in range(4)]
+                got = self.run_cod(self.instantiate(template, bits))
+                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
 
     @pytest.mark.parametrize("table", ["10", "01", "00", "11"])
     def test_one_input_truth_table(self, table: str) -> None:
-        """n == 1 reuses the two-input routing with X1 fixed to 0."""
+        """n == 1 has no fork of its own: a bare entry into the leaf cascade."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.cod(table)
