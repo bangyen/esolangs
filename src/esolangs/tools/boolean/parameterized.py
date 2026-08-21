@@ -329,9 +329,7 @@ def _cod_fork_box(n: int, k: int) -> str:
     # the west wall column the forward row itself does not have (it has
     # the entry marker there instead).
     fork_cols = [i + 1 for i, ch in enumerate(forward_row) if ch == "+"]
-    middle_row = "".join(
-        " " if c in fork_cols else "~" for c in range(width + 2)
-    )
+    middle_row = "".join(" " if c in fork_cols else "~" for c in range(width + 2))
 
     return "\n".join(
         [
@@ -402,9 +400,7 @@ def _cod_cascade(n: int, table: str) -> str:
     # the shaft down from Phase 1's last exit -- so it alone gets "  "
     # rather than "~ ".
     first, *middle, last = tree_rows
-    wrapped_middle = [
-        ("  " if i == 0 else "~ ") + row for i, row in enumerate(middle)
-    ]
+    wrapped_middle = [("  " if i == 0 else "~ ") + row for i, row in enumerate(middle)]
     return "\n".join(["~" + first, *wrapped_middle, "~" + last])
 
 
@@ -1840,3 +1836,55 @@ def wii2d(truth_table: str) -> str:
         )
     start, routes = result
     return "\n".join(_wii2d_layout(n, start, routes))
+
+
+def home_row(truth_table: str) -> str:
+    """Build a Home Row template for the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    Home Row has no input command, so this is a parameterized generator:
+    each ``{Xi}`` placeholder becomes an ``a``-run at a bit cell that the
+    harness fills in per instantiation.  Unlike the removed ``n <= 2``
+    routing generator (which tried to send the beam to one of ``2**n``
+    distinct leaf cells -- a wall past ``n == 2`` on the fixed 5x5 grid),
+    this closed-form construction packs the bits into a single binary
+    accumulator and then walks a linear chain of leaf checks, so it never
+    needs more than a handful of live cells regardless of ``n``.
+
+    A cell holds the current value under test; the setup line seeds a
+    second cell with the ASCII digit base (``48``, ``'0'``).  Each of the
+    ``n`` bit-packing lines is ``{Xi} l s ffff a{2**(n-1-i)} f l``: the
+    ``l``/``s``/``l`` triple is Home Row's position-stable "run once iff
+    nonzero, consuming the guard" gate (loops cannot nest -- ``l``s pair
+    strictly by order of appearance -- so this gate, not a BF-style bracket
+    match, is what makes the packing safe to chain), and its body adds the
+    bit's binary weight to the accumulator only when the bit is 1. After
+    all ``n`` gates the accumulator holds the combination's integer index
+    ``0 .. 2**n - 1``.
+
+    The remaining ``2**n`` lines are a linear equality chain, one per
+    index ``k``: ``a ffff l s f s ff l f l f <answer> k ; l f f`` fans the
+    accumulator out into a working copy and a backup (destroying the
+    accumulator), subtracts ``k`` from the working copy via the leading
+    ``a ffff``/``s`` structure, and the position-stable gate on that
+    difference either prints the baked answer byte and halts (a match) or
+    restores the accumulator from the backup and falls through to test
+    ``k + 1``.  The answer byte is a literal ``a`` (or nothing) baked
+    directly from ``truth_table[k]`` -- unlike the ``n`` input bits, it is
+    known at generation time, not supplied by the harness, so it needs no
+    ``{Xi}`` placeholder.  The final line (index ``2**n - 1``) needs no
+    restore, since every other index has already been ruled out.
+    """
+    n = _validate_truth_table(truth_table)
+    setup = "aaaaaalsffaaaaaaaaffflf"
+    bit_lines = [
+        "{X" + str(i) + "}lsffff" + "a" * (2 ** (n - 1 - i)) + "fl" for i in range(n)
+    ]
+    leaves = [
+        "afffflsfsfflflf" + ("a" if bit == "1" else "") + "k;lff"
+        for bit in truth_table[:-1]
+    ]
+    leaves.append("f" + ("a" if truth_table[-1] == "1" else "") + "k;")
+    return setup + "".join(bit_lines) + "".join(leaves)
