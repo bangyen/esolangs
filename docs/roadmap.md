@@ -101,7 +101,7 @@ nothing new.
 - **Stay (complex-output generators, fuzzed):** NoComment, Forþ, Basicfuck,
   Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck.
 - **No cross-check (straight-line generators):** 6-5, Decleq,
-  Dimensional, Qoibl, and the rest.
+  Dimensional, Qoibl, S*bleq, and the rest.
 
 **Toolchain follows the model.**  RISC-V assembly fits the machine-model
 languages (a tape/pointer/instruction-counter maps 1:1 onto cells,
@@ -128,13 +128,18 @@ round-trip corpus, so a cross-check would add real verification.
 
 | Toolchain | Languages |
 | --- | --- |
-| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), S*bleq (tape OISC with a `<= 0` branch), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), ABCDirection (2D grid + Boolfuck input), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
+| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), ABCDirection (2D grid + Boolfuck input), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
 its output is a fixed pattern the round-trip already covers, so a cross-check
 would add little: brainfuck, BFStack, BrainIf, Minifuck, Modulous, SLOW
 ACV MAMMALIAN, WII2D, Home Row.  These stay without a cross-check unless a
-specific bug motivates one.
+specific bug motivates one.  Clockwise and 3D Brainfuck joined this list:
+Clockwise's 2D routing is one fixed ring shape (only the ring size and the
+parity pattern vary with the text), and 3D Brainfuck's generator is the
+brainfuck generator's output with ``>``/``<`` renamed to ``n``/``s``, so
+both sit in the brainfuck family's borderline class rather than the
+complex-output one.
 
 **Removed (did not meet the criterion).**  Seven cross-checks were removed
 for having no generator or only a corpus-only cross-check; see
