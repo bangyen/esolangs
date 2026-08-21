@@ -7,14 +7,64 @@ the commit history.  This file only tracks what is still on the table.
 ## New interpreters (in priority order)
 
 Candidates from re-scanning the esolangs wiki's Category:Unimplemented and
-from User:PythonshellDebugwindow's language list.  The scan is now fully
-exhausted: every candidate with a usable file-based I/O protocol, a complete
-specification, and a plausible generator or boolean story has an
-interpreter, including COD (the last one on the table).  What shipped and
-what was ruled out (Gravity, Earfuck, Conveyor, Chainlang, Binary ///,
+from User:PythonshellDebugwindow's language list.  What shipped and what
+was ruled out (Gravity, Earfuck, Conveyor, Chainlang, Binary ///,
 Fourfuck, Aaargh++, Bitwise Cyclic Teast, and the languages already
 implemented elsewhere) is in the commit history and `docs/limitations.md`.
-Nothing is tracked here as remaining.
+
+Re-checking PythonshellDebugwindow's list against the admission criteria
+surfaced a handful of languages worth recording as potential candidates.
+The earlier draft of this section listed Jumplang, Eso2D, Minimal operation
+language, brainfunc, and Yaren — all five are in fact wiki-categorized
+**Implemented** (each page documents external interpreters), so under the
+"not already implemented elsewhere" criterion they are not candidates; the
+record below is restricted to languages in the wiki's **Unimplemented**
+category (verified via the category API), with a complete specification and
+a boolean-generator capability (input, a value conditional, and output):
+
+- **Cortex language 3A** — complete spec, Turing-complete brainfuck-like
+  tape of 16 cells with `]` input (an unsigned base-3 integer) and `[`
+  output (a character); `'`/`:` jump on a zero/nonzero cell.  A boolean
+  generator is the page's own truth-machine shape.  (The `;` table on the
+  page is a list of example programs, not extra commands.)
+- **function x(y)** — complete spec, Turing-complete: functions with
+  defaults, `[~]`/`` `~ `` input, `[a]`/`` `a `` output, comparison
+  operators, a ternary, and recursion; a boolean generator branches on a
+  comparison and prints 0/1.
+- **CV(N)(C)** — complete spec, Turing-complete: every command is an IPA
+  syllable; fricatives do character/integer I/O, approximants do while
+  loops and gotos on the accumulator, vowels do arithmetic.  The page's
+  truth-machine (`soθɰ̊oθʋi`) is the boolean-generator seed.
+- **DINAC** — complete spec: `IN` reads an aschar or wubyte, `OUT` prints,
+  IF-ELSE and WHILE on zero/nonzero, truth-machine example.  Bounded-
+  storage machine, so the boolean generator is the whole story.
+- **Fargo** — complete spec: one input number per run with bit access
+  (`@ x`), one output number with bit writes (`% x y`), conditional
+  `: x y`, base-10 output `$`; the truth-machine example is the
+  boolean-generator seed.  Unknown computational class, but the bit
+  interface is ideal for a parameterized generator.
+- **Packlang** — complete spec, Turing-complete: packages with the built-in
+  IO package (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine
+  example branches on `input ^ 48`.
+- **Inject** — complete spec, Turing-complete: label blocks, `readto`/`send`
+  for line I/O, `skipq`/`skipif`/`skip` for control flow; the truth-machine
+  example compares the input block against a `0` block, the boolean
+  generator's branch.
+- **Algebraic Programming Language** — complete spec, Turing-complete:
+  executed lines print their result and their variables read user input;
+  `&`/`|` short-circuit with `IF(x, c) = x & c()` and a `WHILE` function
+  give the boolean generator its tree.
+- **Interprogck8** — complete spec but a weaker candidate: `u` input, `div`
+  output, and IFT/IFQ conditionals on a 84/81 compare make a truth-machine
+  (documented on the page), but the spec's `[a b]` random range and `~`'s
+  10% side effect need the seeded-randomness judgment call, and the
+  function-based conditional is convoluted.
+
+The remaining unimplemented-in-repo languages on that list were assessed
+and ruled out (no input, no output, or non-char/line I/O; incomplete or
+unstable specs; trivial reskins; or external implementations); the
+per-language verdicts are in the assessed-and-rejected ledger in
+`docs/limitations.md`.
 
 **COD shipped**, including a boolean generator for any `n >= 1`
 (`esolangs.tools.boolean.parameterized.cod`); the interpreter, VM adapter,
