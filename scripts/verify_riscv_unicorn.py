@@ -82,6 +82,8 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(
         ("collatz_multiverse", "collatz_multiverse", gen.collatz_multiverse(text), text)
     )
+    COMPILER_CASES.append(("sbleq", "sbleq", gen.sbleq(text), text))
+    COMPILER_CASES.append(("decleq", "decleq", gen.decleq(text), text))
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))

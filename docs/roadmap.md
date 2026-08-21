@@ -136,10 +136,11 @@ for having no generator or only a corpus-only cross-check; see
 
 The compilers in `src/esolangs/compilers/assembly/` translate a program to
 RISC-V Linux assembly, assembled and run under unicorn by
-`scripts/verify_riscv_unicorn.py`; the nine shipped (AddSubJump, BF-PDA,
-BFStack, Collatz Multiverse, Home Row, Jaune, RAM0, Suffolk, Unsquare) are
-in the commit history, with addsubjump, bfstack, collatz_multiverse,
-suffolk, unsquare, and home_row round-tripping their text generators.
+`scripts/verify_riscv_unicorn.py`; the eleven shipped (AddSubJump, BF-PDA,
+BFStack, Collatz Multiverse, Decleq, Home Row, Jaune, RAM0, S*bleq,
+Suffolk, Unsquare) are in the commit history, with addsubjump, bfstack,
+collatz_multiverse, decleq, sbleq, suffolk, unsquare, and home_row
+round-tripping their text generators.
 
 The cross-checks' no-input rule does not apply here: a cross-check reference
 receives its program via stdin, but a compiled program is embedded in the
@@ -193,13 +194,34 @@ now sets `gp` from `__global_pointer$` up front — bare-metal `_start` has no
 libc to do it.  See
 `src/esolangs/compilers/assembly/collatz_multiverse.py`.
 
-- **S*bleq and Decleq — intrinsically the top candidates.**  Subleq-family
-  OISCs: the interesting lowering is the self-modifying memory (an in-place
-  subtract at a computed address, branch on the result), which becomes real
-  RISC-V memory ops and branches, with the memory-mapped I/O addresses
-  (`-3`/`-2`) emitting syscalls the way AddSubJump's `-1` does.  Their text
-  generators are straight-line mirrors, so the fuzz axis adds nothing — the
-  artifact is the point.
+**S*bleq and Decleq shipped.**  Both are Subleq-family OISCs: the
+interesting lowering is the self-modifying memory (an in-place
+subtract-and-branch for S*bleq, a decrement-and-branch for Decleq), which
+becomes a real fetch-decode-execute loop over a `.data` cell array — the
+same shape AddSubJump's compiler already uses, since both languages'
+jump targets are runtime values, not statically known.  The memory-mapped
+I/O addresses (S*bleq's `-3`/`-2`, Decleq's `-2`/`-1`) emit syscalls the
+way AddSubJump's `-1` does; Decleq's `-1` read additionally halts the
+program at EOF rather than reading zero, matching the interpreter's
+`EOFError` (which unwinds the whole run).  Their text generators are
+straight-line mirrors, so the fuzz axis adds nothing — the artifact is the
+point; both round-trip their generators through
+`scripts/verify_riscv_unicorn.py` and pass the interpreters' own test
+cases compiled and run under unicorn.
+
+Two interpreter memory-model quirks are not reproduced, the same tradeoff
+already accepted for AddSubJump: writes past the compile-time program
+length grow the interpreters' Python-list memory (moving their halt
+boundary outward) but not the compilers' fixed 65536-cell buffer, and
+Decleq's write path has no negative-index guard, so a negative `b` hits
+Python's negative-index wraparound on the interpreter's list rather than
+being treated as out-of-range like every other special address — an
+accident of the list-backed implementation, not documented language
+behavior, and not a shape any real countdown-idiom program produces (found
+by fuzzing adversarial random operands, not by any hand-written example).
+See `src/esolangs/compilers/assembly/sbleq.py` and
+`src/esolangs/compilers/assembly/decleq.py`.
+
 - **Forþ — intrinsic value, no verification gain.**  A stack machine with
   `[` loops and `;` calls lowers to a real call structure: a data stack in
   memory, `jal`/`ret` through the link register, and loop branches.  It
