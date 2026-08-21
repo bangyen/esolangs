@@ -22,11 +22,6 @@ record below is restricted to languages in the wiki's **Unimplemented**
 category (verified via the category API), with a complete specification and
 a boolean-generator capability (input, a value conditional, and output):
 
-- **Cortex language 3A** — complete spec, Turing-complete brainfuck-like
-  tape of 16 cells with `]` input (an unsigned base-3 integer) and `[`
-  output (a character); `'`/`:` jump on a zero/nonzero cell.  A boolean
-  generator is the page's own truth-machine shape.  (The `;` table on the
-  page is a list of example programs, not extra commands.)
 - **function x(y)** — complete spec, Turing-complete: functions with
   defaults, `[~]`/`` `~ `` input, `[a]`/`` `a `` output, comparison
   operators, a ternary, and recursion; a boolean generator branches on a
@@ -65,6 +60,65 @@ and ruled out (no input, no output, or non-char/line I/O; incomplete or
 unstable specs; trivial reskins; or external implementations); the
 per-language verdicts are in the assessed-and-rejected ledger in
 `docs/limitations.md`.
+
+## 2D/grid candidates (from Category:Two-dimensional)
+
+A separate pass cross-referenced the wiki's `Category:Two-dimensional`
+against `Category:Unimplemented` (109 overlaps) looking specifically for
+languages whose control flow is genuine grid navigation — where a boolean
+generator has to actually route an instruction pointer around cells based on
+a value, the way Befunge's `_`/`|` or this repo's Dig/Back/Clockwise/A
+Painter Ant do — rather than a language with a high-level `if`/`while` that
+would make the generator close to trivial to write by hand.
+
+- **Streetcode** — a car drives on two-way, two-character-wide streets
+  painted with instructions (`^`/`~` increment/decrement the current cell,
+  `=`/`_` move the cell pointer, `I`/`O` char input/output, `U` U-turn, `;`
+  halt).  At an ambiguous intersection the car takes the leftmost road if
+  the current cell is zero, otherwise the second-leftmost — a direct
+  Befunge-`_` analog, except the branch has to be built by laying out real
+  street geometry rather than writing a condition.  Picked over the three
+  below for having the cleanest, most complete spec (worked examples, a
+  Turing-completeness proof) and a normal char-I/O model.  The interpreter
+  and tests are done: initial heading, ordinary wall-hugging, genuine
+  multi-way junction detection, and multi-cell-wide lane merging are all
+  derived and confirmed against all four of the wiki's worked examples (two
+  of which — the infinite loop and the larger infinite-cat example — turn
+  out to contain genuine lane-bounded junctions themselves).  Landing after
+  a junction turn onto a road with its own lanes drives to that road's
+  right-hand lane before turning, rather than a plain single-cell step onto
+  the first open neighbor (see the module docstring's "Lane merging" bullet
+  and `docs/streetcode-wip.md` for the hand-derived, user-confirmed trace
+  this was built from).  Not yet wired into `registry.py` (no generator or
+  hello-world example) — that's separate follow-on work.
+- **Gate** — a wire/logic-gate circuit: symbols represent signals flowing
+  through wires (`—`/`|`), combined by gates (`&` NAND, `X` XNOR, `!` NOT);
+  `+` branches on which way a signal is heading; `(` outputs an ASCII char.
+  A boolean generator means constructing an actual gate network, not
+  writing a condition.  Spec is terser and example-driven rather than
+  prose-first — worth a closer read before committing.
+- **Flowchart** — literal flowchart nodes joined by lines; a `< >` switch
+  node reads a bit register and routes the pointer left or right (straight
+  through if the register is empty), directly analogous to Befunge's
+  `_`/`|`.  Supports multiple concurrent pointers and deque-based memory;
+  single-bit I/O.  Very new (2025) but the spec is complete, with a
+  truth-machine, cat, and Kolakoski-sequence example.
+- **Line** — a cursor follows ASCII line-drawing curves; each curve shape it
+  passes through is itself the instruction (a diagonal increments/decrements
+  the current cell, a corner moves the tape pointer, a specific bend is a
+  conditional turn keyed on the current cell being zero).  Brainfuck-
+  equivalent semantics, but every instruction is encoded in path geometry,
+  so a generator has to physically route the drawn line to fork on input.
+
+Considered and rejected in the same pass: **Highways** (excellent
+roundabout/routing mechanic, but junction direction, sign execution order,
+and crash tie-breaking are genuinely random with no seed — fails the
+determinism criterion); **Dilemma** (no I/O commands at all, pure
+maze/DFS); **TableLang**, **Marz**, **RingCode**, **GridScript** (a
+high-level `if`/`while`/`SWITCH` construct makes the generator trivial, or
+the spec is unstable); **Circuit Diagram** (a viable Gate alternative in the
+same genre, with more complex constraint-propagation semantics — worth a
+look if Gate falls through).
 
 ## Transpilers
 

@@ -147,6 +147,7 @@ interpreter, generator, and tests were deleted from the repo.
 - **Brainpocalypse** (removed): no input; invented dump and a one-bit halt-vs-loop wall; externally implemented.
 - **Chainlang**: AI-generated spec its own author calls unfinished.
 - **Conveyor**: no input command, stderr-only output.
+- **Cortex language 3A**: its 8 real primitives (`&`/`$`/`*`/`~`/`'`/`:`/`[`/`]`) are a clean brainfuck-like tape machine, but the language's `;`-prefixed commands are not composable — the wiki assigns them by table lookup to whole canned "popular problem" programs (`;&` is literally specified to *be* Hello World, `;'` a truth-machine, `;$` a full brainfuck interpreter reading its program from user input, `;[` a Mandelbrot set, etc.), so a faithful interpreter would mean hardcoding ~16 opaque special cases rather than a general computational model; treating `;` as a no-op instead contradicts the spec's own worked examples (`;&` would reduce to a bare `&`, not a working Hello World).
 - **Crement**: self-modifying, no I/O; no input to branch on.
 - **Dotlang** (removed): its boolean generator was the only one that could
   not embed each input exactly once — Dotlang has no storage, value test, or
@@ -175,7 +176,7 @@ interpreter, generator, and tests were deleted from the repo.
 - **N Refine**: probabilistic self-rewriting OISC with no I/O; already implemented elsewhere.
 - **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**, **Writeover**: joke or vaguely specified, no usable spec or I/O.
 - **Number Seventy-Four** (removed): string-rewriting with no input; output alphabet `0`/`1`/`H`.
-- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Streetcode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
+- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
 - **PASM**: output is a 16x16 pixel screen; no char/line I/O.
 - **PlusOrMinus**, **PlusIntMinus**: output-only accumulator with no input or conditional; no boolean generator.
 - **Procedure**: only `the sum of ...` arithmetic is defined, so a faithful interpreter would have to invent the rest. Revisit if the wiki or Pure defines the operators.
