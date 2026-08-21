@@ -54,7 +54,6 @@ _run_123 = importlib.import_module("esolangs.interpreters.tape_based.one_two_thr
 _run_pct = importlib.import_module(
     "esolangs.interpreters.register_based.pct_squared_minus_one"
 ).run
-_run_2dfish = importlib.import_module("esolangs.interpreters.grid_based.two_d_fish").run
 _run_painfuck = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 _run_bit_tilde = importlib.import_module(
     "esolangs.interpreters.tape_based.bit_tilde"
@@ -346,16 +345,6 @@ class TestGeneratorRoundTrips:
         assert gen.dimensional("Hi") == "=48.=69."
         assert gen.dimensional("\x00\x7f\xff") == "=00.=7f.=ff."
 
-    def test_two_d_fish(self) -> None:
-        """i/d walk the accumulator to each byte and a prints it."""
-        assert gen.two_d_fish("A") == "/" + "i" * 65 + "a@"
-        assert gen.two_d_fish("AA") == "/" + "i" * 65 + "a" + "a@"
-        assert gen.two_d_fish("A\x00") == "/" + "i" * 65 + "a" + "d" * 65 + "a@"
-        assert roundtrip(_run_2dfish, gen.two_d_fish("Hi")) == "Hi"
-        assert (
-            roundtrip(_run_2dfish, gen.two_d_fish("Hello, World!")) == "Hello, World!"
-        )
-
     def test_pct_squared_minus_one(self) -> None:
         """Each 'path e resets the accumulator, builds the byte, and prints it."""
         assert gen.pct_squared_minus_one("") == ""
@@ -430,7 +419,6 @@ class TestGeneratorRoundTrips:
         """Byte-oriented generators reject codepoints above 255 loudly."""
         for _name, fn in (
             ("dimensional", gen.dimensional),
-            ("two_d_fish", gen.two_d_fish),
             ("pct_squared_minus_one", gen.pct_squared_minus_one),
             ("basicfuck", gen.basicfuck),
             ("bit_tilde", gen.bit_tilde),

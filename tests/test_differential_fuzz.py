@@ -230,23 +230,6 @@ class TestDivergenceDetection:
             assert not verify_differential._fuzz_three_x(rng, 20)  # noqa: SLF001
 
     @pytest.mark.skipif(
-        not verify_differential.TWO_D_FISH_BIN.exists(),
-        reason="Rust cross-check not built",
-    )
-    def test_two_d_fish_catches_divergence(self, rng) -> None:
-        """A wrong output on the Rust side is reported as a failure."""
-        real_run = verify_differential._run_two_d_fish_native  # noqa: SLF001
-
-        def tampered(binary, program, stdin):
-            out, code = real_run(binary, program, stdin)
-            return out + b"!", code
-
-        with patch.object(
-            verify_differential, "_run_two_d_fish_native", side_effect=tampered
-        ):
-            assert not verify_differential._fuzz_two_d_fish(rng, 20)  # noqa: SLF001
-
-    @pytest.mark.skipif(
         not verify_differential.PAINFUCK_BIN.exists(),
         reason="Rust cross-check not built",
     )

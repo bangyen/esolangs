@@ -1,7 +1,7 @@
 """Verify the generator-only languages against their extra/ cross-checks.
 
 Every generator with a native cross-check now round-trips through Rust:
-Forþ, Basicfuck, 2dFish, Painfuck, LaserFuck, Unsquare, %^2^-1, bit~, and
+Forþ, Basicfuck, Painfuck, LaserFuck, Unsquare, %^2^-1, bit~, and
 3x all have cross-checks in ``extra/rust``.  This script builds whatever
 cross-checks it can (cargo for Rust) and round-trips each language's
 generator: a generated program must reproduce its text when run through the
@@ -99,7 +99,6 @@ def main() -> int:
         "bit_tilde",
         "forth",
         "basicfuck",
-        "two_d_fish",
         "painfuck",
         "three_x",
     )
@@ -110,7 +109,6 @@ def main() -> int:
     cross_checks: list[tuple[str, Callable[[str], str], list[str] | None]] = [
         ("Forþ", gen.forth, rust["forth"]),
         ("Basicfuck", gen.basicfuck, rust["basicfuck"]),
-        ("2dFish", gen.two_d_fish, rust["two_d_fish"]),
         ("Painfuck", gen.painfuck, rust["painfuck"]),
         ("LaserFuck", gen.laserfuck, rust["laserfuck"]),
         ("Unsquare", gen.unsquare, rust["unsquare"]),

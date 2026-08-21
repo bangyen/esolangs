@@ -14,7 +14,6 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
 | %^2^-1 | yes | yes | yes |  |  | hello |
 | 123 | yes | yes |  |  |  | hello |
-| 2dFish | yes | yes | yes |  |  | hello |
 | 3D Brainfuck | yes | yes |  | yes |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |

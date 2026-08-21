@@ -18,11 +18,9 @@ from dataclasses import dataclass
 from esolangs.tools import text as _generate
 
 # Display names whose canonical id cannot be produced by the slug rules
-# (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``,
-# or a digit-word boundary no slug can find, like ``2dFish``).
+# (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
 _CANONICAL_OVERRIDES = {
     "%^2^-1": "pct_squared_minus_one",
-    "2dFish": "two_d_fish",
 }
 
 _DIGIT_WORDS = {
@@ -110,12 +108,6 @@ LANGUAGES: dict[str, Language] = {
         _generate.one_two_three,
         "tape_based.one_two_three",
         id="one_two_three",
-    ),
-    "2dFish": Language(
-        "2dFish",
-        _generate.two_d_fish,
-        "grid_based.two_d_fish",
-        id="two_d_fish",
     ),
     "6-5": Language(
         "6-5",

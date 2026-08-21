@@ -29,7 +29,6 @@ from esolangs.tools.text.other import (
     suptiftam,
     taglate,
     three_x,
-    two_d_fish,
     unsquare,
     ztoalc_l,
 )
@@ -103,7 +102,6 @@ __all__ = [
     "taglate",
     "three_d_brainfuck",
     "three_x",
-    "two_d_fish",
     "unsquare",
     "wii2d",
     "ztoalc_l",
