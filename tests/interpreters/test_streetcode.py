@@ -238,6 +238,38 @@ class TestStreetcodeLaneMerge:
         heading = machine._choose_heading()  # noqa: SLF001
         assert heading != "E"
 
+    def test_four_way_junction_also_merges(self) -> None:
+        """A four-way junction (``+`` at all four detection-window corners,
+        each with genuine wall arms) exercises ``_junction_kind``'s other
+        branch through the same lane-merge machinery. This pins current
+        behavior on the four-way corner pattern -- unlike the three-way
+        case in ``test_merge_lands_in_the_right_hand_lane``, no hand-drawn,
+        user-confirmed trace exists for a four-way junction (see the "Still
+        open" section of ``docs/streetcode-wip.md``)."""
+        code = [
+            " |C |",
+            "-+  +--",
+            " |",
+            " |",
+            "-+  +--",
+            " |  |",
+        ]
+        machine = _Machine(code, IO())
+        positions = [(machine.row, machine.col)]
+        for _ in range(7):
+            machine.step()
+            positions.append((machine.row, machine.col))
+        assert positions == [
+            (0, 2),
+            (1, 2),
+            (2, 2),
+            (3, 2),
+            (3, 3),
+            (3, 4),
+            (3, 5),
+            (3, 6),
+        ]
+
 
 class TestStreetcodeIO:
     def test_input_echoed_via_cpth_cell(self) -> None:

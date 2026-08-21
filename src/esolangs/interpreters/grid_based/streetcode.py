@@ -410,14 +410,12 @@ class _Machine:
             # logic cannot apply there.
             merge_side = new_heading == _left(heading)
             if merge_side and self._lane_bounded(heading):
+                # The target is always at least 2 cells ahead (the junction
+                # window's fixed lookahead starts 1 cell past the car, and
+                # the target sits 1-2 cells further into it), so it never
+                # coincides with the car's current cell at detection time.
                 target = self._lane_merge_target(heading, new_heading)
-                if target != (self.row, self.col):
-                    self._merge_target = (*target, new_heading, heading)
-                else:
-                    ahead_row, ahead_col = self._ahead(self.row, self.col, new_heading)
-                    if self._open(ahead_row, ahead_col):
-                        self._merging_heading = new_heading
-                        return new_heading
+                self._merge_target = (*target, new_heading, heading)
             else:
                 return new_heading
 
