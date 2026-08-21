@@ -45,8 +45,8 @@ class Test123:
         assert io.getvalue() == "hi"
 
     def test_false_jump_skips_forward(self) -> None:
-        """A FALSE 3 skips to the next 3, then the 1 halts (mask > 128)."""
-        # 3 (FALSE, bit 0) -> next 3 -> 1 sets bit 7 and moves below 0.
+        """A FALSE 3 skips to the next 3, then the 1 halts (pos below 0)."""
+        # 3 (FALSE, bit@0) -> next 3 -> 1 flips bit@0 and moves to pos -1.
         assert run_program("3231") == ""
 
     def test_true_jump_skips_backward(self) -> None:
@@ -54,8 +54,47 @@ class Test123:
         from esolangs.interpreters.tape_based.one_two_three import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        # 2 1 2 reaches position 0 with bit 7 set; the 3 is TRUE and loops.
-        # 123's state is bounded, so the loop is a cycle: the deterministic
-        # state-cycle detector decides it with no wall-clock bound.
-        machine = _Machine("21232131", ScriptedIO())
+        # 2 (pos 0->1) 1 (flip bit@1, pos 1->0) 3 (bit@0 is FALSE, skip to
+        # end) then loop-or-halt sees pos=0 (not <0) and restarts at ip=0
+        # with bit@1 toggled back — a genuine bounded cycle (positions 0-1
+        # only), decided by the deterministic state-cycle detector with no
+        # wall-clock bound. A pointer that marches right forever instead
+        # (e.g. never turning back via a TRUE 3) grows the tape without
+        # repeating a state, which this detector cannot resolve — that
+        # class of hang is left to a caller's timeout.
+        machine = _Machine("2131", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
+
+    def test_pointer_is_unbounded_past_position_seven(self) -> None:
+        """2 past position 7 keeps moving right instead of getting stuck.
+
+        The wiki only special-cases locations -3, -2, and (via 1's
+        wraparound) -4; instruction 2 at "any other location" — including
+        8, 9, ... — just moves right with no stated ceiling.
+        """
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+
+        # Nine 2s march 0 -> 9, then 1 flips bit@9 and moves to pos 8.
+        machine = _Machine("2" * 9 + "1", ScriptedIO())
+        for _ in range(10):
+            machine.step()
+        assert machine.pos == 8
+        assert machine.bits.get(9) is True
+
+    def test_wraparound_from_beyond_seven_reaches_read_position(self) -> None:
+        """Marching left from past position 7 still reaches -3 to read.
+
+        Regression test: an earlier implementation capped the pointer at
+        position 7 and got permanently stuck there once instruction 2
+        pushed it past that point, so -3/-2 (and thus all I/O) became
+        unreachable for any program that walked far enough right first.
+        """
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+
+        # 9 2s march 0 -> 9; 16 1s march back through the -4 wraparound to
+        # 0 and on to -3; the final 2 reads 'Q' (0x51) into locations 0-7.
+        machine = _Machine("2" * 9 + "1" * 16 + "2", ScriptedIO("Q"))
+        for _ in range(26):
+            machine.step()
+        assert machine.pos == 0
+        assert machine.byte() == ord("Q")
