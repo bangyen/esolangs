@@ -251,127 +251,197 @@ def back(truth_table: str) -> str:
     return "\n".join("".join(r).rstrip() for r in rows)
 
 
-_COD_TEMPLATE = "\n".join(
-    [
-        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-        "~>{X1}+(<)))<((+{X0} ~ (<(<(<))) {L00} ---",
-        "~~~<~~~~~~~~<~ ~ ~~~~~~~~~~~~~~~",
-        "  ~)         ~ ~ ~~ (<(<)) {L10} ---",
-        "  ~~~~~~~~~~~~ ~ ~~ ~~~~~~~~~~~~",
-        "             ~ ~ ~~ ~~ (<) {L01} ---",
-        "             ~ ~ ~~ ~~ ~~~~~~~~~",
-        "             ~  +<(+<(+<(  {L11} ---",
-        "             ~~~~~~~~~~~~~~~~~~~",
-    ],
-)
+def _cod_reachable(n: int, k: int) -> tuple[set[int], set[int], set[int]]:
+    """Combo-index contributions reachable after fork ``k`` (0 if ``k == 0``).
 
-_COD_TEMPLATE_3 = "\n".join(
-    [
-        "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
-        "~> {X0}+ (<) ))))<((((  +  {X1}+ (<((((<))))) ))))))<((((<((  + {X2}  ~ (<(<(<(<(<(<(< )))))))"  # noqa: E501
-        " {L000} ---",
-        "~~~~ ~~~~~~~~~~~~~~~~ ~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~ ~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~",  # noqa: E501
-        "   ~ < )))          < ~ ~ <((((<)))) )        ))))<((((< ~ ~ ~ ~~ (<(<(<(<(<(< )))))) {L001}"  # noqa: E501
-        " ---",
-        "   ~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~ ~ ~~ ~~~~~~~~~~~~~~~~~~~~~~~~~",  # noqa: E501
-        "                                                           ~ ~ ~~ ~~ (<(<(<(<(< ))))) {L010}"  # noqa: E501
-        " ---",
-        "                                                           ~ ~ ~~ ~~ ~~~~~~~~~~~~~~~~~~~~~~",  # noqa: E501
-        "                                                           ~ ~ ~~ ~~ ~~ (<(<(<(< )))) {L011}"  # noqa: E501
-        " ---",
-        "                                                           ~ ~ ~~ ~~ ~~ ~~~~~~~~~~~~~~~~~~~",  # noqa: E501
-        "                                                           ~ ~ ~~ ~~ ~~ ~~ (<(<(< ))) {L100}"  # noqa: E501
-        " ---",
-        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~~~~~~~~~~~~~~~",  # noqa: E501
-        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~ (<(< )) {L101}"  # noqa: E501
-        " ---",
-        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~ ~~~~~~~~~~~~~",  # noqa: E501
-        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~ ~~ (< ) {L110}"  # noqa: E501
-        " ---",
-        "                                                           ~ ~ ~~ ~~ ~~ ~~ ~~ ~~ ~~~~~~~~~~",  # noqa: E501
-        "                                                           ~  +<(+<(+<(+<(+<(+<(+<(   {L111}"  # noqa: E501
-        " ---",
-        "                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",  # noqa: E501
-    ],
-)
+    Returns ``(flat, plus_one, plus_weight)``: the values reachable *before*
+    fork ``k`` (``flat``), after taking its "continue" branch (``+1``, an
+    artifact of the gauntlet's own bookkeeping consumed by :func:`_cod_fork_box`
+    ), and after taking its "peel off" branch (``+ 2**(n-k)``, the bit's
+    weight).  Recursive in ``k``: fork ``k``'s reachable set is fork
+    ``k - 1``'s two branch sets combined.
+    """
+    if not k:
+        return {0}, {0}, {0}
+
+    prev = _cod_reachable(n, k - 1)
+    flat = prev[0] | prev[2]
+    return (
+        flat,
+        {v + 1 for v in flat},
+        {v + 2 ** (n - k) for v in flat},
+    )
+
+
+def _cod_gauntlet(vals: set[int]) -> str:
+    """Build a gauntlet of ``(``/``<`` steps that survives only ``vals``.
+
+    ``vals`` sorted with a leading 0 gives consecutive gaps; each gap becomes
+    a run of ``(`` (decrement) of that length followed by a ``<`` gate, so
+    only a cod whose value already matches one of ``vals`` survives to the
+    next gate.  A trailing run of ``)`` (up to the maximum value) restores
+    the surviving cod to that value for whatever comes next.
+    """
+    arr = [0, *sorted(vals)]
+    res = ""
+    for k in range(len(arr) - 1):
+        diff = arr[k + 1] - arr[k]
+        res += "(" * diff + "<"
+    res += ")" * max(arr)
+    return res
+
+
+def _cod_fork_box(n: int, k: int) -> str:
+    """Build a private, self-contained 5-row box that forks on bit ``k - 1``.
+
+    Bit ``k`` (1-indexed, weight ``2**(n - k)``) gets its own ``+`` fork:
+    one branch continues forward (a net-zero gauntlet -- the value entering
+    and leaving is unchanged), the other peels off to a private side row
+    (a gauntlet that nets the branch's full weight), and both rejoin at a
+    second ``+`` on the main row.  Unlike nesting fork-and-gauntlet routing
+    directly (the ``n <= 3`` construction this replaces), every box below
+    uses *its own* private cells for both branches -- no box's gauntlet
+    cells are reused by another box's routing -- so boxes compose by plain
+    horizontal concatenation (see :func:`_cod_combine`) with no risk of one
+    box's cod re-entering another box's cells from an unexpected direction
+    (the failure mode that blocked a general-``n`` construction before;
+    see ``docs/cod_boolean_generator.md``, "Generalizing past n == 3").
+    The leading ``?`` marks the box's own entry cell, replaced by the
+    previous box's exit (or ``>`` for the first box) when boxes are joined.
+    """
+    vals = _cod_reachable(n, k)
+    gate0 = _cod_gauntlet(vals[1])
+    gate1 = _cod_gauntlet(vals[0])
+    back0 = _cod_gauntlet(vals[2])[::-1]
+    back1 = gate1[::-1]
+    diff = ")" * (2 ** (n - k) - 1)
+
+    top = f"+ {gate0} {back0} +"
+    bot = f" {gate1} {diff} {back1}"
+    length = max(len(top), len(bot))
+    top = top.rjust(length)
+    bot = bot.rjust(length)
+    box = (
+        "~" * length + "\n"
+        + top + "\n "
+        + "~" * (length - 2)
+        + " \n" + bot + "\n"
+        + "~" * length
+    )
+    cov = "~" + box.replace("\n", "~\n~") + "~"
+    return cov.replace("\n~", "\n?", 1).replace("+~", "+ ")
+
+
+def _cod_leaf(n: int, k: int, bit: str) -> str:
+    """Build the tail of leaf row ``k``: a gauntlet to 0, the answer, ``---``."""
+    diff: int = 2**n - k - 1
+    output = ")" if bit == "1" else " "
+    return "(<" * diff + ")" * diff + f" {output} ---"
+
+
+def _cod_cascade_row(n: int) -> str:
+    """Build the cascade row's chain of ``+<(`` blocks, one per non-final leaf."""
+    total: int = 2**n - 1
+    return "  " + "+<(" * total
+
+
+def _cod_tree(n: int, table: str) -> str:
+    """Build the ``2**n`` leaf rows, each peeling off one combo's answer."""
+
+    def row(k: int) -> str:
+        output = _cod_leaf(n, k, table[k])
+        prefix = "~~ " * (k + 1)
+        return prefix + output + "\n" + prefix + "~" * len(output)
+
+    total: int = 2**n - 1
+    length = 3 * total + 10
+    return (
+        "~" * length
+        + "\n"
+        + "\n".join(row(k) for k in range(total))
+        + "\n"
+        + _cod_cascade_row(n)
+        + " "
+        + _cod_leaf(n, total, table[total])
+        + "\n"
+        + "~" * length
+    )
+
+
+def _cod_cascade(n: int, table: str) -> str:
+    """Build the leaf cascade (Phase 2): stairstep gates down to each answer.
+
+    Reached with the combo index ``V = sum(bit_i * 2**(n-1-i))`` as the
+    cod's value, the cascade's chain of ``+<(`` blocks (:func:`_cod_cascade_row`)
+    peels off one copy per step, decrementing the rest; each leaf's own
+    gate chain only lets the copy carrying exactly the right number of
+    decrements through, so leaf ``k`` fires iff ``V == k``.  Column 1 is a
+    pre-built vertical shaft from the entry row straight down to the
+    cascade row, used to feed in the combo index from :func:`_cod_fork_box`
+    boxes stacked above (see :func:`_cod_combine`).
+    """
+    t = _cod_tree(n, table)
+    r = t.replace("\n", "\n~ ", 2 ** (n + 1) - 1).replace("~ ", "  ", 1)
+    return f"~{r}~"
+
+
+def _cod_combine(blocks: list[str]) -> str:
+    """Concatenate grid blocks left to right, padding shorter ones with blanks."""
+    lines = [b.split("\n") for b in blocks]
+    longest = max(len(block) for block in lines)
+    padded = [
+        block + [" " * len(block[0])] * (longest - len(block)) for block in lines
+    ]
+    rows = ("".join(padded[j][i] for j in range(len(blocks))) for i in range(longest))
+    return "\n".join(rows)
 
 
 def cod(truth_table: str) -> str:
-    """Build a COD template for a one-, two-, or three-input Boolean function.
+    """Build a COD template for an ``n``-input Boolean function, any ``n >= 1``.
 
-    ``truth_table`` is a binary string of length 2, 4, or 8, indexed by its
-    inputs (most significant first); only ``n <= 3`` is supported.  The
-    template's ``{X0}``/``{X1}``/``{X2}`` placeholders become the input bits
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.  The
+    template's ``{X0}``..``{X(n-1)}`` placeholders become the input bits
     (``)`` for a one bit, a space for a zero); the harness's
     :func:`instantiate` fills them, matching every other no-input
-    generator's convention.  ``n == 1`` reuses the two-input routing with
-    its second input fixed to the literal ``0`` (baked into the template,
-    not a placeholder the harness fills), so ``{X1}`` is absent and only
-    ``{X0}`` remains.
+    generator's convention.
 
-    Each input bit gets its own ``+`` fork: one branch continues forward,
-    the other peels off to the side, and each branch carries a short
-    ``(...)<`` gauntlet that only the *matching* value's copy survives
-    (per the wiki's "if there are two branches [besides the one entered
-    from], one continues and one goes back" rule for ``+``) -- so the
-    routing is branch-free by construction and never touches COD's
-    random-junction rule, exactly like the ``_``-gate design this
-    construction replaces (see ``docs/cod_boolean_generator.md``).  After
-    all bits are consumed exactly one cod survives, on one of ``2**n`` rows
-    (one per input combination), each ending at a fixed value of 0 -- that
-    row's own leaf then embeds the table's answer directly (``)`` for a
-    one entry, nothing for a zero) immediately before its ``---``, so
-    every entry (not just the input routing) is a compile-time constant
-    and the program always prints exactly one line.
+    The construction has two phases, each built from private, self-
+    contained grid blocks joined by plain horizontal concatenation
+    (:func:`_cod_combine`) -- no block's cells are reused by another
+    block's routing, which is what makes this generalize past the
+    hand-built ``n <= 3`` construction it replaces (see
+    ``docs/cod_boolean_generator.md``, "Generalizing past n == 3", for the
+    re-entry failure mode that blocked a general-``n`` version before):
 
-    The three-input template's second and third junctions each need a
-    ``(...)`` gauntlet on their *own* zero-branch to bring a rejoining cod's
-    value back down before the next fork reads it -- unlike the two-input
-    template, where a fork's two children are always leaves, three levels
-    of forking means a fork's zero-branch can itself be an internal node
-    whose own two children later rejoin the parent's row, so the rejoined
-    value needs its own reset gauntlet before the next input's fork; a
-    template built without those resets sends stray cods circulating
-    through earlier junctions forever instead of halting (a "backflow"
-    bug caught only by tracing every input combination against the real
-    interpreter, not by inspection).
+    Phase 1 assembles the input combo's numeric index ``V = sum(bit_i *
+    2**(n-1-i))``: bits ``0..n-2`` each get their own fork-and-gauntlet box
+    (:func:`_cod_fork_box`) that adds the bit's weight to the running value,
+    and the last bit (weight ``2**0 == 1``) is a bare placeholder cell
+    needing no fork of its own.
+
+    Phase 2 (:func:`_cod_cascade`) is a leaf cascade: reached with the cod's
+    value equal to ``V``, a chain of ``2**n - 1`` ``+<(`` blocks peels off
+    one copy per step, and each leaf's own gate chain only lets through the
+    copy carrying exactly the right number of decrements -- so leaf ``k``
+    fires iff ``V == k``, prints the table's answer for that leaf (baked in
+    directly, ``)`` for a one entry, nothing for a zero), and halts.  Every
+    entry is therefore a compile-time constant and the program always
+    prints exactly one line.
     """
     n = _validate_truth_table(truth_table)
-    if n not in (1, 2, 3):
-        raise ValueError(f"cod only supports n == 1, 2, or 3, got n == {n}")
+    if n < 1:
+        raise ValueError(f"cod requires n >= 1, got n == {n}")
 
-    def bit(entry: str) -> str:
-        return ")" if entry == "1" else " "
+    blocks = ["~~~\n~> \n~~~"]
+    for k in range(n - 1):
+        blocks.append(_cod_fork_box(n, k + 1).replace("?", "{X" + str(k) + "}", 1))
 
-    if n == 3:
-        return _COD_TEMPLATE_3.format(
-            X0="{X0}",
-            X1="{X1}",
-            X2="{X2}",
-            L000=bit(truth_table[0]),
-            L001=bit(truth_table[1]),
-            L010=bit(truth_table[2]),
-            L011=bit(truth_table[3]),
-            L100=bit(truth_table[4]),
-            L101=bit(truth_table[5]),
-            L110=bit(truth_table[6]),
-            L111=bit(truth_table[7]),
-        )
+    box_rows = _cod_cascade(n, truth_table).split("\n")
+    box_rows[1] = "{X" + str(n - 1) + "}" + box_rows[1][1:]
+    blocks.append("\n".join(box_rows))
 
-    # X1 fixed to 0 for n == 1: only the even table entries are used.
-    table = truth_table[0] + "0" + truth_table[1] + "0" if n == 1 else truth_table
-
-    template = _COD_TEMPLATE.format(
-        X0="{X0}",
-        X1="{X1}",
-        L00=bit(table[0]),
-        L01=bit(table[1]),
-        L10=bit(table[2]),
-        L11=bit(table[3]),
-    )
-    if n == 1:
-        template = template.replace("{X1}", " ")
-    return template
+    return _cod_combine(blocks)
 
 
 _byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"
