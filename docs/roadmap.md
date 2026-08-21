@@ -145,6 +145,47 @@ complex-output one.
 for having no generator or only a corpus-only cross-check; see
 `docs/limitations.md` for the languages and reasoning.
 
+## RISC-V assembly compilers
+
+The compilers in `src/esolangs/compilers/assembly/` translate a program to
+RISC-V Linux assembly, assembled and run under unicorn by
+`scripts/verify_riscv_unicorn.py`; the seven shipped (BF-PDA, BFStack, Home
+Row, Jaune, RAM0, Suffolk, Unsquare) are in the commit history, with
+bfstack, suffolk, unsquare, and home_row round-tripping their text
+generators.
+
+The cross-checks' no-input rule does not apply here: a cross-check reference
+receives its program via stdin, but a compiled program is embedded in the
+emitted assembly, so the ELF's stdin is free for the program's own input —
+Suffolk's `,` already emits a `read` syscall.  Candidates are still bound
+by the toolchain rule (RISC-V fits machine-model languages), just not by
+the input rule.
+
+- **AddSubJump — a RISC-V compiler is worth adding.**  A branch-and-goto
+  OISC whose self-modifying memory (the instruction at `ip` is the four
+  cells `memory[ip]..memory[ip+3]`) maps 1:1 onto cells, registers, and
+  branches; `-1` I/O is a plain byte read/write like Suffolk's `,`, and the
+  generator's branch-and-goto output is exactly the complex-output class a
+  compile-then-fuzz differential would exercise.
+- **Collatz Multiverse — a RISC-V compiler is worth adding.**  Named
+  registers, arrays, and a `lineNumber` goto; the per-line Collatz rule is
+  pure arithmetic on the runtime value (`andi`/`mul`/`add`/`srai`), `DO
+  PRINT` is a byte write, and the generator's runtime odd/even rules are
+  complex-output.  Unlike Suffolk's single-byte input, `input_num` parses a
+  whole line as an integer, so the emitter needs a small decimal parser.
+- **ZTOALC L stays in the Rust column.**  Heterogeneous int-or-array
+  values, arrays-of-arrays, bounds checks, and trajectory-driven dispatch
+  are the semantic class the toolchain rule sends to Rust; emitting that in
+  assembly would be strictly harder and no more verifiable than the Rust
+  port already on the worth-adding table.
+
+**The verification harness is the real scope.**  The differential
+(`scripts/verify_differential.py`) never compiles, and the compiler cases
+in `scripts/verify_riscv_unicorn.py` feed an empty stdin, so an
+input-reading compiler needs either fixed stdin cases via `run_elf` or a
+compile-then-fuzz differential feeding the program's input to the compiled
+ELF — that machinery is part of the work for either candidate.
+
 ## VM / debugging interface
 
 `esolangs.make_vm` (step-and-inspect wrappers) and `esolangs.make_debugger`
