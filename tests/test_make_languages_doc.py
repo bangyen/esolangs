@@ -70,6 +70,7 @@ def test_compiler_sets_match_the_compiler_modules() -> None:
         "AddSubJump",
         "BF-PDA",
         "BFStack",
+        "Collatz Multiverse",
         "Home Row",
         "Jaune",
         "RAM0",

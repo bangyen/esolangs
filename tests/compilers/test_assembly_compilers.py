@@ -407,6 +407,77 @@ class TestAddSubJump:
             mod.comp(code)  # must not raise
 
 
+class TestCollatzMultiverse:
+    def test_compiles_to_assembly(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        output = mod.comp("x = negativeOne x + negativeOne, DO PRINT.")
+        assert ".global _start" in output
+        assert "dispatch:" in output
+        assert "collatz_odd:" in output
+
+    def test_parse(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        assert mod.parse("x = y x + z, DO PRINT.") == [
+            ("x", None, "y", None, "z", None, "DO")
+        ]
+        assert mod.parse("arr[i] = y x + z, NOT PRINT.") == [
+            ("arr", "i", "y", None, "z", None, "NOT")
+        ]
+
+    def test_blank_lines_ignored(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        base = mod.comp("x = y x + z, DO PRINT.")
+        spaced = mod.comp("\n\nx = y x + z, DO PRINT.\n\n")
+        assert base == spaced
+
+    def test_array_gets_its_own_data_block(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        output = mod.comp("arr[i] = negativeOne x + i, DO PRINT.")
+        assert "array_index:" in output
+        assert "arr0:" in output
+
+    def test_line_number_dispatch_table(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        output = mod.comp(
+            "\n".join(
+                [
+                    "lineNumber = negativeOne x + negativeOne, NOT PRINT.",
+                    "x = negativeOne x + one, DO PRINT.",
+                ]
+            )
+        )
+        assert "beq  s2, t0, .L1" in output
+        assert "beq  s2, t0, .L2" in output
+
+    def test_empty_program(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        output = mod.comp("")
+        assert ".global _start" in output
+
+    def test_malformed_line_raises(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        with pytest.raises(ValueError, match="malformed line"):
+            mod.comp("hello world")
+
+    def test_random_program_does_not_crash(self) -> None:
+        import contextlib
+        import random
+
+        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        names = ["a", "b", "c", "arr", "negativeOne", "input", "lineNumber", "zero"]
+        random.seed(3)
+        for _ in range(30):
+            lines = []
+            for _ in range(random.randint(1, 8)):
+                v1, v2, v3 = (random.choice(names) for _ in range(3))
+                do = random.choice(["DO", "NOT"])
+                lines.append(f"{v1} = {v2} x + {v3}, {do} PRINT.")
+            # input as a target is documented as malformed; everything else
+            # must compile without raising.
+            with contextlib.suppress(ValueError):
+                mod.comp("\n".join(lines))
+
+
 class TestRAM0:
     def test_parse(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.ram0")
