@@ -135,14 +135,14 @@ def main() -> int:
             binary = assemble_source(f.read())
         for text in REFERENCE_TEXTS:
             out, _ = run_elf(binary, generator(text).encode())
-            ok = out == text.encode()
+            ok = out == text.encode("latin-1")
             failures += not ok
             print(f"{name} {text!r}: {'ok' if ok else 'FAIL'} -> {out!r}")
     for name, path, program, expected in REFERENCE_CASES:
         with open(path) as f:
             binary = assemble_source(f.read())
         out, code = run_elf(binary, program.encode())
-        ok = out == expected.encode() and code == 0
+        ok = out == expected.encode("latin-1") and code == 0
         failures += not ok
         print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r} (exit {code})")
     for name, module, source, expected in COMPILER_CASES:
@@ -150,7 +150,9 @@ def main() -> int:
         args = (source, 1) if module == "suffolk" else (source,)
         binary = assemble_source(comp(*args))
         out, _ = run_elf(binary, b"")
-        ok = out == expected.encode()
+        # latin-1: one byte per expected char; UTF-8 would expand 0x80+ to
+        # multi-byte and never match a single-byte machine-code output.
+        ok = out == expected.encode("latin-1")
         failures += not ok
         print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
     return 1 if failures else 0
