@@ -20,7 +20,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | 6-5 | yes | yes |  | yes |  | hello cat |
 | A Painter Ant |  | yes |  | yes |  |  |
 | ABCDirection |  | yes |  | yes |  |  |
-| AddSubJump | yes | yes |  | yes |  | hello |
+| AddSubJump | yes | yes |  | yes | yes | hello |
 | ArrowQueue |  | yes |  | yes |  | boolean |
 | BF-PDA |  | yes | yes | yes | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
