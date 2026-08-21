@@ -149,10 +149,10 @@ for having no generator or only a corpus-only cross-check; see
 
 The compilers in `src/esolangs/compilers/assembly/` translate a program to
 RISC-V Linux assembly, assembled and run under unicorn by
-`scripts/verify_riscv_unicorn.py`; the seven shipped (BF-PDA, BFStack, Home
-Row, Jaune, RAM0, Suffolk, Unsquare) are in the commit history, with
-bfstack, suffolk, unsquare, and home_row round-tripping their text
-generators.
+`scripts/verify_riscv_unicorn.py`; the eight shipped (AddSubJump, BF-PDA,
+BFStack, Home Row, Jaune, RAM0, Suffolk, Unsquare) are in the commit
+history, with addsubjump, bfstack, suffolk, unsquare, and home_row
+round-tripping their text generators.
 
 The cross-checks' no-input rule does not apply here: a cross-check reference
 receives its program via stdin, but a compiled program is embedded in the
@@ -161,12 +161,19 @@ Suffolk's `,` already emits a `read` syscall.  Candidates are still bound
 by the toolchain rule (RISC-V fits machine-model languages), just not by
 the input rule.
 
-- **AddSubJump — a RISC-V compiler is worth adding.**  A branch-and-goto
-  OISC whose self-modifying memory (the instruction at `ip` is the four
-  cells `memory[ip]..memory[ip+3]`) maps 1:1 onto cells, registers, and
-  branches; `-1` I/O is a plain byte read/write like Suffolk's `,`, and the
-  generator's branch-and-goto output is exactly the complex-output class a
-  compile-then-fuzz differential would exercise.
+**AddSubJump shipped**, but not as unrolled per-token blocks like the other
+seven: its jump target (`*c`) and even its operands are computed at
+runtime from self-modifying memory, so no compile-time control-flow graph
+exists to unroll.  The emitted assembly is instead a real
+fetch-decode-execute loop over a `.data` array of 65536 `.dword` cells
+(`mem:`), with `read_cell`/`write_cell` subroutines centralizing the
+special-address dispatch (`-1` I/O via `read`/`write` syscalls, `-2..-5`
+flags, `-6/-7/-8` constants, `-9` flag-update mode) that both operand fetch
+and the write-back share.  The interpreter's unbounded, growing memory
+becomes a fixed preallocated buffer, the same tradeoff RAM0's compiler
+already makes for its 256-cell RAM.  See
+`src/esolangs/compilers/assembly/addsubjump.py`.
+
 - **Collatz Multiverse — a RISC-V compiler is worth adding.**  Named
   registers, arrays, and a `lineNumber` goto; the per-line Collatz rule is
   pure arithmetic on the runtime value (`andi`/`mul`/`add`/`srai`), `DO

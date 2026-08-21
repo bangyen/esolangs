@@ -218,12 +218,13 @@ Implementations written in languages other than Python, used as cross-check refe
 <details>
 <!-- COMPILERS:START -->
 
-<summary>Show all 7 compilers</summary>
+<summary>Show all 8 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
 ### RISC-V Assembly Compilers
 
+- [AddSubJump](https://esolangs.org/wiki/AddSubJump)
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
 - [BFStack](https://esolangs.org/wiki/BFStack)
 - [Home Row](https://esolangs.org/wiki/Home_Row)

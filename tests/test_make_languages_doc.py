@@ -67,6 +67,7 @@ def test_compiler_sets_match_the_compiler_modules() -> None:
     """The compiler lists are derived from the compiler source files."""
     module = load_script()
     assert {
+        "AddSubJump",
         "BF-PDA",
         "BFStack",
         "Home Row",
