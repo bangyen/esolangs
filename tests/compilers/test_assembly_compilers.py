@@ -11,6 +11,7 @@ COMPILERS = [
     "esolangs.compilers.unsquare",
     "esolangs.compilers.bf_pda",
     "esolangs.compilers.ram0",
+    "esolangs.compilers.forth",
 ]
 
 
@@ -592,6 +593,89 @@ class TestRAM0:
         assert "sw   s1, 0(t0)" in output  # S
 
 
+class TestForth:
+    def test_digits_and_letters(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.forth")
+        assert "li   t0, 6" in mod.comp("6")
+        assert "li   t0, 10" in mod.comp("A")  # A..F push 10..15
+
+    def test_stack_ops(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.forth")
+        assert "call dup" in mod.comp(":")
+        assert "call complement" in mod.comp("~")
+        assert "call print_top" in mod.comp(".")
+        assert "call read_line" in mod.comp(",")
+        assert "call reverse" in mod.comp("o")
+        assert "call rotate3" in mod.comp("c")
+
+    def test_arithmetic_ops(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.forth")
+        assert "call op_add" in mod.comp("+")
+        assert "call op_sub" in mod.comp("-")
+        assert "call op_mul" in mod.comp("*")
+        assert "call op_div" in mod.comp("/")
+        assert "call op_mod" in mod.comp("%")
+        assert "call op_swap" in mod.comp("v")
+
+    def test_branch_and_loop_bodies_become_subroutines(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.forth")
+        branch = mod.comp("1(2.)")
+        assert ".scope1:" in branch
+        assert "call peek" in branch
+        assert "call .scope1" in branch
+
+        loop = mod.comp("1[2.]")
+        assert ".scope1:" in loop
+        assert "j    .scope2" in loop or ".scope2:" in loop
+
+    def test_store_emits_table_store_and_call_emits_table_call(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.forth")
+        output = mod.comp("1{2.}1;")
+        assert "call table_store" in output
+        assert "call table_call" in output
+
+    def test_nested_brackets_get_their_own_matching(self) -> None:
+        """A ( inside a [...] body does not close the outer [."""
+        mod = importlib.import_module("esolangs.compilers.forth")
+        output = mod.comp("1[1(2.)]")
+        assert output.count(".scope") >= 4  # loop body, branch body, + labels
+
+    def test_unmatched_bracket_compiles_without_crashing(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.forth")
+        output = mod.comp("(5")
+        assert ".global _start" in output
+
+    def test_empty_program(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.forth")
+        output = mod.comp("")
+        assert ".global _start" in output
+
+    def test_unknown_characters_are_ignored(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.forth")
+        assert mod.comp("a5.b") == mod.comp("5.")
+
+    def test_software_multiply_and_divide_no_hardware_m_extension(self) -> None:
+        """rv64i has no M extension, so mul/div/mod must be software."""
+        mod = importlib.import_module("esolangs.compilers.forth")
+        output = mod.comp("23+45-*9/8%")
+        assert "\tmul" not in output.replace("mul32", "").replace("op_mul", "")
+        assert "\tdiv" not in output
+        assert "\trem" not in output
+        assert "mul32:" in output
+        assert "divmod32:" in output
+
+    def test_call_sites_that_make_further_calls_save_ra(self) -> None:
+        """Every subroutine containing a nested call must preserve ra, or
+        the nested call's own return overwrites the caller's return
+        address (this was the compiler's original bug: table_call,
+        op_add, and the generated .scopeN bodies all call further
+        subroutines and must save/restore ra around that)."""
+        mod = importlib.import_module("esolangs.compilers.forth")
+        output = mod.comp("1{2.}1;")
+        assert "sd   ra, 0(sp)" in output
+        assert "ld   ra, 0(sp)" in output
+
+
 class TestCompilerFuzz:
     """Compilers must not crash on arbitrary (possibly malformed) input."""
 
@@ -606,6 +690,7 @@ class TestCompilerFuzz:
             "esolangs.compilers.unsquare",
             "esolangs.compilers.bf_pda",
             "esolangs.compilers.ram0",
+            "esolangs.compilers.forth",
         ],
     )
     def test_random_input_does_not_crash(self, module: str) -> None:

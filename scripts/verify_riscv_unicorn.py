@@ -90,6 +90,14 @@ COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
 COMPILER_CASES.append(("bf_pda", "bf_pda", "<.>@.", "01"))
 COMPILER_CASES.append(("ram0", "ram0", "A A A", "z: 3\nn: 0\nram: {}\n"))
 COMPILER_CASES.append(("ram0", "ram0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}\n"))
+COMPILER_CASES.append(("forth", "forth", "65.", "\x05"))
+COMPILER_CASES.append(("forth", "forth", "5:..", "\x05\x05"))
+COMPILER_CASES.append(("forth", "forth", "28*.", "\x10"))
+COMPILER_CASES.append(("forth", "forth", "09/~.", "\xff"))
+COMPILER_CASES.append(("forth", "forth", "1(F4*5+.)", "A"))
+COMPILER_CASES.append(("forth", "forth", "0F7*0+F4*C+[.]", "Hi"))
+COMPILER_CASES.append(("forth", "forth", "1{F4*5+.}1;", "A"))
+COMPILER_CASES.append(("forth", "forth", "1{/}1;", ""))
 _CM_CONSTANTS = "\n".join(
     [
         "one = negativeOne x + negativeOne, NOT PRINT.",
