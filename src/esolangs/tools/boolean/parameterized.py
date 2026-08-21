@@ -1136,17 +1136,26 @@ _OPP = {
 }
 
 
+def _bit_is_horizontal(n: int, k: int) -> bool:
+    """Return whether bit ``k`` (of ``n``, most-significant first) moves.
+
+    Moves on the x axis rather than y -- the same index-parity rule the
+    head, the leaf coordinates, and the routing all agree on.
+    """
+    return k % 2 != n % 2
+
+
 def _bit_move(n: int, k: int, bit: int) -> str:
     """Return the moves that input bit ``k`` contributes.
 
     ``bits`` are most-significant first, so bit ``k`` carries weight
-    ``2 ** (n - k)`` and moves on the axis chosen by index parity (``k % 2
-    != n % 2`` -> horizontal, else vertical); a set bit moves west/north, a
-    cleared bit east/south.  The head walks these moves out to each leaf
-    and the routing walks them to read it, so the two always agree.
+    ``2 ** (n - k)`` and moves on the axis chosen by index parity
+    (:func:`_bit_is_horizontal`); a set bit moves west/north, a cleared bit
+    east/south.  The head walks these moves out to each leaf and the
+    routing walks them to read it, so the two always agree.
     """
     mag: int = 2 ** (n - k)
-    if k % 2 != n % 2:
+    if _bit_is_horizontal(n, k):
         return ("w" if bit else "e") * mag
     return ("n" if bit else "s") * mag
 
@@ -1180,18 +1189,13 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
     out: list[tuple[int, int, tuple[int, ...]]] = []
 
     for i in range(2**n):
-        pads = bin(i)[2:].rjust(n, "0")
-        bits = [int(k) for k in pads]
+        bits = [(i >> (n - 1 - k)) & 1 for k in range(n)]
         x = 0
         y = 0
 
         for k, b in enumerate(bits):
-            mag = 2 ** (n - k)
-
-            if not b:
-                mag *= -1
-
-            if k % 2 != n % 2:
+            mag = 2 ** (n - k) if b else -(2 ** (n - k))
+            if _bit_is_horizontal(n, k):
                 x += mag
             else:
                 y += mag
@@ -1227,7 +1231,7 @@ def _head(truth_table: str, bits: list[int]) -> str:
         outbound = "WS" if n >= 3 and n % 2 == 1 else ""
         outbound += "".join(
             (
-                ("NE" if k % 2 != n % 2 else "WS") + _bit_move(n, k, b)
+                ("NE" if _bit_is_horizontal(n, k) else "WS") + _bit_move(n, k, b)
                 if n >= 2
                 else _bit_move(n, k, b)
             )
