@@ -1742,17 +1742,36 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
 
     ``{Xi}`` placeholders on row 0, each branch's op cells on row 0 (bit 0)
     or on a dedicated detour row below (bit 1), re-merging before the next
-    junction.
+    junction.  Merges and the final decode each leave one blank column of
+    separation before what follows them.
     """
-    c = [0] * n
-    c[0] = 4 if start != 0 else 1  # '>' at (0,0), optional digit at (0,1)
-    m = [0] * n
+    placeholder_width = len("{X0}")  # every {Xi} is 4 cells: '{X' + digit + '}'
+
+    placeholder_col = [0] * n
+    # column 0 is always '>'; when there's a start digit (_wii2d_search only
+    # ever returns a single digit 0-9), it sits at column 1 and the first
+    # placeholder is reserved a fixed placeholder_width-wide slot after it
+    # (more than the single digit needs, but matching every other gap's
+    # width in this layout); with no digit the placeholder starts right
+    # after the '>'.
+    placeholder_col[0] = placeholder_width if start != 0 else 1
+    merge_col = [0] * n
     for i in range(n):
         r0, r1 = routes[i]
-        m[i] = c[i] + max(4 + len(r0), len(r1) + 1) + 1
+        # row 0 runs placeholder, then r0, ending at placeholder_col[i] +
+        # placeholder_width + len(r0); row i+1 runs '>', then r1, ending at
+        # placeholder_col[i] + 1 + len(r1).  The merge sits one blank
+        # column past whichever row runs longer.
+        row0_end = placeholder_width + len(r0)
+        row1_end = 1 + len(r1)
+        merge_col[i] = placeholder_col[i] + max(row0_end, row1_end) + 1
         if i + 1 < n:
-            c[i + 1] = m[i] + 2
-    total_cols = m[n - 1] + 51  # merge + 48 '+' + '~' + '.'
+            placeholder_col[i + 1] = merge_col[i] + 2
+
+    decode_start = merge_col[n - 1] + 1  # one blank column past the last merge
+    ascii_zero = 48
+    total_cols = decode_start + ascii_zero + len("~.")
+
     grid = [[" "] * total_cols for _ in range(n + 1)]
     grid[0][0] = ">"
     if start:
@@ -1760,21 +1779,21 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     for i in range(n):
         ph = "{X" + str(i) + "}"
         for k, ch in enumerate(ph):
-            grid[0][c[i] + k] = ch
+            grid[0][placeholder_col[i] + k] = ch
         r0, r1 = routes[i]
         for k, ch in enumerate(r0):
-            grid[0][c[i] + 4 + k] = ch
+            grid[0][placeholder_col[i] + placeholder_width + k] = ch
         # 1-branch: descend to row i+1, travel east, ascend to the merge
-        grid[i + 1][c[i]] = ">"
+        grid[i + 1][placeholder_col[i]] = ">"
         for k, ch in enumerate(r1):
-            grid[i + 1][c[i] + 1 + k] = ch
-        grid[i + 1][m[i]] = "^"
-        grid[0][m[i]] = ">"
-    base = m[n - 1] + 1
-    for k in range(48):
-        grid[0][base + k] = "+"
-    grid[0][base + 48] = "~"
-    grid[0][base + 49] = "."
+            grid[i + 1][placeholder_col[i] + 1 + k] = ch
+        grid[i + 1][merge_col[i]] = "^"
+        grid[0][merge_col[i]] = ">"
+    # shift the 0/1 accumulator up to the ASCII digit and print it
+    for k in range(ascii_zero):
+        grid[0][decode_start + k] = "+"
+    grid[0][decode_start + ascii_zero] = "~"
+    grid[0][decode_start + ascii_zero + 1] = "."
     grid[1][0] = "!"
     return ["".join(row).rstrip() for row in grid]
 
