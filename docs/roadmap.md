@@ -222,11 +222,37 @@ by fuzzing adversarial random operands, not by any hand-written example).
 See `src/esolangs/compilers/sbleq.py` and
 `src/esolangs/compilers/decleq.py`.
 
-- **Forþ — intrinsic value, no verification gain.**  A stack machine with
-  `[` loops and `;` calls lowers to a real call structure: a data stack in
-  memory, `jal`/`ret` through the link register, and loop branches.  It
-  already has a fuzzed Rust cross-check, so this is artifact-only — it adds
-  no differential value and should not duplicate the Rust reference's job.
+**Forþ shipped, intrinsic value only.**  Unlike the self-modifying-memory
+OISCs above, Forþ's `(`/`[`/`{` bodies are lexically delimited and matched
+at compile time exactly the way the interpreter matches them at run time
+(nesting counts only the same open character, so a `(` inside a `[...]`
+body does not affect the `[`'s match), so this compiles to a real call
+graph instead of a fetch-decode-execute loop: each bracketed body becomes
+its own labelled subroutine reached through `call`/`ret`, mirroring the
+interpreter's explicit call-stack of frames.  `;` is the one genuinely
+dynamic construct — `{` stores a body keyed by whatever runtime value is on
+top of the stack, and `;` looks a body up by a popped runtime value — so it
+lowers to a small runtime association list (a `.bss` array of `(key,
+address)` pairs) scanned backward on lookup so the most recent `{` for a
+given key wins, matching the Python dict's overwrite semantics; a key with
+no entry is the interpreter's `table.get(key, "")`, an empty scope that
+returns immediately.  An empty-stack pop is fatal at any nesting depth (a
+direct jump to the halt label, matching `HaltError` unwinding every
+frame), while every other invalid operation (a binary op or `c` with too
+few operands, division/modulo by zero) aborts only the innermost scope (an
+early `ret`).  rv64i has no M extension, so `*`/`/`/`%` are software
+(shift-add multiply, sign-adjusted repeated-subtraction divide truncating
+toward zero to match `_trunc_div`/`_trunc_mod`), and every arithmetic
+result is re-truncated to a sign-extended 32-bit word to match `_wrap32`.
+The one correctness trap: every subroutine that itself issues a `call`
+(the generated per-scope bodies, the binary-op dispatchers, `table_call`'s
+indirect `jalr`) must save and restore `ra` around it, or a nested call's
+return address clobbers the caller's own — RISC-V's `call`/`ret`
+pseudo-ops both target the same link register, so this is silent until
+the outer routine returns to the wrong place.  It already has a fuzzed
+Rust cross-check, so this is artifact-only — it adds no differential value
+and should not duplicate the Rust reference's job.  See
+`src/esolangs/compilers/forth.py`.
 - **ZTOALC L stays in the Rust column.**  Heterogeneous int-or-array
   values, arrays-of-arrays, bounds checks, and trajectory-driven dispatch
   are the semantic class the toolchain rule sends to Rust; even on the
