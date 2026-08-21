@@ -323,22 +323,25 @@ def _cod_fork_box(n: int, k: int) -> str:
     width = max(len(forward_row), len(side_row))
     forward_row = forward_row.rjust(width)
     side_row = side_row.rjust(width)
-    interior = (
-        "~" * width + "\n"
-        + forward_row + "\n "
-        + "~" * (width - 2)
-        + " \n" + side_row + "\n"
-        + "~" * width
+
+    # The two forks (entry and exit) sit on the forward row; the middle
+    # wall row is open at those same columns, offset by one to account for
+    # the west wall column the forward row itself does not have (it has
+    # the entry marker there instead).
+    fork_cols = [i + 1 for i, ch in enumerate(forward_row) if ch == "+"]
+    middle_row = "".join(
+        " " if c in fork_cols else "~" for c in range(width + 2)
     )
 
-    # Add a west/east wall column by turning every newline into a wall
-    # cell that closes the line above and opens the one below.  This also
-    # overwrites the forward row's own leading and trailing cells with
-    # wall, so restore them: the entry marker at the start (later replaced
-    # with '{Xi}' or the previous box's own exit) and open water at the
-    # end (the exit into the next box or Phase 2).
-    bordered = "~" + interior.replace("\n", "~\n~") + "~"
-    return bordered.replace("\n~", "\n?", 1).replace("+~", "+ ")
+    return "\n".join(
+        [
+            "~" * (width + 2),
+            "?" + forward_row + " ",
+            middle_row,
+            "~" + side_row + "~",
+            "~" * (width + 2),
+        ],
+    )
 
 
 def _cod_leaf(n: int, k: int, bit: str) -> str:
@@ -389,17 +392,20 @@ def _cod_cascade(n: int, table: str) -> str:
     cascade row, used to feed in the combo index from :func:`_cod_fork_box`
     boxes stacked above (see :func:`_cod_combine`).
     """
-    tree = _cod_tree(n, table)
-    # Add a west wall column that steps in by one cell on every row after
-    # the first (each leaf row sits one column deeper than the last), by
-    # prepending "~ " after every newline but the last; the first leaf
-    # row's own left cell should be open water (the shaft down from
-    # Phase 1), not wall, so its "~ " is fixed back to "  ".  The east
-    # wall column is added by the final f-string wrap alongside the west
-    # column's very first cell (row 0, before any newline has fired).
-    stepped = tree.replace("\n", "\n~ ", 2 ** (n + 1) - 1)
-    stepped = stepped.replace("~ ", "  ", 1)
-    return f"~{stepped}~"
+    tree_rows = _cod_tree(n, table).split("\n")
+
+    # Wrap the tree in a west wall column.  The top and bottom wall rows
+    # need only the one column; every leaf-tree row in between needs two,
+    # since the tree's own left edge already steps in by one column per
+    # row (each leaf sits one column deeper than the last).  The first
+    # leaf row's own new left cell is open water instead of wall -- it is
+    # the shaft down from Phase 1's last exit -- so it alone gets "  "
+    # rather than "~ ".
+    first, *middle, last = tree_rows
+    wrapped_middle = [
+        ("  " if i == 0 else "~ ") + row for i, row in enumerate(middle)
+    ]
+    return "\n".join(["~" + first, *wrapped_middle, "~" + last])
 
 
 def _cod_combine(blocks: list[str]) -> str:
