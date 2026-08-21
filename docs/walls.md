@@ -69,12 +69,30 @@ pointer positions a third bit needs.  The single-input case is *not*
 ## 123 (four one-input functions)
 
 A decision tree needs the `3` jump, which on a TRUE/FALSE bit jumps to the
-*nearest* preceding/following `3` (not bracket-matched), so the only
-constructible pattern is "repeat the region before the `3` while TRUE" — no
-`3`-based branch exists (a random search finds no NOT even at n == 1), and
-the single data byte makes multi-bit state impossible (every read overwrites
-it).  The four one-input programs were too trivial to keep, so the boolean
-generator was removed.
+*nearest* preceding/following `3` (not bracket-matched): FALSE always lands
+just past the next `3` (skip forward), TRUE always lands just past the
+previous one — which, absent an intervening `3`, is the start of the very
+segment already being executed.  So the only constructible pattern is
+"repeat the region before the `3` while TRUE," never a jump to an
+independent branch target.
+
+Re-examined after the tape was corrected from a single capped byte to
+genuinely unbounded bit storage (see the pointer-cap fix in
+`one_two_three.py`): the wall is not the tape size, it is two mechanisms
+that survive the fix unchanged. First, `1` flips the bit under the pointer
+*before* moving, and a read always resets the pointer to location 0 (the
+byte's MSB); reaching the write position at -2 requires passing through
+location 0 via `1`, so the read result is corrupted en route on every
+attempt — confirmed by tracing a read-then-navigate-to-write program, whose
+output byte differs from the input by exactly its MSB. Second, since a
+`3` that can ever evaluate TRUE must re-run the segment before it, and that
+segment is the only place a second input's read could plausibly follow the
+first's, a TRUE evaluation re-reads stdin and desyncs every input read
+after it — so no read can safely precede a `3` capable of going TRUE.  A
+structured search (400k+ programs built from read/march/jump blocks, not
+raw random characters) found no two-input AND/OR/XOR/NAND/NOR/XNOR under
+either bit-encoding.  The four one-input programs were too trivial to keep,
+so the boolean generator was removed and stays removed.
 
 ## RAM0, Bitdeque, Minsky Swap (parameterized template blocked — resolved)
 
