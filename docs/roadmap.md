@@ -134,7 +134,7 @@ for having no generator or only a corpus-only cross-check; see
 
 ## RISC-V assembly compilers
 
-The compilers in `src/esolangs/compilers/assembly/` translate a program to
+The compilers in `src/esolangs/compilers/` translate a program to
 RISC-V Linux assembly, assembled and run under unicorn by
 `scripts/verify_riscv_unicorn.py`; the eleven shipped (AddSubJump, BF-PDA,
 BFStack, Collatz Multiverse, Decleq, Home Row, Jaune, RAM0, S*bleq,
@@ -169,7 +169,7 @@ flags, `-6/-7/-8` constants, `-9` flag-update mode) that both operand fetch
 and the write-back share.  The interpreter's unbounded, growing memory
 becomes a fixed preallocated buffer, the same tradeoff RAM0's compiler
 already makes for its 256-cell RAM.  See
-`src/esolangs/compilers/assembly/addsubjump.py`.
+`src/esolangs/compilers/addsubjump.py`.
 
 **Collatz Multiverse shipped.**  Every line's target and operands are
 statically known (unlike AddSubJump's self-modifying memory), so each line
@@ -192,7 +192,7 @@ never terminates), and the compiler discovered that late `.data` references
 compile to `gp`-relative addressing under linker relaxation, so `_start`
 now sets `gp` from `__global_pointer$` up front — bare-metal `_start` has no
 libc to do it.  See
-`src/esolangs/compilers/assembly/collatz_multiverse.py`.
+`src/esolangs/compilers/collatz_multiverse.py`.
 
 **S*bleq and Decleq shipped.**  Both are Subleq-family OISCs: the
 interesting lowering is the self-modifying memory (an in-place
@@ -219,8 +219,8 @@ being treated as out-of-range like every other special address — an
 accident of the list-backed implementation, not documented language
 behavior, and not a shape any real countdown-idiom program produces (found
 by fuzzing adversarial random operands, not by any hand-written example).
-See `src/esolangs/compilers/assembly/sbleq.py` and
-`src/esolangs/compilers/assembly/decleq.py`.
+See `src/esolangs/compilers/sbleq.py` and
+`src/esolangs/compilers/decleq.py`.
 
 - **Forþ — intrinsic value, no verification gain.**  A stack machine with
   `[` loops and `;` calls lowers to a real call structure: a data stack in

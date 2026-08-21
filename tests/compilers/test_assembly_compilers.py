@@ -5,12 +5,12 @@ import importlib
 import pytest
 
 COMPILERS = [
-    "esolangs.compilers.assembly.bfstack",
-    "esolangs.compilers.assembly.home_row",
-    "esolangs.compilers.assembly.jaune",
-    "esolangs.compilers.assembly.unsquare",
-    "esolangs.compilers.assembly.bf_pda",
-    "esolangs.compilers.assembly.ram0",
+    "esolangs.compilers.bfstack",
+    "esolangs.compilers.home_row",
+    "esolangs.compilers.jaune",
+    "esolangs.compilers.unsquare",
+    "esolangs.compilers.bf_pda",
+    "esolangs.compilers.ram0",
 ]
 
 
@@ -24,141 +24,141 @@ def test_compiler_produces_assembly(module: str) -> None:
 
 
 def test_suffolk_compiler() -> None:
-    mod = importlib.import_module("esolangs.compilers.assembly.suffolk")
+    mod = importlib.import_module("esolangs.compilers.suffolk")
     output = mod.comp("Hi", 1)
     assert ".global _start" in output
 
 
 class TestBFStackParse:
     def test_group_consecutive(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert mod.parse(">+++.") == [(">", 1), ("+", 3), (".", 1)]
 
     def test_plus_minus_cancel(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert mod.parse("++--") == []
 
     def test_push_pop_removed(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert mod.parse(">[+-]<") == [(">", 1), ("<", 1)]
 
     def test_zero_loop_optimization(self) -> None:
         """A loop that zeroes its cell compiles to a plain zero."""
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert mod.parse("++++[>++<-]") == [("0", 1)]
 
     def test_empty_program(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert mod.parse("") == []
 
     def test_empty_bracket_removed(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert mod.parse(">[]") == [(">", 1)]
 
     def test_unmatched_loop_returns_empty(self) -> None:
         """An unterminated bracket run makes parse bail out."""
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert mod.parse(">[[]") == []
 
     def test_counted_io(self) -> None:
         """Counted > commands loop the output/input calls."""
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert "addi s2, s2, -1" in mod.comp(">>.")
         assert "addi s2, s2, -1" in mod.comp(">>,")
 
     def test_zero_command(self) -> None:
         """A loop that zeroes its cell compiles to a plain zero."""
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert "sb   zero, 0(s1)" in mod.comp("++++[>++<-]")
 
     def test_counted_left(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert "addi s2, s2, -1" in mod.comp("<<")
 
 
 class TestBFStackComp:
     def test_loop_generates_output_and_syscall(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         output = mod.comp("+[>].")
         assert "output:" in output
         assert "ecall" in output
         assert ".T1:" in output  # loop label emitted
 
     def test_input_emits_input_label(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert "input:" in mod.comp(">,")
 
     def test_single_plus_minus(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert "lbu  t0, 0(s1)" in mod.comp("+")
         assert "lbu  t0, 0(s1)" in mod.comp("-")
 
     def test_counted_plus_minus(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         assert "addi t0, t0, 3" in mod.comp("+++")
         assert "addi t0, t0, -3" in mod.comp("---")
 
     def test_counted_movement(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         output = mod.comp(">>")
         assert "li   s2, 2" in output
         assert "call right" in output
 
     def test_subroutines(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         output = mod.comp(">.<,>")
         for label in ["right:", "left:", "output:", "input:"]:
             assert label in output
 
     def test_loop_labels(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bfstack")
+        mod = importlib.import_module("esolangs.compilers.bfstack")
         output = mod.comp(">+[>]<")
         assert ".T1:" in output
         assert ".B1:" in output
 
 
 def test_unsquare_emits_syscalls() -> None:
-    mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+    mod = importlib.import_module("esolangs.compilers.unsquare")
     assert "ecall" in mod.comp("ab")
 
 
 class TestHomeRow:
     def test_arithmetic(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         assert "lw   t0, 0(s1)" in mod.comp("a")
         assert "addi t0, t0, 2" in mod.comp("aa")
         assert "lw   t0, 0(s1)" in mod.comp("s")
         assert "addi t0, t0, -2" in mod.comp("ss")
 
     def test_movement(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         assert "down:" in mod.comp("d")
         assert "right:" in mod.comp("f")
 
     def test_output(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         assert "print:" in mod.comp("akk")
 
     def test_conditional_movement_and_output(self) -> None:
         """Commands preceded by j are a single (uncounted) step."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         assert "call print" in mod.comp("jak")
 
     def test_cell_shared_function(self) -> None:
         """Both movement commands together emit the shared cell addressing."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         output = mod.comp("dkf")
         assert "slli t1, t0, 4" in output
 
     def test_counted_movement(self) -> None:
         """Repeated movement commands emit a count and add to the position."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         assert "add  s4, s4, t3" in mod.comp("ddk")
         assert "add  s5, s5, t3" in mod.comp("ffk")
 
     def test_loop_with_skip(self) -> None:
         """A loop combined with a conditional skip emits both labels."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         output = mod.comp("jl")
         assert ".skip" in output
         assert ".top" in output
@@ -166,105 +166,105 @@ class TestHomeRow:
 
     def test_odd_loop_count(self) -> None:
         """An odd loop count emits the bnez .top branch."""
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         assert "bnez t0, .top" in mod.comp("jlajl")
 
     def test_conditionals_and_loop(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         assert ".skip" in mod.comp("j")
         assert ".top" in mod.comp("l")
         assert ".bot" in mod.comp("l")
 
     def test_halt(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.home_row")
+        mod = importlib.import_module("esolangs.compilers.home_row")
         assert "ecall" in mod.comp(";")
 
 
 class TestJaune:
     def test_arithmetic(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "lw   t0, 0(s1)" in mod.comp("1+")
         assert "lw   t0, 0(s1)" in mod.comp("1-")
 
     def test_subroutines(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "call output" in mod.comp("^")
         assert "call input" in mod.comp("v")
         assert "call left" in mod.comp("<")
 
     def test_labels_and_jumps(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert ".label" in mod.comp("5:")
         assert "bnez t0" in mod.comp("5?")
         assert "beqz t0" in mod.comp("5!")
 
     def test_subroutine_call(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "call sub" in mod.comp("5@")
 
     def test_control_flow(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "ecall" in mod.comp(".")
         assert "ret" in mod.comp(";")
         assert "sub  s1, s1" in mod.comp(">")
 
     def test_counted_commands(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "li   s3, 2" in mod.comp("^^")
         assert "li   s3, 2" in mod.comp("&&")
         assert "lw   t0, 0(s1)" in mod.comp("2+")
         assert "lw   t0, 0(s1)" in mod.comp("3-")
 
     def test_load_and_zero(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "lw   s2, 0(s1)" in mod.comp("#")
         assert "sw   zero, 0(s1)" in mod.comp("%")
 
     def test_switch_controls(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert ".switch" in mod.comp("v?")
         assert "call switch" in mod.comp("v@")
 
     def test_register_arithmetic(self) -> None:
         """A bare + or - operates on the register via s7."""
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "add  t0, t0, s7" in mod.comp("+")
         assert "sub  t0, t0, s7" in mod.comp("-")
 
     def test_chained_arithmetic(self) -> None:
         """Consecutive digit+ sequences accumulate in count."""
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "lw   t0, 0(s1)" in mod.comp("1+2+3+")
 
     def test_switch_table_generation(self) -> None:
         """A label plus a conditional jump generates the switch table."""
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         output = mod.comp("5:v?")
         assert ".switch" in output
         assert "j .label" in output
 
     def test_multiply(self) -> None:
         """& multiplies via a subroutine when counted, else adds edi."""
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "call mult" in mod.comp("&&")
         assert "add  t0, t0, s2" in mod.comp("&")
 
     def test_conditional_sequence(self) -> None:
         """Consecutive ?/! jumps are condensed in prep."""
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         output = mod.comp("1?2!")
         assert "bnez t0" in output
         assert "beqz t0" in output
 
     def test_conditional_sequence_variants(self) -> None:
         """!-first and ?-only sequences take the other prep branches."""
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "beqz t0" in mod.comp("1!2?")
         assert "bnez t0" in mod.comp("1?2?")
 
     def test_multi_label_switch(self) -> None:
         """Multiple labels produce a richer .switch dispatch table."""
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         output = mod.comp("1:v2:v?")
         assert ".switch" in output
         assert "beq  s7, t0" in output
@@ -272,19 +272,19 @@ class TestJaune:
 
     def test_subroutine_dispatch_table(self) -> None:
         """Multiple $ subroutines with @ calls generate a dispatch table."""
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         output = mod.comp("5$v@7$v@")
         assert "switch:" in output
         assert "beq  s7, t0" in output
 
     def test_subroutine_label(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.jaune")
+        mod = importlib.import_module("esolangs.compilers.jaune")
         assert "sub" in mod.comp("5$")
 
 
 class TestUnsquare:
     def test_register_commands(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         assert "call zero" in mod.comp("O")
         assert "call one" in mod.comp("I")
         assert "call down" in mod.comp("A")
@@ -292,56 +292,56 @@ class TestUnsquare:
         assert "call swap" in mod.comp("S")
 
     def test_io(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         assert "call output" in mod.comp("o")
         assert "call input" in mod.comp("i")
 
     def test_arithmetic_and_shift(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         assert "addi s2, s2" in mod.comp("+")
         assert "addi s2, s2, -2" in mod.comp("-")
         assert "slli s2, s2" in mod.comp("x")
 
     def test_loops(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         output = mod.comp("O>I<")
         assert ".T1" in output
         assert ".B1" in output
 
     def test_zero_one_with_address(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         assert "li   s2" in mod.comp("OA")
         assert "li   s2" in mod.comp("IA")
 
     def test_prep_optimization(self) -> None:
         """OA/I-A sequences with a following loop are optimized in prep."""
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         assert ".T1" in mod.comp("OAI>")
         assert "slli s2, s2" in mod.comp("OAIx")
 
     def test_counted_register(self) -> None:
         """Repeated O/I/A commands emit a count and repeated-call loop."""
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         assert "li   s3, 2" in mod.comp("OO")
         assert "addi s3, s3, -1" in mod.comp("OO")
         assert "addi s3, s3, -1" in mod.comp("AA")
 
     def test_address_arithmetic(self) -> None:
         """OA followed by +/-/x adjusts the stored value in count."""
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         assert "li   s2" in mod.comp("OA+")
         assert "li   s2" in mod.comp("OA-")
         assert "li   s2" in mod.comp("OAx")
 
     def test_nested_loop_scan(self) -> None:
         """Nested > in the OI-A scan increments the match counter."""
-        mod = importlib.import_module("esolangs.compilers.assembly.unsquare")
+        mod = importlib.import_module("esolangs.compilers.unsquare")
         mod.comp("OA>>I<<<")  # must not crash
 
 
 class TestSuffolkComp:
     def test_compiles_various_programs(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.suffolk")
+        mod = importlib.import_module("esolangs.compilers.suffolk")
         for program in ["!<.", "!!", ">", ">!<", "."]:
             output = mod.comp(program, 1)
             assert ".global _start" in output
@@ -349,57 +349,57 @@ class TestSuffolkComp:
 
     def test_counted_left(self) -> None:
         """Repeated < commands emit a count via s5."""
-        mod = importlib.import_module("esolangs.compilers.assembly.suffolk")
+        mod = importlib.import_module("esolangs.compilers.suffolk")
         assert "li   s5" in mod.comp("<<<<", 1)
 
 
 class TestBFPDA:
     def test_push_flip_pop(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bf_pda")
+        mod = importlib.import_module("esolangs.compilers.bf_pda")
         output = mod.comp("<@>")
         assert "sb   zero, 0(s1)" in output  # push 0
         assert "xori t0, t0, 1" in output  # flip top
         assert "addi s1, s1, 1" in output  # pop
 
     def test_output_emits_syscall(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.bf_pda")
+        mod = importlib.import_module("esolangs.compilers.bf_pda")
         assert "ecall" in mod.comp(".")
 
 
 class TestAddSubJump:
     def test_compiles_to_assembly(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        mod = importlib.import_module("esolangs.compilers.addsubjump")
         output = mod.comp("-1 4 -8 -7 65")
         assert ".global _start" in output
         assert "read_cell:" in output
         assert "write_cell:" in output
 
     def test_initial_memory_embedded_as_dwords(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        mod = importlib.import_module("esolangs.compilers.addsubjump")
         output = mod.comp("-1 4 -8 -7 65")
         assert ".dword" in output
         assert "65" in output
 
     def test_comments_and_blank_lines_ignored(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        mod = importlib.import_module("esolangs.compilers.addsubjump")
         base = mod.comp("-1 4 -8 -7 65")
         commented = mod.comp("# a comment\n\n-1 4 -8 -7 65 # trailing\n")
         assert base == commented
 
     def test_empty_program(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        mod = importlib.import_module("esolangs.compilers.addsubjump")
         output = mod.comp("")
         assert ".global _start" in output
 
     def test_malformed_token_raises(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        mod = importlib.import_module("esolangs.compilers.addsubjump")
         with pytest.raises(ValueError, match="malformed memory token"):
             mod.comp("12 -6 x -7")
 
     def test_random_int_input_does_not_crash(self) -> None:
         import random
 
-        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        mod = importlib.import_module("esolangs.compilers.addsubjump")
         random.seed(3)
         for _ in range(30):
             n = random.randint(1, 40)
@@ -409,38 +409,38 @@ class TestAddSubJump:
 
 class TestSBleq:
     def test_compiles_to_assembly(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        mod = importlib.import_module("esolangs.compilers.sbleq")
         output = mod.comp("0 0 2 -1")
         assert ".global _start" in output
         assert "read_cell:" in output
         assert "write_cell:" in output
 
     def test_initial_memory_embedded_as_dwords(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        mod = importlib.import_module("esolangs.compilers.sbleq")
         output = mod.comp("-3 6 3 0 0 7 65 9")
         assert ".dword" in output
         assert "65" in output
 
     def test_comments_and_blank_lines_ignored(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        mod = importlib.import_module("esolangs.compilers.sbleq")
         base = mod.comp("0 0 2 -1")
         commented = mod.comp("# a comment\n\n0 0 2 -1 # trailing\n")
         assert base == commented
 
     def test_empty_program(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        mod = importlib.import_module("esolangs.compilers.sbleq")
         output = mod.comp("")
         assert ".global _start" in output
 
     def test_malformed_token_raises(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        mod = importlib.import_module("esolangs.compilers.sbleq")
         with pytest.raises(ValueError, match="malformed memory token"):
             mod.comp("0 0 x")
 
     def test_random_int_input_does_not_crash(self) -> None:
         import random
 
-        mod = importlib.import_module("esolangs.compilers.assembly.sbleq")
+        mod = importlib.import_module("esolangs.compilers.sbleq")
         random.seed(3)
         for _ in range(30):
             n = random.randint(1, 40)
@@ -450,38 +450,38 @@ class TestSBleq:
 
 class TestDecleq:
     def test_compiles_to_assembly(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        mod = importlib.import_module("esolangs.compilers.decleq")
         output = mod.comp("10 10 99")
         assert ".global _start" in output
         assert "read_cell:" in output
         assert "write_cell:" in output
 
     def test_initial_memory_embedded_as_dwords(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        mod = importlib.import_module("esolangs.compilers.decleq")
         output = mod.comp("-2 10 0 0 0 999 0 0 0 0 65")
         assert ".dword" in output
         assert "65" in output
 
     def test_comments_and_blank_lines_ignored(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        mod = importlib.import_module("esolangs.compilers.decleq")
         base = mod.comp("10 10 99")
         commented = mod.comp("# a comment\n\n10 10 99 # trailing\n")
         assert base == commented
 
     def test_empty_program(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        mod = importlib.import_module("esolangs.compilers.decleq")
         output = mod.comp("")
         assert ".global _start" in output
 
     def test_malformed_token_raises(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        mod = importlib.import_module("esolangs.compilers.decleq")
         with pytest.raises(ValueError, match="malformed memory token"):
             mod.comp("10 10 x")
 
     def test_random_int_input_does_not_crash(self) -> None:
         import random
 
-        mod = importlib.import_module("esolangs.compilers.assembly.decleq")
+        mod = importlib.import_module("esolangs.compilers.decleq")
         random.seed(3)
         for _ in range(30):
             n = random.randint(1, 40)
@@ -491,14 +491,14 @@ class TestDecleq:
 
 class TestCollatzMultiverse:
     def test_compiles_to_assembly(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         output = mod.comp("x = negativeOne x + negativeOne, DO PRINT.")
         assert ".global _start" in output
         assert "dispatch:" in output
         assert "collatz_odd:" in output
 
     def test_parse(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         assert mod.parse("x = y x + z, DO PRINT.") == [
             ("x", None, "y", None, "z", None, "DO")
         ]
@@ -507,19 +507,19 @@ class TestCollatzMultiverse:
         ]
 
     def test_blank_lines_ignored(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         base = mod.comp("x = y x + z, DO PRINT.")
         spaced = mod.comp("\n\nx = y x + z, DO PRINT.\n\n")
         assert base == spaced
 
     def test_array_gets_its_own_data_block(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         output = mod.comp("arr[i] = negativeOne x + i, DO PRINT.")
         assert "array_index:" in output
         assert "arr0:" in output
 
     def test_line_number_dispatch_table(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         output = mod.comp(
             "\n".join(
                 [
@@ -532,12 +532,12 @@ class TestCollatzMultiverse:
         assert "beq  s2, t0, .L2" in output
 
     def test_empty_program(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         output = mod.comp("")
         assert ".global _start" in output
 
     def test_malformed_line_raises(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         with pytest.raises(ValueError, match="malformed line"):
             mod.comp("hello world")
 
@@ -545,7 +545,7 @@ class TestCollatzMultiverse:
         import contextlib
         import random
 
-        mod = importlib.import_module("esolangs.compilers.assembly.collatz_multiverse")
+        mod = importlib.import_module("esolangs.compilers.collatz_multiverse")
         names = ["a", "b", "c", "arr", "negativeOne", "input", "lineNumber", "zero"]
         random.seed(3)
         for _ in range(30):
@@ -562,29 +562,29 @@ class TestCollatzMultiverse:
 
 class TestRAM0:
     def test_parse(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
+        mod = importlib.import_module("esolangs.compilers.ram0")
         assert mod.parse("A A 5") == ["A", "A", "5"]
         assert mod.parse("Z A N C L S") == ["Z", "A", "N", "C", "L", "S"]
 
     def test_dispatch_labels(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
+        mod = importlib.import_module("esolangs.compilers.ram0")
         output = mod.comp("A A")
         assert ".L0:" in output
         assert ".L1:" in output
         assert ".done:" in output
 
     def test_goto_jumps(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
+        mod = importlib.import_module("esolangs.compilers.ram0")
         assert "j .L0" in mod.comp("1")
         assert "j .done" in mod.comp("9 A")
 
     def test_c_skip(self) -> None:
-        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
+        mod = importlib.import_module("esolangs.compilers.ram0")
         assert "beqz s1, .done" in mod.comp("C")
 
     def test_znls_emit(self) -> None:
         """Each RAM0 command maps to its RISC-V instruction sequence."""
-        mod = importlib.import_module("esolangs.compilers.assembly.ram0")
+        mod = importlib.import_module("esolangs.compilers.ram0")
         output = mod.comp("Z A N L S")
         assert "li   s1, 0" in output  # Z
         assert "mv   s2, s1" in output  # N
@@ -600,12 +600,12 @@ class TestCompilerFuzz:
     @pytest.mark.parametrize(
         "module",
         [
-            "esolangs.compilers.assembly.bfstack",
-            "esolangs.compilers.assembly.home_row",
-            "esolangs.compilers.assembly.jaune",
-            "esolangs.compilers.assembly.unsquare",
-            "esolangs.compilers.assembly.bf_pda",
-            "esolangs.compilers.assembly.ram0",
+            "esolangs.compilers.bfstack",
+            "esolangs.compilers.home_row",
+            "esolangs.compilers.jaune",
+            "esolangs.compilers.unsquare",
+            "esolangs.compilers.bf_pda",
+            "esolangs.compilers.ram0",
         ],
     )
     def test_random_input_does_not_crash(self, module: str) -> None:
@@ -622,7 +622,7 @@ class TestCompilerFuzz:
     def test_suffolk_random_input(self) -> None:
         import random
 
-        mod = importlib.import_module("esolangs.compilers.assembly.suffolk")
+        mod = importlib.import_module("esolangs.compilers.suffolk")
         random.seed(3)
         for _ in range(30):
             code = "".join(

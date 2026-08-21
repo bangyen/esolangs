@@ -2,8 +2,8 @@
 
 Two kinds of round-trip run esolang programs as RISC-V ELF under unicorn:
 
-1. each assembly compiler in ``src/esolangs/compilers/assembly/`` translates
-   an esolang program to RISC-V assembly, which is compiled and run;
+1. each assembly compiler in ``src/esolangs/compilers/`` translates an
+   esolang program to RISC-V assembly, which is compiled and run;
 2. text generators whose interpreters live in ``extra/assembly/`` feed the
    generated program to the cross-check machine code;
 3. fixed programs whose expected output pins the cross-check interpreters
@@ -138,7 +138,7 @@ def main() -> int:
         failures += not ok
         print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r} (exit {code})")
     for name, module, source, expected in COMPILER_CASES:
-        comp = importlib.import_module(f"esolangs.compilers.assembly.{module}").comp
+        comp = importlib.import_module(f"esolangs.compilers.{module}").comp
         args = (source, 1) if module == "suffolk" else (source,)
         binary = assemble_source(comp(*args))
         out, _ = run_elf(binary, b"")

@@ -57,7 +57,7 @@ esolangs transpile BF "ASCII art" program.txt  # rewrite between languages
 Assembly compilers run the same way and write `output.asm`:
 
 ```bash
-python -m esolangs.compilers.assembly.<language> program.txt
+python -m esolangs.compilers.<language> program.txt
 ```
 
 ### Public API
