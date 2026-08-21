@@ -2482,6 +2482,109 @@ class TestParameterizedBfpda:
             parameterized.bfpda("011")
 
 
+class TestParameterizedHomeRow:
+    """Input-by-substitution boolean generator for the no-input language Home Row."""
+
+    def run_home_row(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.home_row import run
+
+        io_ = ScriptedIO("")
+        run(prog, io_)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean import parameterized
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "a" if b else "",
+            lambda _i, b: "a" if not b else "",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.home_row(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_home_row(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.home_row(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_home_row(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_five_inputs_sample(self) -> None:
+        """A sample of dense five-input tables, past the removed n <= 2 cap."""
+        import random
+
+        from esolangs.tools.boolean import parameterized
+
+        n = 5
+        rng = random.Random(0)
+        for _ in range(5):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            template = parameterized.home_row(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_home_row(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.home_row("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_each_input_embedded_once(self) -> None:
+        import re
+
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.home_row("0110")
+        assert template.count("{X0}") == 1
+        assert template.count("{X1}") == 1
+        assert "{C0}" not in template
+        assert "{C1}" not in template
+        assert len(re.findall(r"\{X\d+\}", template)) == 2
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.home_row("011")
+
+
 class TestParameterizedCOD:
     """Input-by-substitution boolean generator for the no-input language COD."""
 

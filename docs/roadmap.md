@@ -315,6 +315,11 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 its tree-shaped construction is walled past dense, non-symmetric `n == 3`
 (re-verified in `docs/walls.md`, not just the original argument), so lifting
 the cap is closed, but the generator still covers every `n <= 3` table plus
-popcount-symmetric tables at any `n` — materially more than the two
-generators removed under this section's precedent (Home Row at `n <= 2`,
-Minifuck's `n <= 3` 0-preserving-only), so it stays.
+popcount-symmetric tables at any `n` — materially more than Minifuck's
+`n <= 3` 0-preserving-only generator, removed under this section's
+precedent — so it stays.  Home Row's original `n <= 2` generator was also
+removed under this precedent, but a later closed-form construction (packing
+the input bits into a binary accumulator and walking a linear equality
+chain, rather than routing a beam to `2**n` distinct grid cells) lifted the
+cap entirely — see `docs/walls.md` — so it is no longer an example of a
+removed generator.

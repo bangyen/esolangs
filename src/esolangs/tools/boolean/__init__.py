@@ -36,6 +36,7 @@ from esolangs.tools.boolean.parameterized import (
     bitdeque,
     cod,
     eval,  # noqa: A004 - the language is named "Eval"
+    home_row,
     instantiate,
     lamfunc,
     minsky_swap,
@@ -107,6 +108,7 @@ __all__ = [
     "forbin_boolean",
     "forth",
     "grapheme",
+    "home_row",
     "instantiate",
     "jaune",
     "jaune_multiply",
@@ -172,6 +174,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "Forbin",
         "Forþ",
         "Grapheme",
+        "Home Row",
         "Jaune",
         "Lamfunc",
         "LaserFuck",
