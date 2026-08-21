@@ -16,11 +16,9 @@ predictable across languages:
 
 - **Empty programs are a no-op by default.**  An empty (or blank-only)
   program produces no output, unless the language structurally requires
-  content to start — an initial direction (2dFish), a Collatz seed line
-  (ZTOALC L), or a program grid (Circlefuck, BF-PDA, Suffolk, Dig, Back,
-  Clockwise) — in which case it is rejected with a clear `ValueError`
-  (usually ``"... cannot be empty"``, or 2dFish's
-  ``"program does not set an initial direction"``).
+  content to start — a Collatz seed line (ZTOALC L), or a program grid
+  (Circlefuck, BF-PDA, Suffolk, Dig, Back, Clockwise) — in which case it is
+  rejected with a clear `ValueError` (usually ``"... cannot be empty"``).
 - **Exhausted input raises :class:`EOFError` by default.**  A program that
   reads past the end of `stdin` is almost always a bug, and the loud error
   surfaces it (and lets `,[.,]`-style cat loops terminate).  Languages whose
@@ -137,6 +135,7 @@ verdict is in the commit history.  ``(removed)`` marks languages whose
 interpreter, generator, and tests were deleted from the repo.
 
 - **2 Bits 1 Byte** (removed): joke; single-byte program, no text or boolean generator, externally implemented.
+- **2dFish** (removed): its `(...)*` capture-and-print makes its true generator floor a literal-embed (not the shipped delta-encoder, which only disguised this), and its boolean generator was separately walled as affine-only with no total once-embedding construction; both together match the same criterion The Temporary Stack was removed under.
 - **Aaargh++**: 4D work-in-progress with a partial spec.
 - **Albabet** (removed): straight-line two-register accumulator; no conditional at all (only reset/increment/copy/multiply/print), so no boolean generator.
 - **ASCII art** (removed): brainfuck with an art alphabet; a trivial reskin.
@@ -214,10 +213,10 @@ rewrite:
   ``dest = dest ± op`` by a fixed operand.  A general total transpiler is
   therefore not expressible; the partial classes would be silent-droppers.
   Documented as research-level future work in `docs/roadmap.md`.
-- **2D-to-2D.**  No two 2D languages share a model: 2dFish is a deadfish
-  accumulator, Dimensional a pointer-hierarchy tape, LaserFuck mirror-driven
-  control, ABCDrection a Boolfuck bit tape with a queue.  Even the two
-  bf-tape ones (Dimensional, LaserFuck) differ in control flow.
+- **2D-to-2D.**  No two 2D languages share a model: Dimensional is a
+  pointer-hierarchy tape, LaserFuck mirror-driven control, ABCDrection a
+  Boolfuck bit tape with a queue.  Even the two bf-tape ones (Dimensional,
+  LaserFuck) differ in control flow.
 - **Dropped transpilers.**  `nocomment_to_bf` silently dropped NoComment's
   stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
   `Circlefuck → bf` decoders only reversed the forward transpilers' canonical

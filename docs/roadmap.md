@@ -56,17 +56,6 @@ Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue) are
 machinery via the boolean generator, and their only weakness is an
 interpreter-invented state dump where the wiki defines no text output.
 
-- **2dFish — deferred.**  Its text generator is a straight-line delta
-  encoder (the thinnest computational category), and it has no total
-  once-embedding boolean generator: the decision tree would need multiple
-  embedding (the exactly-once exception Dotlang was removed for) and the
-  once-embedding chain is affine-only (constants, XOR/XNOR, projections —
-  see `docs/walls.md`).  It stays for now because the delta encoder is
-  genuine arithmetic (the current criterion's line is literal-embed), but
-  if the criterion is ever tightened to "real computation only"
-  (branching/search, not straight-line deltas), it becomes the final
-  removal — nothing else is thin.
-
 **Against removal (the standing argument, for when a candidate reappears).**
 Most interpreter-only languages are the *only* implementation on the wiki,
 so removing them leaves the language with no implementation at all — which
@@ -94,7 +83,7 @@ verified by the round-trip test, so a second implementation would find
 nothing new.
 
 - **Stay (complex-output generators, fuzzed):** NoComment, Forþ, Basicfuck,
-  Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck.
+  Unsquare, 3x, %^2^-1, Painfuck, bit~, LaserFuck.
 - **No cross-check (straight-line generators):** 6-5, Decleq,
   Dimensional, Qoibl, S*bleq, and the rest.
 
@@ -114,7 +103,7 @@ Rust column, where the reference gets input bits directly.
 | Toolchain | Languages |
 | --- | --- |
 | RISC-V assembly | NoComment (tape + stack with a byte-indexed skip), BF-PDA (bit stack + tape), RAM0 (register machine), BIO (three registers plus a loop stack, guards checked lazily to match the Python interpreter's control flow), Minsky Swap (two registers, a swap pointer, and a jump-on-zero `~`; each `~` keeps a fixed target across every visit via a token-indexed table, not a running execution-order cursor). |
-| Rust | Forþ, Basicfuck, Unsquare, 3x, 2dFish, Painfuck, LaserFuck (stacks, typed registers, 2D grids); %^2^-1 and bit~ keep corpus cross-checks but lost their straight-line text-generator fuzzes. |
+| Rust | Forþ, Basicfuck, Unsquare, 3x, Painfuck, LaserFuck (stacks, typed registers, 2D grids); %^2^-1 and bit~ keep corpus cross-checks but lost their straight-line text-generator fuzzes. |
 
 **Worth adding (audited).**  These languages have complex-output generators
 (arithmetic encodings, branch-and-goto OISCs, runtime state carried across
