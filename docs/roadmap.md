@@ -36,16 +36,11 @@ A direct transpile between languages with no shared core is not a rewrite —
 it needs a full runtime of one inside the other.  The transpilers that
 shipped (the brainfuck family, `Decleq → S*bleq`, Dimensional → LaserFuck,
 and the dropped silent-dropper/round-trip-only ones) are in the commit
-history; the walls are in `docs/limitations.md`.  The candidates still on
-the table:
-
-- **Forth-family ↔ Forþ.**  Forþ is Forth-like (single-char stack,
-  arithmetic, ``(``/``[`` loops, ``;`` calls); adding a second Forth dialect
-  (e.g. plain Forth) would share the stack+arithmetic+loop core and
-  transpile directly.
-- **Boolfuck ↔ ABCDrection / Minifuck.**  A Boolfuck (bit tape, little-endian
-  byte I/O) shares ABCDrection's bit-tape model; Minifuck's
-  flip-and-conditional-skip is further away.
+history; the walls are in `docs/limitations.md`.  Nothing is tracked here as
+remaining: the only candidates identified (a second Forth dialect ↔ Forþ,
+Boolfuck ↔ ABCDrection/Minifuck) each need a *new* interpreter first, not
+just glue between two already-implemented languages, so they belong under
+"New interpreters" if that language is ever added, not here.
 
 ## Deferred-removal candidates
 
