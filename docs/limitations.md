@@ -140,6 +140,7 @@ interpreter, generator, and tests were deleted from the repo.
 - **2dFish** (removed): its `(...)*` capture-and-print makes its true generator floor a literal-embed (not the shipped delta-encoder, which only disguised this), and its boolean generator was separately walled as affine-only with no total once-embedding construction; both together match the same criterion The Temporary Stack was removed under.
 - **Aaargh++**: 4D work-in-progress with a partial spec.
 - **Albabet** (removed): straight-line two-register accumulator; no conditional at all (only reset/increment/copy/multiply/print), so no boolean generator.
+- **ALT-4**: stack-based concurrent language with no input or output commands at all; its truth-machine bakes input into the program.
 - **ASCII art** (removed): brainfuck with an art alphabet; a trivial reskin.
 - **Binary ///**: stub with no usable specification.
 - **Bitwise Cyclic Teast**: work-in-progress, interpreter still in development.
@@ -158,10 +159,14 @@ interpreter, generator, and tests were deleted from the repo.
   `docs/walls.md` ledger entry.
 - **DSDLAI** (removed): trivial Dig reskin with a random death chance; non-deterministic.
 - **Earfuck**: trivial brainfuck reskin (notes for instructions).
+- **Eso2D**, **Jumplang**, **brainfunc**, **Minimal operation language**, **Yaren**, **2KWLang**: wiki-categorized Implemented with documented external interpreters; not a gap.
 - **EXCON** (removed): straight-line 8-cell bit pool; no conditional at all (only reset/flip/pointer/print), so no boolean generator.
 - **Fourfuck**: incomplete, a stub with a couple of commands.
 - **Gravity**: non-computable evolution; nothing verifiable.
+- **HaltJS**, **MangularJS**: JavaScript subsets; a faithful interpreter is a whole JS engine, not a file-based char/line interpreter.
 - **Huf** (removed): straight-line two-register accumulator; no conditional at all (only reset/increment/multiply/print), so no boolean generator.
+- **Indent**: no input at all, so no boolean generator.
+- **Jumpmin**: Jumplang's minimization removes I/O entirely, so no boolean generator.
 - **Kak** (removed): no input; only the tape bit-string (an invented dump); externally implemented.
 - **Keys** (removed): a two-line equality comparison; a gadget, not a language model.
 - **Lightlang** (removed): boolean capability caps at the AND/OR class; only a single bit is ever printed.
@@ -171,16 +176,25 @@ interpreter, generator, and tests were deleted from the repo.
 - **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**, **Writeover**: joke or vaguely specified, no usable spec or I/O.
 - **Number Seventy-Four** (removed): string-rewriting with no input; output alphabet `0`/`1`/`H`.
 - **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Streetcode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
+- **PASM**: output is a 16x16 pixel screen; no char/line I/O.
+- **PlusOrMinus**, **PlusIntMinus**: output-only accumulator with no input or conditional; no boolean generator.
 - **Procedure**: only `the sum of ...` arithmetic is defined, so a faithful interpreter would have to invent the rest. Revisit if the wiki or Pure defines the operators.
+- **Queuenanimous**: no I/O at all; externally implemented.
+- **Regimin**: no I/O at all.
 - **something positive**: explicitly uncomputable.
+- **Stackint**: output is an optional interpreter dump, and input is a single number per run.
 - **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
 - **Stun Step** (removed): no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
 - **The Temporary Stack** (removed): its text generator is a literal-embed (the text is pushed as a `*` string literal), and its boolean generator was walled — the auto-drain's `front - 1` output can't be `'0'`/`'1'` and there is no input-dependent branch. Under the tightened generator-story criterion (a literal-embed text generator needs a boolean generator), that made it inadmissible; the full wall argument is in `docs/walls.md`.
 - **Trash** (removed): advance-to-next-prime gadget; can never print `1`.
+- **Uack**: total; no output.
 - **Vandevelo**: input-only, no output at all.
 - **Varigen**: explicitly "uncomputable" joke language.
 - **Welcome To...**: work-in-progress.
+- **XENBLN**: 256 commands, most unassigned, with the command list split across a subpage; not a complete or stable spec.
 - **Your Time Is Up**: random rule choice, no I/O; nondeterministic.
+- **Zfuck**: I/O is the initial/final tape state, not char/line I/O.
+- **｛｝**: family of eight levels; levels 1-2 are uncomputable, levels 3-7 have no I/O, and the only I/O-capable level (8) is a literal brainfuck reskin.
 
 ## Cross-check removals
 
