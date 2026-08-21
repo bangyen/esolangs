@@ -366,6 +366,47 @@ class TestBFPDA:
         assert "ecall" in mod.comp(".")
 
 
+class TestAddSubJump:
+    def test_compiles_to_assembly(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        output = mod.comp("-1 4 -8 -7 65")
+        assert ".global _start" in output
+        assert "read_cell:" in output
+        assert "write_cell:" in output
+
+    def test_initial_memory_embedded_as_dwords(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        output = mod.comp("-1 4 -8 -7 65")
+        assert ".dword" in output
+        assert "65" in output
+
+    def test_comments_and_blank_lines_ignored(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        base = mod.comp("-1 4 -8 -7 65")
+        commented = mod.comp("# a comment\n\n-1 4 -8 -7 65 # trailing\n")
+        assert base == commented
+
+    def test_empty_program(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        output = mod.comp("")
+        assert ".global _start" in output
+
+    def test_malformed_token_raises(self) -> None:
+        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        with pytest.raises(ValueError, match="malformed memory token"):
+            mod.comp("12 -6 x -7")
+
+    def test_random_int_input_does_not_crash(self) -> None:
+        import random
+
+        mod = importlib.import_module("esolangs.compilers.assembly.addsubjump")
+        random.seed(3)
+        for _ in range(30):
+            n = random.randint(1, 40)
+            code = " ".join(str(random.randint(-9, 200)) for _ in range(n))
+            mod.comp(code)  # must not raise
+
+
 class TestRAM0:
     def test_parse(self) -> None:
         mod = importlib.import_module("esolangs.compilers.assembly.ram0")

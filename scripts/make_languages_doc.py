@@ -28,6 +28,7 @@ _COMPILER_NAMES = {
     "unsquare": "Unsquare",
     "bf_pda": "BF-PDA",
     "ram0": "RAM0",
+    "addsubjump": "AddSubJump",
 }
 
 _COMPILER_DIRS = {
