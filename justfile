@@ -31,6 +31,9 @@ install-dev:
         python -m pip install -U pip
         pip install -e ".[dev]"
     fi
+    # Enable the pre-push gate (scripts/check_all.sh) so every push runs the
+    # full local check: lint, pytest, bandit, cargo, and the verify scripts.
+    git config core.hooksPath .githooks
 
 # lint python
 lint-python:
