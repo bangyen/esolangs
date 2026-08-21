@@ -72,8 +72,6 @@ Languages with both an in-package interpreter and a native cross-check:
   Both track the accumulator as a signed magnitude with the 3003 reset; the
   reference prints its ``Input: `` prompts to stdout, which are stripped
   before comparing.
-* **2dFish** — ``grid_based/two_d_fish.py`` vs ``extra/rust/two_d_fish.rs``.  Both run
-  the ragged grid with the reference's trailing-newline phantom row.
 * **Painfuck** — ``tape_based/painfuck.py`` vs ``extra/rust/painfuck.rs``.
   Corpus programs are encoded into the source alphabet (the reference
   translates the source before running); the nondeterministic ``y`` is
@@ -112,7 +110,6 @@ PCT_SQUARED_MINUS_ONE_BIN = RUST_BIN_DIR / "pct_squared_minus_one"
 BIT_TILDE_BIN = RUST_BIN_DIR / "bit_tilde"
 FORTH_BIN = RUST_BIN_DIR / "forth"
 BASICFUCK_BIN = RUST_BIN_DIR / "basicfuck"
-TWO_D_FISH_BIN = RUST_BIN_DIR / "two_d_fish"
 PAINFUCK_BIN = RUST_BIN_DIR / "painfuck"
 THREE_X_BIN = RUST_BIN_DIR / "three_x"
 
@@ -2101,152 +2098,6 @@ def _verify_pct() -> bool:
     return failures == 0
 
 
-# -- 2dFish corpus: every command plus the error categories ---------------
-
-TWO_D_FISH_CORPUS = [
-    ("/%o%o@", b"1\n"),  # second read hits EOF: exit 3
-    ("/i@", b""),
-    ("/ii@", b""),
-    ("/d@", b""),
-    ("/s@", b""),
-    ("/iio@", b""),
-    ("/ia@", b""),
-    ("/i*a@", b""),
-    ("/i(abc)*@", b""),
-    ("/i(abc)@", b""),
-    ("/i(ab)a@", b""),  # a in string mode prints one captured character
-    ("v\ni\n@\n", b""),
-    ("v\nii\no\n@\n", b""),
-    ("^", b""),
-    ("\\", b""),
-    ("/i@\n", b""),  # trailing newline phantom-row quirk
-    ("/$*@", b"hi\n"),
-    ("/%o@", b"42\n"),
-    ("/%o@", b"42abc\n"),  # unparseable % input: exit 2 on both sides
-    ("/@", b""),
-    ("", b""),  # no initial direction
-]
-
-
-def _build_two_d_fish() -> str | None:
-    """Return the built 2dFish Rust reference; None if cargo built it not yet."""
-    if not TWO_D_FISH_BIN.exists():
-        print("[skip] 2dFish differential: Rust reference not built")
-        return None
-    return str(TWO_D_FISH_BIN)
-
-
-def _run_two_d_fish_native(
-    binary: str, program: str, stdin: bytes
-) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code)."""
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
-
-
-def _run_two_d_fish_python(program: str, stdin: bytes) -> tuple[bytes, int] | None:
-    """Run ``program`` through the in-package interpreter.
-
-    The interpreter is step-capable, so the run is bounded by state-cycle
-    detection (:func:`esolangs.vm.run_until_halt_or_cycle`) instead of an
-    unbounded whole-program ``run()``: a repeated snapshot proves a loop and
-    is reported as a non-termination (``None``) rather than, previously,
-    returning whatever output had accumulated by the moment the cycle was
-    detected as if the program had halted there.  This catches *cycles*
-    only, not every hang — an unbounded-growth loop (the accumulator
-    keeps growing) never revisits a state and has no SIGALRM backstop on
-    this path, so it would still hang the fuzzer; the text generator this
-    is fuzzed against never produces one.
-    """
-    from esolangs.exceptions import HaltError
-    from esolangs.interpreters.grid_based.two_d_fish import _Machine
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.vm import run_until_halt_or_cycle
-
-    io = ScriptedIO(stdin.decode("latin1"))
-    try:
-        machine = _Machine(program, io)
-        if not run_until_halt_or_cycle(machine):
-            return None
-        if machine.off_grid:  # the documented exit-3 halt
-            raise HaltError
-    except HaltError:
-        return io.getvalue().encode("latin1"), 3
-    except EOFError:
-        return io.getvalue().encode("latin1"), 3
-    except ValueError:
-        return io.getvalue().encode("latin1"), 2
-    return io.getvalue().encode("latin1"), 0
-
-
-def _verify_two_d_fish() -> bool:
-    """Compare the Python 2dFish interpreter against the Rust cross-check."""
-    binary = _build_two_d_fish()
-    if binary is None:
-        return True
-
-    failures = 0
-    for program, stdin in TWO_D_FISH_CORPUS:
-        native = _run_two_d_fish_native(binary, program, stdin)
-        py = _run_two_d_fish_python(program, stdin)
-        if native is None and py is None:
-            continue  # agreement: both sides prove the program loops
-        if native is None or py is None:
-            failures += 1
-            print(
-                f"2dFish {program!r}: termination mismatch "
-                f"(Rust {'looped' if native is None else 'halted'}, "
-                f"Python {'looped' if py is None else 'halted'})"
-            )
-            continue
-        if native != py:
-            failures += 1
-            print(f"2dFish {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"2dFish differential: {len(TWO_D_FISH_CORPUS)} programs match")
-    return failures == 0
-
-
-def _fuzz_two_d_fish(rng: random.Random, count: int) -> bool:
-    """Differentially fuzz 2dFish with random byte text.
-
-    The language has no boolean generator, so the text generator's programs
-    are fuzzed instead.
-    """
-    from esolangs.tools.text import two_d_fish
-
-    binary = _build_two_d_fish()
-    if binary is None:
-        return True
-
-    failures, checked = _fuzz_text(
-        "2dFish",
-        two_d_fish,
-        lambda program, stdin: _run_two_d_fish_native(binary, program, stdin),
-        _run_two_d_fish_python,
-        rng,
-        count,
-    )
-    print(
-        f"2dFish fuzz: {checked} programs match"
-        if not failures
-        else f"2dFish fuzz: {failures} failures of {checked}"
-    )
-    return failures == 0
-
-
 # -- Painfuck corpus: every command plus the error categories --------------
 
 # Programs are written in the source alphabet via _painfuck_encode, whose
@@ -2629,7 +2480,6 @@ def main() -> int:
     ok = _verify_unsquare() and ok
     ok = _verify_three_x() and ok
     ok = _verify_pct() and ok
-    ok = _verify_two_d_fish() and ok
     ok = _verify_painfuck() and ok
     ok = _verify_bit_tilde() and ok
     if args.fuzz:
@@ -2643,7 +2493,6 @@ def main() -> int:
         ok = _fuzz_basicfuck(rng, args.fuzz) and ok
         ok = _fuzz_unsquare(rng, args.fuzz) and ok
         ok = _fuzz_three_x(rng, args.fuzz) and ok
-        ok = _fuzz_two_d_fish(rng, args.fuzz) and ok
         ok = _fuzz_painfuck(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the

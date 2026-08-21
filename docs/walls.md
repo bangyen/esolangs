@@ -306,6 +306,13 @@ past `n == 2` (the search caps at 6 of 8 combinations).
 
 ## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
 
+**The language was removed.**  This boolean-generator wall is one half of
+the removal reason; the other half is that 2dFish's `(...)*` captures a
+literal string from the source row and prints it whole, which makes the
+language's true text-generator floor a literal-embed rather than the
+shipped delta-encoder — see `docs/limitations.md`'s "Assessed and rejected"
+list.
+
 2dFish can host a WII2D-style parameterized generator: its direction cells
 (`/` east, `v` south, `^` north) steer a pointer carrying a single
 accumulator, and there is no runtime conditional nor a way to combine two
@@ -628,12 +635,11 @@ push, not the current mechanism's O(1)), so it would be new machinery, not
 a tweak to the existing one.  Not built: no concrete program has needed
 it yet, matching the same "revisit if a real case shows up" posture as
 Forbin's expression-position gap in `docs/roadmap.md`.
-`scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
-likewise bounded by state-cycle detection, with NoComment keeping the
-alarm as backstop for its unbounded-growth class (a loop that keeps
-pushing the stack never revisits a state); the remaining differential
-Python sides on SIGALRM alone are LaserFuck and Painfuck, whose
-headings/skips are random.
+`scripts/verify_differential.py`'s NoComment Python side is likewise
+bounded by state-cycle detection, keeping the alarm as backstop for its
+unbounded-growth class (a loop that keeps pushing the stack never revisits
+a state); the remaining differential Python sides on SIGALRM alone are
+LaserFuck and Painfuck, whose headings/skips are random.
 
 **The wall-clock backstop is broken under `pytest --cov`.**  Raising from
 the SIGALRM handler while the coverage C tracer is active can deadlock the

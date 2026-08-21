@@ -32,10 +32,6 @@ name = "basicfuck"
 path = "basicfuck.rs"
 
 [[bin]]
-name = "two_d_fish"
-path = "two_d_fish.rs"
-
-[[bin]]
 name = "painfuck"
 path = "painfuck.rs"
 

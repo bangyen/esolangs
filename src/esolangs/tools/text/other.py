@@ -32,7 +32,6 @@ __all__ = [
     "sbleq",
     "suptiftam",
     "three_x",
-    "two_d_fish",
     "unsquare",
     "ztoalc_l",
 ]
@@ -720,23 +719,6 @@ def dimensional(text: str) -> str:
     """
     _require_bytes(text, "Dimensional")
     return "".join(f"={ord(c):02x}." for c in text)
-
-
-def two_d_fish(text: str) -> str:
-    """Build a 2dFish program that outputs ``text``.
-
-    A single row heading right (``/``) carries an accumulator: ``i`` and ``d``
-    move it toward each character and ``a`` prints it as a byte.  ``@`` halts.
-    """
-    _require_bytes(text, "2dFish")
-    acc = 0
-    res = ["/"]
-    for c in text:
-        t = ord(c)
-        res.append("i" * (t - acc) if t >= acc else "d" * (acc - t))
-        res.append("a")
-        acc = t
-    return "".join(res) + "@"
 
 
 def _pct_path(byte: int) -> str:

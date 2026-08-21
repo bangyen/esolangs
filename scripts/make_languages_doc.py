@@ -75,7 +75,6 @@ _EXTRA_DIRS = [
         ROOT / "extra" / "rust",
         "*.rs",
         {
-            "two_d_fish": "2dFish",
             "basicfuck": "Basicfuck",
             "bit_tilde": "bit~",
             "forth": "Forþ",

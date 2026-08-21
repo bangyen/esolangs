@@ -228,22 +228,6 @@ class TestAPainterAnt:
         assert vm.stack == []
 
 
-class TestTwoDFish:
-    def test_ip_position_direction_and_accumulator(self) -> None:
-        vm = esolangs.make_vm("2dFish", "/iio@")
-        assert vm.ip == (1, 0, 0)  # after the initial direction step (heading right)
-        vm.step()  # i increments the accumulator
-        assert vm.memory == [1]
-        assert vm.ip == (2, 0, 0)
-        vm.step()  # i increments again
-        assert vm.memory == [2]
-        vm.step()  # o prints 2
-        assert vm.output == "2"
-        vm.step()  # @ halts
-        assert vm.halted
-        assert vm.stack == []
-
-
 class TestClockwise:
     def test_ip_position_heading_and_accumulator(self) -> None:
         vm = esolangs.make_vm("Clockwise", "+;S;S;S;S;S;+;R\nR             R")

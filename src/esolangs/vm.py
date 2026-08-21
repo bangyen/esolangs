@@ -668,35 +668,6 @@ class _APainterAntVM(_BaseVM):
         return []
 
 
-class _TwoDFishVM(_BaseVM):
-    """2D grid; ``ip`` is the (x, y, direction), ``memory`` the accumulator."""
-
-    def __init__(self, program: str, stdin: str = "") -> None:
-        super().__init__(program, stdin)
-        from esolangs.interpreters.grid_based.two_d_fish import _Machine
-
-        self._machine = _Machine(program, self._io)
-
-    @property
-    def halted(self) -> bool:
-        return self._machine.halted
-
-    def step(self) -> None:
-        self._machine.step()
-
-    @property
-    def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, "/\\v^".find(self._machine.d or ""))
-
-    @property
-    def memory(self) -> list[int]:
-        return [self._machine.acc]
-
-    @property
-    def stack(self) -> list[object]:
-        return []
-
-
 class _ClockwiseVM(_BaseVM):
     """2D ring; ``ip`` is the pointer's (x, y, heading), ``memory`` the accumulator."""
 
@@ -1954,7 +1925,6 @@ _VM_ADAPTERS: dict[str, type[_BaseVM]] = {
     "Point Break": _PointBreakVM,
     "ArrowQueue": _ArrowQueueVM,
     "A Painter Ant": _APainterAntVM,
-    "2dFish": _TwoDFishVM,
     "Clockwise": _ClockwiseVM,
     "Dig": _DigVM,
     "WII2D": _Wii2dVM,

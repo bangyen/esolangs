@@ -171,8 +171,6 @@ jobs:
         printf '#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;' \
           > /tmp/basicfuck.txt
         [ "$(./extra/rust/target/debug/basicfuck /tmp/basicfuck.txt)" = "A" ]
-        printf '/io@' > /tmp/2dfish.txt
-        [ "$(./extra/rust/target/debug/two_d_fish /tmp/2dfish.txt)" = "1" ]
         printf 'pyr' > /tmp/painfuck.txt
         ./extra/rust/target/debug/painfuck /tmp/painfuck.txt >/dev/null
         printf '3!' > /tmp/three_x.txt
