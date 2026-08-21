@@ -149,10 +149,10 @@ for having no generator or only a corpus-only cross-check; see
 
 The compilers in `src/esolangs/compilers/assembly/` translate a program to
 RISC-V Linux assembly, assembled and run under unicorn by
-`scripts/verify_riscv_unicorn.py`; the eight shipped (AddSubJump, BF-PDA,
-BFStack, Home Row, Jaune, RAM0, Suffolk, Unsquare) are in the commit
-history, with addsubjump, bfstack, suffolk, unsquare, and home_row
-round-tripping their text generators.
+`scripts/verify_riscv_unicorn.py`; the nine shipped (AddSubJump, BF-PDA,
+BFStack, Collatz Multiverse, Home Row, Jaune, RAM0, Suffolk, Unsquare) are
+in the commit history, with addsubjump, bfstack, collatz_multiverse,
+suffolk, unsquare, and home_row round-tripping their text generators.
 
 The cross-checks' no-input rule does not apply here: a cross-check reference
 receives its program via stdin, but a compiled program is embedded in the
@@ -162,7 +162,7 @@ by the toolchain rule (RISC-V fits machine-model languages), just not by
 the input rule.
 
 **AddSubJump shipped**, but not as unrolled per-token blocks like the other
-seven: its jump target (`*c`) and even its operands are computed at
+compilers: its jump target (`*c`) and even its operands are computed at
 runtime from self-modifying memory, so no compile-time control-flow graph
 exists to unroll.  The emitted assembly is instead a real
 fetch-decode-execute loop over a `.data` array of 65536 `.dword` cells
@@ -174,12 +174,29 @@ becomes a fixed preallocated buffer, the same tradeoff RAM0's compiler
 already makes for its 256-cell RAM.  See
 `src/esolangs/compilers/assembly/addsubjump.py`.
 
-- **Collatz Multiverse — a RISC-V compiler is worth adding.**  Named
-  registers, arrays, and a `lineNumber` goto; the per-line Collatz rule is
-  pure arithmetic on the runtime value (`andi`/`mul`/`add`/`srai`), `DO
-  PRINT` is a byte write, and the generator's runtime odd/even rules are
-  complex-output.  Unlike Suffolk's single-byte input, `input_num` parses a
-  whole line as an integer, so the emitter needs a small decimal parser.
+**Collatz Multiverse shipped.**  Every line's target and operands are
+statically known (unlike AddSubJump's self-modifying memory), so each line
+compiles to a labelled block that falls through to the next; the only
+runtime indirection is a `lineNumber` assignment, dispatched through a
+linear compare-and-branch scan over `1..n` (the same table-scan shape as
+Jaune's `.switch`) that lands on `.halt` when the computed target falls
+outside the program.  Named scalars get a compile-time symbol table (one
+`.dword` slot apiece); named arrays get a fixed 256-slot window per name,
+direct-indexed with a wrapping bitmask (`_ARRAY_SIZE` is a power of two, so
+the mask alone reproduces Python's `%` for negative indices too, without
+needing the M extension) — the same fixed-window tradeoff RAM0's compiler
+makes for its RAM.  `input` parses a whole stdin line as a signed decimal
+integer one byte at a time (unlike Suffolk's single-byte read), halting on
+EOF before any digit but still returning a value for a final line with no
+trailing newline.  The Collatz rule's signed multiply needed its own
+shift-add routine that negates both operands to a non-negative magnitude
+before shifting (a plain arithmetic-shift loop on a negative multiplier
+never terminates), and the compiler discovered that late `.data` references
+compile to `gp`-relative addressing under linker relaxation, so `_start`
+now sets `gp` from `__global_pointer$` up front — bare-metal `_start` has no
+libc to do it.  See
+`src/esolangs/compilers/assembly/collatz_multiverse.py`.
+
 - **ZTOALC L stays in the Rust column.**  Heterogeneous int-or-array
   values, arrays-of-arrays, bounds checks, and trajectory-driven dispatch
   are the semantic class the toolchain rule sends to Rust; emitting that in

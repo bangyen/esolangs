@@ -29,6 +29,7 @@ _COMPILER_NAMES = {
     "bf_pda": "BF-PDA",
     "ram0": "RAM0",
     "addsubjump": "AddSubJump",
+    "collatz_multiverse": "Collatz Multiverse",
 }
 
 _COMPILER_DIRS = {
