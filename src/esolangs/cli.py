@@ -7,7 +7,7 @@ Subcommands:
     esolangs transpile <from> <to> <file> rewrite a program into another language
 
 For anything else (compilers, tools), invoke the module directly with
-``python -m``, e.g. ``python -m esolangs.compilers.assembly.unsquare``.
+``python -m``, e.g. ``python -m esolangs.compilers.unsquare``.
 """
 
 import sys

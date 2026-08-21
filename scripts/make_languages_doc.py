@@ -35,7 +35,7 @@ _COMPILER_NAMES = {
 }
 
 _COMPILER_DIRS = {
-    "assembly": (ROOT / "src" / "esolangs" / "compilers" / "assembly", "*.py"),
+    "assembly": (ROOT / "src" / "esolangs" / "compilers", "*.py"),
 }
 
 
