@@ -79,12 +79,42 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("unsquare", "unsquare", gen.unsquare(text), text))
     COMPILER_CASES.append(("home_row", "home_row", gen.home_row(text), text))
     COMPILER_CASES.append(("addsubjump", "addsubjump", gen.addsubjump(text), text))
+    COMPILER_CASES.append(
+        ("collatz_multiverse", "collatz_multiverse", gen.collatz_multiverse(text), text)
+    )
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
 COMPILER_CASES.append(("bf_pda", "bf_pda", "<.>@.", "01"))
 COMPILER_CASES.append(("ram0", "ram0", "A A A", "z: 3\nn: 0\nram: {}\n"))
 COMPILER_CASES.append(("ram0", "ram0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}\n"))
+_CM_CONSTANTS = "\n".join(
+    [
+        "one = negativeOne x + negativeOne, NOT PRINT.",
+        "one = negativeOne x + zero, NOT PRINT.",
+        "two = negativeOne x + negativeOne, NOT PRINT.",
+        "two = negativeOne x + one, NOT PRINT.",
+        "three = negativeOne x + one, NOT PRINT.",
+        "three = one x + two, NOT PRINT.",
+    ]
+)
+COMPILER_CASES.append(
+    (
+        "collatz_multiverse",
+        "collatz_multiverse",
+        _CM_CONSTANTS
+        + "\n".join(
+            [
+                "",
+                "lineNumber = one x + two, NOT PRINT.",
+                "x = negativeOne x + zero, DO PRINT.",
+                "arr[negativeOne] = negativeOne x + one, NOT PRINT.",
+                "x = negativeOne x + arr[negativeOne], DO PRINT.",
+            ]
+        ),
+        "\x01",
+    )
+)
 
 
 def main() -> int:

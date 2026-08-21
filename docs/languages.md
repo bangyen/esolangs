@@ -33,7 +33,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | COD |  | yes |  | yes |  | boolean |
 | Circlefuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
-| Collatz Multiverse | yes | yes |  | yes |  | hello |
+| Collatz Multiverse | yes | yes |  | yes | yes | hello |
 | Container | yes | yes |  | yes |  | hello |
 | Decleq | yes | yes |  | yes |  | hello |
 | Dig | yes | yes |  | yes |  | hello |
