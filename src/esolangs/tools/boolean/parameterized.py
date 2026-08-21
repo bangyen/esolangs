@@ -40,6 +40,7 @@ bit's complement from ``{Xi}`` at runtime instead of embedding it.
 """
 
 from collections.abc import Callable
+from itertools import zip_longest
 from typing import TypeAlias
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
@@ -305,31 +306,39 @@ def _cod_fork_box(n: int, k: int) -> str:
     horizontal concatenation (see :func:`_cod_combine`) with no risk of one
     box's cod re-entering another box's cells from an unexpected direction
     (the failure mode that blocked a general-``n`` construction before;
-    see ``docs/cod_boolean_generator.md``, "Generalizing past n == 3").
+    see ``docs/cod_boolean_generator.md``, "Why the earlier n <= 3 merge
+    design didn't generalize").
     The leading ``?`` marks the box's own entry cell, replaced by the
     previous box's exit (or ``>`` for the first box) when boxes are joined.
     """
     vals = _cod_reachable(n, k)
-    gate0 = _cod_gauntlet(vals[1])
-    gate1 = _cod_gauntlet(vals[0])
-    back0 = _cod_gauntlet(vals[2])[::-1]
-    back1 = gate1[::-1]
-    diff = ")" * (2 ** (n - k) - 1)
+    forward_gate = _cod_gauntlet(vals[1])
+    side_gate = _cod_gauntlet(vals[0])
+    forward_shaft = _cod_gauntlet(vals[2])[::-1]
+    side_shaft = side_gate[::-1]
+    weight_minus_one = ")" * (2 ** (n - k) - 1)
 
-    top = f"+ {gate0} {back0} +"
-    bot = f" {gate1} {diff} {back1}"
-    length = max(len(top), len(bot))
-    top = top.rjust(length)
-    bot = bot.rjust(length)
-    box = (
-        "~" * length + "\n"
-        + top + "\n "
-        + "~" * (length - 2)
-        + " \n" + bot + "\n"
-        + "~" * length
+    forward_row = f"+ {forward_gate} {forward_shaft} +"
+    side_row = f" {side_gate} {weight_minus_one} {side_shaft}"
+    width = max(len(forward_row), len(side_row))
+    forward_row = forward_row.rjust(width)
+    side_row = side_row.rjust(width)
+    interior = (
+        "~" * width + "\n"
+        + forward_row + "\n "
+        + "~" * (width - 2)
+        + " \n" + side_row + "\n"
+        + "~" * width
     )
-    cov = "~" + box.replace("\n", "~\n~") + "~"
-    return cov.replace("\n~", "\n?", 1).replace("+~", "+ ")
+
+    # Add a west/east wall column by turning every newline into a wall
+    # cell that closes the line above and opens the one below.  This also
+    # overwrites the forward row's own leading and trailing cells with
+    # wall, so restore them: the entry marker at the start (later replaced
+    # with '{Xi}' or the previous box's own exit) and open water at the
+    # end (the exit into the next box or Phase 2).
+    bordered = "~" + interior.replace("\n", "~\n~") + "~"
+    return bordered.replace("\n~", "\n?", 1).replace("+~", "+ ")
 
 
 def _cod_leaf(n: int, k: int, bit: str) -> str:
@@ -380,20 +389,31 @@ def _cod_cascade(n: int, table: str) -> str:
     cascade row, used to feed in the combo index from :func:`_cod_fork_box`
     boxes stacked above (see :func:`_cod_combine`).
     """
-    t = _cod_tree(n, table)
-    r = t.replace("\n", "\n~ ", 2 ** (n + 1) - 1).replace("~ ", "  ", 1)
-    return f"~{r}~"
+    tree = _cod_tree(n, table)
+    # Add a west wall column that steps in by one cell on every row after
+    # the first (each leaf row sits one column deeper than the last), by
+    # prepending "~ " after every newline but the last; the first leaf
+    # row's own left cell should be open water (the shaft down from
+    # Phase 1), not wall, so its "~ " is fixed back to "  ".  The east
+    # wall column is added by the final f-string wrap alongside the west
+    # column's very first cell (row 0, before any newline has fired).
+    stepped = tree.replace("\n", "\n~ ", 2 ** (n + 1) - 1)
+    stepped = stepped.replace("~ ", "  ", 1)
+    return f"~{stepped}~"
 
 
 def _cod_combine(blocks: list[str]) -> str:
     """Concatenate grid blocks left to right, padding shorter ones with blanks."""
-    lines = [b.split("\n") for b in blocks]
-    longest = max(len(block) for block in lines)
-    padded = [
-        block + [" " * len(block[0])] * (longest - len(block)) for block in lines
-    ]
-    rows = ("".join(padded[j][i] for j in range(len(blocks))) for i in range(longest))
-    return "\n".join(rows)
+    block_rows = [block.split("\n") for block in blocks]
+    blanks = [" " * len(rows[0]) for rows in block_rows]
+    combined_rows = zip_longest(*block_rows, fillvalue=None)
+    return "\n".join(
+        "".join(
+            row if row is not None else blank
+            for row, blank in zip(cells, blanks, strict=True)
+        )
+        for cells in combined_rows
+    )
 
 
 def cod(truth_table: str) -> str:
