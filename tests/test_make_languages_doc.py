@@ -72,6 +72,7 @@ def test_compiler_sets_match_the_compiler_modules() -> None:
         "BFStack",
         "Collatz Multiverse",
         "Decleq",
+        "Forþ",
         "Home Row",
         "Jaune",
         "RAM0",

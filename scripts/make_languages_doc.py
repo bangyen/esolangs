@@ -32,6 +32,7 @@ _COMPILER_NAMES = {
     "collatz_multiverse": "Collatz Multiverse",
     "sbleq": "S*bleq",
     "decleq": "Decleq",
+    "forth": "Forþ",
 }
 
 _COMPILER_DIRS = {
