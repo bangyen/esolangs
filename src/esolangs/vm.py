@@ -1398,7 +1398,7 @@ class _TaglateVM(_BaseVM):
 
 
 class _OneTwoThreeVM(_BaseVM):
-    """Single data byte + pointer mask; ``ip`` is the code cursor."""
+    """Unbounded bit tape + pointer; ``ip`` is the code cursor."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -1419,7 +1419,7 @@ class _OneTwoThreeVM(_BaseVM):
 
     @property
     def memory(self) -> list[int]:
-        return [self._machine.data & 0xFF]
+        return [self._machine.byte()]
 
     @property
     def stack(self) -> list[object]:
