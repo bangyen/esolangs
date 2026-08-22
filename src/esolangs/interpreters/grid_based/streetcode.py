@@ -53,25 +53,27 @@ local wall shape actually marks an intersection rather than a plain corner:
   counting open neighbors (an open room can present two or three open
   orthogonal neighbors at a perfectly ordinary corner, as the "infinite
   loop" example's turns do, without being a drawn intersection at all).
-  Looking at a 4x4 window immediately ahead of the car -- aligned to the
-  wall it is hugging, one cell further in than that wall, four cells deep
-  in the direction of travel -- a **three-way** junction is a wall on one
-  side of the window with ``+`` at the two corners of the opposite side
-  (two separate corners, not one ordinary L-shaped corner's adjacent pair);
-  a **four-way** junction is ``+`` at all four corners of the window.
-  Only then does the car make the spec's actual leftmost/second-leftmost
-  choice among the open non-backward directions (ordered left to right
-  relative to its heading): leftmost when the CPth cell is zero, otherwise
-  second-leftmost.  Both the infinite-loop example and the larger
-  infinite-cat example actually do contain this shape (at ``(1,5)`` heading
-  West and ``(1,6)`` heading West respectively), so this branch is
-  exercised by two of the wiki's own four examples, not just by programs
-  that draw a real intersection for its own sake.
+  A branch is a gap in the wall the car is driving along, with a ``+``
+  marking each end of the gap (:meth:`_road_mouth` scans up to
+  :data:`_MOUTH_MAX_DIST` cells out, anchoring the near ``+`` at depth
+  0/1/-1 so the junction fires as the car *arrives* at the mouth rather
+  than from within lookahead range); the same intersection met head-on --
+  driving up the branch itself, out through the gap between the two
+  ``+`` -- is :meth:`_crossing_mouth`.  Only when one of these shapes is
+  actually present does the car make the spec's real
+  leftmost/second-leftmost choice among the open non-backward directions
+  (ordered left to right relative to its heading): leftmost when the
+  CPth cell is zero, otherwise second-leftmost.  Both the infinite-loop
+  example and the larger infinite-cat example actually do contain a road
+  mouth (at ``(1,5)`` heading West and ``(1,6)`` heading West
+  respectively), so this branch is exercised by two of the wiki's own
+  four examples, not just by programs that draw a real intersection for
+  its own sake.
 
-* **Lane merging**: when the junction's far-side ``+`` corners are genuine
-  wall arms (a wall one cell further, perpendicular to the direction of
-  travel, past each corner -- as opposed to a bare ``+`` floating in an
-  open room with nothing beyond it, which does not bound a real road) the
+* **Lane merging**: when a mouth's two ``+`` are genuine wall arms (a wall
+  one cell further, perpendicular to the direction of travel, past each
+  ``+`` -- as opposed to a bare ``+`` floating in an open room with
+  nothing beyond it, which does not bound a real road) the
   road being turned onto is itself multi-cell-wide, and the spec's "drive
   on the right-hand side" applies to *that* road too: the car does not
   turn the instant the junction is detected, but keeps driving straight
@@ -280,30 +282,6 @@ class _Machine:
         # this program will hit on its very first movement attempt anyway.
         return "S"
 
-    def _junction_corners(self, heading: str) -> list[tuple[int, int]]:
-        """Return the 4x4 detection window's four corners for ``heading``.
-
-        The window starts one cell ahead of the car (in the direction of
-        travel), at the wall it is hugging (one step to its right), and
-        extends 3 more cells both further ahead and away from that wall.
-        Returned as ``[near-wall-near, near-wall-far, far-near, far-far]``
-        along (direction-of-travel, perpendicular): index 0/1 sit against
-        the hugged wall, 2/3 sit on the far side of the window.
-        """
-        d_row, d_col = _DELTA[heading]
-        wall_row, wall_col = self._ahead(self.row, self.col, _right(heading))
-        base_row, base_col = wall_row + d_row, wall_col + d_col
-        perp_row, perp_col = _DELTA[_left(heading)]
-        return [
-            (base_row, base_col),
-            (base_row + 3 * d_row, base_col + 3 * d_col),
-            (base_row + 3 * perp_row, base_col + 3 * perp_col),
-            (
-                base_row + 3 * d_row + 3 * perp_row,
-                base_col + 3 * d_col + 3 * perp_col,
-            ),
-        ]
-
     def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
         """Detect a road opening off ``side`` of the car, or ``None``.
 
@@ -316,11 +294,11 @@ class _Machine:
         what separates a real road mouth from a solid corner where two ``+``
         happen to sit near each other on the same wall.
 
-        The near ``+`` is anchored at depth 0 or 1 (beside the car, or one
-        cell ahead of it) so the junction fires as the car *arrives* at the
-        mouth rather than from anywhere within lookahead range, and a run of
-        consecutive ``+`` is consumed first so a multi-cell-wide road's
-        corner block does not read as the whole mouth.
+        The near ``+`` is anchored at depth 0, 1, or -1 (level with the
+        car, one cell ahead, or one cell behind -- the car may corner
+        straight into a mouth it never met head-on), so the junction
+        fires as the car *arrives* at the mouth rather than from anywhere
+        within lookahead range.
 
         Returns ``(dist, near_depth, far_depth)`` for a detected mouth: the
         perpendicular distance to the wall carrying it, and the depths (along
@@ -363,8 +341,6 @@ class _Machine:
                 None,
             )
             if near is not None:
-                while at_depth(near + 1, dist) == "+":
-                    near += 1
                 for far in range(near + 2, _MOUTH_MAX_DEPTH):
                     if at_depth(far, dist) != "+":
                         continue
@@ -469,7 +445,7 @@ class _Machine:
         bounds no such corridor and turns immediately.
         """
         mouth = self._road_mouth(heading, side)
-        if mouth is None:
+        if mouth is None:  # pragma: no cover - guarded by the caller
             return False
         dist, near, far = mouth
         d_row, d_col = _DELTA[heading]
@@ -626,7 +602,7 @@ class _Machine:
             and self._junction_kind(heading)
         ):
             roads = self._junction_choices(heading)
-            if len(roads) < 2:
+            if len(roads) < 2:  # pragma: no cover - choices always >= 2 here
                 roads = options
             new_heading = roads[0] if self._cell() == 0 else roads[1]
             # Lane merging applies only to a turn onto a detected side road:
@@ -642,10 +618,9 @@ class _Machine:
                 d_row, d_col = _DELTA[heading]
                 while self._open(target[0] + d_row, target[1] + d_col):
                     target = target[0] + d_row, target[1] + d_col
-                if target != (self.row, self.col):
-                    self._merge_target = (*target, new_heading, heading)
-                else:
-                    return new_heading
+                # ``_crossing_mouth`` guarantees the cell straight ahead is
+                # open, so the loop above always advances at least one cell.
+                self._merge_target = (*target, new_heading, heading)
             elif new_heading != heading and self._lane_bounded(heading, new_heading):
                 target = self._lane_merge_target(heading, new_heading, new_heading)
                 if target != (self.row, self.col):
