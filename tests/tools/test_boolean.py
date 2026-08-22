@@ -618,6 +618,35 @@ class TestDig:
         assert boolean.dig("0110") == expected
 
 
+def run_streetcode(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.grid_based.streetcode import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
+class TestStreetcode:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.streetcode(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_streetcode(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+
 def run_sophie(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.sophie import run
 
