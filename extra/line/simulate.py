@@ -65,23 +65,31 @@ that vertex's coordinates and nothing pointing back to the earlier node they
 match, since :func:`extract.extract_tree` only ever needed a one-time
 structural trace (see above).  :func:`_compile` recovers that missing link
 itself, entirely within this module and without changing ``lattice.py`` or
-``extract.py``: every fork node (one with ``zero``/``nonzero`` children --
-the only kind of node a loop can meaningfully return control to) is indexed
-once by its own *final* vertex's ``(y, x)``, the actual decision-point pixel;
-any leaf whose own final vertex matches that coordinate becomes a jump back
-to that fork's decision at runtime, skipping straight to re-checking the
-tape rather than re-running the fork's incoming stem (see :attr:`_Compiled.goto`).
+``extract.py``.
 
-Unverified against a real drawn loop end to end: neither wiki fixture
-contains one (confirmed by checking both fixtures' every stroke's start/end
-coordinates for a match -- none), and ``render.py``'s own ``Node``/
-``_layout`` cannot produce one either, since ``Node`` is a plain tree walked
-recursively with no cycle support (confirmed: a hand-built cyclic ``Node``
-graph passed to ``render()`` hits Python's recursion limit rather than
-rendering).  The coordinate-matching mechanism itself is covered by a
-synthetic test that builds a looping ``lattice.Stroke`` tree directly
-(bypassing both ``render.py`` and ``extract.py``, which cannot produce a
-real one yet), not by a round-trip through a rendered image.
+Confirmed on a real wiki fixture, not just reasoned about: ``addition.png``'s
+loop-body arm (the walked stroke ending at ``(42, 159)``) merges back into
+the *middle* of the incoming stem's own path -- ``(42, 159)`` sits exactly on
+the straight run between two of that stem's own vertices, ``(62, 159)`` and
+``(22, 159)``, rather than landing on any recorded vertex at all.  A first
+version of this module only matched a fork's own *final* vertex exactly, so
+it missed this case entirely and reported ``addition.png`` as loop-free --
+wrong, caught by inspecting the actual image rather than trusting the
+coordinate check's silence.  :func:`_compile`'s ``find_merge`` now checks a
+leaf's final vertex two ways against every other stroke: an exact match on
+that stroke's own *final* vertex (a real fork or dead end -- the original,
+still-correct case), or a point landing *strictly inside* one of its
+straight legs (exact integer collinearity + betweenness, since every Line
+segment runs along one of 8 compass directions -- no tolerance needed).
+Landing on any *other* vertex is deliberately never treated as a match: a
+fork's two children always start exactly at the fork's own end coordinate
+by construction, so testing bare vertex equality matches every sibling arm
+sharing that corner, not just a real continuation (confirmed to misfire
+this way on a synthetic test).  Either matching case resumes execution from
+exactly that point, running only the ops that had not yet run there (via
+:func:`extract.OpCall`'s own ``index``) rather than replaying the whole
+stroke, then continuing normally into that stroke's own fork or further
+``goto``.
 """
 
 from __future__ import annotations
@@ -90,7 +98,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from extract import DEFAULT_UNIT, OpCall, Stroke, classify_ops
+from extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
 
 
 @dataclass
@@ -116,21 +124,25 @@ class _Compiled:
     ops on a later visit -- load-bearing for a looping program, which by
     construction revisits the same stroke many times (see module
     docstring).  ``goto`` is set only for a leaf (``zero``/``nonzero`` both
-    ``None``) whose drawn path reconnects to an earlier node -- see
-    :func:`_compile`'s own docstring for how that is recovered.
+    ``None``) whose drawn path reconnects to an earlier point -- see
+    :func:`_compile`'s own docstring for how that is recovered.  A ``goto``
+    target may itself be a synthetic *resume point* built by
+    :func:`_compile` (only the tail of some other stroke's ``ops``, sharing
+    that stroke's ``zero``/``nonzero``/``goto``) rather than a node that
+    corresponds 1:1 to a real :class:`extract.Stroke` -- see
+    :func:`_compile`'s ``by_vertex`` index for why.
     """
 
     ops: list[OpCall]
     end: tuple[int, int]
     zero: _Compiled | None
     nonzero: _Compiled | None
-    # Set only on a leaf whose drawn path reconnects to an earlier fork (see
-    # _compile).  Points at that fork's *own* zero/nonzero pair directly,
-    # deliberately bypassing the fork node itself -- jumping to the fork
-    # node the ordinary way would re-run its own `ops` (whatever the stem
-    # leading into that decision point does, e.g. a leading read), which a
-    # real loop-back must not repeat every iteration; only the decision
-    # itself repeats.
+    # Set only on a leaf whose drawn path reconnects to an earlier point
+    # (see _compile).  Points directly at whatever should run next --
+    # either another stroke's own node, or a resume point covering just its
+    # remaining ops -- deliberately bypassing any ops that already ran the
+    # first time that point was reached, since a real loop-back must not
+    # replay them every iteration.
     goto: _Compiled | None = None
 
 
@@ -138,27 +150,37 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
     """Classify every stroke in ``stroke``'s tree exactly once, recursively.
 
     Also recovers the loop-back link :mod:`lattice`'s walker discards (see
-    module docstring): every *fork* node (one with ``zero``/``nonzero``
-    children -- a ``?``, the only kind of node a loop can meaningfully
-    return control to) is indexed by its own ``end`` vertex's ``(y, x)`` --
-    the actual decision-point pixel, not its ``entry`` -- since that is
-    where the drawing's ink visually branches and where a loop-back arm's
-    path would reconnect.  Every leaf's *final* vertex is then checked
-    against that index; a match means the drawing's ink physically
-    reconnects to a real decision point, and the leaf's ``goto`` is wired
-    there instead of leaving it a real halt.
+    module docstring): every leaf's *final* vertex is tested, via
+    :func:`find_merge`, against every other stroke's own vertex/segment
+    geometry -- either an exact match on that *other* stroke's own final
+    vertex (always a real fork or dead end), or a point landing strictly
+    inside one of its straight legs (collinear with, and strictly between,
+    two consecutive vertices; every Line segment runs along one of 8 compass
+    directions -- see ``render.py``'s module docstring -- so an exact
+    integer cross-product/dot-product check is enough, no tolerance needed).
+    A match means the drawing's ink physically reconnects there, and the
+    leaf's ``goto`` is wired to a jump that skips whatever ops (by
+    :class:`extract.OpCall`'s own ``index``, the run a kink starts at)
+    already ran up to that point.
 
-    Indexing by ``end`` rather than ``entry``, and forks only rather than
-    every node, both matter: a fork's own two children always start
-    (``entry``) exactly where the fork itself ends, so indexing every
-    node's ``entry`` (tried first) makes a fork's *own child* shadow the
-    fork itself at that shared coordinate -- a loop-back leaf then wrongly
-    resolves to whichever child happened to be indexed first instead of the
-    fork it actually needs to re-decide at, silently breaking the loop
-    after one iteration (confirmed with a synthetic decrementing loop: cell
-    stopped at 2 instead of reaching 0, since the loop arm resolved its own
-    ``goto`` to itself).  Indexing by ``end`` sidesteps this entirely, since
-    only the fork itself -- never its children -- ends at that coordinate.
+    Checking mid-segment points, not just exact vertex matches, matters: a
+    real wiki fixture (``addition.png``, confirmed by inspecting the image
+    directly after an exact-vertex-only version of this function reported it
+    as loop-free, which was wrong) merges its loop-body arm back into the
+    *middle* of the incoming stem's path -- a point between two of that
+    stem's own vertices, not on any recorded vertex at all.  When the match
+    falls exactly on a stroke's *own* final vertex, the resume point *is*
+    that stroke's node (no ops to skip -- the whole stroke already ran).
+    Otherwise a synthetic resume node is built, holding only that stroke's
+    ops from the merge point onward and sharing its
+    ``zero``/``nonzero``/``goto`` -- so a merge partway through a stroke
+    with real opcodes still remaining (not the case in ``addition.png``'s
+    own merge, but not excluded either) still runs exactly those remaining
+    ops once per pass, not the whole stroke from its own start.
+
+    A vertex's *own* stroke is excluded from matching itself at that same
+    vertex (a stroke's own final vertex trivially "matches" itself, which
+    would make every leaf loop back to itself instead of a real halt).
 
     Building the whole tree before linking (rather than linking as each
     node is built) matters because a loop-back target can be defined
@@ -166,30 +188,97 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
     ``zero`` arm looping back to the fork itself, which is built before
     ``walk_tree`` ever recurses into ``zero``.
     """
-    by_fork_end: dict[tuple[int, int], _Compiled] = {}
+    # Every real (non-resume-point) stroke's own vertex/segment geometry,
+    # kept alongside its compiled node and full ops list so a leaf's end
+    # point can be tested against it (see find_merge below) -- both exact
+    # vertex hits and a point landing partway along a segment.
+    strokes: list[tuple[_Compiled, list[Vertex], list[OpCall]]] = []
     leaves: list[_Compiled] = []
+    resume_cache: dict[tuple[int, int], _Compiled] = {}
 
     def build(node: Stroke) -> _Compiled:
+        ops = classify_ops(node.vertices, unit)
         last = node.vertices[-1]
-        compiled = _Compiled(
-            ops=classify_ops(node.vertices, unit),
-            end=(last.y, last.x),
-            zero=None,
-            nonzero=None,
-        )
+        compiled = _Compiled(ops=ops, end=(last.y, last.x), zero=None, nonzero=None)
         if node.zero is not None:
             compiled.zero = build(node.zero)
         if node.nonzero is not None:
             compiled.nonzero = build(node.nonzero)
         if compiled.zero is None and compiled.nonzero is None:
             leaves.append(compiled)
-        else:
-            by_fork_end.setdefault(compiled.end, compiled)
+        strokes.append((compiled, node.vertices, ops))
         return compiled
+
+    def resume(target: _Compiled, remaining: list[OpCall]) -> _Compiled:
+        if remaining == target.ops:
+            return target
+        key = id(target), len(remaining)
+        if key not in resume_cache:
+            resume_cache[key] = _Compiled(
+                ops=remaining,
+                end=target.end,
+                zero=target.zero,
+                nonzero=target.nonzero,
+                goto=target.goto,
+            )
+        return resume_cache[key]
+
+    def find_merge(
+        point: tuple[int, int], exclude: _Compiled
+    ) -> tuple[_Compiled, list[OpCall]] | None:
+        py, px = point
+        for target, vertices, ops in strokes:
+            if target is exclude:
+                # A leaf's own final vertex/segment trivially "matches"
+                # itself (it is where point came from); skip its own stroke
+                # entirely rather than checking `target is leaf` after the
+                # fact, so the search keeps going to find a real match on a
+                # *different* stroke instead of stopping here.
+                continue
+            last = vertices[-1]
+            if (last.y, last.x) == point:
+                # This stroke's own final vertex -- always a real decision
+                # point (a fork) or a genuine dead end, never an arbitrary
+                # shared corner, so matching it exactly is safe and is the
+                # common case: a loop-back reconnecting right at a `?`.
+                return target, []
+            for i in range(len(vertices) - 1):
+                v0, v1 = vertices[i], vertices[i + 1]
+                # Strictly interior to this segment -- (v0, v1) exclusive on
+                # both ends.  Landing exactly on an interior *vertex*
+                # (a corner within the stroke, not its own final one) is
+                # deliberately excluded too, not just v0/v1 of the specific
+                # segment being tested: every fork's two children start at
+                # exactly the fork's own end coordinate by construction, so
+                # a vertex-equality test alone matches *every* sibling arm
+                # sharing that corner, not just a real continuation --
+                # confirmed to misfire on a synthetic loop test, where it
+                # matched an unrelated 1-segment sibling arm that happened to
+                # start at the same point instead of the real ancestor fork.
+                # A genuine drawn merge, by contrast, touches down *inside*
+                # a real leg's own ink (confirmed on fixtures/addition.png's
+                # merge point, which sits partway along the incoming stem's
+                # straight run, not on any of its recorded vertices) -- so
+                # requiring strict interior containment for anything other
+                # than a stroke's own final vertex is not just a tiebreak,
+                # it is what a real merge actually looks like geometrically.
+                dy, dx = v1.y - v0.y, v1.x - v0.x
+                oy, ox = py - v0.y, px - v0.x
+                if dy * ox - dx * oy != 0:
+                    continue
+                t_num = oy * dy + ox * dx
+                t_den = dy * dy + dx * dx
+                if 0 < t_num < t_den:
+                    return target, [c for c in ops if c.index >= i + 1]
+        return None
 
     root = build(stroke)
     for leaf in leaves:
-        leaf.goto = by_fork_end.get(leaf.end)
+        match = find_merge(leaf.end, exclude=leaf)
+        if match is None:
+            continue
+        target, remaining = match
+        leaf.goto = resume(target, remaining)
     return root
 
 
@@ -240,41 +329,36 @@ def run(
     pointer = 0
 
     node: _Compiled | None = compiled
-    run_ops = True
     while node is not None:
-        if run_ops:
-            for call in node.ops:
-                if call.op == "+":
-                    tape[pointer] += call.count
-                elif call.op == "-":
-                    tape[pointer] -= call.count
-                elif call.op == ">":
-                    pointer += 1
-                elif call.op == "<":
-                    pointer -= 1
-                elif call.op == "i":
-                    tape[pointer] = io.read()
-                elif call.op == "o":
-                    io.write(tape[pointer])
-                else:  # pragma: no cover - defensive, classify_ops emits no others
-                    raise ValueError(f"unknown opcode {call.op!r}")
+        for call in node.ops:
+            if call.op == "+":
+                tape[pointer] += call.count
+            elif call.op == "-":
+                tape[pointer] -= call.count
+            elif call.op == ">":
+                pointer += 1
+            elif call.op == "<":
+                pointer -= 1
+            elif call.op == "i":
+                tape[pointer] = io.read()
+            elif call.op == "o":
+                io.write(tape[pointer])
+            else:  # pragma: no cover - defensive, classify_ops emits no others
+                raise ValueError(f"unknown opcode {call.op!r}")
 
         if node.zero is None and node.nonzero is None:
-            if node.goto is None:
-                return dict(tape)
-            # Land directly on the branch dispatch below, skipping node.ops:
-            # a loop-back returns control to the fork's *decision*, not to
-            # the stem leading into it (see _Compiled.goto's docstring) --
-            # that stem's ops already ran the first time this fork was
-            # reached and must not repeat every iteration.
+            # A loop-back's target already carries only its own *remaining*
+            # ops (see _compile's resume points), so node.ops above is
+            # always exactly right to run here -- no separate flag needed to
+            # skip ops that already ran on an earlier pass.
             node = node.goto
-            run_ops = False
+            if node is None:
+                return dict(tape)
             continue
         # Swapped relative to the field names -- see docstring above for why
         # lattice.py's zero/nonzero labeling is rotated 180 degrees from the
         # wiki's actual "turn right if 0, left otherwise" rule.
         node = node.nonzero if tape[pointer] == 0 else node.zero
-        run_ops = True
 
     return dict(tape)
 
