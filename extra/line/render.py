@@ -362,18 +362,20 @@ _MAX_ROUTE_SEARCH = 300_000  # pragma: no mutate - generous per-attempt search-n
 # unambiguity: with a gap, its off-center rays fall on background, so only
 # the stroke actually being walked lights up.
 #
-# Scope note, kept honest deliberately: the nested-loop regression this was
-# written during turned out to be caused by a route touching *itself*, which
-# `_self_approaches` is what actually fixes -- per-stroke attribution on
-# `++[>++[>+<-]<-]>>.` showed all three arms of the spurious junction
-# belonging to one single 530-cell detour.  Setting this to 0 currently
-# leaves every test in `test_bf_to_line.py` and `test_line_boolean.py`
-# passing, so no *checked-in* program is known to need between-stroke
-# clearance today.  It is kept at 1 because the band probe's ±1 reach makes
-# the abutting-ribbon failure real geometry rather than a hypothetical, and
-# a route is free to run flush against unrelated ink without it -- but a
-# future reader should know it is reasoned-from-the-probe, not
-# pinned-by-a-failing-case, unlike everything else in this fix.
+# Note the *nested-loop regression itself* was caused by a route touching
+# *itself*, which `_self_approaches` is what actually fixes -- per-stroke
+# attribution on `++[>++[>+<-]<-]>>.` showed all three arms of the spurious
+# junction belonging to one single 530-cell detour.  This constant addresses
+# the separate between-stroke case, and is pinned independently by
+# `test_bf_to_line.py`'s `TestStrokeSeparation`: at 0, every program it
+# checks develops between-stroke adjacency (up to 76 consecutive abutting
+# cells on `++[>++[>+<-]<-]>>+++.`), at 1 none does.
+#
+# That test exists because the ordinary suites do *not* catch this on their
+# own -- they assert on program output, and a drawing can rasterize a 2px
+# ribbon while still happening to extract and execute correctly.  Setting
+# this to 0 left every other test passing, which is exactly why measuring
+# stroke separation directly was needed to pin it.
 _CLEARANCE = 1
 
 

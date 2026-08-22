@@ -27,6 +27,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import render as render_module
 from bf_to_line import bf_to_line
 from extract import extract
 from render import render
@@ -106,6 +107,81 @@ class TestNestedLoops:
     def test_nested_loop_reaches_code_after_outer_loop(self, tmp_path: Path) -> None:
         """The op *after* a nested loop still runs -- the exact truncation seen."""
         assert _run_bf("++[>++[>+<-]<-]>>+++.", tmp_path / "nested_tail.png") == [7]
+
+
+def _max_between_stroke_adjacency(program: str) -> int:
+    """Most cells of one stroke sitting flush against a *different* stroke.
+
+    Captures `render._layout`'s stroke list directly rather than measuring
+    the rasterized image, so the count is in grid cells and names the two
+    strokes involved unambiguously.  Strokes that genuinely share a cell (a
+    fork's arms leaving its vertex, a detour's own merge point) are skipped:
+    the failure mode being measured is two strokes running *parallel and
+    adjacent* with no shared cell at all, which rasterizes into one
+    contiguous 2px ribbon.
+    """
+    captured: list[list[tuple[int, int]]] = []
+    original = render_module._layout  # noqa: SLF001 - see docstring
+
+    def spy(node, cursor, entries=None, depth=0):  # type: ignore[no-untyped-def]
+        original(node, cursor, entries, depth)
+        captured[:] = list(cursor.strokes)
+
+    render_module._layout = spy  # noqa: SLF001 - deliberate layout spy
+    try:
+        render(bf_to_line(program))
+    finally:
+        render_module._layout = original  # noqa: SLF001 - restore the spy
+
+    worst = 0
+    for i, first in enumerate(captured):
+        for second in captured[i + 1 :]:
+            a, b = set(first), set(second)
+            if a & b:
+                continue
+            adjacent = sum(
+                1
+                for (y, x) in a
+                if any(
+                    (y + dy, x + dx) in b
+                    for dy in (-1, 0, 1)
+                    for dx in (-1, 0, 1)
+                )
+            )
+            worst = max(worst, adjacent)
+    return worst
+
+
+class TestStrokeSeparation:
+    """Unrelated strokes must never be drawn flush against each other.
+
+    `lattice._band_lit` deliberately probes the exact ray *plus one pixel to
+    each side*, to absorb hand-drawn stroke slop -- so two strokes running
+    parallel with no gap read as one another's lit direction, manufacturing
+    a spurious junction the walker treats as a real fork.  Non-overlap alone
+    is not enough; `render._CLEARANCE` is what enforces the gap.
+
+    This pins `_CLEARANCE`, which was previously only reasoned about: it was
+    kept at 1 on the strength of the band-probe argument, but no test
+    asserted on stroke separation, so setting it to 0 left every test
+    passing.  Measured directly, every program below develops between-stroke
+    adjacency at `_CLEARANCE = 0` -- up to 76 consecutive abutting cells.
+    """
+
+    @pytest.mark.parametrize(
+        "program",
+        [
+            "+++[-].",
+            "+[>+<-]>.",
+            "++[>++[>+<-]<-]>>.",
+            "++[>++[>+<-]<-]>>+++.",
+            "+[-]+[-]+[-].",
+            "++[>+<-]>[>+<-]>.",
+        ],
+    )
+    def test_no_two_strokes_run_flush(self, program: str) -> None:
+        """No stroke touches a different stroke it does not share a cell with."""
+        assert _max_between_stroke_adjacency(program) == 0
 
 
 class TestNestingDepthLimit:
