@@ -136,6 +136,19 @@ _HEADINGS = ("N", "E", "S", "W")
 _DELTA = {"N": (-1, 0), "E": (0, 1), "S": (1, 0), "W": (0, -1)}
 _WALLS = frozenset("+-|")
 
+# How far perpendicular to the direction of travel ``_road_mouth`` looks for
+# the wall a side road opens through (a two-way street is two cells wide, so
+# the far lane's wall can sit two cells out), and how far along the direction
+# of travel it will look for the ``+`` closing that road's mouth.
+_MOUTH_MAX_DIST = 3
+_MOUTH_MAX_DEPTH = 7
+
+# How many steps of ordinary right-hand hugging to suppress after a junction
+# chooses to carry straight on past a side road: enough to clear the widest
+# mouth ``_road_mouth`` will detect, so the car drives past the branch it
+# declined rather than being hugged into it on a later cell of the same mouth.
+_SKIP_HUG_STEPS = 4
+
 
 def _right(heading: str) -> str:
     """Return the heading 90 degrees clockwise from ``heading``."""
@@ -198,6 +211,13 @@ class _Machine:
         # silently misapplying a stale turn.
         self._merge_target: tuple[int, int, str, str] | None = None
         self._merging_heading: str | None = None
+        # Steps of ordinary right-hand hugging still to be suppressed after a
+        # junction chose to carry straight on past a side road.  The declined
+        # road's mouth is open ground exactly where the hug looks, so without
+        # this the car would be steered into the road it just chose against
+        # on the very next step.  Counted down once per step and cleared by
+        # any heading change.
+        self._skip_hug = 0
 
     @property
     def halted(self) -> bool:
@@ -215,6 +235,7 @@ class _Machine:
             self.io.position(),
             self._merge_target,
             self._merging_heading,
+            self._skip_hug,
         )
 
     def _cell(self) -> int:
@@ -283,77 +304,244 @@ class _Machine:
             ),
         ]
 
+    def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
+        """Detect a road opening off ``side`` of the car, or ``None``.
+
+        A branch is drawn as a gap in the wall running along ``side``, with a
+        ``+`` marking each end of the gap: the wall arrives, stops at a ``+``,
+        open floor spans the mouth of the side road, and a second ``+`` picks
+        the wall up again.  Both ends must be ``+`` -- a gap between two plain
+        ``-``/``|`` runs is where a room simply has no wall drawn, not a
+        junction -- and the floor strictly between them must be open, which is
+        what separates a real road mouth from a solid corner where two ``+``
+        happen to sit near each other on the same wall.
+
+        The near ``+`` is anchored at depth 0 or 1 (beside the car, or one
+        cell ahead of it) so the junction fires as the car *arrives* at the
+        mouth rather than from anywhere within lookahead range, and a run of
+        consecutive ``+`` is consumed first so a multi-cell-wide road's
+        corner block does not read as the whole mouth.
+
+        Returns ``(dist, near_depth, far_depth)`` for a detected mouth: the
+        perpendicular distance to the wall carrying it, and the depths (along
+        the direction of travel) of the two ``+`` bounding the gap.
+        """
+        d_row, d_col = _DELTA[heading]
+        s_row, s_col = _DELTA[side]
+
+        def at_depth(depth: int, dist: int) -> str:
+            return self._at(
+                self.row + depth * d_row + dist * s_row,
+                self.col + depth * d_col + dist * s_col,
+            )
+
+        def open_depth(depth: int, dist: int) -> bool:
+            return self._open(
+                self.row + depth * d_row + dist * s_row,
+                self.col + depth * d_col + dist * s_col,
+            )
+
+        for dist in range(1, _MOUTH_MAX_DIST + 1):
+            # The two `+` bounding a mouth sit at the same perpendicular
+            # distance.  The car must be level with the mouth's near edge --
+            # the `+` immediately behind it, so the first open cell of the
+            # side road is the one alongside -- for the road to be one it
+            # could actually turn into.  Detecting the same mouth a cell
+            # earlier, while the closing `+` is still alongside, would let the
+            # car decline a turn it has not yet reached and then be dragged
+            # into that very road by the ordinary right-hand hug a step later.
+            # A mouth is still the car's to decide about while it has not yet
+            # driven clear of the gap: ``near`` may sit one cell behind (it
+            # cornered straight into the mouth without ever meeting the
+            # junction head-on), level with the car, or one cell ahead.
+            near = next(
+                (
+                    d
+                    for d in (0, 1, -1)
+                    if at_depth(d, dist) == "+" and open_depth(d + 1, dist)
+                ),
+                None,
+            )
+            if near is not None:
+                while at_depth(near + 1, dist) == "+":
+                    near += 1
+                for far in range(near + 2, _MOUTH_MAX_DEPTH):
+                    if at_depth(far, dist) != "+":
+                        continue
+                    if all(open_depth(k, dist) for k in range(near + 1, far)):
+                        return dist, near, far
+                    break
+            if any(at_depth(d, dist) in _WALLS for d in (-1, 0, 1)):
+                # This line is the wall the car is driving along, and it
+                # carries no mouth it could turn into.  Anything further out
+                # sits behind that wall, not on a road reachable from here, so
+                # stop looking: a `+` pair sighted through solid wall is some
+                # other corridor's geometry, and treating it as a junction
+                # would fire in the middle of an ordinary bend.
+                return None
+        return None
+
+    def _crossing_mouth(self, heading: str) -> bool:
+        """Whether the car is driving *out through* a side road's mouth.
+
+        The same drawn junction presents two different shapes depending on
+        the approach.  Driving along the main road, a branch appears as a gap
+        in the wall to one side (:meth:`_road_mouth`).  Driving up the branch
+        itself, the car passes *between* the two ``+`` that bound that gap --
+        one to either side, at the same depth -- with the road continuing
+        ahead.  That is the same intersection, met head-on rather than
+        side-on, and it is equally a decision point.
+
+        Detected as a ``+`` on each side at a matching depth, the two sitting
+        at different perpendicular distances (they bound a road wider than the
+        lane the car occupies), with open ground straight ahead.
+        """
+        if not self._open(*self._ahead(self.row, self.col, heading)):
+            return False
+        sides = []
+        for side in (_left(heading), _right(heading)):
+            s_row, s_col = _DELTA[side]
+            sides.append(
+                next(
+                    (
+                        dist
+                        for dist in range(1, _MOUTH_MAX_DIST + 1)
+                        if self._at(self.row + dist * s_row, self.col + dist * s_col)
+                        == "+"
+                    ),
+                    None,
+                )
+            )
+        # Level with both `+` -- one step further and they are behind the car,
+        # one step earlier and it has not reached the intersection yet.
+        return all(dist is not None for dist in sides) and sides[0] != sides[1]
+
     def _junction_kind(self, heading: str) -> int:
         """Detect a real intersection ahead, returning the open-option count.
 
-        Two ``+`` characters at two *different* corners of the detection
-        window (with a wall completing the third side) mark a three-way
-        junction; ``+`` at all four corners marks a four-way junction.
-        Returns 3, 4, or 0 (no junction detected -- an ordinary corner or
+        A junction is a road mouth (see :meth:`_road_mouth`) opening off
+        either side of the car, counted alongside straight-ahead travel.  All
+        three orientations of a T-junction are recognized symmetrically: a
+        branch to the left with wall on the right, a branch to the right with
+        wall on the left, and a branch to both sides at once (a four-way, or a
+        T whose crossbar the car is driving into when straight ahead is
+        blocked).  Returns 3, 4, or 0 (no junction -- an ordinary corner or a
         straight stretch).
+
+        The earlier rule looked only at a 4x4 window built on the wall the car
+        was hugging and required a ``+`` pair on that window's *far* side,
+        which made a branch peeling off toward the hugged wall structurally
+        invisible: its ``+`` pair landed on the near side and was classified
+        as an ordinary L-bend.  That asymmetry was an artifact of anchoring
+        the window on one wall, not something the spec calls for -- the wiki
+        describes the leftmost/second-leftmost choice without restricting
+        which side of the road a branch may open on.  Both of the wiki's own
+        junction-bearing examples still detect under this rule (the
+        infinite-loop example at ``(1,5)`` heading West, and the larger
+        infinite-cat example at ``(1,6)`` heading West).
         """
-        corner_positions = self._junction_corners(heading)
-        plus_corners = [self._at(r, c) == "+" for r, c in corner_positions]
-        plus_count = sum(plus_corners)
-        if plus_count == 4:
-            return 4
-        if plus_count == 2:
-            # A three-way junction is `+` at both far-side corners (a branch
-            # peeling away on the far side, with the hugged wall's near-side
-            # corners staying plain wall) -- not two adjacent `+`s forming
-            # one ordinary L-bend corner.
-            near_side = plus_corners[0] and plus_corners[1]
-            far_side = plus_corners[2] and plus_corners[3]
-            if far_side and not near_side:
-                return 3
-        return 0
+        ahead_open = self._open(*self._ahead(self.row, self.col, heading))
+        left_mouth = self._road_mouth(heading, _left(heading)) is not None
+        right_mouth = self._road_mouth(heading, _right(heading)) is not None
+        # Counting the road behind the car, which is always drivable, a branch
+        # to one side with open road ahead is a three-way; branches to both
+        # sides make it a four-way when the car can also continue straight,
+        # and a three-way T whose crossbar it is driving into when it cannot.
+        if left_mouth and right_mouth:
+            return 4 if ahead_open else 3
+        if left_mouth or right_mouth:
+            return 3 if ahead_open else 0
+        # Met head-on -- the car is driving out through the mouth itself
+        # rather than past it (see :meth:`_crossing_mouth`).
+        return 3 if self._crossing_mouth(heading) else 0
 
-    def _lane_bounded(self, heading: str) -> bool:
-        """Whether the junction's far-side corners are genuine wall arms.
+    def _lane_bounded(self, heading: str, side: str) -> bool:
+        """Whether the mouth on ``side`` bounds a genuinely multi-lane road.
 
-        ``_junction_kind`` fires on any two ``+`` at the window's far side,
-        but a bare ``+`` with nothing beyond it (as in an open room) does
-        not bound a real multi-cell-wide road worth landing a lane in --
-        only a ``+`` that continues into an actual wall one cell further,
-        perpendicular to the direction of travel, does.  Gates lane-merging
-        so it does not fire on such a false-positive junction shape.  Only
-        meaningful
-        (and only ever called) when the chosen turn is toward
-        ``_left(heading)``: the detection window itself is built on that
-        side, so it says nothing about a turn toward ``_right(heading)``.
+        A mouth's two ``+`` mark where the side road's own bounding walls
+        meet the wall the car is driving along.  When those ``+`` continue
+        into real wall arms -- a wall one cell further out, perpendicular to
+        the direction of travel, past each of them -- the side road is a
+        drawn corridor with lanes of its own, and the spec's "drive on the
+        right-hand side" applies to it too, so the car must merge into its
+        right-hand lane rather than turning the instant it is detected.  A
+        bare ``+`` floating with nothing beyond it (as in an open room)
+        bounds no such corridor and turns immediately.
         """
-        perp_row, perp_col = _DELTA[_left(heading)]
-        _, _, far_near, far_far = self._junction_corners(heading)
-        near_wall = self._at(far_near[0] + perp_row, far_near[1] + perp_col) in _WALLS
-        far_wall = self._at(far_far[0] + perp_row, far_far[1] + perp_col) in _WALLS
-        return near_wall and far_wall
+        mouth = self._road_mouth(heading, side)
+        if mouth is None:
+            return False
+        dist, near, far = mouth
+        d_row, d_col = _DELTA[heading]
+        s_row, s_col = _DELTA[side]
+        return all(
+            self._at(
+                self.row + depth * d_row + (dist + 1) * s_row,
+                self.col + depth * d_col + (dist + 1) * s_col,
+            )
+            in _WALLS
+            for depth in (near, far)
+        )
 
-    def _lane_merge_target(self, heading: str, new_heading: str) -> tuple[int, int]:
+    def _lane_merge_target(
+        self, heading: str, new_heading: str, side: str
+    ) -> tuple[int, int]:
         """Return the cell the car must reach before turning to ``new_heading``.
 
-        A three-way junction's far-side corners (``_junction_corners``'
-        indices 2 and 3) mark where the new road's two bounding walls sit,
-        ``3 * _DELTA[heading]`` apart along the direction of travel; the new
-        road's lane cells are strictly between them.  The car must reach the
-        lane adjacent to the new road's right-hand wall relative to
-        ``new_heading`` -- i.e. the one step in from whichever far-side
-        corner sits in the ``_right(new_heading)`` direction -- before
-        turning, rather than turning the moment the junction is detected.
-        The car does not change lane during this approach, so the target
-        keeps the car's current row/col fixed along the direction
-        perpendicular to travel, only advancing the travel-axis coordinate.
+        The mouth's two ``+`` (see :meth:`_road_mouth`) mark where the side
+        road's own bounding walls meet the road the car is on; the side
+        road's lane cells lie strictly between them, at depths
+        ``near + 1 .. far - 1`` along the direction of travel.  The car must
+        reach the lane adjacent to that road's right-hand wall relative to
+        ``new_heading`` before turning -- one step in from whichever bound
+        sits in the ``_right(new_heading)`` direction -- rather than turning
+        the moment the junction is detected.  The car does not change lane
+        during this approach, so the target keeps its perpendicular
+        coordinate fixed and only advances along the travel axis.
         """
+        mouth = self._road_mouth(heading, side)
+        if mouth is None:  # pragma: no cover - guarded by the caller
+            return self.row, self.col
+        _, near, far = mouth
         d_row, d_col = _DELTA[heading]
-        _, _, far_near, far_far = self._junction_corners(heading)
-        from_far = _right(new_heading) == heading
+        depth = far - 1 if _right(new_heading) == heading else near + 1
         # d_row/d_col is a unit vector with exactly one nonzero component;
         # that component picks out the travel-axis coordinate to advance,
         # while the perpendicular coordinate stays fixed at the car's own.
         if d_row:
-            corner_row = far_far[0] - d_row if from_far else far_near[0] + d_row
-            return corner_row, self.col
-        corner_col = far_far[1] - d_col if from_far else far_near[1] + d_col
-        return self.row, corner_col
+            return self.row + depth * d_row, self.col
+        return self.row, self.col + depth * d_col
+
+    def _junction_choices(self, heading: str) -> list[str]:
+        """Return the roads a junction offers, in the spec's choice order.
+
+        Only a detected side road (:meth:`_road_mouth`) counts as a turn the
+        car can take, plus straight ahead when the road continues.  An open
+        cell in a direction with no drawn mouth -- the blank margin above a
+        corridor, say -- is not a road, and must not consume a slot.
+
+        The roads are ordered left to right as the driver sees them: a branch
+        opening to the left, then straight on, then a branch opening to the
+        right.  Which slot a given turn lands in therefore depends on the
+        car's heading, not on the compass direction of the road it is turning
+        onto -- the same drawn corner is the "leftmost" road approached one
+        way and the "second-leftmost" approached the other.
+        """
+        options = []
+        crossing = self._crossing_mouth(heading)
+        for side in (_left(heading), heading, _right(heading)):
+            if side == heading:
+                if self._open(*self._ahead(self.row, self.col, heading)):
+                    options.append(heading)
+            elif self._road_mouth(heading, side) is not None or (
+                # Driving out through a mouth head-on, the roads to either
+                # side are the main road the branch joins; they have no mouth
+                # of their own to find, so take whichever way is open.
+                crossing
+                and self._open(*self._ahead(self.row, self.col, side))
+            ):
+                options.append(side)
+        return options
 
     def _choose_heading(self) -> str | None:
         """Pick the car's next heading.
@@ -393,33 +581,114 @@ class _Machine:
                 self._merge_target = None
             elif (self.row, self.col) == (target_row, target_col):
                 self._merge_target = None
+                # Re-read the branch condition here rather than trusting the
+                # value the latch was taken under: the approach drives over
+                # real cells, and an ``I`` or ``=`` along the way can change
+                # what the CPth cell holds between detecting the junction and
+                # arriving at the lane where the turn is actually made.  The
+                # spec's choice is about the cell as the car takes the turn,
+                # so a stale latch would branch on the wrong bit.  The roads
+                # were established at detection time (the mouth now lies
+                # alongside or behind the car, so it no longer re-detects):
+                # the choice is between the latched turn and carrying
+                # straight on, ordered as they were then.
+                # Rank the latched turn against carrying straight on in the
+                # same left-to-right order the junction was read in, so the
+                # re-read cannot silently disagree with the original choice
+                # about which road is "leftmost".
+                choices = (
+                    [new_heading, latched_heading]
+                    if new_heading == _left(latched_heading)
+                    else [latched_heading, new_heading]
+                )
+                if len(set(choices)) == 2:
+                    new_heading = choices[0] if self._cell() == 0 else choices[1]
                 ahead_row, ahead_col = self._ahead(self.row, self.col, new_heading)
-                if self._open(ahead_row, ahead_col):
+                if new_heading == heading:
+                    self._merging_heading = None
+                elif self._open(ahead_row, ahead_col):
                     self._merging_heading = new_heading
                     return new_heading
+            else:
+                # Still approaching the lane where the turn will be made.
+                # Hold the latched heading rather than letting an ordinary
+                # right-hand hug peel the car away mid-approach -- the road
+                # being joined is open on that side by definition, so the hug
+                # would otherwise turn early and never reach the target.
+                ahead_row, ahead_col = self._ahead(self.row, self.col, heading)
+                if self._open(ahead_row, ahead_col):
+                    return heading
+                self._merge_target = None
 
         if (
             self._merge_target is None
             and len(options) >= 2
             and self._junction_kind(heading)
         ):
-            new_heading = options[0] if self._cell() == 0 else options[1]
-            # The junction window (and everything derived from it) only
-            # describes the _left(heading) side; a turn onto _right(heading)
-            # is geometrically unrelated to what it measured, so lane-merge
-            # logic cannot apply there.
-            merge_side = new_heading == _left(heading)
-            if merge_side and self._lane_bounded(heading):
-                # The target is always at least 2 cells ahead (the junction
-                # window's fixed lookahead starts 1 cell past the car, and
-                # the target sits 1-2 cells further into it), so it never
-                # coincides with the car's current cell at detection time.
-                target = self._lane_merge_target(heading, new_heading)
-                self._merge_target = (*target, new_heading, heading)
+            roads = self._junction_choices(heading)
+            if len(roads) < 2:
+                roads = options
+            new_heading = roads[0] if self._cell() == 0 else roads[1]
+            # Lane merging applies only to a turn onto a detected side road:
+            # continuing straight is not a turn at all, and a road whose
+            # mouth is not bounded by real wall arms has no lanes to land in.
+            if new_heading != heading and self._crossing_mouth(heading):
+                # Emerging head-on from a branch onto the road it joins: the
+                # car has to cross that road to its far lane before turning,
+                # for the same reason a side-on turn merges -- "drive on the
+                # right-hand side" applies to the road being joined too.  Run
+                # on until the wall ahead stops it, then turn.
+                target = self.row, self.col
+                d_row, d_col = _DELTA[heading]
+                while self._open(target[0] + d_row, target[1] + d_col):
+                    target = target[0] + d_row, target[1] + d_col
+                if target != (self.row, self.col):
+                    self._merge_target = (*target, new_heading, heading)
+                else:
+                    return new_heading
+            elif new_heading != heading and self._lane_bounded(heading, new_heading):
+                target = self._lane_merge_target(heading, new_heading, new_heading)
+                if target != (self.row, self.col):
+                    self._merge_target = (*target, new_heading, heading)
+                else:
+                    return new_heading
             else:
+                declined = [h for h in roads if h != heading]
+                if new_heading == heading and declined:
+                    # Carrying straight on past a side road: suppress the hug
+                    # for exactly as many cells as that road's mouth is wide,
+                    # so the car drives past the branch it just declined
+                    # instead of being steered into it a step later -- and no
+                    # further, so the turn immediately after the mouth (which
+                    # is an ordinary corner, not the declined road) still
+                    # happens.  The same mouth can be detected from more than
+                    # one cell as the car approaches, so the countdown is only
+                    # ever extended, never restarted shorter.
+                    mouth = self._road_mouth(heading, declined[0])
+                    if mouth is not None and mouth[1] <= 0:
+                        # Suppress the hug across the mouth, but only when the
+                        # gap opens immediately beside the car (``near <= 0``)
+                        # -- those are the cells where the fallen-away wall
+                        # would otherwise steer it into the road it just
+                        # declined.  When the gap starts further ahead,
+                        # ordinary wall-following still holds the car against
+                        # the wall until it arrives, and by then the junction
+                        # is behind it, so nothing needs suppressing.
+                        _, near, far = mouth
+                        self._skip_hug = max(self._skip_hug, far - near - 1)
                 return new_heading
 
         right_row, right_col = self._ahead(self.row, self.col, _right(heading))
+        if self._skip_hug > 0:
+            # Drive past the declined branch: keep going straight rather than
+            # hugging the wall that has fallen away beside the car.  A wall
+            # straight ahead still turns the car -- rounding a corner is not
+            # the same as being pulled into the road it chose against -- but
+            # the countdown carries on so the rest of the mouth stays skipped.
+            self._skip_hug -= 1
+            ahead_row, ahead_col = self._ahead(self.row, self.col, heading)
+            if self._open(ahead_row, ahead_col):
+                return heading
         if self._open(right_row, right_col):
             return _right(heading)
         ahead_row, ahead_col = self._ahead(self.row, self.col, heading)

@@ -89,8 +89,9 @@ would make the generator close to trivial to write by hand.
   right-hand lane before turning, rather than a plain single-cell step onto
   the first open neighbor (see the module docstring's "Lane merging" bullet
   and `docs/streetcode-wip.md` for the hand-derived, user-confirmed trace
-  this was built from).  Not yet wired into `registry.py` (no generator or
-  hello-world example) — that's separate follow-on work.
+  this was built from).  Wired into `registry.py` (interpreter only, no
+  text generator and no boolean generator yet) — that's separate
+  follow-on work.
 - **Gate** — a wire/logic-gate circuit: symbols represent signals flowing
   through wires (`—`/`|`), combined by gates (`&` NAND, `X` XNOR, `!` NOT);
   `+` branches on which way a signal is heading; `(` outputs an ASCII char.
