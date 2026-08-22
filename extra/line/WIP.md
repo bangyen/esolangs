@@ -1,13 +1,24 @@
 # Line: settled vs. still open
 
-`render.py`, `extract.py`, and `verify.py` implement a program renderer and
-a pixel-based extractor for [Line](https://esolangs.org/wiki/Line), an
-esolang whose spec is entirely a set of hand-drawn curve images with no
-text format and no reference implementation (tagged `Unimplemented` on the
-wiki). This file tracks what's settled and tested vs. what's deliberately
-out of scope or unverified, the way `docs/streetcode-wip.md` does for
-Streetcode -- the module docstrings in `extract.py`/`render.py` carry the
+`render.py`, `extract.py`, `simulate.py`, and `verify.py` implement a
+program renderer, a pixel-based extractor, and a runtime interpreter for
+[Line](https://esolangs.org/wiki/Line), an esolang whose spec is entirely a
+set of hand-drawn curve images with no text format and no reference
+implementation (tagged `Unimplemented` on the wiki). This file tracks
+what's settled and tested vs. what's deliberately out of scope or
+unverified, the way `docs/streetcode-wip.md` does for Streetcode -- the
+module docstrings in `extract.py`/`render.py`/`simulate.py` carry the
 settled, load-bearing reasoning; this file is for what isn't decided yet.
+
+`test_simulate.py` is a real `pytest` suite covering `simulate.py`
+(opcode basics, the zero/nonzero swap, both wiki fixtures across several
+real inputs, and the synthetic loop-back mechanism, including a hang
+check) -- run it with `uv run --with pillow --with numpy --with scipy
+--with scikit-image --with pytest --with pytest-xdist pytest
+test_simulate.py` from this directory (it is not under the repo root's
+`tests/` `testpaths`, so a bare `pytest` from the repo root will not find
+it). `verify.py` remains the separate, narrower round-trip check for
+`extract()` alone.
 
 ## Settled and tested
 
