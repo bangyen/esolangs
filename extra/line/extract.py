@@ -86,7 +86,14 @@ except ImportError as _exc:  # pragma: no cover - environment guard
 # the same indexing render.py's headings would map onto, so a direction index
 # here and a (dy, dx) heading there describe the same geometry.
 _DIRS: list[tuple[int, int]] = [
-    (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)
+    (-1, 0),
+    (-1, 1),
+    (0, 1),
+    (1, 1),
+    (1, 0),
+    (1, -1),
+    (0, -1),
+    (-1, -1),
 ]
 
 # Cursor arrowhead blobs measured from the wiki's reference images are ~13px
@@ -806,9 +813,7 @@ def _round_units(length: int, unit: int) -> int | None:
     return nearest
 
 
-def _only_noise_remains(
-    runs: list[tuple[int, int]], start: int, unit: int
-) -> bool:
+def _only_noise_remains(runs: list[tuple[int, int]], start: int, unit: int) -> bool:
     """Whether every run from ``start`` onward is a 0-unit noise pixel.
 
     Used to tell "this opcode call is genuinely the path's last real thing"
@@ -821,9 +826,7 @@ def _only_noise_remains(
     return all(_round_units(r_len, unit) == 0 for _, r_len in runs[start:])
 
 
-def classify_ops(
-    path: list[tuple[int, int]], unit: int = DEFAULT_UNIT
-) -> list[OpCall]:
+def classify_ops(path: list[tuple[int, int]], unit: int = DEFAULT_UNIT) -> list[OpCall]:
     """Identify which opcodes' kinks appear along a walked ``path``, in order.
 
     Splits ``path`` into direction runs (:func:`_direction_runs`) and scans
