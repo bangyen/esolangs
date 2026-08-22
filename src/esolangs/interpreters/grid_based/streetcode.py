@@ -145,12 +145,6 @@ _WALLS = frozenset("+-|")
 _MOUTH_MAX_DIST = 3
 _MOUTH_MAX_DEPTH = 7
 
-# How many steps of ordinary right-hand hugging to suppress after a junction
-# chooses to carry straight on past a side road: enough to clear the widest
-# mouth ``_road_mouth`` will detect, so the car drives past the branch it
-# declined rather than being hugged into it on a later cell of the same mouth.
-_SKIP_HUG_STEPS = 4
-
 
 def _right(heading: str) -> str:
     """Return the heading 90 degrees clockwise from ``heading``."""
@@ -254,7 +248,12 @@ class _Machine:
         return self.grid[row][col] not in _WALLS
 
     def _at(self, row: int, col: int) -> str:
-        """Return the character at ``(row, col)``, or a wall if out of bounds."""
+        """Return the character at ``(row, col)``, or ``'?'`` if out of bounds.
+
+        ``'?'`` matches no wall character, so wall-shape scans treat the
+        grid's implicit edge as open ground (``_open`` is the only check
+        that treats it as closed).
+        """
         if not (0 <= row < self.height and 0 <= col < self.width):
             return "?"
         return self.grid[row][col]
@@ -307,14 +306,12 @@ class _Machine:
         d_row, d_col = _DELTA[heading]
         s_row, s_col = _DELTA[side]
 
-        def at_depth(depth: int, dist: int) -> str:
-            return self._at(
-                self.row + depth * d_row + dist * s_row,
-                self.col + depth * d_col + dist * s_col,
-            )
+        def pos(depth: int, dist: int) -> tuple[int, int]:
+            """Locate a cell at an offset from the car.
 
-        def open_depth(depth: int, dist: int) -> bool:
-            return self._open(
+            ``depth`` cells along ``heading``, ``dist`` along ``side``.
+            """
+            return (
                 self.row + depth * d_row + dist * s_row,
                 self.col + depth * d_col + dist * s_col,
             )
@@ -336,18 +333,18 @@ class _Machine:
                 (
                     d
                     for d in (0, 1, -1)
-                    if at_depth(d, dist) == "+" and open_depth(d + 1, dist)
+                    if self._at(*pos(d, dist)) == "+" and self._open(*pos(d + 1, dist))
                 ),
                 None,
             )
             if near is not None:
                 for far in range(near + 2, _MOUTH_MAX_DEPTH):
-                    if at_depth(far, dist) != "+":
+                    if self._at(*pos(far, dist)) != "+":
                         continue
-                    if all(open_depth(k, dist) for k in range(near + 1, far)):
+                    if all(self._open(*pos(k, dist)) for k in range(near + 1, far)):
                         return dist, near, far
                     break
-            if any(at_depth(d, dist) in _WALLS for d in (-1, 0, 1)):
+            if any(self._at(*pos(d, dist)) in _WALLS for d in (-1, 0, 1)):
                 # This line is the wall the car is driving along, and it
                 # carries no mouth it could turn into.  Anything further out
                 # sits behind that wall, not on a road reachable from here, so
@@ -356,6 +353,23 @@ class _Machine:
                 # would fire in the middle of an ordinary bend.
                 return None
         return None
+
+    def _plus_dist(self, side: str) -> int | None:
+        """Return the distance to the nearest ``+`` on ``side``, or ``None``.
+
+        Scans ``1.._MOUTH_MAX_DIST`` cells out from the car
+        (``_crossing_mouth`` uses this to find the two ``+`` bounding a
+        mouth it is driving through).
+        """
+        s_row, s_col = _DELTA[side]
+        return next(
+            (
+                dist
+                for dist in range(1, _MOUTH_MAX_DIST + 1)
+                if self._at(self.row + dist * s_row, self.col + dist * s_col) == "+"
+            ),
+            None,
+        )
 
     def _crossing_mouth(self, heading: str) -> bool:
         """Whether the car is driving *out through* a side road's mouth.
@@ -374,23 +388,10 @@ class _Machine:
         """
         if not self._open(*self._ahead(self.row, self.col, heading)):
             return False
-        sides = []
-        for side in (_left(heading), _right(heading)):
-            s_row, s_col = _DELTA[side]
-            sides.append(
-                next(
-                    (
-                        dist
-                        for dist in range(1, _MOUTH_MAX_DIST + 1)
-                        if self._at(self.row + dist * s_row, self.col + dist * s_col)
-                        == "+"
-                    ),
-                    None,
-                )
-            )
         # Level with both `+` -- one step further and they are behind the car,
         # one step earlier and it has not reached the intersection yet.
-        return all(dist is not None for dist in sides) and sides[0] != sides[1]
+        left, right = self._plus_dist(_left(heading)), self._plus_dist(_right(heading))
+        return left is not None and right is not None and left != right
 
     def _junction_kind(self, heading: str) -> int:
         """Detect a real intersection ahead, returning the open-option count.
@@ -503,12 +504,12 @@ class _Machine:
         onto -- the same drawn corner is the "leftmost" road approached one
         way and the "second-leftmost" approached the other.
         """
-        options = []
+        roads = []
         crossing = self._crossing_mouth(heading)
         for side in (_left(heading), heading, _right(heading)):
             if side == heading:
                 if self._open(*self._ahead(self.row, self.col, heading)):
-                    options.append(heading)
+                    roads.append(heading)
             elif self._road_mouth(heading, side) is not None or (
                 # Driving out through a mouth head-on, the roads to either
                 # side are the main road the branch joins; they have no mouth
@@ -516,8 +517,8 @@ class _Machine:
                 crossing
                 and self._open(*self._ahead(self.row, self.col, side))
             ):
-                options.append(side)
-        return options
+                roads.append(side)
+        return roads
 
     def _choose_heading(self) -> str | None:
         """Pick the car's next heading.
@@ -571,14 +572,15 @@ class _Machine:
                 # Rank the latched turn against carrying straight on in the
                 # same left-to-right order the junction was read in, so the
                 # re-read cannot silently disagree with the original choice
-                # about which road is "leftmost".
+                # about which road is "leftmost".  The latch is only ever set
+                # under a turn away from ``latched_heading``, so the two roads
+                # are always distinct.
                 choices = (
                     [new_heading, latched_heading]
                     if new_heading == _left(latched_heading)
                     else [latched_heading, new_heading]
                 )
-                if len(set(choices)) == 2:
-                    new_heading = choices[0] if self._cell() == 0 else choices[1]
+                new_heading = choices[0] if self._cell() == 0 else choices[1]
                 ahead_row, ahead_col = self._ahead(self.row, self.col, new_heading)
                 if new_heading == heading:
                     self._merging_heading = None
@@ -602,8 +604,9 @@ class _Machine:
             and self._junction_kind(heading)
         ):
             roads = self._junction_choices(heading)
-            if len(roads) < 2:  # pragma: no cover - choices always >= 2 here
-                roads = options
+            # A junction that fired (see ``_junction_kind``) always offers
+            # at least two roads: a mouth on either side counts alongside
+            # straight ahead, and a crossing mouth counts the open sides.
             new_heading = roads[0] if self._cell() == 0 else roads[1]
             # Lane merging applies only to a turn onto a detected side road:
             # continuing straight is not a turn at all, and a road whose
@@ -629,7 +632,7 @@ class _Machine:
                     return new_heading
             else:
                 declined = [h for h in roads if h != heading]
-                if new_heading == heading and declined:
+                if new_heading == heading:
                     # Carrying straight on past a side road: suppress the hug
                     # for exactly as many cells as that road's mouth is wide,
                     # so the car drives past the branch it just declined
