@@ -46,6 +46,12 @@ class TestUnsquare:
         assert run_program("O>I<") == ""
         assert run_program("I>I<") == ""
 
+    def test_skipped_loop_counts_nested_brackets(self) -> None:
+        # the accumulator starts at 0, so the leading > skips its body; the
+        # nested >< inside must be counted so the skip stops at the
+        # *matching* <, leaving the trailing Io to push and print
+        assert run_program(">I><I<Io") == "\x01"
+
     def test_loop_counts_down(self) -> None:
         # acc 4: each pass pushes acc, prints, and subtracts 2; the > records
         # and re-checks until acc reaches 0, then skips past the <.
