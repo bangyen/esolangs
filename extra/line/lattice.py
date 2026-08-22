@@ -59,7 +59,28 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from extract import _DIRS, _ink
+# 8 directions in (dy, dx) form, indexed 0..7 as N, NE, E, SE, S, SW, W, NW --
+# the same indexing render.py's headings would map onto, so a direction index
+# here and a (dy, dx) heading there describe the same geometry.  Owned by
+# this module (rather than extract.py, which also uses it) since extract.py
+# already depends on this module's walker -- extract.py imports it back from
+# here instead of the two modules importing from each other.
+_DIRS: list[tuple[int, int]] = [
+    (-1, 0),
+    (-1, 1),
+    (0, 1),
+    (1, 1),
+    (1, 0),
+    (1, -1),
+    (0, -1),
+    (-1, -1),
+]
+
+
+def _ink(mask: np.ndarray, y: int, x: int) -> bool:
+    h, w = mask.shape
+    return 0 <= y < h and 0 <= x < w and bool(mask[y, x])
+
 
 # Matches render.py's _UNIT: the nominal grid spacing (in source pixels)
 # between corners in a Line drawing.  Only used as an upper bound on how far
@@ -107,7 +128,9 @@ def star(mask: np.ndarray, y: int, x: int, length: int = 15) -> set[int]:
     """
     lit = set()
     for idx, (dy, dx) in enumerate(_DIRS):
-        if all(_band_lit(mask, y + dy * i, x + dx * i, idx) for i in range(1, length + 1)):
+        if all(
+            _band_lit(mask, y + dy * i, x + dx * i, idx) for i in range(1, length + 1)
+        ):
             lit.add(idx)
     return lit
 
@@ -147,7 +170,9 @@ def _snap(mask: np.ndarray, y: int, x: int, direction: int) -> tuple[int, int]:
     pdy, pdx = _DIRS[(direction + 2) % 8]
     for k in (0, 1, -1):
         cy, cx = y + pdy * k, x + pdx * k
-        if all(_ink(mask, cy + dy * i, cx + dx * i) for i in range(1, _SNAP_CONFIRM + 1)):
+        if all(
+            _ink(mask, cy + dy * i, cx + dx * i) for i in range(1, _SNAP_CONFIRM + 1)
+        ):
             return cy, cx
     return y, x
 
@@ -176,7 +201,9 @@ def _walk_segment(mask: np.ndarray, y: int, x: int, direction: int) -> tuple[int
     return py, px
 
 
-def find_start(mask: np.ndarray, approx_y: int, approx_x: int, heading: int) -> tuple[int, int]:
+def find_start(
+    mask: np.ndarray, approx_y: int, approx_x: int, heading: int
+) -> tuple[int, int]:
     """Return the path-start vertex for a caller already holding one.
 
     :func:`extract.find_cursor`'s centroid-derived nearest-ink-pixel search
@@ -273,6 +300,41 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
     return "merge", []
 
 
+def _resnap_dead_end(mask: np.ndarray, y: int, x: int, heading: int) -> tuple[int, int]:
+    """Recover a vertex :func:`_walk_segment` stopped a column short of.
+
+    ``_walk_segment`` advances in exactly one direction, so if the true
+    corner it is walking toward sits one pixel over on the perpendicular
+    axis (the same off-by-one geometry :func:`_snap` corrects for when
+    *continuing* a stroke -- see its docstring), the segment can run out of
+    ink one step early and land on a pixel whose only lit direction is
+    ``back`` -- reading as a genuine dead end when a real bend sits right
+    next to it.  Confirmed on ``fixtures/multiplication.png``: a walked S
+    segment stops at ``(72, 267)`` (``star`` reads only ``{N}`` there) one
+    column short of the true NE-turning corner at ``(72, 268)`` (``star``
+    reads ``{N, NE}``), silently truncating an entire ~460px downstream
+    branch with no error -- caught by comparing this walker's coverage
+    against :mod:`extract`'s pixel-adjacency walker on the same fixture.
+
+    Only called when ``star`` at ``(y, x)`` itself already looks like a
+    dead end (see :func:`walk_tree`) -- a vertex that classifies as
+    anything else is trusted as-is, so this cannot turn a real fork or
+    merge into something else.  Tries both perpendicular-to-``heading``
+    neighbors (mirroring the ``k in (-1, 1)`` offsets :func:`_snap` already
+    uses) and returns the first whose own ``star`` reads as more than just
+    ``back`` -- i.e. a real bend was found one pixel over; returns
+    ``(y, x)`` unchanged if neither does, which is what a genuine dead end
+    looks like.
+    """
+    back = _opposite(heading)
+    pdy, pdx = _DIRS[(heading + 2) % 8]
+    for k in (-1, 1):
+        cy, cx = y + pdy * k, x + pdx * k
+        if star(mask, cy, cx) - {back}:
+            return cy, cx
+    return y, x
+
+
 def walk_tree(
     mask: np.ndarray,
     start: tuple[int, int],
@@ -310,10 +372,13 @@ def walk_tree(
         if (y, x) in visited:
             vertices.append(Vertex(y, x, None))
             return Stroke(vertices)
-        visited.add((y, x))
 
         back = _opposite(heading)
         lit = star(mask, y, x)
+        if not lit - {back}:
+            y, x = _resnap_dead_end(mask, y, x, heading)
+            lit = star(mask, y, x)
+        visited.add((y, x))
         kind, options = _classify(lit, back)
 
         if kind == "fork":
