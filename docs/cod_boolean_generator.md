@@ -4,7 +4,7 @@ A working document recording how the COD boolean generator is built and
 verified.  Unlike the design this replaces (see "History" below), this is
 a **shipped, tested construction**: the interpreter is
 `esolangs.interpreters.grid_based.cod`, the generator is
-`esolangs.tools.boolean.parameterized.cod`, and both are exercised by
+`esolangs.tools.boolean.cod.cod`, and both are exercised by
 `tests/interpreters/test_cod.py` and `tests/tools/test_boolean.py`.
 
 ## Language mechanics (per the wiki)
