@@ -8,16 +8,19 @@ grid, and rasterizes it into an image shaped like the wiki's own examples --
 straight runs, unlabeled corners, a small diagonal kink for each of the seven
 instructions, and a filled triangular arrowhead marking the cursor.
 
-The seven kink shapes below (``_OPS``) were measured directly from the
-wiki's own reference images (``Lineanim4.png`` through ``Lineanim11.png``):
-each interpreter/data operation is a straight run, a short diagonal jog
-sideways relative to the current heading, then a straight run continuing in
-the original heading -- e.g. ``+`` is `vertical(19) -> diagonal-right(20) ->
-vertical(20)` in the wiki's own ``+`` image.  ``>``/``<``/``input``/``output``
-add a short zigzag (a one-step reversal) before the final run, which is what
-visually distinguishes them from the plain `+`/`-`/conditional kinks.  This
-module does not invent new geometry -- it replays those measured run-length
-templates at an arbitrary grid position and heading.
+The kink shapes below (``_OPS``) were measured pixel-by-pixel directly from
+the wiki's own reference images (``Lineanim4.png`` through ``Lineanim11.png``,
+plus ``Lineanim6.png`` for repeats), and fall into two distinct families, not
+one shared template -- see the comment directly above ``_OPS`` for the full
+measurement.  In short: ``+``/``-`` are a single diagonal jog with no
+sideways connector, and repeating one back to back *stretches that same
+diagonal* rather than drawing separate kinks (``+++`` measured at exactly 3x
+a lone ``+``'s diagonal length in ``Lineanim6.png``).  ``>``/``<``/``i``/``o``
+each have a short *purely sideways* connector (not another diagonal) bridging
+one or two diagonal legs, are not mergeable the same way, and are always
+drawn as their own fixed-size kink even when repeated.  This module does not
+invent new geometry -- it replays those measured run-length templates at an
+arbitrary grid position and heading.
 
 Conditional turn (``?``) is not a 2-endpoint kink like the others: the wiki's
 ``Lineanim9.png`` shows a real T-branch, one incoming stem meeting a
@@ -80,6 +83,23 @@ def _diag_left(d: tuple[int, int]) -> tuple[int, int]:
     return dy + ly, dx + lx
 
 
+def _horiz_right(d: tuple[int, int]) -> tuple[int, int]:
+    """Pure sideways step, turned right relative to ``d`` (no forward motion).
+
+    Distinguishes ``>``/``<``/``i``/``o`` from ``+``/``-``: measured directly
+    from the wiki's own reference images (Lineanim7/8/10/11.png), each of
+    those four kinks includes a short *purely sideways* connector -- not
+    another 45-degree diagonal -- bridging its diagonal leg(s), which
+    ``+``/``-`` do not have at all.
+    """
+    return _turn_right(d)
+
+
+def _horiz_left(d: tuple[int, int]) -> tuple[int, int]:
+    """Pure sideways step, turned left relative to ``d`` (no forward motion)."""
+    return _turn_left(d)
+
+
 def _rotate(d: tuple[int, int], heading: tuple[int, int]) -> tuple[int, int]:
     """Rotate a direction defined relative to "forward" onto ``heading``."""
     dy, dx = d
@@ -91,39 +111,72 @@ def _rotate(d: tuple[int, int], heading: tuple[int, int]) -> tuple[int, int]:
 
 # Each opcode is a sequence of (relative_direction, run_length) segments,
 # relative to the cursor's current heading, replaying the run-length
-# breakdown measured from the wiki's reference images at _UNIT-sized steps
-# (e.g. `+` is `vertical(19) -> diagonal-right(20) -> vertical(20)` in
-# Lineanim4.png).  `>`/`<`/`i`/`o` add a short one-step reversal before the
-# final run, matching the extra zigzag visible in Lineanim7-11.png that
-# distinguishes them from the plain `+`/`-` kink.
+# breakdown measured pixel-by-pixel from the wiki's own reference images at
+# _UNIT-sized steps.  Two distinct kink families, confirmed by measuring
+# every one of Lineanim4/5/6/7/8/10/11.png rather than assuming a shared
+# template:
+#
+# * `+`/`-` (Lineanim4.png, Lineanim5.png) are a single diagonal jog with no
+#   sideways connector -- `vertical(2) -> diagonal(1) -> vertical(2)`.  Their
+#   diagonal leg's *length in units is the run's opcode count*, not a fixed
+#   1: Lineanim6.png shows three consecutive `+` as one continuous diagonal
+#   3 units long, not three separate kinks stitched together (confirmed by
+#   measuring its diagonal run at exactly 3x a single `+`'s).  `_OPS["+"]`
+#   and `_OPS["-"]` below are therefore templates over a `count` parameter,
+#   built by :func:`_op_segments` rather than being a fixed list like the
+#   others -- see :func:`_Cursor.emit_op`, which is what actually supplies
+#   `count` from consecutive same-op runs in the node chain.
+# * `>`/`<`/`i`/`o` (Lineanim7/8/10/11.png) additionally have a short *pure
+#   sideways* connector (no forward motion at all -- see `_horiz_right`/
+#   `_horiz_left`) bridging their diagonal leg(s), which is what visually
+#   distinguishes them from the plain `+`/`-` kink; `i`/`o` have one more
+#   diagonal leg than `>`/`<` (confirmed: Lineanim10.png's path is taller
+#   than Lineanim7.png's by almost exactly one extra unit-diagonal's worth of
+#   rows).  Unlike `+`/`-`, repeats of these are never merged -- there is no
+#   wiki example showing it, and each is always drawn as its own fixed-size
+#   kink even back-to-back with an identical one.
 _OPS: dict[str, list[tuple[tuple[int, int], int]]] = {
-    "+": [(_FORWARD, 2), (_diag_right(_FORWARD), 2), (_FORWARD, 2)],
-    "-": [(_FORWARD, 2), (_diag_left(_FORWARD), 2), (_FORWARD, 2)],
     ">": [
         (_FORWARD, 2),
-        (_diag_right(_FORWARD), 1),
+        (_horiz_right(_FORWARD), 1),
         (_diag_left(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "<": [
         (_FORWARD, 2),
-        (_diag_left(_FORWARD), 1),
+        (_horiz_left(_FORWARD), 1),
         (_diag_right(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "i": [
         (_FORWARD, 2),
-        (_diag_right(_FORWARD), 1),
+        (_diag_left(_FORWARD), 1),
+        (_horiz_right(_FORWARD), 2),
         (_diag_left(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "o": [
         (_FORWARD, 2),
-        (_diag_left(_FORWARD), 1),
+        (_diag_right(_FORWARD), 1),
+        (_horiz_left(_FORWARD), 2),
         (_diag_right(_FORWARD), 1),
         (_FORWARD, 2),
     ],
 }
+
+
+def _op_segments(op: str, count: int) -> list[tuple[tuple[int, int], int]]:
+    """Look up one opcode's kink template, expanding `+`/`-`'s run by `count`.
+
+    `+`/`-` are the only opcodes whose repeats visually merge (see the
+    `_OPS` comment above) -- their diagonal leg is `count` units long rather
+    than the fixed length every other entry in `_OPS` uses.
+    """
+    if op == "+":
+        return [(_FORWARD, 2), (_diag_right(_FORWARD), count), (_FORWARD, 2)]
+    if op == "-":
+        return [(_FORWARD, 2), (_diag_left(_FORWARD), count), (_FORWARD, 2)]
+    return _OPS[op]
 
 
 @dataclass
@@ -144,7 +197,7 @@ class _Cursor:
             self._current.append((self.y, self.x))
         self.heading = direction
 
-    def emit_op(self, op: str) -> None:
+    def emit_op(self, op: str, count: int = 1) -> None:
         """Emit one opcode's kink, all legs rotated onto the heading at entry.
 
         The heading used to rotate each leg is frozen at the start of the
@@ -153,9 +206,14 @@ class _Cursor:
         following leg drift instead of returning to the original travel
         direction, as the wiki's images show (vertical in, diagonal jog,
         vertical out -- same orientation before and after).
+
+        ``count`` merges that many consecutive identical opcodes into one
+        stretched kink -- only meaningful for ``+``/``-`` (see the ``_OPS``
+        comment); :func:`_layout` is what actually counts a run of identical
+        nodes and passes it through here.
         """
         entry_heading = self.heading
-        for rel_dir, run in _OPS[op]:
+        for rel_dir, run in _op_segments(op, count):
             self.advance(_rotate(rel_dir, entry_heading), run)
         self.heading = entry_heading
 
@@ -211,6 +269,13 @@ def chain(*ops: str) -> Node:
     return head
 
 
+# The only opcodes whose consecutive repeats visually merge into one
+# stretched kink rather than drawing separately, back to back (see the
+# `_OPS` comment in this module -- confirmed against Lineanim6.png, and
+# there is no wiki example showing merged >/</i/o).
+_MERGEABLE = {"+", "-"}
+
+
 def _layout(node: Node | None, cursor: _Cursor) -> None:
     while node is not None:
         if node.op == "?":
@@ -223,7 +288,12 @@ def _layout(node: Node | None, cursor: _Cursor) -> None:
             cursor.strokes.extend(right.strokes)
             cursor.strokes.extend(left.strokes)
             return
-        cursor.emit_op(node.op)
+        op, count = node.op, 1
+        if op in _MERGEABLE:
+            while node.next is not None and node.next.op == op:
+                node = node.next
+                count += 1
+        cursor.emit_op(op, count)
         node = node.next
     cursor.finish()
 
