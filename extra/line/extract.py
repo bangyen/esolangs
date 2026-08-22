@@ -702,6 +702,138 @@ def extract_tree(mask: np.ndarray, cursor: Cursor, start_heading: int = 0) -> St
     return _walk_tree(stripped, region_map, start, start_heading, set(), set())
 
 
+def _direction_runs(path: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Run-length encode ``path`` into ``(direction_index, pixel_length)`` pairs.
+
+    One entry per maximal run of steps sharing the same :data:`_DIRS` index --
+    e.g. a straight vertical run of 40px is one entry, not 40.  This is the
+    layer :func:`classify_ops` works on: opcode kinks are visible only as
+    *changes* in direction, never as a fixed pixel offset, since the same
+    kink renders at whatever scale a caller's grid uses.
+    """
+    runs: list[tuple[int, int]] = []
+    for i in range(1, len(path)):
+        (py, px), (y, x) = path[i - 1], path[i]
+        idx = _DIRS.index((y - py, x - px))
+        if runs and runs[-1][0] == idx:
+            runs[-1] = (idx, runs[-1][1] + 1)
+        else:
+            runs.append((idx, 1))
+    return runs
+
+
+# Every opcode's kink, as the sequence of relative turns (see module
+# docstring's heading convention: +1/-1 is a 45-degree diagonal jog
+# right/left of the heading in effect where the kink starts, +2/-2 a pure
+# sideways step) it presents between its bounding straight runs -- measured
+# pixel-by-pixel against the wiki's own Lineanim4/5/6/7/8/10/11.png (see
+# render.py's ``_OPS`` comment, which this mirrors exactly since both sides
+# were checked against the same reference images).  ``+``/``-`` are the only
+# entries whose single run's *length* also carries meaning (the repeat
+# count -- Lineanim6.png confirms 3 consecutive ``+`` render as one diagonal
+# 3 units long rather than 3 separate kinks); every other opcode is always
+# exactly this fixed run-length sequence regardless of how many times it
+# repeats in a row, since there is no wiki example of them merging.
+_KINK_SIGNATURES: dict[tuple[int, ...], str] = {
+    (1,): "+",
+    (-1,): "-",
+    (2, -1): ">",
+    (-2, 1): "<",
+    (-1, 2, -1): "i",
+    (1, -2, 1): "o",
+}
+
+# Diagonal-run unit length (in the *renderer's* `_UNIT` grid) that also
+# doubles as `+`/`-`'s repeat count, since a merged run of N same-sign
+# increments/decrements is drawn as one diagonal N units long (see
+# `_KINK_SIGNATURES`).  `extract.py` has no direct access to whatever scale
+# a given image was rendered at -- `normalize_scale` only recovers *stroke
+# width*, not grid unit size -- so `classify_ops` takes it as a parameter
+# rather than assuming render.py's own `_UNIT=20`.
+DEFAULT_UNIT = 20
+
+
+@dataclass
+class OpCall:
+    """One classified opcode, plus where its kink sits in the walked path.
+
+    ``index`` is the position in the run-length sequence (see
+    :func:`_direction_runs`) the kink's *first* non-straight run starts at --
+    enough to locate it back in the original path if a caller needs the
+    pixel coordinates, without this module needing to carry them around too.
+    """
+
+    op: str
+    count: int
+    index: int
+
+
+def classify_ops(
+    path: list[tuple[int, int]], unit: int = DEFAULT_UNIT
+) -> list[OpCall]:
+    """Identify which opcodes' kinks appear along a walked ``path``, in order.
+
+    Splits ``path`` into direction runs (:func:`_direction_runs`), then scans
+    for maximal groups of consecutive non-straight runs -- a straight run
+    (relative turn 0, i.e. still heading the same direction the group
+    started at) never appears *inside* a kink (see :data:`_KINK_SIGNATURES`;
+    every signature is turns only), so a straight run always marks a kink
+    boundary.  Each group's turn sequence, relative to the heading in effect
+    where it starts, is looked up directly in ``_KINK_SIGNATURES`` -- no
+    fuzzy matching, since every kink's exact shape is fixed by construction
+    (:mod:`render`) or by the wiki's own drawings.
+
+    Raises :class:`ValueError` if a group's turn sequence matches no known
+    opcode, rather than silently skipping it -- this is meant to surface a
+    genuinely unrecognized kink (visual corruption, or a stroke this module's
+    assumptions don't hold for) rather than producing a program with silent
+    gaps.  A ``+``/``-`` group's single run must additionally be a whole
+    multiple of ``unit``; a non-multiple is likewise raised rather than
+    rounded, since that means either the wrong ``unit`` was passed or the
+    stroke was corrupted in a way that changed its effective length.
+    """
+    runs = _direction_runs(path)
+    if not runs:
+        return []
+    calls: list[OpCall] = []
+    heading = runs[0][0]
+    i = 1
+    while i < len(runs):
+        j = i
+        turns = []
+        while j < len(runs):
+            turn = (runs[j][0] - heading + 4) % 8 - 4
+            if turn == 0:
+                break
+            turns.append(turn)
+            j += 1
+        if not turns:
+            i = j + 1
+            continue
+        key = tuple(turns)
+        op = _KINK_SIGNATURES.get(key)
+        if op is None:
+            raise ValueError(
+                f"unrecognized opcode kink at run index {i}: relative turns {key}"
+            )
+        if op in ("+", "-"):
+            length = runs[i][1]
+            if length % unit != 0:
+                raise ValueError(
+                    f"opcode kink at run index {i} has diagonal length "
+                    f"{length}px, not a multiple of unit={unit}px"
+                )
+            count = length // unit
+        else:
+            count = 1
+        calls.append(OpCall(op, count, i))
+        # Heading is unchanged by every kink (render.py's emit_op always
+        # restores it), so the next kink is still measured relative to the
+        # same heading -- only advance past the runs this kink consumed.
+        i = j + 1 if j < len(runs) else j
+    return calls
+
+
 def flatten(stroke: Stroke) -> list[list[tuple[int, int]]]:
     """Return every walked path in a tree, main stroke first, depth-first."""
     paths = [stroke.path]

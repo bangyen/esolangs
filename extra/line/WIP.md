@@ -13,10 +13,29 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
 
 - **Rendering**: opcode sequences lay out correctly as images matching the
   wiki's own visual style, including the conditional-turn's T-branch.
+  `_OPS`'s per-opcode geometry was re-measured pixel-by-pixel against every
+  relevant wiki reference image (`Lineanim4/5/6/7/8/10/11.png`) rather than
+  assumed: `>`/`<`/`i`/`o` each have their own distinct kink shape (a
+  previous version of `_OPS` gave `>`/`i` and `<`/`o` identical geometry,
+  which was simply wrong), and `+`/`-` are the only opcodes whose
+  consecutive repeats merge into one stretched diagonal rather than drawing
+  separately (confirmed against `Lineanim6.png`'s `+++`).
 - **Extraction**: 8-direction pixel walking plus region-adjacency flood-fill
   recovers the path/branch structure of both wiki reference images with
   near-complete pixel accounting (verified via `verify.py`'s XOR round-trip,
   now also run automatically inside `extract()` itself).
+- **Opcode classification**: `extract.py`'s `classify_ops` identifies which
+  instruction produced each kink in a walked path, working purely off
+  direction-run signatures relative to the heading in effect at each kink
+  (heading-independent, confirmed against rotated-heading synthetic paths) --
+  `+`/`-` also recover their repeat count from the merged diagonal's unit
+  length.  Verified against every opcode individually, several mixed/
+  repeated-opcode sequences, and both directions of `+`/`-`/`>`/`<`/`i`/`o`,
+  all through `render.py`'s own generated images.  Only works against
+  `render.py`-generated geometry (fixed `_UNIT`-grid steps) -- correctly
+  raises rather than misclassifying when run against the wiki's own
+  `addition.png`/`multiplication.png` fixtures, which are hand-drawn curves
+  at a different, non-`_UNIT` scale with no fixed kink template to match.
 - **Robustness, each confirmed against real or adversarial synthetic
   input, not just reasoned about**:
   - JPEG recompression: bit-identical results down to quality 34; a sharp
@@ -40,12 +59,6 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
 
 ## Deliberately out of scope
 
-- **Opcode classification**: `extract.py` recovers *where* the path goes
-  and *where* it branches, but never identifies *which* instruction
-  (`+`/`-`/`<`/`>`/input/output) produced a given kink. A run-length /
-  direction-run template-matching approach was prototyped early on
-  (angle signatures measured directly from the wiki's reference images)
-  and looked promising, but was never wired into `extract.py`.
 - **Runtime simulation**: even with opcodes classified, nothing executes
   a program. `extract_tree` does a one-time structural trace; a real
   interpreter would need to walk the same drawn graph repeatedly, since a
@@ -59,6 +72,15 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
 
 ## Unverified / lower priority
 
+- Pre-existing (not introduced by the opcode-classification or `_OPS`
+  geometry work): a program with a conditional turn (`?`) followed by
+  further opcodes in either branch fails `extract()`'s coverage check
+  (confirmed on `main` before any of these changes, so it's a `render.py`
+  branch-layout or `_walk_tree` issue, not a `classify_ops` one) -- e.g.
+  `Node("?", zero=chain("+","+"), nonzero=chain("-",">"))` renders but
+  doesn't round-trip. Not investigated further here since it's orthogonal
+  to opcode classification, which only needed *some* branch-free rendered
+  path to verify against.
 - Real (camera/scan) photographs with genuine anti-aliasing, as opposed to
   the clean nearest-neighbor-scaled synthetic input `normalize_scale` was
   tested against. Anti-aliased edges could make the exact-integer scale
