@@ -13,12 +13,14 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
 `test_simulate.py` is a real `pytest` suite covering `simulate.py`
 (opcode basics, the zero/nonzero swap, both wiki fixtures across several
 real inputs, and the synthetic loop-back mechanism, including a hang
-check) -- run it with `uv run --with pillow --with numpy --with scipy
---with scikit-image --with pytest --with pytest-xdist pytest
-test_simulate.py` from this directory (it is not under the repo root's
-`tests/` `testpaths`, so a bare `pytest` from the repo root will not find
-it). `verify.py` remains the separate, narrower round-trip check for
-`extract()` alone.
+check); `test_line_boolean.py` covers `line_boolean.py`'s generated
+decision trees end-to-end (render -> extract -> simulate) for n=1 through
+n=3 across every input combination. Run either with `uv run --with pillow
+--with numpy --with scipy --with scikit-image --with pytest --with
+pytest-xdist pytest test_simulate.py` (or `test_line_boolean.py`) from this
+directory (neither is under the repo root's `tests/` `testpaths`, so a
+bare `pytest` from the repo root will not find them). `verify.py` remains
+the separate, narrower round-trip check for `extract()` alone.
 
 ## Settled and tested
 
@@ -282,18 +284,21 @@ it). `verify.py` remains the separate, narrower round-trip check for
   containment for anything short of a stroke's own final vertex is what
   actually distinguishes a genuine merge from that coincidence.
 
-  `render.py`'s own `Node`/`_layout` still cannot produce a loop to test
-  the mechanism against directly, since `Node` is a plain recursively-walked
-  tree with no cycle support (confirmed: a hand-built cyclic `Node` graph
-  hits Python's recursion limit rather than rendering) -- so the mechanism
-  is additionally covered by a synthetic test that builds a looping
-  `lattice.Stroke` tree directly by hand, checked two ways: a decrementing
-  loop that terminates at exactly 0, and a genuinely non-halting loop
-  confirmed to actually hang (not silently produce a wrong answer).  But
-  the real fixtures are now the stronger check: `addition.png` computes the
-  correct sum for every input pair tried (`(3,2)->5`, `(0,0)->0`,
-  `(7,3)->10`, `(10,10)->20`), and `multiplication.png` the correct product
-  (`(3,2)->6`, `(4,4)->16`, `(0,5)->0`).
+  At the time this was written, `render.py`'s own `Node`/`_layout` could not
+  produce a loop to test the mechanism against directly, since `Node` was a
+  plain recursively-walked tree with no cycle support (confirmed: a
+  hand-built cyclic `Node` graph hit Python's recursion limit rather than
+  rendering) -- so the mechanism was additionally covered by a synthetic
+  test that builds a looping `lattice.Stroke` tree directly by hand, checked
+  two ways: a decrementing loop that terminates at exactly 0, and a
+  genuinely non-halting loop confirmed to actually hang (not silently
+  produce a wrong answer).  `render.py` has since gained real loop/cycle
+  support (`Node.goto`, see "Real loop/cycle support in render.py, and a
+  bf-to-Line compiler" below) -- but the real fixtures were, and remain,
+  the stronger check regardless: `addition.png` computes the correct sum
+  for every input pair tried (`(3,2)->5`, `(0,0)->0`, `(7,3)->10`,
+  `(10,10)->20`), and `multiplication.png` the correct product (`(3,2)->6`,
+  `(4,4)->16`, `(0,5)->0`).
 
   `run` deliberately has no step limit or cycle-hang detection: checked
   against how every other interpreter in this repo handles it, a plain
@@ -312,6 +317,79 @@ it). `verify.py` remains the separate, narrower round-trip check for
   not a step cap.)  Arbitrary-precision tape cells (vs. some wrapped/bounded
   width) are similarly this module's own reading of the wiki's silence on
   the question, not something the wiki confirms either way.
+
+- **Direct Line boolean-function generator**: `line_boolean.py` builds a
+  `render.py` `Node` decision tree straight from a truth table, with no
+  brainfuck intermediate at all -- unlike
+  `esolangs.tools.boolean.tape.brainfuck`, whose `+48`/`+49` output only
+  exists because brainfuck's own `,`/`.` are byte-oriented.  Line's `i`/`o`
+  are already integer-valued (read/write a whole number, not a byte -- see
+  `simulate.py`'s module docstring), so a 0/1 input or result needs no
+  ASCII encoding to strip: the fix for "Line would print 48/49, not 0/1"
+  was to never introduce brainfuck's byte convention in the first place,
+  not to post-process it out.  Verified end-to-end (render -> extract ->
+  simulate) for n=1 through n=4 across every input combination (identity,
+  NOT, AND, XOR, 3-input majority, 4-input parity).  n=4 renders/extracts
+  correctly but is slow (~16s to extract) with a canvas large enough to
+  trip Pillow's decompression-bomb warning; n=5 would be impractical
+  (roughly 35000x17000px), so practical use stops around n<=4 -- matching
+  `esolangs.tools.boolean.tape.six_five`'s own documented n<=5 cap for an
+  unrelated geometric reason, the same shape of problem.  Covered by
+  `test_line_boolean.py`.
+
+- **Real loop/cycle support in `render.py`, and a bf-to-Line compiler**:
+  `Node` gained a `goto` field marking a real drawn loop-back -- after a
+  node's own op runs, `_layout` closes a detour (`_close_loop`/
+  `_route_legs`, collision-aware A*, 4-directional only, never diagonal)
+  back to a point strictly *inside* the stem leading into an earlier `?`
+  fork, not the fork's own vertex (forcing the detour onto the fork's own
+  vertex with its own arrival heading always retraces the stem itself,
+  since two straight approaches from the same heading onto the same point
+  are the same line).  A mid-stem reconnection is exactly the shape
+  `simulate.py`'s `find_merge` already handles as its primary real-world
+  case (see "Runtime simulation" above).  `bf_to_line.py` uses this to
+  compile a brainfuck program to Line, mapping `[...]` to a `?` fork whose
+  `nonzero` arm is the loop body ending in a node whose `goto` points back
+  at the fork.
+
+  Getting `_layout`'s branch spacing right for a *wide* decision tree (not
+  just a single loop) took a real, confirmed-wrong first attempt: spacing
+  between sibling fork arms was originally sized by
+  `_BRANCH_SPACING * (depth + 1)`, growing *outward* with absolute nesting
+  depth on the assumption that deeper subtrees need more room. That is
+  backwards for a layout where every fork turns its children 90 degrees
+  from its own heading: a grandchild fork's own children turn back toward
+  the *original* heading, and if that arm is longer than the distance back
+  to the grandparent's own axis, it overshoots and crosses it. Confirmed
+  concretely on a 3-level boolean-decision-tree generator (2**3 = 8 leaves,
+  the first case with enough nesting to reconverge): the drawing crossed
+  itself and `extract()` failed with hundreds of unaccounted pixels, and
+  scaling the spacing constant up by 10x reproduced the *exact same*
+  failure, since growing (not the absolute scale) was the bug -- every
+  level still overshot its ancestors by the same ratio. Fixed by scaling
+  *down* with remaining depth instead (`_BRANCH_SPACING * 2**remaining`,
+  an H-tree layout: each 90-degree turn needs roughly half its parent's arm
+  length, not more), via a new `_fork_depth` helper.
+
+  **Known regression, unresolved**: nested brainfuck loops (2+ levels of
+  real `[...]`) compiled via `bf_to_line.py` currently produce a wrong
+  (silently truncated) result -- confirmed on `++[>++[>+<-]<-]>>.`, which
+  computes the right tape (cell 2 ends at 4, the correct product) but the
+  walked program never reaches the final `.` to print it; `run()` halts at
+  a leaf with no `goto` and no further ops instead. Single-level loops
+  (`+++[-].`-shaped) still work correctly. Visual inspection of the
+  rendered image shows the loop's exit path running collinear with (and
+  likely misread as merged into) the loop-back detour's own route -- most
+  likely the collision-aware router choosing a detour that overlaps the
+  exit stroke rather than avoiding it, though this has not been root-caused.
+  Not caught by `test_simulate.py`, which builds cyclic `Stroke` trees
+  directly from `lattice.py` primitives rather than through `render.py`'s
+  own `_layout`/`_close_loop`, so it exercises `simulate.py`'s execution
+  logic but never `render.py`'s loop-drawing geometry at all -- this gap
+  in coverage means it's unknown whether this regression predates the
+  `_BRANCH_SPACING` fix above or was newly exposed by it. A future fix
+  needs a `bf_to_line.py`-driven test through the real render/extract
+  pipeline (not present yet) to pin this down and confirm any fix.
 
 ## Deliberately out of scope
 
