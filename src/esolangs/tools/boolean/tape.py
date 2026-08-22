@@ -9,7 +9,11 @@ from typing import cast
 # they are re-exported here so this module stays the import site the
 # package and tests already use.  dimensional stays: it shares bf_tree's
 # decision-tree emitter, and separating them trips the duplicate-code gate.
-from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _maybe_complement,
+    _validate_truth_table,
+    decision_tree_program,
+)
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five, six_five_arithmetic
 from esolangs.tools.text.tape import _factor_encode
@@ -457,106 +461,13 @@ def bf_tree(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Each input is read and normalized to 0/1 into cell ``2i``, its
-    complement ``1 - b`` into cell ``2i + 1`` (via two temp cells), and a
-    node tests ``[b]`` for the one-side and ``[1 - b]`` for the zero-side:
-    the complement guards naturally exclude the sibling, so only the
-    matching leaf fires.  Each branch clears its guard cell before its
-    ``]``, so the loop exits after one pass, and a fired leaf clears the
-    result cell, so every ``]`` on the way out sees zero.  The tree is
-    O(2**n) characters (sharing the bit tests), versus the branch-free
-    minterm evaluator's O(n * 2**n); for XOR-n it measures 1.4K..20K
-    characters at n = 2..8 against the minterm's 1.4K..33M.
+    The construction is :func:`decision_tree_program`, shared with
+    :func:`dimensional_tree`.  The tree is O(2**n) characters (sharing the
+    bit tests), versus the branch-free minterm evaluator's O(n * 2**n); for
+    XOR-n it measures 1.4K..20K characters at n = 2..8 against the
+    minterm's 1.4K..33M.
     """
-    n = _validate_truth_table(truth_table)
-
-    cells: list[str] = []
-    pos = 0
-
-    def move(target: int) -> None:
-        nonlocal pos
-        while pos < target:
-            cells.append(">")
-            pos += 1
-        while pos > target:
-            cells.append("<")
-            pos -= 1
-
-    # read bits b_i at cell 2i, leaving the complements (cells 1, 3, ...) zero
-    for i in range(n):
-        cells.append(",")
-        cells.extend("-" * 48)
-        if i < n - 1:
-            cells.append(">")
-            cells.append(">")
-            pos += 2
-
-    # complements nb_i = 1 - b_i at cell 2i+1 (t1, t2 at 2n, 2n+1)
-    for i in range(n):
-        move(2 * n)
-        cells.append("[-]")
-        move(2 * n + 1)
-        cells.append("[-]")
-        move(2 * i)
-        cells.append("[")
-        move(2 * n)
-        cells.append("+")
-        move(2 * n + 1)
-        cells.append("+")
-        move(2 * i)
-        cells.append("-")
-        cells.append("]")  # b -> t1, t2
-        move(2 * i + 1)
-        cells.append("+")  # nb = 1
-        move(2 * n + 1)
-        cells.append("[")
-        move(2 * i + 1)
-        cells.append("-")
-        move(2 * n + 1)
-        cells.append("-")
-        cells.append("]")  # nb -= t2
-        move(2 * n)
-        cells.append("[")
-        move(2 * i)
-        cells.append("+")
-        move(2 * n)
-        cells.append("-")
-        cells.append("]")  # restore b from t1
-
-    # decision tree: node i entered at cell 2i, exits at cell 2i+1
-    result = 2 * n + 2
-
-    def leaf(value: str) -> None:
-        cells.extend("+" * (48 + int(value)))
-        cells.append(".")
-        cells.append("[-]")  # clear the result so every ] on the way out sees zero
-
-    def node(i: int, combo: int) -> None:
-        bit = 2 * i
-        nxt = result if i == n - 1 else bit + 2
-        move(bit)
-        cells.append("[")  # one-side: if b_i
-        move(nxt)
-        if i == n - 1:
-            leaf(truth_table[combo | (1 << (n - 1 - i))])
-        else:
-            node(i + 1, combo | (1 << (n - 1 - i)))
-        move(bit)
-        cells.append("[-]")  # clear b_i so this ] exits
-        cells.append("]")
-        move(bit + 1)
-        cells.append("[")  # zero-side: if 1 - b_i
-        move(nxt)
-        if i == n - 1:
-            leaf(truth_table[combo])
-        else:
-            node(i + 1, combo)
-        move(bit + 1)
-        cells.append("[-]")  # clear the complement so this ] exits
-        cells.append("]")
-
-    node(0, 0)
-    return "".join(cells)
+    return decision_tree_program(truth_table, ">", "<")
 
 
 class _Dimensional:
@@ -718,99 +629,13 @@ def dimensional_tree(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    The same construction as :func:`bf_tree`, ported to Dimensional's tape:
-    bit ``i`` lives at cell ``2i``, its complement at ``2i + 1``, a node
-    tests ``[bit]`` for the one-side and ``[1 - bit]`` for the zero-side
-    (complements naturally exclude the sibling), each branch clears its
-    guard cell before its ``]``, and a fired leaf clears the result cell so
-    every ``]`` on the way out sees zero.  Every move is pinned ``>0``/``<0``
-    (a bare move would take the cell value as the dimension).  The tree is
-    O(2**n) characters and wins on dense tables; the survivor evaluator
-    (``_dimensional_survivor``) wins on sparse ones.
+    The construction is :func:`decision_tree_program`, shared with
+    :func:`bf_tree`; every move is pinned ``>0``/``<0`` because a bare move
+    would take the cell value as the dimension.  The tree is O(2**n)
+    characters and wins on dense tables; the survivor evaluator
+    (:func:`_dimensional_survivor`) wins on sparse ones.
     """
-    n = _validate_truth_table(truth_table)
-
-    cells: list[str] = []
-    pos = 0
-
-    def move(target: int) -> None:
-        nonlocal pos
-        delta = target - pos
-        cells.append(">0" * delta if delta >= 0 else "<0" * -delta)
-        pos = target
-
-    for i in range(n):
-        cells.append(",")
-        cells.extend("-" * 48)
-        if i < n - 1:
-            move(pos + 2)
-
-    # complements nb_i = 1 - b_i at cell 2i+1 (t1, t2 at 2n, 2n+1)
-    for i in range(n):
-        move(2 * n)
-        cells.append("[-]")
-        move(2 * n + 1)
-        cells.append("[-]")
-        move(2 * i)
-        cells.append("[")
-        move(2 * n)
-        cells.append("+")
-        move(2 * n + 1)
-        cells.append("+")
-        move(2 * i)
-        cells.append("-")
-        cells.append("]")  # b -> t1, t2
-        move(2 * i + 1)
-        cells.append("+")  # nb = 1
-        move(2 * n + 1)
-        cells.append("[")
-        move(2 * i + 1)
-        cells.append("-")
-        move(2 * n + 1)
-        cells.append("-")
-        cells.append("]")  # nb -= t2
-        move(2 * n)
-        cells.append("[")
-        move(2 * i)
-        cells.append("+")
-        move(2 * n)
-        cells.append("-")
-        cells.append("]")  # restore b from t1
-
-    # decision tree: node i entered at cell 2i, exits at cell 2i+1
-    result = 2 * n + 2
-
-    def leaf(value: str) -> None:
-        cells.extend("+" * (48 + int(value)))
-        cells.append(".")
-        cells.append("[-]")  # clear the result so every ] on the way out sees zero
-
-    def node(i: int, combo: int) -> None:
-        bit = 2 * i
-        nxt = result if i == n - 1 else bit + 2
-        move(bit)
-        cells.append("[")  # one-side: if b_i
-        move(nxt)
-        if i == n - 1:
-            leaf(truth_table[combo | (1 << (n - 1 - i))])
-        else:
-            node(i + 1, combo | (1 << (n - 1 - i)))
-        move(bit)
-        cells.append("[-]")  # clear b_i so this ] exits
-        cells.append("]")
-        move(bit + 1)
-        cells.append("[")  # zero-side: if 1 - b_i
-        move(nxt)
-        if i == n - 1:
-            leaf(truth_table[combo])
-        else:
-            node(i + 1, combo)
-        move(bit + 1)
-        cells.append("[-]")  # clear the complement so this ] exits
-        cells.append("]")
-
-    node(0, 0)
-    return "".join(cells)
+    return decision_tree_program(truth_table, ">0", "<0")
 
 
 def basicfuck(truth_table: str) -> str:
