@@ -83,6 +83,13 @@ class Test3x:
         # pass 1 ends with a 3 on top (jump back), pass 2 with a 0 (exit)
         assert run_program("333(33x#)!") == "0"
 
+    def test_skipped_loop_counts_nested_brackets(self) -> None:
+        # 333x leaves 0 on top, so the outer ( skips its body; the nested
+        # () inside must be counted so the skip stops at the *matching* ),
+        # not the inner one, leaving the trailing 3 to be printed
+        assert run_program("333x(3()3)3!") == "3"
+        assert run_program("333x(())3!") == "3"
+
     def test_unmatched_print_bracket_prints_nothing(self) -> None:
         assert run_program("[") == ""
 
