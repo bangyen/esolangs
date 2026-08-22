@@ -486,35 +486,99 @@ them). `verify.py` remains the separate, narrower round-trip check for
   recorded `_CLEARANCE` as reasoned-but-unpinned; that was accurate when
   written and is now superseded.
 
-  **Known limit: loop nesting stops at two levels.** Three levels
-  (`+[>+[>+[>+<-]<-]<-]`) do not render at all -- `_close_loop` exhausts
-  every stem offset and approach at maximum padding and raises. Measured
-  per-`goto` rather than guessed: for the failing *outer* loop-back, 154
-  routing attempts split 77 "no corridor exists at any padding" and 77
-  "the only available route folds back on itself", so this is a genuine
-  lack of drawn space between sibling arms, not a routing-quality bug the
-  router could solve with a better search.
+  **Resolved, and it was `_BRANCH_SPACING` being oversized all along: three
+  levels of loop nesting now render.** This entry previously recorded a hard
+  "loop nesting stops at two levels" limit -- `+[>+[>+[>+<-]<-]<-]` did not
+  render at all, `_close_loop` exhausting every stem offset and approach at
+  maximum padding and raising, with the failing outer loop-back's 154 routing
+  attempts splitting 77 "no corridor exists at any padding" and 77 "the only
+  available route folds back on itself". That measurement was accurate; the
+  conclusion drawn from it ("a genuine lack of drawn space ... not something
+  the router could solve") was half right. There genuinely was no room to
+  route through -- but the reason was that `_BRANCH_SPACING`'s own arms had
+  consumed it, not that the program needs more space than a drawing can
+  provide.
 
-  This was never working -- it is not a regression from the fixes above.
-  With `_self_approaches` disabled, the same program renders happily and
-  then fails `extract()` with ~21000 unaccounted pixels: it draws
-  self-crossing garbage. The self-approach check converts that silent
-  misextraction into a loud render-time error, which is the correct
-  behavior for a program this layout cannot draw, and is what
-  `test_bf_to_line.py`'s `TestNestingDepthLimit` pins.
+  Lowering `_BRANCH_SPACING` from 20 to 5 (see its comment in `render.py` for
+  the sweep behind that number) makes `+[>+[>+[>+<-]<-]<-]>>>.` render,
+  extract cleanly, and print the correct `1`. `TestNestingDepthLimit` was
+  rewritten accordingly, exactly as its own docstring instructed a future
+  session to do ("if a future layout change makes three levels work, this
+  test should be replaced by a real round-trip assertion, not deleted").
 
-  Not attempted, and the obvious place for a future fix to start:
-  `_fork_depth` returns early at a `goto` (`return depth`), so a
-  loop-carrying subtree looks *shallower* than it is and gets the least
-  branch spacing -- plausibly backwards, since exactly those subtrees need
-  a routing channel for their detour. Making a `goto` count toward depth
-  was tried at +1 level and did not rescue three levels (depth 2 kept
-  working), so if this is picked up it needs more than a constant bump --
-  most likely a reserved routing channel sized independently of
-  `_BRANCH_SPACING`'s H-tree halving, and/or two-phase layout (place all
-  fixed geometry, then route every `goto` outermost-first against full
-  occupancy) so the outer detour is not routing through space the inner
+  Depth 3 is not *uniformly* drawable, and the honest boundary is now about
+  arm weight rather than nesting count: `++[>++[>++[>+<-]<-]<-]>>>.` -- same
+  depth, doubled `+` runs stretching every arm -- still exhausts the router
+  and raises. So the invariant that actually survives both cases is the
+  original one, and it is what the rewritten test class still pins: when the
+  layout runs out of room it fails loudly at render time rather than
+  misdrawing. That distinction remains load-bearing, for the same reason it
+  always was -- with `_self_approaches` disabled, an undrawable program
+  renders happily and then fails `extract()` with ~21000 unaccounted pixels,
+  i.e. it draws self-crossing garbage.
+
+  The obvious next lever, still not attempted: `_fork_depth` returns early at
+  a `goto` (`return depth`), so a loop-carrying subtree looks *shallower* than
+  it is and gets the least branch spacing -- plausibly backwards, since
+  exactly those subtrees need a routing channel for their detour. Making a
+  `goto` count toward depth was tried at +1 level back when three levels were
+  failing and did not rescue them, so if this is picked up it needs more than
+  a constant bump -- most likely a reserved routing channel sized
+  independently of `_BRANCH_SPACING`'s H-tree halving, and/or two-phase layout
+  (place all fixed geometry, then route every `goto` outermost-first against
+  full occupancy) so the outer detour is not routing through space the inner
   ones already consumed.
+
+- **Output compactness vs. the wiki's own drawings, and what is irreducible.**
+  Prompted by a direct comparison: `bf_to_line.py` on the wiki's own addition
+  algorithm (`,>,[-<+>]<.`, exactly what `fixtures/addition.png` draws by
+  hand) produced a 2300x980 image against the fixture's 300x300 -- ~25x the
+  area for the same program.
+
+  Most of that was one oversized constant. `_BRANCH_SPACING` was 20, and
+  every fork's arms are `_BRANCH_SPACING * 2**remaining` grid units of pure
+  connective spacing before any content is laid out; because the loop-back
+  detour then has to route *around* those arms, the detour scales with them
+  too. Sweeping 20/8/5/3/2/1 with every program in all three suites
+  re-rendered and re-executed at each value showed all of them still correct
+  at every value tried -- including the n=2/n=3 boolean decision trees the
+  constant's own comment credited with pinning it, which turn out not to pin
+  it at all. At 5: addition goes 2300x980 -> 1100x980 (~2.1x less area) and
+  the n=3 majority decision tree 9180x3920 -> 3180x1740 (~6.5x), for
+  identical program output (the drawings differ, of course -- what is
+  unchanged is what they compute).
+
+  5 rather than lower because the floor is set by *which failure mode* you
+  get, not by whether tested programs still work: at 3 and below, an
+  undrawable three-level program stops raising at render time and instead
+  misdraws, caught only downstream by `extract()`'s coverage check (~3200
+  unaccounted pixels) -- strictly worse than a loud refusal. (One program,
+  `++[>++[>++[>+<-]<-]<-]>>>.`, does render correctly at exactly 4; that is a
+  coincidence of geometry, not a usable depth-3 capability, and is not what
+  the value is set on.)
+
+  **Parity with the hand-drawn fixture is not reachable, and not a bug.**
+  After this change the remaining bulk of the addition drawing is the
+  loop-back detour's rectangle, which is structural: `_route_legs` is
+  cardinal-only (a diagonal detour leg risks being misread as a `+`/`-` kink)
+  and `_CLEARANCE` mandates a gap from every existing stroke, so a loop-back
+  must travel out and around. The wiki's hand drawing reconnects on a short
+  immediate diagonal that passes directly alongside its own earlier ink --
+  legal for a human drawing it, but exactly what `_CLEARANCE` exists to
+  forbid, since `lattice._band_lit`'s ±1 lateral reach cannot tell a flush
+  parallel stroke from a real junction. The other fixed costs are
+  `_STEM_LEN` (10 units into every fork), `_DIAGONAL_APPROACH` (6 units, and
+  pinned *above* `lattice.star`'s 15px probe, so not shrinkable much), and
+  each opcode kink's own ~5-unit footprint; together these are why the
+  addition drawing's *height* (980) barely moves with `_BRANCH_SPACING` at
+  all, unlike its width.
+
+  Untried second lever, deliberately left alone: `_UNIT` is 20 and the
+  pipeline is documented clean at 16-28 (the floor being `lattice.star`'s
+  hardcoded 15px probe -- see the grid-units entry above), so 16 would shrink
+  every rendered output another ~20% linear / ~36% area. Not done here
+  because it rescales every drawing this repo produces, which is a broader
+  change than the compactness question that prompted this.
 
   **Now covered by `test_bf_to_line.py`**, the `bf_to_line.py`-driven suite
   through the real render -> extract -> simulate pipeline that WIP.md
