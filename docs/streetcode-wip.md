@@ -44,14 +44,13 @@ further, perpendicular to the direction of travel, past each corner --
 still turns immediately, same as before this rule existed):
 
 1. **Approach (`_merge_target`)**: don't act on the junction the moment
-   `_junction_kind` detects it (which, thanks to the window's fixed 4-deep
-   lookahead, is always one step before the window itself starts, and is
-   *not* re-detected on subsequent steps -- the choice has to be latched).
+   `_junction_kind` detects it (a detected junction is not re-detected on
+   subsequent steps -- the choice has to be latched).
    Instead keep driving straight (plain wall-following handles this for
    free, since the hugged wall is still there) until the car's position
    reaches the new road's right-hand lane relative to the chosen heading --
-   derived directly from the junction window's own far-side corners, one
-   step in from whichever corner sits in the new heading's right-hand
+   derived directly from the mouth's own `+` pair (see `_road_mouth`), one
+   step in from whichever `+` sits in the new heading's right-hand
    direction. Only then turn.
 2. **Merge-out (`_merging_heading`)**: after turning, the new road's own
    right-hand wall has not necessarily picked up yet (in the hand-drawn

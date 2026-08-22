@@ -150,6 +150,27 @@ class TestStreetcodeAmbiguousTurns:
         machine.step()  # cell is nonzero -> second-leftmost of [E, S] = South
         assert (machine.row, machine.col, machine.heading) == (2, 1, "S")
 
+    def test_plus_pair_with_a_wall_in_the_gap_is_not_a_mouth(self) -> None:
+        """A `+` pair whose floor is not all open between them bounds no
+        road: the far `+` is found, the gap check fails, and the scan
+        stops rather than reporting a mouth through solid wall."""
+        machine = _Machine(["C       ", "-+ |+   ", "        "], IO())
+        machine.row, machine.col, machine.heading = 0, 0, "E"
+        assert machine._road_mouth("E", "S") is None  # noqa: SLF001
+
+    def test_four_way_junction_detects_4(self) -> None:
+        """Mouths on both sides at once, road continuing ahead: 4 ways."""
+        machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
+        machine.row, machine.col, machine.heading = 0, 1, "S"
+        assert machine._junction_kind("S") == 4  # noqa: SLF001
+
+    def test_t_junction_detects_3(self) -> None:
+        """Mouths on both sides with straight ahead blocked: a T whose
+        crossbar the car is driving into, still three ways."""
+        machine = _Machine([" C ", "+|+", "   ", "+ +", " | "], IO())
+        machine.row, machine.col, machine.heading = 0, 1, "S"
+        assert machine._junction_kind("S") == 3  # noqa: SLF001
+
 
 class TestStreetcodeLaneMerge:
     """A genuinely multi-cell-wide junction: turning must land in the new
@@ -237,6 +258,42 @@ class TestStreetcodeLaneMerge:
         machine.grid[3] = row[:3] + "+" + row[4:]  # wall directly ahead
         heading = machine._choose_heading()  # noqa: SLF001
         assert heading != "E"
+
+    def test_merge_target_reread_can_carry_straight_on(self) -> None:
+        """The branch is re-read at the latched turn cell, not trusted from
+        latch time: a cell that went nonzero while approaching reverses the
+        decision and the car carries straight on, abandoning the merge."""
+        machine = _Machine(self._lane_merge_code(), IO())
+        machine.row, machine.col, machine.heading = 3, 1, "S"
+        machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
+        machine.cells[0] = 1  # latch was taken under cell == 0
+        heading = machine._choose_heading()  # noqa: SLF001
+        assert heading == "S"
+        assert machine._merging_heading is None  # noqa: SLF001
+
+    def test_wall_mid_approach_abandons_the_merge_latch(self) -> None:
+        """A wall appearing straight ahead while still approaching the
+        latched lane drops the latch, like a heading change does: the
+        latch must not wait forever for a target it can no longer reach."""
+        machine = _Machine(self._lane_merge_code(), IO())
+        machine.row, machine.col, machine.heading = 1, 1, "S"
+        machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
+        row = machine.grid[2]
+        machine.grid[2] = row[:1] + "+" + row[2:]  # wall directly ahead
+        heading = machine._choose_heading()  # noqa: SLF001
+        assert machine._merge_target is None  # noqa: SLF001
+        assert heading == "E"  # falls back to plain wall-following
+
+    def test_turn_lands_in_the_lane_without_an_approach(self) -> None:
+        """When the junction fires while the car already sits in the new
+        road's right-hand lane (a mouth whose near ``+`` is one cell
+        behind, near == -1), there is nothing to drive to: turn now."""
+        machine = _Machine(["|+  ", "  C ", "    ", "|+  "], IO())
+        machine.row, machine.col, machine.heading = 1, 2, "S"
+        machine.cells[0] = 1  # nonzero -> second-leftmost of [S, W] = West
+        heading = machine._choose_heading()  # noqa: SLF001
+        assert heading == "W"
+        assert machine._merge_target is None  # noqa: SLF001
 
     def test_four_way_junction_also_merges(self) -> None:
         """A four-way junction (``+`` at all four detection-window corners,
