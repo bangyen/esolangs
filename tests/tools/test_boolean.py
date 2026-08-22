@@ -1,5 +1,6 @@
 """Unit tests for the boolean-function program generators."""
 
+import importlib
 import io
 import random
 from collections.abc import Callable
@@ -12,11 +13,8 @@ import pytest
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.interpreters.io import IO
 from esolangs.tools import boolean
-from esolangs.tools.boolean.parameterized import (
-    _instantiate_apa,
-    _instantiate_arrowqueue,
-    a_painter_ant,
-)
+from esolangs.tools.boolean.a_painter_ant import _instantiate_apa, a_painter_ant
+from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 
 
 def _parameterized_generators():
@@ -3619,7 +3617,7 @@ class TestAPainterAnt:
 
     def test_four_input_head_works(self) -> None:
         """The head's leaf layout generalizes past three inputs."""
-        from esolangs.tools.boolean.parameterized import _leaf_positions
+        from esolangs.tools.boolean.a_painter_ant import _leaf_positions
 
         positions = _leaf_positions(4)
         assert len(positions) == 16
@@ -4000,7 +3998,7 @@ class TestWII2D:
 
     def test_chain_n2_closed_form(self) -> None:
         """Two-input tables use the closed form, not the search."""
-        from esolangs.tools.boolean.parameterized import (
+        from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
             _wii2d_n2_closed_form,
         )
@@ -4023,7 +4021,7 @@ class TestWII2D:
     @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
     def test_chain_parity_closed_form(self, n: int) -> None:
         """Parity and its complement use the exact closed form for any arity."""
-        from esolangs.tools.boolean.parameterized import (
+        from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
             _wii2d_parity_routes,
             _wii2d_symmetric_popcount_map,
@@ -4048,7 +4046,7 @@ class TestWII2D:
 
     def test_symmetric_search_reduces_to_popcount_decode(self) -> None:
         """Non-parity symmetric tables use a popcount prefix plus a decode."""
-        from esolangs.tools.boolean.parameterized import (
+        from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
             _wii2d_symmetric_search,
         )
@@ -4086,8 +4084,8 @@ class TestWII2D:
         :func:`_wii2d_symmetric_search` call still runs for real (uncapped),
         so it must still succeed.
         """
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.parameterized import _wii2d_domain, _wii2d_search
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_domain, _wii2d_search
 
         def capped_domain(maxlen: int, cap: int) -> list[int]:
             return _wii2d_domain(min(maxlen, 4), cap)
@@ -4097,23 +4095,23 @@ class TestWII2D:
             "1" if bin(c).count("1") > n // 2 else "0" for c in range(2**n)
         )
         with (
-            patch.object(parameterized, "_wii2d_search_start", return_value=None),
-            patch.object(parameterized, "_wii2d_domain", side_effect=capped_domain),
+            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_domain", side_effect=capped_domain),
         ):
             result = _wii2d_search(n, symmetric_table)
         assert result is not None
 
         non_symmetric_table = "0001001000110100"
         with (
-            patch.object(parameterized, "_wii2d_search_start", return_value=None),
-            patch.object(parameterized, "_wii2d_domain", side_effect=capped_domain),
+            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_domain", side_effect=capped_domain),
         ):
             result = _wii2d_search(n, non_symmetric_table)
         assert result is None
 
     def test_symmetric_search_deadline_stops_the_ladder(self) -> None:
         """The per-``maxlen`` deadline check aborts the ladder early."""
-        from esolangs.tools.boolean.parameterized import _wii2d_symmetric_search
+        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
 
         calls = [0.0, 100.0]
 
@@ -4126,10 +4124,10 @@ class TestWII2D:
 
     def test_symmetric_search_gives_up_after_the_full_ladder(self) -> None:
         """No decode is found once every ``maxlen`` in the ladder is tried."""
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.parameterized import _wii2d_symmetric_search
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
 
-        with patch.object(parameterized, "_wii2d_sequences", return_value=[]):
+        with patch.object(wii2d_mod, "_wii2d_sequences", return_value=[]):
             result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
         assert result is None
 
@@ -4138,7 +4136,7 @@ class TestWII2D:
         maxlen: int, table: str
     ) -> tuple[list[int], list[str], Callable[[int, int], int], dict[int, int]]:
         """Build the ``(t, seqs, pre, index)`` args ``_wii2d_search_start`` needs."""
-        from esolangs.tools.boolean.parameterized import (
+        from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
             _wii2d_domain,
             _wii2d_sequences,
@@ -4172,7 +4170,7 @@ class TestWII2D:
         """An already-expired deadline aborts the search immediately."""
         import time
 
-        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 3
         t, seqs, pre, index = self._build_search_start_args(2, "01101001")
@@ -4185,7 +4183,7 @@ class TestWII2D:
         final-``None`` paths instead of the timeout path."""
         import time
 
-        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 3
         # maxlen=1 gives too small an op-string pool to realize XOR3
@@ -4198,7 +4196,7 @@ class TestWII2D:
         repeated subproblem returns the cached result instead of re-solving."""
         import time
 
-        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 4
         table = "0000000000111101"
@@ -4210,8 +4208,10 @@ class TestWII2D:
         """``wii2d`` surfaces a search failure as a ``ValueError``."""
         from esolangs.tools.boolean import parameterized
 
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+
         with (
-            patch.object(parameterized, "_wii2d_search", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_search", return_value=None),
             pytest.raises(ValueError, match="no route"),
         ):
             parameterized.wii2d("0110")
@@ -4224,7 +4224,7 @@ class TestWII2D:
         :func:`_wii2d_layout` directly with one and confirms the produced
         template actually runs correctly through the real interpreter.
         """
-        from esolangs.tools.boolean.parameterized import _wii2d_layout
+        from esolangs.tools.boolean.wii2d import _wii2d_layout
 
         template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
         for bit, expected in ((0, "5"), (1, "6")):

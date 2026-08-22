@@ -9,6 +9,8 @@ A truth table's length determines its input count: a valid table has
 generators take no ``n`` parameter.
 """
 
+from collections.abc import Callable
+
 
 def _validate_truth_table(truth_table: str) -> int:
     """Validate a truth table and return its input count ``n``.
@@ -41,3 +43,26 @@ def _maybe_complement(truth_table: str) -> tuple[str, bool]:
     if truth_table.count("1") > len(truth_table) // 2:
         return _complement(truth_table), True
     return truth_table, False
+
+
+SetBit = Callable[[int, int], str]
+SetComp = Callable[[int, int], str]
+
+
+def instantiate(
+    template: str,
+    bits: list[int],
+    set_bit: SetBit,
+    set_comp: SetComp,
+) -> str:
+    """Substitute each ``{Xi}``/``{Ci}`` placeholder.
+
+    ``{Xi}`` becomes ``set_bit(i, bit)`` (code that sets input ``i`` to the
+    bit) and ``{Ci}`` becomes ``set_comp(i, bit)`` (code that sets it to the
+    complement of the bit).  Since the bits are embedded constants, the
+    complement is emitted directly rather than computed at runtime.
+    """
+    for i, bit in enumerate(bits):
+        template = template.replace("{X" + str(i) + "}", set_bit(i, bit))
+        template = template.replace("{C" + str(i) + "}", set_comp(i, bit))
+    return template
