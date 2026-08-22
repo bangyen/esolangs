@@ -234,14 +234,28 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
   synthetic test that builds a looping `lattice.Stroke` tree directly by
   hand (bypassing both `render.py` and `extract.py`), checked two ways: a
   decrementing loop that terminates at exactly 0, and a genuinely
-  non-halting loop that hits `step_limit` and raises rather than hanging.
-  A real hand-drawn or `render.py`-extended fixture containing an actual
-  loop would be a stronger check than this, if one ever becomes available.
-  Also unverified: `step_limit`'s default of 1,000,000 is picked as
-  generous headroom, not derived from any real program's actual cost, and
-  arbitrary-precision tape cells (vs. some wrapped/bounded width) are this
-  module's own reading of the wiki's silence on the question, not
-  something the wiki confirms either way.
+  non-halting loop confirmed to actually hang rather than silently
+  producing a wrong answer.  A real hand-drawn or `render.py`-extended
+  fixture containing an actual loop would be a stronger check than this,
+  if one ever becomes available.
+
+  `run` deliberately has no step limit or cycle-hang detection: checked
+  against how every other interpreter in this repo handles it, a plain
+  `run(code, io)` never caps execution (e.g. `brainfuck.py`'s own `run` is
+  a bare `while not machine.halted: machine.step()`) -- cycle detection
+  (`src/esolangs/vm.py`'s `run_until_halt_or_cycle`, Brent's algorithm over
+  a machine's full state) exists only as an opt-in debugger wrapper no
+  language's main run path uses.  `simulate.py` matches that: a
+  non-halting Line program hangs, the same as an infinite Brainfuck `[]`
+  loop would.  (An earlier draft of this module added an arbitrary
+  1,000,000-step cap by reaching for `oisc_cli.py`'s pattern instead --
+  wrong fit, since that exists specifically because Decleq/AddSubJump
+  self-modify their memory and provably cannot use cycle detection; Line's
+  state is ordinary and revisitable, so if a limit is ever wanted here, real
+  cycle detection matching `vm.py`'s convention would be the right upgrade,
+  not a step cap.)  Arbitrary-precision tape cells (vs. some wrapped/bounded
+  width) are similarly this module's own reading of the wiki's silence on
+  the question, not something the wiki confirms either way.
 
 ## Deliberately out of scope
 
