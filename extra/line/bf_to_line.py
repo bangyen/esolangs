@@ -41,7 +41,7 @@ _BF_TO_LINE = {"+": "+", "-": "-", "<": "<", ">": ">", ",": "i", ".": "o"}
 
 
 def _nop() -> Node:
-    """A single node whose op has no net effect on the tape or pointer.
+    """Build a single node whose op has no net effect on tape or pointer.
 
     Used only as a placeholder to carry a ``goto`` where no real node exists
     to hang it on -- see :func:`_control_tail`.  ``>`` alone would move the

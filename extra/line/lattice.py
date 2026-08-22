@@ -110,7 +110,6 @@ def _band_lit(mask: np.ndarray, y: int, x: int, direction: int) -> bool:
     center ray is not enough (a real segment can be a pixel off the exact
     probe center, at a hand-drawn corner's true vertex).
     """
-    dy, dx = _DIRS[direction]
     pdy, pdx = _DIRS[(direction + 2) % 8]
     return any(_ink(mask, y + pdy * k, x + pdx * k) for k in (-1, 0, 1))
 
@@ -251,6 +250,7 @@ class Stroke:
 
     @property
     def end(self) -> tuple[int, int]:
+        """Return this stroke's final vertex as a plain ``(y, x)`` pair."""
         v = self.vertices[-1]
         return v.y, v.x
 
