@@ -689,6 +689,34 @@ class TestFlowchart:
         assert program.count("< >") == 15  # 2**4 - 1 internal nodes
         assert program.count("(( ))") == 16  # 2**4 leaves
 
+    def test_each_run_reads_exactly_n_bits(self) -> None:
+        """The drawn read nodes outnumber the reads any one run performs.
+
+        A depth-4 tree draws 15 ``/ /`` nodes, but a run walks a single
+        root-to-leaf path and consumes exactly 4 bits, so the duplication is
+        spatial rather than a bit being read more than once (see the
+        generator's docstring on why the parameterized once-only embedding
+        rule does not apply to an input-reading generator).
+        """
+        program = boolean.flowchart("0110100110010110")
+        assert program.count("/ /") == 15
+
+        consumed = 0
+
+        class _CountingIO(IO):
+            def input_str(self, _prompt: str = "Input: ") -> str:
+                nonlocal consumed
+                consumed += 1
+                return "1"
+
+            def print_str(self, text: str) -> None:
+                pass
+
+        from esolangs.interpreters.grid_based.flowchart import run as fc_run
+
+        fc_run(program.splitlines(), _CountingIO())
+        assert consumed == 4
+
     def test_rejects_a_malformed_table(self) -> None:
         """A table whose length is not a power of two is rejected."""
         with pytest.raises(ValueError, match="power-of-two"):

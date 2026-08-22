@@ -1591,6 +1591,27 @@ def flowchart(truth_table: str) -> str:
     needed either.  What the layout has to get right instead is routing:
     every switch is centred over the two subtree entries it feeds, with
     rails drawn out to each.
+
+    **The tree holds many ``/ /`` nodes but reads each input once.**  A
+    depth-``n`` tree draws ``2**n - 1`` read nodes, one per internal node,
+    yet any single run walks one root-to-leaf path and so executes exactly
+    ``n`` of them -- the duplication is spatial, the way an unrolled
+    brainfuck branch repeats ``,`` in each arm of a nested ``[ ]`` without
+    any one execution reading twice.  This is deliberately *not* the
+    once-only embedding rule that ``tools.boolean.parameterized`` documents:
+    that rule exists so a language with no input mechanism cannot, through
+    repeated ``{Xi}`` substitution, consult a bit more often than an
+    input-capable language would.  Flowchart has a real input command, so
+    it is an input-reading generator like :func:`streetcode` (whose ``I``
+    commands likewise repeat across tree branches), not a parameterized one.
+
+    An alternative construction reads all ``n`` bits up front into a deque
+    and pops one per level instead, which exercises the deques -- the
+    language's defining feature, untouched here.  It was built and verified
+    over the same tables, and is worth revisiting if Flowchart ever gets a
+    cross-check that would benefit from the wider coverage; it costs a
+    ``4n``-row prologue and depends on push-top/pop-bottom being FIFO, a
+    silent wrong-answer trap if the pop is ever changed to pop-top.
     """
     _validate_truth_table(truth_table)
     body = _flowchart_subtree(truth_table)
