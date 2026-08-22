@@ -89,9 +89,12 @@ would make the generator close to trivial to write by hand.
   right-hand lane before turning, rather than a plain single-cell step onto
   the first open neighbor (see the module docstring's "Lane merging" bullet
   and `docs/streetcode-wip.md` for the hand-derived, user-confirmed trace
-  this was built from).  Wired into `registry.py` (interpreter only, no
-  text generator and no boolean generator yet) — that's separate
-  follow-on work.
+  this was built from).  Wired into `registry.py`, with a boolean generator
+  (`tools/boolean/other.py`) that walks each input bit down to a bare 0/1
+  and then drives a binary decision tree whose T-junctions apply the
+  ambiguous-turn rule to fork on it; it takes arbitrary truth tables,
+  uncapped, and is verified over every input combination up to 4 inputs.
+  No text generator yet — that's the remaining follow-on work.
 - **Gate** — a wire/logic-gate circuit: symbols represent signals flowing
   through wires (`—`/`|`), combined by gates (`&` NAND, `X` XNOR, `!` NOT);
   `+` branches on which way a signal is heading; `(` outputs an ASCII char.
@@ -152,7 +155,8 @@ would break a documented convention and its text generator is too thin to
 stand alone — see `docs/limitations.md` for the removed cases and the
 criteria.  The interpreter-only languages with no text generator but a
 working, uncapped boolean generator (ABCDirection, Back, BF-PDA, Bitdeque,
-Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue) are
+Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue,
+Streetcode) are
 **not** candidates: they participate fully in the repo's verification
 machinery via the boolean generator, and their only weakness is an
 interpreter-invented state dump where the wiki defines no text output.
