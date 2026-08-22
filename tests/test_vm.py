@@ -158,6 +158,36 @@ class TestLaserFuck:
         assert _run_all(vm) == io_obj.getvalue()
 
 
+class TestCOD:
+    def test_ip_memory_and_output(self) -> None:
+        # ')' increments twice, then '---' on the right edge prints and
+        # removes the cod; ip is the single cod's (row, col, heading, value).
+        vm = esolangs.make_vm("COD", "~~~~~\n~>))---")
+        assert vm.ip == (1, 1, 2, 0)  # heading 2 == E
+        assert vm.memory == [0]
+        assert vm.stack == []
+        vm.step()
+        assert vm.ip == (1, 2, 2, 1)
+        assert vm.memory == [1]
+        vm.step()
+        assert vm.ip == (1, 3, 2, 2)
+        vm.step()
+        assert vm.halted
+        assert vm.output == "2\n"
+        vm.step()  # stepping a halted VM is a no-op
+
+    def test_random_junction_is_deterministic(self) -> None:
+        # forward blocked, East and West both open: _FirstChoiceRNG always
+        # takes the lexicographically-first option ('E'), unlike the
+        # interpreter's default secrets-backed chooser.
+        code = "\n".join(["~~~~~~~", "~     ~", "~ ~ ~ ~", "~~~>~~~"])
+        vm = esolangs.make_vm("COD", code)
+        vm.step()  # (3,3,N) -> (2,3,N)
+        vm.step()  # (2,3,N) -> (1,3,N): enters the junction cell
+        vm.step()  # forward (N) blocked: resolves to 'E'
+        assert vm.ip == (1, 4, 2, 0)  # heading 2 == E
+
+
 class TestPointBreak:
     def test_statement_cursor_and_variables(self) -> None:
         vm = esolangs.make_vm(
