@@ -452,12 +452,22 @@ them). `verify.py` remains the separate, narrower round-trip check for
     cells, so it had full knowledge of every fixed stroke.
 
   Both fixes are independently load-bearing, checked by reverting each in
-  isolation: without the diagonal approach 6 of `test_bf_to_line.py`'s 15
-  tests fail, without the self-approach rejection 2 do. `_CLEARANCE`
-  (between-stroke clearance, as opposed to the self-approach check that
-  reuses it) is deliberately *not* claimed as pinned by a failing case --
-  setting it to 0 currently leaves every test passing; see its own comment
-  in `render.py` for why it is kept at 1 anyway.
+  isolation: without the diagonal approach 6 of `test_bf_to_line.py`'s
+  tests fail, without the self-approach rejection 2 do.
+
+  `_CLEARANCE` (between-stroke clearance, as opposed to the self-approach
+  check that reuses it) is pinned separately, by
+  `TestStrokeSeparation`. This took a dedicated test to establish: setting
+  it to 0 left every *output*-asserting test passing, since a drawing can
+  rasterize a flush 2px ribbon and still happen to extract and execute
+  correctly. Measuring stroke separation directly instead -- capturing
+  `_layout`'s own stroke list and counting cells of one stroke sitting
+  adjacent to a different stroke it shares no cell with -- shows the
+  constant is load-bearing after all: at 0 every program checked develops
+  adjacency (up to 76 consecutive abutting cells on
+  `++[>++[>+<-]<-]>>+++.`), at 1 none does. An earlier version of this file
+  recorded `_CLEARANCE` as reasoned-but-unpinned; that was accurate when
+  written and is now superseded.
 
   **Known limit: loop nesting stops at two levels.** Three levels
   (`+[>+[>+[>+<-]<-]<-]`) do not render at all -- `_close_loop` exhausts
