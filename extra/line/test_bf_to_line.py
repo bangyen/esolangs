@@ -181,28 +181,48 @@ class TestStrokeSeparation:
 
 
 class TestNestingDepthLimit:
-    """Pins the *measured* boundary of what `_layout` can currently draw.
+    """Pins where `_layout`'s drawable nesting depth actually stops.
 
-    Three levels of real `[...]` do not render: `_close_loop` exhausts every
-    stem offset and approach at maximum padding and raises.  This is a
-    genuine lack of drawn space, not a routing-quality bug -- for the failing
-    outer loop-back, candidates split evenly between "no corridor exists at
-    all" and "the only route folds back on itself" (measured: 77 each of
-    154).  See WIP.md's nesting-depth entry for the full numbers.
+    Three levels of real `[...]` used to be the boundary: `_close_loop`
+    exhausted every stem offset and approach at maximum padding and raised,
+    which this class pinned as a *raise* (deliberately, since with the
+    self-approach check disabled the same program renders self-crossing
+    garbage that only fails ~21000 pixels later at extraction -- a loud
+    render-time error being the correct behavior for a program the layout
+    cannot draw).  That entry noted its own successor: "if a future layout
+    change makes three levels work, this test should be replaced by a real
+    round-trip assertion, not deleted."
 
-    Asserting on the *raise* rather than xfail-ing a wrong answer is
-    deliberate: with the self-approach check disabled, this program renders
-    happily and then fails extraction with ~21000 unaccounted pixels, i.e.
-    it draws self-crossing garbage.  A loud render-time error is the
-    correct behavior for a program this layout cannot draw, so that is what
-    is pinned here -- if a future layout change makes three levels work,
-    this test should be replaced by a real round-trip assertion, not
-    deleted.
+    That is what happened.  Shrinking `render._BRANCH_SPACING` from 20 to 5
+    (see its own comment for the measurements) leaves enough room between
+    sibling arms for the depth-3 loop-back to route, and the program now
+    round-trips and executes correctly -- so the round-trip assertion below
+    replaces the raise.
+
+    Depth 3 is not *uniformly* drawable, though: a heavier depth-3 body
+    (`++[>++[>++[>+<-]<-]<-]>>>.`, whose doubled `+` runs stretch every arm)
+    still exhausts the router.  The invariant that survives both cases is not
+    "depth 3 works" but the original one -- when the layout runs out of room
+    it says so at render time rather than misdrawing -- so both are pinned.
     """
 
+    def test_three_levels_round_trip(self, tmp_path: Path) -> None:
+        """Depth 3 now renders, extracts and executes correctly.
+
+        `+[>+[>+[>+<-]<-]<-]` moves a single 1 inward three times, so cell 3
+        ends at 1; the trailing `>>>.` is what makes that observable as
+        output rather than only as final tape state.  Asserting on printed
+        output is deliberate -- the nested-loop regression this whole suite
+        was written against computed the *correct tape* and still never
+        reached its final `.`, so a tape-only assertion would have missed it.
+        """
+        assert _run_bf("+[>+[>+[>+<-]<-]<-]>>>.", tmp_path / "depth3.png") == [1]
+
     @pytest.mark.slow
-    def test_three_levels_raise_rather_than_misdraw(self, tmp_path: Path) -> None:
-        """Depth 3 fails loudly at render time, never silently misdraws.
+    def test_undrawable_nesting_raises_rather_than_misdraws(
+        self, tmp_path: Path
+    ) -> None:
+        """A depth-3 body too heavy to route fails loudly at render time.
 
         Slow (~2.5 min) by construction: reaching the raise means exhausting
         every stem offset and approach at all `_MAX_PADDING_DOUBLINGS`
@@ -210,7 +230,7 @@ class TestNestingDepthLimit:
         `-m 'not slow'`.
         """
         with pytest.raises(ValueError, match="no clear route found"):
-            _run_bf("+[>+[>+[>+<-]<-]<-]", tmp_path / "depth3.png")
+            _run_bf("++[>++[>++[>+<-]<-]<-]>>>.", tmp_path / "depth3_heavy.png")
 
 
 class TestCompileErrors:

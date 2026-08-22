@@ -923,7 +923,29 @@ def _approach_points(
 # (confirmed necessary on a real boolean-generator brainfuck program's
 # compiled output) -- not a router bug, a genuine lack of drawn space
 # between sibling branches for anything to route through otherwise.
-_BRANCH_SPACING = 20
+#
+# Lowered from 20 to 5 after measuring, rather than reasoning about, how much
+# slack the original value had: every program in both suites was re-rendered
+# and re-executed at 20/8/5/3/2/1, and all of them still extract and compute
+# correctly at every one of those values -- including the n=2/n=3 boolean
+# decision trees this constant was originally sized against, which the earlier
+# comment credited with pinning it.  They do not pin it; there was roughly 4x
+# slack.  Since the arms are what the loop-back detour has to route around,
+# shrinking them shrinks the detour too: `,>,[-<+>]<.` (the wiki's own
+# addition program) goes from 2300x980 to 1100x980, and the n=3 majority
+# decision tree from 9180x3920 to 3180x1740 -- a bit over 2x and 6x less area
+# respectively, for identical output.
+#
+# 5 rather than lower because `TestNestingDepthLimit`'s guarantee is what
+# breaks first, and it breaks quietly: at 3 and below, three-level nesting
+# stops raising at render time and instead *misdraws*, caught only downstream
+# by `extract()`'s coverage check (~3200 unaccounted pixels).  That is
+# strictly worse than today's loud render-time refusal, so the floor here is
+# set by which failure mode you get, not by whether the tested programs still
+# work.  See WIP.md's nesting-limit entry for the one program that does render
+# correctly at exactly 4 -- a coincidence of geometry, not a usable depth-3
+# capability.
+_BRANCH_SPACING = 5
 
 
 def _fork_depth(node: Node | None) -> int:
