@@ -1,20 +1,20 @@
 """Interpreter for 123.
 
-A bit-tape language: ``1`` flips the current bit and moves the pointer left
-(wrapping from -3 back to 0), ``2`` reads a character when the pointer is at
--3 or writes one when at -2 (otherwise it moves the pointer right), and
-``3`` is a jump symbol: when the current bit is TRUE the pointer skips back
-to the previous ``3`` (or the start), when FALSE it skips forward to the
-next ``3`` (or the end).  Bits start FALSE, the program halts only when the
-end is reached with the pointer below 0 (otherwise it loops from the start),
-and unrecognized characters are NOPs.
+A bit-tape language: the pointer starts at location 0 over an unbounded
+array of bits (all initially FALSE, indexed 0, 1, 2, ... to the right, with
+no upper bound).  ``1`` flips the current bit and moves the pointer left,
+wrapping from -4 back to 0.  ``2`` reads a character into locations 0-7 when
+the pointer is at -3, writes locations 0-7 as a character when at -2 (both
+then reset the pointer to 0), and otherwise just moves the pointer right.
+``3`` is a jump symbol: below location 0 it is a NOP; otherwise, when the
+current bit is TRUE the pointer skips back to the previous ``3`` (or the
+start), and when FALSE it skips forward to the next ``3`` (or the end).  The
+program halts only when the end is reached with the pointer below 0
+(otherwise it loops from the start), and unrecognized characters are NOPs.
 
-The pointer is tracked as a bitmask: 1024 = -3 (the read position), 512 = -2
-(the write position), 256 = -1, 128 = 0, then halving to 1 = position 7 and
-0 = position 8.  Flipping XORs the mask into the data byte, so position 0
-holds the *most* significant bit: the cross-check interpreters and the
-repository's generator are MSB-first, which is the opposite of the wiki's
-little-endian note.
+Locations 0-7 are read as an 8-bit character MSB-first (location 0 is bit
+7): the cross-check interpreters and the repository's generator agree on
+this order, which is the opposite of the wiki's little-endian note.
 
 Decisions for gaps in the wiki spec (documented):
 - ``,`` reads a whole input line and takes its first byte, raising
@@ -29,22 +29,23 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-# Pointer position encoded as a bitmask: the read/write positions sit above
-# the data bits and the data bits halve from 128 (position 0, bit 7) to 1
-# (position 7, bit 0); 0 is position 8, where the pointer is stuck.
-_READ = 1024  # position -3
-_WRITE = 512  # position -2
-_START = 128  # position 0
+_READ = -3
+_WRITE = -2
+_START = 0
 
 
 class _Machine:
-    """Per-run 123 state: data byte, pointer mask, and the code cursor.
+    """Per-run 123 state: an unbounded bit tape, pointer, and code cursor.
 
     ``step()`` executes one command and ``halted`` says whether the program
     ended — the shape the VM wrapper and the state-cycle hang detector
-    expect.  :meth:`snapshot` returns the cursor, mask, data byte, and
-    input cursor, so a repeated snapshot proves a deterministic run loops
-    forever (the state is bounded, so every 123 loop is a cycle).
+    expect.  :meth:`snapshot` returns the cursor, pointer, tape contents,
+    and input cursor, so a repeated snapshot proves a deterministic run
+    loops forever; programs that only ever touch a bounded prefix of the
+    tape are bounded-state and always resolve as a cycle, while a program
+    that marches the pointer right forever grows the tape without repeating
+    a state (the state-cycle detector's documented "unbounded growth" case,
+    left to the caller's timeout backstop).
     """
 
     def __init__(self, code: str, io: IO) -> None:
@@ -52,8 +53,8 @@ class _Machine:
         self.code = code
         self.io = io
         self.n = len(code)
-        self.data = 0
-        self.mask = _START
+        self.bits: dict[int, bool] = {}
+        self.pos = _START
         self.ip = 0
         self._done = not any(c in "123" for c in code)
 
@@ -64,34 +65,46 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.ip, self.mask, self.data, self.io.position())
+        bits = tuple(sorted(k for k, v in self.bits.items() if v))
+        return (self.ip, self.pos, bits, self.io.position())
+
+    def byte(self) -> int:
+        """Read locations 0-7 as an MSB-first byte (location 0 is bit 7)."""
+        return sum((1 << (7 - i)) for i in range(8) if self.bits.get(i, False))
+
+    def _set_byte(self, value: int) -> None:
+        """Write ``value`` into locations 0-7, MSB-first."""
+        for i in range(8):
+            self.bits[i] = bool(value & (1 << (7 - i)))
 
     def step(self) -> None:
         """Execute one command (or the loop-or-halt check), advancing."""
         if self.halted:
             return
         if self.ip >= self.n:
-            if self.mask > _START:
+            if self.pos < 0:
                 self._done = True
             else:
                 self.ip = 0
             return
         char = self.code[self.ip]
         if char == "1":
-            self.data ^= self.mask
-            self.mask = _START if self.mask >= _READ else self.mask << 1
+            self.bits[self.pos] = not self.bits.get(self.pos, False)
+            self.pos -= 1
+            if self.pos == -4:
+                self.pos = _START
         elif char == "2":
-            if self.mask == _READ:
-                self.data = self.io.input_char()
-                self.mask = _START
-            elif self.mask == _WRITE:
-                self.io.print_char(chr(self.data & 0xFF))
-                self.mask = _START
+            if self.pos == _READ:
+                self._set_byte(self.io.input_char())
+                self.pos = _START
+            elif self.pos == _WRITE:
+                self.io.print_char(chr(self.byte()))
+                self.pos = _START
             else:
-                self.mask >>= 1
+                self.pos += 1
         elif char == "3":
-            if self.mask <= _START:
-                if self.data & self.mask:
+            if self.pos >= 0:
+                if self.bits.get(self.pos, False):
                     j = self.ip - 1
                     while j >= 0 and self.code[j] != "3":
                         j -= 1

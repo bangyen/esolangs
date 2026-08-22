@@ -57,7 +57,7 @@ esolangs transpile BF "ASCII art" program.txt  # rewrite between languages
 Assembly compilers run the same way and write `output.asm`:
 
 ```bash
-python -m esolangs.compilers.assembly.<language> program.txt
+python -m esolangs.compilers.<language> program.txt
 ```
 
 ### Public API
@@ -84,7 +84,7 @@ just test
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 57 languages</summary>
+<summary>Show all 58 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -92,12 +92,13 @@ The full capability matrix (generators, cross-check and boolean support, example
 
 Languages that move a pointer or beam across a 2D grid.
 
-- [2dFish](https://esolangs.org/wiki/2dFish) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/two_d_fish.py))
 - [A Painter Ant](https://esolangs.org/wiki/A_Painter_Ant) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/a_painter_ant.py))
 - [ArrowQueue](https://esolangs.org/wiki/ArrowQueue) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/arrowqueue.py))
+- [COD](https://esolangs.org/wiki/COD) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/cod.py))
 - [Clockwise](https://esolangs.org/wiki/Clockwise) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/clockwise.py))
 - [Dig](https://esolangs.org/wiki/Dig) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/dig.py))
 - [LaserFuck](https://esolangs.org/wiki/LaserFuck) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/laserfuck.py))
+- [Streetcode](https://esolangs.org/wiki/Streetcode) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/streetcode.py))
 - [WII2D](https://esolangs.org/wiki/WII2D) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/grid_based/wii2d.py))
 
 ### Stack-based Languages
@@ -184,7 +185,7 @@ Languages that don't fit into the above categories.
 <details>
 <!-- EXTRA:START -->
 
-<summary>Show all 14 implementations</summary>
+<summary>Show all 13 implementations</summary>
 
 Implementations written in languages other than Python, used as cross-check references in CI: most generators are round-trip verified against them.  The cross-checks share an exit-code convention mirroring the Python interpreters: 0 = success, 2 = malformed program, 3 = invalid runtime operation.
 
@@ -199,7 +200,6 @@ Implementations written in languages other than Python, used as cross-check refe
 ### Rust Implementations
 
 - [%^2^-1](https://esolangs.org/wiki/%25%5E2%5E-1)
-- [2dFish](https://esolangs.org/wiki/2dFish)
 - [3x](https://esolangs.org/wiki/3x)
 - [Basicfuck](https://esolangs.org/wiki/Basicfuck)
 - [bit~](https://esolangs.org/wiki/Bit~)
@@ -217,17 +217,22 @@ Implementations written in languages other than Python, used as cross-check refe
 <details>
 <!-- COMPILERS:START -->
 
-<summary>Show all 7 compilers</summary>
+<summary>Show all 12 compilers</summary>
 
 Compilers that translate esoteric languages to other target languages.
 
 ### RISC-V Assembly Compilers
 
+- [AddSubJump](https://esolangs.org/wiki/AddSubJump)
 - [BF-PDA](https://esolangs.org/wiki/BF-PDA)
 - [BFStack](https://esolangs.org/wiki/BFStack)
+- [Collatz Multiverse](https://esolangs.org/wiki/Collatz_Multiverse)
+- [Decleq](https://esolangs.org/wiki/Decleq)
+- [Forþ](https://esolangs.org/wiki/Forþ)
 - [Home Row](https://esolangs.org/wiki/Home_Row)
 - [Jaune](https://esolangs.org/wiki/Jaune)
 - [RAM0](https://esolangs.org/wiki/RAM0)
+- [S*bleq](https://esolangs.org/wiki/S*bleq)
 - [Suffolk](https://esolangs.org/wiki/Suffolk)
 - [Unsquare](https://esolangs.org/wiki/Unsquare)
 

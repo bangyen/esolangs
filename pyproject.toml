@@ -32,6 +32,7 @@ dependencies = [
 dev = [
     "pytest>=9.0.3",
     "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.8.0",
     "black==26.5.1",
     "click>=8.3.3",
     "pygments>=2.20.0",
@@ -158,6 +159,10 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
+    # Run in parallel across all CPUs: ~4x faster plain, ~2.7x faster with
+    # coverage (pytest-cov combines worker data into a single .coverage).
+    "-n",
+    "auto",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",

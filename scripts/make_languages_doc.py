@@ -28,10 +28,15 @@ _COMPILER_NAMES = {
     "unsquare": "Unsquare",
     "bf_pda": "BF-PDA",
     "ram0": "RAM0",
+    "addsubjump": "AddSubJump",
+    "collatz_multiverse": "Collatz Multiverse",
+    "sbleq": "S*bleq",
+    "decleq": "Decleq",
+    "forth": "Forþ",
 }
 
 _COMPILER_DIRS = {
-    "assembly": (ROOT / "src" / "esolangs" / "compilers" / "assembly", "*.py"),
+    "assembly": (ROOT / "src" / "esolangs" / "compilers", "*.py"),
 }
 
 
@@ -73,7 +78,6 @@ _EXTRA_DIRS = [
         ROOT / "extra" / "rust",
         "*.rs",
         {
-            "two_d_fish": "2dFish",
             "basicfuck": "Basicfuck",
             "bit_tilde": "bit~",
             "forth": "Forþ",

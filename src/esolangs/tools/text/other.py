@@ -32,7 +32,6 @@ __all__ = [
     "sbleq",
     "suptiftam",
     "three_x",
-    "two_d_fish",
     "unsquare",
     "ztoalc_l",
 ]
@@ -308,10 +307,13 @@ def laserfuck(text: str) -> str:
     # build the three frame rows; brackets also place mirror cells beside them
     grid = [" }}", "|o^", " _ "]
     depth = 0
+    entry_start = None  # column of the first "[" marker's "}  }" stub
 
     for c in frame:
         if c == "[":
             top_cell, bottom_cell, depth = "v }  }", "}#^)#^", depth + 1
+            if entry_start is None:
+                entry_start = len(grid[0]) + top_cell.index("}")
         elif c == "]":
             top_cell, bottom_cell = "#/)", " / "
         else:
@@ -325,11 +327,18 @@ def laserfuck(text: str) -> str:
         if c == "]":
             depth -= 1
 
-    # the "[" marker's stub is a placeholder; blank it out and let the loop
-    # track connect back into the frame at ``loop_col`` instead
-    entry_match = re.search("}  }v?", grid[0])
-    entry = entry_match[0] if entry_match else ""
-    grid[0] = grid[0].replace(entry, " " * len(entry), 1)
+    # the first "[" marker's stub is a placeholder; blank it out and let the
+    # loop track connect back into the frame at ``loop_col`` instead.  If a
+    # second "[" immediately follows, its own leading "v" is swallowed by
+    # the blank-out too (matching a bracket immediately after another one
+    # in the frame, which only happens when the outer loop's own body
+    # contains a nested, self-contained "[<]" that survives extraction).
+    if entry_start is not None:
+        entry_end = entry_start + len("}  }")
+        if grid[0][entry_end : entry_end + 1] == "v":
+            entry_end += 1
+        blank = " " * (entry_end - entry_start)
+        grid[0] = grid[0][:entry_start] + blank + grid[0][entry_end:]
 
     track_len = len(loop) + loop_col
     overhang = len(fallback) + loop_col - (len(grid[0]) - 2)
@@ -363,17 +372,17 @@ def laserfuck(text: str) -> str:
     # top row: output-mode byte, the loop start, then a turn down
     grid.insert(0, f"\xff}}{loop[:offset]}v")
 
-    # serpentine rows carry the rest of the loop body around the frame;
-    # tracks is always 2 here (narrower grids fall back to the linear program)
-    for row in range(tracks - 1):
-        part = loop[offset : offset + per_row]
-        offset += per_row
-        grid.insert(row + 1, "  v" + part[::-1].rjust(per_row) + "{")
-
-    # connect the last serpentine row back into the frame at the loop entry
-    connector = f" ^{' ' * (loop_col - 5)}{{  {{"
-    tracks -= 1
-    grid[tracks] = grid[tracks].replace("  v" + " " * loop_col, connector + "v ")
+    # the single serpentine row carries the rest of the loop body around the
+    # frame (the guard above rejects every input needing more than one, so
+    # ``tracks`` is always 2 here).  Its content right-justifies into
+    # ``per_row`` columns after a "  v" lead-in, but the first ``loop_col``
+    # columns of that padding are blank -- overwrite exactly those with the
+    # connector that ties the row's left end back into the frame at the
+    # loop entry, instead of leaving it as a fresh (unused) turn down.
+    part = loop[offset : offset + per_row]
+    row = "  v" + part[::-1].rjust(per_row) + "{"
+    connector = f" ^{' ' * (loop_col - 5)}{{  {{v "
+    grid.insert(1, connector + row[len(connector) :])
 
     return "\n".join(grid)
 
@@ -710,23 +719,6 @@ def dimensional(text: str) -> str:
     """
     _require_bytes(text, "Dimensional")
     return "".join(f"={ord(c):02x}." for c in text)
-
-
-def two_d_fish(text: str) -> str:
-    """Build a 2dFish program that outputs ``text``.
-
-    A single row heading right (``/``) carries an accumulator: ``i`` and ``d``
-    move it toward each character and ``a`` prints it as a byte.  ``@`` halts.
-    """
-    _require_bytes(text, "2dFish")
-    acc = 0
-    res = ["/"]
-    for c in text:
-        t = ord(c)
-        res.append("i" * (t - acc) if t >= acc else "d" * (acc - t))
-        res.append("a")
-        acc = t
-    return "".join(res) + "@"
 
 
 def _pct_path(byte: int) -> str:

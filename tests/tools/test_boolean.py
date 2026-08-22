@@ -2482,6 +2482,285 @@ class TestParameterizedBfpda:
             parameterized.bfpda("011")
 
 
+class TestParameterizedHomeRow:
+    """Input-by-substitution boolean generator for the no-input language Home Row."""
+
+    def run_home_row(self, prog: str) -> str:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.home_row import run
+
+        io_ = ScriptedIO("")
+        run(prog, io_)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean import parameterized
+
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: "a" if b else "",
+            lambda _i, b: "a" if not b else "",
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.home_row(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_home_row(self.instantiate(template, bits))
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_all_small_tables(self, n: int) -> None:
+        """Every table up to three inputs produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = parameterized.home_row(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_home_row(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_five_inputs_sample(self) -> None:
+        """A sample of dense five-input tables, past the removed n <= 2 cap."""
+        import random
+
+        from esolangs.tools.boolean import parameterized
+
+        n = 5
+        rng = random.Random(0)
+        for _ in range(5):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            template = parameterized.home_row(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_home_row(self.instantiate(template, bits))
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.home_row("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_each_input_embedded_once(self) -> None:
+        import re
+
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.home_row("0110")
+        assert template.count("{X0}") == 1
+        assert template.count("{X1}") == 1
+        assert "{C0}" not in template
+        assert "{C1}" not in template
+        assert len(re.findall(r"\{X\d+\}", template)) == 2
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.home_row("011")
+
+
+class TestParameterizedCOD:
+    """Input-by-substitution boolean generator for the no-input language COD."""
+
+    def run_cod(self, prog: str) -> str:
+        from esolangs.interpreters.grid_based.cod import run
+        from esolangs.interpreters.io import ScriptedIO
+
+        io_ = ScriptedIO("")
+        run(prog, io_, limit=500)
+        return io_.getvalue()
+
+    def instantiate(self, tpl: str, bits: list[int]) -> str:
+        from esolangs.tools.boolean import parameterized
+
+        # each {Xi} sets the cod's value to the bit: ')' for one, space
+        # for zero, read at the start of that input's '+' fork
+        return parameterized.instantiate(
+            tpl,
+            bits,
+            lambda _i, b: ")" if b else " ",
+            lambda _i, _b: " ",
+        )
+
+    @pytest.mark.parametrize(
+        "table",
+        [
+            "0000",  # constant zero
+            "1111",  # constant one
+            "0001",  # AND
+            "0111",  # OR
+            "0110",  # XOR
+            "1001",  # XNOR
+            "1110",  # NAND
+            "1000",  # NOR
+            "0100",  # A and not B
+            "1101",  # A or not B
+        ],
+    )
+    def test_truth_table(self, table: str) -> None:
+        """Every instantiated input produces the truth-table result."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod(table)
+        for combo in range(4):
+            bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
+            got = self.run_cod(self.instantiate(template, bits))
+            assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+
+    def test_all_two_input_tables(self) -> None:
+        """Every one of the sixteen two-input tables produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            template = parameterized.cod(table)
+            for combo in range(4):
+                bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
+                got = self.run_cod(self.instantiate(template, bits))
+                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+
+    def test_all_three_input_tables(self) -> None:
+        """Every one of the 256 three-input tables produces the right result.
+
+        Unlike the two-input template, whose forks always split directly
+        into leaves, the three-input template has forks whose zero-branch
+        is itself an internal node -- so a cod can rejoin an earlier
+        junction's row after a deeper fork, and that junction's own reset
+        gauntlet is what stops it from circulating forever instead of
+        halting.  This test is the only thing that would have caught that
+        class of bug (a "backflow" cod wandering junctions indefinitely),
+        since it is invisible from reading the grid.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table_int in range(256):
+            table = format(table_int, "08b")
+            template = parameterized.cod(table)
+            for combo in range(8):
+                bits = [(combo >> (3 - 1 - i)) & 1 for i in range(3)]
+                got = self.run_cod(self.instantiate(template, bits))
+                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+
+    def test_program_always_terminates_with_one_line(self) -> None:
+        """Every run prints exactly one line and leaves no cod alive."""
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod("0110")
+        for combo in range(4):
+            bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
+            code = self.instantiate(template, bits)
+            io_ = ScriptedIO("")
+            machine = _Machine(code, io_)
+            for _ in range(500):
+                if machine.halted:
+                    break
+                machine.step()
+            assert machine.halted
+            assert io_.getvalue().count("\n") == 1
+
+    def test_three_input_program_always_terminates_with_one_line(self) -> None:
+        """Every three-input run prints exactly one line and halts."""
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod("01101001")
+        for combo in range(8):
+            bits = [(combo >> (3 - 1 - i)) & 1 for i in range(3)]
+            code = self.instantiate(template, bits)
+            io_ = ScriptedIO("")
+            machine = _Machine(code, io_)
+            for _ in range(500):
+                if machine.halted:
+                    break
+                machine.step()
+            assert machine.halted
+            assert io_.getvalue().count("\n") == 1
+
+    def test_template_is_input_independent(self) -> None:
+        """The template has {Xi} placeholders, not hardcoded bits."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_each_input_is_embedded_once(self) -> None:
+        """The routing embeds each input exactly once, not per leaf."""
+        import re
+
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod("0110")
+        assert template.count("{X0}") == 1
+        assert template.count("{X1}") == 1
+        assert len(re.findall(r"\{X\d+\}", template)) == 2
+
+    def test_bad_table_rejected(self) -> None:
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            parameterized.cod("011")
+
+    def test_constant_table_rejected(self) -> None:
+        """n == 0 (a single-entry table, no inputs) is not supported."""
+        from esolangs.tools.boolean import parameterized
+
+        with pytest.raises(ValueError, match="n >= 1"):
+            parameterized.cod("0")
+
+    def test_four_input_tables(self) -> None:
+        """n == 4 (beyond the old n <= 3 cap) produces the right result."""
+        from esolangs.tools.boolean import parameterized
+
+        for table in ("1111111011111110", "0110100110010110", "1000000000000000"):
+            template = parameterized.cod(table)
+            for combo in range(16):
+                bits = [(combo >> (4 - 1 - i)) & 1 for i in range(4)]
+                got = self.run_cod(self.instantiate(template, bits))
+                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+
+    @pytest.mark.parametrize("table", ["10", "01", "00", "11"])
+    def test_one_input_truth_table(self, table: str) -> None:
+        """n == 1 has no fork of its own: a bare entry into the leaf cascade."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.cod(table)
+        assert "{X0}" in template
+        assert "{X1}" not in template
+        for x0 in range(2):
+            got = self.run_cod(self.instantiate(template, [x0]))
+            assert got == f"{table[x0]}\n", f"table {table} input {x0}"
+
+
 class TestEvalBoolean:
     """Input-by-substitution boolean generator for the no-input language Eval."""
 
@@ -3760,3 +4039,161 @@ class TestWII2D:
             for i in range(n):
                 v = _wii2d_apply(routes[i][bits[i]], v)
             assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
+
+    def test_search_falls_back_to_symmetric_search_when_the_ladder_fails(
+        self,
+    ) -> None:
+        """A symmetric table that the general ladder can't fit still resolves
+        through :func:`_wii2d_symmetric_search`, and a non-symmetric table
+        that the ladder can't fit gives up entirely.  The general ladder's
+        real failure only shows up at large arity (see
+        ``test_symmetric_search_reduces_to_popcount_decode``), so this stubs
+        :func:`_wii2d_search_start` to fail unconditionally and caps the
+        ladder's own op-string length at 4 (maxlen 5-6 are real but
+        expensive to enumerate and irrelevant here, since the stubbed
+        ``_wii2d_search_start`` ignores them anyway), isolating the fallback
+        decision in :func:`_wii2d_search` itself.  The fallback's own
+        :func:`_wii2d_symmetric_search` call still runs for real (uncapped),
+        so it must still succeed.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.parameterized import _wii2d_domain, _wii2d_search
+
+        def capped_domain(maxlen: int, cap: int) -> list[int]:
+            return _wii2d_domain(min(maxlen, 4), cap)
+
+        n = 4
+        symmetric_table = "".join(
+            "1" if bin(c).count("1") > n // 2 else "0" for c in range(2**n)
+        )
+        with (
+            patch.object(parameterized, "_wii2d_search_start", return_value=None),
+            patch.object(parameterized, "_wii2d_domain", side_effect=capped_domain),
+        ):
+            result = _wii2d_search(n, symmetric_table)
+        assert result is not None
+
+        non_symmetric_table = "0001001000110100"
+        with (
+            patch.object(parameterized, "_wii2d_search_start", return_value=None),
+            patch.object(parameterized, "_wii2d_domain", side_effect=capped_domain),
+        ):
+            result = _wii2d_search(n, non_symmetric_table)
+        assert result is None
+
+    def test_symmetric_search_deadline_stops_the_ladder(self) -> None:
+        """The per-``maxlen`` deadline check aborts the ladder early."""
+        from esolangs.tools.boolean.parameterized import _wii2d_symmetric_search
+
+        calls = [0.0, 100.0]
+
+        def fake_monotonic() -> float:
+            return calls.pop(0) if calls else 100.0
+
+        with patch("time.monotonic", side_effect=fake_monotonic):
+            result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
+        assert result is None
+
+    def test_symmetric_search_gives_up_after_the_full_ladder(self) -> None:
+        """No decode is found once every ``maxlen`` in the ladder is tried."""
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.parameterized import _wii2d_symmetric_search
+
+        with patch.object(parameterized, "_wii2d_sequences", return_value=[]):
+            result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
+        assert result is None
+
+    @staticmethod
+    def _build_search_start_args(maxlen: int, table: str):  # type: ignore[no-untyped-def]
+        """Build the ``(t, seqs, pre, index)`` args ``_wii2d_search_start`` needs."""
+        from esolangs.tools.boolean.parameterized import (
+            _wii2d_apply,
+            _wii2d_domain,
+            _wii2d_sequences,
+        )
+
+        domain = _wii2d_domain(maxlen, cap=10**6)
+        index = {v: i for i, v in enumerate(domain)}
+        seqs = _wii2d_sequences(maxlen, domain)
+        inv = []
+        for s in seqs:
+            m: dict[int, int] = {}
+            for v in domain:
+                y = _wii2d_apply(s, v)
+                m[y] = m.get(y, 0) | (1 << index[v])
+            inv.append(m)
+
+        def pre(sidx: int, targets: int) -> int:
+            out = 0
+            m = inv[sidx]
+            bits = targets
+            while bits:
+                low = bits & -bits
+                out |= m.get(domain[low.bit_length() - 1], 0)
+                bits ^= low
+            return out
+
+        t = [int(c) for c in table]
+        return t, seqs, pre, index
+
+    def test_search_start_timeout_returns_none(self) -> None:
+        """An already-expired deadline aborts the search immediately."""
+        import time
+
+        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+
+        n = 3
+        t, seqs, pre, index = self._build_search_start_args(2, "01101001")
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() - 1.0)
+        assert result is None
+
+    def test_search_start_clean_failure_returns_none(self) -> None:
+        """A deadline with plenty of time left can still fail cleanly (no
+        route pair fits every requirement), exercising the dead-end and
+        final-``None`` paths instead of the timeout path."""
+        import time
+
+        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+
+        n = 3
+        # maxlen=1 gives too small an op-string pool to realize XOR3
+        t, seqs, pre, index = self._build_search_start_args(1, "01101001")
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        assert result is None
+
+    def test_search_start_memoizes_repeated_subproblems(self) -> None:
+        """A junction's sub-search is memoized by its requirement set so a
+        repeated subproblem returns the cached result instead of re-solving."""
+        import time
+
+        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+
+        n = 4
+        table = "0000000000111101"
+        t, seqs, pre, index = self._build_search_start_args(2, table)
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        assert result is not None
+
+    def test_wii2d_raises_when_the_search_finds_no_route(self) -> None:
+        """``wii2d`` surfaces a search failure as a ``ValueError``."""
+        from esolangs.tools.boolean import parameterized
+
+        with (
+            patch.object(parameterized, "_wii2d_search", return_value=None),
+            pytest.raises(ValueError, match="no route"),
+        ):
+            parameterized.wii2d("0110")
+
+    def test_layout_embeds_a_nonzero_start_digit(self) -> None:
+        """A nonzero ``start`` writes an initial digit before the chain runs.
+
+        ``_wii2d_search`` happens not to need a nonzero start for the small
+        tables sampled elsewhere in this file, so this drives
+        :func:`_wii2d_layout` directly with one and confirms the produced
+        template actually runs correctly through the real interpreter.
+        """
+        from esolangs.tools.boolean.parameterized import _wii2d_layout
+
+        template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
+        for bit, expected in ((0, "5"), (1, "6")):
+            assert self.run_chain(template, [bit]) == expected

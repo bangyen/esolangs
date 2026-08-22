@@ -16,11 +16,9 @@ predictable across languages:
 
 - **Empty programs are a no-op by default.**  An empty (or blank-only)
   program produces no output, unless the language structurally requires
-  content to start — an initial direction (2dFish), a Collatz seed line
-  (ZTOALC L), or a program grid (Circlefuck, BF-PDA, Suffolk, Dig, Back,
-  Clockwise) — in which case it is rejected with a clear `ValueError`
-  (usually ``"... cannot be empty"``, or 2dFish's
-  ``"program does not set an initial direction"``).
+  content to start — a Collatz seed line (ZTOALC L), or a program grid
+  (Circlefuck, BF-PDA, Suffolk, Dig, Back, Clockwise) — in which case it is
+  rejected with a clear `ValueError` (usually ``"... cannot be empty"``).
 - **Exhausted input raises :class:`EOFError` by default.**  A program that
   reads past the end of `stdin` is almost always a bug, and the loud error
   surfaces it (and lets `,[.,]`-style cat loops terminate).  Languages whose
@@ -97,7 +95,7 @@ per-character encoding can be meaningfully shortened:
 
 | Language | Why it cannot compute a truth table |
 | --- | --- |
-| 123 | Single data byte, every read overwrites it; the `3`-jump is nearest-match, not a branch — only one-input functions via runtime `,` reads. A parameterized generator (embedding each input in the program at compile time, as WII2D's does) has not been assessed. |
+| 123 | The `3`-jump is nearest-match, not bracket-matched, so TRUE always re-runs the segment already executing rather than reaching an independent branch target — and `1` flips the bit under the pointer before moving, so navigating from the post-read position (0) to the write position (-2) corrupts the byte's MSB en route. Only the four one-input functions are reachable via runtime `,` reads (too trivial to keep as a generator); a structured search found no two-input function under either bit-encoding. A parameterized generator (embedding each input in the program at compile time, as WII2D's does) has not been assessed. Full argument in `docs/walls.md`. |
 | %^2^-1 | Only control flow is `t` (rewind on a nonzero accumulator); a whole-program while loop that cannot count passes. |
 | SLOW ACV MAMMALIAN | `ACCEPT` forces `ptr == 0` to consume a bit, but routing needs `SPRINT` to move the pointer away — reading and routing can't coexist; the constant source (`SEED` from an emptied array) accumulates rather than resets; `DIGEST` only recovers a bit as part of a sum. An exhaustive search over the branch-free tails reaches only 0-preserving two-input tables — the same class already removed for Minifuck as too weak to keep. Full argument in `docs/walls.md`. |
 
@@ -110,13 +108,15 @@ per-character encoding can be meaningfully shortened:
 | 6-5 | `n <= 5` exact; dense large-`T` tables (e.g. AND-6) rejected past that | Genuine wall: the decision tree is total through `n == 5` (35 branch labels); the arithmetic fallback needs the table (or its complement) as a single integer, so a dense table with no cheap complement needs an unbuildable ~O(2**(2**n))-character setup. |
 | ZTOALC L | `n <= 3` exact; popcount-symmetric tables lifted further (e.g. XOR4 at `n == 4`); dense non-symmetric `n == 4` rejected | Genuine wall: every Collatz trajectory converges to the `16, 8, 4, 2, 1` tail, so a dense non-symmetric tree has leaf collisions past `n == 3`; symmetric tables fall back to a branch-free linear program instead. |
 | WII2D | `n <= 4` exact (exhaustive through three, sampled dense at four); symmetric tables of any arity via closed forms; dense non-symmetric past `n == 5` rejected | Genuine wall: the single-embedding chain's branch op strings are bounded, so the counting bound rules out representing every table once `n` is large; the search raises for dense non-symmetric tables past `n == 5`. |
-| 123 | one input only | Structural wall: single data byte, every read overwrites it. |
 | Factor | program-size cap, not `n`-driven: sparse tables (e.g. constant-0/1) stay under the cap at any tested `n`, dense tables (e.g. XOR4, AND4 at `n == 4`) don't | Liftable by host config: the encoded integer's decimal length is checked against `sys.get_int_max_str_digits()` (CPython's int-to-string DoS guard, default 4300 digits) before rendering — the Factor *interpreter* parses its program the same way, so a caller who raises the process-wide limit gets both the generator and the interpreter working past it. |
 
 Removed for being trivial: the boolean generators for Home Row (`n <= 2`) and
 Minifuck (`n <= 3`, 0-preserving two-input only) were dropped — their caps
 left them able to express only a small fraction of the two-input boolean
 functions.  Their languages and text generators remain; see `docs/roadmap.md`.
+Home Row's generator was later rebuilt with a closed-form construction
+(binary-pack the inputs into an accumulator, then walk a linear equality
+chain) that has no `n` cap at all — see `docs/walls.md`.
 
 The parameterized no-input generators embed every input exactly once rather
 than re-embedding a bit at multiple decision nodes, mirroring how an
@@ -137,14 +137,17 @@ verdict is in the commit history.  ``(removed)`` marks languages whose
 interpreter, generator, and tests were deleted from the repo.
 
 - **2 Bits 1 Byte** (removed): joke; single-byte program, no text or boolean generator, externally implemented.
+- **2dFish** (removed): its `(...)*` capture-and-print makes its true generator floor a literal-embed (not the shipped delta-encoder, which only disguised this), and its boolean generator was separately walled as affine-only with no total once-embedding construction; both together match the same criterion The Temporary Stack was removed under.
 - **Aaargh++**: 4D work-in-progress with a partial spec.
 - **Albabet** (removed): straight-line two-register accumulator; no conditional at all (only reset/increment/copy/multiply/print), so no boolean generator.
+- **ALT-4**: stack-based concurrent language with no input or output commands at all; its truth-machine bakes input into the program.
 - **ASCII art** (removed): brainfuck with an art alphabet; a trivial reskin.
 - **Binary ///**: stub with no usable specification.
 - **Bitwise Cyclic Teast**: work-in-progress, interpreter still in development.
 - **Brainpocalypse** (removed): no input; invented dump and a one-bit halt-vs-loop wall; externally implemented.
 - **Chainlang**: AI-generated spec its own author calls unfinished.
 - **Conveyor**: no input command, stderr-only output.
+- **Cortex language 3A**: its 8 real primitives (`&`/`$`/`*`/`~`/`'`/`:`/`[`/`]`) are a clean brainfuck-like tape machine, but the language's `;`-prefixed commands are not composable — the wiki assigns them by table lookup to whole canned "popular problem" programs (`;&` is literally specified to *be* Hello World, `;'` a truth-machine, `;$` a full brainfuck interpreter reading its program from user input, `;[` a Mandelbrot set, etc.), so a faithful interpreter would mean hardcoding ~16 opaque special cases rather than a general computational model; treating `;` as a no-op instead contradicts the spec's own worked examples (`;&` would reduce to a bare `&`, not a working Hello World).
 - **Crement**: self-modifying, no I/O; no input to branch on.
 - **Dotlang** (removed): its boolean generator was the only one that could
   not embed each input exactly once — Dotlang has no storage, value test, or
@@ -157,10 +160,14 @@ interpreter, generator, and tests were deleted from the repo.
   `docs/walls.md` ledger entry.
 - **DSDLAI** (removed): trivial Dig reskin with a random death chance; non-deterministic.
 - **Earfuck**: trivial brainfuck reskin (notes for instructions).
+- **Eso2D**, **Jumplang**, **brainfunc**, **Minimal operation language**, **Yaren**, **2KWLang**: wiki-categorized Implemented with documented external interpreters; not a gap.
 - **EXCON** (removed): straight-line 8-cell bit pool; no conditional at all (only reset/flip/pointer/print), so no boolean generator.
 - **Fourfuck**: incomplete, a stub with a couple of commands.
 - **Gravity**: non-computable evolution; nothing verifiable.
+- **HaltJS**, **MangularJS**: JavaScript subsets; a faithful interpreter is a whole JS engine, not a file-based char/line interpreter.
 - **Huf** (removed): straight-line two-register accumulator; no conditional at all (only reset/increment/multiply/print), so no boolean generator.
+- **Indent**: no input at all, so no boolean generator.
+- **Jumpmin**: Jumplang's minimization removes I/O entirely, so no boolean generator.
 - **Kak** (removed): no input; only the tape bit-string (an invented dump); externally implemented.
 - **Keys** (removed): a two-line equality comparison; a gadget, not a language model.
 - **Lightlang** (removed): boolean capability caps at the AND/OR class; only a single bit is ever printed.
@@ -169,17 +176,26 @@ interpreter, generator, and tests were deleted from the repo.
 - **N Refine**: probabilistic self-rewriting OISC with no I/O; already implemented elsewhere.
 - **Not Python**, **2001: An Esolang Odyssey**, **Stu**, **Bias**, **Writeover**: joke or vaguely specified, no usable spec or I/O.
 - **Number Seventy-Four** (removed): string-rewriting with no input; output alphabet `0`/`1`/`H`.
-- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Streetcode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
+- **Objects In Mirror Are Heavier Than They Appear**, **OpenStreetCode**, **Unary Filesystem**, **Phile**: file/OS-based, no portable file I/O.
+- **PASM**: output is a 16x16 pixel screen; no char/line I/O.
+- **PlusOrMinus**, **PlusIntMinus**: output-only accumulator with no input or conditional; no boolean generator.
 - **Procedure**: only `the sum of ...` arithmetic is defined, so a faithful interpreter would have to invent the rest. Revisit if the wiki or Pure defines the operators.
+- **Queuenanimous**: no I/O at all; externally implemented.
+- **Regimin**: no I/O at all.
 - **something positive**: explicitly uncomputable.
+- **Stackint**: output is an optional interpreter dump, and input is a single number per run.
 - **State and Main**: one `main` argument, no output, no conditional; a boolean generator could reach at most one input.
 - **Stun Step** (removed): no input; invented dump and a one-bit halt-vs-loop wall; sole implementation removed anyway.
 - **The Temporary Stack** (removed): its text generator is a literal-embed (the text is pushed as a `*` string literal), and its boolean generator was walled — the auto-drain's `front - 1` output can't be `'0'`/`'1'` and there is no input-dependent branch. Under the tightened generator-story criterion (a literal-embed text generator needs a boolean generator), that made it inadmissible; the full wall argument is in `docs/walls.md`.
 - **Trash** (removed): advance-to-next-prime gadget; can never print `1`.
+- **Uack**: total; no output.
 - **Vandevelo**: input-only, no output at all.
 - **Varigen**: explicitly "uncomputable" joke language.
 - **Welcome To...**: work-in-progress.
+- **XENBLN**: 256 commands, most unassigned, with the command list split across a subpage; not a complete or stable spec.
 - **Your Time Is Up**: random rule choice, no I/O; nondeterministic.
+- **Zfuck**: I/O is the initial/final tape state, not char/line I/O.
+- **｛｝**: family of eight levels; levels 1-2 are uncomputable, levels 3-7 have no I/O, and the only I/O-capable level (8) is a literal brainfuck reskin.
 
 ## Cross-check removals
 
@@ -214,10 +230,10 @@ rewrite:
   ``dest = dest ± op`` by a fixed operand.  A general total transpiler is
   therefore not expressible; the partial classes would be silent-droppers.
   Documented as research-level future work in `docs/roadmap.md`.
-- **2D-to-2D.**  No two 2D languages share a model: 2dFish is a deadfish
-  accumulator, Dimensional a pointer-hierarchy tape, LaserFuck mirror-driven
-  control, ABCDrection a Boolfuck bit tape with a queue.  Even the two
-  bf-tape ones (Dimensional, LaserFuck) differ in control flow.
+- **2D-to-2D.**  No two 2D languages share a model: Dimensional is a
+  pointer-hierarchy tape, LaserFuck mirror-driven control, ABCDrection a
+  Boolfuck bit tape with a queue.  Even the two bf-tape ones (Dimensional,
+  LaserFuck) differ in control flow.
 - **Dropped transpilers.**  `nocomment_to_bf` silently dropped NoComment's
   stack/jump/pointer commands (a silent mistranslation); the `6-5 → bf` and
   `Circlefuck → bf` decoders only reversed the forward transpilers' canonical

@@ -2,8 +2,8 @@
 
 Two kinds of round-trip run esolang programs as RISC-V ELF under unicorn:
 
-1. each assembly compiler in ``src/esolangs/compilers/assembly/`` translates
-   an esolang program to RISC-V assembly, which is compiled and run;
+1. each assembly compiler in ``src/esolangs/compilers/`` translates an
+   esolang program to RISC-V assembly, which is compiled and run;
 2. text generators whose interpreters live in ``extra/assembly/`` feed the
    generated program to the cross-check machine code;
 3. fixed programs whose expected output pins the cross-check interpreters
@@ -78,12 +78,53 @@ for text in ["Hi", "Hello, World!", "esolangs!"]:
     COMPILER_CASES.append(("suffolk", "suffolk", gen.suffolk(text), text))
     COMPILER_CASES.append(("unsquare", "unsquare", gen.unsquare(text), text))
     COMPILER_CASES.append(("home_row", "home_row", gen.home_row(text), text))
+    COMPILER_CASES.append(("addsubjump", "addsubjump", gen.addsubjump(text), text))
+    COMPILER_CASES.append(
+        ("collatz_multiverse", "collatz_multiverse", gen.collatz_multiverse(text), text)
+    )
+    COMPILER_CASES.append(("sbleq", "sbleq", gen.sbleq(text), text))
+    COMPILER_CASES.append(("decleq", "decleq", gen.decleq(text), text))
 COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
 COMPILER_CASES.append(("bf_pda", "bf_pda", "<.>@.", "01"))
 COMPILER_CASES.append(("ram0", "ram0", "A A A", "z: 3\nn: 0\nram: {}\n"))
 COMPILER_CASES.append(("ram0", "ram0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}\n"))
+COMPILER_CASES.append(("forth", "forth", "65.", "\x05"))
+COMPILER_CASES.append(("forth", "forth", "5:..", "\x05\x05"))
+COMPILER_CASES.append(("forth", "forth", "28*.", "\x10"))
+COMPILER_CASES.append(("forth", "forth", "09/~.", "\xff"))
+COMPILER_CASES.append(("forth", "forth", "1(F4*5+.)", "A"))
+COMPILER_CASES.append(("forth", "forth", "0F7*0+F4*C+[.]", "Hi"))
+COMPILER_CASES.append(("forth", "forth", "1{F4*5+.}1;", "A"))
+COMPILER_CASES.append(("forth", "forth", "1{/}1;", ""))
+_CM_CONSTANTS = "\n".join(
+    [
+        "one = negativeOne x + negativeOne, NOT PRINT.",
+        "one = negativeOne x + zero, NOT PRINT.",
+        "two = negativeOne x + negativeOne, NOT PRINT.",
+        "two = negativeOne x + one, NOT PRINT.",
+        "three = negativeOne x + one, NOT PRINT.",
+        "three = one x + two, NOT PRINT.",
+    ]
+)
+COMPILER_CASES.append(
+    (
+        "collatz_multiverse",
+        "collatz_multiverse",
+        _CM_CONSTANTS
+        + "\n".join(
+            [
+                "",
+                "lineNumber = one x + two, NOT PRINT.",
+                "x = negativeOne x + zero, DO PRINT.",
+                "arr[negativeOne] = negativeOne x + one, NOT PRINT.",
+                "x = negativeOne x + arr[negativeOne], DO PRINT.",
+            ]
+        ),
+        "\x01",
+    )
+)
 
 
 def main() -> int:
@@ -94,22 +135,24 @@ def main() -> int:
             binary = assemble_source(f.read())
         for text in REFERENCE_TEXTS:
             out, _ = run_elf(binary, generator(text).encode())
-            ok = out == text.encode()
+            ok = out == text.encode("latin-1")
             failures += not ok
             print(f"{name} {text!r}: {'ok' if ok else 'FAIL'} -> {out!r}")
     for name, path, program, expected in REFERENCE_CASES:
         with open(path) as f:
             binary = assemble_source(f.read())
         out, code = run_elf(binary, program.encode())
-        ok = out == expected.encode() and code == 0
+        ok = out == expected.encode("latin-1") and code == 0
         failures += not ok
         print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r} (exit {code})")
     for name, module, source, expected in COMPILER_CASES:
-        comp = importlib.import_module(f"esolangs.compilers.assembly.{module}").comp
+        comp = importlib.import_module(f"esolangs.compilers.{module}").comp
         args = (source, 1) if module == "suffolk" else (source,)
         binary = assemble_source(comp(*args))
         out, _ = run_elf(binary, b"")
-        ok = out == expected.encode()
+        # latin-1: one byte per expected char; UTF-8 would expand 0x80+ to
+        # multi-byte and never match a single-byte machine-code output.
+        ok = out == expected.encode("latin-1")
         failures += not ok
         print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
     return 1 if failures else 0

@@ -1,5 +1,7 @@
 #!/bin/sh
-# Pre-push hook: run scripts/check_all.sh before allowing a push.  Enable with:
+# Pre-push hook: run scripts/check_all.sh before allowing a push.  Enabled
+# automatically by `just install-dev` (git config core.hooksPath .githooks),
+# or manually with:
 #
 #     git config core.hooksPath .githooks
 #

@@ -14,13 +14,12 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | --- | :---: | :---: | :---: | :---: | :---: | :---: |
 | %^2^-1 | yes | yes | yes |  |  | hello |
 | 123 | yes | yes |  |  |  | hello |
-| 2dFish | yes | yes | yes |  |  | hello |
 | 3D Brainfuck | yes | yes |  | yes |  | hello |
 | 3x | yes | yes | yes | yes |  | hello |
 | 6-5 | yes | yes |  | yes |  | hello cat |
 | A Painter Ant |  | yes |  | yes |  |  |
 | ABCDirection |  | yes |  | yes |  |  |
-| AddSubJump | yes | yes |  | yes |  | hello |
+| AddSubJump | yes | yes |  | yes | yes | hello |
 | ArrowQueue |  | yes |  | yes |  | boolean |
 | BF-PDA |  | yes | yes | yes | yes |  |
 | BFStack | yes | yes |  | yes | yes | hello |
@@ -30,19 +29,20 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Between | yes | yes |  | yes |  | hello cat truth-machine |
 | Bitdeque |  | yes |  | yes |  |  |
 | BrainIf | yes | yes |  | yes |  | hello truth-machine |
+| COD |  | yes |  | yes |  | boolean |
 | Circlefuck | yes | yes |  | yes |  | hello truth-machine |
 | Clockwise | yes | yes |  | yes |  | hello |
-| Collatz Multiverse | yes | yes |  | yes |  | hello |
+| Collatz Multiverse | yes | yes |  | yes | yes | hello |
 | Container | yes | yes |  | yes |  | hello |
-| Decleq | yes | yes |  | yes |  | hello |
+| Decleq | yes | yes |  | yes | yes | hello |
 | Dig | yes | yes |  | yes |  | hello |
 | Dimensional | yes | yes |  | yes |  | hello |
 | Eval | yes | yes |  | yes |  | hello boolean |
 | Factor | yes | yes |  | yes |  | hello truth-machine |
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
-| Forþ | yes | yes | yes | yes |  | hello |
+| Forþ | yes | yes | yes | yes | yes | hello |
 | Grapheme |  | yes |  | yes |  |  |
-| Home Row | yes | yes |  |  | yes | hello |
+| Home Row | yes | yes |  | yes | yes | hello |
 | Jaune |  | yes |  | yes | yes |  |
 | Lamfunc |  | yes |  | yes |  |  |
 | LaserFuck | yes | yes | yes | yes |  | hello |
@@ -58,9 +58,10 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Qoibl | yes | yes |  | yes |  | hello |
 | RAM0 |  | yes | yes | yes | yes |  |
 | ROTfuck | yes | yes |  | yes |  | hello |
-| S*bleq | yes | yes |  | yes |  | hello |
+| S*bleq | yes | yes |  | yes | yes | hello |
 | SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
 | Sophie | yes | yes |  | yes |  | hello |
+| Streetcode |  | yes |  |  |  |  |
 | Suffolk | yes | yes |  | yes | yes | hello |
 | Suptiftam | yes | yes |  | yes |  | hello cat truth-machine |
 | Taglate | yes | yes |  | yes |  | hello |

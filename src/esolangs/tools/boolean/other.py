@@ -1263,15 +1263,23 @@ def abcdirection(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
     """
     n = _validate_truth_table(truth_table)
-    width = 100 + 60 * (2**n - 1) + 60
-    sp = 36
-    center = 100 + 2 ** (n - 1) * sp
-    root_x = center
-    tree_bottom = 709 + 8 * (n - 1)
-    tree_max = center + int(round(((2**n - 1) + 0.5) - 2 ** (n - 1)) * sp)
-    serp_col = tree_max + 40
-    escape_rows = [tree_bottom + 8 + 52 * i for i in range(2**n)]
-    sink_cols = [serp_col + 30 + 8 * i for i in range(2**n)]
+    leaves = 2**n
+    sp = 36  # column spacing between adjacent tree nodes at the same depth
+    margin = 100  # blank border reserved on the left/right of the tree
+    root_row = 709  # row the routed beam reaches before entering the tree
+
+    width = margin + 60 * (leaves - 1) + 60
+    root_x = margin + leaves // 2 * sp
+    tree_bottom = root_row + 8 * (n - 1)  # deepest row the tree itself reaches
+    # The tree's rightmost leaf sits (leaves - 1 - leaves // 2 + 0.5) node
+    # slots to the right of root_x; that offset is always a half-integer
+    # (leaves is a power of two), so round() picks the nearest whole slot
+    # deterministically rather than needing a floor/ceil choice here.
+    tree_right_offset = round((leaves - 1 + 0.5) - leaves // 2)
+    tree_max = root_x + tree_right_offset * sp
+    serp_col = tree_max + 40  # serpentine output track, right of the tree
+    escape_rows = [tree_bottom + 8 + 52 * i for i in range(leaves)]
+    sink_cols = [serp_col + 30 + 8 * i for i in range(leaves)]
     height = escape_rows[-1] + 60 + 8 * n + 150
     b = _Builder(width, height)
     ex, ey, eh = _add_staircase(b, n)
@@ -1280,11 +1288,11 @@ def abcdirection(truth_table: str) -> str:
     x, y, h = _turn(b, x, y, h, _L)
     x, y = _travel(b, x, y, _L, max(0, x - 2))
     x, y, h = _turn(b, x, y, h, _U)
-    x, y = _travel(b, x, y, _U, max(0, y - 600))
+    x, y = _travel(b, x, y, _U, max(0, y - 600))  # clear the tree's own rows
     x, y, h = _turn(b, x, y, h, _R)
     x, y = _travel(b, x, y, _R, root_x + 1 - x)
     x, y, h = _turn(b, x, y, h, _D)
-    x, y = _travel(b, x, y, _D, max(0, 709 - y))
+    x, y = _travel(b, x, y, _D, max(0, root_row - y))
     x, y, h = _turn(b, x, y, h, _L)
     leaf_params = _LeafParams(
         escape_rows=escape_rows,
@@ -1292,7 +1300,7 @@ def abcdirection(truth_table: str) -> str:
         serp_col=serp_col,
         sp=sp,
     )
-    _build_node(b, n, truth_table, 0, 0, root_x, 709, 0, (), leaf_params)
+    _build_node(b, n, truth_table, 0, 0, root_x, root_row, 0, (), leaf_params)
     return "\n".join(b.grid())
 
 
