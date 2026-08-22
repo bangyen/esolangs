@@ -138,28 +138,28 @@ def _rotate(d: tuple[int, int], heading: tuple[int, int]) -> tuple[int, int]:
 _OPS: dict[str, list[tuple[tuple[int, int], int]]] = {
     ">": [
         (_FORWARD, 2),
-        (_horiz_right(_FORWARD), 1),
-        (_diag_left(_FORWARD), 1),
+        (_diag_right(_FORWARD), 1),
+        (_horiz_left(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "<": [
         (_FORWARD, 2),
-        (_horiz_left(_FORWARD), 1),
-        (_diag_right(_FORWARD), 1),
+        (_diag_left(_FORWARD), 1),
+        (_horiz_right(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "i": [
         (_FORWARD, 2),
-        (_diag_left(_FORWARD), 1),
-        (_horiz_right(_FORWARD), 2),
-        (_diag_left(_FORWARD), 1),
+        (_diag_right(_FORWARD), 1),
+        (_horiz_left(_FORWARD), 2),
+        (_diag_right(_FORWARD), 1),
         (_FORWARD, 2),
     ],
     "o": [
         (_FORWARD, 2),
-        (_diag_right(_FORWARD), 1),
-        (_horiz_left(_FORWARD), 2),
-        (_diag_right(_FORWARD), 1),
+        (_horiz_left(_FORWARD), 1),
+        (_diag_right(_FORWARD), 2),
+        (_horiz_left(_FORWARD), 1),
         (_FORWARD, 2),
     ],
 }

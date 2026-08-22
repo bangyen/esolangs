@@ -25,17 +25,34 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
   near-complete pixel accounting (verified via `verify.py`'s XOR round-trip,
   now also run automatically inside `extract()` itself).
 - **Opcode classification**: `extract.py`'s `classify_ops` identifies which
-  instruction produced each kink in a walked path, working purely off
-  direction-run signatures relative to the heading in effect at each kink
-  (heading-independent, confirmed against rotated-heading synthetic paths) --
-  `+`/`-` also recover their repeat count from the merged diagonal's unit
-  length.  Verified against every opcode individually, several mixed/
-  repeated-opcode sequences, and both directions of `+`/`-`/`>`/`<`/`i`/`o`,
-  all through `render.py`'s own generated images.  Only works against
-  `render.py`-generated geometry (fixed `_UNIT`-grid steps) -- correctly
-  raises rather than misclassifying when run against the wiki's own
-  `addition.png`/`multiplication.png` fixtures, which are hand-drawn curves
-  at a different, non-`_UNIT` scale with no fixed kink template to match.
+  instruction produced each kink in a walked path, matching
+  `(relative_turn, unit_length)`-run signatures against a *dynamic* heading
+  that updates at ordinary corners rather than staying fixed at the path's
+  own start (needed for branch arms, whose first real opcode is often
+  preceded by a corner turn that isn't itself part of any kink -- e.g. a
+  T-branch arm that turns again onto a new heading before its first
+  opcode).  `+`/`-` recover their repeat count from the merged diagonal's
+  unit length (`Lineanim6.png`'s `+++` confirms the rule).  Verified two
+  ways:
+  - Every opcode individually, several mixed/repeated-opcode sequences, and
+    back-to-back repeats of the same non-mergeable opcode, all through
+    `render.py`'s own generated images (exact round-trip match).
+  - Against the wiki's own hand-drawn `addition.png`/`multiplication.png`
+    fixtures, with several individual branch arms hand-decoded by a human
+    reading the actual drawing and compared pixel-for-pixel against
+    `classify_ops`'s output -- exact match once two real bugs this
+    cross-check surfaced were fixed: `_OPS["o"]`'s middle diagonal leg was
+    1 unit short (measured against `Lineanim11.png` in isolation, where the
+    arrowhead obscures its true length), and a walked path that gets cut
+    short entering a merge into another, unrelated stroke (confirmed by
+    hand against two different `multiplication.png` branch arms) was
+    misread as ending with one extra spurious `+`/`-` call -- now dropped
+    via a check that a real opcode's kink is never the walked path's
+    literal last run with nothing following it.
+  - Not yet re-verified: whether `_UNIT_TOLERANCE`'s rounding tolerance and
+    the noise-run-skipping logic hold up against a *third* fixture/program
+    beyond these two, or against non-`render.py` hand-drawn input at a
+    substantially different scale than the wiki's own ~20px unit.
 - **Robustness, each confirmed against real or adversarial synthetic
   input, not just reasoned about**:
   - JPEG recompression: bit-identical results down to quality 34; a sharp
@@ -81,6 +98,27 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
   doesn't round-trip. Not investigated further here since it's orthogonal
   to opcode classification, which only needed *some* branch-free rendered
   path to verify against.
+- Newly understood (via hand-decoding real fixture arms while verifying
+  `classify_ops`), not yet acted on anywhere except that one `classify_ops`
+  check: the wiki's own drawings use a "cursor merges into another line"
+  convention (matching Lineanim3.4/11.1/11.2's documented rule) where two
+  independently-drawn strokes can physically touch with no separating
+  background at all -- confirmed on two `multiplication.png` branch arms,
+  each ending at a plain corner turn that walks straight onto a different
+  stroke's ink rather than a real halt. `_walk`/`_walk_tree`'s own branch-vs-
+  corner logic (`_is_branch_pivot`) doesn't detect this as anything special
+  -- the walker just keeps walking onto the other stroke's line, since
+  there is no region-adjacency signal marking a merge apart from an
+  ordinary corner *at the pixel the walker arrives at* (the merge only
+  becomes a junction one step later, after a forced turn with no
+  straight-ahead ink).  `classify_ops` works around this at its own layer
+  (dropping a trailing call that turns out to be the path's literal last
+  run), but `_walk_tree` itself still doesn't know it crossed into
+  unrelated ink -- e.g. `flatten()`'s returned path still includes those
+  extra pixels, and nothing stops a future caller from walking *further*
+  along the merged-into stroke by mistake if `_walk`'s greedy continuation
+  ever had a reason to keep going past where these fixtures happened to
+  stop.
 - Real (camera/scan) photographs with genuine anti-aliasing, as opposed to
   the clean nearest-neighbor-scaled synthetic input `normalize_scale` was
   tested against. Anti-aliased edges could make the exact-integer scale
