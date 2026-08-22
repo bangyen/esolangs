@@ -646,6 +646,55 @@ class TestStreetcode:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
 
+def run_flowchart(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.grid_based.flowchart import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
+class TestFlowchart:
+    """The Flowchart boolean generator (works for arbitrary n)."""
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0111", 2),  # OR
+            ("0110", 2),  # XOR
+            ("1110", 2),  # NAND
+            ("01101001", 3),  # XOR3
+            ("11111110", 3),  # NAND3
+            ("0110100110010110", 4),  # XOR4
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.flowchart(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_flowchart(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_tree_depth_matches_input_count(self) -> None:
+        """One ``/ /`` read node sits on each path from entry to a leaf."""
+        program = boolean.flowchart("0110100110010110")
+        assert program.count("< >") == 15  # 2**4 - 1 internal nodes
+        assert program.count("(( ))") == 16  # 2**4 leaves
+
+    def test_rejects_a_malformed_table(self) -> None:
+        """A table whose length is not a power of two is rejected."""
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.flowchart("011")
+
+
 def run_sophie(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.sophie import run
 
