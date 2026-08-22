@@ -385,6 +385,12 @@ LANGUAGES: dict[str, Language] = {
         "register_based.sophie",
         id="sophie",
     ),
+    "Streetcode": Language(
+        "Streetcode",
+        id="streetcode",
+        interpreter="grid_based.streetcode",
+        split=True,
+    ),
     "Suffolk": Language(
         "Suffolk",
         _generate.suffolk,
