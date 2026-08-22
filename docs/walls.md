@@ -301,7 +301,7 @@ linear scan rather than a genuine representation limit.  See
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.  **Resolved by the
-  n-embedding chain** (:func:`esolangs.tools.boolean.parameterized.wii2d`):
+  n-embedding chain** (:func:`esolangs.tools.boolean.wii2d.wii2d`):
   the branches are routing, not value tests, and the *accumulator arithmetic*
   decodes the input.  Each input is embedded exactly once as a junction whose
   two branches are op strings that transform the accumulator before re-merging
@@ -364,7 +364,7 @@ continue east) or `v` (bit 1, detour onto a lower row and remerge ahead),
 branch op strings from the fish alphabet `i d s` (increment, decrement,
 square) transforming the accumulator, and the BFS behavior-dedup /
 backward requirement-set search
-(:func:`esolangs.tools.boolean.parameterized`'s `_wii2d_sequences` /
+(:func:`esolangs.tools.boolean.wii2d`'s `_wii2d_sequences` /
 `_wii2d_domain` / `_wii2d_search_start`) is op-agnostic — but the chain is
 **strictly weaker** than WII2D's.
 
@@ -468,7 +468,7 @@ languages reach multi-input threshold functions:
 ## A Painter Ant boolean generator (general; any n)
 
 A Painter Ant has no I/O, so its boolean generator (in
-:mod:`esolangs.tools.boolean.parameterized.a_painter_ant`) uses the parameterized
+:mod:`esolangs.tools.boolean.a_painter_ant`) uses the parameterized
 convention, read by a semantic grid model (the interpreter's own output is
 the visited-cell bounding box, which carries no coordinates).  The answer
 is the **colour of the cell the ant lands on** at the end of a cycle (white

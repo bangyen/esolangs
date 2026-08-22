@@ -85,7 +85,7 @@ case (see below).
 ## The n = 2 construction (shipped)
 
 The shipped generator is
-`esolangs.tools.boolean.parameterized.a_painter_ant`.  It builds a template
+`esolangs.tools.boolean.a_painter_ant.a_painter_ant`.  It builds a template
 for any arity; for n == 2 (XOR):
 
 ```
