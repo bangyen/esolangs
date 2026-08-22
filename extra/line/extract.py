@@ -64,6 +64,24 @@ except ImportError as _exc:  # pragma: no cover - environment guard
         "Extracting Line programs requires scikit-image: pip install scikit-image"
     ) from _exc
 
+# Dependency-reduction notes, if these 4 undeclared deps (Pillow, numpy, scipy,
+# scikit-image) are ever worth trimming: scikit-image is easiest to drop --
+# skeletonize() here only feeds a scalar length into detect_scale()'s
+# ink/skeleton-length ratio, and a pure-numpy repeated-erosion step-count
+# (erode with padded[1:-1,1:-1] & padded[:-2,1:-1] & ... until the shape
+# vanishes) reproduces the same scale detection, confirmed against both
+# fixtures at 1x-4x. scipy.ndimage's generate_binary_structure/center_of_mass
+# /ndimage.sum are one-liners with np.array(...)/nonzero().mean()/bincount;
+# ndimage.label is a ~20-line BFS (this file already has two similar BFS
+# loops) confirmed to match scipy exactly on real fixtures.
+# distance_transform_edt is the one hard piece to replace -- load-bearing in
+# find_cursor, and a brute-force replacement, while exactly correct, is
+# O(ink x background) and took 2.6s on a 500x500 fixture vs scipy's near-
+# instant separable algorithm; only worth it with a real two-pass EDT.
+# Pillow's Image.resize(NEAREST) is trivial (mask[::scale, ::scale]), but
+# Image.open is real PNG/JPEG codec work with no numpy/scipy/skimage
+# equivalent -- the hardest of the four to actually eliminate.
+
 # 8 directions in (dy, dx) form, indexed 0..7 as N, NE, E, SE, S, SW, W, NW --
 # the same indexing render.py's headings would map onto, so a direction index
 # here and a (dy, dx) heading there describe the same geometry.
