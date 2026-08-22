@@ -65,6 +65,24 @@ class Test123:
         machine = _Machine("2131", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
+    def test_true_jump_finds_previous_three(self) -> None:
+        """A TRUE 3 with an earlier 3 in the code jumps just past it.
+
+        ``test_true_jump_skips_backward`` (despite its name) actually
+        exercises the FALSE/skip-forward branch; this test drives the
+        TRUE/skip-backward branch directly via ``_Machine`` so the
+        backward scan-and-land logic itself is covered.
+        """
+        from esolangs.interpreters.tape_based.one_two_three import _Machine
+
+        # code[0] is the only earlier '3'; landing there means ip == 1.
+        machine = _Machine("3xx3", ScriptedIO())
+        machine.pos = 2
+        machine.bits[2] = True
+        machine.ip = 3
+        machine.step()
+        assert machine.ip == 1
+
     def test_pointer_is_unbounded_past_position_seven(self) -> None:
         """2 past position 7 keeps moving right instead of getting stuck.
 
