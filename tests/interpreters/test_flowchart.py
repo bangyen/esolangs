@@ -185,8 +185,17 @@ class TestKolakoski:
         swaps the first two bits (the south branch prints one ``0`` and
         halts, so scheduling decides whether it lands before or after the
         east branch's first bit).  The repeating ``100110011001`` tail is
-        identical under every policy tried, so it is a property of how the
-        east loop is executed, not of the interleaving.
+        identical under every policy tried, and also under every combination
+        of the two contested semantic rules (see the roadmap entry), so it
+        is neither an interleaving nor a routing artifact.
+
+        The east pointer in fact emits one bit and halts eleven nodes in:
+        the mid-row ``( )`` nodes do not fork, because the ``─`` run under
+        them is the return rail passing *beneath* the row rather than a
+        path attached to them -- both its ends turn upward, closing the
+        loop elsewhere.  The tail is entirely the south branch's, and the
+        open question is whether the diagram generates the sequence at all
+        as drawn.
         """
         assert run_steps(KOLAKOSKI, "", 400) == "01111001100110011001"
 
