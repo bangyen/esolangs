@@ -5,6 +5,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Protocol
 
 import pytest
 
@@ -12,7 +13,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "make_coverage_badge.py"
 
 
-def load_script() -> object:
+class _BadgeModule(Protocol):
+    def make_badge(self, percent: float) -> str: ...
+    def color_for(self, percent: float) -> str: ...
+    def main(self) -> None: ...
+
+
+def load_script() -> _BadgeModule:
     spec = importlib.util.spec_from_file_location("make_coverage_badge", SCRIPT)
     assert spec is not None
     module = importlib.util.module_from_spec(spec)
@@ -22,7 +29,7 @@ def load_script() -> object:
 
 
 @pytest.fixture
-def badge_module() -> object:
+def badge_module() -> _BadgeModule:
     return load_script()
 
 
@@ -31,19 +38,22 @@ def write_xml(rate: str, path: Path) -> None:
 
 
 class TestBadgeScript:
-    def test_make_badge_contains_percent(self, badge_module: object) -> None:
-        svg = badge_module.make_badge(100.0)  # type: ignore[attr-defined]
+    def test_make_badge_contains_percent(self, badge_module: _BadgeModule) -> None:
+        svg = badge_module.make_badge(100.0)
         assert "100%" in svg
 
-    def test_color_for_thresholds(self, badge_module: object) -> None:
-        color_for = badge_module.color_for  # type: ignore[attr-defined]
+    def test_color_for_thresholds(self, badge_module: _BadgeModule) -> None:
+        color_for = badge_module.color_for
         assert color_for(96) == "#4c1"
         assert color_for(90) == "#dfb317"
         assert color_for(80) == "#fe7d37"
         assert color_for(50) == "#e05d44"
 
     def test_main_writes_badge(
-        self, badge_module: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self,
+        badge_module: _BadgeModule,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         xml_path = tmp_path / "coverage.xml"
         write_xml("0.5", xml_path)
@@ -51,7 +61,7 @@ class TestBadgeScript:
         monkeypatch.setattr(
             sys, "argv", ["make_coverage_badge.py", str(xml_path), str(out_path)]
         )
-        badge_module.main()  # type: ignore[attr-defined]
+        badge_module.main()
         assert "50%" in out_path.read_text()
 
     def test_script_runs_via_cli(self, tmp_path: Path) -> None:
