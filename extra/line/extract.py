@@ -115,6 +115,26 @@ class Cursor:
 # the triangle's outline and tips have 3+.
 _BLOB_NEIGHBOR_MIN = 3
 
+# Fraction of its own bounding box a real arrowhead blob fills.  Measured by
+# rendering render.py's own arrowhead at all 8 possible headings: 0.41-0.55
+# depending on rotation (a diagonal heading's axis-aligned bbox is larger
+# relative to the triangle it bounds).  The bracket here is deliberately
+# wide of that measured range -- it exists to catch a blob that is not
+# triangular at all (a solid square rejects at 1.0; two crossing strokes at
+# a shallow angle either fail _THICK_THRESHOLD entirely or produce a long
+# thin sliver well under 0.25), not to pick between two genuinely
+# arrowhead-shaped candidates, which this check cannot and does not attempt
+# to disambiguate (see find_cursor's docstring).
+_FILL_RATIO_RANGE = (0.25, 0.75)
+
+
+def _fill_ratio(blob: np.ndarray) -> float:
+    """Fraction of ``blob``'s own bounding box that is filled."""
+    ys, xs = np.nonzero(blob)
+    height = int(ys.max() - ys.min()) + 1
+    width = int(xs.max() - xs.min()) + 1
+    return float(blob.sum()) / (height * width)
+
 
 def find_cursor(mask: np.ndarray) -> Cursor:
     """Isolate the whole arrowhead shape via distance transform + growth.
@@ -141,6 +161,17 @@ def find_cursor(mask: np.ndarray) -> Cursor:
     silhouette narrows down to the 1px-wide stroke leaving it -- the same
     place a human eye would call "where the arrowhead ends" -- typically
     within a pixel of the triangle's true boundary.
+
+    "Largest thick region" is otherwise an unchecked assumption: a drawing
+    with any other filled shape, or two strokes crossing at a shallow
+    enough angle to read as locally thick, would silently make this pick
+    the wrong region with no error (confirmed with a synthetic two-triangle
+    image -- it deterministically returns whichever triangle is bigger,
+    correct or not).  The size ranking cannot be fixed by shape alone when
+    two candidates are both genuinely triangular; what a shape check *can*
+    catch is the winning candidate not looking like an arrowhead at all
+    (see :data:`_FILL_RATIO_RANGE`), so that case raises instead of
+    returning a silently wrong cursor.
     """
     dist = ndimage.distance_transform_edt(mask)
     thick = dist > _THICK_THRESHOLD
@@ -176,6 +207,14 @@ def find_cursor(mask: np.ndarray) -> Cursor:
     blob = np.zeros_like(mask)
     for y, x in visited:
         blob[y, x] = True
+
+    ratio = _fill_ratio(blob)
+    low, high = _FILL_RATIO_RANGE
+    if not low <= ratio <= high:
+        raise ValueError(
+            f"largest thick region does not look like an arrowhead "
+            f"(fill ratio {ratio:.2f}, expected {low:.2f}-{high:.2f})"
+        )
     return Cursor(float(cy), float(cx), blob)
 
 
