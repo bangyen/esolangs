@@ -225,19 +225,37 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
     not just the decision).
 
   **Unverified against a real drawn loop end to end**: neither wiki
-  fixture contains one (confirmed by checking every stroke's start/end
-  coordinates on both fixtures for a match -- none), and `render.py`'s own
-  `Node`/`_layout` cannot produce one to test against either, since `Node`
-  is a plain recursively-walked tree with no cycle support (confirmed: a
-  hand-built cyclic `Node` graph hits Python's recursion limit rather than
-  rendering).  The loop-back mechanism itself is covered instead by a
-  synthetic test that builds a looping `lattice.Stroke` tree directly by
-  hand (bypassing both `render.py` and `extract.py`), checked two ways: a
-  decrementing loop that terminates at exactly 0, and a genuinely
-  non-halting loop confirmed to actually hang rather than silently
-  producing a wrong answer.  A real hand-drawn or `render.py`-extended
-  fixture containing an actual loop would be a stronger check than this,
-  if one ever becomes available.
+  fixture contains one, despite both being named "Addition"/"Multiplication"
+  -- an easy thing to assume incorrectly, since both algorithms conceptually
+  need repetition (repeatedly decrementing one cell into another to add or
+  multiply general inputs).  Confirmed two independent ways, not just by
+  eyeballing the walked tree: every stroke's start/end coordinates on both
+  fixtures were checked for a match (none), and `coverage_gap` on
+  `addition.png` reports exactly 2 unaccounted pixels -- the constant
+  arrowhead-tip gap `extract.py` documents as the *only* expected
+  discrepancy for a drawing walked in full -- which rules out a real loop
+  the walker silently failed to detect (that would leave a whole unwalked
+  stroke's worth of missing pixels, not 2).  Each fixture's `?` is a
+  single-pass if/else: `addition.png`'s "loop body" arm (decrement one
+  cell, increment the other) runs at most once before the walked path
+  simply ends.  Consistent with this, actually running `addition.png`
+  through `simulate.run` with inputs 3 and 2 does *not* compute 5 -- one
+  pass only gets as far as cell0=4, cell1=1, and the output arm is never
+  reached at all, confirming these are illustrative single-pass sketches
+  rather than complete working programs (consistent with the wiki page
+  being tagged `Unimplemented`, with only "minimal description" of the
+  examples -- see `extract.py`'s module docstring).  `render.py`'s own
+  `Node`/`_layout` cannot produce a real loop to test against either, since
+  `Node` is a plain recursively-walked tree with no cycle support
+  (confirmed: a hand-built cyclic `Node` graph hits Python's recursion
+  limit rather than rendering).  The loop-back mechanism itself is covered
+  instead by a synthetic test that builds a looping `lattice.Stroke` tree
+  directly by hand (bypassing both `render.py` and `extract.py`), checked
+  two ways: a decrementing loop that terminates at exactly 0, and a
+  genuinely non-halting loop confirmed to actually hang rather than
+  silently producing a wrong answer.  A real hand-drawn or
+  `render.py`-extended fixture containing an actual loop would be a
+  stronger check than this, if one ever becomes available.
 
   `run` deliberately has no step limit or cycle-hang detection: checked
   against how every other interpreter in this repo handles it, a plain
