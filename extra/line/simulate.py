@@ -45,9 +45,14 @@ choices, and why, where the wiki is silent:
   wherever the drawn path itself ends -- a stroke tree leaf (no ``zero``/
   ``nonzero`` children) in :mod:`lattice`'s terms -- rather than some
   separate halt opcode the wiki never mentions.  A program whose only path
-  is a cycle with no reachable leaf would then never halt on its own, same
-  as an unbounded Brainfuck ``[]`` loop; :func:`run`'s ``step_limit`` exists
-  for exactly that case, raising rather than hanging forever.
+  is a cycle with no reachable leaf then genuinely never halts, and
+  :func:`run` does not impose any step limit to paper over that --
+  matching every other interpreter's plain ``run(code, io)`` in this repo
+  (e.g. ``brainfuck.py``'s own ``run`` is a bare
+  ``while not machine.halted: machine.step()``, with no cap; cycle
+  detection exists only in ``src/esolangs/vm.py``, an opt-in debugger
+  wrapper no language's main run path uses).  A non-halting Line program
+  hangs, same as an infinite Brainfuck ``[]`` loop would.
 
 Real loops (``?`` turning back on itself so the same fork is reached again
 later, the only way Line can express repetition at all -- there is no other
@@ -86,15 +91,6 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from extract import DEFAULT_UNIT, OpCall, Stroke, classify_ops
-
-# Generous headroom above anything either wiki fixture's own program needs
-# (the addition/multiplication examples each run in well under 1000 steps) --
-# exists only to turn a genuinely non-halting program into a raised error
-# instead of an actual infinite loop, matching the other interpreters in this
-# repo's own instruction-limited run pattern (see
-# ``src/esolangs/interpreters/oisc_cli.py``); not tuned to any particular
-# program's real cost.
-DEFAULT_STEP_LIMIT = 1_000_000
 
 
 @dataclass
@@ -201,7 +197,6 @@ def run(
     stroke: Stroke,
     io: IO | None = None,
     unit: int = DEFAULT_UNIT,
-    step_limit: int = DEFAULT_STEP_LIMIT,
 ) -> dict[int, int]:
     """Execute ``stroke``'s full walked tree, returning the final tape.
 
@@ -232,29 +227,23 @@ def run(
     on a nonzero cell -- the swap is intentional and load-bearing, not a
     typo.
 
-    Raises :class:`RuntimeError` past ``step_limit`` single-opcode steps,
-    rather than looping forever on a program whose only path is a cycle with
-    no reachable dead end (the wiki does not document a halt condition at
-    all -- see module docstring).
+    Does not guard against non-termination: a program whose only path is a
+    cycle with no reachable dead end genuinely never halts, and this
+    function hangs right along with it -- the wiki does not document a halt
+    condition at all (see module docstring), and no other interpreter in
+    this repo's plain ``run(code, io)`` imposes a step limit either.
     """
     if io is None:
         io = IO()
     compiled = _compile(stroke, unit)
     tape: dict[int, int] = defaultdict(int)
     pointer = 0
-    steps = 0
 
     node: _Compiled | None = compiled
     run_ops = True
     while node is not None:
         if run_ops:
             for call in node.ops:
-                if steps >= step_limit:
-                    raise RuntimeError(
-                        f"execution exceeded the {step_limit}-step limit "
-                        "(the program may not halt)"
-                    )
-                steps += 1
                 if call.op == "+":
                     tape[pointer] += call.count
                 elif call.op == "-":
