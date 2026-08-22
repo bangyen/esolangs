@@ -122,6 +122,14 @@ would make the generator close to trivial to write by hand.
   (interpreter only, no text generator and no boolean generator yet) — that,
   and the Kolakoski example's exact output (the page states none, so the
   test pins current behaviour as characterization), are follow-on work.
+  On that last point: the output's repeating tail was initially suspected
+  to be an artifact of the unspecified pointer interleaving, but it is not.
+  Creation order, reverse order, and per-step reading order all produce
+  byte-identical output, and long consecutive runs per pointer only swap
+  the first two bits.  Whatever makes the sequence periodic — the real
+  Kolakoski sequence is not — lives in the east loop's execution, most
+  likely a re-entry or switch-routing detail, so that is where a future
+  investigation should start rather than in the scheduler.
 - **Line** — a cursor follows ASCII line-drawing curves; each curve shape it
   passes through is itself the instruction (a diagonal increments/decrements
   the current cell, a corner moves the tape pointer, a specific bend is a

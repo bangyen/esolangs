@@ -176,8 +176,17 @@ class TestKolakoski:
 
         The page gives the program but never says what it should print, so
         this pins the current behaviour against regressions rather than
-        claiming the wiki blesses it -- the exact bits depend on the
-        lockstep interleaving documented in the module docstring.
+        claiming the wiki blesses it.
+
+        The interleaving turns out to matter far less than expected: running
+        the two pointers in creation order, reverse order, or re-sorted into
+        reading order every step all give byte-identical output, and giving
+        each pointer long consecutive runs instead of single steps only
+        swaps the first two bits (the south branch prints one ``0`` and
+        halts, so scheduling decides whether it lands before or after the
+        east branch's first bit).  The repeating ``100110011001`` tail is
+        identical under every policy tried, so it is a property of how the
+        east loop is executed, not of the interleaving.
         """
         assert run_steps(KOLAKOSKI, "", 400) == "01111001100110011001"
 
