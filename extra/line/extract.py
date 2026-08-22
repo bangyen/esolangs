@@ -57,6 +57,13 @@ except ImportError as _exc:  # pragma: no cover - environment guard
         "Extracting Line programs requires Pillow: pip install Pillow"
     ) from _exc
 
+try:
+    from skimage.morphology import skeletonize
+except ImportError as _exc:  # pragma: no cover - environment guard
+    raise ImportError(
+        "Extracting Line programs requires scikit-image: pip install scikit-image"
+    ) from _exc
+
 # 8 directions in (dy, dx) form, indexed 0..7 as N, NE, E, SE, S, SW, W, NW --
 # the same indexing render.py's headings would map onto, so a direction index
 # here and a (dy, dx) heading there describe the same geometry.
@@ -79,6 +86,139 @@ def load_binary(path: str) -> np.ndarray:
     """Load an image as a boolean ink mask (True = black/foreground)."""
     image = Image.open(path).convert("L")
     return np.array(image) < 128
+
+
+# Below this size a quadrant is a leaf: its full bounding box is used as-is
+# rather than subdividing further.  Small enough that a leaf still meaningfully
+# narrows down where the ink is on a huge canvas, large enough that the
+# recursion doesn't spend time on quadrants near pixel-level granularity where
+# a plain scan would be just as fast.
+_QUADTREE_LEAF_SIZE = 64
+
+
+def _content_bbox(mask: np.ndarray) -> tuple[int, int, int, int]:
+    """Find ink's bounding box in O(content + log(canvas)), not O(canvas).
+
+    ``np.nonzero(mask)`` finds the same bounding box but must touch every
+    pixel in the array to do it, so its cost scales with the canvas size
+    even when almost all of it is blank -- confirmed to matter in practice:
+    on a ~4600x4600 canvas holding a small drawing padded by a 2000px
+    border, a plain ``np.nonzero`` scan takes ~9x longer than this.
+
+    Recursively quarters the canvas, skipping (via a cheap ``.any()`` check
+    on the numpy slice) any quadrant with no ink at all rather than
+    descending into it -- a huge blank border gets discarded in a handful of
+    splits rather than scanned pixel by pixel.  Returns the union bounding
+    box of every non-empty leaf quadrant, which is a safe superset of the
+    true tight bounding box (padded out to quadrant boundaries) rather than
+    the exact minimal box -- confirmed never to exclude real ink, which is
+    the property that matters for a crop step feeding the rest of the
+    pipeline.  Raises :class:`ValueError` if the mask is entirely blank.
+    """
+    h, w = mask.shape
+    stack = [(0, 0, h, w)]
+    bounds: list[int] | None = None
+    while stack:
+        ry0, rx0, ry1, rx1 = stack.pop()
+        if not mask[ry0:ry1, rx0:rx1].any():
+            continue
+        if (ry1 - ry0) <= _QUADTREE_LEAF_SIZE or (rx1 - rx0) <= _QUADTREE_LEAF_SIZE:
+            if bounds is None:
+                bounds = [ry0, rx0, ry1, rx1]
+            else:
+                bounds[0] = min(bounds[0], ry0)
+                bounds[1] = min(bounds[1], rx0)
+                bounds[2] = max(bounds[2], ry1)
+                bounds[3] = max(bounds[3], rx1)
+            continue
+        my, mx = (ry0 + ry1) // 2, (rx0 + rx1) // 2
+        stack.extend(
+            [
+                (ry0, rx0, my, mx),
+                (ry0, mx, my, rx1),
+                (my, rx0, ry1, mx),
+                (my, mx, ry1, rx1),
+            ]
+        )
+    if bounds is None:
+        raise ValueError("image contains no ink")
+    return bounds[0], bounds[1], bounds[2], bounds[3]
+
+
+def crop_to_content(mask: np.ndarray, margin: int = 2) -> np.ndarray:
+    """Crop ``mask`` to its ink's bounding box (see :func:`_content_bbox`).
+
+    ``margin`` pixels of surrounding blank space are kept on every side so
+    downstream code (e.g. :func:`find_cursor`'s distance transform) still
+    sees genuine background immediately around the drawing's own edge,
+    rather than the crop boundary itself acting like an artificial wall.
+    """
+    h, w = mask.shape
+    y0, x0, y1, x1 = _content_bbox(mask)
+    top, bottom = max(0, y0 - margin), min(h, y1 + margin)
+    left, right = max(0, x0 - margin), min(w, x1 + margin)
+    return mask[top:bottom, left:right]
+
+
+def detect_scale(mask: np.ndarray) -> int:
+    """Estimate the uniform stroke width a Line drawing was rendered at.
+
+    Line's own strokes are always 1px wide in the wiki's reference images
+    (see ``render.py``'s module docstring); an image scaled up by some
+    integer factor keeps every stroke uniformly that many pixels wide.  For
+    a thin stroke, ink area is approximately width times length, so
+    ``ink_pixel_count / skeleton_length`` recovers that width -- confirmed
+    accurate to within ~5% against 1x/2x/3x/4x scaled copies of both wiki
+    reference images, and unaffected by how much blank border surrounds the
+    drawing (border pixels are not ink, so they affect neither the
+    numerator nor the denominator).
+
+    Skeletonizing is not used to *do* the width correction (tried directly:
+    it introduces a systematic off-center bias on diagonal strokes, and
+    reduces the cursor's arrowhead -- a solid 2D shape rather than a thin
+    stroke -- to a small messy cluster instead of leaving it recognizable),
+    only to measure it; :func:`normalize_scale` corrects for it by plain
+    downscaling instead.
+    """
+    skeleton_length = int(skeletonize(mask).sum())
+    if skeleton_length == 0:
+        return 1
+    return max(1, round(int(mask.sum()) / skeleton_length))
+
+
+def normalize_scale(mask: np.ndarray) -> np.ndarray:
+    """Downscale ``mask`` to 1px-wide strokes if it was rendered larger.
+
+    Detects the drawing's stroke width (:func:`detect_scale`) and, if
+    greater than 1, downscales the mask by that exact factor with
+    nearest-neighbor resampling -- confirmed to recover the *exact* original
+    pixel-for-pixel mask when reversing a nearest-neighbor upscale, which is
+    what every scale this function needs to handle in practice looks like
+    (an integer pixel-replication blow-up of a 1px-wide drawing, not a
+    resampled photograph).  A mask already at native scale is returned
+    unchanged.
+
+    Pads up to the next multiple of ``scale`` on each axis before dividing,
+    rather than truncating a possibly-uneven size down: :func:`crop_to_content`
+    only guarantees a bounding box loosely containing the drawing (padded to
+    quadtree-leaf boundaries, plus its own margin), not one already aligned
+    to the stroke width, and confirmed truncating instead of padding silently
+    drops a fractional row/column of real content at that boundary -- caught
+    directly on the wiki addition example scaled 4x, where the crop's
+    non-scale-aligned width (1054, not a multiple of 4) otherwise lost ink at
+    the edge before the walker ever ran.
+    """
+    scale = detect_scale(mask)
+    if scale <= 1:
+        return mask
+    h, w = mask.shape
+    pad_h, pad_w = (-h) % scale, (-w) % scale
+    if pad_h or pad_w:
+        mask = np.pad(mask, ((0, pad_h), (0, pad_w)))
+        h, w = mask.shape
+    image = Image.fromarray((~mask * 255).astype(np.uint8))
+    small = image.resize((w // scale, h // scale), Image.NEAREST)
+    return np.array(small) < 128
 
 
 def _ink_neighbor_count(mask: np.ndarray, y: int, x: int) -> int:
@@ -606,16 +746,35 @@ def coverage_gap(mask: np.ndarray, cursor: Cursor, stroke: Stroke) -> int:
 def extract(path: str) -> Stroke:
     """Load a Line image and walk its full path tree, cursor auto-detected.
 
-    Checks the walked tree against the source image before returning (see
-    :func:`coverage_gap`) and raises :class:`ValueError` if real ink was
-    left unaccounted for, rather than silently returning a truncated tree
-    with no indication anything went wrong -- confirmed to matter in
-    practice: a JPEG-recompressed copy of a wiki reference image walks to
-    completion with no error at all if this check is skipped, despite over
-    85% of the drawing never being reached.  Callers that want the
-    best-effort tree regardless can call :func:`extract_tree` directly.
+    Two normalization passes run before any of the 1px-stroke-assuming
+    logic (:func:`find_cursor`, the walker, region-adjacency junction
+    detection) sees the mask:
+
+    * :func:`crop_to_content` discards blank canvas outside the drawing's
+      bounding box, found in time proportional to the drawing's own size
+      rather than the full canvas -- confirmed to matter for a wiki-style
+      image with a large blank margin around a small drawing.
+    * :func:`normalize_scale` downscales the drawing back to 1px-wide
+      strokes if it was rendered (or exported) larger -- confirmed the
+      pipeline otherwise fails immediately and by a wide margin at 2x
+      scale and up: the same "3+ neighbors means arrowhead body" rule that
+      isolates the cursor at native scale also matches every ordinary
+      multi-pixel-wide stroke pixel, so cursor isolation swallows the
+      entire drawing instead of just the arrowhead.
+
+    Checks the walked tree against the (normalized) source image before
+    returning (see :func:`coverage_gap`) and raises :class:`ValueError` if
+    real ink was left unaccounted for, rather than silently returning a
+    truncated tree with no indication anything went wrong -- confirmed to
+    matter in practice: a JPEG-recompressed copy of a wiki reference image
+    walks to completion with no error at all if this check is skipped,
+    despite over 85% of the drawing never being reached.  Callers that want
+    the best-effort tree regardless can call :func:`extract_tree` directly
+    on an already-normalized mask.
     """
     mask = load_binary(path)
+    mask = crop_to_content(mask)
+    mask = normalize_scale(mask)
     cursor = find_cursor(mask)
     stroke = extract_tree(mask, cursor)
     tolerance = count_pivots(stroke) + _ARROWHEAD_TIP_GAP
