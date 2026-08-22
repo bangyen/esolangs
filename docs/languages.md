@@ -39,6 +39,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Dimensional | yes | yes |  | yes |  | hello |
 | Eval | yes | yes |  | yes |  | hello boolean |
 | Factor | yes | yes |  | yes |  | hello truth-machine |
+| Flowchart |  | yes |  |  |  |  |
 | Forbin | yes | yes |  | yes |  | hello truth-machine |
 | Forþ | yes | yes | yes | yes | yes | hello |
 | Grapheme |  | yes |  | yes |  |  |

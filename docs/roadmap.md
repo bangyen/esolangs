@@ -103,7 +103,22 @@ would make the generator close to trivial to write by hand.
   through if the register is empty), directly analogous to Befunge's
   `_`/`|`.  Supports multiple concurrent pointers and deque-based memory;
   single-bit I/O.  Very new (2025) but the spec is complete, with a
-  truth-machine, cat, and Kolakoski-sequence example.
+  truth-machine, cat, and Kolakoski-sequence example.  The interpreter and
+  tests are done: all sixteen nodes are tabulated by the wiki, so the work
+  was the geometry (multi-character node tokenization, box-drawing line
+  tracing) plus four spec gaps the page leaves implicit — the switch's
+  left/right being relative to the pointer's heading (pinned by the truth
+  machine), character-per-bit rather than Boolfuck byte-packed I/O (an
+  eight-bit buffer would never flush for the truth machine), re-entry memory
+  that disambiguates paths without suppressing node semantics (pinned by the
+  cat's loops), and lock-step round-robin pointer interleaving in reading
+  order.  Each is derived in the module docstring.  An empty register writes
+  nothing rather than the spec sentence's zero, because the wiki's own cat
+  would otherwise print a trailing bit it never read — an example-over-prose
+  call worth revisiting if the author clarifies.  Wired into `registry.py`
+  (interpreter only, no text generator and no boolean generator yet) — that,
+  and the Kolakoski example's exact output (the page states none, so the
+  test pins current behaviour as characterization), are follow-on work.
 - **Line** — a cursor follows ASCII line-drawing curves; each curve shape it
   passes through is itself the instruction (a diagonal increments/decrements
   the current cell, a corner moves the tape pointer, a specific bend is a
