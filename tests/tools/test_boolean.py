@@ -2,6 +2,7 @@
 
 import io
 import random
+from collections.abc import Callable
 from contextlib import redirect_stdout, suppress
 from typing import ClassVar
 from unittest.mock import patch
@@ -4133,7 +4134,9 @@ class TestWII2D:
         assert result is None
 
     @staticmethod
-    def _build_search_start_args(maxlen: int, table: str):  # type: ignore[no-untyped-def]
+    def _build_search_start_args(
+        maxlen: int, table: str
+    ) -> tuple[list[int], list[str], Callable[[int, int], int], dict[int, int]]:
         """Build the ``(t, seqs, pre, index)`` args ``_wii2d_search_start`` needs."""
         from esolangs.tools.boolean.parameterized import (
             _wii2d_apply,

@@ -48,7 +48,7 @@ def _run_and_read(
 ) -> str:
     """Run ``bundle_mod.run`` on ``arg`` and return its captured output."""
     io = ScriptedIO()
-    bundle_mod.run(arg, io=io, **kwargs)  # type: ignore[attr-defined]
+    bundle_mod.run(arg, io=io, **kwargs)
     return io.getvalue()
 
 
