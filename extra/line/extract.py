@@ -722,35 +722,58 @@ def _direction_runs(path: list[tuple[int, int]]) -> list[tuple[int, int]]:
     return runs
 
 
-# Every opcode's kink, as the sequence of relative turns (see module
-# docstring's heading convention: +1/-1 is a 45-degree diagonal jog
-# right/left of the heading in effect where the kink starts, +2/-2 a pure
-# sideways step) it presents between its bounding straight runs -- measured
-# pixel-by-pixel against the wiki's own Lineanim4/5/6/7/8/10/11.png (see
-# render.py's ``_OPS`` comment, which this mirrors exactly since both sides
-# were checked against the same reference images).  ``+``/``-`` are the only
-# entries whose single run's *length* also carries meaning (the repeat
-# count -- Lineanim6.png confirms 3 consecutive ``+`` render as one diagonal
-# 3 units long rather than 3 separate kinks); every other opcode is always
-# exactly this fixed run-length sequence regardless of how many times it
-# repeats in a row, since there is no wiki example of them merging.
-_KINK_SIGNATURES: dict[tuple[int, ...], str] = {
-    (1,): "+",
-    (-1,): "-",
-    (2, -1): ">",
-    (-2, 1): "<",
-    (-1, 2, -1): "i",
-    (1, -2, 1): "o",
+# Every opcode's kink, as the sequence of (relative_turn, unit_length) pairs
+# it presents between its bounding straight runs -- see module docstring's
+# heading convention (+1/-1 a 45-degree diagonal jog right/left of the
+# heading in effect where the kink starts, +2/-2 a pure sideways step, both
+# relative to that heading) -- measured pixel-by-pixel against the wiki's own
+# Lineanim4/5/6/7/8/10/11.png (see render.py's ``_OPS`` comment, which this
+# mirrors exactly since both sides were checked against the same reference
+# images) *and* against the wiki's own worked addition/multiplication example
+# programs (``fixtures/addition.png``/``multiplication.png``), which is what
+# caught two leg-order mistakes an isolated per-opcode measurement alone
+# didn't surface (``>``/``<`` and ``o`` were originally encoded with their
+# diagonal and sideways legs in the wrong order).
+#
+# The unit length matters here, not just the turn sign: ``i``'s middle
+# sideways run is 2 units, not 1, which is what actually distinguishes it
+# from ``>`` immediately followed by another ``>`` with no separating
+# straight run at all -- confirmed to happen in the wiki's own
+# ``addition.png`` (two ``>`` back to back render with zero-length gap
+# between them) -- both start with the same ``(+1, -2)`` turn/sign prefix, so
+# matching on sign alone is ambiguous exactly where this matters.  ``+``/``-``
+# are the only entries whose single leg's length is *not* fixed -- it is
+# instead the run's repeat count (see :data:`DEFAULT_UNIT`'s docstring
+# reference and ``_op_segments`` in render.py).
+_FIXED_SIGNATURES: dict[tuple[tuple[int, int], ...], str] = {
+    ((1, 1), (-2, 1)): ">",
+    ((-1, 1), (2, 1)): "<",
+    ((1, 1), (-2, 2), (1, 1)): "i",
+    ((-2, 1), (1, 2), (-2, 1)): "o",
 }
+# Longest signature first, so a caller scanning greedily always tries to
+# match the most specific (longest) template before falling back to a
+# shorter one that happens to share the same leading legs.
+_FIXED_BY_LENGTH: list[tuple[tuple[tuple[int, int], ...], str]] = sorted(
+    _FIXED_SIGNATURES.items(), key=lambda kv: -len(kv[0])
+)
 
 # Diagonal-run unit length (in the *renderer's* `_UNIT` grid) that also
 # doubles as `+`/`-`'s repeat count, since a merged run of N same-sign
 # increments/decrements is drawn as one diagonal N units long (see
-# `_KINK_SIGNATURES`).  `extract.py` has no direct access to whatever scale
+# `_FIXED_SIGNATURES`).  `extract.py` has no direct access to whatever scale
 # a given image was rendered at -- `normalize_scale` only recovers *stroke
 # width*, not grid unit size -- so `classify_ops` takes it as a parameter
 # rather than assuming render.py's own `_UNIT=20`.
 DEFAULT_UNIT = 20
+
+# How close a run's pixel length must round to a whole number of units to be
+# accepted rather than raising -- wide enough to tolerate the +-1px rounding
+# a hand-drawn or anti-aliased stroke measured off real wiki images shows
+# (confirmed: addition.png's kinks measure 19px/39px against a 20px unit, a
+# consistent 1px short), without accepting a run so far off-grid that it's
+# probably a real structural difference rather than measurement noise.
+_UNIT_TOLERANCE = 0.15
 
 
 @dataclass
@@ -768,69 +791,201 @@ class OpCall:
     index: int
 
 
+def _round_units(length: int, unit: int) -> int | None:
+    """Round a pixel run length to the nearest whole unit count, or ``None``.
+
+    ``None`` signals the length is too far from any whole-unit multiple to
+    trust (see :data:`_UNIT_TOLERANCE`) -- distinct from rounding to 0, which
+    is a legitimate outcome for a stray noise pixel between two real legs
+    (see :func:`classify_ops`).
+    """
+    units = length / unit
+    nearest = round(units)
+    if abs(units - nearest) > _UNIT_TOLERANCE:
+        return None
+    return nearest
+
+
+def _only_noise_remains(
+    runs: list[tuple[int, int]], start: int, unit: int
+) -> bool:
+    """Whether every run from ``start`` onward is a 0-unit noise pixel.
+
+    Used to tell "this opcode call is genuinely the path's last real thing"
+    apart from "there happens to be one more direction-run after it, but
+    it's too short (< half a unit) to be anything but noise" -- both look
+    the same to a caller checking ``index == len(runs) - 1`` directly (see
+    :func:`classify_ops`), confirmed to matter on a real wiki fixture whose
+    walked path ends in a single stray pixel just past a merge point.
+    """
+    return all(_round_units(r_len, unit) == 0 for _, r_len in runs[start:])
+
+
 def classify_ops(
     path: list[tuple[int, int]], unit: int = DEFAULT_UNIT
 ) -> list[OpCall]:
     """Identify which opcodes' kinks appear along a walked ``path``, in order.
 
-    Splits ``path`` into direction runs (:func:`_direction_runs`), then scans
-    for maximal groups of consecutive non-straight runs -- a straight run
-    (relative turn 0, i.e. still heading the same direction the group
-    started at) never appears *inside* a kink (see :data:`_KINK_SIGNATURES`;
-    every signature is turns only), so a straight run always marks a kink
-    boundary.  Each group's turn sequence, relative to the heading in effect
-    where it starts, is looked up directly in ``_KINK_SIGNATURES`` -- no
-    fuzzy matching, since every kink's exact shape is fixed by construction
-    (:mod:`render`) or by the wiki's own drawings.
+    Splits ``path`` into direction runs (:func:`_direction_runs`) and scans
+    them left to right against a *dynamic* heading (see the ``heading``
+    comment below for why it isn't fixed at the path's own start), matching
+    ``(relative_turn, unit_length)`` sequences (:func:`_round_units`) against
+    :data:`_FIXED_SIGNATURES`, longest template first, or falling back to a
+    lone ``+``/``-`` leg (any unit length, since that length is the run's
+    repeat count, not a fixed shape -- see ``render.py``'s ``_op_segments``)
+    when no fixed template matches at the current position.  A run that
+    rounds to 0 units is a stray noise pixel *inside* a kink's real legs
+    (confirmed against ``fixtures/addition.png``: a real 1-unit diagonal leg
+    there is interrupted by exactly one such stray vertical pixel), not a
+    leg of its own, and is skipped.  Anything left over -- a straight run, or
+    a turn that starts no valid kink -- is an ordinary corner or
+    continuation rather than an opcode, and updates the heading everything
+    after it is measured against, rather than raising.
 
-    Raises :class:`ValueError` if a group's turn sequence matches no known
-    opcode, rather than silently skipping it -- this is meant to surface a
-    genuinely unrecognized kink (visual corruption, or a stroke this module's
-    assumptions don't hold for) rather than producing a program with silent
-    gaps.  A ``+``/``-`` group's single run must additionally be a whole
-    multiple of ``unit``; a non-multiple is likewise raised rather than
-    rounded, since that means either the wrong ``unit`` was passed or the
-    stroke was corrupted in a way that changed its effective length.
+    Matching on ``(turn, units)`` together, not turn sign alone, is load-
+    bearing: two ``>`` kinks drawn back to back with no separating straight
+    run (confirmed to happen in ``addition.png``) produce the same leading
+    ``(+1, -2)`` turn-sign prefix as ``i``'s ``(+1, -2, +1)`` -- only ``i``'s
+    middle sideways run being 2 units instead of 1 tells the two apart.
+
+    Never raises: a run that is neither a straight continuation nor a
+    recognized kink leg (including one whose length doesn't round
+    trustworthily to a whole unit at all, see :func:`_round_units`) is
+    indistinguishable, from here, from an ordinary corner the drawing just
+    happens to take outside of any opcode -- confirmed necessary, not just
+    permissive-by-default, since a branch arm's post-branch corner (see the
+    ``heading`` comment above) has exactly this shape.  Callers that want to
+    know how much of a path was actually recognized as opcodes can compare
+    the returned calls' coverage against the path length themselves.
+
+    The one candidate this function *does* reject outright, after the scan
+    above: a match whose final leg is ``path``'s literal last run, with
+    nothing following it at all.  A complete opcode always finishes with a
+    trailing straight run back to its entry heading (part of the kink's own
+    shape, not incidental -- see ``render.py``'s ``_op_segments``), so a walk
+    that stops mid-kink was cut off by something else entirely -- confirmed
+    against two independent branch arms in
+    ``fixtures/multiplication.png`` where the walked path is cut short
+    exactly at a merge into another, unrelated stroke (not a real halt),
+    each producing exactly one spurious trailing ``+``/``-`` call before
+    this check was added.
     """
     runs = _direction_runs(path)
     if not runs:
         return []
-    calls: list[OpCall] = []
+
+    # ``heading`` is *not* fixed for the whole path: an ordinary corner --
+    # the path just changing direction outside of any opcode kink, e.g. a
+    # branch arm continuing along the T-junction's bar before its first real
+    # opcode -- updates it going forward, exactly like render.py's own
+    # cursor heading does between opcodes (see ``_Cursor.emit_op``, which
+    # always restores ``entry_heading`` after a kink but has no such
+    # guarantee *between* independently-drawn corners).  Confirmed necessary
+    # against ``fixtures/multiplication.png``'s branch arm, which turns E
+    # then immediately turns again onto N before its first real opcode (`>`)
+    # -- treating the whole path as relative to the initial E heading left
+    # that arm's `>`/`>`/`o` kinks unrecognizable, since they are drawn
+    # relative to N, not E.
+    #
+    # A straight run's (or unmatched turn's) length is never unit-checked --
+    # only a run actually being tested as a kink leg is, since a straight
+    # stretch's length is arbitrary (e.g. the path's leading run, from the
+    # cursor to its first kink, has no reason to land on a whole unit at
+    # all).  A run updates heading (rather than being tested as a kink leg)
+    # when it rounds to 0 units (noise -- see below) or when no kink
+    # template matches starting there; the *first* run in a kink template
+    # match is never itself a heading update, since a kink's own first leg is
+    # necessarily relative to the heading already in effect.
     heading = runs[0][0]
-    i = 1
+    calls: list[OpCall] = []
+    ends_at_last_run = False
+    i = 0
     while i < len(runs):
-        j = i
-        turns = []
-        while j < len(runs):
-            turn = (runs[j][0] - heading + 4) % 8 - 4
-            if turn == 0:
-                break
-            turns.append(turn)
-            j += 1
-        if not turns:
-            i = j + 1
+        r_idx, r_len = runs[i]
+        turn = (r_idx - heading + 4) % 8 - 4
+        if turn == 0:
+            i += 1
             continue
-        key = tuple(turns)
-        op = _KINK_SIGNATURES.get(key)
-        if op is None:
-            raise ValueError(
-                f"unrecognized opcode kink at run index {i}: relative turns {key}"
-            )
-        if op in ("+", "-"):
-            length = runs[i][1]
-            if length % unit != 0:
-                raise ValueError(
-                    f"opcode kink at run index {i} has diagonal length "
-                    f"{length}px, not a multiple of unit={unit}px"
-                )
-            count = length // unit
-        else:
-            count = 1
-        calls.append(OpCall(op, count, i))
-        # Heading is unchanged by every kink (render.py's emit_op always
-        # restores it), so the next kink is still measured relative to the
-        # same heading -- only advance past the runs this kink consumed.
-        i = j + 1 if j < len(runs) else j
+        units = _round_units(r_len, unit)
+        if units == 0:
+            # Stray noise pixel(s) (confirmed against fixtures/addition.png:
+            # a real 1-unit diagonal leg there is interrupted by exactly one
+            # such pixel) -- not a real leg, and too short to mean a genuine
+            # heading change either.
+            i += 1
+            continue
+        if units is None:
+            # Not a whole unit count, but also not a straight run: heading
+            # update, not an error -- a genuinely malformed kink shape looks
+            # the same as an ordinary corner from here (see docstring).
+            heading = r_idx
+            i += 1
+            continue
+
+        matched = False
+        for signature, op in _FIXED_BY_LENGTH:
+            n = len(signature)
+            candidate = []
+            ok = True
+            j = i  # read position, distinct from the template leg count k:
+            # a stray noise run (see the ``units == 0`` branch above) can
+            # sit *between* two of a kink's real legs, not just before the
+            # kink starts, so consuming n template legs can require reading
+            # more than n runs (confirmed against fixtures/addition.png,
+            # whose ``i`` kinks each have exactly one such noise run wedged
+            # between their two diagonal legs).
+            for _ in range(n):
+                while j < len(runs) and _round_units(runs[j][1], unit) == 0:
+                    j += 1
+                if j >= len(runs):
+                    ok = False
+                    break
+                k_idx, k_len = runs[j]
+                k_turn = (k_idx - heading + 4) % 8 - 4
+                if k_turn == 0:
+                    ok = False
+                    break
+                k_units = _round_units(k_len, unit)
+                if k_units is None:
+                    ok = False
+                    break
+                candidate.append((k_turn, k_units))
+                j += 1
+            if ok and tuple(candidate) == signature:
+                calls.append(OpCall(op, 1, i))
+                ends_at_last_run = _only_noise_remains(runs, j, unit)
+                i = j
+                matched = True
+                break
+        if matched:
+            continue
+
+        if turn in (1, -1):
+            calls.append(OpCall("+" if turn == 1 else "-", units, i))
+            ends_at_last_run = _only_noise_remains(runs, i + 1, unit)
+            i += 1
+            continue
+
+        # Not a recognized kink leg (or a straight run, turn == 0): an
+        # ordinary corner or continuation, not an opcode -- adopt its
+        # direction as the heading everything after it is measured against.
+        heading = r_idx
+        i += 1
+
+    # A real opcode always completes with a trailing straight run back to
+    # its entry heading -- that return is part of the kink's own shape (see
+    # render.py's ``_op_segments``/``_OPS``), not incidental -- so a
+    # candidate whose final leg is the walked path's literal last run, with
+    # nothing after it at all, was never a complete opcode: it's a turn
+    # taken right where the path was cut off entering a merge into another
+    # stroke (confirmed against two different arms of
+    # ``fixtures/multiplication.png``, each independently confirmed by hand
+    # to end in a merge rather than a halt at exactly this shape -- one
+    # spurious ``-`` each).  Only the last call can ever have this problem,
+    # since every earlier call is by definition followed by more of the
+    # path.
+    if calls and ends_at_last_run:
+        calls.pop()
     return calls
 
 
