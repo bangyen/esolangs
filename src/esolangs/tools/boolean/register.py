@@ -317,7 +317,10 @@ def dig(truth_table: str) -> str:
             for k in range(2**n):
                 lines[2 * k] += _DIG_LEAF.format(int(truth_table[k]))
 
-    # the mole starts at the top-left corner facing down into the root
+    # Row 0 is always written first (as the tree's root branch, or -- for
+    # n == 0 -- its sole leaf), and both block kinds start with '>'; swap
+    # that one cell for the mole's actual start marker rather than
+    # special-casing row 0's emission in two different places above.
     lines[0] = "'" + lines[0][1:]
     return "\n".join(lines)
 

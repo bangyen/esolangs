@@ -69,12 +69,30 @@ pointer positions a third bit needs.  The single-input case is *not*
 ## 123 (four one-input functions)
 
 A decision tree needs the `3` jump, which on a TRUE/FALSE bit jumps to the
-*nearest* preceding/following `3` (not bracket-matched), so the only
-constructible pattern is "repeat the region before the `3` while TRUE" — no
-`3`-based branch exists (a random search finds no NOT even at n == 1), and
-the single data byte makes multi-bit state impossible (every read overwrites
-it).  The four one-input programs were too trivial to keep, so the boolean
-generator was removed.
+*nearest* preceding/following `3` (not bracket-matched): FALSE always lands
+just past the next `3` (skip forward), TRUE always lands just past the
+previous one — which, absent an intervening `3`, is the start of the very
+segment already being executed.  So the only constructible pattern is
+"repeat the region before the `3` while TRUE," never a jump to an
+independent branch target.
+
+Re-examined after the tape was corrected from a single capped byte to
+genuinely unbounded bit storage (see the pointer-cap fix in
+`one_two_three.py`): the wall is not the tape size, it is two mechanisms
+that survive the fix unchanged. First, `1` flips the bit under the pointer
+*before* moving, and a read always resets the pointer to location 0 (the
+byte's MSB); reaching the write position at -2 requires passing through
+location 0 via `1`, so the read result is corrupted en route on every
+attempt — confirmed by tracing a read-then-navigate-to-write program, whose
+output byte differs from the input by exactly its MSB. Second, since a
+`3` that can ever evaluate TRUE must re-run the segment before it, and that
+segment is the only place a second input's read could plausibly follow the
+first's, a TRUE evaluation re-reads stdin and desyncs every input read
+after it — so no read can safely precede a `3` capable of going TRUE.  A
+structured search (400k+ programs built from read/march/jump blocks, not
+raw random characters) found no two-input AND/OR/XOR/NAND/NOR/XNOR under
+either bit-encoding.  The four one-input programs were too trivial to keep,
+so the boolean generator was removed and stays removed.
 
 ## RAM0, Bitdeque, Minsky Swap (parameterized template blocked — resolved)
 
@@ -219,14 +237,38 @@ wall by never looping (a phantom-`]` block whose straight-line body is
 position-encoded), which keeps the generator total but makes the programs
 long (O(`n·2**n`) blocks, ~1.4s/execution at `n == 4`).
 
-## Home Row (j-guarded-move boolean generator, n <= 2)
+## Home Row (resolved: closed-form binary-pack-and-compare, unbounded n)
 
 `l` loops pair strictly by order, so loops cannot nest and a bf-style
-decision tree is inexpressible.  The shipped generator routes with `j`
-(guarded moves) instead of loops, which works through `n == 2`.  `n >= 3`
-raises: an exhaustive search over `j`-guarded sequences shows no routing
-separates `2**n` combinations onto distinct cells of the fixed 5x5 torus
-past `n == 2` (the search caps at 6 of 8 combinations).
+decision tree is inexpressible.  The original generator routed with `j`
+(guarded moves) instead of loops, which worked only through `n == 2`: an
+exhaustive search over `j`-guarded sequences showed no routing separates
+`2**n` combinations onto distinct cells of the fixed 5x5 torus past
+`n == 2` (the search capped at 6 of 8 combinations) -- that routing
+approach tried to send the beam to one of `2**n` distinct *leaf cells*,
+which is a genuine capacity wall on a 25-cell grid.
+
+**Resolved by abandoning spatial routing for a closed-form value
+construction.**  The wall was specific to *that* construction, not to the
+language: Home Row's cells hold unbounded integers, so the fix packs the
+`n` input bits into a single binary accumulator instead of routing a beam.
+Each input bit gets its own position-stable gate -- `{Xi} l s ffff
+a{2**(n-1-i)} f l`, using the same "run once iff nonzero, consuming the
+guard" pattern the removed generator's `j`-tests approximated, but built
+from `l`/`s` so it needs no nesting -- that adds the bit's binary weight to
+the accumulator only when the bit is 1.  After all `n` gates the
+accumulator holds the combination's integer index `0 .. 2**n - 1`.  A
+linear chain of `2**n` equality checks then walks that index: each line
+fans the accumulator out into a working copy and a backup, subtracts its
+own index `k`, and gates on the difference to either print the baked
+answer and halt (a match) or restore the accumulator from the backup and
+fall through to test `k + 1`.  Since the packing and comparison both work
+on Home Row's unbounded cells (no byte masking happens until the final
+`'0'`/`'1'` answer print), there is no `n` cap at all: verified exhaustive
+through `n == 3` (2048/2048 checks) and sampled correct through `n == 10`.
+Program length grows `O(2**n)` from the leaf chain, the expected cost of a
+linear scan rather than a genuine representation limit.  See
+:func:`esolangs.tools.boolean.parameterized.home_row`.
 
 ## Assessed boolean candidates that fell through
 
@@ -305,6 +347,13 @@ past `n == 2` (the search caps at 6 of 8 combinations).
   problem (arbitrary lookup table, short formula) to that junction.
 
 ## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
+
+**The language was removed.**  This boolean-generator wall is one half of
+the removal reason; the other half is that 2dFish's `(...)*` captures a
+literal string from the source row and prints it whole, which makes the
+language's true text-generator floor a literal-embed rather than the
+shipped delta-encoder — see `docs/limitations.md`'s "Assessed and rejected"
+list.
 
 2dFish can host a WII2D-style parameterized generator: its direction cells
 (`/` east, `v` south, `^` north) steer a pointer carrying a single
@@ -628,12 +677,11 @@ push, not the current mechanism's O(1)), so it would be new machinery, not
 a tweak to the existing one.  Not built: no concrete program has needed
 it yet, matching the same "revisit if a real case shows up" posture as
 Forbin's expression-position gap in `docs/roadmap.md`.
-`scripts/verify_differential.py`'s 2dFish and NoComment Python sides are
-likewise bounded by state-cycle detection, with NoComment keeping the
-alarm as backstop for its unbounded-growth class (a loop that keeps
-pushing the stack never revisits a state); the remaining differential
-Python sides on SIGALRM alone are LaserFuck and Painfuck, whose
-headings/skips are random.
+`scripts/verify_differential.py`'s NoComment Python side is likewise
+bounded by state-cycle detection, keeping the alarm as backstop for its
+unbounded-growth class (a loop that keeps pushing the stack never revisits
+a state); the remaining differential Python sides on SIGALRM alone are
+LaserFuck and Painfuck, whose headings/skips are random.
 
 **The wall-clock backstop is broken under `pytest --cov`.**  Raising from
 the SIGALRM handler while the coverage C tracer is active can deadlock the

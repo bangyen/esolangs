@@ -272,3 +272,13 @@ def test_registered_interpreter_runs() -> None:
     import esolangs
 
     assert esolangs.run("Between", "'Hi'p.") == "Hi"
+
+
+class TestStepMachine:
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.register_based.between import _Machine
+
+        machine = _Machine([], IO())
+        assert machine.halted
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.halted

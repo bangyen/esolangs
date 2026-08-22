@@ -347,3 +347,15 @@ class TestRobustness:
         for code in ("f(:0:)if(1", "f(:0:)if(:x"):
             with pytest.raises(ValueError, match="malformed if"):
                 run_program(code)
+
+
+class TestMachine:
+    def test_step_after_halt_is_a_noop(self) -> None:
+        from esolangs.interpreters.other.suptiftam import _Machine
+
+        machine = _Machine("term='H'", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.state.io.getvalue() == "H"
+        machine.step()  # stepping a halted machine is a no-op
+        assert machine.state.io.getvalue() == "H"

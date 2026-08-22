@@ -7,45 +7,126 @@ the commit history.  This file only tracks what is still on the table.
 ## New interpreters (in priority order)
 
 Candidates from re-scanning the esolangs wiki's Category:Unimplemented and
-from User:PythonshellDebugwindow's language list.  The original scan is
-exhausted: every candidate with a usable file-based I/O protocol, a complete
-specification, and a plausible generator or boolean story now has an
-interpreter.  What shipped and what was ruled out (Gravity, Earfuck,
-Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++, Bitwise Cyclic Teast,
-and the languages already implemented elsewhere) is in the commit history and
+from User:PythonshellDebugwindow's language list.  What was ruled out
+(Gravity, Earfuck, Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++,
+Bitwise Cyclic Teast, and the languages already implemented elsewhere) is
+in the commit history and `docs/limitations.md`.
+
+Re-checking PythonshellDebugwindow's list against the admission criteria
+surfaced a handful of languages worth recording as potential candidates.
+The earlier draft of this section listed Jumplang, Eso2D, Minimal operation
+language, brainfunc, and Yaren — all five are in fact wiki-categorized
+**Implemented** (each page documents external interpreters), so under the
+"not already implemented elsewhere" criterion they are not candidates; the
+record below is restricted to languages in the wiki's **Unimplemented**
+category (verified via the category API), with a complete specification and
+a boolean-generator capability (input, a value conditional, and output):
+
+- **function x(y)** — complete spec, Turing-complete: functions with
+  defaults, `[~]`/`` `~ `` input, `[a]`/`` `a `` output, comparison
+  operators, a ternary, and recursion; a boolean generator branches on a
+  comparison and prints 0/1.
+- **CV(N)(C)** — complete spec, Turing-complete: every command is an IPA
+  syllable; fricatives do character/integer I/O, approximants do while
+  loops and gotos on the accumulator, vowels do arithmetic.  The page's
+  truth-machine (`soθɰ̊oθʋi`) is the boolean-generator seed.
+- **DINAC** — complete spec: `IN` reads an aschar or wubyte, `OUT` prints,
+  IF-ELSE and WHILE on zero/nonzero, truth-machine example.  Bounded-
+  storage machine, so the boolean generator is the whole story.
+- **Fargo** — complete spec: one input number per run with bit access
+  (`@ x`), one output number with bit writes (`% x y`), conditional
+  `: x y`, base-10 output `$`; the truth-machine example is the
+  boolean-generator seed.  Unknown computational class, but the bit
+  interface is ideal for a parameterized generator.
+- **Packlang** — complete spec, Turing-complete: packages with the built-in
+  IO package (`charGet`/`charPut`), `If`/`While`, XOR/`!`; the truth-machine
+  example branches on `input ^ 48`.
+- **Inject** — complete spec, Turing-complete: label blocks, `readto`/`send`
+  for line I/O, `skipq`/`skipif`/`skip` for control flow; the truth-machine
+  example compares the input block against a `0` block, the boolean
+  generator's branch.
+- **Algebraic Programming Language** — complete spec, Turing-complete:
+  executed lines print their result and their variables read user input;
+  `&`/`|` short-circuit with `IF(x, c) = x & c()` and a `WHILE` function
+  give the boolean generator its tree.
+- **Interprogck8** — complete spec but a weaker candidate: `u` input, `div`
+  output, and IFT/IFQ conditionals on a 84/81 compare make a truth-machine
+  (documented on the page), but the spec's `[a b]` random range and `~`'s
+  10% side effect need the seeded-randomness judgment call, and the
+  function-based conditional is convoluted.
+
+The remaining unimplemented-in-repo languages on that list were assessed
+and ruled out (no input, no output, or non-char/line I/O; incomplete or
+unstable specs; trivial reskins; or external implementations); the
+per-language verdicts are in the assessed-and-rejected ledger in
 `docs/limitations.md`.
 
-| Language | Priority | Why it is on the table |
-| --- | --- | --- |
-| COD | low | 2D concurrency-heavy cods; numeric output + value gates make a boolean generator plausible but unbuilt. |
+## 2D/grid candidates (from Category:Two-dimensional)
 
-**COD — the only candidate left.**  The other candidates were assessed and
-ruled out; the assessments are in `docs/limitations.md`.  COD's only output
-is numbers, so it can never have a text generator — but a single 0/1
-printed as the cod's value is a valid boolean output, so a boolean
-generator is the live question: it would route one cod through the `_`
-(reflect iff nonzero) and `<` (remove iff zero) value gates into a decision
-tree, laid out branch-free so the cod never hits a random junction.  That
-is a heavy, unbuilt 2D construction, and the interpreter needs a
-seeded-randomness decision first (the LaserFuck precedent), so COD stays
-low-priority and risky rather than ruled out.
+A separate pass cross-referenced the wiki's `Category:Two-dimensional`
+against `Category:Unimplemented` (109 overlaps) looking specifically for
+languages whose control flow is genuine grid navigation — where a boolean
+generator has to actually route an instruction pointer around cells based on
+a value, the way Befunge's `_`/`|` or this repo's Dig/Back/Clockwise/A
+Painter Ant do — rather than a language with a high-level `if`/`while` that
+would make the generator close to trivial to write by hand.
+
+- **Streetcode** — a car drives on two-way, two-character-wide streets
+  painted with instructions (`^`/`~` increment/decrement the current cell,
+  `=`/`_` move the cell pointer, `I`/`O` char input/output, `U` U-turn, `;`
+  halt).  At an ambiguous intersection the car takes the leftmost road if
+  the current cell is zero, otherwise the second-leftmost — a direct
+  Befunge-`_` analog, except the branch has to be built by laying out real
+  street geometry rather than writing a condition.  Picked over the three
+  below for having the cleanest, most complete spec (worked examples, a
+  Turing-completeness proof) and a normal char-I/O model.  The interpreter
+  and tests are done: initial heading, ordinary wall-hugging, genuine
+  multi-way junction detection, and multi-cell-wide lane merging are all
+  derived and confirmed against all four of the wiki's worked examples (two
+  of which — the infinite loop and the larger infinite-cat example — turn
+  out to contain genuine lane-bounded junctions themselves).  Landing after
+  a junction turn onto a road with its own lanes drives to that road's
+  right-hand lane before turning, rather than a plain single-cell step onto
+  the first open neighbor (see the module docstring's "Lane merging" bullet
+  and `docs/streetcode-wip.md` for the hand-derived, user-confirmed trace
+  this was built from).  Wired into `registry.py` (interpreter only, no
+  text generator and no boolean generator yet) — that's separate
+  follow-on work.
+- **Gate** — a wire/logic-gate circuit: symbols represent signals flowing
+  through wires (`—`/`|`), combined by gates (`&` NAND, `X` XNOR, `!` NOT);
+  `+` branches on which way a signal is heading; `(` outputs an ASCII char.
+  A boolean generator means constructing an actual gate network, not
+  writing a condition.  Spec is terser and example-driven rather than
+  prose-first — worth a closer read before committing.
+- **Flowchart** — literal flowchart nodes joined by lines; a `< >` switch
+  node reads a bit register and routes the pointer left or right (straight
+  through if the register is empty), directly analogous to Befunge's
+  `_`/`|`.  Supports multiple concurrent pointers and deque-based memory;
+  single-bit I/O.  Very new (2025) but the spec is complete, with a
+  truth-machine, cat, and Kolakoski-sequence example.
+- **Line** — a cursor follows ASCII line-drawing curves; each curve shape it
+  passes through is itself the instruction (a diagonal increments/decrements
+  the current cell, a corner moves the tape pointer, a specific bend is a
+  conditional turn keyed on the current cell being zero).  Brainfuck-
+  equivalent semantics, but every instruction is encoded in path geometry,
+  so a generator has to physically route the drawn line to fork on input.
+
+Considered and rejected in the same pass: **Highways** (excellent
+roundabout/routing mechanic, but junction direction, sign execution order,
+and crash tie-breaking are genuinely random with no seed — fails the
+determinism criterion); **Dilemma** (no I/O commands at all, pure
+maze/DFS); **TableLang**, **Marz**, **RingCode**, **GridScript** (a
+high-level `if`/`while`/`SWITCH` construct makes the generator trivial, or
+the spec is unstable); **Circuit Diagram** (a viable Gate alternative in the
+same genre, with more complex constraint-propagation semantics — worth a
+look if Gate falls through).
 
 ## Transpilers
 
-A direct transpile between languages with no shared core is not a rewrite —
-it needs a full runtime of one inside the other.  The transpilers that
-shipped (the brainfuck family, `Decleq → S*bleq`, Dimensional → LaserFuck,
-and the dropped silent-dropper/round-trip-only ones) are in the commit
-history; the walls are in `docs/limitations.md`.  The candidates still on
-the table:
-
-- **Forth-family ↔ Forþ.**  Forþ is Forth-like (single-char stack,
-  arithmetic, ``(``/``[`` loops, ``;`` calls); adding a second Forth dialect
-  (e.g. plain Forth) would share the stack+arithmetic+loop core and
-  transpile directly.
-- **Boolfuck ↔ ABCDrection / Minifuck.**  A Boolfuck (bit tape, little-endian
-  byte I/O) shares ABCDrection's bit-tape model; Minifuck's
-  flip-and-conditional-skip is further away.
+The only candidates identified (a second Forth dialect ↔ Forþ,
+Boolfuck ↔ ABCDirection/Minifuck) each need a *new* interpreter first, not
+just glue between two already-implemented languages, so they belong under
+"New interpreters" if that language is ever added, not here.
 
 ## Deferred-removal candidates
 
@@ -60,17 +141,6 @@ Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue) are
 **not** candidates: they participate fully in the repo's verification
 machinery via the boolean generator, and their only weakness is an
 interpreter-invented state dump where the wiki defines no text output.
-
-- **2dFish — deferred.**  Its text generator is a straight-line delta
-  encoder (the thinnest computational category), and it has no total
-  once-embedding boolean generator: the decision tree would need multiple
-  embedding (the exactly-once exception Dotlang was removed for) and the
-  once-embedding chain is affine-only (constants, XOR/XNOR, projections —
-  see `docs/walls.md`).  It stays for now because the delta encoder is
-  genuine arithmetic (the current criterion's line is literal-embed), but
-  if the criterion is ever tightened to "real computation only"
-  (branching/search, not straight-line deltas), it becomes the final
-  removal — nothing else is thin.
 
 **Against removal (the standing argument, for when a candidate reappears).**
 Most interpreter-only languages are the *only* implementation on the wiki,
@@ -98,11 +168,6 @@ generator (a per-character program mirroring the text) is already fully
 verified by the round-trip test, so a second implementation would find
 nothing new.
 
-- **Stay (complex-output generators, fuzzed):** NoComment, Forþ, Basicfuck,
-  Unsquare, 3x, %^2^-1, 2dFish, Painfuck, bit~, LaserFuck.
-- **No cross-check (straight-line generators):** 6-5, Decleq,
-  Dimensional, Qoibl, and the rest.
-
 **Toolchain follows the model.**  RISC-V assembly fits the machine-model
 languages (a tape/pointer/instruction-counter maps 1:1 onto cells,
 registers, and jumps); Rust fits the semantic ones (stacks, typed registers,
@@ -116,11 +181,6 @@ port would need to rewire input-bit passing and match the line-delimited
 `input_char` semantics.  Languages whose generators read input belong in the
 Rust column, where the reference gets input bits directly.
 
-| Toolchain | Languages |
-| --- | --- |
-| RISC-V assembly | NoComment (tape + stack with a byte-indexed skip), BF-PDA (bit stack + tape), RAM0 (register machine), BIO (three registers plus a loop stack, guards checked lazily to match the Python interpreter's control flow), Minsky Swap (two registers, a swap pointer, and a jump-on-zero `~`; each `~` keeps a fixed target across every visit via a token-indexed table, not a running execution-order cursor). |
-| Rust | Forþ, Basicfuck, Unsquare, 3x, 2dFish, Painfuck, LaserFuck (stacks, typed registers, 2D grids); %^2^-1 and bit~ keep corpus cross-checks but lost their straight-line text-generator fuzzes. |
-
 **Worth adding (audited).**  These languages have complex-output generators
 (arithmetic encodings, branch-and-goto OISCs, runtime state carried across
 characters) that a random differential fuzz would exercise beyond the
@@ -128,41 +188,63 @@ round-trip corpus, so a cross-check would add real verification.
 
 | Toolchain | Languages |
 | --- | --- |
-| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Clockwise (2D ring routing), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), 3D Brainfuck (tape + loops), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), S*bleq (tape OISC with a `<= 0` branch), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), ABCDirection (2D grid + Boolfuck input), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
+| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), ABCDirection (2D grid + Boolfuck input), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
 its output is a fixed pattern the round-trip already covers, so a cross-check
 would add little: brainfuck, BFStack, BrainIf, Minifuck, Modulous, SLOW
 ACV MAMMALIAN, WII2D, Home Row.  These stay without a cross-check unless a
-specific bug motivates one.
+specific bug motivates one.  Clockwise and 3D Brainfuck sit in the same
+class: Clockwise's 2D routing is one fixed ring shape (only the ring size
+and the parity pattern vary with the text), and 3D Brainfuck's generator is
+the brainfuck generator's output with ``>``/``<`` renamed to ``n``/``s``.
 
-**Removed (did not meet the criterion).**  Seven cross-checks were removed
-for having no generator or only a corpus-only cross-check; see
-`docs/limitations.md` for the languages and reasoning.
+## RISC-V assembly compilers
 
-## VM / debugging interface
+The compilers in `src/esolangs/compilers/` translate a program to
+RISC-V Linux assembly, assembled and run under unicorn by
+`scripts/verify_riscv_unicorn.py`.
 
-`esolangs.make_vm` (step-and-inspect wrappers) and `esolangs.make_debugger`
-(breakpoints and watches over the VM) now cover the whole interpreter
-registry: every language has a step()/halted/snapshot() state object and a
-VM adapter in `esolangs.vm._VM_ADAPTERS`.  The last conversions --
-Jaune, SLOW ACV MAMMALIAN, ZTOALC L, Between, MyScript, Lamfunc, Forbin,
-and Suptiftam -- are in the commit history; the recursive-tree-walker
-ones (Lamfunc, Forbin, Suptiftam) needed an explicit resumable frame in
-place of Python's own call stack, documented in `docs/walls.md`'s
-state-cycle-detection section.  Nothing is tracked here as remaining.
+The cross-checks' no-input rule does not apply here: a cross-check reference
+receives its program via stdin, but a compiled program is embedded in the
+emitted assembly, so the ELF's stdin is free for the program's own input —
+Suffolk's `,` already emits a `read` syscall.  Candidates are still bound
+by the toolchain rule (RISC-V fits machine-model languages), just not by
+the input rule.
+
+A compiler is worth building for either of two reasons: **verification
+value** (a complex-output generator exercised through a compile-then-fuzz
+differential, the rationale above) or **intrinsic value** (the emitted code
+does genuine lowering — control flow, calls, memory, dispatch — rather than
+per-command transliteration, or the language is notable enough that the
+artifact stands alone).  The candidates below are on the intrinsic axis;
+their round-trip and hand cases are their verification, so they are not
+blocked on the harness note below.
+
+- **ZTOALC L stays in the Rust column.**  Heterogeneous int-or-array
+  values, arrays-of-arrays, bounds checks, and trajectory-driven dispatch
+  are the semantic class the toolchain rule sends to Rust; even on the
+  intrinsic axis, the one genuinely interesting piece (computed-goto
+  dispatch over the Collatz trajectory) is a small fraction of the emitted
+  code — the bulk would be an expression interpreter over heterogeneous
+  arrays, so emitting that in assembly would be strictly harder and no more
+  verifiable than the Rust port already on the worth-adding table.
+
+**Harness note (build only if a fuzz-dependent candidate lands).**  The
+differential (`scripts/verify_differential.py`) never compiles, and the
+compiler cases in `scripts/verify_riscv_unicorn.py` feed an empty stdin, so
+an input-reading compiler whose value depends on fuzzing needs either fixed
+stdin cases via `run_elf` or a compile-then-fuzz differential feeding the
+program's input to the compiled ELF.  Intrinsic-value compilers do not need
+that machinery, so this is not a prerequisite for any candidate above.
 
 ## Forbin's expression-position recursion (remaining depth-cap gap)
 
-Suptiftam's calls, Forbin's *statement-position* calls (`f(y);`), and all
-of Lamfunc's calls were converted to an explicit frame stack, removing an
-invented 250-level cap (or, for Lamfunc, Python's own default recursion
-limit) as a correctness bug — a correct, terminating program recursing
-deeper than that no longer halts wrongly.  Forbin's *expression-position*
-calls (`x = f(y)`, where the assignment needs the callee's return value
-back synchronously mid-expression) were deliberately left out of that
-conversion and still recurse natively, bounded only by Python's own
-default limit rather than a documented cap.  See `docs/walls.md`'s
+Forbin's *expression-position* calls (`x = f(y)`, where the assignment
+needs the callee's return value back synchronously mid-expression) recurse
+natively, bounded only by Python's own default recursion limit rather than
+a documented cap (the statement-position conversion that removed the
+invented 250-level cap is in the commit history).  See `docs/walls.md`'s
 state-cycle-detection section for the full reasoning: Forbin has no
 realistic program shape that recurses this way (`return` exits a call
 immediately, so there is no return-value-threading idiom that would
@@ -186,23 +268,15 @@ instruction-count caps on the native references) except where state-cycle
 detection (`esolangs.vm.run_until_halt_or_cycle`) has replaced them for
 step-capable, deterministic machines — see `docs/limitations.md` for which
 interpreters are covered and why the wall-clock backstop remains for the
-rest.  Every step-capable interpreter (the whole registry, now that the VM
-section above is complete) has a `snapshot()`, so state-cycle detection
-coverage is as wide as it can get without weakening the non-determinism
-exclusion below.  What remains:
+rest.  What remains:
 
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
-  non-deterministic, so all three stay on the wall-clock backstop
-  regardless of `snapshot()` coverage.
-- Suptiftam's calls, Forbin's statement-position calls, and all of
-  Lamfunc's calls now run on an explicit frame stack (see the section
-  above) instead of native Python recursion — confirmed while doing those
-  conversions, this does *not* make infinite recursion cycle-detectable via
-  `run_until_halt_or_cycle`.  A call that never returns pushes one new
-  frame per `step()` and none is ever popped, so `snapshot()`'s frame
-  tuple strictly grows and two whole-machine snapshots can never compare
-  equal: unbounded growth, the same class `+[>+]` already falls into for
-  that specific mechanism.  A separate, narrower check — comparing a
+  non-deterministic, so all three stay on the wall-clock backstop.
+- **Recursion stays cycle-undetectable.**  A call that never returns
+  pushes one new frame per `step()` and none is ever popped, so a
+  `snapshot()`'s frame tuple strictly grows and two whole-machine
+  snapshots can never compare equal — unbounded growth, the same class
+  `+[>+]` already falls into.  A separate, narrower check — comparing a
   newly-pushed frame's own local state against ancestor frames already on
   the stack, rather than whole-machine snapshots across time — could catch
   the common case of a call whose local state repeats exactly relative to
@@ -232,10 +306,4 @@ deliberate rather than implicit: either lift the cap (an open construction)
 or, where the language has no other generator story, remove it.  The caps
 are documented in `docs/limitations.md` and `docs/walls.md`.
 
-**No language is currently on this list.**  ZTOALC L was assessed and kept:
-its tree-shaped construction is walled past dense, non-symmetric `n == 3`
-(re-verified in `docs/walls.md`, not just the original argument), so lifting
-the cap is closed, but the generator still covers every `n <= 3` table plus
-popcount-symmetric tables at any `n` — materially more than the two
-generators removed under this section's precedent (Home Row at `n <= 2`,
-Minifuck's `n <= 3` 0-preserving-only), so it stays.
+**No language is currently on this list.**
