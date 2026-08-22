@@ -141,6 +141,12 @@ class TestCat:
         program pops an exhausted deque and reaches the output node with an
         empty register -- printing a zero there would append a bit the cat
         never read.
+
+        This pins a judgment call, not a fact the wiki states outright: the
+        page's diagrams were never run, so the cat may simply be buggy and
+        the prose may mean what it says.  See the interpreter's module
+        docstring for why the example won here, and flip both together if
+        that call is ever revisited.
         """
         assert not run_program(CAT, "\n".join("101")).endswith("1010")
 
