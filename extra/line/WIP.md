@@ -170,14 +170,81 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
   improvement over the old walker's gap, which also grew by one pixel per
   pivot.
 
+- **Runtime simulation**: `simulate.py` executes a walked `Stroke` tree
+  against a Brainfuck-style tape (unbounded ints, `defaultdict`-backed,
+  pointer starts at cell 0) -- `+`/`-` increment/decrement, `<`/`>` move
+  the pointer, `i`/`o` read/print the current cell as a number, `?`
+  branches on it, all per the wiki's own (loosely) documented wording (see
+  `simulate.py`'s module docstring for exact quotes and every place the
+  wiki leaves a detail unspecified).  Verified against every synthetic
+  `render.py`-generated program used to test `classify_ops` (straight-line
+  op sequences, pointer movement across cells, both arms of a real `?`)
+  and against both wiki fixtures (`addition.png`/`multiplication.png` run
+  to completion with no error).
+
+  Two real, previously-unknown bugs surfaced building this, neither in
+  `simulate.py`'s own first draft's design assumptions but in what the
+  existing walked tree actually means:
+  - **The `zero`/`nonzero` field-name swap `coverage_gap`'s own verification
+    (above) dismissed as a cosmetic labeling difference is not cosmetic for
+    execution.** `lattice._classify` computes its fork `right`/`left`
+    options relative to `back` (the direction arrived *from*);
+    `render.py`'s `_turn_right`/`_turn_left` rotate relative to `heading`
+    (arrived *in*, `back`'s opposite) -- two rotations 180 degrees apart.
+    Confirmed concretely with a synthetic program whose `render.py`-drawn
+    `zero` arm (which `render.py` draws turning right, matching the wiki's
+    "turn right if 0") round-trips through `extract()` into the walked
+    tree's `nonzero` field, and vice versa.  `simulate.py`'s `run` takes
+    the walked `nonzero` child on a zero cell and `zero` on a nonzero cell
+    to correct for this -- deliberately, not a typo (see `run`'s
+    docstring).  Neither `lattice.py` nor `extract.py` needed to know
+    which physical arm was "actually" zero vs. nonzero before now, since a
+    one-time structural trace only needed *a* consistent label, not the
+    *correct* one -- this only mattered once something needed to execute
+    the branch correctly.
+  - **A drawn loop-back has no representation in the walked tree at all.**
+    `lattice.walk_tree` stops a stroke the instant it revisits any already-
+    `visited` vertex, recording only that vertex's coordinates with no link
+    back to the earlier node they match -- fine for a one-time trace, but a
+    real loop-back (the only way Line can express repetition, since `?` is
+    the only control-flow opcode) needs exactly that link to execute.
+    `simulate.py` recovers it itself, without changing `lattice.py`/
+    `extract.py`: every fork node is indexed by its own final vertex's
+    coordinates, and any leaf whose final vertex matches becomes a jump
+    back to that fork's decision at runtime (skipping the fork's own
+    incoming-stem ops, which must not repeat every iteration -- see
+    `_Compiled.goto`'s docstring).  Getting this right took two failed
+    attempts on a synthetic decrementing loop first: indexing every node
+    (not just forks) by its *entry* coordinate let a fork's own child --
+    which always starts exactly where the fork ends -- shadow the fork
+    itself, resolving a loop-back to the wrong node and silently breaking
+    after one iteration; and even once indexing was fixed, naively jumping
+    to the fork node the ordinary way re-executed its incoming stem's ops
+    every pass (confirmed: a seeded `+++` re-ran on every loop iteration,
+    since the fork node's own `ops` list holds the stem leading into it,
+    not just the decision).
+
+  **Unverified against a real drawn loop end to end**: neither wiki
+  fixture contains one (confirmed by checking every stroke's start/end
+  coordinates on both fixtures for a match -- none), and `render.py`'s own
+  `Node`/`_layout` cannot produce one to test against either, since `Node`
+  is a plain recursively-walked tree with no cycle support (confirmed: a
+  hand-built cyclic `Node` graph hits Python's recursion limit rather than
+  rendering).  The loop-back mechanism itself is covered instead by a
+  synthetic test that builds a looping `lattice.Stroke` tree directly by
+  hand (bypassing both `render.py` and `extract.py`), checked two ways: a
+  decrementing loop that terminates at exactly 0, and a genuinely
+  non-halting loop that hits `step_limit` and raises rather than hanging.
+  A real hand-drawn or `render.py`-extended fixture containing an actual
+  loop would be a stronger check than this, if one ever becomes available.
+  Also unverified: `step_limit`'s default of 1,000,000 is picked as
+  generous headroom, not derived from any real program's actual cost, and
+  arbitrary-precision tape cells (vs. some wrapped/bounded width) are this
+  module's own reading of the wiki's silence on the question, not
+  something the wiki confirms either way.
+
 ## Deliberately out of scope
 
-- **Runtime simulation**: even with opcodes classified, nothing executes
-  a program. `extract_tree` does a one-time structural trace; a real
-  interpreter would need to walk the same drawn graph repeatedly, since a
-  loop revisits the same branch pixel many times, taking a different arm
-  each time depending on tape state -- a different problem from what's
-  built here.
 - **Not wired into the interpreter registry**: deliberate, per an earlier
   discussion -- Line has no text format, so it doesn't fit the
   `run(code, io)` convention every other language in `src/esolangs/` uses.
