@@ -3,6 +3,8 @@
 import sys
 from re import sub
 
+from esolangs.compilers._riscv_common import MUL32
+
 
 def count(code: str, ind: int) -> int:
     """Return the run length of the command at ``ind``."""
@@ -134,20 +136,7 @@ def comp(code: str, num: int) -> str:
             "\tld   ra, 8(sp)\n"
             "\taddi sp, sp, 16\n"
             "\tret\n"
-            "\n"
-            "# a0 *= a1 (unsigned 32-bit), result in a0\n"
-            "mul32:\n"
-            "\tmv   t4, a0\n"
-            "\tli   a0, 0\n"
-            ".mul_loop:\n"
-            "\tandi t5, a1, 1\n"
-            "\tbeqz t5, .mul_skip\n"
-            "\tadd  a0, a0, t4\n"
-            ".mul_skip:\n"
-            "\tslli t4, t4, 1\n"
-            "\tsrli a1, a1, 1\n"
-            "\tbnez a1, .mul_loop\n"
-            "\tret"
+            "\n" + MUL32
         )
 
     return res

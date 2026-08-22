@@ -2,6 +2,12 @@
 
 import sys
 
+from esolangs.compilers._riscv_common import (
+    PUTBYTE,
+    READ_BYTE_OR_EOF,
+    cell_load_or_zero,
+    dump_cells,
+)
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
 # Special addresses, matching esolangs.interpreters.tape_based.sbleq.
@@ -101,30 +107,10 @@ def comp(code: str) -> str:
         "1:\n"
         f"    li   t0, {_IN}\n"
         "    bne  a0, t0, 2f\n"
-        "    addi sp, sp, -16\n"
-        "    sd   ra, 8(sp)\n"
-        "    li   a7, 63\n"
-        "    li   a0, 0\n"
-        "    mv   a1, sp\n"
-        "    li   a2, 1\n"
-        "    ecall\n"
-        "    blez a0, .eof\n"
-        "    lbu  a0, 0(sp)\n"
-        "    ld   ra, 8(sp)\n"
-        "    addi sp, sp, 16\n"
-        "    ret\n"
-        "2:\n"
-        "    bltz a0, .zero_ret\n"
-        f"    li   t0, {_CELLS}\n"
-        "    bge  a0, t0, .zero_ret\n"
-        "    slli t0, a0, 3\n"
-        "    add  t0, s1, t0\n"
-        "    ld   a0, 0(t0)\n"
-        "    ret\n"
-        ".zero_ret:\n"
-        "    li   a0, 0\n"
-        "    ret\n"
-        ".eof:\n"
+        + READ_BYTE_OR_EOF
+        + "2:\n"
+        + cell_load_or_zero(_CELLS)
+        + ".eof:\n"
         "    li   a0, 0\n"
         "    ld   ra, 8(sp)\n"
         "    addi sp, sp, 16\n"
@@ -145,30 +131,9 @@ def comp(code: str) -> str:
         "    sd   a1, 0(t0)\n"
         ".no_write:\n"
         "    ret\n"
-        "\n"
-        "# putbyte(value: a0) -- write the low byte to stdout\n"
-        "putbyte:\n"
-        "    addi sp, sp, -16\n"
-        "    sd   ra, 8(sp)\n"
-        "    andi t0, a0, 0xff\n"
-        "    sb   t0, 0(sp)\n"
-        "    li   a7, 64\n"
-        "    li   a0, 1\n"
-        "    mv   a1, sp\n"
-        "    li   a2, 1\n"
-        "    ecall\n"
-        "    ld   ra, 8(sp)\n"
-        "    addi sp, sp, 16\n"
-        "    ret\n"
-        "\n"
-        "    .data\n"
-        "    .align 3\n"
-        "mem:\n"
+        "\n" + PUTBYTE + "\n"
     )
-    for i in range(0, _CELLS, 8):
-        row = cells[i : i + 8]
-        res += "    .dword " + ", ".join(str(v) for v in row) + "\n"
-    return res
+    return res + dump_cells(cells, _CELLS)
 
 
 if __name__ == "__main__":

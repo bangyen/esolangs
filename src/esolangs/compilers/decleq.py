@@ -2,6 +2,14 @@
 
 import sys
 
+from esolangs.compilers._riscv_common import (
+    GETBYTE,
+    PUTBYTE,
+    cell_load_or_zero,
+    cell_store_or_drop,
+    dump_cells,
+    start_preamble,
+)
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
 # Special addresses, matching esolangs.interpreters.register_based.decleq.
@@ -47,13 +55,7 @@ def comp(code: str) -> str:
         cells = cells + [0] * (_CELLS - n)
 
     res = (
-        "    .text\n"
-        "    .global _start\n"
-        "_start:\n"
-        "    la   s1, mem\n"
-        "    li   s2, 0\n"
-        f"    li   s3, {n}\n"
-        ".loop:\n"
+        start_preamble(n) + ".loop:\n"
         "    bltz s2, .halt\n"
         "    bge  s2, s3, .halt\n"
         "    slli t0, s2, 3\n"
@@ -100,67 +102,18 @@ def comp(code: str) -> str:
         "\n"
         "# read_cell(addr: a0) -> a0; out-of-range reads as zero\n"
         "read_cell:\n"
-        "    bltz a0, .zero_ret\n"
-        f"    li   t0, {_CELLS}\n"
-        "    bge  a0, t0, .zero_ret\n"
-        "    slli t0, a0, 3\n"
-        "    add  t0, s1, t0\n"
-        "    ld   a0, 0(t0)\n"
-        "    ret\n"
-        ".zero_ret:\n"
-        "    li   a0, 0\n"
-        "    ret\n"
-        "\n"
-        "# write_cell(addr: a0, value: a1); out-of-range writes are dropped\n"
-        "write_cell:\n"
-        "    bltz a0, .no_write\n"
-        f"    li   t0, {_CELLS}\n"
-        "    bge  a0, t0, .no_write\n"
-        "    slli t0, a0, 3\n"
-        "    add  t0, s1, t0\n"
-        "    sd   a1, 0(t0)\n"
-        ".no_write:\n"
-        "    ret\n"
-        "\n"
-        "# getbyte() -> a0; reads one byte of stdin, halts the program at EOF\n"
-        "# (matching the interpreter's EOFError, which unwinds the whole run)\n"
-        "getbyte:\n"
-        "    addi sp, sp, -16\n"
-        "    sd   ra, 8(sp)\n"
-        "    li   a7, 63\n"
-        "    li   a0, 0\n"
-        "    mv   a1, sp\n"
-        "    li   a2, 1\n"
-        "    ecall\n"
-        "    blez a0, .halt\n"
-        "    lbu  a0, 0(sp)\n"
-        "    ld   ra, 8(sp)\n"
-        "    addi sp, sp, 16\n"
-        "    ret\n"
-        "\n"
-        "# putbyte(value: a0) -- write the low byte to stdout\n"
-        "putbyte:\n"
-        "    addi sp, sp, -16\n"
-        "    sd   ra, 8(sp)\n"
-        "    andi t0, a0, 0xff\n"
-        "    sb   t0, 0(sp)\n"
-        "    li   a7, 64\n"
-        "    li   a0, 1\n"
-        "    mv   a1, sp\n"
-        "    li   a2, 1\n"
-        "    ecall\n"
-        "    ld   ra, 8(sp)\n"
-        "    addi sp, sp, 16\n"
-        "    ret\n"
-        "\n"
-        "    .data\n"
-        "    .align 3\n"
-        "mem:\n"
+        + cell_load_or_zero(_CELLS)
+        + "\n"
+        + "# write_cell(addr: a0, value: a1); out-of-range writes are dropped\n"
+        + "write_cell:\n"
+        + cell_store_or_drop(_CELLS)
+        + "\n"
+        + GETBYTE
+        + "\n"
+        + PUTBYTE
+        + "\n"
     )
-    for i in range(0, _CELLS, 8):
-        row = cells[i : i + 8]
-        res += "    .dword " + ", ".join(str(v) for v in row) + "\n"
-    return res
+    return res + dump_cells(cells, _CELLS)
 
 
 if __name__ == "__main__":
