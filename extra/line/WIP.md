@@ -74,10 +74,27 @@ them). `verify.py` remains the separate, narrower round-trip check for
     misread as ending with one extra spurious `+`/`-` call -- now dropped
     via a check that a real opcode's kink is never the walked path's
     literal last run with nothing following it.
-  - Not yet re-verified: whether `_UNIT_TOLERANCE`'s rounding tolerance and
-    the noise-run-skipping logic hold up against a *third* fixture/program
-    beyond these two, or against non-`render.py` hand-drawn input at a
-    substantially different scale than the wiki's own ~20px unit.
+  - **Partly resolved: the pipeline holds at grid units 16-28, and the
+    limiting factor is not `_UNIT_TOLERANCE`.** Tested by rendering five
+    programs (straight-line, pointer movement, a single loop, a transfer
+    loop, and the two-level nested loop) at `render._UNIT` values of 12,
+    16, 20, 28 and 32, each run all the way through
+    extract -> classify -> simulate and checked against its expected
+    output. 16, 20 and 28 are clean across all five. 12 fails every
+    program, and 32 fails only the nested case.
+
+    The 12 failure is not a tolerance problem at all: `lattice.star`'s
+    probe `length` is hardcoded to 15 pixels while `lattice.UNIT` is
+    configurable, so once a grid unit is shorter than the probe, every
+    star reading overruns its own segment into whatever follows. Anything
+    wanting to support smaller units should derive that default from
+    `UNIT` (something like `UNIT - 5`, preserving today's 20 -> 15
+    relationship) rather than adjusting `_UNIT_TOLERANCE`. Left as-is for
+    now since nothing in this tree renders below 20.
+
+    Still genuinely unverified: non-`render.py` *hand-drawn* input at a
+    substantially different scale, where stroke width and unit length vary
+    independently in a way none of this synthetic sweep reproduces.
 - **Robustness, each confirmed against real or adversarial synthetic
   input, not just reasoned about**:
   - JPEG recompression: bit-identical results down to quality 34; a sharp
@@ -635,9 +652,19 @@ them). `verify.py` remains the separate, narrower round-trip check for
   the clean nearest-neighbor-scaled synthetic input `normalize_scale` was
   tested against. Anti-aliased edges could make the exact-integer scale
   detection (`round(ink/skeleton_length)`) land less cleanly.
-- The compression-cliff and oversized-scale failure modes were tested
-  independently; a large *and* heavily compressed image (both problems
-  compounding) hasn't been tried.
+- **Resolved: the compression cliff and oversized scale do not compound --
+  they counteract.** Tested directly on `fixtures/addition.png` across the
+  cross product of 1x/2x/3x nearest-neighbour upscaling and JPEG quality
+  95 down to 5, checking both that `extract()` succeeds and that the
+  extracted program still computes `(3,2) -> 5`. At 1x the documented
+  cliff reproduces exactly (clean through quality 34, fails at 32). At 2x
+  it survives every quality tried, down to 5. At 3x it survives to quality
+  10 and fails at 7. The reason is that the two failure modes pull in
+  opposite directions: the cliff is JPEG block quantization erasing pixels
+  out of a 1px-wide stroke, and upscaling widens the stroke enough that
+  the same quantization can no longer erase it entirely. So the compound
+  case is *easier* than the 1px case, not harder -- the opposite of what
+  this entry assumed when it flagged the gap.
 - Dependency footprint: 4 undeclared deps (Pillow, numpy, scipy,
   scikit-image), informal by design matching how `extra/` keeps other
   subtrees' toolchains out of `pyproject.toml`. A ranked, tested plan for
