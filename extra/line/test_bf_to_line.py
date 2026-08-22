@@ -108,6 +108,39 @@ class TestNestedLoops:
         assert _run_bf("++[>++[>+<-]<-]>>+++.", tmp_path / "nested_tail.png") == [7]
 
 
+class TestNestingDepthLimit:
+    """Pins the *measured* boundary of what `_layout` can currently draw.
+
+    Three levels of real `[...]` do not render: `_close_loop` exhausts every
+    stem offset and approach at maximum padding and raises.  This is a
+    genuine lack of drawn space, not a routing-quality bug -- for the failing
+    outer loop-back, candidates split evenly between "no corridor exists at
+    all" and "the only route folds back on itself" (measured: 77 each of
+    154).  See WIP.md's nesting-depth entry for the full numbers.
+
+    Asserting on the *raise* rather than xfail-ing a wrong answer is
+    deliberate: with the self-approach check disabled, this program renders
+    happily and then fails extraction with ~21000 unaccounted pixels, i.e.
+    it draws self-crossing garbage.  A loud render-time error is the
+    correct behavior for a program this layout cannot draw, so that is what
+    is pinned here -- if a future layout change makes three levels work,
+    this test should be replaced by a real round-trip assertion, not
+    deleted.
+    """
+
+    @pytest.mark.slow
+    def test_three_levels_raise_rather_than_misdraw(self, tmp_path: Path) -> None:
+        """Depth 3 fails loudly at render time, never silently misdraws.
+
+        Slow (~2.5 min) by construction: reaching the raise means exhausting
+        every stem offset and approach at all `_MAX_PADDING_DOUBLINGS`
+        paddings, which is the whole point of the assertion.  Deselect with
+        `-m 'not slow'`.
+        """
+        with pytest.raises(ValueError, match="no clear route found"):
+            _run_bf("+[>+[>+[>+<-]<-]<-]", tmp_path / "depth3.png")
+
+
 class TestCompileErrors:
     """`bf_to_line`'s own documented rejections, no rendering involved."""
 

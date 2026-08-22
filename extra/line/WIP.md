@@ -444,6 +444,36 @@ them). `verify.py` remains the separate, narrower round-trip check for
   setting it to 0 currently leaves every test passing; see its own comment
   in `render.py` for why it is kept at 1 anyway.
 
+  **Known limit: loop nesting stops at two levels.** Three levels
+  (`+[>+[>+[>+<-]<-]<-]`) do not render at all -- `_close_loop` exhausts
+  every stem offset and approach at maximum padding and raises. Measured
+  per-`goto` rather than guessed: for the failing *outer* loop-back, 154
+  routing attempts split 77 "no corridor exists at any padding" and 77
+  "the only available route folds back on itself", so this is a genuine
+  lack of drawn space between sibling arms, not a routing-quality bug the
+  router could solve with a better search.
+
+  This was never working -- it is not a regression from the fixes above.
+  With `_self_approaches` disabled, the same program renders happily and
+  then fails `extract()` with ~21000 unaccounted pixels: it draws
+  self-crossing garbage. The self-approach check converts that silent
+  misextraction into a loud render-time error, which is the correct
+  behavior for a program this layout cannot draw, and is what
+  `test_bf_to_line.py`'s `TestNestingDepthLimit` pins.
+
+  Not attempted, and the obvious place for a future fix to start:
+  `_fork_depth` returns early at a `goto` (`return depth`), so a
+  loop-carrying subtree looks *shallower* than it is and gets the least
+  branch spacing -- plausibly backwards, since exactly those subtrees need
+  a routing channel for their detour. Making a `goto` count toward depth
+  was tried at +1 level and did not rescue three levels (depth 2 kept
+  working), so if this is picked up it needs more than a constant bump --
+  most likely a reserved routing channel sized independently of
+  `_BRANCH_SPACING`'s H-tree halving, and/or two-phase layout (place all
+  fixed geometry, then route every `goto` outermost-first against full
+  occupancy) so the outer detour is not routing through space the inner
+  ones already consumed.
+
   **Now covered by `test_bf_to_line.py`**, the `bf_to_line.py`-driven suite
   through the real render -> extract -> simulate pipeline that WIP.md
   previously noted was missing: straight-line programs, single-level loops
