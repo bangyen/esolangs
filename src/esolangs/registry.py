@@ -249,6 +249,12 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.factor",
         id="factor",
     ),
+    "Flowchart": Language(
+        "Flowchart",
+        id="flowchart",
+        interpreter="grid_based.flowchart",
+        split=True,
+    ),
     "Forþ": Language(
         "Forþ",
         _generate.forth,
