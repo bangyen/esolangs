@@ -78,6 +78,20 @@ rather than invented, and every one of the three examples on the page
   leaves the register empty.  The truth machine never outputs an empty
   register, so nothing else on the page constrains this.
 
+  This one is a genuine judgment call and could reasonably go the other
+  way.  The page is from 2025 and categorised Unimplemented, so its
+  diagrams were almost certainly never run, and a spurious trailing bit is
+  exactly the kind of edge case a hand-written example misses -- "the cat
+  is simply buggy, and the prose means what it says" is a defensible
+  reading.  What tipped it here is that the two are not symmetric: under
+  "empty is zero" *every* terminating run of the cat emits the extra bit,
+  since its read loop can only end by popping an exhausted deque, so the
+  example would not be slightly wrong but categorically not a cat.  The
+  page asserts both things and no implementation satisfies both, so
+  something on it is wrong either way.  Reverting is small and local:
+  print ``"0"`` for an empty register in :meth:`_Machine._execute` and
+  update ``test_no_trailing_zero_from_the_empty_register``.
+
 * **Pointers run in lock-step, round-robin, in creation order.**  The
   spec fixes the starting order (top-most, left-most) and says pointers
   "run in parallel" but never gives an interleaving, and because the deques
