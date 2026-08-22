@@ -186,6 +186,14 @@ class _Cursor:
     heading: tuple[int, int]
     strokes: list[list[tuple[int, int]]] = field(default_factory=list)
     _current: list[tuple[int, int]] = field(default_factory=list)
+    # Every pixel any stroke has drawn so far, across the *whole* program
+    # being laid out -- shared by reference among a cursor and every child
+    # cursor `branch()` creates from it, so a later loop-back detour
+    # (`_close_loop`) can route around ink from sibling arms and the trunk,
+    # not just its own cursor's strokes.  `None` (the default) means
+    # occupancy tracking is off, matching every existing caller/test that
+    # never routes a loop-back and so never needs it.
+    occupied: set[tuple[int, int]] | None = None
 
     def __post_init__(self) -> None:
         self._current = [(self.y, self.x)]
@@ -225,13 +233,15 @@ class _Cursor:
         right when the tape cell is zero and left otherwise.
         """
         self.finish()
-        right = _Cursor(self.y, self.x, _turn_right(self.heading))
-        left = _Cursor(self.y, self.x, _turn_left(self.heading))
+        right = _Cursor(self.y, self.x, _turn_right(self.heading), occupied=self.occupied)
+        left = _Cursor(self.y, self.x, _turn_left(self.heading), occupied=self.occupied)
         return right, left
 
     def finish(self) -> None:
         if len(self._current) > 1:
             self.strokes.append(self._current)
+            if self.occupied is not None:
+                self.occupied.update(self._current)
         self._current = [(self.y, self.x)]
 
 
@@ -244,12 +254,31 @@ class Node:
     straight-through op; ``zero``/``nonzero`` are the two branches taken by
     ``?``, matching the wiki's "turn right if the current cell is 0,
     otherwise turn left" rule.
+
+    ``goto`` marks a real drawn loop-back: after this node's own op (if any)
+    runs, instead of continuing to ``next`` (which must be ``None`` when
+    ``goto`` is set -- a node either continues straight or jumps back, not
+    both), the layout closes a detour back to a point strictly inside the
+    stem leading into whatever ``?`` node ``goto`` points at -- not the fork's
+    own vertex (see :func:`_layout`'s ``_close_loop`` for why: forcing the
+    detour to arrive with the fork's own arrival heading always retraces the
+    stem's own line, since two straight approaches from the same heading
+    landing on the same point are the same line).  A mid-stem reconnection
+    is exactly the shape :mod:`simulate`'s ``find_merge`` already handles as
+    its primary real-world case (confirmed on the wiki's own
+    ``addition.png`` fixture, whose loop-body arm reconnects strictly inside
+    its incoming stem's straight run rather than onto any recorded vertex).
+    This is how a compiler (e.g. a brainfuck-to-Line translator) expresses
+    ``[...]``: a ``?`` fork whose ``nonzero`` arm is the loop body ending in
+    a node whose ``goto`` points back at the fork itself, and whose ``zero``
+    arm is the code following the loop.
     """
 
     op: str
     next: Node | None = None
     zero: Node | None = None
     nonzero: Node | None = None
+    goto: Node | None = None
 
 
 def chain(*ops: str) -> Node:
@@ -275,14 +304,461 @@ def chain(*ops: str) -> Node:
 # there is no wiki example showing merged >/</i/o).
 _MERGEABLE = {"+", "-"}
 
+# Two earlier approaches to closing a loop-back were tried and rejected:
+#
+# * A fixed diagonal-then-straight detour onto the fork's own vertex,
+#   arriving with the fork's own heading: rejected because forcing the final
+#   leg to match that heading means retracing the stem's own line exactly
+#   (two straight approaches from the same heading landing on the same point
+#   are the same line) -- no clearance fixes that, since the final leg's
+#   geometry is fixed by the target point and heading alone.  `_layout` now
+#   targets a point strictly *inside* the stem instead (see its own
+#   docstring), which removes the heading constraint entirely --
+#   :mod:`simulate`'s ``find_merge`` accepts a mid-segment reconnection from
+#   any direction.
+# * An escalating-clearance heuristic (step out perpendicular by a growing
+#   distance, then a direct two-leg run onto the target): worked for a single
+#   flat loop, but a nested loop's outer detour has no reliable "sideways"
+#   direction that clears the inner loop's own already-drawn rectangle,
+#   which can span the entire width the heuristic tries to step past.
+#
+# `_close_loop` instead does real pathfinding: A* over the pixel grid,
+# 4-directional only (never diagonal -- see :func:`_route_legs`'s docstring
+# for why), blocked by every pixel in `occupied` except the target itself.
+# This is exact (no coarse-cell rounding to reintroduce collisions, unlike an
+# even earlier cell-grid-BFS attempt) and finds a route around arbitrarily
+# shaped existing ink, including a previously-closed inner loop's own
+# rectangle.
+# `_route_legs` searches within a padded bounding box around start/target,
+# not the unbounded canvas: a real Line drawing's ink is sparse relative to
+# its own bounding box (thin 1px-wide strokes), so an unbounded search that
+# fails to find a route wastes enormous time re-discovering that most of a
+# huge, mostly-empty canvas is reachable before ever giving up -- confirmed
+# directly: a plain flood fill (independent of this module's own A*) from a
+# real failing case's start pixel did not finish within two minutes.  The
+# padding below starts modest and doubles on each retry (see `_close_loop`'s
+# caller, which is what actually widens it) rather than search unbounded
+# from the first attempt.
+_MAX_ROUTE_SEARCH = 300_000  # pragma: no mutate - generous per-attempt search-node cap
 
-def _layout(node: Node | None, cursor: _Cursor) -> None:
+
+def _edge_clear(
+    p: tuple[int, int], direction: tuple[int, int], occupied: set[tuple[int, int]]
+) -> bool:
+    """Whether every pixel strictly between ``p`` and ``p + _UNIT*direction`` is clear."""
+    dy, dx = direction
+    y, x = p
+    for _ in range(_UNIT):
+        y, x = y + dy, x + dx
+        if (y, x) in occupied:
+            return False
+    return True
+
+
+def _astar(
+    start: tuple[int, int],
+    aim: tuple[int, int],
+    step: int,
+    bounds: tuple[int, int, int, int],
+    edge_clear: object,
+    *,
+    is_goal: object,
+    exempt_goal: object,
+) -> list[tuple[int, int]] | None:
+    """Generic 4-directional A* from ``start`` toward ``aim`` on a ``step``-sized grid.
+
+    ``edge_clear(p, direction)`` decides whether the edge from ``p`` one
+    ``step`` in ``direction`` is passable.  ``aim`` only drives the search's
+    distance heuristic (Manhattan distance to it); the actual stopping
+    condition is ``is_goal(node)``, which lets a caller accept more than one
+    exact node as success -- see below for why the coarse pass needs that.
+    ``bounds`` is ``(lo_y, hi_y, lo_x, hi_x)``, the inclusive region node
+    coordinates must stay within.  Returns the node path (inclusive of both
+    ends), or ``None`` if exhausted without satisfying ``is_goal`` within
+    :data:`_MAX_ROUTE_SEARCH` explored nodes.  Shared by both the coarse
+    (:data:`_UNIT`-pixel step) and fine (1-pixel step) passes
+    :func:`_route_legs` runs -- the two differ only in step size, edge
+    validity, and goal test.
+
+    ``exempt_goal(node)`` controls whether arriving at a node satisfying
+    ``is_goal`` skips the edge-clear check for that final step -- ``True``
+    only for the real merge point (which is real ink by construction, see
+    :func:`_layout`).  The coarse pass's own *ideal* waypoint (the rounded
+    approximation of the real target -- see :func:`_route_legs`) must never
+    get this exemption: it can coincide with a genuinely occupied pixel by
+    pure coordinate coincidence (confirmed: a coarse waypoint landed exactly
+    on an unrelated fork's own branch vertex in a real nested-loop program,
+    and exempting it let the coarse path cross straight through real ink
+    that any other node would have been correctly blocked by).  Accepting
+    *any* node within one coarse step of that ideal point as the coarse
+    pass's goal (rather than forcing the single exact point, which is not
+    always reachable even when a nearby point clearly is) is what
+    :func:`_route_legs` actually uses ``is_goal`` for.
+    """
+    import heapq
+    from typing import Callable, cast
+
+    is_clear = cast(Callable[[tuple[int, int], tuple[int, int]], bool], edge_clear)
+    goal = cast(Callable[[tuple[int, int]], bool], is_goal)
+    exempt = cast(Callable[[tuple[int, int]], bool], exempt_goal)
+    dirs = [(-1, 0), (1, 0), (0, 1), (0, -1)]
+    ay, ax = aim
+    lo_y, hi_y, lo_x, hi_x = bounds
+
+    def h(p: tuple[int, int]) -> int:
+        return (abs(p[0] - ay) + abs(p[1] - ax)) // step
+
+    frontier: list[tuple[int, int, tuple[int, int]]] = [(h(start), 0, start)]
+    came_from: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+    cost_so_far: dict[tuple[int, int], int] = {start: 0}
+    explored = 0
+
+    while frontier:
+        _, cost, cur = heapq.heappop(frontier)
+        if goal(cur):
+            path = [cur]
+            while came_from[path[-1]] is not None:
+                path.append(came_from[path[-1]])  # type: ignore[arg-type]
+            path.reverse()
+            return path
+        explored += 1
+        if explored > _MAX_ROUTE_SEARCH:
+            return None
+        for dy, dx in dirs:
+            nxt = (cur[0] + dy * step, cur[1] + dx * step)
+            if not (lo_y <= nxt[0] <= hi_y and lo_x <= nxt[1] <= hi_x):
+                continue
+            if not (goal(nxt) and exempt(nxt)) and not is_clear(cur, (dy, dx)):
+                continue
+            new_cost = cost + step
+            if nxt not in cost_so_far or new_cost < cost_so_far[nxt]:
+                cost_so_far[nxt] = new_cost
+                came_from[nxt] = cur
+                heapq.heappush(frontier, (new_cost + h(nxt), new_cost, nxt))
+    return None
+
+
+def _path_to_legs(path: list[tuple[int, int]]) -> list[tuple[tuple[int, int], int]]:
+    """Collapse a node path into ``(direction, pixel_length)`` runs."""
+    legs: list[tuple[tuple[int, int], int]] = []
+    for i in range(1, len(path)):
+        dy, dx = path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]
+        length = max(abs(dy), abs(dx))
+        direction = (0 if dy == 0 else (1 if dy > 0 else -1), 0 if dx == 0 else (1 if dx > 0 else -1))
+        if legs and legs[-1][0] == direction:
+            legs[-1] = (direction, legs[-1][1] + length)
+        else:
+            legs.append((direction, length))
+    return legs
+
+
+def _route_legs(
+    start: tuple[int, int],
+    target: tuple[int, int],
+    occupied: set[tuple[int, int]],
+    padding: int,
+) -> list[tuple[tuple[int, int], int]]:
+    """Route from ``start`` to ``target`` around ``occupied``, cardinal-only.
+
+    Only the 4 cardinal directions are ever used, never a diagonal step:
+    :mod:`extract`'s ``classify_ops`` identifies a real ``+``/``-`` opcode by
+    a single 45-degree diagonal jog of any length between two straight runs
+    (see its ``_FIXED_SIGNATURES``/lone-diagonal fallback), so a detour leg
+    that happens to be diagonal risks being misread as an extra, spurious
+    opcode call -- confirmed to actually happen with an earlier
+    diagonal-then-straight detour, which added a phantom ``-`` call to a
+    synthetic loop test.  Every cardinal-to-cardinal turn is 0, 90, or 180
+    degrees, which no opcode signature matches, so a purely 4-directional
+    path is unambiguous regardless of shape.
+
+    Two passes, not one: a pixel-exact A* over the whole distance was tried
+    first and rejected on performance grounds -- confirmed directly on a real
+    boolean-generator brainfuck program's compiled decision tree, where a
+    genuinely reachable target ~500px away timed out the search entirely
+    rather than being found, since a pixel grid explores ``_UNIT**2`` more
+    nodes than necessary to cover the same distance.  The fix: a *coarse*
+    A* first, stepping by whole :data:`render._UNIT` grid units (matching the
+    scale every straight run in a Line drawing already uses) with each edge
+    validated pixel-by-pixel (:func:`_edge_clear`) so coarse safety is exactly
+    equivalent to fine safety for that edge -- covering the bulk of the
+    distance at ``_UNIT**2`` fewer explored nodes.  The coarse grid is
+    anchored at ``start`` (so ``start`` always lands exactly on it) and aimed
+    at the coarse node nearest ``target``, which will not generally *be*
+    ``target`` exactly; a second, fine (1-pixel step) A* then covers the
+    short residual gap (at most one grid unit per axis), landing exactly.
+
+    ``target`` is reachable even though it is itself real ink (the merge
+    point sits inside an existing stroke's segment by construction -- see
+    :func:`_layout`) -- only cells strictly between ``start`` and ``target``
+    are required to be clear, matching the same "goal is the one exception"
+    rule an earlier cell-grid attempt used.  The search is confined to the
+    bounding box of ``start``/``target`` expanded by ``padding`` pixels on
+    every side (an unbounded search is impractical -- confirmed directly: a
+    plain flood fill, independent of this module's own A*, from a real
+    failing case's start pixel did not finish within two minutes on a huge,
+    mostly-empty canvas); :func:`_close_loop` retries with a larger
+    ``padding`` if this raises :class:`ValueError`.
+
+    Returns collapsed ``(direction, length)`` legs (consecutive same-
+    direction runs merged) rather than a raw pixel list, so the caller can
+    walk it with a handful of ``cursor.advance`` calls, matching every other
+    stroke in a Line drawing's straight-run style.
+    """
+    ty, tx = target
+    lo_y, hi_y = min(start[0], ty) - padding, max(start[0], ty) + padding
+    lo_x, hi_x = min(start[1], tx) - padding, max(start[1], tx) + padding
+    bounds = (lo_y, hi_y, lo_x, hi_x)
+
+    def coarse_clear(p: tuple[int, int], direction: tuple[int, int]) -> bool:
+        return _edge_clear(p, direction, occupied)
+
+    dy, dx = ty - start[0], tx - start[1]
+    rounded = (
+        start[0] + round(dy / _UNIT) * _UNIT,
+        start[1] + round(dx / _UNIT) * _UNIT,
+    )
+    # `rounded` is only ever an *approximation* of `target` (see docstring),
+    # not itself guaranteed clear -- it can coincide exactly with genuinely
+    # occupied ink by pure coordinate coincidence (confirmed: a rounded
+    # waypoint landed exactly on an unrelated fork's own branch vertex in a
+    # real nested-loop program).  Accepting `rounded` *or* any of its 4
+    # immediate coarse neighbors as the goal (rather than forcing exactly
+    # `rounded`, which is not always reachable even when a neighbor clearly
+    # is -- confirmed on the same program, where nudging to a single fixed
+    # neighbor still failed) lets A* itself find whichever candidate the
+    # occupied geometry actually permits; the fine pass below then covers
+    # however much residual gap to the real `target` whichever candidate
+    # won leaves (at most one grid unit further per axis than `rounded`
+    # alone would have).
+    coarse_candidates = {rounded}
+    for cdy, cdx in ((-1, 0), (1, 0), (0, 1), (0, -1)):
+        coarse_candidates.add((rounded[0] + cdy * _UNIT, rounded[1] + cdx * _UNIT))
+
+    def coarse_goal(p: tuple[int, int]) -> bool:
+        return p in coarse_candidates
+
+    def never_exempt(p: tuple[int, int]) -> bool:
+        del p
+        return False
+
+    coarse_path = _astar(
+        start,
+        rounded,
+        _UNIT,
+        bounds,
+        coarse_clear,
+        is_goal=coarse_goal,
+        exempt_goal=never_exempt,
+    )
+    if coarse_path is None:
+        raise ValueError(
+            "no clear route found for the loop-back detour within the "
+            "current search padding -- the drawing may be too densely "
+            "packed for this program's loop nesting"
+        )
+    coarse_target = coarse_path[-1]
+
+    def fine_clear(p: tuple[int, int], direction: tuple[int, int]) -> bool:
+        nxt = (p[0] + direction[0], p[1] + direction[1])
+        return nxt not in occupied
+
+    def fine_goal(p: tuple[int, int]) -> bool:
+        return p == target
+
+    def exempt_final(p: tuple[int, int]) -> bool:
+        return p == target
+
+    fine_path = _astar(
+        coarse_target,
+        target,
+        1,
+        bounds,
+        fine_clear,
+        is_goal=fine_goal,
+        exempt_goal=exempt_final,
+    )
+    if fine_path is None:
+        raise ValueError(
+            "no clear route found for the loop-back detour's final approach "
+            "within the current search padding -- the drawing may be too "
+            "densely packed for this program's loop nesting"
+        )
+
+    return _path_to_legs(coarse_path + fine_path[1:])
+
+
+# Starting search padding (pixels) for `_close_loop`'s first attempt, and
+# how many times it doubles before giving up -- kept small at first so the
+# common case (a nearby, unobstructed reconnection) resolves in a small,
+# fast search rather than always paying for a search of the whole drawing's
+# extent up front.  4 doublings from 4*_UNIT covers well past any real
+# fixture or generated program tried here before the per-attempt node cap
+# (`_MAX_ROUTE_SEARCH`) would matter at that padding.
+_INITIAL_PADDING = 4 * _UNIT
+_MAX_PADDING_DOUBLINGS = 6
+
+
+def _close_loop(
+    cursor: _Cursor,
+    stem_start: tuple[int, int],
+    stem_heading: tuple[int, int],
+    occupied: set[tuple[int, int]],
+) -> None:
+    """Route from ``cursor``'s current point onto some point along a stem.
+
+    ``stem_start``/``stem_heading`` describe the straight run leading into
+    some ``?`` node's own branch point (recorded by :func:`_layout`); the
+    reconnection lands strictly *inside* that run, not the fork's own vertex
+    -- see the comment above :func:`_route_legs` for why.  Tries every whole-
+    unit offset from 1 to :data:`_STEM_LEN` - 1 in turn (skipping the two
+    ends, which are real vertices, not interior points) at a given search
+    padding, routing to whichever is reachable first via :func:`_route_legs`
+    -- a single fixed offset (e.g. always the exact midpoint) can end up
+    walled in on every side by unrelated ink drawn elsewhere after this stem,
+    which happens in practice in a dense decision tree (confirmed on a real
+    boolean-generator brainfuck program's compiled output).
+
+    All offsets are tried at the current padding before the padding itself
+    grows (see :data:`_INITIAL_PADDING`/:data:`_MAX_PADDING_DOUBLINGS`): most
+    reconnections are found nearby, so this keeps the common case cheap and
+    only pays for a wider search when every offset genuinely needs more room
+    to route around.
+    """
+    hy, hx = stem_heading
+    targets = [
+        (stem_start[0] + hy * offset, stem_start[1] + hx * offset)
+        for offset in range(1, _STEM_LEN)
+    ]
+    padding = _INITIAL_PADDING
+    errors: list[str] = []
+    for _ in range(_MAX_PADDING_DOUBLINGS + 1):
+        for target in targets:
+            try:
+                legs = _route_legs((cursor.y, cursor.x), target, occupied, padding)
+            except ValueError as exc:
+                errors.append(str(exc))
+                continue
+            for direction, length in legs:
+                cursor.advance(direction, length)
+            if (cursor.y, cursor.x) != target:  # pragma: no cover - geometry guard
+                raise AssertionError(
+                    f"loop-back detour landed at {(cursor.y, cursor.x)}, "
+                    f"expected {target}"
+                )
+            return
+        padding *= 2
+    raise ValueError(
+        "no clear route found for the loop-back detour at any offset along "
+        "the target stem, even at maximum search padding -- the drawing may "
+        f"be too densely packed for this program's loop nesting ({errors[-1]})"
+    )
+
+
+# Length (in grid units) of the stem `_layout` walks into a `?` node's own
+# branch point.  `_close_loop` tries every whole-unit offset from 1 to this
+# minus 1 as a candidate reconnection point (see its own docstring for why
+# more than one candidate is needed), so this is also how many candidates
+# a loop-back gets to find a clear one -- long enough in practice for every
+# fixture and generated program tried, including a real boolean-generator
+# brainfuck program's dense compiled decision tree.
+_STEM_LEN = 10
+
+
+# Extra lateral distance (in grid units) each fork arm runs, purely as
+# connective spacing, before `_layout` recurses into its actual content --
+# scaled by remaining nesting depth (see `_layout`'s `depth` parameter and
+# `_fork_depth` below) so sibling subtrees fan apart enough for whatever
+# content they still need to lay out, without re-converging onto an
+# ancestor fork's own arms.
+#
+# This *shrinks* geometrically the deeper a fork sits (an H-tree layout:
+# each 90-degree turn needs roughly half its parent's arm length, not more),
+# rather than growing with absolute nesting depth as an earlier version of
+# this constant did.  Growing arms with depth seems intuitively safer (more
+# room for deeper content) but is wrong: every fork turns its two children
+# 90 degrees from its own heading, so a child fork's own children turn back
+# toward the *original* heading -- if that grandchild's arm is longer than
+# the distance back to its grandparent's axis, it overshoots and crosses
+# it.  Confirmed concretely on a 3-level boolean-decision-tree generator
+# (2**3 = 8 leaves): scaling this constant up by 10x reproduced the exact
+# same "extraction left N source pixels unaccounted for" failure, because
+# growing (not the absolute scale) was the bug -- every level's arm still
+# overshot its ancestors' axes by the same ratio.  Halving per level instead
+# (`_BRANCH_SPACING * 2 ** remaining_depth`, sized so the *shallowest*
+# lookahead level still clears its own leaf content) keeps each inward turn
+# strictly inside the space its ancestors left for it.
+#
+# Still needs to be large enough at the deepest level for `_close_loop` to
+# route a BF-compiled loop-back through a densely nested decision tree
+# (confirmed necessary on a real boolean-generator brainfuck program's
+# compiled output) -- not a router bug, a genuine lack of drawn space
+# between sibling branches for anything to route through otherwise.
+_BRANCH_SPACING = 20
+
+
+def _fork_depth(node: Node | None) -> int:
+    """How many more nested `?` forks are reachable below ``node``.
+
+    Walks `.next`/`.zero`/`.nonzero` (never `.goto`, which can cycle back to
+    an ancestor -- see `Node.goto`'s docstring) to find the deepest `?`
+    still ahead, so `_layout` can size a fork's own arm spacing against how
+    much more branching that arm still has to fit, not just how deep the
+    tree has already gone (see `_BRANCH_SPACING`'s comment for why depth
+    from the root, growing outward, is the wrong quantity to scale on).
+    """
+    depth = 0
     while node is not None:
         if node.op == "?":
-            cursor.advance(cursor.heading, 1)  # stem into the branch point
+            return 1 + max(_fork_depth(node.zero), _fork_depth(node.nonzero))
+        if node.goto is not None:
+            return depth
+        node = node.next
+    return depth
+
+
+def _layout(
+    node: Node | None,
+    cursor: _Cursor,
+    entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] | None = None,
+    depth: int = 0,
+) -> None:
+    """Lay out ``node``'s chain from ``cursor``'s current point.
+
+    ``entries`` maps a ``?`` node's ``id`` to ``(stem_start, heading)`` for
+    the stem this function walks into that fork's own branch point -- a
+    ``goto`` targeting it reconnects somewhere strictly *inside* that stem,
+    not the branch point itself (see :func:`_close_loop` for why: the fork's
+    own vertex, approached with the fork's own arrival heading, cannot be
+    reached by any other straight line without retracing the stem itself).
+    The exact offset along the stem is chosen lazily, by :func:`_close_loop`
+    itself at the moment a ``goto`` actually fires, rather than fixed here --
+    a single pre-chosen offset (e.g. the stem's exact midpoint) can end up
+    walled in by unrelated ink drawn *after* this fork's own stem, e.g. a
+    sibling branch elsewhere in a dense decision tree happening to run
+    directly alongside it (confirmed on a real boolean-generator brainfuck
+    program's compiled output); trying several offsets against the occupied
+    set as it stands when the jump actually fires sidesteps that.
+
+    ``depth`` counts how many ``?`` forks deep this call is nested, and
+    grows :data:`_BRANCH_SPACING`'s effect the same way -- see its own
+    comment for why deeper subtrees need more room, not just a fixed gap.
+    """
+    if entries is None:
+        entries = {}
+    while node is not None:
+        if node.op == "?":
+            stem_start = (cursor.y, cursor.x)
+            cursor.advance(cursor.heading, _STEM_LEN)
+            entries[id(node)] = (stem_start, cursor.heading)
             right, left = cursor.branch()
-            _layout(node.zero, right)
-            _layout(node.nonzero, left)
+            remaining = 1 + max(_fork_depth(node.zero), _fork_depth(node.nonzero))
+            spacing = _BRANCH_SPACING * 2**remaining
+            right.advance(right.heading, spacing)
+            right.finish()
+            left.advance(left.heading, spacing)
+            left.finish()
+            _layout(node.zero, right, entries, depth + 1)
+            _layout(node.nonzero, left, entries, depth + 1)
             right.finish()
             left.finish()
             cursor.strokes.extend(right.strokes)
@@ -290,10 +766,21 @@ def _layout(node: Node | None, cursor: _Cursor) -> None:
             return
         op, count = node.op, 1
         if op in _MERGEABLE:
-            while node.next is not None and node.next.op == op:
+            while node.next is not None and node.next.op == op and node.next.goto is None:
                 node = node.next
                 count += 1
         cursor.emit_op(op, count)
+        if node.goto is not None:
+            stem_start, stem_heading = entries[id(node.goto)]
+            # Flush the in-progress stroke's pixels into `occupied` *before*
+            # routing, so the detour treats the body just drawn (including
+            # this call's own final kink) as real ink to route around --
+            # otherwise the router could path straight back through it.
+            cursor.finish()
+            assert cursor.occupied is not None  # noqa: S101 - render() always sets it
+            _close_loop(cursor, stem_start, stem_heading, cursor.occupied)
+            cursor.finish()
+            return
         node = node.next
     cursor.finish()
 
@@ -323,7 +810,7 @@ def render(root: Node, start_heading: tuple[int, int] = (-1, 0)) -> Image.Image:
     ``start_heading`` defaults to "up", matching every wiki example (the
     cursor starts at the bottom of the drawing and travels upward).
     """
-    cursor = _Cursor(0, 0, start_heading)
+    cursor = _Cursor(0, 0, start_heading, occupied=set())
     _layout(root, cursor)
 
     ys = [p[0] for stroke in cursor.strokes for p in stroke]
