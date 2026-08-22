@@ -35,11 +35,11 @@ choices, and why, where the wiki is silent:
   output), matching :mod:`render`'s and :mod:`extract`'s existing opcode
   names for these two curves.
 * **`?`**: "turn right if the current cell is 0, otherwise...turn left",
-  quoted directly from the wiki.  Naively, that would mean taking the
-  walked ``Stroke.zero`` child on a zero cell -- but :mod:`lattice`'s
-  ``zero``/``nonzero`` field names turn out not to mean that; see
-  :func:`run`'s own docstring for the concrete mismatch this module
-  corrects for.
+  quoted directly from the wiki -- taken literally, so a zero cell walks
+  :class:`lattice.Stroke`'s ``zero`` child.  That only reads correctly
+  because ``lattice._classify`` names its fork arms in the cursor's own
+  travelling frame; see :func:`run`'s docstring for the 180-degree
+  rotation bug this used to compensate for instead.
 * **Termination**: the wiki does not describe a halt condition at all.  The
   natural reading of "cursor follows a drawn curve" is that execution ends
   wherever the drawn path itself ends -- a stroke tree leaf (no ``zero``/
@@ -297,24 +297,17 @@ def run(
     ``?``: after its own ops run, the *next* stroke is chosen by the current
     cell's value.
 
-    This is where :mod:`lattice`'s ``Stroke.zero``/``Stroke.nonzero`` field
-    *names* are actually misleading for execution, not just cosmetically
-    different from ``render.py``'s own labeling as ``WIP.md`` describes:
-    ``lattice._classify`` computes its ``right``/``left`` fork options
-    relative to ``back`` (the direction arrived *from*), while
-    ``render.py``'s ``_turn_right``/``_turn_left`` rotate relative to
-    ``heading`` (the direction arrived *in*, the opposite of ``back``) --
-    two rotations 180 degrees apart, which swaps which physical arm each
-    walker calls "right" vs "left".  Confirmed concretely, not just derived
-    algebraically: a synthetic ``render.py`` program with
-    ``Node("?", zero=chain("+","+"), nonzero=chain("-",">"))`` -- whose
-    ``zero`` arm render.py draws turning right, matching the wiki's "turn
-    right if 0" -- round-trips through ``extract()`` with cell value 0
-    actually taking the walked ``Stroke.nonzero`` child (the ``+, +`` arm),
-    and a nonzero cell taking ``Stroke.zero`` (the ``-, >`` arm).  So this
-    function takes the walked ``nonzero`` child on a zero cell and ``zero``
-    on a nonzero cell -- the swap is intentional and load-bearing, not a
-    typo.
+    A zero cell takes the walked ``Stroke.zero`` child and a nonzero cell
+    takes ``Stroke.nonzero``, directly matching the wiki's "turn right if
+    the current cell is 0, otherwise...turn left".  That plain reading is
+    only correct because :func:`lattice._classify` names its fork arms
+    relative to the *heading* (the direction arrived in), the same frame
+    ``render.py``'s ``_turn_right``/``_turn_left`` use.  An earlier version
+    rotated off ``back`` (arrived *from*) instead -- 180 degrees away, so
+    every physical arm carried the opposite name and this function had to
+    swap the two children to compensate.  The rotation is fixed at the
+    source now, so no swap happens here; see ``lattice._classify``'s own
+    comment for the frame argument.
 
     Does not guard against non-termination: a program whose only path is a
     cycle with no reachable dead end genuinely never halts, and this
@@ -355,10 +348,7 @@ def run(
             if node is None:
                 return dict(tape)
             continue
-        # Swapped relative to the field names -- see docstring above for why
-        # lattice.py's zero/nonzero labeling is rotated 180 degrees from the
-        # wiki's actual "turn right if 0, left otherwise" rule.
-        node = node.nonzero if tape[pointer] == 0 else node.zero
+        node = node.zero if tape[pointer] == 0 else node.nonzero
 
     return dict(tape)
 
