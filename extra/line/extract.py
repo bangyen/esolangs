@@ -544,13 +544,6 @@ def extract_tree(mask: np.ndarray, cursor: Cursor, start_heading: int = 0) -> St
     return _walk_tree(stripped, region_map, start, start_heading, set(), set())
 
 
-def extract(path: str) -> Stroke:
-    """Load a Line image and walk its full path tree, cursor auto-detected."""
-    mask = load_binary(path)
-    cursor = find_cursor(mask)
-    return extract_tree(mask, cursor)
-
-
 def flatten(stroke: Stroke) -> list[list[tuple[int, int]]]:
     """Return every walked path in a tree, main stroke first, depth-first."""
     paths = [stroke.path]
@@ -559,6 +552,82 @@ def flatten(stroke: Stroke) -> list[list[tuple[int, int]]]:
     if stroke.nonzero is not None:
         paths.extend(flatten(stroke.nonzero))
     return paths
+
+
+def count_pivots(stroke: Stroke) -> int:
+    """Count the branch pivots in a stroke tree (one per real fork)."""
+    count = 1 if stroke.zero is not None or stroke.nonzero is not None else 0
+    if stroke.zero is not None:
+        count += count_pivots(stroke.zero)
+    if stroke.nonzero is not None:
+        count += count_pivots(stroke.nonzero)
+    return count
+
+
+def _redraw(paths: list[list[tuple[int, int]]], shape: tuple[int, int]) -> np.ndarray:
+    """Draw walked pixel paths onto a blank boolean canvas of ``shape``."""
+    canvas = np.zeros(shape, dtype=bool)
+    for path in paths:
+        for y, x in path:
+            canvas[y, x] = True
+    return canvas
+
+
+# Constant part of the deliberate, non-bug gap between a stroke tree's walked
+# pixels and the source image's ink: 2 arrowhead-tip corners the cursor-blob
+# growth threshold falls a pixel short of (see find_cursor's docstring),
+# independent of the program's size or branch count.  The per-pivot part (one
+# pixel per real fork, its own vertex spent as the pivot rather than walked
+# into either arm -- see _walk_tree's docstring) is added by coverage_gap.
+# Measured exactly on both wiki reference images: addition (1 pivot) gaps by
+# 3, multiplication (3 pivots) gaps by 5 -- both pivots + 2.
+_ARROWHEAD_TIP_GAP = 2
+
+
+def coverage_gap(mask: np.ndarray, cursor: Cursor, stroke: Stroke) -> int:
+    """How many source-image ink pixels ``stroke`` leaves unaccounted for.
+
+    Redraws ``stroke``'s walked pixels and XORs against the source (cursor
+    blob excluded, since extraction never attempts to reproduce it); a
+    perfect extraction differs only at the deliberate gap described in
+    :data:`_ARROWHEAD_TIP_GAP`, so this returns 0 for a fully-accounted
+    extraction on real input.  A nonzero value beyond the expected gap means
+    real ink was never walked -- confirmed to happen concretely from JPEG
+    recompression: at quality 32 and below, block quantization can erase a
+    pixel or two directly out of a 1px-wide stroke, severing it, and the
+    walker then silently stops short with no other symptom (see extract()).
+    """
+    paths = flatten(stroke)
+    redrawn = _redraw(paths, mask.shape)
+    reference = mask & ~cursor.blob
+    return int((redrawn ^ reference).sum())
+
+
+def extract(path: str) -> Stroke:
+    """Load a Line image and walk its full path tree, cursor auto-detected.
+
+    Checks the walked tree against the source image before returning (see
+    :func:`coverage_gap`) and raises :class:`ValueError` if real ink was
+    left unaccounted for, rather than silently returning a truncated tree
+    with no indication anything went wrong -- confirmed to matter in
+    practice: a JPEG-recompressed copy of a wiki reference image walks to
+    completion with no error at all if this check is skipped, despite over
+    85% of the drawing never being reached.  Callers that want the
+    best-effort tree regardless can call :func:`extract_tree` directly.
+    """
+    mask = load_binary(path)
+    cursor = find_cursor(mask)
+    stroke = extract_tree(mask, cursor)
+    tolerance = count_pivots(stroke) + _ARROWHEAD_TIP_GAP
+    gap = coverage_gap(mask, cursor, stroke)
+    if gap > tolerance:
+        raise ValueError(
+            f"extraction left {gap} source pixels unaccounted for "
+            f"(expected at most {tolerance} for this program's structure) "
+            "-- the image may be corrupted, over-compressed, or otherwise "
+            "not a clean drawing"
+        )
+    return stroke
 
 
 if __name__ == "__main__":
