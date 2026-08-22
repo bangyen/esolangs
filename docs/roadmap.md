@@ -118,8 +118,26 @@ would make the generator close to trivial to write by hand.
   order.  Each is derived in the module docstring.  An empty register writes
   nothing rather than the spec sentence's zero, because the wiki's own cat
   would otherwise print a trailing bit it never read — an example-over-prose
-  call worth revisiting if the author clarifies.  Wired into `registry.py`
-  (interpreter only, no text generator and no boolean generator yet) — that,
+  call worth revisiting if the author clarifies.  Wired into `registry.py`,
+  with a boolean generator (`tools/boolean/other.py`) that draws the truth
+  table as an actual decision tree: each level reads one bit with `/ /` and
+  hands it to a `< >` switch whose sides are the halves of the table, and
+  each of the `2**n` leaves sets the register to its digit, prints, and
+  halts.  Uncapped, verified over every input combination up to 4 inputs.
+  It is the cheapest of the repo's 2D boolean generators to build, because
+  the language supplies a real conditional (no junction geometry to draw)
+  and reads bare bits (no per-input decoding loop).
+
+  **A text generator is impossible, and this is not a gap to close.**  The
+  only output node emits one bit, and the byte-packing convention the other
+  bit-output languages use (Clockwise buffers seven bits and flushes a
+  character) cannot be applied here: the wiki's truth machine reads one
+  bit, writes one bit, and halts, so under any packing its single output
+  bit would never flush and the example would print nothing at all.
+  Character-per-bit is therefore forced by the spec's own example, and it
+  is what makes text output unreachable — so Flowchart belongs with the
+  interpreter-only languages listed under deferred-removal, not on a list
+  of languages awaiting a text generator.  That,
   and the Kolakoski example's exact output (the page states none, so the
   test pins current behaviour as characterization), are follow-on work.
   On that last point: the output's repeating tail was initially suspected
@@ -182,7 +200,7 @@ stand alone — see `docs/limitations.md` for the removed cases and the
 criteria.  The interpreter-only languages with no text generator but a
 working, uncapped boolean generator (ABCDirection, Back, BF-PDA, Bitdeque,
 Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue,
-Streetcode) are
+Streetcode, Flowchart) are
 **not** candidates: they participate fully in the repo's verification
 machinery via the boolean generator, and their only weakness is an
 interpreter-invented state dump where the wiki defines no text output.
