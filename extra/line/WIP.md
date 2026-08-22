@@ -15,12 +15,17 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
 real inputs, and the synthetic loop-back mechanism, including a hang
 check); `test_line_boolean.py` covers `line_boolean.py`'s generated
 decision trees end-to-end (render -> extract -> simulate) for n=1 through
-n=3 across every input combination. Run either with `uv run --with pillow
---with numpy --with scipy --with scikit-image --with pytest --with
-pytest-xdist pytest test_simulate.py` (or `test_line_boolean.py`) from this
-directory (neither is under the repo root's `tests/` `testpaths`, so a
-bare `pytest` from the repo root will not find them). `verify.py` remains
-the separate, narrower round-trip check for `extract()` alone.
+n=3 across every input combination; `test_bf_to_line.py` covers
+`bf_to_line.py` through the same full pipeline, and is the only suite that
+exercises `render.py`'s loop-drawing geometry (`_layout`/`_close_loop`/
+`_route_legs`) at all -- see the nested-loop entry below for why that
+distinction matters. Run any of them with `uv run --with pillow --with
+numpy --with scipy --with scikit-image --with pytest --with pytest-xdist
+pytest test_simulate.py` (or `test_line_boolean.py`, or
+`test_bf_to_line.py`) from this directory (none is under the repo root's
+`tests/` `testpaths`, so a bare `pytest` from the repo root will not find
+them). `verify.py` remains the separate, narrower round-trip check for
+`extract()` alone.
 
 ## Settled and tested
 
@@ -371,25 +376,83 @@ the separate, narrower round-trip check for `extract()` alone.
   an H-tree layout: each 90-degree turn needs roughly half its parent's arm
   length, not more), via a new `_fork_depth` helper.
 
-  **Known regression, unresolved**: nested brainfuck loops (2+ levels of
-  real `[...]`) compiled via `bf_to_line.py` currently produce a wrong
-  (silently truncated) result -- confirmed on `++[>++[>+<-]<-]>>.`, which
-  computes the right tape (cell 2 ends at 4, the correct product) but the
-  walked program never reaches the final `.` to print it; `run()` halts at
-  a leaf with no `goto` and no further ops instead. Single-level loops
-  (`+++[-].`-shaped) still work correctly. Visual inspection of the
-  rendered image shows the loop's exit path running collinear with (and
-  likely misread as merged into) the loop-back detour's own route -- most
-  likely the collision-aware router choosing a detour that overlaps the
-  exit stroke rather than avoiding it, though this has not been root-caused.
-  Not caught by `test_simulate.py`, which builds cyclic `Stroke` trees
-  directly from `lattice.py` primitives rather than through `render.py`'s
-  own `_layout`/`_close_loop`, so it exercises `simulate.py`'s execution
-  logic but never `render.py`'s loop-drawing geometry at all -- this gap
-  in coverage means it's unknown whether this regression predates the
-  `_BRANCH_SPACING` fix above or was newly exposed by it. A future fix
-  needs a `bf_to_line.py`-driven test through the real render/extract
-  pipeline (not present yet) to pin this down and confirm any fix.
+  **Resolved: the nested-loop regression.** Nested brainfuck loops (2+
+  levels of real `[...]`) compiled via `bf_to_line.py` used to produce a
+  silently truncated result -- confirmed on `++[>++[>+<-]<-]>>.`, which
+  computed the right tape (cell 2 ends at 4, the correct product) but never
+  reached the final `.` to print it, halting at a leaf with no `goto` and
+  no further ops. It now prints `4`. The earlier guess recorded here (the
+  exit path running *collinear* with the detour, i.e. the router choosing an
+  overlapping route) was wrong on both counts: there was no overlap
+  anywhere, and there were two independent causes, neither of which is a
+  routing-quality problem.
+
+  - **A rendered loop-back merge was structurally indistinguishable from a
+    real `?` fork.** `_route_legs` is cardinal-only by design (a diagonal
+    detour leg risks being misread as a `+`/`-` kink), and the stem it lands
+    on is itself cardinal, so the detour's final approach was necessarily
+    *perpendicular* to the stem. A perpendicular touch-down on a straight
+    run lights exactly the arrival direction plus the stem's own two --
+    which is the arrived-from direction plus the pair perpendicular to it,
+    i.e. precisely the T-branch signature `lattice._classify` calls
+    `"fork"`. The extractor therefore read every rendered loop-back as a
+    conditional turn. The wiki's own fixtures reconnect *diagonally*
+    (hand-drawn), which is why `"merge"` classification always worked there
+    and why this only ever broke on rendered output. Fixed by
+    `render._approach_points`: route cardinally to an approach point offset
+    diagonally from the stem, then take one explicit diagonal leg onto it,
+    so the merge reads 3-lit-but-not-perpendicular -> `"merge"` -> a leaf
+    `simulate._compile`'s `find_merge` rescues into a `goto`, by design
+    rather than by luck. The diagonal must be *longer* than `lattice.star`'s
+    own 15px probe, not shorter, so the probe finds a full band segment
+    along it. `classify_ops` does not misread this diagonal as a phantom
+    `+`/`-`, because it already drops a candidate whose final leg is the
+    walked path's literal last run -- exactly where this diagonal sits.
+
+    This also means **single-level loops only ever worked by accident**:
+    their merge point classified as the same spurious `"fork"`, and survived
+    only because both bogus arms' `_walk_segment` happened to land on
+    already-`visited` vertices, degrading the stroke back to a leaf. Nested
+    loops broke the moment one arm reached somewhere unvisited.
+
+  - **A detour could run flush alongside *itself*.** A route is planned
+    against `occupied` as it stood before the route existed, and A* never
+    adds its own in-progress cells to that set -- so nothing stopped a
+    detour from doubling back and running adjacent to a leg it had laid down
+    earlier in the same route. Rasterized, that is a contiguous 2px-wide
+    ribbon, which `lattice._band_lit`'s deliberate ±1 lateral reach reads as
+    an extra lit direction, manufacturing another spurious fork. Confirmed
+    by per-stroke attribution (rendering each stroke in isolation and
+    diffing in normalized-mask space): all three arms of the junction that
+    broke `++[>++[>+<-]<-]>>.` belonged to *one* stroke, the inner loop's
+    own 530-cell detour. Fixed by `_self_approaches`, which rejects a routed
+    path that comes within `_CLEARANCE` of its own earlier self (ignoring a
+    small window along the route, since consecutive cells and ordinary
+    90-degree corners are adjacent by construction) and tries the next
+    candidate target/approach instead.
+
+    Ruled out along the way, so a future reader doesn't re-derive it: this
+    is *not* a draw-order problem. Instrumenting `_close_loop`/`finish`
+    showed the outer detour is routed last, against 814 already-occupied
+    cells, so it had full knowledge of every fixed stroke.
+
+  Both fixes are independently load-bearing, checked by reverting each in
+  isolation: without the diagonal approach 6 of `test_bf_to_line.py`'s 15
+  tests fail, without the self-approach rejection 2 do. `_CLEARANCE`
+  (between-stroke clearance, as opposed to the self-approach check that
+  reuses it) is deliberately *not* claimed as pinned by a failing case --
+  setting it to 0 currently leaves every test passing; see its own comment
+  in `render.py` for why it is kept at 1 anyway.
+
+  **Now covered by `test_bf_to_line.py`**, the `bf_to_line.py`-driven suite
+  through the real render -> extract -> simulate pipeline that WIP.md
+  previously noted was missing: straight-line programs, single-level loops
+  (kept as cover for the accident above becoming real behavior), the two
+  nested cases (asserting on printed *output*, not just the final tape --
+  asserting the tape alone would not have caught this regression at all),
+  and `bf_to_line`'s own compile-time rejections. `test_simulate.py`'s
+  hand-built cyclic `Stroke` trees still never exercise `render.py`'s
+  loop-drawing geometry, which is why this separate suite is needed.
 
 ## Deliberately out of scope
 
