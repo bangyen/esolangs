@@ -233,7 +233,9 @@ class _Cursor:
         right when the tape cell is zero and left otherwise.
         """
         self.finish()
-        right = _Cursor(self.y, self.x, _turn_right(self.heading), occupied=self.occupied)
+        right = _Cursor(
+            self.y, self.x, _turn_right(self.heading), occupied=self.occupied
+        )
         left = _Cursor(self.y, self.x, _turn_left(self.heading), occupied=self.occupied)
         return right, left
 
@@ -446,7 +448,7 @@ def _astar(
     is_goal: object,
     exempt_goal: object,
 ) -> list[tuple[int, int]] | None:
-    """Generic 4-directional A* from ``start`` toward ``aim`` on a ``step``-sized grid.
+    """Search 4-directionally from ``start`` toward ``aim`` on a ``step`` grid.
 
     ``edge_clear(p, direction)`` decides whether the edge from ``p`` one
     ``step`` in ``direction`` is passable.  ``aim`` only drives the search's
@@ -477,7 +479,8 @@ def _astar(
     :func:`_route_legs` actually uses ``is_goal`` for.
     """
     import heapq
-    from typing import Callable, cast
+    from collections.abc import Callable
+    from typing import cast
 
     is_clear = cast(Callable[[tuple[int, int], tuple[int, int]], bool], edge_clear)
     goal = cast(Callable[[tuple[int, int]], bool], is_goal)
@@ -570,7 +573,10 @@ def _path_to_legs(path: list[tuple[int, int]]) -> list[tuple[tuple[int, int], in
     for i in range(1, len(path)):
         dy, dx = path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]
         length = max(abs(dy), abs(dx))
-        direction = (0 if dy == 0 else (1 if dy > 0 else -1), 0 if dx == 0 else (1 if dx > 0 else -1))
+        direction = (
+            0 if dy == 0 else (1 if dy > 0 else -1),
+            0 if dx == 0 else (1 if dx > 0 else -1),
+        )
         if legs and legs[-1][0] == direction:
             legs[-1] = (direction, legs[-1][1] + length)
         else:
@@ -779,7 +785,9 @@ def _close_loop(
                 ):
                     continue
                 try:
-                    legs = _route_legs((cursor.y, cursor.x), approach, occupied, padding)
+                    legs = _route_legs(
+                        (cursor.y, cursor.x), approach, occupied, padding
+                    )
                 except ValueError as exc:
                     errors.append(str(exc))
                     continue
@@ -787,7 +795,7 @@ def _close_loop(
                 # existed, so it cannot see the route's own cells -- reject a
                 # route that folds back alongside itself and try the next
                 # candidate instead (see `_self_approaches`).
-                full = legs + [(diagonal, _DIAGONAL_APPROACH)]
+                full = [*legs, (diagonal, _DIAGONAL_APPROACH)]
                 if _self_approaches(_leg_cells((cursor.y, cursor.x), full)):
                     errors.append("route folded back onto itself")
                     continue
@@ -986,7 +994,9 @@ def _layout(
             return
         op, count = node.op, 1
         if op in _MERGEABLE:
-            while node.next is not None and node.next.op == op and node.next.goto is None:
+            while (
+                node.next is not None and node.next.op == op and node.next.goto is None
+            ):
                 node = node.next
                 count += 1
         cursor.emit_op(op, count)
@@ -997,7 +1007,7 @@ def _layout(
             # this call's own final kink) as real ink to route around --
             # otherwise the router could path straight back through it.
             cursor.finish()
-            assert cursor.occupied is not None  # noqa: S101 - render() always sets it
+            assert cursor.occupied is not None
             _close_loop(cursor, stem_start, stem_heading, cursor.occupied)
             cursor.finish()
             return

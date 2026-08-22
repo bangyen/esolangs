@@ -51,12 +51,15 @@ class TestStraightLine:
     """Loop-free programs: the baseline that never depended on loop geometry."""
 
     def test_increment_and_print(self, tmp_path: Path) -> None:
+        """Three `+` then `.` prints 3."""
         assert _run_bf("+++.", tmp_path / "inc.png") == [3]
 
     def test_pointer_movement(self, tmp_path: Path) -> None:
+        """`>` moves the pointer, so `.` prints the second cell."""
         assert _run_bf("+>++.", tmp_path / "move.png") == [2]
 
     def test_input_is_echoed(self, tmp_path: Path) -> None:
+        """`,` reads a whole number and `.` prints it back unchanged."""
         assert _run_bf(",.", tmp_path / "echo.png", inputs=[7]) == [7]
 
 
@@ -71,12 +74,15 @@ class TestSingleLoop:
     """
 
     def test_clear_loop_zeroes_cell(self, tmp_path: Path) -> None:
+        """`[-]` decrements until the cell reads zero, then falls through."""
         assert _run_bf("+++[-].", tmp_path / "clear.png") == [0]
 
     def test_move_loop_transfers_cell(self, tmp_path: Path) -> None:
+        """`[>+<-]` moves a cell's value one place right."""
         assert _run_bf("+++[>+<-]>.", tmp_path / "move_loop.png") == [3]
 
     def test_multiply_loop(self, tmp_path: Path) -> None:
+        """The classic 8x8 multiply loop, plus one, reaches 65."""
         assert _run_bf("++++++++[>++++++++<-]>+.", tmp_path / "mul.png") == [65]
 
     def test_loop_body_never_runs_on_zero_cell(self, tmp_path: Path) -> None:
@@ -94,6 +100,7 @@ class TestNestedLoops:
     """
 
     def test_nested_multiply_prints_result(self, tmp_path: Path) -> None:
+        """The exact program WIP.md recorded as silently truncating."""
         assert _run_bf("++[>++[>+<-]<-]>>.", tmp_path / "nested.png") == [4]
 
     def test_nested_loop_reaches_code_after_outer_loop(self, tmp_path: Path) -> None:
@@ -106,13 +113,16 @@ class TestCompileErrors:
 
     @pytest.mark.parametrize("program", ["[", "+[+", "]", "+]"])
     def test_unbalanced_brackets_rejected(self, program: str) -> None:
+        """An unmatched bracket in either direction is a compile error."""
         with pytest.raises(ValueError, match="unmatched"):
             bf_to_line(program)
 
     def test_empty_loop_body_rejected(self) -> None:
+        """`[]` has no node to carry the loop-back `goto` -- see bf_to_line."""
         with pytest.raises(ValueError, match="empty loop body"):
             bf_to_line("+[]")
 
     def test_program_with_no_commands_rejected(self) -> None:
+        """`render` needs at least one node, so an all-comment program fails."""
         with pytest.raises(ValueError, match="no recognized commands"):
             bf_to_line("just a comment")

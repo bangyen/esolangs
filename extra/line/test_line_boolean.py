@@ -47,16 +47,22 @@ def _check_truth_table(truth_table: str, n: int, tmp_path: Path) -> None:
 
 
 class TestLineBoolean:
+    """Generated decision trees, end to end through render -> extract -> simulate."""
+
     def test_identity_n1(self, tmp_path: Path) -> None:
+        """Identity on one input: output follows the single bit."""
         _check_truth_table("01", 1, tmp_path)
 
     def test_not_n1(self, tmp_path: Path) -> None:
+        """NOT on one input: output is the inverted bit."""
         _check_truth_table("10", 1, tmp_path)
 
     def test_and_n2(self, tmp_path: Path) -> None:
+        """AND over two inputs."""
         _check_truth_table("0001", 2, tmp_path)
 
     def test_xor_n2(self, tmp_path: Path) -> None:
+        """XOR over two inputs."""
         _check_truth_table("0110", 2, tmp_path)
 
     def test_majority_n3(self, tmp_path: Path) -> None:
@@ -64,9 +70,11 @@ class TestLineBoolean:
         _check_truth_table("00010111", 3, tmp_path)
 
     def test_invalid_length_rejected(self) -> None:
+        """A truth table whose length is not a power of two is rejected."""
         with pytest.raises(ValueError, match="power-of-two"):
             line_boolean("010")
 
     def test_invalid_characters_rejected(self) -> None:
+        """A truth table containing anything but 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             line_boolean("0102")
