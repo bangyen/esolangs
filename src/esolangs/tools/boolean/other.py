@@ -1503,3 +1503,98 @@ def streetcode(truth_table: str) -> str:
     populated = _streetcode_populate(n)
     tree = _streetcode_tree(truth_table)
     return "\n".join(_streetcode_combine([populated, tree]))
+
+
+def _flowchart_leaf(bit: str) -> list[str]:
+    """Build a leaf column: force ``bit`` into the register, print, halt.
+
+    The register holds whichever input bit the tree read last, so the leaf
+    sets it outright (``[ }`` for one, ``{ ]`` for zero) rather than
+    relying on what the routing happened to leave behind.
+    """
+    return [
+        "[ }" if bit == "1" else "{ ]",
+        " │ ",
+        "\\ \\",
+        " │ ",
+        "(( ))",
+    ]
+
+
+def _flowchart_subtree(truth_table: str) -> list[str]:
+    """Build the block for ``truth_table``, entered at its ``/ /`` node.
+
+    Each level reads one input bit and switches on it.  The tree is always
+    entered travelling downward, and a switch's sides are relative to the
+    pointer's heading, so a set register turns the pointer east and a clear
+    one turns it west: the table's zero half hangs to the west and its one
+    half to the east, matching the index order.  Recursion bottoms out at
+    :func:`_flowchart_leaf`.
+    """
+    if len(truth_table) == 1:
+        return _flowchart_leaf(truth_table[0])
+
+    half = len(truth_table) // 2
+    west = _flowchart_subtree(truth_table[:half])
+    east = _flowchart_subtree(truth_table[half:])
+
+    west_width = max(len(row) for row in west)
+    east_width = max(len(row) for row in east)
+    west = [row.ljust(west_width) for row in west]
+    east = [row.ljust(east_width) for row in east]
+
+    gap = 3
+    total = west_width + gap + east_width
+    west_entry = west_width // 2
+    east_entry = west_width + gap + east_width // 2
+    middle = (west_entry + east_entry) // 2
+
+    rail = [" "] * total
+    for x in range(west_entry, middle):
+        rail[x] = "─"
+    for x in range(middle + 3, east_entry + 1):
+        rail[x] = "─"
+    rail[west_entry] = "┌"
+    rail[east_entry] = "┐"
+    switch = "".join(rail)
+    switch = switch[:middle] + "< >" + switch[middle + 3 :]
+
+    head = [
+        " " * middle + "/ /",
+        " " * (middle + 1) + "│",
+        switch,
+        " " * west_entry + "│" + " " * (east_entry - west_entry - 1) + "│",
+    ]
+
+    depth = max(len(west), len(east))
+    west += [" " * west_width] * (depth - len(west))
+    east += [" " * east_width] * (depth - len(east))
+    body = [a + " " * gap + b for a, b in zip(west, east, strict=True)]
+
+    return [row.ljust(total) for row in head + body]
+
+
+def flowchart(truth_table: str) -> str:
+    """Build a Flowchart program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    The program is a binary decision tree drawn on the grid: every level
+    reads one input bit with ``/ /`` and hands it to a ``< >`` switch whose
+    two sides are the halves of the table, and each of the ``2**n`` leaves
+    sets the register to its own digit, prints it, and halts.
+
+    Unlike the repo's other 2D boolean generators there is no geometry to
+    build for the branch itself -- Flowchart has a real conditional node --
+    and each input arrives as a bare bit, so no per-input decoding loop is
+    needed either.  What the layout has to get right instead is routing:
+    every switch is centred over the two subtree entries it feeds, with
+    rails drawn out to each.
+    """
+    _validate_truth_table(truth_table)
+    body = _flowchart_subtree(truth_table)
+    width = max(len(row) for row in body)
+    entry = body[0].index("/ /")
+    head = [" " * entry + "( )", " " * (entry + 1) + "│"]
+    return "\n".join(row.ljust(width) for row in head + body)
