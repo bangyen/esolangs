@@ -526,6 +526,20 @@ them). `verify.py` remains the separate, narrower round-trip check for
   hand-built cyclic `Stroke` trees still never exercise `render.py`'s
   loop-drawing geometry, which is why this separate suite is needed.
 
+  **Possible cleanup, not urgent**: now that `test_bf_to_line.py` covers
+  the loop-back mechanism through real drawings, some of
+  `test_simulate.py`'s hand-built `Stroke` fixtures cover the same ground
+  at a lower fidelity, and they carry a real maintenance cost -- three of
+  them had to be updated when `lattice._classify`'s arm labeling was
+  fixed, because they encoded the old inverted convention as literal
+  geometry (see the fork-arm entry above). They are not redundant: they
+  are the only tests that can construct a cycle `render.py` cannot draw
+  (e.g. the genuinely non-halting loop, and the sibling-branch
+  false-match case), which is exactly why they exist. Worth a pass to
+  keep those and drop or rewrite whichever now only duplicate a real
+  pipeline test -- but only with that distinction in mind, since deleting
+  the un-drawable cases would lose coverage nothing else provides.
+
 ## Deliberately out of scope
 
 - **Not wired into the interpreter registry**: deliberate, per an earlier
