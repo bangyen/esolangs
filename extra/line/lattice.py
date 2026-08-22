@@ -291,8 +291,17 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
         return "end", []
     if len(rest) == 1:
         return "straight", list(rest)
-    right, left = (back + 2) % 8, (back - 2) % 8
-    straight = _opposite(back)
+    # Rotate relative to the *heading* (the direction arrived in), not
+    # `back` (the direction arrived from).  These differ by 180 degrees, so
+    # rotating off `back` -- as this did originally -- names each physical
+    # arm as its opposite, and every consumer then has to swap the labels
+    # back.  `render.py`'s `_turn_right`/`_turn_left` rotate off the heading,
+    # and the wiki's rule ("turn right if the current cell is 0") is written
+    # from the cursor's own travelling frame, so the heading is the frame
+    # that makes `right`/`zero` mean what they say.
+    heading = _opposite(back)
+    right, left = (heading + 2) % 8, (heading - 2) % 8
+    straight = heading
     if len(lit) == 4 and back in lit and straight in lit:
         return "crossing", [straight]
     if len(rest) == 2 and right in rest and left in rest:

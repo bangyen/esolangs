@@ -158,8 +158,13 @@ def _build_decrement_loop() -> Stroke:
     )
 
     root = Stroke(vertices=[root_v0, root_v1, root_v2, root_v3])
-    root.zero = loop_arm
-    root.nonzero = halt_arm
+    # The loop body is the *nonzero* arm: a loop repeats while the cell is
+    # nonzero and falls through to the halt arm once it reads zero.  (These
+    # two were reversed while `lattice._classify` named its fork arms off
+    # `back` rather than the heading, which inverted every label and made
+    # `simulate.run` swap the children to compensate.)
+    root.nonzero = loop_arm
+    root.zero = halt_arm
     return root
 
 
@@ -189,8 +194,13 @@ def _build_growing_loop() -> Stroke:
     s2 = Vertex(-unit + dy * unit, dx * unit, heading)
     s3 = Vertex(fork_y, fork_x, None)
     root = Stroke(vertices=[s0, s1, s2, s3])
-    root.zero = loop_arm
-    root.nonzero = halt_arm
+    # The loop body is the *nonzero* arm: a loop repeats while the cell is
+    # nonzero and falls through to the halt arm once it reads zero.  (These
+    # two were reversed while `lattice._classify` named its fork arms off
+    # `back` rather than the heading, which inverted every label and made
+    # `simulate.run` swap the children to compensate.)
+    root.nonzero = loop_arm
+    root.zero = halt_arm
     return root
 
 

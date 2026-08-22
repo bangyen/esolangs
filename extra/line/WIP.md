@@ -212,14 +212,29 @@ them). `verify.py` remains the separate, narrower round-trip check for
     Confirmed concretely with a synthetic program whose `render.py`-drawn
     `zero` arm (which `render.py` draws turning right, matching the wiki's
     "turn right if 0") round-trips through `extract()` into the walked
-    tree's `nonzero` field, and vice versa.  `simulate.py`'s `run` takes
-    the walked `nonzero` child on a zero cell and `zero` on a nonzero cell
-    to correct for this -- deliberately, not a typo (see `run`'s
-    docstring).  Neither `lattice.py` nor `extract.py` needed to know
-    which physical arm was "actually" zero vs. nonzero before now, since a
-    one-time structural trace only needed *a* consistent label, not the
-    *correct* one -- this only mattered once something needed to execute
-    the branch correctly.
+    tree's `nonzero` field, and vice versa.  Neither `lattice.py` nor
+    `extract.py` needed to know which physical arm was "actually" zero vs.
+    nonzero before now, since a one-time structural trace only needed *a*
+    consistent label, not the *correct* one -- this only mattered once
+    something needed to execute the branch correctly.
+
+    **Since fixed at the source, rather than compensated for.**  `run`
+    originally took the walked `nonzero` child on a zero cell (and vice
+    versa) to correct for the inverted labels -- correct, but a
+    compensating bug in a second place rather than one fix.
+    `lattice._classify` now rotates its `right`/`left` off the *heading*
+    (`_opposite(back)`), the same frame `render.py` uses and the frame the
+    wiki's own "turn right if the current cell is 0" is written in, so the
+    field names mean what they say and `run` reads plainly (`zero` on a
+    zero cell).  The change is behavior-neutral end to end: every test that
+    goes through the real render -> extract -> simulate pipeline passed
+    unchanged across it, and both wiki fixtures still compute correct
+    results on every input pair (addition `(3,2)->5`, `(0,0)->0`,
+    `(7,3)->10`, `(10,10)->20`; multiplication `(3,2)->6`, `(4,4)->16`,
+    `(0,5)->0`).  Only `test_simulate.py`'s hand-built `Stroke` fixtures
+    needed updating, since they encoded the old inverted convention
+    directly -- their loop body is now the `nonzero` arm, which is what a
+    loop repeating "while nonzero" should always have been.
   - **A drawn loop-back has no representation in the walked tree at all.**
     `lattice.walk_tree` stops a stroke the instant it revisits any already-
     `visited` vertex, recording only that vertex's coordinates with no link
