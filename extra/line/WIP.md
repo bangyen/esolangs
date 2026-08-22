@@ -209,53 +209,80 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
     real loop-back (the only way Line can express repetition, since `?` is
     the only control-flow opcode) needs exactly that link to execute.
     `simulate.py` recovers it itself, without changing `lattice.py`/
-    `extract.py`: every fork node is indexed by its own final vertex's
-    coordinates, and any leaf whose final vertex matches becomes a jump
-    back to that fork's decision at runtime (skipping the fork's own
-    incoming-stem ops, which must not repeat every iteration -- see
-    `_Compiled.goto`'s docstring).  Getting this right took two failed
-    attempts on a synthetic decrementing loop first: indexing every node
-    (not just forks) by its *entry* coordinate let a fork's own child --
-    which always starts exactly where the fork ends -- shadow the fork
-    itself, resolving a loop-back to the wrong node and silently breaking
-    after one iteration; and even once indexing was fixed, naively jumping
-    to the fork node the ordinary way re-executed its incoming stem's ops
-    every pass (confirmed: a seeded `+++` re-ran on every loop iteration,
-    since the fork node's own `ops` list holds the stem leading into it,
-    not just the decision).
+    `extract.py`: every leaf's final vertex is tested against every other
+    stroke's geometry (both exact matches on a stroke's own final vertex --
+    a real fork or dead end -- and a point landing strictly *inside* one of
+    a stroke's straight legs, since a real merge can land mid-segment, not
+    only on a recorded vertex -- see the "real drawn loop" entry above for
+    why the mid-segment case turned out to matter on a real fixture), and a
+    match becomes a jump that resumes execution from exactly that point,
+    running only the ops that had not yet run there (via
+    `extract.OpCall`'s own `index`) and skipping the ops that already ran
+    the first time that point was reached (see `_Compiled.goto`'s
+    docstring).  Getting this right took three failed attempts on a
+    synthetic decrementing loop before the real fixture even entered the
+    picture: indexing every node by its *entry* coordinate let a fork's own
+    child -- which always starts exactly where the fork ends -- shadow the
+    fork itself; indexing by a stroke's own final vertex only fixed that
+    but missed the mid-segment case entirely (silently reporting both real
+    fixtures as loop-free, the wrong claim corrected above); and once
+    mid-segment matching was added, testing "does this point equal any
+    vertex of any stroke" (not just a stroke's own final one) matched an
+    unrelated, never-taken sibling branch instead of the real ancestor
+    fork, since both happen to start at the same shared fork coordinate by
+    construction -- fixed by only ever matching a vertex exactly when it is
+    a stroke's own *final* vertex, and requiring strict interior
+    containment (not touching either endpoint) for everything else.
 
-  **Unverified against a real drawn loop end to end**: neither wiki
-  fixture contains one, despite both being named "Addition"/"Multiplication"
-  -- an easy thing to assume incorrectly, since both algorithms conceptually
-  need repetition (repeatedly decrementing one cell into another to add or
-  multiply general inputs).  Confirmed two independent ways, not just by
-  eyeballing the walked tree: every stroke's start/end coordinates on both
-  fixtures were checked for a match (none), and `coverage_gap` on
-  `addition.png` reports exactly 2 unaccounted pixels -- the constant
-  arrowhead-tip gap `extract.py` documents as the *only* expected
-  discrepancy for a drawing walked in full -- which rules out a real loop
-  the walker silently failed to detect (that would leave a whole unwalked
-  stroke's worth of missing pixels, not 2).  Each fixture's `?` is a
-  single-pass if/else: `addition.png`'s "loop body" arm (decrement one
-  cell, increment the other) runs at most once before the walked path
-  simply ends.  Consistent with this, actually running `addition.png`
-  through `simulate.run` with inputs 3 and 2 does *not* compute 5 -- one
-  pass only gets as far as cell0=4, cell1=1, and the output arm is never
-  reached at all, confirming these are illustrative single-pass sketches
-  rather than complete working programs (consistent with the wiki page
-  being tagged `Unimplemented`, with only "minimal description" of the
-  examples -- see `extract.py`'s module docstring).  `render.py`'s own
-  `Node`/`_layout` cannot produce a real loop to test against either, since
-  `Node` is a plain recursively-walked tree with no cycle support
-  (confirmed: a hand-built cyclic `Node` graph hits Python's recursion
-  limit rather than rendering).  The loop-back mechanism itself is covered
-  instead by a synthetic test that builds a looping `lattice.Stroke` tree
-  directly by hand (bypassing both `render.py` and `extract.py`), checked
-  two ways: a decrementing loop that terminates at exactly 0, and a
-  genuinely non-halting loop confirmed to actually hang rather than
-  silently producing a wrong answer.  A real hand-drawn or
-  `render.py`-extended fixture containing an actual loop would be a
-  stronger check than this, if one ever becomes available.
+  **Both wiki fixtures do contain a real drawn loop** -- an earlier claim
+  in this file said otherwise, and was wrong.  That claim rested on
+  checking whether any stroke's end coordinates *exactly* matched another
+  stroke's own recorded vertex; `coverage_gap` reporting only the baseline
+  2-pixel arrowhead gap on `addition.png` was taken as confirmation.
+  Caught by looking at the actual rendered image directly (the wiki names
+  these examples "Addition"/"Multiplication", and both algorithms
+  genuinely need repetition to work for general inputs -- `addition.png`'s
+  `?` arms are exactly Brainfuck's `,>,[-<+>]<.`) rather than trusting the
+  coordinate check's silence: `addition.png`'s loop-body arm's walked path
+  does reconnect, but to a point strictly *inside* the incoming stem's own
+  straight run -- `(42, 159)` in the normalized mask, sitting exactly
+  between two of that stem's own vertices, `(62, 159)` and `(22, 159)` --
+  not onto any recorded vertex at all, which is exactly why the earlier
+  exact-vertex check found nothing.  (The 2-pixel coverage gap was never
+  contradictory evidence either way: `coverage_gap` only measures whether
+  every walked pixel was accounted for, which a merge satisfies regardless
+  of whether the merge is later recognized as a loop.)
+
+  `_compile` now finds this kind of match too: every leaf's final vertex is
+  tested against every other stroke's *segments*, not just their vertex
+  lists, via an exact integer collinearity + strict-betweenness check (a
+  Line segment always runs along one of 8 compass directions, so this is
+  exact, not a tolerance-based approximation).  Landing exactly on some
+  other stroke's own *final* vertex (a real fork or dead end) is also
+  accepted, matching the original fork-only mechanism -- but landing on any
+  *other* vertex is deliberately rejected even when the coordinates match
+  exactly: every fork's two children start at exactly the fork's own end
+  coordinate by construction, so a plain "does this point equal some
+  stroke's own starting vertex" test matches *every* sibling arm sharing
+  that corner, not just a real continuation -- confirmed to misfire this
+  way on a synthetic loop test (a decrementing loop matched an unrelated,
+  never-taken sibling branch instead of the real ancestor fork, because
+  both happened to start at the same pixel).  Requiring strict interior
+  containment for anything short of a stroke's own final vertex is what
+  actually distinguishes a genuine merge from that coincidence.
+
+  `render.py`'s own `Node`/`_layout` still cannot produce a loop to test
+  the mechanism against directly, since `Node` is a plain recursively-walked
+  tree with no cycle support (confirmed: a hand-built cyclic `Node` graph
+  hits Python's recursion limit rather than rendering) -- so the mechanism
+  is additionally covered by a synthetic test that builds a looping
+  `lattice.Stroke` tree directly by hand, checked two ways: a decrementing
+  loop that terminates at exactly 0, and a genuinely non-halting loop
+  confirmed to actually hang (not silently produce a wrong answer).  But
+  the real fixtures are now the stronger check: `addition.png` computes the
+  correct sum for every input pair tried (`(3,2)->5`, `(0,0)->0`,
+  `(7,3)->10`, `(10,10)->20`), and `multiplication.png` the correct product
+  (`(3,2)->6`, `(4,4)->16`, `(0,5)->0`).
 
   `run` deliberately has no step limit or cycle-hang detection: checked
   against how every other interpreter in this repo handles it, a plain
