@@ -126,10 +126,28 @@ would make the generator close to trivial to write by hand.
   to be an artifact of the unspecified pointer interleaving, but it is not.
   Creation order, reverse order, and per-step reading order all produce
   byte-identical output, and long consecutive runs per pointer only swap
-  the first two bits.  Whatever makes the sequence periodic — the real
-  Kolakoski sequence is not — lives in the east loop's execution, most
-  likely a re-entry or switch-routing detail, so that is where a future
-  investigation should start rather than in the scheduler.
+  the first two bits.  Nor is it the two contested semantic calls: running
+  the full matrix of {1 turns left, 1 turns right} x {empty register prints
+  nothing, empty is zero} leaves Kolakoski period-4 in all four variants,
+  and only the shipped combination (1 turns left, empty prints nothing)
+  passes the truth machine and the cat at all — flipping the switch breaks
+  the truth machine, and "empty is zero" breaks the cat, so the matrix
+  independently re-derives both documented decisions.
+
+  What actually happens is that the east pointer visits eleven nodes and
+  halts: it emits a single `1` and reaches `(( ))`, so the repeating tail
+  is entirely the south branch's.  The `( )` nodes mid-row are passed
+  through as no-ops rather than forking, because the `─` run beneath them
+  is the return rail *passing under* the row, not a path attached to them —
+  the rail's two ends (`└` at column 29, `┘` at column 50) both turn
+  upward, closing the loop at the switch and just past `(( ))`, and column
+  50 of row 0 is blank.  The overlap is an artifact of drawing a long
+  return path under a wide row of nodes, so declining to fork there is
+  correct, and no re-entry or switch-routing change would alter it.
+  The remaining possibility is that the diagram simply does not produce the
+  Kolakoski sequence as drawn (the same never-executed caveat as the cat's
+  trailing bit); confirming that would need the author, so the talk-page
+  question is the cheapest next step.
 - **Line** — a cursor follows ASCII line-drawing curves; each curve shape it
   passes through is itself the instruction (a diagonal increments/decrements
   the current cell, a corner moves the tape pointer, a specific bend is a
