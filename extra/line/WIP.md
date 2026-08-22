@@ -181,6 +181,42 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
     trailing opcode call that consumes the walked path's literal last run)
     remains the only verified fix, and stands on its own regardless of
     whether `_walk_tree` is ever fixed at this deeper level.
+
+  **Proposed alternative for a future session, not yet attempted**: rather
+  than patching the greedy pixel-by-pixel walker with another local
+  geometry signal (three tried, all eventually broken by some new bend --
+  see above), replace the walk-then-classify pipeline with direct
+  grid-template matching, since `render.py`'s own geometry is fully known
+  in advance (every opcode's exact pixel path at any position/heading is
+  computable via its `_op_segments`/`_rotate`, on a fixed `_UNIT`-sized
+  grid) -- this sidesteps the merge-detection problem entirely rather than
+  trying to detect it after the fact:
+  - Starting from the cursor's known position/heading (`find_cursor`
+    already locates this), at each step compute every opcode's exact pixel
+    path (reusing `render.py`'s own cursor/rotation code, not
+    reimplementing it) as a candidate template at the current
+    position/heading, plus the `?` branch template.
+  - A template "matches" only if its own path pixels are all ink *and* the
+    background immediately outside its footprint is still genuinely
+    background -- the second half is what a merge point would fail, since
+    the real ink there is the union of this stroke's template plus a
+    second, unrelated stroke's ink the template does not account for; the
+    first half alone (matching `classify_ops`'s current post-hoc approach)
+    is not enough, since it cannot tell "real opcode" from "real opcode
+    plus coincidentally-touching extra ink" apart.
+  - Whichever template matches cleanly wins; advance the cursor to its
+    endpoint/heading and mark its pixels consumed, then repeat. The `?`
+    template recurses into both arms, replacing `_walk_tree`'s branch
+    recursion. `+`/`-`'s repeat count needs trying increasing diagonal
+    lengths until the trailing straight-run-and-turn stops matching, same
+    idea as `_op_segments`'s own count parameter in reverse.
+  - This is a materially larger change than any of the three reverted
+    attempts -- it would replace `_walk`/`_walk_tree`/`build_region_map`'s
+    role together, not add one more signal to them -- and needs full
+    re-verification against both fixtures (and ideally a third, not-yet-
+    seen program) from scratch before being trusted over the current
+    walker, which is otherwise fully working for everything except this
+    one merge-detection gap.
 - Real (camera/scan) photographs with genuine anti-aliasing, as opposed to
   the clean nearest-neighbor-scaled synthetic input `normalize_scale` was
   tested against. Anti-aliased edges could make the exact-integer scale
