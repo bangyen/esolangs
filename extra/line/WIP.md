@@ -119,6 +119,68 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
   along the merged-into stroke by mistake if `_walk`'s greedy continuation
   ever had a reason to keep going past where these fixtures happened to
   stop.
+
+  **A `_walk_tree`-level fix was attempted and reverted three times** --
+  recorded here in detail so a future attempt doesn't re-derive or re-break
+  the same things:
+  - The confirmed merge pixel is `(194, 228)` in
+    `fixtures/multiplication.png`'s normalized mask (the `root.nonzero.nonzero`
+    arm), hand-decoded end to end as: branch right onto E, immediate corner
+    onto N, then `>`, `+`, `>`, `+`, `<`, `<`, `-`, then this merge point,
+    where the stroke's own NW diagonal run ends one step before a pixel
+    where a *different*, already-drawn stroke (the outer branch's own
+    horizontal bar, itself travelling W) is the only ink physically
+    touching -- confirmed by a human reading the actual drawing, not
+    inferred from pixel data alone.
+  - `region_map.junctions` (the existing region-adjacency check
+    `_is_branch_pivot` already uses) does mark `(194, 228)` as a junction,
+    but the *next* pixel toward "true tip" behavior never resolves the way
+    it does for a real T-junction, because the true 3-way meeting pixel,
+    `(193, 228)`, sits exactly on the transition between two *differently*-
+    labeled junction segments (`(2, 4)` on one side, `(1, 2)` on the other)
+    -- `build_region_map` only counts a pixel as a junction when 2+ of its
+    4-connected neighbors are *background*, and `(193, 228)` has only one
+    background neighbor (the other three are ink from the converging
+    strokes), so it fails that test outright.  This is a structural gap,
+    not a tunable threshold: the existing junction detection is built
+    entirely around "this ink separates two background regions" (a stem
+    meeting a bar), which a 3-ink-strokes-converging point never matches.
+  - A same-rotational-direction turn-delta rule (two consecutive 45-degree
+    leg-to-leg turns with the same sign) was tried first and looked exactly
+    right when checked only against the confirmed merge point, but the
+    walker's own recorded path there is actually N-then-NW-then-N (turning
+    back, opposite signs), not N-then-NW-then-W (continuing the same way)
+    as the drawing's true geometry would suggest -- `W` is never reachable
+    in a single step from the pixel in question, so the walker is forced
+    onto the "wrong" direction regardless, and this rule never fires on the
+    walker's actual path at all.
+  - A punched-hole connected-components signal (`_ink_component_count`:
+    remove a small disk of ink around a candidate pixel, count surviving
+    connected pieces in the surrounding window) reliably reads exactly 2 for
+    every real opcode's own turn point across both fixtures and every
+    `render.py`-generated opcode, and 3 for both the confirmed merge point
+    and a real T-junction -- correctly separating "ordinary bend" from
+    "something unusual here" in every case checked *at the time it was
+    checked*.  Wiring it into `_walk`/`_walk_tree` as a second candidate-
+    pivot trigger (alongside the existing region-adjacency one), with a
+    genuinely new third code path for "candidate pivot, not a real fork
+    (only one viable arm), and the ink-component signal is what flagged it"
+    to stop the walk instead of folding back into a continued walk, passed
+    every synthetic `render.py` round-trip test -- but broke real-fixture
+    round-tripping via a *different* false positive: `fixtures/addition.png`
+    has a genuine, ordinary bend at `(44, 159)` (the documented "bar bends
+    into a diagonal" corner, not a branch or merge) that this signal also
+    reads as 3 pieces, for reasons not diagnosed further before reverting.
+  - Takeaway: a purely local pixel-geometry signal has broken on a new,
+    previously-unchecked bend every time one has been tried so far,
+    suggesting the real distinguishing fact may not be visible from local
+    geometry around the candidate pixel at all -- e.g. it may require
+    knowing which stroke a piece of ink "belongs to" (tracked across the
+    whole drawing, not derivable from one point), which none of these
+    attempts had access to.  `classify_ops`'s own workaround (reject a
+    trailing opcode call that consumes the walked path's literal last run)
+    remains the only verified fix, and stands on its own regardless of
+    whether `_walk_tree` is ever fixed at this deeper level.
 - Real (camera/scan) photographs with genuine anti-aliasing, as opposed to
   the clean nearest-neighbor-scaled synthetic input `normalize_scale` was
   tested against. Anti-aliased edges could make the exact-integer scale
