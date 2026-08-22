@@ -3348,14 +3348,14 @@ class TestGeneratorEdgePaths:
 
     def test_ztoalc_simulator_rejects_bad_program(self) -> None:
         """An empty or non-numeric first line fails the fast simulator."""
-        from esolangs.tools.boolean.other import _ztoalc_ok
+        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ok
 
         assert _ztoalc_ok({}, 0, "", "") is False
         assert _ztoalc_ok({0: "not-a-number"}, 0, "", "") is False
 
     def test_ztoalc_simulator_input_exhausted(self) -> None:
         """A '=' instruction with no input left fails the fast simulator."""
-        from esolangs.tools.boolean.other import _ztoalc_ok
+        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ok
 
         assert _ztoalc_ok({0: "2", 1: "a = 1"}, 1, "", "") is False
 
