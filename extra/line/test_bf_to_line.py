@@ -142,11 +142,7 @@ def _max_between_stroke_adjacency(program: str) -> int:
             adjacent = sum(
                 1
                 for (y, x) in a
-                if any(
-                    (y + dy, x + dx) in b
-                    for dy in (-1, 0, 1)
-                    for dx in (-1, 0, 1)
-                )
+                if any((y + dy, x + dx) in b for dy in (-1, 0, 1) for dx in (-1, 0, 1))
             )
             worst = max(worst, adjacent)
     return worst
