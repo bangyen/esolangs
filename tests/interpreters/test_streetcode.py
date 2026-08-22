@@ -378,11 +378,19 @@ class TestStreetcodeWikiExamples:
         assert buffer.getvalue() == ""
         assert not machine.halted  # confirmed a genuine cycle above
 
-    def test_infinite_loop_example_traces_the_full_21_cell_ring(self) -> None:
-        """Wall-following (with lane merging at the loop's one real junction)
-        must trace the whole drawn ring before repeating, not fall into a
-        small loop right next to the junction -- pins the exact cell count
-        the module docstring's "Lane merging" bullet is corroborated by."""
+    def test_infinite_loop_example_traces_its_17_cell_lap(self) -> None:
+        """The loop's lap, pinned cell by cell against a hand-checked trace.
+
+        The car's cell is 0 for the whole run (nothing in this program ever
+        increments), so at every junction it takes the leftmost road.  From
+        ``C`` it declines the side road opening south, runs the top corridor
+        east, follows the wall down and back west along row 5, turns north up
+        column 3 -- and meets that same junction again head-on, driving out
+        through the gap between the two ``+`` at ``(3,1)`` and ``(3,4)``.
+        There it merges across to the far lane of the corridor it is joining
+        before turning left, reaching ``(1,3)`` and running west along row 1
+        back to ``C``, where it corners south-then-east and repeats.
+        """
         code = [
             "+-------+",
             "|       |",
@@ -393,17 +401,21 @@ class TestStreetcodeWikiExamples:
             " |      |",
             " +------+",
         ]
+        lap = [
+            (2, 1), (2, 2), (2, 3), (2, 4), (2, 5), (2, 6),
+            (3, 6), (4, 6), (5, 6),
+            (5, 5), (5, 4), (5, 3),
+            (4, 3), (3, 3), (2, 3), (1, 3),
+            (1, 2), (1, 1),
+        ]  # fmt: skip
         machine = _Machine(code, IO())
-        visited: set[tuple[int, int]] = set()
-        seen_states: set[tuple[object, ...]] = set()
-        for _ in range(60):
-            state = machine.snapshot()
-            if state in seen_states:
-                break
-            seen_states.add(state)
-            visited.add((machine.row, machine.col))
+        path = []
+        for _ in range(len(lap) * 3):
+            path.append((machine.row, machine.col))
             machine.step()
-        assert len(visited) == 21
+        # The lap repeats exactly: same cells, same order, indefinitely.
+        assert path == lap * 3
+        assert len(set(lap)) == 17  # (2, 3) is driven through twice per lap
 
     def test_infinite_cat_for_single_characters_example(self) -> None:
         """The wiki's rhetorical "Why wouldn't this be a cat?" -- it is one.
