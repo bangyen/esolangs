@@ -8,4 +8,32 @@
 # The script runs the local-checkable subset of the CI workflow (lint,
 # pytest, bandit, cargo, the Python-only verify scripts) so failures are
 # caught before pushing rather than in GitHub Actions.
+#
+# Branch deletions are exempt.  Git runs this hook for every push, including
+# `git push --delete`, but a deletion sends no commits, so there is nothing
+# for the checks to validate -- running the suite there only makes a cleanup
+# operation slow enough to invite --no-verify, which would skip the checks on
+# real pushes too.  Git feeds each ref being pushed to stdin as
+#
+#     <local-ref> <local-sha> <remote-ref> <remote-sha>
+#
+# and uses the all-zero sha for the local side of a deletion, so a push whose
+# refs are *all* deletions can be waved through.  A mixed push (some deletes,
+# some updates) still runs the checks.
+deleting_only=1
+saw_ref=0
+
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+    [ -z "$local_sha" ] && continue
+    saw_ref=1
+    case "$local_sha" in
+        *[!0]*) deleting_only=0 ;;
+    esac
+done
+
+if [ "$saw_ref" -eq 1 ] && [ "$deleting_only" -eq 1 ]; then
+    echo "pre-push: deletion only, skipping local checks"
+    exit 0
+fi
+
 exec "$(dirname "$0")/../scripts/check_all.sh"
