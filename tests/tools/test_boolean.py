@@ -3340,7 +3340,7 @@ class TestGeneratorEdgePaths:
 
     def test_six_five_helper_edges(self) -> None:
         """Same-cell navigation and the +5 tail of the constant encoder."""
-        from esolangs.tools.boolean.tape import _six_five_const, _six_five_nav
+        from esolangs.tools.boolean.six_five import _six_five_const, _six_five_nav
 
         assert _six_five_nav(3, 3) == ""
         assert _six_five_const(5) == "5"
