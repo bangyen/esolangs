@@ -39,6 +39,11 @@ _COMPILER_DIRS = {
     "assembly": (ROOT / "src" / "esolangs" / "compilers", "*.py"),
 }
 
+# Support modules in the compiler directory that aren't language
+# implementations, e.g. shared assembly fragments -- an unrecognized file
+# still fails loudly via _COMPILER_NAMES.
+_COMPILER_SUPPORT_MODULES = {"__init__", "_riscv_common"}
+
 
 def _compiler_set(kind: str) -> set[str]:
     """Return the display names of the compilers in the given directory."""
@@ -46,7 +51,7 @@ def _compiler_set(kind: str) -> set[str]:
     return {
         _COMPILER_NAMES[path.stem]
         for path in directory.glob(pattern)
-        if path.stem != "__init__"
+        if path.stem not in _COMPILER_SUPPORT_MODULES
     }
 
 

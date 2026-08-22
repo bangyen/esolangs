@@ -8,6 +8,8 @@ import sys
 from re import findall, sub
 from typing import cast
 
+from esolangs.compilers._riscv_common import MUL32
+
 
 def count(code: str, ind: int) -> tuple[int | str, int]:
     """Return the operand value at ``ind`` and the next index.
@@ -297,20 +299,7 @@ def comp(code: str) -> str:
             "\tld   ra, 8(sp)\n"
             "\taddi sp, sp, 16\n"
             "\tret\n"
-            "\n"
-            "# a0 *= a1 (unsigned 32-bit), result in a0\n"
-            "mul32:\n"
-            "\tmv   t4, a0\n"
-            "\tli   a0, 0\n"
-            ".mul_loop:\n"
-            "\tandi t5, a1, 1\n"
-            "\tbeqz t5, .mul_skip\n"
-            "\tadd  a0, a0, t4\n"
-            ".mul_skip:\n"
-            "\tslli t4, t4, 1\n"
-            "\tsrli a1, a1, 1\n"
-            "\tbnez a1, .mul_loop\n"
-            "\tret\n"
+            "\n" + MUL32 + "\n"
         )
 
     return res.replace("\n\n\n", "\n\n")
