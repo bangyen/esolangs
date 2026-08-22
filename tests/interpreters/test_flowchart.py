@@ -295,3 +295,54 @@ class TestNodes:
     def test_exhausted_input_leaves_the_register_empty(self) -> None:
         """Reading past the end of the input empties the register."""
         assert run_program(["( )─/ /─\\ \\─(( ))"], "") == ""
+
+
+class TestPointersStop:
+    """Every way a pointer runs out of places to go.
+
+    A pointer stops rather than erroring whenever its next step would leave
+    the grid or lead nowhere, so each of these programs halts quietly with
+    nothing printed.  They are stepped with a bound rather than run to
+    completion, because a program that never halts would hang the suite.
+    """
+
+    @staticmethod
+    def _halts(code: list[str], steps: int = 20) -> bool:
+        machine = _Machine(code, ScriptedIO(""))
+        for _ in range(steps):
+            if machine.halted:
+                return True
+            machine.step()
+        return machine.halted
+
+    def test_start_with_no_exits_stops_immediately(self) -> None:
+        """A start node with nothing attached has nowhere to send a pointer."""
+        assert self._halts(["( )"])
+        assert run_program(["( )"]) == ""
+
+    def test_stepping_a_halted_machine_does_nothing(self) -> None:
+        """``step`` returns early once every pointer is done."""
+        machine = _Machine(["( )"], ScriptedIO(""))
+        machine.step()
+        assert machine.halted
+        machine.step()  # the early return: no pointer is live to advance
+        assert machine.halted
+
+    def test_rail_running_off_the_grid_stops(self) -> None:
+        """A rail that reaches the edge stops instead of stepping outside."""
+        assert self._halts(["( )─"])
+        assert self._halts(["( )", " │ "])
+
+    def test_rail_into_a_gap_stops(self) -> None:
+        """A rail that ends in blank space has no cell to continue into."""
+        assert self._halts(["( )─ ─"])
+
+    def test_node_with_no_onward_rail_stops(self) -> None:
+        """A node reached by a rail but leading nowhere stops the pointer."""
+        assert self._halts(["( )─\\[ ]/"])
+        assert self._halts(["( )─< >"])
+        assert self._halts(["( )─{ }"])
+
+    def test_start_touching_only_another_node_stops(self) -> None:
+        """A start whose sole neighbour is the node it came from forks nowhere."""
+        assert self._halts(["( )( )"])

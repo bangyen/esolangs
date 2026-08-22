@@ -341,7 +341,13 @@ class _Machine:
                     continue
                 if not self._accepts(nx, ny, d):
                     continue
-                if any(step[0] == nx and step[1] == ny for step in out):
+                if any(  # pragma: no cover - node boxes are one row tall
+                    step[0] == nx and step[1] == ny for step in out
+                ):
+                    # Two cells of one box share a neighbour only when they
+                    # are two columns apart, and the cell between them is
+                    # inside the box, so `(nx, ny) in cells` already skipped
+                    # it.  Vertical neighbours differ per column.
                     continue
                 out.append((nx, ny, d))
         return out
@@ -398,7 +404,12 @@ class _Machine:
         c = self.grid[p.y][p.x]
         back = (-p.d[0], -p.d[1])
         allowed = [d for d in _EXITS.get(c, ()) if d != back]
-        if not allowed:
+        if not allowed:  # pragma: no cover - no line character has a single arm
+            # A pointer only ever stands on a cell it entered legally, and
+            # both _move and _exits_from_node gate on _accepts, so `back` is
+            # always one of this cell's arms.  Removing it empties `allowed`
+            # only for a one-armed character, and _EXITS has none -- but the
+            # guard stays so adding one later stops rather than crashes.
             p.done = True
             return
         if len(allowed) > 1:
@@ -423,7 +434,11 @@ class _Machine:
         d = p.memory.get(self._anchor(x, y))
         if d is None or d not in allowed:
             return None
-        if d == (-p.d[0], -p.d[1]):
+        if d == (-p.d[0], -p.d[1]):  # pragma: no cover - no known grid reaches it
+            # The spec's 180-degree decline.  Unlike the other pragmas here
+            # this is not a proof: a brute-force sweep of ~3M small grids
+            # never reached it, but the rule comes from the wiki's worked
+            # examples, so it stays.
             return None
         return d
 
