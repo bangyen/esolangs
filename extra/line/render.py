@@ -342,15 +342,96 @@ _MERGEABLE = {"+", "-"}
 _MAX_ROUTE_SEARCH = 300_000  # pragma: no mutate - generous per-attempt search-node cap
 
 
-def _edge_clear(
-    p: tuple[int, int], direction: tuple[int, int], occupied: set[tuple[int, int]]
+# How many *grid cells* of empty space a detour leg must keep between itself
+# and any unrelated existing ink, beyond simply not overlapping it.  One cell
+# here is `_UNIT` raster pixels of real separation, since the router works
+# entirely in cursor-grid space and `render` scales to pixels only when
+# rasterizing.
+#
+# Non-overlap alone is not enough for the extractor to read a drawing
+# correctly.  Two strokes running through directly *abutting* grid cells
+# share no cell at all, but rasterize into a contiguous 2-cell-wide ribbon of
+# ink -- and `lattice._band_lit` deliberately probes the exact ray *plus one
+# pixel to each side*, to absorb hand-drawn stroke slop (see `lattice.py`'s
+# module docstring), so it reads the neighbor as a real lit direction.  An
+# extra lit direction at an ordinary point is exactly what turns it into a
+# spurious 3-lit `"fork"`, which `simulate` then executes as a conditional
+# turn.  A cell of mandated clearance restores the band probe's
+# unambiguity: with a gap, its off-center rays fall on background, so only
+# the stroke actually being walked lights up.
+#
+# Scope note, kept honest deliberately: the nested-loop regression this was
+# written during turned out to be caused by a route touching *itself*, which
+# `_self_approaches` is what actually fixes -- per-stroke attribution on
+# `++[>++[>+<-]<-]>>.` showed all three arms of the spurious junction
+# belonging to one single 530-cell detour.  Setting this to 0 currently
+# leaves every test in `test_bf_to_line.py` and `test_line_boolean.py`
+# passing, so no *checked-in* program is known to need between-stroke
+# clearance today.  It is kept at 1 because the band probe's ±1 reach makes
+# the abutting-ribbon failure real geometry rather than a hypothetical, and
+# a route is free to run flush against unrelated ink without it -- but a
+# future reader should know it is reasoned-from-the-probe, not
+# pinned-by-a-failing-case, unlike everything else in this fix.
+_CLEARANCE = 1
+
+
+# Radius, in *grid cells* (not raster pixels -- everything the router works
+# in is cursor-grid space, which `render` scales by `_UNIT` only at raster
+# time), around a detour's own departure point within which `_CLEARANCE` is
+# waived.  A detour leaves from the tip of the stroke that was just drawn,
+# so that stroke's own ink is legitimately right there -- enforcing clearance
+# against it would wall the route in before it takes a single step
+# (confirmed: doing so fails every loop-back outright, including the
+# previously-working single-level `+++[-].`).  Deliberately as small as
+# possible: one cell is enough to let the route step off its own stroke, and
+# anything larger silently disables `_CLEARANCE` over a wide area (at
+# `_UNIT`, it would waive clearance within 400 raster px of every departure
+# point, which is most of a small drawing).
+_DEPARTURE_EXEMPT = 1
+
+
+def _clear_at(
+    p: tuple[int, int],
+    occupied: set[tuple[int, int]],
+    exempt_origin: tuple[int, int] | None = None,
 ) -> bool:
-    """Whether every pixel strictly between ``p`` and ``p + _UNIT*direction`` is clear."""
+    """Whether ``p`` and every pixel within :data:`_CLEARANCE` of it is free.
+
+    See :data:`_CLEARANCE`: a detour that merely avoids overlapping existing
+    ink can still run flush against it, which the extractor's band probe
+    cannot tell apart from a real junction.  Within
+    :data:`_DEPARTURE_EXEMPT` of ``exempt_origin`` (the route's own start),
+    only ``p`` itself must be free -- see that constant for why.
+    """
+    if exempt_origin is not None:
+        dy = abs(p[0] - exempt_origin[0])
+        dx = abs(p[1] - exempt_origin[1])
+        if max(dy, dx) <= _DEPARTURE_EXEMPT:
+            return p not in occupied
+    for dy in range(-_CLEARANCE, _CLEARANCE + 1):
+        for dx in range(-_CLEARANCE, _CLEARANCE + 1):
+            if (p[0] + dy, p[1] + dx) in occupied:
+                return False
+    return True
+
+
+def _edge_clear(
+    p: tuple[int, int],
+    direction: tuple[int, int],
+    occupied: set[tuple[int, int]],
+    exempt_origin: tuple[int, int] | None = None,
+) -> bool:
+    """Whether every pixel strictly between ``p`` and ``p + _UNIT*direction`` is clear.
+
+    "Clear" means clear *with clearance* -- see :data:`_CLEARANCE` for why
+    simple non-overlap lets two detours rasterize into one indistinguishable
+    2px-wide ribbon.
+    """
     dy, dx = direction
     y, x = p
     for _ in range(_UNIT):
         y, x = y + dy, x + dx
-        if (y, x) in occupied:
+        if not _clear_at((y, x), occupied, exempt_origin):
             return False
     return True
 
@@ -438,6 +519,51 @@ def _astar(
     return None
 
 
+def _leg_cells(
+    start: tuple[int, int], legs: list[tuple[tuple[int, int], int]]
+) -> list[tuple[int, int]]:
+    """Every grid cell a run of ``legs`` walks through, starting from ``start``."""
+    cells = [start]
+    y, x = start
+    for (dy, dx), length in legs:
+        for _ in range(length):
+            y, x = y + dy, x + dx
+            cells.append((y, x))
+    return cells
+
+
+def _self_approaches(cells: list[tuple[int, int]]) -> bool:
+    """Whether a route ever runs within :data:`_CLEARANCE` of its own earlier self.
+
+    A route is planned against ``occupied`` as it stood *before* the route
+    existed, and A* never adds its own in-progress cells to that set -- so
+    nothing in the search stops a detour from doubling back and running flush
+    alongside a leg it laid down earlier in the very same route.  That is a
+    real failure, not a theoretical one: it is what remained of the
+    nested-loop regression after :data:`_CLEARANCE` fixed the *between*-detour
+    case.  Confirmed by per-stroke attribution on ``++[>++[>+<-]<-]>>.``,
+    where all three arms of the spurious T-junction that broke execution
+    belonged to one single stroke -- the inner loop's own 530-cell detour
+    touching itself.
+
+    Only cells far enough apart *along* the route are compared: consecutive
+    cells are trivially adjacent, and a legitimate 90-degree corner puts
+    cells a few steps apart near each other by construction.  Anything beyond
+    that window running within clearance is the route folding back onto
+    itself.
+    """
+    window = 2 * (_CLEARANCE + 1) + 1
+    seen: dict[tuple[int, int], int] = {}
+    for i, (y, x) in enumerate(cells):
+        for dy in range(-_CLEARANCE, _CLEARANCE + 1):
+            for dx in range(-_CLEARANCE, _CLEARANCE + 1):
+                j = seen.get((y + dy, x + dx))
+                if j is not None and i - j > window:
+                    return True
+        seen[(y, x)] = i
+    return False
+
+
 def _path_to_legs(path: list[tuple[int, int]]) -> list[tuple[tuple[int, int], int]]:
     """Collapse a node path into ``(direction, pixel_length)`` runs."""
     legs: list[tuple[tuple[int, int], int]] = []
@@ -510,7 +636,7 @@ def _route_legs(
     bounds = (lo_y, hi_y, lo_x, hi_x)
 
     def coarse_clear(p: tuple[int, int], direction: tuple[int, int]) -> bool:
-        return _edge_clear(p, direction, occupied)
+        return _edge_clear(p, direction, occupied, start)
 
     dy, dx = ty - start[0], tx - start[1]
     rounded = (
@@ -560,7 +686,7 @@ def _route_legs(
 
     def fine_clear(p: tuple[int, int], direction: tuple[int, int]) -> bool:
         nxt = (p[0] + direction[0], p[1] + direction[1])
-        return nxt not in occupied
+        return _clear_at(nxt, occupied, start)
 
     def fine_goal(p: tuple[int, int]) -> bool:
         return p == target
@@ -633,19 +759,47 @@ def _close_loop(
     errors: list[str] = []
     for _ in range(_MAX_PADDING_DOUBLINGS + 1):
         for target in targets:
-            try:
-                legs = _route_legs((cursor.y, cursor.x), target, occupied, padding)
-            except ValueError as exc:
-                errors.append(str(exc))
-                continue
-            for direction, length in legs:
-                cursor.advance(direction, length)
-            if (cursor.y, cursor.x) != target:  # pragma: no cover - geometry guard
-                raise AssertionError(
-                    f"loop-back detour landed at {(cursor.y, cursor.x)}, "
-                    f"expected {target}"
-                )
-            return
+            for approach, diagonal in _approach_points(target, stem_heading):
+                # Route cardinally to the diagonal approach point, then take
+                # the final diagonal leg onto the stem by hand -- see
+                # `_approach_points` for why the last leg cannot be cardinal.
+                # The approach point is an ordinary detour corner, so it needs
+                # full clearance; the diagonal's own pixels only need to be
+                # free, since by the last step or two they are deliberately
+                # closing on the stem's ink and clearance cannot hold there.
+                if not _clear_at(approach, occupied):
+                    continue
+                if any(
+                    (
+                        approach[0] + diagonal[0] * i,
+                        approach[1] + diagonal[1] * i,
+                    )
+                    in occupied
+                    for i in range(1, _DIAGONAL_APPROACH)
+                ):
+                    continue
+                try:
+                    legs = _route_legs((cursor.y, cursor.x), approach, occupied, padding)
+                except ValueError as exc:
+                    errors.append(str(exc))
+                    continue
+                # A* plans against `occupied` as it stood before this route
+                # existed, so it cannot see the route's own cells -- reject a
+                # route that folds back alongside itself and try the next
+                # candidate instead (see `_self_approaches`).
+                full = legs + [(diagonal, _DIAGONAL_APPROACH)]
+                if _self_approaches(_leg_cells((cursor.y, cursor.x), full)):
+                    errors.append("route folded back onto itself")
+                    continue
+                for direction, length in legs:
+                    cursor.advance(direction, length)
+                cursor.advance(diagonal, _DIAGONAL_APPROACH)
+                if (cursor.y, cursor.x) != target:  # pragma: no cover - geometry guard
+                    raise AssertionError(
+                        f"loop-back detour landed at {(cursor.y, cursor.x)}, "
+                        f"expected {target}"
+                    )
+                return
         padding *= 2
     raise ValueError(
         "no clear route found for the loop-back detour at any offset along "
@@ -662,6 +816,72 @@ def _close_loop(
 # fixture and generated program tried, including a real boolean-generator
 # brainfuck program's dense compiled decision tree.
 _STEM_LEN = 10
+
+
+# How far back along the detour the final *diagonal* approach leg starts, in
+# *grid cells* (so 6 here is 120 raster pixels, comfortably longer than
+# `lattice.star`'s own 15px probe).  See `_approach_points` for why the last
+# leg must be diagonal rather than cardinal like the rest of the route.
+#
+# Being *longer* than the probe is what makes this work, not shorter: the
+# probe must find a full, unbroken band segment along the diagonal so the
+# merge point lights that third direction and `lattice._classify` reads
+# `"merge"`.  A diagonal too short to fill the probe would leave the merge
+# point reading only the stem's own two directions -- an ordinary
+# `"straight"` bend, which the walker would sail straight through, continuing
+# down the stem instead of stopping the stroke as a leaf.
+_DIAGONAL_APPROACH = 6
+
+
+def _approach_points(
+    target: tuple[int, int], stem_heading: tuple[int, int]
+) -> list[tuple[tuple[int, int], tuple[int, int]]]:
+    """Candidate ``(approach_start, diagonal)`` pairs for landing on ``target``.
+
+    The detour's final step onto the stem must arrive *diagonally*, not
+    cardinally, and this is load-bearing rather than cosmetic.  Everything
+    :func:`_route_legs` draws is cardinal-only (see its docstring -- a
+    diagonal detour leg risks being misread as a ``+``/``-`` kink), and the
+    stem being landed on is itself a cardinal run, so a cardinal final
+    approach is necessarily *perpendicular* to the stem.  A perpendicular
+    touch-down onto a straight run lights exactly the arrival direction plus
+    the stem's own two directions -- which is the arrived-from direction plus
+    the pair perpendicular to it, i.e. precisely the T-branch signature
+    ``lattice._classify`` calls a real ``"fork"``.  The extractor then reads
+    the loop-back merge as a conditional turn, and :mod:`simulate` executes
+    the reconnection as a branch instead of a jump.
+
+    Arriving diagonally lights that same stem pair plus a direction that is
+    *not* perpendicular to it, which ``_classify`` correctly calls
+    ``"merge"`` -- stopping the stroke as a leaf, which is exactly what
+    :func:`simulate._compile`'s ``find_merge`` expects to rescue into a
+    ``goto``.  This also matches how the wiki's own hand-drawn fixtures
+    reconnect (``addition.png``'s loop-body arm arrives at its stem on a
+    diagonal), which is why merge classification worked there and why this
+    only ever broke on rendered output.
+
+    Both diagonals leaving the target on each side of the stem are offered,
+    since either may be walled in by unrelated ink; the caller tries them in
+    turn.  Each pair is ``(approach_start, diagonal_direction)`` where
+    ``approach_start`` is a clear cardinal-routable point and stepping
+    ``_DIAGONAL_APPROACH`` times along ``diagonal_direction`` from it lands
+    exactly on ``target``.
+    """
+    hy, hx = stem_heading
+    pairs = []
+    for side in (1, -1):
+        py, px = _turn_right((hy, hx))
+        py, px = py * side, px * side
+        # Step *back* along the stem and out to one side, so the return trip
+        # is a diagonal that lands on the target from off the stem's line.
+        for along in (1, -1):
+            diagonal = (-hy * along - py, -hx * along - px)
+            start = (
+                target[0] - diagonal[0] * _DIAGONAL_APPROACH,
+                target[1] - diagonal[1] * _DIAGONAL_APPROACH,
+            )
+            pairs.append((start, diagonal))
+    return pairs
 
 
 # Extra lateral distance (in grid units) each fork arm runs, purely as
