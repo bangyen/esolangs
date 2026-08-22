@@ -74,6 +74,60 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
     the cursor at native scale also matches ordinary multi-pixel-wide
     stroke pixels.
 
+- **Merge detection, via a separate `lattice.py` module (not yet wired to
+  replace `extract.py`'s pipeline)**: `extract.py`'s pixel-by-pixel walker
+  has one confirmed structural gap (see "Unverified / lower priority"
+  below for full history) -- a merge, where one stroke's last leg runs
+  straight into a *different*, already-drawn stroke's ink with no
+  separating background pixel, which a pixel-adjacency walk cannot tell
+  apart from an ordinary continuation.  Three local-pixel-geometry fixes
+  were tried directly on `_walk_tree` and reverted (each broke on a new
+  bend the previous fixture check didn't cover).  `lattice.py` resolves
+  it instead with a from-scratch walker built around a single idea: at
+  every vertex, probe all 8 compass directions for a real segment leaving
+  that point (`star()`), and count how many are lit.  2 means an ordinary
+  bend; 3 means a real conditional-turn fork *or* an incidental merge
+  (the two are told apart by whether the extra two directions are the
+  pair perpendicular to the arrival heading, matching the wiki's T-branch
+  shape -- if not, it's a merge); 4 means an incidental crossing the
+  cursor passes straight through.  A merge naturally reads as "3 lit
+  directions" the same way a real fork does, so the walker stops there
+  without needing a dedicated merge signal at all -- confirmed directly
+  against the hand-decoded `(194, 228)` merge pixel from the reverted
+  attempts below, which reads exactly 3.
+
+  The probe itself checks a 3-pixel-wide band (the exact ray plus one
+  pixel to each side, perpendicular to the ray's own direction), not a
+  single 1px-wide ray -- a single-ray probe was tried first and broke
+  twice more: hand-drawn curves don't sit at one exact pixel width, so an
+  exact-length ray can miss a real segment that measures a pixel short of
+  the nominal grid unit (confirmed: real segments on both fixtures measure
+  19-20px against a 20px nominal unit), and a walked path's own recorded
+  stopping pixel can be a row/column off the true geometric vertex
+  (confirmed at `fixtures/addition.png`'s real T-junction, whose bar sits
+  one row above where the incoming stem's own path data ends).  The band
+  absorbs both failure modes in one check.  A separate `_snap` step
+  additionally re-centers onto a chosen direction's true centerline
+  before walking it (needed because the vertex a stroke's own walk lands
+  on can be a pixel off a *different* leg's true row/column -- e.g. the
+  V-shaped notch in `fixtures/addition.png`), requiring several pixels of
+  confirmed ink (not just one) to avoid a *different* leg's ink brushing
+  past for a single pixel being mistaken for the true centerline.
+
+  Verified: every direction-change vertex in both wiki fixtures (~90
+  total) reads exactly 2 (ordinary bend), 3 (fork or merge), or 1 (a
+  genuine stroke dead end) with no ambiguous or wrong readings; full tree
+  reconstruction on both fixtures recovers the same pivot counts WIP.md's
+  hand-decoding already established (1 for addition, 3 for
+  multiplication); and -- unlike `extract.py`'s walker -- correctly
+  round-trips the previously-broken "`?` followed by more opcodes in both
+  branches" case (see below) with no coverage-check workaround needed.
+  Not yet done: wiring `lattice.py` into `extract()`'s public pipeline in
+  place of `_walk_tree`, and re-deriving `classify_ops`-equivalent opcode
+  identification directly from `lattice.py`'s vertex/heading/length data
+  (verified by hand for a few cases this session, but not yet built as a
+  reusable function the way `extract.classify_ops` is).
+
 ## Deliberately out of scope
 
 - **Runtime simulation**: even with opcodes classified, nothing executes
@@ -95,30 +149,33 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
   (confirmed on `main` before any of these changes, so it's a `render.py`
   branch-layout or `_walk_tree` issue, not a `classify_ops` one) -- e.g.
   `Node("?", zero=chain("+","+"), nonzero=chain("-",">"))` renders but
-  doesn't round-trip. Not investigated further here since it's orthogonal
-  to opcode classification, which only needed *some* branch-free rendered
-  path to verify against.
+  doesn't round-trip via `extract()`'s current pixel-walker pipeline
+  (`lattice.py`'s walker, above, round-trips this same case cleanly, but
+  isn't wired into `extract()` yet). Not investigated further here at the
+  `extract.py` level since it was orthogonal to opcode classification,
+  which only needed *some* branch-free rendered path to verify against.
 - Newly understood (via hand-decoding real fixture arms while verifying
   `classify_ops`), not yet acted on anywhere except that one `classify_ops`
-  check: the wiki's own drawings use a "cursor merges into another line"
-  convention (matching Lineanim3.4/11.1/11.2's documented rule) where two
-  independently-drawn strokes can physically touch with no separating
-  background at all -- confirmed on two `multiplication.png` branch arms,
-  each ending at a plain corner turn that walks straight onto a different
-  stroke's ink rather than a real halt. `_walk`/`_walk_tree`'s own branch-vs-
-  corner logic (`_is_branch_pivot`) doesn't detect this as anything special
-  -- the walker just keeps walking onto the other stroke's line, since
-  there is no region-adjacency signal marking a merge apart from an
-  ordinary corner *at the pixel the walker arrives at* (the merge only
-  becomes a junction one step later, after a forced turn with no
-  straight-ahead ink).  `classify_ops` works around this at its own layer
-  (dropping a trailing call that turns out to be the path's literal last
-  run), but `_walk_tree` itself still doesn't know it crossed into
-  unrelated ink -- e.g. `flatten()`'s returned path still includes those
-  extra pixels, and nothing stops a future caller from walking *further*
-  along the merged-into stroke by mistake if `_walk`'s greedy continuation
-  ever had a reason to keep going past where these fixtures happened to
-  stop.
+  check and the new `lattice.py` module above: the wiki's own drawings use
+  a "cursor merges into another line" convention (matching
+  Lineanim3.4/11.1/11.2's documented rule) where two independently-drawn
+  strokes can physically touch with no separating background at all --
+  confirmed on two `multiplication.png` branch arms, each ending at a
+  plain corner turn that walks straight onto a different stroke's ink
+  rather than a real halt. `_walk`/`_walk_tree`'s own branch-vs-corner
+  logic (`_is_branch_pivot`) doesn't detect this as anything special --
+  the walker just keeps walking onto the other stroke's line, since there
+  is no region-adjacency signal marking a merge apart from an ordinary
+  corner *at the pixel the walker arrives at* (the merge only becomes a
+  junction one step later, after a forced turn with no straight-ahead
+  ink).  `classify_ops` works around this at its own layer (dropping a
+  trailing call that turns out to be the path's literal last run), but
+  `_walk_tree` itself still doesn't know it crossed into unrelated ink --
+  e.g. `flatten()`'s returned path still includes those extra pixels, and
+  nothing stops a future caller from walking *further* along the
+  merged-into stroke by mistake if `_walk`'s greedy continuation ever had
+  a reason to keep going past where these fixtures happened to stop.
+  (`lattice.py` does not have this gap -- see "Settled and tested" above.)
 
   **A `_walk_tree`-level fix was attempted and reverted three times** --
   recorded here in detail so a future attempt doesn't re-derive or re-break
@@ -182,41 +239,23 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
     remains the only verified fix, and stands on its own regardless of
     whether `_walk_tree` is ever fixed at this deeper level.
 
-  **Proposed alternative for a future session, not yet attempted**: rather
-  than patching the greedy pixel-by-pixel walker with another local
-  geometry signal (three tried, all eventually broken by some new bend --
-  see above), replace the walk-then-classify pipeline with direct
-  grid-template matching, since `render.py`'s own geometry is fully known
-  in advance (every opcode's exact pixel path at any position/heading is
-  computable via its `_op_segments`/`_rotate`, on a fixed `_UNIT`-sized
-  grid) -- this sidesteps the merge-detection problem entirely rather than
-  trying to detect it after the fact:
-  - Starting from the cursor's known position/heading (`find_cursor`
-    already locates this), at each step compute every opcode's exact pixel
-    path (reusing `render.py`'s own cursor/rotation code, not
-    reimplementing it) as a candidate template at the current
-    position/heading, plus the `?` branch template.
-  - A template "matches" only if its own path pixels are all ink *and* the
-    background immediately outside its footprint is still genuinely
-    background -- the second half is what a merge point would fail, since
-    the real ink there is the union of this stroke's template plus a
-    second, unrelated stroke's ink the template does not account for; the
-    first half alone (matching `classify_ops`'s current post-hoc approach)
-    is not enough, since it cannot tell "real opcode" from "real opcode
-    plus coincidentally-touching extra ink" apart.
-  - Whichever template matches cleanly wins; advance the cursor to its
-    endpoint/heading and mark its pixels consumed, then repeat. The `?`
-    template recurses into both arms, replacing `_walk_tree`'s branch
-    recursion. `+`/`-`'s repeat count needs trying increasing diagonal
-    lengths until the trailing straight-run-and-turn stops matching, same
-    idea as `_op_segments`'s own count parameter in reverse.
-  - This is a materially larger change than any of the three reverted
-    attempts -- it would replace `_walk`/`_walk_tree`/`build_region_map`'s
-    role together, not add one more signal to them -- and needs full
-    re-verification against both fixtures (and ideally a third, not-yet-
-    seen program) from scratch before being trusted over the current
-    walker, which is otherwise fully working for everything except this
-    one merge-detection gap.
+  **Resolved in a later session, via a different approach than any of the
+  three reverted attempts above**: rather than patching the greedy
+  pixel-by-pixel walker with another local geometry signal, or the
+  grid-template-matching approach originally proposed here (compute each
+  opcode's exact expected pixel footprint at the current position/heading
+  and check it against the image), the actual fix built and verified was
+  simpler than either -- an 8-directions-per-vertex probe, with no per-
+  opcode template shapes involved at all.  See "Settled and tested" above
+  (`lattice.py`) for the full writeup: at every vertex, count how many of
+  the 8 compass directions have a real segment leaving it (2 = ordinary
+  bend, 3 = fork or merge, 4 = crossing), using a 3-pixel-wide band probe
+  rather than a single exact-length ray to absorb both hand-drawn length
+  slop and vertex-position imprecision in one check.  Verified clean
+  against every vertex in both wiki fixtures, and against the
+  previously-broken "`?` followed by more opcodes" synthetic case.  Still
+  not wired into `extract()`'s actual pipeline -- see that section for
+  what remains.
 - Real (camera/scan) photographs with genuine anti-aliasing, as opposed to
   the clean nearest-neighbor-scaled synthetic input `normalize_scale` was
   tested against. Anti-aliased edges could make the exact-integer scale
