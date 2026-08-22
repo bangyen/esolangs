@@ -41,9 +41,9 @@ def _check_truth_table(truth_table: str, n: int, tmp_path: Path) -> None:
         bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
         io, outputs = _io(bits)
         run(tree, io=io)
-        assert outputs == [int(truth_table[combo])], (
-            f"inputs={bits} expected {truth_table[combo]} got {outputs}"
-        )
+        assert outputs == [
+            int(truth_table[combo])
+        ], f"inputs={bits} expected {truth_table[combo]} got {outputs}"
 
 
 class TestLineBoolean:
