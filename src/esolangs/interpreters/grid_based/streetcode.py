@@ -427,7 +427,8 @@ class _Machine:
                 # Driving out through a mouth head-on, the roads to either
                 # side are the main road the branch joins; they have no mouth
                 # of their own to find, so take whichever way is open.
-                crossing and self._open(*self._ahead(self.row, self.col, side))
+                crossing
+                and self._open(*self._ahead(self.row, self.col, side))
             ):
                 roads.append(side)
         return roads

@@ -32,14 +32,18 @@ from esolangs.tools.wrap import (
 
 TEXT = "Hello, World!"
 
-# Languages that must never be wrapped, and why.  Not a restatement of the
-# implementation: each was verified to break (or to be meaningless) when
+# Languages that must never be *reflowed*, and why.  Not a restatement of
+# the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
+#
+# Clockwise is deliberately absent.  Its newlines are semantic too, so
+# wrap_program must not touch it either -- but it honours a width by laying
+# its ring out to fit rather than by ignoring it, so it is covered by the
+# generator's own tests in tests/tools/test_generate.py instead.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
     "wii2d": "2D: newlines separate rows",
     "dig": "2D: newlines separate rows",
-    "clockwise": "2D: newlines separate rows",
     "laserfuck": "2D: newlines separate rows",
     "streetcode": "2D: newlines separate rows",
 }
@@ -169,6 +173,25 @@ def test_no_width_is_unchanged(name: str) -> None:
     lang = LANGUAGES[name]
     assert lang.generator is not None
     assert generate(name, TEXT) == lang.generator(TEXT)
+
+
+def test_clockwise_is_never_reflowed() -> None:
+    """Clockwise honours a width by shaping, never by inserting newlines.
+
+    Its grid rows are semantic, so ``wrap_program`` must leave it alone even
+    though ``generate`` does respond to a width for it -- the width reaches
+    the generator instead.
+    """
+    assert "clockwise" not in WRAPPERS
+    grid = generate("Clockwise", TEXT)
+    assert wrap_program(grid, "clockwise", 10) == grid
+
+
+def test_clockwise_width_reaches_the_generator() -> None:
+    """``generate`` bounds Clockwise's columns rather than ignoring the width."""
+    narrow = generate("Clockwise", TEXT, 20)
+    assert max(len(line) for line in narrow.split("\n")) <= 20
+    assert _run("Clockwise", narrow) == TEXT
 
 
 def test_zero_and_negative_widths_do_not_wrap() -> None:

@@ -58,6 +58,15 @@ def canonical_id(name: str) -> str:
     return s
 
 
+# A text generator: ``generator(text)`` returns a program printing it.
+# Most take only the text; the few that lay their program out in two
+# dimensions (Clockwise, which walks a rectangle's perimeter) also accept a
+# ``width`` bounding the columns, since a shape cannot be reflowed after the
+# fact the way a single long line can.  ``...`` keeps both arities callable
+# with the text alone, which is how every width-less caller invokes them.
+Generator = Callable[..., str]
+
+
 @dataclass(frozen=True)
 class Language:
     """Metadata for one language.
@@ -75,7 +84,7 @@ class Language:
     """
 
     name: str
-    generator: Callable[[str], str] | None = None
+    generator: Generator | None = None
     interpreter: str | None = None
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
@@ -448,7 +457,7 @@ LANGUAGES: dict[str, Language] = {
 
 
 # Display name -> generator function, for languages that have one.
-GENERATORS: dict[str, Callable[[str], str]] = {
+GENERATORS: dict[str, Generator] = {
     name: lang.generator for name, lang in LANGUAGES.items() if lang.generator
 }
 

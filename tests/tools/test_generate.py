@@ -179,6 +179,41 @@ class TestGeneratorRoundTrips:
         )
         assert gen.clockwise("") == ""
 
+    def test_clockwise_ring_is_square_by_default(self) -> None:
+        """The default shape is the square, which minimizes max(height, width).
+
+        Only the perimeter holds code, so the ring's cell count is fixed by
+        the program and the shape is free; the square is the choice that
+        keeps the bounding box smallest.
+        """
+        for text in ("A", "Hi", "Hello, World!", "Clockwise test 123!"):
+            lines = gen.clockwise(text).split("\n")
+            widths = {len(line) for line in lines}
+            assert len(widths) == 1, f"{text!r}: ragged grid {sorted(widths)}"
+            assert len(lines) == widths.pop(), f"{text!r}: not square"
+
+    @pytest.mark.parametrize("width", [10, 20, 40, 80])
+    @pytest.mark.parametrize("text", ["Hi", "Hello, World!", "q" * 30])
+    def test_clockwise_honours_a_width(self, text: str, width: int) -> None:
+        """``width`` bounds the columns and the program still round-trips.
+
+        Clockwise builds a shape rather than a line, so it cannot be
+        reflowed after the fact -- the width has to reach the generator,
+        which lays the ring out to fit.  The square is kept when it already
+        fits; otherwise the width caps the columns and the height grows.
+        """
+        program = gen.clockwise(text, width)
+        lines = program.split("\n")
+        assert max(len(line) for line in lines) <= width
+        assert roundtrip(clockwise_run, lines) == text
+
+    def test_clockwise_keeps_the_square_when_it_fits(self) -> None:
+        """A width the square already satisfies does not distort the shape."""
+        square = gen.clockwise("Hello, World!")
+        side = len(square.split("\n"))
+        assert gen.clockwise("Hello, World!", side) == square
+        assert gen.clockwise("Hello, World!", side + 40) == square
+
     def test_streetcode(self) -> None:
         """A straight walled corridor walks one cell to each character and prints."""
         assert roundtrip(streetcode_run, gen.streetcode("Hi").splitlines()) == "Hi"
@@ -370,7 +405,8 @@ class TestGeneratorRoundTrips:
         assert gen.pct_squared_minus_one("") == ""
         assert gen.pct_squared_minus_one("\x00") == "'e"
         assert (
-            gen.pct_squared_minus_one("H") == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+            gen.pct_squared_minus_one("H")
+            == "'" + other._pct_path(72) + "e"  # noqa: SLF001
         )
         assert roundtrip(_run_pct, gen.pct_squared_minus_one("Hi")) == "Hi"
         assert (
