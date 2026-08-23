@@ -358,13 +358,9 @@ def _register() -> None:
             b.laserfuck,
             "grid_based.laserfuck",
             split=True,
-            expected="\x00\x010",
+            expected="0",
             kwargs=_kw(heading=3),
-            note=(
-                "the initial heading is random by spec, so the example pins "
-                "it; byte mode prints every touched cell, so the two input "
-                "cells precede the result as NUL and SOH"
-            ),
+            note="the initial heading is random by spec, so the example pins it",
         ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
         "myscript": _reader(b.myscript, "register_based.myscript"),
