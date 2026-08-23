@@ -1,10 +1,11 @@
 """Step-by-step tracer and cycle-stability checker for A Painter Ant programs.
 
 The interpreter prints only the bounding box of the cells the ant has
-visited (a ``#``/``.`` raster that carries no coordinates), which is enough
-to confirm that a program is a cycle-stable fixed point but not to see why
-a later cycle diverges.  The boolean generator reads its answer from the
-same semantic grid model this module exposes:
+visited (a raster that carries no coordinates), which is enough to confirm
+that a program is a cycle-stable fixed point, and to read the generator's
+answer off the ant's own cell, but not to see why a later cycle diverges.
+The boolean generator reads its answer from the same semantic grid model
+this module exposes:
 
 - :func:`run` steps the ant command by command and records every blocked
   move, fired move, and paint, so a diverging cycle can be pinned to the
@@ -110,17 +111,25 @@ def run(program: str, cycles: int = 1) -> Run:
 
 
 def box(program: str, cycles: int = 1) -> str:
-    """Render the interpreter's bounding-box raster from the semantic grid."""
+    """Render the interpreter's bounding-box raster from the semantic grid.
+
+    Mirrors the interpreter's four glyphs: ``#`` black, ``.`` white, and the
+    ant's own cell as ``o`` on black or ``@`` on white.
+    """
     outcome = run(program, cycles)
     min_x = min(vx for vx, _ in outcome.visited)
     max_x = max(vx for vx, _ in outcome.visited)
     min_y = min(vy for _, vy in outcome.visited)
     max_y = max(vy for _, vy in outcome.visited)
+
+    def glyph(xx: int, yy: int) -> str:
+        white = outcome.grid.get((xx, yy), 0) == 1
+        if (xx, yy) == outcome.position:
+            return "@" if white else "o"
+        return "." if white else "#"
+
     return "\n".join(
-        "".join(
-            "." if outcome.grid.get((xx, yy), 0) == 1 else "#"
-            for xx in range(min_x, max_x + 1)
-        )
+        "".join(glyph(xx, yy) for xx in range(min_x, max_x + 1))
         for yy in range(min_y, max_y + 1)
     )
 

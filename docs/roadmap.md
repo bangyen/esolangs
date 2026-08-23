@@ -449,7 +449,7 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 
 **No language is currently on this list.**
 
-## Boolean example coverage (the last language)
+## Boolean example coverage (ABCDirection only)
 
 `examples/boolean` holds one committed program per boolean generator that
 can be verified end to end; `src/esolangs/tools/boolean/examples.py` is the
@@ -459,29 +459,34 @@ Coverage is 53 of 54 generators.  The bar is that the answer must be
 the answer and nothing else, since several of these languages have no output
 instruction at all and dump their state at halt.
 
-One language does not clear that bar.  It is not inherently unsuited; it
-needs a specific change first.
+Every generator whose answer a program can report now has an example.  The
+two that used to fall short were fixed rather than excluded, and both are
+worked examples of what this section asks for:
 
-- **A Painter Ant** prints the final grid, and the two leaves really are
-  visible in it as painted rings -- but `render` rasterises painted cells
-  only (`.`/`#`), so the ant is not drawn and the two rings are identical.
-  Marking the ant's cell with a third glyph would make the answer readable
-  straight off the grid.  This is an *interpreter* change, so it alters
-  observable behaviour of a language implementation and wants a deliberate
-  decision rather than a drive-by edit.
+- **Back**'s answer was the cell under the tape head, which the dump does
+  not locate.  The generator now keeps a single answer cell that a 1-leaf
+  writes with `-` before halting, so the dump reports the result directly.
+  The payoff was larger than the example: the Back boolean tests had carried
+  a complete second Back interpreter (32 lines) purely to find the head, so
+  they never executed `tape_based.back`; that shadow implementation is now a
+  call plus a field read.
+- **A Painter Ant**'s answer is which of two painted leaf rings the ant
+  rests in, and the raster drew painted cells only, so the ant was invisible
+  and the rings identical.  `render` now uses four glyphs -- colour by
+  ant-present -- with `o` for the ant on black and `@` on white.  The same
+  change replaced `run`'s instruction `limit` with a `cycles` count: the
+  language is an implicit infinite loop, and a raw step budget stops
+  wherever it lands (the old default of 10,000 cut the AND2 program at 95.24
+  cycles, mid-walk, reading a colour that is not the answer).  A whole cycle
+  is the language's own unit, and these programs are cycle-stable fixed
+  points, so one pass is enough.  This is a unit, not a safety limit -- a
+  diverging program still runs as long as it is asked to.
 
-Back was the other one and has been fixed, which is the worked example of
-what this section is asking for.  Its answer used to be the cell under the
-tape head, which the dump does not locate; the generator now keeps a single
-answer cell and a 1-leaf writes it with `-` before halting, so the dump
-reports the result directly.  The payoff was larger than the example: the
-Back boolean tests had carried a complete second Back interpreter (32
-lines) purely to find the head, so they never executed `tape_based.back`,
-and that shadow implementation is now a call plus a field read.
-
-ABCDirection is excluded on unrelated grounds and is not expected to
-change: its program is a 1107-line, 377 KB grid needing several million
-steps, which is too slow for the example suite and too large to review.
+ABCDirection is the one generator left, and not for that reason: its program
+is a 1107-line, 377 KB grid needing several million steps, which is too slow
+for the example suite and too large to review.  Making it committable means
+making the *program* smaller, which is a generator-construction problem
+rather than an output-recoverability one.
 
 One caution for anyone re-surveying this: the example stems are display
 names, not language ids, so a naive `id not in stems` check reports

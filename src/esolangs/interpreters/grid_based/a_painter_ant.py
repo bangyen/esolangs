@@ -10,11 +10,31 @@ returns to the first.
 
 The wiki defines no I/O, so following the repo convention for
 interpreter-only languages (Minsky Swap prints its registers), :func:`run`
-executes ``limit`` instructions and then prints the
+executes ``cycles`` whole passes of the program and then prints the
 bounding box of the cells the ant has visited: a rectangle of ``#`` (black)
-and ``.`` (white) cells, one row per line.  White space is ignored, any
-other instruction is a malformed program (:class:`ValueError`, exit 2), and
-the origin cell counts as visited.
+and ``.`` (white) cells, one row per line, with the ant's own cell drawn as
+``o`` on black or ``@`` on white.  White space is ignored, any other
+instruction is a malformed program (:class:`ValueError`, exit 2), and the
+origin cell counts as visited.
+
+Two details of that output are deliberate.
+
+The unit is a *whole cycle*, not a step count.  The program is an implicit
+infinite loop, so there is no halt to run to, and a raw instruction budget
+stops wherever it happens to land: the previous default of 10,000
+instructions cut the boolean generator's AND2 program at 95.24 cycles,
+mid-pass, with the ant somewhere in the middle of its walk.  A whole cycle
+is the language's own natural unit, and the programs that have an answer to
+report are cycle-stable fixed points -- their grid and the ant's resting
+cell are the same after one pass as after ten -- so one cycle is enough and
+more changes nothing.  This is a unit, not a safety limit: a program that
+diverges runs as long as it is asked to, the way a real interpreter should.
+
+The ant is drawn because otherwise it is invisible.  The raster used to
+show painted cells only, which is enough to see *what* the ant drew but not
+*where it stopped* -- and for the boolean generator, where it stopped is
+the answer (its two leaves are painted rings that look identical, and the
+result is which one the ant is resting in).
 """
 
 import sys
@@ -81,24 +101,34 @@ class _Machine:
         self.ip = (self.ip + 1) % len(self.prog)
 
     def render(self) -> str:
-        """Render the visited bounding box as a ``#``/``.`` raster."""
+        """Render the visited bounding box, marking the ant's cell.
+
+        Four glyphs, one per (cell colour, ant present) pair: ``#`` black
+        and ``.`` white keep their meaning, and the ant's own cell is ``o``
+        on black or ``@`` on white.  Both ant glyphs are round, so the ant
+        reads as one thing at a glance while its colour stays legible.
+        """
         min_x = min(vx for vx, _ in self.visited)
         max_x = max(vx for vx, _ in self.visited)
         min_y = min(vy for _, vy in self.visited)
         max_y = max(vy for _, vy in self.visited)
         return "\n".join(
-            "".join(
-                "." if self.grid.get((xx, yy), 0) == 1 else "#"
-                for xx in range(min_x, max_x + 1)
-            )
+            "".join(self._glyph(xx, yy) for xx in range(min_x, max_x + 1))
             for yy in range(min_y, max_y + 1)
         )
 
+    def _glyph(self, xx: int, yy: int) -> str:
+        """Return one cell's character: its colour, and whether the ant is on it."""
+        white = self.grid.get((xx, yy), 0) == 1
+        if (xx, yy) == (self.x, self.y):
+            return "@" if white else "o"
+        return "." if white else "#"
 
-def run(code: str, io: IO, limit: int = 10_000) -> None:
-    """Run an A Painter Ant program for ``limit`` instructions."""
+
+def run(code: str, io: IO, cycles: int = 1) -> None:
+    """Run an A Painter Ant program for ``cycles`` whole passes."""
     machine = _Machine(code)
-    for _ in range(limit):
+    for _ in range(cycles * len(machine.prog)):
         machine.step()
     io.print_line(machine.render())
 
@@ -108,6 +138,6 @@ if __name__ == "__main__":
         with open(sys.argv[1]) as file:
             data = file.read()
             if len(sys.argv) > 2:
-                run(data, IO(), limit=int(sys.argv[2]))
+                run(data, IO(), cycles=int(sys.argv[2]))
             else:
                 run(data, IO())
