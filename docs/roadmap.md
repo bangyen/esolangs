@@ -173,13 +173,18 @@ and crash tie-breaking are genuinely random with no seed — fails the
 determinism criterion); **Dilemma** (no I/O commands at all, pure
 maze/DFS); **TableLang**, **Marz**, **RingCode**, **GridScript** (a
 high-level `if`/`while`/`SWITCH` construct makes the generator trivial, or
-the spec is unstable); and **Gate**, which was read closely and rejected — it
-has no input command at all, so its output is a fixed function of the program
-text and a boolean generator is structurally impossible, and its `<` operator
-is defined only by a self-referential image (see the assessed-and-rejected
-ledger in `docs/limitations.md`).  **Circuit Diagram** is the remaining
-candidate in that genre — more complex constraint-propagation semantics, and
-the natural next one to assess now that Gate has fallen through.
+the spec is unstable); and **Gate**, which was read closely and rejected on
+spec-completeness.  Its lack of an input command is not the blocker — output,
+constants, and a value-testable branch are exactly the parameterized
+(input-by-substitution) profile that Back, RAM0, and Minsky Swap are built on.
+The blocker is that the page never exercises the two commands such a generator
+needs: `+` (the branch) appears in none of the nine worked examples, and no
+example emits output at all, so neither the branch geometry nor the output
+path can be derived the way Flowchart's gaps were pinned by its examples (see
+the assessed-and-rejected ledger in `docs/limitations.md`).  **Circuit
+Diagram** is the remaining candidate in that genre — more complex
+constraint-propagation semantics, and the natural next one to assess now that
+Gate has fallen through.
 
 ## Transpilers
 
