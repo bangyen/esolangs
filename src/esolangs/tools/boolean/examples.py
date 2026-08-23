@@ -52,7 +52,7 @@ the step limit, while ``test_boolean_example`` suppresses only
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
-from esolangs.registry import canonical_id
+from esolangs.registry import Generator, canonical_id
 from esolangs.tools.boolean.a_painter_ant import _instantiate_apa
 from esolangs.tools.boolean.helpers import instantiate
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
@@ -76,7 +76,7 @@ class BooleanExample:
     ``expected`` is the program's whole stdout.
     """
 
-    generator: Callable[[str], str]
+    generator: Generator
     table: str
     interpreter: str
     expected: str
@@ -243,16 +243,17 @@ def _fill_minsky_swap(template: str, bits: list[int]) -> str:
     targets the template computed stay correct whatever the bits are.
     """
     n = len(bits)
+    size: int = 2**n
 
     def set_bit(i: int, bit: int) -> str:
         if i == n - 1:  # LSB: length-4 block, no "~"
             return "+*+*" if bit else "****"
-        weight = 2 ** (n - 1 - i)
+        weight: int = 2 ** (n - 1 - i)
         if bit:
-            return "+" * weight + "*" * (2**n - weight)
-        return "*" * 2**n
+            return "+" * weight + "*" * (size - weight)
+        return "*" * size
 
-    return instantiate(template, bits, set_bit, lambda _i, _b: "*" * 2**n)
+    return instantiate(template, bits, set_bit, lambda _i, _b: "*" * size)
 
 
 def _fill_ram0(template: str, bits: list[int]) -> str:
