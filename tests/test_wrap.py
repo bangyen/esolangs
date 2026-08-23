@@ -20,6 +20,7 @@ import pytest
 from esolangs import generate
 from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES
+from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
     WRAPPERS,
@@ -93,6 +94,10 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     """
     plain = generate(name, TEXT)
     wrapped = generate(name, TEXT, width)
+    if wrapped == plain:
+        # A program the generator already emits multi-line is left alone
+        # (BFStack and Suffolk here); there is nothing to undo.
+        return
     # Deleting the inserted newlines must recover the original exactly.
     # The space-delimited wrappers put the newline *where a space was*, so
     # there the newline turns back into that space; every other wrapper
@@ -129,10 +134,20 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     """
     for repeat in (1, 2, 4, 8):
         program = generate(name, TEXT * repeat)
-        if len(program) > 40:
+        if "\n" not in program and len(program) > 40:
             assert "\n" in generate(name, TEXT * repeat, 40)
             return
-    pytest.fail(f"{name} never produced a program longer than 40 characters")
+    # BFStack and Suffolk emit their hello-world programs already
+    # multi-line, so the text generator can never exercise their wrapper;
+    # their single-line *boolean* programs are what needs it.
+    example = BOOLEAN_GENERATED.get(LANGUAGES[name].id)
+    if example is not None:
+        raw = example.build(width=None)
+        assert "\n" not in raw, f"{name}: boolean program is already multi-line"
+        assert len(raw) > 40, f"{name}: boolean program too short to need a wrap"
+        assert "\n" in example.build(40)
+        return
+    pytest.fail(f"{name} never produced a single-line program longer than 40 chars")
 
 
 @pytest.mark.parametrize("name", sorted(UNWRAPPABLE))

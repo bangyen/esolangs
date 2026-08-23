@@ -54,12 +54,14 @@ esolangs generate <language> "Hello"   # print a program that outputs "Hello"
 esolangs transpile BIO BF program.txt  # rewrite between languages
 ```
 
-Generated programs are one long line by default.  `--width` (optionally
-`--width N`, default 80) wraps one to that many columns for readability,
-breaking only between whole commands so the program still does the same
-thing.  Languages whose newlines carry meaning ignore the flag rather than
-producing a broken program: the 2D grid languages, where a newline starts a
-new row, and NoComment, which rejects any character that is not a command.
+Most generators emit one long line.  `--width` (optionally `--width N`,
+default 80) wraps a program to that many columns for readability, breaking
+only between whole commands so it still does the same thing — this is how
+the committed examples are written.  Languages whose newlines carry meaning
+ignore the flag rather than producing a broken program: the 2D grid
+languages, where a newline starts a new row, and NoComment, which rejects
+any character that is not a command.  A single token longer than the width
+(a Polynomial coefficient) gets its own line rather than being split.
 
 Assembly compilers run the same way and write `output.asm`:
 

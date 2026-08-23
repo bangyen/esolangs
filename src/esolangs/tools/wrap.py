@@ -154,6 +154,11 @@ WRAPPERS = {
     "unsquare": wrap_chars,
     "pct_squared_minus_one": wrap_chars,
     "rotfuck": wrap_chars,
+    # Their hello-world programs already come out multi-line and short, but
+    # their *boolean* programs are single long lines, so both still need a
+    # wrapper.
+    "bfstack": wrap_chars,
+    "suffolk": wrap_chars,
     "modulous": wrap_chars,
     "forth": wrap_chars,
     "eval": wrap_chars,

@@ -25,6 +25,7 @@ from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
+from esolangs.tools.wrap import DEFAULT_WIDTH, wrap_program
 
 BASE_DIR = Path(__file__).parent.parent
 EXAMPLES_DIR = BASE_DIR / "examples" / "hello-world"
@@ -68,15 +69,21 @@ def test_hello_world_example(name: str) -> None:
 
 
 def test_example_files_match_generator() -> None:
-    """The committed examples are exactly what the generators produce today."""
-    generators = {
-        _file_name(lang.name): lang.generator
-        for lang in LANGUAGES.values()
-        if lang.generator and lang.interpreter
-    }
-    for name, generator in generators.items():
-        path = EXAMPLES_DIR / f"{name}.txt"
-        assert path.read_text(encoding="utf-8") == generator("Hello, World!")
+    """The committed examples are exactly what the generators produce today.
+
+    The files are committed wrapped (see
+    ``scripts/write_hello_world_examples.py``), so the comparison wraps the
+    generator's output the same way rather than loosening to ignore
+    newlines -- a wrapped file still has to match character for character.
+    """
+    languages = [
+        lang for lang in LANGUAGES.values() if lang.generator and lang.interpreter
+    ]
+    for lang in languages:
+        assert lang.generator is not None
+        path = EXAMPLES_DIR / f"{_file_name(lang.name)}.txt"
+        expected = wrap_program(lang.generator("Hello, World!"), lang.id, DEFAULT_WIDTH)
+        assert path.read_text(encoding="utf-8") == expected
 
 
 def test_no_orphan_hello_world_examples() -> None:
