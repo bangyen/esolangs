@@ -163,6 +163,7 @@ interpreter, generator, and tests were deleted from the repo.
 - **Eso2D**, **Jumplang**, **brainfunc**, **Minimal operation language**, **Yaren**, **2KWLang**: wiki-categorized Implemented with documented external interpreters; not a gap.
 - **EXCON** (removed): straight-line 8-cell bit pool; no conditional at all (only reset/flip/pointer/print), so no boolean generator.
 - **Fourfuck**: incomplete, a stub with a couple of commands.
+- **Gate**: a wire/logic-gate circuit with no input command at all — the symbol table's only sources are the literal `#`/`_` and the gate emitters, so output is a fixed function of the program text and a boolean generator is structurally impossible (the Conveyor/ALT-4 criterion).  The spec is separately incomplete: the `<` operator's semantics live only in an image whose entries are self-referential (`&` yields `B & B-1`, `X` yields `B X (B X B)`, with `B` undefined), signal propagation and gate evaluation order are never specified, and none of the nine worked examples states its output except the oscillator.  **Circuit Diagram** is the alternative in the same genre.
 - **Gravity**: non-computable evolution; nothing verifiable.
 - **HaltJS**, **MangularJS**: JavaScript subsets; a faithful interpreter is a whole JS engine, not a file-based char/line interpreter.
 - **Huf** (removed): straight-line two-register accumulator; no conditional at all (only reset/increment/multiply/print), so no boolean generator.
