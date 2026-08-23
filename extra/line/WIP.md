@@ -9,7 +9,7 @@ what's settled and tested, what's deliberately out of scope, and what
 was resolved along the way -- the module docstrings in
 `extract.py`/`render.py`/`simulate.py` carry the settled, load-bearing
 reasoning, and this file records how it was arrived at.  Only one item is
-genuinely open (see "Still open"); `docs/streetcode-wip.md` is the
+genuinely open (see "Still open"); `docs/streetcode.md` is the
 comparable file for Streetcode, which still has real open questions.
 
 `test_simulate.py` is a real `pytest` suite covering `simulate.py`

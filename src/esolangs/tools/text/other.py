@@ -889,7 +889,7 @@ def streetcode(text: str) -> str:
     geometry that composes enter -> lap -> exit was found: cutting a wall
     for an entry or exit road changes the lap, and the right-hand hug then
     takes that cut as an open road on its right.  See
-    ``docs/streetcode-wip.md`` for the traces and the leak modes.
+    ``docs/streetcode.md`` for the traces and the leak modes.
     """
     row = ["C"]
     prev = 0
