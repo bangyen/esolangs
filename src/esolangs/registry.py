@@ -249,6 +249,12 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.factor",
         id="factor",
     ),
+    "Flowchart": Language(
+        "Flowchart",
+        id="flowchart",
+        interpreter="grid_based.flowchart",
+        split=True,
+    ),
     "Forþ": Language(
         "Forþ",
         _generate.forth,
@@ -387,8 +393,9 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Streetcode": Language(
         "Streetcode",
+        _generate.streetcode,
+        "grid_based.streetcode",
         id="streetcode",
-        interpreter="grid_based.streetcode",
         split=True,
     ),
     "Suffolk": Language(

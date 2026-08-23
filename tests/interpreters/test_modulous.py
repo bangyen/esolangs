@@ -40,6 +40,18 @@ class TestModulous:
     def test_input(self) -> None:
         assert run_and_capture("[INP INT][PRT INT][END]", inputs=["42"]) == "42"
 
+    def test_truth_machine_zero(self) -> None:
+        """A 0 input prints 0 and halts.
+
+        The 1 branch loops forever by definition, so only the terminating
+        branch is exercised.
+        """
+        program = (
+            "[INP INT][DUP][JMP F 4 IF 0][PRT INT][PSH INT 1]"
+            "[JMP B 3 NIF 0][PSH INT 0][PRT INT][END]"
+        )
+        assert run_and_capture(program, inputs=["0"]) == "0"
+
     def test_input_string(self) -> None:
         assert run_and_capture("[INP][PRT][PRT][END]", inputs=["AB"]) == "AB"
 
