@@ -279,6 +279,18 @@ def _register() -> None:
         "factor": _reader(b.factor, "tape_based.factor"),
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
         "forbin": _reader(b.forbin_boolean, "other.forbin"),
+        "laserfuck": _reader(
+            b.laserfuck,
+            "grid_based.laserfuck",
+            split=True,
+            expected="\x00\x010",
+            kwargs=_kw(heading=3),
+            note=(
+                "the initial heading is random by spec, so the example pins "
+                "it; byte mode prints every touched cell, so the two input "
+                "cells precede the result as NUL and SOH"
+            ),
+        ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
         "myscript": _reader(b.myscript, "register_based.myscript"),
         "nevermind": _reader(
