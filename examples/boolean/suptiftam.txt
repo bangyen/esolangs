@@ -1,0 +1,22 @@
+sum=0
+p=1
+fd mulStep :x
+prod=%+[prod]a%
+x=%-[x]1%
+mulStep(:x:)if(x)
+fi
+b=%-[read]22%
+down(:read:)
+c=%-[read]22%
+down(:read:)
+p=1
+prod=0
+a=b
+mulStep(:p:)if(p)
+p=prod
+prod=0
+a=c
+mulStep(:p:)if(p)
+p=prod
+sum=%+[sum]p%
+term=sum

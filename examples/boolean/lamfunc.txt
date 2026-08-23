@@ -1,0 +1,1 @@
+vs v0 0b0 vs v1 0b1 i vg v0 i vg v1 p 1 p 0 p 0

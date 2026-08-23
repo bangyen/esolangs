@@ -2,6 +2,13 @@
 
 import sys
 
+from esolangs.compilers._riscv_common import (
+    READ_BYTE_OR_EOF,
+    cell_load_or_zero,
+    cell_store_or_drop,
+    dump_cells,
+    start_preamble,
+)
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
 # Special addresses, matching esolangs.interpreters.register_based.addsubjump.
@@ -32,13 +39,7 @@ def comp(code: str) -> str:
         cells = cells + [0] * (_CELLS - n)
 
     res = (
-        "    .text\n"
-        "    .global _start\n"
-        "_start:\n"
-        "    la   s1, mem\n"
-        "    li   s2, 0\n"
-        f"    li   s3, {n}\n"
-        "    li   s4, 0\n"
+        start_preamble(n) + "    li   s4, 0\n"
         "    li   s5, 0\n"
         "    li   s6, 0\n"
         ".loop:\n"
@@ -91,20 +92,7 @@ def comp(code: str) -> str:
         "# read_cell(addr: a0) -> a0\n"
         "read_cell:\n"
         f"    li   t0, {_IO}\n"
-        "    bne  a0, t0, 1f\n"
-        "    addi sp, sp, -16\n"
-        "    sd   ra, 8(sp)\n"
-        "    li   a7, 63\n"
-        "    li   a0, 0\n"
-        "    mv   a1, sp\n"
-        "    li   a2, 1\n"
-        "    ecall\n"
-        "    blez a0, .eof\n"
-        "    lbu  a0, 0(sp)\n"
-        "    ld   ra, 8(sp)\n"
-        "    addi sp, sp, 16\n"
-        "    ret\n"
-        "1:\n"
+        "    bne  a0, t0, 1f\n" + READ_BYTE_OR_EOF + "1:\n"
         f"    li   t0, {_CF}\n"
         "    bne  a0, t0, 2f\n"
         "    li   a0, 0\n"
@@ -144,18 +132,7 @@ def comp(code: str) -> str:
         "    bne  a0, t0, 9f\n"
         "    mv   a0, s4\n"
         "    ret\n"
-        "9:\n"
-        "    bltz a0, .zero_ret\n"
-        f"    li   t0, {_CELLS}\n"
-        "    bge  a0, t0, .zero_ret\n"
-        "    slli t0, a0, 3\n"
-        "    add  t0, s1, t0\n"
-        "    ld   a0, 0(t0)\n"
-        "    ret\n"
-        ".zero_ret:\n"
-        "    li   a0, 0\n"
-        "    ret\n"
-        ".eof:\n"
+        "9:\n" + cell_load_or_zero(_CELLS) + ".eof:\n"
         "    li   a0, 1\n"
         "    li   a7, 93\n"
         "    ecall\n"
@@ -187,24 +164,9 @@ def comp(code: str) -> str:
         f"    li   t1, {_NEG}\n"
         "    blt  a0, t1, 3f\n"
         "    j    .no_write\n"
-        "3:\n"
-        "    bltz a0, .no_write\n"
-        f"    li   t0, {_CELLS}\n"
-        "    bge  a0, t0, .no_write\n"
-        "    slli t0, a0, 3\n"
-        "    add  t0, s1, t0\n"
-        "    sd   a1, 0(t0)\n"
-        ".no_write:\n"
-        "    ret\n"
-        "\n"
-        "    .data\n"
-        "    .align 3\n"
-        "mem:\n"
+        "3:\n" + cell_store_or_drop(_CELLS)
     )
-    for i in range(0, _CELLS, 8):
-        row = cells[i : i + 8]
-        res += "    .dword " + ", ".join(str(v) for v in row) + "\n"
-    return res
+    return res + dump_cells(cells, _CELLS)
 
 
 if __name__ == "__main__":

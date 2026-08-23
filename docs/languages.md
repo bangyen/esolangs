@@ -10,66 +10,67 @@ standalone program (Rust, Lean, or RISC-V assembly), used to
 differentially verify the Python interpreter.  The Boolean
 column marks the boolean-function generators; the no-input languages (Back, BIO, NoComment, BF-PDA, Lamfunc, Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D) use parameterized generators (the harness substitutes input bits into a template).
 
-| Language | Text generator | Python | Cross-check | Boolean | Compiler | Examples |
-| --- | :---: | :---: | :---: | :---: | :---: | :---: |
-| %^2^-1 | yes | yes | yes |  |  | hello |
-| 123 | yes | yes |  |  |  | hello |
-| 3D Brainfuck | yes | yes |  | yes |  | hello |
-| 3x | yes | yes | yes | yes |  | hello |
-| 6-5 | yes | yes |  | yes |  | hello cat |
-| A Painter Ant |  | yes |  | yes |  |  |
-| ABCDirection |  | yes |  | yes |  |  |
-| AddSubJump | yes | yes |  | yes | yes | hello |
-| ArrowQueue |  | yes |  | yes |  | boolean |
-| BF-PDA |  | yes | yes | yes | yes |  |
-| BFStack | yes | yes |  | yes | yes | hello |
-| BIO | yes | yes | yes | yes |  | hello |
-| Back |  | yes |  | yes |  |  |
-| Basicfuck | yes | yes | yes | yes |  | hello |
-| Between | yes | yes |  | yes |  | hello cat truth-machine |
-| Bitdeque |  | yes |  | yes |  |  |
-| BrainIf | yes | yes |  | yes |  | hello truth-machine |
-| COD |  | yes |  | yes |  | boolean |
-| Circlefuck | yes | yes |  | yes |  | hello truth-machine |
-| Clockwise | yes | yes |  | yes |  | hello |
-| Collatz Multiverse | yes | yes |  | yes | yes | hello |
-| Container | yes | yes |  | yes |  | hello |
-| Decleq | yes | yes |  | yes | yes | hello |
-| Dig | yes | yes |  | yes |  | hello |
-| Dimensional | yes | yes |  | yes |  | hello |
-| Eval | yes | yes |  | yes |  | hello boolean |
-| Factor | yes | yes |  | yes |  | hello truth-machine |
-| Forbin | yes | yes |  | yes |  | hello truth-machine |
-| Forþ | yes | yes | yes | yes | yes | hello |
-| Grapheme |  | yes |  | yes |  |  |
-| Home Row | yes | yes |  | yes | yes | hello |
-| Jaune |  | yes |  | yes | yes |  |
-| Lamfunc |  | yes |  | yes |  |  |
-| LaserFuck | yes | yes | yes | yes |  | hello |
-| Minifuck | yes | yes |  |  |  | hello boolean |
-| Minsky Swap |  | yes | yes | yes |  |  |
-| Modulous | yes | yes |  | yes |  | hello cat truth-machine |
-| MyScript | yes | yes |  | yes |  | hello |
-| Nevermind | yes | yes |  | yes |  | hello cat |
-| NoComment | yes | yes | yes | yes |  | hello |
-| Painfuck | yes | yes | yes | yes |  | hello |
-| Point Break |  | yes |  | yes |  | boolean |
-| Polynomial | yes | yes |  | yes |  | hello |
-| Qoibl | yes | yes |  | yes |  | hello |
-| RAM0 |  | yes | yes | yes | yes |  |
-| ROTfuck | yes | yes |  | yes |  | hello |
-| S*bleq | yes | yes |  | yes | yes | hello |
-| SLOW ACV MAMMALIAN | yes | yes |  |  |  | hello |
-| Sophie | yes | yes |  | yes |  | hello |
-| Streetcode |  | yes |  |  |  |  |
-| Suffolk | yes | yes |  | yes | yes | hello |
-| Suptiftam | yes | yes |  | yes |  | hello cat truth-machine |
-| Taglate | yes | yes |  | yes |  | hello |
-| Unsquare | yes | yes | yes | yes | yes | hello |
-| WII2D | yes | yes |  | yes |  | hello boolean |
-| ZTOALC L | yes | yes |  | yes |  | hello |
-| bit~ | yes | yes | yes | yes |  | hello |
-| brainfuck | yes | yes |  | yes |  | hello |
+| Language | Text generator | Python | Cross-check | Boolean | Compiler |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| %^2^-1 | yes | yes | yes |  |  |
+| 123 | yes | yes |  |  |  |
+| 3D Brainfuck | yes | yes |  | yes |  |
+| 3x | yes | yes | yes | yes |  |
+| 6-5 | yes | yes |  | yes |  |
+| A Painter Ant |  | yes |  | yes |  |
+| ABCDirection |  | yes |  | yes |  |
+| AddSubJump | yes | yes |  | yes | yes |
+| ArrowQueue |  | yes |  | yes |  |
+| BF-PDA |  | yes | yes | yes | yes |
+| BFStack | yes | yes |  | yes | yes |
+| BIO | yes | yes | yes | yes |  |
+| Back |  | yes |  | yes |  |
+| Basicfuck | yes | yes | yes | yes |  |
+| Between | yes | yes |  | yes |  |
+| Bitdeque |  | yes |  | yes |  |
+| BrainIf | yes | yes |  | yes |  |
+| COD |  | yes |  | yes |  |
+| Circlefuck | yes | yes |  | yes |  |
+| Clockwise | yes | yes |  | yes |  |
+| Collatz Multiverse | yes | yes |  | yes | yes |
+| Container | yes | yes |  | yes |  |
+| Decleq | yes | yes |  | yes | yes |
+| Dig | yes | yes |  | yes |  |
+| Dimensional | yes | yes |  | yes |  |
+| Eval | yes | yes |  | yes |  |
+| Factor | yes | yes |  | yes |  |
+| Flowchart |  | yes |  |  |  |
+| Forbin | yes | yes |  | yes |  |
+| Forþ | yes | yes | yes | yes | yes |
+| Grapheme |  | yes |  | yes |  |
+| Home Row | yes | yes |  | yes | yes |
+| Jaune |  | yes |  | yes | yes |
+| Lamfunc |  | yes |  | yes |  |
+| LaserFuck | yes | yes | yes | yes |  |
+| Minifuck | yes | yes |  |  |  |
+| Minsky Swap |  | yes | yes | yes |  |
+| Modulous | yes | yes |  | yes |  |
+| MyScript | yes | yes |  | yes |  |
+| Nevermind | yes | yes |  | yes |  |
+| NoComment | yes | yes | yes | yes |  |
+| Painfuck | yes | yes | yes | yes |  |
+| Point Break |  | yes |  | yes |  |
+| Polynomial | yes | yes |  | yes |  |
+| Qoibl | yes | yes |  | yes |  |
+| RAM0 |  | yes | yes | yes | yes |
+| ROTfuck | yes | yes |  | yes |  |
+| S*bleq | yes | yes |  | yes | yes |
+| SLOW ACV MAMMALIAN | yes | yes |  |  |  |
+| Sophie | yes | yes |  | yes |  |
+| Streetcode | yes | yes |  | yes |  |
+| Suffolk | yes | yes |  | yes | yes |
+| Suptiftam | yes | yes |  | yes |  |
+| Taglate | yes | yes |  | yes |  |
+| Unsquare | yes | yes | yes | yes | yes |
+| WII2D | yes | yes |  | yes |  |
+| ZTOALC L | yes | yes |  | yes |  |
+| bit~ | yes | yes | yes | yes |  |
+| brainfuck | yes | yes |  | yes |  |
 
 The `esolangs` command lists the languages with Python support:
 

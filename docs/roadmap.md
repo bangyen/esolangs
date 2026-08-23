@@ -89,27 +89,140 @@ would make the generator close to trivial to write by hand.
   right-hand lane before turning, rather than a plain single-cell step onto
   the first open neighbor (see the module docstring's "Lane merging" bullet
   and `docs/streetcode-wip.md` for the hand-derived, user-confirmed trace
-  this was built from).  Wired into `registry.py` (interpreter only, no
-  text generator and no boolean generator yet) — that's separate
-  follow-on work.
-- **Gate** — a wire/logic-gate circuit: symbols represent signals flowing
-  through wires (`—`/`|`), combined by gates (`&` NAND, `X` XNOR, `!` NOT);
-  `+` branches on which way a signal is heading; `(` outputs an ASCII char.
-  A boolean generator means constructing an actual gate network, not
-  writing a condition.  Spec is terser and example-driven rather than
-  prose-first — worth a closer read before committing.
+  this was built from).  Wired into `registry.py`, with a boolean generator
+  (`tools/boolean/other.py`) that walks each input bit down to a bare 0/1
+  and then drives a binary decision tree whose T-junctions apply the
+  ambiguous-turn rule to fork on it; it takes arbitrary truth tables,
+  uncapped, and is verified over every input combination up to 4 inputs.
+  No text generator yet — that's the remaining follow-on work.
 - **Flowchart** — literal flowchart nodes joined by lines; a `< >` switch
   node reads a bit register and routes the pointer left or right (straight
   through if the register is empty), directly analogous to Befunge's
   `_`/`|`.  Supports multiple concurrent pointers and deque-based memory;
   single-bit I/O.  Very new (2025) but the spec is complete, with a
-  truth-machine, cat, and Kolakoski-sequence example.
-- **Line** — a cursor follows ASCII line-drawing curves; each curve shape it
-  passes through is itself the instruction (a diagonal increments/decrements
-  the current cell, a corner moves the tape pointer, a specific bend is a
-  conditional turn keyed on the current cell being zero).  Brainfuck-
-  equivalent semantics, but every instruction is encoded in path geometry,
-  so a generator has to physically route the drawn line to fork on input.
+  truth-machine, cat, and Kolakoski-sequence example.  The interpreter and
+  tests are done: all sixteen nodes are tabulated by the wiki, so the work
+  was the geometry (multi-character node tokenization, box-drawing line
+  tracing) plus four spec gaps the page leaves implicit — the switch's
+  left/right being relative to the pointer's heading (pinned by the truth
+  machine), character-per-bit rather than Boolfuck byte-packed I/O (an
+  eight-bit buffer would never flush for the truth machine), re-entry memory
+  that disambiguates paths without suppressing node semantics (pinned by the
+  cat's loops), and lock-step round-robin pointer interleaving in reading
+  order.  Each is derived in the module docstring.  An empty register writes
+  nothing rather than the spec sentence's zero, because the wiki's own cat
+  would otherwise print a trailing bit it never read — an example-over-prose
+  call worth revisiting if the author clarifies.  Wired into `registry.py`,
+  with a boolean generator (`tools/boolean/other.py`) that draws the truth
+  table as an actual decision tree: each level reads one bit with `/ /` and
+  hands it to a `< >` switch whose sides are the halves of the table, and
+  each of the `2**n` leaves sets the register to its digit, prints, and
+  halts.  Uncapped, verified over every input combination up to 4 inputs.
+  It is the cheapest of the repo's 2D boolean generators to build, because
+  the language supplies a real conditional (no junction geometry to draw)
+  and reads bare bits (no per-input decoding loop).
+
+  **A text generator is impossible, and this is not a gap to close.**  The
+  only output node emits one bit, and the byte-packing convention the other
+  bit-output languages use (Clockwise buffers seven bits and flushes a
+  character) cannot be applied here: the wiki's truth machine reads one
+  bit, writes one bit, and halts, so under any packing its single output
+  bit would never flush and the example would print nothing at all.
+  Character-per-bit is therefore forced by the spec's own example, and it
+  is what makes text output unreachable — so Flowchart belongs with the
+  interpreter-only languages listed under deferred-removal, not on a list
+  of languages awaiting a text generator.  That,
+  and the Kolakoski example's exact output (the page states none, so the
+  test pins current behaviour as characterization), are follow-on work.
+  On that last point: the output's repeating tail was initially suspected
+  to be an artifact of the unspecified pointer interleaving, but it is not.
+  Creation order, reverse order, and per-step reading order all produce
+  byte-identical output, and long consecutive runs per pointer only swap
+  the first two bits.  Nor is it the two contested semantic calls: running
+  the full matrix of {1 turns left, 1 turns right} x {empty register prints
+  nothing, empty is zero} leaves Kolakoski period-4 in all four variants,
+  and only the shipped combination (1 turns left, empty prints nothing)
+  passes the truth machine and the cat at all — flipping the switch breaks
+  the truth machine, and "empty is zero" breaks the cat, so the matrix
+  independently re-derives both documented decisions.
+
+  What actually happens is that the east pointer visits eleven nodes and
+  halts: it emits a single `1` and reaches `(( ))`, so the repeating tail
+  is entirely the south branch's.  The `( )` nodes mid-row are passed
+  through as no-ops rather than forking, because the `─` run beneath them
+  is the return rail *passing under* the row, not a path attached to them —
+  the rail's two ends (`└` at column 29, `┘` at column 50) both turn
+  upward, closing the loop at the switch and just past `(( ))`, and column
+  50 of row 0 is blank.  The overlap is an artifact of drawing a long
+  return path under a wide row of nodes, so declining to fork there is
+  correct, and no re-entry or switch-routing change would alter it.
+  The remaining possibility is that the diagram simply does not produce the
+  Kolakoski sequence as drawn (the same never-executed caveat as the cat's
+  trailing bit); confirming that would need the author, so the talk-page
+  question is the cheapest next step.
+- **Line** — implemented, in `extra/line/` (deliberately not wired into
+  `registry.py`: the wiki spec is hand-drawn curve *images* with no text
+  format, so its programs are PNGs, not files the registry's text pipeline
+  can carry).  A cursor follows drawn curves and each curve shape it passes
+  through is itself the instruction (a diagonal increments/decrements the
+  current cell, a specific kink moves the tape pointer, a T-branch is a
+  conditional turn keyed on the current cell being zero) -- brainfuck-
+  equivalent semantics encoded entirely in path geometry.  What exists: a
+  renderer whose kink shapes were measured pixel-by-pixel from the wiki's
+  reference images, a pixel-based extractor and runtime simulator verified
+  against the wiki's own hand-drawn fixtures, a direct boolean generator
+  (`line_boolean.py`, every input combination through 3 inputs plus 5-input
+  parity), and a brainfuck compiler (`bf_to_line.py`) whose loop-backs are
+  constructed geometrically rather than route-searched, making nesting
+  depth unbounded (round-tripped through depth 12).  See
+  `extra/line/WIP.md` for the full implementation record.
+
+- **Circuit Diagram** — an ASCII circuit: named logic gates (`a` AND, `A`
+  NAND, `o` OR, `O` NOR, `x` XOR, `X` XNOR, `~` NOT) wired by `-`/`|`/`/`/`\`
+  with `.` junctions and `=` crossovers, evaluated as a cellular automaton
+  where a gate fires once both its left inputs are non-null.  Verified
+  `Category:Two-dimensional languages` and `Category:Unimplemented` via the
+  category API, with no external interpreter documented on the page.  Picked
+  up after Gate fell through, and it is the stronger candidate on exactly the
+  axis Gate failed: its sole worked example (a 4-bit prime tester) exercises
+  every load-bearing symbol — input (`-4-`), output (`:`), gates, the `<`/`>`
+  multi-wire splitter/combiner, and `=` crossovers — where Gate's `+` and `(`
+  appeared in none of its nine.  The example is also a real acceptance test:
+  its minterm formula was checked to be exactly the primes in 0-15 with `a`
+  as the MSB, so an interpreter can be replayed over all 16 inputs, and since
+  only that bit assignment yields primality the example pins its own input
+  ordering.  Signals are three-valued (Null/0/1) with a defined multi-driver
+  rule (a wiring driven by several non-null values takes their XOR), and the
+  connection rules are stated symmetrically (`-|` and `.|` are explicitly
+  *not* connections).  A boolean generator is the language's native idiom —
+  a truth table becomes a sum-of-minterms gate network, which is what the
+  example already is.
+
+  Three judgment calls to derive and document before building, in the
+  Flowchart style:
+
+  - **Print cadence and halting are unspecified.**  Execution is
+    generational and the spec's own flip-flop oscillates `1N1N1N...`
+    forever, so "when does `:` print, and when does a program stop?" has no
+    prose answer.  The prime tester's gates run left-to-right into the final
+    `a` feeding `:`, and gates read left and write right, so a feed-forward
+    circuit settles — making "run until stable, print each `:` once, halt"
+    derivable from the example.  A circuit *with* feedback (the flip-flop)
+    never settles under that rule and needs its own wording (cycle detection
+    or the wall-clock backstop).
+  - **`t` returns the current time** (a 32-bit seconds-since-2000 wire),
+    which is time-dependent output — the same judgment-call class as seeded
+    randomness: tests would fix the clock, and the generator would never
+    emit `t`.
+  - **Multi-wire is not optional.**  The only example uses `-4-`, `<`, and
+    `>`, so an "implement the scalar subset first" staging is not available;
+    the `?` splitter/combiner magic has to be built up front.  Its behavior
+    is at least enumerated in prose, unlike Gate's image-only `<` table.
+
+  The main risk is the single example: one diagram is the entire
+  behavioral corpus, where Flowchart had three.  Its computational class is
+  also listed as unknown (the page notes circuits are complete for
+  fixed-arity boolean functions, which is not Turing-completeness).
 
 Considered and rejected in the same pass: **Highways** (excellent
 roundabout/routing mechanic, but junction direction, sign execution order,
@@ -117,9 +230,17 @@ and crash tie-breaking are genuinely random with no seed — fails the
 determinism criterion); **Dilemma** (no I/O commands at all, pure
 maze/DFS); **TableLang**, **Marz**, **RingCode**, **GridScript** (a
 high-level `if`/`while`/`SWITCH` construct makes the generator trivial, or
-the spec is unstable); **Circuit Diagram** (a viable Gate alternative in the
-same genre, with more complex constraint-propagation semantics — worth a
-look if Gate falls through).
+the spec is unstable); and **Gate**, which was read closely and rejected on
+spec-completeness.  Its lack of an input command is not the blocker — output,
+constants, and a value-testable branch are exactly the parameterized
+(input-by-substitution) profile that Back, RAM0, and Minsky Swap are built on.
+The blocker is that the page never exercises the two commands such a generator
+needs: `+` (the branch) appears in none of the nine worked examples, and no
+example emits output at all, so neither the branch geometry nor the output
+path can be derived the way Flowchart's gaps were pinned by its examples (see
+the assessed-and-rejected ledger in `docs/limitations.md`).  **Circuit
+Diagram**, the alternative named in that genre, was assessed after Gate fell
+through and is a live candidate — see its entry above.
 
 ## Transpilers
 
@@ -137,7 +258,8 @@ would break a documented convention and its text generator is too thin to
 stand alone — see `docs/limitations.md` for the removed cases and the
 criteria.  The interpreter-only languages with no text generator but a
 working, uncapped boolean generator (ABCDirection, Back, BF-PDA, Bitdeque,
-Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue) are
+Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue,
+Streetcode, Flowchart) are
 **not** candidates: they participate fully in the repo's verification
 machinery via the boolean generator, and their only weakness is an
 interpreter-invented state dump where the wiki defines no text output.

@@ -1,10 +1,9 @@
 """Interpreter for Brainfuck.
 
-The semantics deliberately match the ASCII-art interpreter (which is
-brainfuck with an art alphabet) so that the two are interchangeable: an
-8-bit wrapping tape, rightward growth, ``<`` clamped at the left edge, and
-matching-bracket loops.  This is what lets the BF-to-ASCII-art transpiler
-be verified end-to-end.
+The tape is 8-bit wrapping and grows rightward, ``<`` is clamped at the
+left edge, and loops are matching-bracket.  The transpiler targets are held
+to these same semantics, which is what lets each one be verified
+end-to-end.
 
 The brainfuck spec defines ``[``/``]`` only for matched pairs; a program
 with unbalanced brackets is malformed, so the interpreter rejects it with a

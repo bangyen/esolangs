@@ -1,7 +1,9 @@
 """Unit tests for the boolean-function program generators."""
 
+import importlib
 import io
 import random
+from collections.abc import Callable
 from contextlib import redirect_stdout, suppress
 from typing import ClassVar
 from unittest.mock import patch
@@ -11,11 +13,8 @@ import pytest
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.interpreters.io import IO
 from esolangs.tools import boolean
-from esolangs.tools.boolean.parameterized import (
-    _instantiate_apa,
-    _instantiate_arrowqueue,
-    a_painter_ant,
-)
+from esolangs.tools.boolean.a_painter_ant import _instantiate_apa, a_painter_ant
+from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 
 
 def _parameterized_generators():
@@ -616,6 +615,112 @@ class TestDig:
             "            > >$30:@"
         )
         assert boolean.dig("0110") == expected
+
+
+def run_streetcode(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.grid_based.streetcode import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
+class TestStreetcode:
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.streetcode(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_streetcode(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+
+def run_flowchart(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.grid_based.flowchart import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program.splitlines(), io=IO())
+    return buffer.getvalue()
+
+
+class TestFlowchart:
+    """The Flowchart boolean generator (works for arbitrary n)."""
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0111", 2),  # OR
+            ("0110", 2),  # XOR
+            ("1110", 2),  # NAND
+            ("01101001", 3),  # XOR3
+            ("11111110", 3),  # NAND3
+            ("0110100110010110", 4),  # XOR4
+            ("1000000000000000", 4),  # AND4
+        ],
+    )
+    def test_truth_table(self, table: str, n: int) -> None:
+        """Every input combination produces the truth-table result."""
+        program = boolean.flowchart(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_flowchart(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_tree_depth_matches_input_count(self) -> None:
+        """One ``/ /`` read node sits on each path from entry to a leaf."""
+        program = boolean.flowchart("0110100110010110")
+        assert program.count("< >") == 15  # 2**4 - 1 internal nodes
+        assert program.count("(( ))") == 16  # 2**4 leaves
+
+    def test_each_run_reads_exactly_n_bits(self) -> None:
+        """The drawn read nodes outnumber the reads any one run performs.
+
+        A depth-4 tree draws 15 ``/ /`` nodes, but a run walks a single
+        root-to-leaf path and consumes exactly 4 bits, so the duplication is
+        spatial rather than a bit being read more than once (see the
+        generator's docstring on why the parameterized once-only embedding
+        rule does not apply to an input-reading generator).
+        """
+        program = boolean.flowchart("0110100110010110")
+        assert program.count("/ /") == 15
+
+        consumed = 0
+
+        class _CountingIO(IO):
+            def input_str(self, _prompt: str = "Input: ") -> str:
+                nonlocal consumed
+                consumed += 1
+                return "1"
+
+            def print_str(self, text: str) -> None:
+                pass
+
+        from esolangs.interpreters.grid_based.flowchart import run as fc_run
+
+        fc_run(program.splitlines(), _CountingIO())
+        assert consumed == 4
+
+    def test_rejects_a_malformed_table(self) -> None:
+        """A table whose length is not a power of two is rejected."""
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.flowchart("011")
 
 
 def run_sophie(program: str, inputs: list[str]) -> str:
@@ -3235,7 +3340,7 @@ class TestGeneratorEdgePaths:
 
     def test_six_five_helper_edges(self) -> None:
         """Same-cell navigation and the +5 tail of the constant encoder."""
-        from esolangs.tools.boolean.tape import _six_five_const, _six_five_nav
+        from esolangs.tools.boolean.six_five import _six_five_const, _six_five_nav
 
         assert _six_five_nav(3, 3) == ""
         assert _six_five_const(5) == "5"
@@ -3243,14 +3348,14 @@ class TestGeneratorEdgePaths:
 
     def test_ztoalc_simulator_rejects_bad_program(self) -> None:
         """An empty or non-numeric first line fails the fast simulator."""
-        from esolangs.tools.boolean.other import _ztoalc_ok
+        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ok
 
         assert _ztoalc_ok({}, 0, "", "") is False
         assert _ztoalc_ok({0: "not-a-number"}, 0, "", "") is False
 
     def test_ztoalc_simulator_input_exhausted(self) -> None:
         """A '=' instruction with no input left fails the fast simulator."""
-        from esolangs.tools.boolean.other import _ztoalc_ok
+        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ok
 
         assert _ztoalc_ok({0: "2", 1: "a = 1"}, 1, "", "") is False
 
@@ -3589,7 +3694,7 @@ class TestAPainterAnt:
 
     def test_four_input_head_works(self) -> None:
         """The head's leaf layout generalizes past three inputs."""
-        from esolangs.tools.boolean.parameterized import _leaf_positions
+        from esolangs.tools.boolean.a_painter_ant import _leaf_positions
 
         positions = _leaf_positions(4)
         assert len(positions) == 16
@@ -3970,7 +4075,7 @@ class TestWII2D:
 
     def test_chain_n2_closed_form(self) -> None:
         """Two-input tables use the closed form, not the search."""
-        from esolangs.tools.boolean.parameterized import (
+        from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
             _wii2d_n2_closed_form,
         )
@@ -3993,7 +4098,7 @@ class TestWII2D:
     @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
     def test_chain_parity_closed_form(self, n: int) -> None:
         """Parity and its complement use the exact closed form for any arity."""
-        from esolangs.tools.boolean.parameterized import (
+        from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
             _wii2d_parity_routes,
             _wii2d_symmetric_popcount_map,
@@ -4018,7 +4123,7 @@ class TestWII2D:
 
     def test_symmetric_search_reduces_to_popcount_decode(self) -> None:
         """Non-parity symmetric tables use a popcount prefix plus a decode."""
-        from esolangs.tools.boolean.parameterized import (
+        from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
             _wii2d_symmetric_search,
         )
@@ -4056,8 +4161,8 @@ class TestWII2D:
         :func:`_wii2d_symmetric_search` call still runs for real (uncapped),
         so it must still succeed.
         """
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.parameterized import _wii2d_domain, _wii2d_search
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_domain, _wii2d_search
 
         def capped_domain(maxlen: int, cap: int) -> list[int]:
             return _wii2d_domain(min(maxlen, 4), cap)
@@ -4067,23 +4172,23 @@ class TestWII2D:
             "1" if bin(c).count("1") > n // 2 else "0" for c in range(2**n)
         )
         with (
-            patch.object(parameterized, "_wii2d_search_start", return_value=None),
-            patch.object(parameterized, "_wii2d_domain", side_effect=capped_domain),
+            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_domain", side_effect=capped_domain),
         ):
             result = _wii2d_search(n, symmetric_table)
         assert result is not None
 
         non_symmetric_table = "0001001000110100"
         with (
-            patch.object(parameterized, "_wii2d_search_start", return_value=None),
-            patch.object(parameterized, "_wii2d_domain", side_effect=capped_domain),
+            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_domain", side_effect=capped_domain),
         ):
             result = _wii2d_search(n, non_symmetric_table)
         assert result is None
 
     def test_symmetric_search_deadline_stops_the_ladder(self) -> None:
         """The per-``maxlen`` deadline check aborts the ladder early."""
-        from esolangs.tools.boolean.parameterized import _wii2d_symmetric_search
+        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
 
         calls = [0.0, 100.0]
 
@@ -4096,17 +4201,19 @@ class TestWII2D:
 
     def test_symmetric_search_gives_up_after_the_full_ladder(self) -> None:
         """No decode is found once every ``maxlen`` in the ladder is tried."""
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.parameterized import _wii2d_symmetric_search
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
 
-        with patch.object(parameterized, "_wii2d_sequences", return_value=[]):
+        with patch.object(wii2d_mod, "_wii2d_sequences", return_value=[]):
             result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
         assert result is None
 
     @staticmethod
-    def _build_search_start_args(maxlen: int, table: str):  # type: ignore[no-untyped-def]
+    def _build_search_start_args(
+        maxlen: int, table: str
+    ) -> tuple[list[int], list[str], Callable[[int, int], int], dict[int, int]]:
         """Build the ``(t, seqs, pre, index)`` args ``_wii2d_search_start`` needs."""
-        from esolangs.tools.boolean.parameterized import (
+        from esolangs.tools.boolean.wii2d import (
             _wii2d_apply,
             _wii2d_domain,
             _wii2d_sequences,
@@ -4140,7 +4247,7 @@ class TestWII2D:
         """An already-expired deadline aborts the search immediately."""
         import time
 
-        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 3
         t, seqs, pre, index = self._build_search_start_args(2, "01101001")
@@ -4153,7 +4260,7 @@ class TestWII2D:
         final-``None`` paths instead of the timeout path."""
         import time
 
-        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 3
         # maxlen=1 gives too small an op-string pool to realize XOR3
@@ -4166,7 +4273,7 @@ class TestWII2D:
         repeated subproblem returns the cached result instead of re-solving."""
         import time
 
-        from esolangs.tools.boolean.parameterized import _wii2d_search_start
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 4
         table = "0000000000111101"
@@ -4178,8 +4285,10 @@ class TestWII2D:
         """``wii2d`` surfaces a search failure as a ``ValueError``."""
         from esolangs.tools.boolean import parameterized
 
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+
         with (
-            patch.object(parameterized, "_wii2d_search", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_search", return_value=None),
             pytest.raises(ValueError, match="no route"),
         ):
             parameterized.wii2d("0110")
@@ -4192,7 +4301,7 @@ class TestWII2D:
         :func:`_wii2d_layout` directly with one and confirms the produced
         template actually runs correctly through the real interpreter.
         """
-        from esolangs.tools.boolean.parameterized import _wii2d_layout
+        from esolangs.tools.boolean.wii2d import _wii2d_layout
 
         template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
         for bit, expected in ((0, "5"), (1, "6")):

@@ -1,7 +1,13 @@
-LET n:=?
-LET one:=1
-POINT truth
-POINT check
-IF n BREAK check
-IF one BREAK truth
-END truth
+LET a:=1
+LET b:=?
+LET c:=?
+LET d:=a-b
+LET e:=a-c
+LET f:=0
+LET g:=b
+LET g:=g*c
+LET f:=f+g
+LET h:=a-f
+POINT loop
+IF h BREAK loop
+END loop

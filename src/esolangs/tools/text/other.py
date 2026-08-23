@@ -30,6 +30,7 @@ __all__ = [
     "painfuck",
     "pct_squared_minus_one",
     "sbleq",
+    "streetcode",
     "suptiftam",
     "three_x",
     "unsquare",
@@ -854,6 +855,52 @@ def sbleq(text: str) -> str:
     cells += [ord(c) for c in text]
     cells += [len(cells) + 1]
     return " ".join(map(str, cells))
+
+
+def streetcode(text: str) -> str:
+    """Build a Streetcode program that outputs ``text``.
+
+    Printing needs no branching at all, so the program is a single
+    straight corridor: a ``-`` wall above and below one instruction row
+    that the car drives East along, from the ``C`` start to a closing
+    ``;``.  Each character is a run of ``^``/``~`` walking the one cell
+    the car never leaves from the previous character's code point to this
+    one's, then an ``O``.  CP stays at 0 throughout -- no ``=``/``_`` and
+    no second cell is ever needed.
+
+    The walls are load-bearing rather than decoration: they are what makes
+    the right-hand-wall rule send the car straight down the row (the
+    initial heading is derived from having a wall on the right), and with
+    no gap-and-``+`` shape anywhere in the grid the car never meets a road
+    mouth, so the ambiguous-turn and lane-merging rules the boolean
+    generator has to steer around never come into play.
+
+    The output alphabet is unrestricted: cells are unbounded signed
+    integers and ``O`` prints ``chr()`` of one, so any code point works,
+    including characters that are walls in the *grid* (``-``, ``|``,
+    ``+``) -- they are emitted as ``^``/``~`` runs, never drawn.
+
+    The ``^``/``~`` runs are unary, so a program is
+    ``O(sum of |code point deltas|)`` -- larger than the multiplication
+    loops the other text generators compress with.  Building a byte value
+    instead of walking to it needs a counting loop, and the pieces of one
+    demonstrably exist (a junction on a lapped ring re-decides on the cell
+    every lap, and a counter on the lap does count down), but no ring
+    geometry that composes enter -> lap -> exit was found: cutting a wall
+    for an entry or exit road changes the lap, and the right-hand hug then
+    takes that cut as an open road on its right.  See
+    ``docs/streetcode-wip.md`` for the traces and the leak modes.
+    """
+    row = ["C"]
+    prev = 0
+    for c in text:
+        delta = ord(c) - prev
+        row.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
+        prev = ord(c)
+    row.append(";")
+    instructions = "".join(row)
+    wall = "-" * len(instructions)
+    return "\n".join([wall, instructions, wall])
 
 
 def suptiftam(text: str) -> str:

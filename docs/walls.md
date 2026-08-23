@@ -301,7 +301,7 @@ linear scan rather than a genuine representation limit.  See
 - **WII2D**: the accumulator never affects control flow (`^v<>` set the
   direction, `@` jumps unconditionally to the closest `@`), so there is no
   value-testable branch to route a decision tree on.  **Resolved by the
-  n-embedding chain** (:func:`esolangs.tools.boolean.parameterized.wii2d`):
+  n-embedding chain** (:func:`esolangs.tools.boolean.wii2d.wii2d`):
   the branches are routing, not value tests, and the *accumulator arithmetic*
   decodes the input.  Each input is embedded exactly once as a junction whose
   two branches are op strings that transform the accumulator before re-merging
@@ -364,7 +364,7 @@ continue east) or `v` (bit 1, detour onto a lower row and remerge ahead),
 branch op strings from the fish alphabet `i d s` (increment, decrement,
 square) transforming the accumulator, and the BFS behavior-dedup /
 backward requirement-set search
-(:func:`esolangs.tools.boolean.parameterized`'s `_wii2d_sequences` /
+(:func:`esolangs.tools.boolean.wii2d`'s `_wii2d_sequences` /
 `_wii2d_domain` / `_wii2d_search_start`) is op-agnostic — but the chain is
 **strictly weaker** than WII2D's.
 
@@ -465,10 +465,51 @@ languages reach multi-input threshold functions:
   at all — which also sidesteps the coverage-tracer deadlock that a
   timeout backstop would invite.
 
+### Four no-output rejections the convention reopens
+
+The convention needs no output at all, so "no output" is not by itself a
+sufficient rejection — a point four ledger entries got wrong, each rejected
+partly on an I/O ground the convention does not care about.  Re-checked
+against their specs:
+
+- **Vandevelo** is the strongest.  `Inp` is real input (nothing to
+  substitute), `::` is JavaScript `&&`, and `-!>`/`~!>` negate, so AND with
+  NOT is functionally complete — no affine ceiling of the kind that walled
+  2dFish, and every table is expressible in principle.  Its wiki
+  truth-machine already answers by termination via the self-referential
+  `2 -> 2?`.  The open question is *detecting* the hang: lazy
+  self-reference is not a revisited machine state, so state-cycle detection
+  may not apply and the wall-clock backstop would have to carry it.
+- **Crement** matches Point Break's profile exactly: Turing complete
+  on-page (two-counter Minsky reduction), `JUMP` branching on a data
+  field's sign, halting by running past the last address, looping by
+  jumping backward, and step-capable so cycle detection would decide the
+  looping side.  But the wiki defines no truth machine, so adopting the
+  convention here *extends* the Point Break exception rather than following
+  it — the exception is worded around a wiki-defined truth machine.
+- **ALT-4** has the wiki artifacts (an infinite loop `00110`, a truth
+  machine `01010` with the input prepended) but a thin machine: one file's
+  stack holds only zeroes, i.e. a unary counter with an emptiness test, so
+  an arbitrary table needs a decision tree built over that and the general
+  construction is unproven.  Its `2` multithreads by *filename* — the
+  file/OS-based I/O the criteria exclude — which a generator can avoid but
+  an interpreter cannot.
+- **Conveyor** has the halt/loop distinction (`HALT`, a jumper that
+  otherwise loops back, `IFEZ`/`IFGT`), so its stderr-only output is not
+  the real blocker; it stays rejected on spec stability instead (an
+  unwritten ROT13 example the author declined to finish, and unexplained
+  `(Supervisor+)` privilege tiers).
+
+None of the four has a construction built, so none is claimed as a
+generator: the correction is to the *rejection rationale*, which cited
+missing I/O where the convention makes I/O irrelevant.  Whether the
+ceiling in each case is real (as with ArrowQueue's single-ring minterm
+limit) is exactly what building one would settle.
+
 ## A Painter Ant boolean generator (general; any n)
 
 A Painter Ant has no I/O, so its boolean generator (in
-:mod:`esolangs.tools.boolean.parameterized.a_painter_ant`) uses the parameterized
+:mod:`esolangs.tools.boolean.a_painter_ant`) uses the parameterized
 convention, read by a semantic grid model (the interpreter's own output is
 the visited-cell bounding box, which carries no coordinates).  The answer
 is the **colour of the cell the ant lands on** at the end of a cycle (white

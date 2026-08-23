@@ -1,8 +1,13 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-from dataclasses import dataclass
-
+# abcdirection, streetcode, and ztoalc_l_boolean each own a file because
+# their construction (a grid layout or a program search) dwarfs the rest of
+# the category; they are re-exported here so this module stays the import
+# site the package and tests already use.
+from esolangs.tools.boolean.abcdirection import abcdirection
 from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.boolean.streetcode import streetcode
+from esolangs.tools.boolean.ztoalc_l import ztoalc_l_boolean
 
 __all__ = [
     "abcdirection",
@@ -13,6 +18,7 @@ __all__ = [
     "forbin_boolean",
     "laserfuck",
     "nevermind",
+    "streetcode",
     "suptiftam",
     "taglate",
     "three_x",
@@ -175,166 +181,6 @@ def three_x(truth_table: str) -> str:
 
     prog += read(result) + "!"
     return prog
-
-
-def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> bool:
-    """Fast ZTOALC L simulator: True iff ``inputs`` prints ``expected`` once.
-
-    Mirrors the interpreter's semantics exactly: the pointer follows the
-    Collatz step (halving evens, ``3n+1`` odds) unless a ``jump`` fires,
-    which advances the pointer by one.  A command line visited twice would
-    re-execute (re-read, re-branch, or re-print), so any such revisit fails.
-    """
-    try:
-        ptr = int(lines[0])
-    except (KeyError, ValueError):
-        return False
-    var = [0] * n
-    inp = list(inputs)
-    out: list[str] = []
-    visited: set[int] = set()
-    steps = 0
-    while ptr != 1:
-        steps += 1
-        if steps > 10**6:  # pragma: no cover - a pathological 10**6-step run
-            return False
-        index = ptr - 1
-        ins = lines.get(index, "")
-        if ins:
-            if index in visited:
-                return False
-            visited.add(index)
-            if ins.startswith("print"):
-                out.append(chr(int(ins.split()[1])))
-                if len(out) > 1:
-                    return False
-            elif ins.startswith("jump"):
-                if var[int(ins.split()[2][1])] != 0:
-                    ptr += 1
-                    continue
-            elif "=" in ins:
-                if not inp:
-                    return False
-                var[int(ins.split()[0][1])] = ord(inp.pop(0))
-            elif "-" in ins:
-                var[int(ins.split()[0][1])] -= int(ins.split()[2])
-        ptr = ptr // 2 if ptr % 2 == 0 else 3 * ptr + 1
-    return len(out) == 1 and out[0] == expected
-
-
-def _ztoalc_lines(table: str, n: int, b1: int) -> dict[int, str]:
-    """Place the reads, normalizes, branches, and leaves for ``table``."""
-    start = b1 * 4**n
-    lines: dict[int, str] = {0: str(start)}
-    for i in range(n):
-        lines[start // 2 ** (2 * i) - 1] = f"x{i} = input"
-        lines[start // 2 ** (2 * i + 1) - 1] = f"x{i} - 48"
-
-    def build(combos: list[int], root: int, depth: int) -> None:
-        results = {table[c] for c in combos}
-        if len(results) == 1:
-            lines[root - 1] = f"print {48 + int(results.pop())}"
-            return
-        lines[root - 1] = f"jump a x{depth}"
-        bit = n - 1 - depth
-        zero = [c for c in combos if not (c >> bit) & 1]
-        one = [c for c in combos if (c >> bit) & 1]
-        build(zero, root // 2, depth + 1)
-        build(one, 3 * root + 4, depth + 1)
-
-    build(list(range(2**n)), b1, 0)
-    return lines
-
-
-def _ztoalc_symmetric(table: str, n: int) -> list[str] | None:
-    """Build a branch-free linear program for a popcount-symmetric table.
-
-    If ``table[c]`` depends only on ``popcount(c)``, the result is computable
-    without a decision tree: sum the normalized input bits into ``s``, look
-    the result up in a small ``n + 1``-entry table, and print it.  Every
-    line sits on the pure power-of-two descent from ``2**L``, so the
-    trajectory never revisits a line and no placement search is needed.
-    The program is ``2**L`` lines (``L`` commands), so it is huge but
-    collision-free; returns ``None`` for non-symmetric tables.
-    """
-    value: dict[int, str] = {}
-    for combo in range(2**n):
-        count = bin(combo).count("1")
-        if count in value and value[count] != table[combo]:
-            return None
-        value[count] = table[combo]
-    cmds: list[str] = []
-    for i in range(n):
-        cmds.append(f"x{i} = input")
-        cmds.append(f"x{i} - 48")
-    cmds.append("s = 0")
-    for i in range(n):
-        cmds.append(f"s += x{i}")
-    cmds.append(f"t = [{n + 1}]")
-    for count in range(n + 1):
-        if value.get(count, "0") == "1":
-            cmds.append(f"t[{count}] = 1")
-    cmds.append("r = t[s]")
-    cmds.append("r + 48")
-    cmds.append("print r")
-    size = 2 ** len(cmds)
-    if size > 2**22:  # pragma: no cover - would build >2**22 program lines
-        return None
-    prog = [""] * size
-    prog[0] = str(size)
-    for j, cmd in enumerate(cmds):
-        prog[2 ** (len(cmds) - j) - 1] = cmd
-    return prog
-
-
-def ztoalc_l_boolean(truth_table: str) -> str:
-    """Build a ZTOALC L program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    ZTOALC L's control flow is the Collatz trajectory of line 1, so the
-    generator lays out a decision tree on `p * 2**k` descents: branching at
-    an even root lets a zero bit continue the descent (the Collatz step
-    halves it) while a one bit jumps to `root + 1`, whose Collatz step lands
-    on `4 * q` — so every branch gets a predictable, non-revisiting path.
-    The reads and normalizations ride the initial `b1 * 4**n` descent.  A
-    small ``b1`` is searched until the placement verifies against a fast
-    simulator (each input must print exactly its table entry once, with no
-    command line revisited).
-
-    When the tree search finds no collision-free placement (dense tables
-    like XOR4), a branch-free *linear* program is tried instead for
-    popcount-symmetric tables: sum the bits and look the result up in a
-    small table.  That program is guaranteed collision-free (a pure
-    power-of-two descent) but huge (``2**L`` lines), so it is gated by a
-    size limit and the generator raises :class:`ValueError` only for dense,
-    non-symmetric tables past ``n == 3``.
-
-    Verified exhaustively for every table at ``n <= 3`` and for structured
-    and symmetric tables at ``n == 4``; all tests run the real interpreter.
-    """
-    n = _validate_truth_table(truth_table)
-    for b1 in range(2 ** (n + 1), 4000, 4):
-        lines = _ztoalc_lines(truth_table, n, b1)
-        if all(
-            _ztoalc_ok(
-                lines,
-                n,
-                "".join(str((c >> (n - 1 - i)) & 1) for i in range(n)),
-                truth_table[c],
-            )
-            for c in range(2**n)
-        ):
-            size = max(lines) + 1
-            return "\n".join(lines.get(i, "") for i in range(size))
-    linear = _ztoalc_symmetric(truth_table, n)
-    if linear is not None:
-        return "\n".join(linear)
-    raise ValueError(
-        "the ZTOALC L boolean generator found no collision-free placement for "
-        f"this table at n == {n}",
-    )
 
 
 def nevermind(truth_table: str) -> str:
@@ -1018,292 +864,6 @@ def forbin_boolean(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-# --- ABCDirection (grid, merged from booleans/abcdirection.py) ---
-
-_R, _D, _L, _U = 0, 1, 2, 3
-_DIR = [(1, 0), (0, 1), (-1, 0), (0, -1)]
-
-
-@dataclass
-class _LeafParams:
-    """Layout parameters threaded into the tree/leaf builders."""
-
-    escape_rows: list[int]
-    sink_cols: list[int]
-    serp_col: int
-    sp: int
-
-
-class _Builder:
-    def __init__(self, width: int, height: int) -> None:
-        self.width = width
-        self.height = height
-        self.cells: dict[tuple[int, int], str] = {}
-
-    def set(self, x: int, y: int, c: str) -> None:
-        if not 0 <= x < self.width:
-            raise AssertionError((x, y))
-        if not 0 <= y < self.height:
-            raise AssertionError((x, y))
-        old = self.cells.get((x, y))
-        if old is not None and old != c:
-            raise AssertionError(("collision", (x, y), old, c))
-        self.cells[(x, y)] = c
-
-    def grid(self) -> list[str]:
-        g = [["B"] * self.width for _ in range(self.height - 1)]
-        for (x, y), c in self.cells.items():
-            if y == self.height - 1:
-                continue
-            g[y][x] = c
-        term = ["B"] * self.width
-        for (x, y), c in self.cells.items():
-            if y == self.height - 1:
-                term[x] = c
-        term[self.width - 6 : self.width] = ["D"] * 6
-        rows = ["".join(r) for r in g]
-        rows.append("".join(term))
-        return rows
-
-
-def _turn(b: _Builder, x: int, y: int, h: int, target: int) -> tuple[int, int, int]:
-    while h != target:
-        b.set(x, y, "A")
-        h = (h + 1) % 4
-        x += _DIR[h][0]
-        y += _DIR[h][1]
-    return x, y, h
-
-
-def _here(b: _Builder, x: int, y: int, h: int, cell: str) -> tuple[int, int]:
-    b.set(x, y, cell)
-    x += _DIR[h][0]
-    y += _DIR[h][1]
-    return x, y
-
-
-def _travel(b: _Builder, x: int, y: int, h: int, dist: int) -> tuple[int, int]:
-    for _ in range(dist):
-        x = (x + _DIR[h][0]) % b.width
-        y = (y + _DIR[h][1]) % b.height
-    return x, y
-
-
-def _add_staircase(
-    b: _Builder, n: int, right: int = 6, up: int = 3, d: int = 2
-) -> tuple[int, int, int]:
-    """Read phase: [D-up read, D-right enqueue] x 8n pairs rising rightward."""
-    pairs = 8 * n
-    b.set(0, 0, "A")
-    b.set(5, 0, "A")
-    ex, ey = 5, b.height - 1
-    a3 = (ex + right - 1, ey - up + d)
-    for i in range(pairs):
-        if i == 0:
-            b.set(5, b.height - 1, "D")
-        if i:
-            b.set(ex, ey - 1, "D")
-        b.set(ex, ey - 1 - up, "A")
-        b.set(ex + right // 2, ey - 1 - up, "D")
-        b.set(ex + right, ey - 1 - up, "A")
-        b.set(ex + right, ey - up + d, "A")
-        a3 = (ex + right - 1, ey - up + d)
-        b.set(*a3, "A")
-        ex += right - 1
-        ey -= up - d
-    return a3[0], a3[1] - 1, _U
-
-
-def _build_node(
-    b: _Builder,
-    n: int,
-    table: str,
-    depth: int,
-    p: int,
-    x: int,
-    y: int,
-    combo: int,
-    path: tuple[int, ...],
-    leaf_params: _LeafParams,
-) -> None:
-    """Place a tree node: k D-left's, a turn, a C-up test, then children.
-
-    The D-left's are spaced one cell apart so no six-D run forms (the grid
-    reader would mistake it for the terminator).  Entering a node dequeues k
-    bits into the tape and the C-up tests the last one, so each node consumes
-    the next input bit's slot.
-    """
-    k = 1 if depth == 0 else 8
-    for j in range(k):
-        b.set(x - 2 * j, y, "D")
-    b.set(x - 2 * k, y, "A")
-    b.set(x - 2 * k, y - 1, "C")
-    if depth == n - 1:
-        _leaf(b, table, x - 2 * k, y - 2, _U, combo, (*path, 0), leaf_params)
-        _leaf(
-            b,
-            table,
-            x - 2 * k - 1,
-            y - 1,
-            _L,
-            combo | (1 << (n - 1 - depth)),
-            (*path, 1),
-            leaf_params,
-        )
-        return
-    sp = leaf_params.sp
-    delta = 2 ** (n - depth - 2) * sp
-    band = 8
-    # zero-child (continue UP from the C-up), at x + delta: travel RIGHT to
-    # just past the child, DOWN, then LEFT into it.
-    zx, zy, zh = x - 2 * k, y - 2, _U
-    zx, zy, zh = _turn(b, zx, zy, zh, _R)
-    zx, zy = _travel(b, zx, zy, _R, delta + 2 * k)
-    zx, zy, zh = _turn(b, zx, zy, zh, _D)
-    zx, zy = _travel(b, zx, zy, _D, band + 1)
-    zx, zy, zh = _turn(b, zx, zy, zh, _L)
-    _build_node(
-        b,
-        n,
-        table,
-        depth + 1,
-        2 * p,
-        x + delta,
-        y + band,
-        combo,
-        (*path, 0),
-        leaf_params,
-    )
-    # one-child (turn LEFT from the C-up), at x - delta: travel LEFT, turn,
-    # DOWN, then LEFT into it.
-    ox, oy, oh = x - 2 * k - 1, y - 1, _L
-    ox, oy = _travel(b, ox, oy, _L, delta - 2 * k - 1)
-    ox, oy, oh = _turn(b, ox, oy, oh, _D)
-    ox, oy = _travel(b, ox, oy, _D, band + 1)
-    ox, oy, oh = _turn(b, ox, oy, oh, _L)
-    _build_node(
-        b,
-        n,
-        table,
-        depth + 1,
-        2 * p + 1,
-        x - delta,
-        y + band,
-        combo | (1 << (n - 1 - depth)),
-        (*path, 1),
-        leaf_params,
-    )
-
-
-def _leaf(
-    b: _Builder,
-    table: str,
-    x: int,
-    y: int,
-    entry_heading: int,
-    combo: int,
-    path: tuple[int, ...],
-    leaf_params: _LeafParams,
-    leg: int = 2,
-) -> None:
-    """Route a branch DOWN to its escape row, then output [f, padding]."""
-    f = int(table[combo])
-    last = path[-1]
-    flip = f != last
-    flip_row = leaf_params.escape_rows[combo]
-    serp_col = leaf_params.serp_col
-    sink_col = leaf_params.sink_cols[combo]
-    cx, cy, ch = x, y, entry_heading
-    # Route DOWN at a clear column (left of this node's D-left cells) to just
-    # below the leaf's flip row; the turn to RIGHT shifts one row up.
-    if entry_heading == _U:
-        cx, cy, ch = _turn(b, cx, cy, ch, _R)
-        cx, cy, ch = _turn(b, cx, cy, _R, _D)
-    else:
-        cx, cy = _travel(b, cx, cy, _L, 1)
-        cx, cy, ch = _turn(b, cx, cy, ch, _D)
-    cx, cy = _travel(b, cx, cy, _D, flip_row + 1 - cy)
-    cx, cy, ch = _turn(b, cx, cy, _D, _R)
-    cx, cy = _travel(b, cx, cy, _R, serp_col - cx)
-    # Serpentine entry: heading RIGHT at (serp_col, flip_row).
-    if flip:
-        cx, cy = _here(b, cx, cy, _R, "C")  # cell -= 1
-        cx, cy, ch = _turn(b, cx, cy, _R, _L)
-        cx, cy = _here(b, cx, cy, _L, "C")  # cell += 1, flip
-        cx, cy = _travel(b, cx, cy, _L, 2)
-        cx, cy, ch = _turn(b, cx, cy, _L, _U)
-        cx, cy = _travel(b, cx, cy, _U, 2)
-        cx, cy, ch = _turn(b, cx, cy, _U, _D)
-        cx, cy = _travel(b, cx, cy, _D, 3)
-    else:
-        cx, cy, ch = _turn(b, cx, cy, _R, _D)
-    cx, cy = _here(b, cx, cy, _D, "C")
-    for _ in range(7):
-        cx, cy, ch = _turn(b, cx, cy, _D, _L)
-        cx, cy = _travel(b, cx, cy, _L, leg)
-        cx, cy = _here(b, cx, cy, _L, "D")
-        cx, cy = _travel(b, cx, cy, _L, leg)
-        cx, cy, ch = _turn(b, cx, cy, _L, _D)
-        cx, cy = _travel(b, cx, cy, _D, leg)
-        cx, cy = _here(b, cx, cy, _D, "C")
-        cx, cy = _travel(b, cx, cy, _D, leg)
-    # EOF sink: travel RIGHT to this leaf's D column, run UP to row 0, and the
-    # next step wraps into row H-1 where a D cell reads input -> EOFError.
-    cx, cy, ch = _turn(b, cx, cy, _D, _R)
-    cx, cy = _travel(b, cx, cy, _R, sink_col - cx)
-    cx, cy, ch = _turn(b, cx, cy, _R, _U)
-    cx, cy = _travel(b, cx, cy, _U, cy)
-    b.set(sink_col, b.height - 1, "D")
-
-
-def abcdirection(truth_table: str) -> str:
-    """Build an ABCDirection program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-    """
-    n = _validate_truth_table(truth_table)
-    leaves = 2**n
-    sp = 36  # column spacing between adjacent tree nodes at the same depth
-    margin = 100  # blank border reserved on the left/right of the tree
-    root_row = 709  # row the routed beam reaches before entering the tree
-
-    width = margin + 60 * (leaves - 1) + 60
-    root_x = margin + leaves // 2 * sp
-    tree_bottom = root_row + 8 * (n - 1)  # deepest row the tree itself reaches
-    # The tree's rightmost leaf sits (leaves - 1 - leaves // 2 + 0.5) node
-    # slots to the right of root_x; that offset is always a half-integer
-    # (leaves is a power of two), so round() picks the nearest whole slot
-    # deterministically rather than needing a floor/ceil choice here.
-    tree_right_offset = round((leaves - 1 + 0.5) - leaves // 2)
-    tree_max = root_x + tree_right_offset * sp
-    serp_col = tree_max + 40  # serpentine output track, right of the tree
-    escape_rows = [tree_bottom + 8 + 52 * i for i in range(leaves)]
-    sink_cols = [serp_col + 30 + 8 * i for i in range(leaves)]
-    height = escape_rows[-1] + 60 + 8 * n + 150
-    b = _Builder(width, height)
-    ex, ey, eh = _add_staircase(b, n)
-    x, y, h = ex, ey, eh
-    x, y = _travel(b, x, y, _U, 6)
-    x, y, h = _turn(b, x, y, h, _L)
-    x, y = _travel(b, x, y, _L, max(0, x - 2))
-    x, y, h = _turn(b, x, y, h, _U)
-    x, y = _travel(b, x, y, _U, max(0, y - 600))  # clear the tree's own rows
-    x, y, h = _turn(b, x, y, h, _R)
-    x, y = _travel(b, x, y, _R, root_x + 1 - x)
-    x, y, h = _turn(b, x, y, h, _D)
-    x, y = _travel(b, x, y, _D, max(0, root_row - y))
-    x, y, h = _turn(b, x, y, h, _L)
-    leaf_params = _LeafParams(
-        escape_rows=escape_rows,
-        sink_cols=sink_cols,
-        serp_col=serp_col,
-        sp=sp,
-    )
-    _build_node(b, n, truth_table, 0, 0, root_x, root_row, 0, (), leaf_params)
-    return "\n".join(b.grid())
-
-
 def _suptiftam_bit(i: int) -> str:
     """Variable name for input bit ``i`` (identifiers must be alphabetical)."""
     if i < 25:
@@ -1351,3 +911,119 @@ def suptiftam(truth_table: str) -> str:
         lines.append("sum=%+[sum]p%")
     lines.append("term=sum")
     return "\n".join(lines)
+
+
+def _flowchart_leaf(bit: str) -> list[str]:
+    """Build a leaf column: force ``bit`` into the register, print, halt.
+
+    The register holds whichever input bit the tree read last, so the leaf
+    sets it outright (``[ }`` for one, ``{ ]`` for zero) rather than
+    relying on what the routing happened to leave behind.
+    """
+    return [
+        "[ }" if bit == "1" else "{ ]",
+        " │ ",
+        "\\ \\",
+        " │ ",
+        "(( ))",
+    ]
+
+
+def _flowchart_subtree(truth_table: str) -> list[str]:
+    """Build the block for ``truth_table``, entered at its ``/ /`` node.
+
+    Each level reads one input bit and switches on it.  The tree is always
+    entered travelling downward, and a switch's sides are relative to the
+    pointer's heading, so a set register turns the pointer east and a clear
+    one turns it west: the table's zero half hangs to the west and its one
+    half to the east, matching the index order.  Recursion bottoms out at
+    :func:`_flowchart_leaf`.
+    """
+    if len(truth_table) == 1:
+        return _flowchart_leaf(truth_table[0])
+
+    half = len(truth_table) // 2
+    west = _flowchart_subtree(truth_table[:half])
+    east = _flowchart_subtree(truth_table[half:])
+
+    west_width = max(len(row) for row in west)
+    east_width = max(len(row) for row in east)
+    west = [row.ljust(west_width) for row in west]
+    east = [row.ljust(east_width) for row in east]
+
+    gap = 3
+    total = west_width + gap + east_width
+    west_entry = west_width // 2
+    east_entry = west_width + gap + east_width // 2
+    middle = (west_entry + east_entry) // 2
+
+    rail = [" "] * total
+    for x in range(west_entry, middle):
+        rail[x] = "─"
+    for x in range(middle + 3, east_entry + 1):
+        rail[x] = "─"
+    rail[west_entry] = "┌"
+    rail[east_entry] = "┐"
+    switch = "".join(rail)
+    switch = switch[:middle] + "< >" + switch[middle + 3 :]
+
+    head = [
+        " " * middle + "/ /",
+        " " * (middle + 1) + "│",
+        switch,
+        " " * west_entry + "│" + " " * (east_entry - west_entry - 1) + "│",
+    ]
+
+    depth = max(len(west), len(east))
+    west += [" " * west_width] * (depth - len(west))
+    east += [" " * east_width] * (depth - len(east))
+    body = [a + " " * gap + b for a, b in zip(west, east, strict=True)]
+
+    return [row.ljust(total) for row in head + body]
+
+
+def flowchart(truth_table: str) -> str:
+    """Build a Flowchart program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+
+    The program is a binary decision tree drawn on the grid: every level
+    reads one input bit with ``/ /`` and hands it to a ``< >`` switch whose
+    two sides are the halves of the table, and each of the ``2**n`` leaves
+    sets the register to its own digit, prints it, and halts.
+
+    Unlike the repo's other 2D boolean generators there is no geometry to
+    build for the branch itself -- Flowchart has a real conditional node --
+    and each input arrives as a bare bit, so no per-input decoding loop is
+    needed either.  What the layout has to get right instead is routing:
+    every switch is centred over the two subtree entries it feeds, with
+    rails drawn out to each.
+
+    **The tree holds many ``/ /`` nodes but reads each input once.**  A
+    depth-``n`` tree draws ``2**n - 1`` read nodes, one per internal node,
+    yet any single run walks one root-to-leaf path and so executes exactly
+    ``n`` of them -- the duplication is spatial, the way an unrolled
+    brainfuck branch repeats ``,`` in each arm of a nested ``[ ]`` without
+    any one execution reading twice.  This is deliberately *not* the
+    once-only embedding rule that ``tools.boolean.parameterized`` documents:
+    that rule exists so a language with no input mechanism cannot, through
+    repeated ``{Xi}`` substitution, consult a bit more often than an
+    input-capable language would.  Flowchart has a real input command, so
+    it is an input-reading generator like :func:`streetcode` (whose ``I``
+    commands likewise repeat across tree branches), not a parameterized one.
+
+    An alternative construction reads all ``n`` bits up front into a deque
+    and pops one per level instead, which exercises the deques -- the
+    language's defining feature, untouched here.  It was built and verified
+    over the same tables, and is worth revisiting if Flowchart ever gets a
+    cross-check that would benefit from the wider coverage; it costs a
+    ``4n``-row prologue and depends on push-top/pop-bottom being FIFO, a
+    silent wrong-answer trap if the pop is ever changed to pop-top.
+    """
+    _validate_truth_table(truth_table)
+    body = _flowchart_subtree(truth_table)
+    width = max(len(row) for row in body)
+    entry = body[0].index("/ /")
+    head = [" " * entry + "( )", " " * (entry + 1) + "│"]
+    return "\n".join(row.ljust(width) for row in head + body)
