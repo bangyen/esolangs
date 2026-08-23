@@ -783,12 +783,26 @@ them). `verify.py` remains the separate, narrower round-trip check for
   tail-after-inner-loop and input-driven loop shapes as well). Rendering is
   ~10ms at *any* depth -- the search-based versions took 1.6-10s for depths
   5-6 -- and image sizes grow linearly. Depth 8 is pinned in the suite as
-  the deep representative. The router (`_route_pending` and everything
-  under it) remains as the fallback for hand-built graphs that violate the
-  compiled invariants, guarded by an overlap check on the constructed legs;
-  its exhaustion raise -- the "fails loudly rather than misdraws"
-  invariant -- is pinned by forcing the fallback in the test, since no
-  compiled program can reach it anymore.
+  the deep representative.
+
+  **The router is deleted, not retired.** It briefly survived as a fallback
+  for hand-built graphs outside the compiled invariants, but a fallback
+  that no compiled program can reach is ~800 lines of dead weight with its
+  own constants, caches and failure modes to keep coherent -- so the whole
+  search stack (`_astar`, `_route_legs`, `_close_loop`, `_route_pending`,
+  `_self_approaches`, clearance-checked edge search, padding doublings,
+  soft costs, ring fences, subtree `boxes`) is gone. A `goto` whose return
+  path cannot be constructed now raises immediately at `_layout` time --
+  the "fails loudly rather than misdraws" invariant, preserved as a direct
+  raise instead of a router exhaustion, and pinned by forcing the
+  construction to decline in the test. The drift guard (an overlap check of
+  the constructed legs against real ink) is what backs the raise for
+  hand-built graphs that pass the geometric premises but collide anyway.
+  What survives of the routing era: `_CLEARANCE` (the stroke-separation
+  invariant, still pinned by `TestStrokeSeparation`), `_GOTO_CORRIDOR` (now
+  the bay-width guarantee in `_arm_spacing`), `_DIAGONAL_APPROACH` (the
+  merge-vs-fork landing rule, rationale moved onto the constant), and
+  `_leg_cells` (the guard's cell walker).
 
 - **Output compactness vs. the wiki's own drawings, and what is irreducible.**
   Prompted by a direct comparison: `bf_to_line.py` on the wiki's own addition
