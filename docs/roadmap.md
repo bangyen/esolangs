@@ -513,10 +513,19 @@ both turned out to be cheap:
   height (an `S` on an already-zero accumulator is a no-op) so every exit
   still lands on the shared bottom row.
 
-What is left is divergent for reasons no generator change reaches:
+What is left is divergent for reasons no *generator* change reaches:
 
-- **trailing newline** (`bitdeque`, `cod`, `nevermind`) -- the language's
-  print adds a line ending;
+- **trailing newline** (`bitdeque`, `cod`, `nevermind`) -- our interpreters
+  print with a line ending.  Checked against the wiki: none of the three
+  specs requires it.  Bitdeque's says "There is (currently) no I/O" at all,
+  so the end-of-run deque dump is entirely this repo's invention; COD's says
+  only "output the cod's value, then remove the cod"; and Nevermind's says
+  only "Outputs *text* to the screen", with a Hello-World example that shows
+  no trailing newline.  So this group is not a language constraint but an
+  interpreter one, and dropping the newline is a live option -- it is left
+  alone because it would change the output of every program in those three
+  languages to tidy an example, and because with no I/O spec to appeal to
+  there is no reading that is more faithful than the current one;
 - **state dump around the answer** (`back`, `minsky-swap`, `ram0`) -- no
   output instruction, so the answer arrives at a fixed position inside a
   dump of the machine.  Unlike LaserFuck, these have no way to suppress the
