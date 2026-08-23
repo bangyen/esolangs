@@ -55,13 +55,19 @@ esolangs transpile BIO BF program.txt  # rewrite between languages
 ```
 
 Most generators emit one long line.  `--width` (optionally `--width N`,
-default 80) wraps a program to that many columns for readability, breaking
-only between whole commands so it still does the same thing — this is how
-the committed examples are written.  Languages whose newlines carry meaning
-ignore the flag rather than producing a broken program: the 2D grid
-languages, where a newline starts a new row, and NoComment, which rejects
-any character that is not a command.  A single token longer than the width
-(a Polynomial coefficient) gets its own line rather than being split.
+default 80) bounds a program to that many columns for readability — this is
+how the committed examples are written.  Usually that means wrapping the
+finished program, breaking only between whole commands so it still does the
+same thing.  A generator that builds a *shape* takes the width itself
+instead: Clockwise lays its code around a rectangle's perimeter, so it
+picks the squarest ring that fits rather than being reflowed after the fact
+(the square is also its default, since that minimises the bounding box).
+
+Languages whose newlines carry meaning and that cannot re-shape ignore the
+flag rather than producing a broken program: the other 2D grid languages,
+where a newline starts a new row, and NoComment, which rejects any
+character that is not a command.  A single token longer than the width (a
+Polynomial coefficient) gets its own line rather than being split.
 
 Assembly compilers run the same way and write `output.asm`:
 

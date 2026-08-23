@@ -3618,9 +3618,9 @@ class TestAPainterAnt:
             table = format(value, "04b")
             for row in range(4):
                 bits = [(row >> 1) & 1, row & 1]
-                assert self._check(table, bits) == int(table[row]), (
-                    f"{table} bits {bits}"
-                )
+                assert self._check(table, bits) == int(
+                    table[row]
+                ), f"{table} bits {bits}"
 
     def test_xor(self) -> None:
         """XOR (0110) is one of the expressible tables."""
@@ -3670,9 +3670,9 @@ class TestAPainterAnt:
         for value in range(4):
             table = format(value, "02b")
             for bit in [0, 1]:
-                assert self._check(table, [bit]) == int(table[bit]), (
-                    f"table {table} bit {bit}"
-                )
+                assert self._check(table, [bit]) == int(
+                    table[bit]
+                ), f"table {table} bit {bit}"
 
     def test_instantiate_one_bit_fills_single_placeholder(self) -> None:
         """An n == 1 template carries only {X0}, filled per bit."""
@@ -3962,9 +3962,9 @@ class TestPointBreak:
         program = boolean.point_break(table)
         for combo in range(2**n):
             got = point_break_result(program, _pb_combo_bits(combo, n))
-            assert got == table[combo], (
-                f"table {table} inputs {_pb_combo_bits(combo, n)}"
-            )
+            assert (
+                got == table[combo]
+            ), f"table {table} inputs {_pb_combo_bits(combo, n)}"
 
     def test_random_tables(self) -> None:
         for table in _pb_random_tables():
@@ -3972,9 +3972,9 @@ class TestPointBreak:
             program = boolean.point_break(table)
             for combo in range(2**n):
                 got = point_break_result(program, _pb_combo_bits(combo, n))
-                assert got == table[combo], (
-                    f"table {table} inputs {_pb_combo_bits(combo, n)}"
-                )
+                assert (
+                    got == table[combo]
+                ), f"table {table} inputs {_pb_combo_bits(combo, n)}"
 
     def test_program_structure(self) -> None:
         """One read per input, complemented bits, a minterm sum, the template."""
