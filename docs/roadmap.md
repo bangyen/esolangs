@@ -449,38 +449,19 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 
 **No language is currently on this list.**
 
-## Boolean example coverage (the last four languages)
+## Boolean example coverage (the last language)
 
 `examples/boolean` holds one committed program per boolean generator that
 can be verified end to end; `src/esolangs/tools/boolean/examples.py` is the
 source of truth and `tests/test_examples.py` keeps the files in sync.
-Coverage is 52 of 54 generators.  The bar is that the answer must be
+Coverage is 53 of 54 generators.  The bar is that the answer must be
 *recoverable from what the program prints* -- not that the program prints
 the answer and nothing else, since several of these languages have no output
 instruction at all and dump their state at halt.
 
-Two languages do not clear that bar today.  Neither is inherently
-unsuited; each needs a specific change first.
+One language does not clear that bar.  It is not inherently unsuited; it
+needs a specific change first.
 
-- **Back** halts printing its tape, but its answer is the cell under the
-  tape head and the dump does not say where the head is (`0 1 0 1` for any
-  of four head positions).  Zeroing the rest of the tape and leaving the
-  answer at a known cell would make the dump self-describing.  This is a
-  *generator* change; the interpreter is fine.
-
-  There is a second reason to want it.  Because the interpreter cannot
-  report the head, `TestParameterizedBack.run_back` is a complete second
-  Back interpreter written inside the test file -- beam position and
-  direction, `\`/`/` reflections, pointer moves, bit flips, and the
-  toroidal wraparound, about thirty lines of it.  The Back boolean tests
-  therefore never execute `tape_based.back`: they check the generator
-  against a reimplementation, so the two could drift apart without any
-  test noticing.  (The interpreter itself is covered by
-  `tests/interpreters/test_back.py`, so both halves are tested -- just
-  never against each other.)  Making the answer recoverable would let
-  `run_back` shrink to a call plus a field read, the way
-  `run_minsky_swap` and `run_ram0` already work, and would put the
-  shipped interpreter back in the loop.
 - **A Painter Ant** prints the final grid, and the two leaves really are
   visible in it as painted rings -- but `render` rasterises painted cells
   only (`.`/`#`), so the ant is not drawn and the two rings are identical.
@@ -488,6 +469,15 @@ unsuited; each needs a specific change first.
   straight off the grid.  This is an *interpreter* change, so it alters
   observable behaviour of a language implementation and wants a deliberate
   decision rather than a drive-by edit.
+
+Back was the other one and has been fixed, which is the worked example of
+what this section is asking for.  Its answer used to be the cell under the
+tape head, which the dump does not locate; the generator now keeps a single
+answer cell and a 1-leaf writes it with `-` before halting, so the dump
+reports the result directly.  The payoff was larger than the example: the
+Back boolean tests had carried a complete second Back interpreter (32
+lines) purely to find the head, so they never executed `tape_based.back`,
+and that shadow implementation is now a call plus a field read.
 
 ABCDirection is excluded on unrelated grounds and is not expected to
 change: its program is a 1107-line, 377 KB grid needing several million

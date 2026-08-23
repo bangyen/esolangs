@@ -30,21 +30,22 @@ the answer is ``z``; LaserFuck prints every touched tape cell, so the input
 cells precede the result.  Each is a fixed position in a stable dump, which
 is a contract a committed file can hold, so each has an example.
 
-Two languages fail that test today, and both for reasons an implementation
-change would remove rather than anything inherent:
+Back used to fail that test and no longer does.  Its answer was the cell
+*under the head*, which the tape dump does not locate; the generator now
+writes the result into a single answer cell instead, so the dump reports it
+like any other.  See :func:`~esolangs.tools.boolean.parameterized.back`.
 
-- **Back** halts printing its tape, but the answer is the cell *under the
-  head* and the dump does not say where the head is.  A generator that
-  zeroed the rest of the tape and left the answer at a known cell would make
-  it recoverable.
+One language still fails it, for a reason an implementation change would
+remove rather than anything inherent:
+
 - **A Painter Ant** prints the final grid, and the two leaves are visible in
   it as painted rings -- but the interpreter's ``render`` rasterises painted
   cells only, so the ant itself is not drawn and the two rings are
   indistinguishable.  Marking the ant's cell in ``render`` would make it
-  recoverable.
-
-Both are tracked in ``docs/roadmap.md``; until then their coverage lives in
-the generators' own tests, which reconstruct the machine state directly.
+  recoverable, but that changes an interpreter's observable output, so it is
+  tracked in ``docs/roadmap.md`` rather than done here.  Until then its
+  coverage lives in the generator's own tests, which reconstruct the ant's
+  landing cell directly.
 
 ABCDirection is absent for an unrelated reason: its generator works and its
 program is correct, but the program is a 1107-line, 377 KB grid needing
@@ -226,6 +227,16 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
     )
 
 
+def _fill_back(template: str, bits: list[int]) -> str:
+    """Set each input cell: ``-`` flips it to one, a space leaves it zero."""
+    return instantiate(
+        template,
+        bits,
+        lambda _i, b: "-" if b else " ",
+        lambda _i, b: "-" if b else " ",
+    )
+
+
 def _fill_minsky_swap(template: str, bits: list[int]) -> str:
     """Set each input register by counting ``+`` against a ``*`` pad.
 
@@ -404,6 +415,17 @@ def _register() -> None:
     }
 
     embedded = {
+        "back": _embedded(
+            b.back,
+            "tape_based.back",
+            _fill_back,
+            split=True,
+            expected="0 1 0\n",
+            note=(
+                "Back has no output instruction and dumps its tape at halt; "
+                "the answer is cell n, past the n input cells"
+            ),
+        ),
         "bfpda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
         "bio": _embedded(b.bio, "register_based.bio", _fill_bio),
         "bitdeque": _embedded(
