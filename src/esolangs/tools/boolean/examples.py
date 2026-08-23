@@ -24,6 +24,12 @@ Languages whose boolean capability cannot be captured by a committed program
 are absent by construction: those whose result is a machine state rather than
 output (Back's cell under the head, RAM0's and Minsky Swap's register dumps,
 A Painter Ant's landing cell), and those with no Python interpreter to run.
+
+ABCDirection is absent for a different reason: its generator works and its
+program is correct, but the program is a 1107-line, 377 KB grid that needs
+several million steps to reach its answer.  That is too slow to run in the
+example suite and too large to review in a diff, so its coverage stays in
+the generator's own tests rather than a committed file.
 """
 
 from collections.abc import Callable
@@ -273,12 +279,22 @@ def _register() -> None:
             split=True,
             note="halts by exiting with status 0",
         ),
+        "clockwise": _reader(
+            b.clockwise,
+            "grid_based.clockwise",
+            split=True,
+            expected="\x00",
+            note="the ring prints the result as a raw byte, not a digit",
+        ),
         "decleq": _reader(b.decleq, "register_based.decleq"),
         "dig": _reader(b.dig, "grid_based.dig", table=XOR2, expected="1", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
         "factor": _reader(b.factor, "tape_based.factor"),
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
         "forbin": _reader(b.forbin_boolean, "other.forbin"),
+        "forþ": _reader(b.forth, "stack_based.forth"),
+        "grapheme": _reader(b.grapheme, "stack_based.grapheme"),
+        "jaune": _reader(b.jaune, "tape_based.jaune"),
         "laserfuck": _reader(
             b.laserfuck,
             "grid_based.laserfuck",
@@ -324,7 +340,11 @@ def _register() -> None:
             note="run with the loop count set to one",
         ),
         "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
+        "taglate": _reader(b.taglate, "queue_based.taglate", split=True),
+        "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
+        "ztoalc-l": _reader(b.ztoalc_l_boolean, "other.ztoalc_l", split=True),
         "3d-brainfuck": _reader(b.three_d_brainfuck, "tape_based.three_d_brainfuck"),
+        "3x": _reader(b.three_x, "stack_based.three_x"),
         "6-5": _reader(b.six_five, "tape_based.six_five"),
     }
 
