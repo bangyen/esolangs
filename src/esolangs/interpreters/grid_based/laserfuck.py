@@ -146,7 +146,16 @@ class _Machine:
         self.ind = (self.ind + 1) % len(self.lsrs)
 
     def dump(self) -> None:
-        r"""Print the tape, honoring the ``\xff`` byte-mode marker."""
+        r"""Print the tape, honoring the ``\xff`` byte-mode marker.
+
+        The separator is the spec's, not a house style: the wiki says the
+        used cells print "in decimal with line breaks", and that a leading
+        ``\xff`` "outputs unicode with no line breaks".  So decimal mode
+        puts a newline *between* values (never a trailing one) and byte mode
+        runs the characters together.  The other interpreter-only languages
+        here space-separate their dumps, but their specs say nothing about
+        output at all; this one does.
+        """
         out = bool(self.text) and bool(self.text[0]) and self.text[0][0] == "\u00ff"
         first = True
         for val, touched in self.tape:

@@ -4,6 +4,14 @@ A beam bounces across a grid at right angles: \\ and / reflect its direction,
 < and > move the tape pointer, - flips the current bit, + steps the beam
 forward when the current bit is 0, and * halts, printing the tape.
 
+The wiki says only "Halt the program" of ``*`` and defines no output at all,
+so the dump follows the repo convention for interpreter-only languages
+(Minsky Swap prints its registers): the cells space-separated on one line,
+with no trailing newline.  Both the choice to print and the separator are
+this interpreter's.  (LaserFuck uses line breaks between values instead, but
+that is not a divergence from this convention -- its spec asks for them by
+name.)
+
 The interpreter runs on a :class:`_Machine` (the beam's position and
 direction, the bit tape, and the tape pointer), so it is step-capable:
 ``step()`` executes one cell, printing the tape and setting ``halted`` when
