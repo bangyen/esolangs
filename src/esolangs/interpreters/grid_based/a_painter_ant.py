@@ -11,11 +11,17 @@ returns to the first.
 The wiki defines no I/O, so following the repo convention for
 interpreter-only languages (Minsky Swap prints its registers), :func:`run`
 executes ``cycles`` whole passes of the program and then prints the
-bounding box of the cells the ant has visited: a rectangle of ``#`` (black)
-and ``.`` (white) cells, one row per line, with the ant's own cell drawn as
-``o`` on black or ``@`` on white.  White space is ignored, any other
+bounding box of the cells the ant has visited: a rectangle of ``#`` (white)
+and ``.`` (black) cells, one row per line, with the ant's own cell drawn as
+``@`` on white or ``o`` on black.  White space is ignored, any other
 instruction is a malformed program (:class:`ValueError`, exit 2), and the
 origin cell counts as visited.
+
+The glyphs are ink, not colour names: every cell starts black, and ``P`` is
+what paints one white, so white is the mark the ant has *made* and gets the
+dense character.  A painted structure therefore shows up as ink on a blank
+field -- the boolean generator's two leaves read as solid diamonds -- rather
+than as scattered gaps in a field of ``#``.
 
 Two details of that output are deliberate.
 
@@ -103,10 +109,11 @@ class _Machine:
     def render(self) -> str:
         """Render the visited bounding box, marking the ant's cell.
 
-        Four glyphs, one per (cell colour, ant present) pair: ``#`` black
-        and ``.`` white keep their meaning, and the ant's own cell is ``o``
-        on black or ``@`` on white.  Both ant glyphs are round, so the ant
-        reads as one thing at a glance while its colour stays legible.
+        Four glyphs, one per (cell colour, ant present) pair: ``#`` white
+        and ``.`` black, with the ant's own cell as ``@`` on white or ``o``
+        on black.  Density tracks the colour in both pairs -- ``#`` and
+        ``@`` are the dense ones -- and both ant glyphs are round, so the
+        ant reads as one thing at a glance while its colour stays legible.
         """
         min_x = min(vx for vx, _ in self.visited)
         max_x = max(vx for vx, _ in self.visited)
@@ -122,7 +129,7 @@ class _Machine:
         white = self.grid.get((xx, yy), 0) == 1
         if (xx, yy) == (self.x, self.y):
             return "@" if white else "o"
-        return "." if white else "#"
+        return "#" if white else "."
 
 
 def run(code: str, io: IO, cycles: int = 1) -> None:
