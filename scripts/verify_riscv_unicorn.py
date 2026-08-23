@@ -38,14 +38,14 @@ REFERENCE_CASES = [
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<.>@.", "01"),
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<@.", "1"),
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<@<@[.>]", "11"),
-    ("ram0", "extra/assembly/ram0-riscv.s", "A A A", "z: 3\nn: 0\nram: {}\n"),
+    ("ram0", "extra/assembly/ram0-riscv.s", "A A A", "z: 3\nn: 0\nram: {}"),
     (
         "ram0",
         "extra/assembly/ram0-riscv.s",
         "A A N A A A S",
-        "z: 5\nn: 2\nram: {\n    2: 5\n}\n",
+        "z: 5\nn: 2\nram: {\n    2: 5\n}",
     ),
-    ("ram0", "extra/assembly/ram0-riscv.s", "A 3 A A", "z: 3\nn: 0\nram: {}\n"),
+    ("ram0", "extra/assembly/ram0-riscv.s", "A 3 A A", "z: 3\nn: 0\nram: {}"),
     ("bio", "extra/assembly/bio-riscv.s", "0ox;0ox;0ox;1ix;", "\x03"),
     (
         "bio",
@@ -59,13 +59,13 @@ REFERENCE_CASES = [
         "0ox;" * 66 + "1ix;",
         "B",
     ),
-    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "+++~\n1", "2 0\n"),
-    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "++*++*+++", "5 2\n"),
+    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "+++~\n1", "2 0"),
+    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "++*++*+++", "5 2"),
     (
         "minsky_swap",
         "extra/assembly/minsky_swap-riscv.s",
         "+++*+++*~+~\n2 1",
-        "2 3\n",
+        "2 3",
     ),
 ]
 
