@@ -65,7 +65,7 @@ def run_example(name: str) -> str:
 
 @pytest.mark.parametrize("name", sorted(EXAMPLES))
 def test_hello_world_example(name: str) -> None:
-    expected = "Hello, World!\n" if name == "nevermind" else "Hello, World!"
+    expected = "Hello, World!"
     assert run_example(name) == expected
 
 

@@ -18,7 +18,7 @@ from esolangs.registry import BY_FUNCTION
 from esolangs.tools import boolean
 
 # generator function name -> trailing output appended after the printed text
-_TRAILING = {"nevermind": "\n"}
+_TRAILING: dict[str, str] = {}
 
 # characters that push generators beyond their byte/ASCII range, so the
 # byte- and ASCII-oriented generators exercise their documented rejections.
@@ -115,7 +115,7 @@ def test_boolean_generators_random_tables() -> None:
         (boolean.sophie, "register_based.sophie", False, ""),
         (boolean.modulous, "stack_based.modulous", False, ""),
         (boolean.brainif, "tape_based.brainif", True, ""),
-        (boolean.nevermind, "register_based.nevermind", True, "\n"),
+        (boolean.nevermind, "register_based.nevermind", True, ""),
         (boolean.circlefuck, "tape_based.circlefuck", False, ""),
         (boolean.dimensional, "tape_based.dimensional", False, ""),
         (boolean.brainfuck, "tape_based.brainfuck", False, ""),

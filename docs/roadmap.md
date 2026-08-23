@@ -494,9 +494,8 @@ BF-PDA as missing when it is filed under `bfpda`.  It has an example.
 
 ### Divergent expected outputs
 
-Some committed examples expect something other than a bare `0`/`1`.  Two
-that used to be on this list were cleaned up rather than explained away, and
-both turned out to be cheap:
+Some committed examples expect something other than a bare `0`/`1`.  Several
+that used to be on this list were cleaned up rather than explained away:
 
 - **LaserFuck** printed `'\x00\x010'` -- the answer as a *character*, with
   the two input cells ahead of it.  Its dump has a decimal mode, selected
@@ -512,23 +511,22 @@ both turned out to be cheap:
   which differ by a single `+`.  The two leaves are padded to the same
   height (an `S` on an already-zero accumulator is a no-op) so every exit
   still lands on the shared bottom row.
+- **Trailing newlines** (`bitdeque`, `cod`, `nevermind`) are gone.  None of
+  the three specs asks for one -- Bitdeque's says "There is (currently) no
+  I/O" at all, COD's says only "output the cod's value", and Nevermind's
+  only "Outputs *text* to the screen", with a Hello-World example showing
+  none -- so the newline was our interpreters' choice throughout.
+
+  An earlier pass kept COD's and Nevermind's on the grounds that their print
+  can fire repeatedly, so the newline was separating outputs, and without it
+  `loop,3 / print,x / endloop` prints `xxx` just as `print,xxx` does.  That
+  reasoning does not survive contact with the equivalent Python: a loop of
+  `print("x", end="")` also produces `xxx`.  Programs are not obliged to be
+  recoverable from their output, and treating that as a loss was reading a
+  guarantee into a default.  All three now print without a separator.
 
 What is left is divergent for reasons no *generator* change reaches:
 
-- **trailing newline** (`cod`, `nevermind`) -- our interpreters print with a
-  line ending.  Checked against the wiki: neither spec requires it.  COD's
-  says only "output the cod's value, then remove the cod", and Nevermind's
-  only "Outputs *text* to the screen", with a Hello-World example showing no
-  trailing newline.  But in both languages the print can fire *more than
-  once*, and the newline is the only thing separating one output from the
-  next: without it Nevermind's `loop,3 / print,x / endloop` produces `xxx`,
-  which is indistinguishable from a single `print,xxx`.  Dropping it would
-  make the output lossy rather than tidy, so the separator stays.
-
-  (Bitdeque was in this group and is not any more.  Its dump runs exactly
-  once, at the end of the program, so its newline was pure trailing
-  whitespace with nothing to separate; it now prints without one, and
-  `test_empty_deque_prints_nothing` finally prints nothing.)
 - **state dump around the answer** (`back`, `minsky-swap`, `ram0`) -- no
   output instruction, so the answer arrives at a fixed position inside a
   dump of the machine.  Unlike LaserFuck, these have no way to suppress the
