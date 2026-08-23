@@ -62,12 +62,17 @@ same thing.  A generator that builds a *shape* takes the width itself
 instead: Clockwise lays its code around a rectangle's perimeter, so it
 picks the squarest ring that fits rather than being reflowed after the fact
 (the square is also its default, since that minimises the bounding box).
+Streetcode and WII2D fold their instruction line into a boustrophedon the
+pointer walks in the same order, and LaserFuck steers its beam down and
+back so a long run of tape commands costs rows instead of columns.
 
 Languages whose newlines carry meaning and that cannot re-shape ignore the
-flag rather than producing a broken program: the other 2D grid languages,
-where a newline starts a new row, and NoComment, which rejects any
-character that is not a command.  A single token longer than the width (a
-Polynomial coefficient) gets its own line rather than being split.
+flag rather than producing a broken program: the remaining 2D grid
+languages, where a newline starts a new row, and NoComment, which rejects
+any character that is not a command.  A single token longer than the width
+(a Polynomial coefficient) gets its own line rather than being split, and a
+shape with an irreducible size — a Clockwise ring, or a LaserFuck decision
+tree — comes out as wide as it has to be.
 
 Assembly compilers run the same way and write `output.asm`:
 
