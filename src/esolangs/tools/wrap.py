@@ -109,11 +109,11 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
 # space the boolean generator separates commands with.  The triples are why
 # BIO cannot be wrapped by character count, and the braces are why it
 # cannot be wrapped by a fixed stride of three either.
-_BIO_TOKEN = r"[01][oOiI][xXyYzZ]|[{}]| "
+_BIO_COMMAND = r"[01][oOiI][xXyYzZ]|[{}]| "
 
 # Brainfuck-family single-character commands, and the languages that
 # extend them with a digit argument (Dimensional's ``>0``/``<0``).
-_DIMENSIONAL_TOKEN = r"[<>]\d+|."
+_DIMENSIONAL_COMMAND = r"[<>]\d+|."
 
 
 def _bio(program: str, width: int) -> str:
@@ -122,12 +122,12 @@ def _bio(program: str, width: int) -> str:
     # start with that separator, so break *before* the command it precedes:
     # attaching each space to the following command makes the pair a single
     # unbreakable token and keeps the newline where a space already was.
-    tokens = re.findall(_BIO_TOKEN, program)
+    tokens = re.findall(_BIO_COMMAND, program)
     if "".join(tokens) != program:
         return program
     merged: list[str] = []
     for token in tokens:
-        if token == " " and merged:
+        if token.isspace() and merged:
             merged[-1] += token
         else:
             merged.append(token)
@@ -138,7 +138,7 @@ def _bio(program: str, width: int) -> str:
 
 
 def _dimensional(program: str, width: int) -> str:
-    return wrap_tokens(program, width, _DIMENSIONAL_TOKEN)
+    return wrap_tokens(program, width, _DIMENSIONAL_COMMAND)
 
 
 # Language id -> the wrapper that language needs.  A language absent here
