@@ -425,8 +425,8 @@ _BRANCH_SPACING = 5
 
 
 # Width, in grid cells, of the corridor one loop-back's path needs to pass
-# an arm -- see :func:`_arm_spacing`, which reserves one of these per `goto`
-# beneath the arm, and whose floor-plus-corridor sum is what guarantees
+# an arm -- see :func:`_arm_spacing`, which reserves one of these on any
+# `goto`-carrying arm, and whose floor-plus-corridor sum is what guarantees
 # :func:`_loop_return_legs` a bay at least ``_BRANCH_SPACING +
 # _GOTO_CORRIDOR`` = 8 cells wide between body content and the trunk axis.
 #
@@ -457,29 +457,26 @@ _GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
 _EXTENT_CACHE: dict[int, tuple[int, int, int, int]] = {}
 
 
-def _count_gotos(node: Node | None, seen: set[int] | None = None) -> int:
-    """How many loop-backs ``node``'s subtree contains, each needing a corridor.
+def _has_goto(node: Node | None, seen: set[int] | None = None) -> bool:
+    """Whether ``node``'s subtree contains a loop-back needing a bay corridor.
 
     Walks the same `.next`/`.zero`/`.nonzero` edges :func:`_subtree_extent`
-    does, and stops at a `goto` rather than following it (it cycles back to an
-    ancestor -- see :class:`Node`'s docstring).  Both arms of a `?` are summed:
-    every `goto` anywhere beneath this arm eventually routes a detour that has
-    to get *past* this arm, so each one is a separate crossing the arm's own
-    spacing must survive -- see :func:`_arm_spacing`.
+    does, and stops at a `goto` rather than following it (it cycles back to
+    an ancestor -- see :class:`Node`'s docstring).  A boolean, not a count:
+    :func:`_arm_spacing` reserves one corridor for any goto-carrying arm
+    regardless of how many loop-backs nest beneath it (a per-goto multiplier
+    was measured off -- see its docstring).
     """
     if seen is None:
         seen = set()
-    total = 0
     while node is not None and id(node) not in seen:
         seen.add(id(node))
         if node.goto is not None:
-            return total + 1
+            return True
         if node.op == "?":
-            return (
-                total + _count_gotos(node.zero, seen) + _count_gotos(node.nonzero, seen)
-            )
+            return _has_goto(node.zero, seen) or _has_goto(node.nonzero, seen)
         node = node.next
-    return total
+    return False
 
 
 def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
@@ -563,15 +560,25 @@ def _arm_spacing(arm: Node | None) -> int:
     :data:`_BRANCH_SPACING` is the floor and the safety margin, so a subtree
     that reaches back barely at all still gets a real gap.
 
-    On top of that, an arm reserves one :data:`_GOTO_CORRIDOR` per ``goto``
-    beneath it.  This term predates the constructed loop-backs (it was
-    measured into existence when searched detours were sealing each other's
-    regions -- see ``WIP.md``'s depth-4 entry), and it is now what
-    *guarantees* :func:`_loop_return_legs` its bay: a goto-carrying arm's
-    run is at least ``_BRANCH_SPACING + _GOTO_CORRIDOR`` = 8 longer than its
-    content reaches back, so the gap between body content and the trunk axis
-    always fits the bay lane at lateral offset :data:`_DIAGONAL_APPROACH`
-    with `_CLEARANCE` to spare on both sides.
+    On top of that, a ``goto``-carrying arm reserves one
+    :data:`_GOTO_CORRIDOR`.  This is what *guarantees*
+    :func:`_loop_return_legs` its bay: such an arm's run is at least
+    ``_BRANCH_SPACING + _GOTO_CORRIDOR`` = 8 longer than its content reaches
+    back, so the gap between body content and the trunk axis always fits the
+    bay lane at lateral offset :data:`_DIAGONAL_APPROACH` with `_CLEARANCE`
+    to spare on both sides -- and 8 is exactly that sum, so the corridor is
+    the minimum, not a margin.
+
+    One corridor, not one per ``goto`` beneath the arm.  The per-goto
+    multiplier dated from the search-routing era, when `n` free-form detours
+    could all cross one gap and each blocked a corridor of it; constructed
+    returns never share a gap that way -- every nested loop-back rides its
+    *own* fork's bay, and parents reserve room for it through the measured
+    extent, not through this term.  Measured on the depth ladder when the
+    multiplier was dropped: every program still round-trips, flat-loop
+    drawings are pixel-identical, and nested areas shrink 17% at depth 4 to
+    44% at depth 10 (the multiplier compounded through nested extents, so
+    its cost grew with depth just as its removal's savings do).
 
     The term is deliberately added to the arm being measured, once, and only
     for arms that carry a `goto`: an earlier version of this function had a
@@ -587,7 +594,7 @@ def _arm_spacing(arm: Node | None) -> int:
     # *behind* the subtree's entry point -- back toward the trunk.  Taking it
     # in the canonical frame avoids reasoning about rotated signs at all.
     min_forward, _, _, _ = _subtree_extent(arm)
-    corridors = _count_gotos(arm) * _GOTO_CORRIDOR
+    corridors = _GOTO_CORRIDOR if _has_goto(arm) else 0
     return _BRANCH_SPACING + max(-min_forward, 0) + corridors
 
 

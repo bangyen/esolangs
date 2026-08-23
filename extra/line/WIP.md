@@ -17,8 +17,8 @@ check); `test_line_boolean.py` covers `line_boolean.py`'s generated
 decision trees end-to-end (render -> extract -> simulate) for n=1 through
 n=3 across every input combination; `test_bf_to_line.py` covers
 `bf_to_line.py` through the same full pipeline, and is the only suite that
-exercises `render.py`'s loop-drawing geometry (`_layout`/`_close_loop`/
-`_route_legs`) at all -- see the nested-loop entry below for why that
+exercises `render.py`'s loop-drawing geometry (`_layout`/
+`_loop_return_legs`) at all -- see the nested-loop entry below for why that
 distinction matters. Run any of them with `uv run --with pillow --with
 numpy --with scipy --with scikit-image --with pytest --with pytest-xdist
 pytest test_simulate.py` (or `test_line_boolean.py`, or
@@ -843,8 +843,8 @@ them). `verify.py` remains the separate, narrower round-trip check for
 
   **Parity with the hand-drawn fixture is not reachable, and not a bug.**
   After this change the remaining bulk of the addition drawing is the
-  loop-back detour's rectangle, which is structural: `_route_legs` is
-  cardinal-only (a diagonal detour leg risks being misread as a `+`/`-` kink)
+  loop-back's rectangle, which is structural: a return path is
+  cardinal-only (a diagonal leg risks being misread as a `+`/`-` kink)
   and `_CLEARANCE` mandates a gap from every existing stroke, so a loop-back
   must travel out and around. The wiki's hand drawing reconnects on a short
   immediate diagonal that passes directly alongside its own earlier ink --
@@ -863,6 +863,30 @@ them). `verify.py` remains the separate, narrower round-trip check for
   every rendered output another ~20% linear / ~36% area. Not done here
   because it rescales every drawing this repo produces, which is a broader
   change than the compactness question that prompted this.
+
+  **The constructed-loop-back dividend: the per-goto corridor multiplier is
+  gone.** `_arm_spacing` reserved `_GOTO_CORRIDOR * count_of_gotos` per arm
+  -- sized for the routing era, when `n` free-form detours could all cross
+  one gap and each blocked a corridor of it. Constructed returns never
+  share a gap that way: every nested loop-back rides its *own* fork's bay,
+  and parents reserve room for it through the measured extent. Measured
+  with the multiplier dropped to a flat `_GOTO_CORRIDOR` for any
+  goto-carrying arm: every program on the depth ladder (2-10), the wiki
+  addition program, 8x8 multiply and the heavy depth-3 case still
+  round-trip; flat-loop drawings are pixel-identical; and nested areas
+  shrink 17% at depth 4 to 44% at depth 10, the multiplier having
+  compounded through nested extents exactly like the removal's savings do.
+  The flat corridor is also the *minimum*, not a tuned value: the bay must
+  fit the landing lane at `_DIAGONAL_APPROACH` = 6 plus `_CLEARANCE` on
+  both sides = 8 = `_BRANCH_SPACING + _GOTO_CORRIDOR` exactly.
+  (`_count_gotos` reverted to the `_has_goto` boolean it once was, the
+  count having served only the multiplier.)
+
+  Also measured, and deliberately not taken: `_STEM_LEN` has real slack
+  (9 and 8 both round-trip everything with flat corridors), but the gain is
+  under 3% of area against the corridor change's 17-44%, and the stem's
+  length is part of what keeps the landing diagonal and `lattice.star`'s
+  probe geometry comfortably apart -- slack serving robustness, not waste.
 
   **Now covered by `test_bf_to_line.py`**, the `bf_to_line.py`-driven suite
   through the real render -> extract -> simulate pipeline that WIP.md
