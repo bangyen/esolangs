@@ -25,7 +25,7 @@ def test_scripted_io_feeds_string_and_captures() -> None:
     io_obj = ScriptedIO("Hello\nWorld")
     assert io_obj.input_str() == "Hello"
     assert io_obj.input_str() == "World"
-    io_obj.print_line("out")
+    io_obj.print_str("out\n")
     io_obj.print_str("more")
     assert io_obj.getvalue() == "out\nmore"
 

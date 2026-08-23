@@ -156,18 +156,16 @@ class _Machine:
         here space-separate their dumps, but their specs say nothing about
         output at all; this one does.
         """
-        out = bool(self.text) and bool(self.text[0]) and self.text[0][0] == "\u00ff"
-        first = True
-        for val, touched in self.tape:
-            if touched and val >= 0:
-                if out:
-                    self.io.print_char(chr(val))
-                elif first:
-                    self.io.print_num(val)
-                    first = False
-                else:
-                    self.io.print_line()
-                    self.io.print_num(val)
+        first_row = self.text[0] if self.text else []
+        byte_mode = bool(first_row) and first_row[0] == "\u00ff"
+        shown = [val for val, touched in self.tape if touched and val >= 0]
+        for index, val in enumerate(shown):
+            if byte_mode:
+                self.io.print_char(chr(val))
+                continue
+            if index:
+                self.io.print_str("\n")  # between values, never trailing
+            self.io.print_num(val)
 
 
 def run(code: list[str], io: IO, heading: int | None = None) -> None:
