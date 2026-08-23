@@ -10,6 +10,7 @@ import pytest
 import esolangs.tools.text as gen
 from esolangs.interpreters.grid_based.clockwise import run as clockwise_run
 from esolangs.interpreters.grid_based.dig import run as dig_run
+from esolangs.interpreters.grid_based.laserfuck import run as laserfuck_run
 from esolangs.interpreters.grid_based.streetcode import run as streetcode_run
 from esolangs.interpreters.grid_based.wii2d import run as wii2d_run
 from esolangs.interpreters.io import IO
@@ -48,6 +49,22 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         interpreter(program, io=IO())
+    return buffer.getvalue()
+
+
+def laserfuck_roundtrip(program: str, heading: int) -> str:
+    """Run a LaserFuck program from a fixed heading and return its output.
+
+    LaserFuck's initial heading is random by spec, so a test has to pin it;
+    the funnel is supposed to bring every heading to the same place, which
+    is why the width tests run all four.
+    """
+    import io
+    from contextlib import redirect_stdout
+
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        laserfuck_run(program.splitlines(), IO(), heading=heading)
     return buffer.getvalue()
 
 
@@ -247,6 +264,48 @@ class TestGeneratorRoundTrips:
         lines = gen.wii2d("Hello, World!", 40).split("\n")
         assert lines[1] == "!"
 
+    @pytest.mark.parametrize("width", [20, 24, 40, 80])
+    @pytest.mark.parametrize(
+        "text", ["A", "Hi", "Hello", "The quick brown fox", "x" * 20]
+    )
+    def test_laserfuck_linear_honours_a_width(self, text: str, width: int) -> None:
+        r"""The linear form folds into a zigzag and still round-trips.
+
+        The linear program is one straight run of ``+`` and ``>`` -- no
+        mirrors, no brackets -- so the beam can be steered down and back to
+        a margin without changing what it executes.  It is also the widest
+        thing the generator emits: ``"The quick brown fox"`` is 1833
+        columns unfolded.
+        """
+        program = gen.laserfuck(text, width)
+        assert max(len(line) for line in program.split("\n")) <= width
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
+    def test_laserfuck_linear_fold_is_narrower(self) -> None:
+        """Folding actually buys columns, rather than only reshaping."""
+        text = "The quick brown fox"
+        assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 1000
+        assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) <= 80
+
+    def test_laserfuck_without_a_width_is_unchanged(self) -> None:
+        """The default stays exactly what the generator always produced."""
+        for text in ("A", "Hi", "Hello, World!", "The quick brown fox"):
+            assert gen.laserfuck(text) == gen.laserfuck(text, None)
+
+    def test_laserfuck_loop_form_ignores_a_width(self) -> None:
+        """A loop program is emitted wide rather than made several times larger.
+
+        The looping form's frame carries bracket markers whose *columns* the
+        mirror cells below and the serpentine's connector are derived from,
+        so it cannot be folded the way a straight run can.  Falling back to
+        the linear form would fit the width but costs several times the
+        program size, so the width is ignored here.
+        """
+        text = "Hello, World!"  # takes the loop branch
+        assert gen.laserfuck(text, 80) == gen.laserfuck(text)
+        assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) > 80
+
     def test_clockwise_keeps_the_square_when_it_fits(self) -> None:
         """A width the square already satisfies does not distort the shape."""
         square = gen.clockwise("Hello, World!")
@@ -445,8 +504,7 @@ class TestGeneratorRoundTrips:
         assert gen.pct_squared_minus_one("") == ""
         assert gen.pct_squared_minus_one("\x00") == "'e"
         assert (
-            gen.pct_squared_minus_one("H")
-            == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+            gen.pct_squared_minus_one("H") == "'" + other._pct_path(72) + "e"  # noqa: SLF001
         )
         assert roundtrip(_run_pct, gen.pct_squared_minus_one("Hi")) == "Hi"
         assert (

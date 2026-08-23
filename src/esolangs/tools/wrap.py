@@ -29,12 +29,24 @@ from the wiki ("every time an instruction is executed"), since a comment is
 not an instruction; with it fixed, comments are transparent and ROTfuck
 wraps like any other single-character-command language.
 
+Being unwrappable is not the same as being unbounded, though.  A generator
+that lays out its own *shape* can honour a width by building a different
+shape, which is something no after-the-fact reflow can do: Clockwise picks
+a ring that fits, Streetcode and WII2D fold their instruction line into a
+boustrophedon, and LaserFuck steers the beam down and back so a straight
+run of tape commands costs rows instead of columns.  Those generators take
+the width themselves -- :func:`takes_width` is how the callers tell -- and
+never reach :func:`wrap_program`, which would skip them anyway for being
+already multi-line.
+
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
 generators and the public API call.
 """
 
+import inspect
 import re
+from collections.abc import Callable
 
 # The default width for a wrapped program.  80 is the conventional review
 # and diff width, and matches the repo's own 88-column limit for Python
@@ -166,6 +178,21 @@ WRAPPERS = {
     "myscript": wrap_chars,
     "three_x": wrap_chars,
 }
+
+
+def takes_width(fn: Callable[..., str]) -> bool:
+    """Whether a generator lays its own program out to a width.
+
+    Such a generator accepts a second ``width`` parameter and is handed the
+    width directly; the rest produce a program that :func:`wrap_program`
+    reflows after the fact.  The distinction matters most for a generator
+    whose output is a *grid*: reflowing cannot help there, because
+    :func:`wrap_program` leaves an already-multi-line program alone.
+    """
+    try:
+        return "width" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):  # pragma: no cover - builtins have no signature
+        return False
 
 
 def wrap_program(program: str, language_id: str, width: int | None) -> str:

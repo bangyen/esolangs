@@ -32,7 +32,7 @@ from dataclasses import dataclass, replace
 from esolangs.registry import canonical_id
 from esolangs.tools.boolean.helpers import instantiate
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
-from esolangs.tools.wrap import DEFAULT_WIDTH, wrap_program
+from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # Truth tables used below, named for readability.
 AND2 = "0001"
@@ -73,8 +73,18 @@ class BooleanExample:
         ``width=None`` returns the generator's raw output, and a language
         with no wrapper -- the 2D ones, NoComment -- is returned unwrapped
         either way.
+
+        A generator that lays its own program out to a width (LaserFuck
+        folds its grid's straight runs) takes the width itself instead:
+        :func:`~esolangs.tools.wrap.wrap_program` reflows a finished line
+        and so skips a program that is already multi-line, which every such
+        generator's output is.  This mirrors what :func:`esolangs.generate`
+        does for the text generators.
         """
-        program = self.generator(self.table)
+        if width is not None and takes_width(self.generator):
+            program = self.generator(self.table, width)
+        else:
+            program = self.generator(self.table)
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
         return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
