@@ -401,6 +401,27 @@ program that hits it.  Worth revisiting only if a program surfaces that
 needs deep expression-position recursion and Python's default limit is
 insufficient.
 
+## Streetcode street-width validation (compile time)
+
+The spec is explicit that "all streets are two-way, they are two
+characters wide", but nothing validates that ahead of run time.  Today the
+only width check is local and late: a `U` with no lane on the car's new
+right raises `HaltError`, because that is the one place where a
+too-narrow street has an unambiguous consequence (there is nowhere legal
+to end the turn).  A one-wide corridor the car merely drives along still
+runs.
+
+Rejecting a malformed street up front is the better contract -- a
+malformed program should not begin running -- and is expected to be
+tractable: the geometry is static, so street width can be read off the
+grid before the car moves.  The work is defining "street" precisely
+enough to measure on arbitrary drawn grids, where rooms, junction mouths,
+and rings all appear alongside plain corridors; a validator that is too
+eager would reject valid programs, which is worse than the current gap.
+Both the repo's Streetcode generators now emit two-wide streets, and the
+interpreter tests exercise instruction semantics inside boxed streets, so
+nothing the repo produces depends on the tolerance.
+
 ## Hanging-test optimization via state-cycle detection
 
 Hanging programs are bounded with wall-clock timeouts (SIGALRM in the

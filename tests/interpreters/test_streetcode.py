@@ -22,6 +22,21 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
 
+def street(instructions: str) -> list[str]:
+    """Box a one-line program into a street, the way the wiki draws one.
+
+    The spec's streets are two characters wide, so a bare instruction row
+    is not a street: the instructions become the southern lane (the wall
+    below them on the car's right is what sends it East) with a blank
+    oncoming lane above, inside a wall.  This is exactly the shape of the
+    wiki's own "simple example", ``+----+`` / ``|    |`` / ``|CIO;|`` /
+    ``+----+``, and it lets these tests pin instruction semantics on
+    conformant geometry rather than on a one-wide corridor.
+    """
+    wall = "+" + "-" * len(instructions) + "+"
+    return [wall, "|" + " " * len(instructions) + "|", f"|{instructions}|", wall]
+
+
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     """Run a Streetcode program (patching input) and return its stdout."""
     buffer = io.StringIO()
@@ -30,14 +45,19 @@ def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     return buffer.getvalue()
 
 
+def run_street(instructions: str, inputs: list[str] | None = None) -> str:
+    """Run a one-line program inside a proper two-lane street."""
+    return run_and_capture(street(instructions), inputs)
+
+
 class TestStreetcodeSingleCommands:
     """Each instruction in isolation."""
 
     def test_halt_immediately(self) -> None:
-        assert run_and_capture(["C;"]) == ""
+        assert run_street("C;") == ""
 
     def test_increment_then_output(self) -> None:
-        assert run_and_capture(["C^O;"]) == chr(1)
+        assert run_street("C^O;") == chr(1)
 
     def test_decrement_below_zero_then_output_is_invalid(self) -> None:
         """A cell of -1 is a valid signed int, but not a valid code point."""
@@ -46,27 +66,28 @@ class TestStreetcodeSingleCommands:
 
     def test_decrement_then_increment_then_output(self) -> None:
         """~ and ^ both touch the same CPth cell, unbounded and signed."""
-        assert run_and_capture(["C~^O;"]) == chr(0)
+        assert run_street("C~^O;") == chr(0)
 
     def test_space_is_a_nop(self) -> None:
         """A space between C and O is skipped over; the cell is still 0."""
-        assert run_and_capture(["C O;"]) == chr(0)
+        assert run_street("C O;") == chr(0)
 
     def test_undefined_character_is_a_nop(self) -> None:
         """Box-drawing and other undefined characters act like space."""
-        assert run_and_capture(["C#O;"]) == chr(0)
+        assert run_street("C#O;") == chr(0)
 
-    def test_u_reverses_heading(self) -> None:
-        """In a one-wide corridor -- narrower than any spec street, but
-        tolerated -- a 'U' has no opposite lane to end in, so it turns the
-        car around in place."""
+    def test_u_without_an_opposite_lane_is_invalid(self) -> None:
+        """A one-wide corridor is narrower than the spec's two-character
+        streets, so a 'U' there has nowhere legal to end its turn: that is
+        a malformed street met at run time, not a manoeuvre with a
+        fallback."""
         # Two rows so the car has room to move south from C before the U.
         machine = _Machine(["C", "U"], IO())
         assert machine.heading == "S"
         machine.step()  # 'C' nop; only non-backward neighbor is south
         assert (machine.row, machine.col) == (1, 0)
-        machine.step()  # 'U': reverses heading to North in place, then drives
-        assert (machine.row, machine.col, machine.heading) == (0, 0, "N")
+        with pytest.raises(HaltError):
+            machine.step()  # 'U' with no lane to the new right
 
     def test_u_on_a_two_way_street_ends_in_the_opposite_lane(self) -> None:
         """Streets are two wide and the car drives on the right, so after
@@ -118,15 +139,20 @@ class TestStreetcodeSingleCommands:
 
     def test_cp_increment_and_decrement(self) -> None:
         """Move CP right onto a fresh cell, increment it, then move back."""
-        assert run_and_capture(["C=^O_O;"]) == chr(1) + chr(0)
+        assert run_street("C=^O_O;") == chr(1) + chr(0)
 
 
 class TestStreetcodeHalt:
     def test_semicolon_halts_immediately(self) -> None:
-        assert run_and_capture(["C;^O"]) == ""
+        assert run_street("C;^O") == ""
 
     def test_program_without_semicolon_runs_until_dead_end(self) -> None:
-        """No halt instruction: a straight dead-end corridor still stops."""
+        """No halt instruction: a dead-end corridor still stops.
+
+        A *street* with no halt does not -- the car circles it forever --
+        so the dead end has to be a genuine cul-de-sac, which is what this
+        pins: the single-cell program with nowhere to drive at all.
+        """
         assert run_and_capture(["C"]) == ""
 
 
@@ -228,18 +254,19 @@ class TestStreetcodeAmbiguousTurns:
     # openness guard in ``_choose_heading``, the car turned immediately,
     # drove *inside* the wall, and wall-followed around the outside of the
     # lower room forever.
-    _EARLY_MOUTH = [
-        "+---------+",
-        "|         |",
-        "|C^      ;|",
-        "+--+  ++--+",
-        "   |      |",
-        "   |;     |",
-        "   +------+",
-    ]
+    def _early_mouth_code(self) -> list[str]:
+        return [
+            "+---------+",
+            "|         |",
+            "|C^      ;|",
+            "+--+  ++--+",
+            "   |      |",
+            "   |;     |",
+            "   +------+",
+        ]
 
     def test_early_sighted_mouth_defers_the_turn_to_the_gap(self) -> None:
-        machine = _Machine(self._EARLY_MOUTH, IO())
+        machine = _Machine(self._early_mouth_code(), IO())
         positions = [(machine.row, machine.col)]
         for _ in range(7):
             machine.step()
@@ -260,7 +287,7 @@ class TestStreetcodeAmbiguousTurns:
         assert machine.halted
 
     def test_early_sighted_mouth_still_declines_on_zero(self) -> None:
-        code = [line.replace("^", " ") for line in self._EARLY_MOUTH]
+        code = [line.replace("^", " ") for line in self._early_mouth_code()]
         machine = _Machine(code, IO())
         for _ in range(9):
             machine.step()
@@ -426,13 +453,13 @@ class TestStreetcodeLaneMerge:
 
 class TestStreetcodeIO:
     def test_input_echoed_via_cpth_cell(self) -> None:
-        assert run_and_capture(["CIO;"], inputs=["X"]) == "X"
+        assert run_street("CIO;", inputs=["X"]) == "X"
 
     def test_input_reads_only_first_character_of_line(self) -> None:
-        assert run_and_capture(["CIO;"], inputs=["hello"]) == "h"
+        assert run_street("CIO;", inputs=["hello"]) == "h"
 
     def test_empty_input_line_reads_zero(self) -> None:
-        assert run_and_capture(["CIO;"], inputs=[""]) == chr(0)
+        assert run_street("CIO;", inputs=[""]) == chr(0)
 
     def test_exhausted_input_raises_eof(self) -> None:
         machine = _Machine(["CI;"], ScriptedIO(""))
@@ -447,7 +474,7 @@ class TestStreetcodeCPBounds:
             run(["C_;"], io=IO())
 
     def test_cp_can_move_right_and_back_to_zero(self) -> None:
-        assert run_and_capture(["C=_^O;"]) == chr(1)
+        assert run_street("C=_^O;") == chr(1)
 
     def test_output_of_out_of_range_cell_halts(self) -> None:
         """A cell value that isn't a valid code point is invalid, not a crash."""
@@ -478,7 +505,7 @@ class TestStreetcodeWikiExamples:
 
     def test_whole_right_hand_side_example(self) -> None:
         """``CIO;`` echoes one input character then halts."""
-        assert run_and_capture(["CIO;"], inputs=["Q"]) == "Q"
+        assert run_street("CIO;", inputs=["Q"]) == "Q"
 
     def test_infinite_cat_example(self) -> None:
         """The U-turn cat echoes input characters in order, then hangs on EOF.

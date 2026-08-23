@@ -133,9 +133,12 @@ local wall shape actually marks an intersection rather than a plain corner:
   cancels itself.  That was the implemented behavior until a hand-drawn
   counting-loop program relied on a `U` to transfer the hug from the
   outer wall onto an inner island, and the car came out of the turn
-  northbound again instead of orbiting.  A one-wide corridor (narrower
-  than any spec street, but tolerated) has no opposite lane and turns
-  in place.  The wiki's U-turn cat (`UOI ` / `CIOU`) is unaffected:
+  northbound again instead of orbiting.  A one-wide corridor is
+  narrower than the spec's streets and has no opposite lane, so a `U`
+  there has nowhere legal to end its turn and raises `HaltError` -- the
+  one place a too-narrow street currently has an observable
+  consequence; validating width up front is on `docs/roadmap.md`.
+  The wiki's U-turn cat (`UOI ` / `CIOU`) is unaffected:
   the slide lands on exactly the cell the old in-place turn reached one
   hug-turn later, so its visited sequence and echo order are unchanged.
 

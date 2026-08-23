@@ -326,11 +326,15 @@ class TestGeneratorRoundTrips:
         # cells are unbounded ints, so O is not limited to bytes
         omega = "\u03a9"
         assert roundtrip(streetcode_run, gen.streetcode(omega).splitlines()) == omega
-        # 'H' is 72 ^ from cell 0, then 'i' is 33 more; C and ; bracket the row
+        # 'H' is 72 ^ from cell 0, then 'i' is 33 more; C and ; bracket the
+        # row.  Streets are two characters wide, so the instructions are the
+        # southern lane of a boxed street, with a blank oncoming lane above
+        # -- the shape of the wiki's own worked example.
         row = "C" + "^" * 72 + "O" + "^" * 33 + "O;"
-        wall = "-" * len(row)
-        assert gen.streetcode("Hi") == "\n".join([wall, row, wall])
-        assert gen.streetcode("") == "--\nC;\n--"
+        wall = "+" + "-" * len(row) + "+"
+        oncoming = "|" + " " * len(row) + "|"
+        assert gen.streetcode("Hi") == "\n".join([wall, oncoming, f"|{row}|", wall])
+        assert gen.streetcode("") == "+--+\n|  |\n|C;|\n+--+"
 
     def test_mammalian(self) -> None:
         """A SEED/SPRINT walk reaches the array holding each character."""
