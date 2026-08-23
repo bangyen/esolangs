@@ -562,7 +562,8 @@ them). `verify.py` remains the separate, narrower round-trip check for
   laterally and rendered at 7760x3800, against ~1500x1260 once the term was
   removed.
 
-  The drawable boundary is now depth 4, and the invariant that survives is the
+  The drawable boundary is now depth 5 (see the depth-4 entry below for how
+  depth 4 fell), and the invariant that survives is the
   original one, unchanged in substance: when the layout genuinely runs out of
   room it fails loudly at render time rather than misdrawing. That remains
   load-bearing for the reason it always was -- with `_self_approaches`
@@ -616,9 +617,70 @@ them). `verify.py` remains the separate, narrower round-trip check for
   routing corridors for `goto`-carrying arms during layout, sized from
   measurement now that `_subtree_extent` exists (an unmeasured `_GOTO_CHANNEL`
   constant was tried during the depth-3 work and removed as a guess; the
-  numbers above are what it lacked). Not attempted yet. Note this is the
-  first time the ceiling has a measured mechanism rather than an assumption,
-  so it is also the first time the next step is pointed at something specific.
+  numbers above are what it lacked). Note this was the first time the ceiling
+  had a measured mechanism rather than an assumption, so it was also the
+  first time the next step was pointed at something specific.
+
+  **Depth 4 fell to that fix -- plus two more the corridors uncovered.** The
+  diagnosis above was right about the layout half and incomplete about the
+  rest: reserving corridors turned the enclosure into two successive
+  route-vs-route failures that only became measurable once routes existed at
+  all. Each was instrumented the same way before being touched, and each fix
+  is sized from the router's own rules rather than chosen:
+
+  - *Corridors* (`_arm_spacing`): each arm now reserves one
+    `_GOTO_CORRIDOR = 1 + 2*_CLEARANCE` = 3 cells per `goto` beneath it (the
+    dead `_has_goto` helper became `_count_gotos`), the exact swath a routed
+    detour blocks. The floor-of-5 arms above became 8/11/21/28 on this
+    program, and the failing detour's flood-fill reach went from **5% to
+    92%** -- enclosure gone, fixed geometry 215 -> 263 cells. A goto-free arm
+    gets exactly `+0`, so loop-free programs render pixel-identically.
+  - *Coarse-candidate misselection* (`_route_legs`): with routes now
+    existing, every offset still failed -- as "route folded back onto
+    itself". The coarse pass stops at whichever of its 5 candidate endpoints
+    is cheapest *from the start*, and the start's own column happened to
+    align with the candidate one coarse step left of the target: 40 cells
+    straight up, on the wrong side of a wall, and the fine pass came back
+    down through the coarse leg's own cells (one cell visited twice). Two
+    recoveries, neither touching the success path: exclude the reached
+    candidate and re-run the coarse pass (rescues long hauls cheaply), and
+    when no candidate yields a clean route, a pixel-exact A* over the same
+    padded bounds -- a 3-cell corridor holds exactly one clear line, which a
+    20-cell coarse edge anchored to the start's lattice threads only by
+    alignment luck, and the pixel pass threads by construction (measured:
+    ~0.05s where the split failed outright).
+  - *Doorstep sealing* (`_route_pending`): the depth-3 detour then routed
+    fine -- and its pixel route, hugging ink at exactly `_CLEARANCE`, parked
+    across the first depth-4 detour's departure point, boxing it into an
+    **8-cell pocket** out of a ~28000-cell canvas (attribution: that one
+    route alone). Reserving a `_GOTO_CORRIDOR`-radius block around each
+    unrouted detour's start as *hard* occupancy failed one detour later --
+    the two depth-4 doorsteps sit a column apart and one's only lane runs
+    through the other's ring (152 reachable cells hard vs 1086 without). So
+    the blocks are *costed* instead (`_AVOID_PENALTY` = `_UNIT` per
+    trespassed cell): doorsteps stay clear whenever an alternative exists,
+    and the unavoidable crossing happens on the shortest chord. Measured on
+    the shipped path: all four detours route (+138/+173/+115/+32 cells),
+    three of them trespassing zero avoid cells, and the boxed-in one paying
+    exactly a 7-cell chord past the last doorstep at distance 3 -- on a side
+    the sealed-in detour's own route never needs.
+
+  Ordering experiments confirmed outermost-first still holds: innermost-first
+  let a depth-4 detour's 55-cell westward sweep seal the depth-3 doorstep
+  (629-cell pocket), the mirror image of the failure it was meant to avoid.
+
+  Depth 4 now renders in ~1s and round-trips to `[1]`, pinned as a real
+  round-trip in `TestNestingDepthLimit` exactly as its docstring prescribed;
+  the exhaustion raise is repinned on depth 5, which still exhausts at *full*
+  padding -- in ~5s, where the corridors-only intermediate state (layout
+  fixed, router untouched) ground for ~7 minutes before raising and the
+  committed pre-fix baseline took ~2.5 minutes, since the pixel fallback
+  proves a pocket empty quickly instead of letting the coarse pass thrash.
+  Depth 1-3 grew modestly and linearly (900x740 -> 960x740, 1020x840 ->
+  1140x960, 1500x1260 -> 1800x1100), so the corridor term is not compounding
+  through nested extents. The ceiling moved, and the invariant survives
+  unchanged: when the layout genuinely runs out of room it says so at render
+  time.
 
 - **Output compactness vs. the wiki's own drawings, and what is irreducible.**
   Prompted by a direct comparison: `bf_to_line.py` on the wiki's own addition
