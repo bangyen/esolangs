@@ -276,6 +276,24 @@ deliberately rather than by default.
 
 ## Extra implementations (cross-checks)
 
+`extra/` holds two different kinds of thing, and they are integrated
+differently on purpose:
+
+- **Cross-check ports** (`extra/rust`, `extra/assembly`) are second
+  implementations of languages the package already interprets, so every one
+  of them is in `registry.py`.  Being differentially testable against the
+  Python is the whole reason they exist, so the root-level harnesses
+  (`scripts/verify_differential.py`, `scripts/verify_riscv_unicorn.py`,
+  `scripts/verify_extra_generators.py`) and two suites under `tests/` drive
+  them directly.  The rest of this section is about these.
+- **Unsupported-medium implementations** (`extra/line`) are the *only*
+  implementation of their language, kept out of `registry.py` because their
+  programs are not text the registry's pipeline can carry (Line's are PNGs).
+  There is no in-package counterpart to differ against, so the cross-check
+  harnesses do not apply; `extra/line` is self-contained, keeps its own
+  pytest suites next to the code, and runs from CI's `line` job.  This is a
+  different category, not an integration gap.
+
 The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
 against the Python ones by `scripts/verify_differential.py`) earn their keep
 only where they are *broad* and *independent*: the reference is written from
