@@ -33,13 +33,13 @@ them). `verify.py` remains the separate, narrower round-trip check for
 
 - **Rendering**: opcode sequences lay out correctly as images matching the
   wiki's own visual style, including the conditional-turn's T-branch.
-  `_OPS`'s per-opcode geometry was re-measured pixel-by-pixel against every
-  relevant wiki reference image (`Lineanim4/5/6/7/8/10/11.png`) rather than
-  assumed: `>`/`<`/`i`/`o` each have their own distinct kink shape (a
-  previous version of `_OPS` gave `>`/`i` and `<`/`o` identical geometry,
-  which was simply wrong), and `+`/`-` are the only opcodes whose
-  consecutive repeats merge into one stretched diagonal rather than drawing
-  separately (confirmed against `Lineanim6.png`'s `+++`).
+  `_OPS`'s per-opcode geometry was re-measured pixel-by-pixel against the
+  wiki's reference images rather than assumed; the measurement itself, the
+  two kink families it revealed, and the `+`/`-` repeat-merging rule are
+  recorded in `render.py`'s module docstring and the comment above `_OPS`,
+  which are authoritative.  The one correction worth noting here: an
+  earlier `_OPS` gave `>`/`i` and `<`/`o` identical geometry, which the
+  re-measurement showed was simply wrong.
 - **Extraction**: `extract.py` walks the path/branch structure of both wiki
   reference images by delegating to `lattice.py`'s 8-direction vertex-star
   walker (see below), with near-complete pixel accounting (verified via
@@ -119,39 +119,18 @@ them). `verify.py` remains the separate, narrower round-trip check for
     stroke pixels.
 
 - **Merge detection, via `lattice.py`'s vertex-star walker, now wired in as
-  `extract.py`'s only walker**: the previous region-adjacency walker had
-  one confirmed structural gap -- a merge, where one stroke's last leg runs
-  straight into a *different*, already-drawn stroke's ink with no
-  separating background pixel, which a pixel-adjacency walk cannot tell
-  apart from an ordinary continuation.  Three local-pixel-geometry fixes
-  were tried directly on that walker and reverted (each broke on a new
-  bend the previous fixture check didn't cover; see "Resolved" below for
-  the full history).  `lattice.py` resolves it instead with a from-scratch
-  walker built around a single idea: at every vertex, probe all 8 compass
-  directions for a real segment leaving that point (`star()`), and count
-  how many are lit.  2 means an ordinary bend; 3 means a real
-  conditional-turn fork *or* an incidental merge (the two are told apart by
-  whether the extra two directions are the pair perpendicular to the
-  arrival heading, matching the wiki's T-branch shape -- if not, it's a
-  merge); 4 means an incidental crossing the cursor passes straight
-  through.  A merge naturally reads as "3 lit directions" the same way a
-  real fork does, so the walker stops there without needing a dedicated
-  merge signal at all -- confirmed directly against the hand-decoded
-  `(194, 228)` merge pixel from the reverted attempts, which reads exactly
-  3.
+  `extract.py`'s only walker**: the previous region-adjacency walker could
+  not tell a merge apart from an ordinary continuation, and three
+  local-pixel-geometry fixes on it were tried and reverted (see "Resolved"
+  below for that history).  `lattice.py` replaced it with an
+  8-directions-per-vertex star probe.  **The rule itself, why a merge falls
+  out of it for free, and why the probe reads a 3-pixel-wide band rather
+  than a single ray, are all in `lattice.py`'s module docstring** -- it is
+  authoritative and this entry does not restate it.  What follows is only
+  what the docstring does not cover: the wiring into `extract()`, and the
+  bugs that surfaced during it.
 
-  The probe itself checks a 3-pixel-wide band (the exact ray plus one
-  pixel to each side, perpendicular to the ray's own direction), not a
-  single 1px-wide ray -- a single-ray probe was tried first and broke
-  twice more: hand-drawn curves don't sit at one exact pixel width, so an
-  exact-length ray can miss a real segment that measures a pixel short of
-  the nominal grid unit (confirmed: real segments on both fixtures measure
-  19-20px against a 20px nominal unit), and a walked path's own recorded
-  stopping pixel can be a row/column off the true geometric vertex
-  (confirmed at `fixtures/addition.png`'s real T-junction, whose bar sits
-  one row above where the incoming stem's own path data ends).  The band
-  absorbs both failure modes in one check.  A separate `_snap` step
-  additionally re-centers onto a chosen direction's true centerline
+  A `_snap` step re-centers onto a chosen direction's true centerline
   before walking it (needed because the vertex a stroke's own walk lands
   on can be a pixel off a *different* leg's true row/column -- e.g. the
   V-shaped notch in `fixtures/addition.png`), requiring several pixels of
@@ -208,13 +187,11 @@ them). `verify.py` remains the separate, narrower round-trip check for
   pivot.
 
 - **Runtime simulation**: `simulate.py` executes a walked `Stroke` tree
-  against a Brainfuck-style tape (unbounded ints, `defaultdict`-backed,
-  pointer starts at cell 0) -- `+`/`-` increment/decrement, `<`/`>` move
-  the pointer, `i`/`o` read/print the current cell as a number, `?`
-  branches on it, all per the wiki's own (loosely) documented wording (see
-  `simulate.py`'s module docstring for exact quotes and every place the
-  wiki leaves a detail unspecified).  Verified against every synthetic
-  `render.py`-generated program used to test `classify_ops` (straight-line
+  against a Brainfuck-style tape.  The tape semantics, and every place the
+  wiki leaves a detail unspecified, are documented with exact quotes in
+  `simulate.py`'s module docstring and not restated here.  Verified against
+  every synthetic `render.py`-generated program used to test `classify_ops`
+  (straight-line
   op sequences, pointer movement across cells, both arms of a real `?`)
   and against both wiki fixtures (`addition.png`/`multiplication.png` run
   to completion with no error).
@@ -405,178 +382,25 @@ them). `verify.py` remains the separate, narrower round-trip check for
   `nonzero` arm is the loop body ending in a node whose `goto` points back
   at the fork.
 
-  Getting `_layout`'s branch spacing right for a *wide* decision tree (not
-  just a single loop) took a real, confirmed-wrong first attempt: spacing
-  between sibling fork arms was originally sized by
-  `_BRANCH_SPACING * (depth + 1)`, growing *outward* with absolute nesting
-  depth on the assumption that deeper subtrees need more room. That is
-  backwards for a layout where every fork turns its children 90 degrees
-  from its own heading: a grandchild fork's own children turn back toward
-  the *original* heading, and if that arm is longer than the distance back
-  to the grandparent's own axis, it overshoots and crosses it. Confirmed
-  concretely on a 3-level boolean-decision-tree generator (2**3 = 8 leaves,
-  the first case with enough nesting to reconverge): the drawing crossed
-  itself and `extract()` failed with hundreds of unaccounted pixels, and
-  scaling the spacing constant up by 10x reproduced the *exact same*
-  failure, since growing (not the absolute scale) was the bug -- every
-  level still overshot its ancestors by the same ratio. Fixed by scaling
-  *down* with remaining depth instead (`_BRANCH_SPACING * 2**remaining`,
-  an H-tree layout: each 90-degree turn needs roughly half its parent's arm
-  length, not more), via a new `_fork_depth` helper.
+  **The spacing and routing history, condensed.**  The full chronological
+  trail of the series that got here -- a first attempt that grew arm
+  spacing *outward* with depth (backwards: every fork turns its children
+  90 degrees, so a grandchild turns back toward the original heading and
+  overshoots, and scaling the constant 10x reproduced the identical
+  failure because *growing* was the bug), the nested-loop
+  regression and its two independent causes, and the intermediate routing
+  fixes that each bought a level -- lives in the git history (`9f4cf24`,
+  `b29d71c`, `13ca4b9`) and, for the parts that still constrain the code,
+  directly on the constants themselves:
+  `render.py`'s comment above `_BRANCH_SPACING` records why depth-counting
+  was a poor proxy for subtree extent and why `_arm_spacing`'s measurement
+  subsumes the H-tree insight exactly.
 
-  **Resolved: the nested-loop regression.** Nested brainfuck loops (2+
-  levels of real `[...]`) compiled via `bf_to_line.py` used to produce a
-  silently truncated result -- confirmed on `++[>++[>+<-]<-]>>.`, which
-  computed the right tape (cell 2 ends at 4, the correct product) but never
-  reached the final `.` to print it, halting at a leaf with no `goto` and
-  no further ops. It now prints `4`. The earlier guess recorded here (the
-  exit path running *collinear* with the detour, i.e. the router choosing an
-  overlapping route) was wrong on both counts: there was no overlap
-  anywhere, and there were two independent causes, neither of which is a
-  routing-quality problem.
-
-  - **A rendered loop-back merge was structurally indistinguishable from a
-    real `?` fork.** `_route_legs` is cardinal-only by design (a diagonal
-    detour leg risks being misread as a `+`/`-` kink), and the stem it lands
-    on is itself cardinal, so the detour's final approach was necessarily
-    *perpendicular* to the stem. A perpendicular touch-down on a straight
-    run lights exactly the arrival direction plus the stem's own two --
-    which is the arrived-from direction plus the pair perpendicular to it,
-    i.e. precisely the T-branch signature `lattice._classify` calls
-    `"fork"`. The extractor therefore read every rendered loop-back as a
-    conditional turn. The wiki's own fixtures reconnect *diagonally*
-    (hand-drawn), which is why `"merge"` classification always worked there
-    and why this only ever broke on rendered output. Fixed by
-    `render._approach_points`: route cardinally to an approach point offset
-    diagonally from the stem, then take one explicit diagonal leg onto it,
-    so the merge reads 3-lit-but-not-perpendicular -> `"merge"` -> a leaf
-    `simulate._compile`'s `find_merge` rescues into a `goto`, by design
-    rather than by luck. The diagonal must be *longer* than `lattice.star`'s
-    own 15px probe, not shorter, so the probe finds a full band segment
-    along it. `classify_ops` does not misread this diagonal as a phantom
-    `+`/`-`, because it already drops a candidate whose final leg is the
-    walked path's literal last run -- exactly where this diagonal sits.
-
-    This also means **single-level loops only ever worked by accident**:
-    their merge point classified as the same spurious `"fork"`, and survived
-    only because both bogus arms' `_walk_segment` happened to land on
-    already-`visited` vertices, degrading the stroke back to a leaf. Nested
-    loops broke the moment one arm reached somewhere unvisited.
-
-  - **A detour could run flush alongside *itself*.** A route is planned
-    against `occupied` as it stood before the route existed, and A* never
-    adds its own in-progress cells to that set -- so nothing stopped a
-    detour from doubling back and running adjacent to a leg it had laid down
-    earlier in the same route. Rasterized, that is a contiguous 2px-wide
-    ribbon, which `lattice._band_lit`'s deliberate ±1 lateral reach reads as
-    an extra lit direction, manufacturing another spurious fork. Confirmed
-    by per-stroke attribution (rendering each stroke in isolation and
-    diffing in normalized-mask space): all three arms of the junction that
-    broke `++[>++[>+<-]<-]>>.` belonged to *one* stroke, the inner loop's
-    own 530-cell detour. Fixed by `_self_approaches`, which rejects a routed
-    path that comes within `_CLEARANCE` of its own earlier self (ignoring a
-    small window along the route, since consecutive cells and ordinary
-    90-degree corners are adjacent by construction) and tries the next
-    candidate target/approach instead.
-
-    Ruled out along the way, so a future reader doesn't re-derive it: this
-    is *not* a draw-order problem. Instrumenting `_close_loop`/`finish`
-    showed the outer detour is routed last, against 814 already-occupied
-    cells, so it had full knowledge of every fixed stroke.
-
-  Both fixes are independently load-bearing, checked by reverting each in
-  isolation: without the diagonal approach 6 of `test_bf_to_line.py`'s
-  tests fail, without the self-approach rejection 2 do.
-
-  `_CLEARANCE` (between-stroke clearance, as opposed to the self-approach
-  check that reuses it) is pinned separately, by
-  `TestStrokeSeparation`. This took a dedicated test to establish: setting
-  it to 0 left every *output*-asserting test passing, since a drawing can
-  rasterize a flush 2px ribbon and still happen to extract and execute
-  correctly. Measuring stroke separation directly instead -- capturing
-  `_layout`'s own stroke list and counting cells of one stroke sitting
-  adjacent to a different stroke it shares no cell with -- shows the
-  constant is load-bearing after all: at 0 every program checked develops
-  adjacency (up to 76 consecutive abutting cells on
-  `++[>++[>+<-]<-]>>+++.`), at 1 none does. An earlier version of this file
-  recorded `_CLEARANCE` as reasoned-but-unpinned; that was accurate when
-  written and is now superseded.
-
-  **Resolved, and it was `_BRANCH_SPACING` being oversized all along: three
-  levels of loop nesting now render.** This entry previously recorded a hard
-  "loop nesting stops at two levels" limit -- `+[>+[>+[>+<-]<-]<-]` did not
-  render at all, `_close_loop` exhausting every stem offset and approach at
-  maximum padding and raising, with the failing outer loop-back's 154 routing
-  attempts splitting 77 "no corridor exists at any padding" and 77 "the only
-  available route folds back on itself". That measurement was accurate; the
-  conclusion drawn from it ("a genuine lack of drawn space ... not something
-  the router could solve") was half right. There genuinely was no room to
-  route through -- but the reason was that `_BRANCH_SPACING`'s own arms had
-  consumed it, not that the program needs more space than a drawing can
-  provide.
-
-  Lowering `_BRANCH_SPACING` from 20 to 5 (see its comment in `render.py` for
-  the sweep behind that number) makes `+[>+[>+[>+<-]<-]<-]>>>.` render,
-  extract cleanly, and print the correct `1`. `TestNestingDepthLimit` was
-  rewritten accordingly, exactly as its own docstring instructed a future
-  session to do ("if a future layout change makes three levels work, this
-  test should be replaced by a real round-trip assertion, not deleted").
-
-  **`_fork_depth` is now gone, and with it the last of the nesting limit.**
-  The entry above was written when the *heavy* depth-3 body
-  (`++[>++[>++[>+<-]<-]<-]>>>.`, same shape with doubled `+` runs) still
-  exhausted the router, and concluded the honest boundary was "arm weight, not
-  nesting count". That was still measuring the symptom. Both causes have since
-  been fixed at the source, and the heavy body now round-trips too:
-
-  - **Spacing is measured, not inferred from branching structure.**
-    `_fork_depth` counted how many nested `?` forks an arm still had to fit
-    and fed `_BRANCH_SPACING * 2**remaining`. That is blind to how much ink a
-    subtree actually draws: the light and heavy depth-3 bodies got *identical*
-    spacing at every fork (40/20/10 units) despite different op counts in
-    every arm, and a fork's two arms got the same length even when one held 4
-    ops and the other 14. `_subtree_extent` now dry-runs the real `_layout`
-    against a scratch cursor and measures the bounding box, and `_arm_spacing`
-    sizes each arm from how far its own subtree reaches back toward the trunk.
-    This subsumes the H-tree halving rather than discarding it -- "how far does
-    this subtree reach back" is exactly the quantity `2**remaining` was
-    approximating.
-  - **Detours route in a second phase, against the finished drawing.** This
-    was the bigger one, and it was an *ordering* bug rather than a spacing
-    bug: `_close_loop` used to run the instant a `goto` was reached during
-    layout, so a detour could only avoid ink that already existed at that
-    moment, and every stroke drawn afterwards was free to march straight
-    through the corridor it had just taken. Nothing ever checked. No amount of
-    extra arm spacing can fix that, because the collision is with geometry
-    that did not exist when the route was chosen. `_layout` now records each
-    loop-back as a `_Pending` entry and `_route_pending` routes them all after
-    layout completes, outermost fork first -- the two-phase layout this file
-    proposed as a guess and which turned out to be the actual fix.
-
-  A wrong turn worth recording, since it looked plausible and cost a cycle:
-  sizing arms additionally by their subtree's *lateral* span, on the theory
-  that sibling arms collide sideways. They do not -- the two arms leave a fork
-  in opposite directions, so `reach_back` alone already puts each subtree's
-  whole bounding box on its own side of the trunk, and the lateral spans
-  spread along the perpendicular axis where the boxes cannot meet. Adding the
-  term anyway double-counted it into both arms and amplified geometrically
-  with depth (each fork's measured span contained its children's
-  already-inflated spacing): a depth-3 program's outer arm measured 149 units
-  laterally and rendered at 7760x3800, against ~1500x1260 once the term was
-  removed.
-
-  The drawable boundary is now depth 5 (see the depth-4 entry below for how
-  depth 4 fell), and the invariant that survives is the
-  original one, unchanged in substance: when the layout genuinely runs out of
-  room it fails loudly at render time rather than misdrawing. That remains
-  load-bearing for the reason it always was -- with `_self_approaches`
-  disabled, an undrawable program renders happily and then fails `extract()`
-  with ~21000 unaccounted pixels, i.e. it draws self-crossing garbage.
-  `TestNestingDepthLimit` pins that invariant directly now, with
-  `_MAX_PADDING_DOUBLINGS` throttled to 0 so exhaustion is reached in under a
-  second: the assertion is about *what happens when the router gives up*, not
-  how long it searches first. That change alone took the three suites from
-  ~141s to ~4s, since the old test spent 2.5 minutes reaching its raise.
+  Two of those analyses are kept in full below rather than left to the
+  git history, because `render.py` and `test_bf_to_line.py` cite them by
+  name: they are what established that the barrier was *enclosure*, not
+  routing quality, which is the finding the construction-based scheme
+  rests on.
 
   **Why depth 4 fails, measured rather than assumed.** Every previous version
   of this entry described its own nesting ceiling as "a genuine lack of drawn
@@ -623,67 +447,6 @@ them). `verify.py` remains the separate, narrower round-trip check for
   numbers above are what it lacked). Note this was the first time the ceiling
   had a measured mechanism rather than an assumption, so it was also the
   first time the next step was pointed at something specific.
-
-  **Depth 4 fell to that fix -- plus two more the corridors uncovered.** The
-  diagnosis above was right about the layout half and incomplete about the
-  rest: reserving corridors turned the enclosure into two successive
-  route-vs-route failures that only became measurable once routes existed at
-  all. Each was instrumented the same way before being touched, and each fix
-  is sized from the router's own rules rather than chosen:
-
-  - *Corridors* (`_arm_spacing`): each arm now reserves one
-    `_GOTO_CORRIDOR = 1 + 2*_CLEARANCE` = 3 cells per `goto` beneath it (the
-    dead `_has_goto` helper became `_count_gotos`), the exact swath a routed
-    detour blocks. The floor-of-5 arms above became 8/11/21/28 on this
-    program, and the failing detour's flood-fill reach went from **5% to
-    92%** -- enclosure gone, fixed geometry 215 -> 263 cells. A goto-free arm
-    gets exactly `+0`, so loop-free programs render pixel-identically.
-  - *Coarse-candidate misselection* (`_route_legs`): with routes now
-    existing, every offset still failed -- as "route folded back onto
-    itself". The coarse pass stops at whichever of its 5 candidate endpoints
-    is cheapest *from the start*, and the start's own column happened to
-    align with the candidate one coarse step left of the target: 40 cells
-    straight up, on the wrong side of a wall, and the fine pass came back
-    down through the coarse leg's own cells (one cell visited twice). Two
-    recoveries, neither touching the success path: exclude the reached
-    candidate and re-run the coarse pass (rescues long hauls cheaply), and
-    when no candidate yields a clean route, a pixel-exact A* over the same
-    padded bounds -- a 3-cell corridor holds exactly one clear line, which a
-    20-cell coarse edge anchored to the start's lattice threads only by
-    alignment luck, and the pixel pass threads by construction (measured:
-    ~0.05s where the split failed outright).
-  - *Doorstep sealing* (`_route_pending`): the depth-3 detour then routed
-    fine -- and its pixel route, hugging ink at exactly `_CLEARANCE`, parked
-    across the first depth-4 detour's departure point, boxing it into an
-    **8-cell pocket** out of a ~28000-cell canvas (attribution: that one
-    route alone). Reserving a `_GOTO_CORRIDOR`-radius block around each
-    unrouted detour's start as *hard* occupancy failed one detour later --
-    the two depth-4 doorsteps sit a column apart and one's only lane runs
-    through the other's ring (152 reachable cells hard vs 1086 without). So
-    the blocks are *costed* instead (`_AVOID_PENALTY` = `_UNIT` per
-    trespassed cell): doorsteps stay clear whenever an alternative exists,
-    and the unavoidable crossing happens on the shortest chord. Measured on
-    the shipped path: all four detours route (+138/+173/+115/+32 cells),
-    three of them trespassing zero avoid cells, and the boxed-in one paying
-    exactly a 7-cell chord past the last doorstep at distance 3 -- on a side
-    the sealed-in detour's own route never needs.
-
-  Ordering experiments confirmed outermost-first still holds: innermost-first
-  let a depth-4 detour's 55-cell westward sweep seal the depth-3 doorstep
-  (629-cell pocket), the mirror image of the failure it was meant to avoid.
-
-  Depth 4 now renders in ~1s and round-trips to `[1]`, pinned as a real
-  round-trip in `TestNestingDepthLimit` exactly as its docstring prescribed;
-  the exhaustion raise is repinned on depth 5, which still exhausts at *full*
-  padding -- in ~5s, where the corridors-only intermediate state (layout
-  fixed, router untouched) ground for ~7 minutes before raising and the
-  committed pre-fix baseline took ~2.5 minutes, since the pixel fallback
-  proves a pocket empty quickly instead of letting the coarse pass thrash.
-  Depth 1-3 grew modestly and linearly (900x740 -> 960x740, 1020x840 ->
-  1140x960, 1500x1260 -> 1800x1100), so the corridor term is not compounding
-  through nested extents. The ceiling moved, and the invariant survives
-  unchanged: when the layout genuinely runs out of room it says so at render
-  time.
 
   **Why depth 5 fails, and why the next soft-cost patch does not fix it.**
   Instrumented the same way on `+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.`
@@ -752,6 +515,8 @@ them). `verify.py` remains the separate, narrower round-trip check for
   runtime). The ring-constrained router's own ceiling was depth 7, where
   the third (depth-4) detour exhausted both its constrained attempt and its
   free fallback -- congestion in the middle of the onion.
+
+  What matters going forward is only the conclusion the series reached:
 
   **Arbitrary depth, by removing the search.** The depth-3 -> 4 -> 5 -> 7
   progression was itself the finding: every routing fix bought a level or
