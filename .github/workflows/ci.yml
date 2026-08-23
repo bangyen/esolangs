@@ -211,6 +211,31 @@ jobs:
           --with pytest --with pytest-xdist \
           pytest . -q
 
+    # Line is not in registry.py (its programs are PNGs), so these __main__
+    # blocks are the only way to run it.  The pytest suites import the
+    # functions directly and never execute them, so a broken argv index or
+    # entry point would otherwise go unnoticed until someone ran it by hand.
+    - name: Smoke test the extra/line entry points
+      run: |
+        set -e
+        cd extra/line
+        run_line() {
+          uv run --isolated --no-project \
+            --with pillow --with numpy --with scipy --with scikit-image \
+            python "$@"
+        }
+        run_line render.py "+++" /tmp/line_render.png
+        [ "$(run_line simulate.py /tmp/line_render.png)" \
+          = "final tape (nonzero cells): {0: 3}" ]
+        run_line extract.py /tmp/line_render.png >/dev/null
+        run_line bf_to_line.py "+++." /tmp/line_bf.png >/dev/null
+        [ "$(run_line simulate.py /tmp/line_bf.png)" \
+          = "3
+        final tape (nonzero cells): {0: 3}" ]
+        run_line line_boolean.py 0001 /tmp/line_bool.png >/dev/null
+        run_line verify.py >/dev/null
+        echo "All extra/line entry points passed"
+
   assembly:
     runs-on: ubuntu-latest
     timeout-minutes: 20
