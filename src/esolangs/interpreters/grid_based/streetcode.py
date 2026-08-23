@@ -135,6 +135,9 @@ class _Machine:
         # on the very next step.  Counted down once per step and cleared by
         # any heading change.
         self._skip_hug = 0
+        # The CPth cell as the car arrived at the square it is on, before
+        # that square's instruction ran; junction decisions branch on this.
+        self._arrival_cell = 0
 
     @property
     def halted(self) -> bool:
@@ -445,7 +448,7 @@ class _Machine:
                 # its far wall): take whichever way is open.
                 if self._open(*self._ahead(self.row, self.col, side)):
                     roads.append(side)
-            elif self._road_deep(side):
+            elif self._road_deep(side) and self._lawful_turn(side):
                 roads.append(side)
         return roads
 
@@ -462,6 +465,26 @@ class _Machine:
         return self._open(self.row + d_row, self.col + d_col) and self._open(
             self.row + 2 * d_row, self.col + 2 * d_col
         )
+
+    def _lawful_turn(self, heading: str) -> bool:
+        """Whether entering ``heading`` leaves the car driving on the right.
+
+        The lane a car belongs in has that road's wall on its right, so a
+        turn whose destination has open ground to the right and a wall to
+        the left would put the car in the lane oncoming traffic uses.  Such
+        a turn is not a road the junction may offer, however open it looks:
+        the spec's cars drive on the right-hand side.  A destination with
+        walls on neither side is not yet inside a lane (an open room, or a
+        junction's own floor) and is left to the ordinary rules.
+        """
+        d_row, d_col = _DELTA[heading]
+        row, col = self.row + d_row, self.col + d_col
+        right_row, right_col = self._ahead(row, col, _right(heading))
+        left_row, left_col = self._ahead(row, col, _left(heading))
+        wrong_side = self._open(right_row, right_col) and not self._open(
+            left_row, left_col
+        )
+        return not wrong_side
 
     def _choose_heading(self) -> str | None:
         """Pick the car's next heading.
@@ -507,12 +530,15 @@ class _Machine:
                 # real cells, and an ``I`` or ``=`` along the way can change
                 # what the CPth cell holds between detecting the junction and
                 # arriving at the lane where the turn is actually made.  The
-                # spec's choice is about the cell as the car takes the turn,
-                # so a stale latch would branch on the wrong bit.  The roads
-                # were established at detection time (the mouth now lies
-                # alongside or behind the car, so it no longer re-detects):
-                # the choice is between the latched turn and carrying
-                # straight on, ordered as they were then.
+                # spec's choice is about the cell as the car *arrives* at the
+                # turn (``_arrival_cell``), not after this square's own
+                # instruction has run: a square on the turning lane commonly
+                # sets CP up for the road being taken, and that preparation
+                # must not double as the decision of which road to take.
+                # The roads were established at detection time (the mouth now
+                # lies alongside or behind the car, so it no longer
+                # re-detects): the choice is between the latched turn and
+                # carrying straight on, ordered as they were then.
                 # Rank the latched turn against carrying straight on in the
                 # same left-to-right order the junction was read in, so the
                 # re-read cannot silently disagree with the original choice
@@ -524,7 +550,7 @@ class _Machine:
                     if new_heading == _left(latched_heading)
                     else [latched_heading, new_heading]
                 )
-                new_heading = choices[0] if self._cell() == 0 else choices[1]
+                new_heading = choices[0] if self._arrival_cell == 0 else choices[1]
                 ahead_row, ahead_col = self._ahead(self.row, self.col, new_heading)
                 if new_heading == heading:
                     self._merging_heading = None
@@ -643,6 +669,13 @@ class _Machine:
         if char == ";":
             self._done = True
             return
+
+        # The cell as the car arrives, before this square's instruction runs.
+        # A junction decision is about the road the car is arriving at, so it
+        # branches on this rather than on whatever the square itself does to
+        # the tape: the ``=`` painted on a turning square moves CP to set up
+        # the road ahead, and must not also decide which road that is.
+        self._arrival_cell = self._cell()
 
         if char == "^":
             self._set_cell(self._cell() + 1)
