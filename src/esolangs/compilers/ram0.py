@@ -211,11 +211,11 @@ def comp(code: str) -> str:
         'str_n:  .asciz "n: "\n'
         'str_nl: .asciz "\\n"\n'
         'str_ram: .asciz "ram: {\\n"\n'
-        'str_ram_empty: .asciz "ram: {}\\n"\n'
+        'str_ram_empty: .asciz "ram: {}"\n'
         'str_sp: .asciz "    "\n'
         'str_col: .asciz ": "\n'
         'str_comma: .asciz ",\\n"\n'
-        'str_end: .asciz "}\\n"\n'
+        'str_end: .asciz "}"\n'
     )
     return res
 
