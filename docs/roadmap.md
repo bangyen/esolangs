@@ -95,12 +95,6 @@ would make the generator close to trivial to write by hand.
   ambiguous-turn rule to fork on it; it takes arbitrary truth tables,
   uncapped, and is verified over every input combination up to 4 inputs.
   No text generator yet — that's the remaining follow-on work.
-- **Gate** — a wire/logic-gate circuit: symbols represent signals flowing
-  through wires (`—`/`|`), combined by gates (`&` NAND, `X` XNOR, `!` NOT);
-  `+` branches on which way a signal is heading; `(` outputs an ASCII char.
-  A boolean generator means constructing an actual gate network, not
-  writing a condition.  Spec is terser and example-driven rather than
-  prose-first — worth a closer read before committing.
 - **Flowchart** — literal flowchart nodes joined by lines; a `< >` switch
   node reads a bit register and routes the pointer left or right (straight
   through if the register is empty), directly analogous to Befunge's
@@ -179,9 +173,13 @@ and crash tie-breaking are genuinely random with no seed — fails the
 determinism criterion); **Dilemma** (no I/O commands at all, pure
 maze/DFS); **TableLang**, **Marz**, **RingCode**, **GridScript** (a
 high-level `if`/`while`/`SWITCH` construct makes the generator trivial, or
-the spec is unstable); **Circuit Diagram** (a viable Gate alternative in the
-same genre, with more complex constraint-propagation semantics — worth a
-look if Gate falls through).
+the spec is unstable); and **Gate**, which was read closely and rejected — it
+has no input command at all, so its output is a fixed function of the program
+text and a boolean generator is structurally impossible, and its `<` operator
+is defined only by a self-referential image (see the assessed-and-rejected
+ledger in `docs/limitations.md`).  **Circuit Diagram** is the remaining
+candidate in that genre — more complex constraint-propagation semantics, and
+the natural next one to assess now that Gate has fallen through.
 
 ## Transpilers
 
