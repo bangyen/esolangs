@@ -27,7 +27,9 @@ from lattice import _DIRS, Stroke, Vertex
 from render import Node, chain, render
 from simulate import IO, run
 
-FIXTURES = "fixtures"
+# Anchored to this file rather than the working directory, so the wiki
+# fixtures resolve no matter where pytest is invoked from.
+FIXTURES = str(Path(__file__).parent / "fixtures")
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:
