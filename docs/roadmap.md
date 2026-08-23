@@ -515,17 +515,20 @@ both turned out to be cheap:
 
 What is left is divergent for reasons no *generator* change reaches:
 
-- **trailing newline** (`bitdeque`, `cod`, `nevermind`) -- our interpreters
-  print with a line ending.  Checked against the wiki: none of the three
-  specs requires it.  Bitdeque's says "There is (currently) no I/O" at all,
-  so the end-of-run deque dump is entirely this repo's invention; COD's says
-  only "output the cod's value, then remove the cod"; and Nevermind's says
-  only "Outputs *text* to the screen", with a Hello-World example that shows
-  no trailing newline.  So this group is not a language constraint but an
-  interpreter one, and dropping the newline is a live option -- it is left
-  alone because it would change the output of every program in those three
-  languages to tidy an example, and because with no I/O spec to appeal to
-  there is no reading that is more faithful than the current one;
+- **trailing newline** (`cod`, `nevermind`) -- our interpreters print with a
+  line ending.  Checked against the wiki: neither spec requires it.  COD's
+  says only "output the cod's value, then remove the cod", and Nevermind's
+  only "Outputs *text* to the screen", with a Hello-World example showing no
+  trailing newline.  But in both languages the print can fire *more than
+  once*, and the newline is the only thing separating one output from the
+  next: without it Nevermind's `loop,3 / print,x / endloop` produces `xxx`,
+  which is indistinguishable from a single `print,xxx`.  Dropping it would
+  make the output lossy rather than tidy, so the separator stays.
+
+  (Bitdeque was in this group and is not any more.  Its dump runs exactly
+  once, at the end of the program, so its newline was pure trailing
+  whitespace with nothing to separate; it now prints without one, and
+  `test_empty_deque_prints_nothing` finally prints nothing.)
 - **state dump around the answer** (`back`, `minsky-swap`, `ram0`) -- no
   output instruction, so the answer arrives at a fixed position inside a
   dump of the machine.  Unlike LaserFuck, these have no way to suppress the

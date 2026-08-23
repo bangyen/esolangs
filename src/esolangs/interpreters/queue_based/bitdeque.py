@@ -81,8 +81,14 @@ class _Machine:
         self.ind += 1
 
     def render(self) -> None:
-        """Print the deque contents, one value per space."""
-        self.io.print_line(" ".join(map(str, self.deq)))
+        """Print the deque contents, one value per space.
+
+        No trailing newline: this runs once, when the program ends, so the
+        newline would be nothing but trailing whitespace.  (The wiki defines
+        no I/O for Bitdeque, so there is no spec to be faithful to here --
+        see the module docstring.)
+        """
+        self.io.print_str(" ".join(map(str, self.deq)))
 
 
 def run(code: str, io: IO) -> None:

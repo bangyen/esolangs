@@ -370,9 +370,9 @@ class TestBitdeque:
         vm.step()  # INVERT flips the register, then the run renders
         assert vm.stack == [1]
         assert vm.halted
-        assert vm.output == "0\n"
+        assert vm.output == "0"
         vm.step()  # stepping a halted VM is a no-op
-        assert vm.output == "0\n"
+        assert vm.output == "0"
 
 
 class TestTaglate:
