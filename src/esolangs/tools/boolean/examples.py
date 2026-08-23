@@ -407,7 +407,7 @@ def _register() -> None:
             expected=(
                 "..#......\n.........\n.........\n.........\n.........\n"
                 ".........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n"
-                "..#...#..\n"
+                "..#...#.."
             ),
             note=(
                 "A Painter Ant has no output: it paints a grid and the answer "
@@ -420,7 +420,7 @@ def _register() -> None:
             "tape_based.back",
             _fill_back,
             split=True,
-            expected="0 1 0\n",
+            expected="0 1 0",
             note=(
                 "Back has no output instruction and dumps its tape at halt; "
                 "the answer is cell n, past the n input cells"
@@ -445,7 +445,7 @@ def _register() -> None:
             b.minsky_swap,
             "register_based.minsky_swap",
             _fill_minsky_swap,
-            expected="0 0\n",
+            expected="0 0",
             note=(
                 "Minsky Swap has no output instruction and dumps its "
                 "registers at halt; the answer is the second one"
@@ -456,7 +456,7 @@ def _register() -> None:
             b.ram0,
             "register_based.ram0",
             _fill_ram0,
-            expected="z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}\n",
+            expected="z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}",
             note=(
                 "RAM0 has no output instruction and dumps its whole state "
                 "at halt; the answer is the 'z' register"
