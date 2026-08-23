@@ -105,6 +105,22 @@ local wall shape actually marks an intersection rather than a plain corner:
   A bare, unbounded `+` shape (no wall arms) still turns immediately,
   the same as before this rule existed.
 
+* **An early-sighted mouth defers its turn**: `_road_mouth` anchors the
+  near `+` at depth 0, +1, or -1, so a junction can fire while the gap
+  still opens *ahead* of the car -- the cell the chosen turn would step
+  onto is then the wall the mouth opens through.  When the turn is not
+  a lane merge (no wall arms past the far `+`, so no merge latch is
+  taken), the turn is deferred: ordinary wall-following carries the car
+  forward, the same mouth re-detects each step (`near` only shrinks as
+  the car advances), and the turn is made once the car is level with
+  the gap, re-reading the cell there.  Without this guard the car
+  turned immediately, drove *inside* the wall (wall cells only block
+  entry via `_open`; nothing re-checks the cell being stepped onto),
+  and then wall-followed around the far side of that wall -- pinned by
+  `test_early_sighted_mouth_defers_the_turn_to_the_gap`, found via a
+  hand-drawn loop attempt whose entry mouth sat two cells ahead of the
+  junction's firing point.
+
 * **The larger "infinite cat for single characters" example** is a genuine
   cat under plain wall-following, but not via the inner `IO`/`OI`
   branch its diagram suggests: the outer ring's wall-hugging loops back
