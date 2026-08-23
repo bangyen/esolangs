@@ -234,17 +234,31 @@ class TestStreetcodeAmbiguousTurns:
         assert machine._road_mouth("E", "S") is None  # noqa: SLF001
 
     def test_four_way_junction_detects_4(self) -> None:
-        """Mouths on both sides at once, road continuing ahead: 4 ways."""
+        """Mouths on both sides at once, road continuing ahead: 4 ways.
+
+        ``_junction_shape`` reads the wall shape alone; ``_junction_kind``
+        additionally requires two roads the car could drive down, which
+        this narrow fixture's one-cell arms are not (see
+        :meth:`_road_deep`).
+        """
         machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
         machine.row, machine.col, machine.heading = 0, 1, "S"
-        assert machine._junction_kind("S") == 4  # noqa: SLF001
+        assert machine._junction_shape("S") == 4  # noqa: SLF001
 
     def test_t_junction_detects_3(self) -> None:
         """Mouths on both sides with straight ahead blocked: a T whose
         crossbar the car is driving into, still three ways."""
         machine = _Machine([" C ", "+|+", "   ", "+ +", " | "], IO())
         machine.row, machine.col, machine.heading = 0, 1, "S"
-        assert machine._junction_kind("S") == 3  # noqa: SLF001
+        assert machine._junction_shape("S") == 3  # noqa: SLF001
+
+    def test_narrow_arms_are_not_roads(self) -> None:
+        """The same shape is not a junction when its arms are one cell:
+        streets are two wide, so a single open cell before a wall is the
+        width of the road, not a road leading off it."""
+        machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
+        machine.row, machine.col, machine.heading = 0, 1, "S"
+        assert machine._junction_kind("S") == 0  # noqa: SLF001
 
     # A mouth whose gap opens ahead of the car (its near ``+`` sighted at
     # depth 0 or +1) and whose far ``+`` has open interior beneath it (so
@@ -344,18 +358,20 @@ class TestStreetcodeLaneMerge:
         the rest of the run.
         """
         code = [
-            "|C |",
-            "|  +--",
-            "|U",
-            "|",
-            "|  +--",
-            "|  |",
+            "|C  |",
+            "|   |",
+            "|   +---",
+            "|       ",
+            "|U      ",
+            "|   +---",
+            "|   |",
+            "|   |",
         ]
         machine = _Machine(code, IO())
-        machine.step()  # 'C' -> (1,1), latches _merge_target for (3,1)
+        for _ in range(4):
+            machine.step()  # down the west lane; the latch forms en route
         assert machine._merge_target is not None  # noqa: SLF001
-        machine.step()  # -> (2,1), still approaching
-        machine.step()  # 'U' at (2,1) flips heading to North before choosing
+        machine.step()  # 'U' at (4,1): turns around into the opposite lane
         assert machine._merge_target is None  # noqa: SLF001
 
     def test_wall_at_the_turn_destination_falls_back_to_plain_rules(self) -> None:
@@ -425,14 +441,21 @@ class TestStreetcodeLaneMerge:
         behavior on the four-way corner pattern -- unlike the three-way
         case in ``test_merge_lands_in_the_right_hand_lane``, no hand-drawn,
         user-confirmed trace exists for a four-way junction (see the "Still
-        open" section of ``docs/streetcode.md``)."""
+        open" section of ``docs/streetcode.md``).
+
+        The arms are two characters wide, per the spec: with one-cell arms
+        the shape is drawn but there are no roads to drive down, so
+        ``_junction_kind`` reports no junction (see :meth:`_road_deep`).
+        """
         code = [
-            " |C |",
-            "-+  +--",
-            " |",
-            " |",
-            "-+  +--",
-            " |  |",
+            " |C  |",
+            " |   |",
+            "-+   +-",
+            "       ",
+            "       ",
+            "-+   +-",
+            " |   |",
+            " |   |",
         ]
         machine = _Machine(code, IO())
         positions = [(machine.row, machine.col)]
@@ -444,10 +467,10 @@ class TestStreetcodeLaneMerge:
             (1, 2),
             (2, 2),
             (3, 2),
-            (3, 3),
-            (3, 4),
-            (3, 5),
-            (3, 6),
+            (4, 2),
+            (4, 3),
+            (4, 4),
+            (4, 5),
         ]
 
 
