@@ -946,6 +946,15 @@ _STEM_LEN = 10
 _DIAGONAL_APPROACH = 6
 
 
+# Half-width, in grid cells, of the landing strip :func:`_route_pending`
+# keeps open through a ring fence, centered on the target stem's line.  Not
+# chosen: an approach point sits `_DIAGONAL_APPROACH` cells off the stem's
+# axis (see `_approach_points` -- the diagonal's components are each 1 per
+# step), and needs `_CLEARANCE` + 1 more so its own clearance check never
+# touches the fence.
+_STRIP_HALF_WIDTH = _DIAGONAL_APPROACH + _CLEARANCE + 1
+
+
 def _approach_points(
     target: tuple[int, int], stem_heading: tuple[int, int]
 ) -> list[tuple[tuple[int, int], tuple[int, int]]]:
@@ -1151,6 +1160,7 @@ def _route_pending(
     pending: list[_Pending],
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
     occupied: set[tuple[int, int]],
+    boxes: dict[int, tuple[int, int, int, int]] | None = None,
 ) -> list[list[tuple[int, int]]]:
     """Route every deferred loop-back detour, outermost fork first.
 
@@ -1176,6 +1186,41 @@ def _route_pending(
     while an inner one is comparatively local: letting the constrained route
     choose first leaves the flexible one to work around it, rather than the
     reverse.
+
+    **The ring constraint.**  Free-form search cannot nest: measured on the
+    depth-5 program, the depth-3 detour's shortest clear route cut the
+    depth-4 detour's region from 96% reachable to 5%, and pricing lanes with
+    soft costs cannot fix that, because a route that *must* cross a lane
+    pays the toll and cuts it exactly as thoroughly as a free one.  But
+    nested loop-backs are topologically nested, so each detour is fenced out
+    of its own subtree's *interior* (its target fork's measured bounding box
+    from ``boxes``, eroded by :data:`_GOTO_CORRIDOR`) -- everything deeper
+    lives inside that box, so a route that stays outside it can never cut a
+    deeper lane.  Two measured facts make this workable: every detour's
+    departure point sits exactly on its own box's perimeter (measured
+    ``start->edge=0`` for all detours at depths 3-7), and the landing stem,
+    which sits 17-29 cells *inside* the box (arm content reaches back around
+    it), is reachable through a strip along the stem's own line, which is
+    empty by construction (the trunk axis clearance `_arm_spacing`
+    guarantees).  So the fence keeps a stem-aligned strip of half-width
+    :data:`_STRIP_HALF_WIDTH` open, and the route dives in along it.
+
+    Rings on shared box edges must *stack* -- inner and outer boxes share
+    edges, and whichever ring routes first at the shared edge starves the
+    other (measured both ways: outermost-first starved the inner ring at
+    depth 5, innermost-first starved the outer one even at depth 3).  The
+    shell term below resolves it: each ring pays soft cost within
+    `_GOTO_CORRIDOR` of its own box per *deeper* pending detour, so shallow
+    rings ride farther out and deep rings hug, onion-style, using exactly
+    the lateral room `_arm_spacing`'s corridor term reserved.  With that,
+    depths 5 and 6 route completely (measured; depth 7 pushes the congestion
+    one ring further and is the current ceiling).
+
+    A detour whose constrained attempt fails falls back to the
+    unconstrained route -- correctness never depends on the fence, only
+    nesting capacity does, and the innermost detour of a deep program
+    (whose free route is tiny and has nothing deeper left to seal) uses
+    exactly that fallback.
     """
     strokes: list[list[tuple[int, int]]] = []
     order = sorted(pending, key=lambda p: p.depth)
@@ -1212,12 +1257,63 @@ def _route_pending(
             for dy in range(-_GOTO_CORRIDOR, _GOTO_CORRIDOR + 1):
                 for dx in range(-_GOTO_CORRIDOR, _GOTO_CORRIDOR + 1):
                     avoid.add((sy + dy, sx + dx))
+        # The ring fence and shell term -- see the docstring.  The fence is
+        # the target box's interior, eroded by `_GOTO_CORRIDOR` so the route
+        # can hug the box's own extremal ink from outside, minus the landing
+        # strip along the stem's line (forward the stem's length for the
+        # approach points, backward far enough to exit the box).
+        hardblock: set[tuple[int, int]] = set()
+        shell_avoid: set[tuple[int, int]] = set()
+        box = None if boxes is None else boxes.get(id(entry.target))
+        if box is not None:
+            lo_y, hi_y, lo_x, hi_x = box
+            ss, (hy, hx) = stem_start, stem_heading
+            by, bx = -hy, -hx
+            back_len = (
+                (
+                    {(1, 0): hi_y - ss[0], (-1, 0): ss[0] - lo_y}.get((by, bx))
+                    if bx == 0
+                    else {(0, 1): hi_x - ss[1], (0, -1): ss[1] - lo_x}[(by, bx)]
+                )
+                + _GOTO_CORRIDOR
+                + 2
+            )
+            e = _GOTO_CORRIDOR
+            for y in range(lo_y + e, hi_y - e + 1):
+                for x in range(lo_x + e, hi_x - e + 1):
+                    along = (y - ss[0]) * by + (x - ss[1]) * bx
+                    cross = abs((y - ss[0]) * bx - (x - ss[1]) * by)
+                    if -_STEM_LEN <= along <= back_len and cross <= _STRIP_HALF_WIDTH:
+                        continue
+                    hardblock.add((y, x))
+            deeper = sum(1 for later in order[i + 1 :] if later.depth > entry.depth)
+            shell = _GOTO_CORRIDOR * deeper
+            if shell:
+                for y in range(lo_y - shell, hi_y + shell + 1):
+                    for x in range(lo_x - shell, hi_x + shell + 1):
+                        if not (lo_y <= y <= hi_y and lo_x <= x <= hi_x):
+                            shell_avoid.add((y, x))
         # Only the strokes *this* call adds: the cursor already carries the
         # loop body's own strokes, which the fork that spawned it collected
         # into the drawing when `_layout` returned.  Extending with the whole
         # list would hand every loop body back a second time.
         before = len(entry.cursor.strokes)
-        _close_loop(entry.cursor, stem_start, stem_heading, occupied, avoid)
+        if hardblock:
+            try:
+                _close_loop(
+                    entry.cursor,
+                    stem_start,
+                    stem_heading,
+                    occupied | hardblock,
+                    avoid | shell_avoid,
+                )
+            except ValueError:
+                # Constrained routing is a capacity feature, not a
+                # correctness one -- fall back to the free route (see the
+                # docstring).
+                _close_loop(entry.cursor, stem_start, stem_heading, occupied, avoid)
+        else:
+            _close_loop(entry.cursor, stem_start, stem_heading, occupied, avoid)
         entry.cursor.finish()
         strokes.extend(entry.cursor.strokes[before:])
     return strokes
@@ -1301,6 +1397,7 @@ def _layout(
     *,
     measuring: bool = False,
     pending: list[_Pending] | None = None,
+    boxes: dict[int, tuple[int, int, int, int]] | None = None,
 ) -> None:
     """Lay out ``node``'s chain from ``cursor``'s current point.
 
@@ -1331,6 +1428,12 @@ def _layout(
     ``entries`` lookup a real ``goto`` performs would not find an ancestor
     fork that this subtree does not itself contain.  :func:`_route_pending`
     draws every detour after layout finishes instead.
+
+    ``boxes`` collects each ``?`` node's subtree bounding box (world
+    coordinates, from the strokes actually laid), for
+    :func:`_route_pending`'s ring constraint.  Only the real layout pass
+    fills it; measuring dry-runs lay subtrees in local frames whose
+    coordinates would be meaningless here.
     """
     if entries is None:
         entries = {}
@@ -1353,6 +1456,7 @@ def _layout(
                 depth + 1,
                 measuring=measuring,
                 pending=pending,
+                boxes=boxes,
             )
             _layout(
                 node.nonzero,
@@ -1361,9 +1465,34 @@ def _layout(
                 depth + 1,
                 measuring=measuring,
                 pending=pending,
+                boxes=boxes,
             )
             right.finish()
             left.finish()
+            if boxes is not None:
+                # World-coordinate bounding box of everything this fork's
+                # subtree drew: both arm cursors hold their whole descendant
+                # stroke trees at this point (children extend into them
+                # before returning), and the stem run completes the subtree.
+                # Recorded from the strokes actually laid rather than from a
+                # parallel geometric reconstruction, for the same reason
+                # `_subtree_extent` dry-runs the real `_layout`: a second
+                # implementation of the placement math would drift, and then
+                # every box it reports is a quiet lie.  `_route_pending` uses
+                # these to fence each detour out of its own subtree's
+                # interior.
+                pts = [p for c in (right, left) for s in c.strokes for p in s]
+                hy, hx = entries[id(node)][1]
+                pts.extend(
+                    (stem_start[0] + hy * k, stem_start[1] + hx * k)
+                    for k in range(_STEM_LEN + 1)
+                )
+                boxes[id(node)] = (
+                    min(p[0] for p in pts),
+                    max(p[0] for p in pts),
+                    min(p[1] for p in pts),
+                    max(p[1] for p in pts),
+                )
             cursor.strokes.extend(right.strokes)
             cursor.strokes.extend(left.strokes)
             return
@@ -1429,11 +1558,12 @@ def render(root: Node, start_heading: tuple[int, int] = (-1, 0)) -> Image.Image:
     cursor = _Cursor(0, 0, start_heading, occupied=occupied)
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] = {}
     pending: list[_Pending] = []
-    _layout(root, cursor, entries, pending=pending)
+    boxes: dict[int, tuple[int, int, int, int]] = {}
+    _layout(root, cursor, entries, pending=pending, boxes=boxes)
     # Phase two: every loop-back detour routes here, against the finished
     # drawing rather than against however much of it happened to exist when
     # its own `goto` was reached -- see :func:`_route_pending`.
-    cursor.strokes.extend(_route_pending(pending, entries, occupied))
+    cursor.strokes.extend(_route_pending(pending, entries, occupied, boxes))
 
     ys = [p[0] for stroke in cursor.strokes for p in stroke]
     xs = [p[1] for stroke in cursor.strokes for p in stroke]
