@@ -25,6 +25,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
 from esolangs.tools.boolean import BOOLEAN
 from esolangs.tools.transpilers import TRANSPILERS
+from esolangs.tools.wrap import wrap_program
 from esolangs.vm import VM, make_vm
 
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
@@ -40,13 +41,25 @@ _STATE_MODELS = {
 }
 
 
-def generate(language: str, text: str) -> str:
-    """Return a program in ``language`` that prints ``text``."""
+def generate(language: str, text: str, width: int | None = None) -> str:
+    """Return a program in ``language`` that prints ``text``.
+
+    ``width`` wraps the program to that many columns for readability,
+    breaking only between whole tokens so the program still means the same
+    thing; :data:`esolangs.tools.wrap.DEFAULT_WIDTH` is the conventional
+    choice.  The default of ``None`` leaves the program on one line, so a
+    caller that does not ask for a width gets exactly what the generator
+    has always produced.
+
+    A language whose newlines are semantic (the 2D grid languages) or that
+    rejects them outright (NoComment, ROTfuck) ignores ``width`` rather
+    than raising, so one width can be passed across every language.
+    """
     try:
         fn = GENERATORS[language]
     except KeyError:
         raise UnknownLanguageError(language) from None
-    return str(fn(text))
+    return wrap_program(str(fn(text)), LANGUAGES[language].id, width)
 
 
 def run(
