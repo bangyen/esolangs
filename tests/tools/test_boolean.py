@@ -1832,38 +1832,17 @@ class TestParameterizedBIO:
 class TestParameterizedBack:
     """Input-by-substitution generators for the no-input language Back."""
 
-    def run_back(self, prog: str) -> str:
-        # Back's answer is the cell under the tape head when the program
-        # halts, so re-run the interpreter and report that cell.
-        lines = prog.splitlines()
-        size = max(len(line) for line in lines)
-        code = [line.ljust(size) for line in lines]
-        x = y = 0
-        a, b = 0, 1
-        tape = [0]
-        cell = 0
-        while True:
-            c = code[x][y]
-            if c == "\\":
-                a, b = b, a
-            elif c == "/":
-                a, b = -b, -a
-            elif c == "<":
-                if cell:
-                    cell -= 1
-            elif c == ">":
-                cell += 1
-                if cell == len(tape):
-                    tape.append(0)
-            elif c == "-":
-                tape[cell] ^= 1
-            elif c == "+" and not tape[cell]:
-                x, y = x + a, y + b
-            elif c == "*":
-                break
-            x = (x + a) % len(code)
-            y = (y + b) % size
-        return str(tape[cell])
+    def run_back(self, prog: str, n: int) -> str:
+        # Back has no output instruction: it dumps the whole tape at halt.
+        # The generator puts the answer in cell n, so the dump's (n+1)th
+        # field is the result -- no need to track the head, which the dump
+        # does not report.
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import run
+
+        io = ScriptedIO()
+        run(prog.splitlines(), io)
+        return io.getvalue().split()[n]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools.boolean import parameterized
@@ -1898,7 +1877,7 @@ class TestParameterizedBack:
         template = parameterized.back(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_back(self.instantiate(template, bits))
+            got = self.run_back(self.instantiate(template, bits), n)
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
@@ -1911,7 +1890,7 @@ class TestParameterizedBack:
             template = parameterized.back(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_back(self.instantiate(template, bits))
+                got = self.run_back(self.instantiate(template, bits), n)
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
