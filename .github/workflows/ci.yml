@@ -185,6 +185,32 @@ jobs:
       run: |
         PYTHONPATH=src python3 scripts/verify_differential.py --fuzz 50 --seed 1
 
+  line:
+    # extra/line is a standalone spike: its modules import each other as flat
+    # top-level names, and it needs image libraries the package itself does
+    # not depend on, so it is not under the root `tests/` testpaths and is run
+    # here from its own directory with those deps supplied ad hoc.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Run the extra/line suites
+      run: |
+        cd extra/line
+        uv run --isolated --no-project \
+          --with pillow --with numpy --with scipy --with scikit-image \
+          --with pytest --with pytest-xdist \
+          pytest . -q
+
   assembly:
     runs-on: ubuntu-latest
     timeout-minutes: 20
