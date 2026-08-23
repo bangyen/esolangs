@@ -574,6 +574,52 @@ them). `verify.py` remains the separate, narrower round-trip check for
   how long it searches first. That change alone took the three suites from
   ~141s to ~4s, since the old test spent 2.5 minutes reaching its raise.
 
+  **Why depth 4 fails, measured rather than assumed.** Every previous version
+  of this entry described its own nesting ceiling as "a genuine lack of drawn
+  space", and was wrong about that twice running (depth 3 fell to measured
+  spacing plus two-phase routing, neither of which this file predicted). So
+  depth 4 was instrumented before being characterised, on
+  `+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.`:
+
+  - The failure is uniform, not marginal: the third of four loop-backs
+    reports 154 "no corridor exists at any padding" and **0** "route folded
+    back on itself", so `_self_approaches` and routing quality are not
+    involved at all.
+  - It is not a padding limit. Padding doubles to 256 cells against a drawing
+    whose entire bounding box is ~80x66 cells, so the search area covers the
+    drawing many times over long before it gives up.
+  - It is not detour ordering. Outermost-first, innermost-first and plain
+    layout order all fail at the same detour.
+  - It is not the coarse pass's granularity, which was the leading hypothesis
+    (`_route_legs`'s first pass steps a whole `_UNIT` = 20 cells, and can
+    therefore only turn ~4 times across a drawing this size). Re-running the
+    failing detour with a *pixel-exact* `step=1` A* over the whole bounding
+    box routes **0 of its 22 otherwise-viable candidates**, so the coarse
+    lattice is not what blocks it.
+  - It is genuine enclosure. A flood fill from the failing detour's own
+    start, using the router's own clearance rule, reaches only **1219 of 7872
+    cells (15%)** -- and only 2096 even with clearance ignored entirely, so
+    this is not `_CLEARANCE` being too strict either. The detour's departure
+    point is sealed into a pocket by fixed geometry plus the two detours
+    already routed.
+
+  The mechanism is that **detours are far bigger than the program they
+  serve**: fixed geometry for this program is 215 cells, and the first two
+  detours add 117 and 182 more, nearly tripling the ink before the third is
+  attempted. Each threads through the middle of the drawing and blocks a
+  3-cell-wide swath (its own width plus `_CLEARANCE` either side), so the
+  drawing is only 28% blocked overall while still being cut into disconnected
+  pockets.
+
+  That makes this a *layout* problem rather than a router problem, and the
+  fix is to stop detours needing to cross the drawing at all -- reserve
+  routing corridors for `goto`-carrying arms during layout, sized from
+  measurement now that `_subtree_extent` exists (an unmeasured `_GOTO_CHANNEL`
+  constant was tried during the depth-3 work and removed as a guess; the
+  numbers above are what it lacked). Not attempted yet. Note this is the
+  first time the ceiling has a measured mechanism rather than an assumption,
+  so it is also the first time the next step is pointed at something specific.
+
 - **Output compactness vs. the wiki's own drawings, and what is irreducible.**
   Prompted by a direct comparison: `bf_to_line.py` on the wiki's own addition
   algorithm (`,>,[-<+>]<.`, exactly what `fixtures/addition.png` draws by
