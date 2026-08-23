@@ -7,7 +7,7 @@ This suite exists to close the coverage gap WIP.md flagged when the
 nested-loop regression was found: `test_simulate.py` builds cyclic `Stroke`
 trees directly from `lattice.py` primitives, so it exercises `simulate.py`'s
 execution logic but never `render.py`'s actual loop-drawing geometry
-(`_layout`/`_close_loop`/`_route_legs`).  Every test here therefore goes the
+(`_layout`/`_loop_return_legs`).  Every test here therefore goes the
 whole way -- brainfuck source -> `bf_to_line` -> `render` -> `extract` ->
 `simulate` -- since that full round trip is the only thing that can catch a
 drawing whose *geometry* is wrong even though every individual module's own
@@ -18,8 +18,10 @@ to its stem *perpendicularly*, which is pixel-for-pixel the same shape as the
 wiki's T-branch, so `lattice._classify` read the merge as a real conditional
 fork and `simulate` executed a jump as a branch.  Nested loops then silently
 truncated -- `++[>++[>+<-]<-]>>.` computed the correct tape but halted before
-its final `.` ever ran, printing nothing at all.  See `render._approach_points`
-and `render._CLEARANCE`/`_self_approaches` for the two distinct causes.
+its final `.` ever ran, printing nothing at all.  See
+`render._DIAGONAL_APPROACH` (why a loop-back must land diagonally) and
+`render._CLEARANCE` (why strokes must keep a mandated gap) for the two
+distinct causes.
 """
 
 from __future__ import annotations
@@ -120,15 +122,15 @@ def _max_between_stroke_adjacency(program: str) -> int:
     adjacent* with no shared cell at all, which rasterizes into one
     contiguous 2px ribbon.
 
-    Spies on `_Cursor.finish` rather than on `render._layout`, which matters
-    since loop-back detours became a second phase: `_layout` now returns
-    before any detour is routed, so capturing its cursor's strokes at that
-    point would measure only the fixed geometry and silently skip exactly the
-    strokes most likely to run flush against something (a detour threads
-    *between* existing ink by construction).  Every stroke in the drawing --
-    fixed or detour, on the root cursor or a branch's -- reaches the image by
-    way of one `finish()` call, so recording there sees all of them without
-    depending on which phase produced them.
+    Spies on `_Cursor.finish` rather than walking `render._layout`'s own
+    structures: every stroke in the drawing -- op kinks, fork arms, and
+    constructed loop-back returns, on the root cursor or a branch's --
+    reaches the image by way of one `finish()` call, so recording there sees
+    all of them without depending on where in the layout they were drawn.
+    (This spy predates the constructed returns: when loop-backs were routed
+    in a second phase after layout, `finish()` was the only chokepoint that
+    saw both phases' strokes, and it remains the right one now that there is
+    a single phase again.)
     """
     captured: list[list[tuple[int, int]]] = []
     original = render_module._Cursor.finish  # noqa: SLF001 - see docstring
@@ -223,10 +225,10 @@ class TestNestingDepth:
 
     The invariant that survives from the original class is unchanged in
     substance: a drawing that cannot be completed fails loudly at render
-    time rather than misdrawing.  The constructed path cannot exhaust, so
-    :meth:`test_router_fallback_still_raises` pins the invariant on the
-    fallback router (which still serves graphs that violate the compiled
-    invariants) by forcing every goto through it.
+    time rather than misdrawing.  A compiled program's loop-backs always
+    construct, so :meth:`test_unconstructible_loop_back_raises` pins the
+    invariant by forcing the construction to decline -- the shape a
+    hand-built graph outside the compiled invariants would produce.
     """
 
     def test_three_levels_round_trip(self, tmp_path: Path) -> None:
@@ -259,9 +261,8 @@ class TestNestingDepth:
         The same inward-moving shape as the depth-3 case, one level deeper:
         cell 4 ends at 1 and `>>>>.` prints it.  This is the exact program
         whose failure `WIP.md`'s "Why depth 4 fails" entry instrumented cell
-        by cell -- pinned as a round-trip now that the three fixes that entry
-        pointed at (corridor-reserving arm spacing, the router's pixel-exact
-        fallback, and soft doorstep costs between detours) landed, exactly as
+        by cell -- first pinned when three routing fixes made it drawable,
+        and kept now that constructed loop-backs superseded them, exactly as
         the depth-3 programs were pinned when their boundary fell.
         """
         assert _run_bf("+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.", tmp_path / "depth4.png") == [1]
@@ -271,10 +272,10 @@ class TestNestingDepth:
 
         One level deeper again: cell 5 ends at 1 and `>>>>>.` prints it.
         This is the depth the free-form router could not reach at all (see
-        `render._route_pending`'s ring-constraint docstring) -- its depth-3
-        detour's shortest route sealed the depth-4 detour's region from 96%
-        reachable to 5%.  Pinned as a round-trip because the ring fence is
-        what makes it drawable, so a regression there shows up here first.
+        `WIP.md`'s depth-5 entry) -- its depth-3 detour's shortest route
+        sealed the depth-4 detour's region from 96% reachable to 5%.
+        Pinned as a round-trip because it is the first depth only a
+        construction-based loop-back can draw.
         """
         assert _run_bf(
             "+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.", tmp_path / "depth5.png"
@@ -295,38 +296,24 @@ class TestNestingDepth:
             tmp_path / "depth8.png",
         ) == [1]
 
-    def test_router_fallback_still_raises(
+    def test_unconstructible_loop_back_raises(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A drawing that cannot complete fails loudly, never misdraws.
 
-        The constructed path cannot exhaust, so this forces every goto
-        through the fallback router (by making `_loop_return_legs` decline)
-        and pins the router's own exhaustion raise at a depth it cannot
-        route -- the invariant the original `TestNestingDepthLimit` class
-        was built around: with the self-approach check disabled, an
-        undrawable program renders happily and then fails extraction with
-        ~21000 unaccounted pixels, i.e. self-crossing garbage, so the loud
-        render-time error is the behavior that must survive.  The fallback
-        is still live code: any hand-built graph whose gotos violate the
-        compiled invariants (target not an ancestor mid-chain, body end off
-        its box perimeter) routes through it.
-
-        `_MAX_PADDING_DOUBLINGS` is throttled to 0 and `_MAX_ROUTE_SEARCH`
-        to 2000 so the exhaustion is reached in a few seconds -- the
-        assertion is about *what happens when the router gives up*, not how
-        long it searches first (an earlier version of this test pinned an
-        unthrottled program that took ~2.5 minutes to reach the same
-        raise).
+        This is the invariant the original `TestNestingDepthLimit` class was
+        built around: an undrawable reconnection must be a loud render-time
+        error, because the misdrawn alternative renders happily and then
+        fails extraction thousands of unaccounted pixels later (or worse,
+        executes wrongly).  A compiled program's loop-backs always
+        construct, so the decline is forced here -- the shape a hand-built
+        graph outside the compiled invariants (a goto whose target is not an
+        ancestor fork whose body chain it ends, or a body end off its own
+        box perimeter) would produce naturally.
         """
         monkeypatch.setattr(render_module, "_loop_return_legs", lambda *_a: None)
-        monkeypatch.setattr(render_module, "_MAX_PADDING_DOUBLINGS", 0)
-        monkeypatch.setattr(render_module, "_MAX_ROUTE_SEARCH", 2000)
-        with pytest.raises(ValueError, match="no clear route found"):
-            _run_bf(
-                "+[>+[>+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]<-]<-]>>>>>>>.",
-                tmp_path / "depth7.png",
-            )
+        with pytest.raises(ValueError, match="could not be constructed"):
+            _run_bf("+++[-].", tmp_path / "unconstructible.png")
 
 
 class TestCompileErrors:

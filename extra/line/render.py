@@ -189,11 +189,12 @@ class _Cursor:
     _current: list[tuple[int, int]] = field(default_factory=list)
     # Every pixel any stroke has drawn so far, across the *whole* program
     # being laid out -- shared by reference among a cursor and every child
-    # cursor `branch()` creates from it, so a later loop-back detour
-    # (`_close_loop`) can route around ink from sibling arms and the trunk,
-    # not just its own cursor's strokes.  `None` (the default) means
-    # occupancy tracking is off, matching every existing caller/test that
-    # never routes a loop-back and so never needs it.
+    # cursor `branch()` creates from it, so `_layout`'s drift guard can
+    # check a constructed loop-back against ink from sibling arms and the
+    # trunk, not just its own cursor's strokes.  `None` (the default) means
+    # occupancy tracking is off -- the case for `_subtree_extent`'s
+    # measuring dry runs, whose construction is deterministic and needs no
+    # guard.
     occupied: set[tuple[int, int]] | None = None
 
     def __post_init__(self) -> None:
@@ -261,10 +262,10 @@ class Node:
     ``goto`` marks a real drawn loop-back: after this node's own op (if any)
     runs, instead of continuing to ``next`` (which must be ``None`` when
     ``goto`` is set -- a node either continues straight or jumps back, not
-    both), the layout closes a detour back to a point strictly inside the
-    stem leading into whatever ``?`` node ``goto`` points at -- not the fork's
-    own vertex (see :func:`_layout`'s ``_close_loop`` for why: forcing the
-    detour to arrive with the fork's own arrival heading always retraces the
+    both), the layout draws a return path back to a point strictly inside
+    the stem leading into whatever ``?`` node ``goto`` points at -- not the
+    fork's own vertex (see :func:`_loop_return_legs` -- forcing the return
+    to arrive with the fork's own arrival heading always retraces the
     stem's own line, since two straight approaches from the same heading
     landing on the same point are the same line).  A mid-stem reconnection
     is exactly the shape :mod:`simulate`'s ``find_merge`` already handles as
@@ -307,63 +308,11 @@ def chain(*ops: str) -> Node:
 # there is no wiki example showing merged >/</i/o).
 _MERGEABLE = {"+", "-"}
 
-# Two earlier approaches to closing a loop-back were tried and rejected:
-#
-# * A fixed diagonal-then-straight detour onto the fork's own vertex,
-#   arriving with the fork's own heading: rejected because forcing the final
-#   leg to match that heading means retracing the stem's own line exactly
-#   (two straight approaches from the same heading landing on the same point
-#   are the same line) -- no clearance fixes that, since the final leg's
-#   geometry is fixed by the target point and heading alone.  `_layout` now
-#   targets a point strictly *inside* the stem instead (see its own
-#   docstring), which removes the heading constraint entirely --
-#   :mod:`simulate`'s ``find_merge`` accepts a mid-segment reconnection from
-#   any direction.
-# * An escalating-clearance heuristic (step out perpendicular by a growing
-#   distance, then a direct two-leg run onto the target): worked for a single
-#   flat loop, but a nested loop's outer detour has no reliable "sideways"
-#   direction that clears the inner loop's own already-drawn rectangle,
-#   which can span the entire width the heuristic tries to step past.
-#
-# `_close_loop` instead does real pathfinding: A* over the pixel grid,
-# 4-directional only (never diagonal -- see :func:`_route_legs`'s docstring
-# for why), blocked by every pixel in `occupied` except the target itself.
-# This is exact (no coarse-cell rounding to reintroduce collisions, unlike an
-# even earlier cell-grid-BFS attempt) and finds a route around arbitrarily
-# shaped existing ink, including a previously-closed inner loop's own
-# rectangle.
-# `_route_legs` searches within a padded bounding box around start/target,
-# not the unbounded canvas: a real Line drawing's ink is sparse relative to
-# its own bounding box (thin 1px-wide strokes), so an unbounded search that
-# fails to find a route wastes enormous time re-discovering that most of a
-# huge, mostly-empty canvas is reachable before ever giving up -- confirmed
-# directly: a plain flood fill (independent of this module's own A*) from a
-# real failing case's start pixel did not finish within two minutes.  The
-# padding below starts modest and doubles on each retry (see `_close_loop`'s
-# caller, which is what actually widens it) rather than search unbounded
-# from the first attempt.
-_MAX_ROUTE_SEARCH = 300_000  # pragma: no mutate - generous per-attempt search-node cap
-
-
-# Cost, in path-length cells, added for each cell of a route that lands inside
-# an ``avoid`` region (a later detour's departure neighborhood -- see
-# :func:`_route_pending`).  Routes here run 100-250 cells and skirting a
-# doorstep costs ~10-20 cells of extra travel, so one unit's worth per
-# trespassed cell makes a crossing effectively a last resort (a 5-cell
-# incursion costs as much as 100 cells of honest travel) while never becoming
-# a wall: when a doorstep's neighborhood holds the only lane there is, the
-# route pays and crosses on the shortest chord instead of failing outright.
-# That "pays and crosses" case is real, not theoretical -- see
-# :func:`_route_pending` for the measured depth-4 geometry that has no
-# non-crossing alternative.
-_AVOID_PENALTY = _UNIT
-
-
-# How many *grid cells* of empty space a detour leg must keep between itself
-# and any unrelated existing ink, beyond simply not overlapping it.  One cell
-# here is `_UNIT` raster pixels of real separation, since the router works
-# entirely in cursor-grid space and `render` scales to pixels only when
-# rasterizing.
+# How many *grid cells* of empty space a loop-back's path must keep between
+# itself and any unrelated existing ink, beyond simply not overlapping it.
+# One cell here is `_UNIT` raster pixels of real separation, since layout
+# works entirely in cursor-grid space and `render` scales to pixels only
+# when rasterizing.
 #
 # Non-overlap alone is not enough for the extractor to read a drawing
 # correctly.  Two strokes running through directly *abutting* grid cells
@@ -377,14 +326,14 @@ _AVOID_PENALTY = _UNIT
 # unambiguity: with a gap, its off-center rays fall on background, so only
 # the stroke actually being walked lights up.
 #
-# Note the *nested-loop regression itself* was caused by a route touching
-# *itself*, which `_self_approaches` is what actually fixes -- per-stroke
-# attribution on `++[>++[>+<-]<-]>>.` showed all three arms of the spurious
-# junction belonging to one single 530-cell detour.  This constant addresses
-# the separate between-stroke case, and is pinned independently by
-# `test_bf_to_line.py`'s `TestStrokeSeparation`: at 0, every program it
-# checks develops between-stroke adjacency (up to 76 consecutive abutting
-# cells on `++[>++[>+<-]<-]>>+++.`), at 1 none does.
+# (Historically the *nested-loop regression itself* was a searched route
+# touching *itself* -- per-stroke attribution on `++[>++[>+<-]<-]>>.` showed
+# all three arms of the spurious junction belonging to one single 530-cell
+# detour.  Constructed loop-backs cannot fold back on themselves, so only
+# the between-stroke case remains live.)  This constant is pinned
+# independently by `test_bf_to_line.py`'s `TestStrokeSeparation`: at 0,
+# every program it checks develops between-stroke adjacency (up to 76
+# consecutive abutting cells on `++[>++[>+<-]<-]>>+++.`), at 1 none does.
 #
 # That test exists because the ordinary suites do *not* catch this on their
 # own -- they assert on program output, and a drawing can rasterize a 2px
@@ -392,161 +341,6 @@ _AVOID_PENALTY = _UNIT
 # this to 0 left every other test passing, which is exactly why measuring
 # stroke separation directly was needed to pin it.
 _CLEARANCE = 1
-
-
-# Radius, in *grid cells* (not raster pixels -- everything the router works
-# in is cursor-grid space, which `render` scales by `_UNIT` only at raster
-# time), around a detour's own departure point within which `_CLEARANCE` is
-# waived.  A detour leaves from the tip of the stroke that was just drawn,
-# so that stroke's own ink is legitimately right there -- enforcing clearance
-# against it would wall the route in before it takes a single step
-# (confirmed: doing so fails every loop-back outright, including the
-# previously-working single-level `+++[-].`).  Deliberately as small as
-# possible: one cell is enough to let the route step off its own stroke, and
-# anything larger silently disables `_CLEARANCE` over a wide area (at
-# `_UNIT`, it would waive clearance within 400 raster px of every departure
-# point, which is most of a small drawing).
-_DEPARTURE_EXEMPT = 1
-
-
-def _clear_at(
-    p: tuple[int, int],
-    occupied: set[tuple[int, int]],
-    exempt_origin: tuple[int, int] | None = None,
-) -> bool:
-    """Whether ``p`` and every pixel within :data:`_CLEARANCE` of it is free.
-
-    See :data:`_CLEARANCE`: a detour that merely avoids overlapping existing
-    ink can still run flush against it, which the extractor's band probe
-    cannot tell apart from a real junction.  Within
-    :data:`_DEPARTURE_EXEMPT` of ``exempt_origin`` (the route's own start),
-    only ``p`` itself must be free -- see that constant for why.
-    """
-    if exempt_origin is not None:
-        dy = abs(p[0] - exempt_origin[0])
-        dx = abs(p[1] - exempt_origin[1])
-        if max(dy, dx) <= _DEPARTURE_EXEMPT:
-            return p not in occupied
-    for dy in range(-_CLEARANCE, _CLEARANCE + 1):
-        for dx in range(-_CLEARANCE, _CLEARANCE + 1):
-            if (p[0] + dy, p[1] + dx) in occupied:
-                return False
-    return True
-
-
-def _edge_clear(
-    p: tuple[int, int],
-    direction: tuple[int, int],
-    occupied: set[tuple[int, int]],
-    exempt_origin: tuple[int, int] | None = None,
-) -> bool:
-    """Whether every pixel strictly between ``p`` and ``p + _UNIT*direction`` is clear.
-
-    "Clear" means clear *with clearance* -- see :data:`_CLEARANCE` for why
-    simple non-overlap lets two detours rasterize into one indistinguishable
-    2px-wide ribbon.
-    """
-    dy, dx = direction
-    y, x = p
-    for _ in range(_UNIT):
-        y, x = y + dy, x + dx
-        if not _clear_at((y, x), occupied, exempt_origin):
-            return False
-    return True
-
-
-def _astar(
-    start: tuple[int, int],
-    aim: tuple[int, int],
-    step: int,
-    bounds: tuple[int, int, int, int],
-    edge_clear: object,
-    *,
-    is_goal: object,
-    exempt_goal: object,
-    avoid: set[tuple[int, int]] | None = None,
-) -> list[tuple[int, int]] | None:
-    """Search 4-directionally from ``start`` toward ``aim`` on a ``step`` grid.
-
-    ``edge_clear(p, direction)`` decides whether the edge from ``p`` one
-    ``step`` in ``direction`` is passable.  ``aim`` only drives the search's
-    distance heuristic (Manhattan distance to it); the actual stopping
-    condition is ``is_goal(node)``, which lets a caller accept more than one
-    exact node as success -- see below for why the coarse pass needs that.
-    ``bounds`` is ``(lo_y, hi_y, lo_x, hi_x)``, the inclusive region node
-    coordinates must stay within.  Returns the node path (inclusive of both
-    ends), or ``None`` if exhausted without satisfying ``is_goal`` within
-    :data:`_MAX_ROUTE_SEARCH` explored nodes.  Shared by both the coarse
-    (:data:`_UNIT`-pixel step) and fine (1-pixel step) passes
-    :func:`_route_legs` runs -- the two differ only in step size, edge
-    validity, and goal test.
-
-    ``exempt_goal(node)`` controls whether arriving at a node satisfying
-    ``is_goal`` skips the edge-clear check for that final step -- ``True``
-    only for the real merge point (which is real ink by construction, see
-    :func:`_layout`).  The coarse pass's own *ideal* waypoint (the rounded
-    approximation of the real target -- see :func:`_route_legs`) must never
-    get this exemption: it can coincide with a genuinely occupied pixel by
-    pure coordinate coincidence (confirmed: a coarse waypoint landed exactly
-    on an unrelated fork's own branch vertex in a real nested-loop program,
-    and exempting it let the coarse path cross straight through real ink
-    that any other node would have been correctly blocked by).  Accepting
-    *any* node within one coarse step of that ideal point as the coarse
-    pass's goal (rather than forcing the single exact point, which is not
-    always reachable even when a nearby point clearly is) is what
-    :func:`_route_legs` actually uses ``is_goal`` for.
-
-    ``avoid`` is a set of cells that cost extra to enter but are not
-    obstacles: each ``avoid`` node stepped onto adds :data:`_AVOID_PENALTY`
-    to the path cost.  See :func:`_route_pending` for what these are (later
-    detours' departure neighborhoods) and why they must be costed rather
-    than blocked -- a hard block turns "keep off my doorstep if you can"
-    into a wall that can seal the only lane another route has.
-    """
-    import heapq
-    from collections.abc import Callable
-    from typing import cast
-
-    is_clear = cast(Callable[[tuple[int, int], tuple[int, int]], bool], edge_clear)
-    goal = cast(Callable[[tuple[int, int]], bool], is_goal)
-    exempt = cast(Callable[[tuple[int, int]], bool], exempt_goal)
-    dirs = [(-1, 0), (1, 0), (0, 1), (0, -1)]
-    ay, ax = aim
-    lo_y, hi_y, lo_x, hi_x = bounds
-
-    def h(p: tuple[int, int]) -> int:
-        return (abs(p[0] - ay) + abs(p[1] - ax)) // step
-
-    frontier: list[tuple[int, int, tuple[int, int]]] = [(h(start), 0, start)]
-    came_from: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
-    cost_so_far: dict[tuple[int, int], int] = {start: 0}
-    explored = 0
-
-    while frontier:
-        _, cost, cur = heapq.heappop(frontier)
-        if goal(cur):
-            path = [cur]
-            while came_from[path[-1]] is not None:
-                path.append(came_from[path[-1]])  # type: ignore[arg-type]
-            path.reverse()
-            return path
-        explored += 1
-        if explored > _MAX_ROUTE_SEARCH:
-            return None
-        for dy, dx in dirs:
-            nxt = (cur[0] + dy * step, cur[1] + dx * step)
-            if not (lo_y <= nxt[0] <= hi_y and lo_x <= nxt[1] <= hi_x):
-                continue
-            if not (goal(nxt) and exempt(nxt)) and not is_clear(cur, (dy, dx)):
-                continue
-            new_cost = cost + step
-            if avoid is not None and nxt in avoid:
-                new_cost += _AVOID_PENALTY
-            if nxt not in cost_so_far or new_cost < cost_so_far[nxt]:
-                cost_so_far[nxt] = new_cost
-                came_from[nxt] = cur
-                heapq.heappush(frontier, (new_cost + h(nxt), new_cost, nxt))
-    return None
 
 
 def _leg_cells(
@@ -562,380 +356,31 @@ def _leg_cells(
     return cells
 
 
-def _self_approaches(cells: list[tuple[int, int]]) -> bool:
-    """Whether a route ever runs within :data:`_CLEARANCE` of its own earlier self.
-
-    A route is planned against ``occupied`` as it stood *before* the route
-    existed, and A* never adds its own in-progress cells to that set -- so
-    nothing in the search stops a detour from doubling back and running flush
-    alongside a leg it laid down earlier in the very same route.  That is a
-    real failure, not a theoretical one: it is what remained of the
-    nested-loop regression after :data:`_CLEARANCE` fixed the *between*-detour
-    case.  Confirmed by per-stroke attribution on ``++[>++[>+<-]<-]>>.``,
-    where all three arms of the spurious T-junction that broke execution
-    belonged to one single stroke -- the inner loop's own 530-cell detour
-    touching itself.
-
-    Only cells far enough apart *along* the route are compared: consecutive
-    cells are trivially adjacent, and a legitimate 90-degree corner puts
-    cells a few steps apart near each other by construction.  Anything beyond
-    that window running within clearance is the route folding back onto
-    itself.
-    """
-    window = 2 * (_CLEARANCE + 1) + 1
-    seen: dict[tuple[int, int], int] = {}
-    for i, (y, x) in enumerate(cells):
-        for dy in range(-_CLEARANCE, _CLEARANCE + 1):
-            for dx in range(-_CLEARANCE, _CLEARANCE + 1):
-                j = seen.get((y + dy, x + dx))
-                if j is not None and i - j > window:
-                    return True
-        seen[(y, x)] = i
-    return False
-
-
-def _path_to_legs(path: list[tuple[int, int]]) -> list[tuple[tuple[int, int], int]]:
-    """Collapse a node path into ``(direction, pixel_length)`` runs."""
-    legs: list[tuple[tuple[int, int], int]] = []
-    for i in range(1, len(path)):
-        dy, dx = path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]
-        length = max(abs(dy), abs(dx))
-        direction = (
-            0 if dy == 0 else (1 if dy > 0 else -1),
-            0 if dx == 0 else (1 if dx > 0 else -1),
-        )
-        if legs and legs[-1][0] == direction:
-            legs[-1] = (direction, legs[-1][1] + length)
-        else:
-            legs.append((direction, length))
-    return legs
-
-
-def _route_legs(
-    start: tuple[int, int],
-    target: tuple[int, int],
-    occupied: set[tuple[int, int]],
-    padding: int,
-    avoid: set[tuple[int, int]] | None = None,
-) -> list[tuple[tuple[int, int], int]]:
-    """Route from ``start`` to ``target`` around ``occupied``, cardinal-only.
-
-    Only the 4 cardinal directions are ever used, never a diagonal step:
-    :mod:`extract`'s ``classify_ops`` identifies a real ``+``/``-`` opcode by
-    a single 45-degree diagonal jog of any length between two straight runs
-    (see its ``_FIXED_SIGNATURES``/lone-diagonal fallback), so a detour leg
-    that happens to be diagonal risks being misread as an extra, spurious
-    opcode call -- confirmed to actually happen with an earlier
-    diagonal-then-straight detour, which added a phantom ``-`` call to a
-    synthetic loop test.  Every cardinal-to-cardinal turn is 0, 90, or 180
-    degrees, which no opcode signature matches, so a purely 4-directional
-    path is unambiguous regardless of shape.
-
-    Two passes, not one: a pixel-exact A* over the whole distance was tried
-    first and rejected on performance grounds -- confirmed directly on a real
-    boolean-generator brainfuck program's compiled decision tree, where a
-    genuinely reachable target ~500px away timed out the search entirely
-    rather than being found, since a pixel grid explores ``_UNIT**2`` more
-    nodes than necessary to cover the same distance.  The fix: a *coarse*
-    A* first, stepping by whole :data:`render._UNIT` grid units (matching the
-    scale every straight run in a Line drawing already uses) with each edge
-    validated pixel-by-pixel (:func:`_edge_clear`) so coarse safety is exactly
-    equivalent to fine safety for that edge -- covering the bulk of the
-    distance at ``_UNIT**2`` fewer explored nodes.  The coarse grid is
-    anchored at ``start`` (so ``start`` always lands exactly on it) and aimed
-    at the coarse node nearest ``target``, which will not generally *be*
-    ``target`` exactly; a second, fine (1-pixel step) A* then covers the
-    short residual gap (at most one grid unit per axis), landing exactly.
-    When the split itself is what fails -- the coarse lattice cannot thread a
-    corridor the drawing genuinely contains -- a pixel-exact A* over the same
-    padded bounds runs as a last resort; see the recovery comment in the body
-    for the measured case that requires it.
-
-    ``target`` is reachable even though it is itself real ink (the merge
-    point sits inside an existing stroke's segment by construction -- see
-    :func:`_layout`) -- only cells strictly between ``start`` and ``target``
-    are required to be clear, matching the same "goal is the one exception"
-    rule an earlier cell-grid attempt used.  The search is confined to the
-    bounding box of ``start``/``target`` expanded by ``padding`` pixels on
-    every side (an unbounded search is impractical -- confirmed directly: a
-    plain flood fill, independent of this module's own A*, from a real
-    failing case's start pixel did not finish within two minutes on a huge,
-    mostly-empty canvas); :func:`_close_loop` retries with a larger
-    ``padding`` if this raises :class:`ValueError`.
-
-    Returns collapsed ``(direction, length)`` legs (consecutive same-
-    direction runs merged) rather than a raw pixel list, so the caller can
-    walk it with a handful of ``cursor.advance`` calls, matching every other
-    stroke in a Line drawing's straight-run style.
-    """
-    ty, tx = target
-    lo_y, hi_y = min(start[0], ty) - padding, max(start[0], ty) + padding
-    lo_x, hi_x = min(start[1], tx) - padding, max(start[1], tx) + padding
-    bounds = (lo_y, hi_y, lo_x, hi_x)
-
-    def coarse_clear(p: tuple[int, int], direction: tuple[int, int]) -> bool:
-        return _edge_clear(p, direction, occupied, start)
-
-    dy, dx = ty - start[0], tx - start[1]
-    rounded = (
-        start[0] + round(dy / _UNIT) * _UNIT,
-        start[1] + round(dx / _UNIT) * _UNIT,
-    )
-    # `rounded` is only ever an *approximation* of `target` (see docstring),
-    # not itself guaranteed clear -- it can coincide exactly with genuinely
-    # occupied ink by pure coordinate coincidence (confirmed: a rounded
-    # waypoint landed exactly on an unrelated fork's own branch vertex in a
-    # real nested-loop program).  Accepting `rounded` *or* any of its 4
-    # immediate coarse neighbors as the goal (rather than forcing exactly
-    # `rounded`, which is not always reachable even when a neighbor clearly
-    # is -- confirmed on the same program, where nudging to a single fixed
-    # neighbor still failed) lets A* itself find whichever candidate the
-    # occupied geometry actually permits; the fine pass below then covers
-    # however much residual gap to the real `target` whichever candidate
-    # won leaves (at most one grid unit further per axis than `rounded`
-    # alone would have).
-    coarse_candidates = {rounded}
-    for cdy, cdx in ((-1, 0), (1, 0), (0, 1), (0, -1)):
-        coarse_candidates.add((rounded[0] + cdy * _UNIT, rounded[1] + cdx * _UNIT))
-
-    def never_exempt(p: tuple[int, int]) -> bool:
-        del p
-        return False
-
-    def fine_clear(p: tuple[int, int], direction: tuple[int, int]) -> bool:
-        nxt = (p[0] + direction[0], p[1] + direction[1])
-        return _clear_at(nxt, occupied, start)
-
-    def fine_goal(p: tuple[int, int]) -> bool:
-        return p == target
-
-    def exempt_final(p: tuple[int, int]) -> bool:
-        return p == target
-
-    # The coarse pass stops at whichever candidate is *cheapest from the
-    # start*, which is not necessarily one the fine pass can work from.
-    # Measured on the depth-4 program `+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.` after
-    # corridor-reserving layout (see :func:`_arm_spacing`) had made its routes
-    # exist at all: the start's own column happened to align with the
-    # candidate one coarse step *left* of `rounded`, so the coarse pass ran 40
-    # cells straight up, stopped there -- on the wrong side of a wall -- and
-    # the fine pass then did the entire remaining journey at pixel step,
-    # coming back down through the coarse leg's own cells (one cell was
-    # visited twice).  `_close_loop` correctly rejects such a route as
-    # self-approaching, and since every offset failed the same way, the render
-    # failed even though clear pixel routes existed (a full pixel A* from the
-    # same start reached 11 approach points in ~0.05s each, none folding).
-    #
-    # Two recoveries, tried in order, both leaving the success path
-    # untouched -- a route that succeeds on the first candidate routes
-    # identically to before they existed, so only failures can change, into
-    # recoveries:
-    #
-    # 1. When the fine pass fails outright or the combined path folds back on
-    #    itself, exclude the candidate the coarse pass reached and re-run it
-    #    (at most 5 candidates exist, so this terminates).  This is the cheap
-    #    rescue for long hauls, where a full pixel search is the thing the
-    #    two-pass split exists to avoid.
-    # 2. When no coarse candidate yields a clean route at all, fall back to a
-    #    single pixel-exact A* over the same padded bounds.  A corridor
-    #    reserved by :func:`_arm_spacing` is `_GOTO_CORRIDOR` = 3 cells wide
-    #    -- wide enough for exactly one clear line -- and a coarse edge is 20
-    #    consecutive clear cells anchored to the start's own lattice, so the
-    #    coarse pass can only thread a corridor by alignment luck; the pixel
-    #    pass threads it by construction.  Measured on the same depth-4
-    #    program: after recovery 1 still found nothing (no second candidate
-    #    was coarse-reachable), this pass routed it in well under a second.
-    #    `_MAX_ROUTE_SEARCH` bounds the cost like every other attempt.
-    #
-    # (`_close_loop` still runs its own diagonal-inclusive `_self_approaches`
-    # check on top; the checks here cannot see the diagonal.)
-    excluded: set[tuple[int, int]] = set()
-    for _ in range(len(coarse_candidates)):
-
-        def coarse_goal(p: tuple[int, int]) -> bool:
-            return p in coarse_candidates and p not in excluded
-
-        # The coarse pass penalizes only its own 20-cell *nodes* landing in
-        # `avoid`, so a coarse edge can cross a small avoid region with both
-        # endpoints outside it, unpenalized.  Accepted: the crowded regions
-        # where doorsteps live route via the per-cell pixel passes anyway
-        # (measured -- that is what the fallback below exists for).
-        coarse_path = _astar(
-            start,
-            rounded,
-            _UNIT,
-            bounds,
-            coarse_clear,
-            is_goal=coarse_goal,
-            exempt_goal=never_exempt,
-            avoid=avoid,
-        )
-        if coarse_path is None:
-            break
-        coarse_target = coarse_path[-1]
-
-        fine_path = _astar(
-            coarse_target,
-            target,
-            1,
-            bounds,
-            fine_clear,
-            is_goal=fine_goal,
-            exempt_goal=exempt_final,
-            avoid=avoid,
-        )
-        if fine_path is None:
-            excluded.add(coarse_target)
-            continue
-
-        legs = _path_to_legs(coarse_path + fine_path[1:])
-        if _self_approaches(_leg_cells(start, legs)):
-            excluded.add(coarse_target)
-            continue
-        return legs
-
-    full_path = _astar(
-        start,
-        target,
-        1,
-        bounds,
-        fine_clear,
-        is_goal=fine_goal,
-        exempt_goal=exempt_final,
-        avoid=avoid,
-    )
-    if full_path is not None:
-        legs = _path_to_legs(full_path)
-        if not _self_approaches(_leg_cells(start, legs)):
-            return legs
-
-    raise ValueError(
-        "no clear route found for the loop-back detour within the "
-        "current search padding -- the drawing may be too densely "
-        "packed for this program's loop nesting"
-    )
-
-
-# Starting search padding (pixels) for `_close_loop`'s first attempt, and
-# how many times it doubles before giving up -- kept small at first so the
-# common case (a nearby, unobstructed reconnection) resolves in a small,
-# fast search rather than always paying for a search of the whole drawing's
-# extent up front.  4 doublings from 4*_UNIT covers well past any real
-# fixture or generated program tried here before the per-attempt node cap
-# (`_MAX_ROUTE_SEARCH`) would matter at that padding.
-_INITIAL_PADDING = 4 * _UNIT
-_MAX_PADDING_DOUBLINGS = 6
-
-
-def _close_loop(
-    cursor: _Cursor,
-    stem_start: tuple[int, int],
-    stem_heading: tuple[int, int],
-    occupied: set[tuple[int, int]],
-    avoid: set[tuple[int, int]] | None = None,
-) -> None:
-    """Route from ``cursor``'s current point onto some point along a stem.
-
-    ``stem_start``/``stem_heading`` describe the straight run leading into
-    some ``?`` node's own branch point (recorded by :func:`_layout`); the
-    reconnection lands strictly *inside* that run, not the fork's own vertex
-    -- see the comment above :func:`_route_legs` for why.  Tries every whole-
-    unit offset from 1 to :data:`_STEM_LEN` - 1 in turn (skipping the two
-    ends, which are real vertices, not interior points) at a given search
-    padding, routing to whichever is reachable first via :func:`_route_legs`
-    -- a single fixed offset (e.g. always the exact midpoint) can end up
-    walled in on every side by unrelated ink drawn elsewhere after this stem,
-    which happens in practice in a dense decision tree (confirmed on a real
-    boolean-generator brainfuck program's compiled output).
-
-    All offsets are tried at the current padding before the padding itself
-    grows (see :data:`_INITIAL_PADDING`/:data:`_MAX_PADDING_DOUBLINGS`): most
-    reconnections are found nearby, so this keeps the common case cheap and
-    only pays for a wider search when every offset genuinely needs more room
-    to route around.
-
-    ``avoid`` is passed through to the router as soft cost (see
-    :func:`_astar` and :func:`_route_pending`); an approach point sitting
-    *inside* an avoid region is skipped outright, since landing the detour's
-    final corner on a later detour's doorstep defeats the region's purpose.
-    Every clearance check here stays against real ``occupied`` ink only.
-    """
-    hy, hx = stem_heading
-    targets = [
-        (stem_start[0] + hy * offset, stem_start[1] + hx * offset)
-        for offset in range(1, _STEM_LEN)
-    ]
-    padding = _INITIAL_PADDING
-    errors: list[str] = []
-    for _ in range(_MAX_PADDING_DOUBLINGS + 1):
-        for target in targets:
-            for approach, diagonal in _approach_points(target, stem_heading):
-                # Route cardinally to the diagonal approach point, then take
-                # the final diagonal leg onto the stem by hand -- see
-                # `_approach_points` for why the last leg cannot be cardinal.
-                # The approach point is an ordinary detour corner, so it needs
-                # full clearance; the diagonal's own pixels only need to be
-                # free, since by the last step or two they are deliberately
-                # closing on the stem's ink and clearance cannot hold there.
-                if not _clear_at(approach, occupied):
-                    continue
-                if avoid is not None and approach in avoid:
-                    continue
-                if any(
-                    (
-                        approach[0] + diagonal[0] * i,
-                        approach[1] + diagonal[1] * i,
-                    )
-                    in occupied
-                    for i in range(1, _DIAGONAL_APPROACH)
-                ):
-                    continue
-                try:
-                    legs = _route_legs(
-                        (cursor.y, cursor.x), approach, occupied, padding, avoid
-                    )
-                except ValueError as exc:
-                    errors.append(str(exc))
-                    continue
-                # A* plans against `occupied` as it stood before this route
-                # existed, so it cannot see the route's own cells -- reject a
-                # route that folds back alongside itself and try the next
-                # candidate instead (see `_self_approaches`).
-                full = [*legs, (diagonal, _DIAGONAL_APPROACH)]
-                if _self_approaches(_leg_cells((cursor.y, cursor.x), full)):
-                    errors.append("route folded back onto itself")
-                    continue
-                for direction, length in legs:
-                    cursor.advance(direction, length)
-                cursor.advance(diagonal, _DIAGONAL_APPROACH)
-                if (cursor.y, cursor.x) != target:  # pragma: no cover - geometry guard
-                    raise AssertionError(
-                        f"loop-back detour landed at {(cursor.y, cursor.x)}, "
-                        f"expected {target}"
-                    )
-                return
-        padding *= 2
-    raise ValueError(
-        "no clear route found for the loop-back detour at any offset along "
-        "the target stem, even at maximum search padding -- the drawing may "
-        f"be too densely packed for this program's loop nesting ({errors[-1]})"
-    )
-
-
 # Length (in grid units) of the stem `_layout` walks into a `?` node's own
-# branch point.  `_close_loop` tries every whole-unit offset from 1 to this
-# minus 1 as a candidate reconnection point (see its own docstring for why
-# more than one candidate is needed), so this is also how many candidates
-# a loop-back gets to find a clear one -- long enough in practice for every
-# fixture and generated program tried, including a real boolean-generator
-# brainfuck program's dense compiled decision tree.
+# branch point.  A loop-back lands strictly inside this run (at
+# `_RETURN_STEM_T` from the vertex), so the stem must be long enough that
+# the landing diagonal fits between its two real vertices.
 _STEM_LEN = 10
 
 
-# How far back along the detour the final *diagonal* approach leg starts, in
-# *grid cells* (so 6 here is 120 raster pixels, comfortably longer than
-# `lattice.star`'s own 15px probe).  See `_approach_points` for why the last
-# leg must be diagonal rather than cardinal like the rest of the route.
+# Length of a loop-back's final *diagonal* landing leg, in *grid cells* (so
+# 6 here is 120 raster pixels, comfortably longer than `lattice.star`'s own
+# 15px probe).
+#
+# The diagonal arrival is load-bearing, not cosmetic.  Every other leg of a
+# return path is cardinal, and the stem being landed on is itself a cardinal
+# run, so a cardinal final approach is necessarily *perpendicular* to the
+# stem -- and a perpendicular touch-down onto a straight run lights exactly
+# the arrival direction plus the stem's own two directions, which is
+# precisely the T-branch signature `lattice._classify` calls a real
+# `"fork"`.  The extractor would then read the loop-back merge as a
+# conditional turn, and `simulate` would execute the reconnection as a
+# branch instead of a jump.  Arriving diagonally lights that same stem pair
+# plus a direction *not* perpendicular to it, which `_classify` correctly
+# calls `"merge"` -- stopping the stroke as a leaf, exactly what
+# `simulate._compile`'s `find_merge` rescues into a `goto`.  This matches
+# how the wiki's own hand-drawn fixtures reconnect (`addition.png`'s
+# loop-body arm arrives at its stem on a diagonal).
 #
 # Being *longer* than the probe is what makes this work, not shorter: the
 # probe must find a full, unbroken band segment along the diagonal so the
@@ -945,66 +390,6 @@ _STEM_LEN = 10
 # `"straight"` bend, which the walker would sail straight through, continuing
 # down the stem instead of stopping the stroke as a leaf.
 _DIAGONAL_APPROACH = 6
-
-
-# Half-width, in grid cells, of the landing strip :func:`_route_pending`
-# keeps open through a ring fence, centered on the target stem's line.  Not
-# chosen: an approach point sits `_DIAGONAL_APPROACH` cells off the stem's
-# axis (see `_approach_points` -- the diagonal's components are each 1 per
-# step), and needs `_CLEARANCE` + 1 more so its own clearance check never
-# touches the fence.
-_STRIP_HALF_WIDTH = _DIAGONAL_APPROACH + _CLEARANCE + 1
-
-
-def _approach_points(
-    target: tuple[int, int], stem_heading: tuple[int, int]
-) -> list[tuple[tuple[int, int], tuple[int, int]]]:
-    """Candidate ``(approach_start, diagonal)`` pairs for landing on ``target``.
-
-    The detour's final step onto the stem must arrive *diagonally*, not
-    cardinally, and this is load-bearing rather than cosmetic.  Everything
-    :func:`_route_legs` draws is cardinal-only (see its docstring -- a
-    diagonal detour leg risks being misread as a ``+``/``-`` kink), and the
-    stem being landed on is itself a cardinal run, so a cardinal final
-    approach is necessarily *perpendicular* to the stem.  A perpendicular
-    touch-down onto a straight run lights exactly the arrival direction plus
-    the stem's own two directions -- which is the arrived-from direction plus
-    the pair perpendicular to it, i.e. precisely the T-branch signature
-    ``lattice._classify`` calls a real ``"fork"``.  The extractor then reads
-    the loop-back merge as a conditional turn, and :mod:`simulate` executes
-    the reconnection as a branch instead of a jump.
-
-    Arriving diagonally lights that same stem pair plus a direction that is
-    *not* perpendicular to it, which ``_classify`` correctly calls
-    ``"merge"`` -- stopping the stroke as a leaf, which is exactly what
-    :func:`simulate._compile`'s ``find_merge`` expects to rescue into a
-    ``goto``.  This also matches how the wiki's own hand-drawn fixtures
-    reconnect (``addition.png``'s loop-body arm arrives at its stem on a
-    diagonal), which is why merge classification worked there and why this
-    only ever broke on rendered output.
-
-    Both diagonals leaving the target on each side of the stem are offered,
-    since either may be walled in by unrelated ink; the caller tries them in
-    turn.  Each pair is ``(approach_start, diagonal_direction)`` where
-    ``approach_start`` is a clear cardinal-routable point and stepping
-    ``_DIAGONAL_APPROACH`` times along ``diagonal_direction`` from it lands
-    exactly on ``target``.
-    """
-    hy, hx = stem_heading
-    pairs = []
-    for side in (1, -1):
-        py, px = _turn_right((hy, hx))
-        py, px = py * side, px * side
-        # Step *back* along the stem and out to one side, so the return trip
-        # is a diagonal that lands on the target from off the stem's line.
-        for along in (1, -1):
-            diagonal = (-hy * along - py, -hx * along - px)
-            start = (
-                target[0] - diagonal[0] * _DIAGONAL_APPROACH,
-                target[1] - diagonal[1] * _DIAGONAL_APPROACH,
-            )
-            pairs.append((start, diagonal))
-    return pairs
 
 
 # Minimum gap (grid units) a fork arm runs before laying out its content, and
@@ -1039,19 +424,18 @@ def _approach_points(
 _BRANCH_SPACING = 5
 
 
-# Width, in grid cells, of the routing corridor one loop-back detour needs to
-# pass an arm -- see :func:`_arm_spacing`, which reserves one of these per
-# `goto` beneath the arm.
+# Width, in grid cells, of the corridor one loop-back's path needs to pass
+# an arm -- see :func:`_arm_spacing`, which reserves one of these per `goto`
+# beneath the arm, and whose floor-plus-corridor sum is what guarantees
+# :func:`_loop_return_legs` a bay at least ``_BRANCH_SPACING +
+# _GOTO_CORRIDOR`` = 8 cells wide between body content and the trunk axis.
 #
-# This is not a chosen number, which matters: a fixed `_GOTO_CHANNEL` constant
-# was tried during the depth-3 work and removed precisely because it was
-# guessing at a quantity nothing had measured.  It is the swath a routed
-# detour actually blocks, and the router itself defines that: one cell of the
-# detour's own stroke, plus `_CLEARANCE` of mandated gap on either side (see
-# :func:`_clear_at` -- a route is rejected unless every cell within
-# `_CLEARANCE` is free, so a detour makes a `1 + 2*_CLEARANCE` band unusable,
-# not merely its own line).  Written as the expression rather than its value
-# so that changing `_CLEARANCE` moves the corridors with it.
+# This is not a chosen number, which matters: a fixed `_GOTO_CHANNEL`
+# constant was tried during the depth-3 work and removed precisely because
+# it was guessing at a quantity nothing had measured.  It is the swath a
+# drawn path actually blocks: one cell of its own stroke, plus `_CLEARANCE`
+# of mandated gap on either side.  Written as the expression rather than its
+# value so that changing `_CLEARANCE` moves the corridors with it.
 _GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
 
 
@@ -1112,7 +496,8 @@ def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
     depth-3 programs `+[>+[>+[>+<-]<-]<-]>>>.` and
     `++[>++[>++[>+<-]<-]<-]>>>.` produce *identical* spacing at every fork
     (40/20/10 units) despite carrying different op counts in every arm, and
-    the heavier one is exactly the case that exhausts `_close_loop`'s router.
+    the heavier one is exactly the case that exhausted the since-removed
+    search-based router under fork-count spacing.
     A fork's two arms are sized identically for the same reason, even when
     wildly asymmetric (the depth-0 fork above has 4 ops on one arm and 14 on
     the other).  Extent is the quantity the layout actually needs, so it is
@@ -1121,11 +506,13 @@ def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
     Deliberately runs the *real* :func:`_layout` against a scratch cursor
     rather than reimplementing its geometry: a parallel size-estimating walk
     would drift from the code that actually draws, and then every extent it
-    reports is a quiet lie.  The scratch cursor carries no `occupied` set,
-    which is exactly what makes `_layout` treat a `goto` as terminal (see its
-    ``measuring`` parameter) -- a detour cannot be routed in isolation anyway,
-    since routing needs the whole drawing's occupancy -- see
-    :func:`_route_pending`, which routes every detour after layout finishes.
+    reports is a quiet lie.  The dry run draws every *nested* loop-back
+    (their target forks live inside the measured chain, so their constructed
+    returns are pure local geometry -- see :func:`_loop_return_legs`), which
+    is exactly what lets ancestors reserve room for them; only the chain's
+    own outermost ``goto`` is treated as terminal, since its target fork
+    belongs to the caller's frame, and that is precisely where its return
+    path gets drawn instead.
     """
     if node is None:
         return (0, 0, 0, 0)
@@ -1140,184 +527,6 @@ def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
     extent = (min(ys), max(ys), min(xs), max(xs))
     _EXTENT_CACHE[id(node)] = extent
     return extent
-
-
-@dataclass
-class _Pending:
-    """One loop-back detour whose routing is deferred to `render()`'s 2nd phase.
-
-    Holds the cursor sitting at the loop body's end (already flushed, so its
-    own ink is in `occupied`), the ``?`` node the ``goto`` targets, and the
-    fork-nesting ``depth`` the jump was found at -- see
-    :func:`_route_pending` for what the depth orders.
-    """
-
-    cursor: _Cursor
-    target: Node
-    depth: int
-
-
-def _route_pending(
-    pending: list[_Pending],
-    entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
-    occupied: set[tuple[int, int]],
-    boxes: dict[int, tuple[int, int, int, int]] | None = None,
-) -> list[list[tuple[int, int]]]:
-    """Route every deferred loop-back detour, outermost fork first.
-
-    Routing a detour the moment its ``goto`` is reached -- what `_layout` used
-    to do -- is an ordering bug, not a spacing one.  A detour routes against
-    `occupied` *as it stands mid-layout*, so it can only avoid ink already
-    drawn; every stroke laid out afterwards is free to march straight through
-    the corridor it just took, and nothing ever checks.  No amount of extra
-    arm spacing fixes that, because the collision is with geometry that did
-    not exist when the route was chosen.  (An earlier attempt here reserved a
-    fixed routing channel per loop-carrying arm, which is a guess at a
-    quantity this ordering makes unknowable.)
-
-    Deferring every detour until all fixed geometry exists means each one
-    routes against the *complete* drawing, plus every detour already routed
-    before it -- so `_CLEARANCE` and `_self_approaches` mean what they say.
-    This is the two-phase layout ``WIP.md`` proposed ("place all fixed
-    geometry, then route every ``goto`` outermost-first against full
-    occupancy").
-
-    Outermost-first (shallowest fork depth) matters because an outer loop's
-    detour has to travel around everything its nested inner loops occupy,
-    while an inner one is comparatively local: letting the constrained route
-    choose first leaves the flexible one to work around it, rather than the
-    reverse.
-
-    **The ring constraint.**  Free-form search cannot nest: measured on the
-    depth-5 program, the depth-3 detour's shortest clear route cut the
-    depth-4 detour's region from 96% reachable to 5%, and pricing lanes with
-    soft costs cannot fix that, because a route that *must* cross a lane
-    pays the toll and cuts it exactly as thoroughly as a free one.  But
-    nested loop-backs are topologically nested, so each detour is fenced out
-    of its own subtree's *interior* (its target fork's measured bounding box
-    from ``boxes``, eroded by :data:`_GOTO_CORRIDOR`) -- everything deeper
-    lives inside that box, so a route that stays outside it can never cut a
-    deeper lane.  Two measured facts make this workable: every detour's
-    departure point sits exactly on its own box's perimeter (measured
-    ``start->edge=0`` for all detours at depths 3-7), and the landing stem,
-    which sits 17-29 cells *inside* the box (arm content reaches back around
-    it), is reachable through a strip along the stem's own line, which is
-    empty by construction (the trunk axis clearance `_arm_spacing`
-    guarantees).  So the fence keeps a stem-aligned strip of half-width
-    :data:`_STRIP_HALF_WIDTH` open, and the route dives in along it.
-
-    Rings on shared box edges must *stack* -- inner and outer boxes share
-    edges, and whichever ring routes first at the shared edge starves the
-    other (measured both ways: outermost-first starved the inner ring at
-    depth 5, innermost-first starved the outer one even at depth 3).  The
-    shell term below resolves it: each ring pays soft cost within
-    `_GOTO_CORRIDOR` of its own box per *deeper* pending detour, so shallow
-    rings ride farther out and deep rings hug, onion-style, using exactly
-    the lateral room `_arm_spacing`'s corridor term reserved.  With that,
-    depths 5 and 6 route completely (measured; depth 7 pushes the congestion
-    one ring further and is the current ceiling).
-
-    A detour whose constrained attempt fails falls back to the
-    unconstrained route -- correctness never depends on the fence, only
-    nesting capacity does, and the innermost detour of a deep program
-    (whose free route is tiny and has nothing deeper left to seal) uses
-    exactly that fallback.
-    """
-    strokes: list[list[tuple[int, int]]] = []
-    order = sorted(pending, key=lambda p: p.depth)
-    for i, entry in enumerate(order):
-        stem_start, stem_heading = entries[id(entry.target)]
-        # Every detour not yet routed will have to *leave* its own departure
-        # point, so no earlier route should squat on it.  Without this, an
-        # earlier route is free to run directly across a later departure
-        # point's doorstep -- A* takes the shortest clear path, which hugs
-        # existing ink at exactly `_CLEARANCE`, and a departure point sits at
-        # the tip of drawn ink by construction.  Measured on the depth-4
-        # program: the depth-3 detour's route boxed the first depth-4 detour's
-        # start into an 8-cell pocket (out of a ~28000-cell canvas), with
-        # attribution showing that one route alone responsible.
-        #
-        # The `_GOTO_CORRIDOR`-radius block around each future start is
-        # *costed*, not blocked (see :data:`_AVOID_PENALTY`): passing it as
-        # hard occupancy was tried and failed the same program one detour
-        # later, because the two depth-4 doorsteps sit a column apart and the
-        # first's only lane to its stem runs straight through the second's
-        # blocked ring -- 152 reachable cells with the ring hard, 1086
-        # without.  A finite cost keeps doorsteps clear whenever a clear
-        # alternative exists and, when none does, lets the route cross on the
-        # shortest chord.  Measured on the shipped path: three of the four
-        # routes trespass zero avoid cells, and the boxed-in one pays exactly
-        # a 7-cell chord through the last doorstep's region, passing at
-        # distance 3 from its start -- which still escapes, since the chord
-        # crosses a side its own route never needs.  The regions never enter
-        # the real `occupied` set, so once a detour's own turn comes its
-        # reservation is gone and its route is checked only against real ink.
-        avoid: set[tuple[int, int]] = set()
-        for later in order[i + 1 :]:
-            sy, sx = later.cursor.y, later.cursor.x
-            for dy in range(-_GOTO_CORRIDOR, _GOTO_CORRIDOR + 1):
-                for dx in range(-_GOTO_CORRIDOR, _GOTO_CORRIDOR + 1):
-                    avoid.add((sy + dy, sx + dx))
-        # The ring fence and shell term -- see the docstring.  The fence is
-        # the target box's interior, eroded by `_GOTO_CORRIDOR` so the route
-        # can hug the box's own extremal ink from outside, minus the landing
-        # strip along the stem's line (forward the stem's length for the
-        # approach points, backward far enough to exit the box).
-        hardblock: set[tuple[int, int]] = set()
-        shell_avoid: set[tuple[int, int]] = set()
-        box = None if boxes is None else boxes.get(id(entry.target))
-        if box is not None:
-            lo_y, hi_y, lo_x, hi_x = box
-            ss, (hy, hx) = stem_start, stem_heading
-            by, bx = -hy, -hx
-            back_len = (
-                (
-                    {(1, 0): hi_y - ss[0], (-1, 0): ss[0] - lo_y}.get((by, bx))
-                    if bx == 0
-                    else {(0, 1): hi_x - ss[1], (0, -1): ss[1] - lo_x}[(by, bx)]
-                )
-                + _GOTO_CORRIDOR
-                + 2
-            )
-            e = _GOTO_CORRIDOR
-            for y in range(lo_y + e, hi_y - e + 1):
-                for x in range(lo_x + e, hi_x - e + 1):
-                    along = (y - ss[0]) * by + (x - ss[1]) * bx
-                    cross = abs((y - ss[0]) * bx - (x - ss[1]) * by)
-                    if -_STEM_LEN <= along <= back_len and cross <= _STRIP_HALF_WIDTH:
-                        continue
-                    hardblock.add((y, x))
-            deeper = sum(1 for later in order[i + 1 :] if later.depth > entry.depth)
-            shell = _GOTO_CORRIDOR * deeper
-            if shell:
-                for y in range(lo_y - shell, hi_y + shell + 1):
-                    for x in range(lo_x - shell, hi_x + shell + 1):
-                        if not (lo_y <= y <= hi_y and lo_x <= x <= hi_x):
-                            shell_avoid.add((y, x))
-        # Only the strokes *this* call adds: the cursor already carries the
-        # loop body's own strokes, which the fork that spawned it collected
-        # into the drawing when `_layout` returned.  Extending with the whole
-        # list would hand every loop body back a second time.
-        before = len(entry.cursor.strokes)
-        if hardblock:
-            try:
-                _close_loop(
-                    entry.cursor,
-                    stem_start,
-                    stem_heading,
-                    occupied | hardblock,
-                    avoid | shell_avoid,
-                )
-            except ValueError:
-                # Constrained routing is a capacity feature, not a
-                # correctness one -- fall back to the free route (see the
-                # docstring).
-                _close_loop(entry.cursor, stem_start, stem_heading, occupied, avoid)
-        else:
-            _close_loop(entry.cursor, stem_start, stem_heading, occupied, avoid)
-        entry.cursor.finish()
-        strokes.extend(entry.cursor.strokes[before:])
-    return strokes
 
 
 def _arm_spacing(arm: Node | None) -> int:
@@ -1355,22 +564,14 @@ def _arm_spacing(arm: Node | None) -> int:
     that reaches back barely at all still gets a real gap.
 
     On top of that, an arm reserves one :data:`_GOTO_CORRIDOR` per ``goto``
-    beneath it, which is what makes nesting past depth 3 drawable.  The reason
-    is measured rather than assumed (the depth-4 failure was instrumented
-    before being characterised -- see ``WIP.md``): detours are far bigger than
-    the program they serve, so the binding constraint is not fixed geometry at
-    all but *earlier detours*.  On `+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.`, a flood
-    fill from the third detour's own departure point reached 5% of the canvas,
-    and attribution showed a single earlier detour responsible: with fixed
-    geometry alone that same point reached 97%.  With every inner arm sitting
-    at the `_BRANCH_SPACING` floor of 5, one detour crossing a gap blocks
-    `_GOTO_CORRIDOR` of it and seals the region behind it into a pocket.
-
-    Reserving `n * _GOTO_CORRIDOR` makes a gap survive the `n` crossings that
-    can actually occur and still leave a corridor's worth of room for the
-    passage itself.  The reservation is not a routing *preference* -- A* takes
-    whatever is shortest and clear, and a detour may still sweep the long way
-    around; it works by leaving the drawing connected once it does.
+    beneath it.  This term predates the constructed loop-backs (it was
+    measured into existence when searched detours were sealing each other's
+    regions -- see ``WIP.md``'s depth-4 entry), and it is now what
+    *guarantees* :func:`_loop_return_legs` its bay: a goto-carrying arm's
+    run is at least ``_BRANCH_SPACING + _GOTO_CORRIDOR`` = 8 longer than its
+    content reaches back, so the gap between body content and the trunk axis
+    always fits the bay lane at lateral offset :data:`_DIAGONAL_APPROACH`
+    with `_CLEARANCE` to spare on both sides.
 
     The term is deliberately added to the arm being measured, once, and only
     for arms that carry a `goto`: an earlier version of this function had a
@@ -1399,8 +600,8 @@ _RING_OFFSET = _CLEARANCE + 1
 # The fixed stem offset a constructed loop-back lands on, from the fork
 # vertex (so `_STEM_LEN - _RETURN_STEM_T` cells past `stem_start`).  Any
 # interior offset works -- the construction reserves its whole landing
-# geometry, so unlike the router's offset scan nothing can wall one choice
-# in -- and the midpoint keeps the diagonal clear of both stem ends.
+# geometry, so unlike the removed router's offset scan nothing can wall one
+# choice in -- and the midpoint keeps the diagonal clear of both stem ends.
 _RETURN_STEM_T = _STEM_LEN // 2
 
 
@@ -1429,21 +630,22 @@ def _loop_return_legs(
       :func:`_subtree_extent` of the fork's ``nonzero`` arm: all body ink
       including nested loops' own return paths, excluding this return path.
     - From the body's end (which sits on ``B0``'s perimeter -- measured true
-      at every depth tried, and checked below with a ``None`` fallback to
-      the router when it does not hold), step :data:`_RING_OFFSET` outward,
-      then walk the ring around ``B0`` to the corner nearest the stem,
-      always arriving on the bay side via that corner so the path never
-      crosses the arm stroke (which pierces the bay line at ``x = 0``).
+      at every depth tried, and checked below), step :data:`_RING_OFFSET`
+      outward, then walk the ring around ``B0`` to the corner nearest the
+      stem, always arriving on the bay side via that corner so the path
+      never crosses the arm stroke (which pierces the bay line at
+      ``x = 0``).
     - Ride the bay -- the gap :func:`_arm_spacing` reserves between body
       content and the trunk axis, at least ``_BRANCH_SPACING +
       _GOTO_CORRIDOR`` = 8 wide for any goto-carrying arm -- to the landing
-      approach, and close with the same :data:`_DIAGONAL_APPROACH` diagonal
-      the router uses (the diagonal arrival is what makes the extractor read
-      a ``"merge"``, see :func:`_approach_points`).
+      approach, and close with a :data:`_DIAGONAL_APPROACH` diagonal (the
+      diagonal arrival is what makes the extractor read a ``"merge"`` rather
+      than a spurious fork -- see that constant's comment).
 
     Returns world-frame ``(direction, length)`` legs, or ``None`` when a
-    premise fails (body end off the perimeter, degenerate geometry) -- the
-    caller falls back to the search-based router for that goto.
+    premise fails (body end off the perimeter, degenerate geometry) -- a
+    shape only a hand-built graph can produce, which :func:`_layout` then
+    rejects loudly rather than misdrawing.
     """
     stem_start, h = entries[id(target)]
     a_h = _turn_left(h)
@@ -1529,49 +731,33 @@ def _layout(
     depth: int = 0,
     *,
     measuring: bool = False,
-    pending: list[_Pending] | None = None,
-    boxes: dict[int, tuple[int, int, int, int]] | None = None,
 ) -> None:
     """Lay out ``node``'s chain from ``cursor``'s current point.
 
     ``entries`` maps a ``?`` node's ``id`` to ``(stem_start, heading)`` for
     the stem this function walks into that fork's own branch point -- a
-    ``goto`` targeting it reconnects somewhere strictly *inside* that stem,
-    not the branch point itself (see :func:`_close_loop` for why: the fork's
-    own vertex, approached with the fork's own arrival heading, cannot be
-    reached by any other straight line without retracing the stem itself).
-    The exact offset along the stem is chosen lazily, by :func:`_close_loop`
-    when :func:`_route_pending` routes the detour, rather than fixed here --
-    a single pre-chosen offset (e.g. the stem's exact midpoint) can end up
-    walled in by unrelated ink elsewhere in a dense decision tree happening to
-    run directly alongside it (confirmed on a real boolean-generator brainfuck
-    program's compiled output); trying several offsets sidesteps that.  Since
-    detours are all routed after layout finishes (see :func:`_route_pending`),
-    the occupancy those offsets are tested against is the finished drawing's,
-    not a partial snapshot of whatever had been drawn so far.
+    ``goto`` targeting it reconnects somewhere strictly *inside* that stem
+    (at :data:`_RETURN_STEM_T` from the vertex), not the branch point
+    itself: the fork's own vertex, approached with the fork's own arrival
+    heading, cannot be reached by any other straight line without retracing
+    the stem itself.  :func:`_loop_return_legs` is what draws the
+    reconnection, at the moment the ``goto`` is reached.
 
     ``depth`` counts how many ``?`` forks deep this call is nested, and is
     carried purely for callers that want to know it -- arm spacing itself is
     sized by measured subtree extent (see :func:`_arm_spacing`), not by depth.
 
     ``measuring`` runs the layout purely to find out how much space a subtree
-    occupies, for :func:`_subtree_extent`.  It makes a ``goto`` terminal
-    instead of routing a real detour: routing needs the whole drawing's
-    occupancy, which a subtree measured in isolation does not have, and the
-    ``entries`` lookup a real ``goto`` performs would not find an ancestor
-    fork that this subtree does not itself contain.  :func:`_route_pending`
-    draws every detour after layout finishes instead.
-
-    ``boxes`` collects each ``?`` node's subtree bounding box (world
-    coordinates, from the strokes actually laid), for
-    :func:`_route_pending`'s ring constraint.  Only the real layout pass
-    fills it; measuring dry-runs lay subtrees in local frames whose
-    coordinates would be meaningless here.
+    occupies, for :func:`_subtree_extent`.  The one asymmetry with the real
+    pass is a ``goto`` whose target fork is outside the measured chain (the
+    chain's own outermost loop-back): its return path is drawn by whichever
+    frame *does* contain the fork, so measuring treats it as terminal.
+    Every nested ``goto``'s return path is drawn in both modes, which is
+    what makes ancestors reserve room for them (see
+    :func:`_loop_return_legs`).
     """
     if entries is None:
         entries = {}
-    if pending is None:
-        pending = []
     while node is not None:
         if node.op == "?":
             stem_start = (cursor.y, cursor.x)
@@ -1582,50 +768,10 @@ def _layout(
             right.finish()
             left.advance(left.heading, _arm_spacing(node.nonzero))
             left.finish()
-            _layout(
-                node.zero,
-                right,
-                entries,
-                depth + 1,
-                measuring=measuring,
-                pending=pending,
-                boxes=boxes,
-            )
-            _layout(
-                node.nonzero,
-                left,
-                entries,
-                depth + 1,
-                measuring=measuring,
-                pending=pending,
-                boxes=boxes,
-            )
+            _layout(node.zero, right, entries, depth + 1, measuring=measuring)
+            _layout(node.nonzero, left, entries, depth + 1, measuring=measuring)
             right.finish()
             left.finish()
-            if boxes is not None:
-                # World-coordinate bounding box of everything this fork's
-                # subtree drew: both arm cursors hold their whole descendant
-                # stroke trees at this point (children extend into them
-                # before returning), and the stem run completes the subtree.
-                # Recorded from the strokes actually laid rather than from a
-                # parallel geometric reconstruction, for the same reason
-                # `_subtree_extent` dry-runs the real `_layout`: a second
-                # implementation of the placement math would drift, and then
-                # every box it reports is a quiet lie.  `_route_pending` uses
-                # these to fence each detour out of its own subtree's
-                # interior.
-                pts = [p for c in (right, left) for s in c.strokes for p in s]
-                hy, hx = entries[id(node)][1]
-                pts.extend(
-                    (stem_start[0] + hy * k, stem_start[1] + hx * k)
-                    for k in range(_STEM_LEN + 1)
-                )
-                boxes[id(node)] = (
-                    min(p[0] for p in pts),
-                    max(p[0] for p in pts),
-                    min(p[1] for p in pts),
-                    max(p[1] for p in pts),
-                )
             cursor.strokes.extend(right.strokes)
             cursor.strokes.extend(left.strokes)
             return
@@ -1675,10 +821,19 @@ def _layout(
                 # measured subtree): stop here, exactly as the pre-return
                 # semantics of extents require -- the owner's frame draws it.
                 return
-            # Fallback: the search-based router (see :func:`_route_pending`)
-            # for graphs whose gotos violate the constructed path's premises.
-            pending.append(_Pending(cursor, node.goto, depth))
-            return
+            # A goto whose return path cannot be constructed only exists in
+            # a hand-built graph outside the compiled invariants (target not
+            # an ancestor fork whose body chain the goto ends, or a body end
+            # off its own box perimeter).  Failing loudly here is the
+            # invariant that survives from the removed search-based router:
+            # never draw a reconnection through existing ink and let the
+            # extractor misread it.
+            raise ValueError(
+                "loop-back could not be constructed for this goto -- its "
+                "target must be an ancestor '?' fork whose body chain the "
+                "goto ends (the shape bf_to_line compiles); see "
+                "_loop_return_legs for the geometric premises"
+            )
         node = node.next
     cursor.finish()
 
@@ -1715,13 +870,7 @@ def render(root: Node, start_heading: tuple[int, int] = (-1, 0)) -> Image.Image:
     occupied: set[tuple[int, int]] = set()
     cursor = _Cursor(0, 0, start_heading, occupied=occupied)
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] = {}
-    pending: list[_Pending] = []
-    boxes: dict[int, tuple[int, int, int, int]] = {}
-    _layout(root, cursor, entries, pending=pending, boxes=boxes)
-    # Phase two: every loop-back detour routes here, against the finished
-    # drawing rather than against however much of it happened to exist when
-    # its own `goto` was reached -- see :func:`_route_pending`.
-    cursor.strokes.extend(_route_pending(pending, entries, occupied, boxes))
+    _layout(root, cursor, entries)
 
     ys = [p[0] for stroke in cursor.strokes for p in stroke]
     xs = [p[1] for stroke in cursor.strokes for p in stroke]
