@@ -3316,6 +3316,62 @@ class TestLaserFuck:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.laserfuck("02")
 
+    @pytest.mark.parametrize(
+        ("table", "n", "width"),
+        [
+            # The tree is never folded and grows six columns per node, so the
+            # narrowest width a table can honour rises with its input count:
+            # roughly 19, 34, and 63 columns for one, two, and three inputs.
+            ("01", 1, 20),
+            ("01", 1, 40),
+            ("10", 1, 80),
+            ("0110", 2, 34),
+            ("0110", 2, 80),
+            ("1000", 2, 120),
+            ("01101001", 3, 63),
+            ("01101001", 3, 80),
+            ("11111110", 3, 120),
+        ],
+    )
+    def test_honours_a_width(self, table: str, n: int, width: int) -> None:
+        """``width`` bounds the columns and the table still computes.
+
+        The grid's width is dominated by its straight runs -- 49 columns per
+        input reader and another 49 per leaf -- so those fold into zigzags
+        that cost rows instead.  The decision tree is not folded: its
+        columns carry the descent paths.  Every heading is checked, since
+        the fold adds cells the funnel's beam could otherwise land on.
+        """
+        program = boolean.laserfuck(table, width)
+        assert max(len(line) for line in program.split("\n")) <= width
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            for heading in range(4):
+                got = run_laserfuck(program, [str(b) for b in bits], heading)
+                assert got == str(int(table[combo])), f"{bits} heading {heading}"
+
+    def test_width_is_narrower_than_the_unfolded_grid(self) -> None:
+        """Folding buys columns, rather than only reshaping the grid."""
+        table = "01101001"  # XOR3: 253 columns unfolded
+        assert max(len(ln) for ln in boolean.laserfuck(table).split("\n")) > 250
+        assert max(len(ln) for ln in boolean.laserfuck(table, 80).split("\n")) <= 80
+
+    def test_without_a_width_is_unchanged(self) -> None:
+        """The default stays exactly what the generator always produced."""
+        for table in ("01", "10", "0110", "01101001"):
+            assert boolean.laserfuck(table) == boolean.laserfuck(table, None)
+
+    def test_too_narrow_a_width_is_ignored(self) -> None:
+        """A width the tree cannot fit in is ignored rather than raising.
+
+        The tree grows six columns per node and is never folded, so below
+        some width there is nothing the fold can do; the generator emits the
+        grid it can build instead of failing, matching the rest of the
+        width plumbing.
+        """
+        program = boolean.laserfuck("01101001", 8)
+        assert run_laserfuck(program, ["0", "0", "0"], 3) == "0"
+
 
 class TestGeneratorEdgePaths:
     """Coverage for validation and helper edge paths in the generators."""
@@ -3618,9 +3674,9 @@ class TestAPainterAnt:
             table = format(value, "04b")
             for row in range(4):
                 bits = [(row >> 1) & 1, row & 1]
-                assert self._check(table, bits) == int(
-                    table[row]
-                ), f"{table} bits {bits}"
+                assert self._check(table, bits) == int(table[row]), (
+                    f"{table} bits {bits}"
+                )
 
     def test_xor(self) -> None:
         """XOR (0110) is one of the expressible tables."""
@@ -3670,9 +3726,9 @@ class TestAPainterAnt:
         for value in range(4):
             table = format(value, "02b")
             for bit in [0, 1]:
-                assert self._check(table, [bit]) == int(
-                    table[bit]
-                ), f"table {table} bit {bit}"
+                assert self._check(table, [bit]) == int(table[bit]), (
+                    f"table {table} bit {bit}"
+                )
 
     def test_instantiate_one_bit_fills_single_placeholder(self) -> None:
         """An n == 1 template carries only {X0}, filled per bit."""
@@ -3962,9 +4018,9 @@ class TestPointBreak:
         program = boolean.point_break(table)
         for combo in range(2**n):
             got = point_break_result(program, _pb_combo_bits(combo, n))
-            assert (
-                got == table[combo]
-            ), f"table {table} inputs {_pb_combo_bits(combo, n)}"
+            assert got == table[combo], (
+                f"table {table} inputs {_pb_combo_bits(combo, n)}"
+            )
 
     def test_random_tables(self) -> None:
         for table in _pb_random_tables():
@@ -3972,9 +4028,9 @@ class TestPointBreak:
             program = boolean.point_break(table)
             for combo in range(2**n):
                 got = point_break_result(program, _pb_combo_bits(combo, n))
-                assert (
-                    got == table[combo]
-                ), f"table {table} inputs {_pb_combo_bits(combo, n)}"
+                assert got == table[combo], (
+                    f"table {table} inputs {_pb_combo_bits(combo, n)}"
+                )
 
     def test_program_structure(self) -> None:
         """One read per input, complemented bits, a minterm sum, the template."""

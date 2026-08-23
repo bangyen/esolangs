@@ -4,6 +4,7 @@ import math
 import re
 from functools import cache
 
+from esolangs.tools import laserfuck_layout
 from esolangs.tools.text.helpers import (
     _factor_triple,
     _ilog,
@@ -277,7 +278,44 @@ def forth(text: str) -> str:
     return "0" + "".join(build(c) for c in text[::-1]) + "[.]"
 
 
-def laserfuck(text: str) -> str:
+def _laserfuck_linear(run: str, width: int | None) -> str:
+    r"""Emit the linear LaserFuck program for ``run``, folded to ``width``.
+
+    The linear form is the whole program on one row -- the ``\xff`` output
+    mode byte, ``}}`` to face the beam right, then one ``+`` per unit of
+    every byte -- above the ``|o^`` / ``_`` funnel that catches whichever
+    heading the laser starts with.  It is the widest thing either generator
+    emits: nineteen characters of text come to 1833 columns.
+
+    With a width the run is folded into a zigzag instead
+    (:func:`~esolangs.tools.laserfuck_layout.fold`), which costs rows rather
+    than columns.  The funnel stays where it is, on the two rows below the
+    first, and the fold returns to a margin clear of it.
+    """
+    if width is None or width < laserfuck_layout.MIN_WIDTH + 2:
+        return f"\xff}}}}{run}\n|o^\n _ "
+
+    grid = [[" "] * (width + 1) for _ in range(3)]
+    grid[0][0] = "\xff"
+    grid[0][1] = "}"
+    grid[0][2] = "}"
+    grid[1][0] = "|"
+    grid[1][1] = "o"
+    grid[1][2] = "^"
+    grid[2][1] = "_"
+
+    # The funnel occupies rows 1 and 2 at columns 0..2, so the run starts on
+    # row 0 and every later segment lands below the funnel, where the margin
+    # is free.
+    end_row, end_col = laserfuck_layout.fold(grid, run, 0, 3, width)
+    grid[end_row][end_col] = "x"
+    lines = ["".join(line).rstrip() for line in grid]
+    while lines and not lines[-1]:
+        lines.pop()
+    return "\n".join(lines)
+
+
+def laserfuck(text: str, width: int | None = None) -> str:
     """Build a LaserFuck program that outputs ``text``.
 
     Phase 1 generates a brainfuck-style program: each pass picks a base about
@@ -286,6 +324,27 @@ def laserfuck(text: str) -> str:
     that base.  Phase 2 lays the program onto the grid, with the first loop's
     body wrapped around a serpentine track on the edges so the laser travels
     around it.
+
+    ``width`` bounds the columns of the *linear* form -- the fallback taken
+    when the program has no loop worth building, which is also the widest
+    thing this generator emits.  Its single row of ``+`` runs is straight
+    tape code, so it folds into a zigzag that costs rows instead of columns.
+
+    The looping form is left alone, for two reasons.  Its frame interleaves
+    tape ops with bracket markers whose *columns* are load-bearing -- the
+    mirror cells on the rows below are placed to match them, and the
+    serpentine's connector ties back to the frame at ``loop_col`` -- so
+    breaking the frame across rows moves the very columns the rest of the
+    layout is derived from; it is a rewrite of the geometry, not a fold of a
+    run.  And it is already the narrow case: Hello-World is 95 columns,
+    against 508 for the linear form of ``"Hello"`` alone.
+
+    Falling back to the (foldable) linear form whenever the loop form
+    exceeds the width would fit every program in 80 columns, but the loop
+    form exists precisely to avoid that program's size: measured over 200
+    random strings, the cases still over 80 come to a median 4.3x more
+    characters as linear programs, to save a median 14 columns.  So a wide
+    loop program is emitted wide rather than made several times larger.
     """
     _require_bytes(text, "LaserFuck")
     values = [ord(c) for c in text]
@@ -330,7 +389,7 @@ def laserfuck(text: str) -> str:
         code += "-"
 
     if "[" not in code:
-        return f"\xff}}}}{fallback}\n|o^\n _ "
+        return _laserfuck_linear(fallback, width)
 
     # -- lay the program out onto the grid --
     match = re.search(r"\[([^[\]]*)", code)
@@ -386,11 +445,11 @@ def laserfuck(text: str) -> str:
     else:
         grid[0] += "x"  # no fallback: the frame ends by killing the laser
 
-    width = len(grid[0])
+    row_width = len(grid[0])
     tracks = 2
 
     # enough serpentine rows to hold the loop body around the frame
-    while (track_len // tracks) > width:
+    while (track_len // tracks) > row_width:
         tracks += 1
 
     tracks += tracks % 2  # even, so the serpentine joins back on the left
@@ -401,7 +460,7 @@ def laserfuck(text: str) -> str:
         # a loop body that fits on the top row, or a grid too narrow for the
         # serpentine's return path to connect, cannot route the laser back
         # through the body; emit the linear program instead
-        return f"\xff}}}}{linear}\n|o^\n _ "
+        return _laserfuck_linear(linear, width)
 
     # top row: output-mode byte, the loop start, then a turn down
     grid.insert(0, f"\xff}}{loop[:offset]}v")

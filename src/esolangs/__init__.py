@@ -9,7 +9,6 @@ and ``list_languages``.
 """
 
 import importlib
-import inspect
 import pathlib
 import signal
 import threading
@@ -26,7 +25,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
 from esolangs.tools.boolean import BOOLEAN
 from esolangs.tools.transpilers import TRANSPILERS
-from esolangs.tools.wrap import wrap_program
+from esolangs.tools.wrap import takes_width, wrap_program
 from esolangs.vm import VM, make_vm
 
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
@@ -64,22 +63,9 @@ def generate(language: str, text: str, width: int | None = None) -> str:
         fn = GENERATORS[language]
     except KeyError:
         raise UnknownLanguageError(language) from None
-    if width is not None and _takes_width(fn):
+    if width is not None and takes_width(fn):
         return str(fn(text, width))
     return wrap_program(str(fn(text)), LANGUAGES[language].id, width)
-
-
-def _takes_width(fn: Callable[..., str]) -> bool:
-    """Whether a generator lays its own program out to a width.
-
-    Such a generator accepts a second ``width`` parameter; the rest produce
-    a program that :func:`~esolangs.tools.wrap.wrap_program` reflows after
-    the fact.
-    """
-    try:
-        return "width" in inspect.signature(fn).parameters
-    except (TypeError, ValueError):  # pragma: no cover - builtins have no signature
-        return False
 
 
 def run(
