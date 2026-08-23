@@ -167,6 +167,53 @@ would make the generator close to trivial to write by hand.
   equivalent semantics, but every instruction is encoded in path geometry,
   so a generator has to physically route the drawn line to fork on input.
 
+- **Circuit Diagram** — an ASCII circuit: named logic gates (`a` AND, `A`
+  NAND, `o` OR, `O` NOR, `x` XOR, `X` XNOR, `~` NOT) wired by `-`/`|`/`/`/`\`
+  with `.` junctions and `=` crossovers, evaluated as a cellular automaton
+  where a gate fires once both its left inputs are non-null.  Verified
+  `Category:Two-dimensional languages` and `Category:Unimplemented` via the
+  category API, with no external interpreter documented on the page.  Picked
+  up after Gate fell through, and it is the stronger candidate on exactly the
+  axis Gate failed: its sole worked example (a 4-bit prime tester) exercises
+  every load-bearing symbol — input (`-4-`), output (`:`), gates, the `<`/`>`
+  multi-wire splitter/combiner, and `=` crossovers — where Gate's `+` and `(`
+  appeared in none of its nine.  The example is also a real acceptance test:
+  its minterm formula was checked to be exactly the primes in 0-15 with `a`
+  as the MSB, so an interpreter can be replayed over all 16 inputs, and since
+  only that bit assignment yields primality the example pins its own input
+  ordering.  Signals are three-valued (Null/0/1) with a defined multi-driver
+  rule (a wiring driven by several non-null values takes their XOR), and the
+  connection rules are stated symmetrically (`-|` and `.|` are explicitly
+  *not* connections).  A boolean generator is the language's native idiom —
+  a truth table becomes a sum-of-minterms gate network, which is what the
+  example already is.
+
+  Three judgment calls to derive and document before building, in the
+  Flowchart style:
+
+  - **Print cadence and halting are unspecified.**  Execution is
+    generational and the spec's own flip-flop oscillates `1N1N1N...`
+    forever, so "when does `:` print, and when does a program stop?" has no
+    prose answer.  The prime tester's gates run left-to-right into the final
+    `a` feeding `:`, and gates read left and write right, so a feed-forward
+    circuit settles — making "run until stable, print each `:` once, halt"
+    derivable from the example.  A circuit *with* feedback (the flip-flop)
+    never settles under that rule and needs its own wording (cycle detection
+    or the wall-clock backstop).
+  - **`t` returns the current time** (a 32-bit seconds-since-2000 wire),
+    which is time-dependent output — the same judgment-call class as seeded
+    randomness: tests would fix the clock, and the generator would never
+    emit `t`.
+  - **Multi-wire is not optional.**  The only example uses `-4-`, `<`, and
+    `>`, so an "implement the scalar subset first" staging is not available;
+    the `?` splitter/combiner magic has to be built up front.  Its behavior
+    is at least enumerated in prose, unlike Gate's image-only `<` table.
+
+  The main risk is the single example: one diagram is the entire
+  behavioral corpus, where Flowchart had three.  Its computational class is
+  also listed as unknown (the page notes circuits are complete for
+  fixed-arity boolean functions, which is not Turing-completeness).
+
 Considered and rejected in the same pass: **Highways** (excellent
 roundabout/routing mechanic, but junction direction, sign execution order,
 and crash tie-breaking are genuinely random with no seed — fails the
@@ -182,9 +229,8 @@ needs: `+` (the branch) appears in none of the nine worked examples, and no
 example emits output at all, so neither the branch geometry nor the output
 path can be derived the way Flowchart's gaps were pinned by its examples (see
 the assessed-and-rejected ledger in `docs/limitations.md`).  **Circuit
-Diagram** is the remaining candidate in that genre — more complex
-constraint-propagation semantics, and the natural next one to assess now that
-Gate has fallen through.
+Diagram**, the alternative named in that genre, was assessed after Gate fell
+through and is a live candidate — see its entry above.
 
 ## Transpilers
 
