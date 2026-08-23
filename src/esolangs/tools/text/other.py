@@ -890,7 +890,7 @@ def sbleq(text: str) -> str:
     return " ".join(map(str, cells))
 
 
-def streetcode(text: str) -> str:
+def streetcode(text: str, width: int | None = None) -> str:
     """Build a Streetcode program that outputs ``text``.
 
     Printing needs no branching at all, so the program is a single
@@ -923,6 +923,9 @@ def streetcode(text: str) -> str:
     for an entry or exit road changes the lap, and the right-hand hug then
     takes that cut as an open road on its right.  See
     ``docs/streetcode.md`` for the traces and the leak modes.
+    ``width`` folds that corridor into a boustrophedon: the car drives to
+    the column limit, turns south through a gap in the wall below, and comes
+    back along the next row.  See :func:`_streetcode_serpentine`.
     """
     row = ["C"]
     prev = 0
@@ -932,8 +935,53 @@ def streetcode(text: str) -> str:
         prev = ord(c)
     row.append(";")
     instructions = "".join(row)
+    if width is not None and width >= _STREETCODE_MIN_WIDTH:
+        return _streetcode_serpentine(instructions, width)
     wall = "-" * len(instructions)
     return "\n".join([wall, instructions, wall])
+
+
+# A serpentine needs room for the descent gap plus the cells either side of
+# it; below this the fold has nowhere to turn and the straight corridor is
+# emitted instead.
+_STREETCODE_MIN_WIDTH = 3
+
+
+def _streetcode_serpentine(instructions: str, width: int) -> str:
+    """Fold ``instructions`` into a boustrophedon corridor ``width`` wide.
+
+    Instruction rows alternate direction -- the first is driven East, the
+    next West, and so on -- separated by a wall row that is solid except for
+    one gap at the *far* column of the row just driven.  That gap is the
+    cell the car descends through, and the right-hand-hug rule takes each
+    fold as a plain corridor bend: no junction is drawn, so none of the
+    ambiguous-turn or lane-merge rules come into play.
+
+    The instructions are laid along the car's path in the order it drives
+    them, which means every second row is written to the grid reversed.  The
+    closing ``;`` therefore lands at the path's end, which is what stops the
+    car: a corridor with no halt is a dead end, and the right-hand hug
+    bounces the car back along it, re-executing every cell it already ran.
+    """
+    cells = list(instructions)
+    grid: list[list[str]] = [["-"] * width]
+    path: list[tuple[int, int]] = []
+    rows = -(-len(cells) // width)
+    for n in range(rows):
+        grid.append([" "] * width)
+        columns = range(width) if n % 2 == 0 else range(width - 1, -1, -1)
+        path += [(len(grid) - 1, c) for c in columns]
+        if n < rows - 1:
+            far = width - 1 if n % 2 == 0 else 0
+            wall = ["-"] * width
+            wall[far] = " "  # the descent gap
+            grid.append(wall)
+            path.append((len(grid) - 1, far))
+    grid.append(["-"] * width)
+
+    for (r, c), instruction in zip(path, cells, strict=False):
+        grid[r][c] = instruction
+    return "\n".join("".join(row) for row in grid)
 
 
 def suptiftam(text: str) -> str:
