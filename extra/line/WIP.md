@@ -644,19 +644,36 @@ them). `verify.py` remains the separate, narrower round-trip check for
   hand-built cyclic `Stroke` trees still never exercise `render.py`'s
   loop-drawing geometry, which is why this separate suite is needed.
 
-  **Possible cleanup, not urgent**: now that `test_bf_to_line.py` covers
-  the loop-back mechanism through real drawings, some of
-  `test_simulate.py`'s hand-built `Stroke` fixtures cover the same ground
-  at a lower fidelity, and they carry a real maintenance cost -- three of
-  them had to be updated when `lattice._classify`'s arm labeling was
+  **Reviewed and closed: the remaining hand-built fixtures are all
+  load-bearing, and none should be deleted.** This entry previously flagged
+  `test_simulate.py`'s hand-built `Stroke` fixtures as possible cleanup, on
+  the grounds that `test_bf_to_line.py` now covers the loop-back mechanism
+  through real drawings and some of them might only duplicate it at lower
+  fidelity. Checked directly: whatever was genuinely redundant is already
+  gone, and the two that remain each cover something a rendered drawing
+  structurally cannot.
+
+  - `_build_growing_loop` is a genuinely non-halting loop, asserted to
+    actually hang (via `SIGALRM`, with a 1s timer) rather than silently
+    returning a wrong tape. There is no way to route this through the render
+    pipeline: it would require `[+]` or similar to render *and* a test that
+    deliberately never terminates, which a round-trip assertion cannot
+    express.
+  - `_build_decrement_loop` covers `find_merge`'s *other* match branch. Its
+    loop arm's final vertex lands exactly on the fork's own final vertex,
+    whereas `addition.png`'s real merge -- and every merge `render.py` draws,
+    via `_approach_points` -- lands strictly *inside* a segment. Those are two
+    distinct code paths in `_compile`, and no real drawing reaches the first.
+    It also carries the sibling-branch false-match regression (a bare vertex
+    match once matched an untaken sibling arm, since every fork's children
+    start exactly where the fork ends).
+
+  The maintenance cost that motivated the flag was real but is not recurring:
+  three fixtures needed updating when `lattice._classify`'s arm labeling was
   fixed, because they encoded the old inverted convention as literal
-  geometry (see the fork-arm entry above). They are not redundant: they
-  are the only tests that can construct a cycle `render.py` cannot draw
-  (e.g. the genuinely non-halting loop, and the sibling-branch
-  false-match case), which is exactly why they exist. Worth a pass to
-  keep those and drop or rewrite whichever now only duplicate a real
-  pipeline test -- but only with that distinction in mind, since deleting
-  the un-drawable cases would lose coverage nothing else provides.
+  geometry. That bug is now fixed at its source (see the fork-arm entry
+  above), so the churn it caused was one-time. At ~20 lines each with
+  docstrings stating why they exist, these are worth keeping as they are.
 
 ## Deliberately out of scope
 
