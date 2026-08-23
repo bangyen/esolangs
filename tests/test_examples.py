@@ -72,6 +72,18 @@ def test_example_files_match_generator() -> None:
         assert path.read_text(encoding="utf-8") == generator("Hello, World!")
 
 
+def test_no_orphan_hello_world_examples() -> None:
+    """Every hello-world file belongs to a language that still has a generator.
+
+    The other tests derive their parameters from the registry, so a file for a
+    language that was removed is never collected and cannot fail.  Scanning the
+    directory is what catches it.
+    """
+    committed = {path.stem for path in EXAMPLES_DIR.glob("*.txt")}
+    assert committed - set(EXAMPLES) == set(), "example files with no generator"
+    assert set(EXAMPLES) - committed == set(), "generators with no example file"
+
+
 def test_multiply_example_matches_generator() -> None:
     """The committed multiply program is exactly what the generator produces."""
     from esolangs.tools.boolean import jaune_multiply
