@@ -175,7 +175,7 @@ would make the generator close to trivial to write by hand.
   parity), and a brainfuck compiler (`bf_to_line.py`) whose loop-backs are
   constructed geometrically rather than route-searched, making nesting
   depth unbounded (round-tripped through depth 12).  See
-  `extra/line/WIP.md` for the full settled-vs-open ledger.
+  `extra/line/WIP.md` for the full implementation record.
 
 - **Circuit Diagram** — an ASCII circuit: named logic gates (`a` AND, `A`
   NAND, `o` OR, `O` NOR, `x` XOR, `X` XNOR, `~` NOT) wired by `-`/`|`/`/`/`\`

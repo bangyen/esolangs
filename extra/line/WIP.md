@@ -1,14 +1,16 @@
-# Line: settled vs. still open
+# Line: implementation record
 
 `render.py`, `extract.py`, `simulate.py`, and `verify.py` implement a
 program renderer, a pixel-based extractor, and a runtime interpreter for
 [Line](https://esolangs.org/wiki/Line), an esolang whose spec is entirely a
 set of hand-drawn curve images with no text format and no reference
 implementation (tagged `Unimplemented` on the wiki). This file tracks
-what's settled and tested vs. what's deliberately out of scope or
-unverified, the way `docs/streetcode-wip.md` does for Streetcode -- the
-module docstrings in `extract.py`/`render.py`/`simulate.py` carry the
-settled, load-bearing reasoning; this file is for what isn't decided yet.
+what's settled and tested, what's deliberately out of scope, and what
+was resolved along the way -- the module docstrings in
+`extract.py`/`render.py`/`simulate.py` carry the settled, load-bearing
+reasoning, and this file records how it was arrived at.  Only one item is
+genuinely open (see "Still open"); `docs/streetcode-wip.md` is the
+comparable file for Streetcode, which still has real open questions.
 
 `test_simulate.py` is a real `pytest` suite covering `simulate.py`
 (opcode basics, the zero/nonzero swap, both wiki fixtures across several
@@ -930,6 +932,13 @@ them). `verify.py` remains the separate, narrower round-trip check for
   above), so the churn it caused was one-time. At ~20 lines each with
   docstrings stating why they exist, these are worth keeping as they are.
 
+## Still open
+
+- Real (camera/scan) photographs with genuine anti-aliasing, as opposed to
+  the clean nearest-neighbor-scaled synthetic input `normalize_scale` was
+  tested against. Anti-aliased edges could make the exact-integer scale
+  detection (`round(ink/skeleton_length)`) land less cleanly.
+
 ## Deliberately out of scope
 
 - **Not wired into the interpreter registry**: deliberate, per an earlier
@@ -937,7 +946,18 @@ them). `verify.py` remains the separate, narrower round-trip check for
   `run(code, io)` convention every other language in `src/esolangs/` uses.
   Stays a standalone `extra/` tool.
 
-## Unverified / lower priority
+- Dependency footprint: 4 undeclared deps (Pillow, numpy, scipy,
+  scikit-image), informal by design matching how `extra/` keeps other
+  subtrees' toolchains out of `pyproject.toml`. A ranked, tested plan for
+  which would be easiest to replace with hand-rolled numpy is recorded as
+  a comment block in `extract.py` just above the imports, if this is ever
+  worth revisiting.
+
+## Resolved
+
+Kept for the reasoning trail: what the problem was, and what fixed it.
+The three reverted `_walk_tree` attempts under the last entry are recorded
+in detail so a future attempt does not re-derive or re-break them.
 
 - **Resolved**: a program with a conditional turn (`?`) followed by further
   opcodes in either branch used to fail `extract()`'s coverage check under
@@ -949,6 +969,21 @@ them). `verify.py` remains the separate, narrower round-trip check for
   trips cleanly (confirmed: the old pipeline fails this exact case with 220
   unaccounted pixels; the new one succeeds and recovers `[+2]`/`[-, >]` on
   the two arms, matching the source `Node` exactly).
+
+- **Resolved: the compression cliff and oversized scale do not compound --
+  they counteract.** Tested directly on `fixtures/addition.png` across the
+  cross product of 1x/2x/3x nearest-neighbour upscaling and JPEG quality
+  95 down to 5, checking both that `extract()` succeeds and that the
+  extracted program still computes `(3,2) -> 5`. At 1x the documented
+  cliff reproduces exactly (clean through quality 34, fails at 32). At 2x
+  it survives every quality tried, down to 5. At 3x it survives to quality
+  10 and fails at 7. The reason is that the two failure modes pull in
+  opposite directions: the cliff is JPEG block quantization erasing pixels
+  out of a 1px-wide stroke, and upscaling widens the stroke enough that
+  the same quantization can no longer erase it entirely. So the compound
+  case is *easier* than the 1px case, not harder -- the opposite of what
+  this entry assumed when it flagged the gap.
+
 - **Historical, describes the now-removed region-adjacency walker** (kept
   for the reasoning trail; `lattice.py`'s walker, now `extract.py`'s only
   walker, does not have this gap): the wiki's own drawings use a "cursor
@@ -1052,26 +1087,3 @@ them). `verify.py` remains the separate, narrower round-trip check for
   wired into `extract()`'s actual pipeline as its only walker (see
   "Settled and tested" above for the wiring details and the one additional
   bug -- `_resnap_dead_end` -- found and fixed in the process).
-- Real (camera/scan) photographs with genuine anti-aliasing, as opposed to
-  the clean nearest-neighbor-scaled synthetic input `normalize_scale` was
-  tested against. Anti-aliased edges could make the exact-integer scale
-  detection (`round(ink/skeleton_length)`) land less cleanly.
-- **Resolved: the compression cliff and oversized scale do not compound --
-  they counteract.** Tested directly on `fixtures/addition.png` across the
-  cross product of 1x/2x/3x nearest-neighbour upscaling and JPEG quality
-  95 down to 5, checking both that `extract()` succeeds and that the
-  extracted program still computes `(3,2) -> 5`. At 1x the documented
-  cliff reproduces exactly (clean through quality 34, fails at 32). At 2x
-  it survives every quality tried, down to 5. At 3x it survives to quality
-  10 and fails at 7. The reason is that the two failure modes pull in
-  opposite directions: the cliff is JPEG block quantization erasing pixels
-  out of a 1px-wide stroke, and upscaling widens the stroke enough that
-  the same quantization can no longer erase it entirely. So the compound
-  case is *easier* than the 1px case, not harder -- the opposite of what
-  this entry assumed when it flagged the gap.
-- Dependency footprint: 4 undeclared deps (Pillow, numpy, scipy,
-  scikit-image), informal by design matching how `extra/` keeps other
-  subtrees' toolchains out of `pyproject.toml`. A ranked, tested plan for
-  which would be easiest to replace with hand-rolled numpy is recorded as
-  a comment block in `extract.py` just above the imports, if this is ever
-  worth revisiting.
