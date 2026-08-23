@@ -170,6 +170,53 @@ class TestStreetcodeAmbiguousTurns:
         machine.row, machine.col, machine.heading = 0, 1, "S"
         assert machine._junction_kind("S") == 3  # noqa: SLF001
 
+    # A mouth whose gap opens ahead of the car (its near ``+`` sighted at
+    # depth 0 or +1) and whose far ``+`` has open interior beneath it (so
+    # ``_lane_bounded`` is False and no merge latch is taken): the chosen
+    # turn's next cell is still the wall the gap opens through, and the
+    # turn must wait until the car is level with the gap.  Before the
+    # openness guard in ``_choose_heading``, the car turned immediately,
+    # drove *inside* the wall, and wall-followed around the outside of the
+    # lower room forever.
+    _EARLY_MOUTH = [
+        "+---------+",
+        "|         |",
+        "|C^      ;|",
+        "+--+  ++--+",
+        "   |      |",
+        "   |;     |",
+        "   +------+",
+    ]
+
+    def test_early_sighted_mouth_defers_the_turn_to_the_gap(self) -> None:
+        machine = _Machine(self._EARLY_MOUTH, IO())
+        positions = [(machine.row, machine.col)]
+        for _ in range(7):
+            machine.step()
+            positions.append((machine.row, machine.col))
+        # The `^` makes the cell nonzero, so the junction chooses the South
+        # branch -- but the car carries on to the gap at column 4 before
+        # turning, never occupying a wall cell.
+        assert positions == [
+            (2, 1),
+            (2, 2),
+            (2, 3),
+            (2, 4),
+            (3, 4),
+            (4, 4),
+            (5, 4),
+            (5, 4),
+        ]
+        assert machine.halted
+
+    def test_early_sighted_mouth_still_declines_on_zero(self) -> None:
+        code = [line.replace("^", " ") for line in self._EARLY_MOUTH]
+        machine = _Machine(code, IO())
+        for _ in range(9):
+            machine.step()
+        assert machine.halted
+        assert (machine.row, machine.col) == (2, 9)
+
 
 class TestStreetcodeLaneMerge:
     """A genuinely multi-cell-wide junction: turning must land in the new

@@ -524,7 +524,20 @@ class _Machine:
             # Lane merging applies only to a turn onto a detected side road:
             # continuing straight is not a turn at all, and a road whose
             # mouth is not bounded by real wall arms has no lanes to land in.
-            if new_heading != heading and self._crossing_mouth(heading):
+            if new_heading != heading and not self._open(
+                *self._ahead(self.row, self.col, new_heading)
+            ):
+                # The chosen road was sighted before the car is level with
+                # its gap: ``_road_mouth`` anchors the near ``+`` up to one
+                # cell ahead, so the cell this turn would step onto can
+                # still be the wall the mouth opens through.  Turning now
+                # would drive the car inside that wall.  Defer instead:
+                # ordinary wall-following carries the car forward, the same
+                # mouth re-detects on arrival (``near`` only shrinks as the
+                # car advances), and the cell is re-read where the turn is
+                # actually made, which is what the spec's choice is about.
+                pass
+            elif new_heading != heading and self._crossing_mouth(heading):
                 # Emerging head-on from a branch onto the road it joins: the
                 # car has to cross that road to its far lane before turning,
                 # for the same reason a side-on turn merges -- "drive on the
