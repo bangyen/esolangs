@@ -15,8 +15,9 @@ grid ones) or that reject them (NoComment) are written unwrapped.
 
 import pathlib
 
+from esolangs import generate
 from esolangs.registry import LANGUAGES
-from esolangs.tools.wrap import DEFAULT_WIDTH, wrap_program
+from esolangs.tools.wrap import DEFAULT_WIDTH
 
 ROOT = pathlib.Path(__file__).parents[1]
 HELLO_DIR = ROOT / "examples" / "hello-world"
@@ -32,10 +33,12 @@ def main() -> None:
             continue
         stem = lang.name.lower().replace(" ", "-")
         path = HELLO_DIR / f"{stem}.txt"
-        # The committed file is the generator's output verbatim -- the
-        # sync test compares against exactly this, so the trailing newline
-        # the generators already emit is kept rather than re-added.
-        program = wrap_program(lang.generator(TEXT), lang.id, DEFAULT_WIDTH)
+        # Go through the public generate(), so a generator that lays its own
+        # program out to a width (Clockwise's ring, Streetcode's corridor,
+        # WII2D's folded line) gets the width rather than having it applied
+        # as an after-the-fact reflow, which would leave a 2D program
+        # untouched.  The sync test compares against exactly this.
+        program = generate(lang.name, TEXT, DEFAULT_WIDTH)
         existing = path.read_text(encoding="utf-8") if path.exists() else None
         path.write_text(program, encoding="utf-8")
         status = "unchanged" if existing == program else "wrote"

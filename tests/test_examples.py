@@ -21,11 +21,12 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs import generate
 from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
-from esolangs.tools.wrap import DEFAULT_WIDTH, wrap_program
+from esolangs.tools.wrap import DEFAULT_WIDTH
 
 BASE_DIR = Path(__file__).parent.parent
 EXAMPLES_DIR = BASE_DIR / "examples" / "hello-world"
@@ -82,7 +83,7 @@ def test_example_files_match_generator() -> None:
     for lang in languages:
         assert lang.generator is not None
         path = EXAMPLES_DIR / f"{_file_name(lang.name)}.txt"
-        expected = wrap_program(lang.generator("Hello, World!"), lang.id, DEFAULT_WIDTH)
+        expected = generate(lang.name, "Hello, World!", DEFAULT_WIDTH)
         assert path.read_text(encoding="utf-8") == expected
 
 

@@ -36,16 +36,16 @@ TEXT = "Hello, World!"
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
 #
-# Clockwise is deliberately absent.  Its newlines are semantic too, so
-# wrap_program must not touch it either -- but it honours a width by laying
-# its ring out to fit rather than by ignoring it, so it is covered by the
-# generator's own tests in tests/tools/test_generate.py instead.
+# Clockwise, Streetcode and WII2D are deliberately absent.  Their newlines
+# are semantic too, so wrap_program must not touch them either -- but each
+# honours a width by *laying its program out* to fit (a ring, a
+# boustrophedon corridor, a folded instruction line) rather than by ignoring
+# it, so they are covered by the generators' own tests in
+# tests/tools/test_generate.py instead.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
-    "wii2d": "2D: newlines separate rows",
     "dig": "2D: newlines separate rows",
-    "laserfuck": "2D: newlines separate rows",
-    "streetcode": "2D: newlines separate rows",
+    "laserfuck": "2D: the loop layout is tied to the beam's track",
 }
 
 WRAPPED = sorted(

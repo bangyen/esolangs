@@ -207,6 +207,46 @@ class TestGeneratorRoundTrips:
         assert max(len(line) for line in lines) <= width
         assert roundtrip(clockwise_run, lines) == text
 
+    @pytest.mark.parametrize("width", [10, 20, 40, 80])
+    @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
+    def test_streetcode_honours_a_width(self, text: str, width: int) -> None:
+        """The corridor folds into a boustrophedon and still round-trips.
+
+        The car drives to the column limit, turns south through a gap in the
+        wall below, and comes back along the next row.  Every fold is a
+        plain corridor bend, so none of the ambiguous-turn or lane-merge
+        rules come into play.
+        """
+        program = gen.streetcode(text, width)
+        lines = program.split("\n")
+        assert max(len(line) for line in lines) <= width
+        assert roundtrip(streetcode_run, lines) == text
+
+    @pytest.mark.parametrize("width", [10, 20, 40, 60, 80])
+    @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
+    def test_wii2d_honours_a_width(self, text: str, width: int) -> None:
+        """The instruction line folds into a grid and still round-trips.
+
+        Width 60 is included deliberately: an earlier layout put the ``!``
+        marker above the first row, which starts the pointer at row ``-1``
+        -- wrapping to the *last* row -- and that width was where the
+        resulting tail-only run first showed up.
+        """
+        program = gen.wii2d(text, width)
+        lines = program.split("\n")
+        assert max(len(line) for line in lines) <= width
+        assert roundtrip(wii2d_run, lines) == text
+
+    def test_wii2d_start_marker_sits_below_the_first_row(self) -> None:
+        """The pointer starts *above* the ``!``, so it must not be on top.
+
+        With the marker on row 0 the pointer starts at row ``-1``, which
+        wraps to the last row and runs the program's tail instead of its
+        head.
+        """
+        lines = gen.wii2d("Hello, World!", 40).split("\n")
+        assert lines[1] == "!"
+
     def test_clockwise_keeps_the_square_when_it_fits(self) -> None:
         """A width the square already satisfies does not distort the shape."""
         square = gen.clockwise("Hello, World!")
