@@ -338,6 +338,15 @@ class _Machine:
         infinite-loop example at ``(1,5)`` heading West, and the larger
         infinite-cat example at ``(1,6)`` heading West).
         """
+        kind = self._junction_shape(heading)
+        # A drawn junction is only a choice when at least two of the roads
+        # it offers are roads the car could actually drive down (see
+        # :meth:`_road_deep`); otherwise the shape is a bend or a lane
+        # boundary, and ordinary wall-following handles it.
+        return kind if len(self._junction_choices(heading)) >= 2 else 0
+
+    def _junction_shape(self, heading: str) -> int:
+        """Classify the wall shape alone, before the roads are counted."""
         ahead_open = self._open(*self._ahead(self.row, self.col, heading))
         left_mouth = self._road_mouth(heading, _left(heading)) is not None
         right_mouth = self._road_mouth(heading, _right(heading)) is not None
@@ -428,17 +437,31 @@ class _Machine:
         roads = []
         crossing = self._crossing_mouth(heading)
         for side in (_left(heading), heading, _right(heading)):
-            if side == heading:
-                if self._open(*self._ahead(self.row, self.col, heading)):
-                    roads.append(heading)
-            elif self._road_mouth(heading, side) is not None or (
+            if crossing:
                 # Driving out through a mouth head-on, the roads to either
-                # side are the main road the branch joins; they have no mouth
-                # of their own to find, so take whichever way is open.
-                crossing and self._open(*self._ahead(self.row, self.col, side))
-            ):
+                # side are the main road the branch joins.  That road runs
+                # perpendicular to the car, so its extent cannot be probed
+                # from inside the mouth (two cells out crosses it and hits
+                # its far wall): take whichever way is open.
+                if self._open(*self._ahead(self.row, self.col, side)):
+                    roads.append(side)
+            elif self._road_deep(side):
                 roads.append(side)
         return roads
+
+    def _road_deep(self, heading: str) -> bool:
+        """Whether ``heading`` leads onto a road, rather than across one.
+
+        Streets are two characters wide, so a direction with a single open
+        cell before a wall is not a road the car can drive down: it is the
+        street it is already on -- the oncoming lane alongside it, or the
+        last cell of a bend before the wall turns.  Requiring two drivable
+        cells is what distinguishes a road from the width of the road.
+        """
+        d_row, d_col = _DELTA[heading]
+        return self._open(self.row + d_row, self.col + d_col) and self._open(
+            self.row + 2 * d_row, self.col + 2 * d_col
+        )
 
     def _choose_heading(self) -> str | None:
         """Pick the car's next heading.
