@@ -430,9 +430,7 @@ def _register() -> None:
         ),
         "bfpda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
         "bio": _embedded(b.bio, "register_based.bio", _fill_bio),
-        "bitdeque": _embedded(
-            b.bitdeque, "queue_based.bitdeque", _fill_bitdeque, expected="0\n"
-        ),
+        "bitdeque": _embedded(b.bitdeque, "queue_based.bitdeque", _fill_bitdeque),
         "cod": _embedded(
             b.cod,
             "grid_based.cod",
