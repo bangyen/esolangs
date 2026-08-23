@@ -1,33 +1,23 @@
-# A Painter Ant boolean generator: construction notes
+# A Painter Ant boolean generator: design history
 
-A working document capturing how the A Painter Ant boolean generator is
-built and why it is cycle-stable for **every input count**.  This is meant
-to be read cold: it records everything we learned so that the construction
-can be picked up again fresh.
+Why the A Painter Ant boolean generator is built the way it is, and what
+was tried and rejected along the way — including why the construction is
+cycle-stable for **every input count**, which is the constraint that drove
+every design decision here.  The shipped generator is
+`esolangs.tools.boolean.a_painter_ant.a_painter_ant`.
 
-## Language mechanics
+For the language's mechanics (the conditional moves, the paints, and the
+implicit loop), read the interpreter module's docstring; it is
+authoritative and this document does not restate it.  Two consequences of
+those mechanics matter throughout:
 
-A Painter Ant is a single ant on an infinite grid of black or white cells
-(all black to start).  The commands are:
-
-- `n`/`e`/`s`/`w` — move one cell in that direction **only if the
-  destination is black**.
-- `N`/`E`/`S`/`W` — move one cell in that direction **only if the
-  destination is white**.
-- `p` — paint the current cell black; `P` — paint the current cell white.
-
-The program runs in an **implicit loop**: after the last instruction the
-pointer returns to the first.  So a program's state (the ant's position and
-the whole grid) is re-evaluated every cycle.
-
-The wiki defines no I/O.  The interpreter's real output is the **bounding
-box of visited cells** (a `#`/`.` raster), which carries no coordinates.
-The boolean generator therefore reads its answer from a *semantic grid
-model* (the ant's actual position and cell colours) rather than the
-interpreter's box.
-
-The interpreter ignores whitespace, so a **space** in a program is a no-op
-that still occupies a position in the source.
+- The wiki defines no I/O, and the interpreter's output is the **bounding
+  box of visited cells** (a `#`/`.` raster), which carries no coordinates.
+  The generator therefore reads its answer from a *semantic grid model*
+  (the ant's actual position and cell colours) rather than the box.
+- The interpreter ignores whitespace, so a **space** is a no-op that still
+  occupies a position in the source — which is what lets a zero leaf be
+  represented by leaving it unpainted.
 
 ## The answer convention
 
@@ -84,9 +74,7 @@ case (see below).
 
 ## The n = 2 construction (shipped)
 
-The shipped generator is
-`esolangs.tools.boolean.a_painter_ant.a_painter_ant`.  It builds a template
-for any arity; for n == 2 (XOR):
+The generator builds a template for any arity; for n == 2 (XOR):
 
 ```
 N WSssssNEwwPeeWSnnnnNE WSnnnnNEeePwwWSssssNE Ssn

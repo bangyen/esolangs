@@ -195,8 +195,9 @@ def cod(truth_table: str) -> str:
     (:func:`_cod_combine`) -- no block's cells are reused by another
     block's routing, which is what makes this generalize past the
     hand-built ``n <= 3`` construction it replaces (see
-    ``docs/cod_boolean_generator.md``, "Generalizing past n == 3", for the
-    re-entry failure mode that blocked a general-``n`` version before):
+    ``docs/cod_boolean_generator.md``, "Why the earlier n <= 3 merge design
+    didn't generalize", for the re-entry failure mode that blocked a
+    general-``n`` version before):
 
     Phase 1 assembles the input combo's numeric index ``V = sum(bit_i *
     2**(n-1-i))``: bits ``0..n-2`` each get their own fork-and-gauntlet box

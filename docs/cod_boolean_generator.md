@@ -1,56 +1,13 @@
-# COD boolean generator: construction notes
+# COD boolean generator: design history
 
-A working document recording how the COD boolean generator is built and
-verified.  Unlike the design this replaces (see "History" below), this is
-a **shipped, tested construction**: the interpreter is
-`esolangs.interpreters.grid_based.cod`, the generator is
-`esolangs.tools.boolean.cod.cod`, and both are exercised by
-`tests/interpreters/test_cod.py` and `tests/tools/test_boolean.py`.
-
-## Language mechanics (per the wiki)
-
-COD programs are two-dimensional.  `~` is a wave (a wall); a space is water
-(passable); every other command character is passable and executes when a
-cod passes over it.  `>` is a cod: an instruction pointer with an unbounded
-signed integer value starting at 0.
-
-- `+` duplicates the cod; `-` removes it.
-- `)` / `(` increment / decrement the cod's value.
-- `<` removes the cod if its value is zero.
-- `_` reacts only to upward motion: if the cod is going up when it hits the
-  `_`, it is sent back down iff its value is nonzero; otherwise nothing.
-- `---` (three dashes) touching the left or right edge with nothing between:
-  print the cod's value, then remove the cod.  Anywhere else it counts as
-  three `-` commands (three removals).
-- `...` (three periods) touching the top or bottom edge with nothing
-  between: read a number from STDIN into the cod's value.  Anywhere else it
-  is ignored.  The wiki's own truth-machine example writes its `...` one
-  period per row (vertically, still three in a row touching the top edge),
-  not three periods side by side on one line — easy to misread as a bare
-  `.`; the interpreter follows the prose spec (a genuine three-in-a-row,
-  edge-touching run) and documents this explicitly.
-
-Cods move through anything except waves and other cods.  Motion: if a cod
-can go multiple ways it chooses a random valid direction; at a dead end it
-turns around; completely blocked in, it loops forever.  If at any moment
-there are no cods, the program terminates.
-
-**The `+` rule is not the same as the general motion rule.**  The wiki
-states it separately: "if there are two branches, one of them will continue
-and one of them will go back; if there are three branches, they will each
-go different forward branches; more, then they will each go different, but
-otherwise random, ways."  Reading "branches" as *every* open direction
-(including the one the cod entered from) makes this precise: two branches
-is a plain corridor (forward and back only, so "goes back" is the ordinary
-backward branch — no fork at all); three branches is a T-junction, and the
-two *forward-facing* options (excluding backward) each get one of the two
-duplicates, deterministically; four branches is a crossroads, and the three
-forward-facing options are split similarly (the wiki's "otherwise random"
-case cannot occur on a rectangular grid, where at most three cells besides
-the entry exist).  This makes `+` at a genuine fork a **deterministic**
-primitive, unlike the plain motion rule's random choice at an ordinary
-junction — the whole generator is built on this fact, so it never needs
-seeded randomness.
+Why the COD boolean generator is built the way it is, and what was tried
+and rejected along the way.  The construction itself is shipped and tested
+— the interpreter is `esolangs.interpreters.grid_based.cod`, the generator
+is `esolangs.tools.boolean.cod.cod`, and both are exercised by
+`tests/interpreters/test_cod.py` and `tests/tools/test_boolean.py`.  For
+the language's mechanics, including the `+` fork rule this construction
+rests on, read the interpreter module's docstring; it is authoritative and
+this document does not restate it.
 
 ## Why a boolean generator at all
 
@@ -155,7 +112,8 @@ concatenation with no cross-box interference to reason about.
 
 ## Verification
 
-Mirrors the A Painter Ant generator's discipline (`docs/a_painter_ant_generator.md`):
+Mirrors the A Painter Ant generator's verification discipline
+(`docs/a_painter_ant_generator.md`):
 
 - All 16 two-input truth tables, all 4 input combinations each (64 runs),
   through the real interpreter: exactly one `0`/`1` line printed, program
