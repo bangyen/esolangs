@@ -682,6 +682,79 @@ them). `verify.py` remains the separate, narrower round-trip check for
   unchanged: when the layout genuinely runs out of room it says so at render
   time.
 
+  **Why depth 5 fails, and why the next soft-cost patch does not fix it.**
+  Instrumented the same way on `+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.`
+  (fixed geometry 368 cells, ~86x135-cell canvas, 5 detours): the first two
+  detours route (+179, +228 cells), and the third -- the same
+  depth-4-targeting detour that used to fail one program earlier -- is
+  sealed by the depth-3 detour's 228-cell route alone: its reachability is
+  96% against fixed ink, 91% after the first route, **5%** after the
+  second, with all 22 of its viable landing points unreachable. Same
+  disease as before, one level up: doorstep costs protect a departure
+  *point*, but nothing protects the *lane* between a pending detour's start
+  and its stem, and an earlier route can cut that lane anywhere along its
+  length.
+
+  The obvious escalation was measured and rejected: extending the soft
+  `avoid` regions from doorstep blobs to each pending detour's whole
+  start-to-stem rectangle (inflated by `_GOTO_CORRIDOR`) leaves depth 4
+  rendering identically and depth 5 and 6 still failing. Mechanically that
+  is expected in hindsight -- a soft cost steers a route among alternatives
+  *that exist*, but when every route for a big outer detour must cross the
+  inner lane somewhere, it pays the toll and crosses, and a paid crossing
+  cuts the lane exactly as thoroughly as a free one. Costing has hit its
+  structural limit: the failure is that routes are free-form at all.
+
+  The structural way out: nested loop-backs are topologically nested, so
+  loop `k`'s detour can run as a ring just outside loop `k`'s own subtree
+  and inside loop `k-1`'s ring, never crossing by construction -- the
+  lateral space `_arm_spacing`'s corridor term reserves is exactly the
+  annulus such a ring occupies. That is what landed, as a *constraint* on
+  the existing A* rather than a replacement for it, and every piece of the
+  picture was measured before being built (the depth-4 record above having
+  shown unmeasured geometric intuition here wrong twice):
+
+  - *Departure*: every detour's start sits exactly on its own subtree's
+    bounding-box perimeter -- measured `start->edge=0` for all detours at
+    depths 3-7, so a route fenced out of the box interior can leave at all.
+    The boxes themselves are recorded during the real layout from the
+    strokes actually laid (`_layout`'s new `boxes` dict), not reconstructed
+    geometrically, for the same anti-drift reason `_subtree_extent`
+    dry-runs the real layout.
+  - *Landing*: the target stem sits 17-29 cells *inside* the box (arm
+    content reaches back around it), so a pure annulus reaches 0 of its
+    approach points. But an ASCII dump of the strip along the stem's own
+    line showed it empty except the trunk -- the clearance `_arm_spacing`
+    already guarantees around the trunk axis -- so the fence keeps a
+    stem-aligned landing strip open (`_STRIP_HALF_WIDTH` =
+    `_DIAGONAL_APPROACH + _CLEARANCE + 1`, sized so an approach point's own
+    clearance never touches the fence). One measurement mid-way here was
+    wrong twice over an inverted direction map in the experiment itself --
+    the "0/30 approaches reachable for outer detours" runs were the bug,
+    not geometry, which the strip dump exposed.
+  - *Stacking*: inner and outer boxes share edges, and whichever ring
+    routes the shared band first starves the other -- measured in both
+    orders (outermost-first starved the inner ring at depth 5,
+    innermost-first starved the outer one even at depth 3). Soft shell
+    costs resolve it: each ring pays `_AVOID_PENALTY` within
+    `_GOTO_CORRIDOR` of its own box per *deeper* pending detour, so shallow
+    rings ride out and deep rings hug, onion-style.
+  - *Fallback*: a detour whose constrained attempt fails routes free, as
+    before -- the fence is capacity, not correctness, and the innermost
+    detour of a deep program (nothing deeper left to seal, tiny free
+    route) uses exactly that path.
+
+  Depths 5 and 6 now render and round-trip to `[1]` (~1.6s and ~10s; depth
+  5 is pinned in `TestNestingDepthLimit`, depth 6 left unpinned only for
+  suite runtime). The ceiling is depth 7, which exhausts at full padding
+  and full node cap (~27s; the exhaustion pin moved there, with
+  `_MAX_ROUTE_SEARCH` also throttled in the test to keep the raise fast).
+  The failing detour there is the *third* (depth-4) one -- its constrained
+  attempt and its free fallback both exhaust after the two outermost rings
+  route -- so the congestion is in the middle of the onion, not at either
+  end. Beyond locating it, the mechanism is uncharacterised; per this
+  entry's own record, it should be instrumented before being named.
+
 - **Output compactness vs. the wiki's own drawings, and what is irreducible.**
   Prompted by a direct comparison: `bf_to_line.py` on the wiki's own addition
   algorithm (`,>,[-<+>]<.`, exactly what `fixtures/addition.png` draws by

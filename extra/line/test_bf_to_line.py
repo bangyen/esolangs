@@ -227,7 +227,16 @@ class TestNestingDepthLimit:
     departure points.  It is pinned as a round-trip below, exactly as the
     depth-3 entries were when their boundary fell.
 
-    The boundary has moved out to depth 5, and the invariant that survives is
+    Depth 5 fell next, to the ring constraint (see
+    `render._route_pending`'s docstring): each detour is fenced out of its
+    own subtree's measured bounding-box interior -- everything deeper lives
+    inside that box, so a fenced route can never cut a deeper lane -- with a
+    landing strip kept open along the target stem's line, and shallow rings
+    pushed outward by soft shell costs so rings stack onion-style.  Depth 6
+    renders and round-trips too (verified directly; unpinned only because it
+    takes ~10s, which would triple this suite's runtime).
+
+    The boundary has moved out to depth 7, and the invariant that survives is
     the original one, unchanged in substance since the first version of this
     class: when the layout genuinely runs out of room it says so at render
     time rather than misdrawing.  That is what
@@ -272,6 +281,20 @@ class TestNestingDepthLimit:
         """
         assert _run_bf("+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.", tmp_path / "depth4.png") == [1]
 
+    def test_five_levels_round_trip(self, tmp_path: Path) -> None:
+        """Depth 5 renders, extracts and executes correctly.
+
+        One level deeper again: cell 5 ends at 1 and `>>>>>.` prints it.
+        This is the depth the free-form router could not reach at all (see
+        `render._route_pending`'s ring-constraint docstring) -- its depth-3
+        detour's shortest route sealed the depth-4 detour's region from 96%
+        reachable to 5%.  Pinned as a round-trip because the ring fence is
+        what makes it drawable, so a regression there shows up here first.
+        """
+        assert _run_bf(
+            "+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.", tmp_path / "depth5.png"
+        ) == [1]
+
     def test_exhaustion_raises_rather_than_misdrawing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -282,21 +305,26 @@ class TestNestingDepthLimit:
         undrawable program renders happily and then fails extraction with
         ~21000 unaccounted pixels, i.e. it draws self-crossing garbage.
 
-        `_MAX_PADDING_DOUBLINGS` is throttled to 0 so exhaustion is reached in
-        well under a second instead of grinding through every doubling.  That
-        is deliberate rather than incidental: the assertion is about *what
-        happens when the router gives up*, not about how long it searches
-        first, and an earlier version of this test pinned an unthrottled
-        program that took ~2.5 minutes to reach the same raise.  Depth 5 is
-        the program used only because it still exhausts at full padding too
-        (measured: ~5s to raise unthrottled, so the throttle is a
-        convenience here rather than a rescue); if a future layout change
-        makes depth 5 drawable, throttling alone keeps this test meaningful
+        `_MAX_PADDING_DOUBLINGS` is throttled to 0 and `_MAX_ROUTE_SEARCH`
+        to 2000 so exhaustion is reached in a few seconds instead of
+        grinding through every doubling and every constrained-then-fallback
+        cycle at the full node cap.  That is deliberate rather than
+        incidental: the assertion is about *what happens when the router
+        gives up*, not about how long it searches first, and an earlier
+        version of this test pinned an unthrottled program that took ~2.5
+        minutes to reach the same raise.  Depth 7 is the program used only
+        because it still exhausts at full padding and full node cap too
+        (measured: ~27s to raise unthrottled); if a future layout change
+        makes depth 7 drawable, throttling alone keeps this test meaningful
         without needing a deeper program.
         """
         monkeypatch.setattr(render_module, "_MAX_PADDING_DOUBLINGS", 0)
+        monkeypatch.setattr(render_module, "_MAX_ROUTE_SEARCH", 2000)
         with pytest.raises(ValueError, match="no clear route found"):
-            _run_bf("+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.", tmp_path / "depth5.png")
+            _run_bf(
+                "+[>+[>+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]<-]<-]>>>>>>>.",
+                tmp_path / "depth7.png",
+            )
 
 
 class TestCompileErrors:
