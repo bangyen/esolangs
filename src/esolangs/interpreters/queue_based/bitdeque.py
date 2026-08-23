@@ -83,10 +83,9 @@ class _Machine:
     def render(self) -> None:
         """Print the deque contents, one value per space.
 
-        No trailing newline: this runs once, when the program ends, so the
-        newline would be nothing but trailing whitespace.  (The wiki defines
-        no I/O for Bitdeque, so there is no spec to be faithful to here --
-        see the module docstring.)
+        No trailing newline: the wiki defines no I/O for Bitdeque at all, so
+        there is no spec to be faithful to, and a newline here would be
+        nothing but trailing whitespace.
         """
         self.io.print_str(" ".join(map(str, self.deq)))
 

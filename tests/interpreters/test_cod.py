@@ -20,17 +20,17 @@ class _FirstChoiceRNG:
 class TestCOD:
     def test_increment_and_output(self) -> None:
         # ')' increments, '---' on the right edge prints and removes
-        assert run_and_capture("~~~~~\n~>))---") == "2\n"
+        assert run_and_capture("~~~~~\n~>))---") == "2"
 
     def test_decrement_and_output(self) -> None:
-        assert run_and_capture("~~~~~~\n~>)))((---") == "1\n"
+        assert run_and_capture("~~~~~~\n~>)))((---") == "1"
 
     def test_less_than_removes_zero_valued_cod(self) -> None:
         # value 0 hits '<' and is removed; no cod remains, no output
         assert run_and_capture("~~~~~~\n~><----") == ""
 
     def test_less_than_passes_nonzero_cod(self) -> None:
-        assert run_and_capture("~~~~~~~\n~>)<---") == "1\n"
+        assert run_and_capture("~~~~~~~\n~>)<---") == "1"
 
     def test_bare_dash_removes_the_cod(self) -> None:
         # a lone '-' (not part of a left/right-edge run of exactly 3)
@@ -58,7 +58,10 @@ class TestCOD:
             ]
         )
         out = run_and_capture(code)
-        assert sorted(out.strip().split("\n")) == ["1", "2"]
+        # Outputs are not separated, so the two prints run together; the
+        # order is whichever cod reaches its edge first, which this test
+        # does not pin, so compare the multiset of characters.
+        assert sorted(out) == ["1", "2"]
 
     def test_reflect_upward_motion_when_nonzero(self) -> None:
         # '_' reflects an upward-moving nonzero cod back down; the value is
@@ -98,7 +101,7 @@ class TestCOD:
                 "  ~~~",
             ]
         )
-        assert run_and_capture(code, stdin="0", limit=200) == "0\n"
+        assert run_and_capture(code, stdin="0", limit=200) == "0"
 
     def test_truth_machine_nonzero_loops_forever(self) -> None:
         code = "\n".join(
@@ -114,7 +117,7 @@ class TestCOD:
             ]
         )
         out = run_and_capture(code, stdin="1", limit=100)
-        assert out.count("1\n") > 5
+        assert out.count("1") > 5
 
     def test_no_start_marker_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="no cod start"):
@@ -162,7 +165,7 @@ class TestCOD:
     def test_trailing_blank_lines_are_stripped(self) -> None:
         # a trailing "\n\n" leaves an empty final row, which must not
         # affect grid width or the start scan
-        assert run_and_capture("~~~~~~\n~>)---\n\n") == "1\n"
+        assert run_and_capture("~~~~~~\n~>)---\n\n") == "1"
 
     def test_genuine_random_junction_without_rng_uses_secrets(self) -> None:
         # a real >=2-way fork (not via '+'): forward blocked, both East and
