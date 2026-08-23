@@ -1,7 +1,17 @@
 # Example programs
 
-This directory holds example programs, each verified by `tests/test_examples.py`
-to run through the repo's interpreter and produce its expected output.
+This directory holds programs sampled from a *parameterized* generator, each
+verified by `tests/test_examples.py` to run through the repo's interpreter and
+produce its expected output.  Every file is exactly what its generator
+produces today, and a companion test asserts that — the check is meaningful
+precisely because the generator takes arguments and could produce something
+else.
+
+Fixed programs with no such space (cat, truth-machine, multiply) are test
+fixtures rather than examples: a generator with no arguments would just be the
+file wrapped in a function, and a sync test for it would assert a constant
+equals itself.  Those live inline in the matching
+`tests/interpreters/test_*.py`.
 
 ## hello-world
 
@@ -27,22 +37,6 @@ Notes:
   (Forþ, LaserFuck, Painfuck, 123 in `extra/rust/`).  These still have an
   example here, verified against the Python interpreter like every other; the
   `extra/` version is an additional implementation, not the only one.
-
-## cat
-
-Echoes input to output, for a curated set of input-capable languages:
-
-- `nevermind.txt` reads a line and prints it back (`print` adds a newline).
-- `6-5.txt` reads one character and prints it (the language has no loop).
-- `modulous.txt` reads a line, then pops and prints its characters.
-
-## truth-machine
-
-Outputs `0` and halts when given `0`, and outputs `1` forever when given `1`:
-
-- `modulous.txt`, `brainif.txt`, `between.txt`, `circlefuck.txt`, and
-  `factor.txt`.  The tests exercise only the terminating `0` branch; the `1`
-  branch loops forever by definition.
 
 ## boolean
 
@@ -91,12 +85,3 @@ Swap's register dumps, A Painter Ant's landing cell — and those with no
 Python interpreter to run.  Their generators are covered by
 `tests/tools/test_boolean.py` instead.
 
-## multiply
-
-Reads two sentinel-delimited decimal operands (the digits of the first, a
-`*` line, the digits of the second, a `#` line) and prints their product:
-
-- `jaune.txt` is what `esolangs.tools.boolean.jaune_multiply()` generates —
-  Jaune's sentinel construction works for any operand length, which is why
-  the multiply capability takes no digit-count parameter (see
-  `docs/walls.md`).

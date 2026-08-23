@@ -72,6 +72,20 @@ class TestHelloWorld:
         assert run_program(HELLO_WORLD) == "Hello, world!"
 
 
+class TestWikiPrograms:
+    def test_cat(self) -> None:
+        """The cat program echoes its input back."""
+        assert run_program(CAT, "hi") == "hi"
+
+    def test_truth_machine_zero(self) -> None:
+        """A 0 input prints 0 and halts.
+
+        The 1 branch loops forever by definition, so only the terminating
+        branch is exercised.
+        """
+        assert run_program(TRUTH_MACHINE, "0") == "0"
+
+
 class TestLiterals:
     def test_integer_literals_are_base23_parsed(self) -> None:
         """Base-14-written literals are parsed in base 23."""

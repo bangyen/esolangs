@@ -1,9 +1,10 @@
 """Generate docs/languages.md and the README's Implemented Languages list.
 
-Walks the registry and the compiler/example directories to produce the
-language capability matrix (docs/languages.md) and the grouped, wiki-linked
-language list in the README, so neither page goes stale the way a
-hand-maintained list would.
+Walks the registry and the compiler directories to produce the language
+capability matrix (docs/languages.md) and the grouped, wiki-linked language
+list in the README, so neither page goes stale the way a hand-maintained
+list would.  Every column derives from the registry or a capability set --
+never from which files happen to sit in examples/.
 """
 
 import pathlib
@@ -12,11 +13,6 @@ from esolangs.registry import LANGUAGES, RUNNERS
 from esolangs.tools.boolean import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[1]
-EXAMPLES = ROOT / "examples"
-HELLO = EXAMPLES / "hello-world"
-CAT = EXAMPLES / "cat"
-TRUTH = EXAMPLES / "truth-machine"
-BOOLEAN_EX = EXAMPLES / "boolean"
 # Compiler source-file stem -> the language's display name.  A compiler file
 # without an entry here fails loudly rather than silently dropping out of
 # the docs.
@@ -175,23 +171,14 @@ def _source_link(name: str) -> str:
     )
 
 
-def _file_name(name: str) -> str:
-    return name.lower().replace(" ", "-")
-
-
 def _capabilities(name: str) -> dict[str, bool]:
     lang = LANGUAGES.get(name)
-    hello = (HELLO / f"{_file_name(name)}.txt").exists()
     return {
         "generator": lang.generator is not None if lang else False,
         "interpreter": lang.interpreter is not None if lang else False,
         "cross_check": name in NATIVE,
         "boolean": name in BOOLEAN,
         "compiler": name in ASSEMBLY_COMPILERS,
-        "hello": hello,
-        "cat": (CAT / f"{_file_name(name)}.txt").exists(),
-        "truth-machine": (TRUTH / f"{_file_name(name)}.txt").exists(),
-        "boolean-ex": (BOOLEAN_EX / f"{_file_name(name)}.txt").exists(),
     }
 
 
@@ -214,23 +201,17 @@ def render() -> str:
         "parameterized generators (the harness substitutes input bits into "
         "a template).",
         "",
-        "| Language | Text generator | Python | Cross-check | Boolean | "
-        "Compiler | Examples |",
-        "| --- | :---: | :---: | :---: | :---: | :---: | :---: |",
+        "| Language | Text generator | Python | Cross-check | Boolean | Compiler |",
+        "| --- | :---: | :---: | :---: | :---: | :---: |",
     ]
     for name in sorted(set(LANGUAGES) | ASSEMBLY_COMPILERS | NATIVE):
         c = _capabilities(name)
-        examples = " ".join(
-            k for k in ("hello", "cat", "truth-machine", "boolean-ex") if c[k]
-        )
-        if "boolean-ex" in examples:
-            examples = examples.replace("boolean-ex", "boolean")
         lines.append(
             f"| {name} | {'yes' if c['generator'] else ''} | "
             f"{'yes' if c['interpreter'] else ''} | "
             f"{'yes' if c['cross_check'] else ''} | "
             f"{'yes' if c['boolean'] else ''} | "
-            f"{'yes' if c['compiler'] else ''} | {examples} |"
+            f"{'yes' if c['compiler'] else ''} |"
         )
     lines += ["", "The `esolangs` command lists the languages with Python support:"]
     lines += ["", "```bash", "esolangs list", "```", ""]

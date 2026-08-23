@@ -45,6 +45,21 @@ class TestBrainIfGeneratedHelloWorld:
 
         assert run_and_capture(brainif("Hi").splitlines()) == "Hi"
 
+    def test_truth_machine_zero(self) -> None:
+        """A 0 input prints 0 and halts.
+
+        The 1 branch (``if 49 goto 2``) loops forever by definition, so only
+        the terminating branch is exercised.
+        """
+        program = [
+            "if 0 input",
+            "if 48 output",
+            "if 48 goto 6",
+            "if 49 output",
+            "if 49 goto 2",
+        ]
+        assert run_and_capture(program, inputs=["0"]) == "0"
+
     def test_unknown_instruction_ignored(self) -> None:
         """Lines without a recognized instruction are ignored."""
         assert run_and_capture(["if 0 output", "if 0 frobnicate"]) == "\x00"
