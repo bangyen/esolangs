@@ -21,6 +21,15 @@ class TestCirclefuck:
         program = "<[.<]@\\0\\n!dlroW\\ ,olleH"
         assert run_and_capture(program) == "Hello, World!\n"
 
+    def test_truth_machine_zero(self) -> None:
+        """A 0 input prints 0 and halts.
+
+        The 1 branch prints 1 forever by definition, so only the terminating
+        branch is exercised.
+        """
+        program = "," + "-" * 48 + "[[-]" + "+" * 49 + ".]" + "+" * 48 + ".@"
+        assert run_and_capture(program, inputs=["0"]) == "0"
+
     def test_halt(self) -> None:
         assert run_and_capture("++@") == ""
 

@@ -50,6 +50,31 @@ class TestInput:
         with pytest.raises(EOFError):
             run(code, ScriptedIO(""))
 
+    def test_truth_machine_zero(self) -> None:
+        """A "0" byte is echoed and the program halts.
+
+        Forbin is byte-oriented, so the machine echoes the input character
+        and the range for-loop doubles as the if: ``!h..h`` is empty for
+        '0' (low bit clear) and entered for '1', where ``loop`` prints '1'
+        forever.  Only the terminating branch is exercised.
+        """
+        code = "\n".join(
+            [
+                "main {",
+                "  a,b,c,d,e,f,g,h = (in 0);",
+                "  out a,b,c,d,e,f,g,h;",
+                "  for _:!h..h {",
+                "    loop 0;",
+                "  }",
+                "}",
+                "loop {",
+                "  out 0,0,1,1,0,0,0,1;",
+                "  loop 0;",
+                "}",
+            ]
+        )
+        assert run_program(code, "0") == "0"
+
 
 class TestLoops:
     def test_range_loops_once_and_twice(self) -> None:
