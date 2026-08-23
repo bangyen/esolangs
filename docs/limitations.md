@@ -59,7 +59,7 @@ predictable across languages:
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a general (any-arity) boolean generator; no text generator. |
+| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster, with the ant's cell as `o` or `@`). Has a general (any-arity) boolean generator; no text generator. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | BF-PDA | `.` prints the top bit as the `'0'`/`'1'` character, so the output alphabet is just the two digits. |

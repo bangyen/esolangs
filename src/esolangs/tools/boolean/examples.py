@@ -30,33 +30,26 @@ the answer is ``z``; LaserFuck prints every touched tape cell, so the input
 cells precede the result.  Each is a fixed position in a stable dump, which
 is a contract a committed file can hold, so each has an example.
 
-Back used to fail that test and no longer does.  Its answer was the cell
-*under the head*, which the tape dump does not locate; the generator now
-writes the result into a single answer cell instead, so the dump reports it
-like any other.  See :func:`~esolangs.tools.boolean.parameterized.back`.
+Two languages used to fail that test and no longer do.  Back's answer was
+the cell *under the head*, which the tape dump does not locate; the
+generator now writes the result into a single answer cell, so the dump
+reports it like any other.  A Painter Ant's answer is which of two painted
+leaf rings the ant rests in, and the interpreter's raster drew painted cells
+only, so the ant was invisible and the rings identical; ``render`` now marks
+the ant's own cell, with ``o`` on black and ``@`` on white.
 
-One language still fails it, for a reason an implementation change would
-remove rather than anything inherent:
-
-- **A Painter Ant** prints the final grid, and the two leaves are visible in
-  it as painted rings -- but the interpreter's ``render`` rasterises painted
-  cells only, so the ant itself is not drawn and the two rings are
-  indistinguishable.  Marking the ant's cell in ``render`` would make it
-  recoverable, but that changes an interpreter's observable output, so it is
-  tracked in ``docs/roadmap.md`` rather than done here.  Until then its
-  coverage lives in the generator's own tests, which reconstruct the ant's
-  landing cell directly.
-
-ABCDirection is absent for an unrelated reason: its generator works and its
-program is correct, but the program is a 1107-line, 377 KB grid needing
-several million steps to reach its answer -- too slow for the example suite
-and too large to review in a diff.
+Every boolean generator whose answer a program can report therefore has a
+committed example.  ABCDirection is the one absent generator, and not for
+that reason: its program is a 1107-line, 377 KB grid needing several million
+steps to reach its answer -- too slow for the example suite and too large to
+review in a diff.
 """
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from esolangs.registry import canonical_id
+from esolangs.tools.boolean.a_painter_ant import _instantiate_apa
 from esolangs.tools.boolean.helpers import instantiate
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
@@ -415,6 +408,21 @@ def _register() -> None:
     }
 
     embedded = {
+        "a-painter-ant": _embedded(
+            b.a_painter_ant,
+            "grid_based.a_painter_ant",
+            _instantiate_apa,
+            expected=(
+                "##.######\n#########\n#########\n#########\n#########\n"
+                "#########\n##.###.##\n#...#...#\n..o...#..\n#...#...#\n"
+                "##.###.##\n"
+            ),
+            note=(
+                "A Painter Ant has no output: it paints a grid and the answer "
+                "is which of the two leaf rings the ant rests in, shown by "
+                "'o' (on black, a zero) or '@' (on white, a one)"
+            ),
+        ),
         "back": _embedded(
             b.back,
             "tape_based.back",

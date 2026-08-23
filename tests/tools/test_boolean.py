@@ -3635,10 +3635,10 @@ class TestAPainterAnt:
         from esolangs.interpreters.io import ScriptedIO
 
         io = ScriptedIO()
-        run_a_painter_ant(program, io, limit=len(program))
+        run_a_painter_ant(program, io)
         ref = io.getvalue()
         io = ScriptedIO()
-        run_a_painter_ant(program, io, limit=10 * len(program))
+        run_a_painter_ant(program, io, cycles=10)
         return io.getvalue() == ref
 
     @classmethod
@@ -3849,7 +3849,7 @@ class TestAPainterAntTrace:
             for bits in product([0, 1], repeat=2):
                 program = _instantiate_apa(a_painter_ant(table), list(bits))
                 io = ScriptedIO()
-                run_a_painter_ant(program, io, limit=len(program))
+                run_a_painter_ant(program, io)
                 assert box(program, 1) == io.getvalue().rstrip("\n"), (
                     table,
                     bits,
@@ -3867,10 +3867,10 @@ class TestAPainterAntTrace:
                 program = _instantiate_apa(a_painter_ant(table), list(bits))
                 assert cycle_stable(program), (table, bits)
                 io = ScriptedIO()
-                run_a_painter_ant(program, io, limit=len(program))
+                run_a_painter_ant(program, io)
                 reference = io.getvalue()
                 io = ScriptedIO()
-                run_a_painter_ant(program, io, limit=10 * len(program))
+                run_a_painter_ant(program, io, cycles=10)
                 assert io.getvalue() == reference, (table, bits)
 
     def test_cycle_stable_detects_a_divergence(self) -> None:
