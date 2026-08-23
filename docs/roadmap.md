@@ -160,12 +160,22 @@ would make the generator close to trivial to write by hand.
   Kolakoski sequence as drawn (the same never-executed caveat as the cat's
   trailing bit); confirming that would need the author, so the talk-page
   question is the cheapest next step.
-- **Line** — a cursor follows ASCII line-drawing curves; each curve shape it
-  passes through is itself the instruction (a diagonal increments/decrements
-  the current cell, a corner moves the tape pointer, a specific bend is a
-  conditional turn keyed on the current cell being zero).  Brainfuck-
-  equivalent semantics, but every instruction is encoded in path geometry,
-  so a generator has to physically route the drawn line to fork on input.
+- **Line** — implemented, in `extra/line/` (deliberately not wired into
+  `registry.py`: the wiki spec is hand-drawn curve *images* with no text
+  format, so its programs are PNGs, not files the registry's text pipeline
+  can carry).  A cursor follows drawn curves and each curve shape it passes
+  through is itself the instruction (a diagonal increments/decrements the
+  current cell, a specific kink moves the tape pointer, a T-branch is a
+  conditional turn keyed on the current cell being zero) -- brainfuck-
+  equivalent semantics encoded entirely in path geometry.  What exists: a
+  renderer whose kink shapes were measured pixel-by-pixel from the wiki's
+  reference images, a pixel-based extractor and runtime simulator verified
+  against the wiki's own hand-drawn fixtures, a direct boolean generator
+  (`line_boolean.py`, every input combination through 3 inputs plus 5-input
+  parity), and a brainfuck compiler (`bf_to_line.py`) whose loop-backs are
+  constructed geometrically rather than route-searched, making nesting
+  depth unbounded (round-tripped through depth 12).  See
+  `extra/line/WIP.md` for the full settled-vs-open ledger.
 
 - **Circuit Diagram** — an ASCII circuit: named logic gates (`a` AND, `A`
   NAND, `o` OR, `O` NOR, `x` XOR, `X` XNOR, `~` NOT) wired by `-`/`|`/`/`/`\`

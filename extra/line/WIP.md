@@ -14,8 +14,8 @@ settled, load-bearing reasoning; this file is for what isn't decided yet.
 (opcode basics, the zero/nonzero swap, both wiki fixtures across several
 real inputs, and the synthetic loop-back mechanism, including a hang
 check); `test_line_boolean.py` covers `line_boolean.py`'s generated
-decision trees end-to-end (render -> extract -> simulate) for n=1 through
-n=3 across every input combination; `test_bf_to_line.py` covers
+decision trees end-to-end (render -> extract -> simulate) for n = 1-3 plus
+5-input parity, across every input combination; `test_bf_to_line.py` covers
 `bf_to_line.py` through the same full pipeline, and is the only suite that
 exercises `render.py`'s loop-drawing geometry (`_layout`/
 `_loop_return_legs`) at all -- see the nested-loop entry below for why that
@@ -365,8 +365,9 @@ them). `verify.py` remains the separate, narrower round-trip check for
   ASCII encoding to strip: the fix for "Line would print 48/49, not 0/1"
   was to never introduce brainfuck's byte convention in the first place,
   not to post-process it out.  Verified end-to-end (render -> extract ->
-  simulate) for n=1 through n=4 across every input combination (identity,
-  NOT, AND, XOR, 3-input majority, 4-input parity).
+  simulate) across every input combination: identity, NOT, AND, XOR,
+  3-input majority, and 5-input parity (pinned at 5 rather than the n=7
+  that also passes, for suite runtime -- see the test's own docstring).
 
   **The n<=4 practical ceiling this entry used to record is gone**, and was
   an artifact of `_fork_depth`'s spacing, not anything about decision trees.
