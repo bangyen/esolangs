@@ -112,26 +112,44 @@ class TestNestedLoops:
 def _max_between_stroke_adjacency(program: str) -> int:
     """Most cells of one stroke sitting flush against a *different* stroke.
 
-    Captures `render._layout`'s stroke list directly rather than measuring
-    the rasterized image, so the count is in grid cells and names the two
-    strokes involved unambiguously.  Strokes that genuinely share a cell (a
-    fork's arms leaving its vertex, a detour's own merge point) are skipped:
-    the failure mode being measured is two strokes running *parallel and
+    Captures the cursor's stroke list directly rather than measuring the
+    rasterized image, so the count is in grid cells and names the two strokes
+    involved unambiguously.  Strokes that genuinely share a cell (a fork's
+    arms leaving its vertex, a detour's own merge point) are skipped: the
+    failure mode being measured is two strokes running *parallel and
     adjacent* with no shared cell at all, which rasterizes into one
     contiguous 2px ribbon.
+
+    Spies on `_Cursor.finish` rather than on `render._layout`, which matters
+    since loop-back detours became a second phase: `_layout` now returns
+    before any detour is routed, so capturing its cursor's strokes at that
+    point would measure only the fixed geometry and silently skip exactly the
+    strokes most likely to run flush against something (a detour threads
+    *between* existing ink by construction).  Every stroke in the drawing --
+    fixed or detour, on the root cursor or a branch's -- reaches the image by
+    way of one `finish()` call, so recording there sees all of them without
+    depending on which phase produced them.
     """
     captured: list[list[tuple[int, int]]] = []
-    original = render_module._layout  # noqa: SLF001 - see docstring
+    original = render_module._Cursor.finish  # noqa: SLF001 - see docstring
 
-    def spy(node, cursor, entries=None, depth=0):  # type: ignore[no-untyped-def]
-        original(node, cursor, entries, depth)
-        captured[:] = list(cursor.strokes)
+    def spy(self) -> None:  # type: ignore[no-untyped-def]
+        before = len(self.strokes)
+        original(self)
+        # Only real drawing cursors, never `_subtree_extent`'s dry-run scratch
+        # ones: measuring lays every subtree out from (0, 0) heading `_FORWARD`
+        # in its own local frame, so those strokes pile up in a coordinate
+        # space unrelated to the drawing and abut each other meaninglessly.
+        # The shared `occupied` set is exactly what marks a cursor as part of
+        # the real render (scratch cursors are built without one).
+        if self.occupied is not None:
+            captured.extend(self.strokes[before:])
 
-    render_module._layout = spy  # noqa: SLF001 - deliberate layout spy
+    render_module._Cursor.finish = spy  # noqa: SLF001 - deliberate stroke spy
     try:
         render(bf_to_line(program))
     finally:
-        render_module._layout = original  # noqa: SLF001 - restore the spy
+        render_module._Cursor.finish = original  # noqa: SLF001 - restore the spy
 
     worst = 0
     for i, first in enumerate(captured):
@@ -193,21 +211,23 @@ class TestNestingDepthLimit:
     change makes three levels work, this test should be replaced by a real
     round-trip assertion, not deleted."
 
-    That is what happened.  Shrinking `render._BRANCH_SPACING` from 20 to 5
-    (see its own comment for the measurements) leaves enough room between
-    sibling arms for the depth-3 loop-back to route, and the program now
-    round-trips and executes correctly -- so the round-trip assertion below
-    replaces the raise.
+    That is what happened, in two steps.  Lowering `render._BRANCH_SPACING`
+    from 20 to 5 made the *light* depth-3 body drawable, and replacing
+    fork-count spacing with measured-extent spacing plus two-phase detour
+    routing (see `render._subtree_extent` and `render._route_pending`) made
+    the heavy one drawable too -- both now round-trip and execute correctly,
+    so both are pinned as round-trip assertions below.
 
-    Depth 3 is not *uniformly* drawable, though: a heavier depth-3 body
-    (`++[>++[>++[>+<-]<-]<-]>>>.`, whose doubled `+` runs stretch every arm)
-    still exhausts the router.  The invariant that survives both cases is not
-    "depth 3 works" but the original one -- when the layout runs out of room
-    it says so at render time rather than misdrawing -- so both are pinned.
+    The boundary has moved out to depth 4, and the invariant that survives is
+    the original one, unchanged in substance since the first version of this
+    class: when the layout genuinely runs out of room it says so at render
+    time rather than misdrawing.  That is what
+    :meth:`test_exhaustion_raises_rather_than_misdrawing` pins, and it is the
+    part that must keep holding no matter how far the drawable depth moves.
     """
 
     def test_three_levels_round_trip(self, tmp_path: Path) -> None:
-        """Depth 3 now renders, extracts and executes correctly.
+        """Depth 3 renders, extracts and executes correctly.
 
         `+[>+[>+[>+<-]<-]<-]` moves a single 1 inward three times, so cell 3
         ends at 1; the trailing `>>>.` is what makes that observable as
@@ -218,19 +238,41 @@ class TestNestingDepthLimit:
         """
         assert _run_bf("+[>+[>+[>+<-]<-]<-]>>>.", tmp_path / "depth3.png") == [1]
 
-    @pytest.mark.slow
-    def test_undrawable_nesting_raises_rather_than_misdraws(
-        self, tmp_path: Path
-    ) -> None:
-        """A depth-3 body too heavy to route fails loudly at render time.
+    def test_heavy_three_levels_round_trip(self, tmp_path: Path) -> None:
+        """A depth-3 body heavy enough to have exhausted the old router works.
 
-        Slow (~2.5 min) by construction: reaching the raise means exhausting
-        every stem offset and approach at all `_MAX_PADDING_DOUBLINGS`
-        paddings, which is the whole point of the assertion.  Deselect with
-        `-m 'not slow'`.
+        `++[>++[>++[>+<-]<-]<-]` is the same shape as the light case with
+        doubled `+` runs, which stretch every arm; it computes 2*2*2 in cell
+        3.  This is the program that pinned the *raise* under fork-count
+        spacing -- it is here as a round-trip precisely because it is the case
+        that used to fail, so a regression in extent-based spacing shows up as
+        this test failing rather than as a silently larger drawing.
         """
+        assert _run_bf("++[>++[>++[>+<-]<-]<-]>>>.", tmp_path / "d3heavy.png") == [8]
+
+    def test_exhaustion_raises_rather_than_misdrawing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Running out of routing room fails loudly, never silently misdraws.
+
+        This is the invariant, and it matters more than which depth happens
+        to be drawable today: with the self-approach check disabled, an
+        undrawable program renders happily and then fails extraction with
+        ~21000 unaccounted pixels, i.e. it draws self-crossing garbage.
+
+        `_MAX_PADDING_DOUBLINGS` is throttled to 0 so exhaustion is reached in
+        well under a second instead of grinding through every doubling.  That
+        is deliberate rather than incidental: the assertion is about *what
+        happens when the router gives up*, not about how long it searches
+        first, and an earlier version of this test pinned an unthrottled
+        program that took ~2.5 minutes to reach the same raise.  Depth 4 is
+        the program used only because it still exhausts at full padding too;
+        if a future layout change makes depth 4 drawable, throttling alone
+        keeps this test meaningful without needing a deeper program.
+        """
+        monkeypatch.setattr(render_module, "_MAX_PADDING_DOUBLINGS", 0)
         with pytest.raises(ValueError, match="no clear route found"):
-            _run_bf("++[>++[>++[>+<-]<-]<-]>>>.", tmp_path / "depth3_heavy.png")
+            _run_bf("+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.", tmp_path / "depth4.png")
 
 
 class TestCompileErrors:

@@ -506,28 +506,60 @@ them). `verify.py` remains the separate, narrower round-trip check for
   session to do ("if a future layout change makes three levels work, this
   test should be replaced by a real round-trip assertion, not deleted").
 
-  Depth 3 is not *uniformly* drawable, and the honest boundary is now about
-  arm weight rather than nesting count: `++[>++[>++[>+<-]<-]<-]>>>.` -- same
-  depth, doubled `+` runs stretching every arm -- still exhausts the router
-  and raises. So the invariant that actually survives both cases is the
-  original one, and it is what the rewritten test class still pins: when the
-  layout runs out of room it fails loudly at render time rather than
-  misdrawing. That distinction remains load-bearing, for the same reason it
-  always was -- with `_self_approaches` disabled, an undrawable program
-  renders happily and then fails `extract()` with ~21000 unaccounted pixels,
-  i.e. it draws self-crossing garbage.
+  **`_fork_depth` is now gone, and with it the last of the nesting limit.**
+  The entry above was written when the *heavy* depth-3 body
+  (`++[>++[>++[>+<-]<-]<-]>>>.`, same shape with doubled `+` runs) still
+  exhausted the router, and concluded the honest boundary was "arm weight, not
+  nesting count". That was still measuring the symptom. Both causes have since
+  been fixed at the source, and the heavy body now round-trips too:
 
-  The obvious next lever, still not attempted: `_fork_depth` returns early at
-  a `goto` (`return depth`), so a loop-carrying subtree looks *shallower* than
-  it is and gets the least branch spacing -- plausibly backwards, since
-  exactly those subtrees need a routing channel for their detour. Making a
-  `goto` count toward depth was tried at +1 level back when three levels were
-  failing and did not rescue them, so if this is picked up it needs more than
-  a constant bump -- most likely a reserved routing channel sized
-  independently of `_BRANCH_SPACING`'s H-tree halving, and/or two-phase layout
-  (place all fixed geometry, then route every `goto` outermost-first against
-  full occupancy) so the outer detour is not routing through space the inner
-  ones already consumed.
+  - **Spacing is measured, not inferred from branching structure.**
+    `_fork_depth` counted how many nested `?` forks an arm still had to fit
+    and fed `_BRANCH_SPACING * 2**remaining`. That is blind to how much ink a
+    subtree actually draws: the light and heavy depth-3 bodies got *identical*
+    spacing at every fork (40/20/10 units) despite different op counts in
+    every arm, and a fork's two arms got the same length even when one held 4
+    ops and the other 14. `_subtree_extent` now dry-runs the real `_layout`
+    against a scratch cursor and measures the bounding box, and `_arm_spacing`
+    sizes each arm from how far its own subtree reaches back toward the trunk.
+    This subsumes the H-tree halving rather than discarding it -- "how far does
+    this subtree reach back" is exactly the quantity `2**remaining` was
+    approximating.
+  - **Detours route in a second phase, against the finished drawing.** This
+    was the bigger one, and it was an *ordering* bug rather than a spacing
+    bug: `_close_loop` used to run the instant a `goto` was reached during
+    layout, so a detour could only avoid ink that already existed at that
+    moment, and every stroke drawn afterwards was free to march straight
+    through the corridor it had just taken. Nothing ever checked. No amount of
+    extra arm spacing can fix that, because the collision is with geometry
+    that did not exist when the route was chosen. `_layout` now records each
+    loop-back as a `_Pending` entry and `_route_pending` routes them all after
+    layout completes, outermost fork first -- the two-phase layout this file
+    proposed as a guess and which turned out to be the actual fix.
+
+  A wrong turn worth recording, since it looked plausible and cost a cycle:
+  sizing arms additionally by their subtree's *lateral* span, on the theory
+  that sibling arms collide sideways. They do not -- the two arms leave a fork
+  in opposite directions, so `reach_back` alone already puts each subtree's
+  whole bounding box on its own side of the trunk, and the lateral spans
+  spread along the perpendicular axis where the boxes cannot meet. Adding the
+  term anyway double-counted it into both arms and amplified geometrically
+  with depth (each fork's measured span contained its children's
+  already-inflated spacing): a depth-3 program's outer arm measured 149 units
+  laterally and rendered at 7760x3800, against ~1500x1260 once the term was
+  removed.
+
+  The drawable boundary is now depth 4, and the invariant that survives is the
+  original one, unchanged in substance: when the layout genuinely runs out of
+  room it fails loudly at render time rather than misdrawing. That remains
+  load-bearing for the reason it always was -- with `_self_approaches`
+  disabled, an undrawable program renders happily and then fails `extract()`
+  with ~21000 unaccounted pixels, i.e. it draws self-crossing garbage.
+  `TestNestingDepthLimit` pins that invariant directly now, with
+  `_MAX_PADDING_DOUBLINGS` throttled to 0 so exhaustion is reached in under a
+  second: the assertion is about *what happens when the router gives up*, not
+  how long it searches first. That change alone took the three suites from
+  ~141s to ~4s, since the old test spent 2.5 minutes reaching its raise.
 
 - **Output compactness vs. the wiki's own drawings, and what is irreducible.**
   Prompted by a direct comparison: `bf_to_line.py` on the wiki's own addition
@@ -548,14 +580,23 @@ them). `verify.py` remains the separate, narrower round-trip check for
   identical program output (the drawings differ, of course -- what is
   unchanged is what they compute).
 
-  5 rather than lower because the floor is set by *which failure mode* you
-  get, not by whether tested programs still work: at 3 and below, an
-  undrawable three-level program stops raising at render time and instead
-  misdraws, caught only downstream by `extract()`'s coverage check (~3200
-  unaccounted pixels) -- strictly worse than a loud refusal. (One program,
-  `++[>++[>++[>+<-]<-]<-]>>>.`, does render correctly at exactly 4; that is a
-  coincidence of geometry, not a usable depth-3 capability, and is not what
-  the value is set on.)
+  5 rather than lower because the floor was, at that point, set by *which
+  failure mode* you get rather than by whether tested programs still work: at
+  3 and below, an undrawable three-level program stopped raising at render
+  time and instead misdrew, caught only downstream by `extract()`'s coverage
+  check (~3200 unaccounted pixels) -- strictly worse than a loud refusal.
+
+  **That constant is no longer what does the work**, and lowering it was only
+  ever the cheap half of the answer -- worth being explicit about, since
+  "shrink everything uniformly" is not a layout improvement, it is a scale
+  change. Replacing `_fork_depth`'s `2**remaining` with measured extents and
+  moving detour routing to a second phase (see the nesting entry above) is the
+  real fix, and it is separable from the constant: re-rendering at the
+  *original* `_BRANCH_SPACING = 20`, extent-based layout alone still beats the
+  old fork-counting layout on every program tried -- addition 2300x980 ->
+  1500x980, and the n=3 majority tree 9180x3920 -> 3620x1740 (~5.7x less
+  area). With both changes at 5, addition is 900x980 and the majority tree
+  1820x1440. `_BRANCH_SPACING` is now a floor and margin, not a scaling law.
 
   **Parity with the hand-drawn fixture is not reachable, and not a bug.**
   After this change the remaining bulk of the addition drawing is the
