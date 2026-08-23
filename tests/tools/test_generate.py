@@ -10,6 +10,7 @@ import pytest
 import esolangs.tools.text as gen
 from esolangs.interpreters.grid_based.clockwise import run as clockwise_run
 from esolangs.interpreters.grid_based.dig import run as dig_run
+from esolangs.interpreters.grid_based.streetcode import run as streetcode_run
 from esolangs.interpreters.grid_based.wii2d import run as wii2d_run
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.container import run as container_run
@@ -177,6 +178,25 @@ class TestGeneratorRoundTrips:
             == "Hello, World!"
         )
         assert gen.clockwise("") == ""
+
+    def test_streetcode(self) -> None:
+        """A straight walled corridor walks one cell to each character and prints."""
+        assert roundtrip(streetcode_run, gen.streetcode("Hi").splitlines()) == "Hi"
+        assert (
+            roundtrip(streetcode_run, gen.streetcode("Hello, World!").splitlines())
+            == "Hello, World!"
+        )
+        # descending code points use ~, and grid wall characters are printable
+        assert roundtrip(streetcode_run, gen.streetcode("zyA").splitlines()) == "zyA"
+        assert roundtrip(streetcode_run, gen.streetcode("-|+").splitlines()) == "-|+"
+        # cells are unbounded ints, so O is not limited to bytes
+        omega = "\u03a9"
+        assert roundtrip(streetcode_run, gen.streetcode(omega).splitlines()) == omega
+        # 'H' is 72 ^ from cell 0, then 'i' is 33 more; C and ; bracket the row
+        row = "C" + "^" * 72 + "O" + "^" * 33 + "O;"
+        wall = "-" * len(row)
+        assert gen.streetcode("Hi") == "\n".join([wall, row, wall])
+        assert gen.streetcode("") == "--\nC;\n--"
 
     def test_mammalian(self) -> None:
         """A SEED/SPRINT walk reaches the array holding each character."""
