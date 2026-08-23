@@ -51,7 +51,7 @@ python -m esolangs.interpreters.<category>.<language> program.txt
 esolangs run <language> program.txt
 esolangs list                          # list the supported languages
 esolangs generate <language> "Hello"   # print a program that outputs "Hello"
-esolangs transpile BF "ASCII art" program.txt  # rewrite between languages
+esolangs transpile BF Circlefuck program.txt   # rewrite between languages
 ```
 
 Assembly compilers run the same way and write `output.asm`:
@@ -70,7 +70,7 @@ import esolangs
 program = esolangs.generate("Circlefuck", "Hello, World!")
 output = esolangs.run("Circlefuck", program)
 esolangs.list_languages()
-art = esolangs.transpile("brainfuck", "ASCII art", program)
+circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
 ```
 
 ### Running the Tests
@@ -247,10 +247,11 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 
 | Source | Direction | Target |
 | --- | :---: | --- |
-| BF | ⇄ | ASCII art |
-| BF | → | Circlefuck |
 | Basicfuck | → | BF |
+| BF | → | Circlefuck |
 | BF | → | 6-5 |
+| BF | → | 3D Brainfuck |
+| BF | → | Painfuck |
 | BFStack | → | BF |
 | BIO | → | BF |
 | Decleq | → | S*bleq |
@@ -259,14 +260,12 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
 
 ```bash
-esolangs transpile BF "ASCII art" program.bf    # rewrite a program into another esolang
-esolangs transpile "ASCII art" BF program.txt   # and back again
+esolangs transpile Basicfuck BF program.txt     # rewrite a program into another esolang
 esolangs transpile BF Circlefuck program.bf     # auto-sized data region
 ```
 
 ```python
-art = esolangs.transpile("brainfuck", "ASCII art", program)  # or via the API
-program = esolangs.transpile("ASCII art", "brainfuck", art)
+program = esolangs.transpile("Basicfuck", "brainfuck", source)  # or via the API
 circlefuck = esolangs.transpile(
     "brainfuck", "Circlefuck", program, size=8
 )  # explicit size
