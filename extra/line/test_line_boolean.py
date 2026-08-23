@@ -69,6 +69,25 @@ class TestLineBoolean:
         """The regression case: a 3-deep tree with an inward-turning arm."""
         _check_truth_table("00010111", 3, tmp_path)
 
+    def test_parity_n5(self, tmp_path: Path) -> None:
+        """5-input parity, past the ceiling this generator used to document.
+
+        `line_boolean.py` recorded a practical limit of n<=4, with n=5
+        projected at roughly 35000x17000px and called impractical.  That was
+        an artifact of `render._fork_depth`'s fork-counting arm spacing, not
+        of decision trees: with extent-based spacing n=5 renders at 4000x2620
+        and extracts in about a second.  Pinned here at n=5 rather than the
+        n=7 that also passes, to keep the suite fast (n=7 spends ~9s in
+        extract plus execution) while still covering two levels past where
+        coverage used to stop -- deep enough that a regression in arm sizing
+        shows up as a real failure here rather than only as a larger drawing.
+
+        Parity is the useful table at this depth: every one of the 32 input
+        combinations reaches a distinct leaf, so a mis-sized arm anywhere in
+        the tree changes an answer rather than hiding in an unvisited branch.
+        """
+        _check_truth_table("01101001100101101001011001101001", 5, tmp_path)
+
     def test_invalid_length_rejected(self) -> None:
         """A truth table whose length is not a power of two is rejected."""
         with pytest.raises(ValueError, match="power-of-two"):

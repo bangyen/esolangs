@@ -37,11 +37,30 @@ warning.  Arms are now sized from each subtree's *measured* extent (see
 ``render.py``'s ``_subtree_extent``/``_arm_spacing``), which shrinks that
 dramatically: n=2 at 900x1100, n=3 at 1820x1440, n=4 at 1960x2160.
 
-Growth is therefore much gentler than the n<=4 ceiling this file used to
-document, and that ceiling is correspondingly looser -- but n=5 has not been
-re-measured since the change, so how far it now extends is unverified rather
-than known.  There is no enforced limit here in any case; callers generating
-large truth tables should measure rather than assume.
+**The n<=4 ceiling this file used to document is gone**, and was an artifact
+of the old spacing rather than anything about decision trees.  Measured end
+to end (render -> extract -> simulate, every input combination checked
+against the truth table) after the change:
+
+===  ===========  ==========  =======  ==========
+ n   canvas       extract     combos   result
+===  ===========  ==========  =======  ==========
+ 4   2000x2260      0.4s        16     all correct
+ 5   4000x2620      1.0s        32     all correct
+ 6   4160x4000      1.5s        64     all correct
+ 7   8160x4340      4.0s       128     all correct
+===  ===========  ==========  =======  ==========
+
+For scale, n=5 was previously projected at roughly 35000x17000px and called
+impractical; it is 4000x2620 and extracts in a second.  n=7 renders 35Mpx,
+which exceeds Pillow's default decompression-bomb threshold -- a caller
+reading such an image back must raise ``Image.MAX_IMAGE_PIXELS`` (as the
+measurement above did), which is a Pillow default rather than a limit of
+this generator.
+
+Nothing here is enforced, and n=8 upward is simply untested rather than
+known-bad -- the growth is roughly 2x area per input, so the practical limit
+is now whatever canvas and extraction time a caller will tolerate.
 """
 
 from __future__ import annotations
