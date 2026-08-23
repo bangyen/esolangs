@@ -366,8 +366,6 @@ def _register() -> None:
             b.nevermind,
             "register_based.nevermind",
             split=True,
-            expected="0\n",
-            note="the language's print always adds a newline",
         ),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
         "point-break": _reader(
@@ -437,7 +435,6 @@ def _register() -> None:
             _fill_cod,
             table=XOR2,
             bits=(1, 1),
-            expected="0\n",
             kwargs=_kw(limit=500),
             note="COD has no runtime input and no I/O but a printed number",
         ),

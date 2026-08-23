@@ -173,7 +173,7 @@ class TestCOD:
         assert vm.ip == (1, 3, 2, 2)
         vm.step()
         assert vm.halted
-        assert vm.output == "2\n"
+        assert vm.output == "2"
         vm.step()  # stepping a halted VM is a no-op
 
     def test_random_junction_is_deterministic(self) -> None:
@@ -696,7 +696,7 @@ class TestNevermind:
         assert (vm.ip, vm.memory) == (1, [5])
         vm.step()  # print,$x resolves $x and prints it
         assert vm.halted
-        assert vm.output == "5\n"
+        assert vm.output == "5"
 
 
 class TestBFPDA:

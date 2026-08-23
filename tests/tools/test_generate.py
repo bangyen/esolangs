@@ -364,14 +364,12 @@ class TestGeneratorRoundTrips:
             gen.eval("a`b")
 
     def test_nevermind(self) -> None:
-        """Print joins its arguments; nevermind always adds a trailing newline."""
-        assert roundtrip(nevermind_run, gen.nevermind("Hi").splitlines()) == "Hi\n"
-        assert roundtrip(nevermind_run, gen.nevermind("a,b").splitlines()) == "a,b\n"
-        assert (
-            roundtrip(nevermind_run, gen.nevermind("a*44b").splitlines()) == "a*44b\n"
-        )
-        assert roundtrip(nevermind_run, gen.nevermind("a²b").splitlines()) == "a²b\n"
-        assert roundtrip(nevermind_run, gen.nevermind("١٢٣").splitlines()) == "١٢٣\n"
+        """Print joins its arguments, with no separator or trailing newline."""
+        assert roundtrip(nevermind_run, gen.nevermind("Hi").splitlines()) == "Hi"
+        assert roundtrip(nevermind_run, gen.nevermind("a,b").splitlines()) == "a,b"
+        assert roundtrip(nevermind_run, gen.nevermind("a*44b").splitlines()) == "a*44b"
+        assert roundtrip(nevermind_run, gen.nevermind("a²b").splitlines()) == "a²b"
+        assert roundtrip(nevermind_run, gen.nevermind("١٢٣").splitlines()) == "١٢٣"
 
     def test_myscript(self) -> None:
         """The generator escapes the byte string into one say statement."""

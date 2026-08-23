@@ -1665,7 +1665,7 @@ class TestNevermind:
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_nevermind(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])) + "\n", f"inputs {bits}"
+            assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
         """A one-input function reads one input and branches on it."""
@@ -2715,7 +2715,7 @@ class TestParameterizedCOD:
         for combo in range(4):
             bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
             got = self.run_cod(self.instantiate(template, bits))
-            assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+            assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
     def test_all_two_input_tables(self) -> None:
         """Every one of the sixteen two-input tables produces the right result."""
@@ -2727,7 +2727,7 @@ class TestParameterizedCOD:
             for combo in range(4):
                 bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
                 got = self.run_cod(self.instantiate(template, bits))
-                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+                assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
     def test_all_three_input_tables(self) -> None:
         """Every one of the 256 three-input tables produces the right result.
@@ -2749,10 +2749,10 @@ class TestParameterizedCOD:
             for combo in range(8):
                 bits = [(combo >> (3 - 1 - i)) & 1 for i in range(3)]
                 got = self.run_cod(self.instantiate(template, bits))
-                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+                assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
-    def test_program_always_terminates_with_one_line(self) -> None:
-        """Every run prints exactly one line and leaves no cod alive."""
+    def test_program_always_terminates_with_one_value(self) -> None:
+        """Every run prints exactly one value and leaves no cod alive."""
         from esolangs.interpreters.grid_based.cod import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.tools.boolean import parameterized
@@ -2768,10 +2768,11 @@ class TestParameterizedCOD:
                     break
                 machine.step()
             assert machine.halted
-            assert io_.getvalue().count("\n") == 1
+            # one print, so one character: the answer, no separator
+            assert len(io_.getvalue()) == 1
 
-    def test_three_input_program_always_terminates_with_one_line(self) -> None:
-        """Every three-input run prints exactly one line and halts."""
+    def test_three_input_program_always_terminates_with_one_value(self) -> None:
+        """Every three-input run prints exactly one value and halts."""
         from esolangs.interpreters.grid_based.cod import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.tools.boolean import parameterized
@@ -2787,7 +2788,8 @@ class TestParameterizedCOD:
                     break
                 machine.step()
             assert machine.halted
-            assert io_.getvalue().count("\n") == 1
+            # one print, so one character: the answer, no separator
+            assert len(io_.getvalue()) == 1
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
@@ -2830,7 +2832,7 @@ class TestParameterizedCOD:
             for combo in range(16):
                 bits = [(combo >> (4 - 1 - i)) & 1 for i in range(4)]
                 got = self.run_cod(self.instantiate(template, bits))
-                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+                assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
     @pytest.mark.parametrize("table", ["10", "01", "00", "11"])
     def test_one_input_truth_table(self, table: str) -> None:
@@ -2842,7 +2844,7 @@ class TestParameterizedCOD:
         assert "{X1}" not in template
         for x0 in range(2):
             got = self.run_cod(self.instantiate(template, [x0]))
-            assert got == f"{table[x0]}\n", f"table {table} input {x0}"
+            assert got == f"{table[x0]}", f"table {table} input {x0}"
 
 
 class TestEvalBoolean:
