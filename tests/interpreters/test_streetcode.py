@@ -252,6 +252,17 @@ class TestStreetcodeAmbiguousTurns:
         machine.row, machine.col, machine.heading = 0, 1, "S"
         assert machine._junction_shape("S") == 3  # noqa: SLF001
 
+    def test_turn_into_the_oncoming_lane_is_not_a_road(self) -> None:
+        """A turn whose destination has the wall on its left and open road
+        on its right would leave the car driving on the left, so it is not
+        a road the junction may offer, however open it looks."""
+        machine = _Machine(self._counting_loop_code(), IO())
+        machine.row, machine.col, machine.heading = 5, 9, "E"
+        # South from (5,9) enters the lane with the outer wall on its left.
+        assert not machine._lawful_turn("S")  # noqa: SLF001
+        # North keeps that wall on the right, and is offered.
+        assert machine._lawful_turn("N")  # noqa: SLF001
+
     def test_narrow_arms_are_not_roads(self) -> None:
         """The same shape is not a junction when its arms are one cell:
         streets are two wide, so a single open cell before a wall is the
@@ -268,6 +279,31 @@ class TestStreetcodeAmbiguousTurns:
     # openness guard in ``_choose_heading``, the car turned immediately,
     # drove *inside* the wall, and wall-followed around the outside of the
     # lower room forever.
+    def _counting_loop_code(self) -> list[str]:
+        """A hand-written counting loop: nine laps of an island, then out.
+
+        The car counts cell 0 up to nine on the way in, U-turns onto the
+        island, and laps it; each lap adds eight to cell 1 and takes one
+        off cell 0.  At the island's top-right corner the roads are north
+        (out through the gap in the outer wall) and south (on around the
+        island), so the countdown steers the loop: nonzero laps again,
+        zero leaves.  Nine laps put 72 in cell 1, and the ``=`` on the way
+        out moves CP onto it so the ``O`` at the top prints ``H``.
+        """
+        return [
+            "+------------+",
+            "|            |",
+            "|C^        O;|",
+            "+--+  ++  +--+",
+            "   |      |",
+            "   | ^_~ =|",
+            "   | ^++= |",
+            "   |^^++^U|",
+            "   |^^^^^=|",
+            "   |^^^^^^|",
+            "   +------+",
+        ]
+
     def _early_mouth_code(self) -> list[str]:
         return [
             "+---------+",
@@ -401,11 +437,17 @@ class TestStreetcodeLaneMerge:
     def test_merge_target_reread_can_carry_straight_on(self) -> None:
         """The branch is re-read at the latched turn cell, not trusted from
         latch time: a cell that went nonzero while approaching reverses the
-        decision and the car carries straight on, abandoning the merge."""
+        decision and the car carries straight on, abandoning the merge.
+
+        The re-read is of the cell as the car *arrives* at that square (see
+        ``_arrival_cell``), which is what a real approach would have left
+        behind it.
+        """
         machine = _Machine(self._lane_merge_code(), IO())
         machine.row, machine.col, machine.heading = 3, 1, "S"
         machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
         machine.cells[0] = 1  # latch was taken under cell == 0
+        machine._arrival_cell = 1  # noqa: SLF001 - as the approach left it
         heading = machine._choose_heading()  # noqa: SLF001
         assert heading == "S"
         assert machine._merging_heading is None  # noqa: SLF001
@@ -472,6 +514,55 @@ class TestStreetcodeLaneMerge:
             (4, 4),
             (4, 5),
         ]
+
+
+class TestStreetcodeCountingLoop:
+    """A counting loop: a ring the car laps under the control of a cell.
+
+    ``docs/streetcode.md`` recorded that no such geometry had been found --
+    every attempt leaked, because a junction on the ring offered the wrong
+    roads and steered the car off it.  This one works, and the rules that
+    make it work (a road must be two cells deep, a turn may not enter the
+    oncoming lane, a junction reads the cell as the car arrives) are pinned
+    individually above; this is the end-to-end program.
+    """
+
+    def _code(self) -> list[str]:
+        return TestStreetcodeAmbiguousTurns()._counting_loop_code()  # noqa: SLF001
+
+    def test_counting_loop_prints_its_character(self) -> None:
+        assert run_and_capture(self._code()) == "H"
+
+    def test_counting_loop_halts(self) -> None:
+        machine = _Machine(self._code(), IO())
+        for _ in range(500):
+            machine.step()
+            if machine.halted:
+                break
+        assert machine.halted
+
+    def test_counting_loop_laps_nine_times(self) -> None:
+        """The counter is nine on entry and falls by one per lap, so the
+        car passes the island's corner nine times: eight laps that carry
+        on around, and the ninth that leaves."""
+        machine = _Machine(self._code(), IO())
+        counters = []
+        for _ in range(500):
+            if (machine.row, machine.col, machine.heading) == (5, 8, "E"):
+                counters.append(machine.cells.get(0, 0))
+            machine.step()
+            if machine.halted:
+                break
+        assert counters == [8, 7, 6, 5, 4, 3, 2, 1, 0]
+
+    def test_counting_loop_accumulates_seventy_two(self) -> None:
+        """Eight per lap into cell 1, which is what makes the 'H'."""
+        machine = _Machine(self._code(), IO())
+        for _ in range(500):
+            machine.step()
+            if machine.halted:
+                break
+        assert machine.cells[1] == ord("H")
 
 
 class TestStreetcodeIO:

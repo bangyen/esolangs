@@ -121,6 +121,29 @@ local wall shape actually marks an intersection rather than a plain corner:
   hand-drawn loop attempt whose entry mouth sat two cells ahead of the
   junction's firing point.
 
+* **A road is two cells deep, and a turn keeps to the right.**  The
+  roads a junction offers are the directions the car could actually
+  drive down.  Streets are two characters wide, so a direction with one
+  open cell before a wall is not a road: it is the street the car is
+  already on -- the oncoming lane beside it, or the last cell of a bend
+  (`_road_deep`).  Nor is a turn a road when its destination would leave
+  the car with the wall on its left and open road on its right, which is
+  the lane oncoming traffic uses (`_lawful_turn`).  Together these are
+  what let a ring hug an island: at the island's corner the wall simply
+  ends, with no `+ ... +` mouth to detect, and the old rule offered the
+  direction the car was already travelling while missing the one the
+  road bends into.  A mouth met head-on (`_crossing_mouth`) is exempt
+  from the depth test: the road being joined runs perpendicular, so
+  probing two cells out from inside the mouth crosses it and reads its
+  far wall.
+
+* **A junction reads the cell as the car arrives.**  The branch is taken
+  on the CPth cell as it stood when the car reached the deciding square,
+  before that square's own instruction runs (`_arrival_cell`).  A square
+  on a turning lane commonly prepares the road being taken -- an `=`
+  moving CP onto the value the road will print -- and that preparation
+  must not double as the decision of which road to take.
+
 * **A `U` ends in the opposite lane.**  Streets are two-way and two
   wide, and the car drives on the right, so after turning around the
   lane it belongs in is the one now on its right: the U-turn ends in
@@ -259,7 +282,58 @@ still echoes every character correctly under the rule.
   ever surfaces, is worth checking against the same rule before trusting
   it there too.
 
-## Toward a counting loop: what works, what leaks (probed 2026-08-22)
+## The counting loop (found 2026-08-23)
+
+A counting loop exists.  `TestStreetcodeCountingLoop` runs it: the car
+counts cell 0 up to nine on the way in, U-turns onto a `++` island, and
+laps it nine times, each lap adding eight to cell 1 and taking one off
+cell 0, then leaves through a gap in the outer wall and prints `H`.
+
+```
++------------+
+|            |
+|C^        O;|
++--+  ++  +--+
+   |      |
+   | ^_~ =|
+   | ^++= |
+   |^^++^U|
+   |^^^^^=|
+   |^^^^^^|
+   +------+
+```
+
+The ring is an ordinary wall-hug around the island; the decision is at
+the island's top-right corner, where the roads are north (out through
+the gap) and south (on around the island), so the countdown steers the
+loop -- nonzero laps again, zero leaves.  Three rules had to be right
+before it would run, and each was wrong in a way that only a program of
+this shape exposes:
+
+* **A road is two cells deep.**  The corner offered *east* -- one open
+  cell before the outer wall, which is the width of the road rather than
+  a road -- and did not offer *south*, which has no `+ ... +` mouth to
+  detect because the island's wall simply ends.  Both are fixed by
+  requiring two drivable cells (`_road_deep`).
+
+* **A turn may not enter the oncoming lane.**  From the corner cell the
+  south turn lands with the outer wall on the car's *left*, which is the
+  lane oncoming traffic uses; "the car always drives on the right-hand
+  side" rules it out however open it looks (`_lawful_turn`).
+
+* **A junction reads the cell as the car arrives**, before the square's
+  own instruction runs (`_arrival_cell`).  The turning square carries an
+  `=` that moves CP onto the accumulator so the `O` prints it; reading
+  after that instruction, the junction branched on the accumulator (72,
+  nonzero) instead of the counter (0), and the loop never exited.
+
+The section below records the earlier probing, which concluded no such
+ring existed.  Its two halves were right -- the conditional does
+re-decide every lap, and a counter on the lap does count down -- but its
+conclusion was an artifact of the interpreter's road detection, not of
+the language.
+
+## Earlier probing: what worked, what leaked (2026-08-22)
 
 The text generator (`esolangs.tools.text.streetcode`) emits a straight
 corridor whose size is `O(sum of |code point deltas|)` -- unary, unlike
@@ -268,8 +342,8 @@ loops (`_factor_triple` gets the brainfuck family to `O(sqrt(value))`).
 Closing that gap needs `while (cell) { ... }`: a body the car
 re-traverses under the control of a counter. The two halves of that
 primitive were both demonstrated, but no ring composing
-enter -> lap x N -> exit was found. This section records the traces so
-the next attempt does not re-derive them.
+enter -> lap x N -> exit was found *at the time*. This section records the
+traces so the next attempt does not re-derive them.
 
 ### The conditional is real, and re-decides every lap
 
@@ -326,6 +400,12 @@ is the entry/exit plumbing, **not** the absence of a loop construct. The
 boolean generator is consistent with this: its loops are driven by `I`
 reading fresh input and each is traversed once per run, so it never
 needs to solve the re-entry problem.
+
+**Superseded.** The barrier was narrower still: the plumbing works, and
+the leaks recorded here were the interpreter offering roads that are not
+roads.  See "The counting loop" above.  The generator does still emit
+the unary corridor -- compressing it with a loop is now a question of
+code-generation, not of whether the construct exists.
 
 ### Two pitfalls worth keeping
 
