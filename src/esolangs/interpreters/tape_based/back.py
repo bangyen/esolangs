@@ -79,7 +79,7 @@ class _Machine:
         elif c == "+" and not self.tape[self.cell]:
             self.x, self.y = self.x + self.a, self.y + self.b
         elif c == "*":
-            self.io.print_line(" ".join(map(str, self.tape)))
+            self.io.print_str(" ".join(map(str, self.tape)))
             self._done = True
             return
 

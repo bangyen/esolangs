@@ -471,13 +471,13 @@ class TestBack:
         assert vm.memory == [1]
         assert vm.ip == (0, 1, 0, 1)
         vm.step()  # * prints the tape and halts
-        assert vm.output == "1\n"
+        assert vm.output == "1"
         assert vm.halted
 
     def test_halt_prints_tape(self) -> None:
         vm = esolangs.make_vm("Back", ">--*")
         _run_all(vm)
-        assert vm.output == "0 0\n"
+        assert vm.output == "0 0"
 
 
 class TestBIO:
@@ -616,7 +616,7 @@ class TestRAM0:
         assert (vm.ip, vm.memory, vm.halted) == (2, [1, 0], True)
         assert vm.output == ""  # the dump happens on the next step
         vm.step()
-        assert vm.output == "z: 1\nn: 0\nram: {}\n"
+        assert vm.output == "z: 1\nn: 0\nram: {}"
 
 
 class TestMinskySwap:
@@ -627,7 +627,7 @@ class TestMinskySwap:
         assert (vm.ip, vm.memory, vm.halted) == (1, [1, 0], True)
         assert vm.output == ""  # the dump happens on the next step
         vm.step()
-        assert vm.output == "1 0\n"
+        assert vm.output == "1 0"
 
 
 class TestHomeRow:

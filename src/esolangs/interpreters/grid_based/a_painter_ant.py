@@ -137,7 +137,7 @@ def run(code: str, io: IO, cycles: int = 1) -> None:
     machine = _Machine(code)
     for _ in range(cycles * len(machine.prog)):
         machine.step()
-    io.print_line(machine.render())
+    io.print_str(machine.render())
 
 
 if __name__ == "__main__":
