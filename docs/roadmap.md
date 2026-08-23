@@ -448,3 +448,66 @@ or, where the language has no other generator story, remove it.  The caps
 are documented in `docs/limitations.md` and `docs/walls.md`.
 
 **No language is currently on this list.**
+
+## Boolean example coverage (the last four languages)
+
+`examples/boolean` holds one committed program per boolean generator that
+can be verified end to end; `src/esolangs/tools/boolean/examples.py` is the
+source of truth and `tests/test_examples.py` keeps the files in sync.
+Coverage is 52 of 54 generators.  The bar is that the answer must be
+*recoverable from what the program prints* -- not that the program prints
+the answer and nothing else, since several of these languages have no output
+instruction at all and dump their state at halt.
+
+Two languages do not clear that bar today.  Neither is inherently
+unsuited; each needs a specific change first.
+
+- **Back** halts printing its tape, but its answer is the cell under the
+  tape head and the dump does not say where the head is (`0 1 0 1` for any
+  of four head positions).  Zeroing the rest of the tape and leaving the
+  answer at a known cell would make the dump self-describing.  This is a
+  *generator* change; the interpreter is fine.  Its test currently
+  reimplements Back in Python to track the head, which is the tell.
+- **A Painter Ant** prints the final grid, and the two leaves really are
+  visible in it as painted rings -- but `render` rasterises painted cells
+  only (`.`/`#`), so the ant is not drawn and the two rings are identical.
+  Marking the ant's cell with a third glyph would make the answer readable
+  straight off the grid.  This is an *interpreter* change, so it alters
+  observable behaviour of a language implementation and wants a deliberate
+  decision rather than a drive-by edit.
+
+ABCDirection is excluded on unrelated grounds and is not expected to
+change: its program is a 1107-line, 377 KB grid needing several million
+steps, which is too slow for the example suite and too large to review.
+
+One caution for anyone re-surveying this: the example stems are display
+names, not language ids, so a naive `id not in stems` check reports
+BF-PDA as missing when it is filed under `bfpda`.  It has an example.
+
+### Divergent expected outputs (assessed, not scheduled)
+
+Seven committed examples expect something other than a bare `0`/`1`, and it
+is worth recording that this is intended rather than untidy.  They fall into
+four groups:
+
+- **trailing newline** (`bitdeque`, `cod`, `nevermind`) -- the language's
+  print adds a line ending;
+- **raw byte rather than a digit** (`clockwise`) -- the ring prints
+  `\x00`, not `'0'`;
+- **state dump around the answer** (`laserfuck`, `minsky-swap`, `ram0`) --
+  no output instruction, so the answer arrives at a fixed position inside
+  the dump;
+- **no output at all** (`arrowqueue`, `point-break`) -- the answer *is*
+  termination: the program halts for a 0 and loops forever for a 1, so only
+  the halting branch can be committed.
+
+Normalising these -- for instance making the LaserFuck generator emit only
+the result cell -- is possible for the third group: LaserFuck's `dump`
+already skips negative cells, which is how the *text* generator hides its
+loop counter, so driving the input cells negative once they have been read
+would leave just the answer.  It is deliberately not scheduled.  The
+committed program would stop being what the generator naturally produces,
+the extra cells are the honest output of a language with no output
+instruction, and the first and fourth groups cannot be normalised at all,
+so the divergence would remain either way.  The notes on each example carry
+the explanation instead.

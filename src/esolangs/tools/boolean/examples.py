@@ -20,16 +20,36 @@ Two kinds of generator appear here:
   language's own code for setting an input.  Those entries carry a ``fill``
   describing that substitution, and read no input at run time.
 
-Languages whose boolean capability cannot be captured by a committed program
-are absent by construction: those whose result is a machine state rather than
-output (Back's cell under the head, RAM0's and Minsky Swap's register dumps,
-A Painter Ant's landing cell), and those with no Python interpreter to run.
+A language qualifies for an example when its answer is *recoverable from
+what the program prints*.  That is a weaker test than "prints the answer and
+nothing else", and deliberately so: several languages here have no output
+instruction at all and simply dump their state when they halt, so the answer
+arrives surrounded by the rest of that state.  Minsky Swap dumps its
+registers and the answer is the second one; RAM0 dumps its whole machine and
+the answer is ``z``; LaserFuck prints every touched tape cell, so the input
+cells precede the result.  Each is a fixed position in a stable dump, which
+is a contract a committed file can hold, so each has an example.
 
-ABCDirection is absent for a different reason: its generator works and its
-program is correct, but the program is a 1107-line, 377 KB grid that needs
-several million steps to reach its answer.  That is too slow to run in the
-example suite and too large to review in a diff, so its coverage stays in
-the generator's own tests rather than a committed file.
+Two languages fail that test today, and both for reasons an implementation
+change would remove rather than anything inherent:
+
+- **Back** halts printing its tape, but the answer is the cell *under the
+  head* and the dump does not say where the head is.  A generator that
+  zeroed the rest of the tape and left the answer at a known cell would make
+  it recoverable.
+- **A Painter Ant** prints the final grid, and the two leaves are visible in
+  it as painted rings -- but the interpreter's ``render`` rasterises painted
+  cells only, so the ant itself is not drawn and the two rings are
+  indistinguishable.  Marking the ant's cell in ``render`` would make it
+  recoverable.
+
+Both are tracked in ``docs/roadmap.md``; until then their coverage lives in
+the generators' own tests, which reconstruct the machine state directly.
+
+ABCDirection is absent for an unrelated reason: its generator works and its
+program is correct, but the program is a 1107-line, 377 KB grid needing
+several million steps to reach its answer -- too slow for the example suite
+and too large to review in a diff.
 """
 
 from collections.abc import Callable
@@ -206,6 +226,41 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
     )
 
 
+def _fill_minsky_swap(template: str, bits: list[int]) -> str:
+    """Set each input register by counting ``+`` against a ``*`` pad.
+
+    Minsky Swap has no input instruction, so a bit is embedded as the
+    register's starting value.  Every setter is padded to the same width
+    (``2**n``, or four for the LSB, which needs no ``~``) so the jump
+    targets the template computed stay correct whatever the bits are.
+    """
+    n = len(bits)
+
+    def set_bit(i: int, bit: int) -> str:
+        if i == n - 1:  # LSB: length-4 block, no "~"
+            return "+*+*" if bit else "****"
+        weight = 2 ** (n - 1 - i)
+        if bit:
+            return "+" * weight + "*" * (2**n - weight)
+        return "*" * 2**n
+
+    return instantiate(template, bits, set_bit, lambda _i, _b: "*" * 2**n)
+
+
+def _fill_ram0(template: str, bits: list[int]) -> str:
+    """Set each input cell with ``Z A`` for a one and ``Z Z`` for a zero.
+
+    ``Z`` resets absolutely rather than relative to the incoming register,
+    so the same two-command setter works at every position.
+    """
+    return instantiate(
+        template,
+        bits,
+        lambda _i, b: "Z A" if b else "Z Z",
+        lambda _i, _b: "Z Z",
+    )
+
+
 def _fill_home_row(template: str, bits: list[int]) -> str:
     return instantiate(
         template,
@@ -367,7 +422,27 @@ def _register() -> None:
         "eval": _embedded(b.eval, "stack_based.eval", _fill_eval),
         "home-row": _embedded(b.home_row, "tape_based.home_row", _fill_home_row),
         "lamfunc": _embedded(b.lamfunc, "other.lamfunc", _fill_lamfunc),
+        "minsky-swap": _embedded(
+            b.minsky_swap,
+            "register_based.minsky_swap",
+            _fill_minsky_swap,
+            expected="0 0\n",
+            note=(
+                "Minsky Swap has no output instruction and dumps its "
+                "registers at halt; the answer is the second one"
+            ),
+        ),
         "nocomment": _embedded(b.nocomment, "tape_based.nocomment", _fill_nocomment),
+        "ram0": _embedded(
+            b.ram0,
+            "register_based.ram0",
+            _fill_ram0,
+            expected="z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}\n",
+            note=(
+                "RAM0 has no output instruction and dumps its whole state "
+                "at halt; the answer is the 'z' register"
+            ),
+        ),
         "wii2d": _embedded(
             b.wii2d,
             "grid_based.wii2d",
