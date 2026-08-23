@@ -27,10 +27,12 @@ A Painter Ant's landing cell), and those with no Python interpreter to run.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
+from esolangs.registry import canonical_id
 from esolangs.tools.boolean.helpers import instantiate
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
+from esolangs.tools.wrap import DEFAULT_WIDTH, wrap_program
 
 # Truth tables used below, named for readability.
 AND2 = "0001"
@@ -60,13 +62,22 @@ class BooleanExample:
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
     note: str = ""
+    stem: str = ""
 
-    def build(self) -> str:
-        """Return the program text this example commits."""
+    def build(self, width: int | None = DEFAULT_WIDTH) -> str:
+        """Return the program text this example commits.
+
+        The committed files are wrapped to ``width`` columns so a long
+        one-line program stays readable in a diff.  ``stem`` names the
+        language, which is what selects the token-aware wrapper; passing
+        ``width=None`` returns the generator's raw output, and a language
+        with no wrapper -- the 2D ones, NoComment -- is returned unwrapped
+        either way.
+        """
         program = self.generator(self.table)
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
-        return program
+        return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
 
 
 def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
@@ -336,8 +347,11 @@ def _register() -> None:
         ),
     }
 
-    BOOLEAN_EXAMPLES.update(reading)
-    BOOLEAN_EXAMPLES.update(embedded)
+    # Stamp each example with its own stem, so ``build()`` knows which
+    # language it is and can pick the matching token-aware wrapper without
+    # the caller having to supply it.
+    for stem, example in {**reading, **embedded}.items():
+        BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 
 
 _register()
