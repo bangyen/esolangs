@@ -18,9 +18,8 @@ only where the local wall shape marks an actual intersection.  The full
 interpretation -- the wall-following rule, initial heading, how a road mouth
 and a crossing mouth are recognized, and the two-phase lane merge
 (``_merge_target``/``_merging_heading`` in ``_choose_heading``) -- is
-documented, with the reasoning and the wiki examples corroborating each
-rule, in ``docs/streetcode-semantics.md``; open questions live in
-``docs/streetcode-wip.md``.
+documented in ``docs/streetcode.md``, with the reasoning, the wiki examples
+corroborating each rule, and the questions that remain open.
 
 Runtime error contract:
 
@@ -80,7 +79,7 @@ class _Machine:
 
     ``step()`` executes the cell under the car, then drives it one cell
     further using the wall-following/junction rules described in
-    ``docs/streetcode-semantics.md``; ``halted`` is true once ``;`` runs or
+    ``docs/streetcode.md``; ``halted`` is true once ``;`` runs or
     the car reaches a true dead end with nowhere left to go.  The VM and the
     state-cycle hang detector expose this object.
     """
@@ -446,7 +445,7 @@ class _Machine:
         keeps driving straight until that new road's right-hand wall
         actually picks up, before resuming ordinary wall-following (see
         ``_merge_target``/``_merging_heading`` and
-        ``docs/streetcode-semantics.md``).
+        ``docs/streetcode.md``).
         Both latches are abandoned -- falling back to plain wall-following
         -- the moment anything about the approach stops matching what was
         latched: a heading change (e.g. a 'U') during the approach, or a

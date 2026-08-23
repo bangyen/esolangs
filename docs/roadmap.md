@@ -87,9 +87,10 @@ would make the generator close to trivial to write by hand.
   out to contain genuine lane-bounded junctions themselves).  Landing after
   a junction turn onto a road with its own lanes drives to that road's
   right-hand lane before turning, rather than a plain single-cell step onto
-  the first open neighbor (see the "Lane merging" bullet in `docs/streetcode-semantics.md`
-  and `docs/streetcode-wip.md` for the hand-derived, user-confirmed trace
-  this was built from).  Wired into `registry.py`, with a boolean generator
+  the first open neighbor (see the "Lane merging" bullet in
+  `docs/streetcode.md`, and the same file for the hand-derived,
+  user-confirmed trace this was built from).  Wired into `registry.py`,
+  with a boolean generator
   (`tools/boolean/other.py`) that walks each input bit down to a bare 0/1
   and then drives a binary decision tree whose T-junctions apply the
   ambiguous-turn rule to fork on it; it takes arbitrary truth tables,
