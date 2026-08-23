@@ -6,6 +6,17 @@ non-comment characters one step along the cyclic alphabet ``+-><,.[]``
 command at the instruction pointer is therefore a function of how many
 commands have run, not just of the source text.
 
+A character outside the alphabet is a comment: the pointer passes over it
+without executing it, and -- since the wiki rotates "every time an
+instruction is executed" and a comment is not an instruction -- without
+rotating the program.  Comments are therefore fully transparent, and the
+same program with or without them behaves identically.  This is the
+package's reading rather than something the wiki states outright: the page
+never defines what counts as a comment, and ROTfuck has no reference
+implementation to defer to.  The reading matters, because the alternative
+(rotating on comments too) would make whitespace significant and mean a
+program could not be reformatted at all.
+
 The tape follows the same conventions as the plain Brainfuck interpreter in
 this package: an 8-bit wrapping tape that grows to the right, ``<`` clamped
 at the left edge, and :class:`EOFError` when ``,`` runs out of input.
@@ -169,7 +180,14 @@ class _Machine:
             self.ind = partner + 1
             return
 
-        prog.rotate()
+        # The spec rotates "every time an instruction is executed", so a
+        # comment character advances the cursor without rotating: it is
+        # passed over, not executed.  The two non-executing bracket cases
+        # above fall through to here and *do* rotate -- a bracket whose
+        # guard is false is still an executed instruction, it just does
+        # not jump.
+        if char in _COMMANDS:
+            prog.rotate()
         self.ind += 1
 
 

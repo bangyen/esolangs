@@ -59,8 +59,7 @@ Generated programs are one long line by default.  `--width` (optionally
 breaking only between whole commands so the program still does the same
 thing.  Languages whose newlines carry meaning ignore the flag rather than
 producing a broken program: the 2D grid languages, where a newline starts a
-new row; NoComment, which rejects any character that is not a command; and
-ROTfuck, whose rotation makes a command's position significant.
+new row, and NoComment, which rejects any character that is not a command.
 
 Assembly compilers run the same way and write `output.asm`:
 

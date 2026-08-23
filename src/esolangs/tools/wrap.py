@@ -21,11 +21,13 @@ rather than a blanket post-processing pass:
   newlines as row separators, so a newline moves code to another row.
 - NoComment has no comment syntax at all -- an unrecognized character is a
   load error, and that includes ``\n``.
-- ROTfuck treats a newline as a comment, yet still cannot be wrapped: every
-  executed command rotates the program, and brackets are matched by seeking
-  through the *rotated* text, so a character's position is semantic.
-  Inserting newlines shifts those positions and breaks bracket matching at
-  any width (verified: it fails at 40, 80, and 120 alike).
+
+ROTfuck used to belong on that list: its interpreter rotated the program on
+*every* character the pointer passed, comments included, so an inserted
+newline shifted every later command along the cycle.  That was a deviation
+from the wiki ("every time an instruction is executed"), since a comment is
+not an instruction; with it fixed, comments are transparent and ROTfuck
+wraps like any other single-character-command language.
 
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
@@ -151,6 +153,7 @@ WRAPPERS = {
     "six_five": wrap_chars,
     "unsquare": wrap_chars,
     "pct_squared_minus_one": wrap_chars,
+    "rotfuck": wrap_chars,
     "modulous": wrap_chars,
     "forth": wrap_chars,
     "eval": wrap_chars,
