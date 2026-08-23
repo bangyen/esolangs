@@ -218,7 +218,16 @@ class TestNestingDepthLimit:
     the heavy one drawable too -- both now round-trip and execute correctly,
     so both are pinned as round-trip assertions below.
 
-    The boundary has moved out to depth 4, and the invariant that survives is
+    Depth 4 then fell the same way, in three measured steps (see `WIP.md`'s
+    "Why depth 4 fails" entry for the instrumentation): goto-count-sized
+    routing corridors in `render._arm_spacing` removed the enclosure, a
+    pixel-exact fallback in `render._route_legs` let routes thread corridors
+    the coarse lattice cannot, and soft doorstep costs in
+    `render._route_pending` stopped early routes from sealing later
+    departure points.  It is pinned as a round-trip below, exactly as the
+    depth-3 entries were when their boundary fell.
+
+    The boundary has moved out to depth 5, and the invariant that survives is
     the original one, unchanged in substance since the first version of this
     class: when the layout genuinely runs out of room it says so at render
     time rather than misdrawing.  That is what
@@ -250,6 +259,19 @@ class TestNestingDepthLimit:
         """
         assert _run_bf("++[>++[>++[>+<-]<-]<-]>>>.", tmp_path / "d3heavy.png") == [8]
 
+    def test_four_levels_round_trip(self, tmp_path: Path) -> None:
+        """Depth 4 renders, extracts and executes correctly.
+
+        The same inward-moving shape as the depth-3 case, one level deeper:
+        cell 4 ends at 1 and `>>>>.` prints it.  This is the exact program
+        whose failure `WIP.md`'s "Why depth 4 fails" entry instrumented cell
+        by cell -- pinned as a round-trip now that the three fixes that entry
+        pointed at (corridor-reserving arm spacing, the router's pixel-exact
+        fallback, and soft doorstep costs between detours) landed, exactly as
+        the depth-3 programs were pinned when their boundary fell.
+        """
+        assert _run_bf("+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.", tmp_path / "depth4.png") == [1]
+
     def test_exhaustion_raises_rather_than_misdrawing(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -265,14 +287,16 @@ class TestNestingDepthLimit:
         is deliberate rather than incidental: the assertion is about *what
         happens when the router gives up*, not about how long it searches
         first, and an earlier version of this test pinned an unthrottled
-        program that took ~2.5 minutes to reach the same raise.  Depth 4 is
-        the program used only because it still exhausts at full padding too;
-        if a future layout change makes depth 4 drawable, throttling alone
-        keeps this test meaningful without needing a deeper program.
+        program that took ~2.5 minutes to reach the same raise.  Depth 5 is
+        the program used only because it still exhausts at full padding too
+        (measured: ~5s to raise unthrottled, so the throttle is a
+        convenience here rather than a rescue); if a future layout change
+        makes depth 5 drawable, throttling alone keeps this test meaningful
+        without needing a deeper program.
         """
         monkeypatch.setattr(render_module, "_MAX_PADDING_DOUBLINGS", 0)
         with pytest.raises(ValueError, match="no clear route found"):
-            _run_bf("+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.", tmp_path / "depth4.png")
+            _run_bf("+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.", tmp_path / "depth5.png")
 
 
 class TestCompileErrors:
