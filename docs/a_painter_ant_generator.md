@@ -12,7 +12,8 @@ authoritative and this document does not restate it.  Two consequences of
 those mechanics matter throughout:
 
 - The wiki defines no I/O, and the interpreter's output is the **bounding
-  box of visited cells** (a `#`/`.` raster), which carries no coordinates.
+  box of visited cells** (a `#` white / `.` black raster, with the ant's own
+  cell as `@` or `o`), which carries no coordinates.
   The generator therefore reads its answer from a *semantic grid model*
   (the ant's actual position and cell colours) rather than the box.
 - The interpreter ignores whitespace, so a **space** is a no-op that still

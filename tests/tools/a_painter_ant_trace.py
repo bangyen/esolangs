@@ -113,8 +113,8 @@ def run(program: str, cycles: int = 1) -> Run:
 def box(program: str, cycles: int = 1) -> str:
     """Render the interpreter's bounding-box raster from the semantic grid.
 
-    Mirrors the interpreter's four glyphs: ``#`` black, ``.`` white, and the
-    ant's own cell as ``o`` on black or ``@`` on white.
+    Mirrors the interpreter's four glyphs: ``#`` white, ``.`` black, and the
+    ant's own cell as ``@`` on white or ``o`` on black.
     """
     outcome = run(program, cycles)
     min_x = min(vx for vx, _ in outcome.visited)
@@ -126,7 +126,7 @@ def box(program: str, cycles: int = 1) -> str:
         white = outcome.grid.get((xx, yy), 0) == 1
         if (xx, yy) == outcome.position:
             return "@" if white else "o"
-        return "." if white else "#"
+        return "#" if white else "."
 
     return "\n".join(
         "".join(glyph(xx, yy) for xx in range(min_x, max_x + 1))
