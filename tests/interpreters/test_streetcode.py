@@ -4,10 +4,10 @@ Streetcode is a 2D esolang where a car drives along two-way streets,
 executing the instruction it passes over.  ``^``/``~`` increment/decrement
 the CPth cell, ``=``/``_`` move CP right/left, ``I``/``O`` read/write the
 CPth cell as a character, ``U`` turns the car around, ``;`` halts, and
-space is a no-op.  See the module docstring in
-``esolangs.interpreters.grid_based.streetcode`` for the spec-gap decisions
-this interpreter makes (initial heading, "Nth register", the drive-on-the
--right geometry, and so on) -- these tests exercise and confirm them,
+space is a no-op.  See ``docs/streetcode-semantics.md`` for the spec-gap
+decisions this interpreter makes (initial heading, "Nth register", the
+drive-on-the-right geometry, and so on) -- these tests exercise and confirm
+them,
 including all four of the wiki's worked examples.
 """
 
