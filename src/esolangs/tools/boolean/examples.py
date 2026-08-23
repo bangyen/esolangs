@@ -409,9 +409,9 @@ def _register() -> None:
             "grid_based.a_painter_ant",
             _instantiate_apa,
             expected=(
-                "##.######\n#########\n#########\n#########\n#########\n"
-                "#########\n##.###.##\n#...#...#\n..o...#..\n#...#...#\n"
-                "##.###.##\n"
+                "..#......\n.........\n.........\n.........\n.........\n"
+                ".........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n"
+                "..#...#..\n"
             ),
             note=(
                 "A Painter Ant has no output: it paints a grid and the answer "
