@@ -51,7 +51,7 @@ python -m esolangs.interpreters.<category>.<language> program.txt
 esolangs run <language> program.txt
 esolangs list                          # list the supported languages
 esolangs generate <language> "Hello"   # print a program that outputs "Hello"
-esolangs transpile BF Circlefuck program.txt   # rewrite between languages
+esolangs transpile BIO BF program.txt  # rewrite between languages
 ```
 
 Assembly compilers run the same way and write `output.asm`:
@@ -67,10 +67,10 @@ The package exposes a small typed API:
 ```python
 import esolangs
 
-program = esolangs.generate("Circlefuck", "Hello, World!")
-output = esolangs.run("Circlefuck", program)
+program = esolangs.generate("Suffolk", "Hello, World!")
+output = esolangs.run("Suffolk", program)
 esolangs.list_languages()
-circlefuck = esolangs.transpile("brainfuck", "Circlefuck", program)
+bf = esolangs.transpile("BIO", "brainfuck", bio_program)
 ```
 
 ### Running the Tests
@@ -260,15 +260,19 @@ Transpilers rewrite a program in one esolang into an equivalent program in anoth
 Each transpiler's supported subset and caveats are documented in `esolangs/tools/transpilers.py`.
 
 ```bash
-esolangs transpile Basicfuck BF program.txt     # rewrite a program into another esolang
-esolangs transpile BF Circlefuck program.bf     # auto-sized data region
+esolangs transpile BIO BF program.txt           # rewrite a program into another esolang
+esolangs transpile Decleq "S*bleq" program.txt  # instructions must be triple-aligned
 ```
 
 ```python
-program = esolangs.transpile("Basicfuck", "brainfuck", source)  # or via the API
-circlefuck = esolangs.transpile(
-    "brainfuck", "Circlefuck", program, size=8
-)  # explicit size
+bf = esolangs.transpile("BIO", "brainfuck", source)  # or via the API
+```
+
+The BF-to-Circlefuck pair sizes its data region automatically; pass `size`
+to set it explicitly:
+
+```python
+target = esolangs.transpile("brainfuck", "Circlefuck", program, size=8)
 ```
 
 ## Tools
@@ -285,21 +289,25 @@ from esolangs.tools.boolean import (
     between,
     circlefuck_byte,
     dig,
-    laserfuck,
     polynomial,
+    sophie,
+    suffolk,
     taglate,
 )
 
-dig("0110", 2)  # 2-input XOR in Dig
-between("0110", 2)  # the same truth table in Between
-polynomial("0110", 2)  # in Polynomial (up to n = 4)
-taglate("0110", 2)  # 2-input XOR in Taglate (up to n = 2)
-laserfuck("0110", 2)  # and in LaserFuck (random initial heading)
-circlefuck_byte(table, n)  # arbitrary byte-valued functions
+dig("0110")  # 2-input XOR in Dig
+between("0110")  # the same truth table in Between
+suffolk("0110")  # and in Suffolk
+sophie("0110")  # and in Sophie
+polynomial("0110")  # in Polynomial (up to n = 4)
+taglate("0110")  # 2-input XOR in Taglate (up to n = 2)
+circlefuck_byte(table)  # arbitrary byte-valued functions
 ```
 
-Most languages in the suite have such a generator (some cover only a
-documented subset, like Minifuck's 0-preserving and one-input tables).
+The truth table is a binary string of length `2**n`, indexed by the inputs
+with the most significant first; its length implies the input count, so `n`
+is not passed separately.  54 of the languages in the suite have such a
+generator, some covering only a documented subset of tables.
 
 ### Program Generator
 
@@ -321,11 +329,11 @@ shared `io` and `exceptions` modules (plus any interpreter it imports, e.g.
 Factor's brainfuck) into one self-contained file:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bangyen/esolangs/main/scripts/install_one.sh | sh -s brainfuck
-python esolangs_brainfuck.py program.txt
+curl -fsSL https://raw.githubusercontent.com/bangyen/esolangs/main/scripts/install_one.sh | sh -s Suffolk
+python esolangs_suffolk.py program.txt
 ```
 
-The language name matches `esolangs list` (e.g. `brainfuck`, `Nevermind`,
+The language name matches `esolangs list` (e.g. `Suffolk`, `Nevermind`,
 `Forþ`).  Factor and Polynomial need `pip install sympy`; the bundled file
 notes this.  `scripts/bundle_one.py` does the same from a local checkout:
 
