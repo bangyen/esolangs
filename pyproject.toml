@@ -33,7 +33,6 @@ dev = [
     "pytest>=9.0.3",
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.8.0",
-    "black==26.5.1",
     "click>=8.3.3",
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
@@ -61,28 +60,13 @@ exclude = ["tests*", "examples*", "docs*"]
 [tool.setuptools.package-data]
 esolangs = ["py.typed"]
 
-[tool.black]
-line-length = 88
-target-version = ['py310']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-  | extra
-)/
-'''
-
 [tool.ruff]
 target-version = "py310"
 line-length = 88
+# `extra/` holds standalone spike code that is not part of the package and is
+# kept formatted as written (it was excluded from the formatter under black
+# too).
+extend-exclude = ["extra"]
 
 [tool.ruff.lint]
 select = [
