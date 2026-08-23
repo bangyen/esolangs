@@ -73,6 +73,24 @@ class TestTape:
         assert run_program(build("+.") + "abc") == "\x01"
         assert run_program("xyz") == ""
 
+    def test_comments_do_not_rotate_the_program(self) -> None:
+        """A comment is passed over, not executed, so it does not rotate.
+
+        The spec rotates "every time an instruction is executed", and a
+        comment character is not an instruction.  Only a *mid-program*
+        comment can show this: a trailing one cannot affect output that
+        has already been printed, which is why the case above passes
+        either way.  Here the comments sit between the ``+`` and the
+        ``.``, so a comment that rotated would advance the ``.`` along
+        the cycle and print the wrong byte (or turn it into a bracket).
+        """
+        expected = run_program(build("+."))
+        assert expected == "\x01"
+        for comment in ("x", "xxx", "   ", "\n", "hello world"):
+            program = build("+.")
+            spliced = program[0] + comment + program[1]
+            assert run_program(spliced) == expected, f"comment {comment!r} rotated"
+
 
 class TestIO:
     def test_input_echo(self) -> None:

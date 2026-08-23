@@ -36,7 +36,6 @@ TEXT = "Hello, World!"
 # newlines are inserted, so the table is the record of that finding.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
-    "rotfuck": "rotation makes character position semantic",
     "wii2d": "2D: newlines separate rows",
     "dig": "2D: newlines separate rows",
     "clockwise": "2D: newlines separate rows",
