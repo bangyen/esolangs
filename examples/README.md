@@ -46,24 +46,50 @@ Outputs `0` and halts when given `0`, and outputs `1` forever when given `1`:
 
 ## boolean
 
-Demonstrates a language's boolean-function capability that is not an I/O
-truth machine (see `docs/walls.md`):
+One program per language whose boolean-function capability can be verified
+end to end — the capability that is not an I/O truth machine (see
+`docs/walls.md`).  Like the hello-world examples, each file is exactly what
+its generator produces today; `tests/test_examples.py` asserts that, and
+`python scripts/write_boolean_examples.py` refreshes the files after a
+generator changes.
 
-- `minifuck.txt` is a committed two-input AND, recorded from Minifuck's
-  (now-removed) boolean generator that covered the 0-preserving two-input
-  tables, reading `0`/`1` input lines; the committed inputs `0 1` exercise
-  the "one input zero" AND row.
-- `arrowqueue.txt` is what
-  `_instantiate_arrowqueue(arrowqueue("0001"), [0, 1])` produces — a
-  two-input AND with one input zero, which halts (the `0` branch of the
-  halt-vs-loop convention).  The same table with both inputs one would loop
-  forever instead (the `1` branch is not executed).  This is the language's
-  boolean convention (see `docs/walls.md`).
-- `cod.txt` is what `instantiate(cod("0110"), [1, 1])` produces — a
-  two-input XOR with both inputs one, printing `0`.  COD has no runtime
-  input (the bits are embedded in the program text, not read via `...`),
-  and no I/O other than a printed number, so this is the whole boolean
-  story for the language (see `docs/cod_boolean_generator.md`).
+`esolangs.tools.boolean.examples` is the single source of truth: it records
+for each program the generator, the truth table, and the input combination
+that produced it.  Most are two-input AND (`0001`) run with the inputs
+`0 1`, so the program prints `0`; a few use XOR (`0110`), and the notes
+below cover the ones that differ.
+
+Two kinds of generator appear here:
+
+- **Input-reading** languages take their bits on stdin as `0`/`1` lines.
+- **Parameterized** languages have no input mechanism, so the bits are
+  embedded in the program text by substitution (see
+  `esolangs.tools.boolean.parameterized`); they read nothing at run time.
+  These are `arrowqueue`, `bfpda`, `bio`, `bitdeque`, `cod`, `eval`,
+  `home-row`, `lamfunc`, `nocomment`, and `wii2d`.
+
+Notes:
+
+- `arrowqueue.txt` and `point-break.txt` produce no output at all: their
+  result is the halt-vs-loop convention, so the committed program is the
+  halting (`0`) branch.  The same table with both inputs one would loop
+  forever instead, so the `1` branch is not executed.
+- `cod.txt` is a two-input XOR with both inputs one, printing `0`.  COD has
+  no runtime input and no I/O other than a printed number, so this is the
+  whole boolean story for the language (see `docs/cod_boolean_generator.md`).
+- `nevermind.txt` and `bitdeque.txt` print their bit followed by a newline.
+- `container.txt` halts by exiting with status 0.
+- `suffolk.txt` must be run with the loop count set to one.
+- `minifuck.txt` is the one file no current generator produces: it is
+  recorded from Minifuck's (now-removed) boolean generator that covered the
+  0-preserving two-input tables, and is kept as a record of that
+  construction, so it is exempt from the generator-match test.
+
+Languages absent here are those whose boolean result is a machine state
+rather than program output — Back's cell under the head, RAM0's and Minsky
+Swap's register dumps, A Painter Ant's landing cell — and those with no
+Python interpreter to run.  Their generators are covered by
+`tests/tools/test_boolean.py` instead.
 
 ## multiply
 
