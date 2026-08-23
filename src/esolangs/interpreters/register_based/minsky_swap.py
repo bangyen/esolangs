@@ -11,6 +11,15 @@ as 1-based ("line N"), which this interpreter follows.
 A ``~`` with no corresponding jump number is a malformed program and is
 rejected with :class:`ValueError`.
 
+The wiki defines no I/O for this language, so the interpreter prints both
+registers when the program ends -- space-separated on one line, with no
+trailing newline.  This is the convention the other interpreter-only
+languages here follow (Back's tape, Bitdeque's deque, A Painter Ant's grid
+raster); the choice to print at all, and the separator, are the repo's, not
+the spec's.  A language whose spec *does* pin an output format follows that
+instead: LaserFuck's says its decimal mode prints "with line breaks", so it
+separates with newlines rather than spaces.
+
 The interpreter runs on a :class:`_Machine` (the parsed program, both
 registers, and the instruction cursor), so it is step-capable: ``step()``
 executes one command and ``halted`` is true once the cursor reaches the end
