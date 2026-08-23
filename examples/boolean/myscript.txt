@@ -1,0 +1,15 @@
+var b0 is ask
+var b1 is ask
+check b0?
+  if "1",
+    check b1?
+      if "1",
+        say "1"
+      else,
+        say "0"
+  else,
+    check b1?
+      if "1",
+        say "0"
+      else,
+        say "0"

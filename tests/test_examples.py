@@ -11,7 +11,7 @@ are also run.  A truth machine echoes ``0`` and halts when given ``0``; its
 
 import importlib
 import io
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, suppress
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,6 +19,8 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES
+from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
+from esolangs.tools.boolean.examples import HAND_WRITTEN
 
 EXAMPLES_DIR = Path(__file__).parent.parent / "examples" / "hello-world"
 
@@ -92,6 +94,25 @@ def test_multiply_example_matches_generator() -> None:
     assert path.read_text(encoding="utf-8") == jaune_multiply()
 
 
+@pytest.mark.parametrize("name", sorted(BOOLEAN_GENERATED))
+def test_boolean_example_matches_generator(name: str) -> None:
+    """Each committed boolean program is what its generator produces today.
+
+    The counterpart of :func:`test_example_files_match_generator` for the
+    boolean examples; refresh them with
+    ``python scripts/write_boolean_examples.py``.
+    """
+    path = BASE_DIR / "examples" / "boolean" / f"{name}.txt"
+    committed = path.read_text(encoding="utf-8").rstrip("\n")
+    assert committed == BOOLEAN_GENERATED[name].build().rstrip("\n")
+
+
+def test_boolean_examples_cover_every_committed_file() -> None:
+    """Every file in examples/boolean is accounted for, and vice versa."""
+    on_disk = {p.stem for p in (BASE_DIR / "examples" / "boolean").glob("*.txt")}
+    assert on_disk == set(BOOLEAN_GENERATED) | set(HAND_WRITTEN)
+
+
 # name -> (interpreter module, input lines, expected output, split lines)
 CAT_EXAMPLES = {
     "between": ("register_based.between", ["hi"], "hi", True),
@@ -122,42 +143,37 @@ MULTIPLY_EXAMPLES = {
     "jaune": ("tape_based.jaune", ["1", "2", "*", "3", "4", "#"], "408", False),
 }
 
-# name -> (interpreter module, input lines, expected output, split lines)
 # The boolean examples demonstrate a language's boolean-function capability
-# that is not an I/O truth machine (see docs/walls.md).  Minifuck's
-# generator covers the 0-preserving two-input tables, so the committed AND2
-# program reads two input bits (0/1 lines) and prints their AND.  ArrowQueue
-# has no output and no runtime input: the committed program is the generated
-# halt-vs-loop AND with one input zero (``_instantiate_arrowqueue(arrowqueue
-# ("0001"), [0, 1])``), which halts (the `0` branch); the same table with
-# both inputs one would loop forever instead (the `1` branch is not
-# executed).  Point Break likewise has no output: the committed program is
-# the wiki's own truth-machine, which halts for a 0 input and loops forever
-# for any nonzero input (the `1` branch is not executed).  Eval likewise has
-# no runtime input: the committed program is the generated AND2 template
-# instantiated with one input zero (``instantiate(eval("0001"), [0, 1])``),
-# which prints the result 0.  COD likewise has no runtime input: the
-# committed program is the generated XOR template instantiated with both
-# inputs one (``instantiate(cod("0110"), [1, 1])``), which prints 0 (see
-# docs/cod_boolean_generator.md).
+# that is not an I/O truth machine (see docs/walls.md).  Unlike the tables
+# above, they are derived from ``esolangs.tools.boolean.examples``, which
+# records for each committed program the generator, truth table, and input
+# combination that produced it -- so the files stay in sync with the
+# generators the way the hello-world examples do.
+#
+# The input-reading languages take their bits on stdin; the parameterized
+# ones (see ``esolangs.tools.boolean.parameterized``) have the bits embedded
+# in the program text and read no input.  ArrowQueue and Point Break have no
+# output at all: their result is the halt-vs-loop convention, so only the
+# terminating (`0`) branch is committed -- the `1` branch loops forever by
+# definition and is not executed.
 BOOLEAN_EXAMPLES = {
-    "arrowqueue": ("grid_based.arrowqueue", [], "", True),
-    "cod": ("grid_based.cod", [], "0\n", False),
-    "eval": ("stack_based.eval", [], "0", False),
-    "minifuck": ("tape_based.minifuck", ["0", "1"], "0", False),
-    "point-break": ("register_based.point_break", ["0"], "", False),
-    "wii2d": ("grid_based.wii2d", [], "1", True),
+    stem: (ex.interpreter, list(ex.inputs), ex.expected, ex.split, dict(ex.kwargs))
+    for stem, ex in BOOLEAN_GENERATED.items()
+} | {
+    stem: (interpreter, list(inputs), expected, split, {})
+    for stem, (interpreter, inputs, expected, split) in HAND_WRITTEN.items()
 }
 
 
 def run_with_input(name: str, subdir: str) -> None:
+    kwargs: dict[str, int] = {}
     if subdir == "multiply":
-        examples = MULTIPLY_EXAMPLES
+        module, inputs, expected, splitlines = MULTIPLY_EXAMPLES[name]
     elif subdir == "boolean":
-        examples = BOOLEAN_EXAMPLES
+        module, inputs, expected, splitlines, kwargs = BOOLEAN_EXAMPLES[name]
     else:
         examples = CAT_EXAMPLES if subdir == "cat" else TRUTH_MACHINE_EXAMPLES
-    module, inputs, expected, splitlines = examples[name]
+        module, inputs, expected, splitlines = examples[name]
     run = importlib.import_module("esolangs.interpreters." + module).run
     program = (
         (BASE_DIR / "examples" / subdir / f"{name}.txt")
@@ -167,8 +183,13 @@ def run_with_input(name: str, subdir: str) -> None:
     argument = program.splitlines() if splitlines else program
 
     buffer = io.StringIO()
-    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
-        run(argument, io=IO())
+    # Container halts by calling sys.exit(0), like its hello-world example.
+    with (
+        patch("builtins.input", side_effect=inputs),
+        redirect_stdout(buffer),
+        suppress(SystemExit),
+    ):
+        run(argument, io=IO(), **kwargs)
     assert buffer.getvalue() == expected
 
 

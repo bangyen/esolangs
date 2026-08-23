@@ -1,0 +1,26 @@
+#basicfuck t=unbounded r=0~255 o=wrap
+#allocate a1, a2, out
+read -> a1 ;
+a1 -= 48 ;
+read -> a2 ;
+a2 -= 48 ;
+if (a1) {
+if (a2) {
+out += 49 ;
+write <- out ;
+}
+if !(a2) {
+out += 48 ;
+write <- out ;
+}
+}
+if !(a1) {
+if (a2) {
+out += 48 ;
+write <- out ;
+}
+if !(a2) {
+out += 48 ;
+write <- out ;
+}
+}
