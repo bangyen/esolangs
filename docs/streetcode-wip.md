@@ -2,9 +2,11 @@
 
 The interpreter (`src/esolangs/interpreters/grid_based/streetcode.py`) now
 implements lane merging for genuine multi-cell-wide junction turns -- see
-the module docstring's "Lane merging" bullet for the confirmed rule. This
-file preserves the hand-derived trace it was built from, plus the
-questions that trace does *not* answer.
+the "Lane merging" bullet in
+[`streetcode-semantics.md`](streetcode-semantics.md) for the confirmed rule,
+alongside the rest of the implemented interpretation. This file preserves
+the hand-derived trace it was built from, plus the questions that trace does
+*not* answer.
 
 ## The hand-drawn example (now the regression test)
 
