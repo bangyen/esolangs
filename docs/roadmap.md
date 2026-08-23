@@ -466,8 +466,21 @@ unsuited; each needs a specific change first.
   tape head and the dump does not say where the head is (`0 1 0 1` for any
   of four head positions).  Zeroing the rest of the tape and leaving the
   answer at a known cell would make the dump self-describing.  This is a
-  *generator* change; the interpreter is fine.  Its test currently
-  reimplements Back in Python to track the head, which is the tell.
+  *generator* change; the interpreter is fine.
+
+  There is a second reason to want it.  Because the interpreter cannot
+  report the head, `TestParameterizedBack.run_back` is a complete second
+  Back interpreter written inside the test file -- beam position and
+  direction, `\`/`/` reflections, pointer moves, bit flips, and the
+  toroidal wraparound, about thirty lines of it.  The Back boolean tests
+  therefore never execute `tape_based.back`: they check the generator
+  against a reimplementation, so the two could drift apart without any
+  test noticing.  (The interpreter itself is covered by
+  `tests/interpreters/test_back.py`, so both halves are tested -- just
+  never against each other.)  Making the answer recoverable would let
+  `run_back` shrink to a call plus a field read, the way
+  `run_minsky_swap` and `run_ram0` already work, and would put the
+  shipped interpreter back in the loop.
 - **A Painter Ant** prints the final grid, and the two leaves really are
   visible in it as painted rings -- but `render` rasterises painted cells
   only (`.`/`#`), so the ant is not drawn and the two rings are identical.
