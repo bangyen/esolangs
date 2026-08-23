@@ -4,11 +4,10 @@ Streetcode is a 2D esolang where a car drives along two-way streets,
 executing the instruction it passes over.  ``^``/``~`` increment/decrement
 the CPth cell, ``=``/``_`` move CP right/left, ``I``/``O`` read/write the
 CPth cell as a character, ``U`` turns the car around, ``;`` halts, and
-space is a no-op.  See ``docs/streetcode-semantics.md`` for the spec-gap
-decisions this interpreter makes (initial heading, "Nth register", the
+space is a no-op.  See ``docs/streetcode.md`` for the spec-gap decisions
+this interpreter makes (initial heading, "Nth register", the
 drive-on-the-right geometry, and so on) -- these tests exercise and confirm
-them,
-including all four of the wiki's worked examples.
+them, including all four of the wiki's worked examples.
 """
 
 import io
@@ -175,7 +174,7 @@ class TestStreetcodeAmbiguousTurns:
 class TestStreetcodeLaneMerge:
     """A genuinely multi-cell-wide junction: turning must land in the new
     road's right-hand lane, not just the first open cell (see
-    ``docs/streetcode-wip.md`` for the derivation of this trace)."""
+    ``docs/streetcode.md`` for the derivation of this trace)."""
 
     def _lane_merge_code(self) -> list[str]:
         # A vertical 2-wide corridor (columns 1-2) hugging a West wall
@@ -192,7 +191,7 @@ class TestStreetcodeLaneMerge:
         ]
 
     def test_merge_lands_in_the_right_hand_lane(self) -> None:
-        # Ground-truth trace (user-confirmed, see docs/streetcode-wip.md):
+        # Ground-truth trace (user-confirmed, see docs/streetcode.md):
         # the car hugs column 1 south through rows 0-3 (its own lane),
         # then turns East at row 3 -- the right-hand lane of the new
         # east-west road relative to heading East -- not row 2, and not
@@ -302,7 +301,7 @@ class TestStreetcodeLaneMerge:
         behavior on the four-way corner pattern -- unlike the three-way
         case in ``test_merge_lands_in_the_right_hand_lane``, no hand-drawn,
         user-confirmed trace exists for a four-way junction (see the "Still
-        open" section of ``docs/streetcode-wip.md``)."""
+        open" section of ``docs/streetcode.md``)."""
         code = [
             " |C |",
             "-+  +--",
