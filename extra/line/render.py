@@ -36,6 +36,7 @@ ambiguity that makes the reverse (image -> program) direction hard.
 
 from __future__ import annotations
 
+import itertools
 import sys
 from dataclasses import dataclass, field
 
@@ -1389,6 +1390,138 @@ def _arm_spacing(arm: Node | None) -> int:
     return _BRANCH_SPACING + max(-min_forward, 0) + corridors
 
 
+# Offset, in grid cells, at which a constructed loop-back ring runs outside
+# its body's bounding box.  2 is the smallest offset whose cells satisfy
+# `_CLEARANCE` = 1 against ink sitting exactly on the box edge (the cell
+# between is empty).
+_RING_OFFSET = _CLEARANCE + 1
+
+# The fixed stem offset a constructed loop-back lands on, from the fork
+# vertex (so `_STEM_LEN - _RETURN_STEM_T` cells past `stem_start`).  Any
+# interior offset works -- the construction reserves its whole landing
+# geometry, so unlike the router's offset scan nothing can wall one choice
+# in -- and the midpoint keeps the diagonal clear of both stem ends.
+_RETURN_STEM_T = _STEM_LEN // 2
+
+
+def _loop_return_legs(
+    start: tuple[int, int],
+    target: Node,
+    entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
+) -> list[tuple[tuple[int, int], int]] | None:
+    """Construct a loop-back's legs deterministically, without search.
+
+    This is what makes nesting depth unbounded.  Search-based routing
+    competes for space globally, so every added depth was a new congestion
+    problem (see ``WIP.md``'s depth-4/5 entries); this constructs the return
+    path from measured geometry alone, and because both the real layout
+    *and* :func:`_subtree_extent`'s dry runs draw it (see :func:`_layout`'s
+    ``goto`` branch), every parent's measured extent already contains its
+    children's return paths -- the same recursion that makes parents reserve
+    room for child *content* reserves room for child *rings*, at every
+    depth, with nothing left to collide.
+
+    The shape, in the target fork's own frame (``+y`` = the body arm's
+    heading, origin at the arm entry -- everything is built here as integer
+    legs and rotated onto the world at the end):
+
+    - ``B0``, the body's bounding box, is the memoized
+      :func:`_subtree_extent` of the fork's ``nonzero`` arm: all body ink
+      including nested loops' own return paths, excluding this return path.
+    - From the body's end (which sits on ``B0``'s perimeter -- measured true
+      at every depth tried, and checked below with a ``None`` fallback to
+      the router when it does not hold), step :data:`_RING_OFFSET` outward,
+      then walk the ring around ``B0`` to the corner nearest the stem,
+      always arriving on the bay side via that corner so the path never
+      crosses the arm stroke (which pierces the bay line at ``x = 0``).
+    - Ride the bay -- the gap :func:`_arm_spacing` reserves between body
+      content and the trunk axis, at least ``_BRANCH_SPACING +
+      _GOTO_CORRIDOR`` = 8 wide for any goto-carrying arm -- to the landing
+      approach, and close with the same :data:`_DIAGONAL_APPROACH` diagonal
+      the router uses (the diagonal arrival is what makes the extractor read
+      a ``"merge"``, see :func:`_approach_points`).
+
+    Returns world-frame ``(direction, length)`` legs, or ``None`` when a
+    premise fails (body end off the perimeter, degenerate geometry) -- the
+    caller falls back to the search-based router for that goto.
+    """
+    stem_start, h = entries[id(target)]
+    a_h = _turn_left(h)
+    arm_run = _arm_spacing(target.nonzero)
+    vertex = (
+        stem_start[0] + h[0] * _STEM_LEN,
+        stem_start[1] + h[1] * _STEM_LEN,
+    )
+    entry_pt = (vertex[0] + a_h[0] * arm_run, vertex[1] + a_h[1] * arm_run)
+    y0, y1, x0, x1 = _subtree_extent(target.nonzero)
+
+    # `start` in the canonical frame: project the world offset onto the
+    # frame's axes (+y = a_h, +x = turn_left(a_h); the rotation is
+    # orthonormal, so projection inverts `_rotate` exactly).
+    ly, lx = _turn_left(a_h)
+    off = (start[0] - entry_pt[0], start[1] - entry_pt[1])
+    ey = off[0] * a_h[0] + off[1] * a_h[1]
+    ex = off[0] * ly + off[1] * lx
+    on_y = ey in (y0, y1) and x0 <= ex <= x1
+    on_x = ex in (x0, x1) and y0 <= ey <= y1
+    if not (on_y or on_x):
+        return None
+
+    axis_y = -arm_run
+    bay_y = y0 - _RING_OFFSET
+    far_y = y1 + _RING_OFFSET
+    lo_x = x0 - _RING_OFFSET
+    hi_x = x1 + _RING_OFFSET
+    # The bay must clear both the trunk axis and the diagonal's own lateral
+    # span; `_arm_spacing`'s floor + corridor guarantees this for any
+    # goto-carrying arm, so a failure here means a hand-built graph whose
+    # arm the corridor term never saw.
+    if bay_y < axis_y + _DIAGONAL_APPROACH:
+        return None
+
+    tgt_x = _STEM_LEN - _RETURN_STEM_T
+    approach = (axis_y + _DIAGONAL_APPROACH, tgt_x + _DIAGONAL_APPROACH)
+
+    # Waypoints around the ring, always entering the bay line via the
+    # rear corner `(bay_y, hi_x)` so the bay is never traversed across the
+    # arm stroke at x = 0 (every bay segment used lies at x >= 1).
+    pts: list[tuple[int, int]] = [(ey, ex)]
+    if on_x and ex == x1:  # rear side: out, then down to the bay corner
+        pts += [(ey, hi_x), (bay_y, hi_x)]
+    elif on_y and ey == y1:  # far side: out, over the far-rear corner, down
+        pts += [(far_y, ex), (far_y, hi_x), (bay_y, hi_x)]
+    elif on_x and ex == x0:  # vertex-ward side: the long way around
+        pts += [(ey, lo_x), (far_y, lo_x), (far_y, hi_x), (bay_y, hi_x)]
+    else:  # bay side
+        if ex == 0:
+            # The escape would land exactly on the arm stroke's own line.
+            return None
+        if ex >= 1:
+            pts += [(bay_y, ex)]
+        else:
+            # Left of the arm stroke: the direct bay run would cross it, so
+            # take the long way around the ring.
+            pts += [(bay_y, ex), (bay_y, lo_x), (far_y, lo_x), (far_y, hi_x)]
+            pts += [(bay_y, hi_x)]
+    pts += [(bay_y, approach[1]), approach]
+
+    legs: list[tuple[tuple[int, int], int]] = []
+    for a, b in itertools.pairwise(pts):
+        dy, dx = b[0] - a[0], b[1] - a[1]
+        if dy and dx:  # pragma: no cover - geometry guard
+            return None
+        if not dy and not dx:
+            continue
+        direction = (
+            0 if dy == 0 else (1 if dy > 0 else -1),
+            0 if dx == 0 else (1 if dx > 0 else -1),
+        )
+        legs.append((direction, abs(dy) + abs(dx)))
+    legs.append(((-1, -1), _DIAGONAL_APPROACH))
+
+    return [(_rotate(d, a_h), n) for d, n in legs]
+
+
 def _layout(
     node: Node | None,
     cursor: _Cursor,
@@ -1506,19 +1639,44 @@ def _layout(
         cursor.emit_op(op, count)
         if node.goto is not None:
             # Flush the in-progress stroke's pixels into `occupied` before
-            # going any further, so a detour later routed from here treats the
-            # body just drawn (including this call's own final kink) as real
-            # ink to route around.
+            # going any further, so whatever draws the loop-back from here
+            # treats the body just drawn (including this call's own final
+            # kink) as real ink.
             cursor.finish()
-            if measuring:
-                # A detour cannot be routed against a subtree's own isolated
-                # occupancy, and this subtree need not even contain the fork
-                # `goto` targets -- so measuring stops here.  Note this returns
-                # *before* the `entries` lookup below, which would otherwise
-                # KeyError on exactly that missing-ancestor case.
+            # The constructed return path -- see :func:`_loop_return_legs`.
+            # Drawn *here*, in both real and measuring mode, is what makes
+            # nesting unbounded: a dry run that draws its subtree's returns
+            # reports extents that contain them, so every ancestor reserves
+            # room for them exactly as it does for content.  The target must
+            # already be in `entries` (always true for a compiled brainfuck
+            # graph, where a goto ends its own fork's body chain; a subtree
+            # measured in isolation lacks its own outermost fork, which is
+            # precisely the ink the *caller's* frame draws instead).
+            legs = None
+            if id(node.goto) in entries:
+                legs = _loop_return_legs((cursor.y, cursor.x), node.goto, entries)
+            if legs is not None and cursor.occupied is not None:
+                # Drift guard, real mode only: the construction never
+                # consults ink, so a violated premise (a hand-built graph
+                # outside the compiled invariants) must be caught rather
+                # than drawn through existing strokes.  Overlap-only -- the
+                # first cell is the body's own tip and the last is the stem
+                # merge, both legitimately ink.
+                cells = _leg_cells((cursor.y, cursor.x), legs)
+                if any(c in cursor.occupied for c in cells[1:-1]):
+                    legs = None
+            if legs is not None:
+                for direction, length in legs:
+                    cursor.advance(direction, length)
+                cursor.finish()
                 return
-            # Defer the actual routing to `render()`'s second phase rather than
-            # routing it here, mid-layout -- see :func:`_route_pending`.
+            if measuring:
+                # No constructed return (the goto's target is outside this
+                # measured subtree): stop here, exactly as the pre-return
+                # semantics of extents require -- the owner's frame draws it.
+                return
+            # Fallback: the search-based router (see :func:`_route_pending`)
+            # for graphs whose gotos violate the constructed path's premises.
             pending.append(_Pending(cursor, node.goto, depth))
             return
         node = node.next
