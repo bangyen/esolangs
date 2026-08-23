@@ -669,8 +669,7 @@ def _verify_bfpda() -> bool:
         if (asm_out, asm_code) != (py_out, py_code):
             failures += 1
             print(
-                f"BF-PDA {program!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)}"
+                f"BF-PDA {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}"
             )
 
     if not failures:
@@ -766,10 +765,7 @@ def _verify_ram0() -> bool:
             asm_out, asm_code = ref
         if (asm_out, asm_code) != (py_out, py_code):
             failures += 1
-            print(
-                f"RAM0 {program!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)}"
-            )
+            print(f"RAM0 {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}")
 
     if not failures:
         print(f"RAM0 differential: {len(RAM0_CORPUS)} programs match")
@@ -877,9 +873,7 @@ def _verify_bio() -> bool:
             asm_out, asm_code = ref
         if (asm_out, asm_code) != (py_out, py_code):
             failures += 1
-            print(
-                f"BIO {program!r}: asm={(asm_out, asm_code)} " f"py={(py_out, py_code)}"
-            )
+            print(f"BIO {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}")
 
     if not failures:
         print(f"BIO differential: {len(BIO_CORPUS)} programs match")

@@ -324,7 +324,7 @@ class TestParserErrors:
         assert run_program("\n".join(lines)) == "\x01"
 
     def test_multi_assignment(self) -> None:
-        code = "main { a, b = 1, 0; " "out 0,0,0,0,0,0,0,a; out 0,0,0,0,0,0,0,b; }"
+        code = "main { a, b = 1, 0; out 0,0,0,0,0,0,0,a; out 0,0,0,0,0,0,0,b; }"
         assert run_program(code) == "\x01\x00"
 
 

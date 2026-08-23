@@ -26,8 +26,7 @@ def main() -> int:
             import pylint  # noqa: F401
         except ImportError:
             print(
-                "[skip] duplicate-code check: pylint not installed"
-                " (pip install pylint)"
+                "[skip] duplicate-code check: pylint not installed (pip install pylint)"
             )
             return 0
     cmd = [

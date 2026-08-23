@@ -110,8 +110,8 @@ class TestBundleMatchesPackage:
                 lambda name=name, program=program: esolangs.run(name, program)
             )
             actual = _outcome(
-                lambda bundle_mod=bundle_mod, arg=arg, kwargs=kwargs: (
-                    _run_and_read(bundle_mod, arg, kwargs)
+                lambda bundle_mod=bundle_mod, arg=arg, kwargs=kwargs: _run_and_read(
+                    bundle_mod, arg, kwargs
                 )
             )
             assert actual == expected, name

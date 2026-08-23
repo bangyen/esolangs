@@ -370,8 +370,7 @@ class TestGeneratorRoundTrips:
         assert gen.pct_squared_minus_one("") == ""
         assert gen.pct_squared_minus_one("\x00") == "'e"
         assert (
-            gen.pct_squared_minus_one("H")
-            == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+            gen.pct_squared_minus_one("H") == "'" + other._pct_path(72) + "e"  # noqa: SLF001
         )
         assert roundtrip(_run_pct, gen.pct_squared_minus_one("Hi")) == "Hi"
         assert (
