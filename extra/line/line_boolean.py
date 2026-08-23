@@ -28,18 +28,20 @@ Matches this repo's existing boolean generators' calling convention (e.g.
 string of length ``2**n`` indexed by the inputs, most significant first.
 
 **Practical size limit**: ``render.py``'s ``_layout`` spaces sibling fork
-arms apart geometrically (roughly doubling per remaining nesting level --
-see its ``_BRANCH_SPACING``/``_fork_depth`` for why, an H-tree layout
-constraint, not an arbitrary choice) so that a decision tree's own branches
-never re-converge on an ancestor fork's arms.  That keeps the drawing
-correct at any depth, but the canvas grows with it: n=3 renders at roughly
-9000x4000px (~3.5s to extract back), n=4 at roughly 17000x9000px (~16s,
-and large enough to trip Pillow's default decompression-bomb warning), and
-n=5 reaches roughly 35000x17000px, impractical to extract in reasonable
-time.  This mirrors ``esolangs.tools.boolean.tape.six_five``'s own
-documented n<=5 cap for the same reason (a different geometric constraint,
-same shape of problem) -- there is no enforced limit here, but callers
-generating large truth tables should expect the cost to grow this way.
+arms far enough apart that a decision tree's own branches never re-converge
+on an ancestor fork's arms.  Arms used to be sized geometrically (roughly
+doubling per remaining nesting level), which made the canvas grow sharply
+with ``n`` -- n=3 rendered at roughly 9000x4000px and n=4 at roughly
+17000x9000px, large enough to trip Pillow's default decompression-bomb
+warning.  Arms are now sized from each subtree's *measured* extent (see
+``render.py``'s ``_subtree_extent``/``_arm_spacing``), which shrinks that
+dramatically: n=2 at 900x1100, n=3 at 1820x1440, n=4 at 1960x2160.
+
+Growth is therefore much gentler than the n<=4 ceiling this file used to
+document, and that ceiling is correspondingly looser -- but n=5 has not been
+re-measured since the change, so how far it now extends is unverified rather
+than known.  There is no enforced limit here in any case; callers generating
+large truth tables should measure rather than assume.
 """
 
 from __future__ import annotations

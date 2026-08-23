@@ -894,78 +894,220 @@ def _approach_points(
     return pairs
 
 
-# Extra lateral distance (in grid units) each fork arm runs, purely as
-# connective spacing, before `_layout` recurses into its actual content --
-# scaled by remaining nesting depth (see `_layout`'s `depth` parameter and
-# `_fork_depth` below) so sibling subtrees fan apart enough for whatever
-# content they still need to lay out, without re-converging onto an
-# ancestor fork's own arms.
+# Minimum gap (grid units) a fork arm runs before laying out its content, and
+# the safety margin added on top of whatever :func:`_arm_spacing` measures.
 #
-# This *shrinks* geometrically the deeper a fork sits (an H-tree layout:
-# each 90-degree turn needs roughly half its parent's arm length, not more),
-# rather than growing with absolute nesting depth as an earlier version of
-# this constant did.  Growing arms with depth seems intuitively safer (more
-# room for deeper content) but is wrong: every fork turns its two children
-# 90 degrees from its own heading, so a child fork's own children turn back
-# toward the *original* heading -- if that grandchild's arm is longer than
-# the distance back to its grandparent's axis, it overshoots and crosses
-# it.  Confirmed concretely on a 3-level boolean-decision-tree generator
-# (2**3 = 8 leaves): scaling this constant up by 10x reproduced the exact
-# same "extraction left N source pixels unaccounted for" failure, because
-# growing (not the absolute scale) was the bug -- every level's arm still
-# overshot its ancestors' axes by the same ratio.  Halving per level instead
-# (`_BRANCH_SPACING * 2 ** remaining_depth`, sized so the *shallowest*
-# lookahead level still clears its own leaf content) keeps each inward turn
-# strictly inside the space its ancestors left for it.
+# This used to be the whole story: arms were sized `_BRANCH_SPACING *
+# 2 ** remaining_depth` from a `_fork_depth` helper that counted how many more
+# nested `?` forks an arm still had to fit.  That geometric halving encoded a
+# real insight -- every fork turns its children 90 degrees, so a *grand*child
+# turns back toward the original heading and overshoots its grandparent's axis
+# if its arm is longer than the distance back to it, which is why arms must
+# shrink with depth rather than grow (an earlier version grew them, and
+# scaling it up 10x reproduced the identical "extraction left N pixels
+# unaccounted for" failure, since growing rather than the absolute scale was
+# the bug).
 #
-# Still needs to be large enough at the deepest level for `_close_loop` to
-# route a BF-compiled loop-back through a densely nested decision tree
-# (confirmed necessary on a real boolean-generator brainfuck program's
-# compiled output) -- not a router bug, a genuine lack of drawn space
-# between sibling branches for anything to route through otherwise.
+# But counting forks is a proxy for the thing that actually matters, and a
+# poor one: it is blind to how much ink a subtree lays down, so two programs
+# with identical branching structure and very different content got identical
+# arms, and a fork's two arms got the same length even when one held 4 ops and
+# the other 14.  :func:`_arm_spacing` now measures each subtree's real extent
+# instead (see :func:`_subtree_extent`), which subsumes the H-tree insight
+# exactly: "how far does this subtree reach back toward the trunk" is the
+# quantity the halving was approximating, and measuring answers it directly.
 #
-# Lowered from 20 to 5 after measuring, rather than reasoning about, how much
-# slack the original value had: every program in both suites was re-rendered
-# and re-executed at 20/8/5/3/2/1, and all of them still extract and compute
-# correctly at every one of those values -- including the n=2/n=3 boolean
-# decision trees this constant was originally sized against, which the earlier
-# comment credited with pinning it.  They do not pin it; there was roughly 4x
-# slack.  Since the arms are what the loop-back detour has to route around,
-# shrinking them shrinks the detour too: `,>,[-<+>]<.` (the wiki's own
-# addition program) goes from 2300x980 to 1100x980, and the n=3 majority
-# decision tree from 9180x3920 to 3180x1740 -- a bit over 2x and 6x less area
-# respectively, for identical output.
-#
-# 5 rather than lower because `TestNestingDepthLimit`'s guarantee is what
-# breaks first, and it breaks quietly: at 3 and below, three-level nesting
-# stops raising at render time and instead *misdraws*, caught only downstream
-# by `extract()`'s coverage check (~3200 unaccounted pixels).  That is
-# strictly worse than today's loud render-time refusal, so the floor here is
-# set by which failure mode you get, not by whether the tested programs still
-# work.  See WIP.md's nesting-limit entry for the one program that does render
-# correctly at exactly 4 -- a coincidence of geometry, not a usable depth-3
-# capability.
+# What remains here is a floor, not a scaling law -- a subtree that reaches
+# back barely at all still needs sibling arms not to start flush against the
+# trunk.  5 is deliberately small: it was lowered from 20 when a sweep showed
+# every program in all three suites still extracting and executing correctly
+# at 20/8/5/3/2/1, and with extent-based spacing carrying the real work it is
+# no longer the constant that decides whether a drawing fits.
 _BRANCH_SPACING = 5
 
 
-def _fork_depth(node: Node | None) -> int:
-    """How many more nested `?` forks are reachable below ``node``.
+# Memoized `_subtree_extent` results for one `render()` call, keyed by node id.
+#
+# Measuring is a full dry-run `_layout` of the subtree, and every fork asks
+# about subtrees that themselves contain forks -- so without memoization the
+# work is exponential in nesting depth, not merely repeated.  That is not a
+# theoretical cost: an unmemoized version of this stalled outright on a
+# depth-3 program (no output at all after two minutes, where the memoized one
+# finishes in well under a second).
+#
+# Cleared at the start of every `render()` rather than living as a permanent
+# global, because `id()` is only unique among *live* objects: a `Node` freed
+# between two renders can have its address reused by an unrelated node in the
+# next one, which a persistent cache would answer with the dead node's extent.
+# Scoping to a single render means every measured node is reachable from that
+# render's own root for the whole time the cache exists.
+_EXTENT_CACHE: dict[int, tuple[int, int, int, int]] = {}
 
-    Walks `.next`/`.zero`/`.nonzero` (never `.goto`, which can cycle back to
-    an ancestor -- see `Node.goto`'s docstring) to find the deepest `?`
-    still ahead, so `_layout` can size a fork's own arm spacing against how
-    much more branching that arm still has to fit, not just how deep the
-    tree has already gone (see `_BRANCH_SPACING`'s comment for why depth
-    from the root, growing outward, is the wrong quantity to scale on).
+
+def _has_goto(node: Node | None, seen: set[int] | None = None) -> bool:
+    """Whether ``node``'s subtree contains a loop-back needing a routing channel.
+
+    Walks the same `.next`/`.zero`/`.nonzero` edges :func:`_subtree_extent`
+    does, and stops at a `goto` rather than following it (it cycles back to an
+    ancestor -- see :class:`Node`'s docstring).
     """
-    depth = 0
-    while node is not None:
-        if node.op == "?":
-            return 1 + max(_fork_depth(node.zero), _fork_depth(node.nonzero))
+    if seen is None:
+        seen = set()
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
         if node.goto is not None:
-            return depth
+            return True
+        if node.op == "?":
+            return _has_goto(node.zero, seen) or _has_goto(node.nonzero, seen)
         node = node.next
-    return depth
+    return False
+
+
+def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
+    """Measure the bounding box ``node``'s subtree actually draws.
+
+    Returns ``(min_forward, max_forward, min_lateral, max_lateral)`` in grid
+    units, relative to the subtree's entry point, as if it were laid out
+    heading "forward" -- a caller rotates it onto whatever heading the arm
+    really runs.
+
+    This exists because sizing a fork's arms by *fork count* alone -- what the
+    removed `_fork_depth` did, feeding `_BRANCH_SPACING * 2**remaining` -- is
+    blind to how much ink a subtree lays down.  Measured directly: the two
+    depth-3 programs `+[>+[>+[>+<-]<-]<-]>>>.` and
+    `++[>++[>++[>+<-]<-]<-]>>>.` produce *identical* spacing at every fork
+    (40/20/10 units) despite carrying different op counts in every arm, and
+    the heavier one is exactly the case that exhausts `_close_loop`'s router.
+    A fork's two arms are sized identically for the same reason, even when
+    wildly asymmetric (the depth-0 fork above has 4 ops on one arm and 14 on
+    the other).  Extent is the quantity the layout actually needs, so it is
+    now the quantity measured.
+
+    Deliberately runs the *real* :func:`_layout` against a scratch cursor
+    rather than reimplementing its geometry: a parallel size-estimating walk
+    would drift from the code that actually draws, and then every extent it
+    reports is a quiet lie.  The scratch cursor carries no `occupied` set,
+    which is exactly what makes `_layout` treat a `goto` as terminal (see its
+    ``measuring`` parameter) -- a detour cannot be routed in isolation anyway,
+    since routing needs the whole drawing's occupancy -- see
+    :func:`_route_pending`, which routes every detour after layout finishes.
+    """
+    if node is None:
+        return (0, 0, 0, 0)
+    cached = _EXTENT_CACHE.get(id(node))
+    if cached is not None:
+        return cached
+    scratch = _Cursor(0, 0, _FORWARD)
+    _layout(node, scratch, measuring=True)
+    points = [p for stroke in scratch.strokes for p in stroke] or [(0, 0)]
+    ys = [p[0] for p in points]
+    xs = [p[1] for p in points]
+    extent = (min(ys), max(ys), min(xs), max(xs))
+    _EXTENT_CACHE[id(node)] = extent
+    return extent
+
+
+@dataclass
+class _Pending:
+    """One loop-back detour whose routing is deferred to `render()`'s 2nd phase.
+
+    Holds the cursor sitting at the loop body's end (already flushed, so its
+    own ink is in `occupied`), the ``?`` node the ``goto`` targets, and the
+    fork-nesting ``depth`` the jump was found at -- see
+    :func:`_route_pending` for what the depth orders.
+    """
+
+    cursor: _Cursor
+    target: Node
+    depth: int
+
+
+def _route_pending(
+    pending: list[_Pending],
+    entries: dict[int, tuple[tuple[int, int], tuple[int, int]]],
+    occupied: set[tuple[int, int]],
+) -> list[list[tuple[int, int]]]:
+    """Route every deferred loop-back detour, outermost fork first.
+
+    Routing a detour the moment its ``goto`` is reached -- what `_layout` used
+    to do -- is an ordering bug, not a spacing one.  A detour routes against
+    `occupied` *as it stands mid-layout*, so it can only avoid ink already
+    drawn; every stroke laid out afterwards is free to march straight through
+    the corridor it just took, and nothing ever checks.  No amount of extra
+    arm spacing fixes that, because the collision is with geometry that did
+    not exist when the route was chosen.  (An earlier attempt here reserved a
+    fixed routing channel per loop-carrying arm, which is a guess at a
+    quantity this ordering makes unknowable.)
+
+    Deferring every detour until all fixed geometry exists means each one
+    routes against the *complete* drawing, plus every detour already routed
+    before it -- so `_CLEARANCE` and `_self_approaches` mean what they say.
+    This is the two-phase layout ``WIP.md`` proposed ("place all fixed
+    geometry, then route every ``goto`` outermost-first against full
+    occupancy").
+
+    Outermost-first (shallowest fork depth) matters because an outer loop's
+    detour has to travel around everything its nested inner loops occupy,
+    while an inner one is comparatively local: letting the constrained route
+    choose first leaves the flexible one to work around it, rather than the
+    reverse.
+    """
+    strokes: list[list[tuple[int, int]]] = []
+    for entry in sorted(pending, key=lambda p: p.depth):
+        stem_start, stem_heading = entries[id(entry.target)]
+        # Only the strokes *this* call adds: the cursor already carries the
+        # loop body's own strokes, which the fork that spawned it collected
+        # into the drawing when `_layout` returned.  Extending with the whole
+        # list would hand every loop body back a second time.
+        before = len(entry.cursor.strokes)
+        _close_loop(entry.cursor, stem_start, stem_heading, occupied)
+        entry.cursor.finish()
+        strokes.extend(entry.cursor.strokes[before:])
+    return strokes
+
+
+def _arm_spacing(arm: Node | None) -> int:
+    """How far a fork arm runs before laying out ``arm``'s own content.
+
+    The arm must run far enough that everything ``arm`` draws clears the
+    fork's own trunk axis -- the line the stem arrived along, which the two
+    arms leave perpendicular to.  A subtree that turns back toward that axis
+    (every nested fork does: its children turn 90 degrees, so its
+    *grand*children turn back parallel to the original heading) reaches some
+    measured distance back along it, and the arm has to be at least that long
+    plus a margin, or the subtree overshoots and crosses the trunk.
+
+    That distance comes straight from a measured extent rather than the old
+    `2 ** remaining` guess at it.  The guess was not merely imprecise: it
+    could not distinguish two programs of identical branching structure
+    carrying different amounts of ink, and gave a fork's two arms the same
+    length even when one held 4 ops and the other 14 (see
+    :func:`_subtree_extent`).
+
+    Sibling separation needs no term of its own, which is worth stating since
+    an intermediate version of this function had one and it was actively
+    harmful.  The two arms leave the fork in opposite directions along one
+    axis, and `reach_back` already puts each subtree's *entire* bounding box
+    strictly on its own side of the trunk -- so the two boxes are separated by
+    at least twice the margin automatically.  The arms' lateral spans spread
+    along the perpendicular axis, where the boxes cannot meet at all.  Adding
+    a lateral term regardless double-counted it into both arms and, because
+    each fork's measured span then contained its children's already-inflated
+    spacing, amplified geometrically with depth: a depth-3 program's outermost
+    arm measured 149 units laterally and rendered at 7760x3800 (vs ~1600
+    here).
+
+    :data:`_BRANCH_SPACING` is the floor and the safety margin, so a subtree
+    that reaches back barely at all still gets a real gap.
+    """
+    if arm is None:
+        return _BRANCH_SPACING
+    # Measured in the arm's own frame, "forward" is the direction the arm
+    # travels, so anything at negative forward-extent is content sitting
+    # *behind* the subtree's entry point -- back toward the trunk.  Taking it
+    # in the canonical frame avoids reasoning about rotated signs at all.
+    min_forward, _, _, _ = _subtree_extent(arm)
+    return _BRANCH_SPACING + max(-min_forward, 0)
 
 
 def _layout(
@@ -973,6 +1115,9 @@ def _layout(
     cursor: _Cursor,
     entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] | None = None,
     depth: int = 0,
+    *,
+    measuring: bool = False,
+    pending: list[_Pending] | None = None,
 ) -> None:
     """Lay out ``node``'s chain from ``cursor``'s current point.
 
@@ -983,34 +1128,57 @@ def _layout(
     own vertex, approached with the fork's own arrival heading, cannot be
     reached by any other straight line without retracing the stem itself).
     The exact offset along the stem is chosen lazily, by :func:`_close_loop`
-    itself at the moment a ``goto`` actually fires, rather than fixed here --
+    when :func:`_route_pending` routes the detour, rather than fixed here --
     a single pre-chosen offset (e.g. the stem's exact midpoint) can end up
-    walled in by unrelated ink drawn *after* this fork's own stem, e.g. a
-    sibling branch elsewhere in a dense decision tree happening to run
-    directly alongside it (confirmed on a real boolean-generator brainfuck
-    program's compiled output); trying several offsets against the occupied
-    set as it stands when the jump actually fires sidesteps that.
+    walled in by unrelated ink elsewhere in a dense decision tree happening to
+    run directly alongside it (confirmed on a real boolean-generator brainfuck
+    program's compiled output); trying several offsets sidesteps that.  Since
+    detours are all routed after layout finishes (see :func:`_route_pending`),
+    the occupancy those offsets are tested against is the finished drawing's,
+    not a partial snapshot of whatever had been drawn so far.
 
-    ``depth`` counts how many ``?`` forks deep this call is nested, and
-    grows :data:`_BRANCH_SPACING`'s effect the same way -- see its own
-    comment for why deeper subtrees need more room, not just a fixed gap.
+    ``depth`` counts how many ``?`` forks deep this call is nested, and is
+    carried purely for callers that want to know it -- arm spacing itself is
+    sized by measured subtree extent (see :func:`_arm_spacing`), not by depth.
+
+    ``measuring`` runs the layout purely to find out how much space a subtree
+    occupies, for :func:`_subtree_extent`.  It makes a ``goto`` terminal
+    instead of routing a real detour: routing needs the whole drawing's
+    occupancy, which a subtree measured in isolation does not have, and the
+    ``entries`` lookup a real ``goto`` performs would not find an ancestor
+    fork that this subtree does not itself contain.  :func:`_route_pending`
+    draws every detour after layout finishes instead.
     """
     if entries is None:
         entries = {}
+    if pending is None:
+        pending = []
     while node is not None:
         if node.op == "?":
             stem_start = (cursor.y, cursor.x)
             cursor.advance(cursor.heading, _STEM_LEN)
             entries[id(node)] = (stem_start, cursor.heading)
             right, left = cursor.branch()
-            remaining = 1 + max(_fork_depth(node.zero), _fork_depth(node.nonzero))
-            spacing = _BRANCH_SPACING * 2**remaining
-            right.advance(right.heading, spacing)
+            right.advance(right.heading, _arm_spacing(node.zero))
             right.finish()
-            left.advance(left.heading, spacing)
+            left.advance(left.heading, _arm_spacing(node.nonzero))
             left.finish()
-            _layout(node.zero, right, entries, depth + 1)
-            _layout(node.nonzero, left, entries, depth + 1)
+            _layout(
+                node.zero,
+                right,
+                entries,
+                depth + 1,
+                measuring=measuring,
+                pending=pending,
+            )
+            _layout(
+                node.nonzero,
+                left,
+                entries,
+                depth + 1,
+                measuring=measuring,
+                pending=pending,
+            )
             right.finish()
             left.finish()
             cursor.strokes.extend(right.strokes)
@@ -1025,15 +1193,21 @@ def _layout(
                 count += 1
         cursor.emit_op(op, count)
         if node.goto is not None:
-            stem_start, stem_heading = entries[id(node.goto)]
-            # Flush the in-progress stroke's pixels into `occupied` *before*
-            # routing, so the detour treats the body just drawn (including
-            # this call's own final kink) as real ink to route around --
-            # otherwise the router could path straight back through it.
+            # Flush the in-progress stroke's pixels into `occupied` before
+            # going any further, so a detour later routed from here treats the
+            # body just drawn (including this call's own final kink) as real
+            # ink to route around.
             cursor.finish()
-            assert cursor.occupied is not None
-            _close_loop(cursor, stem_start, stem_heading, cursor.occupied)
-            cursor.finish()
+            if measuring:
+                # A detour cannot be routed against a subtree's own isolated
+                # occupancy, and this subtree need not even contain the fork
+                # `goto` targets -- so measuring stops here.  Note this returns
+                # *before* the `entries` lookup below, which would otherwise
+                # KeyError on exactly that missing-ancestor case.
+                return
+            # Defer the actual routing to `render()`'s second phase rather than
+            # routing it here, mid-layout -- see :func:`_route_pending`.
+            pending.append(_Pending(cursor, node.goto, depth))
             return
         node = node.next
     cursor.finish()
@@ -1064,8 +1238,19 @@ def render(root: Node, start_heading: tuple[int, int] = (-1, 0)) -> Image.Image:
     ``start_heading`` defaults to "up", matching every wiki example (the
     cursor starts at the bottom of the drawing and travels upward).
     """
-    cursor = _Cursor(0, 0, start_heading, occupied=set())
-    _layout(root, cursor)
+    # See `_EXTENT_CACHE`: keyed by `id()`, so it must not outlive the nodes
+    # it describes.  Clearing per render keeps every cached node reachable
+    # from `root` for as long as its entry exists.
+    _EXTENT_CACHE.clear()
+    occupied: set[tuple[int, int]] = set()
+    cursor = _Cursor(0, 0, start_heading, occupied=occupied)
+    entries: dict[int, tuple[tuple[int, int], tuple[int, int]]] = {}
+    pending: list[_Pending] = []
+    _layout(root, cursor, entries, pending=pending)
+    # Phase two: every loop-back detour routes here, against the finished
+    # drawing rather than against however much of it happened to exist when
+    # its own `goto` was reached -- see :func:`_route_pending`.
+    cursor.strokes.extend(_route_pending(pending, entries, occupied))
 
     ys = [p[0] for stroke in cursor.strokes for p in stroke]
     xs = [p[1] for stroke in cursor.strokes for p in stroke]
