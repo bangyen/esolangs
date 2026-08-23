@@ -265,14 +265,13 @@ def abcdirection(truth_table: str) -> str:
     # to ``turn_row``, runs right to the tree's column, and drops back to
     # ``root_row`` to enter the tree from above.  Both were 600 and 709,
     # which reserved ~700 rows for a detour that only ever puts one turn
-    # cell on one row: the staircase it is clearing is 8n + 3 rows tall and
-    # sits at the *bottom* of the grid, so there is nothing up there to
-    # clear.  Since ``height`` is ``root_row`` plus the leaf bands plus a
-    # fixed tail, that constant alone was about two thirds of every program.
+    # cell on one row: the staircase it is clearing sits at the *bottom* of
+    # the grid, so there is nothing up there to clear.  Since ``height`` is
+    # ``root_row`` plus the leaf bands plus a tail, that constant alone was
+    # about two thirds of every program.
     turn_row = 2
     root_row = turn_row + 8  # the tree starts just below the turn
 
-    width = margin + 60 * (leaves - 1) + 60
     root_x = margin + leaves // 2 * sp
     tree_bottom = root_row + 8 * (n - 1)  # deepest row the tree itself reaches
     # The tree's rightmost leaf sits (leaves - 1 - leaves // 2 + 0.5) node
@@ -284,7 +283,31 @@ def abcdirection(truth_table: str) -> str:
     serp_col = tree_max + 40  # serpentine output track, right of the tree
     escape_rows = [tree_bottom + 8 + 52 * i for i in range(leaves)]
     sink_cols = [serp_col + 30 + 8 * i for i in range(leaves)]
-    height = escape_rows[-1] + 60 + 8 * n + 150
+    # Both extents are measured from the rightmost/lowest thing placed rather
+    # than guessed, since a formula that merely runs parallel to the layout
+    # drifts away from it as n grows.  The old width counted 60 columns per
+    # leaf while the sinks it has to contain are 8 apart, so the overshoot
+    # widened with n: 65 dead columns at n = 3, 193 at n = 4.
+    #
+    # The last sink's D must not touch the terminator.  ``_parse`` stops at
+    # the *first* DDDDDD, so a sink D flush against the run would match one
+    # column early and silently shrink every parsed row; the B between them
+    # costs a column and removes that coupling.
+    width = sink_cols[-1] + 1 + 6 + 1
+    # A serpentine band reaches ``band_depth`` rows below its escape row.
+    # The 52-row pitch between bands stays: a leaf that flips its bit backs
+    # up two rows above its own escape row, so consecutive bands already sit
+    # within a couple of rows of each other.  Only the tail was slack --
+    # after the last band there were 164 blank rows, at every n, before the
+    # staircase began.
+    band_depth = 40
+    # The staircase is built upward from the bottom row and spans 8n + 8:
+    # 8n read pairs plus the entry cell below and the exit cells above.
+    stair_rows = 8 * n + 8
+    # The staircase exit climbs six rows above its top cell and turns there,
+    # so those rows belong to the staircase rather than to the last band.
+    exit_clearance = 8
+    height = escape_rows[-1] + band_depth + exit_clearance + stair_rows
     b = _Builder(width, height)
     ex, ey, eh = _add_staircase(b, n)
     x, y, h = ex, ey, eh
