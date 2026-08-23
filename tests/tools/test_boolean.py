@@ -3199,7 +3199,6 @@ class TestThreeX:
 
 
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
-    import re
 
     from esolangs.interpreters.grid_based.laserfuck import run
     from esolangs.interpreters.io import IO
@@ -3224,9 +3223,10 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
 
     with redirect_stdout(buffer):
         run(program.splitlines(), FakeIO(inputs), heading=heading)
-    # byte output mode prints every touched cell; the 0/1 input cells print as
-    # NUL/SOH, so filtering to '0'/'1' leaves exactly the 48/49 result cell
-    return re.sub("[^01]", "", buffer.getvalue())
+    # The generator runs in decimal output mode and drives the input cells
+    # negative, which dump() skips, so the tape prints as exactly the answer
+    # -- no filtering needed, and asserting on the raw output is stricter.
+    return buffer.getvalue()
 
 
 class TestLaserFuck:
@@ -3273,10 +3273,27 @@ class TestLaserFuck:
         for heading in range(4):
             assert run_laserfuck(program, ["1", "0"], heading) == "1"
 
-    def test_byte_output_mode(self) -> None:
-        """The first grid cell selects byte output (no separators)."""
+    def test_decimal_output_mode(self) -> None:
+        """No ``\\xff`` marker, so the tape dumps as numbers, not bytes.
+
+        Byte mode would print the answer as ``chr(result)``, which is why
+        the leaves used to add 48 to reach ASCII ``'0'``/``'1'``.  In decimal
+        mode the leaf writes the result itself.
+        """
         program = boolean.laserfuck("10")
-        assert program.splitlines()[0][0] == "\u00ff"
+        assert program.splitlines()[0][0] != "\u00ff"
+        assert "\u00ff" not in program
+
+    def test_prints_only_the_answer(self) -> None:
+        """The dump is exactly the result: no input cells, no separators.
+
+        The input cells are driven negative by the leaf, and ``dump`` skips
+        negative cells, so nothing but the answer survives.
+        """
+        program = boolean.laserfuck("0001")  # AND2
+        for bits, want in (([0, 1], "0"), ([1, 1], "1")):
+            got = run_laserfuck(program, [str(b) for b in bits], 3)
+            assert got == want, f"inputs {bits}"
 
     def test_loop_free_tree(self) -> None:
         """The decision tree uses the #/)/\\ branch, not loop rings."""
@@ -3331,8 +3348,8 @@ class TestLaserFuck:
 
     def test_width_is_narrower_than_the_unfolded_grid(self) -> None:
         """Folding buys columns, rather than only reshaping the grid."""
-        table = "01101001"  # XOR3: 253 columns unfolded
-        assert max(len(ln) for ln in boolean.laserfuck(table).split("\n")) > 250
+        table = "01101001"  # XOR3: 216 columns unfolded
+        assert max(len(ln) for ln in boolean.laserfuck(table).split("\n")) > 200
         assert max(len(ln) for ln in boolean.laserfuck(table, 80).split("\n")) <= 80
 
     def test_without_a_width_is_unchanged(self) -> None:

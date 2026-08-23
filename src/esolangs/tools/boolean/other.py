@@ -354,14 +354,29 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     approach, ``)`` routes a zero cell through to ``\\`` (down column c+3) and
     a nonzero cell back to ``v`` (down column c+1); each child row's ``\\``
     turns the beam right into the child.  Leaves (one per input combination,
-    at a dedicated high column so no ``+`` run crosses a descent column) move
-    the pointer to cell ``n``, set it to 48+result, and hit ``x`` to halt.
+    at a dedicated high column so no ``+`` run crosses a descent column)
+    retire the input cells, move the pointer to cell ``n``, set it to the
+    result, and hit ``x`` to halt.
 
-    The first grid cell ``\\xff`` selects byte output mode: every touched
-    cell with a nonnegative value prints as a byte.  The input cells hold 0/1
-    (printed as NUL/SOH), so the verify harness's ``01`` filter leaves exactly
-    the 48/49 result cell.  The tree is loop-free, so no loop-ring geometry is
-    needed.
+    LaserFuck has no output instruction: it prints the tape when the last
+    laser dies.  Two properties of that dump make the program print its
+    answer and nothing else.
+
+    The dump has two modes, and this generator uses the default *decimal*
+    one, which prints each cell as a number.  (A ``\\xff`` in the first grid
+    cell would select byte mode instead, where the answer would come out as
+    the character ``chr(result)``; the generator used to do that and pay 48
+    ``+`` per leaf to reach ASCII ``'0'``/``'1'``.)  So a leaf writes the
+    result itself -- one ``+`` for a one, and ``+-`` for a zero, since a cell
+    has to be *touched* to be dumped at all and leaving it alone would print
+    nothing.
+
+    The dump also skips any cell holding a negative value, which is how the
+    input cells are hidden.  A leaf knows the whole input combination, so it
+    subtracts one more than each bit's value on its way past -- driving cell
+    ``i`` to ``-1`` whatever it held -- before walking up to the answer cell.
+
+    The tree is loop-free, so no loop-ring geometry is needed.
 
     ``width`` bounds the columns.  Unfolded, the grid is dominated by its
     straight runs -- the ``n`` input readers are 49 columns each and every
@@ -398,8 +413,9 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         total_cols = max(total_cols, (width or 0) + 2)
     grid = [[" "] * total_cols for _ in range(rows)]
 
-    # the funnel: every heading ends up on row 0 moving right
-    grid[0][0] = "\u00ff"
+    # the funnel: every heading ends up on row 0 moving right.  Cell (0, 0)
+    # is deliberately blank: a '\xff' there would select byte output mode,
+    # and this generator wants the default decimal mode (see the docstring).
     grid[0][1] = "}"
     grid[0][2] = "}"
     grid[1][0] = "|"
@@ -493,9 +509,23 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         r = row(n, j)
         c = leaf_base
         # the beam arrives from the parent's descent column; it first moved the
-        # pointer to cell i (level i), so here it is at cell n-1
-        grid[r][c] = ">"
-        run = "+" * (48 + int(truth_table[j]))
+        # pointer to cell i (level i), so here it is at cell n-1.
+        #
+        # The leaf knows the whole input combination -- that is what a leaf
+        # is -- so it can retire each input cell on the way past.  Cell i
+        # holds bit i, and one more '-' than its value drives it to -1,
+        # which dump() skips; sweeping n-1 down to 0 clears every input, and
+        # the pointer then walks back up to cell n for the answer.
+        sweep = ""
+        for i in range(n - 1, -1, -1):
+            bit = (j >> (n - 1 - i)) & 1
+            sweep += "-" * (bit + 1)
+            if i:
+                sweep += "<"
+        sweep += ">" * n
+        # A 0 answer still has to be *touched* to be printed at all, so it
+        # is written as '+-' rather than left alone.
+        run = sweep + ("+" if truth_table[j] == "1" else "+-")
         if folded:
             drop = drop_base + j
             laserfuck_layout.reserve(grid, band + 1)
