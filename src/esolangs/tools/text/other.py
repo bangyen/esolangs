@@ -879,6 +879,17 @@ def streetcode(text: str) -> str:
     integers and ``O`` prints ``chr()`` of one, so any code point works,
     including characters that are walls in the *grid* (``-``, ``|``,
     ``+``) -- they are emitted as ``^``/``~`` runs, never drawn.
+
+    The ``^``/``~`` runs are unary, so a program is
+    ``O(sum of |code point deltas|)`` -- larger than the multiplication
+    loops the other text generators compress with.  Building a byte value
+    instead of walking to it needs a counting loop, and the pieces of one
+    demonstrably exist (a junction on a lapped ring re-decides on the cell
+    every lap, and a counter on the lap does count down), but no ring
+    geometry that composes enter -> lap -> exit was found: cutting a wall
+    for an entry or exit road changes the lap, and the right-hand hug then
+    takes that cut as an open road on its right.  See
+    ``docs/streetcode-wip.md`` for the traces and the leak modes.
     """
     row = ["C"]
     prev = 0
