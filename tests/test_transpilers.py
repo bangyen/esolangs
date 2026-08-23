@@ -2,8 +2,7 @@
 
 The contract is that a brainfuck program and its translation are
 interchangeable: the translation runs to identical output through the
-target interpreter.  The ASCII-art transpilers are alphabet swaps whose
-translation also recovers the source program exactly.  The Circlefuck
+target interpreter.  The Circlefuck
 transpiler is a real program transformation (its tape is the program
 itself), so it targets the class of brainfuck programs whose data pointer
 stays within ``[0, size)``; a battery plus a fuzz of bounded, terminating

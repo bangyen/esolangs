@@ -38,7 +38,7 @@ class TestBrainfuck:
         assert run_and_capture("++>++<.>.>") == "\x02\x02"
 
     def test_left_clamped(self) -> None:
-        """< at the left edge does nothing (matches ASCII-art semantics)."""
+        """< at the left edge does nothing (the tape is clamped there)."""
         assert run_and_capture("<<.") == "\x00"
 
     def test_input_echo(self) -> None:
