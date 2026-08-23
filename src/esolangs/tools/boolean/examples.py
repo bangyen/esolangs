@@ -40,9 +40,13 @@ the ant's own cell, with ``o`` on black and ``@`` on white.
 
 Every boolean generator whose answer a program can report therefore has a
 committed example.  ABCDirection is the one absent generator, and not for
-that reason: its program is a 1107-line, 377 KB grid needing several million
-steps to reach its answer -- too slow for the example suite and too large to
-review in a diff.
+that reason.  Its program used to be a 1107-line, 377 KB grid needing
+several million steps; successive shrinks of the generator's layout have it
+at 254 lines and 65.7 KB, printing its answer within about 1,400 steps.
+What keeps it out now is that the language has no halt: the answer is
+printed and the beam keeps circling, so a run ends only on ``HaltError`` at
+the step limit, while ``test_boolean_example`` suppresses only
+``SystemExit``.  See ``docs/roadmap.md``.
 """
 
 from collections.abc import Callable

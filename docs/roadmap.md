@@ -503,11 +503,24 @@ worked examples of what this section asks for:
   points, so one pass is enough.  This is a unit, not a safety limit -- a
   diverging program still runs as long as it is asked to.
 
-ABCDirection is the one generator left, and not for that reason: its program
-is a 1107-line, 377 KB grid needing several million steps, which is too slow
-for the example suite and too large to review.  Making it committable means
-making the *program* smaller, which is a generator-construction problem
-rather than an output-recoverability one.
+ABCDirection is the one generator left, and not for that reason.  The two
+objections used to be size and speed: a 1107-line, 377 KB grid needing
+several million steps.  Successive passes over the generator's layout --
+removing a reserved 700-row detour, then deriving the grid's width and
+height from what it actually places, then cutting a margin to the clearance
+it really provides -- have taken the two-input program to 254 lines and
+65.7 KB, answering in about 1,400 steps.  Speed is no longer an objection at
+all, and 65.7 KB is a reviewable diff in a way 377 KB was not.
+
+What blocks it now is the harness rather than the program.  ABCDirection has
+no halt instruction and the pointer never leaves the donut grid, so a
+program prints its answer and then circles forever; the run ends only when
+the interpreter's step limit raises `HaltError`.  (The generator lays down
+an EOF sink per leaf, but the beam does not reach one before the limit --
+the answer is out long beforehand.)  `test_boolean_example` suppresses only
+`SystemExit`, so committing an example means deciding what a program with no
+halt is allowed to end on, which is a harness question rather than a
+generator-construction one.
 
 One caution for anyone re-surveying this: the example stems are display
 names, not language ids, so a naive `id not in stems` check reports
