@@ -3217,8 +3217,8 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
         def print_char(self, char: str) -> None:
             buffer.write(char)
 
-        def print_line(self, text: str = "") -> None:
-            buffer.write(text + "\n")
+        def print_str(self, text: str) -> None:
+            buffer.write(text)
 
         def print_num(self, num: int) -> None:
             buffer.write(str(num))

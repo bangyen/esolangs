@@ -58,9 +58,17 @@ class IO:
     # -- output -------------------------------------------------------
 
     def print_str(self, text: str) -> None:
-        """Write ``text`` without a trailing newline."""
+        r"""Write ``text`` as-is, adding no trailing newline of its own.
+
+        ``_newline`` tracks whether the cursor is mid-line, so that a later
+        input prompt knows whether to start with a break.  It is derived
+        from the text rather than assumed: ``print_str("a\\n")`` ends a line
+        as surely as the old ``print_line("a")`` did, and a prompt after it
+        must not insert a second break.
+        """
         self._write(text)
-        self._newline = True
+        if text:
+            self._newline = not text.endswith("\n")
 
     def print_value(self, value: object) -> None:
         """Write any value the way ``print(value, end="")`` would."""
@@ -68,19 +76,21 @@ class IO:
         self._newline = True
 
     def print_char(self, char: str) -> None:
-        """Write a single character."""
+        """Write a single character, which may itself be a newline."""
         self._write(char)
-        self._newline = True
+        if char:
+            self._newline = char != "\n"
 
     def print_num(self, num: int) -> None:
         """Write a number's decimal representation."""
         self._write(num)
         self._newline = True
 
-    def print_line(self, text: str = "") -> None:
-        """Write ``text`` followed by a newline."""
-        self._write(text + "\n")
-        self._newline = False
+    # There is deliberately no ``print_line``.  A trailing newline is a
+    # choice about a language's output format, not a default: the
+    # interpreters that used to reach for it were, in every case, adding a
+    # newline that no spec asked for.  Writing ``print_str(text + "\n")``
+    # keeps that decision visible at the call site.
 
     # -- input --------------------------------------------------------
 

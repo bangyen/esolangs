@@ -45,8 +45,8 @@ class TestLaserFuck:
             def print_char(self, char: str) -> None:
                 self.buf.write(char)
 
-            def print_line(self, text: str = "") -> None:
-                self.buf.write(text + "\n")
+            def print_str(self, text: str) -> None:
+                self.buf.write(text)
 
             def print_num(self, num: int) -> None:
                 self.buf.write(str(num))
@@ -89,8 +89,8 @@ class TestLaserFuck:
             def print_char(self, char: str) -> None:
                 self.buf.write(char)
 
-            def print_line(self, text: str = "") -> None:
-                self.buf.write(text + "\n")
+            def print_str(self, text: str) -> None:
+                self.buf.write(text)
 
             def print_num(self, num: int) -> None:
                 self.buf.write(str(num))

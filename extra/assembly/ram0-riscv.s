@@ -357,11 +357,11 @@ str_z:  .asciz "z: "
 str_n:  .asciz "n: "
 str_nl: .asciz "\n"
 str_ram: .asciz "ram: {\n"
-str_ram_empty: .asciz "ram: {}\n"
+str_ram_empty: .asciz "ram: {}"
 str_sp: .asciz "    "
 str_col: .asciz ": "
 str_comma: .asciz ",\n"
-str_end: .asciz "}\n"
+str_end: .asciz "}"
 
     .bss
     .align 3
