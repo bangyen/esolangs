@@ -5,7 +5,8 @@ executing the instruction under it at every cell.  Memory is an unbounded
 list of signed integer cells indexed by an unsigned, right-unbounded cell
 pointer (CP), starting at 0.  ``^``/``~`` increment/decrement the CPth cell;
 ``=``/``_`` move CP right/left; ``I``/``O`` read/write the CPth cell as a
-character; ``U`` turns the car around; ``;`` halts; space is a no-op.  Any
+character; ``U`` turns the car around, into the opposite lane; ``;``
+halts; space is a no-op.  Any
 other character (including the box-drawing characters the wiki's diagrams
 use to illustrate street shape) is treated like space -- a no-op the car
 simply drives over; only ``+``, ``-``, and ``|`` are walls.
@@ -633,6 +634,24 @@ class _Machine:
                 raise HaltError from None
         elif char == "U":
             self.heading = _opposite(self.heading)
+            # Streets are two-way and two wide, and the car drives on the
+            # right: after turning around, the lane it belongs in is the
+            # one now on its right, so the U-turn ends there -- that slide
+            # is this step's movement, and the lane cell is executed next
+            # step like any cell the car drives onto.  Turning in place
+            # would leave the car in the oncoming lane, driving on the
+            # left, and the right-hand hug then "corrects" that with two
+            # right turns -- back onto the original heading one lane over,
+            # cancelling the U-turn.  Only a one-wide corridor, with no
+            # open cell to the new right, turns in place.  The heading
+            # changed, so every latch keyed to the old one is void.
+            lane_row, lane_col = self._ahead(self.row, self.col, _right(self.heading))
+            if self._open(lane_row, lane_col):
+                self._merge_target = None
+                self._merging_heading = None
+                self._skip_hug = 0
+                self.row, self.col = lane_row, lane_col
+                return
         # 'C' and space (and any other undefined character) are no-ops.
 
         heading = self._choose_heading()

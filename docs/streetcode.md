@@ -121,6 +121,24 @@ local wall shape actually marks an intersection rather than a plain corner:
   hand-drawn loop attempt whose entry mouth sat two cells ahead of the
   junction's firing point.
 
+* **A `U` ends in the opposite lane.**  Streets are two-way and two
+  wide, and the car drives on the right, so after turning around the
+  lane it belongs in is the one now on its right: the U-turn ends in
+  that cell (the slide is the step's movement; the lane cell is executed
+  on the next step, as any cell the car drives onto is), and every
+  latch keyed to the old heading is dropped.  Turning in place instead
+  leaves the car in the oncoming lane -- driving on the left -- and the
+  right-hand hug then takes two right turns to get out of it, which
+  puts the car back on its *original* heading one lane over: the U-turn
+  cancels itself.  That was the implemented behavior until a hand-drawn
+  counting-loop program relied on a `U` to transfer the hug from the
+  outer wall onto an inner island, and the car came out of the turn
+  northbound again instead of orbiting.  A one-wide corridor (narrower
+  than any spec street, but tolerated) has no opposite lane and turns
+  in place.  The wiki's U-turn cat (`UOI ` / `CIOU`) is unaffected:
+  the slide lands on exactly the cell the old in-place turn reached one
+  hug-turn later, so its visited sequence and echo order are unchanged.
+
 * **The larger "infinite cat for single characters" example** is a genuine
   cat under plain wall-following, but not via the inner `IO`/`OI`
   branch its diagram suggests: the outer ring's wall-hugging loops back

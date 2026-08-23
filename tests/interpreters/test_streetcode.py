@@ -57,14 +57,64 @@ class TestStreetcodeSingleCommands:
         assert run_and_capture(["C#O;"]) == chr(0)
 
     def test_u_reverses_heading(self) -> None:
-        """A 'U' turns the car around immediately, regardless of geometry."""
+        """In a one-wide corridor -- narrower than any spec street, but
+        tolerated -- a 'U' has no opposite lane to end in, so it turns the
+        car around in place."""
         # Two rows so the car has room to move south from C before the U.
         machine = _Machine(["C", "U"], IO())
         assert machine.heading == "S"
         machine.step()  # 'C' nop; only non-backward neighbor is south
         assert (machine.row, machine.col) == (1, 0)
-        machine.step()  # 'U': reverses heading to North regardless of geometry
-        assert machine.heading == "N"
+        machine.step()  # 'U': reverses heading to North in place, then drives
+        assert (machine.row, machine.col, machine.heading) == (0, 0, "N")
+
+    def test_u_on_a_two_way_street_ends_in_the_opposite_lane(self) -> None:
+        """Streets are two wide and the car drives on the right, so after
+        turning around it belongs in the lane now on its right: the U-turn
+        ends there, and that lane cell is executed on the next step."""
+        code = [
+            "|  |",
+            "|C |",
+            "|  |",
+            "|U^|",
+            "|  |",
+            "+--+",
+        ]
+        machine = _Machine(code, IO())
+        # Southbound in the west lane (wall on the right), down to the U.
+        for _ in range(2):
+            machine.step()
+        assert (machine.row, machine.col, machine.heading) == (3, 1, "S")
+        machine.step()  # 'U': turn around, sliding east into the northbound lane
+        assert (machine.row, machine.col, machine.heading) == (3, 2, "N")
+        machine.step()  # the lane cell's '^' runs before the car moves on
+        assert machine.cells[0] == 1
+        assert (machine.row, machine.col, machine.heading) == (2, 2, "N")
+
+    def test_u_in_place_would_leave_the_car_driving_on_the_left(self) -> None:
+        """The reason the lane change is not optional: turned around in
+        place, the car sits in the oncoming lane, and the right-hand hug
+        then takes two right turns to get out of it -- ending up on the
+        *original* heading one lane over, the U-turn cancelled.  Drive the
+        same street to the U and confirm the car really is northbound in
+        the east lane two steps later, not westbound and then southbound."""
+        code = [
+            "|  |",
+            "|C |",
+            "|  |",
+            "|U |",
+            "|  |",
+            "+--+",
+        ]
+        machine = _Machine(code, IO())
+        for _ in range(3):
+            machine.step()
+        headings = []
+        for _ in range(3):
+            machine.step()
+            headings.append(machine.heading)
+        assert headings == ["N", "N", "N"]
+        assert machine.col == 2
 
     def test_cp_increment_and_decrement(self) -> None:
         """Move CP right onto a fresh cell, increment it, then move back."""
