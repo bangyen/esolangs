@@ -366,12 +366,25 @@ them). `verify.py` remains the separate, narrower round-trip check for
   was to never introduce brainfuck's byte convention in the first place,
   not to post-process it out.  Verified end-to-end (render -> extract ->
   simulate) for n=1 through n=4 across every input combination (identity,
-  NOT, AND, XOR, 3-input majority, 4-input parity).  n=4 renders/extracts
-  correctly but is slow (~16s to extract) with a canvas large enough to
-  trip Pillow's decompression-bomb warning; n=5 would be impractical
-  (roughly 35000x17000px), so practical use stops around n<=4 -- matching
-  `esolangs.tools.boolean.tape.six_five`'s own documented n<=5 cap for an
-  unrelated geometric reason, the same shape of problem.  Covered by
+  NOT, AND, XOR, 3-input majority, 4-input parity).
+
+  **The n<=4 practical ceiling this entry used to record is gone**, and was
+  an artifact of `_fork_depth`'s spacing, not anything about decision trees.
+  It previously read: n=4 extracts slowly (~16s) at a canvas large enough to
+  trip Pillow's decompression-bomb warning, n=5 would be impractical at
+  roughly 35000x17000px.  Re-measured after extent-based spacing landed (see
+  the nesting entry below), every one of these round-trips correctly with
+  every input combination checked against its truth table: n=4 at 2000x2260
+  (0.4s to extract), n=5 at 4000x2620 (1.0s), n=6 at 4160x4000 (1.5s), n=7 at
+  8160x4340 (4.0s, 128/128 combinations correct).  So n=5 is ~57x smaller
+  than the projection that called it impractical, and n=7 -- three levels
+  past the old ceiling -- extracts in four seconds.
+
+  Above n=6 the canvas exceeds Pillow's default decompression-bomb threshold,
+  so reading one back needs `Image.MAX_IMAGE_PIXELS` raised; that is a Pillow
+  default, not a limit of this generator.  n=8 upward is untested rather than
+  known-bad (roughly 2x area per input), so the real limit is now whatever
+  canvas and extraction time a caller tolerates.  Covered by
   `test_line_boolean.py`.
 
 - **Real loop/cycle support in `render.py`, and a bf-to-Line compiler**:
