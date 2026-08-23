@@ -3039,19 +3039,19 @@ class TestClockwise:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination prints the result bit seven times."""
+        """Every input combination prints the result as an ASCII digit."""
         program = boolean.clockwise(table)
         for combo in range(2**n):
             bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
             got = run_clockwise(program, bits)
-            assert got == chr(127 * int(table[combo])), f"inputs {bits}"
+            assert got == table[combo], f"inputs {bits}"
 
     def test_ring_starts_at_origin(self) -> None:
         """The program is a closed ring whose pointer starts at (0, 0)."""
         program = boolean.clockwise("0110")
         lines = program.splitlines()
         assert lines[0][0] == " "
-        assert run_clockwise(program, ["1", "0"]) == "\x7f"
+        assert run_clockwise(program, ["1", "0"]) == "1"  # XOR(1, 0)
 
 
 class TestTaglate:

@@ -690,12 +690,19 @@ def taglate(truth_table: str) -> str:
     return result
 
 
+# Cells in a Clockwise leaf: 'S', the seven ';' that print the answer digit
+# with the '+' that set their parity, and the 'S+?' exit.  Both digits fit
+# in this height -- '0' pads with one extra 'S' -- so every leaf's exit '?'
+# lands on the same row, which is what the ring's bottom row assumes.
+_CLOCKWISE_LEAF = 14
+
+
 def clockwise(truth_table: str) -> str:
     """Build a Clockwise program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
-    program prints the result bit seven times, as ``chr(127 * result)``.
+    program prints the result as the ASCII digit ``'0'`` or ``'1'``.
 
     The program is a decision tree in a closed ring.  ``S`` zeroes the
     accumulator and seven ``.`` reads consume a ``0``/``1`` input char's seven
@@ -703,11 +710,18 @@ def clockwise(truth_table: str) -> str:
     turns the pointer by ``acc`` quarter-turns, so a zero bit continues down
     the spine while a one bit turns right (cw) into a column; three ``R`` in
     an L pattern turn it back down into the next column, at a ``2**(n-k)``
-    displacement so each input combination reaches a unique leaf column.  A
-    leaf prints ``S [,+] ;x7``, then a ``?`` (with acc reset to 1) turns it
-    left onto a shared bottom row; an ``S`` after each exit keeps passing
-    paths at acc=0 so they do not turn on another leaf's exit.  The row
-    funnels left to the corner ``R`` and up column 0 to halt.
+    displacement so each input combination reaches a unique leaf column.
+
+    A leaf prints the answer's seven bits with ``;``, which emits ``acc % 2``,
+    so a ``+`` before a ``;`` flips the parity into the bit that position
+    needs.  Printing the ASCII digit rather than the bare bit costs almost
+    nothing here: ``'0'`` is ``0110000`` and ``'1'`` is ``0110001``, so the
+    two leaves differ by a single ``+``.  The leaf then resets and counts up
+    to one (``S+``) so the exit ``?`` sees ``acc == 1`` whatever it printed,
+    and turns left onto a shared bottom row; an ``S`` after each exit keeps
+    passing paths at acc=0 so they do not turn on another leaf's exit.  Both
+    leaves are padded to the same height, so every exit lands on that row.
+    The row funnels left to the corner ``R`` and up column 0 to halt.
     """
     n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
@@ -734,19 +748,34 @@ def clockwise(truth_table: str) -> str:
         build(bit + 1, xn, y + 9, (combo << 1) | 1)
 
     def leaf(x: int, y: int, combo: int) -> None:
+        # Emit the answer as the ASCII digit rather than as the raw bit.
+        # Seven ';' print one bit each, most significant first, and each
+        # prints acc % 2 -- so a '+' before a ';' is what flips the parity
+        # into the bit that position needs.  '0' is 0110000 and '1' is
+        # 0110001, which differ only in the last bit, so the two leaves are
+        # the same shape apart from one '+'.
         result = int(truth_table[combo])
-        place((x, y), "S")
-        place((x, y + 1), "+" if result else " ")
-        for i in range(7):
-            place((x, y + 2 + i), ";")
-        # '?' turns by acc quarter-turns; acc must be exactly 1 to turn left
-        # onto the bottom row, so add one increment only when the result is 0
-        place((x, y + 9), "+" if not result else " ")
-        place((x, y + 10), "?")
+        code = "S"
+        acc = 0
+        for bit in format(48 + result, "07b"):
+            if acc % 2 != int(bit):
+                code += "+"
+                acc += 1
+            code += ";"
+        # A '?' turns by acc quarter-turns and must see exactly 1 to turn
+        # left onto the bottom row.  The accumulator is 2 or 3 by now
+        # depending on the digit, so reset and count up to 1 rather than
+        # tracking it: 'S+' is uniform where a bare '+' would not be.  The
+        # extra 'S' pads the shorter leaf so both are _LEAF_HEIGHT cells and
+        # every leaf's exit lands on the same row, which the ring's geometry
+        # depends on; 'S' on an already-zero accumulator is a no-op.
+        code += "S" * (_CLOCKWISE_LEAF - len(code) - 2) + "+?"
+        for i, ch in enumerate(code):
+            place((x, y + i), ch)
 
     build(0, root, 1, 0)
 
-    bottom = 1 + 9 * n + 10
+    bottom = 1 + 9 * n + _CLOCKWISE_LEAF - 1
     for (x, y), ch in list(cells.items()):
         if ch == "?" and y == bottom:
             place((x - 1, bottom), "S")
