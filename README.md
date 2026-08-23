@@ -54,6 +54,14 @@ esolangs generate <language> "Hello"   # print a program that outputs "Hello"
 esolangs transpile BIO BF program.txt  # rewrite between languages
 ```
 
+Generated programs are one long line by default.  `--width` (optionally
+`--width N`, default 80) wraps one to that many columns for readability,
+breaking only between whole commands so the program still does the same
+thing.  Languages whose newlines carry meaning ignore the flag rather than
+producing a broken program: the 2D grid languages, where a newline starts a
+new row; NoComment, which rejects any character that is not a command; and
+ROTfuck, whose rotation makes a command's position significant.
+
 Assembly compilers run the same way and write `output.asm`:
 
 ```bash
