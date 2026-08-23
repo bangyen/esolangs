@@ -344,6 +344,20 @@ _MERGEABLE = {"+", "-"}
 _MAX_ROUTE_SEARCH = 300_000  # pragma: no mutate - generous per-attempt search-node cap
 
 
+# Cost, in path-length cells, added for each cell of a route that lands inside
+# an ``avoid`` region (a later detour's departure neighborhood -- see
+# :func:`_route_pending`).  Routes here run 100-250 cells and skirting a
+# doorstep costs ~10-20 cells of extra travel, so one unit's worth per
+# trespassed cell makes a crossing effectively a last resort (a 5-cell
+# incursion costs as much as 100 cells of honest travel) while never becoming
+# a wall: when a doorstep's neighborhood holds the only lane there is, the
+# route pays and crosses on the shortest chord instead of failing outright.
+# That "pays and crosses" case is real, not theoretical -- see
+# :func:`_route_pending` for the measured depth-4 geometry that has no
+# non-crossing alternative.
+_AVOID_PENALTY = _UNIT
+
+
 # How many *grid cells* of empty space a detour leg must keep between itself
 # and any unrelated existing ink, beyond simply not overlapping it.  One cell
 # here is `_UNIT` raster pixels of real separation, since the router works
@@ -449,6 +463,7 @@ def _astar(
     *,
     is_goal: object,
     exempt_goal: object,
+    avoid: set[tuple[int, int]] | None = None,
 ) -> list[tuple[int, int]] | None:
     """Search 4-directionally from ``start`` toward ``aim`` on a ``step`` grid.
 
@@ -479,6 +494,13 @@ def _astar(
     pass's goal (rather than forcing the single exact point, which is not
     always reachable even when a nearby point clearly is) is what
     :func:`_route_legs` actually uses ``is_goal`` for.
+
+    ``avoid`` is a set of cells that cost extra to enter but are not
+    obstacles: each ``avoid`` node stepped onto adds :data:`_AVOID_PENALTY`
+    to the path cost.  See :func:`_route_pending` for what these are (later
+    detours' departure neighborhoods) and why they must be costed rather
+    than blocked -- a hard block turns "keep off my doorstep if you can"
+    into a wall that can seal the only lane another route has.
     """
     import heapq
     from collections.abc import Callable
@@ -517,6 +539,8 @@ def _astar(
             if not (goal(nxt) and exempt(nxt)) and not is_clear(cur, (dy, dx)):
                 continue
             new_cost = cost + step
+            if avoid is not None and nxt in avoid:
+                new_cost += _AVOID_PENALTY
             if nxt not in cost_so_far or new_cost < cost_so_far[nxt]:
                 cost_so_far[nxt] = new_cost
                 came_from[nxt] = cur
@@ -591,6 +615,7 @@ def _route_legs(
     target: tuple[int, int],
     occupied: set[tuple[int, int]],
     padding: int,
+    avoid: set[tuple[int, int]] | None = None,
 ) -> list[tuple[tuple[int, int], int]]:
     """Route from ``start`` to ``target`` around ``occupied``, cardinal-only.
 
@@ -620,6 +645,10 @@ def _route_legs(
     at the coarse node nearest ``target``, which will not generally *be*
     ``target`` exactly; a second, fine (1-pixel step) A* then covers the
     short residual gap (at most one grid unit per axis), landing exactly.
+    When the split itself is what fails -- the coarse lattice cannot thread a
+    corridor the drawing genuinely contains -- a pixel-exact A* over the same
+    padded bounds runs as a last resort; see the recovery comment in the body
+    for the measured case that requires it.
 
     ``target`` is reachable even though it is itself real ink (the merge
     point sits inside an existing stroke's segment by construction -- see
@@ -668,29 +697,9 @@ def _route_legs(
     for cdy, cdx in ((-1, 0), (1, 0), (0, 1), (0, -1)):
         coarse_candidates.add((rounded[0] + cdy * _UNIT, rounded[1] + cdx * _UNIT))
 
-    def coarse_goal(p: tuple[int, int]) -> bool:
-        return p in coarse_candidates
-
     def never_exempt(p: tuple[int, int]) -> bool:
         del p
         return False
-
-    coarse_path = _astar(
-        start,
-        rounded,
-        _UNIT,
-        bounds,
-        coarse_clear,
-        is_goal=coarse_goal,
-        exempt_goal=never_exempt,
-    )
-    if coarse_path is None:
-        raise ValueError(
-            "no clear route found for the loop-back detour within the "
-            "current search padding -- the drawing may be too densely "
-            "packed for this program's loop nesting"
-        )
-    coarse_target = coarse_path[-1]
 
     def fine_clear(p: tuple[int, int], direction: tuple[int, int]) -> bool:
         nxt = (p[0] + direction[0], p[1] + direction[1])
@@ -702,23 +711,108 @@ def _route_legs(
     def exempt_final(p: tuple[int, int]) -> bool:
         return p == target
 
-    fine_path = _astar(
-        coarse_target,
+    # The coarse pass stops at whichever candidate is *cheapest from the
+    # start*, which is not necessarily one the fine pass can work from.
+    # Measured on the depth-4 program `+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.` after
+    # corridor-reserving layout (see :func:`_arm_spacing`) had made its routes
+    # exist at all: the start's own column happened to align with the
+    # candidate one coarse step *left* of `rounded`, so the coarse pass ran 40
+    # cells straight up, stopped there -- on the wrong side of a wall -- and
+    # the fine pass then did the entire remaining journey at pixel step,
+    # coming back down through the coarse leg's own cells (one cell was
+    # visited twice).  `_close_loop` correctly rejects such a route as
+    # self-approaching, and since every offset failed the same way, the render
+    # failed even though clear pixel routes existed (a full pixel A* from the
+    # same start reached 11 approach points in ~0.05s each, none folding).
+    #
+    # Two recoveries, tried in order, both leaving the success path
+    # untouched -- a route that succeeds on the first candidate routes
+    # identically to before they existed, so only failures can change, into
+    # recoveries:
+    #
+    # 1. When the fine pass fails outright or the combined path folds back on
+    #    itself, exclude the candidate the coarse pass reached and re-run it
+    #    (at most 5 candidates exist, so this terminates).  This is the cheap
+    #    rescue for long hauls, where a full pixel search is the thing the
+    #    two-pass split exists to avoid.
+    # 2. When no coarse candidate yields a clean route at all, fall back to a
+    #    single pixel-exact A* over the same padded bounds.  A corridor
+    #    reserved by :func:`_arm_spacing` is `_GOTO_CORRIDOR` = 3 cells wide
+    #    -- wide enough for exactly one clear line -- and a coarse edge is 20
+    #    consecutive clear cells anchored to the start's own lattice, so the
+    #    coarse pass can only thread a corridor by alignment luck; the pixel
+    #    pass threads it by construction.  Measured on the same depth-4
+    #    program: after recovery 1 still found nothing (no second candidate
+    #    was coarse-reachable), this pass routed it in well under a second.
+    #    `_MAX_ROUTE_SEARCH` bounds the cost like every other attempt.
+    #
+    # (`_close_loop` still runs its own diagonal-inclusive `_self_approaches`
+    # check on top; the checks here cannot see the diagonal.)
+    excluded: set[tuple[int, int]] = set()
+    for _ in range(len(coarse_candidates)):
+
+        def coarse_goal(p: tuple[int, int]) -> bool:
+            return p in coarse_candidates and p not in excluded
+
+        # The coarse pass penalizes only its own 20-cell *nodes* landing in
+        # `avoid`, so a coarse edge can cross a small avoid region with both
+        # endpoints outside it, unpenalized.  Accepted: the crowded regions
+        # where doorsteps live route via the per-cell pixel passes anyway
+        # (measured -- that is what the fallback below exists for).
+        coarse_path = _astar(
+            start,
+            rounded,
+            _UNIT,
+            bounds,
+            coarse_clear,
+            is_goal=coarse_goal,
+            exempt_goal=never_exempt,
+            avoid=avoid,
+        )
+        if coarse_path is None:
+            break
+        coarse_target = coarse_path[-1]
+
+        fine_path = _astar(
+            coarse_target,
+            target,
+            1,
+            bounds,
+            fine_clear,
+            is_goal=fine_goal,
+            exempt_goal=exempt_final,
+            avoid=avoid,
+        )
+        if fine_path is None:
+            excluded.add(coarse_target)
+            continue
+
+        legs = _path_to_legs(coarse_path + fine_path[1:])
+        if _self_approaches(_leg_cells(start, legs)):
+            excluded.add(coarse_target)
+            continue
+        return legs
+
+    full_path = _astar(
+        start,
         target,
         1,
         bounds,
         fine_clear,
         is_goal=fine_goal,
         exempt_goal=exempt_final,
+        avoid=avoid,
     )
-    if fine_path is None:
-        raise ValueError(
-            "no clear route found for the loop-back detour's final approach "
-            "within the current search padding -- the drawing may be too "
-            "densely packed for this program's loop nesting"
-        )
+    if full_path is not None:
+        legs = _path_to_legs(full_path)
+        if not _self_approaches(_leg_cells(start, legs)):
+            return legs
 
-    return _path_to_legs(coarse_path + fine_path[1:])
+    raise ValueError(
+        "no clear route found for the loop-back detour within the "
+        "current search padding -- the drawing may be too densely "
+        "packed for this program's loop nesting"
+    )
 
 
 # Starting search padding (pixels) for `_close_loop`'s first attempt, and
@@ -737,6 +831,7 @@ def _close_loop(
     stem_start: tuple[int, int],
     stem_heading: tuple[int, int],
     occupied: set[tuple[int, int]],
+    avoid: set[tuple[int, int]] | None = None,
 ) -> None:
     """Route from ``cursor``'s current point onto some point along a stem.
 
@@ -757,6 +852,12 @@ def _close_loop(
     reconnections are found nearby, so this keeps the common case cheap and
     only pays for a wider search when every offset genuinely needs more room
     to route around.
+
+    ``avoid`` is passed through to the router as soft cost (see
+    :func:`_astar` and :func:`_route_pending`); an approach point sitting
+    *inside* an avoid region is skipped outright, since landing the detour's
+    final corner on a later detour's doorstep defeats the region's purpose.
+    Every clearance check here stays against real ``occupied`` ink only.
     """
     hy, hx = stem_heading
     targets = [
@@ -777,6 +878,8 @@ def _close_loop(
                 # closing on the stem's ink and clearance cannot hold there.
                 if not _clear_at(approach, occupied):
                     continue
+                if avoid is not None and approach in avoid:
+                    continue
                 if any(
                     (
                         approach[0] + diagonal[0] * i,
@@ -788,7 +891,7 @@ def _close_loop(
                     continue
                 try:
                     legs = _route_legs(
-                        (cursor.y, cursor.x), approach, occupied, padding
+                        (cursor.y, cursor.x), approach, occupied, padding, avoid
                     )
                 except ValueError as exc:
                     errors.append(str(exc))
@@ -926,6 +1029,22 @@ def _approach_points(
 _BRANCH_SPACING = 5
 
 
+# Width, in grid cells, of the routing corridor one loop-back detour needs to
+# pass an arm -- see :func:`_arm_spacing`, which reserves one of these per
+# `goto` beneath the arm.
+#
+# This is not a chosen number, which matters: a fixed `_GOTO_CHANNEL` constant
+# was tried during the depth-3 work and removed precisely because it was
+# guessing at a quantity nothing had measured.  It is the swath a routed
+# detour actually blocks, and the router itself defines that: one cell of the
+# detour's own stroke, plus `_CLEARANCE` of mandated gap on either side (see
+# :func:`_clear_at` -- a route is rejected unless every cell within
+# `_CLEARANCE` is free, so a detour makes a `1 + 2*_CLEARANCE` band unusable,
+# not merely its own line).  Written as the expression rather than its value
+# so that changing `_CLEARANCE` moves the corridors with it.
+_GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
+
+
 # Memoized `_subtree_extent` results for one `render()` call, keyed by node id.
 #
 # Measuring is a full dry-run `_layout` of the subtree, and every fork asks
@@ -944,23 +1063,29 @@ _BRANCH_SPACING = 5
 _EXTENT_CACHE: dict[int, tuple[int, int, int, int]] = {}
 
 
-def _has_goto(node: Node | None, seen: set[int] | None = None) -> bool:
-    """Whether ``node``'s subtree contains a loop-back needing a routing channel.
+def _count_gotos(node: Node | None, seen: set[int] | None = None) -> int:
+    """How many loop-backs ``node``'s subtree contains, each needing a corridor.
 
     Walks the same `.next`/`.zero`/`.nonzero` edges :func:`_subtree_extent`
     does, and stops at a `goto` rather than following it (it cycles back to an
-    ancestor -- see :class:`Node`'s docstring).
+    ancestor -- see :class:`Node`'s docstring).  Both arms of a `?` are summed:
+    every `goto` anywhere beneath this arm eventually routes a detour that has
+    to get *past* this arm, so each one is a separate crossing the arm's own
+    spacing must survive -- see :func:`_arm_spacing`.
     """
     if seen is None:
         seen = set()
+    total = 0
     while node is not None and id(node) not in seen:
         seen.add(id(node))
         if node.goto is not None:
-            return True
+            return total + 1
         if node.op == "?":
-            return _has_goto(node.zero, seen) or _has_goto(node.nonzero, seen)
+            return (
+                total + _count_gotos(node.zero, seen) + _count_gotos(node.nonzero, seen)
+            )
         node = node.next
-    return False
+    return total
 
 
 def _subtree_extent(node: Node | None) -> tuple[int, int, int, int]:
@@ -1053,14 +1178,46 @@ def _route_pending(
     reverse.
     """
     strokes: list[list[tuple[int, int]]] = []
-    for entry in sorted(pending, key=lambda p: p.depth):
+    order = sorted(pending, key=lambda p: p.depth)
+    for i, entry in enumerate(order):
         stem_start, stem_heading = entries[id(entry.target)]
+        # Every detour not yet routed will have to *leave* its own departure
+        # point, so no earlier route should squat on it.  Without this, an
+        # earlier route is free to run directly across a later departure
+        # point's doorstep -- A* takes the shortest clear path, which hugs
+        # existing ink at exactly `_CLEARANCE`, and a departure point sits at
+        # the tip of drawn ink by construction.  Measured on the depth-4
+        # program: the depth-3 detour's route boxed the first depth-4 detour's
+        # start into an 8-cell pocket (out of a ~28000-cell canvas), with
+        # attribution showing that one route alone responsible.
+        #
+        # The `_GOTO_CORRIDOR`-radius block around each future start is
+        # *costed*, not blocked (see :data:`_AVOID_PENALTY`): passing it as
+        # hard occupancy was tried and failed the same program one detour
+        # later, because the two depth-4 doorsteps sit a column apart and the
+        # first's only lane to its stem runs straight through the second's
+        # blocked ring -- 152 reachable cells with the ring hard, 1086
+        # without.  A finite cost keeps doorsteps clear whenever a clear
+        # alternative exists and, when none does, lets the route cross on the
+        # shortest chord.  Measured on the shipped path: three of the four
+        # routes trespass zero avoid cells, and the boxed-in one pays exactly
+        # a 7-cell chord through the last doorstep's region, passing at
+        # distance 3 from its start -- which still escapes, since the chord
+        # crosses a side its own route never needs.  The regions never enter
+        # the real `occupied` set, so once a detour's own turn comes its
+        # reservation is gone and its route is checked only against real ink.
+        avoid: set[tuple[int, int]] = set()
+        for later in order[i + 1 :]:
+            sy, sx = later.cursor.y, later.cursor.x
+            for dy in range(-_GOTO_CORRIDOR, _GOTO_CORRIDOR + 1):
+                for dx in range(-_GOTO_CORRIDOR, _GOTO_CORRIDOR + 1):
+                    avoid.add((sy + dy, sx + dx))
         # Only the strokes *this* call adds: the cursor already carries the
         # loop body's own strokes, which the fork that spawned it collected
         # into the drawing when `_layout` returned.  Extending with the whole
         # list would hand every loop body back a second time.
         before = len(entry.cursor.strokes)
-        _close_loop(entry.cursor, stem_start, stem_heading, occupied)
+        _close_loop(entry.cursor, stem_start, stem_heading, occupied, avoid)
         entry.cursor.finish()
         strokes.extend(entry.cursor.strokes[before:])
     return strokes
@@ -1099,6 +1256,31 @@ def _arm_spacing(arm: Node | None) -> int:
 
     :data:`_BRANCH_SPACING` is the floor and the safety margin, so a subtree
     that reaches back barely at all still gets a real gap.
+
+    On top of that, an arm reserves one :data:`_GOTO_CORRIDOR` per ``goto``
+    beneath it, which is what makes nesting past depth 3 drawable.  The reason
+    is measured rather than assumed (the depth-4 failure was instrumented
+    before being characterised -- see ``WIP.md``): detours are far bigger than
+    the program they serve, so the binding constraint is not fixed geometry at
+    all but *earlier detours*.  On `+[>+[>+[>+[>+<-]<-]<-]<-]>>>>.`, a flood
+    fill from the third detour's own departure point reached 5% of the canvas,
+    and attribution showed a single earlier detour responsible: with fixed
+    geometry alone that same point reached 97%.  With every inner arm sitting
+    at the `_BRANCH_SPACING` floor of 5, one detour crossing a gap blocks
+    `_GOTO_CORRIDOR` of it and seals the region behind it into a pocket.
+
+    Reserving `n * _GOTO_CORRIDOR` makes a gap survive the `n` crossings that
+    can actually occur and still leave a corridor's worth of room for the
+    passage itself.  The reservation is not a routing *preference* -- A* takes
+    whatever is shortest and clear, and a detour may still sweep the long way
+    around; it works by leaving the drawing connected once it does.
+
+    The term is deliberately added to the arm being measured, once, and only
+    for arms that carry a `goto`: an earlier version of this function had a
+    lateral term applied to both arms regardless, which double-counted into
+    each fork's measured span and so amplified geometrically with depth (see
+    above).  Here a goto-free arm gets exactly `+0`, so a program with no
+    loop-backs renders pixel-identically to before this term existed.
     """
     if arm is None:
         return _BRANCH_SPACING
@@ -1107,7 +1289,8 @@ def _arm_spacing(arm: Node | None) -> int:
     # *behind* the subtree's entry point -- back toward the trunk.  Taking it
     # in the canonical frame avoids reasoning about rotated signs at all.
     min_forward, _, _, _ = _subtree_extent(arm)
-    return _BRANCH_SPACING + max(-min_forward, 0)
+    corridors = _count_gotos(arm) * _GOTO_CORRIDOR
+    return _BRANCH_SPACING + max(-min_forward, 0) + corridors
 
 
 def _layout(
