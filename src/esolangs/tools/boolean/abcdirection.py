@@ -261,7 +261,16 @@ def abcdirection(truth_table: str) -> str:
     leaves = 2**n
     sp = 36  # column spacing between adjacent tree nodes at the same depth
     margin = 100  # blank border reserved on the left/right of the tree
-    root_row = 709  # row the routed beam reaches before entering the tree
+    # The beam leaves the read staircase near the bottom of the grid, climbs
+    # to ``turn_row``, runs right to the tree's column, and drops back to
+    # ``root_row`` to enter the tree from above.  Both were 600 and 709,
+    # which reserved ~700 rows for a detour that only ever puts one turn
+    # cell on one row: the staircase it is clearing is 8n + 3 rows tall and
+    # sits at the *bottom* of the grid, so there is nothing up there to
+    # clear.  Since ``height`` is ``root_row`` plus the leaf bands plus a
+    # fixed tail, that constant alone was about two thirds of every program.
+    turn_row = 2
+    root_row = turn_row + 8  # the tree starts just below the turn
 
     width = margin + 60 * (leaves - 1) + 60
     root_x = margin + leaves // 2 * sp
@@ -283,7 +292,7 @@ def abcdirection(truth_table: str) -> str:
     x, y, h = _turn(b, x, y, h, _L)
     x, y = _travel(b, x, y, _L, max(0, x - 2))
     x, y, h = _turn(b, x, y, h, _U)
-    x, y = _travel(b, x, y, _U, max(0, y - 600))  # clear the tree's own rows
+    x, y = _travel(b, x, y, _U, max(0, y - turn_row))
     x, y, h = _turn(b, x, y, h, _R)
     x, y = _travel(b, x, y, _R, root_x + 1 - x)
     x, y, h = _turn(b, x, y, h, _D)
