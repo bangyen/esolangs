@@ -915,7 +915,6 @@ def suptiftam(text: str) -> str:
     for c in text:
         if not 32 <= ord(c) <= 126 or c == "'":
             raise ValueError(
-                "Suptiftam can only output printable non-quote ASCII "
-                "(32-126 except ')"
+                "Suptiftam can only output printable non-quote ASCII (32-126 except ')"
             )
     return "\n".join(f"term='{c}'\nright(:term:)" for c in text)

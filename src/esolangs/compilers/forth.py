@@ -149,12 +149,17 @@ class _Compiler:
                     "    ret\n"
                 )
                 if char == "(":
+                    # fmt: off
+                    # One source line per emitted instruction, matching the
+                    # surrounding assembly templates; collapsing these into a
+                    # single string would hide the generated code's shape.
                     out.append(
                         "    call peek\n"
                         "    beqz t0, 1f\n"
                         f"    call {label}\n"
                         "1:\n"
                     )
+                    # fmt: on
                 elif char == "[":
                     loop = self.new_label()
                     out.append(

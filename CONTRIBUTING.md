@@ -135,5 +135,5 @@ toolchain; the qemu steps are CI-only.
   input raises `EOFError` (or follows the spec where it defines EOF),
   malformed programs raise `ValueError`, and invalid runtime operations
   raise `HaltError` — never a raw Python exception.
-- New code must pass ruff, black, and mypy, and keep line coverage at 100%
+- New code must pass ruff (lint and format) and mypy, and keep line coverage at 100%
   (the coverage-badge CI job enforces it).
