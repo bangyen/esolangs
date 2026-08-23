@@ -24,6 +24,13 @@ corroborating each rule, and the questions that remain open.
 
 Runtime error contract:
 
+* ``U`` ends the turn in the opposite lane (the spec's streets are two
+  characters wide and the car drives on the right).  A street with no
+  such lane is narrower than the spec allows, so a ``U`` there is an
+  invalid runtime operation and raises
+  :class:`~esolangs.exceptions.HaltError`.  Street width is not
+  validated ahead of run time; see ``docs/roadmap.md``.
+
 * CP is unsigned and right-unbounded: decrementing it below 0 is an invalid
   runtime operation and raises :class:`~esolangs.exceptions.HaltError`.
   Cells are unbounded signed integers (plain Python ``int`` arithmetic, so
@@ -642,16 +649,20 @@ class _Machine:
             # would leave the car in the oncoming lane, driving on the
             # left, and the right-hand hug then "corrects" that with two
             # right turns -- back onto the original heading one lane over,
-            # cancelling the U-turn.  Only a one-wide corridor, with no
-            # open cell to the new right, turns in place.  The heading
-            # changed, so every latch keyed to the old one is void.
+            # cancelling the U-turn.  The heading changed, so every latch
+            # keyed to the old one is void.
+            # A street with no opposite lane is narrower than the spec
+            # allows, so there is nowhere legal to end the turn: that is a
+            # malformed street met at runtime, not a manoeuvre with a
+            # sensible fallback.
             lane_row, lane_col = self._ahead(self.row, self.col, _right(self.heading))
-            if self._open(lane_row, lane_col):
-                self._merge_target = None
-                self._merging_heading = None
-                self._skip_hug = 0
-                self.row, self.col = lane_row, lane_col
-                return
+            if not self._open(lane_row, lane_col):
+                raise HaltError
+            self._merge_target = None
+            self._merging_heading = None
+            self._skip_hug = 0
+            self.row, self.col = lane_row, lane_col
+            return
         # 'C' and space (and any other undefined character) are no-ops.
 
         heading = self._choose_heading()

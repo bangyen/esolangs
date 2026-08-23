@@ -953,17 +953,22 @@ def streetcode(text: str, width: int | None = None) -> str:
     """Build a Streetcode program that outputs ``text``.
 
     Printing needs no branching at all, so the program is a single
-    straight corridor: a ``-`` wall above and below one instruction row
-    that the car drives East along, from the ``C`` start to a closing
-    ``;``.  Each character is a run of ``^``/``~`` walking the one cell
-    the car never leaves from the previous character's code point to this
-    one's, then an ``O``.  CP stays at 0 throughout -- no ``=``/``_`` and
-    no second cell is ever needed.
+    straight street, drawn the way the wiki draws its own worked example:
+    a box of ``-``/``|`` walls around two lanes, the blank northern one
+    for oncoming traffic and the southern one carrying the instructions
+    the car drives East along, from the ``C`` start to a closing ``;``.
+    Streets are two characters wide per the spec, so the empty lane is
+    not padding -- a one-lane corridor is not a street at all.  Each
+    character is a run of ``^``/``~`` walking the one cell the car never
+    leaves from the previous character's code point to this one's, then
+    an ``O``.  CP stays at 0 throughout -- no ``=``/``_`` and no second
+    cell is ever needed.
 
     The walls are load-bearing rather than decoration: they are what makes
     the right-hand-wall rule send the car straight down the row (the
-    initial heading is derived from having a wall on the right), and with
-    no gap-and-``+`` shape anywhere in the grid the car never meets a road
+    initial heading is derived from having a wall on the right, which is
+    why the instructions occupy the southern lane), and with no
+    gap-and-``+`` shape anywhere in the grid the car never meets a road
     mouth, so the ambiguous-turn and lane-merging rules the boolean
     generator has to steer around never come into play.
 
@@ -982,9 +987,10 @@ def streetcode(text: str, width: int | None = None) -> str:
     for an entry or exit road changes the lap, and the right-hand hug then
     takes that cut as an open road on its right.  See
     ``docs/streetcode.md`` for the traces and the leak modes.
-    ``width`` folds that corridor into a boustrophedon: the car drives to
-    the column limit, turns south through a gap in the wall below, and comes
-    back along the next row.  See :func:`_streetcode_serpentine`.
+    ``width`` folds that street into a boustrophedon of two-lane hairpins:
+    the car descends a shared corridor to the lowest pair of lanes, drives
+    each pair out and back, and climbs to the pair above.  See
+    :func:`_streetcode_serpentine`.
     """
     row = ["C"]
     prev = 0
@@ -996,47 +1002,65 @@ def streetcode(text: str, width: int | None = None) -> str:
     instructions = "".join(row)
     if width is not None and width >= _STREETCODE_MIN_WIDTH:
         return _streetcode_serpentine(instructions, width)
-    wall = "-" * len(instructions)
-    return "\n".join([wall, instructions, wall])
+    wall = "+" + "-" * len(instructions) + "+"
+    oncoming = "|" + " " * len(instructions) + "|"
+    return "\n".join([wall, oncoming, f"|{instructions}|", wall])
 
 
-# A serpentine needs room for the descent gap plus the cells either side of
-# it; below this the fold has nowhere to turn and the straight corridor is
-# emitted instead.
-_STREETCODE_MIN_WIDTH = 3
+# A fold needs two wall columns, the vertical corridor the car descends
+# and climbs, and at least one lane column beside it; below this there is
+# nowhere to turn and the straight street is emitted instead.
+_STREETCODE_MIN_WIDTH = 4
 
 
 def _streetcode_serpentine(instructions: str, width: int) -> str:
-    """Fold ``instructions`` into a boustrophedon corridor ``width`` wide.
+    """Fold ``instructions`` into a boustrophedon street ``width`` wide.
 
-    Instruction rows alternate direction -- the first is driven East, the
-    next West, and so on -- separated by a wall row that is solid except for
-    one gap at the *far* column of the row just driven.  That gap is the
-    cell the car descends through, and the right-hand-hug rule takes each
-    fold as a plain corridor bend: no junction is drawn, so none of the
-    ambiguous-turn or lane-merge rules come into play.
+    Each fold is a two-lane street, per the spec's "two characters wide":
+    a pair of rows the car drives around as one hairpin, out along the
+    lane with the wall on its right and back along the other.  Driving
+    East the wall on the right is the one *below*, so the eastbound lane
+    is the lower row of the pair and the westbound lane the upper; the
+    car therefore runs East along the bottom of a pair, turns at the end
+    wall, comes back West along the top, and drops through a gap into the
+    next pair.  That keeps the whole path a plain wall-hugging circuit:
+    no gap-and-``+`` shape is drawn, so no junction, ambiguous-turn, or
+    lane-merge rule ever fires.
 
     The instructions are laid along the car's path in the order it drives
-    them, which means every second row is written to the grid reversed.  The
-    closing ``;`` therefore lands at the path's end, which is what stops the
-    car: a corridor with no halt is a dead end, and the right-hand hug
-    bounces the car back along it, re-executing every cell it already ran.
+    them, so the returning lane is written to the grid reversed.  The
+    closing ``;`` lands at the path's end, which is what stops the car: a
+    street with no halt is a dead end, and the right-hand hug bounces the
+    car back along it, re-executing every cell it already ran.
     """
     cells = list(instructions)
-    grid: list[list[str]] = [["-"] * width]
+    # Column 0 is the left wall, column 1 the shared vertical corridor the
+    # car descends and climbs, and the last column the right wall; the
+    # lanes run between.
+    lanes = width - 3
+    pairs = -(-len(cells) // (2 * lanes))
+
+    grid: list[list[str]] = [["+"] + ["-"] * (width - 2) + ["+"]]
+    for n in range(pairs):
+        for _ in range(2):
+            grid.append(["|"] + [" "] * (width - 2) + ["|"])
+        if n < pairs - 1:
+            divider = ["+"] + ["-"] * (width - 2) + ["+"]
+            divider[1] = " "  # the descent gap, in the vertical corridor
+            grid.append(divider)
+    grid.append(["+"] + ["-"] * (width - 2) + ["+"])
+
+    # The car descends column 1 to the *lowest* pair, drives its hairpin,
+    # then climbs back through each gap to the pair above, so the pairs
+    # are filled bottom-up.  Within a pair it runs East along the lower
+    # lane (wall below on its right), turns at the end wall, and returns
+    # West along the upper lane, ending back at the corridor.
     path: list[tuple[int, int]] = []
-    rows = -(-len(cells) // width)
-    for n in range(rows):
-        grid.append([" "] * width)
-        columns = range(width) if n % 2 == 0 else range(width - 1, -1, -1)
-        path += [(len(grid) - 1, c) for c in columns]
-        if n < rows - 1:
-            far = width - 1 if n % 2 == 0 else 0
-            wall = ["-"] * width
-            wall[far] = " "  # the descent gap
-            grid.append(wall)
-            path.append((len(grid) - 1, far))
-    grid.append(["-"] * width)
+    for n in range(pairs - 1, -1, -1):
+        top = 1 + n * 3
+        bottom = top + 1
+        path += [(bottom, c) for c in range(2, width - 1)]
+        path += [(top, c) for c in range(width - 2, 1, -1)]
 
     for (r, c), instruction in zip(path, cells, strict=False):
         grid[r][c] = instruction
