@@ -24,10 +24,12 @@ exercises `render.py`'s loop-drawing geometry (`_layout`/
 distinction matters. Run any of them with `uv run --with pillow --with
 numpy --with scipy --with scikit-image --with pytest --with pytest-xdist
 pytest test_simulate.py` (or `test_line_boolean.py`, or
-`test_bf_to_line.py`) from this directory (none is under the repo root's
-`tests/` `testpaths`, so a bare `pytest` from the repo root will not find
-them). `verify.py` remains the separate, narrower round-trip check for
-`extract()` alone.
+`test_bf_to_line.py`) from this directory -- the modules import each other
+as flat top-level names, so this directory has to be on `sys.path`. None is
+under the repo root's `tests/` `testpaths`, so a bare `pytest` from the repo
+root will not find them; CI runs all three via the `line` job in
+`.github/workflows/ci.yml`. `verify.py` remains the separate, narrower
+round-trip check for `extract()` alone.
 
 ## Settled and tested
 
