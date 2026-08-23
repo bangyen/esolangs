@@ -155,7 +155,7 @@ def qoibl(text: str) -> str:
     return "\n".join(f"tt {bits(ord(c))} tt" for c in text)
 
 
-def wii2d(text: str) -> str:
+def wii2d(text: str, width: int | None = None) -> str:
     """Build a WII2D program that outputs ``text``.
 
     For each character, the program moves right to a fresh cell, builds the
@@ -163,6 +163,9 @@ def wii2d(text: str) -> str:
     double, or a combination), prints it with ``~``, and halts with ``.``
     after the last one.  The ``!`` marker on line 2 sets the starting
     direction.
+
+    ``width`` folds the instruction line into a boustrophedon grid; see
+    :func:`_wii2d_serpentine`.
     """
 
     def build(target: int) -> str:
@@ -186,7 +189,46 @@ def wii2d(text: str) -> str:
         return best[1]
 
     prog = ">" + "".join(build(ord(c)) + "~" for c in text) + "."
+    if width is not None and width >= _WII2D_MIN_WIDTH:
+        return _wii2d_serpentine(prog, width)
     return f"{prog}\n!"
+
+
+# Each serpentine row spends one cell on the heading that starts it and one
+# on the ``v`` that drops to the next, so a narrower grid has no room for
+# any instruction between them.
+_WII2D_MIN_WIDTH = 3
+
+
+def _wii2d_serpentine(prog: str, width: int) -> str:
+    """Fold ``prog`` into a boustrophedon ``width`` columns wide.
+
+    Every row states its own heading rather than inheriting one: an even row
+    is ``>{group}v`` (driven East, then dropped) and an odd row is
+    ``v{group[::-1]}<`` (driven West, so the group is written reversed).
+    Because each turn is spelled out, no fold depends on the velocity the
+    previous row happened to end with.
+
+    The ``!`` marker goes directly *below* the first instruction row: the
+    interpreter starts the pointer one cell above the marker heading north,
+    so that lands it on row 0, whose leading ``>`` immediately turns it
+    East.  (Putting the marker on top instead starts the pointer at row
+    ``-1``, which wraps to the *last* row and runs the program's tail.)
+
+    The trailing ``v`` on the final row is unreachable: ``prog`` ends with
+    the halting ``.``, which fires before the pointer can reach it.
+    """
+    body = width - 2
+    groups = [prog[i : i + body] for i in range(0, len(prog), body)]
+    rows = [
+        (
+            ">" + group.ljust(body) + "v"
+            if n % 2 == 0
+            else "v" + group[::-1].rjust(body) + "<"
+        )
+        for n, group in enumerate(groups)
+    ]
+    return "\n".join([rows[0], "!", *rows[1:]])
 
 
 def eval(text: str) -> str:  # noqa: A001 - the language is named "Eval"
