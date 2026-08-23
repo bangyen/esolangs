@@ -342,8 +342,6 @@ def _register() -> None:
             b.clockwise,
             "grid_based.clockwise",
             split=True,
-            expected="\x00",
-            note="the ring prints the result as a raw byte, not a digit",
         ),
         "decleq": _reader(b.decleq, "register_based.decleq"),
         "dig": _reader(b.dig, "grid_based.dig", table=XOR2, expected="1", split=True),

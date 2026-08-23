@@ -492,30 +492,39 @@ One caution for anyone re-surveying this: the example stems are display
 names, not language ids, so a naive `id not in stems` check reports
 BF-PDA as missing when it is filed under `bfpda`.  It has an example.
 
-### Divergent expected outputs (assessed, not scheduled)
+### Divergent expected outputs
 
-Seven committed examples expect something other than a bare `0`/`1`, and it
-is worth recording that this is intended rather than untidy.  They fall into
-four groups:
+Some committed examples expect something other than a bare `0`/`1`.  Two
+that used to be on this list were cleaned up rather than explained away, and
+both turned out to be cheap:
+
+- **LaserFuck** printed `'\x00\x010'` -- the answer as a *character*, with
+  the two input cells ahead of it.  Its dump has a decimal mode, selected
+  simply by not putting a `\xff` in the first grid cell, and it skips cells
+  holding a negative value.  So the leaves now write the answer as a number
+  (one `+`, not `48 + result`) and subtract one more than each bit's value
+  from the input cells on the way past, driving them out of the dump.  The
+  output is exactly `"0"` or `"1"`, and the programs shrank by a third,
+  since the 48-`+` runs were most of them.
+- **Clockwise** printed `'\x00'`/`'\x7f'` -- the result bit seven times.  A
+  leaf's seven `;` each print `acc % 2`, so emitting the ASCII digit instead
+  is a matter of flipping the parity into the bits `0110000`/`0110001`,
+  which differ by a single `+`.  The two leaves are padded to the same
+  height (an `S` on an already-zero accumulator is a no-op) so every exit
+  still lands on the shared bottom row.
+
+What is left is divergent for reasons no generator change reaches:
 
 - **trailing newline** (`bitdeque`, `cod`, `nevermind`) -- the language's
   print adds a line ending;
-- **raw byte rather than a digit** (`clockwise`) -- the ring prints
-  `\x00`, not `'0'`;
-- **state dump around the answer** (`laserfuck`, `minsky-swap`, `ram0`) --
-  no output instruction, so the answer arrives at a fixed position inside
-  the dump;
+- **state dump around the answer** (`back`, `minsky-swap`, `ram0`) -- no
+  output instruction, so the answer arrives at a fixed position inside a
+  dump of the machine.  Unlike LaserFuck, these have no way to suppress the
+  rest: Back's cells are bits, and the register dumps print unconditionally;
+- **a painted grid** (`a-painter-ant`) -- the grid *is* the output, and the
+  answer is which leaf the ant rests in;
 - **no output at all** (`arrowqueue`, `point-break`) -- the answer *is*
   termination: the program halts for a 0 and loops forever for a 1, so only
   the halting branch can be committed.
 
-Normalising these -- for instance making the LaserFuck generator emit only
-the result cell -- is possible for the third group: LaserFuck's `dump`
-already skips negative cells, which is how the *text* generator hides its
-loop counter, so driving the input cells negative once they have been read
-would leave just the answer.  It is deliberately not scheduled.  The
-committed program would stop being what the generator naturally produces,
-the extra cells are the honest output of a language with no output
-instruction, and the first and fourth groups cannot be normalised at all,
-so the divergence would remain either way.  The notes on each example carry
-the explanation instead.
+The notes on each example carry the explanation.
