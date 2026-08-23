@@ -2,7 +2,13 @@
 
 PUSH/INJECT append a register value to the deque, POP/EJECT pop it (0 when
 empty), INVERT flips the register, and GOTO jumps to a numbered command when
-the register is nonzero.  The deque contents are printed at the end.
+the register is nonzero.
+
+The wiki says of this language that "there is (currently) no I/O", so
+following the repo convention for interpreter-only languages (Minsky Swap
+prints its registers), the deque contents are printed when the program ends
+-- space-separated on one line.  Both the choice to print and the format are
+this interpreter's, not the spec's.
 
 The wiki says GOTO goes to the Nth operation but does not pin down the
 indexing; this interpreter treats N as 0-based (GOTO 2 lands on the third
