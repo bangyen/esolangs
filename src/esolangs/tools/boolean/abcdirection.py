@@ -260,7 +260,15 @@ def abcdirection(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     leaves = 2**n
     sp = 36  # column spacing between adjacent tree nodes at the same depth
-    margin = 100  # blank border reserved on the left/right of the tree
+    # Clearance between the tree's leftmost descent column and the climb the
+    # beam runs up at x = 2.  This was 100, which read like a border keeping
+    # the tree off the read staircase; it is not doing that job.  The
+    # staircase reaches column 40n + 6 and so already shares columns with the
+    # tree from n = 3 on, and what separates them there is rows -- the tree's
+    # descents stop at their flip rows, some forty rows above the staircase's
+    # first cell.  Only written cells execute, so a beam crossing those
+    # columns in between is harmless.
+    margin = 18
     # The beam leaves the read staircase near the bottom of the grid, climbs
     # to ``turn_row``, runs right to the tree's column, and drops back to
     # ``root_row`` to enter the tree from above.  Both were 600 and 709,
