@@ -13,12 +13,28 @@ file wrapped in a function, and a sync test for it would assert a constant
 equals itself.  Those live inline in the matching
 `tests/interpreters/test_*.py`.
 
+The committed files are wrapped to 80 columns so a long program stays
+readable in a diff.  The wrap breaks only between whole commands, so the
+program still means exactly the same thing, and the sync tests compare
+against the wrapped form character for character rather than ignoring
+newlines.  Languages whose newlines are semantic (the 2D grid ones) or that
+reject them (NoComment) are committed unwrapped, as is any single token
+longer than the width — a Polynomial coefficient cannot be split without
+changing the number.  Refresh both directories with:
+
+```bash
+python scripts/write_hello_world_examples.py
+python scripts/write_boolean_examples.py
+```
+
 ## hello-world
 
-One `Hello, World!` program per language that the program generator
-(`esolangs.tools.generate`) supports.  Each file is exactly what
-`python -m esolangs.tools.generate` produces for the text `Hello, World!`, so
-the interpreter run is always correct.
+One `Hello, World!` program per language that the text generators
+(`esolangs.tools.text`) support.  Each file is what its generator produces
+for the text `Hello, World!`, wrapped as described above, so the
+interpreter run is always correct;
+`python scripts/write_hello_world_examples.py` refreshes the files after a
+generator changes.
 
 Run a program with the language's interpreter, e.g.:
 
