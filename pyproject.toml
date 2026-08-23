@@ -63,10 +63,6 @@ esolangs = ["py.typed"]
 [tool.ruff]
 target-version = "py310"
 line-length = 88
-# `extra/` holds standalone spike code that is not part of the package and is
-# kept formatted as written (it was excluded from the formatter under black
-# too).
-extend-exclude = ["extra"]
 
 [tool.ruff.lint]
 select = [
