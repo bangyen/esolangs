@@ -745,15 +745,50 @@ them). `verify.py` remains the separate, narrower round-trip check for
     route) uses exactly that path.
 
   Depths 5 and 6 now render and round-trip to `[1]` (~1.6s and ~10s; depth
-  5 is pinned in `TestNestingDepthLimit`, depth 6 left unpinned only for
-  suite runtime). The ceiling is depth 7, which exhausts at full padding
-  and full node cap (~27s; the exhaustion pin moved there, with
-  `_MAX_ROUTE_SEARCH` also throttled in the test to keep the raise fast).
-  The failing detour there is the *third* (depth-4) one -- its constrained
-  attempt and its free fallback both exhaust after the two outermost rings
-  route -- so the congestion is in the middle of the onion, not at either
-  end. Beyond locating it, the mechanism is uncharacterised; per this
-  entry's own record, it should be instrumented before being named.
+  5 is pinned in the test suite, depth 6 left unpinned only for suite
+  runtime). The ring-constrained router's own ceiling was depth 7, where
+  the third (depth-4) detour exhausted both its constrained attempt and its
+  free fallback -- congestion in the middle of the onion.
+
+  **Arbitrary depth, by removing the search.** The depth-3 -> 4 -> 5 -> 7
+  progression was itself the finding: every routing fix bought a level or
+  two and exposed the next congestion, because *search-based* routes
+  compete for space globally. The scheme that ends the series
+  (`_loop_return_legs`) constructs each loop-back deterministically from
+  measured geometry instead of searching for it, resting on two facts:
+
+  - A compiled brainfuck `goto` always ends its own fork's body chain
+    (`bf_to_line`'s `_control_tail` guarantees it), so at the `goto` the
+    fork's stem, arm and measured body extent are all known, and the return
+    path is a pure function of them: step off the body's end (measured to
+    sit on its box perimeter at every depth tried), ring the body's
+    bounding box at `_RING_OFFSET`, ride the bay that `_arm_spacing`'s
+    floor-plus-corridor term already guarantees is >= 8 wide, and land
+    mid-stem with the same diagonal the router used. The ring always enters
+    the bay via the rear corner because the arm stroke pierces the bay line
+    at the arm's own axis -- crossing it would draw a spurious 4-way
+    junction.
+  - The construction is drawn in `_subtree_extent`'s dry runs too (a dry
+    run knows every *nested* fork's geometry; only the subtree's own
+    outermost return belongs to the caller's frame, which is exactly where
+    the extent semantics want it). So every parent's measured extent
+    *contains* its children's return paths, and the same recursion that
+    reserves room for child content reserves room for child rings -- at
+    every depth, with nothing left to collide. This is the piece no routed
+    scheme could have: a route found after layout can never be seen by the
+    measurements that decide the layout.
+
+  Depths 1 through 12 render and round-trip to `[1]` (verified against an
+  independent brainfuck interpreter on nested, sequential-sibling,
+  tail-after-inner-loop and input-driven loop shapes as well). Rendering is
+  ~10ms at *any* depth -- the search-based versions took 1.6-10s for depths
+  5-6 -- and image sizes grow linearly. Depth 8 is pinned in the suite as
+  the deep representative. The router (`_route_pending` and everything
+  under it) remains as the fallback for hand-built graphs that violate the
+  compiled invariants, guarded by an overlap check on the constructed legs;
+  its exhaustion raise -- the "fails loudly rather than misdraws"
+  invariant -- is pinned by forcing the fallback in the test, since no
+  compiled program can reach it anymore.
 
 - **Output compactness vs. the wiki's own drawings, and what is irreducible.**
   Prompted by a direct comparison: `bf_to_line.py` on the wiki's own addition

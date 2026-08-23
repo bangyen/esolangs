@@ -198,50 +198,35 @@ class TestStrokeSeparation:
         assert _max_between_stroke_adjacency(program) == 0
 
 
-class TestNestingDepthLimit:
-    """Pins where `_layout`'s drawable nesting depth actually stops.
+class TestNestingDepth:
+    """Nesting depth is unbounded: loop-backs are constructed, not routed.
 
-    Three levels of real `[...]` used to be the boundary: `_close_loop`
-    exhausted every stem offset and approach at maximum padding and raised,
-    which this class pinned as a *raise* (deliberately, since with the
-    self-approach check disabled the same program renders self-crossing
-    garbage that only fails ~21000 pixels later at extraction -- a loud
-    render-time error being the correct behavior for a program the layout
-    cannot draw).  That entry noted its own successor: "if a future layout
-    change makes three levels work, this test should be replaced by a real
-    round-trip assertion, not deleted."
+    This class used to be called `TestNestingDepthLimit` and pinned where
+    the drawable depth stopped -- a boundary that moved from 3 to 4 to 5 to
+    7 across successive routing fixes (measured corridors, a pixel-exact
+    fallback, soft doorstep costs, ring fences -- see `WIP.md`'s depth-4 and
+    depth-5 entries), each fix buying a level or two and exposing the next
+    congestion.  The pattern itself was the finding: *search-based* routing
+    competes for space globally, so every depth is a new fight.
 
-    That is what happened, in two steps.  Lowering `render._BRANCH_SPACING`
-    from 20 to 5 made the *light* depth-3 body drawable, and replacing
-    fork-count spacing with measured-extent spacing plus two-phase detour
-    routing (see `render._subtree_extent` and `render._route_pending`) made
-    the heavy one drawable too -- both now round-trip and execute correctly,
-    so both are pinned as round-trip assertions below.
+    `render._loop_return_legs` ended the series by removing the search: a
+    compiled brainfuck goto always ends its own fork's body chain, so its
+    return path is constructed deterministically from measured geometry
+    (wrap the body's bounding box, ride the reserved bay, land on the stem)
+    -- and because `render._subtree_extent`'s dry runs draw the same
+    construction, every ancestor's measured extent contains its children's
+    return paths and reserves room for them recursively.  No routing, no
+    congestion, no ceiling: depths 1-12 all round-trip (verified directly;
+    depth 8 is pinned below as the deep representative, chosen for suite
+    runtime -- rendering itself is ~10ms at any depth, the extract/simulate
+    side is what grows).
 
-    Depth 4 then fell the same way, in three measured steps (see `WIP.md`'s
-    "Why depth 4 fails" entry for the instrumentation): goto-count-sized
-    routing corridors in `render._arm_spacing` removed the enclosure, a
-    pixel-exact fallback in `render._route_legs` let routes thread corridors
-    the coarse lattice cannot, and soft doorstep costs in
-    `render._route_pending` stopped early routes from sealing later
-    departure points.  It is pinned as a round-trip below, exactly as the
-    depth-3 entries were when their boundary fell.
-
-    Depth 5 fell next, to the ring constraint (see
-    `render._route_pending`'s docstring): each detour is fenced out of its
-    own subtree's measured bounding-box interior -- everything deeper lives
-    inside that box, so a fenced route can never cut a deeper lane -- with a
-    landing strip kept open along the target stem's line, and shallow rings
-    pushed outward by soft shell costs so rings stack onion-style.  Depth 6
-    renders and round-trips too (verified directly; unpinned only because it
-    takes ~10s, which would triple this suite's runtime).
-
-    The boundary has moved out to depth 7, and the invariant that survives is
-    the original one, unchanged in substance since the first version of this
-    class: when the layout genuinely runs out of room it says so at render
-    time rather than misdrawing.  That is what
-    :meth:`test_exhaustion_raises_rather_than_misdrawing` pins, and it is the
-    part that must keep holding no matter how far the drawable depth moves.
+    The invariant that survives from the original class is unchanged in
+    substance: a drawing that cannot be completed fails loudly at render
+    time rather than misdrawing.  The constructed path cannot exhaust, so
+    :meth:`test_router_fallback_still_raises` pins the invariant on the
+    fallback router (which still serves graphs that violate the compiled
+    invariants) by forcing every goto through it.
     """
 
     def test_three_levels_round_trip(self, tmp_path: Path) -> None:
@@ -295,29 +280,46 @@ class TestNestingDepthLimit:
             "+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.", tmp_path / "depth5.png"
         ) == [1]
 
-    def test_exhaustion_raises_rather_than_misdrawing(
+    def test_eight_levels_round_trip(self, tmp_path: Path) -> None:
+        """Depth 8 renders, extracts and executes correctly.
+
+        The deep representative for the constructed loop-back scheme --
+        double the depth any routed version ever reached.  Depths up to 12
+        were verified the same way when the construction landed; this one
+        is pinned because extract/simulate time grows with drawing size and
+        depth 8 keeps the suite fast (~1.6s) while still being unreachable
+        by every search-based approach this file's history records.
+        """
+        assert _run_bf(
+            "+[>+[>+[>+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]<-]<-]<-]>>>>>>>>.",
+            tmp_path / "depth8.png",
+        ) == [1]
+
+    def test_router_fallback_still_raises(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Running out of routing room fails loudly, never silently misdraws.
+        """A drawing that cannot complete fails loudly, never misdraws.
 
-        This is the invariant, and it matters more than which depth happens
-        to be drawable today: with the self-approach check disabled, an
+        The constructed path cannot exhaust, so this forces every goto
+        through the fallback router (by making `_loop_return_legs` decline)
+        and pins the router's own exhaustion raise at a depth it cannot
+        route -- the invariant the original `TestNestingDepthLimit` class
+        was built around: with the self-approach check disabled, an
         undrawable program renders happily and then fails extraction with
-        ~21000 unaccounted pixels, i.e. it draws self-crossing garbage.
+        ~21000 unaccounted pixels, i.e. self-crossing garbage, so the loud
+        render-time error is the behavior that must survive.  The fallback
+        is still live code: any hand-built graph whose gotos violate the
+        compiled invariants (target not an ancestor mid-chain, body end off
+        its box perimeter) routes through it.
 
         `_MAX_PADDING_DOUBLINGS` is throttled to 0 and `_MAX_ROUTE_SEARCH`
-        to 2000 so exhaustion is reached in a few seconds instead of
-        grinding through every doubling and every constrained-then-fallback
-        cycle at the full node cap.  That is deliberate rather than
-        incidental: the assertion is about *what happens when the router
-        gives up*, not about how long it searches first, and an earlier
-        version of this test pinned an unthrottled program that took ~2.5
-        minutes to reach the same raise.  Depth 7 is the program used only
-        because it still exhausts at full padding and full node cap too
-        (measured: ~27s to raise unthrottled); if a future layout change
-        makes depth 7 drawable, throttling alone keeps this test meaningful
-        without needing a deeper program.
+        to 2000 so the exhaustion is reached in a few seconds -- the
+        assertion is about *what happens when the router gives up*, not how
+        long it searches first (an earlier version of this test pinned an
+        unthrottled program that took ~2.5 minutes to reach the same
+        raise).
         """
+        monkeypatch.setattr(render_module, "_loop_return_legs", lambda *_a: None)
         monkeypatch.setattr(render_module, "_MAX_PADDING_DOUBLINGS", 0)
         monkeypatch.setattr(render_module, "_MAX_ROUTE_SEARCH", 2000)
         with pytest.raises(ValueError, match="no clear route found"):
