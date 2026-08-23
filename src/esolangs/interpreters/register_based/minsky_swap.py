@@ -96,7 +96,7 @@ class _Machine:
         """Execute one command, dumping the registers once the cursor ends."""
         if self.halted:
             if not self._dumped:
-                self.io.print_line(" ".join(map(str, self.reg)))
+                self.io.print_str(" ".join(map(str, self.reg)))
                 self._dumped = True
             return
         if (op := self.prog[self.ind]) == "+":
