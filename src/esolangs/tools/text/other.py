@@ -59,15 +59,27 @@ def between(text: str) -> str:
 _SPLITLINES = "\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
 
 
-def clockwise(text: str) -> str:
-    """Build a 1D parity program wrapped around a 3 x k rectangle's perimeter.
+def clockwise(text: str, width: int | None = None) -> str:
+    """Build a 1D parity program wrapped around a rectangle's perimeter.
 
     The turtle walks the ring clockwise, executing one instruction per cell.
     Three corner ``R`` cells turn it, and the final cell walks it back to the
     origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
-    ``+`` is emitted only when the accumulator's parity needs to flip.  A
-    thin rectangle holds the same ring as an n x n square (the perimeter
-    length is 2k + 2 either way) but with a fraction of the area.
+    ``+`` is emitted only when the accumulator's parity needs to flip.
+
+    Only the perimeter holds code -- the interior is dead space -- so an
+    ``h`` x ``w`` rectangle offers ``2(h + w) - 4`` cells and the shape is
+    free once that count is met.  The default picks the *square*, which
+    minimizes ``max(h, w)``: a program needing ``c`` cells fits a square of
+    side ``ceil((c + 4) / 4)``, half the width of the thin ``3 x k`` ring
+    that holds the same code.
+
+    ``width`` constrains that choice to ``w <= width``.  The square is kept
+    when it already fits; otherwise the width is capped and the height grows
+    to supply the remaining cells.  Capping cannot reduce the *total* -- the
+    cell count is fixed by the program -- so a capped ring is always taller
+    than the square it replaces; it is what a caller asking for a bounded
+    width has asked for.
     """
     _require_ascii(text, "Clockwise")
     prog = ""
@@ -82,20 +94,41 @@ def clockwise(text: str) -> str:
     if not prog:
         return ""
 
-    k = max(3, (len(prog) + 2) // 2)
-    ring = [(i, 0) for i in range(k - 1)]  # top row, left to right
-    ring += [(k - 1, 1)]  # right side
-    ring += [(i, 2) for i in range(k - 2, 0, -1)]  # bottom row, right to left
-    ring += [(0, 1)]  # left side
+    height, width_ = _clockwise_shape(len(prog), width)
+    # The three turning corners are overwritten with ``R`` below, so the
+    # ring skips them rather than placing code that would be clobbered.
+    # Only the top-left corner carries an instruction (the origin).
+    ring = [(i, 0) for i in range(width_ - 1)]  # top row, up to the corner
+    ring += [(width_ - 1, y) for y in range(1, height - 1)]  # right, inside
+    ring += [(i, height - 1) for i in range(width_ - 2, 0, -1)]  # bottom back
+    ring += [(0, y) for y in range(height - 2, 0, -1)]  # left column, up
 
-    grid = [[" "] * k for _ in range(3)]
+    grid = [[" "] * width_ for _ in range(height)]
     for (x, y), ch in zip(ring, prog, strict=False):
         grid[y][x] = ch
-    grid[0][k - 1] = "R"  # top-right
-    grid[2][k - 1] = "R"  # bottom-right
-    grid[2][0] = "R"  # bottom-left
+    grid[0][width_ - 1] = "R"  # top-right
+    grid[height - 1][width_ - 1] = "R"  # bottom-right
+    grid[height - 1][0] = "R"  # bottom-left
 
     return "\n".join("".join(row) for row in grid)
+
+
+def _clockwise_shape(cells: int, width: int | None) -> tuple[int, int]:
+    """Return the ``(height, width)`` of the ring holding ``cells`` commands.
+
+    An ``h`` x ``w`` perimeter has ``2(h + w) - 4`` cells, but three of them
+    are the turning corners, so a ring carries ``2(h + w) - 7`` instructions
+    and needs ``h + w >= (cells + 7) / 2``.  Splitting that sum evenly gives
+    the square, which minimizes ``max(h, w)``; ``width`` caps ``w`` and moves
+    the remainder onto ``h``.  Both dimensions are at least 3, the smallest
+    ring with an interior.
+    """
+    half = -(-(cells + 7) // 2)  # ceil, the required h + w
+    side = max(3, -(-half // 2))  # ceil, the square's side
+    if width is None or side <= width:
+        return side, side
+    capped = max(3, width)
+    return max(3, half - capped), capped
 
 
 def container(text: str) -> str:

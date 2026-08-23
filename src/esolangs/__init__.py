@@ -9,6 +9,7 @@ and ``list_languages``.
 """
 
 import importlib
+import inspect
 import pathlib
 import signal
 import threading
@@ -44,22 +45,41 @@ _STATE_MODELS = {
 def generate(language: str, text: str, width: int | None = None) -> str:
     """Return a program in ``language`` that prints ``text``.
 
-    ``width`` wraps the program to that many columns for readability,
-    breaking only between whole tokens so the program still means the same
-    thing; :data:`esolangs.tools.wrap.DEFAULT_WIDTH` is the conventional
-    choice.  The default of ``None`` leaves the program on one line, so a
-    caller that does not ask for a width gets exactly what the generator
-    has always produced.
+    ``width`` bounds the program to that many columns for readability;
+    :data:`esolangs.tools.wrap.DEFAULT_WIDTH` is the conventional choice.
+    The default of ``None`` asks for no bound, so a caller that does not
+    want one gets exactly what the generator has always produced.
+
+    Most languages honour it by *wrapping* the finished program, breaking
+    only between whole tokens so it still means the same thing.  A few build
+    a shape rather than a line -- Clockwise lays its code around a
+    rectangle's perimeter -- and cannot be reflowed after the fact; those
+    generators take the width themselves and lay the program out to fit.
 
     A language whose newlines are semantic (the 2D grid languages) or that
-    rejects them outright (NoComment, ROTfuck) ignores ``width`` rather
-    than raising, so one width can be passed across every language.
+    rejects them outright (NoComment) ignores ``width`` rather than raising,
+    so one width can be passed across every language.
     """
     try:
         fn = GENERATORS[language]
     except KeyError:
         raise UnknownLanguageError(language) from None
+    if width is not None and _takes_width(fn):
+        return str(fn(text, width))
     return wrap_program(str(fn(text)), LANGUAGES[language].id, width)
+
+
+def _takes_width(fn: Callable[..., str]) -> bool:
+    """Whether a generator lays its own program out to a width.
+
+    Such a generator accepts a second ``width`` parameter; the rest produce
+    a program that :func:`~esolangs.tools.wrap.wrap_program` reflows after
+    the fact.
+    """
+    try:
+        return "width" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):  # pragma: no cover - builtins have no signature
+        return False
 
 
 def run(
