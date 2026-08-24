@@ -42,8 +42,14 @@ def run_until_halt(machine: _StepMachine) -> None:
     The companion to :func:`run_with_limit`, for languages whose programs are
     specified to loop forever: Suffolk and ABCDirection have no halt
     instruction, so reaching the budget is how every program ends rather than
-    a failure to report.  Those machines carry the limit themselves and set
+    a failure to report.  Those machines carry the budget themselves and set
     ``halted`` when it runs out, so this returns instead of raising.
+
+    What the budget counts is the machine's own business -- Suffolk counts
+    full passes over the code, ABCDirection counts steps -- and this only
+    needs ``halted`` to become true eventually.  A Painter Ant loops forever
+    too but never sets ``halted``, so it needs the VM's cycle detector
+    instead of this.
     """
     while not machine.halted:
         machine.step()
