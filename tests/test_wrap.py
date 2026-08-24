@@ -25,7 +25,10 @@ from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
+    _cell_width,
+    _span,
     wrap_chars,
+    wrap_grid,
     wrap_program,
     wrap_space_delimited,
     wrap_tokens,
@@ -73,6 +76,17 @@ def _replaces_a_space(name: str) -> bool:
     return WRAPPERS[LANGUAGES[name].id] is wrap_space_delimited
 
 
+def _is_grid(name: str) -> bool:
+    """Whether ``name``'s wrapper lays its tokens out as a padded grid.
+
+    The grid wrapper right-aligns each token in a fixed-width cell, so the
+    separator between two tokens is a *run* of spaces rather than the
+    single one the other space-delimited wrappers leave.  Undoing that wrap
+    means collapsing whitespace, not swapping one character for another.
+    """
+    return WRAPPERS[LANGUAGES[name].id] is wrap_grid
+
+
 def _run(name: str, program: str) -> str:
     """Run ``program`` through ``name``'s interpreter and return its stdout."""
     lang = LANGUAGES[name]
@@ -108,6 +122,16 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     if wrapped == plain:
         # A program the generator already emits multi-line is left alone
         # (BFStack and Suffolk here); there is nothing to undo.
+        return
+    # The grid wrapper pads each token to a cell and right-aligns it, so
+    # the original text is not recoverable character for character -- the
+    # padding is new whitespace.  What must survive is the token sequence
+    # itself, which is the guarantee the character-for-character check is
+    # standing in for everywhere else: no command dropped, reordered, or
+    # split.  The interpreters split on whitespace runs, so a program with
+    # the same token sequence is the same program.
+    if _is_grid(name):
+        assert wrapped.split() == plain.split()
         return
     # Deleting the inserted newlines must recover the original exactly.
     # The space-delimited wrappers put the newline *where a space was*, so
@@ -258,6 +282,79 @@ def test_wrap_space_delimited_never_splits_a_token() -> None:
     wrapped = wrap_space_delimited("1 22 333333 4", 3)
     assert "333333" in wrapped.split("\n")
     assert wrapped.replace("\n", " ") == "1 22 333333 4"
+
+
+def test_wrap_grid_right_aligns_into_columns() -> None:
+    """Every token is right-aligned in a cell as wide as the widest one."""
+    # Cell width 3, so 80 // 4 == 20 cells to a row at the default width.
+    wrapped = wrap_grid("1 22 333 4", 80)
+    assert wrapped == "  1  22 333   4"
+
+
+def test_wrap_grid_columns_line_up_across_rows() -> None:
+    """The point of the grid: column k starts at the same offset every row."""
+    # Six 3-character tokens with room for three cells a row (11 columns
+    # holds "aaa bbb ccc") puts two rows under each other.
+    wrapped = wrap_grid("111 222 333 444 555 666", 11)
+    rows = wrapped.split("\n")
+    assert rows == ["111 222 333", "444 555 666"]
+    starts = [[i for i, ch in enumerate(row) if ch != " "][::3] for row in rows]
+    assert starts[0] == starts[1]
+
+
+def test_wrap_grid_leaves_no_trailing_whitespace() -> None:
+    """Right-aligning pads on the left, so no line ends in a space."""
+    wrapped = wrap_grid("1 22 333 4 5 66", 12)
+    for line in wrapped.split("\n"):
+        assert line == line.rstrip()
+
+
+def test_wrap_grid_preserves_the_token_sequence() -> None:
+    """Padding is whitespace, so the tokens read back exactly."""
+    program = "-1 321 3 -1 322 6 1000000000 0 0 48 49"
+    assert wrap_grid(program, 40).split() == program.split()
+
+
+def test_wrap_grid_sizes_cells_to_the_bulk_not_the_outlier() -> None:
+    """A lone wide token does not pad every other cell out to its width.
+
+    Decleq's boolean program is the real case: 321 tokens of three
+    characters or fewer beside four ten-character jump sentinels.  Sizing
+    every cell to the sentinel would leave the file mostly padding.
+    """
+    tokens = ["321"] * 20 + ["1000000000"]
+    assert _cell_width(tokens) == 3
+    # Without the outlier rule this would be 21 cells of width 10.
+    wrapped = wrap_grid(" ".join(tokens), 80)
+    assert wrapped.split("\n")[0] == " ".join(["321"] * 20)
+
+
+def test_wrap_grid_spans_an_outlier_across_whole_cells() -> None:
+    """A token too wide for one cell takes several, keeping the lattice.
+
+    A 10-character token in a 3-character cell spans three cells (3 cells
+    of 3 plus the 2 separators they absorb is 11 >= 10), so the tokens
+    after it on the row still begin on a cell boundary -- which is the
+    whole reason a wide token spans cells instead of just overflowing.
+    """
+    assert _span(10, 3) == 3
+    wrapped = wrap_grid("111 222 1000000000 333 444", 80)
+    assert wrapped == "111 222  1000000000 333 444"
+    # "111 222 " is 8 columns, the span covers the next 11, so the token
+    # after it starts at column 20 -- a multiple of the 4-column cell.
+    assert wrapped.index("333") == 20
+    assert wrapped.index("333") % 4 == 0
+
+
+def test_wrap_grid_never_straddles_a_row_boundary() -> None:
+    """A spanning token starts a new row rather than breaking across two."""
+    # Cell width 2, so three cells (11 columns) to a row.  The 7-character
+    # token needs three of them, which the first row cannot spare after
+    # "11 22", so it opens the second row rather than breaking across both.
+    wrapped = wrap_grid("11 22 1234567 33", 11)
+    assert wrapped.split("\n") == ["11 22", " 1234567 33"]
+    # The token stayed whole -- that is the guarantee being made here.
+    assert "1234567" in wrapped.split("\n")[1]
 
 
 def test_wrap_chars_breaks_anywhere() -> None:
