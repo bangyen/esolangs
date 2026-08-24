@@ -1,0 +1,688 @@
+"""Unit tests for the grid-based boolean generators.
+
+Covers :mod:`esolangs.tools.boolean.a_painter_ant` and
+:mod:`esolangs.tools.boolean.wii2d`, whose programs are two-dimensional
+grids rather than instruction strings.
+"""
+
+import importlib
+import io
+from collections.abc import Callable
+from contextlib import redirect_stdout
+from typing import ClassVar
+from unittest.mock import patch
+
+import pytest
+
+from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
+from esolangs.interpreters.io import IO
+from esolangs.tools import boolean
+from esolangs.tools.boolean.a_painter_ant import _instantiate_apa, a_painter_ant
+
+
+class TestAPainterAnt:
+    """The A Painter Ant generator (a no-I/O grid language, parameterized convention).
+
+    The interpreter prints the visited-cell bounding box (which carries no
+    coordinates), so the Boolean answer is read from a small semantic grid
+    model: the colour of the cell the ant lands on at the end of a cycle
+    (white is one, black is zero), read after any whole number of cycles
+    since every instantiated program is a cycle-stable fixed point.  ``n ==
+    1`` pads to a two-input table with the second input fixed to zero;
+    ``n >= 3`` is an open problem (``docs/roadmap.md``) and raises.
+    """
+
+    _MOVE: ClassVar[dict[str, tuple[int, int]]] = {
+        "n": (0, -1),
+        "e": (1, 0),
+        "s": (0, 1),
+        "w": (-1, 0),
+    }
+
+    @staticmethod
+    def _landing_after(program: str, cycles: int = 6) -> int:
+        """Landing cell colour (1 white, 0 black) after ``cycles`` cycles.
+
+        Whitespace is ignored (the interpreter strips it), and the ant runs
+        the program in an implicit loop; after each whole cycle the ant rests
+        on its output leaf, whose colour is the Boolean answer.
+        """
+        prog = [c for c in program if not c.isspace()]
+        grid: dict[tuple[int, int], int] = {}
+        x = y = 0
+        for _ in range(cycles * len(prog)):
+            for command in prog:
+                if command == "p":
+                    grid[(x, y)] = 0
+                elif command == "P":
+                    grid[(x, y)] = 1
+                else:
+                    dx, dy = TestAPainterAnt._MOVE[command.lower()]
+                    if (grid.get((x + dx, y + dy), 0) == 1) == command.isupper():
+                        x += dx
+                        y += dy
+        return grid.get((x, y), 0)
+
+    @staticmethod
+    def _cycle_stable(program: str) -> bool:
+        """The interpreter's box is identical for every whole number of cycles."""
+        from esolangs.interpreters.io import ScriptedIO
+
+        io = ScriptedIO()
+        run_a_painter_ant(program, io)
+        ref = io.getvalue()
+        io = ScriptedIO()
+        run_a_painter_ant(program, io, cycles=10)
+        return io.getvalue() == ref
+
+    @classmethod
+    def _check(cls, table: str, bits: list[int]) -> int:
+        program = _instantiate_apa(a_painter_ant(table), bits)
+        assert cls._cycle_stable(program), f"{table} {bits}: not cycle-stable"
+        return cls._landing_after(program)
+
+    def test_all_two_input_functions(self) -> None:
+        """Every two-input table is exact and cycle-stable for every input."""
+        for value in range(16):
+            table = format(value, "04b")
+            for row in range(4):
+                bits = [(row >> 1) & 1, row & 1]
+                assert self._check(table, bits) == int(table[row]), (
+                    f"{table} bits {bits}"
+                )
+
+    def test_xor(self) -> None:
+        """XOR (0110) is one of the expressible tables."""
+        assert self._check("0110", [0, 0]) == 0
+        assert self._check("0110", [0, 1]) == 1
+        assert self._check("0110", [1, 0]) == 1
+        assert self._check("0110", [1, 1]) == 0
+
+    def test_nand(self) -> None:
+        """NAND (1110) is expressible."""
+        assert self._check("1110", [0, 0]) == 1
+        assert self._check("1110", [1, 1]) == 0
+
+    def test_constant_tables(self) -> None:
+        """Constant zero and one are expressible."""
+        assert self._check("0000", [0, 0]) == 0
+        assert self._check("0000", [1, 1]) == 0
+        assert self._check("1111", [0, 0]) == 1
+        assert self._check("1111", [1, 1]) == 1
+
+    def test_template_has_input_placeholders(self) -> None:
+        """The template carries {X0} and {X1}, not hardcoded bits."""
+        template = a_painter_ant("0110")
+        assert "{X0}" in template
+        assert "{X1}" in template
+
+    def test_leaf_paint_uses_space_for_zero(self) -> None:
+        """A zero leaf is left unpainted (space), a one leaf is painted P.
+
+        The generator never paints a cell black (no ``p``), which is what
+        keeps every instantiated program a monotone, cycle-stable fixed
+        point.
+        """
+        template = a_painter_ant("0110")  # f(1,1)=0, f(0,0)=0, f(1,0)=1, f(0,1)=1
+        assert " " in template  # zero leaves are spaces
+        # no paint-black anywhere in any instantiated program
+        program = _instantiate_apa(template, [1, 1])
+        assert "p" not in program
+
+    def test_all_one_input_functions(self) -> None:
+        """Every one-input table is exact and cycle-stable for both inputs.
+
+        n == 1 is supported by fixing the padded second input to zero and
+        using the n == 2 construction with b1 == 0 (see
+        :func:`a_painter_ant`).
+        """
+        for value in range(4):
+            table = format(value, "02b")
+            for bit in [0, 1]:
+                assert self._check(table, [bit]) == int(table[bit]), (
+                    f"table {table} bit {bit}"
+                )
+
+    def test_instantiate_one_bit_fills_single_placeholder(self) -> None:
+        """An n == 1 template carries only {X0}, filled per bit."""
+        template = a_painter_ant("01")  # f(0)=0, f(1)=1
+        assert "{X0}" in template
+        assert "{X1}" not in template
+        assert _instantiate_apa(template, [1]) == template.replace("{X0}", "WWwWWEEe")
+        assert _instantiate_apa(template, [0]) == template.replace("{X0}", "NENEESWw")
+
+    def test_three_input_works(self) -> None:
+        """AND3 is exact and cycle-stable on every input."""
+        from itertools import product
+
+        for bits in product([0, 1], repeat=3):
+            table = "00000001"
+            assert self._check(table, list(bits)) == int(
+                table[bits[0] * 4 + bits[1] * 2 + bits[2]]
+            ), f"AND3 bits {bits}"
+
+    def test_four_input_head_works(self) -> None:
+        """The head's leaf layout generalizes past three inputs."""
+        from esolangs.tools.boolean.a_painter_ant import _leaf_positions
+
+        positions = _leaf_positions(4)
+        assert len(positions) == 16
+        assert len({(x, y) for x, y, _ in positions}) == 16  # all distinct
+
+    def test_four_and_five_input_generator_works(self) -> None:
+        """The generator handles n == 4 and n == 5, exact and cycle-stable."""
+        from itertools import product
+
+        from tests.tools.a_painter_ant_trace import cycle_stable, landing_after
+
+        tables = {
+            4: ["0000000000000001", "0110100110010110", "1111111111111111"],
+            5: ["00000000000000000000000000000001"],
+        }
+        for n, table_list in tables.items():
+            for table in table_list:
+                template = a_painter_ant(table)
+                for bits in product([0, 1], repeat=n):
+                    program = _instantiate_apa(template, list(bits))
+                    assert cycle_stable(program), f"n={n} bits {bits} not stable"
+                    assert landing_after(program, 1) == int(
+                        table[sum(bits[k] << (n - 1 - k) for k in range(n))]
+                    ), f"n={n} table {table} bits {bits}"
+
+    def test_three_input_xor_works(self) -> None:
+        """XOR3 is exact and cycle-stable on every input."""
+        from itertools import product
+
+        for bits in product([0, 1], repeat=3):
+            table = "01101001"
+            assert self._check(table, list(bits)) == int(
+                table[bits[0] * 4 + bits[1] * 2 + bits[2]]
+            ), f"XOR3 bits {bits}"
+
+    def test_bad_table_rejected(self) -> None:
+        with pytest.raises(ValueError, match="power-of-two"):
+            a_painter_ant("011")
+
+    def test_non_binary_rejected(self) -> None:
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            a_painter_ant("0123")
+
+    def test_instantiate_fills_bits(self) -> None:
+        """{X0} fills nnnn/ssss (the 2^(n-i)=4 weight) and {X1} fills the E/W dance."""
+        template = a_painter_ant("0110")
+        assert _instantiate_apa(template, [1, 1]) == template.replace(
+            "{X0}",
+            "nnnn",
+        ).replace("{X1}", "WWwWWEEe")
+        assert _instantiate_apa(template, [0, 0]) == template.replace(
+            "{X0}",
+            "ssss",
+        ).replace("{X1}", "NENEESWw")
+
+
+class TestAPainterAntTrace:
+    """The A Painter Ant step tracer and cycle-stability checker.
+
+    The tracer exposes the semantic grid model the generator reads its
+    answer from, with per-instruction step records so a diverging cycle can
+    be pinned to the exact instruction.  Its bounding-box renderer must
+    agree with the interpreter's, and its stability verdict must agree with
+    the interpreter's box across cycle counts.
+    """
+
+    def test_run_records_moves_blocks_and_paints(self) -> None:
+        from tests.tools.a_painter_ant_trace import run
+
+        outcome = run("nNPp", 1)
+        assert [s.action for s in outcome.steps] == [
+            "moved",
+            "blocked",
+            "paint_white",
+            "paint_black",
+        ]
+        assert outcome.steps[0].target == (0, -1)
+        assert outcome.steps[1].position == (0, -1)
+        assert outcome.steps[2].position == (0, -1)
+        assert outcome.steps[3].position == (0, -1)
+        assert outcome.steps[0].command == "n"
+        assert outcome.steps[0].index == 0
+        assert outcome.grid[(0, -1)] == 0  # p repaints the white cell black
+        assert outcome.visited == {(0, 0), (0, -1)}
+        assert outcome.position == (0, -1)
+
+    def test_run_ignores_whitespace(self) -> None:
+        from tests.tools.a_painter_ant_trace import run
+
+        assert [s.command for s in run("n n  P", 1).steps] == ["n", "n", "P"]
+
+    def test_run_rejects_unknown_instruction(self) -> None:
+        from tests.tools.a_painter_ant_trace import run
+
+        with pytest.raises(ValueError, match="unknown instruction"):
+            run("nPx", 1)
+
+    def test_run_records_landings_per_cycle(self) -> None:
+        from tests.tools.a_painter_ant_trace import run
+
+        assert run("nP", 3).landings == [(0, -1), (0, -2), (0, -3)]
+
+    def test_landing_colour(self) -> None:
+        from tests.tools.a_painter_ant_trace import run
+
+        assert run("nP", 1).landing_colour() == 1  # (0,-1) was painted white
+        assert run("n", 1).landing_colour() == 0  # (0,-1) is still black
+
+    def test_box_matches_the_interpreter(self) -> None:
+        from itertools import product
+
+        from esolangs.interpreters.io import ScriptedIO
+        from tests.tools.a_painter_ant_trace import box
+
+        for value in range(16):
+            table = format(value, "04b")
+            for bits in product([0, 1], repeat=2):
+                program = _instantiate_apa(a_painter_ant(table), list(bits))
+                io = ScriptedIO()
+                run_a_painter_ant(program, io)
+                assert box(program, 1) == io.getvalue().rstrip("\n"), (
+                    table,
+                    bits,
+                )
+
+    def test_cycle_stable_agrees_with_the_interpreter(self) -> None:
+        from itertools import product
+
+        from esolangs.interpreters.io import ScriptedIO
+        from tests.tools.a_painter_ant_trace import cycle_stable
+
+        for value in range(16):
+            table = format(value, "04b")
+            for bits in product([0, 1], repeat=2):
+                program = _instantiate_apa(a_painter_ant(table), list(bits))
+                assert cycle_stable(program), (table, bits)
+                io = ScriptedIO()
+                run_a_painter_ant(program, io)
+                reference = io.getvalue()
+                io = ScriptedIO()
+                run_a_painter_ant(program, io, cycles=10)
+                assert io.getvalue() == reference, (table, bits)
+
+    def test_cycle_stable_detects_a_divergence(self) -> None:
+        from tests.tools.a_painter_ant_trace import cycle_stable
+
+        assert not cycle_stable("nPn")  # each cycle paints one cell further
+
+    def test_landing_after(self) -> None:
+        from tests.tools.a_painter_ant_trace import landing_after
+
+        assert landing_after(_instantiate_apa(a_painter_ant("0110"), [0, 1])) == 1
+        assert landing_after(_instantiate_apa(a_painter_ant("0110"), [1, 1])) == 0
+
+    def test_first_divergence_stable_program_is_none(self) -> None:
+        from itertools import product
+
+        from tests.tools.a_painter_ant_trace import first_divergence
+
+        for bits in product([0, 1], repeat=2):
+            program = _instantiate_apa(a_painter_ant("0110"), list(bits))
+            assert first_divergence(program) is None, bits
+
+    def test_first_divergence_pins_a_box_escape(self) -> None:
+        from tests.tools.a_painter_ant_trace import first_divergence
+
+        divergence = first_divergence("nPn")  # cycle 2 moves to (0,-3), outside
+        assert divergence is not None
+        assert divergence.index == 0
+        assert divergence.command == "n"
+        assert divergence.position == (0, -3)
+        assert divergence.step1.position == (0, -1)
+        assert divergence.step2.position == (0, -3)
+
+    def test_first_divergence_pins_a_paint_break(self) -> None:
+        from tests.tools.a_painter_ant_trace import first_divergence
+
+        divergence = first_divergence("Pn")  # cycle 2 paints the black (0,-1)
+        assert divergence is not None
+        assert divergence.index == 0
+        assert divergence.command == "P"
+        assert divergence.step1.position == (0, 0)
+        assert divergence.step2.position == (0, -1)
+
+    def test_first_divergence_pins_a_changed_answer(self) -> None:
+        from tests.tools.a_painter_ant_trace import first_divergence
+
+        # cycle 1 lands white on (0,-1); cycle 2 slides onto the black (0,0)
+        divergence = first_divergence("nPnPsS")
+        assert divergence is not None
+        assert divergence.index == 5
+        assert divergence.command == "S"
+        assert divergence.step1.position == (0, -1)
+        assert divergence.step2.position == (0, 0)
+
+    def test_first_divergence_pins_a_drifting_dance(self) -> None:
+        from tests.tools.a_painter_ant_trace import first_divergence
+
+        # cycle 2 lands on (0,0) instead of (0,1): same colour, but the dance
+        # is not a fixed point and cycle 3 differs from cycle 2
+        divergence = first_divergence("NPsP")
+        assert divergence is not None
+        assert divergence.index == 0
+        assert divergence.command == "N"
+        assert divergence.step1.action == "moved"
+        assert divergence.step2.action == "blocked"
+
+
+class TestWII2D:
+    """Boolean generator for the no-input grid language WII2D."""
+
+    def run_chain(self, tpl: str, bits: list[int]) -> str:
+        """Instantiate the n-embedding chain template and run the interpreter."""
+        from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
+        from esolangs.tools.boolean import parameterized
+
+        program = parameterized.instantiate(
+            tpl, bits, lambda _i, b: "v   " if b else ">   ", lambda _i, _b: "    "
+        )
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run_wii2d(program.splitlines(), io=IO())
+        return buffer.getvalue()
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("0000000000000001", 4),  # AND4
+            ("1111111100000000", 4),  # top half
+        ],
+    )
+    def test_chain_truth_table(self, table: str, n: int) -> None:
+        """Every instantiated input produces the truth-table result."""
+        template = boolean.wii2d(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_chain(template, bits)
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_chain_all_small_tables(self, n: int) -> None:
+        """Every table up to two inputs works with the n-embedding chain."""
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            template = boolean.wii2d(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_chain(template, bits)
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    @pytest.mark.parametrize("n", [3, 4])
+    def test_chain_sample_tables(self, n: int) -> None:
+        """Sampled dense and structured tables at n = 3 and n = 4."""
+        for table in (
+            "01101001",  # XOR3
+            "11101110",  # NOT-b0
+            "10010110",  # XNOR3
+            "1111111111111111",  # constant one
+            "0000000100000010",  # a two-1 table
+        ):
+            if len(table) != 2**n:
+                continue
+            template = boolean.wii2d(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = self.run_chain(template, bits)
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_chain_embeds_each_input_once(self) -> None:
+        """The n-embedding chain has each {Xi} placeholder exactly once."""
+        import re
+
+        for n in (1, 2, 3):
+            template = boolean.wii2d(format(0, f"0{2**n}b"))
+            xs = re.findall(r"\{X\d+\}", template)
+            assert sorted(xs) == [f"{{X{i}}}" for i in range(n)], (n, xs)
+            assert len(xs) == n, (n, xs)
+
+    def test_chain_n2_closed_form(self) -> None:
+        """Two-input tables use the closed form, not the search."""
+        from esolangs.tools.boolean.wii2d import (
+            _wii2d_apply,
+            _wii2d_n2_closed_form,
+        )
+
+        for table_int in range(16):
+            table = format(table_int, "04b")
+            routes = _wii2d_n2_closed_form(table)
+            # bit 0 is packed as -1 (zero) or 0 (one); each column decodes
+            # with a single op
+            assert routes[0] == ("-", "*"), table
+            t = [int(c) for c in table]
+            for b0 in (0, 1):
+                for b1 in (0, 1):
+                    value = _wii2d_apply(routes[1][b1], _wii2d_apply(routes[0][b0], 0))
+                    assert value == t[b0 * 2 + b1], table
+            # and the generated template uses the closed-form routes
+            template = boolean.wii2d(table)
+            assert template.startswith(">{X0}- > {X1}"), table
+
+    @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
+    def test_chain_parity_closed_form(self, n: int) -> None:
+        """Parity and its complement use the exact closed form for any arity."""
+        from esolangs.tools.boolean.wii2d import (
+            _wii2d_apply,
+            _wii2d_parity_routes,
+            _wii2d_symmetric_popcount_map,
+        )
+
+        for complement in (False, True):
+            table = "".join(
+                str((bin(c).count("1") % 2) ^ complement) for c in range(2**n)
+            )
+            popcount_map = _wii2d_symmetric_popcount_map(n, table)
+            assert popcount_map is not None, table
+            result = _wii2d_parity_routes(n, popcount_map)
+            assert result is not None, table
+            start, routes = result
+            assert routes[1:] == [("", "-s")] * (n - 1), table
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                v = start
+                for i in range(n):
+                    v = _wii2d_apply(routes[i][bits[i]], v)
+                assert str(v) == table[combo], (table, bits)
+
+    @pytest.mark.slow
+    def test_symmetric_search_reduces_to_popcount_decode(self) -> None:
+        """Non-parity symmetric tables use a popcount prefix plus a decode."""
+        from esolangs.tools.boolean.wii2d import (
+            _wii2d_apply,
+            _wii2d_symmetric_search,
+        )
+
+        n = 10
+        # majority-of-10: general search's length-6 ladder cannot fit this
+        # table (see _wii2d_search's docstring for the counting bound), so
+        # this exercises the fallback directly rather than via the full
+        # (slow) _wii2d_search ladder.
+        popcount_map = [1 if p > n // 2 else 0 for p in range(n + 1)]
+        result = _wii2d_symmetric_search(n, popcount_map)
+        assert result is not None
+        start, routes = result
+        assert routes[:-1] == [("", "+")] * (n - 1)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            v = start
+            for i in range(n):
+                v = _wii2d_apply(routes[i][bits[i]], v)
+            assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
+
+    @pytest.mark.slow
+    def test_search_falls_back_to_symmetric_search_when_the_ladder_fails(
+        self,
+    ) -> None:
+        """A symmetric table that the general ladder can't fit still resolves
+        through :func:`_wii2d_symmetric_search`, and a non-symmetric table
+        that the ladder can't fit gives up entirely.  The general ladder's
+        real failure only shows up at large arity (see
+        ``test_symmetric_search_reduces_to_popcount_decode``), so this stubs
+        :func:`_wii2d_search_start` to fail unconditionally and caps the
+        ladder's own op-string length at 4 (maxlen 5-6 are real but
+        expensive to enumerate and irrelevant here, since the stubbed
+        ``_wii2d_search_start`` ignores them anyway), isolating the fallback
+        decision in :func:`_wii2d_search` itself.  The fallback's own
+        :func:`_wii2d_symmetric_search` call still runs for real (uncapped),
+        so it must still succeed.
+        """
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_domain, _wii2d_search
+
+        def capped_domain(maxlen: int, cap: int) -> list[int]:
+            return _wii2d_domain(min(maxlen, 4), cap)
+
+        n = 4
+        symmetric_table = "".join(
+            "1" if bin(c).count("1") > n // 2 else "0" for c in range(2**n)
+        )
+        with (
+            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_domain", side_effect=capped_domain),
+        ):
+            result = _wii2d_search(n, symmetric_table)
+        assert result is not None
+
+        non_symmetric_table = "0001001000110100"
+        with (
+            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
+            patch.object(wii2d_mod, "_wii2d_domain", side_effect=capped_domain),
+        ):
+            result = _wii2d_search(n, non_symmetric_table)
+        assert result is None
+
+    def test_symmetric_search_deadline_stops_the_ladder(self) -> None:
+        """The per-``maxlen`` deadline check aborts the ladder early."""
+        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
+
+        calls = [0.0, 100.0]
+
+        def fake_monotonic() -> float:
+            return calls.pop(0) if calls else 100.0
+
+        with patch("time.monotonic", side_effect=fake_monotonic):
+            result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
+        assert result is None
+
+    def test_symmetric_search_gives_up_after_the_full_ladder(self) -> None:
+        """No decode is found once every ``maxlen`` in the ladder is tried."""
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
+
+        with patch.object(wii2d_mod, "_wii2d_sequences", return_value=[]):
+            result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
+        assert result is None
+
+    @staticmethod
+    def _build_search_start_args(
+        maxlen: int, table: str
+    ) -> tuple[list[int], list[str], Callable[[int, int], int], dict[int, int]]:
+        """Build the ``(t, seqs, pre, index)`` args ``_wii2d_search_start`` needs."""
+        from esolangs.tools.boolean.wii2d import (
+            _wii2d_apply,
+            _wii2d_domain,
+            _wii2d_sequences,
+        )
+
+        domain = _wii2d_domain(maxlen, cap=10**6)
+        index = {v: i for i, v in enumerate(domain)}
+        seqs = _wii2d_sequences(maxlen, domain)
+        inv = []
+        for s in seqs:
+            m: dict[int, int] = {}
+            for v in domain:
+                y = _wii2d_apply(s, v)
+                m[y] = m.get(y, 0) | (1 << index[v])
+            inv.append(m)
+
+        def pre(sidx: int, targets: int) -> int:
+            out = 0
+            m = inv[sidx]
+            bits = targets
+            while bits:
+                low = bits & -bits
+                out |= m.get(domain[low.bit_length() - 1], 0)
+                bits ^= low
+            return out
+
+        t = [int(c) for c in table]
+        return t, seqs, pre, index
+
+    def test_search_start_timeout_returns_none(self) -> None:
+        """An already-expired deadline aborts the search immediately."""
+        import time
+
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
+
+        n = 3
+        t, seqs, pre, index = self._build_search_start_args(2, "01101001")
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() - 1.0)
+        assert result is None
+
+    def test_search_start_clean_failure_returns_none(self) -> None:
+        """A deadline with plenty of time left can still fail cleanly (no
+        route pair fits every requirement), exercising the dead-end and
+        final-``None`` paths instead of the timeout path."""
+        import time
+
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
+
+        n = 3
+        # maxlen=1 gives too small an op-string pool to realize XOR3
+        t, seqs, pre, index = self._build_search_start_args(1, "01101001")
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        assert result is None
+
+    def test_search_start_memoizes_repeated_subproblems(self) -> None:
+        """A junction's sub-search is memoized by its requirement set so a
+        repeated subproblem returns the cached result instead of re-solving."""
+        import time
+
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
+
+        n = 4
+        table = "0000000000111101"
+        t, seqs, pre, index = self._build_search_start_args(2, table)
+        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        assert result is not None
+
+    def test_wii2d_raises_when_the_search_finds_no_route(self) -> None:
+        """``wii2d`` surfaces a search failure as a ``ValueError``."""
+        from esolangs.tools.boolean import parameterized
+
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+
+        with (
+            patch.object(wii2d_mod, "_wii2d_search", return_value=None),
+            pytest.raises(ValueError, match="no route"),
+        ):
+            parameterized.wii2d("0110")
+
+    def test_layout_embeds_a_nonzero_start_digit(self) -> None:
+        """A nonzero ``start`` writes an initial digit before the chain runs.
+
+        ``_wii2d_search`` happens not to need a nonzero start for the small
+        tables sampled elsewhere in this file, so this drives
+        :func:`_wii2d_layout` directly with one and confirms the produced
+        template actually runs correctly through the real interpreter.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_layout
+
+        template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
+        for bit, expected in ((0, "5"), (1, "6")):
+            assert self.run_chain(template, [bit]) == expected

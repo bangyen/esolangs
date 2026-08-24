@@ -4,7 +4,8 @@ Why the COD boolean generator is built the way it is, and what was tried
 and rejected along the way.  The construction itself is shipped and tested
 — the interpreter is `esolangs.interpreters.grid_based.cod`, the generator
 is `esolangs.tools.boolean.cod.cod`, and both are exercised by
-`tests/interpreters/test_cod.py` and `tests/tools/test_boolean.py`.  For
+`tests/interpreters/test_cod.py` and
+`tests/tools/test_boolean_parameterized.py`.  For
 the language's mechanics, including the `+` fork rule this construction
 rests on, read the interpreter module's docstring; it is authoritative and
 this document does not restate it.
@@ -117,7 +118,7 @@ Mirrors the A Painter Ant generator's verification discipline
 
 - All 16 two-input truth tables, all 4 input combinations each (64 runs),
   through the real interpreter: exactly one `0`/`1` line printed, program
-  halts (no cod remains).  `tests/tools/test_boolean.py::TestParameterizedCOD`.
+  halts (no cod remains).  `tests/tools/test_boolean_parameterized.py::TestParameterizedCOD`.
 - All 4 one-input truth tables (NOT, identity, both constants), both inputs.
 - All 256 three-input truth tables, all 8 input combinations each (2048
   runs), through the real interpreter.
