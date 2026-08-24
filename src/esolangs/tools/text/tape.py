@@ -217,28 +217,57 @@ def bfstack(text: str) -> str:
 def brainif(text: str) -> str:
     """Build a BrainIf program that outputs ``text``.
 
-    Each character is built by incrementing the cell from the previous
-    character's value to the new one, guarded by ``if <k> increment`` lines
-    that run only while the cell equals ``k``; a decreasing value first moves
-    right to a fresh cell.  ``if <n> output`` prints the character.
+    A cell only ever counts up -- ``if <k> increment`` fires while the cell
+    holds ``k``, and there is no decrement -- so a character below the
+    running value has to be built somewhere else.  The tape is what makes
+    that cheap: a cell keeps its value after the pointer leaves, so every
+    character already printed is still parked where it was built, and
+    ``move left``/``move right`` walk back to it.
+
+    So a falling character starts from the largest parked value not above
+    it and climbs the difference, taking a fresh zero cell only when that
+    is actually cheaper (the walk costs a line per step).  Climbing from
+    ``0`` every time, as this used to, re-pays the whole ascent: the ``l``
+    of ``Hello, World!`` costs 110 lines from zero against 66 from the
+    parked ``44`` of the comma.
     """
-    res = ""
-    acc = 0
+    lines: list[str] = []
+    cells = [0]  # every cell's value; the pointer's own cell included
+    ptr = 0
+
+    def walk(target: int) -> None:
+        """Step the pointer to ``target``, guarding each move by its cell."""
+        nonlocal ptr
+        while ptr != target:
+            step = 1 if target > ptr else -1
+            way = "right" if step > 0 else "left"
+            lines.append(f"if {cells[ptr]} move {way}")
+            ptr += step
+            if ptr == len(cells):
+                cells.append(0)
 
     for c in text:
-        if (n := ord(c)) < acc:
-            res += f"\nif {acc} move right\n"
-            for k in range(n):
-                res += f"if {k} increment\n"
-            res += f"if {n} output\n"
-        else:
-            res += "\n"
-            for k in range(acc, n):
-                res += f"if {k} increment\n"
-            res += f"if {n} output\n"
-        acc = ord(c)
+        n = ord(c)
+        # The cheapest cell to build ``n`` in: the climb from its current
+        # value plus the walk to reach it.  A cell above ``n`` cannot be
+        # used at all, since a cell never counts down.
+        usable = [i for i, v in enumerate(cells) if v <= n]
+        best = min(usable, key=lambda i: (n - cells[i]) + abs(i - ptr), default=None)
+        # A fresh cell past the end is always available, and is worth taking
+        # when the walk to the best parked cell costs more than the climb it
+        # saves -- or when every cell is already above ``n``.
+        fresh = len(cells)
+        if best is None or n + abs(fresh - ptr) < (n - cells[best]) + abs(best - ptr):
+            cells.append(0)
+            best = fresh
 
-    return res.strip()
+        walk(best)
+        for k in range(cells[ptr], n):
+            lines.append(f"if {k} increment")
+        cells[ptr] = n
+        lines.append(f"if {n} output")
+
+    return "\n".join(lines)
 
 
 def suffolk(text: str) -> str:
