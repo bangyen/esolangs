@@ -90,6 +90,7 @@ Usage:
 """
 
 import argparse
+import contextlib
 import functools
 import io
 import random
@@ -99,8 +100,10 @@ import signal
 import subprocess
 import sys
 import tempfile
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).parents[1]
 RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
@@ -597,6 +600,58 @@ NOCOMMENT_CORPUS = [
 ]
 
 
+class _TimeoutError(Exception):
+    """Raised by the SIGALRM handler when a limited run overruns its budget."""
+
+
+@contextlib.contextmanager
+def _alarm_budget(timeout: float) -> Iterator[None]:
+    """Raise :class:`_TimeoutError` in this thread after ``timeout`` seconds.
+
+    The wall-clock backstop for the unbounded-growth class of runaway
+    program -- one that keeps pushing a stack or incrementing a register
+    never revisits a state, so cycle detection alone never fires.  Callers
+    gate on ``hasattr(signal, "SIGALRM")`` first; this is POSIX-only.
+    """
+
+    def _alarm(_signum: int, _frame: object) -> None:
+        raise _TimeoutError
+
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(int(timeout))
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+
+
+def _capture_io(*, dump_str: bool = False) -> tuple[io.BytesIO, Any]:
+    """Build an ``IO`` that appends everything printed to a byte buffer.
+
+    Returns ``(buffer, io_instance)``.  ``dump_str`` picks which half of the
+    IO surface the interpreter actually drives: the tape and stack languages
+    emit one character at a time (``print_char``), the register languages
+    emit their state dump as a string (``print_str``).  Both encode latin1,
+    so a byte written by the interpreter is the byte the assembly wrote.
+    """
+    from esolangs.interpreters.io import IO
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        if dump_str:
+
+            def print_str(self, s: str) -> None:
+                buffer.write(s.encode("latin1"))
+
+        else:
+
+            def print_char(self, char: str) -> None:
+                buffer.write(char.encode("latin1"))
+
+    return buffer, _IO()
+
+
 def _run_nocomment_python(program: str) -> tuple[bytes, int]:
     """Run the Python NoComment interpreter; return (output, exit code).
 
@@ -604,17 +659,12 @@ def _run_nocomment_python(program: str) -> tuple[bytes, int]:
     program (ValueError), 3 = invalid operation (HaltError).
     """
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.nocomment import run
 
-    buffer = io.BytesIO()
-
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
+    buffer, sink = _capture_io()
 
     try:
-        run(program, _IO())
+        run(program, sink)
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
@@ -643,37 +693,23 @@ def _run_nocomment_python_limited(
         return None
 
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.nocomment import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io()
 
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        return buffer.getvalue(), 0
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            return buffer.getvalue(), 0
+    except _TimeoutError:
+        return None
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
         return buffer.getvalue(), 2
-    except _TimeoutError:
-        return None
-    finally:
-        signal.alarm(0)
 
 
 def _verify_nocomment() -> bool:
@@ -698,17 +734,12 @@ def _run_bfpda_python(program: str) -> tuple[bytes, int]:
     invalid runtime operations, so exit 3 is unused.
     """
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.stack_based.bf_pda import run
 
-    buffer = io.BytesIO()
-
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
+    buffer, sink = _capture_io()
 
     try:
-        run(program, _IO())
+        run(program, sink)
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
@@ -735,37 +766,23 @@ def _run_bfpda_python_limited(program: str, timeout: float) -> tuple[bytes, int]
         return None
 
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.stack_based.bf_pda import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io()
 
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        return buffer.getvalue(), 0
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            return buffer.getvalue(), 0
+    except _TimeoutError:
+        return None
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
         return buffer.getvalue(), 2
-    except _TimeoutError:
-        return None
-    finally:
-        signal.alarm(0)
 
 
 def _verify_bfpda() -> bool:
@@ -785,16 +802,11 @@ def _run_ram0_python(program: str) -> tuple[bytes, int]:
     RAM0 has no error categories, so the exit code is always 0; the state
     dump is printed once, on the step that halts the machine.
     """
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.ram0 import run
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io(dump_str=True)
 
-    class _IO(IO):
-        def print_str(self, s: str) -> None:
-            buffer.write(s.encode("latin1"))
-
-    run(program, _IO())
+    run(program, sink)
     return buffer.getvalue(), 0
 
 
@@ -816,34 +828,20 @@ def _run_ram0_python_limited(program: str, timeout: float) -> tuple[bytes, int] 
     if not hasattr(signal, "SIGALRM"):
         return None
 
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.ram0 import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io(dump_str=True)
 
-    class _IO(IO):
-        def print_str(self, s: str) -> None:
-            buffer.write(s.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        machine.step()  # the dump happens on the step after halting
-        return buffer.getvalue(), 0
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            machine.step()  # the dump happens on the step after halting
+            return buffer.getvalue(), 0
     except _TimeoutError:
         return None
-    finally:
-        signal.alarm(0)
 
 
 def _verify_ram0() -> bool:
@@ -866,17 +864,12 @@ def _run_bio_python(program: str) -> tuple[bytes, int]:
     stack).
     """
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.bio import run
 
-    buffer = io.BytesIO()
-
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
+    buffer, sink = _capture_io()
 
     try:
-        run(program, _IO())
+        run(program, sink)
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
@@ -903,37 +896,23 @@ def _run_bio_python_limited(program: str, timeout: float) -> tuple[bytes, int] |
         return None
 
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.bio import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io()
 
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        return buffer.getvalue(), 0
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            return buffer.getvalue(), 0
+    except _TimeoutError:
+        return None
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
         return buffer.getvalue(), 2
-    except _TimeoutError:
-        return None
-    finally:
-        signal.alarm(0)
 
 
 def _verify_bio() -> bool:
@@ -955,17 +934,12 @@ def _run_minsky_swap_python(program: str) -> tuple[bytes, int]:
     malformed program (ValueError: a `~` with no jump-line target).  Minsky
     Swap has no invalid runtime operations, so exit 3 is unused.
     """
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.minsky_swap import run
 
-    buffer = io.BytesIO()
-
-    class _IO(IO):
-        def print_str(self, s: str) -> None:
-            buffer.write(s.encode("latin1"))
+    buffer, sink = _capture_io(dump_str=True)
 
     try:
-        run(program, _IO())
+        run(program, sink)
     except ValueError:
         return buffer.getvalue(), 2
     return buffer.getvalue(), 0
@@ -991,36 +965,22 @@ def _run_minsky_swap_python_limited(
     if not hasattr(signal, "SIGALRM"):
         return None
 
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.minsky_swap import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io(dump_str=True)
 
-    class _IO(IO):
-        def print_str(self, s: str) -> None:
-            buffer.write(s.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        machine.step()  # the dump happens on the step after halting
-        return buffer.getvalue(), 0
-    except ValueError:
-        return buffer.getvalue(), 2
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            machine.step()  # the dump happens on the step after halting
+            return buffer.getvalue(), 0
     except _TimeoutError:
         return None
-    finally:
-        signal.alarm(0)
+    except ValueError:
+        return buffer.getvalue(), 2
 
 
 def _verify_minsky_swap() -> bool:
