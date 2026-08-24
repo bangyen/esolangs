@@ -197,6 +197,12 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.circlefuck",
         id="circlefuck",
     ),
+    "Circuit Diagram": Language(
+        "Circuit Diagram",
+        id="circuit_diagram",
+        interpreter="grid_based.circuit_diagram",
+        split=True,
+    ),
     "Clockwise": Language(
         "Clockwise",
         _generate.clockwise,
