@@ -69,116 +69,22 @@ languages whose control flow is genuine grid navigation — where a boolean
 generator has to actually route an instruction pointer around cells based on
 a value, the way Befunge's `_`/`|` or this repo's Dig/Back/Clockwise/A
 Painter Ant do — rather than a language with a high-level `if`/`while` that
-would make the generator close to trivial to write by hand.
+would make the generator close to trivial to write by hand.  Streetcode,
+Flowchart, and Line came out of this pass and are implemented; what each
+interpreter decided, and why, is in `docs/streetcode.md`, the Flowchart
+module docstring, and `extra/line/WIP.md`.
 
-- **Streetcode** — a car drives on two-way, two-character-wide streets
-  painted with instructions (`^`/`~` increment/decrement the current cell,
-  `=`/`_` move the cell pointer, `I`/`O` char input/output, `U` U-turn, `;`
-  halt).  At an ambiguous intersection the car takes the leftmost road if
-  the current cell is zero, otherwise the second-leftmost — a direct
-  Befunge-`_` analog, except the branch has to be built by laying out real
-  street geometry rather than writing a condition.  Picked over the three
-  below for having the cleanest, most complete spec (worked examples, a
-  Turing-completeness proof) and a normal char-I/O model.  The interpreter
-  and tests are done: initial heading, ordinary wall-hugging, genuine
-  multi-way junction detection, and multi-cell-wide lane merging are all
-  derived and confirmed against all four of the wiki's worked examples (two
-  of which — the infinite loop and the larger infinite-cat example — turn
-  out to contain genuine lane-bounded junctions themselves).  Landing after
-  a junction turn onto a road with its own lanes drives to that road's
-  right-hand lane before turning, rather than a plain single-cell step onto
-  the first open neighbor (see the "Lane merging" bullet in
-  `docs/streetcode.md`, and the same file for the hand-derived,
-  user-confirmed trace this was built from).  Wired into `registry.py`,
-  with a boolean generator
-  (`tools/boolean/other.py`) that walks each input bit down to a bare 0/1
-  and then drives a binary decision tree whose T-junctions apply the
-  ambiguous-turn rule to fork on it; it takes arbitrary truth tables,
-  uncapped, and is verified over every input combination up to 4 inputs.
-  The text generator is in `tools/text/other.py`; its output validates
-  against the construction-time checks, as does the boolean generator's
-  over all 276 truth tables up to 3 inputs.
-- **Flowchart** — literal flowchart nodes joined by lines; a `< >` switch
-  node reads a bit register and routes the pointer left or right (straight
-  through if the register is empty), directly analogous to Befunge's
-  `_`/`|`.  Supports multiple concurrent pointers and deque-based memory;
-  single-bit I/O.  Very new (2025) but the spec is complete, with a
-  truth-machine, cat, and Kolakoski-sequence example.  The interpreter and
-  tests are done: all sixteen nodes are tabulated by the wiki, so the work
-  was the geometry (multi-character node tokenization, box-drawing line
-  tracing) plus four spec gaps the page leaves implicit — the switch's
-  left/right being relative to the pointer's heading (pinned by the truth
-  machine), character-per-bit rather than Boolfuck byte-packed I/O (an
-  eight-bit buffer would never flush for the truth machine), re-entry memory
-  that disambiguates paths without suppressing node semantics (pinned by the
-  cat's loops), and lock-step round-robin pointer interleaving in reading
-  order.  Each is derived in the module docstring.  An empty register writes
-  nothing rather than the spec sentence's zero, because the wiki's own cat
-  would otherwise print a trailing bit it never read — an example-over-prose
-  call worth revisiting if the author clarifies.  Wired into `registry.py`,
-  with a boolean generator (`tools/boolean/other.py`) that draws the truth
-  table as an actual decision tree: each level reads one bit with `/ /` and
-  hands it to a `< >` switch whose sides are the halves of the table, and
-  each of the `2**n` leaves sets the register to its digit, prints, and
-  halts.  Uncapped, verified over every input combination up to 4 inputs.
-  It is the cheapest of the repo's 2D boolean generators to build, because
-  the language supplies a real conditional (no junction geometry to draw)
-  and reads bare bits (no per-input decoding loop).
-
-  **A text generator is impossible, and this is not a gap to close.**  The
-  only output node emits one bit, and the byte-packing convention the other
-  bit-output languages use (Clockwise buffers seven bits and flushes a
-  character) cannot be applied here: the wiki's truth machine reads one
-  bit, writes one bit, and halts, so under any packing its single output
-  bit would never flush and the example would print nothing at all.
-  Character-per-bit is therefore forced by the spec's own example, and it
-  is what makes text output unreachable — so Flowchart belongs with the
-  interpreter-only languages listed under deferred-removal, not on a list
-  of languages awaiting a text generator.  That,
-  and the Kolakoski example's exact output (the page states none, so the
-  test pins current behaviour as characterization), are follow-on work.
-  On that last point: the output's repeating tail was initially suspected
-  to be an artifact of the unspecified pointer interleaving, but it is not.
-  Creation order, reverse order, and per-step reading order all produce
-  byte-identical output, and long consecutive runs per pointer only swap
-  the first two bits.  Nor is it the two contested semantic calls: running
-  the full matrix of {1 turns left, 1 turns right} x {empty register prints
-  nothing, empty is zero} leaves Kolakoski period-4 in all four variants,
-  and only the shipped combination (1 turns left, empty prints nothing)
-  passes the truth machine and the cat at all — flipping the switch breaks
-  the truth machine, and "empty is zero" breaks the cat, so the matrix
-  independently re-derives both documented decisions.
-
-  What actually happens is that the east pointer visits eleven nodes and
-  halts: it emits a single `1` and reaches `(( ))`, so the repeating tail
-  is entirely the south branch's.  The `( )` nodes mid-row are passed
-  through as no-ops rather than forking, because the `─` run beneath them
-  is the return rail *passing under* the row, not a path attached to them —
-  the rail's two ends (`└` at column 29, `┘` at column 50) both turn
-  upward, closing the loop at the switch and just past `(( ))`, and column
-  50 of row 0 is blank.  The overlap is an artifact of drawing a long
-  return path under a wide row of nodes, so declining to fork there is
-  correct, and no re-entry or switch-routing change would alter it.
-  The remaining possibility is that the diagram simply does not produce the
-  Kolakoski sequence as drawn (the same never-executed caveat as the cat's
-  trailing bit); confirming that would need the author, so the talk-page
-  question is the cheapest next step.
-- **Line** — implemented, in `extra/line/` (deliberately not wired into
-  `registry.py`: the wiki spec is hand-drawn curve *images* with no text
-  format, so its programs are PNGs, not files the registry's text pipeline
-  can carry).  A cursor follows drawn curves and each curve shape it passes
-  through is itself the instruction (a diagonal increments/decrements the
-  current cell, a specific kink moves the tape pointer, a T-branch is a
-  conditional turn keyed on the current cell being zero) -- brainfuck-
-  equivalent semantics encoded entirely in path geometry.  What exists: a
-  renderer whose kink shapes were measured pixel-by-pixel from the wiki's
-  reference images, a pixel-based extractor and runtime simulator verified
-  against the wiki's own hand-drawn fixtures, a direct boolean generator
-  (`line_boolean.py`, every input combination through 3 inputs plus 5-input
-  parity), and a brainfuck compiler (`bf_to_line.py`) whose loop-backs are
-  constructed geometrically rather than route-searched, making nesting
-  depth unbounded (round-tripped through depth 12).  See
-  `extra/line/WIP.md` for the full implementation record.
+**One residual question, on Flowchart.**  The wiki's Kolakoski example
+states no expected output, so the test pins current behaviour as
+characterization, and the output's repeating tail was chased down to the
+diagram rather than to any interpreter choice: pointer interleaving is
+byte-identical across creation, reverse, and per-step reading order, and
+the full {1 turns left, 1 turns right} x {empty prints nothing, empty is
+zero} matrix leaves the tail period-4 in all four variants (only the
+shipped combination passes the truth machine and the cat at all).  The
+remaining possibility is that the diagram simply does not produce the
+Kolakoski sequence as drawn; confirming that needs the author, so a
+talk-page question is the cheapest next step.
 
 - **Circuit Diagram** — an ASCII circuit: named logic gates (`a` AND, `A`
   NAND, `o` OR, `O` NOR, `x` XOR, `X` XNOR, `~` NOT) wired by `-`/`|`/`/`/`\`
@@ -243,7 +149,7 @@ example emits output at all, so neither the branch geometry nor the output
 path can be derived the way Flowchart's gaps were pinned by its examples (see
 the assessed-and-rejected ledger in `docs/limitations.md`).  **Circuit
 Diagram**, the alternative named in that genre, was assessed after Gate fell
-through and is a live candidate — see its entry above.
+through and is the live candidate above.
 
 ## Transpilers
 
@@ -403,117 +309,6 @@ program that hits it.  Worth revisiting only if a program surfaces that
 needs deep expression-position recursion and Python's default limit is
 insufficient.
 
-## Streetcode program validation (compile time, complete)
-
-The spec is explicit that "all streets are two-way, they are two
-characters wide".  This is now validated ahead of run time:
-`_validate_width` in `src/esolangs/interpreters/grid_based/streetcode.py`
-reads the geometry off the grid at construction and raises `ValueError`,
-so a malformed program does not begin running.  It walks the open cells
-reachable from `C` and rejects a cell whose open neighbours are a single
-dead end, or an opposite pair (N+S or E+W) with no perpendicular
-neighbour -- in each case there is no second lane.  Note that a blank row
-or column counts as a lane, since space is a drivable no-op.
-
-The upper bound is enforced too: a street wider than two lanes is
-rejected.  Cross-section runs cannot measure this -- where two legal
-two-wide streets cross, a run through the intersection reports the
-*length* of the crossing street, not any width -- so the rule is a fully
-open three-by-three block, which a region wider than two in both
-directions must contain and a two-wide network never does (a crossing is
-a plus whose open centre is two-by-two, with walls at the diagonal
-corners).  A three-by-two room passes, the deliberate boundary of the
-rule: it is a two-wide street of length three seen sideways.
-
-One exemption remains: a grid with no walls is not a street network to
-measure, so the bare `CU` still constructs and reaches the residual
-`HaltError` path, where a `U` with no lane on the car's new right has
-nowhere legal to end its turn.  The earlier "no instruction characters"
-exemption is gone -- it was content sniffing rather than geometry.  The
-wall-shape fixtures that relied on it now disable validation explicitly
-through a test-local helper, keeping the escape hatch out of the
-interpreter.
-
-### The street must be enclosed
-
-A street is bounded by walls, so the road the car can reach never touches
-the border of the grid: `_validate_enclosed` rejects a program whose
-flood fill from `C` reaches an edge.  This is what catches a hole two
-cells across.  A one-cell hole already fails the width check, since
-squeezing through it leaves a one-wide stub, but a two-wide hole is a
-legal-width passage that looks like ordinary road -- only its running off
-the grid marks it as a gap rather than a street.
-
-### Wall structure: three neighbourhood forms
-
-Street width does not catch every malformed drawing.  A wall with a
-one-cell hole punched through it (`-- --`) leaves a gap too narrow to
-drive, yet the corridor either side of it still measures two wide.  That
-shape is real: it is how the boolean generator's one-input CP-rewind
-strip was found to be drawn one character wide.
-
-`_validate_walls` requires every reachable cell's three-by-three
-neighbourhood to match one of three forms, up to rotation:
-
-```
-corner: ?W?      wall: ?W?      intersection: W..
-        W..            ...                    ...
-        ?..            ...                    ...
-```
-
-`W` is any wall character, `.` is open ground, `?` is anything at all.
-Writing the corner's cells as `W` rather than the literal glyphs means a
-rotation need not swap `|` and `-`, and lets one form cover the outside
-of a corner, the inside of one, and two boxes packed flush together --
-which is why three forms suffice where an earlier, more literal corner
-form appeared to need a dozen.
-
-The forms constrain where walls sit, never which glyph is used, so a
-second pass (`_validate_glyphs`) rejects a `-` drawn beside a `|`: the
-two mean walls running in different directions, and where they meet the
-wall turns a corner, which is drawn `+`.
-
-### Everything drawn belongs to one street network
-
-`_validate_connected` takes the reachable road, grows it by one cell so
-the growth takes in the walls along its edges, and rejects whatever is
-still drawn: a detached second box, a stray fragment of wall, an
-instruction sealed inside an island, or the middle of a solid block.  A
-hollow island needs no special case, since every cell of a one-thick wall
-is within one step of the road around it.
-
-Two decisions inside this check are worth recording:
-
-* **Solid blocks are rejected.** Permitting them would mean a second
-  flood-fill pass to tell a hole enclosed by the region from the outside
-  of the grid.  Unlike the divider question below, where permissiveness
-  is free, this one has a real implementation cost and no program in the
-  repo needs it.
-* **The check is strict about what counts as leftover** -- any non-blank
-  character, not only walls.  Restricting it to walls would cost no
-  detection (a detached box and a stray fragment are both drawn out of
-  walls) and would let the remaining text stand as comments, which the
-  car would treat as no-ops anyway.  The wiki says nothing about
-  comments.  That alternative is left unimplemented on the grounds that a
-  program containing stray marks is more likely drawn wrong than
-  annotated.
-
-### Do road dividers have to end in a `+`?
-
-The wiki does not say, and the interpreter deliberately does not decide.
-The hello-world example draws dividers whose open end is a bare `-`, with
-no `+` capping it; nothing in the driving rules keys on such an end being
-a `+`, and the example runs correctly, so there is no concrete reason to
-reject the shape.  The resolution is therefore permissive: an uncapped
-divider end is accepted, and the `?` edges of the wall form together with
-the intersection form's plain `W` are what keep it so.
-
-Coverage lives in `TestStreetcodeStreetWidth` in
-`tests/interpreters/test_streetcode.py`, which pins both the rejected
-shapes and the accepted ones, including the two shipped examples, and the
-checks are verified against all 276 generated truth tables and the wiki's
-own worked examples.
-
 ## Hanging-test optimization via state-cycle detection
 
 Hanging programs are bounded with wall-clock timeouts (SIGALRM in the
@@ -562,100 +357,3 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 
 **No language is currently on this list.**
 
-## Boolean example coverage (complete)
-
-`examples/boolean` holds one committed program per boolean generator that
-can be verified end to end; `src/esolangs/tools/boolean/examples.py` is the
-source of truth and `tests/test_examples.py` keeps the files in sync.
-Coverage is 53 of 53 generators.  The bar is that the answer must be
-*recoverable from what the program prints* -- not that the program prints
-the answer and nothing else, since several of these languages have no output
-instruction at all and dump their state at halt.
-
-Every generator whose answer a program can report now has an example.  The
-two that used to fall short were fixed rather than excluded, and both are
-worked examples of what this section asks for:
-
-- **Back**'s answer was the cell under the tape head, which the dump does
-  not locate.  The generator now keeps a single answer cell that a 1-leaf
-  writes with `-` before halting, so the dump reports the result directly.
-  The payoff was larger than the example: the Back boolean tests had carried
-  a complete second Back interpreter (32 lines) purely to find the head, so
-  they never executed `tape_based.back`; that shadow implementation is now a
-  call plus a field read.
-- **A Painter Ant**'s answer is which of two painted leaf rings the ant
-  rests in, and the raster drew painted cells only, so the ant was invisible
-  and the rings identical.  `render` now uses four glyphs -- colour by
-  ant-present -- with `o` for the ant on black and `@` on white.  The same
-  change replaced `run`'s instruction `limit` with a `cycles` count: the
-  language is an implicit infinite loop, and a raw step budget stops
-  wherever it lands (the old default of 10,000 cut the AND2 program at 95.24
-  cycles, mid-walk, reading a colour that is not the answer).  A whole cycle
-  is the language's own unit, and these programs are cycle-stable fixed
-  points, so one pass is enough.  This is a unit, not a safety limit -- a
-  diverging program still runs as long as it is asked to.
-
-ABCDirection was the one generator left, and it was removed from the repo
-rather than finished.  Its output was the reason: the two-input program ran
-15,729 characters, 58x the median generator's output and 3.5x the next
-largest, and that was *after* successive passes over the layout (removing a
-reserved 700-row detour, deriving the grid's dimensions from what it
-actually places, cutting a margin to its real clearance) had already taken
-it down from 377 KB.  The remaining size was inherent to the donut grid and
-direction-dispatched command set rather than a tuning oversight, a text
-generator would have landed in the same size class, and the language had no
-halt instruction, so an example would also have needed a harness decision
-about what a never-halting program may end on.  See the git history for the
-interpreter, the generator, and the compaction prototypes.
-
-One caution for anyone re-surveying this: the example stems are display
-names lowercased with spaces as dashes (so `BF-PDA` → `bf-pda`), not
-language ids (`bf_pda`), so a naive `id not in stems` check still
-reports BF-PDA as missing.  It has an example.
-
-### Divergent expected outputs
-
-Some committed examples expect something other than a bare `0`/`1`.  Several
-that used to be on this list were cleaned up rather than explained away:
-
-- **LaserFuck** printed `'\x00\x010'` -- the answer as a *character*, with
-  the two input cells ahead of it.  Its dump has a decimal mode, selected
-  simply by not putting a `\xff` in the first grid cell, and it skips cells
-  holding a negative value.  So the leaves now write the answer as a number
-  (one `+`, not `48 + result`) and subtract one more than each bit's value
-  from the input cells on the way past, driving them out of the dump.  The
-  output is exactly `"0"` or `"1"`, and the programs shrank by a third,
-  since the 48-`+` runs were most of them.
-- **Clockwise** printed `'\x00'`/`'\x7f'` -- the result bit seven times.  A
-  leaf's seven `;` each print `acc % 2`, so emitting the ASCII digit instead
-  is a matter of flipping the parity into the bits `0110000`/`0110001`,
-  which differ by a single `+`.  The two leaves are padded to the same
-  height (an `S` on an already-zero accumulator is a no-op) so every exit
-  still lands on the shared bottom row.
-- **Trailing newlines** (`bitdeque`, `cod`, `nevermind`) are gone.  None of
-  the three specs asks for one -- Bitdeque's says "There is (currently) no
-  I/O" at all, COD's says only "output the cod's value", and Nevermind's
-  only "Outputs *text* to the screen", with a Hello-World example showing
-  none -- so the newline was our interpreters' choice throughout.
-
-  An earlier pass kept COD's and Nevermind's on the grounds that their print
-  can fire repeatedly, so the newline was separating outputs, and without it
-  `loop,3 / print,x / endloop` prints `xxx` just as `print,xxx` does.  That
-  reasoning does not survive contact with the equivalent Python: a loop of
-  `print("x", end="")` also produces `xxx`.  Programs are not obliged to be
-  recoverable from their output, and treating that as a loss was reading a
-  guarantee into a default.  All three now print without a separator.
-
-What is left is divergent for reasons no *generator* change reaches:
-
-- **state dump around the answer** (`back`, `minsky-swap`, `ram0`) -- no
-  output instruction, so the answer arrives at a fixed position inside a
-  dump of the machine.  Unlike LaserFuck, these have no way to suppress the
-  rest: Back's cells are bits, and the register dumps print unconditionally;
-- **a painted grid** (`a-painter-ant`) -- the grid *is* the output, and the
-  answer is which leaf the ant rests in;
-- **no output at all** (`arrowqueue`, `point-break`) -- the answer *is*
-  termination: the program halts for a 0 and loops forever for a 1, so only
-  the halting branch can be committed.
-
-The notes on each example carry the explanation.

@@ -127,6 +127,32 @@ complement from the bit at runtime, and `bfpda`'s second push turned out to
 be a bit-independent constant, not a complement.  The per-language reasoning
 is in [`docs/walls.md`](walls.md).
 
+## Divergent example outputs
+
+`examples/boolean` holds one committed program per boolean generator, and
+the bar is that the answer must be *recoverable from what the program
+prints* -- not that the program prints the answer and nothing else, since
+several of these languages have no output instruction at all and dump
+their state at halt.  Three cases stay divergent for reasons no
+*generator* change reaches:
+
+- **state dump around the answer** (`back`, `minsky-swap`, `ram0`) -- no
+  output instruction, so the answer arrives at a fixed position inside a
+  dump of the machine.  These have no way to suppress the rest: Back's
+  cells are bits, and the register dumps print unconditionally;
+- **a painted grid** (`a-painter-ant`) -- the grid *is* the output, and
+  the answer is which leaf the ant rests in;
+- **no output at all** (`arrowqueue`, `point-break`) -- the answer *is*
+  termination: the program halts for a 0 and loops forever for a 1, so
+  only the halting branch can be committed.
+
+The notes on each example carry the explanation.
+
+One caution for anyone re-surveying example coverage: the example stems
+are display names lowercased with spaces as dashes (so `BF-PDA` →
+`bf-pda`), not language ids (`bf_pda`), so a naive `id not in stems`
+check still reports BF-PDA as missing.  It has an example.
+
 ## Assessed and rejected
 
 Languages from the wiki that were assessed against the admission criteria
