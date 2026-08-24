@@ -346,7 +346,13 @@ def _polynomial(program: str, width: int) -> str:
     merged: list[str] = []
     pending = ""
     for token in tokens:
-        if token in "+-":
+        if token in ("+", "-"):
+            # A sign already held has no term to attach to; keep it as its
+            # own token rather than dropping it.  ``format_coeffs`` never
+            # emits two in a row (it collapses ``+ -`` into ``- ``), so this
+            # is only about the helper staying total for any input.
+            if pending:
+                merged.append(pending)
             pending = token
         elif pending:
             merged.append(f"{pending} {token}")
