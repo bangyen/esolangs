@@ -391,6 +391,7 @@ class TestSixFive:
         assert "70" in program  # loop conditionals
         assert program.count("4") <= 35  # within the label budget
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("n", [6, 7, 8])
     @pytest.mark.parametrize("table", ["10", "1100"])
     def test_arithmetic_fallback_table(self, n: int, table: str) -> None:
@@ -417,6 +418,7 @@ class TestSixFive:
         with pytest.raises(ValueError, match="~2 MB setup"):
             boolean.six_five("0" * 63 + "1")  # AND6: T == 2**63
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("n", [6, 8])
     def test_arithmetic_fallback_complement(self, n: int) -> None:
         """Tables whose complement is cheap use it instead of a huge T."""
@@ -4080,6 +4082,7 @@ class TestWII2D:
                     v = _wii2d_apply(routes[i][bits[i]], v)
                 assert str(v) == table[combo], (table, bits)
 
+    @pytest.mark.slow
     def test_symmetric_search_reduces_to_popcount_decode(self) -> None:
         """Non-parity symmetric tables use a popcount prefix plus a decode."""
         from esolangs.tools.boolean.wii2d import (
@@ -4104,6 +4107,7 @@ class TestWII2D:
                 v = _wii2d_apply(routes[i][bits[i]], v)
             assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
 
+    @pytest.mark.slow
     def test_search_falls_back_to_symmetric_search_when_the_ladder_fails(
         self,
     ) -> None:

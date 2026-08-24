@@ -66,6 +66,7 @@ class TestMinskySwapFuzz:
         assert set(cmd_line) <= set("+~*")
 
 
+@pytest.mark.slow
 class TestDivergenceDetection:
     """The fuzzer must fail when the two sides disagree."""
 

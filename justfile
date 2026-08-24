@@ -16,8 +16,8 @@ help:
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
     @echo "  test         - Run the full local check (lint, pytest, bandit, cargo, + verify scripts) (~75s)"
-    @echo "  test-quick   - Fast dev loop: pre-commit + pytest only (~19s)"
-    @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto)"
+    @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) + cargo (~6s pytest, ~12s total)"
+    @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
     @echo "  test-rust    - cargo fmt + cargo test (~1s)"
     @echo "  test-differential - interpreter vs native differential corpora (~32s)"
     @echo "  test-unicorn - RISC-V assembly under unicorn (~10s)"
@@ -92,9 +92,9 @@ lint: lint-python lint-rust lint-lean
 test *args:
     sh scripts/check_all.sh {{args}}
 
-# fast dev loop: pre-commit + pytest + cargo (skips 32s differential + 10s unicorn) — quiet by default
+# fast dev loop: pre-commit + pytest (skip slow) + cargo (skips 32s differential + 10s unicorn) — quiet by default
 test-quick *args:
-    {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest,"cargo fmt","cargo build","cargo test" {{args}}
+    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest,"cargo fmt","cargo build","cargo test" {{args}}
 
 # granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
