@@ -84,7 +84,10 @@ each into a cell and right-aligning it lines the columns up between rows,
 which is what makes a diff of one readable.  It is opt-in for the same
 reason wrapping is -- Polynomial is space-delimited too, but its tokens run
 from 1 to 98 characters, and padding those to a common width would be
-nonsense.
+nonsense.  Polynomial gets its own wrapper for a related reason: its
+one-character tokens are the ``+`` and ``-`` between terms, and
+:func:`_polynomial` glues each of those to the term it signs so that no
+line is just a sign.
 
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
@@ -316,6 +319,45 @@ def _quote_literal(program: str, width: int) -> str:
     return wrap_tokens(program, width, _QUOTE_LITERAL)
 
 
+def _polynomial(program: str, width: int) -> str:
+    """Wrap a Polynomial program, keeping each sign with the term it signs.
+
+    Polynomial's terms are space-delimited, so
+    :func:`wrap_space_delimited` would wrap it -- but the ``+`` and ``-``
+    between two terms are tokens of their own, and once the terms grow
+    wider than the width every one of those signs lands alone on a line of
+    its own.  A Hello-World program wraps into forty lines that alternate
+    between a hundred-character coefficient and a single ``+``, which is
+    the raggedest possible reading of a polynomial.
+
+    Merging each sign into the term that follows it makes the pair one
+    unbreakable token, so a continuation line starts with its own sign --
+    the ordinary convention for breaking a long expression across lines,
+    and the one that lets a reader tell at a glance whether a term is
+    added or subtracted.  The internal space is kept, so replacing every
+    newline with a space reproduces the input exactly; the interpreter
+    strips whitespace before parsing either way.
+
+    A term wider than the width still overruns it, carrying its sign along
+    -- the same honest outcome :func:`_join_tokens` gives any oversized
+    token, and better than a line holding nothing but a ``-``.
+    """
+    tokens = program.split()
+    merged: list[str] = []
+    pending = ""
+    for token in tokens:
+        if token in "+-":
+            pending = token
+        elif pending:
+            merged.append(f"{pending} {token}")
+            pending = ""
+        else:
+            merged.append(token)
+    if pending:
+        merged.append(pending)
+    return _join_tokens(merged, width, separator=" ")
+
+
 def _taglate(program: str, width: int) -> str:
     """Wrap Taglate's commands, leaving its queue-seed line alone.
 
@@ -341,7 +383,10 @@ WRAPPERS = {
     "addsubjump": wrap_grid,
     "decleq": wrap_grid,
     "sbleq": wrap_grid,
-    "polynomial": wrap_space_delimited,
+    # Space-delimited, but its ``+``/``-`` are tokens of their own and its
+    # terms outgrow any width, so the plain space wrapper strands every sign
+    # on a line by itself; ``_polynomial`` keeps each sign with its term.
+    "polynomial": _polynomial,
     "bitdeque": wrap_space_delimited,
     "bio": _bio,
     "dimensional": _dimensional,

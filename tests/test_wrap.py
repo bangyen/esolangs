@@ -26,6 +26,7 @@ from esolangs.tools.wrap import (
     MULTILINE,
     WRAPPERS,
     _cell_width,
+    _polynomial,
     _span,
     takes_width,
     wrap_chars,
@@ -70,11 +71,13 @@ def _replaces_a_space(name: str) -> bool:
     """Whether ``name``'s wrapper breaks at a space rather than between commands.
 
     The space-delimited languages already separate their tokens with a
-    space, and the wrap puts the newline in that space's place; the
+    space, and the wrap puts the newline in that space's place --
+    Polynomial's wrapper included, since the space it keeps inside a
+    ``sign term`` pair is one the program already had; the
     character and fixed-token wrappers insert a newline where there was no
     separator at all.  Undoing the wrap therefore differs between the two.
     """
-    return WRAPPERS[LANGUAGES[name].id] is wrap_space_delimited
+    return WRAPPERS[LANGUAGES[name].id] in (wrap_space_delimited, _polynomial)
 
 
 def _chunks_its_literal(name: str) -> bool:
@@ -177,11 +180,20 @@ def test_wrapping_respects_the_width(name: str) -> None:
 
     Polynomial's big-integer coefficients are longer than 80 characters and
     cannot be broken without changing the number, so such a token gets a
-    line of its own rather than being split.
+    line of its own rather than being split.  Its unbreakable unit is the
+    ``sign term`` pair rather than the bare term -- splitting the two is
+    what stranded a lone ``+`` on a line -- so a line holding one runs two
+    characters past the term's own length, and the allowance below follows
+    the wrapper rather than the whitespace.
     """
     wrapped = generate(name, TEXT, DEFAULT_WIDTH)
+    signed = WRAPPERS[LANGUAGES[name].id] is _polynomial
     for line in wrapped.split("\n"):
-        longest_token = max((len(t) for t in line.split()), default=0)
+        tokens = line.split()
+        longest_token = max((len(t) for t in tokens), default=0)
+        if signed and tokens and tokens[0] in "+-":
+            # The sign and the space that keeps it attached to its term.
+            longest_token += 2
         assert len(line) <= max(DEFAULT_WIDTH, longest_token)
 
 
@@ -312,6 +324,48 @@ def test_wrap_space_delimited_never_splits_a_token() -> None:
     wrapped = wrap_space_delimited("1 22 333333 4", 3)
     assert "333333" in wrapped.split("\n")
     assert wrapped.replace("\n", " ") == "1 22 333333 4"
+
+
+def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
+    """The raggedness this wrapper exists to fix: a line that is just a sign.
+
+    Polynomial's terms outgrow any sensible width, so the plain
+    space-delimited wrapper put every term on a line of its own and every
+    ``+``/``-`` between them on a line of its own too.
+    """
+    program = generate("Polynomial", TEXT, DEFAULT_WIDTH)
+    assert "\n" in program
+    assert not [line for line in program.split("\n") if line.strip() in "+-"]
+
+
+def test_polynomial_continuation_lines_start_with_their_sign() -> None:
+    """Every line but the first opens with the sign of its leading term."""
+    program = generate("Polynomial", TEXT, DEFAULT_WIDTH)
+    lines = program.split("\n")
+    assert all(line.startswith(("+ ", "- ")) for line in lines[1:])
+
+
+def test_polynomial_wrap_is_undone_by_swapping_newlines_for_spaces() -> None:
+    """The wrap only moves separators, so the program is byte-identical."""
+    plain = generate("Polynomial", TEXT)
+    wrapped = generate("Polynomial", TEXT, DEFAULT_WIDTH)
+    assert wrapped.replace("\n", " ") == plain
+
+
+def test_polynomial_keeps_an_oversized_term_with_its_sign() -> None:
+    """A term too wide for the width overruns it rather than shedding its sign.
+
+    Splitting the pair to respect the width would put the sign back on a
+    line by itself, which is the thing being fixed; an over-wide line is
+    the honest outcome, as it is for any oversized token.
+    """
+    wrapped = _polynomial("f(x) = x^2 - 123456789x + 7", 12)
+    assert "- 123456789x" in wrapped.split("\n")
+
+
+def test_polynomial_leaves_a_trailing_sign_alone() -> None:
+    """A sign with no term after it is kept rather than dropped."""
+    assert _polynomial("f(x) = x +", 80) == "f(x) = x +"
 
 
 def test_wrap_grid_right_aligns_into_columns() -> None:
