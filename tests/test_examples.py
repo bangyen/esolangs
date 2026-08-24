@@ -83,7 +83,9 @@ def test_example_files_match_generator() -> None:
     for lang in languages:
         assert lang.generator is not None
         path = EXAMPLES_DIR / f"{_file_name(lang.name)}.txt"
-        expected = generate(lang.name, "Hello, World!", DEFAULT_WIDTH).rstrip("\n") + "\n"
+        expected = (
+            generate(lang.name, "Hello, World!", DEFAULT_WIDTH).rstrip("\n") + "\n"
+        )
         assert path.read_text(encoding="utf-8") == expected
 
 

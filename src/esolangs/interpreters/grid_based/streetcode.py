@@ -243,7 +243,12 @@ class _Machine:
             r, c = q.popleft()
             for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 nr, nc = r + dr, c + dc
-                if 0 <= nr < h and 0 <= nc < w and self._open(nr, nc) and (nr, nc) not in visited:
+                if (
+                    0 <= nr < h
+                    and 0 <= nc < w
+                    and self._open(nr, nc)
+                    and (nr, nc) not in visited
+                ):
                     visited.add((nr, nc))
                     q.append((nr, nc))
         # Isolated single cell is not a street
@@ -256,11 +261,11 @@ class _Machine:
             w2 = self._open(r, c - 1)
             cnt = sum((n, s, e, w2))
             if cnt == 1:
-                raise ValueError(f"Streetcode street at {(r, c)} is not two characters wide (dead end)")
+                raise ValueError(f"not two-wide at {(r, c)} (dead end)")
             if n and s and not (e or w2):
-                raise ValueError(f"Streetcode street at {(r, c)} is not two characters wide (vertical)")
+                raise ValueError(f"not two-wide at {(r, c)} (vertical)")
             if e and w2 and not (n or s):
-                raise ValueError(f"Streetcode street at {(r, c)} is not two characters wide (horizontal)")
+                raise ValueError(f"not two-wide at {(r, c)} (horizontal)")
 
     def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
         """Detect a road opening off ``side`` of the car, or ``None``.
