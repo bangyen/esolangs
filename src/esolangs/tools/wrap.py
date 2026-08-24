@@ -27,6 +27,20 @@ rather than a blanket post-processing pass:
   those statements to a width would cost more than the ragged right edge it
   saves, so a language whose own idiom is one-statement-per-line is left
   alone even when reflowing it would be safe.
+- Basicfuck is excluded for the same reason as Forbin rather than for a
+  semantic one, and the distinction is worth recording because its
+  *program* does not reflow while its *body* does.  Its first two lines are
+  structural -- the ``#basicfuck`` directive and the ``#allocate`` list are
+  read by position -- but everything below them is whitespace-delimited
+  source that packs to a width and still runs, verified on both committed
+  examples down to 20 columns.  Only whole tokens may move: ``wrap_chars``
+  splits ``write <- X`` and the program stops loading, so this would be a
+  :data:`MULTILINE` wrapper over :func:`wrap_space_delimited`, not the
+  character one.  It stays unwrapped because packing ``X += Y`` and
+  ``while (X) { ... }`` into dense rows is minification of a structured
+  source language, which is the readability the wrapping exists to serve.
+  A ``//`` comment would also swallow the rest of a joined line; the
+  generator emits none today, but a wrapper would have to.
 - MyScript builds its output from string literals like the languages
   :data:`_QUOTE_LITERAL` covers, but its boolean program's newlines are
   structural (its blocks are indented and its interpreter reads them), so it
