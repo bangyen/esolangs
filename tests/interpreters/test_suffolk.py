@@ -60,24 +60,42 @@ class TestStepMachine:
         assert machine.snapshot() != before
         assert machine.tape == [1]
 
-    def test_halting_program_is_detected(self) -> None:
+    def test_halted_is_always_false(self) -> None:
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine(".", IO())
+        assert machine.halted is False
+        for _ in range(5):
+            machine.step()
+        assert machine.halted is False
+
+    def test_step_wraps_at_code_end(self) -> None:
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine("!.", IO())
+        machine.step()  # !
+        assert machine.ind == 1
+        assert machine.tape == [1]
+        machine.step()  # .
+        assert machine.ind == 0  # wrapped past the last instruction
+
+    def test_cycle_is_detected(self) -> None:
         from esolangs.interpreters.tape_based.suffolk import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        assert run_until_halt_or_cycle(_Machine("!", IO())) is True
+        # "." never changes state, so the snapshot repeats immediately
+        assert run_until_halt_or_cycle(_Machine(".", IO())) is False
+        assert run_until_halt_or_cycle(_Machine("<", IO())) is False
 
-    def test_bounded_pass_limit_always_halts(self) -> None:
-        # Suffolk has no backward jump: the pass counter strictly increases
-        # toward `limit`, so every program halts and none can cycle.
-        from esolangs.interpreters.tape_based.suffolk import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert run_until_halt_or_cycle(_Machine("!!!!", IO(), limit=3)) is True
-
-    def test_step_after_halt_is_a_noop(self) -> None:
+    def test_snapshot_excludes_pass_count(self) -> None:
         from esolangs.interpreters.tape_based.suffolk import _Machine
 
-        machine = _Machine("!", IO(), limit=0)
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.tape == [0]
+        # "." is a no-op when acc is 0, so the state after one whole pass
+        # (len(code) steps) equals the initial state -- the pass count must
+        # not be part of snapshot, or every state would be unique and the
+        # cycle detector would never fire.
+        machine = _Machine("..", IO())
+        before = machine.snapshot()
+        machine.step()
+        machine.step()  # one whole pass
+        assert machine.snapshot() == before
