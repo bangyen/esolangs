@@ -39,8 +39,13 @@ rather than a blanket post-processing pass:
   character one.  It stays unwrapped because packing ``X += Y`` and
   ``while (X) { ... }`` into dense rows is minification of a structured
   source language, which is the readability the wrapping exists to serve.
-  A ``//`` comment would also swallow the rest of a joined line; the
-  generator emits none today, but a wrapper would have to.
+  A ``//`` comment is not the obstacle it looks like either: it packs as a
+  single token that forces its line to end there, which is exactly what it
+  already does, and comment text too long for one line splits across
+  several, each re-prefixed with ``//``.  Verified with comments injected
+  into the committed example down to 30 columns.  So nothing mechanical
+  stands in the way -- the exclusion is a readability judgement about
+  minifying source, and only that.
 - MyScript builds its output from string literals like the languages
   :data:`_QUOTE_LITERAL` covers, but its boolean program's newlines are
   structural (its blocks are indented and its interpreter reads them), so it
