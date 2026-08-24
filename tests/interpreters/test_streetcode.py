@@ -814,6 +814,62 @@ class TestStreetcodeStreetWidth:
         sandwich a single open cell the way a hole does."""
         _Machine(["+--+  +--+", "|C       |", "|        |", "+--------+"], IO())
 
+    def test_detached_geometry_is_rejected(self) -> None:
+        """A second box the car can never reach belongs to no street."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(
+                ["+----+   +--+", "|C   |   |  |", "|    |   |  |", "+----+   +--+"],
+                IO(),
+            )
+
+    def test_stray_wall_fragment_is_rejected(self) -> None:
+        """A scribble of wall outside the program bounds no road."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(["+----+", "|C   |", "|    |", "+----+", "   -- "], IO())
+
+    def test_island_inside_a_ring_is_accepted(self) -> None:
+        """An island is legal geometry -- a block the car drives around --
+        so neither its wall nor the pocket it seals is a leftover."""
+        _Machine(
+            [
+                "+-------+",
+                "|C      |",
+                "|       |",
+                "|  +-+  |",
+                "|  | |  |",
+                "|  +-+  |",
+                "|       |",
+                "|       |",
+                "+-------+",
+            ],
+            IO(),
+        )
+
+    def test_solid_island_is_accepted(self) -> None:
+        """Hole filling is what makes this pass: the block's interior is
+        enclosed by the grown region rather than outside it, so its cells
+        are not reported as geometry belonging to no street."""
+        _Machine(
+            [
+                "+--------+",
+                "|C       |",
+                "|        |",
+                "|  ++++  |",
+                "|  ++++  |",
+                "|  ++++  |",
+                "|        |",
+                "|        |",
+                "+--------+",
+            ],
+            IO(),
+        )
+
+    def test_blank_padding_is_not_geometry(self) -> None:
+        """A ragged program squared off by ``ljust``, and the background
+        around an L-shaped layout, are blank rather than drawn, so they do
+        not count as disconnected geometry."""
+        _Machine(["+----+", "|C   |", "|    |", "+----+", "      "], IO())
+
     @pytest.mark.parametrize(
         "path",
         ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
