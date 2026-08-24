@@ -24,12 +24,17 @@ corroborating each rule, and the questions that remain open.
 
 Runtime error contract:
 
-* Streets are validated to be two characters wide at construction; a
-   malformed street raises :class:`ValueError`.  ``U`` ends the turn in
-   the opposite lane (the spec's streets are two-way and two wide), so a
-   ``U`` with no such lane is the late-detected case of the same
-   violation and raises :class:`~esolangs.exceptions.HaltError` when the
-   street has no walls to validate against.
+* The program is validated at construction and a malformed one raises
+   :class:`ValueError` before the car moves (``_validate``).  Streets
+   must be exactly two characters wide, the road must be enclosed by
+   walls rather than running off the grid, each cell's wall structure
+   must match one of three neighbourhood forms, ``-`` and ``|`` may not
+   be drawn side by side, and everything on the grid must belong to the
+   one street network.  ``U`` ends the turn in the opposite lane (the
+   spec's streets are two-way and two wide), so a ``U`` with no such
+   lane is the late-detected case of the width violation and raises
+   :class:`~esolangs.exceptions.HaltError` when the street has no walls
+   to validate against.
 
 * CP is unsigned and right-unbounded: decrementing it below 0 is an invalid
   runtime operation and raises :class:`~esolangs.exceptions.HaltError`.

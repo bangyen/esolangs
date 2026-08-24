@@ -401,7 +401,7 @@ program that hits it.  Worth revisiting only if a program surfaces that
 needs deep expression-position recursion and Python's default limit is
 insufficient.
 
-## Streetcode street-width validation (compile time, complete)
+## Streetcode program validation (compile time, complete)
 
 The spec is explicit that "all streets are two-way, they are two
 characters wide".  This is now validated ahead of run time:
@@ -432,7 +432,17 @@ wall-shape fixtures that relied on it now disable validation explicitly
 through a test-local helper, keeping the escape hatch out of the
 interpreter.
 
-### Wall-structure validation: attempted, not adopted
+### The street must be enclosed
+
+A street is bounded by walls, so the road the car can reach never touches
+the border of the grid: `_validate_enclosed` rejects a program whose
+flood fill from `C` reaches an edge.  This is what catches a hole two
+cells across.  A one-cell hole already fails the width check, since
+squeezing through it leaves a one-wide stub, but a two-wide hole is a
+legal-width passage that looks like ordinary road -- only its running off
+the grid marks it as a gap rather than a street.
+
+### Wall structure: three neighbourhood forms
 
 Street width does not catch every malformed drawing.  A wall with a
 one-cell hole punched through it (`-- --`) leaves a gap too narrow to
@@ -440,19 +450,51 @@ drive, yet the corridor either side of it still measures two wide.  That
 shape is real: it is how the boolean generator's one-input CP-rewind
 strip was found to be drawn one character wide.
 
-A guard was prototyped requiring every reachable cell's three-by-three
-neighbourhood to match one of three forms up to rotation -- an outer
-corner, a wall running alongside, and a lone wall character at a corner.
-It is clean on both shipped examples and on all 256 generated truth
-tables, and it rejects the hole in both orientations.  It was **not**
-adopted, because it rejects the wiki's own worked examples: they need
-eleven further shapes (inner corners, corridors walled on both sides,
-and the infinite cat's one-wide `|I|`/`|O|` room, which is itself
-narrower than the spec's two characters).  Each shape added makes the
-rule less a principle and more a table fitted to a corpus that does not
-agree with itself, so the geometry the wiki draws is taken as
-authoritative and the check is left out.  The generator bug it found was
-fixed directly instead.
+`_validate_walls` requires every reachable cell's three-by-three
+neighbourhood to match one of three forms, up to rotation:
+
+```
+corner: ?W?      wall: ?W?      intersection: W..
+        W..            ...                    ...
+        ?..            ...                    ...
+```
+
+`W` is any wall character, `.` is open ground, `?` is anything at all.
+Writing the corner's cells as `W` rather than the literal glyphs means a
+rotation need not swap `|` and `-`, and lets one form cover the outside
+of a corner, the inside of one, and two boxes packed flush together --
+which is why three forms suffice where an earlier, more literal corner
+form appeared to need a dozen.
+
+The forms constrain where walls sit, never which glyph is used, so a
+second pass (`_validate_glyphs`) rejects a `-` drawn beside a `|`: the
+two mean walls running in different directions, and where they meet the
+wall turns a corner, which is drawn `+`.
+
+### Everything drawn belongs to one street network
+
+`_validate_connected` takes the reachable road, grows it by one cell so
+the growth takes in the walls along its edges, and rejects whatever is
+still drawn: a detached second box, a stray fragment of wall, an
+instruction sealed inside an island, or the middle of a solid block.  A
+hollow island needs no special case, since every cell of a one-thick wall
+is within one step of the road around it.
+
+Two decisions inside this check are worth recording:
+
+* **Solid blocks are rejected.** Permitting them would mean a second
+  flood-fill pass to tell a hole enclosed by the region from the outside
+  of the grid.  Unlike the divider question below, where permissiveness
+  is free, this one has a real implementation cost and no program in the
+  repo needs it.
+* **The check is strict about what counts as leftover** -- any non-blank
+  character, not only walls.  Restricting it to walls would cost no
+  detection (a detached box and a stray fragment are both drawn out of
+  walls) and would let the remaining text stand as comments, which the
+  car would treat as no-ops anyway.  The wiki says nothing about
+  comments.  That alternative is left unimplemented on the grounds that a
+  program containing stray marks is more likely drawn wrong than
+  annotated.
 
 ### Do road dividers have to end in a `+`?
 
@@ -461,11 +503,14 @@ The hello-world example draws dividers whose open end is a bare `-`, with
 no `+` capping it; nothing in the driving rules keys on such an end being
 a `+`, and the example runs correctly, so there is no concrete reason to
 reject the shape.  The resolution is therefore permissive: an uncapped
-divider end is accepted, and no validation rejects it.
+divider end is accepted, and the `?` edges of the wall form together with
+the intersection form's plain `W` are what keep it so.
 
 Coverage lives in `TestStreetcodeStreetWidth` in
 `tests/interpreters/test_streetcode.py`, which pins both the rejected
-shapes and the accepted ones, including the two shipped examples.
+shapes and the accepted ones, including the two shipped examples, and the
+checks are verified against all 276 generated truth tables and the wiki's
+own worked examples.
 
 ## Hanging-test optimization via state-cycle detection
 
