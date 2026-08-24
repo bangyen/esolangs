@@ -64,6 +64,7 @@ predictable across languages:
 | Back | Prints the tape as a number list. |
 | BF-PDA | `.` prints the top bit as the `'0'`/`'1'` character, so the output alphabet is just the two digits. |
 | Bitdeque | No I/O in the spec; this interpreter prints the deque contents as numbers when the program ends. |
+| Flowchart | The only output node emits one bit, and the byte-packing convention the other bit-output languages use (Clockwise buffers seven bits and flushes a character) cannot apply: the wiki's truth machine reads one bit, writes one bit, and halts, so under any packing its single output bit would never flush and the example would print nothing at all. Character-per-bit is forced by the spec's own example, and it is what makes text output unreachable. Has an uncapped boolean generator; no text generator. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
 | Jaune | `^` prints the current cell as a decimal integer, so only digits are spellable. |
 | Lamfunc | `p` prints a number as binary, so the output alphabet is just `'0'`/`'1'`. |
