@@ -1,3 +1,9 @@
- 0ox 0ix{1ox0ix{1ox0ix{1ox0oy}}}0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy
+ 0ox 0ix{
+  1ox0ix{
+    1ox0ix{
+      1ox0oy
+    }
+  }
+}
 0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy
-0oy0oy0oy0oy0oy0oy1iy
+0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy0oy1iy
