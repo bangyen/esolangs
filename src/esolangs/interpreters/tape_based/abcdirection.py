@@ -53,10 +53,10 @@ a caller that wants that -- the hanging tests do -- without :func:`run`
 itself depending on it.
 """
 
-import sys
 from collections import deque
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.oisc_cli import main_with_limit, run_until_halt
 
 # Clockwise order: right, down, left, up — turn right is +1, turn left is -1.
 _DIRS = [(1, 0), (0, 1), (-1, 0), (0, -1)]
@@ -193,16 +193,8 @@ def run(code: str, io: IO, limit: int = 10_000) -> None:
     follows A Painter Ant and Suffolk, whose specifications also loop
     forever and whose interpreters run a bounded budget and return.
     """
-    machine = _Machine(code, io, limit)
-    while not machine.halted:
-        machine.step()
+    run_until_halt(_Machine(code, io, limit))
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            if len(sys.argv) > 2:
-                run(data, IO(), limit=int(sys.argv[2]))
-            else:
-                run(data, IO())
+    main_with_limit(run)
