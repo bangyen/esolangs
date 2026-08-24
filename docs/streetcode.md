@@ -158,12 +158,9 @@ local wall shape actually marks an intersection rather than a plain corner:
   outer wall onto an inner island, and the car came out of the turn
   northbound again instead of orbiting.  A one-wide corridor is
   narrower than the spec's streets and has no opposite lane, so a `U`
-  there has nowhere legal to end its turn and raises `HaltError`.  The
-  lane-change rule below is the other place a too-narrow street shows
-  up: a one-wide lane can only be entered by crossing into the oncoming
-  lane, so the hug now declines it (which is why the text generator's
-  fold needs width 6, not 5).  Validating width up front is still on
-  `docs/roadmap.md`.
+  there has nowhere legal to end its turn and raises `HaltError` -- the
+  one place a too-narrow street currently has an observable
+  consequence; validating width up front is on `docs/roadmap.md`.
   The wiki's U-turn cat (`UOI ` / `CIOU`) is unaffected:
   the slide lands on exactly the cell the old in-place turn reached one
   hug-turn later, so its visited sequence and echo order are unchanged.
@@ -420,25 +417,6 @@ placed after the first ring's `O`, with `_` resetting CP and a fresh
 `^` run seeding the next counter), so the entry/exit plumbing composes;
 the generator does not use it yet, because only the first character has
 a delta large enough to be worth a ring.
-
-### Wall-following may not change lanes
-
-Hugging the wall turns right whenever the neighbouring cell is open, but
-on a two-wide street that cell is the *far lane*, not a road leading
-off.  Taking it is driving on the left.  A real corner and a lane change
-look alike from the cell the car occupies -- both are "right is open" --
-and are told apart by what lies beyond: rounding a corner the road runs
-on, crossing a street the far wall stops the car one cell later.  So a
-right turn whose destination is walled immediately beyond, taken while
-the road ahead is still open, is a lane change and `_lane_change`
-declines it.
-
-This was a long-standing bug rather than a regression: it reproduces at
-`fc58258` and `837445c`, before the counting-loop rules landed.  It let
-a car reach a `;` painted in the oncoming lane, and -- four such turns in
-a row -- orbit a two-by-two opening forever, re-running the cell it
-passed on every lap.  It belongs to the same family as the junction
-fixes above: the interpreter offering roads that are not roads.
 
 ### Two pitfalls worth keeping
 
