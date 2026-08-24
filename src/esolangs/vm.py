@@ -1458,7 +1458,12 @@ class _PctSquaredMinusOneVM(_BaseVM):
 
 
 class _SuffolkVM(_BaseVM):
-    """Tape + accumulator; ``ip`` the cursor, ``memory`` the tape."""
+    """Tape + accumulator; ``ip`` the cursor, ``memory`` the tape.
+
+    The wiki's rerun is infinite, so the debugger's ``halted`` stays
+    ``False`` and the state-cycle hang detector is the only way to prove a
+    program loops -- the same reading A Painter Ant's implicit loop gets.
+    """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
