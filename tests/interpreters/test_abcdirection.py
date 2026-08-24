@@ -6,33 +6,35 @@ queue commands (``D``), Boolfuck-style bit I/O, donut wrapping, and the
 step limit.
 """
 
+from contextlib import suppress
+
 import pytest
 
-from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.abcdirection import run
 
 
 def run_program(code: str, stdin: str = "", limit: int = 100_000) -> str:
     io = ScriptedIO(stdin)
-    try:
+    with suppress(EOFError):
         run(code, io, limit=limit)
-    except EOFError:
-        pass
-    except HaltError:
-        pass
     return io.getvalue()
 
 
-def run_halts(code: str, stdin: str = "", limit: int = 100_000) -> None:
-    io = ScriptedIO(stdin)
-    with pytest.raises(HaltError):
-        run(code, io, limit=limit)
+def run_to_limit(code: str, stdin: str = "", limit: int = 100_000) -> None:
+    """Assert ``code`` runs to the step limit and returns.
+
+    Stepping to the cap is :func:`run`'s only clean exit -- the language
+    has no halt -- so returning at all proves the limit was what stopped
+    it.  Anything else a program can do instead (``EOFError`` on exhausted
+    input, ``ValueError`` on a malformed grid) propagates and fails here.
+    """
+    run(code, ScriptedIO(stdin), limit=limit)
 
 
 # A column of eight C's: going down, each outputs the current tape cell (a
 # zero), then the bottom D turns the pointer left into the D row, where D
-# dequeues forever.  One byte of zeros, then the step limit fires.
+# dequeues forever.  One byte of zeros, then the run reaches the step limit.
 ZERO_BYTE = "\n".join(["CBBBBB"] * 8 + ["DDDDDD"])
 
 # The same for two bytes of zeros.
@@ -101,13 +103,13 @@ class TestSourceFormat:
                 "DDDDDD anything goes here, even 123 and spaces",
             ]
         )
-        run_halts(program)
+        run_to_limit(program)
         assert run_program(program) == "\x00"
 
     def test_reading_stops_at_first_terminator(self) -> None:
         # The extra D's after DDDDDD on the last line are a comment.
         program = "\n".join(["CBBBBB"] * 8 + ["DDDDDDDDDD"])
-        run_halts(program)
+        run_to_limit(program)
         assert run_program(program) == "\x00"
 
     def test_non_abcd_cell_is_malformed(self) -> None:
@@ -126,17 +128,17 @@ class TestSourceFormat:
         # The grid width comes from the terminator; extra trailing cells are
         # trimmed off each row.
         program = "CBBBBBBBB\n" + "CBBBBB\n" * 7 + "DDDDDD"
-        run_halts(program)
+        run_to_limit(program)
         assert run_program(program) == "\x00"
 
 
 class TestOutput:
     def test_zero_byte_then_step_limit(self) -> None:
-        run_halts(ZERO_BYTE)
+        run_to_limit(ZERO_BYTE)
         assert run_program(ZERO_BYTE) == "\x00"
 
     def test_two_zero_bytes(self) -> None:
-        run_halts(TWO_ZERO_BYTES)
+        run_to_limit(TWO_ZERO_BYTES)
         assert run_program(TWO_ZERO_BYTES) == "\x00\x00"
 
     def test_rectangle_outputs_the_input_bits(self) -> None:
@@ -163,40 +165,40 @@ class TestControlFlow:
     def test_d_down_turns_left_on_zero_cell_and_empty_queue(self) -> None:
         # The zero column ends at a D going down; the empty queue sends the
         # pointer left along the D row, where each D dequeues into the cell.
-        run_halts(ZERO_BYTE)
+        run_to_limit(ZERO_BYTE)
 
     def test_d_down_passes_straight_through_on_one_cell(self) -> None:
         # With the cell holding the first input bit (a 1), the bottom D goes
         # straight down and the loop continues past the D row.
-        run_halts(PASS_THROUGH, "A")
+        run_to_limit(PASS_THROUGH, "A")
         assert run_program(PASS_THROUGH, "A") == "\x80"
 
     def test_d_right_enqueues_and_d_left_dequeues(self) -> None:
         # The D on the top row enqueues the cell; the bottom D-down then
         # dequeues it, sending the pointer left to dequeue along the D row.
-        run_halts(QUEUE, "A")
+        run_to_limit(QUEUE, "A")
         assert run_program(QUEUE, "A") == ""
 
     def test_c_right_decrements_the_cell(self) -> None:
         # a C reached moving right decrements the cell pointer
-        run_halts("DCADCB\nADABCB\nBDDDAB\nDDDDDD", "\x00" * 16)
+        run_to_limit("DCADCB\nADABCB\nBDDDAB\nDDDDDD", "\x00" * 16)
 
     def test_d_right_enqueues_the_cell(self) -> None:
         # a D reached moving right pushes the current cell onto the queue
-        run_halts("CCDAAD\nDDDCAB\nACCDBA\nDDDDDD", "\x00" * 16)
+        run_to_limit("CCDAAD\nDDDCAB\nACCDBA\nDDDDDD", "\x00" * 16)
 
     def test_d_down_pops_a_nonzero_queue_entry(self) -> None:
         # a D-down with a zero cell and a leading 1 in the queue turns up
-        run_halts("AACDAA\nBBCAAD\nAADCBC\nDDBCBD\nDDDDDD", "\x00" * 16)
+        run_to_limit("AACDAA\nBBCAAD\nAADCBC\nDDBCBD\nDDDDDD", "\x00" * 16)
 
     def test_d_down_pops_a_zero_then_a_one(self) -> None:
         # a D-down with a 0 then a 1 in the queue turns right
-        run_halts("BABCCB\nAADCAB\nDBABAC\nCAABCB\nDACCDC\nDDDDDD", "\x00" * 16)
+        run_to_limit("BABCCB\nAADCAB\nDBABAC\nCAABCB\nDACCDC\nDDDDDD", "\x00" * 16)
 
 
 class TestEmptyProgram:
     def test_only_terminator_line(self) -> None:
-        run_halts("DDDDDD")
+        run_to_limit("DDDDDD")
         assert run_program("DDDDDD") == ""
 
 
