@@ -79,6 +79,15 @@ def decleq(truth_table: str) -> str:
     mem[out49] = 49
     # One past the last cell: the interpreter halts as soon as the pointer
     # leaves memory, so this is the smallest address that stops the program.
+    #
+    # Being derived from the cell count is also what keeps it out of
+    # wrap_grid's way, however big the program gets.  Every leaf names
+    # out48 or out49 -- len(mem) - 2 and len(mem) - 1 -- so a token within
+    # two of the sentinel always exists, and the two can differ by at most
+    # one digit (only across a power of ten).  _cell_width drops an outlier
+    # only while it is at least *twice* the next width, which one digit
+    # never is above 9 cells, so the sentinel widens the cell at worst and
+    # never spans two of them the way the old constant 10**9 did.
     for addr in halts:
         mem[addr] = len(mem)
     return " ".join(map(str, mem))
