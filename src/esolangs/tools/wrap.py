@@ -146,13 +146,20 @@ def wrap_grid(program: str, width: int) -> str:
 def _cell_width(tokens: list[str]) -> int:
     """Return the cell width the bulk of ``tokens`` fits in.
 
-    The widest token is not always the right cell width: Decleq's boolean
-    program is 321 tokens of three characters or fewer alongside four
-    ten-character jump sentinels, and sizing every cell to the sentinel
-    would pad the whole file out to seven sparse columns.  So an outlier is
-    dropped while it is at least twice the next distinct width, and the
-    tokens that remain set the width; the dropped ones span several cells
-    instead.
+    The widest token is not always the right cell width.  A program that is
+    hundreds of short addresses alongside a handful of much longer ones --
+    an out-of-range jump target, a large literal -- would have every cell
+    sized to the outlier and the whole file padded out to a few sparse
+    columns.  So an outlier is dropped while it is at least twice the next
+    distinct width, and the tokens that remain set the width; the dropped
+    ones span several cells instead (see :func:`_span`).
+
+    Decleq's boolean program used to be the example here, with four
+    ten-character halt sentinels among 321 tokens of three characters or
+    fewer; its generator now computes the smallest address that halts, so
+    the outlier is gone and that program is a uniform grid.  The rule stays
+    because it is not specific to it -- any of the three grid languages can
+    emit a token far wider than its neighbours.
     """
     widths = sorted({len(token) for token in tokens}, reverse=True)
     while len(widths) > 1 and widths[0] >= 2 * widths[1]:
