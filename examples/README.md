@@ -20,7 +20,11 @@ against the wrapped form character for character rather than ignoring
 newlines.  Languages whose newlines are semantic (the 2D grid ones) or that
 reject them (NoComment) are committed unwrapped, as is any single token
 longer than the width — a Polynomial coefficient cannot be split without
-changing the number.  Refresh both directories with:
+changing the number.  LaserFuck's looping form is the other exception: its
+bracket markers' columns are load-bearing, so folding it would be a rewrite
+of the geometry rather than a reflow, and the foldable linear form it would
+fall back to is several times larger (see `tools/text/other.py`).  Refresh
+both directories with:
 
 ```bash
 python scripts/write_hello_world_examples.py

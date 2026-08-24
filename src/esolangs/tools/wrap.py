@@ -39,6 +39,12 @@ the width themselves -- :func:`takes_width` is how the callers tell -- and
 never reach :func:`wrap_program`, which would skip them anyway for being
 already multi-line.
 
+Wrapping otherwise assumes a single-line program, since a newline in one
+already means layout.  Taglate is the exception: its first line seeds the
+queue and the rest are commands, so its wrapper keeps that seed on its own
+row and folds only what follows.  :data:`MULTILINE` names the languages
+whose wrappers handle their own newlines that way.
+
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
 generators and the public API call.
@@ -141,6 +147,22 @@ def _dimensional(program: str, width: int) -> str:
     return wrap_tokens(program, width, _DIMENSIONAL_COMMAND)
 
 
+def _taglate(program: str, width: int) -> str:
+    """Wrap Taglate's commands, leaving its queue-seed line alone.
+
+    Taglate is the one wrapped language whose program is already two lines:
+    the first seeds the queue and the rest are commands, and the interpreter
+    joins everything after that first line before tokenizing.  So the seed
+    is structural and must stay on its own row -- wrapping it would feed the
+    queue different characters -- while the command text below it breaks
+    anywhere, a two-character ``gy``/``gz`` included.
+    """
+    seed, _, commands = program.partition("\n")
+    if not commands:
+        return program
+    return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
+
+
 # Language id -> the wrapper that language needs.  A language absent here
 # is never wrapped: either its newlines are semantic (the 2D grid
 # languages), it rejects them outright (NoComment), or its own execution
@@ -177,7 +199,22 @@ WRAPPERS = {
     "sophie": wrap_chars,
     "myscript": wrap_chars,
     "three_x": wrap_chars,
+    # Both concatenate their command text before reading it, so a line break
+    # can never land inside a command: Taglate joins every line after the
+    # queue seed and only then tokenizes (so a two-character ``gy``/``gz``
+    # cannot be split across rows), and A Painter Ant drops whitespace
+    # outright.  Their hello-world programs are short; the boolean ones are
+    # the single long lines that need this.
+    "taglate": _taglate,
+    "a_painter_ant": wrap_chars,
 }
+
+
+# The languages whose wrapper handles an already-multi-line program itself,
+# rather than being skipped by :func:`wrap_program` for having a newline in
+# it.  Taglate's first line seeds its queue and is structural; every other
+# wrapped language arrives as a single line.
+MULTILINE = frozenset({"taglate"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:
@@ -206,9 +243,14 @@ def wrap_program(program: str, language_id: str, width: int | None) -> str:
     A language that cannot take newlines is returned unchanged rather than
     raising, so a caller can pass one width across every language without
     special-casing the handful of exclusions.  Likewise a program that is
-    already multi-line (the 2D and line-oriented languages) is left alone.
+    already multi-line is left alone -- for the 2D and line-oriented
+    languages a newline is layout, so reflowing one would move code to
+    another row.  The exception is a wrapper in :data:`MULTILINE`, which
+    knows which of its program's lines are structural and wraps the rest.
     """
-    if width is None or width <= 0 or "\n" in program:
+    if width is None or width <= 0:
+        return program
+    if "\n" in program and language_id not in MULTILINE:
         return program
     wrapper = WRAPPERS.get(language_id)
     if wrapper is None:
