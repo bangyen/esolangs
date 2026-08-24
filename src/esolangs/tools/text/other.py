@@ -977,16 +977,17 @@ def streetcode(text: str, width: int | None = None) -> str:
     including characters that are walls in the *grid* (``-``, ``|``,
     ``+``) -- they are emitted as ``^``/``~`` runs, never drawn.
 
-    The ``^``/``~`` runs are unary, so a program is
-    ``O(sum of |code point deltas|)`` -- larger than the multiplication
-    loops the other text generators compress with.  Building a byte value
-    instead of walking to it needs a counting loop, and the pieces of one
-    demonstrably exist (a junction on a lapped ring re-decides on the cell
-    every lap, and a counter on the lap does count down), but no ring
-    geometry that composes enter -> lap -> exit was found: cutting a wall
-    for an entry or exit road changes the lap, and the right-hand hug then
-    takes that cut as an open road on its right.  See
-    ``docs/streetcode.md`` for the traces and the leak modes.
+    The ``^``/``~`` runs are unary, so walking to a code point costs
+    ``O(delta)``.  The first character is the expensive one -- its delta
+    is the whole code point, 72 for ``H`` and 937 for a Greek omega --
+    and it is built with a counting loop instead: a ring the car laps
+    under the control of a counter, adding a fixed amount per lap, which
+    makes the value a *product* rather than a walk.  See
+    :func:`_streetcode_ring`.  Later characters keep the unary walk: a
+    ring costs a fixed block of rows beneath the street, and the gaps
+    between adjacent code points are almost always smaller than that
+    block, so walking one is cheaper than ringing it.
+
     ``width`` folds that street into a boustrophedon of two-lane hairpins:
     the car descends a shared two-wide corridor to the lowest pair of
     lanes, drives each pair out and back, and climbs to the pair above.
@@ -1002,9 +1003,168 @@ def streetcode(text: str, width: int | None = None) -> str:
     instructions = "".join(row)
     if width is not None and width >= _STREETCODE_MIN_WIDTH:
         return _streetcode_serpentine(instructions, width)
+    # A ring is a fixed block of rows beneath the street, so it only
+    # applies to the unfolded program; the serpentine folds a single line.
+    ring = _streetcode_ring(text) if text else None
+    if ring is not None:
+        return ring
     wall = "+" + "-" * len(instructions) + "+"
     oncoming = "|" + " " * len(instructions) + "|"
     return "\n".join([wall, oncoming, f"|{instructions}|", wall])
+
+
+# The counting-loop ring, generalized from the hand-written program in
+# ``tests/interpreters/test_streetcode.py`` (``TestStreetcodeCountingLoop``).
+# ``k`` widens the island, which lengthens the lap; the rows are otherwise
+# the hand-written ones cell for cell.
+_RING_ROWS = (
+    "+  ++{plus}  +",
+    "|      {gap}|",
+    "| ^_~ {gap}=|",
+    "| ^++{plus}= |",
+    "|^^++{plus}^U|",
+    "|^^^^^{up}=|",
+    "|^^^^^^{up}|",
+    "+------{dash}+",
+)
+
+# The hand-written ring's nine entry ``^`` and eight lap ``^`` are the
+# factors it happens to use, not minimums: blanking either run shortens
+# that factor, so a ring makes any ``counter * per_lap``.  Both runs live
+# inside the fixed block below, which is what a ring costs.
+_RING_COUNTER_CELLS = 9
+_RING_LAP_CELLS = 8
+
+
+def _ring_rows(k: int, counter: int, per_lap: int) -> list[str]:
+    """Draw the ring block widened by ``k``, with its factor runs trimmed.
+
+    ``counter`` of the entry ``^`` and ``per_lap`` of the lap ``^`` are
+    kept and the rest blanked, which is what sets the two factors.  The
+    cells are listed in the order the car drives them, so trimming from
+    the end of each list leaves a contiguous run.
+    """
+    rows = [
+        row.format(plus="+" * k, gap=" " * k, up="^" * k, dash="-" * k)
+        for row in _RING_ROWS
+    ]
+    grid = [list(row) for row in rows]
+    # Entry ``^`` in drive order (block-relative): the descent, then the
+    # run East along the ring's southern lane.  The street cell above the
+    # block is the ninth and is drawn by the caller.
+    entry = [(4, 1), (5, 1), (6, 1)] + [(6, c) for c in range(2, 7 + k)]
+    # Lap ``^`` in drive order, starting just after the ``U``.
+    lap = (
+        [(4, 5 + k), (5, 5 + k)]
+        + [(5, c) for c in range(4 + k, 1, -1)]
+        + [(4, 2), (3, 2), (2, 2)]
+    )
+    # ``counter`` includes the street cell the caller draws, so the block
+    # holds one fewer.
+    for cells, keep in ((entry, counter - 1), (lap, per_lap)):
+        for i, (r, c) in enumerate(cells):
+            if grid[r][c] == "^" and i >= keep:
+                grid[r][c] = " "
+    return ["".join(row) for row in grid]
+
+
+def _plan_ring(target: int) -> tuple[int, int, int, int] | None:
+    """Cheapest ``(k, counter, per_lap, remainder)`` building ``target``.
+
+    The lap adds ``per_lap`` to the accumulator ``counter`` times, so the
+    ring makes their product and the remainder is walked on the street
+    afterwards, where CP already points at the accumulator.  ``k`` widens
+    the island when a factor needs more cells than the hand-written block
+    has.  Cost is the street width the choice occupies; the block's rows
+    are fixed, so a wider island and a longer remainder are what vary.
+    """
+    best: tuple[int, int, int, int, int] | None = None
+    for k in range(_RING_K_LIMIT):
+        counter_cells = _RING_COUNTER_CELLS + k
+        lap_cells = _RING_LAP_CELLS + k
+        for per_lap in range(1, lap_cells + 1):
+            counter = min(counter_cells, target // per_lap)
+            for c in (counter, counter + 1):
+                if not 1 <= c <= counter_cells:
+                    continue
+                remainder = target - c * per_lap
+                if remainder < 0:
+                    continue
+                cost = 8 + k + remainder
+                if best is None or cost < best[0]:
+                    best = (cost, k, c, per_lap, remainder)
+    if best is None:
+        return None
+    return best[1], best[2], best[3], best[4]
+
+
+# Enough to cover any code point worth ringing: the factors wanted are
+# near ``sqrt(target)``, so a modest island covers the byte range and up.
+_RING_K_LIMIT = 32
+
+
+def _streetcode_ring(text: str) -> str | None:
+    """Build ``text`` with a counting loop for its first character.
+
+    The hand-written counting loop in the interpreter tests
+    (``TestStreetcodeCountingLoop``) laps an island nine times adding
+    eight per lap, making the 72 that prints ``H``.  Its nine and eight
+    are just the ``^`` it draws: blanking cells shortens a factor and
+    widening the island lengthens one, so the ring makes any
+    ``counter * per_lap``, and a remainder walked on the street afterwards
+    covers what the product misses.  That turns the first character's
+    delta -- its whole code point, 937 for a Greek omega -- from a unary
+    walk into a product.
+
+    Only the first character is worth this.  Later deltas are the gaps
+    between adjacent characters, and a ring's block of rows costs more
+    than walking a gap that small, so they keep the straight corridor of
+    increments.  Returns ``None`` when the ring does not pay, leaving the
+    caller to emit the straight street.
+
+    The rows below the street are right-trimmed: nothing east of the ring
+    block is drivable, so those trailing spaces are padding rather than
+    road, and keeping them would cost more than the ring saves.
+    """
+    first = ord(text[0])
+    plan = _plan_ring(first)
+    if plan is None:
+        return None
+    k, counter, per_lap, remainder = plan
+    block = _ring_rows(k, counter, per_lap)
+    block_width = len(block[0])
+    # The straight street spends one cell per unit of the code point; the
+    # ring spends its block plus whatever the product missed.
+    if block_width + remainder >= first:
+        return None
+
+    tail = []
+    prev = first
+    for char in text[1:]:
+        delta = ord(char) - prev
+        tail.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
+        prev = ord(char)
+    after = "^" * remainder + "O" + "".join(tail) + ";"
+
+    left = 3
+    width = left + block_width + len(after) + 1
+    grid = [[" "] * width for _ in range(3 + len(block))]
+    grid[0] = list("+" + "-" * (width - 2) + "+")
+    for r in (1, 2):
+        grid[r][0] = grid[r][width - 1] = "|"
+    # The street's southern wall is solid apart from the ring's own gaps,
+    # so it is drawn first and the block stamped over it.
+    grid[3] = list("+" + "-" * (width - 2) + "+")
+    for r, block_row in enumerate(block):
+        for c, cell in enumerate(block_row):
+            grid[3 + r][left + c] = cell
+
+    grid[2][1] = "C"
+    grid[2][2] = "^"  # the counter's first cell, above the descent
+    for i, cell in enumerate(after):
+        grid[2][left + block_width + i] = cell
+
+    return "\n".join("".join(row).rstrip() for row in grid)
 
 
 # A fold needs two wall columns, the two-cell vertical corridor the car

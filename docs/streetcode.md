@@ -403,9 +403,20 @@ needs to solve the re-entry problem.
 
 **Superseded.** The barrier was narrower still: the plumbing works, and
 the leaks recorded here were the interpreter offering roads that are not
-roads.  See "The counting loop" above.  The generator does still emit
-the unary corridor -- compressing it with a loop is now a question of
-code-generation, not of whether the construct exists.
+roads.  See "The counting loop" above.  The generator now uses the ring
+for its first character (`_streetcode_ring`): the hand-written loop's
+nine-by-eight is not a minimum, since blanking cells shortens a factor
+and widening the island lengthens one, so the ring makes any
+`counter * per_lap` and a remainder walked on the street covers the
+rest.  Later characters keep the straight corridor of increments --
+their deltas are the gaps between adjacent code points, and a gap that
+small is cheaper walked than ringed.
+
+Chaining rings on one street also works (a second ring's descent gap
+placed after the first ring's `O`, with `_` resetting CP and a fresh
+`^` run seeding the next counter), so the entry/exit plumbing composes;
+the generator does not use it yet, because only the first character has
+a delta large enough to be worth a ring.
 
 ### Two pitfalls worth keeping
 

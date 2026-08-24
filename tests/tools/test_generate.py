@@ -239,6 +239,32 @@ class TestGeneratorRoundTrips:
         assert max(len(line) for line in lines) <= width
         assert roundtrip(streetcode_run, lines) == text
 
+    @pytest.mark.parametrize(
+        "char",
+        ["\x00", "\x01", " ", "0", "A", "H", "z", "\xff", "\u03a9"],
+    )
+    def test_streetcode_ring_builds_any_first_character(self, char: str) -> None:
+        """The ring's factors are free, so every code point round-trips.
+
+        Its nine-by-eight is what the hand-written program draws, not a
+        minimum: blanking cells shortens a factor and widening the island
+        lengthens one, so small values are products too rather than
+        needing a floor below which only a walk works.
+        """
+        assert roundtrip(streetcode_run, gen.streetcode(char).splitlines()) == char
+
+    def test_streetcode_ring_beats_the_straight_walk(self) -> None:
+        """A ring is only emitted when it is smaller than walking.
+
+        The walk spends a cell per unit of the code point, so the saving
+        grows with the character; the ring costs a fixed block instead.
+        """
+        for char in ("H", "\u03a9"):
+            # The straight street is four rows of the instruction row's
+            # width: two walls, the oncoming lane, and the instructions.
+            row = len("C" + "^" * ord(char) + "O;") + 2
+            assert len(gen.streetcode(char)) < 4 * row
+
     @pytest.mark.parametrize("width", [5, 6, 10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!", "zyA"])
     def test_streetcode_fold_corridor_is_two_wide(self, text: str, width: int) -> None:
@@ -348,14 +374,28 @@ class TestGeneratorRoundTrips:
         # cells are unbounded ints, so O is not limited to bytes
         omega = "\u03a9"
         assert roundtrip(streetcode_run, gen.streetcode(omega).splitlines()) == omega
-        # 'H' is 72 ^ from cell 0, then 'i' is 33 more; C and ; bracket the
-        # row.  Streets are two characters wide, so the instructions are the
-        # southern lane of a boxed street, with a blank oncoming lane above
-        # -- the shape of the wiki's own worked example.
-        row = "C" + "^" * 72 + "O" + "^" * 33 + "O;"
-        wall = "+" + "-" * len(row) + "+"
-        oncoming = "|" + " " * len(row) + "|"
-        assert gen.streetcode("Hi") == "\n".join([wall, oncoming, f"|{row}|", wall])
+        # 'H' is 72, built as a product by the counting-loop ring rather
+        # than walked: nine laps of the island adding eight each.  That is
+        # the hand-written program from TestStreetcodeCountingLoop in
+        # tests/interpreters/test_streetcode.py, cell for cell -- the
+        # generator's ring is that program generalized, so the smallest
+        # one it emits is the original.  'i' is then 33 more, walked on
+        # the street because a gap that small is cheaper than a ring.
+        assert gen.streetcode("H").splitlines() == [
+            "+------------+",
+            "|            |",
+            "|C^        O;|",
+            "+--+  ++  +--+",
+            "   |      |",
+            "   | ^_~ =|",
+            "   | ^++= |",
+            "   |^^++^U|",
+            "   |^^^^^=|",
+            "   |^^^^^^|",
+            "   +------+",
+        ]
+        assert gen.streetcode("Hi").splitlines()[2].endswith("O" + "^" * 33 + "O;|")
+        # An empty text has nothing to build, so there is no ring at all.
         assert gen.streetcode("") == "+--+\n|  |\n|C;|\n+--+"
 
     def test_mammalian(self) -> None:
