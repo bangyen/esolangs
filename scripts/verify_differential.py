@@ -281,6 +281,46 @@ def _fuzz_asm(
     return failures == 0
 
 
+def _verify_rust(
+    name: str,
+    corpus,
+    run_native,
+    run_python,
+    prepare=None,
+    label=None,
+) -> bool:
+    """Compare a Python interpreter against its Rust cross-check on ``corpus``.
+
+    Each corpus entry is a ``(program, stdin)`` pair.  ``prepare(program)``
+    maps the entry's first element to what the interpreters actually run
+    (Painfuck encodes into its source alphabet), and ``label(program)`` picks
+    what a divergence prints (Basicfuck names a program by its last line);
+    both default to the entry itself.  ``run_native`` returning None means the
+    reference did not terminate, which is a failure -- unlike the assembly
+    fuzzers, these corpora are all expected to halt.  The caller is
+    responsible for skipping when the Rust binary is not built.
+    """
+    prepare = prepare or (lambda program: program)
+    label = label or (lambda program: program)
+
+    failures = 0
+    for entry, stdin in corpus:
+        program = prepare(entry)
+        native = run_native(program, stdin)
+        if native is None:
+            print(f"{name} {label(entry)!r}: Rust reference did not terminate")
+            failures += 1
+            continue
+        py = run_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"{name} {label(entry)!r}: Rust {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"{name} differential: {len(corpus)} programs match")
+    return failures == 0
+
+
 def _random_program(alphabet: str, max_len: int):
     """Return a generator drawing a random ``alphabet`` program up to ``max_len``.
 
@@ -1417,21 +1457,12 @@ def _verify_forth() -> bool:
     if binary is None:
         return True
 
-    failures = 0
-    for program, stdin in FORTH_CORPUS:
-        native = _run_forth_native(binary, program, stdin)
-        if native is None:
-            print(f"Forþ {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_forth_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"Forþ {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"Forþ differential: {len(FORTH_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "Forþ",
+        FORTH_CORPUS,
+        lambda program, stdin: _run_forth_native(binary, program, stdin),
+        _run_forth_python,
+    )
 
 
 def _fuzz_forth(rng: random.Random, count: int) -> bool:
@@ -1559,24 +1590,13 @@ def _verify_basicfuck() -> bool:
     if binary is None:
         return True
 
-    failures = 0
-    for program, stdin in BASICFUCK_CORPUS:
-        native = _run_basicfuck_native(binary, program, stdin)
-        if native is None:
-            print(f"Basicfuck {program.splitlines()[-1]!r}: Rust did not terminate")
-            failures += 1
-            continue
-        py = _run_basicfuck_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(
-                f"Basicfuck {program.splitlines()[-1]!r}: "
-                f"Rust {native!r} vs Python {py!r}"
-            )
-
-    if not failures:
-        print(f"Basicfuck differential: {len(BASICFUCK_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "Basicfuck",
+        BASICFUCK_CORPUS,
+        lambda program, stdin: _run_basicfuck_native(binary, program, stdin),
+        _run_basicfuck_python,
+        label=lambda program: program.splitlines()[-1],
+    )
 
 
 def _fuzz_basicfuck(rng: random.Random, count: int) -> bool:
@@ -1695,21 +1715,12 @@ def _verify_unsquare() -> bool:
         print("[skip] Unsquare differential: Rust reference not built")
         return True
 
-    failures = 0
-    for program, stdin in UNSQUARE_CORPUS:
-        native = _run_unsquare_native(str(UNSQUARE_BIN), program, stdin)
-        if native is None:
-            print(f"Unsquare {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_unsquare_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"Unsquare {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"Unsquare differential: {len(UNSQUARE_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "Unsquare",
+        UNSQUARE_CORPUS,
+        lambda program, stdin: _run_unsquare_native(str(UNSQUARE_BIN), program, stdin),
+        _run_unsquare_python,
+    )
 
 
 def _fuzz_unsquare(rng: random.Random, count: int) -> bool:
@@ -1819,21 +1830,12 @@ def _verify_three_x() -> bool:
         print("[skip] 3x differential: Rust reference not built")
         return True
 
-    failures = 0
-    for program, stdin in THREE_X_CORPUS:
-        native = _run_three_x_native(program, stdin)
-        if native is None:
-            print(f"3x {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_three_x_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"3x {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"3x differential: {len(THREE_X_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "3x",
+        THREE_X_CORPUS,
+        _run_three_x_native,
+        _run_three_x_python,
+    )
 
 
 def _fuzz_three_x(rng: random.Random, count: int) -> bool:
@@ -1940,21 +1942,12 @@ def _verify_pct() -> bool:
     if binary is None:
         return True
 
-    failures = 0
-    for program, stdin in PCT_CORPUS:
-        native = _run_pct_native(binary, program, stdin)
-        if native is None:
-            print(f"%^2^-1 {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_pct_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"%^2^-1 {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"%^2^-1 differential: {len(PCT_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "%^2^-1",
+        PCT_CORPUS,
+        lambda program, stdin: _run_pct_native(binary, program, stdin),
+        _run_pct_python,
+    )
 
 
 # -- Painfuck corpus: every command plus the error categories --------------
@@ -2062,22 +2055,13 @@ def _verify_painfuck() -> bool:
     if binary is None:
         return True
 
-    failures = 0
-    for targets, stdin in _PAIN_CORPUS:
-        program = _painfuck_encode(targets)
-        native = _run_painfuck_native(binary, program, stdin)
-        if native is None:
-            print(f"Painfuck {targets!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_painfuck_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"Painfuck {targets!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"Painfuck differential: {len(_PAIN_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "Painfuck",
+        _PAIN_CORPUS,
+        lambda program, stdin: _run_painfuck_native(binary, program, stdin),
+        _run_painfuck_python,
+        prepare=_painfuck_encode,
+    )
 
 
 def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
@@ -2185,21 +2169,12 @@ def _verify_bit_tilde() -> bool:
         print("[skip] bit~ differential: Rust reference not built")
         return True
 
-    failures = 0
-    for program, stdin in BIT_TILDE_CORPUS:
-        native = _run_bit_tilde_native(program, stdin)
-        if native is None:
-            print(f"bit~ {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_bit_tilde_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"bit~ {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"bit~ differential: {len(BIT_TILDE_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "bit~",
+        BIT_TILDE_CORPUS,
+        _run_bit_tilde_native,
+        _run_bit_tilde_python,
+    )
 
 
 # -- RISC-V reference helpers ----------------------------------------------
