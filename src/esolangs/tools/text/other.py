@@ -326,25 +326,25 @@ def laserfuck(text: str, width: int | None = None) -> str:
     around it.
 
     ``width``, when given, is a hard bound on the columns of whatever this
-    returns.  The *linear* form honours it by folding: its single row of
-    ``+`` runs is straight tape code, so it zigzags into rows instead of
-    columns.  The looping form cannot be folded that way -- its frame
-    interleaves tape ops with bracket markers whose *columns* are
-    load-bearing (the mirror cells on the rows below are placed to match
-    them, and the serpentine's connector ties back to the frame at
-    ``loop_col``), so breaking the frame across rows moves the very columns
-    the rest of the layout is derived from.  That is a rewrite of the
-    geometry, not a fold of a run.
+    returns, and both forms fold to honour it.  The *linear* form is a
+    straight run of tape code, so it zigzags into rows the way any run does
+    (:func:`~esolangs.tools.laserfuck_layout.fold`).
 
-    So a loop program that comes out wider than ``width`` is re-emitted as
-    the linear form, which can fold.  That trade is real and it is not
-    cheap: measured over 200 random strings, the cases over 80 columns come
-    to a median 4.3x more characters as linear programs, to save a median
-    14 columns.  Hello-World is the standing example -- 95 columns as a
-    loop, against a linear form long enough to need a dozen-odd rows.  The
-    bound wins anyway, because a program nothing can display is worse than
-    a long one, and ``width=None`` (the default everywhere but the example
-    writers) still returns the compact loop form untouched.
+    The looping form cannot break between any two cells: a ``]``'s mirror
+    bounces the beam back to cells placed relative to its matching ``[``,
+    so a bracket pair split across two folded segments has no return path.
+    It folds between whole *bracket spans* instead -- a depth-0 ``[`` to
+    the ``]`` that closes it, mirrors and all, is one unbreakable token --
+    which is the same token-aware rule the line-oriented wrappers in
+    :mod:`esolangs.tools.wrap` follow, applied to a grid
+    (:func:`~esolangs.tools.laserfuck_layout.fold_groups`).
+
+    A span is indivisible, so a width too narrow for the widest one is the
+    floor: there the linear form is emitted instead, which fits by being
+    several times larger (measured over 200 random strings, a median 4.3x).
+    Hello-World folds into 80 columns as a loop and stays the smaller
+    program.  ``width=None`` (the default everywhere but the example
+    writers) returns the unfolded loop form untouched.
     """
     _require_bytes(text, "LaserFuck")
     values = [ord(c) for c in text]
@@ -397,55 +397,140 @@ def laserfuck(text: str, width: int | None = None) -> str:
     frame = code.replace(loop, "", 1).replace("[]", "[}]")
     loop_col = frame.find("[") + 8  # grid column of the loop's opening bracket
 
-    # build the three frame rows; brackets also place mirror cells beside them
-    grid = [" }}", "|o^", " _ "]
+    # Build the frame as a list of (top, middle, bottom) groups: what the
+    # frame writes on its own row, and the mirror cells that must stay
+    # directly beneath it.  A bracket marker and its mirrors are one group,
+    # which is what lets a width fold the frame between two of them without
+    # separating a marker from the cells that serve it.
+    # A group is one *top-level* token: a single tape op, or a whole
+    # balanced bracket span from a depth-0 "[" to the "]" that closes it.
+    # The span is the unbreakable unit, not the marker: a "]"'s "/" bounces
+    # the beam back to cells placed relative to its matching "[", so a pair
+    # split across two folded segments has no return path.
+    groups: list[tuple[str, str, str]] = []
     depth = 0
-    entry_start = None  # column of the first "[" marker's "}  }" stub
+    entry_index = None  # the group holding the first "[" marker
+    parts: list[tuple[str, str, str]] = []
 
     for c in frame:
         if c == "[":
             top_cell, bottom_cell, depth = "v }  }", "}#^)#^", depth + 1
-            if entry_start is None:
-                entry_start = len(grid[0]) + top_cell.index("}")
+            if entry_index is None:
+                entry_index = len(groups)  # the group this "[" ends up in
         elif c == "]":
             top_cell, bottom_cell = "#/)", " / "
         else:
             top_cell, bottom_cell = c, " "
 
         pad_row = 2 - (depth == 2)  # a nested loop also uses the middle row
-        grid[0] += top_cell
-        grid[3 - pad_row] += bottom_cell
-        grid[pad_row] += " " * len(top_cell)
+        pad = " " * len(top_cell)
+        middle, bottom = (bottom_cell, pad) if pad_row == 1 else (pad, bottom_cell)
+        parts.append(
+            (top_cell, middle.ljust(len(top_cell)), bottom.ljust(len(top_cell)))
+        )
 
         if c == "]":
             depth -= 1
 
-    # the first "[" marker's stub is a placeholder; blank it out and let the
-    # loop track connect back into the frame at ``loop_col`` instead.  If a
-    # second "[" immediately follows, its own leading "v" is swallowed by
-    # the blank-out too (matching a bracket immediately after another one
-    # in the frame, which only happens when the outer loop's own body
-    # contains a nested, self-contained "[<]" that survives extraction).
-    if entry_start is not None:
-        entry_end = entry_start + len("}  }")
-        if grid[0][entry_end : entry_end + 1] == "v":
-            entry_end += 1
-        blank = " " * (entry_end - entry_start)
-        grid[0] = grid[0][:entry_start] + blank + grid[0][entry_end:]
+        if depth == 0:
+            # back at the top level: everything buffered is one group
+            groups.append(tuple("".join(col) for col in zip(*parts, strict=True)))
+            parts = []
+
+    if parts:  # an unbalanced frame: keep it whole rather than dropping it
+        groups.append(tuple("".join(col) for col in zip(*parts, strict=True)))
+
+    # The first "[" marker's stub is a placeholder: the loop track connects
+    # back into the frame at ``loop_col`` instead, so blank it out.  Doing
+    # it inside the group -- before the frame is laid out -- keeps it
+    # correct whether or not the frame is folded.  A second "[" immediately
+    # after has its leading "v" swallowed too, matching a bracket that
+    # directly follows another one.
+    if entry_index is not None:
+        top, middle, bottom = groups[entry_index]
+        offset = top.index("}")
+        end = offset + len("}  }")
+        if top[end : end + 1] == "v":
+            end += 1
+        top = top[:offset] + " " * (end - offset) + top[end:]
+        groups[entry_index] = (top, middle, bottom)
+
+    frame_width = 3 + sum(len(g[0]) for g in groups)
+    fold_frame = width is not None and frame_width > width
+
+    if fold_frame:
+        # A single group is indivisible, so one wider than a folded segment
+        # cannot be laid at this width however many rows it is given.  The
+        # linear form is the floor for those: bigger, but it folds.
+        room = laserfuck_layout.segment_width(width)
+        if max(len(g[0]) for g in groups) > room:
+            return _laserfuck_linear(linear, width)
+
+    if fold_frame:
+        # The frame overruns the width, so fold it between groups.  This
+        # keeps the compact loop program rather than falling back to the
+        # linear form, which fits by being several times larger.
+        cells = [[" "] * (width + 1) for _ in range(3)]
+        cells[0][1] = "}"
+        cells[0][2] = "}"
+        cells[1][0] = "|"
+        cells[1][1] = "o"
+        cells[1][2] = "^"
+        cells[2][1] = "_"
+        end_row, end_col = laserfuck_layout.fold_groups(cells, groups, 0, 3, width)
+        # The frame no longer ends at the top right, so the reversed-tail
+        # trick the unfolded path uses does not apply: the fallback run
+        # carries straight on from wherever the fold left the beam, folding
+        # again if it has to, and the "x" goes where that ends.
+        if fallback:
+            # Carry on across the frame's own row until the turn, then drop
+            # past its two mirror rows before folding further -- those rows
+            # belong to the last segment's markers, and writing the run
+            # into them would land tape code under a mirror.
+            room = laserfuck_layout.segment_width(width) + laserfuck_layout.MARGIN
+            head = fallback[: max(room - end_col, 0)]
+            for char in head:
+                cells[end_row][end_col] = char
+                end_col += 1
+            rest = fallback[len(head) :]
+            if rest:
+                laserfuck_layout.reserve(cells, end_row + 3)
+                cells[end_row][end_col] = "v"
+                cells[end_row + 3][end_col] = "{"
+                cells[end_row + 3][laserfuck_layout.MARGIN] = "v"
+                end_row += 4
+                laserfuck_layout.reserve(cells, end_row)
+                cells[end_row][laserfuck_layout.MARGIN] = "}"
+                end_row, end_col = laserfuck_layout.fold(
+                    cells, rest, end_row, laserfuck_layout.MARGIN + 1, width
+                )
+        cells[end_row][end_col] = "x"
+        grid = ["".join(line).rstrip() for line in cells]
+        while grid and not grid[-1]:
+            grid.pop()
+    else:
+        grid = [" }}", "|o^", " _ "]
+        for top, middle, bottom in groups:
+            grid[0] += top
+            grid[1] += middle
+            grid[2] += bottom
 
     track_len = len(loop) + loop_col
     overhang = len(fallback) + loop_col - (len(grid[0]) - 2)
     prefix = (max(overhang, 0) // 2) + 1  # fallback chars that fit on the top row
 
-    if fallback:
-        grid[0] += fallback[:prefix] + "^"
-        remainder = fallback[prefix:]
-        end_row = f"x{remainder[::-1]}{{"
-        grid.insert(0, end_row.rjust(len(grid[0])))
-    else:
-        grid[0] += "x"  # no fallback: the frame ends by killing the laser
+    if not fold_frame:
+        if fallback:
+            grid[0] += fallback[:prefix] + "^"
+            remainder = fallback[prefix:]
+            exit_row = f"x{remainder[::-1]}{{"
+            grid.insert(0, exit_row.rjust(len(grid[0])))
+        else:
+            grid[0] += "x"  # no fallback: the frame ends by killing the laser
 
-    row_width = len(grid[0])
+    # A folded frame is bounded by the width rather than by its longest
+    # row, so the serpentine has the whole width to lay its track in.
+    row_width = width if fold_frame else len(grid[0])
     tracks = 2
 
     # enough serpentine rows to hold the loop body around the frame
