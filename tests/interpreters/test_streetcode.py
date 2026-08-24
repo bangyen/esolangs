@@ -12,6 +12,7 @@ them, including all four of the wiki's worked examples.
 
 import io
 from contextlib import redirect_stdout
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -679,6 +680,79 @@ class TestStreetcodeMalformedPrograms:
     def test_multiple_cars_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="exactly one C"):
             run(["C  ", "  C"], io=IO())
+
+
+class TestStreetcodeStreetWidth:
+    """Construction-time rejection of one-wide streets (``_validate_width``).
+
+    The spec's streets are two-way and two characters wide, so a one-wide
+    corridor has no opposite lane for ``U`` to end its turn in.  The
+    geometry is static, so the check runs before the car moves.  Remember
+    that a blank row or column is a lane -- space is a drivable no-op --
+    so an instruction row paired with a blank row is a legal street, not a
+    one-wide one.
+    """
+
+    def test_one_wide_dead_end_is_rejected(self) -> None:
+        """A single instruction row between two walls has no second lane."""
+        with pytest.raises(ValueError, match="not two-wide"):
+            run(["+----+", "|C^O;|", "+----+"], io=IO())
+
+    def test_one_wide_against_grid_edge_is_rejected(self) -> None:
+        """Off-grid counts as closed, so an edge row is still one-wide."""
+        with pytest.raises(ValueError, match="not two-wide"):
+            run(["C^O;", "+---+"], io=IO())
+
+    def test_one_wide_staircase_is_rejected(self) -> None:
+        """Every cell is a corner, so no cell has an opposite-pair of
+        neighbours -- the dead-end and vertical arms still catch it."""
+        with pytest.raises(ValueError, match="not two-wide"):
+            run(
+                [
+                    "+-+    ",
+                    "|C|    ",
+                    "|^+-+  ",
+                    "|^^^|  ",
+                    "+-+^|  ",
+                    "  |;|  ",
+                    "  +-+  ",
+                ],
+                io=IO(),
+            )
+
+    def test_two_wide_street_is_accepted(self) -> None:
+        """An instruction lane with an oncoming lane beside it is legal."""
+        assert run_street("C^O;") == chr(1)
+
+    def test_wider_than_two_is_accepted(self) -> None:
+        """The check rejects one-wide; it does not require exactly two.
+
+        A three-lane corridor is malformed per the spec, but detecting it
+        would mean measuring width across junction mouths and rooms, where
+        an over-eager rule rejects valid programs -- see the width section
+        of ``docs/roadmap.md``.
+        """
+        _Machine(["+------+", "|C^^^O;|", "|      |", "|      |", "+------+"], IO())
+
+    def test_wall_fragment_without_instructions_is_exempt(self) -> None:
+        """Walls plus ``C`` but no instructions is a drawing, not a street."""
+        _Machine(["+---+", "|C  |", "+---+"], IO())
+
+    def test_grid_without_walls_is_exempt(self) -> None:
+        """With no walls there is no street network to measure."""
+        _Machine(["CU"], IO())
+
+    @pytest.mark.parametrize(
+        "path",
+        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+    )
+    def test_shipped_examples_are_accepted(self, path: str) -> None:
+        """The repo's own programs must survive the check."""
+        root = Path(__file__).resolve().parents[2]
+        code = (root / path).read_text().split("\n")
+        if code and code[-1] == "":
+            code = code[:-1]
+        _Machine(code, IO())
 
 
 class TestStreetcodeWikiExamples:

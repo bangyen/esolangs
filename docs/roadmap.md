@@ -401,26 +401,38 @@ program that hits it.  Worth revisiting only if a program surfaces that
 needs deep expression-position recursion and Python's default limit is
 insufficient.
 
-## Streetcode street-width validation (compile time)
+## Streetcode street-width validation (compile time, complete)
 
 The spec is explicit that "all streets are two-way, they are two
-characters wide", but nothing validates that ahead of run time.  Today the
-only width check is local and late: a `U` with no lane on the car's new
-right raises `HaltError`, because that is the one place where a
-too-narrow street has an unambiguous consequence (there is nowhere legal
-to end the turn).  A one-wide corridor the car merely drives along still
-runs.
+characters wide".  This is now validated ahead of run time:
+`_validate_width` in `src/esolangs/interpreters/grid_based/streetcode.py`
+reads the geometry off the grid at construction and raises `ValueError`,
+so a malformed program does not begin running.  It walks the open cells
+reachable from `C` and rejects a cell whose open neighbours are a single
+dead end, or an opposite pair (N+S or E+W) with no perpendicular
+neighbour -- in each case there is no second lane.  Note that a blank row
+or column counts as a lane, since space is a drivable no-op.
 
-Rejecting a malformed street up front is the better contract -- a
-malformed program should not begin running -- and is expected to be
-tractable: the geometry is static, so street width can be read off the
-grid before the car moves.  The work is defining "street" precisely
-enough to measure on arbitrary drawn grids, where rooms, junction mouths,
-and rings all appear alongside plain corridors; a validator that is too
-eager would reject valid programs, which is worse than the current gap.
-Both the repo's Streetcode generators now emit two-wide streets, and the
-interpreter tests exercise instruction semantics inside boxed streets, so
-nothing the repo produces depends on the tolerance.
+What it deliberately does **not** do is enforce the upper bound: a
+corridor three or more lanes wide is malformed per the spec but is
+accepted.  Detecting that would mean telling a wide corridor apart from a
+junction mouth, a room, or a ring on an arbitrary drawn grid, and a rule
+eager enough to do so would reject valid programs -- the worse failure,
+since a too-narrow street the car merely drives along is harmless while a
+rejected valid program cannot run at all.  Two narrower exemptions come
+with the same reasoning: a grid with no walls is not a street network to
+measure, and a grid with walls but no instruction characters is treated
+as a drawing (the wall-shape fixtures the interpreter's own unit tests
+build), which does mean a one-wide program containing no instruction is
+exempt too -- it can execute nothing regardless.
+
+The residual `HaltError` path remains for those exemptions: a `U` with no
+lane on the car's new right has nowhere legal to end its turn, which is
+what the bare `CU` grid still hits.
+
+Coverage lives in `TestStreetcodeStreetWidth` in
+`tests/interpreters/test_streetcode.py`, which pins both the rejected
+shapes and the accepted ones, including the two shipped examples.
 
 ## Hanging-test optimization via state-cycle detection
 
