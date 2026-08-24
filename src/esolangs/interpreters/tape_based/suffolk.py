@@ -18,9 +18,8 @@ and pass counter), so it is step-capable: ``step()`` executes one command
 and ``halted`` is true once ``limit`` full passes over the code complete.
 """
 
-import sys
-
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.oisc_cli import main_with_limit, run_until_halt
 
 
 class _Machine:
@@ -77,16 +76,8 @@ class _Machine:
 
 def run(code: str, io: IO, limit: int = 10) -> None:
     """Run a Suffolk program, looping at most ``limit`` times."""
-    machine = _Machine(code, io, limit)
-    while not machine.halted:
-        machine.step()
+    run_until_halt(_Machine(code, io, limit))
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        with open(sys.argv[1]) as file:
-            data = file.read()
-            if len(sys.argv) > 2:
-                run(data, IO(), limit=int(sys.argv[2]))
-            else:
-                run(data, IO())
+    main_with_limit(run)
