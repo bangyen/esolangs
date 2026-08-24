@@ -158,9 +158,13 @@ local wall shape actually marks an intersection rather than a plain corner:
   outer wall onto an inner island, and the car came out of the turn
   northbound again instead of orbiting.  A one-wide corridor is
   narrower than the spec's streets and has no opposite lane, so a `U`
-  there has nowhere legal to end its turn and raises `HaltError` -- the
-  one place a too-narrow street currently has an observable
-  consequence; validating width up front is on `docs/roadmap.md`.
+  there has nowhere legal to end its turn and raises `HaltError`.
+  One-wide streets are now rejected up front instead: `_validate_width`
+  reads the geometry off the grid at construction and raises
+  `ValueError`, so a malformed program does not begin running.  The
+  `HaltError` remains as the residual path, reached only by programs the
+  up-front check exempts -- a grid with no walls at all, such as the
+  bare `CU`, is not a street network to measure.
   The wiki's U-turn cat (`UOI ` / `CIOU`) is unaffected:
   the slide lands on exactly the cell the old in-place turn reached one
   hug-turn later, so its visited sequence and echo order are unchanged.
