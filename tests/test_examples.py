@@ -73,9 +73,9 @@ def test_example_files_match_generator() -> None:
     """The committed examples are exactly what the generators produce today.
 
     The files are committed wrapped (see
-    ``scripts/write_hello_world_examples.py``), so the comparison wraps the
-    generator's output the same way rather than loosening to ignore
-    newlines -- a wrapped file still has to match character for character.
+    ``scripts/write_hello_world_examples.py``) and end with a single POSIX
+    newline, so the comparison is against the generator's output plus that
+    newline.
     """
     languages = [
         lang for lang in LANGUAGES.values() if lang.generator and lang.interpreter
@@ -83,7 +83,7 @@ def test_example_files_match_generator() -> None:
     for lang in languages:
         assert lang.generator is not None
         path = EXAMPLES_DIR / f"{_file_name(lang.name)}.txt"
-        expected = generate(lang.name, "Hello, World!", DEFAULT_WIDTH)
+        expected = generate(lang.name, "Hello, World!", DEFAULT_WIDTH).rstrip("\n") + "\n"
         assert path.read_text(encoding="utf-8") == expected
 
 
@@ -105,11 +105,12 @@ def test_boolean_example_matches_generator(name: str) -> None:
 
     The counterpart of :func:`test_example_files_match_generator` for the
     boolean examples; refresh them with
-    ``python scripts/write_boolean_examples.py``.
+    ``python scripts/write_boolean_examples.py``. The file ends with a
+    single POSIX newline.
     """
     path = BASE_DIR / "examples" / "boolean" / f"{name}.txt"
-    committed = path.read_text(encoding="utf-8").rstrip("\n")
-    assert committed == BOOLEAN_GENERATED[name].build().rstrip("\n")
+    expected = BOOLEAN_GENERATED[name].build().rstrip("\n") + "\n"
+    assert path.read_text(encoding="utf-8") == expected
 
 
 def test_boolean_examples_cover_every_committed_file() -> None:
