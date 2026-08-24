@@ -36,6 +36,19 @@ def run_with_limit(machine: _StepMachine, limit: int) -> None:
     raise HaltError(f"execution exceeded the {limit}-instruction limit")
 
 
+def run_until_halt(machine: _StepMachine) -> None:
+    """Step ``machine`` until it halts, letting its own budget end the run.
+
+    The companion to :func:`run_with_limit`, for languages whose programs are
+    specified to loop forever: Suffolk and ABCDirection have no halt
+    instruction, so reaching the budget is how every program ends rather than
+    a failure to report.  Those machines carry the limit themselves and set
+    ``halted`` when it runs out, so this returns instead of raising.
+    """
+    while not machine.halted:
+        machine.step()
+
+
 def main_with_limit(run: Callable[..., None]) -> None:
     """Run ``sys.argv``'s program file through ``run``, with an optional limit."""
     if len(sys.argv) > 1:
