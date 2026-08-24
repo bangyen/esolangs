@@ -498,10 +498,10 @@ class TestStreetcodeLaneMerge:
         wall-following instead of blindly trusting the stale latch."""
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 1, "S"
-        machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
+        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
         row = machine.grid[3]
         machine.grid[3] = row[:2] + "+" + row[3:]  # wall directly East
-        heading = machine._choose_heading()  # noqa: SLF001
+        heading = machine._choose_heading(0)  # noqa: SLF001
         assert heading != "E"
         assert machine._merge_target is None  # noqa: SLF001
 
@@ -513,7 +513,7 @@ class TestStreetcodeLaneMerge:
         machine._merging_heading = "E"  # noqa: SLF001
         row = machine.grid[3]
         machine.grid[3] = row[:3] + "+" + row[4:]  # wall directly ahead
-        heading = machine._choose_heading()  # noqa: SLF001
+        heading = machine._choose_heading(0)  # noqa: SLF001
         assert heading != "E"
 
     def test_merge_target_reread_can_carry_straight_on(self) -> None:
@@ -522,15 +522,15 @@ class TestStreetcodeLaneMerge:
         decision and the car carries straight on, abandoning the merge.
 
         The re-read is of the cell as the car *arrives* at that square (see
-        ``_arrival_cell``), which is what a real approach would have left
+        ``arrival_cell``), which is what a real approach would have left
         behind it.
         """
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 1, "S"
-        machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
+        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
         machine.cells[0] = 1  # latch was taken under cell == 0
-        machine._arrival_cell = 1  # noqa: SLF001 - as the approach left it
-        heading = machine._choose_heading()  # noqa: SLF001
+        # 1 = the cell as the approach left it, on arrival at the turn
+        heading = machine._choose_heading(1)  # noqa: SLF001
         assert heading == "S"
         assert machine._merging_heading is None  # noqa: SLF001
 
@@ -540,10 +540,10 @@ class TestStreetcodeLaneMerge:
         latch must not wait forever for a target it can no longer reach."""
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 1, 1, "S"
-        machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
+        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
         row = machine.grid[2]
         machine.grid[2] = row[:1] + "+" + row[2:]  # wall directly ahead
-        heading = machine._choose_heading()  # noqa: SLF001
+        heading = machine._choose_heading(0)  # noqa: SLF001
         assert machine._merge_target is None  # noqa: SLF001
         assert heading == "E"  # falls back to plain wall-following
 
@@ -554,7 +554,7 @@ class TestStreetcodeLaneMerge:
         machine = machine_unvalidated(["|+  ", "  C ", "    ", "|+  "])
         machine.row, machine.col, machine.heading = 1, 2, "S"
         machine.cells[0] = 1  # nonzero -> second-leftmost of [S, W] = West
-        heading = machine._choose_heading()  # noqa: SLF001
+        heading = machine._choose_heading(0)  # noqa: SLF001
         assert heading == "W"
         assert machine._merge_target is None  # noqa: SLF001
 
