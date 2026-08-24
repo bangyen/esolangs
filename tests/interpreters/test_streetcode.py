@@ -845,24 +845,44 @@ class TestStreetcodeStreetWidth:
             IO(),
         )
 
-    def test_solid_island_is_accepted(self) -> None:
-        """Hole filling is what makes this pass: the block's interior is
-        enclosed by the grown region rather than outside it, so its cells
-        are not reported as geometry belonging to no street."""
-        _Machine(
-            [
-                "+--------+",
-                "|C       |",
-                "|        |",
-                "|  ++++  |",
-                "|  ++++  |",
-                "|  ++++  |",
-                "|        |",
-                "|        |",
-                "+--------+",
-            ],
-            IO(),
-        )
+    def test_solid_island_is_rejected(self) -> None:
+        """A block thick enough to have an interior: its outer ring bounds
+        the road, but the cells inside bound nothing.  Permitting this
+        would cost a second flood-fill to tell an enclosed hole from the
+        outside, and nothing the repo draws needs it."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(
+                [
+                    "+--------+",
+                    "|C       |",
+                    "|        |",
+                    "|  ++++  |",
+                    "|  ++++  |",
+                    "|  ++++  |",
+                    "|        |",
+                    "|        |",
+                    "+--------+",
+                ],
+                IO(),
+            )
+
+    def test_instruction_sealed_inside_an_island_is_rejected(self) -> None:
+        """Code the car can never drive is not part of the program."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(
+                [
+                    "+-------+",
+                    "|C      |",
+                    "|       |",
+                    "|  +-+  |",
+                    "|  |^|  |",
+                    "|  +-+  |",
+                    "|       |",
+                    "|       |",
+                    "+-------+",
+                ],
+                IO(),
+            )
 
     def test_blank_padding_is_not_geometry(self) -> None:
         """A ragged program squared off by ``ljust``, and the background
