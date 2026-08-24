@@ -2246,9 +2246,28 @@ def _asm_refs(riscv_name: str, program: str) -> tuple[bytes, int] | None:
     return _run_riscv_elf(riscv, program)
 
 
+def _riscv_runner_available() -> bool:
+    """Whether the unicorn-backed RISC-V ELF runner can be imported."""
+    import importlib
+
+    try:
+        importlib.import_module("riscv_elf_runner")
+    except (ImportError, SystemExit):
+        return False
+    return True
+
+
 def _asm_refs_ready(riscv_name: str) -> bool:
-    """Whether the RISC-V reference can be built."""
-    return _build_riscv(riscv_name) is not None
+    """Whether the RISC-V reference can be built *and* executed.
+
+    Both halves matter: the cross-compiler assembles the ELF, and unicorn
+    (via ``riscv_elf_runner``) executes it.  Checking only the compiler let
+    a machine with a cross-compiler but no unicorn pass the gate and then
+    read every reference run as an empty ``(b"", 1)`` result, reporting the
+    whole corpus as divergent.  The toolchain being absent is a skip, not a
+    failure.
+    """
+    return _build_riscv(riscv_name) is not None and _riscv_runner_available()
 
 
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
