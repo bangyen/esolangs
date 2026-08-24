@@ -29,7 +29,8 @@ class TestAPainterAnt:
     (white is one, black is zero), read after any whole number of cycles
     since every instantiated program is a cycle-stable fixed point.  ``n ==
     1`` pads to a two-input table with the second input fixed to zero;
-    ``n >= 3`` is an open problem (``docs/roadmap.md``) and raises.
+    ``n >= 3`` uses the same piecewise head with more bits, and every arity
+    is exact and cycle-stable (see ``docs/a_painter_ant_generator.md``).
     """
 
     _MOVE: ClassVar[dict[str, tuple[int, int]]] = {
