@@ -1120,6 +1120,22 @@ def streetcode(text: str, width: int | None = None) -> str:
     lanes, drives each pair out and back, and climbs to the pair above.
     See :func:`_streetcode_serpentine`.
     """
+    instructions = _streetcode_instructions(text)
+    if width is not None and width >= _STREETCODE_MIN_WIDTH:
+        return _streetcode_serpentine(instructions, width)
+    # A ring is a fixed block of rows beneath the street, so it only
+    # applies to the unfolded program; the serpentine folds a single line.
+    # Both shapes are built and the shorter one wins, rather than predicting
+    # the winner from the code point: the two layouts are what they cost.
+    straight = _streetcode_straight(instructions)
+    ring = _streetcode_ring(text) if text else None
+    if ring is None:
+        return straight
+    return min((ring, straight), key=len)
+
+
+def _streetcode_instructions(text: str) -> str:
+    """Build the run that walks the cell through ``text``'s code points."""
     row = ["C"]
     prev = 0
     for c in text:
@@ -1127,14 +1143,11 @@ def streetcode(text: str, width: int | None = None) -> str:
         row.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
         prev = ord(c)
     row.append(";")
-    instructions = "".join(row)
-    if width is not None and width >= _STREETCODE_MIN_WIDTH:
-        return _streetcode_serpentine(instructions, width)
-    # A ring is a fixed block of rows beneath the street, so it only
-    # applies to the unfolded program; the serpentine folds a single line.
-    ring = _streetcode_ring(text) if text else None
-    if ring is not None:
-        return ring
+    return "".join(row)
+
+
+def _streetcode_straight(instructions: str) -> str:
+    """Wall ``instructions`` into the two-lane street the wiki draws."""
     wall = "+" + "-" * len(instructions) + "+"
     oncoming = "|" + " " * len(instructions) + "|"
     return "\n".join([wall, oncoming, f"|{instructions}|", wall])
@@ -1246,8 +1259,9 @@ def _streetcode_ring(text: str) -> str | None:
     Only the first character is worth this.  Later deltas are the gaps
     between adjacent characters, and a ring's block of rows costs more
     than walking a gap that small, so they keep the straight corridor of
-    increments.  Returns ``None`` when the ring does not pay, leaving the
-    caller to emit the straight street.
+    increments.  Returns ``None`` only when no ring plan exists at all;
+    whether a ring that *does* exist is worth emitting is the caller's
+    call, made by comparing the two finished programs.
 
     The rows below the street are right-trimmed: nothing east of the ring
     block is drivable, so those trailing spaces are padding rather than
@@ -1260,10 +1274,6 @@ def _streetcode_ring(text: str) -> str | None:
     k, counter, per_lap, remainder = plan
     block = _ring_rows(k, counter, per_lap)
     block_width = len(block[0])
-    # The straight street spends one cell per unit of the code point; the
-    # ring spends its block plus whatever the product missed.
-    if block_width + remainder >= first:
-        return None
 
     tail = []
     prev = first
