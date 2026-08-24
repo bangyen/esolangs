@@ -265,7 +265,7 @@ class TestGeneratorRoundTrips:
             row = len("C" + "^" * ord(char) + "O;") + 2
             assert len(gen.streetcode(char)) < 4 * row
 
-    @pytest.mark.parametrize("width", [6, 7, 10, 20, 40, 80])
+    @pytest.mark.parametrize("width", [5, 6, 10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!", "zyA"])
     def test_streetcode_fold_corridor_is_two_wide(self, text: str, width: int) -> None:
         """The descent corridor is a street, so it is two cells wide.
