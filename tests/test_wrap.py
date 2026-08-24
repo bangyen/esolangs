@@ -191,7 +191,7 @@ def test_wrapping_respects_the_width(name: str) -> None:
     for line in wrapped.split("\n"):
         tokens = line.split()
         longest_token = max((len(t) for t in tokens), default=0)
-        if signed and tokens and tokens[0] in "+-":
+        if signed and tokens and tokens[0] in ("+", "-"):
             # The sign and the space that keeps it attached to its term.
             longest_token += 2
         assert len(line) <= max(DEFAULT_WIDTH, longest_token)
@@ -335,7 +335,7 @@ def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
     """
     program = generate("Polynomial", TEXT, DEFAULT_WIDTH)
     assert "\n" in program
-    assert not [line for line in program.split("\n") if line.strip() in "+-"]
+    assert not [line for line in program.split("\n") if line.strip() in ("+", "-")]
 
 
 def test_polynomial_continuation_lines_start_with_their_sign() -> None:
@@ -366,6 +366,15 @@ def test_polynomial_keeps_an_oversized_term_with_its_sign() -> None:
 def test_polynomial_leaves_a_trailing_sign_alone() -> None:
     """A sign with no term after it is kept rather than dropped."""
     assert _polynomial("f(x) = x +", 80) == "f(x) = x +"
+
+
+def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
+    """Two signs in a row: the first has no term, and is kept as a token.
+
+    ``format_coeffs`` never emits that -- it collapses ``+ -`` into
+    ``- `` -- so this is only the helper staying total.
+    """
+    assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x + - 7"
 
 
 def test_wrap_grid_right_aligns_into_columns() -> None:
