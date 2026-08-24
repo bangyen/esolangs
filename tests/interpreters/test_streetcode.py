@@ -38,6 +38,20 @@ def street(instructions: str) -> list[str]:
     return [wall, "|" + " " * len(instructions) + "|", f"|{instructions}|", wall]
 
 
+def machine_unvalidated(code: list[str]) -> _Machine:
+    """Build a ``_Machine`` from a wall-shape fixture, skipping width checks.
+
+    The junction and lane-merge tests probe ``_junction_kind`` and the merge
+    latches directly, on deliberately skeletal geometry -- bare wall arms and
+    gaps, with assertions keyed to exact coordinates.  Such a fixture is not a
+    legal two-wide street and is not meant to be one, so it is constructed
+    with ``_validate_width`` disabled rather than redrawn, which would change
+    what the test measures.  Whole-program tests use the real constructor.
+    """
+    with patch.object(_Machine, "_validate_width", lambda *_: None):
+        return _Machine(code, IO())
+
+
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     """Run a Streetcode program (patching input) and return its stdout."""
     buffer = io.StringIO()
@@ -208,7 +222,7 @@ class TestStreetcodeAmbiguousTurns:
         ]
 
     def _machine_at_junction(self) -> _Machine:
-        machine = _Machine(self._junction_code(), IO())
+        machine = machine_unvalidated(self._junction_code())
         machine.row, machine.col, machine.heading = 1, 1, "S"
         return machine
 
@@ -230,7 +244,7 @@ class TestStreetcodeAmbiguousTurns:
         """A `+` pair whose floor is not all open between them bounds no
         road: the far `+` is found, the gap check fails, and the scan
         stops rather than reporting a mouth through solid wall."""
-        machine = _Machine(["C       ", "-+ |+   ", "        "], IO())
+        machine = machine_unvalidated(["C       ", "-+ |+   ", "        "])
         machine.row, machine.col, machine.heading = 0, 0, "E"
         assert machine._road_mouth("E", "S") is None  # noqa: SLF001
 
@@ -242,14 +256,14 @@ class TestStreetcodeAmbiguousTurns:
         this narrow fixture's one-cell arms are not (see
         :meth:`_road_deep`).
         """
-        machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
+        machine = machine_unvalidated([" C ", "+ +", "   ", "+ +", " | "])
         machine.row, machine.col, machine.heading = 0, 1, "S"
         assert machine._junction_shape("S") == 4  # noqa: SLF001
 
     def test_t_junction_detects_3(self) -> None:
         """Mouths on both sides with straight ahead blocked: a T whose
         crossbar the car is driving into, still three ways."""
-        machine = _Machine([" C ", "+|+", "   ", "+ +", " | "], IO())
+        machine = machine_unvalidated([" C ", "+|+", "   ", "+ +", " | "])
         machine.row, machine.col, machine.heading = 0, 1, "S"
         assert machine._junction_shape("S") == 3  # noqa: SLF001
 
@@ -268,7 +282,7 @@ class TestStreetcodeAmbiguousTurns:
         """The same shape is not a junction when its arms are one cell:
         streets are two wide, so a single open cell before a wall is the
         width of the road, not a road leading off it."""
-        machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
+        machine = machine_unvalidated([" C ", "+ +", "   ", "+ +", " | "])
         machine.row, machine.col, machine.heading = 0, 1, "S"
         assert machine._junction_kind("S") == 0  # noqa: SLF001
 
@@ -471,7 +485,7 @@ class TestStreetcodeLaneMerge:
             "|   |",
             "|   |",
         ]
-        machine = _Machine(code, IO())
+        machine = machine_unvalidated(code)
         for _ in range(4):
             machine.step()  # down the west lane; the latch forms en route
         assert machine._merge_target is not None  # noqa: SLF001
@@ -567,7 +581,7 @@ class TestStreetcodeLaneMerge:
             " |   |",
             " |   |",
         ]
-        machine = _Machine(code, IO())
+        machine = machine_unvalidated(code)
         positions = [(machine.row, machine.col)]
         for _ in range(7):
             machine.step()
@@ -724,19 +738,47 @@ class TestStreetcodeStreetWidth:
         """An instruction lane with an oncoming lane beside it is legal."""
         assert run_street("C^O;") == chr(1)
 
-    def test_wider_than_two_is_accepted(self) -> None:
-        """The check rejects one-wide; it does not require exactly two.
+    def test_wider_than_two_is_rejected(self) -> None:
+        """Streets are two wide, so a three-lane corridor is malformed.
 
-        A three-lane corridor is malformed per the spec, but detecting it
-        would mean measuring width across junction mouths and rooms, where
-        an over-eager rule rejects valid programs -- see the width section
-        of ``docs/roadmap.md``.
+        Cross-section runs cannot measure this -- through an intersection a
+        run reports the crossing street's *length* -- so the rule is a fully
+        open three-by-three block, which a two-wide network never contains.
         """
-        _Machine(["+------+", "|C^^^O;|", "|      |", "|      |", "+------+"], IO())
+        with pytest.raises(ValueError, match="wider than two"):
+            run(
+                ["+------+", "|C^^^O;|", "|      |", "|      |", "+------+"],
+                io=IO(),
+            )
 
-    def test_wall_fragment_without_instructions_is_exempt(self) -> None:
-        """Walls plus ``C`` but no instructions is a drawing, not a street."""
-        _Machine(["+---+", "|C  |", "+---+"], IO())
+    def test_three_by_two_room_is_accepted(self) -> None:
+        """The deliberate boundary of the three-by-three rule: a three-by-two
+        room is a two-wide street of length three seen sideways."""
+        _Machine(["+---+", "|C^;|", "|~~~|", "+---+"], IO())
+
+    def test_crossing_of_two_streets_is_accepted(self) -> None:
+        """The load-bearing case: where two legal two-wide streets cross, the
+        open centre is two-by-two with walls at the diagonals, so no fully
+        open three-by-three block exists."""
+        _Machine(
+            [
+                "+--+  +--+",
+                "|  |  |  |",
+                "|  +--+  |",
+                "|   C    |",
+                "|        |",
+                "|  +--+  |",
+                "|  |  |  |",
+                "+--+  +--+",
+            ],
+            IO(),
+        )
+
+    def test_wall_fragment_without_instructions_is_rejected(self) -> None:
+        """The content-sniffing exemption is closed: a one-wide grid is
+        malformed whether or not it happens to contain an instruction."""
+        with pytest.raises(ValueError, match="not two-wide"):
+            _Machine(["+---+", "|C  |", "+---+"], IO())
 
     def test_grid_without_walls_is_exempt(self) -> None:
         """With no walls there is no street network to measure."""
