@@ -96,11 +96,6 @@ def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
 
 
 LANGUAGES: dict[str, Language] = {
-    "ABCDirection": Language(
-        "ABCDirection",
-        id="abcdirection",
-        interpreter="tape_based.abcdirection",
-    ),
     "AddSubJump": Language(
         "AddSubJump",
         _generate.addsubjump,
