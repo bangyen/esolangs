@@ -1261,12 +1261,9 @@ def _streetcode_ring(text: str) -> str | None:
 
 
 # A fold needs two wall columns, the two-cell vertical corridor the car
-# descends and climbs, and a lane run that is itself two cells wide --
-# "two characters wide" governs the lanes as much as the corridor, and a
-# one-column run is a street the car cannot lawfully drive (it could only
-# be entered by crossing into the oncoming lane).  Below this there is
-# nowhere to turn and the straight street is emitted instead.
-_STREETCODE_MIN_WIDTH = 6
+# descends and climbs, and at least one lane column beside it; below this
+# there is nowhere to turn and the straight street is emitted instead.
+_STREETCODE_MIN_WIDTH = 5
 
 
 def _streetcode_serpentine(instructions: str, width: int) -> str:
