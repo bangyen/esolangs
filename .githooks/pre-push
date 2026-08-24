@@ -36,7 +36,17 @@ if [ "$saw_ref" -eq 1 ] && [ "$deleting_only" -eq 1 ]; then
     exit 0
 fi
 
-ROOT="$(dirname "$0")/.."
+# Check the tree being pushed, not the one holding the hook.  With
+# core.hooksPath set, git runs *this* file for every worktree of the repo,
+# so `dirname "$0"` points at the main checkout even when the push comes
+# from a worktree -- and verify.py derives its ROOT (the venv it picks and
+# the PYTHONPATH it exports) from its own location.  Resolving the script
+# through the top level of the working tree git is pushing keeps the checks
+# pointed at the commits actually being sent; otherwise a worktree push
+# validates the main checkout's files instead, which fails as soon as the
+# two trees differ.
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT=""
+[ -n "$ROOT" ] || ROOT="$(dirname "$0")/.."
 # verify.py picks the project interpreter itself (.venv, then uv run), so
 # the hook can hand it any python that can execute the file.
 exec "${PY:-python3}" "$ROOT/scripts/verify.py"
