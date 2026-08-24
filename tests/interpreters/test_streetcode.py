@@ -826,7 +826,7 @@ class TestStreetcodeStreetWidth:
         )
 
     def test_detached_geometry_is_rejected(self) -> None:
-        """A second box the car can never reach bounds no street."""
+        """A second box the car can never reach belongs to no street."""
         with pytest.raises(ValueError, match="not connected"):
             _Machine(
                 ["+----+   +--+", "|C   |   |  |", "|    |   |  |", "+----+   +--+"],
@@ -901,24 +901,34 @@ class TestStreetcodeStreetWidth:
         with pytest.raises(ValueError, match="turns without a corner"):
             _Machine(["+--+", "|C |", "|  |", "-  |", "|  |", "+--+"], IO())
 
-    def test_text_off_the_street_is_read_as_a_comment(self) -> None:
-        """Only walls are structural.  Anything else the car treats as a
-        no-op, so off the street it can never execute and is annotation --
-        whether beside the program or sealed inside an island."""
-        _Machine(
-            [
-                "+-------+  counts up",
-                "|C      |  and prints",
-                "|       |",
-                "|  +-+  |",
-                "|  |^|  |",
-                "|  +-+  |",
-                "|       |",
-                "|       |",
-                "+-------+",
-            ],
-            IO(),
-        )
+    def test_instruction_sealed_inside_an_island_is_rejected(self) -> None:
+        """Code the car can never drive is not part of the program.
+
+        The check is strict: anything off the street is rejected, not
+        only walls.  Allowing the rest to stand as comments would cost no
+        detection, but is left unimplemented -- see ``_validate_connected``.
+        """
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(
+                [
+                    "+-------+",
+                    "|C      |",
+                    "|       |",
+                    "|  +-+  |",
+                    "|  |^|  |",
+                    "|  +-+  |",
+                    "|       |",
+                    "|       |",
+                    "+-------+",
+                ],
+                IO(),
+            )
+
+    def test_text_beside_the_program_is_rejected(self) -> None:
+        """Strictness means prose beside a program is malformed too, not
+        a comment."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(["+----+  counts up", "|C   |", "|    |", "+----+"], IO())
 
     def test_blank_padding_is_not_geometry(self) -> None:
         """A ragged program squared off by ``ljust``, and the background
