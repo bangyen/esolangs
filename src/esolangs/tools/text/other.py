@@ -8,6 +8,7 @@ from esolangs.tools import laserfuck_layout
 from esolangs.tools.text.helpers import (
     _factor_triple,
     _ilog,
+    _literal_chunks,
     _require_ascii,
     _require_bytes,
 )
@@ -762,21 +763,27 @@ def one_two_three(text: str) -> str:
             # a "121" toggles a bit twice (a no-op on edi) while doubling esi;
             # n doublings carry esi from 2 to 512, where the final "2" outputs
             march = "121" * n
-            res += walk[:-2] + march[:-1] + "\n"
+            res += walk[:-2] + march[:-1]
         else:
-            res += "12112\n"  # no difference: just march esi up and output
+            res += "12112"  # no difference: just march esi up and output
         last = ord(c)
 
     return res + "1"
 
 
-def myscript(text: str) -> str:
+def myscript(text: str, width: int | None = None) -> str:
     r"""Generate a MyScript program that outputs ``text``.
 
     MyScript's string literals support the escapes ``\\0 \\n \\\\ \\t \\f
     \\"`` and literal printable ASCII, so ``text`` is emitted as one ``say``
     of the escaped string; any other byte (unrepresentable in the language)
     is rejected.
+
+    A ``width`` splits the text across several ``say`` lines.  The escaped
+    pieces are what get packed, never the characters inside one: breaking
+    ``\\n`` in half would leave a stray backslash and change what the
+    program prints, which is the same reason the literal cannot simply be
+    reflowed by :mod:`~esolangs.tools.wrap`.
     """
     res: list[str] = []
     for c in text:
@@ -796,7 +803,20 @@ def myscript(text: str) -> str:
             res.append(c)
         else:
             raise ValueError("MyScript can only output its representable bytes")
-    return 'say "' + "".join(res) + '"'
+    if width is None or width <= 0:
+        return 'say "' + "".join(res) + '"'
+    # ``say ""`` is six characters around the escaped text.
+    budget = max(1, width - len('say ""'))
+    lines: list[str] = []
+    current = ""
+    for piece in res:
+        if current and len(current) + len(piece) > budget:
+            lines.append(current)
+            current = ""
+        current += piece
+    if current or not lines:
+        lines.append(current)
+    return "\n".join(f'say "{line}"' for line in lines)
 
 
 def nocomment(text: str) -> str:
@@ -1017,15 +1037,22 @@ def forbin(text: str) -> str:
     return "\n".join(lines)
 
 
-def three_x(text: str) -> str:
+def three_x(text: str, width: int | None = None) -> str:
     """Build a 3x program that outputs ``text``.
 
     ``[`` prints the literal up to the next ``]`` and skips past it, so the
     program is ``[text]``; a ``]`` in the text would end the literal early.
+
+    A ``width`` splits the text across several ``[...]`` literals, one per
+    line.  The literal cannot be broken by :mod:`~esolangs.tools.wrap` -- a
+    newline between the brackets is a character the program would print --
+    so honouring a width means emitting a different program rather than
+    reflowing this one.
     """
     if "]" in text:
         raise ValueError("3x cannot output ']' (it would end the literal)")
-    return "[" + text + "]"
+    chunks = _literal_chunks(text, width, len("[]"))
+    return "\n".join("[" + chunk + "]" for chunk in chunks)
 
 
 def sbleq(text: str) -> str:

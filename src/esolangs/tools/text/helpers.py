@@ -42,6 +42,30 @@ def _require_bytes(text: str, name: str) -> None:
         raise ValueError(f"{name} can only output bytes 0-255")
 
 
+def _literal_chunks(text: str, width: int | None, overhead: int) -> list[str]:
+    """Split ``text`` so each chunk plus ``overhead`` fits in ``width``.
+
+    The literal languages (3x, Eval, Modulous, MyScript) print by embedding
+    the text in a statement, so their program is one long line that no
+    after-the-fact reflow can break: a newline inside the literal is a
+    character the program goes on to print.  Splitting the *text* instead
+    and emitting one statement per chunk gives the same output in a program
+    that fits the width, which is the same trick the 2D generators use --
+    honour a width by building a different shape rather than by reflowing a
+    finished one.
+
+    ``overhead`` is the per-statement cost (3x's two brackets, Modulous's
+    push and print instructions).  A width too small to fit that plus one
+    character still yields one character per chunk rather than an empty one,
+    so the caller gets an over-wide line instead of a program that loops
+    forever -- the same escape hatch an oversized token gets elsewhere.
+    """
+    if width is None or width <= 0:
+        return [text]
+    size = max(1, width - overhead)
+    return [text[i : i + size] for i in range(0, len(text), size)]
+
+
 def _require_ascii(text: str, name: str) -> None:
     """Reject any character outside the 0-127 ASCII range.
 
