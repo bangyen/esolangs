@@ -239,6 +239,28 @@ class TestGeneratorRoundTrips:
         assert max(len(line) for line in lines) <= width
         assert roundtrip(streetcode_run, lines) == text
 
+    @pytest.mark.parametrize("width", [5, 6, 10, 20, 40, 80])
+    @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!", "zyA"])
+    def test_streetcode_fold_corridor_is_two_wide(self, text: str, width: int) -> None:
+        """The descent corridor is a street, so it is two cells wide.
+
+        "Two characters wide" governs every street in the grid, not just
+        the horizontal ones.  An earlier fold gapped its dividers by a
+        single column, which round-tripped -- the interpreter drives a
+        one-wide corridor without complaint -- but drew a corridor
+        narrower than the spec allows (``docs/streetcode.md`` records
+        that a ``U`` is the only manoeuvre that currently notices).
+        Round-tripping is therefore blind to this; assert the geometry
+        directly so a refactor cannot quietly narrow it again.
+        """
+        lines = gen.streetcode(text, width).split("\n")
+        # A text short enough to fit one lane pair folds no dividers at
+        # all; the geometry claim is about the dividers that do appear.
+        dividers = [ln for ln in lines[1:-1] if ln.startswith("+")]
+        for divider in dividers:
+            gap = [i for i, ch in enumerate(divider) if ch == " "]
+            assert gap == [1, 2], f"corridor gap {gap} is not two wide"
+
     @pytest.mark.parametrize("width", [10, 20, 40, 60, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
     def test_wii2d_honours_a_width(self, text: str, width: int) -> None:

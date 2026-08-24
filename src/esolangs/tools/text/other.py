@@ -988,9 +988,9 @@ def streetcode(text: str, width: int | None = None) -> str:
     takes that cut as an open road on its right.  See
     ``docs/streetcode.md`` for the traces and the leak modes.
     ``width`` folds that street into a boustrophedon of two-lane hairpins:
-    the car descends a shared corridor to the lowest pair of lanes, drives
-    each pair out and back, and climbs to the pair above.  See
-    :func:`_streetcode_serpentine`.
+    the car descends a shared two-wide corridor to the lowest pair of
+    lanes, drives each pair out and back, and climbs to the pair above.
+    See :func:`_streetcode_serpentine`.
     """
     row = ["C"]
     prev = 0
@@ -1007,10 +1007,10 @@ def streetcode(text: str, width: int | None = None) -> str:
     return "\n".join([wall, oncoming, f"|{instructions}|", wall])
 
 
-# A fold needs two wall columns, the vertical corridor the car descends
-# and climbs, and at least one lane column beside it; below this there is
-# nowhere to turn and the straight street is emitted instead.
-_STREETCODE_MIN_WIDTH = 4
+# A fold needs two wall columns, the two-cell vertical corridor the car
+# descends and climbs, and at least one lane column beside it; below this
+# there is nowhere to turn and the straight street is emitted instead.
+_STREETCODE_MIN_WIDTH = 5
 
 
 def _streetcode_serpentine(instructions: str, width: int) -> str:
@@ -1027,6 +1027,14 @@ def _streetcode_serpentine(instructions: str, width: int) -> str:
     no gap-and-``+`` shape is drawn, so no junction, ambiguous-turn, or
     lane-merge rule ever fires.
 
+    The vertical corridor joining the pairs is two cells wide for the same
+    reason the lane pairs are two rows deep: "two characters wide" is a
+    rule about every street in the grid, not just the horizontal ones, and
+    a one-cell corridor is not a street the car may legally drive.  An
+    earlier fold made that corridor a single column; it round-tripped --
+    the interpreter drove it without complaint -- but the grid it drew was
+    not a legal street plan.
+
     The instructions are laid along the car's path in the order it drives
     them, so the returning lane is written to the grid reversed.  The
     closing ``;`` lands at the path's end, which is what stops the car: a
@@ -1034,10 +1042,10 @@ def _streetcode_serpentine(instructions: str, width: int) -> str:
     car back along it, re-executing every cell it already ran.
     """
     cells = list(instructions)
-    # Column 0 is the left wall, column 1 the shared vertical corridor the
-    # car descends and climbs, and the last column the right wall; the
-    # lanes run between.
-    lanes = width - 3
+    # Column 0 is the left wall, columns 1 and 2 the shared two-wide
+    # vertical corridor the car descends and climbs, and the last column
+    # the right wall; the lanes run between.
+    lanes = width - 4
     pairs = -(-len(cells) // (2 * lanes))
 
     grid: list[list[str]] = [["+"] + ["-"] * (width - 2) + ["+"]]
@@ -1046,7 +1054,8 @@ def _streetcode_serpentine(instructions: str, width: int) -> str:
             grid.append(["|"] + [" "] * (width - 2) + ["|"])
         if n < pairs - 1:
             divider = ["+"] + ["-"] * (width - 2) + ["+"]
-            divider[1] = " "  # the descent gap, in the vertical corridor
+            # the descent gap, spanning the whole two-wide corridor
+            divider[1] = divider[2] = " "
             grid.append(divider)
     grid.append(["+"] + ["-"] * (width - 2) + ["+"])
 
@@ -1059,8 +1068,8 @@ def _streetcode_serpentine(instructions: str, width: int) -> str:
     for n in range(pairs - 1, -1, -1):
         top = 1 + n * 3
         bottom = top + 1
-        path += [(bottom, c) for c in range(2, width - 1)]
-        path += [(top, c) for c in range(width - 2, 1, -1)]
+        path += [(bottom, c) for c in range(3, width - 1)]
+        path += [(top, c) for c in range(width - 2, 2, -1)]
 
     for (r, c), instruction in zip(path, cells, strict=False):
         grid[r][c] = instruction
