@@ -87,7 +87,8 @@ from 1 to 98 characters, and padding those to a common width would be
 nonsense.  Polynomial gets its own wrapper for a related reason: its
 one-character tokens are the ``+`` and ``-`` between terms, and
 :func:`_polynomial` glues each of those to the term it signs so that no
-line is just a sign.
+line is just a sign.  That wrapper then puts one term to a line rather
+than packing them to the width, for the reason its docstring gives.
 
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
@@ -319,49 +320,62 @@ def _quote_literal(program: str, width: int) -> str:
     return wrap_tokens(program, width, _QUOTE_LITERAL)
 
 
-def _polynomial(program: str, width: int) -> str:
-    """Wrap a Polynomial program, keeping each sign with the term it signs.
+def _polynomial(program: str, _width: int) -> str:
+    """Lay a Polynomial program out one signed term to a line.
 
     Polynomial's terms are space-delimited, so
     :func:`wrap_space_delimited` would wrap it -- but the ``+`` and ``-``
     between two terms are tokens of their own, and once the terms grow
     wider than the width every one of those signs lands alone on a line of
-    its own.  A Hello-World program wraps into forty lines that alternate
-    between a hundred-character coefficient and a single ``+``, which is
-    the raggedest possible reading of a polynomial.
+    its own.  A Hello-World program wrapped into forty lines that
+    alternated a hundred-character coefficient with a single ``+``, which
+    is the raggedest possible reading of a polynomial.
 
-    Merging each sign into the term that follows it makes the pair one
-    unbreakable token, so a continuation line starts with its own sign --
-    the ordinary convention for breaking a long expression across lines,
-    and the one that lets a reader tell at a glance whether a term is
-    added or subtracted.  The internal space is kept, so replacing every
-    newline with a space reproduces the input exactly; the interpreter
-    strips whitespace before parsing either way.
+    Keeping each sign with the term it signs fixes that much, and packing
+    the resulting pairs to a width would be the obvious next step.  This
+    wrapper does not: a packed line holds however many terms happen to
+    fit -- five, then two, then three -- so its breaks fall where the
+    arithmetic lands rather than anywhere meaningful.  One term to a line
+    makes every line the same kind of thing and the descending exponents a
+    column you can read down, which is the layout a polynomial is written
+    in by hand.  It is the same judgement the module docstring records for
+    Forbin: a language whose own idiom is one-item-per-line is left that
+    way rather than packed to a width.
 
-    A term wider than the width still overruns it, carrying its sign along
-    -- the same honest outcome :func:`_join_tokens` gives any oversized
-    token, and better than a line holding nothing but a ``-``.
+    The width is therefore only the on/off switch that
+    :func:`wrap_program` already applies -- the layout does not depend on
+    its value, since the terms of any interesting program outrun any
+    width, so the parameter is taken and ignored to keep the shape every
+    :data:`WRAPPERS` entry is called with.  The header stays with the
+    first term so that ``f(x)`` and ``=`` do not become lines of their
+    own.
+
+    Replacing every newline with a space reproduces the input exactly, so
+    the program is untouched; the interpreter strips whitespace before
+    parsing either way.
     """
-    tokens = program.split()
-    merged: list[str] = []
+    terms: list[str] = []
     pending = ""
-    for token in tokens:
+    for token in program.split():
         if token in ("+", "-"):
             # A sign already held has no term to attach to; keep it as its
-            # own token rather than dropping it.  ``format_coeffs`` never
+            # own line rather than dropping it.  ``format_coeffs`` never
             # emits two in a row (it collapses ``+ -`` into ``- ``), so this
             # is only about the helper staying total for any input.
             if pending:
-                merged.append(pending)
+                terms.append(pending)
             pending = token
         elif pending:
-            merged.append(f"{pending} {token}")
+            terms.append(f"{pending} {token}")
             pending = ""
         else:
-            merged.append(token)
+            terms.append(token)
     if pending:
-        merged.append(pending)
-    return _join_tokens(merged, width, separator=" ")
+        terms.append(pending)
+    # ``f(x)``, ``=`` and the leading term are three tokens of one line.
+    if len(terms) >= 3 and terms[0] == "f(x)" and terms[1] == "=":
+        terms[:3] = [" ".join(terms[:3])]
+    return "\n".join(terms)
 
 
 def _taglate(program: str, width: int) -> str:
@@ -390,8 +404,9 @@ WRAPPERS = {
     "decleq": wrap_grid,
     "sbleq": wrap_grid,
     # Space-delimited, but its ``+``/``-`` are tokens of their own and its
-    # terms outgrow any width, so the plain space wrapper strands every sign
-    # on a line by itself; ``_polynomial`` keeps each sign with its term.
+    # terms outgrow any width, so the plain space wrapper stranded every
+    # sign on a line by itself; ``_polynomial`` keeps each sign with its
+    # term and gives each term a line.
     "polynomial": _polynomial,
     "bitdeque": wrap_space_delimited,
     "bio": _bio,

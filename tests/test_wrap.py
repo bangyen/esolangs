@@ -338,8 +338,24 @@ def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
     assert not [line for line in program.split("\n") if line.strip() in ("+", "-")]
 
 
+def test_polynomial_puts_one_term_on_each_line() -> None:
+    """The layout: every line is exactly one term, sign included.
+
+    A packed line would hold however many terms happened to fit, so its
+    breaks would fall where the arithmetic landed rather than between two
+    things a reader wants separated.
+    """
+    program = generate("Polynomial", TEXT, DEFAULT_WIDTH)
+    lines = program.split("\n")
+    # Line 1 is ``f(x) = <term>``; every other line is ``<sign> <term>``.
+    assert lines[0].startswith("f(x) = ")
+    # ``f(x)``, ``=`` and the unsigned leading term.
+    assert len(lines[0].split()) == 3
+    assert all(len(line.split()) == 2 for line in lines[1:])
+
+
 def test_polynomial_continuation_lines_start_with_their_sign() -> None:
-    """Every line but the first opens with the sign of its leading term."""
+    """Every line but the first opens with the sign of its term."""
     program = generate("Polynomial", TEXT, DEFAULT_WIDTH)
     lines = program.split("\n")
     assert all(line.startswith(("+ ", "- ")) for line in lines[1:])
@@ -352,8 +368,23 @@ def test_polynomial_wrap_is_undone_by_swapping_newlines_for_spaces() -> None:
     assert wrapped.replace("\n", " ") == plain
 
 
+def test_polynomial_keeps_the_header_with_the_first_term() -> None:
+    """``f(x)`` and ``=`` are not terms and do not get lines of their own."""
+    assert _polynomial("f(x) = x^2 - 3x + 7", 80).split("\n")[0] == "f(x) = x^2"
+
+
+def test_polynomial_layout_does_not_depend_on_the_width() -> None:
+    """One term to a line whatever the width -- it is only the on/off switch.
+
+    The terms of any interesting program outrun any width, so packing them
+    to one would be a layout that changed with a number nobody chose.
+    """
+    program = generate("Polynomial", TEXT)
+    assert _polynomial(program, 40) == _polynomial(program, 200)
+
+
 def test_polynomial_keeps_an_oversized_term_with_its_sign() -> None:
-    """A term too wide for the width overruns it rather than shedding its sign.
+    """A term wider than the width keeps its sign rather than shedding it.
 
     Splitting the pair to respect the width would put the sign back on a
     line by itself, which is the thing being fixed; an over-wide line is
@@ -365,16 +396,16 @@ def test_polynomial_keeps_an_oversized_term_with_its_sign() -> None:
 
 def test_polynomial_leaves_a_trailing_sign_alone() -> None:
     """A sign with no term after it is kept rather than dropped."""
-    assert _polynomial("f(x) = x +", 80) == "f(x) = x +"
+    assert _polynomial("f(x) = x +", 80) == "f(x) = x\n+"
 
 
 def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
-    """Two signs in a row: the first has no term, and is kept as a token.
+    """Two signs in a row: the first has no term, and is kept as a line.
 
     ``format_coeffs`` never emits that -- it collapses ``+ -`` into
     ``- `` -- so this is only the helper staying total.
     """
-    assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x + - 7"
+    assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x\n+\n- 7"
 
 
 def test_wrap_grid_right_aligns_into_columns() -> None:
