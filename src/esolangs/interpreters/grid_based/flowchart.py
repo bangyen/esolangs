@@ -43,8 +43,7 @@ rather than invented, and every one of the three examples on the page
   example pins the orientation down even though the prose does not.
 
 * **Bits are read and written as characters, not packed into bytes.**  The
-  Boolfuck-style languages in this package (see
-  ``tape_based.abcdirection``) buffer eight bits and emit one byte, but
+  Boolfuck convention buffers eight bits and emits one byte, but
   that convention cannot express Flowchart's own truth machine: given
   ``0`` it reads a single bit, writes a single bit, and halts, so an
   eight-bit output buffer would never flush and the program would print

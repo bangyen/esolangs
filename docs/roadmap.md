@@ -258,7 +258,7 @@ boolean cap too low to be interesting), or when its only boolean construction
 would break a documented convention and its text generator is too thin to
 stand alone — see `docs/limitations.md` for the removed cases and the
 criteria.  The interpreter-only languages with no text generator but a
-working, uncapped boolean generator (ABCDirection, Back, BF-PDA, Bitdeque,
+working, uncapped boolean generator (Back, BF-PDA, Bitdeque,
 Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue,
 Streetcode, Flowchart) are
 **not** candidates: they participate fully in the repo's verification
@@ -329,7 +329,7 @@ round-trip corpus, so a cross-check would add real verification.
 
 | Toolchain | Languages |
 | --- | --- |
-| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), ABCDirection (2D grid + Boolfuck input), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
+| Rust | AddSubJump (branch-and-goto OISC), Collatz Multiverse (runtime odd/even rules), Polynomial (integer roots encoding a command stream), Dig (2D mole grid with runtime segment counts), Container (threshold-rule firing), ZTOALC L (Collatz-trajectory-driven execution), Factor (a giant integer whose prime factors re-encode a looped brainfuck program), Back (2D beam reflection routing), A Painter Ant (2D cycle-stable routing), Bitdeque (deque + register + goto).  Those that read input — and the 2D grid models — belong in Rust under the no-input RISC-V rule above. |
 
 **Judgment call (borderline).**  The generator is stateful or looped, but
 its output is a fixed pattern the round-trip already covers, so a cross-check
@@ -470,12 +470,12 @@ are documented in `docs/limitations.md` and `docs/walls.md`.
 
 **No language is currently on this list.**
 
-## Boolean example coverage (ABCDirection only)
+## Boolean example coverage (complete)
 
 `examples/boolean` holds one committed program per boolean generator that
 can be verified end to end; `src/esolangs/tools/boolean/examples.py` is the
 source of truth and `tests/test_examples.py` keeps the files in sync.
-Coverage is 53 of 54 generators.  The bar is that the answer must be
+Coverage is 53 of 53 generators.  The bar is that the answer must be
 *recoverable from what the program prints* -- not that the program prints
 the answer and nothing else, since several of these languages have no output
 instruction at all and dump their state at halt.
@@ -503,24 +503,18 @@ worked examples of what this section asks for:
   points, so one pass is enough.  This is a unit, not a safety limit -- a
   diverging program still runs as long as it is asked to.
 
-ABCDirection is the one generator left, and not for that reason.  The two
-objections used to be size and speed: a 1107-line, 377 KB grid needing
-several million steps.  Successive passes over the generator's layout --
-removing a reserved 700-row detour, then deriving the grid's width and
-height from what it actually places, then cutting a margin to the clearance
-it really provides -- have taken the two-input program to 254 lines and
-65.7 KB, answering in about 1,400 steps.  Speed is no longer an objection at
-all, and 65.7 KB is a reviewable diff in a way 377 KB was not.
-
-What blocks it now is the harness rather than the program.  ABCDirection has
-no halt instruction and the pointer never leaves the donut grid, so a
-program prints its answer and then circles forever; the run ends only when
-the interpreter's step limit raises `HaltError`.  (The generator lays down
-an EOF sink per leaf, but the beam does not reach one before the limit --
-the answer is out long beforehand.)  `test_boolean_example` suppresses only
-`SystemExit`, so committing an example means deciding what a program with no
-halt is allowed to end on, which is a harness question rather than a
-generator-construction one.
+ABCDirection was the one generator left, and it was removed from the repo
+rather than finished.  Its output was the reason: the two-input program ran
+15,729 characters, 58x the median generator's output and 3.5x the next
+largest, and that was *after* successive passes over the layout (removing a
+reserved 700-row detour, deriving the grid's dimensions from what it
+actually places, cutting a margin to its real clearance) had already taken
+it down from 377 KB.  The remaining size was inherent to the donut grid and
+direction-dispatched command set rather than a tuning oversight, a text
+generator would have landed in the same size class, and the language had no
+halt instruction, so an example would also have needed a harness decision
+about what a never-halting program may end on.  See the git history for the
+interpreter, the generator, and the compaction prototypes.
 
 One caution for anyone re-surveying this: the example stems are display
 names, not language ids, so a naive `id not in stems` check reports
