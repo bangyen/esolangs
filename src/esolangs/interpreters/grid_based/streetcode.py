@@ -269,7 +269,9 @@ class _Machine:
         """
         reachable = self._validate_width(start)
         if reachable is not None:
+            self._validate_enclosed(reachable)
             self._validate_walls(reachable)
+            self._validate_glyphs()
             self._validate_connected(reachable)
 
     def _validate_width(self, start: tuple[int, int]) -> set[tuple[int, int]] | None:
@@ -389,18 +391,72 @@ class _Machine:
                 )
                 raise ValueError(f"malformed wall at {(r, c)} ({shape})")
 
-    def _validate_connected(self, reachable: set[tuple[int, int]]) -> None:
-        """Reject geometry that is not part of the one street network.
+    def _validate_enclosed(self, reachable: set[tuple[int, int]]) -> None:
+        """Reject a street that runs off the edge of the grid.
 
-        A program is a single street network: everything drawn is either
-        road the car can reach or a wall bounding that road.  Take the
-        reachable open cells, grow the region by one cell in every
-        direction so that it takes in the walls along its edges, and
-        remove it from the grid.  Whatever is still drawn belongs to no
-        street, and the program is malformed -- a detached second box, a
-        stray fragment of wall, an instruction sealed inside an island
-        where the car can never drive it, or the middle of a solid block
-        of wall, which is ink bounding nothing.
+        A street is bounded by walls, so the road the car can reach never
+        touches the border of the grid: there is always a wall between it
+        and the outside.  If the flood fill from ``C`` reaches the border,
+        the road has escaped -- through a hole in a wall, or because a
+        wall was never drawn at all -- and what lies beyond is the blank
+        padding around the program rather than street.
+
+        This is what catches a hole two cells across.  A one-cell hole is
+        already caught by width, since squeezing through it leaves a
+        one-wide stub, but a two-wide hole is a legal-width passage and
+        looks like an ordinary road: only the fact that it leads off the
+        grid marks it as a gap rather than a street.
+        """
+        for r, c in reachable:
+            if r in (0, self.height - 1) or c in (0, self.width - 1):
+                raise ValueError(
+                    f"street reaches the edge of the grid at {(r, c)}:"
+                    " the road is not enclosed by walls"
+                )
+
+    def _validate_glyphs(self) -> None:
+        """Reject a ``-`` and a ``|`` drawn side by side.
+
+        The two wall glyphs mean different things: ``-`` is a wall running
+        horizontally, ``|`` one running vertically.  Where they meet, the
+        wall turns a corner, and a corner is drawn ``+``.  So a ``-``
+        immediately left or right of a ``|``, or a ``|`` immediately above
+        or below a ``-``, is a wall changing direction without the corner
+        that marks it -- a drawing slip rather than a shape.
+
+        This is about which glyph is used, not where walls are, so the
+        neighbourhood forms in :meth:`_validate_walls` cannot see it: they
+        match any wall character alike.  Neither example, neither wiki
+        diagram, nor any of the generated programs draws such a pair.
+        """
+        for r in range(self.height):
+            for c in range(self.width):
+                char = self.grid[r][c]
+                if char == "-":
+                    neighbours = ((r, c - 1), (r, c + 1))
+                    other = "|"
+                elif char == "|":
+                    neighbours = ((r - 1, c), (r + 1, c))
+                    other = "-"
+                else:
+                    continue
+                for nr, nc in neighbours:
+                    if self._at(nr, nc) == other:
+                        raise ValueError(
+                            f"wall turns without a corner at {(r, c)}:"
+                            f" {char!r} beside {other!r} at {(nr, nc)}"
+                        )
+
+    def _validate_connected(self, reachable: set[tuple[int, int]]) -> None:
+        """Reject walls that are not part of the one street network.
+
+        A program is a single street network: every wall drawn bounds
+        road the car can reach.  Take the reachable open cells, grow the
+        region by one cell in every direction so that it takes in the
+        walls along its edges, and remove it from the grid.  A wall still
+        drawn outside bounds no street, and the program is malformed -- a
+        detached second box, a stray fragment of wall, or the middle of a
+        solid block, which is ink bounding nothing.
 
         A hollow island is still legal, and needs no special case: the
         car drives around the block, and every cell of a one-thick wall
@@ -412,11 +468,21 @@ class _Machine:
         cost a second flood-fill pass to tell an enclosed hole from the
         outside, and no program the repo draws needs it.
 
-        Only non-blank cells count.  The blank padding ``ljust`` adds to
+        Only walls count.  A wall is structural -- it is what decides
+        where the car may drive -- so one drawn away from any street
+        bounds nothing and is meaningless.  Every other character is
+        inert: the car treats anything that is not ``+``, ``-`` or ``|``
+        as a no-op it drives over, so outside the street such text can
+        never execute and is read as a comment.  That the wiki says
+        nothing about comments makes this a choice rather than a rule,
+        and the permissive one costs no detection: the defects worth
+        catching -- a detached second box, a stray fragment of wall --
+        are drawn out of walls, so restricting the check to walls still
+        catches them all.
+
+        Blank cells are ignored either way: the padding ``ljust`` adds to
         square off a ragged program, and the background around an
-        L-shaped layout, are not drawn geometry and are ignored -- which
-        is what lets the boolean example, whose hallways leave large
-        blank margins, pass while a detached wall does not.
+        L-shaped layout, are not drawn at all.
         """
         grown = {
             (r + dr, c + dc)
@@ -427,10 +493,10 @@ class _Machine:
         for r in range(self.height):
             for c in range(self.width):
                 char = self.grid[r][c]
-                if char == " " or (r, c) in grown:
+                if char not in _WALLS or (r, c) in grown:
                     continue
                 raise ValueError(
-                    f"geometry not connected to the street at {(r, c)} ({char!r})"
+                    f"wall not connected to the street at {(r, c)} ({char!r})"
                 )
 
     def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
