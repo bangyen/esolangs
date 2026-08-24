@@ -221,31 +221,25 @@ class _Machine:
         an open neighbour on at least one perpendicular side (the second lane);
         a dead-end cell with a single open neighbour must also have a
         perpendicular open neighbour. Isolated single cells and grids with no
-        walls are not streets and are exempt, as are wall fragments used for
-        internal unit tests that contain no Streetcode instructions.
+        walls are not streets and are exempt.
 
         Note that a blank row or column is a lane: space is a drivable no-op,
         so an instruction row paired with a blank row is a legal two-wide
         street.
 
-        The check rejects one-wide streets; it deliberately does not require
-        streets to be exactly two wide.  Measuring the upper bound would mean
-        telling a three-lane corridor apart from a junction mouth, a room, or
-        a ring on an arbitrary drawn grid, and a rule eager enough to do that
-        rejects valid programs -- the worse failure, as the street-width
-        section of ``docs/roadmap.md`` explains.
+        The upper bound is enforced too: a street wider than two lanes is
+        rejected.  Cross-section runs cannot measure this -- where two legal
+        two-wide streets cross, a run through the intersection reports the
+        *length* of the crossing street, not any width -- so the rule is a
+        fully open three-by-three block instead.  A region wider than two in
+        both directions must contain one; a two-wide network never does,
+        because a crossing is a plus whose open centre is two-by-two with
+        walls at the diagonal corners.  A three-by-two room therefore passes:
+        it is a two-wide street of length three seen sideways, which is the
+        deliberate boundary of the rule.
         """
         # No walls → not a street network (e.g. ["C","U"] or ["C"])
         if not any(ch in _WALLS for row in self.grid for ch in row):
-            return
-        # No Streetcode instructions → wall fragment for internal tests
-        # (C is the start marker, not an instruction).  This is a deliberate
-        # escape hatch, and it is content sniffing rather than geometry: a
-        # genuinely one-wide program that happens to contain no instruction
-        # is exempted too.  Such a program cannot execute anything, so the
-        # exemption costs nothing beyond the missed diagnostic, and it keeps
-        # the wall-shape fixtures in the test suite constructible.
-        if not any(ch in "^~=_IOU;" for row in self.grid for ch in row):
             return
         # BFS reachable open cells from C (open = not a wall)
         from collections import deque
@@ -282,6 +276,8 @@ class _Machine:
                 raise ValueError(f"not two-wide at {(r, c)} (vertical)")
             if e and w2 and not (n or s):
                 raise ValueError(f"not two-wide at {(r, c)} (horizontal)")
+            if all(self._open(r + dr, c + dc) for dr in (0, 1, 2) for dc in (0, 1, 2)):
+                raise ValueError(f"not two-wide at {(r, c)} (wider than two)")
 
     def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
         """Detect a road opening off ``side`` of the car, or ``None``.
