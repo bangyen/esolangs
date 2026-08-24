@@ -341,18 +341,31 @@ class TestGeneratorRoundTrips:
         for text in ("A", "Hi", "Hello, World!", "The quick brown fox"):
             assert gen.laserfuck(text) == gen.laserfuck(text, None)
 
-    def test_laserfuck_loop_form_ignores_a_width(self) -> None:
-        """A loop program is emitted wide rather than made several times larger.
+    def test_laserfuck_loop_form_falls_back_to_fit_a_width(self) -> None:
+        """A loop program too wide for the width is re-emitted as linear.
 
         The looping form's frame carries bracket markers whose *columns* the
         mirror cells below and the serpentine's connector are derived from,
-        so it cannot be folded the way a straight run can.  Falling back to
-        the linear form would fit the width but costs several times the
-        program size, so the width is ignored here.
+        so it cannot be folded the way a straight run can.  The width is a
+        bound rather than a hint, so the only way to honour it is the linear
+        form -- several times larger, but foldable.
         """
         text = "Hello, World!"  # takes the loop branch
-        assert gen.laserfuck(text, 80) == gen.laserfuck(text)
-        assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) > 80
+        loop = gen.laserfuck(text)
+        assert max(len(ln) for ln in loop.split("\n")) > 80
+
+        bounded = gen.laserfuck(text, 80)
+        assert max(len(ln) for ln in bounded.split("\n")) <= 80
+        assert bounded != loop
+        assert len(bounded) > len(loop)  # the trade the fallback makes
+
+    def test_laserfuck_keeps_the_loop_form_when_it_fits(self) -> None:
+        """A width the loop form already satisfies leaves it untouched."""
+        text = "Hello, World!"
+        loop = gen.laserfuck(text)
+        widest = max(len(ln) for ln in loop.split("\n"))
+        assert gen.laserfuck(text, widest) == loop
+        assert gen.laserfuck(text, widest + 40) == loop
 
     def test_clockwise_keeps_the_square_when_it_fits(self) -> None:
         """A width the square already satisfies does not distort the shape."""

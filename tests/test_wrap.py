@@ -17,7 +17,7 @@ from contextlib import redirect_stdout, suppress
 
 import pytest
 
-from esolangs import generate
+from esolangs import generate, run
 from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
@@ -46,8 +46,14 @@ TEXT = "Hello, World!"
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
     "dig": "2D: newlines separate rows",
-    "laserfuck": "2D: the loop layout is tied to the beam's track",
 }
+
+# LaserFuck is 2D too, and wrap_program must not touch it either -- but it
+# honours a width itself: the loop layout is tied to the beam's track and
+# cannot fold, so a loop program wider than the width is re-emitted as the
+# (foldable) linear form.  Hence it belongs with Clockwise and the others
+# above rather than in UNWRAPPABLE.
+WIDTH_HONOURING = {"laserfuck": "falls back to the foldable linear form"}
 
 WRAPPED = sorted(
     name
@@ -173,6 +179,26 @@ def test_unwrappable_languages_are_untouched(name: str) -> None:
     assert language.id not in WRAPPERS, UNWRAPPABLE[name]
     if language.generator:
         assert generate(language.name, TEXT, 40) == generate(language.name, TEXT)
+
+
+@pytest.mark.parametrize("name", sorted(WIDTH_HONOURING))
+def test_width_honouring_languages_respect_the_width(name: str) -> None:
+    """A generator that lays itself out really does fit the width given.
+
+    ``wrap_program`` cannot help these -- their newlines are layout -- so
+    the width has to be honoured by the generator, and omitting it still
+    has to reproduce the compact form it always gave.
+    """
+    language = next(lang for lang in LANGUAGES.values() if lang.id == name)
+    assert language.id not in WRAPPERS, WIDTH_HONOURING[name]
+    unbounded = generate(language.name, TEXT)
+    for width in (40, 80, 94):
+        program = generate(language.name, TEXT, width)
+        assert max(map(len, program.split("\n"))) <= width
+        assert run(language.name, program) == TEXT
+    # a width the compact form already fits leaves it exactly as it was
+    wide = max(map(len, unbounded.split("\n")))
+    assert generate(language.name, TEXT, wide) == unbounded
 
 
 @pytest.mark.parametrize("name", WRAPPED)
