@@ -1,26 +1,17 @@
 """Interpreter for Streetcode.
 
-A car drives along a 2D network of two-way, two-character-wide streets,
-executing the instruction under it at every cell.  Memory is an unbounded
-list of signed integer cells indexed by an unsigned, right-unbounded cell
-pointer (CP), starting at 0.  ``^``/``~`` increment/decrement the CPth cell;
-``=``/``_`` move CP right/left; ``I``/``O`` read/write the CPth cell as a
-character; ``U`` turns the car around, into the opposite lane; ``;``
-halts; space is a no-op.  Any
-other character (including the box-drawing characters the wiki's diagrams
-use to illustrate street shape) is treated like space -- a no-op the car
-simply drives over; only ``+``, ``-``, and ``|`` are walls.
+A car drives a 2D network of two-way, two-character-wide streets, running
+the instruction under it at every cell; memory is an unbounded list of
+signed integer cells under an unsigned cell pointer (CP).
 
-The wiki page (https://esolangs.org/wiki/Streetcode) does not spell out the
-concrete geometry behind "drive on the right-hand side" or its
-leftmost/second-leftmost "ambiguous turn" rule, so this interpreter models
-movement as right-hand-rule wall-following, making the spec's real choice
-only where the local wall shape marks an actual intersection.  The full
-interpretation -- the wall-following rule, initial heading, how a road mouth
-and a crossing mouth are recognized, and the two-phase lane merge
-(``_merge_target``/``_merging_heading`` in ``_choose_heading``) -- is
-documented in ``docs/streetcode.md``, with the reasoning, the wiki examples
-corroborating each rule, and the questions that remain open.
+``docs/streetcode.md`` is the spec of record for this interpreter and is
+not repeated here: it carries the language summary, and -- since the
+`wiki page <https://esolangs.org/wiki/Streetcode>`_ never spells out the
+geometry behind "drive on the right-hand side" or its
+leftmost/second-leftmost "ambiguous turn" rule -- the full movement
+interpretation (right-hand-rule wall-following, initial heading, road and
+crossing mouths, and the two-phase lane merge), with the wiki examples
+corroborating each rule and the questions that remain open.
 
 Runtime error contract:
 
