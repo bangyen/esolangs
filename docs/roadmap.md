@@ -413,22 +413,55 @@ dead end, or an opposite pair (N+S or E+W) with no perpendicular
 neighbour -- in each case there is no second lane.  Note that a blank row
 or column counts as a lane, since space is a drivable no-op.
 
-What it deliberately does **not** do is enforce the upper bound: a
-corridor three or more lanes wide is malformed per the spec but is
-accepted.  Detecting that would mean telling a wide corridor apart from a
-junction mouth, a room, or a ring on an arbitrary drawn grid, and a rule
-eager enough to do so would reject valid programs -- the worse failure,
-since a too-narrow street the car merely drives along is harmless while a
-rejected valid program cannot run at all.  Two narrower exemptions come
-with the same reasoning: a grid with no walls is not a street network to
-measure, and a grid with walls but no instruction characters is treated
-as a drawing (the wall-shape fixtures the interpreter's own unit tests
-build), which does mean a one-wide program containing no instruction is
-exempt too -- it can execute nothing regardless.
+The upper bound is enforced too: a street wider than two lanes is
+rejected.  Cross-section runs cannot measure this -- where two legal
+two-wide streets cross, a run through the intersection reports the
+*length* of the crossing street, not any width -- so the rule is a fully
+open three-by-three block, which a region wider than two in both
+directions must contain and a two-wide network never does (a crossing is
+a plus whose open centre is two-by-two, with walls at the diagonal
+corners).  A three-by-two room passes, the deliberate boundary of the
+rule: it is a two-wide street of length three seen sideways.
 
-The residual `HaltError` path remains for those exemptions: a `U` with no
-lane on the car's new right has nowhere legal to end its turn, which is
-what the bare `CU` grid still hits.
+One exemption remains: a grid with no walls is not a street network to
+measure, so the bare `CU` still constructs and reaches the residual
+`HaltError` path, where a `U` with no lane on the car's new right has
+nowhere legal to end its turn.  The earlier "no instruction characters"
+exemption is gone -- it was content sniffing rather than geometry.  The
+wall-shape fixtures that relied on it now disable validation explicitly
+through a test-local helper, keeping the escape hatch out of the
+interpreter.
+
+### Wall-structure validation: attempted, not adopted
+
+Street width does not catch every malformed drawing.  A wall with a
+one-cell hole punched through it (`-- --`) leaves a gap too narrow to
+drive, yet the corridor either side of it still measures two wide.  That
+shape is real: it is how the boolean generator's one-input CP-rewind
+strip was found to be drawn one character wide.
+
+A guard was prototyped requiring every reachable cell's three-by-three
+neighbourhood to match one of three forms up to rotation -- an outer
+corner, a wall running alongside, and a lone wall character at a corner.
+It is clean on both shipped examples and on all 256 generated truth
+tables, and it rejects the hole in both orientations.  It was **not**
+adopted, because it rejects the wiki's own worked examples: they need
+eleven further shapes (inner corners, corridors walled on both sides,
+and the infinite cat's one-wide `|I|`/`|O|` room, which is itself
+narrower than the spec's two characters).  Each shape added makes the
+rule less a principle and more a table fitted to a corpus that does not
+agree with itself, so the geometry the wiki draws is taken as
+authoritative and the check is left out.  The generator bug it found was
+fixed directly instead.
+
+### Do road dividers have to end in a `+`?
+
+The wiki does not say, and the interpreter deliberately does not decide.
+The hello-world example draws dividers whose open end is a bare `-`, with
+no `+` capping it; nothing in the driving rules keys on such an end being
+a `+`, and the example runs correctly, so there is no concrete reason to
+reject the shape.  The resolution is therefore permissive: an uncapped
+divider end is accepted, and no validation rejects it.
 
 Coverage lives in `TestStreetcodeStreetWidth` in
 `tests/interpreters/test_streetcode.py`, which pins both the rejected

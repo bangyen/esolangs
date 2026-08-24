@@ -264,6 +264,17 @@ still echoes every character correctly under the rule.
 
 ## Still open
 
+- **Must a road divider end in a `+`?** Undecided by the wiki, and
+  deliberately not decided here.  The hello-world example draws its
+  dividers with a bare `-` at the open end (`+  --------`), uncapped;
+  the boolean example and the generator cap theirs with a `+`.  Nothing
+  in the driving rules keys on which it is, and hello-world runs
+  correctly either way, so there is no concrete reason to reject the
+  uncapped shape.  The interpreter takes the permissive reading: an
+  uncapped end is accepted, and no validation rejects it.  A wall
+  *interrupted* by a one-cell hole is a different shape and a real
+  defect -- one was found in the boolean generator -- but see
+  `docs/roadmap.md` for why the check that found it was not adopted.
 - **Does plain-corner wall-hugging (the single-cell step case, not a
   detected junction) also need lane-landing?** No evidence demands it --
   the hand-drawn trace above only exercises the junction-turn case, and
