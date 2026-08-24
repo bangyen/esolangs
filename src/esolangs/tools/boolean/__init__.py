@@ -172,6 +172,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "Decleq",
         "Eval",
         "Factor",
+        "Flowchart",
         "Forbin",
         "Forþ",
         "Grapheme",
