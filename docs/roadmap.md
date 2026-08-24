@@ -86,9 +86,11 @@ remaining possibility is that the diagram simply does not produce the
 Kolakoski sequence as drawn; confirming that needs the author, so a
 talk-page question is the cheapest next step.
 
-**Circuit Diagram is implemented**, its judgment calls derived in the module
-docstring of `src/esolangs/interpreters/grid_based/circuit_diagram.py`.
-Three findings from building it are worth keeping here.
+**Circuit Diagram is implemented**, interpreter and boolean generator both,
+their judgment calls derived in the module docstrings of
+`src/esolangs/interpreters/grid_based/circuit_diagram.py` and
+`src/esolangs/tools/boolean/circuit_diagram.py`.  Four findings from
+building them are worth keeping here.
 
 **The page's prime tester is drawn with five characters missing.**  Its only
 worked example has two OR gates whose second input no gate drives, so as
@@ -110,6 +112,38 @@ wiring never shows a Null after a 1.  Values are therefore events lasting
 one generation, and gates bridge them with a latch per input slot, which is
 what the spec's "the gate waits until the other input comes" sentence asks
 for.  All three of the page's circuits work under that model.
+
+**The generator is a real gate network, and its geometry is the work.**  A
+truth table is the language's native idiom, so the boolean generator emits
+a sum of minterms — one `-` input line per bit, a bus per literal, an `a`
+chain per minterm, an `o` chain combining them, `:` printing the answer —
+rather than the decision tree the other 2D generators build.  Three things
+about the layout only became clear by getting them wrong:
+
+- **Crossings are the idiom, not a hazard.**  A network where every input
+  feeds every minterm is not planar, so wires must cross; a first attempt
+  that banned `=` could not be made to work at any spacing.  The spec's
+  crossover connects "opposite wires", so one `=` carries a horizontal and
+  a vertical signal past each other in separate wirings — confirmed against
+  the interpreter.  The generator therefore models wire segments and
+  renders each cell from its coverage, rather than painting in draw order.
+- **A gate's columns must be clear of every bus.**  A bus running down
+  through a gate's input junction carries that gate's own output back to
+  its input, and a wiring may not touch both, so gates reserve their input,
+  glyph, and output columns together.
+- **Fan-out is free; driving twice is not.**  A bus tapped by many gates is
+  still one wiring with one driver, so each input's `~` is computed once
+  and shared.  A second *driver* would XOR into the value and make `:`
+  print again, so the tests assert every run prints exactly one character —
+  the cheapest detector for both a double drive and two junctions merging
+  through the eight-way `.`.
+
+The generator is verified by replaying its output through the interpreter
+over each table's whole input space: all sixteen two-input functions, all
+four one-input ones, five three-input tables, and the four-input primality
+table — the same function the wiki's hand-drawn prime tester computes,
+reached as a sum of minterms rather than its product of sums, so the two
+constructions agree on all sixteen inputs.
 
 **Out of scope, and why.**  User-defined functions (`{name ... }`), the
 constant sources `(` and `)`, the wire-removal function `{%`, the clock `t`,
@@ -153,7 +187,7 @@ stand alone — see `docs/limitations.md` for the removed cases and the
 criteria.  The interpreter-only languages with no text generator but a
 working, uncapped boolean generator (Back, BF-PDA, Bitdeque,
 Jaune, Lamfunc, Minsky Swap, RAM0, Grapheme, A Painter Ant, ArrowQueue,
-Streetcode, Flowchart) are
+Streetcode, Flowchart, Circuit Diagram) are
 **not** candidates: they participate fully in the repo's verification
 machinery via the boolean generator, and their only weakness is an
 interpreter-invented state dump where the wiki defines no text output.
@@ -232,6 +266,17 @@ specific bug motivates one.  Clockwise and 3D Brainfuck sit in the same
 class: Clockwise's 2D routing is one fixed ring shape (only the ring size
 and the parity pattern vary with the text), and 3D Brainfuck's generator is
 the brainfuck generator's output with ``>``/``<`` renamed to ``n``/``s``.
+
+**Circuit Diagram is unassessed on this axis.**  Its generator's output is
+not a fixed pattern — the gate network's shape, its crossovers, and its
+fan-out all vary with the truth table — so it does not belong in the
+borderline class above, and on the toolchain rule a 2D grid model would go
+to Rust.  What holds it back from the worth-adding table is that its
+verification is already unusually strong without one: the generator is
+replayed through the interpreter over each table's *entire* input space, so
+a random differential would mostly re-cover ground the exhaustive replay
+already covers.  Worth revisiting only if a concrete bug suggests the two
+implementations could disagree somewhere the replay does not reach.
 
 ## RISC-V assembly compilers
 
