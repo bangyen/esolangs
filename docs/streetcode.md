@@ -273,8 +273,9 @@ still echoes every character correctly under the rule.
   uncapped shape.  The interpreter takes the permissive reading: an
   uncapped end is accepted, and no validation rejects it.  A wall
   *interrupted* by a one-cell hole is a different shape and a real
-  defect -- one was found in the boolean generator -- but see
-  `docs/roadmap.md` for why the check that found it was not adopted.
+  defect -- one was found in the boolean generator -- and is rejected by
+  the wall-structure forms described in `docs/roadmap.md`, which are
+  written to leave the uncapped end legal while catching the hole.
 - **Does plain-corner wall-hugging (the single-cell step case, not a
   detected junction) also need lane-landing?** No evidence demands it --
   the hand-drawn trace above only exercises the junction-turn case, and
