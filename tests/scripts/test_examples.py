@@ -28,7 +28,7 @@ from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATE
 from esolangs.tools.boolean.examples import HAND_WRITTEN
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
-BASE_DIR = Path(__file__).parent.parent
+BASE_DIR = Path(__file__).parents[2]
 EXAMPLES_DIR = BASE_DIR / "examples" / "hello-world"
 
 

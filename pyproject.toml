@@ -104,7 +104,7 @@ ignore = [
 "tests/**/*.py" = ["D", "N802"]
 # Parametrized tests share a (program, stdin) battery; some tests only use
 # program, but pytest requires the parameter to be declared.
-"tests/test_transpilers.py" = ["ARG001"]
+"tests/tools/test_transpilers.py" = ["ARG001"]
 
 [tool.mypy]
 strict = true

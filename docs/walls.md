@@ -635,7 +635,7 @@ length), at the cost of stepping up to ~2x past the cycle's start before
 returning — callers only get the True/False verdict, not the machine's
 state at the moment of detection.
 
-`tests/test_interpreters_robustness.py` decides the empty-program invariant
+`tests/fuzz/test_interpreters_robustness.py` decides the empty-program invariant
 by state-cycle detection for forty-eight string-based step-capable
 machines (brainfuck, S*bleq, Dimensional, 123, Eval, Modulous, Qoibl,
 Point Break, Forþ, AddSubJump, Bitdeque, BrainIf, Minifuck, Taglate,

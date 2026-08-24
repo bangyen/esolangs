@@ -272,7 +272,7 @@ def test_no_width_is_unchanged(name: str) -> None:
     """Omitting the width reproduces exactly what the generator always gave.
 
     This is what keeps the committed examples byte-identical: the sync
-    tests in ``tests/test_examples.py`` call the generators with no width.
+    tests in ``tests/scripts/test_examples.py`` call the generators with no width.
     """
     lang = LANGUAGES[name]
     assert lang.generator is not None
