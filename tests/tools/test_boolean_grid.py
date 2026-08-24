@@ -687,3 +687,102 @@ class TestWII2D:
         template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
         for bit, expected in ((0, "5"), (1, "6")):
             assert self.run_chain(template, [bit]) == expected
+
+
+class TestCircuitDiagram:
+    """The Circuit Diagram generator (a real gate network, input-reading).
+
+    Circuit Diagram draws boolean circuits, so a truth table is its native
+    idiom and the generator is a sum of minterms rather than a decision
+    tree: ``n`` input lines, a bus per literal, an ``a`` chain per minterm,
+    an ``o`` chain combining them, and a ``:`` that prints the answer.
+
+    Every assertion here replays the generated program through the real
+    interpreter over the table's *whole* input space, which is what makes
+    the layout trustworthy: a wire that merges into its neighbour or a gate
+    fed a generation late shows up as a wrong bit, and no static check on
+    the ASCII would catch either.
+    """
+
+    @staticmethod
+    def run_table(table: str) -> str:
+        """Return the generated program's output for every input, in order."""
+        from esolangs.interpreters.grid_based.circuit_diagram import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        n = len(table).bit_length() - 1
+        program = circuit_diagram(table).split("\n")
+        results = []
+        for index in range(len(table)):
+            bits = format(index, f"0{n}b")
+            stdin = "".join(f"{bit}\n" for bit in bits)
+            io = ScriptedIO(stdin)
+            run(program, io)
+            results.append(io.getvalue())
+        return "".join(results)
+
+    @pytest.mark.parametrize("table", [format(i, "04b") for i in range(16)])
+    def test_every_two_input_table(self, table: str) -> None:
+        """All sixteen two-input functions, each over all four inputs."""
+        assert self.run_table(table) == table
+
+    @pytest.mark.parametrize("table", ["01", "10", "00", "11"])
+    def test_every_one_input_table(self, table: str) -> None:
+        assert self.run_table(table) == table
+
+    @pytest.mark.parametrize(
+        "table",
+        ["00010111", "01101001", "11110000", "00000000", "11111111"],
+    )
+    def test_three_input_tables(self, table: str) -> None:
+        """Majority, parity, a projection, and both constants."""
+        assert self.run_table(table) == table
+
+    def test_four_input_primality(self) -> None:
+        """The same function the wiki's own worked example computes.
+
+        The wiki's prime tester is a hand-drawn product of sums; this is the
+        generator's sum of minterms for the same table, so the two agree on
+        every one of the sixteen inputs by different constructions.
+        """
+        primes = {n for n in range(2, 16) if all(n % d for d in range(2, n))}
+        table = "".join("1" if n in primes else "0" for n in range(16))
+        assert self.run_table(table) == table
+
+    def test_each_run_prints_exactly_one_bit(self) -> None:
+        """The output wire is live for exactly one generation.
+
+        A ``:`` prints in every generation its wire carries a value, so a
+        second driver on any wiring -- or two wirings merged by adjacent
+        junctions -- would show up as extra characters even when the value
+        happens to be right.
+        """
+        from esolangs.interpreters.grid_based.circuit_diagram import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        for table in ("0001", "0110", "00010111"):
+            n = len(table).bit_length() - 1
+            program = circuit_diagram(table).split("\n")
+            for index in range(len(table)):
+                stdin = "".join(f"{b}\n" for b in format(index, f"0{n}b"))
+                io = ScriptedIO(stdin)
+                run(program, io)
+                assert len(io.getvalue()) == 1
+
+    def test_input_lines_start_with_a_dash(self) -> None:
+        """Each bit arrives on its own line, which the spec makes an input."""
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        rows = circuit_diagram("00010111").split("\n")
+        starts = [row for row in rows if row.startswith("-")]
+        assert len(starts) == 3
+
+    def test_a_malformed_table_is_rejected(self) -> None:
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        with pytest.raises(ValueError, match="power-of-two"):
+            circuit_diagram("010")
+        with pytest.raises(ValueError, match="only '0' and '1'"):
+            circuit_diagram("012x")
