@@ -265,6 +265,30 @@ class TestGeneratorRoundTrips:
             row = len("C" + "^" * ord(char) + "O;") + 2
             assert len(gen.streetcode(char)) < 4 * row
 
+    @pytest.mark.parametrize(
+        "text",
+        ["H", "a", "!", "\x01", "Hi", "zyA", "Hello, World!", "Ω", "€Ā"],
+    )
+    def test_streetcode_emits_the_shorter_of_ring_and_street(self, text: str) -> None:
+        """Whichever shape is smaller is what comes out.
+
+        The generator builds both the ring and the straight street and
+        picks by length rather than predicting the winner from the first
+        code point, so neither shape can be emitted while the other one
+        would have been shorter.
+        """
+        from esolangs.tools.text.other import (
+            _streetcode_instructions,
+            _streetcode_ring,
+            _streetcode_straight,
+        )
+
+        straight = _streetcode_straight(_streetcode_instructions(text))
+        ring = _streetcode_ring(text)
+        shortest = straight if ring is None else min((ring, straight), key=len)
+        assert gen.streetcode(text) == shortest
+        assert roundtrip(streetcode_run, gen.streetcode(text).splitlines()) == text
+
     @pytest.mark.parametrize("width", [5, 6, 10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!", "zyA"])
     def test_streetcode_fold_corridor_is_two_wide(self, text: str, width: int) -> None:
