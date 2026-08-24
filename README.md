@@ -26,6 +26,9 @@ program file from the first command-line argument.
 Planned work is tracked in [`docs/roadmap.md`](docs/roadmap.md); documented
 limitations and ruled-out ideas live in [`docs/limitations.md`](docs/limitations.md),
 with the full wall arguments in [`docs/walls.md`](docs/walls.md).
+Annotated example programs — one per state model (tape, stack, OISC, and 2D
+grid), each traced command by command — are in
+[`docs/walkthroughs/`](docs/walkthroughs/).
 
 ## Usage
 
