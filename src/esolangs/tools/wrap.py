@@ -45,6 +45,15 @@ queue and the rest are commands, so its wrapper keeps that seed on its own
 row and folds only what follows.  :data:`MULTILINE` names the languages
 whose wrappers handle their own newlines that way.
 
+Most wrappers only decide *where* the newlines go.  :func:`wrap_grid` also
+decides where the tokens sit within a line: the subleq-family OISCs
+(AddSubJump, Decleq, S*bleq) have uniform-width numeric tokens, so padding
+each into a cell and right-aligning it lines the columns up between rows,
+which is what makes a diff of one readable.  It is opt-in for the same
+reason wrapping is -- Polynomial is space-delimited too, but its tokens run
+from 1 to 98 characters, and padding those to a common width would be
+nonsense.
+
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
 generators and the public API call.
@@ -69,6 +78,83 @@ def wrap_space_delimited(program: str, width: int) -> str:
     breaking it would change the program.
     """
     return _join_tokens(program.split(), width, separator=" ")
+
+
+def wrap_grid(program: str, width: int) -> str:
+    """Wrap a whitespace-delimited program into a right-aligned grid.
+
+    The subleq-family OISCs (AddSubJump, Decleq, S*bleq) are the numeric
+    languages whose tokens are all about the same size: an address, an
+    operand, a jump target.  Packing those with a single space, the way
+    :func:`wrap_space_delimited` does, leaves the columns ragged, so
+    nothing lines up between one row and the next even though every row
+    holds the same kind of field.  Padding each token to a common cell
+    width and right-aligning it inside that cell makes the columns line up
+    vertically, which is what makes a diff of one readable: a changed
+    operand stays in its column instead of shifting every token after it.
+
+    The cell width is :func:`_cell_width` of the program's own tokens, so
+    it follows the program rather than being fixed.  A token too wide for
+    one cell spans as many whole cells as it needs (see :func:`_span`)
+    instead of pushing the rest of its row out of alignment -- every later
+    token on the row still starts on a cell boundary.  Such a token never
+    straddles a row boundary; it starts a new row if the current one
+    cannot hold its span.
+
+    Right-aligning pads on the left, so no line ever carries trailing
+    whitespace.  The interpreters split on whitespace *runs*
+    (:func:`~esolangs.interpreters.memory.parse_int_memory`, and S*bleq's
+    own ``code.split()``), so the padding is invisible to them and the
+    program means exactly what it did unpadded.
+    """
+    tokens = program.split()
+    if not tokens:
+        return program
+    cell = _cell_width(tokens)
+    # A row of k cells is k cells plus the k-1 single spaces between them.
+    per_row = max(1, (width + 1) // (cell + 1))
+    lines: list[str] = []
+    row: list[str] = []
+    used = 0
+    for token in tokens:
+        span = _span(len(token), cell)
+        if row and used + span > per_row:
+            lines.append(" ".join(row))
+            row, used = [], 0
+        # A token spanning k cells is right-aligned across the whole span:
+        # its k cells plus the k-1 separators they absorb.
+        row.append(token.rjust(span * cell + span - 1))
+        used += span
+    if row:
+        lines.append(" ".join(row))
+    return "\n".join(lines)
+
+
+def _cell_width(tokens: list[str]) -> int:
+    """Return the cell width the bulk of ``tokens`` fits in.
+
+    The widest token is not always the right cell width: Decleq's boolean
+    program is 321 tokens of three characters or fewer alongside four
+    ten-character jump sentinels, and sizing every cell to the sentinel
+    would pad the whole file out to seven sparse columns.  So an outlier is
+    dropped while it is at least twice the next distinct width, and the
+    tokens that remain set the width; the dropped ones span several cells
+    instead.
+    """
+    widths = sorted({len(token) for token in tokens}, reverse=True)
+    while len(widths) > 1 and widths[0] >= 2 * widths[1]:
+        widths.pop(0)
+    return widths[0]
+
+
+def _span(length: int, cell: int) -> int:
+    """Return how many whole cells a token of ``length`` characters needs.
+
+    A span of ``k`` cells holds ``k * cell`` characters plus the ``k - 1``
+    separators it absorbs, so the token fits when
+    ``length <= k * (cell + 1) - 1`` -- hence the ceiling below.
+    """
+    return max(1, -(-(length + 1) // (cell + 1)))
 
 
 def wrap_tokens(program: str, width: int, pattern: str) -> str:
@@ -169,9 +255,9 @@ def _taglate(program: str, width: int) -> str:
 # model makes character position meaningful (ROTfuck).  See the module
 # docstring for why each exclusion is an exclusion.
 WRAPPERS = {
-    "addsubjump": wrap_space_delimited,
-    "decleq": wrap_space_delimited,
-    "sbleq": wrap_space_delimited,
+    "addsubjump": wrap_grid,
+    "decleq": wrap_grid,
+    "sbleq": wrap_grid,
     "polynomial": wrap_space_delimited,
     "bitdeque": wrap_space_delimited,
     "bio": _bio,
