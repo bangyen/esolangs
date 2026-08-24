@@ -195,6 +195,105 @@ def _fuzz_text(name, generator, native, python, rng, count):
     return failures, checked
 
 
+def _verify_asm(name: str, riscv_name: str, corpus, run_python) -> bool:
+    """Compare a Python interpreter against its RISC-V cross-check on ``corpus``.
+
+    ``name`` is the display label, ``riscv_name`` the reference key passed to
+    :func:`_asm_refs`, and ``run_python(program)`` the in-package interpreter
+    returning ``(output, exit_code)``.  The reference is run under unicorn,
+    which needs unicorn and a RISC-V cross-compiler; a missing toolchain is
+    skipped (reported as success), not failed.  A reference that faults is
+    folded into ``(b"", 1)`` so a divergence still prints rather than passing
+    silently.
+    """
+    if not _asm_refs_ready(riscv_name):
+        return True
+
+    failures = 0
+    for program in corpus:
+        ref = _asm_refs(riscv_name, program)
+        py_out, py_code = run_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
+        if (asm_out, asm_code) != (py_out, py_code):
+            failures += 1
+            print(
+                f"{name} {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}"
+            )
+
+    if not failures:
+        print(f"{name} differential: {len(corpus)} programs match")
+    return failures == 0
+
+
+def _fuzz_asm(
+    name: str,
+    riscv_name: str,
+    gen_program,
+    run_limited,
+    rng: random.Random,
+    count: int,
+) -> bool:
+    """Differentially fuzz one assembly-backed language with random programs.
+
+    ``gen_program(rng)`` draws a program and ``run_limited(program, timeout)``
+    runs the Python interpreter under a wall-clock budget, returning None for
+    "did not terminate".  The reference reports the same way when it exhausts
+    its instruction-count cap or writes past a fixed buffer, so both sides
+    looping is agreement, not a failure; one side halting while the other
+    loops is a divergence.  A Python-only timeout is re-checked with a longer
+    budget first, since the 3s budget is a heuristic and the assembly is far
+    faster.
+    """
+    if not _asm_refs_ready(riscv_name):
+        return True
+
+    failures = checked = loops = 0
+    for _ in range(count):
+        program = gen_program(rng)
+        py = run_limited(program, timeout=3)
+        asm = _asm_refs(riscv_name, program)
+        if py is None and asm is None:
+            loops += 1
+            continue
+        if py is None and asm is not None:
+            py = run_limited(program, timeout=30)
+        if py is None or asm is None:
+            failures += 1
+            print(
+                f"{name} fuzz {program!r}: termination mismatch "
+                f"(python {'loops' if py is None else 'halts'}, "
+                f"asm {'loops' if asm is None else 'halts'})"
+            )
+            continue
+        checked += 1
+        if py != asm:
+            failures += 1
+            print(f"{name} fuzz {program!r}: asm={asm!r} py={py!r}")
+
+    print(
+        f"{name} fuzz: {checked} programs match, {loops} consistent loops"
+        if not failures
+        else f"{name} fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    )
+    return failures == 0
+
+
+def _random_program(alphabet: str, max_len: int):
+    """Return a generator drawing a random ``alphabet`` program up to ``max_len``.
+
+    The draws are ordered length-then-characters to match the per-language
+    fuzzers this replaces, so a given seed produces the same corpus as before.
+    """
+
+    def gen(rng: random.Random) -> str:
+        return "".join(rng.choice(alphabet) for _ in range(rng.randint(0, max_len)))
+
+    return gen
+
+
 # Error messages the Basicfuck reference prints to stdout before exiting;
 # stripped so only the program's own output is compared.
 _CPP_ERRORS = (
@@ -546,27 +645,9 @@ def _verify_nocomment() -> bool:
     implementations error on non-commands, stack underflow, and out-of-range
     jumps, and must agree on the valid-program corpus.
     """
-    if not _asm_refs_ready("nocomment"):
-        return True
-
-    failures = 0
-    for program in NOCOMMENT_CORPUS:
-        ref = _asm_refs("nocomment", program)
-        py_out, py_code = _run_nocomment_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(
-                f"NoComment {program!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)}"
-            )
-
-    if not failures:
-        print(f"NoComment differential: {len(NOCOMMENT_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm(
+        "NoComment", "nocomment", NOCOMMENT_CORPUS, _run_nocomment_python
+    )
 
 
 def _run_bfpda_python(program: str) -> tuple[bytes, int]:
@@ -655,26 +736,7 @@ def _verify_bfpda() -> bool:
     is missing.  Both implementations error on empty programs and unbalanced
     brackets, and must agree on the valid-program corpus.
     """
-    if not _asm_refs_ready("bfpda"):
-        return True
-
-    failures = 0
-    for program in BFPDA_CORPUS:
-        ref = _asm_refs("bfpda", program)
-        py_out, py_code = _run_bfpda_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(
-                f"BF-PDA {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}"
-            )
-
-    if not failures:
-        print(f"BF-PDA differential: {len(BFPDA_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm("BF-PDA", "bfpda", BFPDA_CORPUS, _run_bfpda_python)
 
 
 def _run_ram0_python(program: str) -> tuple[bytes, int]:
@@ -752,24 +814,7 @@ def _verify_ram0() -> bool:
     is missing.  Both implementations tokenize the same way, dump the same
     insertion-order state, and must agree on the valid-program corpus.
     """
-    if not _asm_refs_ready("ram0"):
-        return True
-
-    failures = 0
-    for program in RAM0_CORPUS:
-        ref = _asm_refs("ram0", program)
-        py_out, py_code = _run_ram0_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(f"RAM0 {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}")
-
-    if not failures:
-        print(f"RAM0 differential: {len(RAM0_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm("RAM0", "ram0", RAM0_CORPUS, _run_ram0_python)
 
 
 def _run_bio_python(program: str) -> tuple[bytes, int]:
@@ -860,24 +905,7 @@ def _verify_bio() -> bool:
     lazily on the same control-flow path, and must agree on the
     valid-program and error-category corpus.
     """
-    if not _asm_refs_ready("bio"):
-        return True
-
-    failures = 0
-    for program in BIO_CORPUS:
-        ref = _asm_refs("bio", program)
-        py_out, py_code = _run_bio_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(f"BIO {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}")
-
-    if not failures:
-        print(f"BIO differential: {len(BIO_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm("BIO", "bio", BIO_CORPUS, _run_bio_python)
 
 
 def _run_minsky_swap_python(program: str) -> tuple[bytes, int]:
@@ -964,27 +992,12 @@ def _verify_minsky_swap() -> bool:
     way and give each `~` a fixed target independent of execution order,
     and must agree on the valid-program and error-category corpus.
     """
-    if not _asm_refs_ready("minsky_swap"):
-        return True
-
-    failures = 0
-    for program in MINSKY_SWAP_CORPUS:
-        ref = _asm_refs("minsky_swap", program)
-        py_out, py_code = _run_minsky_swap_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(
-                f"Minsky Swap {program!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)}"
-            )
-
-    if not failures:
-        print(f"Minsky Swap differential: {len(MINSKY_SWAP_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm(
+        "Minsky Swap",
+        "minsky_swap",
+        MINSKY_SWAP_CORPUS,
+        _run_minsky_swap_python,
+    )
 
 
 def _run_native(
@@ -1211,47 +1224,14 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     A program that halts on one side but loops on the other is a divergence
     (and the reason a seeded fuzzer is worth having).
     """
-    if not _asm_refs_ready("nocomment"):
-        return True
-
-    # The references' tape and stack live in a fixed mapped region below the
-    # program buffer; a program that loops (or extends the tape) long enough
-    # writes past it and unicorn raises UcError, which the runners fold into
-    # None.  That is a resource limit, the same class as the instruction-count
-    # cap: a matching Python loop is not a divergence.
-    alphabet = "idclrnfsbo"
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
-        py = _run_nocomment_python_limited(program, timeout=3)
-        asm = _asm_refs("nocomment", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_nocomment_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"NoComment fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"NoComment fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"NoComment fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"NoComment fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "NoComment",
+        "nocomment",
+        _random_program("idclrnfsbo", 30),
+        _run_nocomment_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 def _fuzz_bfpda(rng: random.Random, count: int) -> bool:
@@ -1263,42 +1243,14 @@ def _fuzz_bfpda(rng: random.Random, count: int) -> bool:
     times out under SIGALRM; ``None`` means "did not terminate" on that side.
     A program that halts on one side but loops on the other is a divergence.
     """
-    if not _asm_refs_ready("bfpda"):
-        return True
-
-    alphabet = "@.<>[]"
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
-        py = _run_bfpda_python_limited(program, timeout=3)
-        asm = _asm_refs("bfpda", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_bfpda_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"BF-PDA fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"BF-PDA fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"BF-PDA fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"BF-PDA fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "BF-PDA",
+        "bfpda",
+        _random_program("@.<>[]", 30),
+        _run_bfpda_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 def _fuzz_ram0(rng: random.Random, count: int) -> bool:
@@ -1311,46 +1263,14 @@ def _fuzz_ram0(rng: random.Random, count: int) -> bool:
     side.  A program that halts on one side but loops on the other is a
     divergence.
     """
-    if not _asm_refs_ready("ram0"):
-        return True
-
-    # The reference's RAM is a fixed mapped region; a program that pushes an
-    # address past it writes unmapped and unicorn raises UcError, which the
-    # runner folds into None.  That is a resource limit, the same class as
-    # the instruction-count cap: a matching Python loop is not a divergence.
-    alphabet = "ZANCLS123456789"
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
-        py = _run_ram0_python_limited(program, timeout=3)
-        asm = _asm_refs("ram0", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_ram0_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"RAM0 fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"RAM0 fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"RAM0 fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"RAM0 fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "RAM0",
+        "ram0",
+        _random_program("ZANCLS123456789", 30),
+        _run_ram0_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 def _fuzz_bio(rng: random.Random, count: int) -> bool:
@@ -1363,42 +1283,14 @@ def _fuzz_bio(rng: random.Random, count: int) -> bool:
     cycle); ``None`` means "did not terminate" on that side.  A program
     that halts on one side but loops on the other is a divergence.
     """
-    if not _asm_refs_ready("bio"):
-        return True
-
-    alphabet = "01OoIiXxYyZz{}; "
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 40)))
-        py = _run_bio_python_limited(program, timeout=3)
-        asm = _asm_refs("bio", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_bio_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"BIO fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"BIO fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"BIO fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"BIO fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "BIO",
+        "bio",
+        _random_program("01OoIiXxYyZz{}; ", 40),
+        _run_bio_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 def _gen_minsky_swap_program(rng: random.Random) -> str:
@@ -1429,41 +1321,14 @@ def _fuzz_minsky_swap(rng: random.Random, count: int) -> bool:
     means "did not terminate" on that side.  A program that halts on one
     side but loops on the other is a divergence.
     """
-    if not _asm_refs_ready("minsky_swap"):
-        return True
-
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = _gen_minsky_swap_program(rng)
-        py = _run_minsky_swap_python_limited(program, timeout=3)
-        asm = _asm_refs("minsky_swap", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_minsky_swap_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"Minsky Swap fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"Minsky Swap fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"Minsky Swap fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"Minsky Swap fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "Minsky Swap",
+        "minsky_swap",
+        _gen_minsky_swap_program,
+        _run_minsky_swap_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 # -- Forþ corpus: every command plus the error categories ------------------
