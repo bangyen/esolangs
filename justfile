@@ -11,7 +11,7 @@ CARGO_BIN := "$HOME/.cargo/bin"
 # Help
 help:
     @echo "Available targets:"
-    @echo "  lint-python  - Lint Python files with Black, Ruff, and MyPy"
+    @echo "  lint-python  - Lint Python files with Ruff and MyPy"
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
@@ -46,9 +46,11 @@ install-dev:
     git config core.hooksPath .githooks
 
 # lint python
+# The formatter is ruff-format, run via pre-commit (and so via `just test`);
+# `ruff check` here catches lint that formatting does not.
 lint-python:
-    {{PYTHON}} -m black --check .
     {{PYTHON}} -m ruff check .
+    {{PYTHON}} -m ruff format --check .
     {{PYTHON}} -m mypy src
 
 # Lint helpers.  Each target fails loudly when its tool is present and the
