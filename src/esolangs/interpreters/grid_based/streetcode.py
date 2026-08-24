@@ -67,6 +67,56 @@ _MOUTH_MAX_DIST = 3
 _MOUTH_MAX_DEPTH = 7
 
 
+def _rotate(form: tuple[str, ...]) -> tuple[str, ...]:
+    """Rotate a three-by-three form a quarter turn clockwise."""
+    return tuple(form[i] for i in (6, 3, 0, 7, 4, 1, 8, 5, 2))
+
+
+def _rotations(form: str) -> list[tuple[str, ...]]:
+    """Return the four rotations of a nine-character form."""
+    out, cur = [], tuple(form)
+    for _ in range(4):
+        cur = _rotate(cur)
+        out.append(cur)
+    return out
+
+
+# The legal wall structure around a drivable cell, as three-by-three forms
+# matched up to rotation; see ``_Machine._validate_walls``.  ``W`` is any
+# wall character, ``.`` is open ground, and ``?`` is anything at all.
+#
+#     corner: ?W?      wall: ?W?      intersection: W..
+#             W..            ...                    ...
+#             ?..            ...                    ...
+#
+# The corner's cells are ``W`` rather than ``+``, ``-`` and ``|`` so that a
+# rotation does not have to swap the two wall glyphs, and so that one form
+# covers the outside of a corner, the inside of one (where the arms belong
+# to the outer wall and the corner to an island), and the corners of two
+# boxes packed flush against each other.
+_WALL_FORMS = [
+    *_rotations("?W?W..?.."),
+    *_rotations("?W?......"),
+    *_rotations("W........"),
+]
+
+
+def _matches(block: tuple[str, ...], form: tuple[str, ...]) -> bool:
+    """Whether a three-by-three neighbourhood matches one form."""
+    for actual, want in zip(block, form, strict=True):
+        if want == "?":
+            continue
+        if want == "W":
+            if actual not in _WALLS:
+                return False
+        elif want == ".":
+            if actual in _WALLS:
+                return False
+        elif actual != want:
+            return False
+    return True
+
+
 def _right(heading: str) -> str:
     """Return the heading 90 degrees clockwise from ``heading``."""
     return _HEADINGS[(_HEADINGS.index(heading) + 1) % 4]
@@ -115,7 +165,7 @@ class _Machine:
         self.cp = 0
         self.cells: dict[int, int] = {}
         self._done = False
-        self._validate_width(starts[0])
+        self._validate(starts[0])
         self.heading = self._initial_heading()
         # Lane-merge latches (see ``_choose_heading``): ``_merge_target`` is
         # set when a junction turn is detected but not yet reached (phase 1,
@@ -207,7 +257,21 @@ class _Machine:
         # this program will hit on its very first movement attempt anyway.
         return "S"
 
-    def _validate_width(self, start: tuple[int, int]) -> None:
+    def _validate(self, start: tuple[int, int]) -> None:
+        """Reject a malformed street network before the car moves.
+
+        Two static checks over the open cells reachable from ``C``:
+        :meth:`_validate_width` measures the streets and
+        :meth:`_validate_walls` checks the wall structure around them.
+        Both raise :class:`ValueError`.  This is the single hook the
+        interpreter's own wall-shape fixtures disable, so that skeletal
+        test geometry need not be a legal street.
+        """
+        reachable = self._validate_width(start)
+        if reachable is not None:
+            self._validate_walls(reachable)
+
+    def _validate_width(self, start: tuple[int, int]) -> set[tuple[int, int]] | None:
         """Validate that every street is two characters wide.
 
         The spec requires streets to be two-way, two characters wide; a street
@@ -240,7 +304,7 @@ class _Machine:
         """
         # No walls → not a street network (e.g. ["C","U"] or ["C"])
         if not any(ch in _WALLS for row in self.grid for ch in row):
-            return
+            return None
         # BFS reachable open cells from C (open = not a wall)
         from collections import deque
 
@@ -263,7 +327,7 @@ class _Machine:
                     q.append((nr, nc))
         # Isolated single cell is not a street
         if len(visited) <= 1:
-            return
+            return None
         for r, c in visited:
             n = self._open(r - 1, c)
             s = self._open(r + 1, c)
@@ -278,6 +342,51 @@ class _Machine:
                 raise ValueError(f"not two-wide at {(r, c)} (horizontal)")
             if all(self._open(r + dr, c + dc) for dr in (0, 1, 2) for dc in (0, 1, 2)):
                 raise ValueError(f"not two-wide at {(r, c)} (wider than two)")
+        return visited
+
+    def _validate_walls(self, reachable: set[tuple[int, int]]) -> None:
+        """Validate the wall structure around every drivable cell.
+
+        Width alone does not catch every malformed drawing: a wall with a
+        one-cell hole punched through it (``-- --``) leaves a gap too narrow
+        to drive, yet the corridor either side of it still measures two
+        wide.  So each reachable cell's three-by-three neighbourhood must
+        match one of the forms in ``_WALL_FORMS`` -- a corner, a wall
+        running alongside, or a lone wall character at a corner -- up to
+        rotation.  A neighbourhood with no wall in it is open road and is
+        trivially legal.
+
+        The forms are deliberately permissive at their edges.  The ``?``
+        ends of the wall form let a wall simply stop, and the intersection
+        form admits any wall character at the corner rather than only
+        ``+``: together these leave open a question the wiki does not
+        settle, whether a road divider must terminate in a ``+``.  The
+        hello-world example leaves its divider ends bare and runs
+        correctly, and nothing in the driving rules keys on the
+        difference, so the shape is accepted.  What the forms do reject is
+        the hole, whose cell has wall on two opposite sides and open
+        ground on the other two, matching no form.
+
+        Only the cells reachable from ``C`` are checked, as in
+        :meth:`_validate_width`.  Walls do not move and the car cannot
+        teleport, so a cell the search does not reach is one the car can
+        never drive: the ``ljust`` padding around a program, and the
+        background around an L-shaped layout, are drawing, not street.
+        Whether a program should consist of one connected block at all is
+        a separate question this check does not try to answer.
+        """
+        for r, c in reachable:
+            block = tuple(
+                self._at(r + dr, c + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)
+            )
+            if not any(ch in _WALLS for ch in block):
+                continue
+            if not any(_matches(block, form) for form in _WALL_FORMS):
+                shape = " ".join(
+                    "".join("." if ch not in _WALLS else ch for ch in block[i : i + 3])
+                    for i in (0, 3, 6)
+                )
+                raise ValueError(f"malformed wall at {(r, c)} ({shape})")
 
     def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
         """Detect a road opening off ``side`` of the car, or ``None``.
