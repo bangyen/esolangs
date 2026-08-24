@@ -31,9 +31,12 @@ each of these assumptions in the "Computational class" section):
   a donut (needed to reach anywhere but the leftmost column);
 - the queue is treated as containing zeros when it is empty;
 - the tape is initialized to zeros;
-- since the pointer never leaves a donut, every program runs forever; the
-  interpreter stops after ``limit`` executed commands with
-  :class:`HaltError` (exit 3) — the wiki has no halt instruction;
+- since the pointer never leaves a donut, no program stops on its own — the
+  wiki has no halt instruction, so the run is capped at ``limit`` executed
+  commands and :func:`run` returns there rather than raising.  Reaching the
+  cap is how an ABCDirection program ends, not a failure to report, the
+  same reading A Painter Ant's implicit loop and Suffolk's infinite rerun
+  already get;
 - rows shorter than the final line's grid width are a malformed program
   (:class:`ValueError`, exit 2), and longer rows are trimmed to that width;
 - exhausted input raises :class:`EOFError` (repo-wide convention), and an
@@ -42,16 +45,17 @@ each of these assumptions in the "Computational class" section):
 
 The interpreter runs on a :class:`_Machine` (the grid, tape, queue, code
 pointer, and step count), so it is step-capable: ``step()`` executes one
-command and ``halted`` is true once ``limit`` steps have run.  Every
-program runs forever on the donut grid, so ``halted`` only ever becomes
-true at the step limit; :func:`run` still raises :class:`HaltError` there,
-matching the original's unconditional post-loop raise.
+command and ``halted`` is true once ``limit`` steps have run.  Nothing on
+the donut grid ever sets ``halted`` early, so it marks the step limit and
+nothing else.  :meth:`_Machine.snapshot` still reports the complete state,
+so ``esolangs.vm.run_until_halt_or_cycle`` can prove one of these loops for
+a caller that wants that -- the hanging tests do -- without :func:`run`
+itself depending on it.
 """
 
 import sys
 from collections import deque
 
-from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 # Clockwise order: right, down, left, up — turn right is +1, turn left is -1.
@@ -108,12 +112,19 @@ class _Machine:
         """Whether ``limit`` steps have run.
 
         The pointer never leaves the donut grid, so this is the only way
-        the machine halts.
+        the machine stops.
         """
         return self.steps >= self.limit
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection.
+
+        ``io.position()`` is part of the state: without it a beam that loops
+        through a ``D``-up repeats its machine state every lap while the
+        input stream advances, and the detector calls that a hang after
+        reading only the first few bytes -- a verdict that is wrong for any
+        stream whose later bytes would have steered the beam elsewhere.
+        """
         return (
             self.x,
             self.y,
@@ -123,6 +134,7 @@ class _Machine:
             tuple(self.queue),
             tuple(self.out_bits),
             tuple(self.in_bits),
+            self.io.position(),
         )
 
     def step(self) -> None:
@@ -173,11 +185,17 @@ class _Machine:
 
 
 def run(code: str, io: IO, limit: int = 10_000) -> None:
-    """Run an ABCDirection program, halting after ``limit`` commands."""
+    """Run an ABCDirection program for at most ``limit`` commands.
+
+    The language has no halt instruction and the pointer never leaves the
+    donut grid, so reaching the limit is how every program ends rather than
+    a failure to report: a program does its work and then circles.  This
+    follows A Painter Ant and Suffolk, whose specifications also loop
+    forever and whose interpreters run a bounded budget and return.
+    """
     machine = _Machine(code, io, limit)
     while not machine.halted:
         machine.step()
-    raise HaltError(f"execution exceeded the {limit}-command limit")
 
 
 if __name__ == "__main__":
