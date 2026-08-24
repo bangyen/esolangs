@@ -51,7 +51,19 @@ class Source:
 
         url = self._base.rstrip("/") + "/src/esolangs/" + rel
         with urllib.request.urlopen(url) as response:
-            return response.read().decode()
+            text: str = response.read().decode()
+        return text
+
+
+def _line_span(node: ast.stmt) -> range:
+    """Return the 1-based line numbers ``node`` occupies, end inclusive.
+
+    ``end_lineno`` is ``int | None`` because synthesised nodes carry no
+    position, but every node here comes from ``ast.parse``, which always
+    sets it.
+    """
+    assert node.end_lineno is not None
+    return range(node.lineno, node.end_lineno + 1)
 
 
 def _is_main(node: ast.stmt) -> bool:
@@ -83,6 +95,8 @@ def _parse_registry(source: Source) -> dict[str, str]:
     tree = ast.parse(source.get("registry.py"))
     langs: dict[str, str] = {}
     for node in tree.body:
+        targets: list[ast.expr]
+        value: ast.expr | None
         if isinstance(node, ast.Assign):
             targets, value = node.targets, node.value
         elif isinstance(node, ast.AnnAssign):
@@ -100,15 +114,20 @@ def _parse_registry(source: Source) -> dict[str, str]:
                 continue
             interpreter: str | None = None
             for kw in entry.keywords:
-                if kw.arg == "interpreter" and isinstance(kw.value, ast.Constant):
+                if (
+                    kw.arg == "interpreter"
+                    and isinstance(kw.value, ast.Constant)
+                    and isinstance(kw.value.value, str)
+                ):
                     interpreter = kw.value.value
             if (
                 interpreter is None
                 and len(entry.args) > 2
                 and isinstance(entry.args[2], ast.Constant)
+                and isinstance(entry.args[2].value, str)
             ):
                 interpreter = entry.args[2].value
-            if interpreter:
+            if interpreter and isinstance(key.value, str):
                 langs[key.value] = interpreter
     return langs
 
@@ -144,29 +163,25 @@ def _process_module(src: str, *, keep_main: bool) -> _ModuleInfo:
 
     if tree.body and isinstance(tree.body[0], ast.Expr):
         first = tree.body[0]
-        if (
-            isinstance(first.value, ast.Constant)
-            and isinstance(first.value.value, str)
-            and first.end_lineno is not None
-        ):
+        if isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
             info.doc = first.value.value
-            drop.update(range(first.lineno, first.end_lineno + 1))
+            drop.update(_line_span(first))
 
     for node in tree.body:
         if isinstance(node, ast.ImportFrom):
             if node.module == "__future__":
                 info.futures.append(ast.unparse(node))
-                drop.update(range(node.lineno, node.end_lineno + 1))
+                drop.update(_line_span(node))
             elif node.module and node.module.startswith("esolangs."):
                 info.esolangs.append(
                     (node.module, [(a.name, a.asname) for a in node.names])
                 )
-                drop.update(range(node.lineno, node.end_lineno + 1))
+                drop.update(_line_span(node))
             elif node.level:
                 info.relative.extend((a.name, a.asname) for a in node.names)
-                drop.update(range(node.lineno, node.end_lineno + 1))
+                drop.update(_line_span(node))
         elif _is_main(node) and not keep_main:
-            drop.update(range(node.lineno, node.end_lineno + 1))
+            drop.update(_line_span(node))
 
     info.body = _drop_lines(src, drop).rstrip()
     return info

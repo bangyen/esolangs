@@ -100,10 +100,10 @@ import signal
 import subprocess
 import sys
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 ROOT = Path(__file__).parents[1]
 RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
@@ -121,13 +121,24 @@ THREE_X_BIN = RUST_BIN_DIR / "three_x"
 _WORKERS = 8
 
 
-def _run_parallel(fn, tasks):
+_T = TypeVar("_T")
+_R = TypeVar("_R")
+
+
+def _run_parallel(fn: Callable[[_T], _R], tasks: Sequence[_T]) -> list[_R]:
     """Run ``fn`` over ``tasks`` concurrently, returning results in order."""
     with ThreadPoolExecutor(max_workers=_WORKERS) as executor:
         return list(executor.map(fn, tasks))
 
 
-def _fuzz_boolean(name, builder, native, python, rng, count):
+def _fuzz_boolean(
+    name: str,
+    builder: Callable[[str], str],
+    native: Callable[[str, bytes], _R | None],
+    python: Callable[[str, bytes], _R | None],
+    rng: random.Random,
+    count: int,
+) -> tuple[int, int]:
     """Fuzz ``count`` random truth tables through both implementations.
 
     ``native(program, stdin)`` runs the reference (None on a timeout) and
@@ -162,7 +173,14 @@ def _fuzz_boolean(name, builder, native, python, rng, count):
     return failures, checked
 
 
-def _fuzz_text(name, generator, native, python, rng, count):
+def _fuzz_text(
+    name: str,
+    generator: Callable[[str], str],
+    native: Callable[[str, bytes], _R | None],
+    python: Callable[[str, bytes], _R | None],
+    rng: random.Random,
+    count: int,
+) -> tuple[int, int]:
     """Fuzz ``count`` random byte texts through both implementations.
 
     Either side may report ``None`` for "did not terminate" (the native
@@ -198,7 +216,12 @@ def _fuzz_text(name, generator, native, python, rng, count):
     return failures, checked
 
 
-def _verify_asm(name: str, riscv_name: str, corpus, run_python) -> bool:
+def _verify_asm(
+    name: str,
+    riscv_name: str,
+    corpus: Sequence[Any],
+    run_python: Callable[..., tuple[bytes, int]],
+) -> bool:
     """Compare a Python interpreter against its RISC-V cross-check on ``corpus``.
 
     ``name`` is the display label, ``riscv_name`` the reference key passed to
@@ -234,8 +257,8 @@ def _verify_asm(name: str, riscv_name: str, corpus, run_python) -> bool:
 def _fuzz_asm(
     name: str,
     riscv_name: str,
-    gen_program,
-    run_limited,
+    gen_program: Callable[[random.Random], str],
+    run_limited: Callable[..., Any],
     rng: random.Random,
     count: int,
 ) -> bool:
@@ -286,11 +309,11 @@ def _fuzz_asm(
 
 def _verify_rust(
     name: str,
-    corpus,
-    run_native,
-    run_python,
-    prepare=None,
-    label=None,
+    corpus: Sequence[Any],
+    run_native: Callable[..., Any],
+    run_python: Callable[..., Any],
+    prepare: Callable[[Any], Any] | None = None,
+    label: Callable[[Any], str] | None = None,
 ) -> bool:
     """Compare a Python interpreter against its Rust cross-check on ``corpus``.
 
@@ -324,7 +347,7 @@ def _verify_rust(
     return failures == 0
 
 
-def _random_program(alphabet: str, max_len: int):
+def _random_program(alphabet: str, max_len: int) -> Callable[[random.Random], str]:
     """Return a generator drawing a random ``alphabet`` program up to ``max_len``.
 
     The draws are ordered length-then-characters to match the per-language

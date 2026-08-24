@@ -110,7 +110,9 @@ ignore = [
 [tool.mypy]
 strict = true
 python_version = "3.10"
-files = ["src"]
+# scripts/ is CI infrastructure (the differential, unicorn, and installer
+# checks), so it is type-checked alongside the package itself.
+files = ["src", "scripts"]
 exclude = ["\\.venv/", "build/", "dist/"]
 warn_return_any = true
 warn_unused_configs = true
@@ -129,6 +131,21 @@ strict_equality = true
 # sympy ships no inline types.
 module = ["sympy"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# unicorn's bindings are untyped and its __init__ re-exports without
+# __all__, so its names look unexported to a strict run.
+module = ["unicorn", "unicorn.*"]
+ignore_missing_imports = true
+implicit_reexport = true
+
+[[tool.mypy.overrides]]
+# disallow_untyped_calls is a property of the *calling* module, so it is
+# relaxed here rather than on unicorn above: every Uc method (mem_map,
+# reg_read, emu_start, ...) is untyped, and this is the only module that
+# drives the emulator.  Everything else stays strict.
+module = ["riscv_elf_runner"]
+disallow_untyped_calls = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
