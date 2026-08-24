@@ -20,7 +20,20 @@ against the wrapped form character for character rather than ignoring
 newlines.  Languages whose newlines are semantic (the 2D grid ones) or that
 reject them (NoComment) are committed unwrapped, as is any single token
 longer than the width — a Polynomial coefficient cannot be split without
-changing the number.  Refresh both directories with:
+changing the number.
+
+The three subleq-family OISCs (AddSubJump, Decleq, S*bleq) go one step
+further and are laid out as a *grid*: each token is right-aligned in a
+fixed-width cell, so the columns line up from one row to the next and a
+changed operand stays in its column instead of shifting every token after
+it.  The cell follows the program's own tokens rather than being fixed, and
+a token too wide for one cell spans as many whole cells as it needs — the
+ten-character jump sentinels in `boolean/decleq.txt` take three cells each
+— so the tokens after it on the row still start on a cell boundary.  The
+padding is only whitespace: these interpreters split on whitespace runs, so
+a gridded program means exactly what it did unpadded.
+
+Refresh both directories with:
 
 ```bash
 python scripts/write_hello_world_examples.py
