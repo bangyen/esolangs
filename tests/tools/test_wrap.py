@@ -13,6 +13,7 @@ must come back unwrapped rather than subtly broken.
 
 import importlib
 import io
+import re
 from contextlib import redirect_stdout, suppress
 
 import pytest
@@ -25,6 +26,7 @@ from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
+    _bio,
     _cell_width,
     _polynomial,
     _span,
@@ -484,3 +486,77 @@ def test_wrap_grid_never_straddles_a_row_boundary() -> None:
 def test_wrap_chars_breaks_anywhere() -> None:
     """The single-character families break at exactly the width."""
     assert wrap_chars("abcdef", 2) == "ab\ncd\nef"
+
+
+# A three-level nest around a short ramp, in the shape the boolean BIO
+# generator emits: each level decrements ``x`` and the innermost tops ``y``
+# up before the closers unwind.
+_NESTED_BIO = "0ox 0ix{1ox0ix{1ox0oy}}0oy0oy1iy"
+
+
+def _bio_tokens(program: str) -> list[str]:
+    """The commands BIO's own parser keeps, in order.
+
+    The interpreter's regex drops everything else -- whitespace and the
+    decorative ``{`` alike -- so two programs with this same list are the
+    same program.
+    """
+    return re.findall(r"[01][oOiI][xXyYzZ]|}", program)
+
+
+def test_bio_indents_a_nested_program_by_depth() -> None:
+    """Each loop level is two spaces deeper than the one outside it."""
+    lines = _bio(_NESTED_BIO, DEFAULT_WIDTH).split("\n")
+    indents = [len(line) - len(line.lstrip(" ")) for line in lines]
+    assert indents == [0, 2, 4, 2, 0, 0]
+
+
+def test_bio_keeps_a_brace_with_the_command_that_opens_it() -> None:
+    """``{`` marks the body of the ``0i?`` before it and never leads a line."""
+    lines = _bio(_NESTED_BIO, DEFAULT_WIDTH).split("\n")
+    assert not any(line.lstrip(" ").startswith("{") for line in lines)
+    assert [line for line in lines if line.rstrip().endswith("{")]
+
+
+def test_bio_indent_preserves_the_command_sequence() -> None:
+    """Indenting is whitespace only: the parser sees the same commands."""
+    wrapped = _bio(_NESTED_BIO, DEFAULT_WIDTH)
+    assert _bio_tokens(wrapped) == _bio_tokens(_NESTED_BIO)
+
+
+def test_bio_leaves_a_flat_program_packed() -> None:
+    """A program under two levels deep gains no indentation.
+
+    The text generator emits a flat run of depth-1 groups, where indenting
+    would show nothing that packing does not.
+    """
+    flat = "0ox0ix1ox0oy}0oy1iy"
+    wrapped = _bio(flat, DEFAULT_WIDTH)
+    assert not any(line.startswith(" ") for line in wrapped.split("\n"))
+
+
+def test_bio_packs_a_ramp_to_the_width_at_its_own_indent() -> None:
+    """A long straight run costs rows at its level, not one long line."""
+    program = "0ix{" + "0oy" * 40 + "0ix{1ox}}"
+    lines = _bio(program, 20).split("\n")
+    assert max(len(line) for line in lines) <= 20
+    # The ramp sits inside the outer loop, so every one of its rows is
+    # indented rather than only the first.
+    ramp = [line for line in lines if "0oy" in line]
+    assert len(ramp) > 1
+    assert all(line.startswith("  ") for line in ramp)
+
+
+def test_bio_indent_stops_growing_before_it_crowds_the_line() -> None:
+    """A deep program keeps room to pack, and still unwinds its closers."""
+    depth = 40
+    program = "0ix{" * depth + "1ox" + "}" * depth
+    lines = _bio(program, 20).split("\n")
+    assert max(len(line) for line in lines) <= 20
+    assert _bio_tokens("\n".join(lines)) == _bio_tokens(program)
+
+
+def test_bio_indent_leaves_no_trailing_whitespace() -> None:
+    """No line carries the separator the boolean generator writes."""
+    wrapped = _bio(_NESTED_BIO, DEFAULT_WIDTH)
+    assert all(line == line.rstrip() for line in wrapped.split("\n"))

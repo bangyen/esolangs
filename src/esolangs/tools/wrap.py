@@ -77,8 +77,14 @@ queue and the rest are commands, so its wrapper keeps that seed on its own
 row and folds only what follows.  :data:`MULTILINE` names the languages
 whose wrappers handle their own newlines that way.
 
-Most wrappers only decide *where* the newlines go.  :func:`wrap_grid` also
-decides where the tokens sit within a line: the subleq-family OISCs
+Most wrappers only decide *where* the newlines go.  Two also decide where
+the tokens sit within a line, each following the shape its language's
+programs actually have.  :func:`_bio` indents a nested BIO program two
+spaces per loop level, since the boolean generator nests one loop per
+truth-table row and that telescoping chain is invisible packed flat; a
+program under two levels deep -- every text-generator one -- is packed as
+before, because indenting a flat run shows nothing.  :func:`wrap_grid`
+right-aligns into columns instead: the subleq-family OISCs
 (AddSubJump, Decleq, S*bleq) have uniform-width numeric tokens, so padding
 each into a cell and right-aligning it lines the columns up between rows,
 which is what makes a diff of one readable.  It is opt-in for the same
