@@ -51,10 +51,18 @@ def decleq(truth_table: str) -> str:
         for _ in range(47):
             emit(rc, rc, pc() + 3)
 
+    # The halt jump has to name an address past the end of memory, which is
+    # not known until the data cells below have been appended.  Each leaf
+    # emits this placeholder and the real address is substituted once the
+    # program is complete, so the sentinel is exactly one past the last cell
+    # however the tree came out.
+    halts: list[int] = []
+
     def node(level: int, row: int) -> None:
         if level == n:
             emit(-2, out49 if truth_table[row] == "1" else out48, 0)
-            emit(0, 0, 10**9)
+            emit(0, 0, 0)
+            halts.append(pc() - 1)
             return
         rc = read_cells[level]
         emit(rc, rc, 0)
@@ -69,6 +77,10 @@ def decleq(truth_table: str) -> str:
     mem.extend([0] * (out49 - len(mem) + 1))
     mem[out48] = 48
     mem[out49] = 49
+    # One past the last cell: the interpreter halts as soon as the pointer
+    # leaves memory, so this is the smallest address that stops the program.
+    for addr in halts:
+        mem[addr] = len(mem)
     return " ".join(map(str, mem))
 
 
