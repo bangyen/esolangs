@@ -36,8 +36,7 @@ a gridded program means exactly what it did unpadded.
 Refresh both directories with:
 
 ```bash
-python scripts/write_hello_world_examples.py
-python scripts/write_boolean_examples.py
+python scripts/write_examples.py
 ```
 
 ## hello-world
@@ -46,7 +45,7 @@ One `Hello, World!` program per language that the text generators
 (`esolangs.tools.text`) support.  Each file is what its generator produces
 for the text `Hello, World!`, wrapped as described above, so the
 interpreter run is always correct;
-`python scripts/write_hello_world_examples.py` refreshes the files after a
+`python scripts/write_examples.py hello-world` refreshes the files after a
 generator changes.
 
 Run a program with the language's interpreter, e.g.:
@@ -73,7 +72,7 @@ One program per language whose boolean-function capability can be verified
 end to end — the capability that is not an I/O truth machine (see
 `docs/walls.md`).  Like the hello-world examples, each file is exactly what
 its generator produces today; `tests/test_examples.py` asserts that, and
-`python scripts/write_boolean_examples.py` refreshes the files after a
+`python scripts/write_examples.py boolean` refreshes the files after a
 generator changes.
 
 `esolangs.tools.boolean.examples` is the single source of truth: it records

@@ -28,7 +28,10 @@ jobs:
       run: uv run pre-commit run --all-files
 
     - name: Check for duplicated code blocks
-      run: uv run --with pylint python scripts/check_duplicates.py
+      run: >
+        uv run --with pylint python -m pylint --disable=all
+        --enable=duplicate-code --min-similarity-lines=10
+        --ignore-imports=yes src/esolangs scripts tests
 
     - name: Verify the single-interpreter installer
       run: uv run python scripts/verify_install_one.py

@@ -41,7 +41,7 @@ install-dev:
         python -m pip install -U pip
         pip install -e ".[dev]"
     fi
-    # Enable the pre-push gate (scripts/check_all.sh) so every push runs the
+    # Enable the pre-push gate (scripts/verify.py) so every push runs the
     # full local check: lint, pytest, bandit, cargo, and the verify scripts.
     git config core.hooksPath .githooks
 
@@ -90,7 +90,7 @@ lint: lint-python lint-rust lint-lean
 # test (full local check: lint, pytest, bandit, cargo, verify scripts)
 # pass --quiet to suppress successful step output (only [ok]/FAIL + timing)
 test *args:
-    sh scripts/check_all.sh {{args}}
+    {{PYTHON}} scripts/verify.py {{args}}
 
 # fast dev loop: pre-commit + pytest (skip slow) + cargo (skips 32s differential + 10s unicorn) — quiet by default
 test-quick *args:
@@ -120,7 +120,7 @@ test-differential *args:
     {{PYTHON}} scripts/verify.py --only "interpreter vs native differential corpora" {{args}}
 
 test-lint *args:
-    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check",bandit,"cargo fmt" {{args}}
+    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check (pylint)",bandit,"cargo fmt" {{args}}
 
 test-bandit *args:
     {{PYTHON}} scripts/verify.py --only bandit {{args}}
