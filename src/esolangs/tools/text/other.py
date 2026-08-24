@@ -2,7 +2,7 @@
 
 import math
 import re
-from collections import deque
+from collections import Counter, deque
 from functools import cache
 
 from esolangs.tools import laserfuck_layout
@@ -70,19 +70,15 @@ def clockwise(text: str, width: int | None = None) -> str:
     origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
     ``+`` is emitted only when the accumulator's parity needs to flip.
 
-    Only the perimeter holds code -- the interior is dead space -- so an
-    ``h`` x ``w`` rectangle offers ``2(h + w) - 4`` cells and the shape is
-    free once that count is met.  The default picks the *square*, which
-    minimizes ``max(h, w)``: a program needing ``c`` cells fits a square of
-    side ``ceil((c + 4) / 4)``, half the width of the thin ``3 x k`` ring
-    that holds the same code.
+    Two layouts are built and the shorter one wins.  The bare *ring* keeps
+    code on the perimeter only and leaves the interior dead, so a program of
+    ``c`` cells costs a square of side about ``c / 4`` -- a long text is
+    better than 97% blank.  The *weave* (:func:`_clockwise_weave`)
+    serpentines through the interior instead and runs over 90% code, so it
+    wins on everything but the shortest texts, where the ring's smaller
+    fixed cost still tells.
 
-    ``width`` constrains that choice to ``w <= width``.  The square is kept
-    when it already fits; otherwise the width is capped and the height grows
-    to supply the remaining cells.  Capping cannot reduce the *total* -- the
-    cell count is fixed by the program -- so a capped ring is always taller
-    than the square it replaces; it is what a caller asking for a bounded
-    width has asked for.
+    ``width`` bounds the columns of whichever layout is chosen.
     """
     _require_ascii(text, "Clockwise")
     prog = ""
@@ -97,6 +93,15 @@ def clockwise(text: str, width: int | None = None) -> str:
     if not prog:
         return ""
 
+    folded = _clockwise_weave(prog, width)
+    ring = _clockwise_ring(prog, width)
+    if folded is not None:
+        return min((folded, ring), key=len)
+    return ring
+
+
+def _clockwise_ring(prog: str, width: int | None) -> str:
+    """Wrap ``prog`` around a rectangle's perimeter, the interior left dead."""
     height, width_ = _clockwise_shape(len(prog), width)
     # The three turning corners are overwritten with ``R`` below, so the
     # ring skips them rather than placing code that would be clobbered.
@@ -114,6 +119,112 @@ def clockwise(text: str, width: int | None = None) -> str:
     grid[height - 1][0] = "R"  # bottom-left
 
     return "\n".join("".join(row) for row in grid)
+
+
+# A weave's turning cells: the hairpin ladder in column 1, the two descent
+# lanes on the right, and the corners.  Everything else is a slot.
+_WEAVE_LANES = "0110"
+
+# The narrowest weave: the home lane, the hairpin ladder, one body cell, and
+# the two descent lanes.
+_WEAVE_MIN_WIDTH = 5
+
+
+def _weave_template(units: int, body: int) -> list[list[str]]:
+    """Lay out an empty weave: ``R`` turns placed, every other cell a hole.
+
+    ``units`` counts four-row weave groups (the walk only closes on a
+    multiple of four interior rows) and ``body`` is the instruction span of
+    an interior row.  Row 0 runs east, then each interior row is reached in
+    the order 0, 2, 1, 4, 3, ... -- a westward row, a hairpin up into the
+    row above it, and a drop past that row to the next westward one.  The
+    drops overlap vertically, so the right-hand turns alternate between the
+    two descent lanes on the ``0110`` cycle in :data:`_WEAVE_LANES`.
+    """
+    lanes = [int(bit) for bit in _WEAVE_LANES * units]
+    size = body + 4
+    grid = [[" "] * size for _ in range(len(lanes) + 2)]
+    grid[0][size - 1] = "R"
+    for row, lane in enumerate(lanes, start=1):
+        grid[row][1] = "R"
+        grid[row][size - 2 + lane] = "R"
+    grid[-1][0] = "R"
+    grid[-1][size - 1] = "R"
+    return grid
+
+
+def _weave_slots(grid: list[list[str]]) -> list[tuple[int, int]] | None:
+    """Return the cells a walk over ``grid`` runs exactly once, in path order.
+
+    The pointer is run over the bare template with every hole left blank, so
+    the walk is the template's own geometry.  A cell it enters twice would
+    run its instruction twice -- a repeated ``;`` emits a duplicate parity
+    bit -- so only the single-visit cells can hold code; the rest stay blank
+    and serve as the lanes the walk crosses.  Returns ``None`` when the
+    template does not close (the walk leaves the grid or never returns to
+    the origin), which is how a bad ``units``/``body`` pair is rejected.
+    """
+    from esolangs.interpreters.grid_based.clockwise import _Machine
+    from esolangs.interpreters.io import IO
+
+    rows = ["".join(row) for row in grid]
+    machine = _Machine(rows, IO())
+    order: list[tuple[int, int]] = []
+    limit = 8 * len(rows) * len(rows[0]) + 64
+    for _ in range(limit):
+        if machine.halted:
+            break
+        cell = (machine.x, machine.y)
+        try:
+            machine.step()
+        except ValueError:
+            return None  # walked off the grid: the template is not closed
+        order.append(cell)
+    else:
+        return None  # never came home
+    seen = Counter(order)
+    return [cell for cell in order if seen[cell] == 1 and grid[cell[1]][cell[0]] == " "]
+
+
+def _clockwise_weave(prog: str, width: int | None) -> str | None:
+    """Fold ``prog`` into a woven grid rather than a bare perimeter.
+
+    The perimeter ring spends its whole interior on nothing, so a program of
+    ``c`` cells costs a square of side ``c / 4``.  The weave walks the
+    interior instead: the pointer serpentines down the grid, and because a
+    turn is always clockwise it cannot simply reverse at the end of a row --
+    it takes the row *two* below, then hairpins back up into the one it
+    skipped.  Two descent lanes on the right and a hairpin ladder in column
+    1 carry it, and the homeward lane in column 0 brings it back to the
+    origin; every cell any of those lanes crosses only once still holds an
+    instruction, so the grid runs better than 90% code.
+
+    Returns ``None`` when no weave fits within ``width``, leaving the caller
+    with the ring.
+    """
+    best: str | None = None
+    limit = width if width is not None else len(prog) + _WEAVE_MIN_WIDTH
+    if limit < _WEAVE_MIN_WIDTH:
+        return None
+    for body in range(1, limit - 3):
+        units = 1
+        while True:
+            grid = _weave_template(units, body)
+            slots = _weave_slots(grid)
+            if slots is None:
+                break
+            if len(slots) >= len(prog):
+                filled = [row[:] for row in grid]
+                for (x, y), instruction in zip(slots, prog, strict=False):
+                    filled[y][x] = instruction
+                drawn = "\n".join("".join(row).rstrip() for row in filled)
+                if best is None or len(drawn) < len(best):
+                    best = drawn
+                break
+            units += 1
+            if units > len(prog):
+                break
+    return best
 
 
 def _clockwise_shape(cells: int, width: int | None) -> tuple[int, int]:

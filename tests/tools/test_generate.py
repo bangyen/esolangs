@@ -234,18 +234,43 @@ class TestGeneratorRoundTrips:
         )
         assert gen.clockwise("") == ""
 
-    def test_clockwise_ring_is_square_by_default(self) -> None:
-        """The default shape is the square, which minimizes max(height, width).
+    def test_clockwise_weave_fills_the_interior(self) -> None:
+        """The woven grid is nearly all code, unlike the hollow ring.
 
-        Only the perimeter holds code, so the ring's cell count is fixed by
-        the program and the shape is free; the square is the choice that
-        keeps the bounding box smallest.
+        A perimeter ring spends its whole interior on nothing, so a long
+        text is mostly blank.  The weave serpentines through the interior
+        instead, and every lane cell the walk crosses only once still holds
+        an instruction, so little but the turns is blank.
         """
+        # The turns are a fixed cost, so density climbs with the text; a
+        # one-character text is small enough that the ring still wins.
+        for text, floor in (
+            ("Hello, World!", 0.90),
+            ("Clockwise test 123!", 0.94),
+            ("The quick brown fox jumps over the lazy dog.", 0.97),
+        ):
+            program = gen.clockwise(text)
+            code = sum(1 for c in program if not c.isspace())
+            assert code / len(program) > floor, f"{text!r}: sparse grid"
+
+    def test_clockwise_never_beaten_by_the_bare_ring(self) -> None:
+        """Whichever layout is smaller is what comes out.
+
+        The ring is still built and compared, so a text the weave cannot
+        improve on keeps the ring rather than growing.
+        """
+        from esolangs.tools.text.other import _clockwise_ring
+
         for text in ("A", "Hi", "Hello, World!", "Clockwise test 123!"):
-            lines = gen.clockwise(text).split("\n")
-            widths = {len(line) for line in lines}
-            assert len(widths) == 1, f"{text!r}: ragged grid {sorted(widths)}"
-            assert len(lines) == widths.pop(), f"{text!r}: not square"
+            program = gen.clockwise(text)
+            parity, bits = 0, ""
+            for char in text:
+                for bit in f"{ord(char):07b}":
+                    if parity != int(bit):
+                        bits += "+"
+                        parity = int(bit)
+                    bits += ";"
+            assert len(program) <= len(_clockwise_ring(bits, None))
 
     @pytest.mark.parametrize("width", [10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["Hi", "Hello, World!", "q" * 30])
@@ -440,12 +465,12 @@ class TestGeneratorRoundTrips:
         assert gen.laserfuck(text, widest) == loop
         assert gen.laserfuck(text, widest + 40) == loop
 
-    def test_clockwise_keeps_the_square_when_it_fits(self) -> None:
-        """A width the square already satisfies does not distort the shape."""
-        square = gen.clockwise("Hello, World!")
-        side = len(square.split("\n"))
-        assert gen.clockwise("Hello, World!", side) == square
-        assert gen.clockwise("Hello, World!", side + 40) == square
+    def test_clockwise_keeps_the_shape_when_it_fits(self) -> None:
+        """A width the default grid already satisfies does not distort it."""
+        grid = gen.clockwise("Hello, World!")
+        widest = max(len(line) for line in grid.split("\n"))
+        assert gen.clockwise("Hello, World!", widest) == grid
+        assert gen.clockwise("Hello, World!", widest + 40) == grid
 
     def test_streetcode(self) -> None:
         """A straight walled corridor walks one cell to each character and prints."""
