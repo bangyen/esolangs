@@ -325,26 +325,26 @@ def laserfuck(text: str, width: int | None = None) -> str:
     body wrapped around a serpentine track on the edges so the laser travels
     around it.
 
-    ``width`` bounds the columns of the *linear* form -- the fallback taken
-    when the program has no loop worth building, which is also the widest
-    thing this generator emits.  Its single row of ``+`` runs is straight
-    tape code, so it folds into a zigzag that costs rows instead of columns.
+    ``width``, when given, is a hard bound on the columns of whatever this
+    returns.  The *linear* form honours it by folding: its single row of
+    ``+`` runs is straight tape code, so it zigzags into rows instead of
+    columns.  The looping form cannot be folded that way -- its frame
+    interleaves tape ops with bracket markers whose *columns* are
+    load-bearing (the mirror cells on the rows below are placed to match
+    them, and the serpentine's connector ties back to the frame at
+    ``loop_col``), so breaking the frame across rows moves the very columns
+    the rest of the layout is derived from.  That is a rewrite of the
+    geometry, not a fold of a run.
 
-    The looping form is left alone, for two reasons.  Its frame interleaves
-    tape ops with bracket markers whose *columns* are load-bearing -- the
-    mirror cells on the rows below are placed to match them, and the
-    serpentine's connector ties back to the frame at ``loop_col`` -- so
-    breaking the frame across rows moves the very columns the rest of the
-    layout is derived from; it is a rewrite of the geometry, not a fold of a
-    run.  And it is already the narrow case: Hello-World is 95 columns,
-    against 508 for the linear form of ``"Hello"`` alone.
-
-    Falling back to the (foldable) linear form whenever the loop form
-    exceeds the width would fit every program in 80 columns, but the loop
-    form exists precisely to avoid that program's size: measured over 200
-    random strings, the cases still over 80 come to a median 4.3x more
-    characters as linear programs, to save a median 14 columns.  So a wide
-    loop program is emitted wide rather than made several times larger.
+    So a loop program that comes out wider than ``width`` is re-emitted as
+    the linear form, which can fold.  That trade is real and it is not
+    cheap: measured over 200 random strings, the cases over 80 columns come
+    to a median 4.3x more characters as linear programs, to save a median
+    14 columns.  Hello-World is the standing example -- 95 columns as a
+    loop, against a linear form long enough to need a dozen-odd rows.  The
+    bound wins anyway, because a program nothing can display is worse than
+    a long one, and ``width=None`` (the default everywhere but the example
+    writers) still returns the compact loop form untouched.
     """
     _require_bytes(text, "LaserFuck")
     values = [ord(c) for c in text]
@@ -476,6 +476,14 @@ def laserfuck(text: str, width: int | None = None) -> str:
     row = "  v" + part[::-1].rjust(per_row) + "{"
     connector = f" ^{' ' * (loop_col - 5)}{{  {{v "
     grid.insert(1, connector + row[len(connector) :])
+
+    # The frame is as narrow as this geometry gets, so if it still overruns
+    # the width, no fold of it will help -- fall back to the linear form,
+    # which is bigger but foldable.  This is the same escape the two guards
+    # above take, for the same reason: the loop layout cannot be had at
+    # this width.
+    if width is not None and max(map(len, grid)) > width:
+        return _laserfuck_linear(linear, width)
 
     return "\n".join(grid)
 
