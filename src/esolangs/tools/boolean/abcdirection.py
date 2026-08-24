@@ -62,7 +62,7 @@ class _Builder:
 
 
 def _compact(rows: list[str]) -> list[str]:
-    """Drop every dead row, and every dead column that is safe to drop.
+    r"""Drop every dead row, and every dead column that is safe to drop.
 
     The layout reserves whole rows and columns it never writes to -- the
     tree's node slots are ``sp`` apart but a node occupies a couple of

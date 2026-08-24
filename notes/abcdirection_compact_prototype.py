@@ -17,7 +17,7 @@ def compact(rows: list[str]) -> list[str]:
     keep_rows = [y for y in range(height) if set(rows[y]) != {"B"}]
     rows = [rows[y] for y in keep_rows]
 
-    cols = list(zip(*rows))
+    cols = list(zip(*rows, strict=False))
     dead = [x for x in range(width) if set(cols[x]) == {"B"}]
 
     keep_cols = list(range(width))

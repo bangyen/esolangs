@@ -434,11 +434,13 @@ def laserfuck(text: str, width: int | None = None) -> str:
 
         if depth == 0:
             # back at the top level: everything buffered is one group
-            groups.append(tuple("".join(col) for col in zip(*parts, strict=True)))
+            tops, mids, bots = zip(*parts, strict=True)
+            groups.append(("".join(tops), "".join(mids), "".join(bots)))
             parts = []
 
     if parts:  # an unbalanced frame: keep it whole rather than dropping it
-        groups.append(tuple("".join(col) for col in zip(*parts, strict=True)))
+        tops, mids, bots = zip(*parts, strict=True)
+        groups.append(("".join(tops), "".join(mids), "".join(bots)))
 
     # The first "[" marker's stub is a placeholder: the loop track connects
     # back into the frame at ``loop_col`` instead, so blank it out.  Doing
@@ -447,37 +449,42 @@ def laserfuck(text: str, width: int | None = None) -> str:
     # after has its leading "v" swallowed too, matching a bracket that
     # directly follows another one.
     if entry_index is not None:
-        top, middle, bottom = groups[entry_index]
-        offset = top.index("}")
-        end = offset + len("}  }")
-        if top[end : end + 1] == "v":
+        entry_top, entry_middle, entry_bottom = groups[entry_index]
+        start = entry_top.index("}")
+        end = start + len("}  }")
+        if entry_top[end : end + 1] == "v":
             end += 1
-        top = top[:offset] + " " * (end - offset) + top[end:]
-        groups[entry_index] = (top, middle, bottom)
+        entry_top = entry_top[:start] + " " * (end - start) + entry_top[end:]
+        groups[entry_index] = (entry_top, entry_middle, entry_bottom)
 
     frame_width = 3 + sum(len(g[0]) for g in groups)
-    fold_frame = width is not None and frame_width > width
+    # Bind the width the fold runs at, so it stays a plain int throughout the
+    # folded path; ``None`` means the frame fits and is laid out unfolded.
+    fold_width = width if width is not None and frame_width > width else None
+    fold_frame = fold_width is not None
 
-    if fold_frame:
+    if fold_width is not None:
         # A single group is indivisible, so one wider than a folded segment
         # cannot be laid at this width however many rows it is given.  The
         # linear form is the floor for those: bigger, but it folds.
-        room = laserfuck_layout.segment_width(width)
+        room = laserfuck_layout.segment_width(fold_width)
         if max(len(g[0]) for g in groups) > room:
             return _laserfuck_linear(linear, width)
 
-    if fold_frame:
+    if fold_width is not None:
         # The frame overruns the width, so fold it between groups.  This
         # keeps the compact loop program rather than falling back to the
         # linear form, which fits by being several times larger.
-        cells = [[" "] * (width + 1) for _ in range(3)]
-        cells[0][1] = "}"
-        cells[0][2] = "}"
-        cells[1][0] = "|"
-        cells[1][1] = "o"
-        cells[1][2] = "^"
-        cells[2][1] = "_"
-        end_row, end_col = laserfuck_layout.fold_groups(cells, groups, 0, 3, width)
+        frame_cells = [[" "] * (fold_width + 1) for _ in range(3)]
+        frame_cells[0][1] = "}"
+        frame_cells[0][2] = "}"
+        frame_cells[1][0] = "|"
+        frame_cells[1][1] = "o"
+        frame_cells[1][2] = "^"
+        frame_cells[2][1] = "_"
+        end_row, end_col = laserfuck_layout.fold_groups(
+            frame_cells, groups, 0, 3, fold_width
+        )
         # The frame no longer ends at the top right, so the reversed-tail
         # trick the unfolded path uses does not apply: the fallback run
         # carries straight on from wherever the fold left the beam, folding
@@ -487,33 +494,33 @@ def laserfuck(text: str, width: int | None = None) -> str:
             # past its two mirror rows before folding further -- those rows
             # belong to the last segment's markers, and writing the run
             # into them would land tape code under a mirror.
-            room = laserfuck_layout.segment_width(width) + laserfuck_layout.MARGIN
+            room = laserfuck_layout.segment_width(fold_width) + laserfuck_layout.MARGIN
             head = fallback[: max(room - end_col, 0)]
             for char in head:
-                cells[end_row][end_col] = char
+                frame_cells[end_row][end_col] = char
                 end_col += 1
             rest = fallback[len(head) :]
             if rest:
-                laserfuck_layout.reserve(cells, end_row + 3)
-                cells[end_row][end_col] = "v"
-                cells[end_row + 3][end_col] = "{"
-                cells[end_row + 3][laserfuck_layout.MARGIN] = "v"
+                laserfuck_layout.reserve(frame_cells, end_row + 3)
+                frame_cells[end_row][end_col] = "v"
+                frame_cells[end_row + 3][end_col] = "{"
+                frame_cells[end_row + 3][laserfuck_layout.MARGIN] = "v"
                 end_row += 4
-                laserfuck_layout.reserve(cells, end_row)
-                cells[end_row][laserfuck_layout.MARGIN] = "}"
+                laserfuck_layout.reserve(frame_cells, end_row)
+                frame_cells[end_row][laserfuck_layout.MARGIN] = "}"
                 end_row, end_col = laserfuck_layout.fold(
-                    cells, rest, end_row, laserfuck_layout.MARGIN + 1, width
+                    frame_cells, rest, end_row, laserfuck_layout.MARGIN + 1, fold_width
                 )
-        cells[end_row][end_col] = "x"
-        grid = ["".join(line).rstrip() for line in cells]
+        frame_cells[end_row][end_col] = "x"
+        grid = ["".join(line).rstrip() for line in frame_cells]
         while grid and not grid[-1]:
             grid.pop()
     else:
         grid = [" }}", "|o^", " _ "]
-        for top, middle, bottom in groups:
-            grid[0] += top
-            grid[1] += middle
-            grid[2] += bottom
+        for group_top, group_middle, group_bottom in groups:
+            grid[0] += group_top
+            grid[1] += group_middle
+            grid[2] += group_bottom
 
     track_len = len(loop) + loop_col
     overhang = len(fallback) + loop_col - (len(grid[0]) - 2)
@@ -530,7 +537,7 @@ def laserfuck(text: str, width: int | None = None) -> str:
 
     # A folded frame is bounded by the width rather than by its longest
     # row, so the serpentine has the whole width to lay its track in.
-    row_width = width if fold_frame else len(grid[0])
+    row_width = fold_width if fold_width is not None else len(grid[0])
     tracks = 2
 
     # enough serpentine rows to hold the loop body around the frame
