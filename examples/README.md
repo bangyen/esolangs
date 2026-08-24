@@ -97,7 +97,7 @@ Notes:
 
 Languages absent here are those with no Python interpreter to run or
 no boolean generator (`%^2^-1`, `123`, `SLOW ACV MAMMALIAN`).  Their
-generators (if any) are covered by `tests/tools/test_boolean.py` instead.
+generators (if any) are covered by the `tests/tools/test_boolean_*.py` modules instead.
 Every boolean generator whose answer is recoverable from what the program
 prints — including those that dump state (`RAM0`'s `z`, `Minsky Swap`'s
 second register) or paint (`A Painter Ant`'s `o`/`@`, `Back`'s answer
