@@ -517,8 +517,9 @@ about what a never-halting program may end on.  See the git history for the
 interpreter, the generator, and the compaction prototypes.
 
 One caution for anyone re-surveying this: the example stems are display
-names, not language ids, so a naive `id not in stems` check reports
-BF-PDA as missing when it is filed under `bfpda`.  It has an example.
+names lowercased with spaces as dashes (so `BF-PDA` → `bf-pda`), not
+language ids (`bf_pda`), so a naive `id not in stems` check still
+reports BF-PDA as missing.  It has an example.
 
 ### Divergent expected outputs
 

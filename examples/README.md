@@ -75,8 +75,8 @@ Two kinds of generator appear here:
 - **Parameterized** languages have no input mechanism, so the bits are
   embedded in the program text by substitution (see
   `esolangs.tools.boolean.parameterized`); they read nothing at run time.
-  These are `arrowqueue`, `bfpda`, `bio`, `bitdeque`, `cod`, `eval`,
-  `home-row`, `lamfunc`, `nocomment`, and `wii2d`.
+   These are `arrowqueue`, `bf-pda`, `bio`, `bitdeque`, `cod`, `eval`,
+   `home-row`, `lamfunc`, `nocomment`, and `wii2d`.
 
 Notes:
 
@@ -95,9 +95,11 @@ Notes:
   0-preserving two-input tables, and is kept as a record of that
   construction, so it is exempt from the generator-match test.
 
-Languages absent here are those whose boolean result is a machine state
-rather than program output — Back's cell under the head, RAM0's and Minsky
-Swap's register dumps, A Painter Ant's landing cell — and those with no
-Python interpreter to run.  Their generators are covered by
-`tests/tools/test_boolean.py` instead.
+Languages absent here are those with no Python interpreter to run or
+no boolean generator (`%^2^-1`, `123`, `SLOW ACV MAMMALIAN`).  Their
+generators (if any) are covered by `tests/tools/test_boolean.py` instead.
+Every boolean generator whose answer is recoverable from what the program
+prints — including those that dump state (`RAM0`'s `z`, `Minsky Swap`'s
+second register) or paint (`A Painter Ant`'s `o`/`@`, `Back`'s answer
+cell) — has a committed example.
 

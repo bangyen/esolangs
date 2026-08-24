@@ -424,7 +424,7 @@ def _register() -> None:
                 "the answer is cell n, past the n input cells"
             ),
         ),
-        "bfpda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
+        "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
         "bio": _embedded(b.bio, "register_based.bio", _fill_bio),
         "bitdeque": _embedded(b.bitdeque, "queue_based.bitdeque", _fill_bitdeque),
         "cod": _embedded(
