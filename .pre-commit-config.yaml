@@ -31,6 +31,10 @@ repos:
         # The mirror's default --ignore-missing-imports would suppress the
         # sympy import-untyped error and trip warn_unused_ignores, so pass no
         # extra flags and rely on the pyproject strict config, scoped to src/.
+        # scripts/ is also checked (see `files` in pyproject), but not here:
+        # it imports esolangs, unicorn, and urllib3, none of which exist in
+        # this hook's isolated env.  The `mypy` step in CI's lint job and
+        # `just lint-python` cover it instead.
         args: []
         additional_dependencies: [types-requests, types-setuptools, sympy]
         files: ^src/

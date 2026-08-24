@@ -52,6 +52,9 @@ PY = python_cmd()
 
 STEPS = [
     ("pre-commit", [*PY, "-m", "pre_commit", "run", "--all-files"]),
+    # pre-commit's mypy hook is scoped to src/ (its isolated env lacks the
+    # scripts' imports), so scripts/ is type-checked here, in the project env.
+    ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     ("pytest", [*PY, "-m", "pytest", "-q"]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (

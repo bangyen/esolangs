@@ -51,7 +51,7 @@ install-dev:
 lint-python:
     {{PYTHON}} -m ruff check .
     {{PYTHON}} -m ruff format --check .
-    {{PYTHON}} -m mypy src
+    {{PYTHON}} -m mypy
 
 # Lint helpers.  Each target fails loudly when its tool is present and the
 # code is unclean, and skips cleanly (exit 0) when the tool is missing, so a

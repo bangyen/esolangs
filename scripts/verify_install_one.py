@@ -56,7 +56,9 @@ def _serve() -> ThreadingHTTPServer:
     return server
 
 
-def _install(base: str, language: str, workdir: Path) -> subprocess.CompletedProcess:
+def _install(
+    base: str, language: str, workdir: Path
+) -> subprocess.CompletedProcess[str]:
     """Run the installer against ``base`` in ``workdir``."""
     env = {"ESOLANGS_BASE": base}
     return subprocess.run(
