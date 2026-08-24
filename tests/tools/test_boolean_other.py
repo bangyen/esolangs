@@ -386,6 +386,23 @@ class TestClockwise:
         assert lines[0][0] == " "
         assert run_clockwise(program, ["1", "0"]) == "1"  # XOR(1, 0)
 
+    @pytest.mark.parametrize(("table", "n"), [("0001", 2), ("01101001", 3)])
+    def test_tree_sits_against_the_left_edge(self, table: str, n: int) -> None:
+        """No column is dead: the spine starts as far left as it can.
+
+        The tree's turns are relative, so its absolute column never
+        matters; a spine further right is pure padding.  It only has to
+        clear the ``2**(n + 1) - 1`` columns its leftward branches span,
+        leaving column 0 for the closing corner.
+        """
+        program = boolean.clockwise(table)
+        rows = program.splitlines()
+        width = max(len(row) for row in rows)
+        grid = [row.ljust(width) for row in rows]
+        dead = [x for x in range(width) if all(row[x] == " " for row in grid)]
+        assert not dead, f"dead columns {dead}"
+        assert width == 2 ** (n + 1) + 1
+
 
 class TestTaglate:
     @pytest.mark.parametrize(

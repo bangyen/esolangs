@@ -724,7 +724,15 @@ def clockwise(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
-    root = 2 ** (n + 2) + 8
+    # The spine starts far enough right that the tree's leftward branches
+    # clear column 0, which holds the closing corner.  A node at ``bit``
+    # displaces its one-branch ``2**(n - bit)`` to the left and puts two
+    # ``R`` one column further, so the whole tree spans
+    # ``sum(2**(n - bit)) + 1 == 2**(n + 1) - 1`` columns left of the spine
+    # and ``2**(n + 1)`` leaves exactly one free column at the left edge.
+    # Anything wider is dead space: the turns are relative, so the tree's
+    # absolute column never matters.
+    root = 2 ** (n + 1)
 
     def place(node: tuple[int, int], ch: str) -> None:
         cells[node] = ch
