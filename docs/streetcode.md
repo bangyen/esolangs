@@ -204,6 +204,104 @@ local wall shape actually marks an intersection rather than a plain corner:
   `EOFError` once there are no more lines at all) and is not an error:
   it sets the cell to 0.
 
+## Construction-time validation
+
+The spec is explicit that "all streets are two-way, they are two
+characters wide", so a malformed drawing is rejected at construction
+rather than part-way through a run.  Four checks run in
+`src/esolangs/interpreters/grid_based/streetcode.py`.
+
+**Width.**  `_validate_width` walks the open cells reachable from `C` and
+rejects a cell whose open neighbours are a single dead end, or an
+opposite pair (N+S or E+W) with no perpendicular neighbour -- in each
+case there is no second lane.  A blank row or column counts as a lane,
+since space is a drivable no-op.  The upper bound is enforced too: a
+street wider than two lanes is rejected.  Cross-section runs cannot
+measure this -- where two legal two-wide streets cross, a run through the
+intersection reports the *length* of the crossing street, not any width
+-- so the rule is a fully open three-by-three block, which a region wider
+than two in both directions must contain and a two-wide network never
+does (a crossing is a plus whose open centre is two-by-two, with walls at
+the diagonal corners).  A three-by-two room passes, the deliberate
+boundary of the rule: it is a two-wide street of length three seen
+sideways.
+
+One exemption remains: a grid with no walls is not a street network to
+measure, so the bare `CU` still constructs and reaches the residual
+`HaltError` path.  The earlier "no instruction characters" exemption is
+gone -- it was content sniffing rather than geometry.  The wall-shape
+fixtures that relied on it disable validation explicitly through a
+test-local helper, keeping the escape hatch out of the interpreter.
+
+**The street must be enclosed.**  A street is bounded by walls, so the
+road the car can reach never touches the border of the grid:
+`_validate_enclosed` rejects a program whose flood fill from `C` reaches
+an edge.  This is what catches a hole two cells across.  A one-cell hole
+already fails the width check, since squeezing through it leaves a
+one-wide stub, but a two-wide hole is a legal-width passage that looks
+like ordinary road -- only its running off the grid marks it as a gap.
+
+**Wall structure: three neighbourhood forms.**  Street width does not
+catch every malformed drawing.  A wall with a one-cell hole punched
+through it (`-- --`) leaves a gap too narrow to drive, yet the corridor
+either side of it still measures two wide.  That shape is real: it is how
+the boolean generator's one-input CP-rewind strip was found to be drawn
+one character wide.
+
+`_validate_walls` requires every reachable cell's three-by-three
+neighbourhood to match one of three forms, up to rotation:
+
+```
+corner: ?W?      wall: ?W?      intersection: W..
+        W..            ...                    ...
+        ?..            ...                    ...
+```
+
+`W` is any wall character, `.` is open ground, `?` is anything at all.
+Writing the corner's cells as `W` rather than the literal glyphs means a
+rotation need not swap `|` and `-`, and lets one form cover the outside
+of a corner, the inside of one, and two boxes packed flush together --
+which is why three forms suffice where an earlier, more literal corner
+form appeared to need a dozen.
+
+The forms constrain where walls sit, never which glyph is used, so a
+second pass (`_validate_glyphs`) rejects a `-` drawn beside a `|`: the
+two mean walls running in different directions, and where they meet the
+wall turns a corner, which is drawn `+`.
+
+The forms are also what keep an uncapped road divider legal (see "Still
+open" below): the `?` edges of the wall form, together with the
+intersection form's plain `W`, leave a bare `-` at a divider's open end
+accepted while still catching the interrupted wall.
+
+**Everything drawn belongs to one street network.**  `_validate_connected`
+takes the reachable road, grows it by one cell so the growth takes in the
+walls along its edges, and rejects whatever is still drawn: a detached
+second box, a stray fragment of wall, an instruction sealed inside an
+island, or the middle of a solid block.  A hollow island needs no special
+case, since every cell of a one-thick wall is within one step of the road
+around it.  Two decisions inside this check are worth recording:
+
+* **Solid blocks are rejected.**  Permitting them would mean a second
+  flood-fill pass to tell a hole enclosed by the region from the outside
+  of the grid.  Unlike the divider question, where permissiveness is
+  free, this one has a real implementation cost and no program in the
+  repo needs it.
+* **The check is strict about what counts as leftover** -- any non-blank
+  character, not only walls.  Restricting it to walls would cost no
+  detection (a detached box and a stray fragment are both drawn out of
+  walls) and would let the remaining text stand as comments, which the
+  car would treat as no-ops anyway.  The wiki says nothing about
+  comments.  That alternative is left unimplemented on the grounds that a
+  program containing stray marks is more likely drawn wrong than
+  annotated.
+
+Coverage lives in `TestStreetcodeStreetWidth` in
+`tests/interpreters/test_streetcode.py`, which pins both the rejected
+shapes and the accepted ones, including the two shipped examples, and the
+checks are verified against all 276 generated truth tables and the wiki's
+own worked examples.
+
 ## How the lane-merge rule was derived
 
 The "Lane merging" bullet above states the rule; this section preserves the
@@ -273,9 +371,10 @@ still echoes every character correctly under the rule.
   uncapped shape.  The interpreter takes the permissive reading: an
   uncapped end is accepted, and no validation rejects it.  A wall
   *interrupted* by a one-cell hole is a different shape and a real
-  defect -- one was found in the boolean generator -- and is rejected by
-  the wall-structure forms described in `docs/roadmap.md`, which are
-  written to leave the uncapped end legal while catching the hole.
+  defect -- one was found in the boolean generator -- and is rejected
+  by the wall-structure forms described above under "Construction-time
+  validation", which are written to leave the uncapped end legal while
+  catching the hole.
 - **Does plain-corner wall-hugging (the single-cell step case, not a
   detected junction) also need lane-landing?** No evidence demands it --
   the hand-drawn trace above only exercises the junction-turn case, and
