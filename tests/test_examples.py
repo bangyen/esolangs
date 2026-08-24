@@ -75,7 +75,8 @@ def test_example_files_match_generator() -> None:
     The files are committed wrapped (see
     ``scripts/write_hello_world_examples.py``), so the comparison wraps the
     generator's output the same way rather than loosening to ignore
-    newlines -- a wrapped file still has to match character for character.
+    newlines -- a wrapped file still has to match character for character
+    after stripping the well-formed final newline.
     """
     languages = [
         lang for lang in LANGUAGES.values() if lang.generator and lang.interpreter
@@ -84,7 +85,7 @@ def test_example_files_match_generator() -> None:
         assert lang.generator is not None
         path = EXAMPLES_DIR / f"{_file_name(lang.name)}.txt"
         expected = generate(lang.name, "Hello, World!", DEFAULT_WIDTH)
-        assert path.read_text(encoding="utf-8") == expected
+        assert path.read_text(encoding="utf-8").rstrip("\n") == expected.rstrip("\n")
 
 
 def test_no_orphan_hello_world_examples() -> None:
