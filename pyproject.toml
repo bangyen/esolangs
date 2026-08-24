@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+# The SPDX-string `license` below is PEP 639, which setuptools implements
+# from 77.0; older versions reject it as invalid pyproject config.
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,7 +16,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
