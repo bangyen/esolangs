@@ -1,0 +1,92 @@
+name: Weekly fuzz
+
+# CI runs the differential fuzzer at a fixed `--fuzz 50 --seed 1`, which is
+# the right shape for a per-PR gate -- reproducible and bounded -- but it
+# means the same 50 programs per language are explored on every run and no
+# new ones ever are.  This job exists to actually search: a fresh seed and a
+# much larger budget, once a week.
+#
+# Reproducing a failure needs all three of the seed, the --fuzz count, and
+# the commit: the fuzzers share one sequential RNG, so changing the count (or
+# the order of the fuzzer calls, or how many draws any one of them makes)
+# shifts every subsequent draw.  The run prints the exact command up front
+# for that reason -- and up front rather than on failure, so it survives a
+# timeout or a cancelled job.
+
+on:
+  schedule:
+    # 07:00 UTC every Monday
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "RNG seed (blank uses the run ID)"
+        required: false
+        type: string
+      count:
+        description: "Programs to fuzz per language"
+        required: false
+        default: "1000"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    # Both native sides are needed.  The Rust references cover LaserFuck,
+    # Forth, Basicfuck, Painfuck, unsquare, and 3x; the RISC-V ones cover
+    # NoComment, BF-PDA, RAM0, BIO, and Minsky-Swap.
+    - name: Install the RISC-V toolchain and unicorn
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-riscv64-linux-gnu
+        python3 -m pip install -q unicorn
+
+    - name: Build the Rust references
+      run: cargo build --manifest-path extra/rust/Cargo.toml
+
+    # verify_differential.py treats a missing toolchain as a skip, not a
+    # failure -- correct locally, but here it would let the job fuzz a
+    # fraction of the languages and still report success, week after week.
+    # Fail loudly instead if anything the fuzzers need is absent.
+    - name: Check every native reference is present
+      run: |
+        set -e
+        python3 -c "import unicorn" \
+          || { echo "::error::unicorn missing; RISC-V fuzzers would silently skip"; exit 1; }
+        command -v riscv64-linux-gnu-gcc >/dev/null \
+          || { echo "::error::riscv64 gcc missing; RISC-V fuzzers would silently skip"; exit 1; }
+        for b in laserfuck forth basicfuck painfuck unsquare three_x; do
+          test -x "extra/rust/target/debug/$b" \
+            || { echo "::error::extra/rust/target/debug/$b missing; its fuzzer would silently skip"; exit 1; }
+        done
+        echo "all native references present"
+
+    - name: Fuzz
+      run: |
+        SEED="${{ inputs.seed }}"
+        [ -n "$SEED" ] || SEED="${{ github.run_id }}"
+        COUNT="${{ inputs.count }}"
+        [ -n "$COUNT" ] || COUNT=1000
+        echo "::notice::seed=$SEED count=$COUNT commit=${{ github.sha }}"
+        echo "Reproduce this run with:"
+        echo "  git checkout ${{ github.sha }}"
+        echo "  cargo build --manifest-path extra/rust/Cargo.toml"
+        echo "  PYTHONPATH=src python3 scripts/verify_differential.py --fuzz $COUNT --seed $SEED"
+        PYTHONPATH=src python3 scripts/verify_differential.py \
+          --fuzz "$COUNT" --seed "$SEED"
