@@ -13,7 +13,6 @@ module re-exports them for compatibility.
 """
 
 from esolangs.tools.boolean.other import (
-    abcdirection,
     between,
     bit_tilde,
     clockwise,
@@ -81,7 +80,6 @@ from esolangs.tools.boolean.tape import (
 __all__ = [
     "BOOLEAN",
     "a_painter_ant",
-    "abcdirection",
     "addsubjump",
     "arrowqueue",
     "back",
@@ -149,7 +147,6 @@ __all__ = [
 BOOLEAN: frozenset[str] = frozenset(
     {
         "3x",
-        "ABCDirection",
         "A Painter Ant",
         "AddSubJump",
         "3D Brainfuck",

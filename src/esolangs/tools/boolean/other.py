@@ -1,17 +1,15 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-# abcdirection, streetcode, and ztoalc_l_boolean each own a file because
-# their construction (a grid layout or a program search) dwarfs the rest of
-# the category; they are re-exported here so this module stays the import
-# site the package and tests already use.
+# streetcode and ztoalc_l_boolean each own a file because their construction
+# (a grid layout or a program search) dwarfs the rest of the category; they
+# are re-exported here so this module stays the import site the package and
+# tests already use.
 from esolangs.tools import laserfuck_layout
-from esolangs.tools.boolean.abcdirection import abcdirection
 from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.boolean.streetcode import streetcode
 from esolangs.tools.boolean.ztoalc_l import ztoalc_l_boolean
 
 __all__ = [
-    "abcdirection",
     "between",
     "bit_tilde",
     "clockwise",
