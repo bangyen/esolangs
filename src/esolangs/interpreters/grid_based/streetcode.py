@@ -448,15 +448,17 @@ class _Machine:
                         )
 
     def _validate_connected(self, reachable: set[tuple[int, int]]) -> None:
-        """Reject walls that are not part of the one street network.
+        """Reject geometry that is not part of the one street network.
 
-        A program is a single street network: every wall drawn bounds
-        road the car can reach.  Take the reachable open cells, grow the
-        region by one cell in every direction so that it takes in the
-        walls along its edges, and remove it from the grid.  A wall still
-        drawn outside bounds no street, and the program is malformed -- a
-        detached second box, a stray fragment of wall, or the middle of a
-        solid block, which is ink bounding nothing.
+        A program is a single street network: everything drawn is either
+        road the car can reach or a wall bounding that road.  Take the
+        reachable open cells, grow the region by one cell in every
+        direction so that it takes in the walls along its edges, and
+        remove it from the grid.  Whatever is still drawn belongs to no
+        street, and the program is malformed -- a detached second box, a
+        stray fragment of wall, an instruction sealed inside an island
+        where the car can never drive it, or the middle of a solid block
+        of wall, which is ink bounding nothing.
 
         A hollow island is still legal, and needs no special case: the
         car drives around the block, and every cell of a one-thick wall
@@ -468,21 +470,21 @@ class _Machine:
         cost a second flood-fill pass to tell an enclosed hole from the
         outside, and no program the repo draws needs it.
 
-        Only walls count.  A wall is structural -- it is what decides
-        where the car may drive -- so one drawn away from any street
-        bounds nothing and is meaningless.  Every other character is
-        inert: the car treats anything that is not ``+``, ``-`` or ``|``
-        as a no-op it drives over, so outside the street such text can
-        never execute and is read as a comment.  That the wiki says
-        nothing about comments makes this a choice rather than a rule,
-        and the permissive one costs no detection: the defects worth
-        catching -- a detached second box, a stray fragment of wall --
-        are drawn out of walls, so restricting the check to walls still
-        catches them all.
-
-        Blank cells are ignored either way: the padding ``ljust`` adds to
+        Only non-blank cells count.  The blank padding ``ljust`` adds to
         square off a ragged program, and the background around an
-        L-shaped layout, are not drawn at all.
+        L-shaped layout, are not drawn geometry and are ignored -- which
+        is what lets the boolean example, whose hallways leave large
+        blank margins, pass while a detached wall does not.
+
+        The rule is strict: any character off the street is rejected, not
+        only walls.  Restricting it to walls would cost no detection --
+        a detached box and a stray fragment are both drawn out of walls
+        -- and would let the remaining text stand as comments, since the
+        car treats anything that is not ``+``, ``-`` or ``|`` as a no-op
+        and off the street it can never execute anyway.  The wiki says
+        nothing about comments either way.  That alternative is left
+        unimplemented: a program that contains stray marks is more likely
+        drawn wrong than annotated, and nothing in the repo needs them.
         """
         grown = {
             (r + dr, c + dc)
@@ -493,10 +495,10 @@ class _Machine:
         for r in range(self.height):
             for c in range(self.width):
                 char = self.grid[r][c]
-                if char not in _WALLS or (r, c) in grown:
+                if char == " " or (r, c) in grown:
                     continue
                 raise ValueError(
-                    f"wall not connected to the street at {(r, c)} ({char!r})"
+                    f"geometry not connected to the street at {(r, c)} ({char!r})"
                 )
 
     def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
