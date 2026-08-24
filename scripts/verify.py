@@ -26,6 +26,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).parents[1]
 
@@ -125,7 +126,7 @@ STEPS = [
 ]
 
 
-def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool]:
+def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool]:
     parser = argparse.ArgumentParser(description="Run the local verification stack")
     parser.add_argument(
         "--only",
@@ -144,6 +145,12 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool]:
         action="store_true",
         help="list available STEPS names and exit",
     )
+    parser.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="suppress successful step output (only failures, [ok] and timing)",
+    )
     args = parser.parse_args()
     if args.list:
         for name, _ in STEPS:
@@ -151,7 +158,7 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool]:
         sys.exit(0)
     only = {s.strip() for s in args.only.split(",") if s.strip()} if args.only else None
     skip = {s.strip() for s in args.skip.split(",") if s.strip()} if args.skip else None
-    return only, skip, False
+    return only, skip, False, args.quiet
 
 
 def main() -> int:
@@ -159,7 +166,7 @@ def main() -> int:
     import importlib.util
     import os
 
-    only, skip, _ = _parse_only_skip()
+    only, skip, _, quiet = _parse_only_skip()
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     have_unicorn = importlib.util.find_spec("unicorn") is not None
@@ -189,7 +196,19 @@ def main() -> int:
             print(f"[skip] {name}: Rust toolchain (cargo) not installed")
             continue
         start = time.time()
-        result = subprocess.run(cmd, env=env)
+        result: subprocess.CompletedProcess[Any]
+        if quiet:
+            result = subprocess.run(
+                cmd,
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            if result.returncode != 0 and result.stdout:
+                print(result.stdout, end="")
+        else:
+            result = subprocess.run(cmd, env=env)
         elapsed = time.time() - start
         timings.append((name, elapsed))
         ok = result.returncode == 0

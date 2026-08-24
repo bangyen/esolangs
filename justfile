@@ -88,43 +88,45 @@ lint: lint-python lint-rust lint-lean
     @echo "All lint checks completed!"
 
 # test (full local check: lint, pytest, bandit, cargo, verify scripts)
+# pass --quiet to suppress successful step output (only [ok]/FAIL + timing)
 test *args:
     sh scripts/check_all.sh {{args}}
 
-# fast dev loop: pre-commit + pytest + cargo (skips 32s differential + 10s unicorn)
-test-quick:
-    {{PYTHON}} scripts/verify.py --only pre-commit,pytest,"cargo fmt","cargo build","cargo test"
+# fast dev loop: pre-commit + pytest + cargo (skips 32s differential + 10s unicorn) — quiet by default
+test-quick *args:
+    {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest,"cargo fmt","cargo build","cargo test" {{args}}
 
 # granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
-test-py:
-    {{PYTHON}} scripts/verify.py --only pytest
+# add --quiet to any of these for terse output (e.g. just test-py --quiet)
+test-py *args:
+    {{PYTHON}} scripts/verify.py --only pytest {{args}}
 
-test-rust:
-    {{PYTHON}} scripts/verify.py --only "cargo fmt","cargo build","cargo test"
+test-rust *args:
+    {{PYTHON}} scripts/verify.py --only "cargo fmt","cargo build","cargo test" {{args}}
 
-test-line:
-    {{PYTHON}} scripts/verify.py --only "extra/line suites (uv)"
+test-line *args:
+    {{PYTHON}} scripts/verify.py --only "extra/line suites (uv)" {{args}}
 
-test-anchor:
-    {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible"
+test-anchor *args:
+    {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible" {{args}}
 
-test-unicorn:
-    {{PYTHON}} scripts/verify.py --only "RISC-V assembly under unicorn (compilers + cross-checks)"
+test-unicorn *args:
+    {{PYTHON}} scripts/verify.py --only "RISC-V assembly under unicorn (compilers + cross-checks)" {{args}}
 
-test-generators:
-    {{PYTHON}} scripts/verify.py --only "extra cross-check generators"
+test-generators *args:
+    {{PYTHON}} scripts/verify.py --only "extra cross-check generators" {{args}}
 
-test-differential:
-    {{PYTHON}} scripts/verify.py --only "interpreter vs native differential corpora"
+test-differential *args:
+    {{PYTHON}} scripts/verify.py --only "interpreter vs native differential corpora" {{args}}
 
-test-lint:
-    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check",bandit,"cargo fmt"
+test-lint *args:
+    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check",bandit,"cargo fmt" {{args}}
 
-test-bandit:
-    {{PYTHON}} scripts/verify.py --only bandit
+test-bandit *args:
+    {{PYTHON}} scripts/verify.py --only bandit {{args}}
 
-test-docstring:
-    {{PYTHON}} scripts/verify.py --only "docstring check"
+test-docstring *args:
+    {{PYTHON}} scripts/verify.py --only "docstring check" {{args}}
 
 # clean generated
 clean:
