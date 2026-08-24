@@ -95,7 +95,9 @@ would make the generator close to trivial to write by hand.
   and then drives a binary decision tree whose T-junctions apply the
   ambiguous-turn rule to fork on it; it takes arbitrary truth tables,
   uncapped, and is verified over every input combination up to 4 inputs.
-  No text generator yet — that's the remaining follow-on work.
+  The text generator is in `tools/text/other.py`; its output validates
+  against the construction-time checks, as does the boolean generator's
+  over all 276 truth tables up to 3 inputs.
 - **Flowchart** — literal flowchart nodes joined by lines; a `< >` switch
   node reads a bit register and routes the pointer left or right (straight
   through if the register is empty), directly analogous to Befunge's
