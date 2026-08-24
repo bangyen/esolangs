@@ -12,6 +12,7 @@ The generators live in ``esolangs.tools.boolean``, split by language family
 module re-exports them for compatibility.
 """
 
+from esolangs.tools.boolean.circuit_diagram import circuit_diagram
 from esolangs.tools.boolean.other import (
     between,
     bit_tilde,
@@ -95,6 +96,7 @@ __all__ = [
     "brainif",
     "circlefuck",
     "circlefuck_byte",
+    "circuit_diagram",
     "clockwise",
     "cod",
     "collatz_multiverse",
@@ -163,6 +165,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "bit~",
         "BrainIf",
         "Circlefuck",
+        "Circuit Diagram",
         "Clockwise",
         "COD",
         "Collatz Multiverse",

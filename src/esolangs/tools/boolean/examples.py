@@ -336,6 +336,11 @@ def _register() -> None:
             split=True,
             note="halts by exiting with status 0",
         ),
+        "circuit_diagram": _reader(
+            b.circuit_diagram,
+            "grid_based.circuit_diagram",
+            split=True,
+        ),
         "clockwise": _reader(
             b.clockwise,
             "grid_based.clockwise",
