@@ -15,10 +15,17 @@ branches, so the only thing that matters is that the beam crosses its cells
 in order, moving right.
 
 :func:`fold` does that with a left-returning zigzag, which costs rows
-instead of columns.  It cannot fold code whose geometry is load-bearing --
-the text generator's serpentine loop track encodes brainfuck bracket
-structure in the *positions* of its mirror cells -- so only the straight
-runs go through it.
+instead of columns.  A straight run is all it handles, because it may break
+between any two cells.
+
+The text generator's *frame* is not a straight run: it interleaves tape ops
+with bracket markers, and a marker owns mirror cells on the rows beneath it
+whose columns must match its own.  Breaking inside one of those groups
+would separate a mirror from the marker it serves.  :func:`fold_groups`
+folds the frame anyway, by treating each marker and its mirrors as a single
+unbreakable token and only ever breaking between two of them -- the same
+token-aware rule the brainfuck-family wrappers in
+:mod:`esolangs.tools.wrap` follow, applied to a grid rather than a line.
 """
 
 # The column a fold returns to.  Columns 0..2 carry the funnel (``|o^`` and
@@ -81,6 +88,73 @@ def fold(
             grid[row][left] = "}"  # next segment row: face right again
             col = left + 1
     reserve(grid, row + 1)
+    return row, col
+
+
+def fold_groups(
+    grid: list[list[str]],
+    groups: list[tuple[str, str, str]],
+    row: int,
+    col: int,
+    width: int,
+    left: int = MARGIN,
+) -> tuple[int, int]:
+    r"""Lay ``groups`` into ``grid``, breaking only between two of them.
+
+    Each group is a ``(top, middle, bottom)`` triple: what the frame writes
+    on its own row, and the mirror cells that must sit directly beneath it
+    on the next two rows.  A plain tape op carries blank mirrors; a bracket
+    marker carries the cells that turn the beam back into the frame.  The
+    triple is written as a unit, so a marker never loses its mirrors to a
+    row break -- that is the whole reason this exists rather than
+    :func:`fold`.
+
+    The three rows of a segment are followed by a return row, so a segment
+    costs four rows against :func:`fold`'s two.  The beam turns down at the
+    end of a segment, crosses the two mirror rows, and the return row's
+    ``{`` sends it back to ``left`` to start the next segment -- the same
+    idiom :func:`fold` uses, given room for the mirrors.
+
+    Returns the row and column the beam occupies after the last group, on
+    the *top* row of the final segment.
+    """
+    index = 0
+    while index < len(groups):
+        reserve(grid, row + 2)
+        room = max(width - col - 1, 1)  # keep a column for the turn-down 'v'
+        take = 0
+        used = 0
+        while index + take < len(groups):
+            span = len(groups[index + take][0])
+            if used + span > room and take:
+                break
+            used += span
+            take += 1
+            if used >= room:
+                break
+
+        for top, middle, bottom in groups[index : index + take]:
+            for offset, char in enumerate(top):
+                grid[row][col + offset] = char
+            for offset, char in enumerate(middle):
+                if char != " ":
+                    grid[row + 1][col + offset] = char
+            for offset, char in enumerate(bottom):
+                if char != " ":
+                    grid[row + 2][col + offset] = char
+            col += len(top)
+        index += take
+
+        if index < len(groups):
+            reserve(grid, row + 4)
+            grid[row][col] = "v"
+            # the beam drops past both mirror rows before turning back left
+            grid[row + 3][col] = "{"
+            grid[row + 3][left] = "v"
+            row += 4
+            grid[row][left] = "}"
+            col = left + 1
+    reserve(grid, row + 3)
     return row, col
 
 
