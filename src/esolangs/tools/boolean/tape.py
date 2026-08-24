@@ -494,23 +494,24 @@ def basicfuck(truth_table: str) -> str:
         lines.append(f"read -> a{i} ;")
         lines.append(f"a{i} -= 48 ;")
 
-    def build(rows: list[int], k: int) -> str:
+    def build(rows: list[int], k: int, depth: int) -> str:
+        indent = "  " * depth
         if len(rows) == 1:
             value = int(truth_table[rows[0]])
-            return f"out += {48 + value} ;\nwrite <- out ;\n"
+            return f"{indent}out += {48 + value} ;\n{indent}write <- out ;\n"
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
         var = f"a{k}"
         return (
-            f"if ({var}) {{\n"
-            + build(g1, k + 1)
-            + "}\n"
-            + f"if !({var}) {{\n"
-            + build(g0, k + 1)
-            + "}\n"
+            f"{indent}if ({var}) {{\n"
+            + build(g1, k + 1, depth + 1)
+            + f"{indent}}}\n"
+            + f"{indent}if !({var}) {{\n"
+            + build(g0, k + 1, depth + 1)
+            + f"{indent}}}\n"
         )
 
-    lines.append(build(list(range(2**n)), 1))
+    lines.append(build(list(range(2**n)), 1, 0).rstrip("\n"))
     return "\n".join(lines)
 
 
