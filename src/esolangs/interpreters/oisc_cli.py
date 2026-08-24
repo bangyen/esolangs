@@ -36,25 +36,6 @@ def run_with_limit(machine: _StepMachine, limit: int) -> None:
     raise HaltError(f"execution exceeded the {limit}-instruction limit")
 
 
-def run_until_halt(machine: _StepMachine) -> None:
-    """Step ``machine`` until it halts, letting its own budget end the run.
-
-    The companion to :func:`run_with_limit`, for languages whose programs are
-    specified to loop forever: Suffolk has no halt instruction, so reaching
-    the budget is how every program ends rather than a failure to report.
-    Such a machine carries the budget itself and sets ``halted`` when it runs
-    out, so this returns instead of raising.
-
-    What the budget counts is the machine's own business -- Suffolk counts
-    full passes over the code -- and this only needs ``halted`` to become
-    true eventually.  A Painter Ant loops forever
-    too but never sets ``halted``, so it needs the VM's cycle detector
-    instead of this.
-    """
-    while not machine.halted:
-        machine.step()
-
-
 def main_with_limit(run: Callable[..., None]) -> None:
     """Run ``sys.argv``'s program file through ``run``, with an optional limit."""
     if len(sys.argv) > 1:
