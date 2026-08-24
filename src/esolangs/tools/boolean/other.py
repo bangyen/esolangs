@@ -199,13 +199,14 @@ def nevermind(truth_table: str) -> str:
         lines.append(f"make,{chr(ord('a') + i)},$answer")
 
     def build(k: int, row: int) -> None:
+        indent = "  " * k
         if k == n:
-            lines.append(f"print,{truth_table[row]}")
+            lines.append(f"{indent}print,{truth_table[row]}")
             return
         for bit in (0, 1):
-            lines.append(f"if,${chr(ord('a') + k)},==,{bit}")
+            lines.append(f"{indent}if,${chr(ord('a') + k)},==,{bit}")
             build(k + 1, row * 2 + bit)
-            lines.append("endif")
+            lines.append(f"{indent}endif")
 
     build(0, 0)
     return "\n".join(lines)
@@ -1000,18 +1001,19 @@ def forbin_boolean(truth_table: str) -> str:
         lines.append(f"  {','.join(reads)} = (in 0);")
         bits.append(reads[7])
 
-    def emit(level: int, row: int) -> None:
+    def emit(level: int, row: int, depth: int) -> None:
+        indent = "  " * depth
         if level == n:
             byte = 49 if truth_table[row] == "1" else 48
-            lines.append(f"  out {','.join(format(byte, '08b'))};")
-            lines.append("  return 0;")
+            lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
+            lines.append(f"{indent}return 0;")
             return
-        lines.append(f"  for _:!{bits[level]}..{bits[level]} {{")
-        emit(level + 1, row + 2 ** (n - 1 - level))
-        lines.append("  }")
-        emit(level + 1, row)
+        lines.append(f"{indent}for _:!{bits[level]}..{bits[level]} {{")
+        emit(level + 1, row + 2 ** (n - 1 - level), depth + 1)
+        lines.append(f"{indent}}}")
+        emit(level + 1, row, depth)
 
-    emit(0, 0)
+    emit(0, 0, 1)
     lines.append("}")
     return "\n".join(lines)
 

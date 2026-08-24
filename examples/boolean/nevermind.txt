@@ -3,18 +3,18 @@ make,a,$answer
 input,?
 make,b,$answer
 if,$a,==,0
-if,$b,==,0
-print,0
-endif
-if,$b,==,1
-print,0
-endif
+  if,$b,==,0
+    print,0
+  endif
+  if,$b,==,1
+    print,0
+  endif
 endif
 if,$a,==,1
-if,$b,==,0
-print,0
-endif
-if,$b,==,1
-print,1
-endif
+  if,$b,==,0
+    print,0
+  endif
+  if,$b,==,1
+    print,1
+  endif
 endif
