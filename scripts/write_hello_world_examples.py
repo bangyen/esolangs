@@ -37,11 +37,8 @@ def main() -> None:
         # program out to a width (Clockwise's ring, Streetcode's corridor,
         # WII2D's folded line) gets the width rather than having it applied
         # as an after-the-fact reflow, which would leave a 2D program
-        # untouched.  The file is the generator's output plus a final newline,
-        # so it is a well-formed text file; the sync test compares after
-        # stripping that newline, exactly as the interpreters do when running
-        # it.
-        program = generate(lang.name, TEXT, DEFAULT_WIDTH).rstrip("\n") + "\n"
+        # untouched.  The sync test compares against exactly this.
+        program = generate(lang.name, TEXT, DEFAULT_WIDTH)
         existing = path.read_text(encoding="utf-8") if path.exists() else None
         path.write_text(program, encoding="utf-8")
         status = "unchanged" if existing == program else "wrote"
