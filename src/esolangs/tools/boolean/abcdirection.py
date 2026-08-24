@@ -58,7 +58,48 @@ class _Builder:
         term[self.width - 6 : self.width] = ["D"] * 6
         rows = ["".join(r) for r in g]
         rows.append("".join(term))
-        return rows
+        return _compact(rows)
+
+
+def _compact(rows: list[str]) -> list[str]:
+    """Drop every dead row, and every dead column that is safe to drop.
+
+    The layout reserves whole rows and columns it never writes to -- the
+    tree's node slots are ``sp`` apart but a node occupies a couple of
+    dozen columns, and a leaf's band is 52 rows apart but only tens deep.
+    Deleting an all-``B`` row or column is behaviour-preserving: ``B`` is a
+    no-op, every turn happens at a live cell, and deleting a whole line
+    shifts every live cell on one side of it together, so the beam's
+    relative geometry -- and the row-0/bottom-row wraps it relies on -- is
+    unchanged.  Only ``_travel`` counts cells, and that runs here at
+    construction time, not at run time.
+
+    The one hazard is horizontal.  :func:`_parse` ends the program at the
+    first ``DDDDDD``, so closing the gap between two ``D`` cells can forge a
+    terminator: the node dequeue runs space their ``D``\\ s two apart for
+    exactly this reason, and the last EOF sink sits one ``B`` clear of the
+    real terminator.  A column is therefore dropped only when no row grows a
+    six-``D`` run without it.  Rows need no such test, since the terminator
+    is read along a row.
+    """
+    rows = [row for row in rows if row.count("B") != len(row)]
+    width = len(rows[0])
+    keep = list(range(width))
+    dead = [x for x in range(width) if all(row[x] == "B" for row in rows)]
+
+    for x in dead:
+        trial = [c for c in keep if c != x]
+        merged = ["".join(row[c] for c in trial) for row in rows]
+        # The real terminator is the trailing run on the last row; a run
+        # anywhere else would truncate the program when it is parsed back.
+        last = len(merged) - 1
+        if any(
+            "DDDDDD" in (line[:-6] if i == last else line)
+            for i, line in enumerate(merged)
+        ):
+            continue
+        keep = trial
+    return ["".join(row[c] for c in keep) for row in rows]
 
 
 def _turn(b: _Builder, x: int, y: int, h: int, target: int) -> tuple[int, int, int]:
