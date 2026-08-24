@@ -8,4 +8,4 @@ set -e
 cd "$(dirname "$0")/.."
 
 PY=${PY:-.venv/bin/python}
-exec "$PY" scripts/verify.py
+exec "$PY" scripts/verify.py "$@"

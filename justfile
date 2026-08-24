@@ -15,9 +15,19 @@ help:
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
-    @echo "  test         - Run the full local check (lint, pytest, bandit, cargo)"
+    @echo "  test         - Run the full local check (lint, pytest, bandit, cargo, + verify scripts) (~75s)"
+    @echo "  test-quick   - Fast dev loop: pre-commit + pytest only (~19s)"
+    @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto)"
+    @echo "  test-rust    - cargo fmt + cargo test (~1s)"
+    @echo "  test-differential - interpreter vs native differential corpora (~32s)"
+    @echo "  test-unicorn - RISC-V assembly under unicorn (~10s)"
+    @echo "  test-generators - extra cross-check generators (~2.6s)"
+    @echo "  test-line    - extra/line suites via uv (~3s)"
+    @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
+    @echo ""
+    @echo "  Use 'just test-quick' for inner loop, 'just test --only pytest,differential' for subsets."
 
 # install tooling
 install-dev:
@@ -78,8 +88,43 @@ lint: lint-python lint-rust lint-lean
     @echo "All lint checks completed!"
 
 # test (full local check: lint, pytest, bandit, cargo, verify scripts)
-test:
-    sh scripts/check_all.sh
+test *args:
+    sh scripts/check_all.sh {{args}}
+
+# fast dev loop: pre-commit + pytest + cargo (skips 32s differential + 10s unicorn)
+test-quick:
+    {{PYTHON}} scripts/verify.py --only pre-commit,pytest,"cargo fmt","cargo build","cargo test"
+
+# granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
+test-py:
+    {{PYTHON}} scripts/verify.py --only pytest
+
+test-rust:
+    {{PYTHON}} scripts/verify.py --only "cargo fmt","cargo build","cargo test"
+
+test-line:
+    {{PYTHON}} scripts/verify.py --only "extra/line suites (uv)"
+
+test-anchor:
+    {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible"
+
+test-unicorn:
+    {{PYTHON}} scripts/verify.py --only "RISC-V assembly under unicorn (compilers + cross-checks)"
+
+test-generators:
+    {{PYTHON}} scripts/verify.py --only "extra cross-check generators"
+
+test-differential:
+    {{PYTHON}} scripts/verify.py --only "interpreter vs native differential corpora"
+
+test-lint:
+    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check",bandit,"cargo fmt"
+
+test-bandit:
+    {{PYTHON}} scripts/verify.py --only bandit
+
+test-docstring:
+    {{PYTHON}} scripts/verify.py --only "docstring check"
 
 # clean generated
 clean:

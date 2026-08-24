@@ -15,12 +15,16 @@ The native qemu-riscv64 checks need Linux, so they run only in CI (see
 this script.
 
 Usage:
-    python scripts/verify.py
+    python scripts/verify.py [--only STEPS] [--skip STEPS] [--list]
+    python scripts/verify.py --only pytest,"cargo test"   # comma-separated STEPS names
+    python scripts/verify.py --only pre-commit,pytest --skip bandit
 """
 
+import argparse
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
@@ -52,6 +56,10 @@ STEPS = [
     (
         "cargo fmt",
         ["cargo", "fmt", "--manifest-path", "extra/rust/Cargo.toml", "--check"],
+    ),
+    (
+        "cargo build",
+        ["cargo", "build", "--manifest-path", "extra/rust/Cargo.toml"],
     ),
     (
         "cargo test",
@@ -117,10 +125,41 @@ STEPS = [
 ]
 
 
+def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool]:
+    parser = argparse.ArgumentParser(description="Run the local verification stack")
+    parser.add_argument(
+        "--only",
+        type=str,
+        default=None,
+        help="comma-separated subset of STEPS names to run (e.g. --only pytest,bandit)",
+    )
+    parser.add_argument(
+        "--skip",
+        type=str,
+        default=None,
+        help="comma-separated STEPS names to skip",
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="list available STEPS names and exit",
+    )
+    args = parser.parse_args()
+    if args.list:
+        for name, _ in STEPS:
+            print(name)
+        sys.exit(0)
+    only = {s.strip() for s in args.only.split(",") if s.strip()} if args.only else None
+    skip = {s.strip() for s in args.skip.split(",") if s.strip()} if args.skip else None
+    return only, skip, False
+
+
 def main() -> int:
     """Compile and run every example, reporting failures."""
     import importlib.util
     import os
+
+    only, skip, _ = _parse_only_skip()
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     have_unicorn = importlib.util.find_spec("unicorn") is not None
@@ -130,7 +169,13 @@ def main() -> int:
     )
 
     failures = 0
+    timings: list[tuple[str, float]] = []
     for name, cmd in STEPS:
+        if only is not None and name not in only:
+            continue
+        if skip is not None and name in skip:
+            print(f"[skip] {name}: filtered via --skip")
+            continue
         if not have_unicorn and "unicorn" in name:
             print(f"[skip] {name}: unicorn not installed (pip install unicorn)")
             continue
@@ -143,11 +188,20 @@ def main() -> int:
         if shutil.which("cargo") is None and "cargo" in name:
             print(f"[skip] {name}: Rust toolchain (cargo) not installed")
             continue
+        start = time.time()
         result = subprocess.run(cmd, env=env)
+        elapsed = time.time() - start
+        timings.append((name, elapsed))
         ok = result.returncode == 0
         failures += not ok
-        print(f"[{'ok' if ok else 'FAIL'}] {name}")
+        print(f"[{'ok' if ok else 'FAIL'}] {name} ({elapsed:.1f}s)")
 
+    if timings:
+        print("-" * 40)
+        for name, elapsed in timings:
+            print(f"{elapsed:5.1f}s  {name}")
+        total = sum(t for _, t in timings)
+        print(f"{total:5.1f}s  TOTAL")
     print("=" * 40)
     if failures:
         print(f"{failures} check(s) failed")
