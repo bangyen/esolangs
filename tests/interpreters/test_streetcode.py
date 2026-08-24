@@ -345,6 +345,73 @@ class TestStreetcodeAmbiguousTurns:
         assert (machine.row, machine.col) == (2, 9)
 
 
+class TestStreetcodeCrossingMouthDecision:
+    """A head-on junction decides at the mouth, not at the far lane.
+
+    Driving out through a mouth the car is level with both ``+`` when it
+    chooses; the run across to the far lane is only lane positioning for a
+    road already taken.  Re-reading the cell on arrival there lets an
+    instruction *on that positioning run* overturn the choice -- the same
+    "preparation must not double as the decision" the arrival read exists
+    to prevent (see ``TestStreetcodeAmbiguousTurns``).
+
+    A side mouth keeps the re-read: the car drives its approach as
+    ordinary road, so the cell at the turning square is the one the spec's
+    choice is about.  The counting loop's nine laps depend on that.
+    """
+
+    def _code(self) -> list[str]:
+        """Two rooms of a folded corridor, the shape a width-6 fold draws.
+
+        The car drives East out of ``C`` into the mouth bounded by the
+        divider tips at ``(3,2)`` and ``(6,2)``.  The CPth cell is zero --
+        it starts that way, no ``=`` is needed -- so the junction chooses
+        the leftmost road, North.  The single ``^`` at ``(5,3)`` lies on
+        the run out to that road's lane and makes the cell nonzero before
+        the car gets there.
+
+        Everything else is blank, so the geometry alone drives the car:
+        remove that one ``^`` and the grid behaves identically either way,
+        because there is then nothing to change the cell between choosing
+        the road and reaching it.
+        """
+        return [
+            "+----+",
+            "|    |",
+            "|    |",
+            "+-+  |",
+            "|    |",
+            "|C ^ |",
+            "+-+  |",
+            "|;   |",
+            "|    |",
+            "+----+",
+        ]
+
+    def test_the_instruction_on_the_way_out_does_not_change_the_road(
+        self,
+    ) -> None:
+        """The car climbs the road it chose instead of orbiting the tip.
+
+        Re-reading the cell at the far lane made the ``^`` overturn the
+        choice, and the car circled the four cells around the divider tip
+        forever, re-running that ``^`` on every lap -- never reaching the
+        corridor it had turned into.
+        """
+        machine = _Machine(self._code(), IO())
+        seen: set[tuple[int, int]] = set()
+        for _ in range(400):
+            seen.add((machine.row, machine.col))
+            machine.step()
+            if machine.halted:
+                break
+        # The chosen road runs North up the corridor to the top street,
+        # and the car goes on to reach the ';'.  An orbiting car never
+        # leaves the six cells around the divider's tip.
+        assert (1, 4) in seen, sorted(seen)
+        assert machine.halted
+
+
 class TestStreetcodeLaneMerge:
     """A genuinely multi-cell-wide junction: turning must land in the new
     road's right-hand lane, not just the first open cell (see

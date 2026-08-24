@@ -138,6 +138,7 @@ class _Machine:
         # The CPth cell as the car arrived at the square it is on, before
         # that square's instruction ran; junction decisions branch on this.
         self._arrival_cell = 0
+        self._merge_crossing = False
 
     @property
     def halted(self) -> bool:
@@ -545,12 +546,23 @@ class _Machine:
                 # about which road is "leftmost".  The latch is only ever set
                 # under a turn away from ``latched_heading``, so the two roads
                 # are always distinct.
-                choices = (
-                    [new_heading, latched_heading]
-                    if new_heading == _left(latched_heading)
-                    else [latched_heading, new_heading]
-                )
-                new_heading = choices[0] if self._arrival_cell == 0 else choices[1]
+                # A *side* mouth is re-read at the turning square: the car
+                # drove the approach as ordinary road, so the cell it finds
+                # there is the one the spec's choice is about.  A *crossing*
+                # mouth was decided at the mouth itself -- the car was level
+                # with both ``+`` when it chose -- and the run out to the far
+                # lane is only lane positioning for a road already taken.
+                # Re-reading there lets an instruction on the positioning run
+                # (a ``^`` on the way to the lane) overturn a choice that was
+                # already made, which is the same "preparation must not double
+                # as the decision" the arrival read exists to prevent.
+                if not self._merge_crossing:
+                    choices = (
+                        [new_heading, latched_heading]
+                        if new_heading == _left(latched_heading)
+                        else [latched_heading, new_heading]
+                    )
+                    new_heading = choices[0] if self._arrival_cell == 0 else choices[1]
                 ahead_row, ahead_col = self._ahead(self.row, self.col, new_heading)
                 if new_heading == heading:
                     self._merging_heading = None
@@ -607,10 +619,12 @@ class _Machine:
                 # ``_crossing_mouth`` guarantees the cell straight ahead is
                 # open, so the loop above always advances at least one cell.
                 self._merge_target = (*target, new_heading, heading)
+                self._merge_crossing = True
             elif new_heading != heading and self._lane_bounded(heading, new_heading):
                 target = self._lane_merge_target(heading, new_heading, new_heading)
                 if target != (self.row, self.col):
                     self._merge_target = (*target, new_heading, heading)
+                    self._merge_crossing = False
                 else:
                     return new_heading
             else:
