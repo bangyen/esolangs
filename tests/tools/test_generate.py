@@ -107,6 +107,44 @@ class TestGeneratorRoundTrips:
         assert roundtrip(unsquare_run, gen.unsquare("Hi")) == "Hi"
         assert roundtrip(unsquare_run, gen.unsquare("Hello, World!")) == "Hello, World!"
 
+    @pytest.mark.parametrize(
+        "text",
+        ["", "\x00", "\xff", "aaaaaaaa", "abcdefgh", "zyxwvu", "aA" * 8, "!!!"],
+    )
+    def test_unsquare_reuses_the_accumulator(self, text: str) -> None:
+        """A repeated byte costs the print alone, and reuse never regresses.
+
+        ``o`` prints without popping and neither ``P`` nor ``o`` touches the
+        accumulator, so it still holds the previous character.  Reaching the
+        next one from there is taken only when it is shorter than reseeding,
+        so no text can grow.
+        """
+        program = gen.unsquare(text)
+        assert roundtrip(unsquare_run, program) == text
+        # Reseeding every character is the old strategy; it is the ceiling.
+        reseed = 0
+        for char in text:
+            value = ord(char)
+            run, cur = "", value % 2
+            while cur != value:
+                if value % 2 == 0 and cur and cur * 2 <= value:
+                    cur, run = cur * 2, run + "x"
+                else:
+                    cur, run = cur + 2, run + "+"
+            reseed += len(run) + 4  # the seed's two cells plus "Po"
+        assert len(program) <= reseed
+
+    def test_unsquare_repeat_costs_only_the_print(self) -> None:
+        """The accumulator already holds the byte, so nothing is rebuilt."""
+        assert gen.unsquare("aaaa") == gen.unsquare("a") + "Po" * 3
+
+    def test_unsquare_reseeds_when_parity_blocks_the_chain(self) -> None:
+        """``x`` cannot make an odd value, so an odd target after an even
+        one reloads the seed rather than chaining."""
+        program = gen.unsquare("ba")  # 98 then 97: even, then odd
+        assert roundtrip(unsquare_run, program) == "ba"
+        assert program.count("I") == 1  # the odd seed was reloaded
+
     def test_three_d_brainfuck(self) -> None:
         """The brainfuck tape moves map to the array's +X axis."""
         assert roundtrip(three_d_bf_run, gen.three_d_brainfuck("Hi")) == "Hi"
