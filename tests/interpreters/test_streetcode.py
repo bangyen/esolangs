@@ -345,6 +345,86 @@ class TestStreetcodeAmbiguousTurns:
         assert (machine.row, machine.col) == (2, 9)
 
 
+class TestStreetcodeLaneChange:
+    """The hug may not slide across a street into the oncoming lane.
+
+    Wall-following turns right whenever the neighbouring cell is open,
+    but on a two-wide street that cell is the *far lane*, not a road
+    leading off.  Turning onto it is driving on the left, which the spec
+    forbids -- and it also closes circuits that should not exist: four
+    such turns in a row let a car orbit a two-by-two opening forever.
+    """
+
+    def _code(self) -> list[str]:
+        # A two-wide street (columns 1-2) doubling back at the bottom.
+        # The ';' sits in the *left* lane, so a car driving lawfully can
+        # only reach it northbound, after rounding the dead end.
+        return [
+            "+--+",
+            "|   |",
+            "|C  |",
+            "++  |",
+            "|;  |",
+            "|   |",
+            "+---+",
+        ]
+
+    def test_the_car_rounds_the_dead_end_instead_of_crossing(self) -> None:
+        """It descends the right lane and comes back up the left one.
+
+        Sliding West at (4,2) would reach the ';' three steps sooner, in
+        the lane oncoming traffic uses.
+        """
+        machine = _Machine(self._code(), IO())
+        visited = [(machine.row, machine.col)]
+        for _ in range(6):
+            machine.step()
+            visited.append((machine.row, machine.col))
+        assert visited == [
+            (2, 1),  # C
+            (2, 2),  # east along the top
+            (3, 2),  # descending the right lane
+            (4, 2),
+            (5, 2),  # past the ';', which is in the other lane
+            (5, 1),  # round the dead end
+            (4, 1),  # northbound, and only now level with the ';'
+        ]
+
+    def test_it_halts_on_the_semicolon_it_reached_lawfully(self) -> None:
+        machine = _Machine(self._code(), IO())
+        for _ in range(20):
+            machine.step()
+            if machine.halted:
+                break
+        assert machine.halted
+        assert (machine.row, machine.col) == (4, 1)
+
+    def test_a_two_by_two_opening_is_not_a_circuit(self) -> None:
+        """Four right turns with no wall to follow is not wall-following.
+
+        Before the rule, a car entering this block circled it forever,
+        re-running the cell it passed on every lap.
+        """
+        code = [
+            "+----+",
+            "|C^^ |",
+            "|O=^ |",
+            "+-+  |",
+            "|^^^ |",
+            "+----+",
+        ]
+        machine = _Machine(code, IO())
+        seen = set()
+        for _ in range(200):
+            key = (machine.row, machine.col, machine.heading)
+            if key in seen and machine.cells.get(1, 0) > 50:
+                pytest.fail("the car is orbiting the opening")
+            seen.add(key)
+            machine.step()
+            if machine.halted:
+                break
+
+
 class TestStreetcodeLaneMerge:
     """A genuinely multi-cell-wide junction: turning must land in the new
     road's right-hand lane, not just the first open cell (see
