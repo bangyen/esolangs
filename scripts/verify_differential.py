@@ -1371,14 +1371,23 @@ FORTH_CORPUS = [
 ]
 
 
-def _run_forth_native(
-    binary: str, program: str, stdin: bytes
+def _run_rust_native(
+    binary: str,
+    program: str,
+    stdin: bytes,
+    *,
+    strip_leading_newline: bool = True,
+    strip_errors: bool = False,
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
+    """Run ``program`` through a Rust cross-check; return (stdout, exit code).
 
-    The Rust reference writes its ``Input: `` prompt to stdout, which is stripped (the
-    Python side routes the prompt through the IO layer instead).  Returns
-    None if the reference does not terminate within the timeout.
+    Every reference prints an ``Input: `` prompt that the Python side routes
+    through the IO layer instead, so it is stripped before comparing;
+    ``strip_leading_newline`` also drops the newline the prompt follows,
+    which 3x does not emit.  ``strip_errors`` additionally removes the C++
+    runtime's error messages, which only Basicfuck's reference writes to
+    stdout.  Returns None if the reference does not terminate within the
+    timeout -- the Rust references have no step limit.
     """
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(program)
@@ -1387,12 +1396,26 @@ def _run_forth_native(
         proc = subprocess.run(
             [binary, path], capture_output=True, input=stdin, timeout=5
         )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
     except subprocess.TimeoutExpired:
         return None
     finally:
         Path(path).unlink()
+
+    out = proc.stdout
+    if strip_leading_newline:
+        out = out.replace(b"\nInput: ", b"")
+    out = out.replace(b"Input: ", b"")
+    if strip_errors:
+        for message in _CPP_ERRORS:
+            out = out.replace((message + "\n").encode(), b"")
+    return out, proc.returncode
+
+
+def _run_forth_native(
+    binary: str, program: str, stdin: bytes
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through the Forþ Rust cross-check."""
+    return _run_rust_native(binary, program, stdin)
 
 
 def _run_forth_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1504,26 +1527,8 @@ BASICFUCK_CORPUS = [
 def _run_basicfuck_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
-
-    The reference prints its ``Input: `` prompts and error messages to
-    stdout, which are stripped before comparing.
-    """
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        for message in _CPP_ERRORS:
-            out = out.replace((message + "\n").encode(), b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the Basicfuck Rust cross-check."""
+    return _run_rust_native(binary, program, stdin, strip_errors=True)
 
 
 def _run_basicfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1629,24 +1634,8 @@ UNSQUARE_CORPUS = [
 def _run_unsquare_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
-
-    The reference prints its ``Input: `` prompts to stdout, which are
-    stripped; invalid operations exit with status 3.
-    """
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the Unsquare Rust cross-check."""
+    return _run_rust_native(binary, program, stdin)
 
 
 def _run_unsquare_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1745,27 +1734,10 @@ THREE_X_CORPUS = [
 
 
 def _run_three_x_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
-
-    The reference prints its ``Input: `` prompts to stdout, which are
-    stripped; invalid operations exit with status 3.
-    """
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [str(THREE_X_BIN), path],
-            capture_output=True,
-            input=stdin,
-            timeout=5,
-        )
-        out = proc.stdout.replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the 3x Rust cross-check."""
+    return _run_rust_native(
+        str(THREE_X_BIN), program, stdin, strip_leading_newline=False
+    )
 
 
 def _run_three_x_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1862,20 +1834,8 @@ def _build_pct() -> str | None:
 def _run_pct_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code)."""
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the %^2^-1 Rust cross-check."""
+    return _run_rust_native(binary, program, stdin)
 
 
 def _run_pct_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1974,20 +1934,8 @@ def _build_painfuck() -> str | None:
 def _run_painfuck_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code)."""
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the Painfuck Rust cross-check."""
+    return _run_rust_native(binary, program, stdin)
 
 
 def _run_painfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -2079,27 +2027,8 @@ BIT_TILDE_CORPUS = [
 
 
 def _run_bit_tilde_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
-
-    The reference prints its ``Input: `` prompts to stdout, which are
-    stripped; invalid operations exit with status 3.
-    """
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [str(BIT_TILDE_BIN), path],
-            capture_output=True,
-            input=stdin,
-            timeout=5,
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the bit~ Rust cross-check."""
+    return _run_rust_native(str(BIT_TILDE_BIN), program, stdin)
 
 
 def _run_bit_tilde_python(program: str, stdin: bytes) -> tuple[bytes, int]:
