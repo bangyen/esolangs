@@ -268,24 +268,126 @@ _QUOTE_LITERAL = r'"[^"]*"|.'
 
 
 def _bio(program: str, width: int) -> str:
-    # The boolean BIO generator separates commands with spaces while the text
-    # one does not, so a space is one of BIO's tokens here.  A line must not
-    # start with that separator, so break *before* the command it precedes:
-    # attaching each space to the following command makes the pair a single
-    # unbreakable token and keeps the newline where a space already was.
+    """Wrap BIO, indenting a nested program by its loop depth.
+
+    BIO's tokens are fixed-width triples, so a break by character count
+    would split ``0ox`` into ``0o`` and ``x`` -- a program that still runs
+    and prints garbage.  Every break here therefore falls between whole
+    commands.
+
+    The boolean BIO generator separates commands with spaces while the text
+    one does not, so a space is one of BIO's tokens here.  A line must not
+    start with that separator, so break *before* the command it precedes:
+    attaching each space to the following command makes the pair a single
+    unbreakable token and keeps the newline where a space already was.
+
+    A *nested* program is then laid out by depth rather than packed flat.
+    The boolean generator nests one loop per truth-table row (``0ix{1ox
+    ... }``), so its program is a telescoping chain whose shape is the
+    thing worth seeing; packed to a width it reads as one undifferentiated
+    run.  ``0i?`` opens a level and ``}`` closes one, so the depth is a
+    running count and each line is indented by it.  The text generator's
+    program is a flat sequence of depth-1 groups, where indenting would
+    show nothing that packing does not, so a program shallower than two
+    levels takes the flat path.
+
+    The indent is whitespace between commands, which BIO's parser discards
+    along with the ``{``: it keeps only the matches of
+    ``[01][oOiI][xXyYzZ]|}``.  So an indented program means exactly what
+    the packed one did.
+    """
     tokens = re.findall(_BIO_COMMAND, program)
     if "".join(tokens) != program:
         return program
     merged: list[str] = []
     for token in tokens:
-        if token.isspace() and merged:
+        # A ``{`` belongs to the ``0i?`` before it: the command is the loop
+        # opener and the brace only marks its body, so the pair travels as
+        # one token and a break never strands the brace on the next line.
+        if (token.isspace() or token == "{") and merged:
             merged[-1] += token
         else:
             merged.append(token)
+    if _bio_depth(merged) >= 2:
+        return _bio_indented(merged, width)
     wrapped = _join_tokens(merged, width, separator="")
     # A break after a command leaves its trailing separator at the end of the
     # line; the newline separates the commands just as well, so drop it.
     return "\n".join(line.rstrip(" ") for line in wrapped.split("\n"))
+
+
+def _bio_opens(token: str) -> bool:
+    """Whether ``token`` opens a BIO loop.
+
+    ``0i?`` is the loop-open command itself.  The ``{`` the boolean
+    generator writes after it is decoration -- BIO's parser drops it -- so
+    the depth follows the command, not the brace.
+    """
+    return token[:2].lower() == "0i"
+
+
+def _bio_closes(token: str) -> bool:
+    """Whether ``token`` closes a BIO loop."""
+    return token.startswith("}")
+
+
+def _bio_depth(tokens: list[str]) -> int:
+    """Return the deepest loop nesting ``tokens`` reaches."""
+    depth = best = 0
+    for token in tokens:
+        if _bio_opens(token):
+            depth += 1
+            best = max(best, depth)
+        elif _bio_closes(token):
+            depth = max(0, depth - 1)
+    return best
+
+
+def _bio_indented(tokens: list[str], width: int) -> str:
+    """Lay BIO out one loop level to a line, indented by depth.
+
+    A loop-open ends its line and opens a level; a close returns to the
+    previous one.  The commands between two of those are a straight run --
+    the ``0oy`` ramp that tops a register up -- and pack to the remaining
+    width like any other wrapped program, so a long ramp costs rows at its
+    own indent instead of one very long line.
+
+    A deep enough program would indent its ramp off the right edge, so the
+    indent stops growing once it would leave a run less than a quarter of
+    the width to pack into: past that point the levels share an indent and
+    the ``}`` chain still steps back out.
+    """
+    lines: list[str] = []
+    depth = 0
+    run: list[str] = []
+    # Two spaces a level, up to the depth that still leaves a run a quarter
+    # of the width to pack into.
+    cap = max(0, (width - width // 4) // 2)
+
+    def flush(at: int) -> None:
+        """Emit the pending straight run, indented for depth ``at``."""
+        if not run:
+            return
+        pad = " " * (2 * min(at, cap))
+        room = max(width - len(pad), width // 4)
+        for line in _join_tokens(run, room, separator="").split("\n"):
+            lines.append((pad + line).rstrip(" "))
+        run.clear()
+
+    for token in tokens:
+        if _bio_opens(token):
+            run.append(token)
+            flush(depth)
+            depth += 1
+        elif _bio_closes(token):
+            flush(depth)
+            depth = max(0, depth - 1)
+            run.append(token)
+            flush(depth)
+        else:
+            run.append(token)
+    flush(depth)
+    return "\n".join(lines)
 
 
 def _dimensional(program: str, width: int) -> str:
