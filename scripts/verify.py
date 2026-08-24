@@ -3,8 +3,9 @@
 Everything that can be checked on a dev machine without a Linux host:
 
 1. pre-commit (lint, format, types) and pytest (the test suite)
-2. bandit (via uv), cargo fmt/test (the Rust cross-checks), and the
-   interpreter-vs-native differential corpora
+2. bandit (via uv), cargo fmt/test (the Rust cross-checks), the ``extra/line``
+   suites (via uv, which supplies the image libraries the package itself does
+   not depend on), and the interpreter-vs-native differential corpora
 3. unicorn-based round-trips (RISC-V assembly compilers, RISC-V cross-check
    generators, and the differential corpora) — skipped when unicorn or the
    RISC-V cross-compiler is missing
@@ -57,6 +58,35 @@ STEPS = [
         ["cargo", "test", "--manifest-path", "extra/rust/Cargo.toml"],
     ),
     (
+        # Run from extra/line: its modules import each other as flat top-level
+        # names, and it needs image libraries the package does not depend on,
+        # so they are supplied ad hoc rather than from the project env.
+        "extra/line suites (uv)",
+        [
+            "uv",
+            "run",
+            "--isolated",
+            "--no-project",
+            "--directory",
+            "extra/line",
+            "--with",
+            "pillow",
+            "--with",
+            "numpy",
+            "--with",
+            "scipy",
+            "--with",
+            "scikit-image",
+            "--with",
+            "pytest",
+            "--with",
+            "pytest-xdist",
+            "pytest",
+            ".",
+            "-q",
+        ],
+    ),
+    (
         "ztoalc anchor table is reproducible",
         [*PY, "scripts/make_ztoalc_table.py", "--check"],
     ),
@@ -107,7 +137,7 @@ def main() -> int:
         if not have_riscv_gcc and "assembly" in name:
             print(f"[skip] {name}: RISC-V cross-compiler not installed")
             continue
-        if shutil.which("uv") is None and "bandit" in name:
+        if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
             print(f"[skip] {name}: uv not installed")
             continue
         if shutil.which("cargo") is None and "cargo" in name:

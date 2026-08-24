@@ -59,11 +59,11 @@ predictable across languages:
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#`/`.` raster). Has a general (any-arity) boolean generator; no text generator. |
+| A Painter Ant | No I/O; prints the visited-grid bounding box (a `#` white / `.` black raster, with the ant's cell as `@` or `o`). Has a general (any-arity) boolean generator; no text generator. |
 | ArrowQueue | No output at all; the IP walks the grid and halts, printing nothing. |
 | Back | Prints the tape as a number list. |
 | BF-PDA | `.` prints the top bit as the `'0'`/`'1'` character, so the output alphabet is just the two digits. |
-| Bitdeque | Prints the register/deque contents as numbers. |
+| Bitdeque | No I/O in the spec; this interpreter prints the deque contents as numbers when the program ends. |
 | Grapheme | Strings cannot contain `E` (terminates stringmode) and there is no concatenation, so even "HELLO" is unspellable. |
 | Jaune | `^` prints the current cell as a decimal integer, so only digits are spellable. |
 | Lamfunc | `p` prints a number as binary, so the output alphabet is just `'0'`/`'1'`. |

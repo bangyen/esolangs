@@ -4,11 +4,10 @@ Streetcode is a 2D esolang where a car drives along two-way streets,
 executing the instruction it passes over.  ``^``/``~`` increment/decrement
 the CPth cell, ``=``/``_`` move CP right/left, ``I``/``O`` read/write the
 CPth cell as a character, ``U`` turns the car around, ``;`` halts, and
-space is a no-op.  See the module docstring in
-``esolangs.interpreters.grid_based.streetcode`` for the spec-gap decisions
-this interpreter makes (initial heading, "Nth register", the drive-on-the
--right geometry, and so on) -- these tests exercise and confirm them,
-including all four of the wiki's worked examples.
+space is a no-op.  See ``docs/streetcode.md`` for the spec-gap decisions
+this interpreter makes (initial heading, "Nth register", the
+drive-on-the-right geometry, and so on) -- these tests exercise and confirm
+them, including all four of the wiki's worked examples.
 """
 
 import io
@@ -23,6 +22,21 @@ from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
 
+def street(instructions: str) -> list[str]:
+    """Box a one-line program into a street, the way the wiki draws one.
+
+    The spec's streets are two characters wide, so a bare instruction row
+    is not a street: the instructions become the southern lane (the wall
+    below them on the car's right is what sends it East) with a blank
+    oncoming lane above, inside a wall.  This is exactly the shape of the
+    wiki's own "simple example", ``+----+`` / ``|    |`` / ``|CIO;|`` /
+    ``+----+``, and it lets these tests pin instruction semantics on
+    conformant geometry rather than on a one-wide corridor.
+    """
+    wall = "+" + "-" * len(instructions) + "+"
+    return [wall, "|" + " " * len(instructions) + "|", f"|{instructions}|", wall]
+
+
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     """Run a Streetcode program (patching input) and return its stdout."""
     buffer = io.StringIO()
@@ -31,14 +45,19 @@ def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
     return buffer.getvalue()
 
 
+def run_street(instructions: str, inputs: list[str] | None = None) -> str:
+    """Run a one-line program inside a proper two-lane street."""
+    return run_and_capture(street(instructions), inputs)
+
+
 class TestStreetcodeSingleCommands:
     """Each instruction in isolation."""
 
     def test_halt_immediately(self) -> None:
-        assert run_and_capture(["C;"]) == ""
+        assert run_street("C;") == ""
 
     def test_increment_then_output(self) -> None:
-        assert run_and_capture(["C^O;"]) == chr(1)
+        assert run_street("C^O;") == chr(1)
 
     def test_decrement_below_zero_then_output_is_invalid(self) -> None:
         """A cell of -1 is a valid signed int, but not a valid code point."""
@@ -47,37 +66,93 @@ class TestStreetcodeSingleCommands:
 
     def test_decrement_then_increment_then_output(self) -> None:
         """~ and ^ both touch the same CPth cell, unbounded and signed."""
-        assert run_and_capture(["C~^O;"]) == chr(0)
+        assert run_street("C~^O;") == chr(0)
 
     def test_space_is_a_nop(self) -> None:
         """A space between C and O is skipped over; the cell is still 0."""
-        assert run_and_capture(["C O;"]) == chr(0)
+        assert run_street("C O;") == chr(0)
 
     def test_undefined_character_is_a_nop(self) -> None:
         """Box-drawing and other undefined characters act like space."""
-        assert run_and_capture(["C#O;"]) == chr(0)
+        assert run_street("C#O;") == chr(0)
 
-    def test_u_reverses_heading(self) -> None:
-        """A 'U' turns the car around immediately, regardless of geometry."""
+    def test_u_without_an_opposite_lane_is_invalid(self) -> None:
+        """A one-wide corridor is narrower than the spec's two-character
+        streets, so a 'U' there has nowhere legal to end its turn: that is
+        a malformed street met at run time, not a manoeuvre with a
+        fallback."""
         # Two rows so the car has room to move south from C before the U.
         machine = _Machine(["C", "U"], IO())
         assert machine.heading == "S"
         machine.step()  # 'C' nop; only non-backward neighbor is south
         assert (machine.row, machine.col) == (1, 0)
-        machine.step()  # 'U': reverses heading to North regardless of geometry
-        assert machine.heading == "N"
+        with pytest.raises(HaltError):
+            machine.step()  # 'U' with no lane to the new right
+
+    def test_u_on_a_two_way_street_ends_in_the_opposite_lane(self) -> None:
+        """Streets are two wide and the car drives on the right, so after
+        turning around it belongs in the lane now on its right: the U-turn
+        ends there, and that lane cell is executed on the next step."""
+        code = [
+            "|  |",
+            "|C |",
+            "|  |",
+            "|U^|",
+            "|  |",
+            "+--+",
+        ]
+        machine = _Machine(code, IO())
+        # Southbound in the west lane (wall on the right), down to the U.
+        for _ in range(2):
+            machine.step()
+        assert (machine.row, machine.col, machine.heading) == (3, 1, "S")
+        machine.step()  # 'U': turn around, sliding east into the northbound lane
+        assert (machine.row, machine.col, machine.heading) == (3, 2, "N")
+        machine.step()  # the lane cell's '^' runs before the car moves on
+        assert machine.cells[0] == 1
+        assert (machine.row, machine.col, machine.heading) == (2, 2, "N")
+
+    def test_u_in_place_would_leave_the_car_driving_on_the_left(self) -> None:
+        """The reason the lane change is not optional: turned around in
+        place, the car sits in the oncoming lane, and the right-hand hug
+        then takes two right turns to get out of it -- ending up on the
+        *original* heading one lane over, the U-turn cancelled.  Drive the
+        same street to the U and confirm the car really is northbound in
+        the east lane two steps later, not westbound and then southbound."""
+        code = [
+            "|  |",
+            "|C |",
+            "|  |",
+            "|U |",
+            "|  |",
+            "+--+",
+        ]
+        machine = _Machine(code, IO())
+        for _ in range(3):
+            machine.step()
+        headings = []
+        for _ in range(3):
+            machine.step()
+            headings.append(machine.heading)
+        assert headings == ["N", "N", "N"]
+        assert machine.col == 2
 
     def test_cp_increment_and_decrement(self) -> None:
         """Move CP right onto a fresh cell, increment it, then move back."""
-        assert run_and_capture(["C=^O_O;"]) == chr(1) + chr(0)
+        assert run_street("C=^O_O;") == chr(1) + chr(0)
 
 
 class TestStreetcodeHalt:
     def test_semicolon_halts_immediately(self) -> None:
-        assert run_and_capture(["C;^O"]) == ""
+        assert run_street("C;^O") == ""
 
     def test_program_without_semicolon_runs_until_dead_end(self) -> None:
-        """No halt instruction: a straight dead-end corridor still stops."""
+        """No halt instruction: a dead-end corridor still stops.
+
+        A *street* with no halt does not -- the car circles it forever --
+        so the dead end has to be a genuine cul-de-sac, which is what this
+        pins: the single-cell program with nowhere to drive at all.
+        """
         assert run_and_capture(["C"]) == ""
 
 
@@ -159,23 +234,201 @@ class TestStreetcodeAmbiguousTurns:
         assert machine._road_mouth("E", "S") is None  # noqa: SLF001
 
     def test_four_way_junction_detects_4(self) -> None:
-        """Mouths on both sides at once, road continuing ahead: 4 ways."""
+        """Mouths on both sides at once, road continuing ahead: 4 ways.
+
+        ``_junction_shape`` reads the wall shape alone; ``_junction_kind``
+        additionally requires two roads the car could drive down, which
+        this narrow fixture's one-cell arms are not (see
+        :meth:`_road_deep`).
+        """
         machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
         machine.row, machine.col, machine.heading = 0, 1, "S"
-        assert machine._junction_kind("S") == 4  # noqa: SLF001
+        assert machine._junction_shape("S") == 4  # noqa: SLF001
 
     def test_t_junction_detects_3(self) -> None:
         """Mouths on both sides with straight ahead blocked: a T whose
         crossbar the car is driving into, still three ways."""
         machine = _Machine([" C ", "+|+", "   ", "+ +", " | "], IO())
         machine.row, machine.col, machine.heading = 0, 1, "S"
-        assert machine._junction_kind("S") == 3  # noqa: SLF001
+        assert machine._junction_shape("S") == 3  # noqa: SLF001
+
+    def test_turn_into_the_oncoming_lane_is_not_a_road(self) -> None:
+        """A turn whose destination has the wall on its left and open road
+        on its right would leave the car driving on the left, so it is not
+        a road the junction may offer, however open it looks."""
+        machine = _Machine(self._counting_loop_code(), IO())
+        machine.row, machine.col, machine.heading = 5, 9, "E"
+        # South from (5,9) enters the lane with the outer wall on its left.
+        assert not machine._lawful_turn("S")  # noqa: SLF001
+        # North keeps that wall on the right, and is offered.
+        assert machine._lawful_turn("N")  # noqa: SLF001
+
+    def test_narrow_arms_are_not_roads(self) -> None:
+        """The same shape is not a junction when its arms are one cell:
+        streets are two wide, so a single open cell before a wall is the
+        width of the road, not a road leading off it."""
+        machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
+        machine.row, machine.col, machine.heading = 0, 1, "S"
+        assert machine._junction_kind("S") == 0  # noqa: SLF001
+
+    # A mouth whose gap opens ahead of the car (its near ``+`` sighted at
+    # depth 0 or +1) and whose far ``+`` has open interior beneath it (so
+    # ``_lane_bounded`` is False and no merge latch is taken): the chosen
+    # turn's next cell is still the wall the gap opens through, and the
+    # turn must wait until the car is level with the gap.  Before the
+    # openness guard in ``_choose_heading``, the car turned immediately,
+    # drove *inside* the wall, and wall-followed around the outside of the
+    # lower room forever.
+    def _counting_loop_code(self) -> list[str]:
+        """A hand-written counting loop: nine laps of an island, then out.
+
+        The car counts cell 0 up to nine on the way in, U-turns onto the
+        island, and laps it; each lap adds eight to cell 1 and takes one
+        off cell 0.  At the island's top-right corner the roads are north
+        (out through the gap in the outer wall) and south (on around the
+        island), so the countdown steers the loop: nonzero laps again,
+        zero leaves.  Nine laps put 72 in cell 1, and the ``=`` on the way
+        out moves CP onto it so the ``O`` at the top prints ``H``.
+        """
+        return [
+            "+------------+",
+            "|            |",
+            "|C^        O;|",
+            "+--+  ++  +--+",
+            "   |      |",
+            "   | ^_~ =|",
+            "   | ^++= |",
+            "   |^^++^U|",
+            "   |^^^^^=|",
+            "   |^^^^^^|",
+            "   +------+",
+        ]
+
+    def _early_mouth_code(self) -> list[str]:
+        return [
+            "+---------+",
+            "|         |",
+            "|C^      ;|",
+            "+--+  ++--+",
+            "   |      |",
+            "   |;     |",
+            "   +------+",
+        ]
+
+    def test_early_sighted_mouth_defers_the_turn_to_the_gap(self) -> None:
+        machine = _Machine(self._early_mouth_code(), IO())
+        positions = [(machine.row, machine.col)]
+        for _ in range(7):
+            machine.step()
+            positions.append((machine.row, machine.col))
+        # The `^` makes the cell nonzero, so the junction chooses the South
+        # branch -- but the car carries on to the gap at column 4 before
+        # turning, never occupying a wall cell.
+        assert positions == [
+            (2, 1),
+            (2, 2),
+            (2, 3),
+            (2, 4),
+            (3, 4),
+            (4, 4),
+            (5, 4),
+            (5, 4),
+        ]
+        assert machine.halted
+
+    def test_early_sighted_mouth_still_declines_on_zero(self) -> None:
+        code = [line.replace("^", " ") for line in self._early_mouth_code()]
+        machine = _Machine(code, IO())
+        for _ in range(9):
+            machine.step()
+        assert machine.halted
+        assert (machine.row, machine.col) == (2, 9)
+
+
+class TestStreetcodeLaneChange:
+    """The hug may not slide across a street into the oncoming lane.
+
+    Wall-following turns right whenever the neighbouring cell is open,
+    but on a two-wide street that cell is the *far lane*, not a road
+    leading off.  Turning onto it is driving on the left, which the spec
+    forbids -- and it also closes circuits that should not exist: four
+    such turns in a row let a car orbit a two-by-two opening forever.
+    """
+
+    def _code(self) -> list[str]:
+        # A two-wide street (columns 1-2) doubling back at the bottom.
+        # The ';' sits in the *left* lane, so a car driving lawfully can
+        # only reach it northbound, after rounding the dead end.
+        return [
+            "+--+",
+            "|   |",
+            "|C  |",
+            "++  |",
+            "|;  |",
+            "|   |",
+            "+---+",
+        ]
+
+    def test_the_car_rounds_the_dead_end_instead_of_crossing(self) -> None:
+        """It descends the right lane and comes back up the left one.
+
+        Sliding West at (4,2) would reach the ';' three steps sooner, in
+        the lane oncoming traffic uses.
+        """
+        machine = _Machine(self._code(), IO())
+        visited = [(machine.row, machine.col)]
+        for _ in range(6):
+            machine.step()
+            visited.append((machine.row, machine.col))
+        assert visited == [
+            (2, 1),  # C
+            (2, 2),  # east along the top
+            (3, 2),  # descending the right lane
+            (4, 2),
+            (5, 2),  # past the ';', which is in the other lane
+            (5, 1),  # round the dead end
+            (4, 1),  # northbound, and only now level with the ';'
+        ]
+
+    def test_it_halts_on_the_semicolon_it_reached_lawfully(self) -> None:
+        machine = _Machine(self._code(), IO())
+        for _ in range(20):
+            machine.step()
+            if machine.halted:
+                break
+        assert machine.halted
+        assert (machine.row, machine.col) == (4, 1)
+
+    def test_a_two_by_two_opening_is_not_a_circuit(self) -> None:
+        """Four right turns with no wall to follow is not wall-following.
+
+        Before the rule, a car entering this block circled it forever,
+        re-running the cell it passed on every lap.
+        """
+        code = [
+            "+----+",
+            "|C^^ |",
+            "|O=^ |",
+            "+-+  |",
+            "|^^^ |",
+            "+----+",
+        ]
+        machine = _Machine(code, IO())
+        seen = set()
+        for _ in range(200):
+            key = (machine.row, machine.col, machine.heading)
+            if key in seen and machine.cells.get(1, 0) > 50:
+                pytest.fail("the car is orbiting the opening")
+            seen.add(key)
+            machine.step()
+            if machine.halted:
+                break
 
 
 class TestStreetcodeLaneMerge:
     """A genuinely multi-cell-wide junction: turning must land in the new
     road's right-hand lane, not just the first open cell (see
-    ``docs/streetcode-wip.md`` for the derivation of this trace)."""
+    ``docs/streetcode.md`` for the derivation of this trace)."""
 
     def _lane_merge_code(self) -> list[str]:
         # A vertical 2-wide corridor (columns 1-2) hugging a West wall
@@ -192,7 +445,7 @@ class TestStreetcodeLaneMerge:
         ]
 
     def test_merge_lands_in_the_right_hand_lane(self) -> None:
-        # Ground-truth trace (user-confirmed, see docs/streetcode-wip.md):
+        # Ground-truth trace (user-confirmed, see docs/streetcode.md):
         # the car hugs column 1 south through rows 0-3 (its own lane),
         # then turns East at row 3 -- the right-hand lane of the new
         # east-west road relative to heading East -- not row 2, and not
@@ -221,18 +474,20 @@ class TestStreetcodeLaneMerge:
         the rest of the run.
         """
         code = [
-            "|C |",
-            "|  +--",
-            "|U",
-            "|",
-            "|  +--",
-            "|  |",
+            "|C  |",
+            "|   |",
+            "|   +---",
+            "|       ",
+            "|U      ",
+            "|   +---",
+            "|   |",
+            "|   |",
         ]
         machine = _Machine(code, IO())
-        machine.step()  # 'C' -> (1,1), latches _merge_target for (3,1)
+        for _ in range(4):
+            machine.step()  # down the west lane; the latch forms en route
         assert machine._merge_target is not None  # noqa: SLF001
-        machine.step()  # -> (2,1), still approaching
-        machine.step()  # 'U' at (2,1) flips heading to North before choosing
+        machine.step()  # 'U' at (4,1): turns around into the opposite lane
         assert machine._merge_target is None  # noqa: SLF001
 
     def test_wall_at_the_turn_destination_falls_back_to_plain_rules(self) -> None:
@@ -262,11 +517,17 @@ class TestStreetcodeLaneMerge:
     def test_merge_target_reread_can_carry_straight_on(self) -> None:
         """The branch is re-read at the latched turn cell, not trusted from
         latch time: a cell that went nonzero while approaching reverses the
-        decision and the car carries straight on, abandoning the merge."""
+        decision and the car carries straight on, abandoning the merge.
+
+        The re-read is of the cell as the car *arrives* at that square (see
+        ``_arrival_cell``), which is what a real approach would have left
+        behind it.
+        """
         machine = _Machine(self._lane_merge_code(), IO())
         machine.row, machine.col, machine.heading = 3, 1, "S"
         machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
         machine.cells[0] = 1  # latch was taken under cell == 0
+        machine._arrival_cell = 1  # noqa: SLF001 - as the approach left it
         heading = machine._choose_heading()  # noqa: SLF001
         assert heading == "S"
         assert machine._merging_heading is None  # noqa: SLF001
@@ -302,14 +563,21 @@ class TestStreetcodeLaneMerge:
         behavior on the four-way corner pattern -- unlike the three-way
         case in ``test_merge_lands_in_the_right_hand_lane``, no hand-drawn,
         user-confirmed trace exists for a four-way junction (see the "Still
-        open" section of ``docs/streetcode-wip.md``)."""
+        open" section of ``docs/streetcode.md``).
+
+        The arms are two characters wide, per the spec: with one-cell arms
+        the shape is drawn but there are no roads to drive down, so
+        ``_junction_kind`` reports no junction (see :meth:`_road_deep`).
+        """
         code = [
-            " |C |",
-            "-+  +--",
-            " |",
-            " |",
-            "-+  +--",
-            " |  |",
+            " |C  |",
+            " |   |",
+            "-+   +-",
+            "       ",
+            "       ",
+            "-+   +-",
+            " |   |",
+            " |   |",
         ]
         machine = _Machine(code, IO())
         positions = [(machine.row, machine.col)]
@@ -321,22 +589,71 @@ class TestStreetcodeLaneMerge:
             (1, 2),
             (2, 2),
             (3, 2),
-            (3, 3),
-            (3, 4),
-            (3, 5),
-            (3, 6),
+            (4, 2),
+            (4, 3),
+            (4, 4),
+            (4, 5),
         ]
+
+
+class TestStreetcodeCountingLoop:
+    """A counting loop: a ring the car laps under the control of a cell.
+
+    ``docs/streetcode.md`` recorded that no such geometry had been found --
+    every attempt leaked, because a junction on the ring offered the wrong
+    roads and steered the car off it.  This one works, and the rules that
+    make it work (a road must be two cells deep, a turn may not enter the
+    oncoming lane, a junction reads the cell as the car arrives) are pinned
+    individually above; this is the end-to-end program.
+    """
+
+    def _code(self) -> list[str]:
+        return TestStreetcodeAmbiguousTurns()._counting_loop_code()  # noqa: SLF001
+
+    def test_counting_loop_prints_its_character(self) -> None:
+        assert run_and_capture(self._code()) == "H"
+
+    def test_counting_loop_halts(self) -> None:
+        machine = _Machine(self._code(), IO())
+        for _ in range(500):
+            machine.step()
+            if machine.halted:
+                break
+        assert machine.halted
+
+    def test_counting_loop_laps_nine_times(self) -> None:
+        """The counter is nine on entry and falls by one per lap, so the
+        car passes the island's corner nine times: eight laps that carry
+        on around, and the ninth that leaves."""
+        machine = _Machine(self._code(), IO())
+        counters = []
+        for _ in range(500):
+            if (machine.row, machine.col, machine.heading) == (5, 8, "E"):
+                counters.append(machine.cells.get(0, 0))
+            machine.step()
+            if machine.halted:
+                break
+        assert counters == [8, 7, 6, 5, 4, 3, 2, 1, 0]
+
+    def test_counting_loop_accumulates_seventy_two(self) -> None:
+        """Eight per lap into cell 1, which is what makes the 'H'."""
+        machine = _Machine(self._code(), IO())
+        for _ in range(500):
+            machine.step()
+            if machine.halted:
+                break
+        assert machine.cells[1] == ord("H")
 
 
 class TestStreetcodeIO:
     def test_input_echoed_via_cpth_cell(self) -> None:
-        assert run_and_capture(["CIO;"], inputs=["X"]) == "X"
+        assert run_street("CIO;", inputs=["X"]) == "X"
 
     def test_input_reads_only_first_character_of_line(self) -> None:
-        assert run_and_capture(["CIO;"], inputs=["hello"]) == "h"
+        assert run_street("CIO;", inputs=["hello"]) == "h"
 
     def test_empty_input_line_reads_zero(self) -> None:
-        assert run_and_capture(["CIO;"], inputs=[""]) == chr(0)
+        assert run_street("CIO;", inputs=[""]) == chr(0)
 
     def test_exhausted_input_raises_eof(self) -> None:
         machine = _Machine(["CI;"], ScriptedIO(""))
@@ -351,7 +668,7 @@ class TestStreetcodeCPBounds:
             run(["C_;"], io=IO())
 
     def test_cp_can_move_right_and_back_to_zero(self) -> None:
-        assert run_and_capture(["C=_^O;"]) == chr(1)
+        assert run_street("C=_^O;") == chr(1)
 
     def test_output_of_out_of_range_cell_halts(self) -> None:
         """A cell value that isn't a valid code point is invalid, not a crash."""
@@ -382,7 +699,7 @@ class TestStreetcodeWikiExamples:
 
     def test_whole_right_hand_side_example(self) -> None:
         """``CIO;`` echoes one input character then halts."""
-        assert run_and_capture(["CIO;"], inputs=["Q"]) == "Q"
+        assert run_street("CIO;", inputs=["Q"]) == "Q"
 
     def test_infinite_cat_example(self) -> None:
         """The U-turn cat echoes input characters in order, then hangs on EOF.

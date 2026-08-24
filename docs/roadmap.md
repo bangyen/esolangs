@@ -87,9 +87,10 @@ would make the generator close to trivial to write by hand.
   out to contain genuine lane-bounded junctions themselves).  Landing after
   a junction turn onto a road with its own lanes drives to that road's
   right-hand lane before turning, rather than a plain single-cell step onto
-  the first open neighbor (see the module docstring's "Lane merging" bullet
-  and `docs/streetcode-wip.md` for the hand-derived, user-confirmed trace
-  this was built from).  Wired into `registry.py`, with a boolean generator
+  the first open neighbor (see the "Lane merging" bullet in
+  `docs/streetcode.md`, and the same file for the hand-derived,
+  user-confirmed trace this was built from).  Wired into `registry.py`,
+  with a boolean generator
   (`tools/boolean/other.py`) that walks each input bit down to a bare 0/1
   and then drives a binary decision tree whose T-junctions apply the
   ambiguous-turn rule to fork on it; it takes arbitrary truth tables,
@@ -275,6 +276,24 @@ deliberately rather than by default.
 
 ## Extra implementations (cross-checks)
 
+`extra/` holds two different kinds of thing, and they are integrated
+differently on purpose:
+
+- **Cross-check ports** (`extra/rust`, `extra/assembly`) are second
+  implementations of languages the package already interprets, so every one
+  of them is in `registry.py`.  Being differentially testable against the
+  Python is the whole reason they exist, so the root-level harnesses
+  (`scripts/verify_differential.py`, `scripts/verify_riscv_unicorn.py`,
+  `scripts/verify_extra_generators.py`) and two suites under `tests/` drive
+  them directly.  The rest of this section is about these.
+- **Unsupported-medium implementations** (`extra/line`) are the *only*
+  implementation of their language, kept out of `registry.py` because their
+  programs are not text the registry's pipeline can carry (Line's are PNGs).
+  There is no in-package counterpart to differ against, so the cross-check
+  harnesses do not apply; `extra/line` is self-contained, keeps its own
+  pytest suites next to the code, and runs from CI's `line` job.  This is a
+  different category, not an integration gap.
+
 The `extra/` cross-checks (Rust and RISC-V ports of the interpreters, run
 against the Python ones by `scripts/verify_differential.py`) earn their keep
 only where they are *broad* and *independent*: the reference is written from
@@ -382,6 +401,27 @@ program that hits it.  Worth revisiting only if a program surfaces that
 needs deep expression-position recursion and Python's default limit is
 insufficient.
 
+## Streetcode street-width validation (compile time)
+
+The spec is explicit that "all streets are two-way, they are two
+characters wide", but nothing validates that ahead of run time.  Today the
+only width check is local and late: a `U` with no lane on the car's new
+right raises `HaltError`, because that is the one place where a
+too-narrow street has an unambiguous consequence (there is nowhere legal
+to end the turn).  A one-wide corridor the car merely drives along still
+runs.
+
+Rejecting a malformed street up front is the better contract -- a
+malformed program should not begin running -- and is expected to be
+tractable: the geometry is static, so street width can be read off the
+grid before the car moves.  The work is defining "street" precisely
+enough to measure on arbitrary drawn grids, where rooms, junction mouths,
+and rings all appear alongside plain corridors; a validator that is too
+eager would reject valid programs, which is worse than the current gap.
+Both the repo's Streetcode generators now emit two-wide streets, and the
+interpreter tests exercise instruction semantics inside boxed streets, so
+nothing the repo produces depends on the tolerance.
+
 ## Hanging-test optimization via state-cycle detection
 
 Hanging programs are bounded with wall-clock timeouts (SIGALRM in the
@@ -429,3 +469,106 @@ or, where the language has no other generator story, remove it.  The caps
 are documented in `docs/limitations.md` and `docs/walls.md`.
 
 **No language is currently on this list.**
+
+## Boolean example coverage (ABCDirection only)
+
+`examples/boolean` holds one committed program per boolean generator that
+can be verified end to end; `src/esolangs/tools/boolean/examples.py` is the
+source of truth and `tests/test_examples.py` keeps the files in sync.
+Coverage is 53 of 54 generators.  The bar is that the answer must be
+*recoverable from what the program prints* -- not that the program prints
+the answer and nothing else, since several of these languages have no output
+instruction at all and dump their state at halt.
+
+Every generator whose answer a program can report now has an example.  The
+two that used to fall short were fixed rather than excluded, and both are
+worked examples of what this section asks for:
+
+- **Back**'s answer was the cell under the tape head, which the dump does
+  not locate.  The generator now keeps a single answer cell that a 1-leaf
+  writes with `-` before halting, so the dump reports the result directly.
+  The payoff was larger than the example: the Back boolean tests had carried
+  a complete second Back interpreter (32 lines) purely to find the head, so
+  they never executed `tape_based.back`; that shadow implementation is now a
+  call plus a field read.
+- **A Painter Ant**'s answer is which of two painted leaf rings the ant
+  rests in, and the raster drew painted cells only, so the ant was invisible
+  and the rings identical.  `render` now uses four glyphs -- colour by
+  ant-present -- with `o` for the ant on black and `@` on white.  The same
+  change replaced `run`'s instruction `limit` with a `cycles` count: the
+  language is an implicit infinite loop, and a raw step budget stops
+  wherever it lands (the old default of 10,000 cut the AND2 program at 95.24
+  cycles, mid-walk, reading a colour that is not the answer).  A whole cycle
+  is the language's own unit, and these programs are cycle-stable fixed
+  points, so one pass is enough.  This is a unit, not a safety limit -- a
+  diverging program still runs as long as it is asked to.
+
+ABCDirection is the one generator left, and not for that reason.  The two
+objections used to be size and speed: a 1107-line, 377 KB grid needing
+several million steps.  Successive passes over the generator's layout --
+removing a reserved 700-row detour, then deriving the grid's width and
+height from what it actually places, then cutting a margin to the clearance
+it really provides -- have taken the two-input program to 254 lines and
+65.7 KB, answering in about 1,400 steps.  Speed is no longer an objection at
+all, and 65.7 KB is a reviewable diff in a way 377 KB was not.
+
+What blocks it now is the harness rather than the program.  ABCDirection has
+no halt instruction and the pointer never leaves the donut grid, so a
+program prints its answer and then circles forever; the run ends only when
+the interpreter's step limit raises `HaltError`.  (The generator lays down
+an EOF sink per leaf, but the beam does not reach one before the limit --
+the answer is out long beforehand.)  `test_boolean_example` suppresses only
+`SystemExit`, so committing an example means deciding what a program with no
+halt is allowed to end on, which is a harness question rather than a
+generator-construction one.
+
+One caution for anyone re-surveying this: the example stems are display
+names, not language ids, so a naive `id not in stems` check reports
+BF-PDA as missing when it is filed under `bfpda`.  It has an example.
+
+### Divergent expected outputs
+
+Some committed examples expect something other than a bare `0`/`1`.  Several
+that used to be on this list were cleaned up rather than explained away:
+
+- **LaserFuck** printed `'\x00\x010'` -- the answer as a *character*, with
+  the two input cells ahead of it.  Its dump has a decimal mode, selected
+  simply by not putting a `\xff` in the first grid cell, and it skips cells
+  holding a negative value.  So the leaves now write the answer as a number
+  (one `+`, not `48 + result`) and subtract one more than each bit's value
+  from the input cells on the way past, driving them out of the dump.  The
+  output is exactly `"0"` or `"1"`, and the programs shrank by a third,
+  since the 48-`+` runs were most of them.
+- **Clockwise** printed `'\x00'`/`'\x7f'` -- the result bit seven times.  A
+  leaf's seven `;` each print `acc % 2`, so emitting the ASCII digit instead
+  is a matter of flipping the parity into the bits `0110000`/`0110001`,
+  which differ by a single `+`.  The two leaves are padded to the same
+  height (an `S` on an already-zero accumulator is a no-op) so every exit
+  still lands on the shared bottom row.
+- **Trailing newlines** (`bitdeque`, `cod`, `nevermind`) are gone.  None of
+  the three specs asks for one -- Bitdeque's says "There is (currently) no
+  I/O" at all, COD's says only "output the cod's value", and Nevermind's
+  only "Outputs *text* to the screen", with a Hello-World example showing
+  none -- so the newline was our interpreters' choice throughout.
+
+  An earlier pass kept COD's and Nevermind's on the grounds that their print
+  can fire repeatedly, so the newline was separating outputs, and without it
+  `loop,3 / print,x / endloop` prints `xxx` just as `print,xxx` does.  That
+  reasoning does not survive contact with the equivalent Python: a loop of
+  `print("x", end="")` also produces `xxx`.  Programs are not obliged to be
+  recoverable from their output, and treating that as a loss was reading a
+  guarantee into a default.  All three now print without a separator.
+
+What is left is divergent for reasons no *generator* change reaches:
+
+- **state dump around the answer** (`back`, `minsky-swap`, `ram0`) -- no
+  output instruction, so the answer arrives at a fixed position inside a
+  dump of the machine.  Unlike LaserFuck, these have no way to suppress the
+  rest: Back's cells are bits, and the register dumps print unconditionally;
+- **a painted grid** (`a-painter-ant`) -- the grid *is* the output, and the
+  answer is which leaf the ant rests in;
+- **no output at all** (`arrowqueue`, `point-break`) -- the answer *is*
+  termination: the program halts for a 0 and loops forever for a 1, so only
+  the halting branch can be committed.
+
+The notes on each example carry the explanation.

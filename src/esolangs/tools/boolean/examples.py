@@ -20,17 +20,43 @@ Two kinds of generator appear here:
   language's own code for setting an input.  Those entries carry a ``fill``
   describing that substitution, and read no input at run time.
 
-Languages whose boolean capability cannot be captured by a committed program
-are absent by construction: those whose result is a machine state rather than
-output (Back's cell under the head, RAM0's and Minsky Swap's register dumps,
-A Painter Ant's landing cell), and those with no Python interpreter to run.
+A language qualifies for an example when its answer is *recoverable from
+what the program prints*.  That is a weaker test than "prints the answer and
+nothing else", and deliberately so: several languages here have no output
+instruction at all and simply dump their state when they halt, so the answer
+arrives surrounded by the rest of that state.  Minsky Swap dumps its
+registers and the answer is the second one; RAM0 dumps its whole machine and
+the answer is ``z``; LaserFuck prints every touched tape cell, so the input
+cells precede the result.  Each is a fixed position in a stable dump, which
+is a contract a committed file can hold, so each has an example.
+
+Two languages used to fail that test and no longer do.  Back's answer was
+the cell *under the head*, which the tape dump does not locate; the
+generator now writes the result into a single answer cell, so the dump
+reports it like any other.  A Painter Ant's answer is which of two painted
+leaf rings the ant rests in, and the interpreter's raster drew painted cells
+only, so the ant was invisible and the rings identical; ``render`` now marks
+the ant's own cell, with ``o`` on black and ``@`` on white.
+
+Every boolean generator whose answer a program can report therefore has a
+committed example.  ABCDirection is the one absent generator, and not for
+that reason.  Its program used to be a 1107-line, 377 KB grid needing
+several million steps; successive shrinks of the generator's layout have it
+at 254 lines and 65.7 KB, printing its answer within about 1,400 steps.
+What keeps it out now is that the language has no halt: the answer is
+printed and the beam keeps circling, so a run ends only on ``HaltError`` at
+the step limit, while ``test_boolean_example`` suppresses only
+``SystemExit``.  See ``docs/roadmap.md``.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
+from esolangs.registry import Generator, canonical_id
+from esolangs.tools.boolean.a_painter_ant import _instantiate_apa
 from esolangs.tools.boolean.helpers import instantiate
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
+from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # Truth tables used below, named for readability.
 AND2 = "0001"
@@ -50,7 +76,7 @@ class BooleanExample:
     ``expected`` is the program's whole stdout.
     """
 
-    generator: Callable[[str], str]
+    generator: Generator
     table: str
     interpreter: str
     expected: str
@@ -60,13 +86,32 @@ class BooleanExample:
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
     note: str = ""
+    stem: str = ""
 
-    def build(self) -> str:
-        """Return the program text this example commits."""
-        program = self.generator(self.table)
+    def build(self, width: int | None = DEFAULT_WIDTH) -> str:
+        """Return the program text this example commits.
+
+        The committed files are wrapped to ``width`` columns so a long
+        one-line program stays readable in a diff.  ``stem`` names the
+        language, which is what selects the token-aware wrapper; passing
+        ``width=None`` returns the generator's raw output, and a language
+        with no wrapper -- the 2D ones, NoComment -- is returned unwrapped
+        either way.
+
+        A generator that lays its own program out to a width (LaserFuck
+        folds its grid's straight runs) takes the width itself instead:
+        :func:`~esolangs.tools.wrap.wrap_program` reflows a finished line
+        and so skips a program that is already multi-line, which every such
+        generator's output is.  This mirrors what :func:`esolangs.generate`
+        does for the text generators.
+        """
+        if width is not None and takes_width(self.generator):
+            program = self.generator(self.table, width)
+        else:
+            program = self.generator(self.table)
         if self.fill is not None:
             program = self.fill(program, list(self.bits))
-        return program
+        return wrap_program(program, canonical_id(self.stem.replace("-", " ")), width)
 
 
 def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
@@ -179,6 +224,52 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
     )
 
 
+def _fill_back(template: str, bits: list[int]) -> str:
+    """Set each input cell: ``-`` flips it to one, a space leaves it zero."""
+    return instantiate(
+        template,
+        bits,
+        lambda _i, b: "-" if b else " ",
+        lambda _i, b: "-" if b else " ",
+    )
+
+
+def _fill_minsky_swap(template: str, bits: list[int]) -> str:
+    """Set each input register by counting ``+`` against a ``*`` pad.
+
+    Minsky Swap has no input instruction, so a bit is embedded as the
+    register's starting value.  Every setter is padded to the same width
+    (``2**n``, or four for the LSB, which needs no ``~``) so the jump
+    targets the template computed stay correct whatever the bits are.
+    """
+    n = len(bits)
+    size: int = 2**n
+
+    def set_bit(i: int, bit: int) -> str:
+        if i == n - 1:  # LSB: length-4 block, no "~"
+            return "+*+*" if bit else "****"
+        weight: int = 2 ** (n - 1 - i)
+        if bit:
+            return "+" * weight + "*" * (size - weight)
+        return "*" * size
+
+    return instantiate(template, bits, set_bit, lambda _i, _b: "*" * size)
+
+
+def _fill_ram0(template: str, bits: list[int]) -> str:
+    """Set each input cell with ``Z A`` for a one and ``Z Z`` for a zero.
+
+    ``Z`` resets absolutely rather than relative to the incoming register,
+    so the same two-command setter works at every position.
+    """
+    return instantiate(
+        template,
+        bits,
+        lambda _i, b: "Z A" if b else "Z Z",
+        lambda _i, _b: "Z Z",
+    )
+
+
 def _fill_home_row(template: str, bits: list[int]) -> str:
     return instantiate(
         template,
@@ -252,20 +343,34 @@ def _register() -> None:
             split=True,
             note="halts by exiting with status 0",
         ),
+        "clockwise": _reader(
+            b.clockwise,
+            "grid_based.clockwise",
+            split=True,
+        ),
         "decleq": _reader(b.decleq, "register_based.decleq"),
         "dig": _reader(b.dig, "grid_based.dig", table=XOR2, expected="1", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
         "factor": _reader(b.factor, "tape_based.factor"),
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
         "forbin": _reader(b.forbin_boolean, "other.forbin"),
+        "forþ": _reader(b.forth, "stack_based.forth"),
+        "grapheme": _reader(b.grapheme, "stack_based.grapheme"),
+        "jaune": _reader(b.jaune, "tape_based.jaune"),
+        "laserfuck": _reader(
+            b.laserfuck,
+            "grid_based.laserfuck",
+            split=True,
+            expected="0",
+            kwargs=_kw(heading=3),
+            note="the initial heading is random by spec, so the example pins it",
+        ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
         "myscript": _reader(b.myscript, "register_based.myscript"),
         "nevermind": _reader(
             b.nevermind,
             "register_based.nevermind",
             split=True,
-            expected="0\n",
-            note="the language's print always adds a newline",
         ),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
         "point-break": _reader(
@@ -291,30 +396,77 @@ def _register() -> None:
             note="run with the loop count set to one",
         ),
         "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
+        "taglate": _reader(b.taglate, "queue_based.taglate", split=True),
+        "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
+        "ztoalc-l": _reader(b.ztoalc_l_boolean, "other.ztoalc_l", split=True),
         "3d-brainfuck": _reader(b.three_d_brainfuck, "tape_based.three_d_brainfuck"),
+        "3x": _reader(b.three_x, "stack_based.three_x"),
         "6-5": _reader(b.six_five, "tape_based.six_five"),
     }
 
     embedded = {
+        "a-painter-ant": _embedded(
+            b.a_painter_ant,
+            "grid_based.a_painter_ant",
+            _instantiate_apa,
+            expected=(
+                "..#......\n.........\n.........\n.........\n.........\n"
+                ".........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n"
+                "..#...#.."
+            ),
+            note=(
+                "A Painter Ant has no output: it paints a grid and the answer "
+                "is which of the two leaf rings the ant rests in, shown by "
+                "'o' (on black, a zero) or '@' (on white, a one)"
+            ),
+        ),
+        "back": _embedded(
+            b.back,
+            "tape_based.back",
+            _fill_back,
+            split=True,
+            expected="0 1 0",
+            note=(
+                "Back has no output instruction and dumps its tape at halt; "
+                "the answer is cell n, past the n input cells"
+            ),
+        ),
         "bfpda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
         "bio": _embedded(b.bio, "register_based.bio", _fill_bio),
-        "bitdeque": _embedded(
-            b.bitdeque, "queue_based.bitdeque", _fill_bitdeque, expected="0\n"
-        ),
+        "bitdeque": _embedded(b.bitdeque, "queue_based.bitdeque", _fill_bitdeque),
         "cod": _embedded(
             b.cod,
             "grid_based.cod",
             _fill_cod,
             table=XOR2,
             bits=(1, 1),
-            expected="0\n",
             kwargs=_kw(limit=500),
             note="COD has no runtime input and no I/O but a printed number",
         ),
         "eval": _embedded(b.eval, "stack_based.eval", _fill_eval),
         "home-row": _embedded(b.home_row, "tape_based.home_row", _fill_home_row),
         "lamfunc": _embedded(b.lamfunc, "other.lamfunc", _fill_lamfunc),
+        "minsky-swap": _embedded(
+            b.minsky_swap,
+            "register_based.minsky_swap",
+            _fill_minsky_swap,
+            expected="0 0",
+            note=(
+                "Minsky Swap has no output instruction and dumps its "
+                "registers at halt; the answer is the second one"
+            ),
+        ),
         "nocomment": _embedded(b.nocomment, "tape_based.nocomment", _fill_nocomment),
+        "ram0": _embedded(
+            b.ram0,
+            "register_based.ram0",
+            _fill_ram0,
+            expected="z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}",
+            note=(
+                "RAM0 has no output instruction and dumps its whole state "
+                "at halt; the answer is the 'z' register"
+            ),
+        ),
         "wii2d": _embedded(
             b.wii2d,
             "grid_based.wii2d",
@@ -336,8 +488,11 @@ def _register() -> None:
         ),
     }
 
-    BOOLEAN_EXAMPLES.update(reading)
-    BOOLEAN_EXAMPLES.update(embedded)
+    # Stamp each example with its own stem, so ``build()`` knows which
+    # language it is and can pick the matching token-aware wrapper without
+    # the caller having to supply it.
+    for stem, example in {**reading, **embedded}.items():
+        BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 
 
 _register()

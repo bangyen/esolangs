@@ -168,15 +168,24 @@ def back(truth_table: str) -> str:
     is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
     and ``*`` halts printing the tape.  Each input is embedded once by
     filling its tape cell: ``{Xi}`` becomes ``-`` for a one bit and a space
-    for a zero, so cells ``0..n-1`` hold the inputs; cells ``n`` and ``n+1``
-    are a 0-answer and a 1-answer cell.
+    for a zero, so cells ``0..n-1`` hold the inputs and cell ``n`` is the
+    answer cell.
 
     A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
     the beam straight past the ``\`` when it is 0) and ``\`` reflects the
     beam down when it is 1, while ``>`` advances the tape pointer to the next
     input.  Both branches advance the pointer once, so a leaf at depth ``d``
-    has the pointer at cell ``d``.  A leaf routes the pointer to the 0- or
-    1-answer cell and halts; the cell under the head at halt is the result.
+    has the pointer at cell ``d``.  A leaf walks to cell ``n``, flips it with
+    ``-`` when its value is 1, and halts.
+
+    The answer is therefore the *value* of cell ``n``, which the halt dump
+    prints, rather than the head's position, which it does not.  An earlier
+    layout kept a 0-cell and a 1-cell and parked the head on whichever
+    matched; that made the result unreadable from the program's own output,
+    so Back could have no committed example and its generator tests had to
+    reimplement the language to find the head.  One answer cell costs
+    nothing -- a leaf spends one ``-`` instead of one extra pointer move --
+    and makes the dump self-describing.
     """
     n = _validate_truth_table(truth_table)
 
@@ -185,10 +194,17 @@ def back(truth_table: str) -> str:
     # travels through) sends the beam down to the tree on row 1.  The tree
     # lives at columns >= base on rows >= 1, so row 0's placeholder shrink on
     # instantiation does not misalign it.
+    # The transition '\' below sits at column len(load_line) and has to
+    # shrink to tree_col on instantiation, so the load's *length* is
+    # load-bearing: every {Xi} loses three characters, fixing the raw length
+    # at 6n + 3 and the tail's budget at exactly n + 4.  '>' followed by
+    # n + 3 '<' spends that budget and leaves the pointer back at cell 0;
+    # '<' at cell 0 is a no-op in the interpreter, so the surplus moves are
+    # harmless padding rather than a walk into negative cells.
     load_line = (
         "".join("{X" + str(i) + "}" + (">" if i < n - 1 else "") for i in range(n))
-        + ">>-"
-        + "<" * (n + 1)
+        + ">"
+        + "<" * (n + 3)
     )
     # The load's placeholders shrink on instantiation, so the tree lives on
     # rows >= 1 (immune to row 0's shrink).  A '\' at row 0 col len(load_line)
@@ -200,10 +216,12 @@ def back(truth_table: str) -> str:
     next_row = [2]
 
     def leaf(level: int, value: str, row: int, col: int) -> None:
-        target = n + (1 if value == "1" else 0)
-        delta = target - level
+        # walk to the single answer cell, write a 1 there when the leaf's
+        # value is 1 (it starts 0), and halt
+        delta = n - level
         move = (">" if delta >= 0 else "<") * abs(delta)
-        for k, ch in enumerate(move + "*"):
+        code = move + ("-" if value == "1" else "") + "*"
+        for k, ch in enumerate(code):
             grid[(row, col + k)] = ch
 
     def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:

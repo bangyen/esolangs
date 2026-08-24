@@ -24,7 +24,7 @@ def output(z: int, n: int, ram: dict[int, int], io: IO) -> None:
         res += f"\n    {x}: {y},"
     if ram:
         res = res[:-1] + "\n"
-    io.print_line(res + "}")
+    io.print_str(res + "}")
 
 
 def change(z: int, n: int, ram: dict[int, int], op: str) -> tuple[int, int, bool]:

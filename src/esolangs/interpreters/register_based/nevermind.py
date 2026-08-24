@@ -1,6 +1,8 @@
 """Interpreter for Nevermind.
 
-Line-based commands: ``print`` joins its arguments, ``input`` stores a line in
+Line-based commands: ``print`` joins its arguments and writes them with no
+separator or trailing newline (the wiki says only "Outputs *text* to the
+screen", and its Hello-World example shows none), ``input`` stores a line in
 the answer variable, ``make`` computes arithmetic (``+ - * /`` on numbers,
 ``++`` concatenating strings), and ``if``/``loop``/``endloop`` branch on
 comparisons.  ``$name`` references a variable.
@@ -100,7 +102,7 @@ class _Machine:
                         c[i + 1] = int(nxt)
 
             if (op := c[0]) == "print":
-                self.io.print_line("".join(map(str, c[1:])))
+                self.io.print_str("".join(map(str, c[1:])))
             elif op == "input":
                 if len(c) < 2:
                     raise ValueError("input requires a prompt")

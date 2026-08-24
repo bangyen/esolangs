@@ -10,6 +10,7 @@ import pytest
 import esolangs.tools.text as gen
 from esolangs.interpreters.grid_based.clockwise import run as clockwise_run
 from esolangs.interpreters.grid_based.dig import run as dig_run
+from esolangs.interpreters.grid_based.laserfuck import run as laserfuck_run
 from esolangs.interpreters.grid_based.streetcode import run as streetcode_run
 from esolangs.interpreters.grid_based.wii2d import run as wii2d_run
 from esolangs.interpreters.io import IO
@@ -48,6 +49,22 @@ def roundtrip(interpreter: Callable[..., Any], program: str | list[str]) -> str:
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         interpreter(program, io=IO())
+    return buffer.getvalue()
+
+
+def laserfuck_roundtrip(program: str, heading: int) -> str:
+    """Run a LaserFuck program from a fixed heading and return its output.
+
+    LaserFuck's initial heading is random by spec, so a test has to pin it;
+    the funnel is supposed to bring every heading to the same place, which
+    is why the width tests run all four.
+    """
+    import io
+    from contextlib import redirect_stdout
+
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        laserfuck_run(program.splitlines(), IO(), heading=heading)
     return buffer.getvalue()
 
 
@@ -179,6 +196,195 @@ class TestGeneratorRoundTrips:
         )
         assert gen.clockwise("") == ""
 
+    def test_clockwise_ring_is_square_by_default(self) -> None:
+        """The default shape is the square, which minimizes max(height, width).
+
+        Only the perimeter holds code, so the ring's cell count is fixed by
+        the program and the shape is free; the square is the choice that
+        keeps the bounding box smallest.
+        """
+        for text in ("A", "Hi", "Hello, World!", "Clockwise test 123!"):
+            lines = gen.clockwise(text).split("\n")
+            widths = {len(line) for line in lines}
+            assert len(widths) == 1, f"{text!r}: ragged grid {sorted(widths)}"
+            assert len(lines) == widths.pop(), f"{text!r}: not square"
+
+    @pytest.mark.parametrize("width", [10, 20, 40, 80])
+    @pytest.mark.parametrize("text", ["Hi", "Hello, World!", "q" * 30])
+    def test_clockwise_honours_a_width(self, text: str, width: int) -> None:
+        """``width`` bounds the columns and the program still round-trips.
+
+        Clockwise builds a shape rather than a line, so it cannot be
+        reflowed after the fact -- the width has to reach the generator,
+        which lays the ring out to fit.  The square is kept when it already
+        fits; otherwise the width caps the columns and the height grows.
+        """
+        program = gen.clockwise(text, width)
+        lines = program.split("\n")
+        assert max(len(line) for line in lines) <= width
+        assert roundtrip(clockwise_run, lines) == text
+
+    @pytest.mark.parametrize("width", [10, 20, 40, 80])
+    @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
+    def test_streetcode_honours_a_width(self, text: str, width: int) -> None:
+        """The corridor folds into a boustrophedon and still round-trips.
+
+        The car drives to the column limit, turns south through a gap in the
+        wall below, and comes back along the next row.  Every fold is a
+        plain corridor bend, so none of the ambiguous-turn or lane-merge
+        rules come into play.
+        """
+        program = gen.streetcode(text, width)
+        lines = program.split("\n")
+        assert max(len(line) for line in lines) <= width
+        assert roundtrip(streetcode_run, lines) == text
+
+    @pytest.mark.parametrize(
+        "char",
+        ["\x00", "\x01", " ", "0", "A", "H", "z", "\xff", "\u03a9"],
+    )
+    def test_streetcode_ring_builds_any_first_character(self, char: str) -> None:
+        """The ring's factors are free, so every code point round-trips.
+
+        Its nine-by-eight is what the hand-written program draws, not a
+        minimum: blanking cells shortens a factor and widening the island
+        lengthens one, so small values are products too rather than
+        needing a floor below which only a walk works.
+        """
+        assert roundtrip(streetcode_run, gen.streetcode(char).splitlines()) == char
+
+    def test_streetcode_ring_beats_the_straight_walk(self) -> None:
+        """A ring is only emitted when it is smaller than walking.
+
+        The walk spends a cell per unit of the code point, so the saving
+        grows with the character; the ring costs a fixed block instead.
+        """
+        for char in ("H", "\u03a9"):
+            # The straight street is four rows of the instruction row's
+            # width: two walls, the oncoming lane, and the instructions.
+            row = len("C" + "^" * ord(char) + "O;") + 2
+            assert len(gen.streetcode(char)) < 4 * row
+
+    @pytest.mark.parametrize("width", [6, 7, 10, 20, 40, 80])
+    @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!", "zyA"])
+    def test_streetcode_fold_corridor_is_two_wide(self, text: str, width: int) -> None:
+        """The descent corridor is a street, so it is two cells wide.
+
+        "Two characters wide" governs every street in the grid, not just
+        the horizontal ones.  An earlier fold gapped its dividers by a
+        single column, which round-tripped -- the interpreter drives a
+        one-wide corridor without complaint -- but drew a corridor
+        narrower than the spec allows (``docs/streetcode.md`` records
+        that a ``U`` is the only manoeuvre that currently notices).
+        Round-tripping is therefore blind to this; assert the geometry
+        directly so a refactor cannot quietly narrow it again.
+        """
+        lines = gen.streetcode(text, width).split("\n")
+        # A text short enough to fit one lane pair folds no dividers at
+        # all; the geometry claim is about the dividers that do appear.
+        dividers = [ln for ln in lines[1:-1] if ln.startswith("+")]
+        for divider in dividers:
+            gap = [i for i, ch in enumerate(divider) if ch == " "]
+            assert gap == [1, 2], f"corridor gap {gap} is not two wide"
+
+    @pytest.mark.parametrize("width", [10, 20, 40, 60, 80])
+    @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
+    def test_wii2d_honours_a_width(self, text: str, width: int) -> None:
+        """The instruction line folds into a grid and still round-trips.
+
+        Width 60 is included deliberately: an earlier layout put the ``!``
+        marker above the first row, which starts the pointer at row ``-1``
+        -- wrapping to the *last* row -- and that width was where the
+        resulting tail-only run first showed up.
+        """
+        program = gen.wii2d(text, width)
+        lines = program.split("\n")
+        assert max(len(line) for line in lines) <= width
+        assert roundtrip(wii2d_run, lines) == text
+
+    def test_wii2d_start_marker_sits_below_the_first_row(self) -> None:
+        """The pointer starts *above* the ``!``, so it must not be on top.
+
+        With the marker on row 0 the pointer starts at row ``-1``, which
+        wraps to the last row and runs the program's tail instead of its
+        head.
+        """
+        lines = gen.wii2d("Hello, World!", 40).split("\n")
+        assert lines[1] == "!"
+
+    @pytest.mark.parametrize("width", [20, 24, 40, 80])
+    @pytest.mark.parametrize(
+        "text", ["A", "Hi", "Hello", "The quick brown fox", "x" * 20]
+    )
+    def test_laserfuck_linear_honours_a_width(self, text: str, width: int) -> None:
+        r"""The linear form folds into a zigzag and still round-trips.
+
+        The linear program is one straight run of ``+`` and ``>`` -- no
+        mirrors, no brackets -- so the beam can be steered down and back to
+        a margin without changing what it executes.  It is also the widest
+        thing the generator emits: ``"The quick brown fox"`` is 1833
+        columns unfolded.
+        """
+        program = gen.laserfuck(text, width)
+        assert max(len(line) for line in program.split("\n")) <= width
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
+    def test_laserfuck_linear_fold_is_narrower(self) -> None:
+        """Folding actually buys columns, rather than only reshaping."""
+        text = "The quick brown fox"
+        assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 1000
+        assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) <= 80
+
+    def test_laserfuck_without_a_width_is_unchanged(self) -> None:
+        """The default stays exactly what the generator always produced."""
+        for text in ("A", "Hi", "Hello, World!", "The quick brown fox"):
+            assert gen.laserfuck(text) == gen.laserfuck(text, None)
+
+    def test_laserfuck_loop_form_folds_to_fit_a_width(self) -> None:
+        """A loop program too wide for the width is folded, not abandoned.
+
+        The frame cannot be folded between any two cells the way a straight
+        run can -- a "]"'s mirror bounces the beam back to cells placed
+        relative to its matching "[" -- so it folds between whole bracket
+        spans instead.  The point is that the *loop* form survives the
+        width: falling back to the linear form would fit too, by emitting
+        several times the program.
+        """
+        text = "Hello, World!"  # takes the loop branch
+        loop = gen.laserfuck(text)
+        assert max(len(ln) for ln in loop.split("\n")) > 80
+
+        bounded = gen.laserfuck(text, 80)
+        assert max(len(ln) for ln in bounded.split("\n")) <= 80
+        assert bounded != loop
+        # still the loop form -- the bracket mirrors are what say so -- and
+        # so no bigger than the unfolded program, unlike the linear fallback
+        assert "#^)#^" in bounded
+        assert len(bounded) <= len(loop)
+
+    def test_laserfuck_narrow_width_still_falls_back_to_linear(self) -> None:
+        """A width no folded span can fit takes the linear form instead."""
+        text = "Hello, World!"
+        narrow = gen.laserfuck(text, 40)
+        assert max(len(ln) for ln in narrow.split("\n")) <= 40
+        assert "#^)#^" not in narrow  # the loop geometry is gone
+
+    def test_laserfuck_keeps_the_loop_form_when_it_fits(self) -> None:
+        """A width the loop form already satisfies leaves it untouched."""
+        text = "Hello, World!"
+        loop = gen.laserfuck(text)
+        widest = max(len(ln) for ln in loop.split("\n"))
+        assert gen.laserfuck(text, widest) == loop
+        assert gen.laserfuck(text, widest + 40) == loop
+
+    def test_clockwise_keeps_the_square_when_it_fits(self) -> None:
+        """A width the square already satisfies does not distort the shape."""
+        square = gen.clockwise("Hello, World!")
+        side = len(square.split("\n"))
+        assert gen.clockwise("Hello, World!", side) == square
+        assert gen.clockwise("Hello, World!", side + 40) == square
+
     def test_streetcode(self) -> None:
         """A straight walled corridor walks one cell to each character and prints."""
         assert roundtrip(streetcode_run, gen.streetcode("Hi").splitlines()) == "Hi"
@@ -192,11 +398,29 @@ class TestGeneratorRoundTrips:
         # cells are unbounded ints, so O is not limited to bytes
         omega = "\u03a9"
         assert roundtrip(streetcode_run, gen.streetcode(omega).splitlines()) == omega
-        # 'H' is 72 ^ from cell 0, then 'i' is 33 more; C and ; bracket the row
-        row = "C" + "^" * 72 + "O" + "^" * 33 + "O;"
-        wall = "-" * len(row)
-        assert gen.streetcode("Hi") == "\n".join([wall, row, wall])
-        assert gen.streetcode("") == "--\nC;\n--"
+        # 'H' is 72, built as a product by the counting-loop ring rather
+        # than walked: nine laps of the island adding eight each.  That is
+        # the hand-written program from TestStreetcodeCountingLoop in
+        # tests/interpreters/test_streetcode.py, cell for cell -- the
+        # generator's ring is that program generalized, so the smallest
+        # one it emits is the original.  'i' is then 33 more, walked on
+        # the street because a gap that small is cheaper than a ring.
+        assert gen.streetcode("H").splitlines() == [
+            "+------------+",
+            "|            |",
+            "|C^        O;|",
+            "+--+  ++  +--+",
+            "   |      |",
+            "   | ^_~ =|",
+            "   | ^++= |",
+            "   |^^++^U|",
+            "   |^^^^^=|",
+            "   |^^^^^^|",
+            "   +------+",
+        ]
+        assert gen.streetcode("Hi").splitlines()[2].endswith("O" + "^" * 33 + "O;|")
+        # An empty text has nothing to build, so there is no ring at all.
+        assert gen.streetcode("") == "+--+\n|  |\n|C;|\n+--+"
 
     def test_mammalian(self) -> None:
         """A SEED/SPRINT walk reaches the array holding each character."""
@@ -230,14 +454,12 @@ class TestGeneratorRoundTrips:
             gen.eval("a`b")
 
     def test_nevermind(self) -> None:
-        """Print joins its arguments; nevermind always adds a trailing newline."""
-        assert roundtrip(nevermind_run, gen.nevermind("Hi").splitlines()) == "Hi\n"
-        assert roundtrip(nevermind_run, gen.nevermind("a,b").splitlines()) == "a,b\n"
-        assert (
-            roundtrip(nevermind_run, gen.nevermind("a*44b").splitlines()) == "a*44b\n"
-        )
-        assert roundtrip(nevermind_run, gen.nevermind("a²b").splitlines()) == "a²b\n"
-        assert roundtrip(nevermind_run, gen.nevermind("١٢٣").splitlines()) == "١٢٣\n"
+        """Print joins its arguments, with no separator or trailing newline."""
+        assert roundtrip(nevermind_run, gen.nevermind("Hi").splitlines()) == "Hi"
+        assert roundtrip(nevermind_run, gen.nevermind("a,b").splitlines()) == "a,b"
+        assert roundtrip(nevermind_run, gen.nevermind("a*44b").splitlines()) == "a*44b"
+        assert roundtrip(nevermind_run, gen.nevermind("a²b").splitlines()) == "a²b"
+        assert roundtrip(nevermind_run, gen.nevermind("١٢٣").splitlines()) == "١٢٣"
 
     def test_myscript(self) -> None:
         """The generator escapes the byte string into one say statement."""
@@ -370,8 +592,7 @@ class TestGeneratorRoundTrips:
         assert gen.pct_squared_minus_one("") == ""
         assert gen.pct_squared_minus_one("\x00") == "'e"
         assert (
-            gen.pct_squared_minus_one("H")
-            == "'" + other._pct_path(72) + "e"  # noqa: SLF001
+            gen.pct_squared_minus_one("H") == "'" + other._pct_path(72) + "e"  # noqa: SLF001
         )
         assert roundtrip(_run_pct, gen.pct_squared_minus_one("Hi")) == "Hi"
         assert (

@@ -260,10 +260,26 @@ def abcdirection(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     leaves = 2**n
     sp = 36  # column spacing between adjacent tree nodes at the same depth
-    margin = 100  # blank border reserved on the left/right of the tree
-    root_row = 709  # row the routed beam reaches before entering the tree
+    # Clearance between the tree's leftmost descent column and the climb the
+    # beam runs up at x = 2.  This was 100, which read like a border keeping
+    # the tree off the read staircase; it is not doing that job.  The
+    # staircase reaches column 40n + 6 and so already shares columns with the
+    # tree from n = 3 on, and what separates them there is rows -- the tree's
+    # descents stop at their flip rows, some forty rows above the staircase's
+    # first cell.  Only written cells execute, so a beam crossing those
+    # columns in between is harmless.
+    margin = 18
+    # The beam leaves the read staircase near the bottom of the grid, climbs
+    # to ``turn_row``, runs right to the tree's column, and drops back to
+    # ``root_row`` to enter the tree from above.  Both were 600 and 709,
+    # which reserved ~700 rows for a detour that only ever puts one turn
+    # cell on one row: the staircase it is clearing sits at the *bottom* of
+    # the grid, so there is nothing up there to clear.  Since ``height`` is
+    # ``root_row`` plus the leaf bands plus a tail, that constant alone was
+    # about two thirds of every program.
+    turn_row = 2
+    root_row = turn_row + 8  # the tree starts just below the turn
 
-    width = margin + 60 * (leaves - 1) + 60
     root_x = margin + leaves // 2 * sp
     tree_bottom = root_row + 8 * (n - 1)  # deepest row the tree itself reaches
     # The tree's rightmost leaf sits (leaves - 1 - leaves // 2 + 0.5) node
@@ -275,7 +291,31 @@ def abcdirection(truth_table: str) -> str:
     serp_col = tree_max + 40  # serpentine output track, right of the tree
     escape_rows = [tree_bottom + 8 + 52 * i for i in range(leaves)]
     sink_cols = [serp_col + 30 + 8 * i for i in range(leaves)]
-    height = escape_rows[-1] + 60 + 8 * n + 150
+    # Both extents are measured from the rightmost/lowest thing placed rather
+    # than guessed, since a formula that merely runs parallel to the layout
+    # drifts away from it as n grows.  The old width counted 60 columns per
+    # leaf while the sinks it has to contain are 8 apart, so the overshoot
+    # widened with n: 65 dead columns at n = 3, 193 at n = 4.
+    #
+    # The last sink's D must not touch the terminator.  ``_parse`` stops at
+    # the *first* DDDDDD, so a sink D flush against the run would match one
+    # column early and silently shrink every parsed row; the B between them
+    # costs a column and removes that coupling.
+    width = sink_cols[-1] + 1 + 6 + 1
+    # A serpentine band reaches ``band_depth`` rows below its escape row.
+    # The 52-row pitch between bands stays: a leaf that flips its bit backs
+    # up two rows above its own escape row, so consecutive bands already sit
+    # within a couple of rows of each other.  Only the tail was slack --
+    # after the last band there were 164 blank rows, at every n, before the
+    # staircase began.
+    band_depth = 40
+    # The staircase is built upward from the bottom row and spans 8n + 8:
+    # 8n read pairs plus the entry cell below and the exit cells above.
+    stair_rows = 8 * n + 8
+    # The staircase exit climbs six rows above its top cell and turns there,
+    # so those rows belong to the staircase rather than to the last band.
+    exit_clearance = 8
+    height = escape_rows[-1] + band_depth + exit_clearance + stair_rows
     b = _Builder(width, height)
     ex, ey, eh = _add_staircase(b, n)
     x, y, h = ex, ey, eh
@@ -283,7 +323,7 @@ def abcdirection(truth_table: str) -> str:
     x, y, h = _turn(b, x, y, h, _L)
     x, y = _travel(b, x, y, _L, max(0, x - 2))
     x, y, h = _turn(b, x, y, h, _U)
-    x, y = _travel(b, x, y, _U, max(0, y - 600))  # clear the tree's own rows
+    x, y = _travel(b, x, y, _U, max(0, y - turn_row))
     x, y, h = _turn(b, x, y, h, _R)
     x, y = _travel(b, x, y, _R, root_x + 1 - x)
     x, y, h = _turn(b, x, y, h, _D)
