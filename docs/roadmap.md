@@ -86,52 +86,37 @@ remaining possibility is that the diagram simply does not produce the
 Kolakoski sequence as drawn; confirming that needs the author, so a
 talk-page question is the cheapest next step.
 
-- **Circuit Diagram** — an ASCII circuit: named logic gates (`a` AND, `A`
-  NAND, `o` OR, `O` NOR, `x` XOR, `X` XNOR, `~` NOT) wired by `-`/`|`/`/`/`\`
-  with `.` junctions and `=` crossovers, evaluated as a cellular automaton
-  where a gate fires once both its left inputs are non-null.  Verified
-  `Category:Two-dimensional languages` and `Category:Unimplemented` via the
-  category API, with no external interpreter documented on the page.  Picked
-  up after Gate fell through, and it is the stronger candidate on exactly the
-  axis Gate failed: its sole worked example (a 4-bit prime tester) exercises
-  every load-bearing symbol — input (`-4-`), output (`:`), gates, the `<`/`>`
-  multi-wire splitter/combiner, and `=` crossovers — where Gate's `+` and `(`
-  appeared in none of its nine.  The example is also a real acceptance test:
-  its minterm formula was checked to be exactly the primes in 0-15 with `a`
-  as the MSB, so an interpreter can be replayed over all 16 inputs, and since
-  only that bit assignment yields primality the example pins its own input
-  ordering.  Signals are three-valued (Null/0/1) with a defined multi-driver
-  rule (a wiring driven by several non-null values takes their XOR), and the
-  connection rules are stated symmetrically (`-|` and `.|` are explicitly
-  *not* connections).  A boolean generator is the language's native idiom —
-  a truth table becomes a sum-of-minterms gate network, which is what the
-  example already is.
+**Circuit Diagram is implemented**, its judgment calls derived in the module
+docstring of `src/esolangs/interpreters/grid_based/circuit_diagram.py`.
+Three findings from building it are worth keeping here.
 
-  Three judgment calls to derive and document before building, in the
-  Flowchart style:
+**The page's prime tester is drawn with five characters missing.**  Its only
+worked example has two OR gates whose second input no gate drives, so as
+drawn it prints nothing for every input.  The repair is derived rather than
+guessed and is unique: the circuit is a product of sums, not the sum of
+minterms its caption implies, and requiring the whole to be primality over
+0-15 forces the two missing signals to `b` and `~c`.  The page itself shows
+where they belong — for `~c` it already draws the two `=` crossovers that
+the missing diagonal would cross, so the author drew a diagonal's crossings
+and omitted the diagonal.  Both the repaired circuit (replayed over all
+sixteen inputs against the primes) and the as-drawn silence are pinned in
+`tests/interpreters/test_circuit_diagram.py`.  Reporting this on the talk
+page is the cheapest next step, as with Flowchart's Kolakoski example.
 
-  - **Print cadence and halting are unspecified.**  Execution is
-    generational and the spec's own flip-flop oscillates `1N1N1N...`
-    forever, so "when does `:` print, and when does a program stop?" has no
-    prose answer.  The prime tester's gates run left-to-right into the final
-    `a` feeding `:`, and gates read left and write right, so a feed-forward
-    circuit settles — making "run until stable, print each `:` once, halt"
-    derivable from the example.  A circuit *with* feedback (the flip-flop)
-    never settles under that rule and needs its own wording (cycle detection
-    or the wall-clock backstop).
-  - **`t` returns the current time** (a 32-bit seconds-since-2000 wire),
-    which is time-dependent output — the same judgment-call class as seeded
-    randomness: tests would fix the clock, and the generator would never
-    emit `t`.
-  - **Multi-wire is not optional.**  The only example uses `-4-`, `<`, and
-    `>`, so an "implement the scalar subset first" staging is not available;
-    the `?` splitter/combiner magic has to be built up front.  Its behavior
-    is at least enumerated in prose, unlike Gate's image-only `<` table.
+**The obvious execution model is falsified by the page's own flip-flop.**
+Reading wirings as holding their value until overwritten, and halting once
+nothing changes, cannot produce the `1N1N1N...` the page states — a sticky
+wiring never shows a Null after a 1.  Values are therefore events lasting
+one generation, and gates bridge them with a latch per input slot, which is
+what the spec's "the gate waits until the other input comes" sentence asks
+for.  All three of the page's circuits work under that model.
 
-  The main risk is the single example: one diagram is the entire
-  behavioral corpus, where Flowchart had three.  Its computational class is
-  also listed as unknown (the page notes circuits are complete for
-  fixed-arity boolean functions, which is not Turing-completeness).
+**Out of scope, and why.**  User-defined functions (`{name ... }`), the
+constant sources `(` and `)`, the wire-removal function `{%`, the clock `t`,
+and letter-labelled wires are specified but appear in *none* of the page's
+examples, so there is no diagram to derive their geometry from — the same
+gap that kept Gate out.  Each raises a `ValueError` naming it.  `t` would
+additionally make output time-dependent.
 
 Considered and rejected in the same pass: **Highways** (excellent
 roundabout/routing mechanic, but junction direction, sign execution order,
@@ -149,7 +134,7 @@ example emits output at all, so neither the branch geometry nor the output
 path can be derived the way Flowchart's gaps were pinned by its examples (see
 the assessed-and-rejected ledger in `docs/limitations.md`).  **Circuit
 Diagram**, the alternative named in that genre, was assessed after Gate fell
-through and is the live candidate above.
+through and is now implemented (above).
 
 ## Transpilers
 

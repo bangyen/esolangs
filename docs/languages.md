@@ -30,6 +30,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | BrainIf | yes | yes |  | yes |  |
 | COD |  | yes |  | yes |  |
 | Circlefuck | yes | yes |  | yes |  |
+| Circuit Diagram |  | yes |  |  |  |
 | Clockwise | yes | yes |  | yes |  |
 | Collatz Multiverse | yes | yes |  | yes | yes |
 | Container | yes | yes |  | yes |  |
