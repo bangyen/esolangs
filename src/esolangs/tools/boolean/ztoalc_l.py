@@ -129,12 +129,15 @@ def ztoalc_l_boolean(truth_table: str) -> str:
     ZTOALC L's control flow is the Collatz trajectory of line 1, so the
     generator lays out a decision tree on `p * 2**k` descents: branching at
     an even root lets a zero bit continue the descent (the Collatz step
-    halves it) while a one bit jumps to `root + 1`, whose Collatz step lands
-    on `4 * q` — so every branch gets a predictable, non-revisiting path.
-    The reads and normalizations ride the initial `b1 * 4**n` descent.  A
-    small ``b1`` is searched until the placement verifies against a fast
-    simulator (each input must print exactly its table entry once, with no
-    command line revisited).
+    halves it) while a one bit jumps to `root + 1`, whose Collatz step is
+    `3 * root + 4`.  When `root` is a multiple of four that lands on another
+    `4 * q`, so a `b1` divisible by four makes every branch child a clean
+    descent by construction.  That is sufficient but not necessary, and the
+    program is `b1 * 4**n` lines long, so every `b1` is tried in turn and
+    the simulator is the sole gate: a smaller start that happens to place
+    without a collision is kept, which is what keeps these programs as
+    short as they are.  The reads and normalizations ride the initial
+    `b1 * 4**n` descent.
 
     When the tree search finds no collision-free placement (dense tables
     like XOR4), a branch-free *linear* program is tried instead for
@@ -148,7 +151,16 @@ def ztoalc_l_boolean(truth_table: str) -> str:
     and symmetric tables at ``n == 4``; all tests run the real interpreter.
     """
     n = _validate_truth_table(truth_table)
-    for b1 in range(2 ** (n + 1), 4000, 4):
+    # Every ``b1`` is tried, not just the multiples of four.  A one-branch
+    # jumps to ``root + 1``, whose Collatz step is ``3 * root + 4`` -- a
+    # multiple of four only when ``root`` is, so the ``b1 % 4 == 0`` family
+    # is the one where every branch child is *constructively* another clean
+    # ``4q`` descent.  That is sufficient, not necessary: a smaller start
+    # outside it loses the guarantee but often still places without a
+    # collision, and the simulator below is what decides either way.  Since
+    # the program is ``b1 * 4**n`` lines long, those smaller starts are
+    # worth having -- AND drops from 384 lines to 96.
+    for b1 in range(1, 4000):
         lines = _ztoalc_lines(truth_table, n, b1)
         if all(
             _ztoalc_ok(

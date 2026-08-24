@@ -21,10 +21,12 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs import generate
 from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
+from esolangs.tools.wrap import DEFAULT_WIDTH
 
 BASE_DIR = Path(__file__).parent.parent
 EXAMPLES_DIR = BASE_DIR / "examples" / "hello-world"
@@ -63,20 +65,26 @@ def run_example(name: str) -> str:
 
 @pytest.mark.parametrize("name", sorted(EXAMPLES))
 def test_hello_world_example(name: str) -> None:
-    expected = "Hello, World!\n" if name == "nevermind" else "Hello, World!"
+    expected = "Hello, World!"
     assert run_example(name) == expected
 
 
 def test_example_files_match_generator() -> None:
-    """The committed examples are exactly what the generators produce today."""
-    generators = {
-        _file_name(lang.name): lang.generator
-        for lang in LANGUAGES.values()
-        if lang.generator and lang.interpreter
-    }
-    for name, generator in generators.items():
-        path = EXAMPLES_DIR / f"{name}.txt"
-        assert path.read_text(encoding="utf-8") == generator("Hello, World!")
+    """The committed examples are exactly what the generators produce today.
+
+    The files are committed wrapped (see
+    ``scripts/write_hello_world_examples.py``), so the comparison wraps the
+    generator's output the same way rather than loosening to ignore
+    newlines -- a wrapped file still has to match character for character.
+    """
+    languages = [
+        lang for lang in LANGUAGES.values() if lang.generator and lang.interpreter
+    ]
+    for lang in languages:
+        assert lang.generator is not None
+        path = EXAMPLES_DIR / f"{_file_name(lang.name)}.txt"
+        expected = generate(lang.name, "Hello, World!", DEFAULT_WIDTH)
+        assert path.read_text(encoding="utf-8") == expected
 
 
 def test_no_orphan_hello_world_examples() -> None:

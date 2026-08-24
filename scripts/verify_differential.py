@@ -669,8 +669,7 @@ def _verify_bfpda() -> bool:
         if (asm_out, asm_code) != (py_out, py_code):
             failures += 1
             print(
-                f"BF-PDA {program!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)}"
+                f"BF-PDA {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}"
             )
 
     if not failures:
@@ -690,8 +689,8 @@ def _run_ram0_python(program: str) -> tuple[bytes, int]:
     buffer = io.BytesIO()
 
     class _IO(IO):
-        def print_line(self, s: str) -> None:
-            buffer.write(s.encode("latin1") + b"\n")
+        def print_str(self, s: str) -> None:
+            buffer.write(s.encode("latin1"))
 
     run(program, _IO())
     return buffer.getvalue(), 0
@@ -722,8 +721,8 @@ def _run_ram0_python_limited(program: str, timeout: float) -> tuple[bytes, int] 
     buffer = io.BytesIO()
 
     class _IO(IO):
-        def print_line(self, s: str) -> None:
-            buffer.write(s.encode("latin1") + b"\n")
+        def print_str(self, s: str) -> None:
+            buffer.write(s.encode("latin1"))
 
     class _TimeoutError(Exception):
         pass
@@ -766,10 +765,7 @@ def _verify_ram0() -> bool:
             asm_out, asm_code = ref
         if (asm_out, asm_code) != (py_out, py_code):
             failures += 1
-            print(
-                f"RAM0 {program!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)}"
-            )
+            print(f"RAM0 {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}")
 
     if not failures:
         print(f"RAM0 differential: {len(RAM0_CORPUS)} programs match")
@@ -877,9 +873,7 @@ def _verify_bio() -> bool:
             asm_out, asm_code = ref
         if (asm_out, asm_code) != (py_out, py_code):
             failures += 1
-            print(
-                f"BIO {program!r}: asm={(asm_out, asm_code)} " f"py={(py_out, py_code)}"
-            )
+            print(f"BIO {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}")
 
     if not failures:
         print(f"BIO differential: {len(BIO_CORPUS)} programs match")
@@ -899,8 +893,8 @@ def _run_minsky_swap_python(program: str) -> tuple[bytes, int]:
     buffer = io.BytesIO()
 
     class _IO(IO):
-        def print_line(self, s: str = "") -> None:
-            buffer.write(s.encode("latin1") + b"\n")
+        def print_str(self, s: str) -> None:
+            buffer.write(s.encode("latin1"))
 
     try:
         run(program, _IO())
@@ -936,8 +930,8 @@ def _run_minsky_swap_python_limited(
     buffer = io.BytesIO()
 
     class _IO(IO):
-        def print_line(self, s: str = "") -> None:
-            buffer.write(s.encode("latin1") + b"\n")
+        def print_str(self, s: str) -> None:
+            buffer.write(s.encode("latin1"))
 
     class _TimeoutError(Exception):
         pass
@@ -1054,8 +1048,8 @@ def _run_laserfuck_python(
         def print_num(self, num: int) -> None:
             buffer.write(str(num))
 
-        def print_line(self, text: str = "") -> None:
-            buffer.write(text + "\n")
+        def print_str(self, text: str) -> None:
+            buffer.write(text)
 
         def input_str(self, _prompt: str = "Input: ") -> str:
             return reads.pop(0) if reads else "1"

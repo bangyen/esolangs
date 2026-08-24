@@ -117,8 +117,9 @@ just test            # or: sh scripts/check_all.sh
 ```
 
 runs the full local check: pre-commit (lint, format, types), pytest, bandit,
-cargo fmt + tests, and the Python verify scripts (including
-`check_docstrings.py`).  To run it automatically on every push:
+cargo fmt + tests, the `extra/line` suites (via uv, skipped when uv is
+missing), and the Python verify scripts (including `check_docstrings.py`).
+To run it automatically on every push:
 
 ```sh
 git config core.hooksPath .githooks
@@ -135,5 +136,5 @@ toolchain; the qemu steps are CI-only.
   input raises `EOFError` (or follows the spec where it defines EOF),
   malformed programs raise `ValueError`, and invalid runtime operations
   raise `HaltError` — never a raw Python exception.
-- New code must pass ruff, black, and mypy, and keep line coverage at 100%
+- New code must pass ruff (lint and format) and mypy, and keep line coverage at 100%
   (the coverage-badge CI job enforces it).

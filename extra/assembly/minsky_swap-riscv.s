@@ -248,9 +248,8 @@ _start:
     addi a1, a1, 1
     mv   a0, s9
     call fmt_dec
-    li   t0, '\n'
-    sb   t0, 0(a1)
-    addi a1, a1, 1
+    # no trailing newline: the Python interpreter's dump ends at the last
+    # register, and these ports mirror it
     la   t0, buf
     sub  a2, a1, t0
     li   a7, 64

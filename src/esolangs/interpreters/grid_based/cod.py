@@ -11,7 +11,8 @@ them:
 - ``_`` reacts only to upward motion: a cod moving up is sent back down iff
   its value is nonzero; otherwise it is a no-op.
 - ``---`` (three dashes with nothing between, touching the left or right
-  edge) prints the cod's value and removes it; the same three characters
+  edge) prints the cod's value -- with no separator, per the wiki's bare
+  "output the cod's value" -- and removes it; the same three characters
   anywhere else are three separate ``-`` removals.
 - ``...`` (three periods with nothing between, touching the top or bottom
   edge) reads a number from stdin into the cod's value; elsewhere it is
@@ -206,7 +207,7 @@ class _Machine:
         cod.r, cod.c, cod.d = r, c, move_dir
 
         if (r, c) in self._edge_dashes:
-            self.io.print_line(str(cod.value))
+            self.io.print_str(str(cod.value))
             return []
 
         ch = self._cell(r, c)

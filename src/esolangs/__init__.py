@@ -25,6 +25,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
 from esolangs.tools.boolean import BOOLEAN
 from esolangs.tools.transpilers import TRANSPILERS
+from esolangs.tools.wrap import takes_width, wrap_program
 from esolangs.vm import VM, make_vm
 
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
@@ -40,13 +41,31 @@ _STATE_MODELS = {
 }
 
 
-def generate(language: str, text: str) -> str:
-    """Return a program in ``language`` that prints ``text``."""
+def generate(language: str, text: str, width: int | None = None) -> str:
+    """Return a program in ``language`` that prints ``text``.
+
+    ``width`` bounds the program to that many columns for readability;
+    :data:`esolangs.tools.wrap.DEFAULT_WIDTH` is the conventional choice.
+    The default of ``None`` asks for no bound, so a caller that does not
+    want one gets exactly what the generator has always produced.
+
+    Most languages honour it by *wrapping* the finished program, breaking
+    only between whole tokens so it still means the same thing.  A few build
+    a shape rather than a line -- Clockwise lays its code around a
+    rectangle's perimeter -- and cannot be reflowed after the fact; those
+    generators take the width themselves and lay the program out to fit.
+
+    A language whose newlines are semantic (the 2D grid languages) or that
+    rejects them outright (NoComment) ignores ``width`` rather than raising,
+    so one width can be passed across every language.
+    """
     try:
         fn = GENERATORS[language]
     except KeyError:
         raise UnknownLanguageError(language) from None
-    return str(fn(text))
+    if width is not None and takes_width(fn):
+        return str(fn(text, width))
+    return wrap_program(str(fn(text)), LANGUAGES[language].id, width)
 
 
 def run(

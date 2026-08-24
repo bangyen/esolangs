@@ -38,14 +38,14 @@ REFERENCE_CASES = [
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<.>@.", "01"),
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<@.", "1"),
     ("bfpda", "extra/assembly/bfpda-riscv.s", "<@<@[.>]", "11"),
-    ("ram0", "extra/assembly/ram0-riscv.s", "A A A", "z: 3\nn: 0\nram: {}\n"),
+    ("ram0", "extra/assembly/ram0-riscv.s", "A A A", "z: 3\nn: 0\nram: {}"),
     (
         "ram0",
         "extra/assembly/ram0-riscv.s",
         "A A N A A A S",
-        "z: 5\nn: 2\nram: {\n    2: 5\n}\n",
+        "z: 5\nn: 2\nram: {\n    2: 5\n}",
     ),
-    ("ram0", "extra/assembly/ram0-riscv.s", "A 3 A A", "z: 3\nn: 0\nram: {}\n"),
+    ("ram0", "extra/assembly/ram0-riscv.s", "A 3 A A", "z: 3\nn: 0\nram: {}"),
     ("bio", "extra/assembly/bio-riscv.s", "0ox;0ox;0ox;1ix;", "\x03"),
     (
         "bio",
@@ -59,13 +59,13 @@ REFERENCE_CASES = [
         "0ox;" * 66 + "1ix;",
         "B",
     ),
-    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "+++~\n1", "2 0\n"),
-    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "++*++*+++", "5 2\n"),
+    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "+++~\n1", "2 0"),
+    ("minsky_swap", "extra/assembly/minsky_swap-riscv.s", "++*++*+++", "5 2"),
     (
         "minsky_swap",
         "extra/assembly/minsky_swap-riscv.s",
         "+++*+++*~+~\n2 1",
-        "2 3\n",
+        "2 3",
     ),
 ]
 
@@ -88,8 +88,8 @@ COMPILER_CASES.append(("home_row", "home_row", "a" * 65 + "k;", "A"))
 COMPILER_CASES.append(("jaune", "jaune", "6+5+^.", "11"))
 COMPILER_CASES.append(("unsquare", "unsquare", "IA" + "+" * 32 + "Po", "A"))
 COMPILER_CASES.append(("bf_pda", "bf_pda", "<.>@.", "01"))
-COMPILER_CASES.append(("ram0", "ram0", "A A A", "z: 3\nn: 0\nram: {}\n"))
-COMPILER_CASES.append(("ram0", "ram0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}\n"))
+COMPILER_CASES.append(("ram0", "ram0", "A A A", "z: 3\nn: 0\nram: {}"))
+COMPILER_CASES.append(("ram0", "ram0", "A A N S", "z: 2\nn: 2\nram: {\n    2: 2\n}"))
 COMPILER_CASES.append(("forth", "forth", "65.", "\x05"))
 COMPILER_CASES.append(("forth", "forth", "5:..", "\x05\x05"))
 COMPILER_CASES.append(("forth", "forth", "28*.", "\x10"))

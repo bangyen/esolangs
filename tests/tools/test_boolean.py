@@ -1665,7 +1665,7 @@ class TestNevermind:
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_nevermind(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])) + "\n", f"inputs {bits}"
+            assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
         """A one-input function reads one input and branches on it."""
@@ -1832,38 +1832,17 @@ class TestParameterizedBIO:
 class TestParameterizedBack:
     """Input-by-substitution generators for the no-input language Back."""
 
-    def run_back(self, prog: str) -> str:
-        # Back's answer is the cell under the tape head when the program
-        # halts, so re-run the interpreter and report that cell.
-        lines = prog.splitlines()
-        size = max(len(line) for line in lines)
-        code = [line.ljust(size) for line in lines]
-        x = y = 0
-        a, b = 0, 1
-        tape = [0]
-        cell = 0
-        while True:
-            c = code[x][y]
-            if c == "\\":
-                a, b = b, a
-            elif c == "/":
-                a, b = -b, -a
-            elif c == "<":
-                if cell:
-                    cell -= 1
-            elif c == ">":
-                cell += 1
-                if cell == len(tape):
-                    tape.append(0)
-            elif c == "-":
-                tape[cell] ^= 1
-            elif c == "+" and not tape[cell]:
-                x, y = x + a, y + b
-            elif c == "*":
-                break
-            x = (x + a) % len(code)
-            y = (y + b) % size
-        return str(tape[cell])
+    def run_back(self, prog: str, n: int) -> str:
+        # Back has no output instruction: it dumps the whole tape at halt.
+        # The generator puts the answer in cell n, so the dump's (n+1)th
+        # field is the result -- no need to track the head, which the dump
+        # does not report.
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.back import run
+
+        io = ScriptedIO()
+        run(prog.splitlines(), io)
+        return io.getvalue().split()[n]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools.boolean import parameterized
@@ -1898,7 +1877,7 @@ class TestParameterizedBack:
         template = parameterized.back(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_back(self.instantiate(template, bits))
+            got = self.run_back(self.instantiate(template, bits), n)
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3])
@@ -1911,7 +1890,7 @@ class TestParameterizedBack:
             template = parameterized.back(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                got = self.run_back(self.instantiate(template, bits))
+                got = self.run_back(self.instantiate(template, bits), n)
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
@@ -2736,7 +2715,7 @@ class TestParameterizedCOD:
         for combo in range(4):
             bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
             got = self.run_cod(self.instantiate(template, bits))
-            assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+            assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
     def test_all_two_input_tables(self) -> None:
         """Every one of the sixteen two-input tables produces the right result."""
@@ -2748,7 +2727,7 @@ class TestParameterizedCOD:
             for combo in range(4):
                 bits = [(combo >> (2 - 1 - i)) & 1 for i in range(2)]
                 got = self.run_cod(self.instantiate(template, bits))
-                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+                assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
     def test_all_three_input_tables(self) -> None:
         """Every one of the 256 three-input tables produces the right result.
@@ -2770,10 +2749,10 @@ class TestParameterizedCOD:
             for combo in range(8):
                 bits = [(combo >> (3 - 1 - i)) & 1 for i in range(3)]
                 got = self.run_cod(self.instantiate(template, bits))
-                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+                assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
-    def test_program_always_terminates_with_one_line(self) -> None:
-        """Every run prints exactly one line and leaves no cod alive."""
+    def test_program_always_terminates_with_one_value(self) -> None:
+        """Every run prints exactly one value and leaves no cod alive."""
         from esolangs.interpreters.grid_based.cod import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.tools.boolean import parameterized
@@ -2789,10 +2768,11 @@ class TestParameterizedCOD:
                     break
                 machine.step()
             assert machine.halted
-            assert io_.getvalue().count("\n") == 1
+            # one print, so one character: the answer, no separator
+            assert len(io_.getvalue()) == 1
 
-    def test_three_input_program_always_terminates_with_one_line(self) -> None:
-        """Every three-input run prints exactly one line and halts."""
+    def test_three_input_program_always_terminates_with_one_value(self) -> None:
+        """Every three-input run prints exactly one value and halts."""
         from esolangs.interpreters.grid_based.cod import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.tools.boolean import parameterized
@@ -2808,7 +2788,8 @@ class TestParameterizedCOD:
                     break
                 machine.step()
             assert machine.halted
-            assert io_.getvalue().count("\n") == 1
+            # one print, so one character: the answer, no separator
+            assert len(io_.getvalue()) == 1
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
@@ -2851,7 +2832,7 @@ class TestParameterizedCOD:
             for combo in range(16):
                 bits = [(combo >> (4 - 1 - i)) & 1 for i in range(4)]
                 got = self.run_cod(self.instantiate(template, bits))
-                assert got == f"{table[combo]}\n", f"table {table} inputs {bits}"
+                assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
     @pytest.mark.parametrize("table", ["10", "01", "00", "11"])
     def test_one_input_truth_table(self, table: str) -> None:
@@ -2863,7 +2844,7 @@ class TestParameterizedCOD:
         assert "{X1}" not in template
         for x0 in range(2):
             got = self.run_cod(self.instantiate(template, [x0]))
-            assert got == f"{table[x0]}\n", f"table {table} input {x0}"
+            assert got == f"{table[x0]}", f"table {table} input {x0}"
 
 
 class TestEvalBoolean:
@@ -3060,19 +3041,19 @@ class TestClockwise:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination prints the result bit seven times."""
+        """Every input combination prints the result as an ASCII digit."""
         program = boolean.clockwise(table)
         for combo in range(2**n):
             bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
             got = run_clockwise(program, bits)
-            assert got == chr(127 * int(table[combo])), f"inputs {bits}"
+            assert got == table[combo], f"inputs {bits}"
 
     def test_ring_starts_at_origin(self) -> None:
         """The program is a closed ring whose pointer starts at (0, 0)."""
         program = boolean.clockwise("0110")
         lines = program.splitlines()
         assert lines[0][0] == " "
-        assert run_clockwise(program, ["1", "0"]) == "\x7f"
+        assert run_clockwise(program, ["1", "0"]) == "1"  # XOR(1, 0)
 
 
 class TestTaglate:
@@ -3220,7 +3201,6 @@ class TestThreeX:
 
 
 def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
-    import re
 
     from esolangs.interpreters.grid_based.laserfuck import run
     from esolangs.interpreters.io import IO
@@ -3237,17 +3217,18 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
         def print_char(self, char: str) -> None:
             buffer.write(char)
 
-        def print_line(self, text: str = "") -> None:
-            buffer.write(text + "\n")
+        def print_str(self, text: str) -> None:
+            buffer.write(text)
 
         def print_num(self, num: int) -> None:
             buffer.write(str(num))
 
     with redirect_stdout(buffer):
         run(program.splitlines(), FakeIO(inputs), heading=heading)
-    # byte output mode prints every touched cell; the 0/1 input cells print as
-    # NUL/SOH, so filtering to '0'/'1' leaves exactly the 48/49 result cell
-    return re.sub("[^01]", "", buffer.getvalue())
+    # The generator runs in decimal output mode and drives the input cells
+    # negative, which dump() skips, so the tape prints as exactly the answer
+    # -- no filtering needed, and asserting on the raw output is stricter.
+    return buffer.getvalue()
 
 
 class TestLaserFuck:
@@ -3294,10 +3275,27 @@ class TestLaserFuck:
         for heading in range(4):
             assert run_laserfuck(program, ["1", "0"], heading) == "1"
 
-    def test_byte_output_mode(self) -> None:
-        """The first grid cell selects byte output (no separators)."""
+    def test_decimal_output_mode(self) -> None:
+        """No ``\\xff`` marker, so the tape dumps as numbers, not bytes.
+
+        Byte mode would print the answer as ``chr(result)``, which is why
+        the leaves used to add 48 to reach ASCII ``'0'``/``'1'``.  In decimal
+        mode the leaf writes the result itself.
+        """
         program = boolean.laserfuck("10")
-        assert program.splitlines()[0][0] == "\u00ff"
+        assert program.splitlines()[0][0] != "\u00ff"
+        assert "\u00ff" not in program
+
+    def test_prints_only_the_answer(self) -> None:
+        """The dump is exactly the result: no input cells, no separators.
+
+        The input cells are driven negative by the leaf, and ``dump`` skips
+        negative cells, so nothing but the answer survives.
+        """
+        program = boolean.laserfuck("0001")  # AND2
+        for bits, want in (([0, 1], "0"), ([1, 1], "1")):
+            got = run_laserfuck(program, [str(b) for b in bits], 3)
+            assert got == want, f"inputs {bits}"
 
     def test_loop_free_tree(self) -> None:
         """The decision tree uses the #/)/\\ branch, not loop rings."""
@@ -3315,6 +3313,62 @@ class TestLaserFuck:
         """A truth table with a character other than 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.laserfuck("02")
+
+    @pytest.mark.parametrize(
+        ("table", "n", "width"),
+        [
+            # The tree is never folded and grows six columns per node, so the
+            # narrowest width a table can honour rises with its input count:
+            # roughly 19, 34, and 63 columns for one, two, and three inputs.
+            ("01", 1, 20),
+            ("01", 1, 40),
+            ("10", 1, 80),
+            ("0110", 2, 34),
+            ("0110", 2, 80),
+            ("1000", 2, 120),
+            ("01101001", 3, 63),
+            ("01101001", 3, 80),
+            ("11111110", 3, 120),
+        ],
+    )
+    def test_honours_a_width(self, table: str, n: int, width: int) -> None:
+        """``width`` bounds the columns and the table still computes.
+
+        The grid's width is dominated by its straight runs -- 49 columns per
+        input reader and another 49 per leaf -- so those fold into zigzags
+        that cost rows instead.  The decision tree is not folded: its
+        columns carry the descent paths.  Every heading is checked, since
+        the fold adds cells the funnel's beam could otherwise land on.
+        """
+        program = boolean.laserfuck(table, width)
+        assert max(len(line) for line in program.split("\n")) <= width
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            for heading in range(4):
+                got = run_laserfuck(program, [str(b) for b in bits], heading)
+                assert got == str(int(table[combo])), f"{bits} heading {heading}"
+
+    def test_width_is_narrower_than_the_unfolded_grid(self) -> None:
+        """Folding buys columns, rather than only reshaping the grid."""
+        table = "01101001"  # XOR3: 216 columns unfolded
+        assert max(len(ln) for ln in boolean.laserfuck(table).split("\n")) > 200
+        assert max(len(ln) for ln in boolean.laserfuck(table, 80).split("\n")) <= 80
+
+    def test_without_a_width_is_unchanged(self) -> None:
+        """The default stays exactly what the generator always produced."""
+        for table in ("01", "10", "0110", "01101001"):
+            assert boolean.laserfuck(table) == boolean.laserfuck(table, None)
+
+    def test_too_narrow_a_width_is_ignored(self) -> None:
+        """A width the tree cannot fit in is ignored rather than raising.
+
+        The tree grows six columns per node and is never folded, so below
+        some width there is nothing the fold can do; the generator emits the
+        grid it can build instead of failing, matching the rest of the
+        width plumbing.
+        """
+        program = boolean.laserfuck("01101001", 8)
+        assert run_laserfuck(program, ["0", "0", "0"], 3) == "0"
 
 
 class TestGeneratorEdgePaths:
@@ -3600,10 +3654,10 @@ class TestAPainterAnt:
         from esolangs.interpreters.io import ScriptedIO
 
         io = ScriptedIO()
-        run_a_painter_ant(program, io, limit=len(program))
+        run_a_painter_ant(program, io)
         ref = io.getvalue()
         io = ScriptedIO()
-        run_a_painter_ant(program, io, limit=10 * len(program))
+        run_a_painter_ant(program, io, cycles=10)
         return io.getvalue() == ref
 
     @classmethod
@@ -3618,9 +3672,9 @@ class TestAPainterAnt:
             table = format(value, "04b")
             for row in range(4):
                 bits = [(row >> 1) & 1, row & 1]
-                assert self._check(table, bits) == int(
-                    table[row]
-                ), f"{table} bits {bits}"
+                assert self._check(table, bits) == int(table[row]), (
+                    f"{table} bits {bits}"
+                )
 
     def test_xor(self) -> None:
         """XOR (0110) is one of the expressible tables."""
@@ -3670,9 +3724,9 @@ class TestAPainterAnt:
         for value in range(4):
             table = format(value, "02b")
             for bit in [0, 1]:
-                assert self._check(table, [bit]) == int(
-                    table[bit]
-                ), f"table {table} bit {bit}"
+                assert self._check(table, [bit]) == int(table[bit]), (
+                    f"table {table} bit {bit}"
+                )
 
     def test_instantiate_one_bit_fills_single_placeholder(self) -> None:
         """An n == 1 template carries only {X0}, filled per bit."""
@@ -3814,7 +3868,7 @@ class TestAPainterAntTrace:
             for bits in product([0, 1], repeat=2):
                 program = _instantiate_apa(a_painter_ant(table), list(bits))
                 io = ScriptedIO()
-                run_a_painter_ant(program, io, limit=len(program))
+                run_a_painter_ant(program, io)
                 assert box(program, 1) == io.getvalue().rstrip("\n"), (
                     table,
                     bits,
@@ -3832,10 +3886,10 @@ class TestAPainterAntTrace:
                 program = _instantiate_apa(a_painter_ant(table), list(bits))
                 assert cycle_stable(program), (table, bits)
                 io = ScriptedIO()
-                run_a_painter_ant(program, io, limit=len(program))
+                run_a_painter_ant(program, io)
                 reference = io.getvalue()
                 io = ScriptedIO()
-                run_a_painter_ant(program, io, limit=10 * len(program))
+                run_a_painter_ant(program, io, cycles=10)
                 assert io.getvalue() == reference, (table, bits)
 
     def test_cycle_stable_detects_a_divergence(self) -> None:
@@ -3962,9 +4016,9 @@ class TestPointBreak:
         program = boolean.point_break(table)
         for combo in range(2**n):
             got = point_break_result(program, _pb_combo_bits(combo, n))
-            assert (
-                got == table[combo]
-            ), f"table {table} inputs {_pb_combo_bits(combo, n)}"
+            assert got == table[combo], (
+                f"table {table} inputs {_pb_combo_bits(combo, n)}"
+            )
 
     def test_random_tables(self) -> None:
         for table in _pb_random_tables():
@@ -3972,9 +4026,9 @@ class TestPointBreak:
             program = boolean.point_break(table)
             for combo in range(2**n):
                 got = point_break_result(program, _pb_combo_bits(combo, n))
-                assert (
-                    got == table[combo]
-                ), f"table {table} inputs {_pb_combo_bits(combo, n)}"
+                assert got == table[combo], (
+                    f"table {table} inputs {_pb_combo_bits(combo, n)}"
+                )
 
     def test_program_structure(self) -> None:
         """One read per input, complemented bits, a minterm sum, the template."""
