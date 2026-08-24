@@ -341,14 +341,15 @@ class TestGeneratorRoundTrips:
         for text in ("A", "Hi", "Hello, World!", "The quick brown fox"):
             assert gen.laserfuck(text) == gen.laserfuck(text, None)
 
-    def test_laserfuck_loop_form_falls_back_to_fit_a_width(self) -> None:
-        """A loop program too wide for the width is re-emitted as linear.
+    def test_laserfuck_loop_form_folds_to_fit_a_width(self) -> None:
+        """A loop program too wide for the width is folded, not abandoned.
 
-        The looping form's frame carries bracket markers whose *columns* the
-        mirror cells below and the serpentine's connector are derived from,
-        so it cannot be folded the way a straight run can.  The width is a
-        bound rather than a hint, so the only way to honour it is the linear
-        form -- several times larger, but foldable.
+        The frame cannot be folded between any two cells the way a straight
+        run can -- a "]"'s mirror bounces the beam back to cells placed
+        relative to its matching "[" -- so it folds between whole bracket
+        spans instead.  The point is that the *loop* form survives the
+        width: falling back to the linear form would fit too, by emitting
+        several times the program.
         """
         text = "Hello, World!"  # takes the loop branch
         loop = gen.laserfuck(text)
@@ -357,7 +358,17 @@ class TestGeneratorRoundTrips:
         bounded = gen.laserfuck(text, 80)
         assert max(len(ln) for ln in bounded.split("\n")) <= 80
         assert bounded != loop
-        assert len(bounded) > len(loop)  # the trade the fallback makes
+        # still the loop form -- the bracket mirrors are what say so -- and
+        # so no bigger than the unfolded program, unlike the linear fallback
+        assert "#^)#^" in bounded
+        assert len(bounded) <= len(loop)
+
+    def test_laserfuck_narrow_width_still_falls_back_to_linear(self) -> None:
+        """A width no folded span can fit takes the linear form instead."""
+        text = "Hello, World!"
+        narrow = gen.laserfuck(text, 40)
+        assert max(len(ln) for ln in narrow.split("\n")) <= 40
+        assert "#^)#^" not in narrow  # the loop geometry is gone
 
     def test_laserfuck_keeps_the_loop_form_when_it_fits(self) -> None:
         """A width the loop form already satisfies leaves it untouched."""
