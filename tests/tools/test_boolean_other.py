@@ -667,9 +667,31 @@ class TestLaserFuck:
 
     def test_width_is_narrower_than_the_unfolded_grid(self) -> None:
         """Folding buys columns, rather than only reshaping the grid."""
-        table = "01101001"  # XOR3: 216 columns unfolded
-        assert max(len(ln) for ln in boolean.laserfuck(table).split("\n")) > 200
+        table = "01101001"  # XOR3
+        unfolded = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
+        assert unfolded > 80  # the reader run alone is 49 columns per input
         assert max(len(ln) for ln in boolean.laserfuck(table, 80).split("\n")) <= 80
+
+    @pytest.mark.parametrize(("table", "n"), [("0001", 2), ("01101001", 3)])
+    def test_tree_columns_are_linear_in_the_input_count(
+        self, table: str, n: int
+    ) -> None:
+        """The staircase shares a column per level, not one per node.
+
+        Rows are handed out depth-first, so a subtree owns a contiguous
+        band and two nodes on the same level never share a row -- which is
+        what lets them share a column.  The tree therefore spans ``6 * n``
+        columns rather than ``6 * (2**(n + 1) - 1)``.
+        """
+        program = boolean.laserfuck(table)
+        rows = program.split("\n")
+        width = max(len(line) for line in rows)
+        # Row 0 is the reader run (49 columns per input) and row 3 the leg
+        # that carries the beam back to the margin; the tree starts below.
+        tree_width = max(len(line) for line in rows[4:])
+        assert tree_width < width
+        # Six columns per level, plus the leaf run's sweep and answer.
+        assert tree_width <= 6 * n + 4 * n + 20
 
     def test_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""
