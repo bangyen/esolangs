@@ -486,6 +486,37 @@ class _Machine:
         )
         return not wrong_side
 
+    def _lane_change(self, heading: str) -> bool:
+        """Whether hugging right would slide across the street's own width.
+
+        Streets are two cells wide, so the cell beside the car is usually
+        the oncoming lane rather than a road leading off.  A right turn
+        onto it is a lane change -- driving on the left -- not a corner,
+        and the spec's cars drive on the right-hand side.
+
+        The two are told apart by what lies beyond.  Rounding a real
+        corner, the road continues past the cell turned onto; crossing the
+        street, the far wall stops the car one cell later.  So a right
+        turn whose destination is immediately walled, taken while the road
+        straight ahead is still open, is the car leaving its lane for the
+        oncoming one, and the hug must carry straight on instead.
+
+        Without this the wall-following in :meth:`_choose_heading` turns
+        right whenever the neighbouring cell is open, which lets a car
+        reach a ``;`` painted in the oncoming lane, and lets it circle a
+        two-by-two opening forever -- four right turns, none of them with
+        a wall to follow.
+        """
+        turn = _right(heading)
+        row, col = self._ahead(self.row, self.col, turn)
+        if not self._open(row, col):
+            return False
+        beyond_row, beyond_col = self._ahead(row, col, turn)
+        ahead_row, ahead_col = self._ahead(self.row, self.col, heading)
+        return not self._open(beyond_row, beyond_col) and self._open(
+            ahead_row, ahead_col
+        )
+
     def _choose_heading(self) -> str | None:
         """Pick the car's next heading.
 
@@ -650,7 +681,7 @@ class _Machine:
             ahead_row, ahead_col = self._ahead(self.row, self.col, heading)
             if self._open(ahead_row, ahead_col):
                 return heading
-        if self._open(right_row, right_col):
+        if self._open(right_row, right_col) and not self._lane_change(heading):
             return _right(heading)
         ahead_row, ahead_col = self._ahead(self.row, self.col, heading)
         if self._open(ahead_row, ahead_col):
