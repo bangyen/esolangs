@@ -33,6 +33,19 @@ ten-character jump sentinels in `boolean/decleq.txt` take three cells each
 padding is only whitespace: these interpreters split on whitespace runs, so
 a gridded program means exactly what it did unpadded.
 
+BIO is laid out by *nesting* for the same reason, where it has any.  Its
+boolean generator nests one loop per truth-table row, so `boolean/bio.txt`
+is a telescoping chain of `0ix{1ox ... }` levels — the shape its generator's
+docstring describes, and the thing worth seeing in the file.  Packed flat to
+a width it read as one undifferentiated run, so a nested program is now
+indented two spaces per level, with the straight `0oy` runs between levels
+still packed to whatever width the indent leaves them.  `hello-world/bio.txt`
+is a flat sequence of depth-1 groups where indenting would show nothing
+packing does not, so it stays packed; the layout applies only from two levels
+down.  The indent is whitespace between commands, which BIO's parser discards
+along with the decorative `{` — it keeps only the `[01][oOiI][xXyYzZ]` triples
+and `}` — so an indented program means exactly what the packed one did.
+
 Refresh both directories with:
 
 ```bash
