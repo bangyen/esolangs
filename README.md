@@ -373,7 +373,7 @@ a change.
 To run that check automatically on every push:
 
 ```sh
-sh scripts/check_all.sh        # run it once
+python scripts/verify.py       # run it once
 git config core.hooksPath .githooks   # or run it automatically on every push
 ```
 

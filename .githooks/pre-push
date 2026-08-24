@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pre-push hook: run scripts/check_all.sh before allowing a push.  Enabled
+# Pre-push hook: run scripts/verify.py before allowing a push.  Enabled
 # automatically by `just install-dev` (git config core.hooksPath .githooks),
 # or manually with:
 #
@@ -36,4 +36,7 @@ if [ "$saw_ref" -eq 1 ] && [ "$deleting_only" -eq 1 ]; then
     exit 0
 fi
 
-exec "$(dirname "$0")/../scripts/check_all.sh"
+ROOT="$(dirname "$0")/.."
+# verify.py picks the project interpreter itself (.venv, then uv run), so
+# the hook can hand it any python that can execute the file.
+exec "${PY:-python3}" "$ROOT/scripts/verify.py"

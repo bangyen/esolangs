@@ -6,7 +6,7 @@ runtime, so unlike the token-unrolling compilers they can't emit static
 per-token blocks).  These three routines -- byte I/O and the final
 dword-per-row memory dump -- are copy-pasted identically between them;
 keeping one copy here is what the ``duplicate-code`` check in
-``scripts/check_duplicates.py`` enforces.
+``scripts/verify.py`` enforces.
 """
 
 GETBYTE = (

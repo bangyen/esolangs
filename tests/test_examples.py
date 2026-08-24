@@ -72,8 +72,8 @@ def test_hello_world_example(name: str) -> None:
 def test_example_files_match_generator() -> None:
     """The committed examples are exactly what the generators produce today.
 
-    The files are committed wrapped (see
-    ``scripts/write_hello_world_examples.py``) and end with a single POSIX
+    The files are committed wrapped (see ``scripts/write_examples.py``)
+    and end with a single POSIX
     newline, so the comparison is against the generator's output plus that
     newline.
     """
@@ -107,7 +107,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
 
     The counterpart of :func:`test_example_files_match_generator` for the
     boolean examples; refresh them with
-    ``python scripts/write_boolean_examples.py``. The file ends with a
+    ``python scripts/write_examples.py boolean``. The file ends with a
     single POSIX newline.
     """
     path = BASE_DIR / "examples" / "boolean" / f"{name}.txt"

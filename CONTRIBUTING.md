@@ -86,7 +86,7 @@ on the table.
 - `src/esolangs/__init__.py` — the public API (`generate`, `run`,
   `list_languages`); `src/esolangs/cli.py` — the `esolangs` command.
 - `scripts/` — verification tooling (`check_docstrings.py`, the
-  differential/emulation checks, `check_all.sh`).
+  differential/emulation checks, `verify.py`).
 
 ## Adding a language
 
@@ -113,7 +113,7 @@ on the table.
 ## Verifying changes
 
 ```sh
-just test            # or: sh scripts/check_all.sh
+just test            # or: python scripts/verify.py
 ```
 
 runs the full local check: pre-commit (lint, format, types), pytest, bandit,
