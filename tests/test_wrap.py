@@ -23,6 +23,7 @@ from esolangs.registry import LANGUAGES
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
+    MULTILINE,
     WRAPPERS,
     wrap_chars,
     wrap_program,
@@ -147,6 +148,17 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     example = BOOLEAN_GENERATED.get(LANGUAGES[name].id)
     if example is not None:
         raw = example.build(width=None)
+        # A language in MULTILINE arrives with structural newlines of its
+        # own (Taglate's queue seed), so "did it wrap?" is not "is there a
+        # newline?" -- it is whether wrapping added one and held the width.
+        if LANGUAGES[name].id in MULTILINE:
+            assert max(map(len, raw.split("\n"))) > 40, (
+                f"{name}: boolean program too short to need a wrap"
+            )
+            wrapped = example.build(40)
+            assert wrapped.count("\n") > raw.count("\n"), f"{name}: wrapper never fired"
+            assert max(map(len, wrapped.split("\n"))) <= 40
+            return
         assert "\n" not in raw, f"{name}: boolean program is already multi-line"
         assert len(raw) > 40, f"{name}: boolean program too short to need a wrap"
         assert "\n" in example.build(40)
