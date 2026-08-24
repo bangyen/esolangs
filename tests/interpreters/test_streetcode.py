@@ -39,16 +39,16 @@ def street(instructions: str) -> list[str]:
 
 
 def machine_unvalidated(code: list[str]) -> _Machine:
-    """Build a ``_Machine`` from a wall-shape fixture, skipping width checks.
+    """Build a ``_Machine`` from a wall-shape fixture, skipping validation.
 
     The junction and lane-merge tests probe ``_junction_kind`` and the merge
     latches directly, on deliberately skeletal geometry -- bare wall arms and
     gaps, with assertions keyed to exact coordinates.  Such a fixture is not a
-    legal two-wide street and is not meant to be one, so it is constructed
-    with ``_validate_width`` disabled rather than redrawn, which would change
-    what the test measures.  Whole-program tests use the real constructor.
+    legal street and is not meant to be one, so it is constructed with
+    ``_validate`` disabled rather than redrawn, which would change what the
+    test measures.  Whole-program tests use the real constructor.
     """
-    with patch.object(_Machine, "_validate_width", lambda *_: None):
+    with patch.object(_Machine, "_validate", lambda *_: None):
         return _Machine(code, IO())
 
 
@@ -783,6 +783,36 @@ class TestStreetcodeStreetWidth:
     def test_grid_without_walls_is_exempt(self) -> None:
         """With no walls there is no street network to measure."""
         _Machine(["CU"], IO())
+
+    def test_wall_hole_is_rejected(self) -> None:
+        """A wall that stops and resumes one cell later leaves a gap too
+        narrow to drive.  The width check happens to catch this shape
+        first, since the hole is a reachable one-wide stub; the wall forms
+        reject it independently."""
+        with pytest.raises(ValueError, match=r"not two-wide|malformed wall"):
+            _Machine(["+----+", "|C   |", "|    |", "+- --+"], IO())
+
+    def test_uncapped_divider_end_is_accepted(self) -> None:
+        """Whether a divider must end in a '+' is a spec question the wiki
+        does not settle, and the forms deliberately leave it open: the
+        hello-world example draws bare ends and runs correctly."""
+        _Machine(
+            [
+                "+------+",
+                "|C     |",
+                "|      |",
+                "+  ----+",
+                "|      |",
+                "|      |",
+                "+------+",
+            ],
+            IO(),
+        )
+
+    def test_road_mouth_is_accepted(self) -> None:
+        """A mouth is at least two cells across, so its '+' markers never
+        sandwich a single open cell the way a hole does."""
+        _Machine(["+--+  +--+", "|C       |", "|        |", "+--------+"], IO())
 
     @pytest.mark.parametrize(
         "path",
