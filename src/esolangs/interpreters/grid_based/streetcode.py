@@ -270,6 +270,7 @@ class _Machine:
         reachable = self._validate_width(start)
         if reachable is not None:
             self._validate_walls(reachable)
+            self._validate_connected(reachable)
 
     def _validate_width(self, start: tuple[int, int]) -> set[tuple[int, int]] | None:
         """Validate that every street is two characters wide.
@@ -387,6 +388,75 @@ class _Machine:
                     for i in (0, 3, 6)
                 )
                 raise ValueError(f"malformed wall at {(r, c)} ({shape})")
+
+    def _validate_connected(self, reachable: set[tuple[int, int]]) -> None:
+        """Reject geometry that is not part of the one street network.
+
+        A program is a single street network: everything drawn is either
+        road the car can reach or a wall bounding that road.  Take the
+        reachable open cells, grow the region by one cell in every
+        direction so that it takes in the walls along its edges, and
+        remove it from the grid.  Whatever is still drawn -- a detached
+        second box, a stray fragment of wall, the walls sealing an
+        enclosed pocket the car can never enter -- belongs to no street,
+        and the program is malformed.
+
+        Growing the region is not quite enough on its own.  An island
+        drawn inside a ring -- ``+-+`` over ``| |`` over ``+-+`` -- has
+        its whole wall taken in by the growth, but the pocket it encloses
+        is left outside the region while being enclosed by it, so nothing
+        would be reported.  Any hole in the grown region is therefore
+        filled first: everything the outside cannot reach is folded in,
+        and an island's sealed interior then counts as part of the
+        region, so the walls around it are judged on what is left over.
+
+        Only non-blank leftovers count.  The blank padding ``ljust`` adds
+        to square off a ragged program, and the background around an
+        L-shaped layout, are not drawn geometry and are ignored -- which
+        is what lets the boolean example, whose hallways leave large
+        blank margins, pass while a detached wall does not.
+        """
+        h, w = self.height, self.width
+        grown = {
+            (r + dr, c + dc)
+            for r, c in reachable
+            for dr in (-1, 0, 1)
+            for dc in (-1, 0, 1)
+        }
+        # Fill holes: flood the complement inwards from the grid's border,
+        # then anything the flood never reached is enclosed by the region.
+        from collections import deque
+
+        outside: set[tuple[int, int]] = set()
+        q: deque[tuple[int, int]] = deque(
+            (r, c)
+            for r in range(h)
+            for c in range(w)
+            if (r in (0, h - 1) or c in (0, w - 1)) and (r, c) not in grown
+        )
+        outside.update(q)
+        while q:
+            r, c = q.popleft()
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if (
+                    0 <= nr < h
+                    and 0 <= nc < w
+                    and (nr, nc) not in grown
+                    and (nr, nc) not in outside
+                ):
+                    outside.add((nr, nc))
+                    q.append((nr, nc))
+
+        for r in range(h):
+            for c in range(w):
+                if (r, c) not in outside:
+                    continue  # in the region, or a hole enclosed by it
+                if self.grid[r][c] != " ":
+                    raise ValueError(
+                        f"geometry not connected to the street at {(r, c)}"
+                        f" ({self.grid[r][c]!r})"
+                    )
 
     def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
         """Detect a road opening off ``side`` of the car, or ``None``.
