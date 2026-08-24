@@ -11,7 +11,7 @@ Everything that can be checked on a dev machine without a Linux host:
    RISC-V cross-compiler is missing
 
 The native qemu-riscv64 checks need Linux, so they run only in CI (see
-.github/workflows/ci.yml).  ``scripts/check_all.sh`` is a thin wrapper around
+.github/workflows/ci.yml).  ``.githooks/pre-push`` and ``just test`` both run
 this script.
 
 Usage:
@@ -116,8 +116,23 @@ STEPS = [
         [*PY, "scripts/check_docstrings.py"],
     ),
     (
-        "duplicate-code check",
-        [*PY, "scripts/check_duplicates.py"],
+        # pylint's R0801 reports similar blocks across files, catching
+        # copy-pasted helpers like the bracket matcher or the OISC memory
+        # tokenizer.  --ignore-imports keeps shared import blocks from
+        # counting as duplication.
+        "duplicate-code check (pylint)",
+        [
+            *PY,
+            "-m",
+            "pylint",
+            "--disable=all",
+            "--enable=duplicate-code",
+            "--min-similarity-lines=10",
+            "--ignore-imports=yes",
+            "src/esolangs",
+            "scripts",
+            "tests",
+        ],
     ),
     (
         "single-interpreter installer",
@@ -170,6 +185,18 @@ def main() -> int:
 
     env = dict(os.environ, PYTHONPATH=str(ROOT / "src"))
     have_unicorn = importlib.util.find_spec("unicorn") is not None
+    # Probe PY rather than the running interpreter: verify.py may be launched
+    # by a different python than the one it runs the steps with (e.g.
+    # `uv run --with pylint python scripts/verify.py`, which leaves PY pointing
+    # at .venv), and it is PY that has to import pylint.
+    have_pylint = (
+        subprocess.run(
+            [*PY, "-c", "import pylint"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode
+        == 0
+    )
     have_riscv_gcc = (
         shutil.which("riscv64-elf-gcc") is not None
         or shutil.which("riscv64-linux-gnu-gcc") is not None
@@ -194,6 +221,9 @@ def main() -> int:
             continue
         if shutil.which("cargo") is None and "cargo" in name:
             print(f"[skip] {name}: Rust toolchain (cargo) not installed")
+            continue
+        if not have_pylint and "(pylint)" in name:
+            print(f"[skip] {name}: pylint not installed (pip install pylint)")
             continue
         start = time.time()
         result: subprocess.CompletedProcess[Any]

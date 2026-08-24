@@ -6,7 +6,7 @@ generators.  This module is the single source of truth for those files: each
 :class:`BooleanExample` records the generator, the truth table, and the input
 combination that produced its program, plus how the interpreter is invoked.
 
-The example writer (``scripts/write_boolean_examples.py``) and the test that
+The example writer (``scripts/write_examples.py``) and the test that
 keeps the files in sync (``tests/test_examples.py``) both derive from
 :data:`BOOLEAN_EXAMPLES`, so a committed program is always exactly what its
 generator produces today.
