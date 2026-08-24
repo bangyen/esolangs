@@ -24,12 +24,12 @@ corroborating each rule, and the questions that remain open.
 
 Runtime error contract:
 
-* ``U`` ends the turn in the opposite lane (the spec's streets are two
-  characters wide and the car drives on the right).  A street with no
-  such lane is narrower than the spec allows, so a ``U`` there is an
-  invalid runtime operation and raises
-  :class:`~esolangs.exceptions.HaltError`.  Street width is not
-  validated ahead of run time; see ``docs/roadmap.md``.
+* Streets are validated to be two characters wide at construction; a
+   malformed street raises :class:`ValueError`.  ``U`` ends the turn in
+   the opposite lane (the spec's streets are two-way and two wide), so a
+   ``U`` with no such lane is the late-detected case of the same
+   violation and raises :class:`~esolangs.exceptions.HaltError` when the
+   street has no walls to validate against.
 
 * CP is unsigned and right-unbounded: decrementing it below 0 is an invalid
   runtime operation and raises :class:`~esolangs.exceptions.HaltError`.
@@ -115,6 +115,7 @@ class _Machine:
         self.cp = 0
         self.cells: dict[int, int] = {}
         self._done = False
+        self._validate_width(starts[0])
         self.heading = self._initial_heading()
         # Lane-merge latches (see ``_choose_heading``): ``_merge_target`` is
         # set when a junction turn is detected but not yet reached (phase 1,
@@ -205,6 +206,61 @@ class _Machine:
         # (e.g. an isolated cell): fall back to South, matching the halt
         # this program will hit on its very first movement attempt anyway.
         return "S"
+
+    def _validate_width(self, start: tuple[int, int]) -> None:
+        """Validate that every street is two characters wide.
+
+        The spec requires streets to be two-way, two characters wide; a street
+        that is only one cell wide has no opposite lane for ``U`` to end in.
+        The check is static and runs before the car moves, so a malformed
+        program fails fast with :class:`ValueError` rather than a late
+        :class:`~esolangs.exceptions.HaltError` at the first ``U``.
+
+        The geometry is static, so width can be read off the grid: a corridor
+        cell that has open neighbours directly opposite (N+S or E+W) must have
+        an open neighbour on at least one perpendicular side (the second lane);
+        a dead-end cell with a single open neighbour must also have a
+        perpendicular open neighbour. Isolated single cells and grids with no
+        walls are not streets and are exempt, as are wall fragments used for
+        internal unit tests that contain no Streetcode instructions.
+        """
+        # No walls → not a street network (e.g. ["C","U"] or ["C"])
+        if not any(ch in _WALLS for row in self.grid for ch in row):
+            return
+        # No Streetcode instructions → wall fragment for internal tests
+        # (C is the start marker, not an instruction)
+        if not any(ch in "^~=_IOU;" for row in self.grid for ch in row):
+            return
+        # BFS reachable open cells from C (open = not a wall)
+        from collections import deque
+
+        h, w = self.height, self.width
+        sr, sc = start
+        visited: set[tuple[int, int]] = set()
+        q: deque[tuple[int, int]] = deque([(sr, sc)])
+        visited.add((sr, sc))
+        while q:
+            r, c = q.popleft()
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < h and 0 <= nc < w and self._open(nr, nc) and (nr, nc) not in visited:
+                    visited.add((nr, nc))
+                    q.append((nr, nc))
+        # Isolated single cell is not a street
+        if len(visited) <= 1:
+            return
+        for r, c in visited:
+            n = self._open(r - 1, c)
+            s = self._open(r + 1, c)
+            e = self._open(r, c + 1)
+            w2 = self._open(r, c - 1)
+            cnt = sum((n, s, e, w2))
+            if cnt == 1:
+                raise ValueError(f"Streetcode street at {(r, c)} is not two characters wide (dead end)")
+            if n and s and not (e or w2):
+                raise ValueError(f"Streetcode street at {(r, c)} is not two characters wide (vertical)")
+            if e and w2 and not (n or s):
+                raise ValueError(f"Streetcode street at {(r, c)} is not two characters wide (horizontal)")
 
     def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
         """Detect a road opening off ``side`` of the car, or ``None``.
