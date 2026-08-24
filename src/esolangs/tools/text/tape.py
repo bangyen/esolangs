@@ -198,17 +198,17 @@ def bfstack(text: str) -> str:
     ``[-]`` and builds the code from scratch, printing each with ``.``.
     """
     _require_bytes(text, "BFStack")
-    res = ">\n"
+    res = ">"
     acc = 0
 
     for c in text:
         n = ord(c) - acc
         if abs(n) < ord(c) + 3:
             o = "+" if n > 0 else "-"
-            res += o * abs(n) + ".\n"
+            res += o * abs(n) + "."
         else:
             o = "+" * ord(c)
-            res += f"[-]{o}.\n"
+            res += f"[-]{o}."
         acc = ord(c)
 
     return res
@@ -296,7 +296,7 @@ def suffolk(text: str) -> str:
         )
         _, a, b, r = best
         res.append(f">><!>><>!{'!' * a}{'>!' * r}><{'<' * b}.")
-    return ">>!" * big + "\n" + "\n".join(res)
+    return ">>!" * big + "".join(res)
 
 
 def six_five(text: str) -> str:
@@ -479,4 +479,4 @@ def slow_acv_mammalian(text: str) -> str:
             ptr = (ptr + ((ptr + 1) * mid_k) % 256) % 23
         extras[ptr].append(t % 256)
 
-    return "\n".join(prog)
+    return " ".join(prog)

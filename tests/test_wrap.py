@@ -27,6 +27,7 @@ from esolangs.tools.wrap import (
     WRAPPERS,
     _cell_width,
     _span,
+    takes_width,
     wrap_chars,
     wrap_grid,
     wrap_program,
@@ -76,6 +77,22 @@ def _replaces_a_space(name: str) -> bool:
     return WRAPPERS[LANGUAGES[name].id] is wrap_space_delimited
 
 
+def _chunks_its_literal(name: str) -> bool:
+    """Whether ``name``'s *text* generator lays itself out to the width.
+
+    3x, Eval, Modulous and MyScript print through a literal, so their text
+    programs cannot be reflowed at all -- a newline between the quotes is a
+    character the program prints.  Their generators therefore take the width
+    and split the text across several print statements, which builds a
+    different program rather than inserting newlines into this one.  Their
+    *boolean* programs carry no literal and are still reflowed by
+    :data:`WRAPPERS`, so that is where the token-preserving invariant is
+    checked for them.
+    """
+    generator = LANGUAGES[name].generator
+    return generator is not None and takes_width(generator)
+
+
 def _is_grid(name: str) -> bool:
     """Whether ``name``'s wrapper lays its tokens out as a padded grid.
 
@@ -117,11 +134,23 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     reordered, or split -- the corruption a character-count wrap causes in
     the multi-character-token languages.
     """
+    if _chunks_its_literal(name):
+        # The text generator builds a different program for the width rather
+        # than reflowing one, so there are no inserted newlines to undo.  Its
+        # boolean program is the one the wrapper still reflows, so check the
+        # invariant there instead of losing the coverage.
+        example = BOOLEAN_GENERATED.get(LANGUAGES[name].id)
+        if example is None:
+            return
+        plain = example.build(width=None)
+        wrapped = wrap_program(plain, LANGUAGES[name].id, width)
+        assert wrapped.replace("\n", "") == plain
+        return
     plain = generate(name, TEXT)
     wrapped = generate(name, TEXT, width)
     if wrapped == plain:
-        # A program the generator already emits multi-line is left alone
-        # (BFStack and Suffolk here); there is nothing to undo.
+        # A program short enough to need no break is left alone; there is
+        # nothing to undo.
         return
     # The grid wrapper pads each token to a cell and right-aligns it, so
     # the original text is not recoverable character for character -- the
@@ -172,9 +201,10 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         if "\n" not in program and len(program) > 40:
             assert "\n" in generate(name, TEXT * repeat, 40)
             return
-    # BFStack and Suffolk emit their hello-world programs already
-    # multi-line, so the text generator can never exercise their wrapper;
-    # their single-line *boolean* programs are what needs it.
+    # Some languages' hello-world programs are too terse to ever need a
+    # break (Modulous and the other literal printers emit one statement),
+    # so the text generator cannot exercise their wrapper; their longer
+    # *boolean* programs are what needs it.
     example = BOOLEAN_GENERATED.get(LANGUAGES[name].id)
     if example is not None:
         raw = example.build(width=None)

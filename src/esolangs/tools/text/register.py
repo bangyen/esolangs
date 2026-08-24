@@ -5,6 +5,7 @@ from collections.abc import Callable
 from esolangs.tools._polynomial import format_coeffs, multiply, primes
 from esolangs.tools.text.helpers import (
     _cm_constants,
+    _literal_chunks,
     _require_bytes,
 )
 
@@ -231,17 +232,27 @@ def _wii2d_serpentine(prog: str, width: int) -> str:
     return "\n".join([rows[0], "!", *rows[1:]])
 
 
-def eval(text: str) -> str:  # noqa: A001 - the language is named "Eval"
+def eval(  # noqa: A001 - the language is named "Eval"
+    text: str, width: int | None = None
+) -> str:
     """Build a program that prints ``text`` as one string literal.
 
     A double quote inside the text would end the literal early, so it is
     encoded as a backtick, which the interpreter expands back to a quote.
+
+    A ``width`` splits the text across several ``"..."``.  literals, one per
+    line; each prints in turn, so the output is unchanged.  The literal
+    itself cannot be reflowed, since a newline between the quotes is a
+    character the program would print.
     """
     if "`" in text:
         raise ValueError("eval cannot output a literal backtick")
     if not text:
         return ""
-    return '"' + text.replace('"', "`") + '".'
+    encoded = text.replace('"', "`")
+    # Each statement is the text wrapped in quotes plus the printing dot.
+    chunks = _literal_chunks(encoded, width, len('"".'))
+    return "\n".join(f'"{chunk}".' for chunk in chunks)
 
 
 def collatz_multiverse(text: str) -> str:

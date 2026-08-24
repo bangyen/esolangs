@@ -21,6 +21,19 @@ rather than a blanket post-processing pass:
   newlines as row separators, so a newline moves code to another row.
 - NoComment has no comment syntax at all -- an unrecognized character is a
   load error, and that includes ``\n``.
+- Forbin would tolerate a reflow -- its interpreter reads whitespace, not
+  lines -- but its ``out`` statements sit one per line inside a ``main {}``
+  block, and that layout is how the language is meant to be read.  Packing
+  those statements to a width would cost more than the ragged right edge it
+  saves, so a language whose own idiom is one-statement-per-line is left
+  alone even when reflowing it would be safe.
+- MyScript builds its output from string literals like the languages
+  :data:`_QUOTE_LITERAL` covers, but its boolean program's newlines are
+  structural (its blocks are indented and its interpreter reads them), so it
+  cannot be wrapped by making the literal one token the way Eval is.  It is
+  excluded until a wrapper that understands its block layout exists; being
+  safe today only because its programs come out under one line is not the
+  same as being wrappable.
 
 ROTfuck used to belong on that list: its interpreter rotated the program on
 *every* character the pointer passed, comments included, so an inserted
@@ -207,6 +220,22 @@ _BIO_COMMAND = r"[01][oOiI][xXyYzZ]|[{}]| "
 # extend them with a digit argument (Dimensional's ``>0``/``<0``).
 _DIMENSIONAL_COMMAND = r"[<>]\d+|."
 
+# The languages that print through a *literal*, where a newline dropped
+# inside the literal is not whitespace between commands but a character the
+# program goes on to print (or, in Sophie's case, prints *instead* of the
+# one that was there).  Each pattern makes the literal a single unbreakable
+# token and leaves every other character its own, so the boolean programs --
+# which carry no literal -- still tokenize exactly as ``wrap_chars`` would.
+#
+# A literal wider than the width is then left on its own line rather than
+# broken, which is :func:`_join_tokens`'s existing behaviour for an
+# oversized token: a 3x hello-world is one ``[...]`` and simply does not
+# wrap.  An over-wide line is the honest outcome here, since the alternative
+# is a program that prints something else.
+_SOPHIE_COMMAND = r"#\$\d+,|#.,?|."
+_BRACKET_LITERAL = r"\[[^\]]*\]|."
+_QUOTE_LITERAL = r'"[^"]*"|.'
+
 
 def _bio(program: str, width: int) -> str:
     # The boolean BIO generator separates commands with spaces while the text
@@ -231,6 +260,34 @@ def _bio(program: str, width: int) -> str:
 
 def _dimensional(program: str, width: int) -> str:
     return wrap_tokens(program, width, _DIMENSIONAL_COMMAND)
+
+
+def _sophie(program: str, width: int) -> str:
+    """Wrap Sophie, keeping each ``#<char>,`` command whole.
+
+    Sophie prints the character *after* the ``#`` literally, so a break
+    between the two makes the newline the argument: the program prints a
+    newline where that character should have gone and the intended one is
+    lost.  The output stays the same length, which is what makes this the
+    quiet failure of the group -- ``Hello, World!`` came back as ``Hello,
+    Worll!`` rather than as anything that looked wrong.
+    """
+    return wrap_tokens(program, width, _SOPHIE_COMMAND)
+
+
+def _bracket_literal(program: str, width: int) -> str:
+    """Wrap 3x and Modulous, keeping a bracketed group whole.
+
+    Both print through a literal delimited by brackets -- 3x's whole program
+    is ``[text]`` and Modulous pushes ``[PSH STR "..."]`` -- so a newline
+    inside the brackets is a character the program prints.
+    """
+    return wrap_tokens(program, width, _BRACKET_LITERAL)
+
+
+def _quote_literal(program: str, width: int) -> str:
+    """Wrap Eval, keeping a double-quoted literal whole."""
+    return wrap_tokens(program, width, _QUOTE_LITERAL)
 
 
 def _taglate(program: str, width: int) -> str:
@@ -274,17 +331,24 @@ WRAPPERS = {
     "unsquare": wrap_chars,
     "pct_squared_minus_one": wrap_chars,
     "rotfuck": wrap_chars,
-    # Their hello-world programs already come out multi-line and short, but
-    # their *boolean* programs are single long lines, so both still need a
-    # wrapper.
     "bfstack": wrap_chars,
     "suffolk": wrap_chars,
-    "modulous": wrap_chars,
+    # 123 is single-character commands throughout -- its trailing ``1`` is a
+    # terminator, not a structural line -- so any position is a legal break.
+    "one_two_three": wrap_chars,
+    # SLOW ACV MAMMALIAN's commands are whole words (``SEED``, ``SPRINT``,
+    # ``DIGEST``), so it wraps on whitespace like the numeric languages;
+    # breaking by character count would split a word and change the program.
+    "slow_acv_mammalian": wrap_space_delimited,
+    # Their boolean programs are single long lines that need wrapping, and
+    # their text programs print through a literal that must not be broken;
+    # the literal-aware wrappers above cover both dialects at once.
+    "modulous": _bracket_literal,
+    "eval": _quote_literal,
+    "sophie": _sophie,
+    "three_x": _bracket_literal,
+    # Forth's commands are single characters throughout, with no literal.
     "forth": wrap_chars,
-    "eval": wrap_chars,
-    "sophie": wrap_chars,
-    "myscript": wrap_chars,
-    "three_x": wrap_chars,
     # Both concatenate their command text before reading it, so a line break
     # can never land inside a command: Taglate joins every line after the
     # queue seed and only then tokenizes (so a two-character ``gy``/``gz``
