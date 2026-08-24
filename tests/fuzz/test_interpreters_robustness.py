@@ -24,7 +24,7 @@ import pytest
 from esolangs.interpreters.io import IO
 from esolangs.vm import run_until_halt_or_cycle
 
-INTERPRETER_DIR = Path(__file__).parents[1] / "src" / "esolangs" / "interpreters"
+INTERPRETER_DIR = Path(__file__).parents[2] / "src" / "esolangs" / "interpreters"
 
 MODULES = []
 for category in ("tape_based", "stack_based", "register_based", "queue_based", "other"):

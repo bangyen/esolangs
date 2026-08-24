@@ -103,8 +103,8 @@ on the table.
    into lines, extra `run()` kwargs).  This single entry wires up the API
    and the tests.
 4. **Tests** — add a round-trip test in `tests/tools/test_generate.py`.  The
-   fuzz (`tests/test_fuzz_generators.py`) and example
-   (`tests/test_examples.py`) tables derive from the registry automatically;
+   fuzz (`tests/fuzz/test_fuzz_generators.py`) and example
+   (`tests/scripts/test_examples.py`) tables derive from the registry automatically;
    add a committed program under `examples/hello-world/<name>.txt` if the
    language has a generator.
 5. **Verification** — run the interpreter on the generated program for a

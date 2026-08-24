@@ -20,7 +20,7 @@ from unittest.mock import patch
 import pytest
 
 # the differential script imports x86_elf_runner (in scripts/) by bare name
-sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
+sys.path.insert(0, str(Path(__file__).parents[2] / "scripts"))
 
 verify_differential = importlib.import_module("scripts.verify_differential")
 
@@ -194,7 +194,7 @@ class TestDivergenceDetection:
             assert not verify_differential._fuzz_basicfuck(rng, 20)  # noqa: SLF001
 
     _UNSQUARE_CROSS_CHECK = (
-        Path(__file__).parents[1] / "extra/rust/target/debug/unsquare"
+        Path(__file__).parents[2] / "extra/rust/target/debug/unsquare"
     )
 
     @pytest.mark.skipif(

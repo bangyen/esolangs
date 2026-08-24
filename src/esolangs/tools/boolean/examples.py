@@ -7,7 +7,7 @@ generators.  This module is the single source of truth for those files: each
 combination that produced its program, plus how the interpreter is invoked.
 
 The example writer (``scripts/write_examples.py``) and the test that
-keeps the files in sync (``tests/test_examples.py``) both derive from
+keeps the files in sync (``tests/scripts/test_examples.py``) both derive from
 :data:`BOOLEAN_EXAMPLES`, so a committed program is always exactly what its
 generator produces today.
 

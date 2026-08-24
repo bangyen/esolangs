@@ -1,7 +1,7 @@
 # Example programs
 
 This directory holds programs sampled from a *parameterized* generator, each
-verified by `tests/test_examples.py` to run through the repo's interpreter and
+verified by `tests/scripts/test_examples.py` to run through the repo's interpreter and
 produce its expected output.  Every file is exactly what its generator
 produces today, and a companion test asserts that — the check is meaningful
 precisely because the generator takes arguments and could produce something
@@ -71,8 +71,9 @@ Notes:
 One program per language whose boolean-function capability can be verified
 end to end — the capability that is not an I/O truth machine (see
 `docs/walls.md`).  Like the hello-world examples, each file is exactly what
-its generator produces today; `tests/test_examples.py` asserts that, and
-`python scripts/write_examples.py boolean` refreshes the files after a
+its generator produces today; `tests/scripts/test_examples.py` asserts
+that, and `python scripts/write_examples.py boolean` refreshes the files
+after a
 generator changes.
 
 `esolangs.tools.boolean.examples` is the single source of truth: it records

@@ -3,7 +3,7 @@
 Every committed example is exactly what its generator produces today: the
 hello-world programs under ``examples/hello-world`` come from the text
 generators, the boolean programs under ``examples/boolean`` from the boolean
-generators.  ``tests/test_examples.py`` asserts that; run this script to
+generators.  ``tests/scripts/test_examples.py`` asserts that; run this script to
 refresh the files after a generator changes.
 
 The hello-world programs are wrapped to
