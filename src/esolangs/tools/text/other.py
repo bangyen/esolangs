@@ -428,6 +428,49 @@ def _laserfuck_linear(run: str, width: int | None) -> str:
     return "\n".join(lines)
 
 
+def _laserfuck_base_groups(values: list[int], count: int) -> list[list[int]]:
+    r"""Split the byte values into bands that each get their own base.
+
+    One shared base suits text whose bytes cluster, but most text has two
+    clusters and not one -- the letters up near a hundred and the spaces and
+    punctuation down in the thirties.  Averaging across both leaves every
+    cell a long way from its base, and the residuals are what a base-init
+    program spends most of its width on.
+
+    Splitting the *values* (not the tape positions) into bands and giving
+    each its own ring cuts that: ``Hello, World!`` falls from 292 units of
+    residual to 96.  Each extra ring costs a frame and another walk of the
+    tape, so this returns the bands for one split and lets the caller
+    measure whether the trade paid.
+
+    Bands are contiguous in value, so a cell belongs to exactly one, and the
+    split point is the one minimizing total deviation.
+    """
+    order = sorted(set(values))
+    if len(order) < 2 or count < 2:
+        return [values]
+
+    def deviation(band: list[int]) -> int:
+        base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
+        return sum(abs(base - v) for v in band)
+
+    best: tuple[int, int] | None = None
+    for cut in range(1, len(order)):
+        low = set(order[:cut])
+        left = [v for v in values if v in low]
+        right = [v for v in values if v not in low]
+        total = deviation(left) + deviation(right)
+        if best is None or total < best[0]:
+            best = (total, cut)
+
+    assert best is not None
+    low = set(order[: best[1]])
+    return [
+        [v for v in values if v in low],
+        [v for v in values if v not in low],
+    ]
+
+
 def _laserfuck_base_factor(base: int) -> tuple[int, int, int] | None:
     r"""Factor ``base`` into a multiply ring, or decline if literal is shorter.
 
@@ -458,7 +501,9 @@ def _laserfuck_base_factor(base: int) -> tuple[int, int, int] | None:
     return best
 
 
-def _laserfuck_base_ring(text: str, *, factored: bool = True) -> str:
+def _laserfuck_base_ring(
+    text: str, *, factored: bool = True, grouped: bool = False
+) -> str:
     r"""Build the *base-init* LaserFuck program for ``text``.
 
     Every byte of ``text`` is close to every other -- letters cluster in the
@@ -482,33 +527,44 @@ def _laserfuck_base_ring(text: str, *, factored: bool = True) -> str:
     """
     values = [ord(char) for char in text]
     count = len(values)
-    base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in values))
+    bands = _laserfuck_base_groups(values, count) if grouped else [values]
 
-    factor = _laserfuck_base_factor(base) if factored else None
-    if factor is None:
-        # cell ``count`` is the counter; nothing else is needed to fill it
-        preload = ">" * count + "+" * base
-        multiply = ""
+    # Each band gets a base and a ring; a cell reaches its own band's base
+    # and is untouched by the others.  ``reached`` tracks what every cell
+    # holds once the rings have run, so the tail can write the residuals.
+    reached = [0] * count
+    stages: list[tuple[int, tuple[int, int, int] | None, list[int]]] = []
+    for band in bands:
+        if not band:
+            continue
+        members = set(band)
+        base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
+        owned = [i for i, v in enumerate(values) if v in members]
+        for index in owned:
+            reached[index] = base
+        stages.append((base, _laserfuck_base_factor(base) if factored else None, owned))
+
+    scratch = any(factor is not None for _, factor, _ in stages)
+    # The counter sits past the text, and a multiply ring's scratch past
+    # that.  The first stage's load rides the preload row: the beam descends
+    # onto the ring row at a fixed column, so that column has to hold the
+    # ring's own '}' and not the tail of a run of ops.
+    home = count + 1 if scratch else count
+    first_base, first_factor, _ = stages[0]
+    preload = ">" * home
+    if first_factor is None:
+        preload += "<" * (home - count) + "+" * first_base + ">" * (home - count)
     else:
-        # The scratch cell at ``count + 1`` counts down from ``outer``,
-        # adding ``inner`` to the counter each pass, and ``rest`` tops up
-        # what the product falls short by.  The bridge back to the counter
-        # is the ``<`` that opens the residual run.
-        outer, inner, residual = factor
-        preload = ">" * (count + 1) + "+" * outer
-        multiply = "<" + "+" * inner + ">" + "-"
+        preload += "+" * first_factor[0]
 
-    body = "<" * count + "+" + ">+" * (count - 1) + ">" + "-"
-    # The counter ends at zero and *touched*, which byte mode would print as
-    # a NUL, so it is driven negative before the dump.  A multiply ring
-    # leaves its scratch cell in the same state, one further along, so the
-    # tail steps out to clear that too before walking home.
     tail = "-"
-    if factor is not None:
+    if scratch:
+        # the scratch cell ends at zero and *touched* one cell further on,
+        # which byte mode would print as a NUL, so it is cleared too
         tail += ">-<"
     tail += "<" * count
     for index, value in enumerate(values):
-        step = value - base
+        step = value - reached[index]
         tail += ("+" if step > 0 else "-") * abs(step)
         if index < count - 1:
             tail += ">"
@@ -553,15 +609,42 @@ def _laserfuck_base_ring(text: str, *, factored: bool = True) -> str:
         put(3, start, "^")
         put(3, col - 2, "{")
 
-    if multiply:
-        put_ring(multiply)
-        # the bridge back to the counter, between the two rings
-        put(2, col, "<")
-        col += 1
-        for char in "+" * residual:
+    def put_ops(ops: str) -> None:
+        nonlocal col
+        for char in ops:
             put(2, col, char)
             col += 1
-    put_ring(body)
+
+    for position, (base, factor, owned) in enumerate(stages):
+        if factor is None:
+            # count the counter up to the base one unit at a time; the
+            # first stage's run is already on the preload row
+            if position:
+                put_ops("+" * base)
+        else:
+            # a scratch cell one past the counter drives the multiply: it
+            # counts down from 'outer', adding 'inner' each pass, and the
+            # shortfall is topped up on the way back
+            outer, inner, residual = factor
+            if position:
+                # a later stage starts on the counter, so it has to step out
+                # to the scratch cell before loading the multiply
+                put_ops(">" + "+" * outer)
+            put_ring("<" + "+" * inner + ">" + "-")
+            put_ops("<" + "+" * residual)
+        # the spread ring: walk to cell 0, add one to this band's cells
+        # only, walk back to the counter and spend a pass
+        # The ring tests the cell it starts on, so the body has to come
+        # back to exactly that cell -- the counter -- before it decrements.
+        members = set(owned)
+        spread = "<" * count
+        for index in range(count):
+            if index in members:
+                spread += "+"
+            if index < count - 1:
+                spread += ">"
+        spread += ">" + "-"
+        put_ring(spread)
 
     for index, char in enumerate(tail):
         put(2, col + index, char)
@@ -593,9 +676,10 @@ def laserfuck(text: str, width: int | None = None) -> str:
     """
     forms = [_laserfuck_multiply(text, width)]
     for factored in (False, True):
-        ring = _laserfuck_base_ring(text, factored=factored)
-        if width is None or max(map(len, ring.split("\n"))) <= width:
-            forms.append(ring)
+        for grouped in (False, True):
+            ring = _laserfuck_base_ring(text, factored=factored, grouped=grouped)
+            if width is None or max(map(len, ring.split("\n"))) <= width:
+                forms.append(ring)
     return min(
         forms, key=lambda form: (form.count("\n") + 1) * max(map(len, form.split("\n")))
     )
