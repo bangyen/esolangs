@@ -19,7 +19,7 @@
 //! Invocation: `laserfuck <program-file>`; program text from `argv[1]`.
 //! Input: the program file is `argv[1]`; `,` reads from stdin.
 
-use rand::Rng;
+use rand::RngExt;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, Write};
@@ -44,7 +44,7 @@ fn wrap(lsr: &mut Laser, len: usize) {
 }
 
 fn run(text: Vec<Vec<char>>) {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut lsrs = Vec::new();
     let mut jmp = false;
     let mut ind = 0;
@@ -59,7 +59,7 @@ fn run(text: Vec<Vec<char>>) {
             if !lsrs.is_empty() {
                 return;
             } else {
-                let num = rng.gen_range(0..4);
+                let num = rng.random_range(0..4);
                 let lsr = Laser(k, n, num);
                 lsrs.push(lsr);
             }
@@ -112,7 +112,7 @@ fn run(text: Vec<Vec<char>>) {
                 continue;
             }
             '*' => {
-                let n = rng.gen_range(0..2);
+                let n = rng.random_range(0..2);
                 let d = 2 * (1 - m / 2) + n;
                 lsrs.push(Laser(x, y, d));
             }
