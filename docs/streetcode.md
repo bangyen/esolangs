@@ -228,10 +228,10 @@ sideways.
 
 One exemption remains: a grid with no walls is not a street network to
 measure, so the bare `CU` still constructs and reaches the residual
-`HaltError` path.  The earlier "no instruction characters" exemption is
-gone -- it was content sniffing rather than geometry.  The wall-shape
-fixtures that relied on it disable validation explicitly through a
-test-local helper, keeping the escape hatch out of the interpreter.
+`HaltError` path.  There is deliberately no "no instruction characters"
+exemption, which would be content sniffing rather than geometry.  The
+wall-shape fixtures disable validation explicitly through a test-local
+helper, keeping the escape hatch out of the interpreter.
 
 **The street must be enclosed.**  A street is bounded by walls, so the
 road the car can reach never touches the border of the grid:
@@ -261,8 +261,8 @@ corner: ?W?      wall: ?W?      intersection: W..
 Writing the corner's cells as `W` rather than the literal glyphs means a
 rotation need not swap `|` and `-`, and lets one form cover the outside
 of a corner, the inside of one, and two boxes packed flush together --
-which is why three forms suffice where an earlier, more literal corner
-form appeared to need a dozen.
+which is why three forms suffice where a more literal corner form would
+need a dozen.
 
 The forms constrain where walls sit, never which glyph is used, so a
 second pass (`_validate_glyphs`) rejects a `-` drawn beside a `|`: the
@@ -353,9 +353,7 @@ junction at (1,5) heading West, and applying this rule there makes the car
 visit the `C` cell once, then trace the full 20-cell drawn ring, before it
 starts repeating -- 21 distinct cells altogether -- instead of the small
 4-cell loop a turn-immediately rule falls into right next to the junction.
-(An earlier version of this note claimed 22 cells without the rule ever
-having produced that trace; measuring directly once the rule existed gave 20
-cells in the ring itself, now pinned by
+(Measured directly under the rule, the ring itself is 20 cells, pinned by
 `test_infinite_loop_example_traces_the_full_21_cell_ring`.)  The larger
 infinite-cat example has an analogous junction at (1,6) heading West and
 still echoes every character correctly under the rule.
@@ -421,9 +419,8 @@ cell 0, then leaves through a gap in the outer wall and prints `H`.
 The ring is an ordinary wall-hug around the island; the decision is at
 the island's top-right corner, where the roads are north (out through
 the gap) and south (on around the island), so the countdown steers the
-loop -- nonzero laps again, zero leaves.  Three rules had to be right
-before it would run, and each was wrong in a way that only a program of
-this shape exposes:
+loop -- nonzero laps again, zero leaves.  Three rules have to be right for
+it to run, and each is one only a program of this shape exposes:
 
 * **A road is two cells deep.**  The corner offered *east* -- one open
   cell before the outer wall, which is the width of the road rather than
@@ -443,12 +440,11 @@ this shape exposes:
   nonzero) instead of the counter (0), and the loop never exited.
 
 The section below records the earlier probing, which concluded no such
-ring existed.  Its two halves were right -- the conditional does
-re-decide every lap, and a counter on the lap does count down -- but its
-conclusion was an artifact of the interpreter's road detection, not of
-the language.
+ring existed.  Its two halves hold -- the conditional does re-decide every
+lap, and a counter on the lap does count down -- but its conclusion was an
+artifact of the interpreter's road detection, not of the language.
 
-## Earlier probing: what worked, what leaked (2026-08-22)
+## Earlier probing: what worked, what leaked
 
 The text generator (`esolangs.tools.text.streetcode`) emits a straight
 corridor whose size is `O(sum of |code point deltas|)` -- unary, unlike
@@ -533,13 +529,11 @@ placed after the first ring's `O`, with `_` resetting CP and a fresh
 the generator does not use it yet, because only the first character has
 a delta large enough to be worth a ring.
 
-**The ring survives a width (2026-08-24).**  It was at first built only
-on the unfolded path, so any caller passing a `width` -- which
-`scripts/write_examples.py` does for every example -- got the plain
-serpentine and no loop at all, which is why the committed hello-world
-example used to be loopless.  Folding does not make the first
-character's walk cheaper, though; it packs the same unary run into more
-rows.  The two layouts compose (`_streetcode_ring_serpentine`): the fold
+**The ring survives a width.**  The ring applies on the folded path too,
+not only the unfolded one: a caller passing a `width` -- which
+`scripts/write_examples.py` does for every example -- would otherwise get
+the plain serpentine and no loop at all.  Folding does not make the first
+character's walk cheaper; it packs the same unary run into more rows.  The two layouts compose (`_streetcode_ring_serpentine`): the fold
 fills its lane pairs bottom-up and starts the car in the lowest
 eastbound lane, which is exactly where the ring prefix belongs, and the
 block hangs below the grid's southern wall, where the fold has built
