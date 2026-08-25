@@ -781,6 +781,31 @@ class TestLaserFuck:
                             f"runs {cell!r} on row {k}"
                         )
 
+    def test_widths_come_in_bands_not_a_cliff(self) -> None:
+        """Each reader block turns on its own, so widths degrade gradually.
+
+        Turning the whole reader at once gave two sizes and nothing in
+        between; turning its blocks independently fills the gap, and a
+        tighter width buys rows rather than being ignored.
+        """
+        seen = {
+            max(len(line) for line in boolean.laserfuck("0110", width).split("\n"))
+            for width in (45, 40, 30, 25, 18)
+        }
+        assert len(seen) >= 4, f"expected several distinct widths, got {seen}"
+        # asking for less never gives more
+        widths = [
+            max(len(line) for line in boolean.laserfuck("0110", w).split("\n"))
+            for w in (45, 40, 30, 25, 18)
+        ]
+        assert widths == sorted(widths, reverse=True)
+
+    def test_a_narrow_width_beats_the_old_floor(self) -> None:
+        """Standing blocks on end reaches widths the flat reader cannot."""
+        for table, floor in (("0110", 18), ("01101001", 24)):
+            program = boolean.laserfuck(table, floor).split("\n")
+            assert max(len(line) for line in program) <= floor
+
     def test_ringed_leaves_leave_a_zero_answer_alone(self) -> None:
         """Cell 0 is the counter *and* the answer, so zero costs nothing.
 
