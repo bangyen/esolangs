@@ -666,28 +666,43 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     emit([], 0, 0)
     height = max(row for row, _ in tree) + 1
     span = max(col for _, col in tree) + 1
-    flipped = _laserfuck_flip(
-        [
-            "".join(tree.get((row, col), " ") for col in range(span))
-            for row in range(height)
-        ]
-    )
+    upright = [
+        "".join(tree.get((row, col), " ") for col in range(span))
+        for row in range(height)
+    ]
 
-    # The beam turns down at the reader's end; the '/' on the tree's own
-    # first row faces it left into the tree, whose rightmost cell sits one
-    # column short of that mirror.
-    entry = len(flipped[0].rstrip()) - 1
-    # A narrow reader can leave the beam further left than the tree is wide,
-    # and the tree would run off the western edge.  Turning down further to
-    # the right costs nothing but the blank cells it crosses, so the fall
-    # column is pushed out to wherever the tree needs it to be.
-    fall = max(margin + reader_exit_col, margin + entry + 1)
-    top = reader_exit_row + (2 if orientation_of[-1] == "F" else 1)
-    put(reader_exit_row, fall, "v")
-    for offset, line in enumerate(flipped):
-        for index, char in enumerate(line):
-            put(top + offset, fall - 1 - entry + index, char)
-    put(top, fall, "/")
+    # Where the tree goes depends on whether the width can afford it.
+    #
+    # The beam leaves the reader still moving right, so the cheapest thing
+    # is to carry straight on: the tree starts in the next column along, on
+    # the reader's own rows, and costs no rows at all beyond the ones the
+    # tree itself needs.  That only works if the grid may be as wide as the
+    # reader and the tree laid end to end.
+    #
+    # Otherwise the tree is mirrored and hung underneath.  The beam turns
+    # down at the reader's end and a '/' on the tree's first row faces it
+    # left into a tree that runs backwards -- which needs no row to be
+    # *reached*, unlike a rightward tree below, which would need one to
+    # carry the beam back to the margin first.
+    straight = margin + reader_exit_col + max(len(line) for line in upright)
+    if width is None or straight + 1 <= width:
+        for offset, line in enumerate(upright):
+            for index, char in enumerate(line):
+                put(reader_exit_row + offset, margin + reader_exit_col + index, char)
+    else:
+        flipped = _laserfuck_flip(upright)
+        entry = len(flipped[0].rstrip()) - 1
+        # A narrow reader can leave the beam further left than the tree is
+        # wide, and the tree would run off the western edge.  Turning down
+        # further to the right costs nothing but the blank cells it crosses,
+        # so the fall column is pushed out to wherever the tree needs it.
+        fall = max(margin + reader_exit_col, margin + entry + 1)
+        top = reader_exit_row + (2 if orientation_of[-1] == "F" else 1)
+        put(reader_exit_row, fall, "v")
+        for offset, line in enumerate(flipped):
+            for index, char in enumerate(line):
+                put(top + offset, fall - 1 - entry + index, char)
+        put(top, fall, "/")
 
     lines = ["".join(line).rstrip() for line in grid]
     while lines and not lines[-1]:
