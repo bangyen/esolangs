@@ -448,6 +448,22 @@ def _laserfuck_rotate(rows: list[str]) -> list[str]:
     ]
 
 
+_LASER_FLIP_H = str.maketrans({"/": "\\", "\\": "/", "{": "}", "}": "{"})
+
+
+def _laserfuck_flip(rows: list[str]) -> list[str]:
+    r"""Mirror ``rows`` left to right, so a rightward block runs leftward.
+
+    Like the rotation, this is a substitution: only the mirrors and the two
+    horizontal heading-setters mean something different once the beam runs
+    the other way, and the tape ops do not.  The rows are padded to a
+    rectangle first, for the same reason -- a short row would mirror to a
+    block whose cells no longer line up with the ones they pair with.
+    """
+    width = max(len(line) for line in rows)
+    return [line.ljust(width)[::-1].translate(_LASER_FLIP_H) for line in rows]
+
+
 def _laserfuck_reader_blocks(n: int) -> list[list[str]]:
     """Cut the flat reader into rectangles, padded so a rotation is exact."""
     rows, _ = _laserfuck_ring_reader(n)
@@ -602,24 +618,27 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     # block left beneath it: a block laid flat keeps its ring's return leg
     # on the row below, which the beam must clear, while a rotated one ends
     # at its own foot with nothing under it.
-    fall = margin + reader_exit_col
-    drop = reader_exit_row + (2 if orientation_of[-1] == "F" else 1)
-    put(reader_exit_row, fall, "v")
-    put(drop, fall, "{")
-    put(drop, margin, "v")
-    base = drop + 1
-    put(base, margin, "}")
-    tree_col = margin + 1
-
-    # The tree, laid so that a *zero* costs nothing.  A node writes ``>#v)``:
-    # the '#' skips the 'v' on the way in, so ')' tests the cell under the
-    # pointer.  A zero passes straight through and the next node continues on
-    # the same row; only a one turns the beam back onto the 'v' and drops it,
-    # to a '\' that faces it right again on a fresh row.
+    # The tree is built as a block of its own, then mirrored and hung under
+    # the reader.  Laid out rightward it would have to be *reached*: the
+    # beam leaves the reader at its far right, and a leftward return leg
+    # would be needed to carry it back to the margin before the tree could
+    # start.  Mirrored, the tree runs leftward from where the beam already
+    # is, so that whole row disappears -- the beam simply turns down at the
+    # reader's end and a '/' faces it into the tree.
     #
-    # Rows therefore scale with the number of *one* edges rather than with
-    # the node count, and the all-zeros path is a single straight line.
-    used = [base]
+    # Within the tree a node writes ``>#v)``: the '#' skips the 'v' on the
+    # way in, so ')' tests the cell under the pointer.  A zero passes
+    # straight through and the next node continues on the same row; only a
+    # one turns the beam back onto the 'v' and drops it, to a '\' that
+    # faces it right again on a fresh row.  Rows therefore scale with the
+    # number of *one* edges rather than with the node count, and the
+    # all-zeros path is a single straight line.
+    tree: dict[tuple[int, int], str] = {}
+    used = [0]
+
+    def lay(row: int, col: int, char: str) -> None:
+        if char != " ":
+            tree[(row, col)] = char
 
     def emit(path: list[int], row: int, col: int) -> None:
         """Lay the subtree for ``path``, entered at ``(row, col)`` going right."""
@@ -633,18 +652,42 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
                 run += "-" * (path[level - 1] + 1) + "<"
             run += "+" if truth_table[index] == "1" else ""
             for offset, char in enumerate(run):
-                put(row, col + offset, char)
-            put(row, col + len(run), "x")
+                lay(row, col + offset, char)
+            lay(row, col + len(run), "x")
             return
         for offset, char in enumerate(">#v)"):
-            put(row, col + offset, char)
+            lay(row, col + offset, char)
         emit([*path, 0], row, col + 4)  # a zero carries on along this row
         used[0] += 1
         drop = used[0]
-        put(drop, col + 2, "\\")  # a one comes down the 'v' column
+        lay(drop, col + 2, "\\")  # a one comes down the 'v' column
         emit([*path, 1], drop, col + 3)
 
-    emit([], base, tree_col)
+    emit([], 0, 0)
+    height = max(row for row, _ in tree) + 1
+    span = max(col for _, col in tree) + 1
+    flipped = _laserfuck_flip(
+        [
+            "".join(tree.get((row, col), " ") for col in range(span))
+            for row in range(height)
+        ]
+    )
+
+    # The beam turns down at the reader's end; the '/' on the tree's own
+    # first row faces it left into the tree, whose rightmost cell sits one
+    # column short of that mirror.
+    entry = len(flipped[0].rstrip()) - 1
+    # A narrow reader can leave the beam further left than the tree is wide,
+    # and the tree would run off the western edge.  Turning down further to
+    # the right costs nothing but the blank cells it crosses, so the fall
+    # column is pushed out to wherever the tree needs it to be.
+    fall = max(margin + reader_exit_col, margin + entry + 1)
+    top = reader_exit_row + (2 if orientation_of[-1] == "F" else 1)
+    put(reader_exit_row, fall, "v")
+    for offset, line in enumerate(flipped):
+        for index, char in enumerate(line):
+            put(top + offset, fall - 1 - entry + index, char)
+    put(top, fall, "/")
 
     lines = ["".join(line).rstrip() for line in grid]
     while lines and not lines[-1]:
