@@ -144,3 +144,6 @@ compile_commands.json
 
 # Lean 4 build artifacts (extra/lean/esolangs)
 .lake/
+
+# editor swap files
+*.swp

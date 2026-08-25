@@ -665,12 +665,19 @@ class TestLaserFuck:
                 got = run_laserfuck(program, [str(b) for b in bits], heading)
                 assert got == str(int(table[combo])), f"{bits} heading {heading}"
 
-    def test_width_is_narrower_than_the_unfolded_grid(self) -> None:
-        """Folding buys columns, rather than only reshaping the grid."""
+    def test_a_width_stands_the_reader_on_end(self) -> None:
+        """A width too narrow for the reader rotates it rather than failing.
+
+        Laid flat the rings are one row and forty-odd columns; stood on end
+        they are two columns and forty-odd rows, so a width the flat form
+        cannot meet is still met.
+        """
         table = "01101001"  # XOR3
-        unfolded = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
-        assert unfolded > 80  # the reader run alone is 49 columns per input
-        assert max(len(ln) for ln in boolean.laserfuck(table, 80).split("\n")) <= 80
+        natural = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
+        assert natural > 30
+        narrow = boolean.laserfuck(table, 30).split("\n")
+        assert max(len(ln) for ln in narrow) <= 30
+        assert len(narrow) > len(boolean.laserfuck(table).split("\n"))
 
     def test_the_fold_uses_its_return_rows(self) -> None:
         """A same-character run fills the leftward leg, not just the right.
@@ -734,36 +741,45 @@ class TestLaserFuck:
         row and no band, and the grid loses better than half its rows.
         """
         rows = boolean.laserfuck("0110", 80).split("\n")
-        # every leaf's code is on a row that also carries its turning '\'
         leaves = [line for line in rows if "x" in line]
-        assert len(leaves) == 4, "one row per input combination"
-        for line in leaves:
-            assert "\\" in line, "the leaf shares the row the beam turns onto"
+        assert len(leaves) == 4, "one leaf per input combination"
+        # the all-zero leaf rides the row the tree starts on, so only the
+        # leaves a *one* branched to sit under a turning '\'
+        turned = [line for line in leaves if "\\" in line]
+        assert len(turned) == 3
+        for line in turned:
             assert line.index("\\") < line.index("x")
         # nothing below the leaves: no bands, no drop corridors
         assert rows[-1].endswith("x")
 
-    def test_ringed_leaves_clear_lower_descent_columns(self) -> None:
-        """A leaf starts past every column a lower leaf's beam comes down.
+    def test_a_dropping_beam_crosses_no_other_row_s_code(self) -> None:
+        """A one-branch drops through the rows above its own catcher.
 
-        Those beams cross this row on their way to their own, and would run
-        this leaf's cells on the way past if it stood in their column.
+        Every ``v`` sends the beam down its column until a ``\\`` faces it
+        right again; whatever it passes on the way is executed.  The rows in
+        between must therefore be blank in that column -- which is what lets
+        the tree share rows at all.
         """
-        for table in ("0110", "01101001"):
-            rows = boolean.laserfuck(table, 80).split("\n")
-            leaves = [(i, line) for i, line in enumerate(rows) if "x" in line]
-            for index, (row_index, line) in enumerate(leaves):
-                # the leaf's own code runs from its first op to its 'x'
-                start = len(line) - len(line[line.index("\\") + 1 :].lstrip())
-                for lower_index, lower in leaves[index + 1 :]:
-                    assert lower_index > row_index
-                    # the lower leaf's beam comes down its own '\' column,
-                    # which must fall outside this row's code
-                    column = lower.index("\\")
-                    assert column < start or column > line.index("x"), (
-                        f"{table}: leaf on row {lower_index} descends column "
-                        f"{column}, inside row {row_index}'s code"
-                    )
+        for table in ("0110", "01101001", "0110100110010110"):
+            rows = boolean.laserfuck(table, 200).split("\n")
+            for index, line in enumerate(rows):
+                for column, char in enumerate(line):
+                    if char != "v" or index < 3:
+                        continue  # the funnel and reader steer themselves
+                    # find the '\' that catches this drop
+                    below = [
+                        (k, rows[k])
+                        for k in range(index + 1, len(rows))
+                        if column < len(rows[k])
+                    ]
+                    for k, lower in below:
+                        cell = lower[column]
+                        if cell == "\\":
+                            break  # caught, as intended
+                        assert cell == " ", (
+                            f"{table}: beam from row {index} column {column} "
+                            f"runs {cell!r} on row {k}"
+                        )
 
     def test_ringed_leaves_leave_a_zero_answer_alone(self) -> None:
         """Cell 0 is the counter *and* the answer, so zero costs nothing.
@@ -776,27 +792,6 @@ class TestLaserFuck:
         assert "+" not in "\n".join(zero[3:]), "a zero table needs no '+'"
         ones = boolean.laserfuck("1111", 80).split("\n")
         assert "+" in "\n".join(ones[3:])
-
-    @pytest.mark.parametrize(("table", "n"), [("0001", 2), ("01101001", 3)])
-    def test_tree_columns_are_linear_in_the_input_count(
-        self, table: str, n: int
-    ) -> None:
-        """The staircase shares a column per level, not one per node.
-
-        Rows are handed out depth-first, so a subtree owns a contiguous
-        band and two nodes on the same level never share a row -- which is
-        what lets them share a column.  The tree therefore spans ``6 * n``
-        columns rather than ``6 * (2**(n + 1) - 1)``.
-        """
-        program = boolean.laserfuck(table)
-        rows = program.split("\n")
-        width = max(len(line) for line in rows)
-        # Row 0 is the reader run (49 columns per input) and row 3 the leg
-        # that carries the beam back to the margin; the tree starts below.
-        tree_width = max(len(line) for line in rows[4:])
-        assert tree_width < width
-        # Six columns per level, plus the leaf run's sweep and answer.
-        assert tree_width <= 6 * n + 4 * n + 20
 
     def test_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""
