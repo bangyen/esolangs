@@ -741,7 +741,8 @@ class TestLaserFuck:
         the ``\\`` that turns the beam onto its row -- so no ``v``, no return
         row and no band, and the grid loses better than half its rows.
         """
-        rows = boolean.laserfuck("0110", 80).split("\n")
+        # width 50 forces the mirrored form, where the tree hangs below
+        rows = boolean.laserfuck("0110", 50).split("\n")
         # 'x' only ever ends a leaf, so the leaf rows are exactly these
         leaves = [line for line in rows if "x" in line]
         assert len(leaves) == 4, "one leaf per input combination"
@@ -788,6 +789,22 @@ class TestLaserFuck:
                             f"{table}: beam from row {index} column {column} "
                             f"runs {cell!r} on row {k}"
                         )
+
+    def test_a_wide_grid_runs_the_tree_on_the_reader_s_rows(self) -> None:
+        """Given the width, the tree needs no rows of its own at all.
+
+        The beam leaves the reader still moving right, so the cheapest
+        thing is to carry straight on: the tree starts in the next column
+        along, on the rows the reader is already using.  A width too narrow
+        for that falls back to hanging the tree underneath, mirrored.
+        """
+        wide = boolean.laserfuck("0110", 80).split("\n")
+        narrow = boolean.laserfuck("0110", 50).split("\n")
+        assert len(wide) < len(narrow), "sharing rows should cost fewer rows"
+        assert max(len(line) for line in wide) > max(len(line) for line in narrow)
+        # the reader's own first row carries tree code too
+        assert "#/)" in wide[0], "the reader's last ring is on row 0"
+        assert ">#v)" in wide[0], "and the tree's first node follows it there"
 
     def test_widths_come_in_bands_not_a_cliff(self) -> None:
         """Each reader block turns on its own, so widths degrade gradually.
