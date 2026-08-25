@@ -327,6 +327,97 @@ def _streetcode_populate(n: int, shape: _Shape) -> list[str]:
     )
 
 
+# The shared lap's ring, widened by ``k`` the way the text generator widens
+# its own.  Only the steering assembly is fixed -- the ``=`` hop below the
+# descent gap, the countdown ``~`` on the top row, and the ``_`` that drops
+# CP on the way out -- because those sit on paths the linear body cannot
+# describe.  The cell the single-loop ring used to drop CP on for the *next*
+# lap is deliberately blank: the body's own rewind is sized for arriving with
+# CP on the counter, so the continue path has to hand it the same CP the
+# first entry does.
+_SHARED_ROWS = (
+    "+  ++{plus}  +",
+    "|      {gap}|",
+    "|   ~ {gap}_|",
+    "| =++{plus}  |",
+    "|  ++{plus} U|",
+    "|     {gap} |",
+    "|     {gap} |",
+    "+------{dash}+",
+)
+
+
+def _streetcode_shared_lap(body: str) -> list[str]:
+    """Draw the shared lap, widened just enough to hold ``body``.
+
+    The lap's cells run from just after the ``U``: North up the eastern
+    lane, West along the island's southern side, then one cell North.  They
+    stop below the descent gap, where the fixed ``=`` hops CP onto the
+    counter -- that gap is a junction and reads whatever cell CP names.
+    """
+    k = max(0, len(body) - 6)
+    grid = [
+        list(row.format(plus="+" * k, gap=" " * k, dash="-" * k))
+        for row in _SHARED_ROWS
+    ]
+    cells = [(4, 5 + k), (5, 5 + k)] + [(5, c) for c in range(4 + k, 1, -1)] + [(4, 2)]
+    for i, char in enumerate(body):
+        r, c = cells[i]
+        grid[r][c] = char
+    return ["".join(row) for row in grid]
+
+
+def _streetcode_shared(n: int) -> list[str]:
+    """Build the populate phase as one shared 48-lap loop over every cell.
+
+    The per-loop shapes spend a whole 48-cell loop on each input and another
+    on the loader.  48 only has to be built once, though: with a counter
+    holding it, a single lap that walks *every* cell -- each input down one,
+    the loader up one, the counter down one -- does all of that work at
+    once, and the loop's cost stops scaling with ``n``.
+
+    Cells are the inputs at 1..n, the loader at n+1, the shared counter at
+    n+2, and the counter ring's own second cell at n+3.  The prefix reads
+    the inputs and seeds the loader to 1; the first block is the ordinary
+    ring, pointed at the counter, which builds it to 48; the second is the
+    shared lap.
+
+    Seeding the loader to 1 rather than 0 is what keeps the whole run safe:
+    every cell but the counter is then at least 1 for all 48 laps (inputs
+    49/50 walk down to 1/2, the loader climbs 1 to 49), so no gap crossing
+    can read a zero except the counter at the exit corner, which is the
+    designed exit.  The trailing ``_~`` pairs then walk CP back to cell 1,
+    taking the +1 off each input on the way, so the tree gets bare bits and
+    CP where it expects them.
+    """
+    body = "_" * (n + 1) + "~=" * n + "^"
+    prefix = "C" + "=I^" * n + "=^" + "=" + "=^"
+    tail = "_~" * n
+    blocks = [_streetcode_ring("^"), _streetcode_shared_lap(body)]
+
+    # The street is left open at its eastern end: the tree is joined on there
+    # by :func:`_streetcode_combine` and supplies the closing wall, exactly as
+    # the strip shapes' populate does.
+    width = 1 + len(prefix) + sum(len(b[0]) for b in blocks) + len(tail)
+    height = 3 + max(len(b) for b in blocks)
+    grid = [[" "] * width for _ in range(height)]
+    grid[0] = list("+" + "-" * (width - 1))
+    for r in (1, 2):
+        grid[r][0] = "|"
+    grid[3] = list("+" + "-" * (width - 1))
+    for i, char in enumerate(prefix):
+        grid[2][1 + i] = char
+    left = 1 + len(prefix)
+    for block in blocks:
+        for r, row in enumerate(block):
+            for c, char in enumerate(row):
+                grid[3 + r][left + c] = char
+        left += len(block[0])
+    for i, char in enumerate(tail):
+        grid[2][left + i] = char
+    return ["".join(row) for row in grid]
+
+
 def streetcode(truth_table: str) -> str:
     """Build a Streetcode program computing the given truth table.
 
@@ -358,4 +449,12 @@ def streetcode(truth_table: str) -> str:
     for shape in (_RING_SHAPE, _HALLWAY_SHAPE):
         rows = _streetcode_combine([_streetcode_populate(n, shape), tree])
         programs.append("\n".join(_streetcode_lift(rows)))
+    # The shared shape is not lifted.  Its prefix reads every input and seeds
+    # three more cells, which makes it as long as the street it heads, so a
+    # westbound run of it crosses the loops' own mouths -- and at each one CP
+    # names a cell that nothing has seeded yet, because the prefix is the only
+    # code that has run.  No ordering of the seeds avoids that: the cells CP
+    # walks over are exactly the ones the prefix has not reached.
+    shared = _streetcode_combine([_streetcode_shared(n), tree])
+    programs.append("\n".join(shared))
     return min(programs, key=len)

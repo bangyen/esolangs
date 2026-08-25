@@ -601,3 +601,35 @@ loop mouth in the program, and a zero CPth cell captures the car into the
 first mouth it meets. The `^` the start already carried leaves cell 0 nonzero
 for the whole leg, so every crossing passes straight over. Verified both ways
 -- without that `^` the car U-turns into the first mouth's exit gap.
+
+### One counter for every cell
+
+The per-loop shapes spend a whole 48-cell loop on each input and another on
+the loader, but 48 only has to be built *once*. With a counter holding it, a
+single lap that walks every cell -- each input down one, the loader up one,
+the counter down one -- does all that work at once, and the loop's cost stops
+scaling with `n`. The body is `_`×(n+1) to rewind, then `~=` per input, then
+`^`: 3n+2 cells, and the island is widened by `k = max(0, 3n-4)` to hold it,
+the same `k` trick the text generator uses.
+
+Seeding the loader to 1 rather than 0 is what makes the whole run safe: every
+cell but the counter is then at least 1 for all 48 laps (inputs 49/50 walk
+down to 1/2, the loader climbs 1 to 49), so no gap crossing can read a zero
+except the counter at the exit corner, which is the designed exit.
+
+Two things this shape taught, both non-obvious:
+
+- **Continue and entry must hand the body the same CP.** The single-cell ring
+  drops CP one cell on the path that carries on around the island, because
+  its next lap's decrements needed it there. The shared body's rewind is
+  sized for arriving with CP on the counter, so that drop has to be blanked
+  -- otherwise lap 2 starts one cell low, walks CP off the end of the tape,
+  and halts. A divergent-path drop is part of the body's calling convention.
+- **The shared shape cannot be lifted.** Its prefix reads every input and
+  seeds three more cells, which makes it about as long as the street it
+  heads, so a westbound run of it crosses the loops' *and* the tree's mouths
+  -- and at each one CP names a cell nothing has seeded yet, because the
+  prefix is the only code that has run. No ordering of the seeds avoids it:
+  the cells CP walks over are exactly the ones the prefix has not reached.
+  So the lift applies to the strip shapes only, and the three programs are
+  compared as they are.
