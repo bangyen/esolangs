@@ -1,0 +1,107 @@
+name: Release
+
+# Publishes to PyPI when a v* tag is pushed.  Authentication is PyPI trusted
+# publishing (OIDC): the `id-token: write` permission below lets the upload
+# mint a short-lived token from GitHub's identity, so there is no API token
+# stored in repository secrets.
+#
+# The publisher must be registered once at
+# https://pypi.org/manage/account/publishing/ with:
+#   owner  bangyen      repository  esolangs
+#   workflow  release.yml            environment  pypi
+#
+# Until that registration exists the publish step fails; build and verify
+# still run, so a mistagged release is caught before it reaches the index.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The tag is the only thing that triggers a release, so it is also the only
+  # thing that can disagree with the package.  Check it before building.
+  check-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: The tag must match the version in pyproject.toml
+      run: |
+        tag="${GITHUB_REF_NAME#v}"
+        pkg="$(uv run python -c 'import tomllib,pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+        echo "tag=$tag  pyproject=$pkg"
+        if [ "$tag" != "$pkg" ]; then
+          echo "::error::tag v$tag does not match pyproject version $pkg"
+          exit 1
+        fi
+
+  build:
+    needs: check-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: "3.12"
+
+    - name: Build the sdist and wheel
+      run: uv build
+
+    # Catches a README that PyPI would reject at upload, after the tag exists.
+    - name: Check the distribution metadata
+      run: uv run --with twine python -m twine check dist/*
+
+    # A wheel that imports and runs is the minimum bar for publishing one.
+    # `list` rather than `--help`: this CLI dispatches on subcommands and
+    # treats an unknown flag as an error, so `--help` exits 2.
+    - name: The built wheel installs and runs
+      run: |
+        uv venv /tmp/relcheck
+        VIRTUAL_ENV=/tmp/relcheck uv pip install dist/*.whl
+        /tmp/relcheck/bin/esolangs list > /dev/null
+        /tmp/relcheck/bin/python -c "import esolangs; print('import ok', esolangs.__name__)"
+
+    - uses: actions/upload-artifact@v7
+      with:
+        name: dist
+        path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Scopes the OIDC credential to this environment, so the trusted publisher
+    # cannot be used by a workflow run outside it.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/esolangs
+    permissions:
+      id-token: write  # required to mint the OIDC token; no secret involved
+    steps:
+    - uses: actions/download-artifact@v8
+      with:
+        name: dist
+        path: dist/
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
