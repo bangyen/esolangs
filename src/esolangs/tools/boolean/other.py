@@ -604,6 +604,17 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
 
     assign_col(0, 0)
     leaf_base = next_col[0] + 4  # past every internal column and descent column
+
+    # The column each leaf's beam comes down: its parent routes a zero cell
+    # down ``c + 3`` and a nonzero one down ``c + 1``.  A leaf laid on its
+    # own row has to clear every such column belonging to a leaf *below* it,
+    # since those beams cross this row on their way down.
+    descent: dict[int, int] = {}
+    for j in range(2 ** (n - 1)):
+        c = cols[(n - 1, j)]
+        descent[2 * j] = c + 3  # the zero child
+        descent[2 * j + 1] = c + 1  # the one child
+
     if folded:
         laserfuck_layout.reserve(grid, row(n, 2**n - 1) + 2)
 
@@ -656,7 +667,19 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
             # A 0 answer still has to be *touched* to be printed at all, so
             # it is written as '+-' rather than left alone.
             run = sweep + ("+" if truth_table[j] == "1" else "+-")
-        if folded:
+        if ringed:
+            # The beam arrives on this row already moving right, with
+            # nothing but blanks ahead of it, so the leaf can simply sit
+            # there -- no drop corridor, no band, no fold.  The one thing it
+            # must not do is stand in a lower leaf's way: those beams cross
+            # this row on their way down, and would run this leaf's cells on
+            # the way past.  Starting past every such column avoids that.
+            crossing = [descent[k] for k in range(2**n) if row(n, k) > r]
+            start = max([descent[j] + 1, *(col + 1 for col in crossing)])
+            for k, char in enumerate(run):
+                grid[r][start + k] = char
+            grid[r][start + len(run)] = "x"
+        elif folded:
             drop = drop_base + j
             laserfuck_layout.reserve(grid, band + 1)
             grid[r][drop] = "v"
