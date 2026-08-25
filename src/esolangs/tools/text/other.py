@@ -1272,13 +1272,23 @@ def streetcode(text: str, width: int | None = None) -> str:
     ``width`` folds that street into a boustrophedon of two-lane hairpins:
     the car descends a shared two-wide corridor to the lowest pair of
     lanes, drives each pair out and back, and climbs to the pair above.
-    See :func:`_streetcode_serpentine`.
+    See :func:`_streetcode_serpentine`.  A ring survives that fold -- the
+    car meets it first, in the lowest lane, and the block hangs below the
+    southern wall where the fold has not built anything -- so the folded
+    program is also built both ways.  See
+    :func:`_streetcode_ring_serpentine`.
     """
     instructions = _streetcode_instructions(text)
     if width is not None and width >= _STREETCODE_MIN_WIDTH:
-        return _streetcode_serpentine(instructions, width)
-    # A ring is a fixed block of rows beneath the street, so it only
-    # applies to the unfolded program; the serpentine folds a single line.
+        # Folding does not make the first character's walk any cheaper: it
+        # packs the same unary run into more rows.  So the ring is built
+        # here too, hung under the fold's southern wall where there is
+        # nothing to collide with, and the shorter shape wins as ever.
+        folded = _streetcode_serpentine(instructions, width)
+        ringed = _streetcode_ring_serpentine(text, width) if text else None
+        if ringed is None:
+            return folded
+        return min((ringed, folded), key=len)
     # Both shapes are built and the shorter one wins, rather than predicting
     # the winner from the code point: the two layouts are what they cost.
     straight = _streetcode_straight(instructions)
@@ -1525,6 +1535,102 @@ def _streetcode_serpentine(instructions: str, width: int) -> str:
     for (r, c), instruction in zip(path, cells, strict=False):
         grid[r][c] = instruction
     return "\n".join("".join(row) for row in grid)
+
+
+def _streetcode_ring_serpentine(text: str, width: int) -> str | None:
+    """Fold ``text`` with a counting loop for its first character.
+
+    The straight ring (:func:`_streetcode_ring`) and the fold
+    (:func:`_streetcode_serpentine`) compose because the car meets the
+    ring first and the block hangs where the fold builds nothing.  The
+    serpentine fills its lane pairs bottom-up and starts the car in the
+    lowest eastbound lane, which is exactly where a ring prefix has to
+    go: the ``C``, the cells over the block, and the remainder walk take
+    the head of that lane, and the tail's characters carry on from there
+    through the ordinary boustrophedon.
+
+    The block itself is stamped below the grid's southern wall, so it
+    collides with nothing, and the gaps it needs are cut into that wall
+    rather than into a fold divider.  Those gaps are why the wall is
+    drawn before the block is stamped over it, as in the straight ring.
+
+    Returns ``None`` when the prefix will not fit one lane -- a wide
+    island or a long remainder can outrun ``width``, and ``中文``'s plan
+    wants a remainder of 18453 -- in which case the caller keeps the
+    plain fold.  The ring is not re-planned to suit the width: what a
+    ring costs is what it costs, and the two finished programs are
+    compared as they are.
+    """
+    plan = _plan_ring(ord(text[0]))
+    if plan is None:
+        return None
+    k, counter, per_lap, remainder = plan
+    block = _ring_rows(k, counter, per_lap)
+    block_width = len(block[0])
+
+    # Lanes run from column 3 to the right wall; the prefix occupies the
+    # head of the lowest one.  ``C`` sits above the block's descent, so
+    # the block is stamped from the ``C`` column onward.
+    left = 3
+    prefix = "C^" + " " * (block_width - 2) + "^" * remainder + "O"
+    # One lane cell must remain for the tail to start on, plus the right
+    # wall; without it the prefix has nowhere to hand over.
+    if left + len(prefix) + 1 > width - 1:
+        return None
+
+    tail = []
+    prev = ord(text[0])
+    for char in text[1:]:
+        delta = ord(char) - prev
+        tail.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
+        prev = ord(char)
+    cells = list("".join(tail) + ";")
+
+    lanes = width - 4
+    # The lowest pair holds one full westbound lane plus whatever the
+    # prefix leaves of its eastbound one; every pair above holds two.
+    first_pair = (lanes - len(prefix)) + lanes
+    rest = max(0, len(cells) - first_pair)
+    pairs = 1 + -(-rest // (2 * lanes))
+
+    grid: list[list[str]] = [["+"] + ["-"] * (width - 2) + ["+"]]
+    for n in range(pairs):
+        for _ in range(2):
+            grid.append(["|"] + [" "] * (width - 2) + ["|"])
+        if n < pairs - 1:
+            divider = ["+"] + ["-"] * (width - 2) + ["+"]
+            divider[1] = divider[2] = " "
+            grid.append(divider)
+    grid.append(["+"] + ["-"] * (width - 2) + ["+"])
+
+    # The car's path, as in the plain fold, except the lowest eastbound
+    # lane starts after the prefix that lane already carries.
+    path: list[tuple[int, int]] = []
+    for n in range(pairs - 1, -1, -1):
+        top = 1 + n * 3
+        bottom = top + 1
+        start = left + len(prefix) if n == pairs - 1 else left
+        path += [(bottom, c) for c in range(start, width - 1)]
+        path += [(top, c) for c in range(width - 2, left - 1, -1)]
+
+    if len(cells) > len(path):
+        return None
+
+    bottom_row = 1 + (pairs - 1) * 3 + 1
+    for i, cell in enumerate(prefix):
+        grid[bottom_row][left + i] = cell
+    for (r, c), instruction in zip(path, cells, strict=False):
+        grid[r][c] = instruction
+
+    # The southern wall is already drawn; stamp the block over it so its
+    # gaps land in the wall, then hang the remaining rows below.
+    rows = ["".join(row) for row in grid]
+    wall = list(rows[-1])
+    for c, ch in enumerate(block[0]):
+        wall[left + c] = ch
+    rows[-1] = "".join(wall)
+    rows += [" " * left + row for row in block[1:]]
+    return "\n".join(row.rstrip() for row in rows)
 
 
 def suptiftam(text: str) -> str:

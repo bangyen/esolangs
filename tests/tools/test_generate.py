@@ -369,10 +369,84 @@ class TestGeneratorRoundTrips:
         lines = gen.streetcode(text, width).split("\n")
         # A text short enough to fit one lane pair folds no dividers at
         # all; the geometry claim is about the dividers that do appear.
-        dividers = [ln for ln in lines[1:-1] if ln.startswith("+")]
+        # A ring's southern wall also starts with ``+`` and is also gapped,
+        # but by the ring's own descent and return -- a different street,
+        # asserted by test_streetcode_ring_fold_keeps_the_ring_geometry.
+        # A fold divider is the full width of the grid; the ring's wall is
+        # the last full-width line, with the block hanging below it.
+        # The grid's own southern wall is the last full-width ``+`` line:
+        # a ring hangs its block below that, and those rows are narrower.
+        # Dropping it leaves the fold dividers, which are the claim here.
+        full_width = [
+            i for i, ln in enumerate(lines) if ln.startswith("+") and len(ln) == width
+        ]
+        dividers = [lines[i] for i in full_width[1:-1]]
         for divider in dividers:
             gap = [i for i, ch in enumerate(divider) if ch == " "]
             assert gap == [1, 2], f"corridor gap {gap} is not two wide"
+
+    @pytest.mark.parametrize(
+        ("text", "width"),
+        [
+            ("Hi", 20),
+            ("Hi", 40),
+            ("Hello, World!", 20),
+            ("Hello, World!", 40),
+            ("Hello, World!", 80),
+            ("Ωmega", 80),
+            ("x" * 40, 80),
+        ],
+    )
+    def test_streetcode_ring_survives_the_fold(self, text: str, width: int) -> None:
+        """A folded program may still build its first character with a ring.
+
+        Folding packs the first character's unary walk into more rows; it
+        does not make it cheaper.  So the ring is built under a width too
+        -- the car meets it in the lowest lane and the block hangs below
+        the grid's southern wall -- and whichever program is shorter wins.
+
+        The cases here are the ones where the ring is the winner, which
+        needs a text long enough to amortize the block's fixed rows and a
+        width wide enough to hold the prefix in one lane; a lone ``"A"``
+        or a width of 10 keeps the plain fold, covered by the round-trip
+        tests above.  ``Hello, World!`` at 80 is what the committed
+        ``examples/hello-world/streetcode.txt`` is built at, so the shipped
+        example shows a loop.
+        """
+        from esolangs.tools.text.other import (
+            _streetcode_instructions,
+            _streetcode_ring_serpentine,
+            _streetcode_serpentine,
+        )
+
+        plain = _streetcode_serpentine(_streetcode_instructions(text), width)
+        ringed = _streetcode_ring_serpentine(text, width)
+        assert ringed is not None
+        assert len(ringed) < len(plain), "the ring should win these"
+
+        program = gen.streetcode(text, width)
+        assert program == ringed
+        # ``U`` is the loop's transfer of the wall-hug at the island; it
+        # appears in no other shape, so it witnesses that a ring was used.
+        assert "U" in program
+        lines = program.split("\n")
+        assert max(len(line) for line in lines) <= width
+        assert roundtrip(streetcode_run, lines) == text
+
+    def test_streetcode_fold_falls_back_when_a_ring_will_not_fit(self) -> None:
+        """A ring too wide for the lane leaves the plain fold standing.
+
+        The plan for a CJK code point wants a remainder of thousands of
+        cells, which no lane can hold, so the prefix does not fit and the
+        fold is emitted unringed rather than being re-planned to suit the
+        width: what a ring costs is what it costs.
+        """
+        from esolangs.tools.text.other import _streetcode_ring_serpentine
+
+        assert _streetcode_ring_serpentine("中文", 80) is None
+        program = gen.streetcode("中文", 80)
+        assert "U" not in program
+        assert roundtrip(streetcode_run, program.split("\n")) == "中文"
 
     @pytest.mark.parametrize("width", [10, 20, 40, 60, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
