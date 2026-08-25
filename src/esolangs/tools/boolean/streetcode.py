@@ -244,6 +244,49 @@ def _streetcode_tree(table: str) -> list[str]:
     return _streetcode_combine([hall, [*top, *bot]])
 
 
+def _streetcode_lift(rows: list[str]) -> list[str]:
+    """Run the leading instructions westbound along row 1 instead of row 2.
+
+    Row 1 is the oncoming lane, and it is blank across the whole program:
+    the car only drives it coming back from the hairpin at the western
+    wall.  Starting the car *there* costs nothing and frees the columns the
+    leading run occupied at the head of the driving lane -- the ``C^`` start
+    and the first loop's label, nine columns for the ring's labels and seven
+    for the hallway's, off every row of the program.
+
+    The run is written East-to-West, since a ``C`` with the northern wall on
+    its right heads West: the car reads it in reverse, hairpins at the west
+    wall, and arrives back along row 2 at the first loop's mouth exactly as
+    it used to.
+
+    The run's leading ``^`` is what makes this safe.  The westbound leg
+    passes over every loop mouth in the program, and each is a junction that
+    reads the CPth cell; a zero there captures the car into the first mouth
+    it meets.  The ``^`` the start already carried leaves cell 0 nonzero for
+    the whole leg, so every crossing passes straight over.
+    """
+    lane = rows[2]
+    # The prefix runs from the ``C`` to the first blank; what follows it
+    # belongs to loops the car only meets after the hairpin.
+    start = lane.index("C")
+    end = start
+    while end < len(lane) and lane[end] != " ":
+        end += 1
+
+    width = max(len(row) for row in rows)
+    grid = [list(row.ljust(width)) for row in rows]
+    prefix = "".join(grid[2][start:end])
+    # Drop the columns the prefix occupied, from every row.
+    kept = [c for c in range(width) if not (start <= c < end)]
+    grid = [[row[c] for c in kept] for row in grid]
+
+    # Write it into row 1 reversed, ending against the eastern wall.
+    east = len(grid[0]) - 2
+    for i, char in enumerate(prefix):
+        grid[1][east - i] = char
+    return ["".join(row).rstrip() for row in grid]
+
+
 def _streetcode_populate(n: int, shape: _Shape) -> list[str]:
     """Build the car's start plus ``n`` input loops and a final loader loop.
 
@@ -288,6 +331,10 @@ def streetcode(truth_table: str) -> str:
     ramps a fresh cell up to ASCII ``'0'`` before the tree, so every leaf
     can print the table's digit directly rather than building its own
     ramp.
+
+    Whichever shape wins, the leading run then moves to the oncoming lane
+    and runs westbound (:func:`_streetcode_lift`), which takes its columns
+    off every row of the program.
     """
     n = _validate_truth_table(truth_table)
     tree = _streetcode_tree(truth_table)
@@ -296,8 +343,8 @@ def streetcode(truth_table: str) -> str:
     # 8 rows to the hallway's 29 but 8 columns to its 4, so the ring wins
     # while the loops set the program's height (n <= 2) and the hallway wins
     # once the tree is taller than either and only the width still counts.
-    programs = [
-        "\n".join(_streetcode_combine([_streetcode_populate(n, shape), tree]))
-        for shape in (_RING_SHAPE, _HALLWAY_SHAPE)
-    ]
+    programs = []
+    for shape in (_RING_SHAPE, _HALLWAY_SHAPE):
+        rows = _streetcode_combine([_streetcode_populate(n, shape), tree])
+        programs.append("\n".join(_streetcode_lift(rows)))
     return min(programs, key=len)
