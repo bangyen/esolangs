@@ -723,16 +723,6 @@ class TestThreeX:
         assert vm.output == "3"
 
 
-class TestABCDirection:
-    def test_tape_queue_and_pointer(self) -> None:
-        program = "\n".join(["CBBBBB"] * 8 + ["DDDDDD"])
-        vm = esolangs.make_vm("ABCDirection", program)
-        assert (vm.ip, vm.memory, vm.stack) == ((0, 0, 1), [], [])
-        vm.step()  # the top-left C outputs the (zero) initial cell
-        assert vm.ip == (0, 1, 1)
-        assert not vm.halted
-
-
 class TestSophie:
     def test_accumulator_and_cursor(self) -> None:
         vm = esolangs.make_vm("Sophie", "#$5.")

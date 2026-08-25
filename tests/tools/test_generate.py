@@ -107,6 +107,44 @@ class TestGeneratorRoundTrips:
         assert roundtrip(unsquare_run, gen.unsquare("Hi")) == "Hi"
         assert roundtrip(unsquare_run, gen.unsquare("Hello, World!")) == "Hello, World!"
 
+    @pytest.mark.parametrize(
+        "text",
+        ["", "\x00", "\xff", "aaaaaaaa", "abcdefgh", "zyxwvu", "aA" * 8, "!!!"],
+    )
+    def test_unsquare_reuses_the_accumulator(self, text: str) -> None:
+        """A repeated byte costs the print alone, and reuse never regresses.
+
+        ``o`` prints without popping and neither ``P`` nor ``o`` touches the
+        accumulator, so it still holds the previous character.  Reaching the
+        next one from there is taken only when it is shorter than reseeding,
+        so no text can grow.
+        """
+        program = gen.unsquare(text)
+        assert roundtrip(unsquare_run, program) == text
+        # Reseeding every character is the old strategy; it is the ceiling.
+        reseed = 0
+        for char in text:
+            value = ord(char)
+            run, cur = "", value % 2
+            while cur != value:
+                if value % 2 == 0 and cur and cur * 2 <= value:
+                    cur, run = cur * 2, run + "x"
+                else:
+                    cur, run = cur + 2, run + "+"
+            reseed += len(run) + 4  # the seed's two cells plus "Po"
+        assert len(program) <= reseed
+
+    def test_unsquare_repeat_costs_only_the_print(self) -> None:
+        """The accumulator already holds the byte, so nothing is rebuilt."""
+        assert gen.unsquare("aaaa") == gen.unsquare("a") + "Po" * 3
+
+    def test_unsquare_reseeds_when_parity_blocks_the_chain(self) -> None:
+        """``x`` cannot make an odd value, so an odd target after an even
+        one reloads the seed rather than chaining."""
+        program = gen.unsquare("ba")  # 98 then 97: even, then odd
+        assert roundtrip(unsquare_run, program) == "ba"
+        assert program.count("I") == 1  # the odd seed was reloaded
+
     def test_three_d_brainfuck(self) -> None:
         """The brainfuck tape moves map to the array's +X axis."""
         assert roundtrip(three_d_bf_run, gen.three_d_brainfuck("Hi")) == "Hi"
@@ -196,18 +234,43 @@ class TestGeneratorRoundTrips:
         )
         assert gen.clockwise("") == ""
 
-    def test_clockwise_ring_is_square_by_default(self) -> None:
-        """The default shape is the square, which minimizes max(height, width).
+    def test_clockwise_weave_fills_the_interior(self) -> None:
+        """The woven grid is nearly all code, unlike the hollow ring.
 
-        Only the perimeter holds code, so the ring's cell count is fixed by
-        the program and the shape is free; the square is the choice that
-        keeps the bounding box smallest.
+        A perimeter ring spends its whole interior on nothing, so a long
+        text is mostly blank.  The weave serpentines through the interior
+        instead, and every lane cell the walk crosses only once still holds
+        an instruction, so little but the turns is blank.
         """
+        # The turns are a fixed cost, so density climbs with the text; a
+        # one-character text is small enough that the ring still wins.
+        for text, floor in (
+            ("Hello, World!", 0.90),
+            ("Clockwise test 123!", 0.94),
+            ("The quick brown fox jumps over the lazy dog.", 0.97),
+        ):
+            program = gen.clockwise(text)
+            code = sum(1 for c in program if not c.isspace())
+            assert code / len(program) > floor, f"{text!r}: sparse grid"
+
+    def test_clockwise_never_beaten_by_the_bare_ring(self) -> None:
+        """Whichever layout is smaller is what comes out.
+
+        The ring is still built and compared, so a text the weave cannot
+        improve on keeps the ring rather than growing.
+        """
+        from esolangs.tools.text.other import _clockwise_ring
+
         for text in ("A", "Hi", "Hello, World!", "Clockwise test 123!"):
-            lines = gen.clockwise(text).split("\n")
-            widths = {len(line) for line in lines}
-            assert len(widths) == 1, f"{text!r}: ragged grid {sorted(widths)}"
-            assert len(lines) == widths.pop(), f"{text!r}: not square"
+            program = gen.clockwise(text)
+            parity, bits = 0, ""
+            for char in text:
+                for bit in f"{ord(char):07b}":
+                    if parity != int(bit):
+                        bits += "+"
+                        parity = int(bit)
+                    bits += ";"
+            assert len(program) <= len(_clockwise_ring(bits, None))
 
     @pytest.mark.parametrize("width", [10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["Hi", "Hello, World!", "q" * 30])
@@ -265,7 +328,31 @@ class TestGeneratorRoundTrips:
             row = len("C" + "^" * ord(char) + "O;") + 2
             assert len(gen.streetcode(char)) < 4 * row
 
-    @pytest.mark.parametrize("width", [6, 7, 10, 20, 40, 80])
+    @pytest.mark.parametrize(
+        "text",
+        ["H", "a", "!", "\x01", "Hi", "zyA", "Hello, World!", "Ω", "€Ā"],
+    )
+    def test_streetcode_emits_the_shorter_of_ring_and_street(self, text: str) -> None:
+        """Whichever shape is smaller is what comes out.
+
+        The generator builds both the ring and the straight street and
+        picks by length rather than predicting the winner from the first
+        code point, so neither shape can be emitted while the other one
+        would have been shorter.
+        """
+        from esolangs.tools.text.other import (
+            _streetcode_instructions,
+            _streetcode_ring,
+            _streetcode_straight,
+        )
+
+        straight = _streetcode_straight(_streetcode_instructions(text))
+        ring = _streetcode_ring(text)
+        shortest = straight if ring is None else min((ring, straight), key=len)
+        assert gen.streetcode(text) == shortest
+        assert roundtrip(streetcode_run, gen.streetcode(text).splitlines()) == text
+
+    @pytest.mark.parametrize("width", [5, 6, 10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!", "zyA"])
     def test_streetcode_fold_corridor_is_two_wide(self, text: str, width: int) -> None:
         """The descent corridor is a street, so it is two cells wide.
@@ -282,10 +369,84 @@ class TestGeneratorRoundTrips:
         lines = gen.streetcode(text, width).split("\n")
         # A text short enough to fit one lane pair folds no dividers at
         # all; the geometry claim is about the dividers that do appear.
-        dividers = [ln for ln in lines[1:-1] if ln.startswith("+")]
+        # A ring's southern wall also starts with ``+`` and is also gapped,
+        # but by the ring's own descent and return -- a different street,
+        # asserted by test_streetcode_ring_fold_keeps_the_ring_geometry.
+        # A fold divider is the full width of the grid; the ring's wall is
+        # the last full-width line, with the block hanging below it.
+        # The grid's own southern wall is the last full-width ``+`` line:
+        # a ring hangs its block below that, and those rows are narrower.
+        # Dropping it leaves the fold dividers, which are the claim here.
+        full_width = [
+            i for i, ln in enumerate(lines) if ln.startswith("+") and len(ln) == width
+        ]
+        dividers = [lines[i] for i in full_width[1:-1]]
         for divider in dividers:
             gap = [i for i, ch in enumerate(divider) if ch == " "]
             assert gap == [1, 2], f"corridor gap {gap} is not two wide"
+
+    @pytest.mark.parametrize(
+        ("text", "width"),
+        [
+            ("Hi", 20),
+            ("Hi", 40),
+            ("Hello, World!", 20),
+            ("Hello, World!", 40),
+            ("Hello, World!", 80),
+            ("Ωmega", 80),
+            ("x" * 40, 80),
+        ],
+    )
+    def test_streetcode_ring_survives_the_fold(self, text: str, width: int) -> None:
+        """A folded program may still build its first character with a ring.
+
+        Folding packs the first character's unary walk into more rows; it
+        does not make it cheaper.  So the ring is built under a width too
+        -- the car meets it in the lowest lane and the block hangs below
+        the grid's southern wall -- and whichever program is shorter wins.
+
+        The cases here are the ones where the ring is the winner, which
+        needs a text long enough to amortize the block's fixed rows and a
+        width wide enough to hold the prefix in one lane; a lone ``"A"``
+        or a width of 10 keeps the plain fold, covered by the round-trip
+        tests above.  ``Hello, World!`` at 80 is what the committed
+        ``examples/hello-world/streetcode.txt`` is built at, so the shipped
+        example shows a loop.
+        """
+        from esolangs.tools.text.other import (
+            _streetcode_instructions,
+            _streetcode_ring_serpentine,
+            _streetcode_serpentine,
+        )
+
+        plain = _streetcode_serpentine(_streetcode_instructions(text), width)
+        ringed = _streetcode_ring_serpentine(text, width)
+        assert ringed is not None
+        assert len(ringed) < len(plain), "the ring should win these"
+
+        program = gen.streetcode(text, width)
+        assert program == ringed
+        # ``U`` is the loop's transfer of the wall-hug at the island; it
+        # appears in no other shape, so it witnesses that a ring was used.
+        assert "U" in program
+        lines = program.split("\n")
+        assert max(len(line) for line in lines) <= width
+        assert roundtrip(streetcode_run, lines) == text
+
+    def test_streetcode_fold_falls_back_when_a_ring_will_not_fit(self) -> None:
+        """A ring too wide for the lane leaves the plain fold standing.
+
+        The plan for a CJK code point wants a remainder of thousands of
+        cells, which no lane can hold, so the prefix does not fit and the
+        fold is emitted unringed rather than being re-planned to suit the
+        width: what a ring costs is what it costs.
+        """
+        from esolangs.tools.text.other import _streetcode_ring_serpentine
+
+        assert _streetcode_ring_serpentine("中文", 80) is None
+        program = gen.streetcode("中文", 80)
+        assert "U" not in program
+        assert roundtrip(streetcode_run, program.split("\n")) == "中文"
 
     @pytest.mark.parametrize("width", [10, 20, 40, 60, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
@@ -378,12 +539,12 @@ class TestGeneratorRoundTrips:
         assert gen.laserfuck(text, widest) == loop
         assert gen.laserfuck(text, widest + 40) == loop
 
-    def test_clockwise_keeps_the_square_when_it_fits(self) -> None:
-        """A width the square already satisfies does not distort the shape."""
-        square = gen.clockwise("Hello, World!")
-        side = len(square.split("\n"))
-        assert gen.clockwise("Hello, World!", side) == square
-        assert gen.clockwise("Hello, World!", side + 40) == square
+    def test_clockwise_keeps_the_shape_when_it_fits(self) -> None:
+        """A width the default grid already satisfies does not distort it."""
+        grid = gen.clockwise("Hello, World!")
+        widest = max(len(line) for line in grid.split("\n"))
+        assert gen.clockwise("Hello, World!", widest) == grid
+        assert gen.clockwise("Hello, World!", widest + 40) == grid
 
     def test_streetcode(self) -> None:
         """A straight walled corridor walks one cell to each character and prints."""

@@ -25,6 +25,7 @@ import tempfile
 from collections.abc import Callable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import TypeVar
 
 from esolangs.tools import boolean
 from esolangs.tools import text as gen
@@ -40,8 +41,11 @@ TEXTS = ("Hi", "Hello, World!", "esolangs!")
 # so threads (which just wait on the subprocess) scale well.
 _WORKERS = 8
 
+_T = TypeVar("_T")
+_R = TypeVar("_R")
 
-def _run_parallel(fn: Callable[..., bytes | None], tasks: Sequence) -> list:
+
+def _run_parallel(fn: Callable[[_T], _R], tasks: Sequence[_T]) -> list[_R]:
     """Run ``fn`` over ``tasks`` concurrently, returning results in order."""
     with ThreadPoolExecutor(max_workers=_WORKERS) as executor:
         return list(executor.map(fn, tasks))

@@ -2,12 +2,14 @@
 
 import math
 import re
+from collections import Counter, deque
 from functools import cache
 
 from esolangs.tools import laserfuck_layout
 from esolangs.tools.text.helpers import (
     _factor_triple,
     _ilog,
+    _literal_chunks,
     _require_ascii,
     _require_bytes,
 )
@@ -68,19 +70,15 @@ def clockwise(text: str, width: int | None = None) -> str:
     origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
     ``+`` is emitted only when the accumulator's parity needs to flip.
 
-    Only the perimeter holds code -- the interior is dead space -- so an
-    ``h`` x ``w`` rectangle offers ``2(h + w) - 4`` cells and the shape is
-    free once that count is met.  The default picks the *square*, which
-    minimizes ``max(h, w)``: a program needing ``c`` cells fits a square of
-    side ``ceil((c + 4) / 4)``, half the width of the thin ``3 x k`` ring
-    that holds the same code.
+    Two layouts are built and the shorter one wins.  The bare *ring* keeps
+    code on the perimeter only and leaves the interior dead, so a program of
+    ``c`` cells costs a square of side about ``c / 4`` -- a long text is
+    better than 97% blank.  The *weave* (:func:`_clockwise_weave`)
+    serpentines through the interior instead and runs over 90% code, so it
+    wins on everything but the shortest texts, where the ring's smaller
+    fixed cost still tells.
 
-    ``width`` constrains that choice to ``w <= width``.  The square is kept
-    when it already fits; otherwise the width is capped and the height grows
-    to supply the remaining cells.  Capping cannot reduce the *total* -- the
-    cell count is fixed by the program -- so a capped ring is always taller
-    than the square it replaces; it is what a caller asking for a bounded
-    width has asked for.
+    ``width`` bounds the columns of whichever layout is chosen.
     """
     _require_ascii(text, "Clockwise")
     prog = ""
@@ -95,6 +93,15 @@ def clockwise(text: str, width: int | None = None) -> str:
     if not prog:
         return ""
 
+    folded = _clockwise_weave(prog, width)
+    ring = _clockwise_ring(prog, width)
+    if folded is not None:
+        return min((folded, ring), key=len)
+    return ring
+
+
+def _clockwise_ring(prog: str, width: int | None) -> str:
+    """Wrap ``prog`` around a rectangle's perimeter, the interior left dead."""
     height, width_ = _clockwise_shape(len(prog), width)
     # The three turning corners are overwritten with ``R`` below, so the
     # ring skips them rather than placing code that would be clobbered.
@@ -112,6 +119,112 @@ def clockwise(text: str, width: int | None = None) -> str:
     grid[height - 1][0] = "R"  # bottom-left
 
     return "\n".join("".join(row) for row in grid)
+
+
+# A weave's turning cells: the hairpin ladder in column 1, the two descent
+# lanes on the right, and the corners.  Everything else is a slot.
+_WEAVE_LANES = "0110"
+
+# The narrowest weave: the home lane, the hairpin ladder, one body cell, and
+# the two descent lanes.
+_WEAVE_MIN_WIDTH = 5
+
+
+def _weave_template(units: int, body: int) -> list[list[str]]:
+    """Lay out an empty weave: ``R`` turns placed, every other cell a hole.
+
+    ``units`` counts four-row weave groups (the walk only closes on a
+    multiple of four interior rows) and ``body`` is the instruction span of
+    an interior row.  Row 0 runs east, then each interior row is reached in
+    the order 0, 2, 1, 4, 3, ... -- a westward row, a hairpin up into the
+    row above it, and a drop past that row to the next westward one.  The
+    drops overlap vertically, so the right-hand turns alternate between the
+    two descent lanes on the ``0110`` cycle in :data:`_WEAVE_LANES`.
+    """
+    lanes = [int(bit) for bit in _WEAVE_LANES * units]
+    size = body + 4
+    grid = [[" "] * size for _ in range(len(lanes) + 2)]
+    grid[0][size - 1] = "R"
+    for row, lane in enumerate(lanes, start=1):
+        grid[row][1] = "R"
+        grid[row][size - 2 + lane] = "R"
+    grid[-1][0] = "R"
+    grid[-1][size - 1] = "R"
+    return grid
+
+
+def _weave_slots(grid: list[list[str]]) -> list[tuple[int, int]] | None:
+    """Return the cells a walk over ``grid`` runs exactly once, in path order.
+
+    The pointer is run over the bare template with every hole left blank, so
+    the walk is the template's own geometry.  A cell it enters twice would
+    run its instruction twice -- a repeated ``;`` emits a duplicate parity
+    bit -- so only the single-visit cells can hold code; the rest stay blank
+    and serve as the lanes the walk crosses.  Returns ``None`` when the
+    template does not close (the walk leaves the grid or never returns to
+    the origin), which is how a bad ``units``/``body`` pair is rejected.
+    """
+    from esolangs.interpreters.grid_based.clockwise import _Machine
+    from esolangs.interpreters.io import IO
+
+    rows = ["".join(row) for row in grid]
+    machine = _Machine(rows, IO())
+    order: list[tuple[int, int]] = []
+    limit = 8 * len(rows) * len(rows[0]) + 64
+    for _ in range(limit):
+        if machine.halted:
+            break
+        cell = (machine.x, machine.y)
+        try:
+            machine.step()
+        except ValueError:
+            return None  # walked off the grid: the template is not closed
+        order.append(cell)
+    else:
+        return None  # never came home
+    seen = Counter(order)
+    return [cell for cell in order if seen[cell] == 1 and grid[cell[1]][cell[0]] == " "]
+
+
+def _clockwise_weave(prog: str, width: int | None) -> str | None:
+    """Fold ``prog`` into a woven grid rather than a bare perimeter.
+
+    The perimeter ring spends its whole interior on nothing, so a program of
+    ``c`` cells costs a square of side ``c / 4``.  The weave walks the
+    interior instead: the pointer serpentines down the grid, and because a
+    turn is always clockwise it cannot simply reverse at the end of a row --
+    it takes the row *two* below, then hairpins back up into the one it
+    skipped.  Two descent lanes on the right and a hairpin ladder in column
+    1 carry it, and the homeward lane in column 0 brings it back to the
+    origin; every cell any of those lanes crosses only once still holds an
+    instruction, so the grid runs better than 90% code.
+
+    Returns ``None`` when no weave fits within ``width``, leaving the caller
+    with the ring.
+    """
+    best: str | None = None
+    limit = width if width is not None else len(prog) + _WEAVE_MIN_WIDTH
+    if limit < _WEAVE_MIN_WIDTH:
+        return None
+    for body in range(1, limit - 3):
+        units = 1
+        while True:
+            grid = _weave_template(units, body)
+            slots = _weave_slots(grid)
+            if slots is None:
+                break
+            if len(slots) >= len(prog):
+                filled = [row[:] for row in grid]
+                for (x, y), instruction in zip(slots, prog, strict=False):
+                    filled[y][x] = instruction
+                drawn = "\n".join("".join(row).rstrip() for row in filled)
+                if best is None or len(drawn) < len(best):
+                    best = drawn
+                break
+            units += 1
+            if units > len(prog):
+                break
+    return best
 
 
 def _clockwise_shape(cells: int, width: int | None) -> tuple[int, int]:
@@ -434,11 +547,13 @@ def laserfuck(text: str, width: int | None = None) -> str:
 
         if depth == 0:
             # back at the top level: everything buffered is one group
-            groups.append(tuple("".join(col) for col in zip(*parts, strict=True)))
+            tops, mids, bots = zip(*parts, strict=True)
+            groups.append(("".join(tops), "".join(mids), "".join(bots)))
             parts = []
 
     if parts:  # an unbalanced frame: keep it whole rather than dropping it
-        groups.append(tuple("".join(col) for col in zip(*parts, strict=True)))
+        tops, mids, bots = zip(*parts, strict=True)
+        groups.append(("".join(tops), "".join(mids), "".join(bots)))
 
     # The first "[" marker's stub is a placeholder: the loop track connects
     # back into the frame at ``loop_col`` instead, so blank it out.  Doing
@@ -447,37 +562,42 @@ def laserfuck(text: str, width: int | None = None) -> str:
     # after has its leading "v" swallowed too, matching a bracket that
     # directly follows another one.
     if entry_index is not None:
-        top, middle, bottom = groups[entry_index]
-        offset = top.index("}")
-        end = offset + len("}  }")
-        if top[end : end + 1] == "v":
+        entry_top, entry_middle, entry_bottom = groups[entry_index]
+        start = entry_top.index("}")
+        end = start + len("}  }")
+        if entry_top[end : end + 1] == "v":
             end += 1
-        top = top[:offset] + " " * (end - offset) + top[end:]
-        groups[entry_index] = (top, middle, bottom)
+        entry_top = entry_top[:start] + " " * (end - start) + entry_top[end:]
+        groups[entry_index] = (entry_top, entry_middle, entry_bottom)
 
     frame_width = 3 + sum(len(g[0]) for g in groups)
-    fold_frame = width is not None and frame_width > width
+    # Bind the width the fold runs at, so it stays a plain int throughout the
+    # folded path; ``None`` means the frame fits and is laid out unfolded.
+    fold_width = width if width is not None and frame_width > width else None
+    fold_frame = fold_width is not None
 
-    if fold_frame:
+    if fold_width is not None:
         # A single group is indivisible, so one wider than a folded segment
         # cannot be laid at this width however many rows it is given.  The
         # linear form is the floor for those: bigger, but it folds.
-        room = laserfuck_layout.segment_width(width)
+        room = laserfuck_layout.segment_width(fold_width)
         if max(len(g[0]) for g in groups) > room:
             return _laserfuck_linear(linear, width)
 
-    if fold_frame:
+    if fold_width is not None:
         # The frame overruns the width, so fold it between groups.  This
         # keeps the compact loop program rather than falling back to the
         # linear form, which fits by being several times larger.
-        cells = [[" "] * (width + 1) for _ in range(3)]
-        cells[0][1] = "}"
-        cells[0][2] = "}"
-        cells[1][0] = "|"
-        cells[1][1] = "o"
-        cells[1][2] = "^"
-        cells[2][1] = "_"
-        end_row, end_col = laserfuck_layout.fold_groups(cells, groups, 0, 3, width)
+        frame_cells = [[" "] * (fold_width + 1) for _ in range(3)]
+        frame_cells[0][1] = "}"
+        frame_cells[0][2] = "}"
+        frame_cells[1][0] = "|"
+        frame_cells[1][1] = "o"
+        frame_cells[1][2] = "^"
+        frame_cells[2][1] = "_"
+        end_row, end_col = laserfuck_layout.fold_groups(
+            frame_cells, groups, 0, 3, fold_width
+        )
         # The frame no longer ends at the top right, so the reversed-tail
         # trick the unfolded path uses does not apply: the fallback run
         # carries straight on from wherever the fold left the beam, folding
@@ -487,33 +607,33 @@ def laserfuck(text: str, width: int | None = None) -> str:
             # past its two mirror rows before folding further -- those rows
             # belong to the last segment's markers, and writing the run
             # into them would land tape code under a mirror.
-            room = laserfuck_layout.segment_width(width) + laserfuck_layout.MARGIN
+            room = laserfuck_layout.segment_width(fold_width) + laserfuck_layout.MARGIN
             head = fallback[: max(room - end_col, 0)]
             for char in head:
-                cells[end_row][end_col] = char
+                frame_cells[end_row][end_col] = char
                 end_col += 1
             rest = fallback[len(head) :]
             if rest:
-                laserfuck_layout.reserve(cells, end_row + 3)
-                cells[end_row][end_col] = "v"
-                cells[end_row + 3][end_col] = "{"
-                cells[end_row + 3][laserfuck_layout.MARGIN] = "v"
+                laserfuck_layout.reserve(frame_cells, end_row + 3)
+                frame_cells[end_row][end_col] = "v"
+                frame_cells[end_row + 3][end_col] = "{"
+                frame_cells[end_row + 3][laserfuck_layout.MARGIN] = "v"
                 end_row += 4
-                laserfuck_layout.reserve(cells, end_row)
-                cells[end_row][laserfuck_layout.MARGIN] = "}"
+                laserfuck_layout.reserve(frame_cells, end_row)
+                frame_cells[end_row][laserfuck_layout.MARGIN] = "}"
                 end_row, end_col = laserfuck_layout.fold(
-                    cells, rest, end_row, laserfuck_layout.MARGIN + 1, width
+                    frame_cells, rest, end_row, laserfuck_layout.MARGIN + 1, fold_width
                 )
-        cells[end_row][end_col] = "x"
-        grid = ["".join(line).rstrip() for line in cells]
+        frame_cells[end_row][end_col] = "x"
+        grid = ["".join(line).rstrip() for line in frame_cells]
         while grid and not grid[-1]:
             grid.pop()
     else:
         grid = [" }}", "|o^", " _ "]
-        for top, middle, bottom in groups:
-            grid[0] += top
-            grid[1] += middle
-            grid[2] += bottom
+        for group_top, group_middle, group_bottom in groups:
+            grid[0] += group_top
+            grid[1] += group_middle
+            grid[2] += group_bottom
 
     track_len = len(loop) + loop_col
     overhang = len(fallback) + loop_col - (len(grid[0]) - 2)
@@ -530,7 +650,7 @@ def laserfuck(text: str, width: int | None = None) -> str:
 
     # A folded frame is bounded by the width rather than by its longest
     # row, so the serpentine has the whole width to lay its track in.
-    row_width = width if fold_frame else len(grid[0])
+    row_width = fold_width if fold_width is not None else len(grid[0])
     tracks = 2
 
     # enough serpentine rows to hold the loop body around the frame
@@ -755,21 +875,27 @@ def one_two_three(text: str) -> str:
             # a "121" toggles a bit twice (a no-op on edi) while doubling esi;
             # n doublings carry esi from 2 to 512, where the final "2" outputs
             march = "121" * n
-            res += walk[:-2] + march[:-1] + "\n"
+            res += walk[:-2] + march[:-1]
         else:
-            res += "12112\n"  # no difference: just march esi up and output
+            res += "12112"  # no difference: just march esi up and output
         last = ord(c)
 
     return res + "1"
 
 
-def myscript(text: str) -> str:
+def myscript(text: str, width: int | None = None) -> str:
     r"""Generate a MyScript program that outputs ``text``.
 
     MyScript's string literals support the escapes ``\\0 \\n \\\\ \\t \\f
     \\"`` and literal printable ASCII, so ``text`` is emitted as one ``say``
     of the escaped string; any other byte (unrepresentable in the language)
     is rejected.
+
+    A ``width`` splits the text across several ``say`` lines.  The escaped
+    pieces are what get packed, never the characters inside one: breaking
+    ``\\n`` in half would leave a stray backslash and change what the
+    program prints, which is the same reason the literal cannot simply be
+    reflowed by :mod:`~esolangs.tools.wrap`.
     """
     res: list[str] = []
     for c in text:
@@ -789,7 +915,20 @@ def myscript(text: str) -> str:
             res.append(c)
         else:
             raise ValueError("MyScript can only output its representable bytes")
-    return 'say "' + "".join(res) + '"'
+    if width is None or width <= 0:
+        return 'say "' + "".join(res) + '"'
+    # ``say ""`` is six characters around the escaped text.
+    budget = max(1, width - len('say ""'))
+    lines: list[str] = []
+    current = ""
+    for piece in res:
+        if current and len(current) + len(piece) > budget:
+            lines.append(current)
+            current = ""
+        current += piece
+    if current or not lines:
+        lines.append(current)
+    return "\n".join(f'say "{line}"' for line in lines)
 
 
 def nocomment(text: str) -> str:
@@ -819,30 +958,72 @@ def unsquare(text: str) -> str:
     """Generate an Unsquare program that outputs ``text``.
 
     ``OA``/``IA`` push 0/1 and ``A`` loads it into the accumulator, ``+``
-    adds 2, and ``x`` doubles, so each character is built from a parity seed
-    (``O`` for even, ``I`` for odd) followed by the shortest ``+``/``x``
-    program to the code: doubling makes even values O(log n), with ``+`` runs
-    covering the rest.  ``P`` pushes the accumulator and ``o`` prints it.
+    adds 2, ``-`` subtracts 2, and ``x`` doubles, so a character is built
+    from a parity seed (``O`` for even, ``I`` for odd) followed by the
+    shortest program to the code: doubling makes even values O(log n), with
+    ``+`` runs covering the rest.  ``P`` pushes the accumulator and ``o``
+    prints it.
+
+    ``o`` prints without popping and neither ``P`` nor ``o`` touches the
+    accumulator, so it still holds the previous character when the next one
+    starts.  Each character is therefore reached from *that* value when a
+    ``+``/``-``/``x`` chain off it is shorter than reseeding -- which it
+    usually is, since adjacent code points are close: ``"Hello, World!"``
+    drops 21% and a repeated letter costs two characters instead of ``2 +
+    O(log n)``.
+
+    Parity is what bounds the reuse: ``x`` sends an odd value to an even one
+    and nothing restores oddness, so an odd target is reachable only by a
+    ``+``/``-`` run from an odd value.  When the accumulator is even and the
+    target odd there is no chain at all and the seed is reloaded, which is
+    why alternating-parity text (``"abcdefgh"``) is unchanged.
     """
     _require_bytes(text, "Unsquare")
 
     @cache
-    def build(start: int, v: int) -> str:
+    def build(start: int, v: int) -> str | None:
+        """Shortest ``+``/``-``/``x`` run from ``start`` to ``v``, if any.
+
+        Breadth-first, so the first arrival at a value is its cheapest.  The
+        band is bounded below by ``-2`` and above by twice the largest byte:
+        a chain that leaves it can only come back by retracing, so nothing
+        outside can be on a shortest path.
+        """
         if v == start:
             return ""
-        if v < start:
-            return ""
-        options = [build(start, v - 2) + "+"]
-        if v % 2 == 0:
-            options.append(build(start, v // 2) + "x")
-        return min(options, key=len)
+        if start % 2 == 0 and v % 2:
+            return None
+        queue = deque([(start, "")])
+        seen = {start}
+        while queue:
+            value, run = queue.popleft()
+            for op, moved in (("+", value + 2), ("-", value - 2), ("x", value * 2)):
+                if moved == v:
+                    return run + op
+                if -2 <= moved <= 2 * 0xFF and moved not in seen:
+                    seen.add(moved)
+                    queue.append((moved, run + op))
+        return None
 
-    def seg(v: int) -> str:
-        init = "I" if v % 2 else "O"
-        start = v % 2
-        return init + "A" + build(start, v)
+    def seed(v: int) -> str:
+        """Reload the parity constant and climb to ``v`` from there."""
+        run = build(v % 2, v)
+        if run is None:  # pragma: no cover - a seed shares the target's parity
+            raise AssertionError(f"no run to {v} from its own parity")
+        return ("I" if v % 2 else "O") + "A" + run
 
-    return "".join(seg(ord(c)) + "Po" for c in text)
+    res: list[str] = []
+    acc: int | None = None
+    for char in text:
+        value = ord(char)
+        best = seed(value)
+        if acc is not None:
+            chain = build(acc, value)
+            if chain is not None and len(chain) < len(best):
+                best = chain
+        res.append(best + "Po")
+        acc = value
+    return "".join(res)
 
 
 def home_row(text: str) -> str:
@@ -1010,15 +1191,22 @@ def forbin(text: str) -> str:
     return "\n".join(lines)
 
 
-def three_x(text: str) -> str:
+def three_x(text: str, width: int | None = None) -> str:
     """Build a 3x program that outputs ``text``.
 
     ``[`` prints the literal up to the next ``]`` and skips past it, so the
     program is ``[text]``; a ``]`` in the text would end the literal early.
+
+    A ``width`` splits the text across several ``[...]`` literals, one per
+    line.  The literal cannot be broken by :mod:`~esolangs.tools.wrap` -- a
+    newline between the brackets is a character the program would print --
+    so honouring a width means emitting a different program rather than
+    reflowing this one.
     """
     if "]" in text:
         raise ValueError("3x cannot output ']' (it would end the literal)")
-    return "[" + text + "]"
+    chunks = _literal_chunks(text, width, len("[]"))
+    return "\n".join("[" + chunk + "]" for chunk in chunks)
 
 
 def sbleq(text: str) -> str:
@@ -1084,8 +1272,34 @@ def streetcode(text: str, width: int | None = None) -> str:
     ``width`` folds that street into a boustrophedon of two-lane hairpins:
     the car descends a shared two-wide corridor to the lowest pair of
     lanes, drives each pair out and back, and climbs to the pair above.
-    See :func:`_streetcode_serpentine`.
+    See :func:`_streetcode_serpentine`.  A ring survives that fold -- the
+    car meets it first, in the lowest lane, and the block hangs below the
+    southern wall where the fold has not built anything -- so the folded
+    program is also built both ways.  See
+    :func:`_streetcode_ring_serpentine`.
     """
+    instructions = _streetcode_instructions(text)
+    if width is not None and width >= _STREETCODE_MIN_WIDTH:
+        # Folding does not make the first character's walk any cheaper: it
+        # packs the same unary run into more rows.  So the ring is built
+        # here too, hung under the fold's southern wall where there is
+        # nothing to collide with, and the shorter shape wins as ever.
+        folded = _streetcode_serpentine(instructions, width)
+        ringed = _streetcode_ring_serpentine(text, width) if text else None
+        if ringed is None:
+            return folded
+        return min((ringed, folded), key=len)
+    # Both shapes are built and the shorter one wins, rather than predicting
+    # the winner from the code point: the two layouts are what they cost.
+    straight = _streetcode_straight(instructions)
+    ring = _streetcode_ring(text) if text else None
+    if ring is None:
+        return straight
+    return min((ring, straight), key=len)
+
+
+def _streetcode_instructions(text: str) -> str:
+    """Build the run that walks the cell through ``text``'s code points."""
     row = ["C"]
     prev = 0
     for c in text:
@@ -1093,14 +1307,11 @@ def streetcode(text: str, width: int | None = None) -> str:
         row.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
         prev = ord(c)
     row.append(";")
-    instructions = "".join(row)
-    if width is not None and width >= _STREETCODE_MIN_WIDTH:
-        return _streetcode_serpentine(instructions, width)
-    # A ring is a fixed block of rows beneath the street, so it only
-    # applies to the unfolded program; the serpentine folds a single line.
-    ring = _streetcode_ring(text) if text else None
-    if ring is not None:
-        return ring
+    return "".join(row)
+
+
+def _streetcode_straight(instructions: str) -> str:
+    """Wall ``instructions`` into the two-lane street the wiki draws."""
     wall = "+" + "-" * len(instructions) + "+"
     oncoming = "|" + " " * len(instructions) + "|"
     return "\n".join([wall, oncoming, f"|{instructions}|", wall])
@@ -1212,8 +1423,9 @@ def _streetcode_ring(text: str) -> str | None:
     Only the first character is worth this.  Later deltas are the gaps
     between adjacent characters, and a ring's block of rows costs more
     than walking a gap that small, so they keep the straight corridor of
-    increments.  Returns ``None`` when the ring does not pay, leaving the
-    caller to emit the straight street.
+    increments.  Returns ``None`` only when no ring plan exists at all;
+    whether a ring that *does* exist is worth emitting is the caller's
+    call, made by comparing the two finished programs.
 
     The rows below the street are right-trimmed: nothing east of the ring
     block is drivable, so those trailing spaces are padding rather than
@@ -1226,10 +1438,6 @@ def _streetcode_ring(text: str) -> str | None:
     k, counter, per_lap, remainder = plan
     block = _ring_rows(k, counter, per_lap)
     block_width = len(block[0])
-    # The straight street spends one cell per unit of the code point; the
-    # ring spends its block plus whatever the product missed.
-    if block_width + remainder >= first:
-        return None
 
     tail = []
     prev = first
@@ -1261,12 +1469,9 @@ def _streetcode_ring(text: str) -> str | None:
 
 
 # A fold needs two wall columns, the two-cell vertical corridor the car
-# descends and climbs, and a lane run that is itself two cells wide --
-# "two characters wide" governs the lanes as much as the corridor, and a
-# one-column run is a street the car cannot lawfully drive (it could only
-# be entered by crossing into the oncoming lane).  Below this there is
-# nowhere to turn and the straight street is emitted instead.
-_STREETCODE_MIN_WIDTH = 6
+# descends and climbs, and at least one lane column beside it; below this
+# there is nowhere to turn and the straight street is emitted instead.
+_STREETCODE_MIN_WIDTH = 5
 
 
 def _streetcode_serpentine(instructions: str, width: int) -> str:
@@ -1330,6 +1535,102 @@ def _streetcode_serpentine(instructions: str, width: int) -> str:
     for (r, c), instruction in zip(path, cells, strict=False):
         grid[r][c] = instruction
     return "\n".join("".join(row) for row in grid)
+
+
+def _streetcode_ring_serpentine(text: str, width: int) -> str | None:
+    """Fold ``text`` with a counting loop for its first character.
+
+    The straight ring (:func:`_streetcode_ring`) and the fold
+    (:func:`_streetcode_serpentine`) compose because the car meets the
+    ring first and the block hangs where the fold builds nothing.  The
+    serpentine fills its lane pairs bottom-up and starts the car in the
+    lowest eastbound lane, which is exactly where a ring prefix has to
+    go: the ``C``, the cells over the block, and the remainder walk take
+    the head of that lane, and the tail's characters carry on from there
+    through the ordinary boustrophedon.
+
+    The block itself is stamped below the grid's southern wall, so it
+    collides with nothing, and the gaps it needs are cut into that wall
+    rather than into a fold divider.  Those gaps are why the wall is
+    drawn before the block is stamped over it, as in the straight ring.
+
+    Returns ``None`` when the prefix will not fit one lane -- a wide
+    island or a long remainder can outrun ``width``, and ``中文``'s plan
+    wants a remainder of 18453 -- in which case the caller keeps the
+    plain fold.  The ring is not re-planned to suit the width: what a
+    ring costs is what it costs, and the two finished programs are
+    compared as they are.
+    """
+    plan = _plan_ring(ord(text[0]))
+    if plan is None:
+        return None
+    k, counter, per_lap, remainder = plan
+    block = _ring_rows(k, counter, per_lap)
+    block_width = len(block[0])
+
+    # Lanes run from column 3 to the right wall; the prefix occupies the
+    # head of the lowest one.  ``C`` sits above the block's descent, so
+    # the block is stamped from the ``C`` column onward.
+    left = 3
+    prefix = "C^" + " " * (block_width - 2) + "^" * remainder + "O"
+    # One lane cell must remain for the tail to start on, plus the right
+    # wall; without it the prefix has nowhere to hand over.
+    if left + len(prefix) + 1 > width - 1:
+        return None
+
+    tail = []
+    prev = ord(text[0])
+    for char in text[1:]:
+        delta = ord(char) - prev
+        tail.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
+        prev = ord(char)
+    cells = list("".join(tail) + ";")
+
+    lanes = width - 4
+    # The lowest pair holds one full westbound lane plus whatever the
+    # prefix leaves of its eastbound one; every pair above holds two.
+    first_pair = (lanes - len(prefix)) + lanes
+    rest = max(0, len(cells) - first_pair)
+    pairs = 1 + -(-rest // (2 * lanes))
+
+    grid: list[list[str]] = [["+"] + ["-"] * (width - 2) + ["+"]]
+    for n in range(pairs):
+        for _ in range(2):
+            grid.append(["|"] + [" "] * (width - 2) + ["|"])
+        if n < pairs - 1:
+            divider = ["+"] + ["-"] * (width - 2) + ["+"]
+            divider[1] = divider[2] = " "
+            grid.append(divider)
+    grid.append(["+"] + ["-"] * (width - 2) + ["+"])
+
+    # The car's path, as in the plain fold, except the lowest eastbound
+    # lane starts after the prefix that lane already carries.
+    path: list[tuple[int, int]] = []
+    for n in range(pairs - 1, -1, -1):
+        top = 1 + n * 3
+        bottom = top + 1
+        start = left + len(prefix) if n == pairs - 1 else left
+        path += [(bottom, c) for c in range(start, width - 1)]
+        path += [(top, c) for c in range(width - 2, left - 1, -1)]
+
+    if len(cells) > len(path):
+        return None
+
+    bottom_row = 1 + (pairs - 1) * 3 + 1
+    for i, cell in enumerate(prefix):
+        grid[bottom_row][left + i] = cell
+    for (r, c), instruction in zip(path, cells, strict=False):
+        grid[r][c] = instruction
+
+    # The southern wall is already drawn; stamp the block over it so its
+    # gaps land in the wall, then hang the remaining rows below.
+    rows = ["".join(row) for row in grid]
+    wall = list(rows[-1])
+    for c, ch in enumerate(block[0]):
+        wall[left + c] = ch
+    rows[-1] = "".join(wall)
+    rows += [" " * left + row for row in block[1:]]
+    return "\n".join(row.rstrip() for row in rows)
 
 
 def suptiftam(text: str) -> str:

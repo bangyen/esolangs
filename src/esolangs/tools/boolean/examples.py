@@ -6,8 +6,8 @@ generators.  This module is the single source of truth for those files: each
 :class:`BooleanExample` records the generator, the truth table, and the input
 combination that produced its program, plus how the interpreter is invoked.
 
-The example writer (``scripts/write_boolean_examples.py``) and the test that
-keeps the files in sync (``tests/test_examples.py``) both derive from
+The example writer (``scripts/write_examples.py``) and the test that
+keeps the files in sync (``tests/scripts/test_examples.py``) both derive from
 :data:`BOOLEAN_EXAMPLES`, so a committed program is always exactly what its
 generator produces today.
 
@@ -39,14 +39,7 @@ only, so the ant was invisible and the rings identical; ``render`` now marks
 the ant's own cell, with ``o`` on black and ``@`` on white.
 
 Every boolean generator whose answer a program can report therefore has a
-committed example.  ABCDirection is the one absent generator, and not for
-that reason.  Its program used to be a 1107-line, 377 KB grid needing
-several million steps; successive shrinks of the generator's layout have it
-at 254 lines and 65.7 KB, printing its answer within about 1,400 steps.
-What keeps it out now is that the language has no halt: the answer is
-printed and the beam keeps circling, so a run ends only on ``HaltError`` at
-the step limit, while ``test_boolean_example`` suppresses only
-``SystemExit``.  See ``docs/roadmap.md``.
+committed example.
 """
 
 from collections.abc import Callable
@@ -179,7 +172,7 @@ def _fill_bio(template: str, bits: list[int]) -> str:
     return instantiate(
         template,
         bits,
-        lambda i, b: "0ox" * (2 ** (n - 1 - i)) if b else "",
+        lambda i, b: "0ox;" * (2 ** (n - 1 - i)) if b else "",
         lambda _i, _b: "",
     )
 
@@ -343,6 +336,11 @@ def _register() -> None:
             split=True,
             note="halts by exiting with status 0",
         ),
+        "circuit_diagram": _reader(
+            b.circuit_diagram,
+            "grid_based.circuit_diagram",
+            split=True,
+        ),
         "clockwise": _reader(
             b.clockwise,
             "grid_based.clockwise",
@@ -431,7 +429,7 @@ def _register() -> None:
                 "the answer is cell n, past the n input cells"
             ),
         ),
-        "bfpda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
+        "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
         "bio": _embedded(b.bio, "register_based.bio", _fill_bio),
         "bitdeque": _embedded(b.bitdeque, "queue_based.bitdeque", _fill_bitdeque),
         "cod": _embedded(

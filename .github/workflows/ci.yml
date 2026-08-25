@@ -27,8 +27,17 @@ jobs:
     - name: Run pre-commit
       run: uv run pre-commit run --all-files
 
+    # pre-commit's mypy hook is scoped to src/ because its isolated env
+    # lacks the scripts' imports; this run covers src/ and scripts/ both,
+    # using the project env where those imports resolve.
+    - name: Type-check src/ and scripts/
+      run: uv run mypy
+
     - name: Check for duplicated code blocks
-      run: uv run --with pylint python scripts/check_duplicates.py
+      run: >
+        uv run --with pylint python -m pylint --disable=all
+        --enable=duplicate-code --min-similarity-lines=10
+        --ignore-imports=yes src/esolangs scripts tests
 
     - name: Verify the single-interpreter installer
       run: uv run python scripts/verify_install_one.py
@@ -38,7 +47,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v7
@@ -258,7 +267,7 @@ jobs:
         printf 'o' | qemu-riscv64 /tmp/nocomment-riscv >/dev/null
         printf '.' | qemu-riscv64 /tmp/bfpda-riscv >/dev/null
         printf 'A' | qemu-riscv64 /tmp/ram0-riscv >/dev/null
-        printf '0ox' | qemu-riscv64 /tmp/bio-riscv >/dev/null
+        printf '0ox;' | qemu-riscv64 /tmp/bio-riscv >/dev/null
         printf '+' | qemu-riscv64 /tmp/minsky_swap-riscv >/dev/null
         echo "All extra/ RISC-V interpreters ran natively"
 
@@ -278,7 +287,7 @@ jobs:
           >/dev/null
         printf 'A' | python3 scripts/riscv_elf_runner.py /tmp/ram0-riscv \
           >/dev/null
-        printf '0ox' | python3 scripts/riscv_elf_runner.py /tmp/bio-riscv \
+        printf '0ox;' | python3 scripts/riscv_elf_runner.py /tmp/bio-riscv \
           >/dev/null
         printf '+' | python3 scripts/riscv_elf_runner.py /tmp/minsky_swap-riscv \
           >/dev/null
@@ -290,11 +299,33 @@ jobs:
         # unicorn, so the compilers are verified end to end, not just that
         # they emit assembly
         PYTHONPATH=src python3 scripts/verify_riscv_unicorn.py
-
-    - name: Run the RISC-V compilers and reference interpreters under unicorn
-      run: |
-        PYTHONPATH=src python3 scripts/verify_riscv_unicorn.py
         echo "All RISC-V compilers and references round-tripped under unicorn"
+
+    # TestDivergenceDetection tampers with a native reference and asserts the
+    # fuzzer reports the divergence -- the tests that establish the
+    # differential fuzzer (and the weekly fuzz job) can catch a bug at all.
+    # Their skipifs need the RISC-V toolchain or a built Rust reference, and
+    # the `test` matrix job has neither, so all ten skipped on every run.
+    # This job already has the RISC-V half; cargo build supplies the rest.
+    - name: Build the Rust references
+      run: cargo build --manifest-path extra/rust/Cargo.toml
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Install dependencies
+      run: uv sync --extra dev
+
+    - name: Run the fuzzer's divergence-detection tests
+      run: |
+        # a skip here means a toolchain regressed and the tests silently
+        # stopped verifying anything, so fail on one rather than report green
+        uv run pytest tests/fuzz/test_differential_fuzz.py -m slow \
+          -o addopts= -q -rs --no-header | tee /tmp/divergence.log
+        if grep -qE '[0-9]+ skipped' /tmp/divergence.log; then
+          echo "::error::divergence-detection tests skipped; toolchain missing"
+          exit 1
+        fi
 
   lean:
     runs-on: ubuntu-latest

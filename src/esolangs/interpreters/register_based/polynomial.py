@@ -1,6 +1,6 @@
 """Polynomial interpreter implementation.
 
-Polynomial is an esoteric programming language by User:Maedhros777 where each program
+Polynomial is an esoteric programming language in which each program
 is a polynomial function. Language statements are executed based on the zeroes of the
 function, with both real and complex zeroes allowed. The language operates on a single
 integer register with operations determined by the mathematical properties of the roots.

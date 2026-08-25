@@ -1,17 +1,15 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-# abcdirection, streetcode, and ztoalc_l_boolean each own a file because
-# their construction (a grid layout or a program search) dwarfs the rest of
-# the category; they are re-exported here so this module stays the import
-# site the package and tests already use.
+# streetcode and ztoalc_l_boolean each own a file because their construction
+# (a grid layout or a program search) dwarfs the rest of the category; they
+# are re-exported here so this module stays the import site the package and
+# tests already use.
 from esolangs.tools import laserfuck_layout
-from esolangs.tools.boolean.abcdirection import abcdirection
 from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.boolean.streetcode import streetcode
 from esolangs.tools.boolean.ztoalc_l import ztoalc_l_boolean
 
 __all__ = [
-    "abcdirection",
     "between",
     "bit_tilde",
     "clockwise",
@@ -201,13 +199,14 @@ def nevermind(truth_table: str) -> str:
         lines.append(f"make,{chr(ord('a') + i)},$answer")
 
     def build(k: int, row: int) -> None:
+        indent = "  " * k
         if k == n:
-            lines.append(f"print,{truth_table[row]}")
+            lines.append(f"{indent}print,{truth_table[row]}")
             return
         for bit in (0, 1):
-            lines.append(f"if,${chr(ord('a') + k)},==,{bit}")
+            lines.append(f"{indent}if,${chr(ord('a') + k)},==,{bit}")
             build(k + 1, row * 2 + bit)
-            lines.append("endif")
+            lines.append(f"{indent}endif")
 
     build(0, 0)
     return "\n".join(lines)
@@ -391,6 +390,13 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     tree needs cannot be met and the grid comes out as wide as the tree.
     """
     n = _validate_truth_table(truth_table)
+    # The staircase is the tighter layout wherever it fits: it packs the
+    # tree into ``6 * n`` columns instead of a block per node.  It cannot
+    # fold, though -- the reader run sets its width -- so a caller asking
+    # for a narrower grid still gets the folded one.
+    staircase = _laserfuck_staircase(truth_table, n)
+    if width is None or max(len(ln) for ln in staircase.split("\n")) <= width:
+        return staircase
     # Every leaf needs a drop corridor of its own, and they take the
     # rightmost columns inside the width; the folded runs get what is left.
     # A fold only makes progress if that leaves room for the margin, at
@@ -573,6 +579,136 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
+def _laserfuck_staircase(truth_table: str, n: int) -> str:
+    r"""Lay the decision tree out as a staircase, one column per *level*.
+
+    The tree used to take a column block per *node*, six columns each, so a
+    grid was ``6 * (2**(n + 1) - 1)`` columns wide and all but a handful of
+    cells in each row were blank.  That width was not the beam's doing: rows
+    were handed out breadth-first, so sibling subtrees interleaved their
+    rows and a column could serve only one node.
+
+    Handing rows out *depth-first* gives every subtree a contiguous band, so
+    two nodes on the same level never share a row and can share a column.
+    Level ``i`` then sits at one column for the whole tree and the grid is
+    ``6 * n`` columns wide -- linear in the input count rather than
+    exponential.
+
+    The descent corridors stay clear under that packing.  A node's zero-child
+    drops down column ``c + 3`` and its one-child down ``c + 1``, and both
+    land inside the node's own subtree band; every other node sharing those
+    columns lives in a disjoint band, so no corridor crosses another node's
+    row.
+
+    The beam also turns back to the left margin below the readers rather
+    than starting the tree where the reader run happens to end, which is
+    what used to leave a blank run of ``49 * n`` columns in front of every
+    tree row.
+    """
+    rows_of: dict[tuple[int, int], int] = {}
+    leaf_row: dict[int, int] = {}
+    counter = 0
+
+    def assign(i: int, j: int) -> None:
+        """Walk the tree depth-first, so a subtree owns a contiguous band."""
+        nonlocal counter
+        if i == n:
+            leaf_row[j] = counter
+        else:
+            rows_of[(i, j)] = counter
+        counter += 1
+        if i < n:
+            assign(i + 1, 2 * j)
+            assign(i + 1, 2 * j + 1)
+
+    assign(0, 0)
+
+    margin = laserfuck_layout.MARGIN
+    node_col = {i: margin + 1 + n + 6 * i for i in range(n)}
+    leaf_base = margin + 1 + n + 6 * n + 4
+    # The funnel owns rows 0-2, the westward return leg runs on row 3, and
+    # the tree starts on row 4.
+    turn = 3
+    base = turn + 1
+    height = base + counter + 1
+    width = max(3 + 49 * n + 4, leaf_base + 4 * n + 8)
+    grid = [[" "] * width for _ in range(height)]
+
+    # The funnel: every start heading ends up on row 0 moving right.  Cell
+    # (0, 0) stays blank so the tape dumps in decimal rather than byte mode.
+    grid[0][1] = "}"
+    grid[0][2] = "}"
+    grid[1][0] = "|"
+    grid[1][1] = "o"
+    grid[1][2] = "^"
+    grid[2][1] = "_"
+
+    col = 3
+    for i in range(n):
+        grid[0][col] = ","
+        col += 1
+        for _ in range(48):
+            grid[0][col] = "-"
+            col += 1
+        if i < n - 1:
+            grid[0][col] = ">"
+            col += 1
+
+    grid[0][col] = "v"
+    grid[turn][col] = "{"
+    grid[turn][margin] = "v"
+    grid[base][margin] = "}"
+
+    def row(i: int, j: int) -> int:
+        return base + rows_of[(i, j)]
+
+    def leaf(j: int) -> int:
+        return base + leaf_row[j]
+
+    for i in range(n):
+        for j in range(2**i):
+            r = row(i, j)
+            c = node_col[i]
+            # The root arrives with the pointer at cell n-1; a child at
+            # level i arrives with it at cell i-1, its parent's bit.
+            arrival = n - 1 if i == 0 else i - 1
+            moves = ">" * (i - arrival) if i >= arrival else "<" * (arrival - i)
+            cur = c - len(moves)
+            for char in moves:
+                grid[r][cur] = char
+                cur += 1
+            grid[r][c] = "#"
+            grid[r][c + 1] = "v"
+            grid[r][c + 2] = ")"
+            grid[r][c + 3] = "\\"
+            child = row if i + 1 < n else (lambda _i, j: leaf(j))
+            grid[child(i + 1, 2 * j)][c + 3] = "\\"  # zero: down column c+3
+            grid[child(i + 1, 2 * j + 1)][c + 1] = "\\"  # one: down column c+1
+
+    for j in range(2**n):
+        r = leaf(j)
+        # A leaf knows the whole combination, so it retires each input cell
+        # on the way past: one more '-' than the bit drives cell i to -1,
+        # which the dump skips.  Then it walks up to the answer cell, which
+        # must be *touched* to print at all -- hence '+-' for a zero.
+        sweep = ""
+        for i in range(n - 1, -1, -1):
+            bit = (j >> (n - 1 - i)) & 1
+            sweep += "-" * (bit + 1)
+            if i:
+                sweep += "<"
+        sweep += ">" * n
+        run = sweep + ("+" if truth_table[j] == "1" else "+-")
+        for k, char in enumerate(run):
+            grid[r][leaf_base + k] = char
+        grid[r][leaf_base + len(run)] = "x"
+
+    lines = ["".join(line).rstrip() for line in grid]
+    while lines and not lines[-1]:
+        lines.pop()
+    return "\n".join(lines)
+
+
 def _odd_reduce(pairs: int, level: int, n: int) -> str:
     """Odd-reduction block: retire one input, reduce, keep the rest.
 
@@ -725,7 +861,15 @@ def clockwise(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
-    root = 2 ** (n + 2) + 8
+    # The spine starts far enough right that the tree's leftward branches
+    # clear column 0, which holds the closing corner.  A node at ``bit``
+    # displaces its one-branch ``2**(n - bit)`` to the left and puts two
+    # ``R`` one column further, so the whole tree spans
+    # ``sum(2**(n - bit)) + 1 == 2**(n + 1) - 1`` columns left of the spine
+    # and ``2**(n + 1)`` leaves exactly one free column at the left edge.
+    # Anything wider is dead space: the turns are relative, so the tree's
+    # absolute column never matters.
+    root = 2 ** (n + 1)
 
     def place(node: tuple[int, int], ch: str) -> None:
         cells[node] = ch
@@ -1002,18 +1146,19 @@ def forbin_boolean(truth_table: str) -> str:
         lines.append(f"  {','.join(reads)} = (in 0);")
         bits.append(reads[7])
 
-    def emit(level: int, row: int) -> None:
+    def emit(level: int, row: int, depth: int) -> None:
+        indent = "  " * depth
         if level == n:
             byte = 49 if truth_table[row] == "1" else 48
-            lines.append(f"  out {','.join(format(byte, '08b'))};")
-            lines.append("  return 0;")
+            lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
+            lines.append(f"{indent}return 0;")
             return
-        lines.append(f"  for _:!{bits[level]}..{bits[level]} {{")
-        emit(level + 1, row + 2 ** (n - 1 - level))
-        lines.append("  }")
-        emit(level + 1, row)
+        lines.append(f"{indent}for _:!{bits[level]}..{bits[level]} {{")
+        emit(level + 1, row + 2 ** (n - 1 - level), depth + 1)
+        lines.append(f"{indent}}}")
+        emit(level + 1, row, depth)
 
-    emit(0, 0)
+    emit(0, 0, 1)
     lines.append("}")
     return "\n".join(lines)
 

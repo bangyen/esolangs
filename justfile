@@ -11,13 +11,23 @@ CARGO_BIN := "$HOME/.cargo/bin"
 # Help
 help:
     @echo "Available targets:"
-    @echo "  lint-python  - Lint Python files with Black, Ruff, and MyPy"
+    @echo "  lint-python  - Lint Python files with Ruff and MyPy"
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
-    @echo "  test         - Run the full local check (lint, pytest, bandit, cargo)"
+    @echo "  test         - Run the full local check (lint, pytest, bandit, cargo, + verify scripts) (~75s)"
+    @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) + cargo (~6s pytest, ~12s total)"
+    @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
+    @echo "  test-rust    - cargo fmt + cargo test (~1s)"
+    @echo "  test-differential - interpreter vs native differential corpora (~32s)"
+    @echo "  test-unicorn - RISC-V assembly under unicorn (~10s)"
+    @echo "  test-generators - extra cross-check generators (~2.6s)"
+    @echo "  test-line    - extra/line suites via uv (~3s)"
+    @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
+    @echo ""
+    @echo "  Use 'just test-quick' for inner loop, 'just test --only pytest,differential' for subsets."
 
 # install tooling
 install-dev:
@@ -31,15 +41,17 @@ install-dev:
         python -m pip install -U pip
         pip install -e ".[dev]"
     fi
-    # Enable the pre-push gate (scripts/check_all.sh) so every push runs the
+    # Enable the pre-push gate (scripts/verify.py) so every push runs the
     # full local check: lint, pytest, bandit, cargo, and the verify scripts.
     git config core.hooksPath .githooks
 
 # lint python
+# The formatter is ruff-format, run via pre-commit (and so via `just test`);
+# `ruff check` here catches lint that formatting does not.
 lint-python:
-    {{PYTHON}} -m black --check .
     {{PYTHON}} -m ruff check .
-    {{PYTHON}} -m mypy src
+    {{PYTHON}} -m ruff format --check .
+    {{PYTHON}} -m mypy
 
 # Lint helpers.  Each target fails loudly when its tool is present and the
 # code is unclean, and skips cleanly (exit 0) when the tool is missing, so a
@@ -78,8 +90,45 @@ lint: lint-python lint-rust lint-lean
     @echo "All lint checks completed!"
 
 # test (full local check: lint, pytest, bandit, cargo, verify scripts)
-test:
-    sh scripts/check_all.sh
+# pass --quiet to suppress successful step output (only [ok]/FAIL + timing)
+test *args:
+    {{PYTHON}} scripts/verify.py {{args}}
+
+# fast dev loop: pre-commit + pytest (skip slow) + cargo (skips 32s differential + 10s unicorn) — quiet by default
+test-quick *args:
+    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest,"cargo fmt","cargo build","cargo test" {{args}}
+
+# granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
+# add --quiet to any of these for terse output (e.g. just test-py --quiet)
+test-py *args:
+    {{PYTHON}} scripts/verify.py --only pytest {{args}}
+
+test-rust *args:
+    {{PYTHON}} scripts/verify.py --only "cargo fmt","cargo build","cargo test" {{args}}
+
+test-line *args:
+    {{PYTHON}} scripts/verify.py --only "extra/line suites (uv)" {{args}}
+
+test-anchor *args:
+    {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible" {{args}}
+
+test-unicorn *args:
+    {{PYTHON}} scripts/verify.py --only "RISC-V assembly under unicorn (compilers + cross-checks)" {{args}}
+
+test-generators *args:
+    {{PYTHON}} scripts/verify.py --only "extra cross-check generators" {{args}}
+
+test-differential *args:
+    {{PYTHON}} scripts/verify.py --only "interpreter vs native differential corpora" {{args}}
+
+test-lint *args:
+    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check (pylint)",bandit,"cargo fmt" {{args}}
+
+test-bandit *args:
+    {{PYTHON}} scripts/verify.py --only bandit {{args}}
+
+test-docstring *args:
+    {{PYTHON}} scripts/verify.py --only "docstring check" {{args}}
 
 # clean generated
 clean:

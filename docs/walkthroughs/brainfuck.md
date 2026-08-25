@@ -10,11 +10,12 @@ cell is nonzero — `[` jumps past the matching `]` when the cell is zero,
 ## The program
 
 ```
-+++[>++<-]>.
+++++++++[>++++++++<-]>+.
 ```
 
-This sets cell 0 to 3, runs a loop that adds 2 to cell 1 each pass (so
-cell 1 ends at 6), and prints cell 1.
+This sets cell 0 to 8, runs a loop that adds 8 to cell 1 on each of the
+eight passes (so cell 1 ends at `8 × 8 = 64`), then adds one more and
+prints cell 1 — the byte 65, which is `'A'`.
 
 ## Step by step
 
@@ -22,26 +23,27 @@ The pointer starts at cell 0 and every cell holds 0.
 
 | Command | State after | Why |
 | --- | --- | --- |
-| `+` | cell 0 = 1 | `+` increments the current cell. |
-| `+` | cell 0 = 2 | ditto. |
-| `+` | cell 0 = 3 | ditto. |
-| `[` | cell 0 = 3, enter the loop | cell 0 is nonzero, so the body runs. |
+| `++++++++` | cell 0 = 8 | eight `+`s increment the current cell. |
+| `[` | enter the loop | cell 0 is nonzero, so the body runs. |
 | `>` | pointer at cell 1 | `>` moves the data pointer right. |
-| `++` | cell 1 = 2 | two `+`s increment the new current cell. |
+| `++++++++` | cell 1 = 8 | eight `+`s increment the new current cell. |
 | `<` | pointer at cell 0 | `<` moves the data pointer back. |
-| `-` | cell 0 = 2 | `-` decrements the current cell. |
+| `-` | cell 0 = 7 | `-` decrements the loop counter. |
 | `]` | back to `[` | cell 0 is still nonzero, so the loop repeats. |
-| `>` `++` `<` `-` | cell 1 = 4, cell 0 = 1 | second pass, same as above. |
-| `]` | back to `[` | cell 0 = 1, still nonzero. |
-| `>` `++` `<` `-` | cell 1 = 6, cell 0 = 0 | third pass. |
+| *(passes 2-7)* | cell 1 = 16, 24, 32, 40, 48, 56 | each pass adds 8 to cell 1 and takes 1 off cell 0. |
+| `>` `++++++++` `<` `-` | cell 1 = 64, cell 0 = 0 | the eighth and last pass. |
 | `]` | exit the loop | cell 0 is now 0, so `]` falls through. |
 | `>` | pointer at cell 1 | `>` moves right to the accumulated result. |
-| `.` | prints byte 6 | `.` prints the current cell; byte 6 is the
-  "acknowledge" control character. |
+| `+` | cell 1 = 65 | one more increment: `8 × 8 + 1 = 65`. |
+| `.` | prints `A` | `.` prints the current cell as a byte; 65 is `'A'`. |
+
+Multiplication is the idiom to recognise here: brainfuck has no multiply
+command, so `8 × 8` is built as a loop that runs a counter down to zero
+while adding a constant to another cell each pass.
 
 ## Why it terminates
 
-The loop counter is cell 0, which starts at 3 and is decremented by
-exactly one each pass, so the loop runs three times and then cell 0 hits 0,
-letting `]` fall through.  The program then reaches the end of its source
-and the interpreter halts.
+The loop counter is cell 0, which starts at 8 and is decremented by exactly
+one each pass, so the loop runs eight times and then cell 0 hits 0, letting
+`]` fall through.  The program then reaches the end of its source and the
+interpreter halts.

@@ -18,7 +18,6 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | 3x | yes | yes | yes | yes |  |
 | 6-5 | yes | yes |  | yes |  |
 | A Painter Ant |  | yes |  | yes |  |
-| ABCDirection |  | yes |  | yes |  |
 | AddSubJump | yes | yes |  | yes | yes |
 | ArrowQueue |  | yes |  | yes |  |
 | BF-PDA |  | yes | yes | yes | yes |
@@ -31,6 +30,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | BrainIf | yes | yes |  | yes |  |
 | COD |  | yes |  | yes |  |
 | Circlefuck | yes | yes |  | yes |  |
+| Circuit Diagram |  | yes |  | yes |  |
 | Clockwise | yes | yes |  | yes |  |
 | Collatz Multiverse | yes | yes |  | yes | yes |
 | Container | yes | yes |  | yes |  |
@@ -39,7 +39,7 @@ column marks the boolean-function generators; the no-input languages (Back, BIO,
 | Dimensional | yes | yes |  | yes |  |
 | Eval | yes | yes |  | yes |  |
 | Factor | yes | yes |  | yes |  |
-| Flowchart |  | yes |  |  |  |
+| Flowchart |  | yes |  | yes |  |
 | Forbin | yes | yes |  | yes |  |
 | Forþ | yes | yes | yes | yes | yes |
 | Grapheme |  | yes |  | yes |  |

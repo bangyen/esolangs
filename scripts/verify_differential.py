@@ -33,12 +33,11 @@ Languages with both an in-package interpreter and a native cross-check:
   dump.
 * **BIO** — ``register_based/bio.py`` vs ``extra/assembly/bio-riscv.s``.
   Both implement the full wiki language (3 registers x/y/z, while loops
-  guarded by ``0i[xyz]``/``}``, with comments).  The assembly is run under
-  unicorn via ``riscv_elf_runner`` and must agree with the Python
-  interpreter on the full corpus; both error lazily, matching the Python
-  control flow exactly (a loop guard only raises when its skip path scans
-  off the end of the program, so a ``}`` that halts first, exit 3, can
-  pre-empt a later unmatched guard, exit 2).
+  written ``0i[xyz]{ ... };``, every command ended by ``;``, and ``//``
+  comments).  The assembly is run under unicorn via ``riscv_elf_runner``
+  and must agree with the Python interpreter on the full corpus; both
+  check the whole program when it loads, so every rejection is "malformed"
+  (exit 2) and is raised before any output.
 * **Minsky Swap** — ``register_based/minsky_swap.py`` vs
   ``extra/assembly/minsky_swap-riscv.s``.  Both implement the compact
   notation (a `+`/`~`/`*` command line plus a jump-target line, one number
@@ -90,6 +89,7 @@ Usage:
 """
 
 import argparse
+import contextlib
 import functools
 import io
 import random
@@ -99,8 +99,10 @@ import signal
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any, TypeVar
 
 ROOT = Path(__file__).parents[1]
 RUST_BIN_DIR = ROOT / "extra" / "rust" / "target" / "debug"
@@ -118,13 +120,24 @@ THREE_X_BIN = RUST_BIN_DIR / "three_x"
 _WORKERS = 8
 
 
-def _run_parallel(fn, tasks):
+_T = TypeVar("_T")
+_R = TypeVar("_R")
+
+
+def _run_parallel(fn: Callable[[_T], _R], tasks: Sequence[_T]) -> list[_R]:
     """Run ``fn`` over ``tasks`` concurrently, returning results in order."""
     with ThreadPoolExecutor(max_workers=_WORKERS) as executor:
         return list(executor.map(fn, tasks))
 
 
-def _fuzz_boolean(name, builder, native, python, rng, count):
+def _fuzz_boolean(
+    name: str,
+    builder: Callable[[str], str],
+    native: Callable[[str, bytes], _R | None],
+    python: Callable[[str, bytes], _R | None],
+    rng: random.Random,
+    count: int,
+) -> tuple[int, int]:
     """Fuzz ``count`` random truth tables through both implementations.
 
     ``native(program, stdin)`` runs the reference (None on a timeout) and
@@ -159,7 +172,14 @@ def _fuzz_boolean(name, builder, native, python, rng, count):
     return failures, checked
 
 
-def _fuzz_text(name, generator, native, python, rng, count):
+def _fuzz_text(
+    name: str,
+    generator: Callable[[str], str],
+    native: Callable[[str, bytes], _R | None],
+    python: Callable[[str, bytes], _R | None],
+    rng: random.Random,
+    count: int,
+) -> tuple[int, int]:
     """Fuzz ``count`` random byte texts through both implementations.
 
     Either side may report ``None`` for "did not terminate" (the native
@@ -193,6 +213,150 @@ def _fuzz_text(name, generator, native, python, rng, count):
             failures += 1
             print(f"{name} {text!r}: reference {result!r} vs Python {py!r}")
     return failures, checked
+
+
+def _verify_asm(
+    name: str,
+    riscv_name: str,
+    corpus: Sequence[Any],
+    run_python: Callable[..., tuple[bytes, int]],
+) -> bool:
+    """Compare a Python interpreter against its RISC-V cross-check on ``corpus``.
+
+    ``name`` is the display label, ``riscv_name`` the reference key passed to
+    :func:`_asm_refs`, and ``run_python(program)`` the in-package interpreter
+    returning ``(output, exit_code)``.  The reference is run under unicorn,
+    which needs unicorn and a RISC-V cross-compiler; a missing toolchain is
+    skipped (reported as success), not failed.  A reference that faults is
+    folded into ``(b"", 1)`` so a divergence still prints rather than passing
+    silently.
+    """
+    if not _asm_refs_ready(riscv_name):
+        return True
+
+    failures = 0
+    for program in corpus:
+        ref = _asm_refs(riscv_name, program)
+        py_out, py_code = run_python(program)
+        if ref is None:
+            asm_out, asm_code = b"", 1
+        else:
+            asm_out, asm_code = ref
+        if (asm_out, asm_code) != (py_out, py_code):
+            failures += 1
+            print(
+                f"{name} {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}"
+            )
+
+    if not failures:
+        print(f"{name} differential: {len(corpus)} programs match")
+    return failures == 0
+
+
+def _fuzz_asm(
+    name: str,
+    riscv_name: str,
+    gen_program: Callable[[random.Random], str],
+    run_limited: Callable[..., Any],
+    rng: random.Random,
+    count: int,
+) -> bool:
+    """Differentially fuzz one assembly-backed language with random programs.
+
+    ``gen_program(rng)`` draws a program and ``run_limited(program, timeout)``
+    runs the Python interpreter under a wall-clock budget, returning None for
+    "did not terminate".  The reference reports the same way when it exhausts
+    its instruction-count cap or writes past a fixed buffer, so both sides
+    looping is agreement, not a failure; one side halting while the other
+    loops is a divergence.  A Python-only timeout is re-checked with a longer
+    budget first, since the 3s budget is a heuristic and the assembly is far
+    faster.
+    """
+    if not _asm_refs_ready(riscv_name):
+        return True
+
+    failures = checked = loops = 0
+    for _ in range(count):
+        program = gen_program(rng)
+        py = run_limited(program, timeout=3)
+        asm = _asm_refs(riscv_name, program)
+        if py is None and asm is None:
+            loops += 1
+            continue
+        if py is None and asm is not None:
+            py = run_limited(program, timeout=30)
+        if py is None or asm is None:
+            failures += 1
+            print(
+                f"{name} fuzz {program!r}: termination mismatch "
+                f"(python {'loops' if py is None else 'halts'}, "
+                f"asm {'loops' if asm is None else 'halts'})"
+            )
+            continue
+        checked += 1
+        if py != asm:
+            failures += 1
+            print(f"{name} fuzz {program!r}: asm={asm!r} py={py!r}")
+
+    print(
+        f"{name} fuzz: {checked} programs match, {loops} consistent loops"
+        if not failures
+        else f"{name} fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    )
+    return failures == 0
+
+
+def _verify_rust(
+    name: str,
+    corpus: Sequence[Any],
+    run_native: Callable[..., Any],
+    run_python: Callable[..., Any],
+    prepare: Callable[[Any], Any] | None = None,
+    label: Callable[[Any], str] | None = None,
+) -> bool:
+    """Compare a Python interpreter against its Rust cross-check on ``corpus``.
+
+    Each corpus entry is a ``(program, stdin)`` pair.  ``prepare(program)``
+    maps the entry's first element to what the interpreters actually run
+    (Painfuck encodes into its source alphabet), and ``label(program)`` picks
+    what a divergence prints (Basicfuck names a program by its last line);
+    both default to the entry itself.  ``run_native`` returning None means the
+    reference did not terminate, which is a failure -- unlike the assembly
+    fuzzers, these corpora are all expected to halt.  The caller is
+    responsible for skipping when the Rust binary is not built.
+    """
+    prepare = prepare or (lambda program: program)
+    label = label or (lambda program: program)
+
+    failures = 0
+    for entry, stdin in corpus:
+        program = prepare(entry)
+        native = run_native(program, stdin)
+        if native is None:
+            print(f"{name} {label(entry)!r}: Rust reference did not terminate")
+            failures += 1
+            continue
+        py = run_python(program, stdin)
+        if native != py:
+            failures += 1
+            print(f"{name} {label(entry)!r}: Rust {native!r} vs Python {py!r}")
+
+    if not failures:
+        print(f"{name} differential: {len(corpus)} programs match")
+    return failures == 0
+
+
+def _random_program(alphabet: str, max_len: int) -> Callable[[random.Random], str]:
+    """Return a generator drawing a random ``alphabet`` program up to ``max_len``.
+
+    The draws are ordered length-then-characters to match the per-language
+    fuzzers this replaces, so a given seed produces the same corpus as before.
+    """
+
+    def gen(rng: random.Random) -> str:
+        return "".join(rng.choice(alphabet) for _ in range(rng.randint(0, max_len)))
+
+    return gen
 
 
 # Error messages the Basicfuck reference prints to stdout before exiting;
@@ -348,19 +512,24 @@ RAM0_CORPUS = [
 
 # -- BIO corpus: the full 3-register wiki language -------------------------
 
-# Every command over three registers x/y/z.  `0o[xyz]` increments, `1o[xyz]`
-# decrements, `1i[xyz]` prints the register's low byte, `0i[xyz]` is a
-# while-loop guard, and `}` closes the innermost loop; matching is
-# case-insensitive and any other text (including `;` separators) is a
-# comment.  Error categories: a loop guard that is skipped (register zero)
-# and never finds its matching `}` is malformed (exit 2, raised lazily on
-# the skip scan, not eagerly); a `}` with no open loop is an invalid
-# runtime operation (exit 3).  Programs must terminate (a loop whose body
-# never changes its guard register loops forever).
+# Every command over three registers x/y/z.  A command is a triple ended by
+# its `;`: `0o[xyz];` increments, `1o[xyz];` decrements, `1i[xyz];` prints
+# the register's low byte, `0i[xyz]{` is a while-loop guard carrying the
+# brace that opens its body, and `};` closes the innermost loop.  Matching
+# is case-insensitive, `//` runs to end of line as a comment, and anything
+# else is a load error.
+#
+# Errors are one category: the whole program is checked when it loads --
+# the commands, their terminators, and the brace balance -- so every
+# rejection is "malformed" (exit 2) and is raised eagerly, before any
+# output.  There is no invalid *runtime* operation (exit 3) left to reach,
+# since a `};` can only run once parsing has proved it has a loop to close.
+# Programs must terminate (a loop whose body never changes its guard
+# register loops forever).
 BIO_CORPUS = [
     "",  # empty program: no output
     "   \n\t  ",  # whitespace only: no output
-    "0ox;invalid;1ix;",  # non-command text is a comment
+    "0ox; //increment\n1ix; //print\n",  # `//` comments are stripped
     "0ox;1ix;",  # increment then output x
     "0oy;0oy;0oy;1iy;",  # increment y three times
     "0oz;1iz;",  # increment then output z
@@ -376,12 +545,17 @@ BIO_CORPUS = [
     "0ox;" * 66 + "1ix;",  # 66 = 'B'
     "0ox;" * 300 + "1ix;",  # wraps mod 256
     "0ox;0oy;0oz;1ix;1iy;1iz;",  # registers are independent
-    # error categories
-    "}",  # bare close: invalid runtime op, exit 3
-    "0ox;}",  # close with no open loop: exit 3
-    "0iy{0ox;",  # unmatched guard, skipped: malformed, exit 2
-    "0ix{0iy{};",  # unmatched outer guard, skipped: malformed, exit 2
-    ";x1Ox{{}0Iy",  # a halting `}` pre-empts a later unmatched guard: exit 3
+    # error categories -- all malformed (exit 2), all raised at load
+    "};",  # bare close with no loop to close
+    "0ox;};",  # close with no open loop, after valid output
+    "0iy{0ox;",  # guard with no matching close
+    "0ix{0iy{};",  # unmatched outer guard
+    ";x1Ox{{}0Iy",  # not commands at all
+    "0ox;invalid;1ix;",  # stray text is rejected, not treated as a comment
+    "0ox1ix;",  # a triple missing its `;` is not a command
+    "0ox;0ix1ox;};",  # a guard missing its `{` is not a command
+    "0ox;{1ix;",  # a `{` not carried by a guard
+    "0ox;/ 1ix;",  # a lone `/` is not the start of a comment
 ]
 
 
@@ -458,6 +632,58 @@ NOCOMMENT_CORPUS = [
 ]
 
 
+class _TimeoutError(Exception):
+    """Raised by the SIGALRM handler when a limited run overruns its budget."""
+
+
+@contextlib.contextmanager
+def _alarm_budget(timeout: float) -> Iterator[None]:
+    """Raise :class:`_TimeoutError` in this thread after ``timeout`` seconds.
+
+    The wall-clock backstop for the unbounded-growth class of runaway
+    program -- one that keeps pushing a stack or incrementing a register
+    never revisits a state, so cycle detection alone never fires.  Callers
+    gate on ``hasattr(signal, "SIGALRM")`` first; this is POSIX-only.
+    """
+
+    def _alarm(_signum: int, _frame: object) -> None:
+        raise _TimeoutError
+
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(int(timeout))
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+
+
+def _capture_io(*, dump_str: bool = False) -> tuple[io.BytesIO, Any]:
+    """Build an ``IO`` that appends everything printed to a byte buffer.
+
+    Returns ``(buffer, io_instance)``.  ``dump_str`` picks which half of the
+    IO surface the interpreter actually drives: the tape and stack languages
+    emit one character at a time (``print_char``), the register languages
+    emit their state dump as a string (``print_str``).  Both encode latin1,
+    so a byte written by the interpreter is the byte the assembly wrote.
+    """
+    from esolangs.interpreters.io import IO
+
+    buffer = io.BytesIO()
+
+    class _IO(IO):
+        if dump_str:
+
+            def print_str(self, s: str) -> None:
+                buffer.write(s.encode("latin1"))
+
+        else:
+
+            def print_char(self, char: str) -> None:
+                buffer.write(char.encode("latin1"))
+
+    return buffer, _IO()
+
+
 def _run_nocomment_python(program: str) -> tuple[bytes, int]:
     """Run the Python NoComment interpreter; return (output, exit code).
 
@@ -465,17 +691,12 @@ def _run_nocomment_python(program: str) -> tuple[bytes, int]:
     program (ValueError), 3 = invalid operation (HaltError).
     """
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.nocomment import run
 
-    buffer = io.BytesIO()
-
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
+    buffer, sink = _capture_io()
 
     try:
-        run(program, _IO())
+        run(program, sink)
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
@@ -504,37 +725,23 @@ def _run_nocomment_python_limited(
         return None
 
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.tape_based.nocomment import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io()
 
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        return buffer.getvalue(), 0
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            return buffer.getvalue(), 0
+    except _TimeoutError:
+        return None
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
         return buffer.getvalue(), 2
-    except _TimeoutError:
-        return None
-    finally:
-        signal.alarm(0)
 
 
 def _verify_nocomment() -> bool:
@@ -546,27 +753,9 @@ def _verify_nocomment() -> bool:
     implementations error on non-commands, stack underflow, and out-of-range
     jumps, and must agree on the valid-program corpus.
     """
-    if not _asm_refs_ready("nocomment"):
-        return True
-
-    failures = 0
-    for program in NOCOMMENT_CORPUS:
-        ref = _asm_refs("nocomment", program)
-        py_out, py_code = _run_nocomment_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(
-                f"NoComment {program!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)}"
-            )
-
-    if not failures:
-        print(f"NoComment differential: {len(NOCOMMENT_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm(
+        "NoComment", "nocomment", NOCOMMENT_CORPUS, _run_nocomment_python
+    )
 
 
 def _run_bfpda_python(program: str) -> tuple[bytes, int]:
@@ -577,17 +766,12 @@ def _run_bfpda_python(program: str) -> tuple[bytes, int]:
     invalid runtime operations, so exit 3 is unused.
     """
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.stack_based.bf_pda import run
 
-    buffer = io.BytesIO()
-
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
+    buffer, sink = _capture_io()
 
     try:
-        run(program, _IO())
+        run(program, sink)
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
@@ -614,37 +798,23 @@ def _run_bfpda_python_limited(program: str, timeout: float) -> tuple[bytes, int]
         return None
 
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.stack_based.bf_pda import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io()
 
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        return buffer.getvalue(), 0
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            return buffer.getvalue(), 0
+    except _TimeoutError:
+        return None
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
         return buffer.getvalue(), 2
-    except _TimeoutError:
-        return None
-    finally:
-        signal.alarm(0)
 
 
 def _verify_bfpda() -> bool:
@@ -655,26 +825,7 @@ def _verify_bfpda() -> bool:
     is missing.  Both implementations error on empty programs and unbalanced
     brackets, and must agree on the valid-program corpus.
     """
-    if not _asm_refs_ready("bfpda"):
-        return True
-
-    failures = 0
-    for program in BFPDA_CORPUS:
-        ref = _asm_refs("bfpda", program)
-        py_out, py_code = _run_bfpda_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(
-                f"BF-PDA {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}"
-            )
-
-    if not failures:
-        print(f"BF-PDA differential: {len(BFPDA_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm("BF-PDA", "bfpda", BFPDA_CORPUS, _run_bfpda_python)
 
 
 def _run_ram0_python(program: str) -> tuple[bytes, int]:
@@ -683,16 +834,11 @@ def _run_ram0_python(program: str) -> tuple[bytes, int]:
     RAM0 has no error categories, so the exit code is always 0; the state
     dump is printed once, on the step that halts the machine.
     """
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.ram0 import run
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io(dump_str=True)
 
-    class _IO(IO):
-        def print_str(self, s: str) -> None:
-            buffer.write(s.encode("latin1"))
-
-    run(program, _IO())
+    run(program, sink)
     return buffer.getvalue(), 0
 
 
@@ -714,34 +860,20 @@ def _run_ram0_python_limited(program: str, timeout: float) -> tuple[bytes, int] 
     if not hasattr(signal, "SIGALRM"):
         return None
 
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.ram0 import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io(dump_str=True)
 
-    class _IO(IO):
-        def print_str(self, s: str) -> None:
-            buffer.write(s.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        machine.step()  # the dump happens on the step after halting
-        return buffer.getvalue(), 0
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            machine.step()  # the dump happens on the step after halting
+            return buffer.getvalue(), 0
     except _TimeoutError:
         return None
-    finally:
-        signal.alarm(0)
 
 
 def _verify_ram0() -> bool:
@@ -752,48 +884,25 @@ def _verify_ram0() -> bool:
     is missing.  Both implementations tokenize the same way, dump the same
     insertion-order state, and must agree on the valid-program corpus.
     """
-    if not _asm_refs_ready("ram0"):
-        return True
-
-    failures = 0
-    for program in RAM0_CORPUS:
-        ref = _asm_refs("ram0", program)
-        py_out, py_code = _run_ram0_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(f"RAM0 {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}")
-
-    if not failures:
-        print(f"RAM0 differential: {len(RAM0_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm("RAM0", "ram0", RAM0_CORPUS, _run_ram0_python)
 
 
 def _run_bio_python(program: str) -> tuple[bytes, int]:
     """Run the Python BIO interpreter; return (output, exit code).
 
     Exit codes follow the cross-check convention: 0 = success, 2 = malformed
-    program (ValueError: a skipped loop guard never finds its matching
-    `}`), 3 = invalid runtime operation (HaltError: `}` with an empty loop
-    stack).
+    program.  BIO checks its whole program when it loads -- the commands,
+    their terminators, and the brace balance -- so every rejection is that
+    one category and there is no invalid *runtime* operation (exit 3) left
+    to reach: a ``};`` can only run once parsing has proved it has a loop
+    to close.
     """
-    from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.bio import run
 
-    buffer = io.BytesIO()
-
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
+    buffer, sink = _capture_io()
 
     try:
-        run(program, _IO())
-    except HaltError:
-        return buffer.getvalue(), 3
+        run(program, sink)
     except ValueError:
         return buffer.getvalue(), 2
     return buffer.getvalue(), 0
@@ -818,37 +927,23 @@ def _run_bio_python_limited(program: str, timeout: float) -> tuple[bytes, int] |
         return None
 
     from esolangs.exceptions import HaltError
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.bio import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io()
 
-    class _IO(IO):
-        def print_char(self, char: str) -> None:
-            buffer.write(char.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        return buffer.getvalue(), 0
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            return buffer.getvalue(), 0
+    except _TimeoutError:
+        return None
     except HaltError:
         return buffer.getvalue(), 3
     except ValueError:
         return buffer.getvalue(), 2
-    except _TimeoutError:
-        return None
-    finally:
-        signal.alarm(0)
 
 
 def _verify_bio() -> bool:
@@ -860,24 +955,7 @@ def _verify_bio() -> bool:
     lazily on the same control-flow path, and must agree on the
     valid-program and error-category corpus.
     """
-    if not _asm_refs_ready("bio"):
-        return True
-
-    failures = 0
-    for program in BIO_CORPUS:
-        ref = _asm_refs("bio", program)
-        py_out, py_code = _run_bio_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(f"BIO {program!r}: asm={(asm_out, asm_code)} py={(py_out, py_code)}")
-
-    if not failures:
-        print(f"BIO differential: {len(BIO_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm("BIO", "bio", BIO_CORPUS, _run_bio_python)
 
 
 def _run_minsky_swap_python(program: str) -> tuple[bytes, int]:
@@ -887,17 +965,12 @@ def _run_minsky_swap_python(program: str) -> tuple[bytes, int]:
     malformed program (ValueError: a `~` with no jump-line target).  Minsky
     Swap has no invalid runtime operations, so exit 3 is unused.
     """
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.minsky_swap import run
 
-    buffer = io.BytesIO()
-
-    class _IO(IO):
-        def print_str(self, s: str) -> None:
-            buffer.write(s.encode("latin1"))
+    buffer, sink = _capture_io(dump_str=True)
 
     try:
-        run(program, _IO())
+        run(program, sink)
     except ValueError:
         return buffer.getvalue(), 2
     return buffer.getvalue(), 0
@@ -923,36 +996,22 @@ def _run_minsky_swap_python_limited(
     if not hasattr(signal, "SIGALRM"):
         return None
 
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.minsky_swap import _Machine
     from esolangs.vm import run_until_halt_or_cycle
 
-    buffer = io.BytesIO()
+    buffer, sink = _capture_io(dump_str=True)
 
-    class _IO(IO):
-        def print_str(self, s: str) -> None:
-            buffer.write(s.encode("latin1"))
-
-    class _TimeoutError(Exception):
-        pass
-
-    def _alarm(_signum: int, _frame: object) -> None:
-        raise _TimeoutError
-
-    signal.signal(signal.SIGALRM, _alarm)
-    signal.alarm(int(timeout))
     try:
-        machine = _Machine(program, _IO())
-        if not run_until_halt_or_cycle(machine):
-            return None
-        machine.step()  # the dump happens on the step after halting
-        return buffer.getvalue(), 0
-    except ValueError:
-        return buffer.getvalue(), 2
+        with _alarm_budget(timeout):
+            machine = _Machine(program, sink)
+            if not run_until_halt_or_cycle(machine):
+                return None
+            machine.step()  # the dump happens on the step after halting
+            return buffer.getvalue(), 0
     except _TimeoutError:
         return None
-    finally:
-        signal.alarm(0)
+    except ValueError:
+        return buffer.getvalue(), 2
 
 
 def _verify_minsky_swap() -> bool:
@@ -964,27 +1023,12 @@ def _verify_minsky_swap() -> bool:
     way and give each `~` a fixed target independent of execution order,
     and must agree on the valid-program and error-category corpus.
     """
-    if not _asm_refs_ready("minsky_swap"):
-        return True
-
-    failures = 0
-    for program in MINSKY_SWAP_CORPUS:
-        ref = _asm_refs("minsky_swap", program)
-        py_out, py_code = _run_minsky_swap_python(program)
-        if ref is None:
-            asm_out, asm_code = b"", 1
-        else:
-            asm_out, asm_code = ref
-        if (asm_out, asm_code) != (py_out, py_code):
-            failures += 1
-            print(
-                f"Minsky Swap {program!r}: asm={(asm_out, asm_code)} "
-                f"py={(py_out, py_code)}"
-            )
-
-    if not failures:
-        print(f"Minsky Swap differential: {len(MINSKY_SWAP_CORPUS)} programs match")
-    return failures == 0
+    return _verify_asm(
+        "Minsky Swap",
+        "minsky_swap",
+        MINSKY_SWAP_CORPUS,
+        _run_minsky_swap_python,
+    )
 
 
 def _run_native(
@@ -1211,47 +1255,14 @@ def _fuzz_nocomment(rng: random.Random, count: int) -> bool:
     A program that halts on one side but loops on the other is a divergence
     (and the reason a seeded fuzzer is worth having).
     """
-    if not _asm_refs_ready("nocomment"):
-        return True
-
-    # The references' tape and stack live in a fixed mapped region below the
-    # program buffer; a program that loops (or extends the tape) long enough
-    # writes past it and unicorn raises UcError, which the runners fold into
-    # None.  That is a resource limit, the same class as the instruction-count
-    # cap: a matching Python loop is not a divergence.
-    alphabet = "idclrnfsbo"
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
-        py = _run_nocomment_python_limited(program, timeout=3)
-        asm = _asm_refs("nocomment", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_nocomment_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"NoComment fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"NoComment fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"NoComment fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"NoComment fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "NoComment",
+        "nocomment",
+        _random_program("idclrnfsbo", 30),
+        _run_nocomment_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 def _fuzz_bfpda(rng: random.Random, count: int) -> bool:
@@ -1263,42 +1274,14 @@ def _fuzz_bfpda(rng: random.Random, count: int) -> bool:
     times out under SIGALRM; ``None`` means "did not terminate" on that side.
     A program that halts on one side but loops on the other is a divergence.
     """
-    if not _asm_refs_ready("bfpda"):
-        return True
-
-    alphabet = "@.<>[]"
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
-        py = _run_bfpda_python_limited(program, timeout=3)
-        asm = _asm_refs("bfpda", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_bfpda_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"BF-PDA fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"BF-PDA fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"BF-PDA fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"BF-PDA fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "BF-PDA",
+        "bfpda",
+        _random_program("@.<>[]", 30),
+        _run_bfpda_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 def _fuzz_ram0(rng: random.Random, count: int) -> bool:
@@ -1311,46 +1294,14 @@ def _fuzz_ram0(rng: random.Random, count: int) -> bool:
     side.  A program that halts on one side but loops on the other is a
     divergence.
     """
-    if not _asm_refs_ready("ram0"):
-        return True
-
-    # The reference's RAM is a fixed mapped region; a program that pushes an
-    # address past it writes unmapped and unicorn raises UcError, which the
-    # runner folds into None.  That is a resource limit, the same class as
-    # the instruction-count cap: a matching Python loop is not a divergence.
-    alphabet = "ZANCLS123456789"
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 30)))
-        py = _run_ram0_python_limited(program, timeout=3)
-        asm = _asm_refs("ram0", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_ram0_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"RAM0 fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"RAM0 fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"RAM0 fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"RAM0 fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "RAM0",
+        "ram0",
+        _random_program("ZANCLS123456789", 30),
+        _run_ram0_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 def _fuzz_bio(rng: random.Random, count: int) -> bool:
@@ -1363,42 +1314,17 @@ def _fuzz_bio(rng: random.Random, count: int) -> bool:
     cycle); ``None`` means "did not terminate" on that side.  A program
     that halts on one side but loops on the other is a divergence.
     """
-    if not _asm_refs_ready("bio"):
-        return True
-
-    alphabet = "01OoIiXxYyZz{}; "
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 40)))
-        py = _run_bio_python_limited(program, timeout=3)
-        asm = _asm_refs("bio", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_bio_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"BIO fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"BIO fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"BIO fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"BIO fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "BIO",
+        "bio",
+        # ``/`` and a newline are in the alphabet so the fuzz reaches the
+        # comment scanner (and a lone ``/``, which is a load error) as well
+        # as the command and brace paths.
+        _random_program("01OoIiXxYyZz{};/ \n", 40),
+        _run_bio_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 def _gen_minsky_swap_program(rng: random.Random) -> str:
@@ -1429,41 +1355,14 @@ def _fuzz_minsky_swap(rng: random.Random, count: int) -> bool:
     means "did not terminate" on that side.  A program that halts on one
     side but loops on the other is a divergence.
     """
-    if not _asm_refs_ready("minsky_swap"):
-        return True
-
-    failures = checked = loops = 0
-    for _ in range(count):
-        program = _gen_minsky_swap_program(rng)
-        py = _run_minsky_swap_python_limited(program, timeout=3)
-        asm = _asm_refs("minsky_swap", program)
-        if py is None and asm is None:
-            loops += 1
-            continue
-        if py is None and asm is not None:
-            # Python's 3s budget is a heuristic; the assembly is far faster,
-            # so confirm a genuinely-looping program with a longer budget
-            # before calling the termination mismatch a divergence.
-            py = _run_minsky_swap_python_limited(program, timeout=30)
-        if py is None or asm is None:
-            failures += 1
-            print(
-                f"Minsky Swap fuzz {program!r}: termination mismatch "
-                f"(python {'loops' if py is None else 'halts'}, "
-                f"asm {'loops' if asm is None else 'halts'})"
-            )
-            continue
-        checked += 1
-        if py != asm:
-            failures += 1
-            print(f"Minsky Swap fuzz {program!r}: asm={asm!r} py={py!r}")
-
-    print(
-        f"Minsky Swap fuzz: {checked} programs match, {loops} consistent loops"
-        if not failures
-        else f"Minsky Swap fuzz: {failures} failures of {checked} (plus {loops} loops)"
+    return _fuzz_asm(
+        "Minsky Swap",
+        "minsky_swap",
+        _gen_minsky_swap_program,
+        _run_minsky_swap_python_limited,
+        rng,
+        count,
     )
-    return failures == 0
 
 
 # -- Forþ corpus: every command plus the error categories ------------------
@@ -1506,14 +1405,23 @@ FORTH_CORPUS = [
 ]
 
 
-def _run_forth_native(
-    binary: str, program: str, stdin: bytes
+def _run_rust_native(
+    binary: str,
+    program: str,
+    stdin: bytes,
+    *,
+    strip_leading_newline: bool = True,
+    strip_errors: bool = False,
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
+    """Run ``program`` through a Rust cross-check; return (stdout, exit code).
 
-    The Rust reference writes its ``Input: `` prompt to stdout, which is stripped (the
-    Python side routes the prompt through the IO layer instead).  Returns
-    None if the reference does not terminate within the timeout.
+    Every reference prints an ``Input: `` prompt that the Python side routes
+    through the IO layer instead, so it is stripped before comparing;
+    ``strip_leading_newline`` also drops the newline the prompt follows,
+    which 3x does not emit.  ``strip_errors`` additionally removes the C++
+    runtime's error messages, which only Basicfuck's reference writes to
+    stdout.  Returns None if the reference does not terminate within the
+    timeout -- the Rust references have no step limit.
     """
     with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write(program)
@@ -1522,12 +1430,26 @@ def _run_forth_native(
         proc = subprocess.run(
             [binary, path], capture_output=True, input=stdin, timeout=5
         )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
     except subprocess.TimeoutExpired:
         return None
     finally:
         Path(path).unlink()
+
+    out = proc.stdout
+    if strip_leading_newline:
+        out = out.replace(b"\nInput: ", b"")
+    out = out.replace(b"Input: ", b"")
+    if strip_errors:
+        for message in _CPP_ERRORS:
+            out = out.replace((message + "\n").encode(), b"")
+    return out, proc.returncode
+
+
+def _run_forth_native(
+    binary: str, program: str, stdin: bytes
+) -> tuple[bytes, int] | None:
+    """Run ``program`` through the Forþ Rust cross-check."""
+    return _run_rust_native(binary, program, stdin)
 
 
 def _run_forth_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1552,21 +1474,12 @@ def _verify_forth() -> bool:
     if binary is None:
         return True
 
-    failures = 0
-    for program, stdin in FORTH_CORPUS:
-        native = _run_forth_native(binary, program, stdin)
-        if native is None:
-            print(f"Forþ {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_forth_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"Forþ {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"Forþ differential: {len(FORTH_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "Forþ",
+        FORTH_CORPUS,
+        lambda program, stdin: _run_forth_native(binary, program, stdin),
+        _run_forth_python,
+    )
 
 
 def _fuzz_forth(rng: random.Random, count: int) -> bool:
@@ -1648,26 +1561,8 @@ BASICFUCK_CORPUS = [
 def _run_basicfuck_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
-
-    The reference prints its ``Input: `` prompts and error messages to
-    stdout, which are stripped before comparing.
-    """
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        for message in _CPP_ERRORS:
-            out = out.replace((message + "\n").encode(), b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the Basicfuck Rust cross-check."""
+    return _run_rust_native(binary, program, stdin, strip_errors=True)
 
 
 def _run_basicfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1694,24 +1589,13 @@ def _verify_basicfuck() -> bool:
     if binary is None:
         return True
 
-    failures = 0
-    for program, stdin in BASICFUCK_CORPUS:
-        native = _run_basicfuck_native(binary, program, stdin)
-        if native is None:
-            print(f"Basicfuck {program.splitlines()[-1]!r}: Rust did not terminate")
-            failures += 1
-            continue
-        py = _run_basicfuck_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(
-                f"Basicfuck {program.splitlines()[-1]!r}: "
-                f"Rust {native!r} vs Python {py!r}"
-            )
-
-    if not failures:
-        print(f"Basicfuck differential: {len(BASICFUCK_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "Basicfuck",
+        BASICFUCK_CORPUS,
+        lambda program, stdin: _run_basicfuck_native(binary, program, stdin),
+        _run_basicfuck_python,
+        label=lambda program: program.splitlines()[-1],
+    )
 
 
 def _fuzz_basicfuck(rng: random.Random, count: int) -> bool:
@@ -1784,24 +1668,8 @@ UNSQUARE_CORPUS = [
 def _run_unsquare_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
-
-    The reference prints its ``Input: `` prompts to stdout, which are
-    stripped; invalid operations exit with status 3.
-    """
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the Unsquare Rust cross-check."""
+    return _run_rust_native(binary, program, stdin)
 
 
 def _run_unsquare_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1830,21 +1698,12 @@ def _verify_unsquare() -> bool:
         print("[skip] Unsquare differential: Rust reference not built")
         return True
 
-    failures = 0
-    for program, stdin in UNSQUARE_CORPUS:
-        native = _run_unsquare_native(str(UNSQUARE_BIN), program, stdin)
-        if native is None:
-            print(f"Unsquare {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_unsquare_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"Unsquare {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"Unsquare differential: {len(UNSQUARE_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "Unsquare",
+        UNSQUARE_CORPUS,
+        lambda program, stdin: _run_unsquare_native(str(UNSQUARE_BIN), program, stdin),
+        _run_unsquare_python,
+    )
 
 
 def _fuzz_unsquare(rng: random.Random, count: int) -> bool:
@@ -1909,27 +1768,10 @@ THREE_X_CORPUS = [
 
 
 def _run_three_x_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
-
-    The reference prints its ``Input: `` prompts to stdout, which are
-    stripped; invalid operations exit with status 3.
-    """
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [str(THREE_X_BIN), path],
-            capture_output=True,
-            input=stdin,
-            timeout=5,
-        )
-        out = proc.stdout.replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the 3x Rust cross-check."""
+    return _run_rust_native(
+        str(THREE_X_BIN), program, stdin, strip_leading_newline=False
+    )
 
 
 def _run_three_x_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -1954,21 +1796,12 @@ def _verify_three_x() -> bool:
         print("[skip] 3x differential: Rust reference not built")
         return True
 
-    failures = 0
-    for program, stdin in THREE_X_CORPUS:
-        native = _run_three_x_native(program, stdin)
-        if native is None:
-            print(f"3x {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_three_x_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"3x {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"3x differential: {len(THREE_X_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "3x",
+        THREE_X_CORPUS,
+        _run_three_x_native,
+        _run_three_x_python,
+    )
 
 
 def _fuzz_three_x(rng: random.Random, count: int) -> bool:
@@ -2035,20 +1868,8 @@ def _build_pct() -> str | None:
 def _run_pct_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code)."""
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the %^2^-1 Rust cross-check."""
+    return _run_rust_native(binary, program, stdin)
 
 
 def _run_pct_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -2075,21 +1896,12 @@ def _verify_pct() -> bool:
     if binary is None:
         return True
 
-    failures = 0
-    for program, stdin in PCT_CORPUS:
-        native = _run_pct_native(binary, program, stdin)
-        if native is None:
-            print(f"%^2^-1 {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_pct_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"%^2^-1 {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"%^2^-1 differential: {len(PCT_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "%^2^-1",
+        PCT_CORPUS,
+        lambda program, stdin: _run_pct_native(binary, program, stdin),
+        _run_pct_python,
+    )
 
 
 # -- Painfuck corpus: every command plus the error categories --------------
@@ -2156,20 +1968,8 @@ def _build_painfuck() -> str | None:
 def _run_painfuck_native(
     binary: str, program: str, stdin: bytes
 ) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code)."""
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [binary, path], capture_output=True, input=stdin, timeout=5
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the Painfuck Rust cross-check."""
+    return _run_rust_native(binary, program, stdin)
 
 
 def _run_painfuck_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -2197,22 +1997,13 @@ def _verify_painfuck() -> bool:
     if binary is None:
         return True
 
-    failures = 0
-    for targets, stdin in _PAIN_CORPUS:
-        program = _painfuck_encode(targets)
-        native = _run_painfuck_native(binary, program, stdin)
-        if native is None:
-            print(f"Painfuck {targets!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_painfuck_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"Painfuck {targets!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"Painfuck differential: {len(_PAIN_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "Painfuck",
+        _PAIN_CORPUS,
+        lambda program, stdin: _run_painfuck_native(binary, program, stdin),
+        _run_painfuck_python,
+        prepare=_painfuck_encode,
+    )
 
 
 def _fuzz_painfuck(rng: random.Random, count: int) -> bool:
@@ -2270,27 +2061,8 @@ BIT_TILDE_CORPUS = [
 
 
 def _run_bit_tilde_native(program: str, stdin: bytes) -> tuple[bytes, int] | None:
-    """Run ``program`` through the Rust cross-check; return (stdout, exit code).
-
-    The reference prints its ``Input: `` prompts to stdout, which are
-    stripped; invalid operations exit with status 3.
-    """
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write(program)
-        path = f.name
-    try:
-        proc = subprocess.run(
-            [str(BIT_TILDE_BIN), path],
-            capture_output=True,
-            input=stdin,
-            timeout=5,
-        )
-        out = proc.stdout.replace(b"\nInput: ", b"").replace(b"Input: ", b"")
-        return out, proc.returncode
-    except subprocess.TimeoutExpired:
-        return None
-    finally:
-        Path(path).unlink()
+    """Run ``program`` through the bit~ Rust cross-check."""
+    return _run_rust_native(str(BIT_TILDE_BIN), program, stdin)
 
 
 def _run_bit_tilde_python(program: str, stdin: bytes) -> tuple[bytes, int]:
@@ -2320,21 +2092,12 @@ def _verify_bit_tilde() -> bool:
         print("[skip] bit~ differential: Rust reference not built")
         return True
 
-    failures = 0
-    for program, stdin in BIT_TILDE_CORPUS:
-        native = _run_bit_tilde_native(program, stdin)
-        if native is None:
-            print(f"bit~ {program!r}: Rust reference did not terminate")
-            failures += 1
-            continue
-        py = _run_bit_tilde_python(program, stdin)
-        if native != py:
-            failures += 1
-            print(f"bit~ {program!r}: Rust {native!r} vs Python {py!r}")
-
-    if not failures:
-        print(f"bit~ differential: {len(BIT_TILDE_CORPUS)} programs match")
-    return failures == 0
+    return _verify_rust(
+        "bit~",
+        BIT_TILDE_CORPUS,
+        _run_bit_tilde_native,
+        _run_bit_tilde_python,
+    )
 
 
 # -- RISC-V reference helpers ----------------------------------------------
@@ -2406,9 +2169,28 @@ def _asm_refs(riscv_name: str, program: str) -> tuple[bytes, int] | None:
     return _run_riscv_elf(riscv, program)
 
 
+def _riscv_runner_available() -> bool:
+    """Whether the unicorn-backed RISC-V ELF runner can be imported."""
+    import importlib
+
+    try:
+        importlib.import_module("riscv_elf_runner")
+    except (ImportError, SystemExit):
+        return False
+    return True
+
+
 def _asm_refs_ready(riscv_name: str) -> bool:
-    """Whether the RISC-V reference can be built."""
-    return _build_riscv(riscv_name) is not None
+    """Whether the RISC-V reference can be built *and* executed.
+
+    Both halves matter: the cross-compiler assembles the ELF, and unicorn
+    (via ``riscv_elf_runner``) executes it.  Checking only the compiler let
+    a machine with a cross-compiler but no unicorn pass the gate and then
+    read every reference run as an empty ``(b"", 1)`` result, reporting the
+    whole corpus as divergent.  The toolchain being absent is a skip, not a
+    failure.
+    """
+    return _build_riscv(riscv_name) is not None and _riscv_runner_available()
 
 
 def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:

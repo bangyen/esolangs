@@ -3,7 +3,7 @@
 ## MAMMALIAN generator totality
 
 A Lean 4 + mathlib proof that the MAMMALIAN text generator
-(`src/esolangs/tools/generators/tape.py::mammalian`) is total over the byte
+(`src/esolangs/tools/text/tape.py::slow_acv_mammalian`) is total over the byte
 range: for every byte-range text it emits a program that prints it, and the
 per-character search never fails.  (Like the other byte-oriented generators,
 `mammalian` rejects codepoints above 255 with a documented `ValueError`
@@ -34,7 +34,7 @@ the same zero failures.
 
 A proof that the Factor encoder is *total* and that decoding recovers the
 program: `decode (encode code) = code`.  The encoder
-(`src/esolangs/tools/generators/tape.py::_factor_encode`) walks the runs of a
+(`src/esolangs/tools/text/tape.py::_factor_encode`) walks the runs of a
 program, assigning each run `(c, e)` the least prime `p ≥ candidate` with
 `p % 11 = res c` and folding `num *= p^e`.  The file `FactorCorrect.lean`
 models the commands (`Cmd`, residue `res`), the run-length machinery

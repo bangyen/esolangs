@@ -19,9 +19,13 @@ most headings onto the top row moving right.
 
 The top row sets cell 0 to 65, then a `v` turns the laser down into a
 mirror that bounces it back left past a `.` — which prints the accumulated
-byte.  (The walkthrough assumes the laser starts heading right, which the
-funnel routes onto the top row; the run is otherwise non-deterministic
-because of the random start heading.)
+byte.
+
+The laser's initial heading is chosen at random, so this program has no
+single reproducible trace — that is a property of LaserFuck itself, not a
+gap in the walkthrough.  The `}`/`^`/`|`/`_` funnel around `o` exists
+precisely to absorb that randomness: it routes most starting headings onto
+the top row moving right, which is the path traced below.
 
 ## Step by step
 
