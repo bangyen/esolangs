@@ -572,6 +572,39 @@ class TestGeneratorRoundTrips:
         # one band, so one multiply ring and one spread ring
         assert program.count("#/)") == 2
 
+    def test_laserfuck_snakes_a_ring_to_meet_a_width(self) -> None:
+        """A ring too wide for the bound is walked across rows instead.
+
+        A ring body cannot be folded -- the return leg re-enters at the
+        ``}`` and re-runs the whole body -- so a bounded width used to drop
+        the ring forms entirely and fall back to the linear run.  Snaking
+        the body keeps the ring: twenty ``x`` at eighty columns was 41 rows
+        and is now well under half that.
+        """
+        text = "x" * 20
+        program = gen.laserfuck(text, 80)
+        assert max(len(ln) for ln in program.split("\n")) <= 80
+        assert program.count("\n") + 1 < 20
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
+    def test_laserfuck_snaked_rings_stack_without_sharing_rows(self) -> None:
+        """Each snaked ring is its own block, joined by a drop and a catch.
+
+        This exercises the builder directly rather than through
+        :func:`laserfuck`, which would quietly drop a broken snake and fall
+        back to another form -- the failure would not show.
+        """
+        from esolangs.tools.text.other import _laserfuck_snake_ring
+
+        for text in ("x" * 20, "Hello, World!", "The quick brown fox"):
+            for width in (60, 80, 120):
+                program = _laserfuck_snake_ring(text, width)
+                assert program is not None
+                assert max(len(ln) for ln in program.split("\n")) <= width
+                for heading in range(4):
+                    assert laserfuck_roundtrip(program, heading) == text
+
     def test_laserfuck_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""
         for text in ("A", "Hi", "Hello, World!", "The quick brown fox"):
