@@ -583,3 +583,21 @@ name a cell whose zero/nonzero state is known at each one:
   the labels leave the value at `bit + 1` rather than a bare bit: the +1 is
   not slack, it is what keeps that crossing nonzero, and the next label's
   leading `~` takes it off again.
+
+### Starting the car in the oncoming lane
+
+The northern lane is blank across the whole program -- the car only drives it
+coming back from the hairpin at the western wall. Starting the car *there*
+instead is free, and it takes the leading run's columns off every row: a `C`
+with the northern wall on its right heads **West**, so the run is written
+East-to-West and read in reverse, and the car hairpins at the west wall and
+arrives back along the driving lane at the first loop's mouth exactly as it
+did before. That is `_streetcode_lift`, and it saves nine columns for the
+ring's labels and seven for the hallway's, on every row.
+
+The same gap-junction law governs the westbound leg, and it is the reason the
+lift is safe rather than the reason it is hard: the leg passes over *every*
+loop mouth in the program, and a zero CPth cell captures the car into the
+first mouth it meets. The `^` the start already carried leaves cell 0 nonzero
+for the whole leg, so every crossing passes straight over. Verified both ways
+-- without that `^` the car U-turns into the first mouth's exit gap.
