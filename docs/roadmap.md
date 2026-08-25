@@ -7,15 +7,14 @@ the commit history.  This file only tracks what is still on the table.
 ## New interpreters (in priority order)
 
 Candidates from re-scanning the esolangs wiki's Category:Unimplemented and
-from User:PythonshellDebugwindow's language list.  What was ruled out
+from a user-maintained language list on the wiki.  What was ruled out
 (Gravity, Earfuck, Conveyor, Chainlang, Binary ///, Fourfuck, Aaargh++,
 Bitwise Cyclic Teast, and the languages already implemented elsewhere) is
 in the commit history and `docs/limitations.md`.
 
-Re-checking PythonshellDebugwindow's list against the admission criteria
-surfaced a handful of languages worth recording as potential candidates.
-The earlier draft of this section listed Jumplang, Eso2D, Minimal operation
-language, brainfunc, and Yaren — all five are in fact wiki-categorized
+Checking that list against the admission criteria surfaces a handful of
+languages worth recording as potential candidates.  Jumplang, Eso2D,
+Minimal operation language, brainfunc, and Yaren are wiki-categorized
 **Implemented** (each page documents external interpreters), so under the
 "not already implemented elsewhere" criterion they are not candidates; the
 record below is restricted to languages in the wiki's **Unimplemented**
@@ -76,21 +75,21 @@ module docstring, and `extra/line/WIP.md`.
 
 **One residual question, on Flowchart.**  The wiki's Kolakoski example
 states no expected output, so the test pins current behaviour as
-characterization, and the output's repeating tail was chased down to the
-diagram rather than to any interpreter choice: pointer interleaving is
+characterization, and the output's repeating tail traces to the diagram
+rather than to any interpreter choice: pointer interleaving is
 byte-identical across creation, reverse, and per-step reading order, and
 the full {1 turns left, 1 turns right} x {empty prints nothing, empty is
 zero} matrix leaves the tail period-4 in all four variants (only the
 shipped combination passes the truth machine and the cat at all).  The
 remaining possibility is that the diagram simply does not produce the
-Kolakoski sequence as drawn; confirming that needs the author, so a
-talk-page question is the cheapest next step.
+Kolakoski sequence as drawn; confirming that needs the diagram's author, so
+a talk-page question is the cheapest way to settle it.
 
 **Circuit Diagram is implemented**, interpreter and boolean generator both,
 their judgment calls derived in the module docstrings of
 `src/esolangs/interpreters/grid_based/circuit_diagram.py` and
-`src/esolangs/tools/boolean/circuit_diagram.py`.  Four findings from
-building them are worth keeping here.
+`src/esolangs/tools/boolean/circuit_diagram.py`.  Four findings are worth
+keeping here.
 
 **The page's prime tester is drawn with five characters missing.**  Its only
 worked example has two OR gates whose second input no gate drives, so as
@@ -99,11 +98,12 @@ guessed and is unique: the circuit is a product of sums, not the sum of
 minterms its caption implies, and requiring the whole to be primality over
 0-15 forces the two missing signals to `b` and `~c`.  The page itself shows
 where they belong — for `~c` it already draws the two `=` crossovers that
-the missing diagonal would cross, so the author drew a diagonal's crossings
-and omitted the diagonal.  Both the repaired circuit (replayed over all
-sixteen inputs against the primes) and the as-drawn silence are pinned in
-`tests/interpreters/test_circuit_diagram.py`.  Reporting this on the talk
-page is the cheapest next step, as with Flowchart's Kolakoski example.
+the missing diagonal would cross, so the diagram carries a diagonal's
+crossings without the diagonal itself.  Both the repaired circuit (replayed
+over all sixteen inputs against the primes) and the as-drawn silence are
+pinned in `tests/interpreters/test_circuit_diagram.py`.  Reporting this on
+the talk page is the cheapest way to settle it, as with Flowchart's
+Kolakoski example.
 
 **The obvious execution model is falsified by the page's own flip-flop.**
 Reading wirings as holding their value until overwritten, and halting once
@@ -117,12 +117,12 @@ for.  All three of the page's circuits work under that model.
 truth table is the language's native idiom, so the boolean generator emits
 a sum of minterms — one `-` input line per bit, a bus per literal, an `a`
 chain per minterm, an `o` chain combining them, `:` printing the answer —
-rather than the decision tree the other 2D generators build.  Three things
-about the layout only became clear by getting them wrong:
+rather than the decision tree the other 2D generators build.  Three
+constraints govern the layout:
 
 - **Crossings are the idiom, not a hazard.**  A network where every input
-  feeds every minterm is not planar, so wires must cross; a first attempt
-  that banned `=` could not be made to work at any spacing.  The spec's
+  feeds every minterm is not planar, so wires must cross; a layout that
+  bans `=` cannot be made to work at any spacing.  The spec's
   crossover connects "opposite wires", so one `=` carries a horizontal and
   a vertical signal past each other in separate wirings — confirmed against
   the interpreter.  The generator therefore models wire segments and
@@ -158,8 +158,7 @@ and crash tie-breaking are genuinely random with no seed — fails the
 determinism criterion); **Dilemma** (no I/O commands at all, pure
 maze/DFS); **TableLang**, **Marz**, **RingCode**, **GridScript** (a
 high-level `if`/`while`/`SWITCH` construct makes the generator trivial, or
-the spec is unstable); and **Gate**, which was read closely and rejected on
-spec-completeness.  Its lack of an input command is not the blocker — output,
+the spec is unstable); and **Gate**, rejected on spec-completeness.  Its lack of an input command is not the blocker — output,
 constants, and a value-testable branch are exactly the parameterized
 (input-by-substitution) profile that Back, RAM0, and Minsky Swap are built on.
 The blocker is that the page never exercises the two commands such a generator
@@ -167,8 +166,7 @@ needs: `+` (the branch) appears in none of the nine worked examples, and no
 example emits output at all, so neither the branch geometry nor the output
 path can be derived the way Flowchart's gaps were pinned by its examples (see
 the assessed-and-rejected ledger in `docs/limitations.md`).  **Circuit
-Diagram**, the alternative named in that genre, was assessed after Gate fell
-through and is now implemented (above).
+Diagram**, the alternative in that genre, is implemented (above).
 
 ## Transpilers
 
@@ -332,8 +330,8 @@ was scoped out rather than built as part of the original conversion.
 
 **Not pursued unless a concrete program needs it.**  Closing this gap
 would mean extending `_eval` itself into a resumable continuation stack
-(an `_EvalTask`-per-expression design, sketched and rejected in
-`docs/walls.md`'s history) — materially more machinery than the
+(an `_EvalTask`-per-expression design, recorded and rejected in
+`docs/walls.md`) — materially more machinery than the
 statement-position conversion for a case with no known real-world Forbin
 program that hits it.  Worth revisiting only if a program surfaces that
 needs deep expression-position recursion and Python's default limit is
@@ -375,8 +373,8 @@ rest.  What remains:
   and doesn't fully replace the wall-clock backstop; and the common case —
   hangs under *some* coin flips, halts under others — isn't proved either
   way, only the all-branches-hang case is.  The wall-clock backstop already
-  handles both languages correctly, so this is only worth building if a
-  specific need for the "always hangs" guarantee comes up.
+  handles both languages correctly, so this is only worth building if the
+  "always hangs" guarantee is specifically needed.
 
 ## Severely constrained boolean generators (remove or lift)
 

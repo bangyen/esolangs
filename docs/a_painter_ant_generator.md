@@ -156,16 +156,16 @@ the `{Xn-1}` routing's final move.
 The generator uses only `P` (paint white) — it never uses `p` (paint
 black).  Zero leaves are left unpainted (a space).  This makes the white
 cells monotone increasing: cycle 1 establishes them and every later cycle
-only re-confirms a subset, which also helps stability.  (The earlier
-attempt used `p` for zero leaves, which *reverted* cells to black non-
-monotonically and broke stability — replacing `p` with a space was the fix.)
+only re-confirms a subset, which is what makes the program stable.  Painting
+zero leaves with `p` instead *reverts* cells to black non-monotonically and
+breaks that stability, so a space is required.
 
-### The naive head fails — return paths must avoid painted cells
+### Return paths must avoid painted cells
 
-A first attempt at a head that just visits each leaf and returns to origin
-fails: after painting a leaf white, a later lowercase move onto that white
-cell is blocked, so the ant's actual path diverges from the intended one.
-The working head returns through the origin (the black centre) and never
+A head that merely visits each leaf and returns to origin does not work:
+after painting a leaf white, a later lowercase move onto that white cell is
+blocked, so the ant's actual path diverges from the intended one.  The
+working head returns through the origin (the black centre) and never
 re-crosses a painted leaf.
 
 ## The general construction (any n)

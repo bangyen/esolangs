@@ -497,12 +497,12 @@ against their specs:
 - **Conveyor** has the halt/loop distinction (`HALT`, a jumper that
   otherwise loops back, `IFEZ`/`IFGT`), so its stderr-only output is not
   the real blocker; it stays rejected on spec stability instead (an
-  unwritten ROT13 example the author declined to finish, and unexplained
-  `(Supervisor+)` privilege tiers).
+  unwritten ROT13 example, and unexplained `(Supervisor+)` privilege
+  tiers).
 
 None of the four has a construction built, so none is claimed as a
-generator: the correction is to the *rejection rationale*, which cited
-missing I/O where the convention makes I/O irrelevant.  Whether the
+generator: what these entries revise is the *rejection rationale*, which
+cited missing I/O where the convention makes I/O irrelevant.  Whether the
 ceiling in each case is real (as with ArrowQueue's single-ring minterm
 limit) is exactly what building one would settle.
 
@@ -561,9 +561,9 @@ the registry's languages are not known to have it (their generators are
 text-only or absent), so this records the criterion and the one realized
 construction rather than a family of generators.
 
-A brainfuck prototype was built and verified: read+normalize each digit
-(ASCII minus 48), multiply via a nested loop, and print the product with the
-itchyny 8-bit decimal printer.  **n = 1 works exhaustively (all 100
+A brainfuck prototype is built and verified: read+normalize each digit
+(ASCII minus 48), multiply via a nested loop, and print the product with a
+published 8-bit decimal-print routine.  **n = 1 works exhaustively (all 100
 single-digit pairs 0-9 × 0-9).**
 
 For n > 1 the right construction is grade-school long multiplication:
@@ -573,12 +573,12 @@ product.  This avoids the single-cell overflow that blocks accumulating the
 product in one cell.  But the per-digit *carry* needs a "while >= 10"
 operation, and with the interpreter's documented 8-bit wrapping cells (mod
 256) the standard divmod/carry algorithms assume non-wrapping cells and do
-not transfer directly — the itchyny decimal printer embeds a working divmod,
-but it is tied to the printer's cell layout, not reusable as a standalone
-carry.  So n = 1 is proven; n > 1 needs a wrapping-safe carry, which is a
-genuine brainfuck-algorithms construction rather than a quick extension.
+not transfer directly — that decimal printer embeds a working divmod, but it
+is tied to the printer's cell layout, not reusable as a standalone carry.
+So n = 1 is proven; n > 1 needs a wrapping-safe carry, which is a genuine
+brainfuck-algorithms construction rather than a quick extension.
 
-**Jaune realizes the capability:** its cells do not wrap (the author's
+**Jaune realizes the capability:** its cells do not wrap (the language's
 reference implementation stores each cell as a JavaScript number with plain
 ``+=``/``-=``, no modulo or bitmask, and this interpreter uses Python
 ``int``) and ``^`` prints the current cell as a decimal number, so each
@@ -664,12 +664,11 @@ gap: `_Machine` tracks one cursor for the single resumable frame there, and
 a nested function call invoked from inside an expression still runs to
 completion inside one `step()` through the original recursive
 `_eval`/`_call`/`_run` -- its own frames are never part of `snapshot()`.
-This was deliberately left native-recursive: the language has no realistic
-program shape that recurses that way (`return` exits a call immediately,
-so there is no return-value-threading idiom to convert), so building the
-larger continuation-stack machinery that would be needed to resume
-mid-expression was not worth it for a case Forbin programs do not actually
-use.  It is still bounded only by Python's own default recursion limit, not
+This path is deliberately left native-recursive: the language has no
+realistic program shape that recurses that way (`return` exits a call
+immediately, so there is no return-value-threading idiom to convert), so
+the larger continuation-stack machinery needed to resume mid-expression is
+not worth it for a case Forbin programs do not actually use.  It is still bounded only by Python's own default recursion limit, not
 a documented cap.
 
 **Suptiftam's call machinery, Forbin's statement-position calls, and all of

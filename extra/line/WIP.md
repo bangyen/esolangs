@@ -5,11 +5,11 @@ program renderer, a pixel-based extractor, and a runtime interpreter for
 [Line](https://esolangs.org/wiki/Line), an esolang whose spec is entirely a
 set of hand-drawn curve images with no text format and no reference
 implementation (tagged `Unimplemented` on the wiki). This file tracks
-what's settled and tested, what's deliberately out of scope, and what
-was resolved along the way -- the module docstrings in
+what's settled and tested, what's deliberately out of scope, and the
+reasoning behind each -- the module docstrings in
 `extract.py`/`render.py`/`simulate.py` carry the settled, load-bearing
-reasoning, and this file records how it was arrived at.  Only one item is
-genuinely open (see "Still open"); `docs/streetcode.md` is the
+reasoning, and this file records the derivations behind it.  Only one item
+is genuinely open (see "Still open"); `docs/streetcode.md` is the
 comparable file for Streetcode, which still has real open questions.
 
 `test_simulate.py` is a real `pytest` suite covering `simulate.py`
@@ -39,9 +39,9 @@ round-trip check for `extract()` alone.
   wiki's reference images rather than assumed; the measurement itself, the
   two kink families it revealed, and the `+`/`-` repeat-merging rule are
   recorded in `render.py`'s module docstring and the comment above `_OPS`,
-  which are authoritative.  The one correction worth noting here: an
-  earlier `_OPS` gave `>`/`i` and `<`/`o` identical geometry, which the
-  re-measurement showed was simply wrong.
+  which are authoritative.  One constraint is worth noting here: `>`/`i`
+  and `<`/`o` must not share identical geometry, as re-measurement against
+  the reference images confirms.
 - **Extraction**: `extract.py` walks the path/branch structure of both wiki
   reference images by delegating to `lattice.py`'s 8-direction vertex-star
   walker (see below), with near-complete pixel accounting (verified via
@@ -245,7 +245,7 @@ round-trip check for `extract()` alone.
     a real fork or dead end -- and a point landing strictly *inside* one of
     a stroke's straight legs, since a real merge can land mid-segment, not
     only on a recorded vertex -- see the "real drawn loop" entry above for
-    why the mid-segment case turned out to matter on a real fixture), and a
+    why the mid-segment case matters on a real fixture), and a
     match becomes a jump that resumes execution from exactly that point,
     running only the ops that had not yet run there (via
     `extract.OpCall`'s own `index`) and skipping the ops that already ran
@@ -384,14 +384,14 @@ round-trip check for `extract()` alone.
   `nonzero` arm is the loop body ending in a node whose `goto` points back
   at the fork.
 
-  **The spacing and routing history, condensed.**  The full chronological
-  trail of the series that got here -- a first attempt that grew arm
-  spacing *outward* with depth (backwards: every fork turns its children
-  90 degrees, so a grandchild turns back toward the original heading and
-  overshoots, and scaling the constant 10x reproduced the identical
-  failure because *growing* was the bug), the nested-loop
-  regression and its two independent causes, and the intermediate routing
-  fixes that each bought a level -- lives in the git history (`9f4cf24`,
+  **The spacing and routing constraints, condensed.**  The full
+  chronological trail -- why growing arm spacing *outward* with depth is
+  backwards (every fork turns its children 90 degrees, so a grandchild
+  turns back toward the original heading and overshoots, and scaling the
+  constant 10x reproduces the identical failure because *growing* is the
+  bug), the nested-loop regression and its two independent causes, and the
+  intermediate routing fixes that each bought a level -- lives in the git
+  history (`9f4cf24`,
   `b29d71c`, `13ca4b9`) and, for the parts that still constrain the code,
   directly on the constants themselves:
   `render.py`'s comment above `_BRANCH_SPACING` records why depth-counting
