@@ -463,12 +463,18 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         # matter how well the runs folded.  Turn down once more instead, so
         # the tree always starts at the margin with the full width to grow
         # into and its span is measured from there.
-        grid[base][col] = "v"
-        grid[base + 1][col] = "{"
-        grid[base + 1][laserfuck_layout.MARGIN] = "v"
-        base += 2
-        grid[base][laserfuck_layout.MARGIN] = "}"
-        col = laserfuck_layout.MARGIN + 1
+        #
+        # A fold whose last ops landed on a return row has already done
+        # that: it ends at the margin of a fresh row, facing right, with
+        # nothing to its left.  Turning down again would spend two rows to
+        # reach the row it is already on.
+        if col > laserfuck_layout.MARGIN + 1:
+            grid[base][col] = "v"
+            grid[base + 1][col] = "{"
+            grid[base + 1][laserfuck_layout.MARGIN] = "v"
+            base += 2
+            grid[base][laserfuck_layout.MARGIN] = "}"
+            col = laserfuck_layout.MARGIN + 1
 
     # node rows: breadth-first, the root on the row the readers ended on
     # and children on lower rows

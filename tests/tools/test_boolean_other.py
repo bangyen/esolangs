@@ -8,7 +8,7 @@ helper edge paths exercised across generator modules.
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.tools import boolean
+from esolangs.tools import boolean, laserfuck_layout
 from tests.tools.boolean_runners import (
     run_between,
     run_clockwise,
@@ -671,6 +671,38 @@ class TestLaserFuck:
         unfolded = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
         assert unfolded > 80  # the reader run alone is 49 columns per input
         assert max(len(ln) for ln in boolean.laserfuck(table, 80).split("\n")) <= 80
+
+    def test_the_fold_uses_its_return_rows(self) -> None:
+        """A same-character run fills the leftward leg, not just the right.
+
+        A return row's beam travels left, so it may only carry ops that
+        read the same in reverse -- which a run of one repeated character
+        does.  The reader run's ``-`` spill is exactly that, so it lands on
+        the return row rather than costing a third row.
+        """
+        rows = boolean.laserfuck("0110", 80).split("\n")
+        # row 0 turns down at the width; row 1 is its return row, and the
+        # '-' between the margin and the '{' are the spilled decrements.
+        assert rows[0].endswith("v")
+        assert rows[1].endswith("{")
+        assert "-" in rows[1], "the return row should carry the spilled run"
+        # Both readers' 49 columns fit in those two rows, so the tree
+        # starts on row 2 rather than after a third reader row.
+        assert "#" in rows[2], "the tree should start right after the readers"
+
+    def test_return_rows_only_take_a_same_character_run(self) -> None:
+        """The fill stops at the first character that differs.
+
+        A leaf's run mixes pointer moves with its answer, so only its
+        leading same-character stretch may be reversed; the rest has to
+        resume rightwards on the next segment row.
+        """
+        for row in boolean.laserfuck("01101001", 60).split("\n"):
+            body = row[laserfuck_layout.MARGIN + 1 :].rstrip()
+            if not body.endswith("{"):
+                continue  # not a return row
+            ops = body[:-1].strip()
+            assert len(set(ops)) <= 1, f"mixed ops on a return row: {ops!r}"
 
     @pytest.mark.parametrize(("table", "n"), [("0001", 2), ("01101001", 3)])
     def test_tree_columns_are_linear_in_the_input_count(
