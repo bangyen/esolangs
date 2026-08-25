@@ -615,11 +615,12 @@ class TestLaserFuck:
             assert got == want, f"inputs {bits}"
 
     def test_loop_free_tree(self) -> None:
-        """The decision tree uses the #/)/\\ branch, not loop rings."""
+        """The decision tree branches with #, ) and a turning mirror."""
         program = boolean.laserfuck("0110")
         assert "#" in program
         assert ")" in program
-        assert "\\" in program
+        # the tree is mirrored, so a one-branch turns on '/' rather than '\\'
+        assert "/" in program
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
@@ -741,24 +742,31 @@ class TestLaserFuck:
         row and no band, and the grid loses better than half its rows.
         """
         rows = boolean.laserfuck("0110", 80).split("\n")
+        # 'x' only ever ends a leaf, so the leaf rows are exactly these
         leaves = [line for line in rows if "x" in line]
         assert len(leaves) == 4, "one leaf per input combination"
         # the all-zero leaf rides the row the tree starts on, so only the
-        # leaves a *one* branched to sit under a turning '\'
-        turned = [line for line in leaves if "\\" in line]
+        # mirrored, a one-branch's leaf hangs under a '/' and its code runs
+        # leftward, so the 'x' comes *before* the turn.  The all-zero leaf
+        # shares the tree's first row, which carries the entry mirror too.
+        first = min(index for index, line in enumerate(rows) if "x" in line)
+        turned = [
+            line for index, line in enumerate(rows) if "x" in line and index > first
+        ]
         assert len(turned) == 3
         for line in turned:
-            assert line.index("\\") < line.index("x")
-        # nothing below the leaves: no bands, no drop corridors
-        assert rows[-1].endswith("x")
+            assert line.index("x") < line.index("/")
+        # nothing below the leaves: no bands, no drop corridors.  Mirrored,
+        # a leaf's row ends at its turn rather than at its 'x'.
+        assert rows[-1].rstrip()[-1] in "x/"
 
     def test_a_dropping_beam_crosses_no_other_row_s_code(self) -> None:
         """A one-branch drops through the rows above its own catcher.
 
-        Every ``v`` sends the beam down its column until a ``\\`` faces it
-        right again; whatever it passes on the way is executed.  The rows in
-        between must therefore be blank in that column -- which is what lets
-        the tree share rows at all.
+        Every ``v`` sends the beam down its column until a mirror faces it
+        along a row again; whatever it passes on the way is executed.  The
+        rows in between must therefore be blank in that column -- which is
+        what lets the tree share rows at all.
         """
         for table in ("0110", "01101001", "0110100110010110"):
             rows = boolean.laserfuck(table, 200).split("\n")
@@ -774,7 +782,7 @@ class TestLaserFuck:
                     ]
                     for k, lower in below:
                         cell = lower[column]
-                        if cell == "\\":
+                        if cell in "\\/":
                             break  # caught, as intended
                         assert cell == " ", (
                             f"{table}: beam from row {index} column {column} "
