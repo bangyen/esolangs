@@ -246,11 +246,12 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
     return "\n".join(lines)
 
 
-# A BIO command is a ``[0|1][o|i][x|y|z]`` triple, a loop brace, or the
-# space the boolean generator separates commands with.  The triples are why
-# BIO cannot be wrapped by character count, and the braces are why it
-# cannot be wrapped by a fixed stride of three either.
-_BIO_COMMAND = r"[01][oOiI][xXyYzZ]|[{}]| "
+# A BIO command is a ``[0|1][o|i][x|y|z]`` triple with the ``;`` that ends
+# it, a loop-open triple carrying the ``{`` that opens its body, or the
+# ``};`` that closes one -- plus the space the boolean generator separates
+# commands with.  The commands are why BIO cannot be wrapped by character
+# count, and their varying width is why a fixed stride will not do either.
+_BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};| "
 
 # Brainfuck-family single-character commands, and the languages that
 # extend them with a digit argument (Dimensional's ``>0``/``<0``).
@@ -276,10 +277,10 @@ _QUOTE_LITERAL = r'"[^"]*"|.'
 def _bio(program: str, width: int) -> str:
     """Wrap BIO, indenting a nested program by its loop depth.
 
-    BIO's tokens are fixed-width triples, so a break by character count
-    would split ``0ox`` into ``0o`` and ``x`` -- a program that still runs
-    and prints garbage.  Every break here therefore falls between whole
-    commands.
+    A BIO command is a triple with the ``;`` that ends it, or -- for a loop
+    -- the triple with the ``{`` that opens its body, so a break by
+    character count would split one and the program would no longer load.
+    Every break here therefore falls between whole commands.
 
     The boolean BIO generator separates commands with spaces while the text
     one does not, so a space is one of BIO's tokens here.  A line must not
@@ -297,20 +298,16 @@ def _bio(program: str, width: int) -> str:
     show nothing that packing does not, so a program shallower than two
     levels takes the flat path.
 
-    The indent is whitespace between commands, which BIO's parser discards
-    along with the ``{``: it keeps only the matches of
-    ``[01][oOiI][xXyYzZ]|}``.  So an indented program means exactly what
-    the packed one did.
+    The indent is whitespace *between* commands, which BIO ignores, and no
+    break lands inside one -- so an indented program means exactly what the
+    packed one did.
     """
     tokens = re.findall(_BIO_COMMAND, program)
     if "".join(tokens) != program:
         return program
     merged: list[str] = []
     for token in tokens:
-        # A ``{`` belongs to the ``0i?`` before it: the command is the loop
-        # opener and the brace only marks its body, so the pair travels as
-        # one token and a break never strands the brace on the next line.
-        if (token.isspace() or token == "{") and merged:
+        if token.isspace() and merged:
             merged[-1] += token
         else:
             merged.append(token)
@@ -325,11 +322,11 @@ def _bio(program: str, width: int) -> str:
 def _bio_opens(token: str) -> bool:
     """Whether ``token`` opens a BIO loop.
 
-    ``0i?`` is the loop-open command itself.  The ``{`` the boolean
-    generator writes after it is decoration -- BIO's parser drops it -- so
-    the depth follows the command, not the brace.
+    The loop-open command is the ``0i?`` triple *with* the ``{`` that opens
+    its body, so the brace is what distinguishes it from the ``0i`` of a
+    program that is not BIO at all.
     """
-    return token[:2].lower() == "0i"
+    return token[:2].lower() == "0i" and "{" in token
 
 
 def _bio_closes(token: str) -> bool:

@@ -27,13 +27,18 @@ def bio(text: str) -> str:
     """Build a BIO program that outputs ``text``.
 
     Each character is a signed delta from the previous one, folded mod 256
-    into a fresh ``x`` counter and accumulated into ``y``: ``0ox`` sets the
-    count ``b``, ``0ix`` enters a loop that runs while ``x`` is nonzero, the
-    body ``1ox``/``0oy``*a decrements the counter and adds ``a`` to ``y``,
-    ``}`` jumps back, and ``0oy``*r tops up the remainder before ``1iy``
-    prints ``y``.  ``a`` and ``b`` are searched so ``a * b + r`` is the
-    delta (mod 256) with the shortest runs, keeping the program near
+    into a fresh ``x`` counter and accumulated into ``y``: ``0ox;`` sets the
+    count ``b``, ``0ix{`` enters a loop that runs while ``x`` is nonzero,
+    the body ``1ox;``/``0oy;``*a decrements the counter and adds ``a`` to
+    ``y``, ``};`` jumps back, and ``0oy;``*r tops up the remainder before
+    ``1iy;`` prints ``y``.  ``a`` and ``b`` are searched so ``a * b + r`` is
+    the delta (mod 256) with the shortest runs, keeping the program near
     O(sqrt) rather than O(delta).
+
+    Every command carries the ``;`` the wiki ends one with, and a loop-open
+    carries the ``{`` that opens its body, so the program is BIO as the
+    wiki writes it rather than the bare triples the interpreter used to
+    accept.
     """
     _require_bytes(text, "BIO")
     res = []
@@ -42,7 +47,7 @@ def bio(text: str) -> str:
         target = ord(c)
         delta = (target - value) % 256
         if delta == 0:
-            res.append("1iy")
+            res.append("1iy;")
             continue
         best = (float("inf"), 1, 0, 0)
         for total in (delta, delta + 256):
@@ -51,7 +56,9 @@ def bio(text: str) -> str:
                 if a + b + r < best[0]:
                     best = (a + b + r, a, b, r)
         _, a, b, r = best
-        res.append("0ox" * b + "0ix" + "1ox" + "0oy" * a + "}" + "0oy" * r + "1iy")
+        res.append(
+            "0ox;" * b + "0ix{" + "1ox;" + "0oy;" * a + "};" + "0oy;" * r + "1iy;"
+        )
         value = target
     return "".join(res)
 

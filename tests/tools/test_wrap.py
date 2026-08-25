@@ -491,7 +491,7 @@ def test_wrap_chars_breaks_anywhere() -> None:
 # A three-level nest around a short ramp, in the shape the boolean BIO
 # generator emits: each level decrements ``x`` and the innermost tops ``y``
 # up before the closers unwind.
-_NESTED_BIO = "0ox 0ix{1ox0ix{1ox0oy}}0oy0oy1iy"
+_NESTED_BIO = "0ox; 0ix{1ox;0ix{1ox;0oy;};};0oy;0oy;1iy;"
 
 
 def _bio_tokens(program: str) -> list[str]:
@@ -501,7 +501,7 @@ def _bio_tokens(program: str) -> list[str]:
     decorative ``{`` alike -- so two programs with this same list are the
     same program.
     """
-    return re.findall(r"[01][oOiI][xXyYzZ]|}", program)
+    return re.findall(r"[01][oOiI][xXyYzZ](?:\{|;)|\};", program)
 
 
 def test_bio_indents_a_nested_program_by_depth() -> None:
@@ -530,14 +530,14 @@ def test_bio_leaves_a_flat_program_packed() -> None:
     The text generator emits a flat run of depth-1 groups, where indenting
     would show nothing that packing does not.
     """
-    flat = "0ox0ix1ox0oy}0oy1iy"
+    flat = "0ox;0ix{1ox;0oy;};0oy;1iy;"
     wrapped = _bio(flat, DEFAULT_WIDTH)
     assert not any(line.startswith(" ") for line in wrapped.split("\n"))
 
 
 def test_bio_packs_a_ramp_to_the_width_at_its_own_indent() -> None:
     """A long straight run costs rows at its level, not one long line."""
-    program = "0ix{" + "0oy" * 40 + "0ix{1ox}}"
+    program = "0ox;0ix{" + "0oy;" * 40 + "0ix{1ox;};};"
     lines = _bio(program, 20).split("\n")
     assert max(len(line) for line in lines) <= 20
     # The ramp sits inside the outer loop, so every one of its rows is
@@ -550,7 +550,7 @@ def test_bio_packs_a_ramp_to_the_width_at_its_own_indent() -> None:
 def test_bio_indent_stops_growing_before_it_crowds_the_line() -> None:
     """A deep program keeps room to pack, and still unwinds its closers."""
     depth = 40
-    program = "0ix{" * depth + "1ox" + "}" * depth
+    program = "0ox;" + "0ix{" * depth + "1ox;" + "};" * depth
     lines = _bio(program, 20).split("\n")
     assert max(len(line) for line in lines) <= 20
     assert _bio_tokens("\n".join(lines)) == _bio_tokens(program)
