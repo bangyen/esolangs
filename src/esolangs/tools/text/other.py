@@ -659,6 +659,173 @@ def _laserfuck_base_ring(
     return "\n".join(lines)
 
 
+def _laserfuck_snake(body: str, spine: int, right: int) -> list[str] | None:
+    """Lay a ring body across rows between fixed margins.
+
+    Row 0 carries the entry ``}`` at ``spine`` and runs rightward; every
+    later row starts at ``spine + 1``.  Rightward rows drop at ``right``,
+    leftward rows drop at ``spine + 1``, and the row below always catches
+    in the same column.  A leftward row is written right-to-left, which is
+    the order its beam reads -- no reversal is needed on top of that.
+
+    The last body row has to be a leftward one, because the test ``-#/)``
+    is read rightward and a leftward beam would meet its ``)`` first; an
+    empty turn row is added when the body would otherwise end going right.
+
+    ``body`` must *not* carry the counter's ``-``: the test row supplies it,
+    and a body that decrements too would spend the counter twice a pass.
+    """
+    body = body[:-1] if body.endswith("-") else body
+    left = spine + 1
+    first = right - spine - 1
+    rest_width = right - left - 1
+    if first < 1 or rest_width < 1:
+        return None
+
+    chunks = [body[:first]]
+    remaining = body[first:]
+    while remaining:
+        chunks.append(remaining[:rest_width])
+        remaining = remaining[rest_width:]
+    if len(chunks) % 2 == 1:
+        chunks.append("")
+
+    grid = [[" "] * (right + 6) for _ in range(len(chunks) + 2)]
+    for index, chunk in enumerate(chunks):
+        row = grid[index]
+        if index % 2 == 0:
+            start = spine if index == 0 else left
+            row[start] = "}"
+            for offset, char in enumerate(chunk):
+                row[start + 1 + offset] = char
+            row[right] = "v"
+        else:
+            row[right] = "{"
+            for offset, char in enumerate(chunk):
+                row[right - 1 - offset] = char
+            row[left] = "v"
+
+    test = len(chunks)
+    grid[test][left] = "}"
+    for offset, char in enumerate("-#/)"):
+        grid[test][left + 1 + offset] = char
+    grid[test + 1][left + 3] = "{"
+    grid[test + 1][spine] = "^"
+    return ["".join(row).rstrip() for row in grid]
+
+
+def _laserfuck_snake_ring(text: str, width: int) -> str | None:
+    r"""Build a base-init program whose rings are snaked across rows.
+
+    A ring body cannot be folded the way a straight run of ops can -- the
+    return leg re-enters at the ``}`` and re-runs the whole body, so a body
+    split by :func:`~esolangs.tools.laserfuck_layout.fold` would re-execute
+    only its tail.  It can be *snaked*, though, and that is what lets a
+    base-init program meet a width instead of falling back to the linear
+    form: :func:`_laserfuck_snake` walks the body across as many rows as it
+    needs and only then reaches the test.
+
+    Rings stack as self-contained blocks, each with its own spine and
+    return leg.  Nothing is shared between them: the beam leaves a block
+    through the ``)`` on its test row, a ``v`` drops it clear of the return
+    leg, and a ``}`` on a fresh row faces it right again for whatever comes
+    next.  The residual tail is caught the same way and folded, since it is
+    direction-agnostic ops.
+
+    Returns ``None`` when ``width`` cannot hold the frame.
+    """
+    values = [ord(char) for char in text]
+    count = len(values)
+    base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in values))
+
+    # Writing the base out one '+' at a time would push the first spine
+    # past the width before the body even starts, so it is factored into a
+    # multiply block whenever that is shorter.
+    factor = _laserfuck_base_factor(base)
+    scratch = factor is not None
+    home = count + 1 if scratch else count
+
+    # the spread ring starts and ends on the counter, which is the cell its
+    # own test looks at -- a body that came back anywhere else would spend
+    # the wrong cell and never terminate
+    spread = "<" * count + "+" + ">+" * (count - 1) + ">"
+    tail = "-"
+    if scratch:
+        tail += ">-<"
+    tail += "<" * count
+    for index, value in enumerate(values):
+        step = value - base
+        tail += ("+" if step > 0 else "-") * abs(step)
+        if index < count - 1:
+            tail += ">"
+
+    if factor is not None:
+        outer, inner, residual = factor
+        stages = [
+            (">" * home + "+" * outer, "<" + "+" * inner + ">"),
+            ("<" + "+" * residual, spread),
+        ]
+    else:
+        stages = [(">" * home + "+" * base, spread)]
+
+    right = width - 2
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(row: int, col: int, char: str) -> None:
+        if char != " ":
+            cells[(row, col)] = char
+
+    # byte-mode marker, then the funnel that normalizes the start heading
+    put(0, 0, "\xff")
+    put(0, 1, "}")
+    put(0, 2, "}")
+    put(1, 0, "|")
+    put(1, 1, "o")
+    put(1, 2, "^")
+    put(2, 1, "_")
+
+    row, entry = 0, 3
+    for preload, body in stages:
+        col = entry
+        for char in preload:
+            put(row, col, char)
+            col += 1
+        spine = col
+        if spine >= right - 2:
+            return None
+        # drop the beam into this block's entry '}', directly below
+        put(row, spine, "v")
+        block = _laserfuck_snake(body, spine, right)
+        if block is None:
+            return None
+        for offset, line in enumerate(block):
+            for index, char in enumerate(line):
+                put(row + 1 + offset, index, char)
+        # the test row is the second from the end of the block
+        test_row = row + 1 + len(block) - 2
+        exit_col = spine + 6
+        put(test_row, exit_col, "v")
+        row = test_row + 2
+        put(row, exit_col, "}")
+        entry = exit_col + 1
+
+    height = max(index for index, _ in cells) + 1
+    span = max(index for _, index in cells) + 1
+    depth = laserfuck_layout.rows_needed(len(tail) + 1, width)
+    grid = [[" "] * (max(width, span) + 2) for _ in range(height + depth + 3)]
+    for (index, col), char in cells.items():
+        grid[index][col] = char
+
+    end_row, end_col = laserfuck_layout.fold(grid, tail, row, entry, width)
+    grid[end_row][end_col] = "x"
+    lines = ["".join(line).rstrip() for line in grid]
+    while lines and not lines[-1]:
+        lines.pop()
+    if max(map(len, lines)) > width:
+        return None
+    return "\n".join(lines)
+
+
 def laserfuck(text: str, width: int | None = None) -> str:
     """Build a LaserFuck program that outputs ``text``, the smaller of two.
 
@@ -680,6 +847,12 @@ def laserfuck(text: str, width: int | None = None) -> str:
             ring = _laserfuck_base_ring(text, factored=factored, grouped=grouped)
             if width is None or max(map(len, ring.split("\n"))) <= width:
                 forms.append(ring)
+    if width is not None:
+        # the snaked form exists only for the bounded case: it spends rows
+        # to buy columns, which is a loss when there is no bound to meet
+        snake = _laserfuck_snake_ring(text, width)
+        if snake is not None:
+            forms.append(snake)
     return min(
         forms, key=lambda form: (form.count("\n") + 1) * max(map(len, form.split("\n")))
     )
