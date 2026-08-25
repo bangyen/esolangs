@@ -64,27 +64,36 @@ Items 1-5 are fixed and committed:
    to run autoupdate. That is recorded in a comment at the top of
    `dependabot.yml` rather than left implicit.
 
+8. **Release pipeline** — the decision was to publish, so
+   `.github/workflows/release.yml` builds and uploads on a `v*` tag using PyPI
+   trusted publishing: `id-token: write` on a `pypi` environment, no API token
+   in secrets. Three gates run before the upload, in order — the tag must
+   equal the `pyproject.toml` version (tested both ways: `v0.1.0` passes,
+   `v0.9.9` fails), `twine check` must pass on both artifacts, and the built
+   wheel must install into a clean venv and run. Plus `SECURITY.md`, which
+   separates interpreter misbehaviour (a normal bug, since these run untrusted
+   input by design) from an escape out of the interpreter (a private report).
+
+   The wheel smoke test runs `esolangs list`, not `esolangs --help`: this CLI
+   dispatches on subcommands and treats an unknown flag as an error, so
+   `--help` exits 2 and would have failed every release. Caught by checking
+   the real exit code instead of trusting a pipeline's.
+
 `scripts/verify.py` passes end to end (all steps green).
 
 ## Still open
 
+### 8a. The one-time PyPI registration, which only the owner can do
 
+The workflow is in place but cannot succeed until the trusted publisher is
+registered at https://pypi.org/manage/account/publishing/ with owner
+`bangyen`, repository `esolangs`, workflow `release.yml`, environment `pypi`.
+The name is unclaimed (404), so this also claims it. Until then a `v*` tag
+builds and verifies, then fails at the publish step — deliberately, so a
+mistagged release never reaches the index.
 
-### 8. No release, no tags
-
-`git tag -l` is empty, version has been `0.1.0` throughout, and the name
-`esolangs` is unclaimed on PyPI (404). The package builds cleanly today
-(`uv build` produces both sdist and wheel), declares `py.typed`, and ships a
-console entry point.
-
-If distribution is wanted: fix the build-system floor (#5), tag `v0.1.0`, add a release workflow using PyPI
-trusted publishing (OIDC, no token to store), and claim the name. If it is
-deliberately git-only, then say so in the README and drop
-`Development Status :: 4 - Beta` — right now the metadata reads like a
-package meant to be installed from an index.
-
-`SECURITY.md` is still absent, but it only earns its place if #8 ships a
-package to an index; a git-only repo does not need one.
+After registering, `git tag v0.1.0 && git push origin v0.1.0` runs the
+release. Nothing else is pending.
 
 ## Also checked, nothing found
 
@@ -106,9 +115,7 @@ the Lean proofs carry no `sorry` or `axiom`.
 
 ## Suggested order
 
-#8 is the only item left, and it is a decision rather than a task: publish
-`v0.1.0` to PyPI (tag, trusted-publishing workflow, claim the name), or
-declare the repo git-only in the README and drop the
-`Development Status :: 4 - Beta` classifier that currently implies otherwise.
-Either answer closes it; leaving it open is what keeps the metadata
-misleading.
+Every review item is now closed in code. What remains is 8a: register the
+trusted publisher on PyPI (a browser step, owner-only), then tag `v0.1.0`.
+The `Development Status :: 4 - Beta` classifier is correct under this
+decision — the package is meant to be installed from an index.
