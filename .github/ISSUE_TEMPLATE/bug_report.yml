@@ -1,0 +1,40 @@
+name: Bug report
+description: An interpreter, compiler, or tool behaves differently than the language specifies.
+labels: [bug]
+body:
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      description: Which esolang, as named in docs/languages.md.
+      placeholder: brainfuck
+    validations:
+      required: true
+
+  - type: textarea
+    id: program
+    attributes:
+      label: Program
+      description: The smallest program that shows the problem.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual output
+      description: >
+        What the language specifies, what this repo produced, and where the
+        expectation comes from if it is not obvious — a wiki example carries
+        more weight than prose.
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD`.
+    validations:
+      required: true
