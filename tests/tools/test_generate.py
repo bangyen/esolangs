@@ -493,9 +493,22 @@ class TestGeneratorRoundTrips:
 
     def test_laserfuck_linear_fold_is_narrower(self) -> None:
         """Folding actually buys columns, rather than only reshaping."""
-        text = "The quick brown fox"
-        assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 1000
+        # a text whose bytes are spread out enough that neither the multiply
+        # passes nor a shared base pays, so the linear run is what folds
+        text = "!~!~!~!~!~"
+        assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 200
         assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) <= 80
+
+    def test_laserfuck_clustered_text_uses_a_shared_base(self) -> None:
+        """Bytes that cluster are counted up together, not one at a time.
+
+        One loop brings every cell to the base they are all near, and only
+        the differences are written afterwards -- which is what keeps a text
+        like this off the linear fallback it used to land on.
+        """
+        wide = gen.laserfuck("The quick brown fox")
+        assert max(len(ln) for ln in wide.split("\n")) < 600
+        assert "#/)" in wide, "the shared base is set by a ring"
 
     def test_laserfuck_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""

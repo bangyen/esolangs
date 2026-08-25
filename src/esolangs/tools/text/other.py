@@ -428,7 +428,110 @@ def _laserfuck_linear(run: str, width: int | None) -> str:
     return "\n".join(lines)
 
 
+def _laserfuck_base_ring(text: str) -> str:
+    r"""Build the *base-init* LaserFuck program for ``text``.
+
+    Every byte of ``text`` is close to every other -- letters cluster in the
+    nineties and hundreds -- so instead of counting each cell up from zero,
+    one loop counts *all* of them up together to a shared base, and only the
+    differences are written out afterwards.  The base is the value that
+    minimizes the total difference, and the residuals are usually a handful
+    of ``+``/``-`` each.
+
+    The loop is a ring, laid inline: ``}`` faces the beam along a body that
+    walks to cell 0, adds one to every cell on its way back, and decrements
+    the counter; ``#`` skips the deflector so ``)`` can test it; and a
+    return leg carries the beam back to the ``}``.  That is a different
+    shape from the generator's other loop, whose long body is wrapped around
+    a serpentine -- this body is deliberately short, which the serpentine
+    has nothing to do with.
+
+    The counter ends at zero and *touched*, which byte mode would print as a
+    NUL, so a final ``-`` drives it negative where the dump ignores it --
+    the same trick the multiplying form uses for its own counter.
+    """
+    values = [ord(char) for char in text]
+    count = len(values)
+    base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in values))
+
+    preload = ">" * count + "+" * base
+    body = "<" * count + "+" + ">+" * (count - 1) + ">" + "-"
+    tail = "-" + "<" * count
+    for index, value in enumerate(values):
+        step = value - base
+        tail += ("+" if step > 0 else "-") * abs(step)
+        if index < count - 1:
+            tail += ">"
+
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(row: int, col: int, char: str) -> None:
+        if char != " ":
+            cells[(row, col)] = char
+
+    # byte-mode marker, then the funnel that normalizes the start heading
+    put(0, 0, "\xff")
+    put(0, 1, "}")
+    put(0, 2, "}")
+    put(1, 0, "|")
+    put(1, 1, "o")
+    put(1, 2, "^")
+    put(2, 1, "_")
+
+    col = 3
+    for char in preload:
+        put(0, col, char)
+        col += 1
+    put(0, col, "v")
+    put(1, col, "{")
+    put(1, 3, "v")
+
+    put(2, 3, "}")
+    col = 4
+    for char in body + "#/)":
+        put(2, col, char)
+        col += 1
+    put(3, 3, "^")
+    put(3, col - 2, "{")
+
+    for index, char in enumerate(tail):
+        put(2, col + index, char)
+    put(2, col + len(tail), "x")
+
+    height = max(row for row, _ in cells) + 1
+    span = max(c for _, c in cells) + 1
+    lines = [
+        "".join(cells.get((row, c), " ") for c in range(span)).rstrip()
+        for row in range(height)
+    ]
+    return "\n".join(lines)
+
+
 def laserfuck(text: str, width: int | None = None) -> str:
+    """Build a LaserFuck program that outputs ``text``, the smaller of two.
+
+    Two constructions are available and which wins depends entirely on the
+    text.  :func:`_laserfuck_multiply` factors the byte values and adds them
+    in base-sized chunks, which is best when they are spread out.
+    :func:`_laserfuck_base_ring` counts every cell up to a shared base in one
+    loop and then writes only the differences, which is best when they
+    cluster -- exactly when the multiply passes stop paying and the other
+    form falls back to writing one ``+`` per unit.
+
+    Rather than predict, both are built and the smaller grid is returned.  A
+    ``width`` disqualifies a form that cannot meet it; if neither can, the
+    multiplying form's own fallback still applies.
+    """
+    forms = [_laserfuck_multiply(text, width)]
+    ring = _laserfuck_base_ring(text)
+    if width is None or max(map(len, ring.split("\n"))) <= width:
+        forms.append(ring)
+    return min(
+        forms, key=lambda form: (form.count("\n") + 1) * max(map(len, form.split("\n")))
+    )
+
+
+def _laserfuck_multiply(text: str, width: int | None = None) -> str:
     """Build a LaserFuck program that outputs ``text``.
 
     Phase 1 generates a brainfuck-style program: each pass picks a base about
