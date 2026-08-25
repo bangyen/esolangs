@@ -1,24 +1,31 @@
 # BIO interpreter (RISC-V Linux port; see README "Extra Implementations").
 #
 # The full wiki language: three registers x/y/z, each addressed by a 2-char
-# opcode plus a register letter.  `0o[xyz]` increments, `1o[xyz]` decrements,
-# `1i[xyz]` prints the register's low byte, and `0i[xyz]` is a while-loop
-# guard: it pushes the current token index when the register is nonzero
-# (entering the loop body) and otherwise skips forward to the matching `}`.
-# `}` pops the loop stack and jumps back to just before the guard, so the
-# guard re-checks the register; popping an empty stack is an invalid
-# runtime operation.  Commands are matched by the regex
-# ``([01][oOiI][xXyYzZ]|})`` (case-insensitive), so any other text --
-# including `;` separators -- is a comment.  The malformed check is lazy,
-# matching the Python interpreter's control flow exactly: a `0i[xyz]`
-# guard only scans for its matching `}` when its register is zero (the
-# skip path), so an unmatched guard that is always entered never raises,
-# and a `}` that halts the program (empty loop stack) can fire before a
-# later unmatched guard is ever reached.
+# opcode plus a register letter.  The wiki writes a loop as
+# `0i{ do something };` and says every command is ended by a `;`, so
+# neither mark is free-standing punctuation -- a command is a triple *with*
+# its terminator, and a loop guard is a triple carrying the `{` that opens
+# its body:
+#
+#   `0o[xyz];`  increment          `1o[xyz];`  decrement
+#   `1i[xyz];`  print low byte     `0i[xyz]{`  while-loop guard
+#   `};`        close the innermost loop
+#
+# A guard pushes the current token index when its register is nonzero
+# (entering the body) and otherwise skips forward to the matching `};`.
+# The close pops the loop stack and jumps back to just before the guard, so
+# the guard re-checks the register.  Matching is case-insensitive, and `//`
+# runs to the end of its line as a comment.
+#
+# The whole program is checked when it loads: every byte outside a comment
+# must belong to a command, and the braces must balance.  So a triple
+# missing its `;`, a guard missing its `{`, a `};` with no loop to close,
+# and a guard with no close are all rejected eagerly, before any output --
+# which is what makes the loop stack impossible to pop empty at run time.
 #
 # Exit codes follow the cross-check convention: 0 = success, 2 = malformed
-# program (unmatched loop guard), 3 = invalid runtime operation (`}` with an
-# empty loop stack).  The program is read from stdin.
+# program.  Every rejection is that one category; there is no invalid
+# *runtime* operation left to reach.  The program is read from stdin.
 #
 # Build: riscv64-elf-gcc -nostdlib -static -march=rv64i -mabi=lp64 -o bio-riscv bio-riscv.s
 #        (or riscv64-linux-gnu-gcc, as in CI)
@@ -64,8 +71,10 @@ _start:
 .read_done:
     sb   zero, 0(t0)        # NUL below the program
 
-# Tokenize into (type, reg) pairs, matching the case-insensitive regex
-# ``([01][oOiI][xXyYzZ]|})``: two-char command + register, or a bare `}`.
+# Tokenize into (type, reg) pairs.  A command is `[01][oi][xyz]` followed by
+# `;` (or `{`, which makes a `0i` guard), or the two bytes `};`.  Whitespace
+# separates commands and `//` runs to end of line; anything else is a load
+# error, so the scanner rejects where it used to skip.
     la   s6, types
     la   s7, regs
     li   s4, 0              # byte index
@@ -74,25 +83,64 @@ _start:
     bge  s4, s0, .tokenize_done
     sub  t1, s3, s4
     lbu  t2, 0(t1)          # program[s4]
+    # whitespace between commands
+    li   t3, ' '
+    beq  t2, t3, .tok_space
+    li   t3, '\t'
+    beq  t2, t3, .tok_space
+    li   t3, '\n'
+    beq  t2, t3, .tok_space
+    li   t3, '\r'
+    beq  t2, t3, .tok_space
+    # `//` comment: run to the end of the line
+    li   t3, '/'
+    beq  t2, t3, .tok_comment
     li   t3, '}'
     bne  t2, t3, .tok_try2
-    li   t3, 4              # type }
+    # `}` must be followed by its `;`
+    addi t5, s4, 1
+    bge  t5, s0, .err2
+    sub  t1, s3, t5
+    lbu  t2, 0(t1)
+    li   t3, ';'
+    bne  t2, t3, .err2
+    li   t3, 4              # type };
     add  t4, s6, s5
     sb   t3, 0(t4)
     add  t4, s7, s5
     sb   zero, 0(t4)        # reg unused
-    addi s4, s4, 1
+    addi s4, s4, 2
     addi s5, s5, 1
     j    .tokenize
+.tok_space:
+    addi s4, s4, 1
+    j    .tokenize
+.tok_comment:
+    # need a second '/' to open a comment; a lone '/' is a load error
+    addi t5, s4, 1
+    bge  t5, s0, .err2
+    sub  t1, s3, t5
+    lbu  t2, 0(t1)
+    li   t3, '/'
+    bne  t2, t3, .err2
+    addi s4, s4, 2
+.tok_comment_scan:
+    bge  s4, s0, .tokenize_done
+    sub  t1, s3, s4
+    lbu  t2, 0(t1)
+    li   t3, '\n'
+    beq  t2, t3, .tokenize   # the newline itself is whitespace
+    addi s4, s4, 1
+    j    .tok_comment_scan
 .tok_try2:
     addi t5, s4, 1
-    bge  t5, s0, .tok_skip  # need two more bytes
+    bge  t5, s0, .err2      # need two more bytes
     call .lower
     li   t3, '0'
     beq  t2, t3, .tok_dig0
     li   t3, '1'
     beq  t2, t3, .tok_dig1
-    j    .tok_skip
+    j    .err2
 .tok_dig0:
     li   t4, 0              # base type for '0' family: 0=0o, 3=0i
     j    .tok_op
@@ -106,7 +154,7 @@ _start:
     beq  t2, t3, .tok_o
     li   t3, 'i'
     beq  t2, t3, .tok_i
-    j    .tok_skip
+    j    .err2
 .tok_o:
     # '0' -> type 0 (0o), '1' -> type 1 (1o)
     j    .tok_have_type
@@ -116,7 +164,7 @@ _start:
     sub  t4, t3, t4
 .tok_have_type:
     addi t5, s4, 2
-    bge  t5, s0, .tok_skip  # need a third byte (the register)
+    bge  t5, s0, .err2      # need a third byte (the register)
     sub  t1, s3, t5
     lbu  t2, 0(t1)          # program[s4+2]
     call .lower
@@ -126,7 +174,7 @@ _start:
     beq  t2, t3, .tok_regy
     li   t3, 'z'
     beq  t2, t3, .tok_regz
-    j    .tok_skip
+    j    .err2
 .tok_regx:
     li   t6, 0
     j    .tok_emit
@@ -136,17 +184,55 @@ _start:
 .tok_regz:
     li   t6, 2
 .tok_emit:
+    # The fourth byte is the command's terminator: `{` for a loop guard
+    # (type 3), `;` for every other command.  Anything else -- a missing
+    # terminator, or a `{` on a non-guard -- is a load error.
+    addi t5, s4, 3
+    bge  t5, s0, .err2
+    sub  t1, s3, t5
+    lbu  t2, 0(t1)          # program[s4+3]
+    li   t3, 3
+    beq  t4, t3, .tok_want_brace
+    li   t3, ';'
+    bne  t2, t3, .err2
+    j    .tok_store
+.tok_want_brace:
+    li   t3, '{'
+    bne  t2, t3, .err2
+.tok_store:
     add  t3, s6, s5
     sb   t4, 0(t3)          # types[count] = type
     add  t3, s7, s5
     sb   t6, 0(t3)          # regs[count] = reg
-    addi s4, s4, 3
+    addi s4, s4, 4
     addi s5, s5, 1
     j    .tokenize
-.tok_skip:
-    addi s4, s4, 1
-    j    .tokenize
 .tokenize_done:
+
+# Balance the braces before executing, so a `};` always has a loop to close
+# and a guard always has a close to skip to.
+    li   t0, 0              # depth
+    li   t1, 0              # token index
+.balance:
+    bge  t1, s5, .balance_done
+    add  t2, s6, t1
+    lbu  t3, 0(t2)
+    li   t4, 3
+    beq  t3, t4, .balance_up
+    li   t4, 4
+    beq  t3, t4, .balance_down
+    j    .balance_next
+.balance_up:
+    addi t0, t0, 1
+    j    .balance_next
+.balance_down:
+    beqz t0, .err2          # `};` with no loop to close
+    addi t0, t0, -1
+.balance_next:
+    addi t1, t1, 1
+    j    .balance
+.balance_done:
+    bnez t0, .err2          # a guard with no matching `};`
 
 .exec_start:
     li   s8, 0               # x
@@ -242,7 +328,9 @@ _start:
     addi s4, s4, 1           # scan forward from ind+1 for the matching }
     li   t0, 1               # depth
 .open_scan:
-    bge  s4, s5, .err2       # ran off the end with no matching }: malformed
+    # The balance pass proved a matching `};` exists, so this never runs off
+    # the end; the bound is kept as a guard against a corrupt token table.
+    bge  s4, s5, .err2
     add  t1, s6, s4
     lbu  t2, 0(t1)
     li   t3, 3
@@ -262,7 +350,9 @@ _start:
     j    .exec                # ind is just after the matching }
 
 .cmd_close:
-    beqz s11, .err3           # empty loop stack: invalid runtime op
+    # The balance pass proved every `};` has a loop, so the stack is never
+    # empty here; the check is kept as a guard against a corrupt table.
+    beqz s11, .err2
     addi s11, s11, -1
     la   t0, loopstack
     slli t1, s11, 2
@@ -282,11 +372,6 @@ _start:
 
 .err2:
     li   a0, 2
-    li   a7, 93
-    ecall
-
-.err3:
-    li   a0, 3
     li   a7, 93
     ecall
 

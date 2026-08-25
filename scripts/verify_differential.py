@@ -33,12 +33,11 @@ Languages with both an in-package interpreter and a native cross-check:
   dump.
 * **BIO** — ``register_based/bio.py`` vs ``extra/assembly/bio-riscv.s``.
   Both implement the full wiki language (3 registers x/y/z, while loops
-  guarded by ``0i[xyz]``/``}``, with comments).  The assembly is run under
-  unicorn via ``riscv_elf_runner`` and must agree with the Python
-  interpreter on the full corpus; both error lazily, matching the Python
-  control flow exactly (a loop guard only raises when its skip path scans
-  off the end of the program, so a ``}`` that halts first, exit 3, can
-  pre-empt a later unmatched guard, exit 2).
+  written ``0i[xyz]{ ... };``, every command ended by ``;``, and ``//``
+  comments).  The assembly is run under unicorn via ``riscv_elf_runner``
+  and must agree with the Python interpreter on the full corpus; both
+  check the whole program when it loads, so every rejection is "malformed"
+  (exit 2) and is raised before any output.
 * **Minsky Swap** — ``register_based/minsky_swap.py`` vs
   ``extra/assembly/minsky_swap-riscv.s``.  Both implement the compact
   notation (a `+`/`~`/`*` command line plus a jump-target line, one number
@@ -513,19 +512,24 @@ RAM0_CORPUS = [
 
 # -- BIO corpus: the full 3-register wiki language -------------------------
 
-# Every command over three registers x/y/z.  `0o[xyz]` increments, `1o[xyz]`
-# decrements, `1i[xyz]` prints the register's low byte, `0i[xyz]` is a
-# while-loop guard, and `}` closes the innermost loop; matching is
-# case-insensitive and any other text (including `;` separators) is a
-# comment.  Error categories: a loop guard that is skipped (register zero)
-# and never finds its matching `}` is malformed (exit 2, raised lazily on
-# the skip scan, not eagerly); a `}` with no open loop is an invalid
-# runtime operation (exit 3).  Programs must terminate (a loop whose body
-# never changes its guard register loops forever).
+# Every command over three registers x/y/z.  A command is a triple ended by
+# its `;`: `0o[xyz];` increments, `1o[xyz];` decrements, `1i[xyz];` prints
+# the register's low byte, `0i[xyz]{` is a while-loop guard carrying the
+# brace that opens its body, and `};` closes the innermost loop.  Matching
+# is case-insensitive, `//` runs to end of line as a comment, and anything
+# else is a load error.
+#
+# Errors are one category: the whole program is checked when it loads --
+# the commands, their terminators, and the brace balance -- so every
+# rejection is "malformed" (exit 2) and is raised eagerly, before any
+# output.  There is no invalid *runtime* operation (exit 3) left to reach,
+# since a `};` can only run once parsing has proved it has a loop to close.
+# Programs must terminate (a loop whose body never changes its guard
+# register loops forever).
 BIO_CORPUS = [
     "",  # empty program: no output
     "   \n\t  ",  # whitespace only: no output
-    "0ox;invalid;1ix;",  # non-command text is a comment
+    "0ox; //increment\n1ix; //print\n",  # `//` comments are stripped
     "0ox;1ix;",  # increment then output x
     "0oy;0oy;0oy;1iy;",  # increment y three times
     "0oz;1iz;",  # increment then output z
@@ -541,12 +545,17 @@ BIO_CORPUS = [
     "0ox;" * 66 + "1ix;",  # 66 = 'B'
     "0ox;" * 300 + "1ix;",  # wraps mod 256
     "0ox;0oy;0oz;1ix;1iy;1iz;",  # registers are independent
-    # error categories
-    "}",  # bare close: invalid runtime op, exit 3
-    "0ox;}",  # close with no open loop: exit 3
-    "0iy{0ox;",  # unmatched guard, skipped: malformed, exit 2
-    "0ix{0iy{};",  # unmatched outer guard, skipped: malformed, exit 2
-    ";x1Ox{{}0Iy",  # a halting `}` pre-empts a later unmatched guard: exit 3
+    # error categories -- all malformed (exit 2), all raised at load
+    "};",  # bare close with no loop to close
+    "0ox;};",  # close with no open loop, after valid output
+    "0iy{0ox;",  # guard with no matching close
+    "0ix{0iy{};",  # unmatched outer guard
+    ";x1Ox{{}0Iy",  # not commands at all
+    "0ox;invalid;1ix;",  # stray text is rejected, not treated as a comment
+    "0ox1ix;",  # a triple missing its `;` is not a command
+    "0ox;0ix1ox;};",  # a guard missing its `{` is not a command
+    "0ox;{1ix;",  # a `{` not carried by a guard
+    "0ox;/ 1ix;",  # a lone `/` is not the start of a comment
 ]
 
 
@@ -882,19 +891,18 @@ def _run_bio_python(program: str) -> tuple[bytes, int]:
     """Run the Python BIO interpreter; return (output, exit code).
 
     Exit codes follow the cross-check convention: 0 = success, 2 = malformed
-    program (ValueError: a skipped loop guard never finds its matching
-    `}`), 3 = invalid runtime operation (HaltError: `}` with an empty loop
-    stack).
+    program.  BIO checks its whole program when it loads -- the commands,
+    their terminators, and the brace balance -- so every rejection is that
+    one category and there is no invalid *runtime* operation (exit 3) left
+    to reach: a ``};`` can only run once parsing has proved it has a loop
+    to close.
     """
-    from esolangs.exceptions import HaltError
     from esolangs.interpreters.register_based.bio import run
 
     buffer, sink = _capture_io()
 
     try:
         run(program, sink)
-    except HaltError:
-        return buffer.getvalue(), 3
     except ValueError:
         return buffer.getvalue(), 2
     return buffer.getvalue(), 0
@@ -1309,7 +1317,10 @@ def _fuzz_bio(rng: random.Random, count: int) -> bool:
     return _fuzz_asm(
         "BIO",
         "bio",
-        _random_program("01OoIiXxYyZz{}; ", 40),
+        # ``/`` and a newline are in the alphabet so the fuzz reaches the
+        # comment scanner (and a lone ``/``, which is a load error) as well
+        # as the command and brace paths.
+        _random_program("01OoIiXxYyZz{};/ \n", 40),
         _run_bio_python_limited,
         rng,
         count,
