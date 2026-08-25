@@ -859,9 +859,22 @@ def clockwise(truth_table: str) -> str:
     passing paths at acc=0 so they do not turn on another leaf's exit.  Both
     leaves are padded to the same height, so every exit lands on that row.
     The row funnels left to the corner ``R`` and up column 0 to halt.
+
+    The root node needs no spine of its own.  The pointer starts at ``(0, 0)``
+    heading right and walks the whole top row into the corner ``R``, so seven
+    ``.`` laid just left of that corner are the first instructions executed,
+    and the accumulator is already zero when they run -- so the root's ``S``
+    is a no-op too.  Hoisting those eight cells onto row 0 retires seven rows
+    of grid, roughly a fifth of the blanks in a small table.  It needs seven
+    free columns left of the root, i.e. ``2 ** (n + 1) >= 7``, so ``n == 1``
+    (four columns) keeps the spine; widening that ring would cost more than
+    the rows save.
     """
     n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
+    # Seven free columns left of the root are what the hoist needs; see above.
+    hoist = 2 ** (n + 1) >= 7
+    shift = 7 if hoist else 0
     # The spine starts far enough right that the tree's leftward branches
     # clear column 0, which holds the closing corner.  A node at ``bit``
     # displaces its one-branch ``2**(n - bit)`` to the left and puts two
@@ -879,9 +892,15 @@ def clockwise(truth_table: str) -> str:
         if bit == n:
             leaf(x, y, combo)
             return
-        place((x, y), "S")
-        for i in range(7):
-            place((x, y + 1 + i), ".")
+        if bit == 0 and hoist:
+            # The seven reads sit on row 0, left of the corner ``R``; the
+            # node's ``?`` is all that is left of its spine.
+            for i in range(7):
+                place((x - 7 + i, 0), ".")
+        else:
+            place((x, y), "S")
+            for i in range(7):
+                place((x, y + 1 + i), ".")
         place((x, y + 8), "?")
         build(bit + 1, x, y + 9, combo << 1)  # b=0: continue down
         # b=1: '?' turns right (cw from down) then three R's turn left->down
@@ -918,9 +937,11 @@ def clockwise(truth_table: str) -> str:
         for i, ch in enumerate(code):
             place((x, y + i), ch)
 
-    build(0, root, 1, 0)
+    # Hoisting the root's reads onto row 0 retires seven rows of spine, so the
+    # tree starts that much higher and every row below rides up with it.
+    build(0, root, 1 - shift, 0)
 
-    bottom = 1 + 9 * n + _CLOCKWISE_LEAF - 1
+    bottom = 1 + 9 * n + _CLOCKWISE_LEAF - 1 - shift
     for (x, y), ch in list(cells.items()):
         if ch == "?" and y == bottom:
             place((x - 1, bottom), "S")
