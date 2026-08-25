@@ -172,7 +172,7 @@ def _fill_bio(template: str, bits: list[int]) -> str:
     return instantiate(
         template,
         bits,
-        lambda i, b: "0ox" * (2 ** (n - 1 - i)) if b else "",
+        lambda i, b: "0ox;" * (2 ** (n - 1 - i)) if b else "",
         lambda _i, _b: "",
     )
 

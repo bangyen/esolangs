@@ -85,7 +85,7 @@ def bio(truth_table: str) -> str:
     the input's numeric index.
 
     ``y`` is initialized to the table's first entry (``table[0]``), then
-    ``2**n - 1`` *nested* loops each decrement ``x`` once (``0ix { 1ox ... }``)
+    ``2**n - 1`` *nested* loops each decrement ``x`` once (``0ix{ 1ox; ... };``)
     and, on the transition ``table[j-1] -> table[j]``, adjust ``y``: ``0oy``
     for a 0-to-1 rise, ``1oy`` for a 1-to-0 fall, nothing for a flat edge.
     The j-th level fires iff ``x >= j``, so for the packed value ``V`` the
@@ -97,15 +97,15 @@ def bio(truth_table: str) -> str:
     def yop(a: str, b: str) -> str:
         if a == b:
             return ""
-        return "0oy" if a == "0" else "1oy"
+        return "0oy;" if a == "0" else "1oy;"
 
     pack = " ".join("{X" + str(i) + "}" for i in range(n))
     inner = ""
     for j in range(2**n - 1, 0, -1):
-        body = "1ox" + yop(truth_table[j - 1], truth_table[j]) + inner
-        inner = "0ix{" + body + "}"
-    init = "0oy" if truth_table[0] == "1" else ""
-    return pack + " " + init + inner + "0oy" * 48 + "1iy"
+        body = "1ox;" + yop(truth_table[j - 1], truth_table[j]) + inner
+        inner = "0ix{" + body + "};"
+    init = "0oy;" if truth_table[0] == "1" else ""
+    return pack + " " + init + inner + "0oy;" * 48 + "1iy;"
 
 
 def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
