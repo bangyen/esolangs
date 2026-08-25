@@ -725,6 +725,46 @@ class TestLaserFuck:
         # no 48-'-' run survives anywhere in the program
         assert "-" * 10 not in "\n".join(rows)
 
+    def test_ringed_leaves_sit_on_their_own_descent_rows(self) -> None:
+        """A leaf needs no corridor: the beam already arrives moving right.
+
+        The old layout dropped each leaf down a private column into a band
+        of its own below the tree.  With the rings the leaf simply follows
+        the ``\\`` that turns the beam onto its row -- so no ``v``, no return
+        row and no band, and the grid loses better than half its rows.
+        """
+        rows = boolean.laserfuck("0110", 80).split("\n")
+        # every leaf's code is on a row that also carries its turning '\'
+        leaves = [line for line in rows if "x" in line]
+        assert len(leaves) == 4, "one row per input combination"
+        for line in leaves:
+            assert "\\" in line, "the leaf shares the row the beam turns onto"
+            assert line.index("\\") < line.index("x")
+        # nothing below the leaves: no bands, no drop corridors
+        assert rows[-1].endswith("x")
+
+    def test_ringed_leaves_clear_lower_descent_columns(self) -> None:
+        """A leaf starts past every column a lower leaf's beam comes down.
+
+        Those beams cross this row on their way to their own, and would run
+        this leaf's cells on the way past if it stood in their column.
+        """
+        for table in ("0110", "01101001"):
+            rows = boolean.laserfuck(table, 80).split("\n")
+            leaves = [(i, line) for i, line in enumerate(rows) if "x" in line]
+            for index, (row_index, line) in enumerate(leaves):
+                # the leaf's own code runs from its first op to its 'x'
+                start = len(line) - len(line[line.index("\\") + 1 :].lstrip())
+                for lower_index, lower in leaves[index + 1 :]:
+                    assert lower_index > row_index
+                    # the lower leaf's beam comes down its own '\' column,
+                    # which must fall outside this row's code
+                    column = lower.index("\\")
+                    assert column < start or column > line.index("x"), (
+                        f"{table}: leaf on row {lower_index} descends column "
+                        f"{column}, inside row {row_index}'s code"
+                    )
+
     def test_ringed_leaves_leave_a_zero_answer_alone(self) -> None:
         """Cell 0 is the counter *and* the answer, so zero costs nothing.
 
