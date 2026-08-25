@@ -98,8 +98,10 @@ def test_bfstack_random() -> None:
 def test_bio_random() -> None:
     random.seed(7)
     for _ in range(50):
-        # pop from an empty stack is an accepted outcome
-        with suppress(HaltError):
+        # Random text is rarely a legal program: BIO checks its braces and
+        # its commands when it loads, so a rejection is the expected
+        # outcome and only an *unexpected* exception fails the fuzz.
+        with suppress(ValueError):
             run_safely(bio_run, _random_string("0O1Ixyz;{}", 30))
 
 

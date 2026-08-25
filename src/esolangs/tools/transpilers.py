@@ -12,6 +12,8 @@ import re
 from collections.abc import Callable
 from typing import Any
 
+from esolangs.interpreters.register_based.bio import parse as bio_parse
+
 __all__ = [
     "TRANSPILERS",
     "basicfuck_to_bf",
@@ -230,18 +232,20 @@ def bio_to_bf(program: str) -> str:
     BIO's three registers x/y/z live in the first three brainfuck cells.
     Every command is prefixed by a move to its register and suffixed by a
     move back to cell 0, because brainfuck has no absolute addressing; the
-    loop close ``}`` must expand to the register of the ``0i`` it closes, so
-    the command stack is tracked.  BIO's registers are unbounded while
+    loop close ``};`` must expand to the register of the ``0i?{`` it
+    closes, so the command stack is tracked.  BIO's registers are unbounded while
     brainfuck's cells wrap mod 256, so the transpiler targets programs whose
     registers never reach a nonzero multiple of 256: output already agrees
     (``1i`` prints ``reg % 256``), and loop conditions agree exactly on that
     class.
     """
-    cmds = [c.lower() for c in re.findall(r"([01][oOiI][xXyYzZ]|})", program)]
+    cmds = bio_parse(program)
     res: list[str] = []
     loops: list[int] = []
     for cmd in cmds:
-        reg = "xyz".find(cmd[-1])
+        # A loop-open carries the ``{`` that opens its body, so the register
+        # is the triple's own last letter rather than the token's.
+        reg = "xyz".find(cmd[2]) if cmd != "};" else -1
         op = cmd[:2]
         if op in _BIO_INC:
             res.append(">" * reg + _BIO_INC[op] + "<" * reg)
@@ -250,13 +254,10 @@ def bio_to_bf(program: str) -> str:
         elif op == "0i":
             res.append(">" * reg + "[" + "<" * reg)
             loops.append(reg)
-        else:  # "}"
-            if not loops:
-                raise ValueError("BIO: unmatched '}' without a loop to close")
+        else:  # "};"
+            # ``bio_parse`` matched the braces, so a ``};`` always has a loop.
             reg = loops.pop()
             res.append(">" * reg + "]" + "<" * reg)
-    if loops:
-        raise ValueError("BIO: unclosed '0i' loop")
     return "".join(res)
 
 

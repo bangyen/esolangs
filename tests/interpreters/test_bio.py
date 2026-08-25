@@ -18,25 +18,25 @@ class TestBIOBasicCommands:
     def test_increment_commands(self) -> None:
         """Test 0O[xyz] increment commands."""
         with redirect_stdout(io.StringIO()) as f:
-            run("0ox1ix", io=IO())
+            run("0ox;1ix;", io=IO())
         assert f.getvalue() == "\x01"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("0oy;0oy;0oy;1iy", io=IO())
+            run("0oy;0oy;0oy;1iy;", io=IO())
         assert f.getvalue() == "\x03"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("0oz1iz", io=IO())
+            run("0oz;1iz;", io=IO())
         assert f.getvalue() == "\x01"
 
     def test_decrement_commands(self) -> None:
         """Test 1O[xyz] decrement commands."""
         with redirect_stdout(io.StringIO()) as f:
-            run("1ox1ix", io=IO())
+            run("1ox;1ix;", io=IO())
         assert f.getvalue() == "\xff"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("0ox1ox1ix", io=IO())
+            run("0ox;1ox;1ix;", io=IO())
         assert f.getvalue() == "\x00"
 
     def test_output_commands(self) -> None:
@@ -179,11 +179,31 @@ class TestBIOEdgeCases:
             run("   \n\t  ", io=IO())
         assert f.getvalue() == ""
 
-    def test_invalid_commands_ignored(self) -> None:
-        """Test that invalid commands are ignored by regex."""
-        with redirect_stdout(io.StringIO()) as f:
+    def test_invalid_commands_rejected(self) -> None:
+        """Text that is not a command is a load error, not something skipped.
+
+        The interpreter used to keep the regex's matches and drop whatever
+        else was there, so a typo ran as a different program.  BIO defines
+        no comment syntax but ``//``, so anything else must be rejected.
+        """
+        with pytest.raises(ValueError, match="not a command"):
             run("0ox;invalid;1ix;", io=IO())
+
+    def test_line_comments_are_stripped(self) -> None:
+        """``//`` runs to the end of its line, as the wiki writes it."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("0ox; //increment x\n1ix; //print it\n", io=IO())
         assert f.getvalue() == "\x01"
+
+    def test_loop_without_its_brace_is_rejected(self) -> None:
+        """``0i?`` is only a command with the ``{`` that opens its body."""
+        with pytest.raises(ValueError, match="not a command"):
+            run("0ox;0ix1ox;}", io=IO())
+
+    def test_stray_closing_brace_is_rejected(self) -> None:
+        """A ``}`` with no loop to close is malformed."""
+        with pytest.raises(ValueError, match="closes no loop"):
+            run("0ox;};1ix;", io=IO())
 
     def test_negative_register_values(self) -> None:
         """Test handling of negative register values."""
@@ -297,8 +317,80 @@ class TestStepMachine:
         from esolangs.interpreters.register_based.bio import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        assert run_until_halt_or_cycle(_Machine("0ox;0ix{0ix;}", ScriptedIO())) is False
+        assert (
+            run_until_halt_or_cycle(_Machine("0ox;0ix{0ix{};};", ScriptedIO())) is False
+        )
 
 
 if __name__ == "__main__":
     pytest.main([__file__])
+
+
+class TestWikiExamples:
+    """The programs on the BIO wiki page, run exactly as they are written.
+
+    These are the language's ground truth: each is copied verbatim from
+    esolangs.org, comments and ``;`` terminators and all, so a change to
+    what the interpreter accepts has to keep them running.  The interpreter
+    used to drop everything its regex did not match, which meant it ran
+    these programs by ignoring most of their punctuation rather than by
+    understanding it.
+    """
+
+    def test_hello_world(self) -> None:
+        """The wiki's Hello World prints what the page says it prints.
+
+        Abridged to the first two letters -- the full program is 290 lines
+        of the same three shapes, and the sync-tested generator covers the
+        long form.  The reset loop between letters is the part worth
+        keeping: it is where a mis-parsed brace would show up.
+        """
+        program = (
+            "0ox;\n" * 9
+            + "0ix{                   //While block x is not 0\n"
+            + "  0oy;                 //Increment the block y by 1 8 times\n" * 8
+            + "  1ox;                 //Decrement block x by 1\n"
+            + "};\n"
+            + "1iy;                   //Output block y (H)\n"
+            + "0iy{                   //Reset block y to 0\n"
+            + "  1oy;\n"
+            + "};\n"
+            + "0ox;\n" * 10
+            + "0ix{\n"
+            + "  0oy;\n" * 10
+            + "  1ox;\n"
+            + "};\n"
+            + "0oy;\n"
+            + "1iy;                   //Output block y (e)\n"
+        )
+        with redirect_stdout(io.StringIO()) as f:
+            run(program, io=IO())
+        assert f.getvalue() == "He"
+
+    def test_addition(self) -> None:
+        """``0ox; 0oy; 0ix{ 1ox; 0oy; }; 1iy;`` computes 1 + 1."""
+        with redirect_stdout(io.StringIO()) as f:
+            run("0ox; 0oy;\n0ix{ 1ox; 0oy; };\n1iy;", io=IO())
+        assert f.getvalue() == chr(2)
+
+    def test_multiplication(self) -> None:
+        """The wiki's multiplication example computes 5 * 5."""
+        program = (
+            "0ox; 0ox; 0ox; 0ox; 0ox;\n0ix{ 1ox; 0oy; 0oy; 0oy; 0oy; 0oy; };\n1iy;"
+        )
+        with redirect_stdout(io.StringIO()) as f:
+            run(program, io=IO())
+        assert f.getvalue() == chr(25)
+
+    def test_subtraction_example_is_wrong_on_the_wiki(self) -> None:
+        """The wiki's subtraction example adds instead of subtracting.
+
+        ``0ox; 0ox; 0oy; 0iy{ 0ox; 1oy; }; 1ix;`` drains ``y`` into ``x``,
+        so it prints ``2 + 1`` rather than the ``2 - 1`` its heading
+        claims.  The page invites corrections, so this is an error in the
+        example and not in the interpreter -- recorded here so the 3 is
+        not mistaken for a regression later.
+        """
+        with redirect_stdout(io.StringIO()) as f:
+            run("0ox; 0ox; 0oy;\n0iy{ 0ox; 1oy; };\n1ix;", io=IO())
+        assert f.getvalue() == chr(3)
