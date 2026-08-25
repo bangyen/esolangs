@@ -510,6 +510,38 @@ class TestGeneratorRoundTrips:
         assert max(len(ln) for ln in wide.split("\n")) < 600
         assert "#/)" in wide, "the shared base is set by a ring"
 
+    def test_laserfuck_builds_a_big_base_with_a_second_ring(self) -> None:
+        """A base worth more than its frame is multiplied, not counted out.
+
+        Repeated ``~`` sits at 126, and writing that literally is 126
+        columns of ``+``.  A ring counts a scratch cell down instead, so the
+        grid carries two rings and comes in far under the literal run.
+        """
+        program = gen.laserfuck("~~~~~")
+        assert program.count("#/)") == 2, "a multiply ring and a spread ring"
+        assert max(len(ln) for ln in program.split("\n")) < 126
+
+    def test_laserfuck_small_base_skips_the_multiply_ring(self) -> None:
+        """A base too small to be worth a frame is still written out.
+
+        The ring costs a ``}``, a return leg and a test; below roughly a
+        couple of dozen units that is more than the ``+`` it removes, so the
+        form without it has to win on measurement.
+        """
+        program = gen.laserfuck("\x03\x03\x03")
+        assert program.count("#/)") <= 1
+
+    def test_laserfuck_multiply_ring_leaves_no_stray_cell(self) -> None:
+        """The scratch cell the multiply ring spends never reaches the dump.
+
+        It ends at zero and *touched*, which byte mode would otherwise print
+        as a NUL between the text and nothing -- so the tail drives it
+        negative, where the dump ignores it.
+        """
+        for text in ("~~~~~", "zzzzzzzzzz", "Hello, World!"):
+            for heading in range(4):
+                assert laserfuck_roundtrip(gen.laserfuck(text), heading) == text
+
     def test_laserfuck_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""
         for text in ("A", "Hi", "Hello, World!", "The quick brown fox"):
