@@ -1,0 +1,40 @@
+# Dependabot keeps the pins in this repo from going stale silently.
+#
+# Not covered here: the hook `rev`s in .pre-commit-config.yaml.  Dependabot
+# has no pre-commit ecosystem, so those are updated by `pre-commit autoupdate`
+# by hand.  Keep the ruff and mypy revs there in step with the exact pins in
+# pyproject.toml's dev extra, which this file does watch.
+version: 2
+updates:
+  # pyproject.toml: `ruff` and `mypy` are pinned exactly, so a release of
+  # either is invisible without this.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      python-dev:
+        dependency-type: development
+
+  # The actions in ci.yml and fuzz.yml.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # The Rust reference interpreters the differential fuzzer runs against.
+  - package-ecosystem: cargo
+    directory: /extra/rust
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      rust:
+        patterns:
+          - "*"

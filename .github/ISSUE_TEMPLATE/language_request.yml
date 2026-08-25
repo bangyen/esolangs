@@ -1,0 +1,34 @@
+name: New language
+description: Propose an esolang for the collection.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        docs/roadmap.md tracks the candidates already under consideration and
+        the criteria for admitting one. Please check it first.
+
+  - type: input
+    id: language
+    attributes:
+      label: Language
+    validations:
+      required: true
+
+  - type: input
+    id: spec
+    attributes:
+      label: Specification
+      description: A link to the spec or wiki page defining the semantics.
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why this one
+      description: >
+        What it adds that the current 58 do not — a computational model, an
+        I/O shape, or a control-flow idea not already represented.
+    validations:
+      required: true
