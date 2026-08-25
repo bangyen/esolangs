@@ -284,6 +284,17 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     east = len(grid[0]) - 2
     for i, char in enumerate(prefix):
         grid[1][east - i] = char
+
+    # With the label gone, the first loop's block is flush against the
+    # street's western wall, which leaves two wall columns side by side:
+    # the street's own, walling rows 0-3, and the block's, walling rows 3
+    # down.  They only ever meet at row 3, so one column does for both --
+    # drop the street's and let the block's carry the street rows too,
+    # taking one more column off every row.
+    grid = [row[1:] for row in grid]
+    grid[0][0] = "+"
+    grid[1][0] = "|"
+    grid[2][0] = "|"
     return ["".join(row).rstrip() for row in grid]
 
 
