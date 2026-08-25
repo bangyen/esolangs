@@ -448,6 +448,57 @@ def _laserfuck_rotate(rows: list[str]) -> list[str]:
     ]
 
 
+def _laserfuck_reader_blocks(n: int) -> list[list[str]]:
+    """Cut the flat reader into rectangles, padded so a rotation is exact."""
+    rows, _ = _laserfuck_ring_reader(n)
+    width = max(len(line) for line in rows)
+    padded = [line.ljust(width) for line in rows]
+    starts = [col for col, char in enumerate(padded[0]) if char == "}"]
+    return [
+        [
+            line[start : starts[index + 1] if index + 1 < len(starts) else width]
+            for line in padded
+        ]
+        for index, start in enumerate(starts)
+    ]
+
+
+def _laserfuck_assemble_reader(n: int, orientation: str) -> tuple[list[str], int, int]:
+    """Chain the reader's blocks, each flat (``F``) or on end (``R``)."""
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(row: int, col: int, char: str) -> None:
+        if char != " ":
+            cells[(row, col)] = char
+
+    row = col = 0
+    for block, upright in zip(_laserfuck_reader_blocks(n), orientation, strict=True):
+        if upright == "F":
+            for offset, line in enumerate(block):
+                for index, char in enumerate(line):
+                    put(row + offset, col + index, char)
+            col += len(block[0])
+        else:
+            turned = _laserfuck_rotate(block)
+            entry = turned[0].index("v")
+            put(row, col + entry, "v")
+            for offset, line in enumerate(turned):
+                for index, char in enumerate(line):
+                    put(row + 1 + offset, col + index, char)
+            row += 1 + len(turned)
+            col += entry
+            put(row, col, "\\")
+            col += 1
+
+    height = max(r for r, _ in cells) + 1
+    span = max(c for _, c in cells) + 1
+    lines = [
+        "".join(cells.get((r, c), " ") for c in range(span)).rstrip()
+        for r in range(height)
+    ]
+    return lines, row, col
+
+
 def laserfuck(truth_table: str, width: int | None = None) -> str:
     r"""Build a LaserFuck program computing the given truth table.
 
@@ -502,13 +553,23 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     # The tree adds only a column or two past the reader, so the reader is
     # what a width has to bargain with: side by side the rings are one row
     # and forty-odd columns, stacked they are seven rows and under twenty.
-    reader_rows, reader_width = _laserfuck_ring_reader(n)
-    rotated = width is not None and laserfuck_layout.MARGIN + reader_width + 2 > width
-    if rotated:
-        # Too narrow for the reader lying flat, so stand it on end: two
-        # columns and forty-odd rows instead of the other way about.
-        reader_rows = _laserfuck_rotate(reader_rows)
-        reader_width = max(len(line) for line in reader_rows)
+    count = len(_laserfuck_reader_blocks(n))
+    candidates = []
+    for choice in range(2**count):
+        orientation = "".join("R" if choice >> b & 1 else "F" for b in range(count))
+        rows_of, exit_row, exit_col = _laserfuck_assemble_reader(n, orientation)
+        span = max(len(line) for line in rows_of)
+        candidates.append(
+            (len(rows_of), span, rows_of, exit_row, exit_col, orientation)
+        )
+    candidates.sort(key=lambda item: (item[0], item[1]))
+    fitting = [
+        item
+        for item in candidates
+        if width is None or laserfuck_layout.MARGIN + item[1] + 2 <= width
+    ]
+    chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
+    _, _, reader_rows, reader_exit_row, reader_exit_col, orientation_of = chosen
 
     margin = laserfuck_layout.MARGIN
     grid: list[list[str]] = []
@@ -536,26 +597,19 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         for index, char in enumerate(text):
             if char != " ":
                 put(offset, margin + index, char)
-    fall = margin + reader_width
-    if rotated:
-        # Stood on end the reader is entered from above and left at the
-        # bottom, both moving down, so the funnel's rightward beam turns
-        # into its entry column and the tree starts on a row below it.
-        entry = margin + reader_rows[0].index("v")
-        put(0, entry, "v")
-        base = len(reader_rows) + 1
-        put(base, entry, "}")
-        tree_col = entry + 1
-    else:
-        # Row 1 carries the rings' return legs, so the beam falls past it --
-        # the legs stop at the '{' under the last '/', leaving this column
-        # clear.
-        put(0, fall, "v")
-        put(2, fall, "{")
-        put(2, margin, "v")
-        base = 3
-        put(base, margin, "}")
-        tree_col = margin + 1
+    # The beam leaves the reader moving right, and turns down onto a row of
+    # its own for the tree.  How far it has to fall depends on what the last
+    # block left beneath it: a block laid flat keeps its ring's return leg
+    # on the row below, which the beam must clear, while a rotated one ends
+    # at its own foot with nothing under it.
+    fall = margin + reader_exit_col
+    drop = reader_exit_row + (2 if orientation_of[-1] == "F" else 1)
+    put(reader_exit_row, fall, "v")
+    put(drop, fall, "{")
+    put(drop, margin, "v")
+    base = drop + 1
+    put(base, margin, "}")
+    tree_col = margin + 1
 
     # The tree, laid so that a *zero* costs nothing.  A node writes ``>#v)``:
     # the '#' skips the 'v' on the way in, so ')' tests the cell under the
