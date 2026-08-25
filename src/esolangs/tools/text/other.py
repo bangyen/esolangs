@@ -428,7 +428,37 @@ def _laserfuck_linear(run: str, width: int | None) -> str:
     return "\n".join(lines)
 
 
-def _laserfuck_base_ring(text: str) -> str:
+def _laserfuck_base_factor(base: int) -> tuple[int, int, int] | None:
+    r"""Factor ``base`` into a multiply ring, or decline if literal is shorter.
+
+    Counting a cell up to ``base`` with ``+`` costs ``base`` columns, which
+    is most of the width of a base-init program -- 120 of them for a text of
+    ``x``.  A ring counts a scratch cell down from ``outer`` and adds
+    ``inner`` to the counter each pass, so the cost becomes roughly
+    ``outer + inner`` plus a fixed frame, and the shortfall ``rest`` is
+    topped up literally.
+
+    That is the same multiply the boolean generator's reader uses.  This
+    picks the cheapest split of ``base`` alone; whether the ring is worth
+    its frame at all is settled by :func:`laserfuck` building both forms and
+    measuring them, because the ring's row competes with the preload's for
+    the widest line and no formula here can see that.
+
+    ``None`` means ``base`` is too small to factor at all.
+    """
+    best: tuple[int, int, int] | None = None
+    cost = base
+    for outer in range(2, base):
+        inner, rest = divmod(base, outer)
+        if inner < 1:
+            break
+        candidate = outer + inner + rest
+        if candidate < cost:
+            cost, best = candidate, (outer, inner, rest)
+    return best
+
+
+def _laserfuck_base_ring(text: str, *, factored: bool = True) -> str:
     r"""Build the *base-init* LaserFuck program for ``text``.
 
     Every byte of ``text`` is close to every other -- letters cluster in the
@@ -454,9 +484,29 @@ def _laserfuck_base_ring(text: str) -> str:
     count = len(values)
     base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in values))
 
-    preload = ">" * count + "+" * base
+    factor = _laserfuck_base_factor(base) if factored else None
+    if factor is None:
+        # cell ``count`` is the counter; nothing else is needed to fill it
+        preload = ">" * count + "+" * base
+        multiply = ""
+    else:
+        # The scratch cell at ``count + 1`` counts down from ``outer``,
+        # adding ``inner`` to the counter each pass, and ``rest`` tops up
+        # what the product falls short by.  The bridge back to the counter
+        # is the ``<`` that opens the residual run.
+        outer, inner, residual = factor
+        preload = ">" * (count + 1) + "+" * outer
+        multiply = "<" + "+" * inner + ">" + "-"
+
     body = "<" * count + "+" + ">+" * (count - 1) + ">" + "-"
-    tail = "-" + "<" * count
+    # The counter ends at zero and *touched*, which byte mode would print as
+    # a NUL, so it is driven negative before the dump.  A multiply ring
+    # leaves its scratch cell in the same state, one further along, so the
+    # tail steps out to clear that too before walking home.
+    tail = "-"
+    if factor is not None:
+        tail += ">-<"
+    tail += "<" * count
     for index, value in enumerate(values):
         step = value - base
         tail += ("+" if step > 0 else "-") * abs(step)
@@ -486,13 +536,32 @@ def _laserfuck_base_ring(text: str) -> str:
     put(1, col, "{")
     put(1, 3, "v")
 
-    put(2, 3, "}")
-    col = 4
-    for char in body + "#/)":
-        put(2, col, char)
+    # Rings run left to right along row 2, each with its return leg on row
+    # 3: '^' under the ring's own '}' and '{' under its '/'.  A multiply
+    # ring, when there is one, goes first and hands the counter to the
+    # spread ring already loaded.
+    col = 3
+
+    def put_ring(ops: str) -> None:
+        nonlocal col
+        start = col
+        put(2, col, "}")
         col += 1
-    put(3, 3, "^")
-    put(3, col - 2, "{")
+        for char in ops + "#/)":
+            put(2, col, char)
+            col += 1
+        put(3, start, "^")
+        put(3, col - 2, "{")
+
+    if multiply:
+        put_ring(multiply)
+        # the bridge back to the counter, between the two rings
+        put(2, col, "<")
+        col += 1
+        for char in "+" * residual:
+            put(2, col, char)
+            col += 1
+    put_ring(body)
 
     for index, char in enumerate(tail):
         put(2, col + index, char)
@@ -523,9 +592,10 @@ def laserfuck(text: str, width: int | None = None) -> str:
     multiplying form's own fallback still applies.
     """
     forms = [_laserfuck_multiply(text, width)]
-    ring = _laserfuck_base_ring(text)
-    if width is None or max(map(len, ring.split("\n"))) <= width:
-        forms.append(ring)
+    for factored in (False, True):
+        ring = _laserfuck_base_ring(text, factored=factored)
+        if width is None or max(map(len, ring.split("\n"))) <= width:
+            forms.append(ring)
     return min(
         forms, key=lambda form: (form.count("\n") + 1) * max(map(len, form.split("\n")))
     )
