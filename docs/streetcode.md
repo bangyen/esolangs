@@ -533,6 +533,22 @@ placed after the first ring's `O`, with `_` resetting CP and a fresh
 the generator does not use it yet, because only the first character has
 a delta large enough to be worth a ring.
 
+**The ring survives a width (2026-08-24).**  It was at first built only
+on the unfolded path, so any caller passing a `width` -- which
+`scripts/write_examples.py` does for every example -- got the plain
+serpentine and no loop at all, which is why the committed hello-world
+example used to be loopless.  Folding does not make the first
+character's walk cheaper, though; it packs the same unary run into more
+rows.  The two layouts compose (`_streetcode_ring_serpentine`): the fold
+fills its lane pairs bottom-up and starts the car in the lowest
+eastbound lane, which is exactly where the ring prefix belongs, and the
+block hangs below the grid's southern wall, where the fold has built
+nothing.  `Hello, World!` at width 80 goes 809 -> 650 bytes.  A ring
+whose prefix will not fit one lane leaves the plain fold standing -- a
+CJK plan wants a remainder of 18453 -- rather than being re-planned to
+suit the width: what a ring costs is what it costs, and the two finished
+programs are compared as they are.
+
 ### Two pitfalls worth keeping
 
 - A cell that reaches exactly 0 *inside* one of these hallways sends the
