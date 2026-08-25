@@ -83,29 +83,27 @@ line up.
 
 ### `n == 1`
 
-Unlike the earlier version (which reused the `n == 2` template with the
-second input fixed to a literal `0`), `n == 1` here has no fork box at
-all: `>` leads directly to the single `{X0}` placeholder immediately
-before Phase 2's entry, since weight `2**0 == 1` needs no fork to
-contribute correctly.
+`n == 1` has no fork box at all: `>` leads directly to the single `{X0}`
+placeholder immediately before Phase 2's entry, since weight `2**0 == 1`
+needs no fork to contribute correctly.
 
-## Why the earlier `n <= 3` merge design didn't generalize
+## Why a shared-cell merge design does not generalize
 
-The `n <= 3` construction this replaces built its `n == 3` template as a
-single fused row whose forks' "merge" cells reused the *same physical
-cells* as the forward gauntlets, walked backwards (a "sacrificial
-retrace"), to unwind a rejoining cod's value back to 0.  This worked for
-`n == 3` but a mechanically-extended `n >= 4` version broke: a merge cell
+An alternative construction builds the `n == 3` template as a single fused
+row whose forks' "merge" cells reuse the *same physical cells* as the
+forward gauntlets, walked backwards (a "sacrificial retrace"), to unwind a
+rejoining cod's value back to 0.  That works for `n == 3` but breaks when
+extended mechanically to `n >= 4`: a merge cell
 could be re-entered from more than one direction across different steps
 (from the west via the forward path, from the south via the side path's
 shaft, and — once a west-bound retrace from a *later* merge passed back
 through an *earlier* merge's own cell — from the east too).  Each entry
 excludes a different "came from" direction per the wiki's `+` rule, so a
-cell that looked like a clean 2-way fork from one entry direction could
-act as a 3-way fork from another; cods accumulated instead of being
-consumed (an exploding population rather than a clean halt).  `n == 3`
-happened not to trigger this (its one two-stage retrace never passes
-through another merge cell), but nothing guaranteed that for `n >= 4`.
+cell that acts as a clean 2-way fork from one entry direction can act as a
+3-way fork from another; cods then accumulate instead of being consumed (an
+exploding population rather than a clean halt).  `n == 3` does not trigger
+this — its one two-stage retrace never passes through another merge cell —
+but nothing guarantees that for `n >= 4`.
 The construction above sidesteps the problem rather than solving it: every
 box gets its **own** cells for both branches, so no box's routing is ever
 re-entered by another box's retrace, and boxes compose by plain
@@ -124,8 +122,8 @@ Mirrors the A Painter Ant generator's verification discipline
   runs), through the real interpreter.
 - A sample of four-input truth tables (16 input combinations each) beyond
   the old `n <= 3` cap, through the real interpreter.
-- The construction was additionally checked outside the test suite against
-  a random sample of five- and six-input tables, confirming the general
+- Beyond the test suite, the construction has also been checked against a
+  random sample of five- and six-input tables, confirming the general
   mechanism holds well past what the shipped tests exercise on every run.
 - The interpreter itself (`tests/interpreters/test_cod.py`) is checked
   independently against the wiki's truth-machine example (`0` halts with a
@@ -138,14 +136,11 @@ Grid size still grows at least linearly in `2**n` (the leaf cascade has
 program; no explicit cap is enforced, matching the other parameterized
 generators in this module.
 
-## History
+## Why not a `_`-gate decision tree
 
-The original design (single-cod, `_`-only decision tree with `...` inputs
-on the bottom edge and `---` outputs on the left/right edges, needing a
-seeded-randomness decision before the interpreter could exist) was
-superseded before being built.  Tracing a hand-built `n == 2` XOR program
-against the real interpreter (once it existed) showed the `+`-fork-and-
-gauntlet idiom above works without any `_` gate and without touching
-random junctions at all, which is materially simpler to lay out and to
-verify — so the `_`-gate tree was dropped in favor of the construction this
-document now describes.
+The alternative design — a single cod walking a `_`-only decision tree,
+with `...` inputs on the bottom edge and `---` outputs on the left/right
+edges — is not used.  It requires a seeded-randomness convention for `_`'s
+junctions, whereas the `+`-fork-and-gauntlet idiom above computes the same
+tables using no `_` gate and no random junctions at all, which is
+materially simpler to lay out and to verify.
