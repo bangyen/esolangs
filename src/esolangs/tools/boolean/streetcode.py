@@ -101,50 +101,54 @@ def _streetcode_strip(before: str, c: str) -> list[str]:
     bookkeeping through the label itself (see ``_streetcode_collect`` and
     the ``strip`` call in ``streetcode``).
 
-    The ring hangs *below* the street rather than beside it: its top row is
-    the southern wall the descent and exit gaps are cut into, so the label
-    and the block share the same columns rather than sitting side by side.
-    The label is padded out to the block's width so the two line up.
+    The label sits *beside* the ring, not above it: the whole label has to
+    run before the car is level with the ring's descent gap, because its
+    trailing ``^`` is what starts the counter the gap's junction reads.
+    The ring's own top row is the street's southern wall, so the block is
+    given three blank street rows above it and the two line up.
     """
+    width = len(before)
+    wall = "-" * width
+    first = [wall, " " * width, before, wall]
     ring = _streetcode_ring(c)
-    width = len(ring[0])
-    label = before.ljust(width)
-    return [
-        "-" * width,
-        " " * width,
-        label,
-        *ring,
-    ]
+    # Row 0 is the street's northern wall and has to stay solid; rows 1 and
+    # 2 are the oncoming and driving lanes the car passes over the block on.
+    street = ["-" * len(ring[0]), " " * len(ring[0]), " " * len(ring[0])]
+    return _streetcode_combine([first, [*street, *ring]])
 
 
 def _streetcode_collect() -> list[str]:
     """One input-reading loop: read a bit, then subtract 48 down to 0/1.
 
-    ``=I=^`` leads into the loop: ``=`` advances CP onto a fresh cell,
-    ``I`` reads the next bit there (ASCII ``'0'``/``'1'``), and ``=^``
-    steps CP one further onto the ring's counter and starts counting it
-    up.  That trailing ``^`` doubles as the forced-nonzero the descent
-    gap's junction needs -- the ambiguous-turn rule (leftmost when the
-    CPth cell is 0, otherwise second-leftmost) has to see a nonzero cell
-    to turn into the loop rather than drive past it -- and the counter is
-    the right cell to force, because the value is a ``'0'`` half the time.
+    ``~=I^=^`` leads into the loop: ``~`` consumes the +1 the previous
+    loop left on the cell behind, ``=`` advances CP onto a fresh cell,
+    ``I`` reads the next bit (ASCII ``'0'``/``'1'``), and ``^`` bumps it
+    to 49 or 50.  Then ``=^`` steps CP one further onto the ring's counter
+    and starts counting it up; that second ``^`` is the forced-nonzero the
+    descent gap's junction needs, and the counter is the right cell to
+    force because the value is a ``'0'`` half the time.
 
-    The ring subtracts exactly 48 and exits with CP back on the value, so
-    the cell holds a bare 0/1 with no ``+1`` for the next label to undo.
-    The counter it drained sits one cell further along, where the next
+    The ring subtracts 48, so the cell comes out at ``bit + 1``.  That +1
+    is not slack: surfacing through the ring's exit gap is a junction too,
+    and it reads the value the ring just walked.  A bare 0 there would
+    steer the car West back down the street instead of East onto the next
+    loop, so the +1 keeps every gap crossing nonzero and the next label's
+    leading ``~`` takes it off again.
+
+    The drained counter sits one cell further along, where the next
     loop's own ``I`` lands and overwrites it.
     """
-    return _streetcode_strip("=I=^", "~")
+    return _streetcode_strip("~=I^=^", "~")
 
 
 def _streetcode_leaf(bit: int) -> list[str]:
     """Build a leaf that prints ``bit``, reusing the loader loop's cell.
 
     The car arrives with CP already on the cell ``_streetcode_populate``'s
-    closing loop ramped to ASCII ``'0'`` + 1 (one more than 48, from that
-    loop's own forced-nonzero trailing ``^``); ``~`` corrects it back down
-    to plain ``'0'`` for a 0 leaf, or a no-op leaves it at ``'1'`` for a 1
-    leaf, and ``O`` prints whichever digit results.
+    closing loop ramped to ASCII ``'0'`` -- a plain 48, since the ring adds
+    exactly what it is asked to and leaves no forced-nonzero bump behind.
+    A 0 leaf is then a no-op, ``^`` walks a 1 leaf up to ``'1'``, and ``O``
+    prints whichever digit results.
     """
     op = " " if bit else "~"
     return ["---+", "   |", f"{op}O;|", "---+"]
@@ -200,11 +204,12 @@ def _streetcode_tree(table: str) -> list[str]:
 def _streetcode_populate(n: int) -> list[str]:
     """Build the car's start plus ``n`` input loops and a final loader loop.
 
-    The loader loop (``strip('~=^', '^')``) is structurally identical to
-    an input-reading loop but has no ``I`` of its own: its label's trailing
-    ``^`` supplies the forced-nonzero bump instead, so it always turns in
-    and ramps a fresh cell up to ASCII ``'0'`` + 1 for the tree's leaves to
-    print from (see ``_streetcode_leaf``).
+    The loader loop (``strip('==^', '^')``) is structurally identical to an
+    input-reading loop but has no ``I`` of its own: the first ``=`` steps
+    CP onto the fresh cell the loop will ramp, and ``=^`` steps onto the
+    ring's counter and starts it, exactly as a collect label does.  The
+    ring then adds 48, so the cell holds ASCII ``'0'`` for the tree's
+    leaves to print from (see :func:`_streetcode_leaf`).
     """
     start = ["+--", "|  ", "|C^", "+--"]
     col = _streetcode_collect()
@@ -219,7 +224,7 @@ def _streetcode_populate(n: int) -> list[str]:
         [
             start,
             *([col] * n),
-            _streetcode_strip("~=^", "^"),
+            _streetcode_strip("~=^=^", "^"),
             ["-" * width, " " * width, rewind, "-" * width],
         ],
     )
