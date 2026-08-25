@@ -454,17 +454,15 @@ def _laserfuck_base_groups(values: list[int], count: int) -> list[list[int]]:
         base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
         return sum(abs(base - v) for v in band)
 
-    best: tuple[int, int] | None = None
-    for cut in range(1, len(order)):
+    def total(cut: int) -> int:
         low = set(order[:cut])
-        left = [v for v in values if v in low]
-        right = [v for v in values if v not in low]
-        total = deviation(left) + deviation(right)
-        if best is None or total < best[0]:
-            best = (total, cut)
+        return deviation([v for v in values if v in low]) + deviation(
+            [v for v in values if v not in low]
+        )
 
-    assert best is not None
-    low = set(order[: best[1]])
+    # ``order`` has at least two distinct values, so there is always at
+    # least one cut to choose from
+    low = set(order[: min(range(1, len(order)), key=total)])
     return [
         [v for v in values if v in low],
         [v for v in values if v not in low],
