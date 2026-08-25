@@ -554,3 +554,32 @@ programs are compared as they are.
   proportional to the value -- so it compresses nothing on its own. Its
   conditional half does work: zero at the mouth skips the hallway,
   nonzero enters it.
+
+### The ring in the boolean generator
+
+The counting loop carries over to the boolean generator, where every input
+loop and the loader loop walk a cell by exactly 48. The hallway spends that
+as 48 unary cells over 29 rows; the ring makes it eight laps of six in 8
+rows, at the cost of being 8 columns wide rather than 4. Which is cheaper
+depends on the tree beside it -- the ring wins while the loops set the
+program's height (`n <= 2`, where NOT goes 869 -> 450 bytes and a two-input
+table 1229 -> 943), and the hallway wins once the tree is taller than either
+loop and only the width still counts -- so both programs are built and the
+shorter one is kept, as the text generator does with its own two layouts.
+
+The ring is *mirrored* for this use: the hand-written one holds its
+accumulator above its counter, and the generator needs the opposite, because
+the tree forks on the value and the loop has to leave CP on it. Mirroring
+swaps every `_` for `=`, and moves the CP hop from above the descent gap to
+below it. That move is the whole difficulty. **Every gap crossing is a
+junction and reads the CPth cell**, the ring's two gaps included, so CP must
+name a cell whose zero/nonzero state is known at each one:
+
+- At the descent gap, mid-lap, CP must be on the *counter*. The value passes
+  through 0 for a `'0'` bit, and a zero there steers the car out of the ring
+  and back onto the street, where it re-runs the loop's `I`.
+- At the exit gap, CP is necessarily on the value, and a zero steers the car
+  West back down the street instead of East onto the next loop. This is why
+  the labels leave the value at `bit + 1` rather than a bare bit: the +1 is
+  not slack, it is what keeps that crossing nonzero, and the next label's
+  leading `~` takes it off again.
