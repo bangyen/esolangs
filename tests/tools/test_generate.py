@@ -494,8 +494,9 @@ class TestGeneratorRoundTrips:
     def test_laserfuck_linear_fold_is_narrower(self) -> None:
         """Folding actually buys columns, rather than only reshaping."""
         # a text whose bytes are spread out enough that neither the multiply
-        # passes nor a shared base pays, so the linear run is what folds
-        text = "!~!~!~!~!~"
+        # passes nor a shared base pays, so the linear run is what folds --
+        # three clusters, which one split into two bands cannot cover
+        text = "!Q~!Q~!Q~"
         assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 200
         assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) <= 80
 
@@ -541,6 +542,35 @@ class TestGeneratorRoundTrips:
         for text in ("~~~~~", "zzzzzzzzzz", "Hello, World!"):
             for heading in range(4):
                 assert laserfuck_roundtrip(gen.laserfuck(text), heading) == text
+
+    def test_laserfuck_two_clusters_get_their_own_bases(self) -> None:
+        """Text split between two ranges is counted up in two rings.
+
+        Ordinary text has two clusters and not one -- letters up near a
+        hundred, spaces and punctuation down in the thirties -- and one
+        shared base leaves every cell a long way from home.  A ring per band
+        cuts the residuals of ``Hello, World!`` from 292 units to 96, which
+        shows on the grid as a multiply and a spread ring for each band.
+        """
+        # ``!`` and ``~`` sit at opposite ends of printable ASCII, so a
+        # single base leaves every cell about fifty units from home; a band
+        # each takes the residuals to nothing.  Without grouping this is
+        # 524 columns wide.
+        program = gen.laserfuck("!~!~!~!~!~")
+        assert max(len(ln) for ln in program.split("\n")) < 200
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == "!~!~!~!~!~"
+
+    def test_laserfuck_one_cluster_stays_on_one_base(self) -> None:
+        """Bytes already close together are not split into bands.
+
+        A second band costs another frame and another walk of the tape, so
+        for text that is all one cluster the ungrouped form has to win on
+        measurement.
+        """
+        program = gen.laserfuck("xxxxxxxxxxxxxxxxxxxx")
+        # one band, so one multiply ring and one spread ring
+        assert program.count("#/)") == 2
 
     def test_laserfuck_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""
