@@ -13,6 +13,8 @@ import string
 from contextlib import redirect_stdout, suppress
 from unittest.mock import patch
 
+import pytest
+
 from esolangs.interpreters.io import IO
 from esolangs.registry import BY_FUNCTION
 from esolangs.tools import boolean
@@ -47,6 +49,7 @@ def _random_text() -> str:
     return "".join(random.choice(pool) for _ in range(random.randint(1, 12)))
 
 
+@pytest.mark.slow
 def test_text_generators_round_trip() -> None:
     random.seed(0)
     for _ in range(25):
@@ -84,6 +87,7 @@ def test_extra_language_generators_do_not_crash() -> None:
                 fn(text)
 
 
+@pytest.mark.slow
 def test_polynomial_wide_unicode_round_trip() -> None:
     """Polynomial round-trips text with wide codepoint deltas.
 

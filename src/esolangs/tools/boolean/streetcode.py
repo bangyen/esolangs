@@ -130,12 +130,19 @@ def _streetcode_populate(n: int) -> list[str]:
     """
     start = ["+--", "|  ", "|C^", "+--"]
     col = _streetcode_collect()
+    # The rewind strip walks CP back over the n cells the input loops filled,
+    # so it carries n '_' instructions.  Streets are two characters wide, so
+    # a single '_' would draw a one-wide room the car cannot legally drive:
+    # pad the label out to the minimum width with spaces, which are no-ops.
+    rewind = "_" * n
+    rewind = rewind.ljust(2)
+    width = len(rewind)
     return _streetcode_combine(
         [
             start,
             *([col] * n),
             _streetcode_strip("~=^", "^"),
-            ["-" * n, " " * n, "_" * n, "-" * n],
+            ["-" * width, " " * width, rewind, "-" * width],
         ],
     )
 

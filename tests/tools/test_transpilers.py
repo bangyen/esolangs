@@ -479,16 +479,16 @@ def test_bfstack_fuzz_stack_programs() -> None:
 # (BIO program, stdin) pairs; every program terminates and its registers
 # stay inside [0, 255], so it is in the transpiler's supported class.
 BIO_BATTERY = (
-    ("0ox1ix", ""),
-    ("0oy1iy", ""),
-    ("0oz1iz", ""),
-    ("1ix", ""),
-    ("0ox0ox1ix", ""),
-    ("0ox0oy0ix1iy1ox}", ""),
-    ("0ox0oy0oz0iy1iz1oy}", ""),
-    ("1ix1ix", ""),
-    ("0ox0oz0iz1ix1oz}", ""),
-    ("0ox0oy0ox0iy1iy1oy1ix1ox}", ""),
+    ("0ox;1ix;", ""),
+    ("0oy;1iy;", ""),
+    ("0oz;1iz;", ""),
+    ("1ix;", ""),
+    ("0ox;0ox;1ix;", ""),
+    ("0ox;0oy;0ix{1iy;1ox;};", ""),
+    ("0ox;0oy;0oz;0iy{1iz;1oy;};", ""),
+    ("1ix;1ix;", ""),
+    ("0ox;0oz;0iz{1ix;1oz;};", ""),
+    ("0ox;0oy;0ox;0iy{1iy;1oy;1ix;1ox;};", ""),
 )
 
 
@@ -509,7 +509,8 @@ def test_bio_transpiles_generated_program(text: str) -> None:
 
 
 def test_bio_comments_are_ignored() -> None:
-    program = "hello there 0ox 1ix ok"
+    """A ``//`` comment runs to the end of its line and is dropped."""
+    program = "0ox; //hello there\n1ix; //ok"
     bf_program = esolangs.transpile("BIO", "brainfuck", program)
     assert (
         esolangs.run("BIO", program) == esolangs.run("brainfuck", bf_program) == "\x01"
@@ -517,11 +518,22 @@ def test_bio_comments_are_ignored() -> None:
 
 
 def test_bio_unbalanced_loops_rejected() -> None:
-    """A stray '}' or an unclosed '0i' is rejected, not crashed on."""
+    """A stray '}' or an unclosed '0i{' is rejected, not crashed on."""
+    with pytest.raises(ValueError, match="closes no loop"):
+        esolangs.transpile("BIO", "brainfuck", "};")
     with pytest.raises(ValueError, match="unmatched"):
-        esolangs.transpile("BIO", "brainfuck", "}")
-    with pytest.raises(ValueError, match="unclosed"):
-        esolangs.transpile("BIO", "brainfuck", "0ix0iy")
+        esolangs.transpile("BIO", "brainfuck", "0ix{0iy{")
+
+
+def test_bio_loop_without_its_brace_is_rejected() -> None:
+    """``0i?`` is only a command with the ``{`` that opens its body.
+
+    The wiki writes the loop as ``0i{ do something };``, so a bare ``0ix``
+    is not a command at all -- and rejecting it is what stops a program
+    that meant to loop from quietly running as something else.
+    """
+    with pytest.raises(ValueError, match="not a command"):
+        esolangs.transpile("BIO", "brainfuck", "0ox;0ix1ox;};")
 
 
 def test_bio_register_wrap_is_out_of_class() -> None:
@@ -530,7 +542,7 @@ def test_bio_register_wrap_is_out_of_class() -> None:
     BIO's registers are unbounded, so 256 is truthy for a loop condition;
     brainfuck cells wrap, so the same register reads as 0.
     """
-    program = "0ox" * 256 + "0ix1ix1ox}"
+    program = "0ox;" * 256 + "0ix{1ix;1ox;};"
     bf_program = esolangs.transpile("BIO", "brainfuck", program)
     assert esolangs.run("BIO", program) != esolangs.run("brainfuck", bf_program)
 
@@ -545,19 +557,19 @@ def test_bio_fuzz_register_programs() -> None:
             r = rng.randrange(3)
             kind = rng.choice(("inc", "dec", "out", "loop"))
             if kind == "inc":
-                parts.append("0o" + "xyz"[r])
+                parts.append("0o" + "xyz"[r] + ";")
                 reg[r] += 1
             elif kind == "dec":
-                parts.append("1o" + "xyz"[r])
+                parts.append("1o" + "xyz"[r] + ";")
                 reg[r] -= 1
             elif kind == "out":
-                parts.append("1i" + "xyz"[r])
+                parts.append("1i" + "xyz"[r] + ";")
             else:
                 move = "1o" if reg[r] > 0 else "0o" if reg[r] < 0 else ""
-                body = move + "xyz"[r]
+                body = move + "xyz"[r] + ";" if move else ""
                 if move and rng.random() < 0.5:
-                    body += "1i" + "xyz"[rng.randrange(3)]
-                parts.append("0i" + "xyz"[r] + body + "}")
+                    body += "1i" + "xyz"[rng.randrange(3)] + ";"
+                parts.append("0i" + "xyz"[r] + "{" + body + "};")
                 reg[r] = 0
         program = "".join(parts)
         bf_program = esolangs.transpile("BIO", "brainfuck", program)

@@ -96,11 +96,6 @@ def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
 
 
 LANGUAGES: dict[str, Language] = {
-    "ABCDirection": Language(
-        "ABCDirection",
-        id="abcdirection",
-        interpreter="tape_based.abcdirection",
-    ),
     "AddSubJump": Language(
         "AddSubJump",
         _generate.addsubjump,
@@ -201,6 +196,12 @@ LANGUAGES: dict[str, Language] = {
         _generate.circlefuck,
         "tape_based.circlefuck",
         id="circlefuck",
+    ),
+    "Circuit Diagram": Language(
+        "Circuit Diagram",
+        id="circuit_diagram",
+        interpreter="grid_based.circuit_diagram",
+        split=True,
     ),
     "Clockwise": Language(
         "Clockwise",

@@ -1,5 +1,7 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+# The SPDX-string `license` below is PEP 639, which setuptools implements
+# from 77.0; older versions reject it as invalid pyproject config.
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -14,7 +16,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -37,8 +38,8 @@ dev = [
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
     "unicorn>=2.1.4",
-    "ruff==0.16.2",
-    "mypy==2.3.0",
+    "ruff==0.16.4",
+    "mypy==2.3.1",
     "pre-commit>=3.0.0",
     "types-requests",
     "types-setuptools",
@@ -104,12 +105,14 @@ ignore = [
 "tests/**/*.py" = ["D", "N802"]
 # Parametrized tests share a (program, stdin) battery; some tests only use
 # program, but pytest requires the parameter to be declared.
-"tests/test_transpilers.py" = ["ARG001"]
+"tests/tools/test_transpilers.py" = ["ARG001"]
 
 [tool.mypy]
 strict = true
 python_version = "3.10"
-files = ["src"]
+# scripts/ is CI infrastructure (the differential, unicorn, and installer
+# checks), so it is type-checked alongside the package itself.
+files = ["src", "scripts"]
 exclude = ["\\.venv/", "build/", "dist/"]
 warn_return_any = true
 warn_unused_configs = true
@@ -128,6 +131,21 @@ strict_equality = true
 # sympy ships no inline types.
 module = ["sympy"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# unicorn's bindings are untyped and its __init__ re-exports without
+# __all__, so its names look unexported to a strict run.
+module = ["unicorn", "unicorn.*"]
+ignore_missing_imports = true
+implicit_reexport = true
+
+[[tool.mypy.overrides]]
+# disallow_untyped_calls is a property of the *calling* module, so it is
+# relaxed here rather than on unicorn above: every Uc method (mem_map,
+# reg_read, emu_start, ...) is untyped, and this is the only module that
+# drives the emulator.  Everything else stays strict.
+module = ["riscv_elf_runner"]
+disallow_untyped_calls = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -12,8 +12,8 @@ The generators live in ``esolangs.tools.boolean``, split by language family
 module re-exports them for compatibility.
 """
 
+from esolangs.tools.boolean.circuit_diagram import circuit_diagram
 from esolangs.tools.boolean.other import (
-    abcdirection,
     between,
     bit_tilde,
     clockwise,
@@ -81,7 +81,6 @@ from esolangs.tools.boolean.tape import (
 __all__ = [
     "BOOLEAN",
     "a_painter_ant",
-    "abcdirection",
     "addsubjump",
     "arrowqueue",
     "back",
@@ -97,6 +96,7 @@ __all__ = [
     "brainif",
     "circlefuck",
     "circlefuck_byte",
+    "circuit_diagram",
     "clockwise",
     "cod",
     "collatz_multiverse",
@@ -149,7 +149,6 @@ __all__ = [
 BOOLEAN: frozenset[str] = frozenset(
     {
         "3x",
-        "ABCDirection",
         "A Painter Ant",
         "AddSubJump",
         "3D Brainfuck",
@@ -166,6 +165,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "bit~",
         "BrainIf",
         "Circlefuck",
+        "Circuit Diagram",
         "Clockwise",
         "COD",
         "Collatz Multiverse",
@@ -175,6 +175,7 @@ BOOLEAN: frozenset[str] = frozenset(
         "Decleq",
         "Eval",
         "Factor",
+        "Flowchart",
         "Forbin",
         "Forþ",
         "Grapheme",

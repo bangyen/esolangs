@@ -12,6 +12,7 @@ them, including all four of the wiki's worked examples.
 
 import io
 from contextlib import redirect_stdout
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -35,6 +36,20 @@ def street(instructions: str) -> list[str]:
     """
     wall = "+" + "-" * len(instructions) + "+"
     return [wall, "|" + " " * len(instructions) + "|", f"|{instructions}|", wall]
+
+
+def machine_unvalidated(code: list[str]) -> _Machine:
+    """Build a ``_Machine`` from a wall-shape fixture, skipping validation.
+
+    The junction and lane-merge tests probe ``_junction_kind`` and the merge
+    latches directly, on deliberately skeletal geometry -- bare wall arms and
+    gaps, with assertions keyed to exact coordinates.  Such a fixture is not a
+    legal street and is not meant to be one, so it is constructed with
+    ``_validate`` disabled rather than redrawn, which would change what the
+    test measures.  Whole-program tests use the real constructor.
+    """
+    with patch.object(_Machine, "_validate", lambda *_: None):
+        return _Machine(code, IO())
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
@@ -101,7 +116,7 @@ class TestStreetcodeSingleCommands:
             "|  |",
             "+--+",
         ]
-        machine = _Machine(code, IO())
+        machine = machine_unvalidated(code)
         # Southbound in the west lane (wall on the right), down to the U.
         for _ in range(2):
             machine.step()
@@ -127,7 +142,7 @@ class TestStreetcodeSingleCommands:
             "|  |",
             "+--+",
         ]
-        machine = _Machine(code, IO())
+        machine = machine_unvalidated(code)
         for _ in range(3):
             machine.step()
         headings = []
@@ -207,7 +222,7 @@ class TestStreetcodeAmbiguousTurns:
         ]
 
     def _machine_at_junction(self) -> _Machine:
-        machine = _Machine(self._junction_code(), IO())
+        machine = machine_unvalidated(self._junction_code())
         machine.row, machine.col, machine.heading = 1, 1, "S"
         return machine
 
@@ -229,7 +244,7 @@ class TestStreetcodeAmbiguousTurns:
         """A `+` pair whose floor is not all open between them bounds no
         road: the far `+` is found, the gap check fails, and the scan
         stops rather than reporting a mouth through solid wall."""
-        machine = _Machine(["C       ", "-+ |+   ", "        "], IO())
+        machine = machine_unvalidated(["C       ", "-+ |+   ", "        "])
         machine.row, machine.col, machine.heading = 0, 0, "E"
         assert machine._road_mouth("E", "S") is None  # noqa: SLF001
 
@@ -241,14 +256,14 @@ class TestStreetcodeAmbiguousTurns:
         this narrow fixture's one-cell arms are not (see
         :meth:`_road_deep`).
         """
-        machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
+        machine = machine_unvalidated([" C ", "+ +", "   ", "+ +", " | "])
         machine.row, machine.col, machine.heading = 0, 1, "S"
         assert machine._junction_shape("S") == 4  # noqa: SLF001
 
     def test_t_junction_detects_3(self) -> None:
         """Mouths on both sides with straight ahead blocked: a T whose
         crossbar the car is driving into, still three ways."""
-        machine = _Machine([" C ", "+|+", "   ", "+ +", " | "], IO())
+        machine = machine_unvalidated([" C ", "+|+", "   ", "+ +", " | "])
         machine.row, machine.col, machine.heading = 0, 1, "S"
         assert machine._junction_shape("S") == 3  # noqa: SLF001
 
@@ -267,7 +282,7 @@ class TestStreetcodeAmbiguousTurns:
         """The same shape is not a junction when its arms are one cell:
         streets are two wide, so a single open cell before a wall is the
         width of the road, not a road leading off it."""
-        machine = _Machine([" C ", "+ +", "   ", "+ +", " | "], IO())
+        machine = machine_unvalidated([" C ", "+ +", "   ", "+ +", " | "])
         machine.row, machine.col, machine.heading = 0, 1, "S"
         assert machine._junction_kind("S") == 0  # noqa: SLF001
 
@@ -345,84 +360,71 @@ class TestStreetcodeAmbiguousTurns:
         assert (machine.row, machine.col) == (2, 9)
 
 
-class TestStreetcodeLaneChange:
-    """The hug may not slide across a street into the oncoming lane.
+class TestStreetcodeCrossingMouthDecision:
+    """A head-on junction decides at the mouth, not at the far lane.
 
-    Wall-following turns right whenever the neighbouring cell is open,
-    but on a two-wide street that cell is the *far lane*, not a road
-    leading off.  Turning onto it is driving on the left, which the spec
-    forbids -- and it also closes circuits that should not exist: four
-    such turns in a row let a car orbit a two-by-two opening forever.
+    Driving out through a mouth the car is level with both ``+`` when it
+    chooses; the run across to the far lane is only lane positioning for a
+    road already taken.  Re-reading the cell on arrival there lets an
+    instruction *on that positioning run* overturn the choice -- the same
+    "preparation must not double as the decision" the arrival read exists
+    to prevent (see ``TestStreetcodeAmbiguousTurns``).
+
+    A side mouth keeps the re-read: the car drives its approach as
+    ordinary road, so the cell at the turning square is the one the spec's
+    choice is about.  The counting loop's nine laps depend on that.
     """
 
     def _code(self) -> list[str]:
-        # A two-wide street (columns 1-2) doubling back at the bottom.
-        # The ';' sits in the *left* lane, so a car driving lawfully can
-        # only reach it northbound, after rounding the dead end.
+        """Two rooms of a folded corridor, the shape a width-6 fold draws.
+
+        The car drives East out of ``C`` into the mouth bounded by the
+        divider tips at ``(3,2)`` and ``(6,2)``.  The CPth cell is zero --
+        it starts that way, no ``=`` is needed -- so the junction chooses
+        the leftmost road, North.  The single ``^`` at ``(5,3)`` lies on
+        the run out to that road's lane and makes the cell nonzero before
+        the car gets there.
+
+        Everything else is blank, so the geometry alone drives the car:
+        remove that one ``^`` and the grid behaves identically either way,
+        because there is then nothing to change the cell between choosing
+        the road and reaching it.
+        """
         return [
-            "+--+",
-            "|   |",
-            "|C  |",
-            "++  |",
-            "|;  |",
-            "|   |",
-            "+---+",
-        ]
-
-    def test_the_car_rounds_the_dead_end_instead_of_crossing(self) -> None:
-        """It descends the right lane and comes back up the left one.
-
-        Sliding West at (4,2) would reach the ';' three steps sooner, in
-        the lane oncoming traffic uses.
-        """
-        machine = _Machine(self._code(), IO())
-        visited = [(machine.row, machine.col)]
-        for _ in range(6):
-            machine.step()
-            visited.append((machine.row, machine.col))
-        assert visited == [
-            (2, 1),  # C
-            (2, 2),  # east along the top
-            (3, 2),  # descending the right lane
-            (4, 2),
-            (5, 2),  # past the ';', which is in the other lane
-            (5, 1),  # round the dead end
-            (4, 1),  # northbound, and only now level with the ';'
-        ]
-
-    def test_it_halts_on_the_semicolon_it_reached_lawfully(self) -> None:
-        machine = _Machine(self._code(), IO())
-        for _ in range(20):
-            machine.step()
-            if machine.halted:
-                break
-        assert machine.halted
-        assert (machine.row, machine.col) == (4, 1)
-
-    def test_a_two_by_two_opening_is_not_a_circuit(self) -> None:
-        """Four right turns with no wall to follow is not wall-following.
-
-        Before the rule, a car entering this block circled it forever,
-        re-running the cell it passed on every lap.
-        """
-        code = [
             "+----+",
-            "|C^^ |",
-            "|O=^ |",
+            "|    |",
+            "|    |",
             "+-+  |",
-            "|^^^ |",
+            "|    |",
+            "|C ^ |",
+            "+-+  |",
+            "|;   |",
+            "|    |",
             "+----+",
         ]
-        machine = _Machine(code, IO())
-        seen = set()
-        for _ in range(200):
-            key = (machine.row, machine.col, machine.heading)
-            if key in seen and machine.cells.get(1, 0) > 50:
-                pytest.fail("the car is orbiting the opening")
-            seen.add(key)
+
+    def test_the_instruction_on_the_way_out_does_not_change_the_road(
+        self,
+    ) -> None:
+        """The car climbs the road it chose instead of orbiting the tip.
+
+        Re-reading the cell at the far lane made the ``^`` overturn the
+        choice, and the car circled the four cells around the divider tip
+        forever, re-running that ``^`` on every lap -- never reaching the
+        corridor it had turned into.
+        """
+        machine = _Machine(self._code(), IO())
+        seen: set[tuple[int, int]] = set()
+        for _ in range(400):
+            seen.add((machine.row, machine.col))
             machine.step()
             if machine.halted:
                 break
+        # The chosen road runs North up the corridor to the top street,
+        # and the car goes on to reach the ';'.  An orbiting car never
+        # leaves the six cells around the divider's tip.
+        assert (1, 4) in seen, sorted(seen)
+        assert machine.halted
 
 
 class TestStreetcodeLaneMerge:
@@ -450,7 +452,7 @@ class TestStreetcodeLaneMerge:
         # then turns East at row 3 -- the right-hand lane of the new
         # east-west road relative to heading East -- not row 2, and not
         # immediately upon first detecting the junction at row 0.
-        machine = _Machine(self._lane_merge_code(), IO())
+        machine = machine_unvalidated(self._lane_merge_code())
         positions = [(machine.row, machine.col)]
         for _ in range(6):
             machine.step()
@@ -483,7 +485,7 @@ class TestStreetcodeLaneMerge:
             "|   |",
             "|   |",
         ]
-        machine = _Machine(code, IO())
+        machine = machine_unvalidated(code)
         for _ in range(4):
             machine.step()  # down the west lane; the latch forms en route
         assert machine._merge_target is not None  # noqa: SLF001
@@ -494,24 +496,24 @@ class TestStreetcodeLaneMerge:
         """The phase-1 turn must not step onto a wall that appears at the
         latched target's chosen heading -- it should fall back to ordinary
         wall-following instead of blindly trusting the stale latch."""
-        machine = _Machine(self._lane_merge_code(), IO())
+        machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 1, "S"
-        machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
+        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
         row = machine.grid[3]
         machine.grid[3] = row[:2] + "+" + row[3:]  # wall directly East
-        heading = machine._choose_heading()  # noqa: SLF001
+        heading = machine._choose_heading(0)  # noqa: SLF001
         assert heading != "E"
         assert machine._merge_target is None  # noqa: SLF001
 
     def test_wall_after_merge_turn_falls_back_to_plain_rules(self) -> None:
         """The phase-2 straight-through suppression must not drive through
         a wall that appears directly ahead while merging out."""
-        machine = _Machine(self._lane_merge_code(), IO())
+        machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 2, "E"
         machine._merging_heading = "E"  # noqa: SLF001
         row = machine.grid[3]
         machine.grid[3] = row[:3] + "+" + row[4:]  # wall directly ahead
-        heading = machine._choose_heading()  # noqa: SLF001
+        heading = machine._choose_heading(0)  # noqa: SLF001
         assert heading != "E"
 
     def test_merge_target_reread_can_carry_straight_on(self) -> None:
@@ -520,15 +522,15 @@ class TestStreetcodeLaneMerge:
         decision and the car carries straight on, abandoning the merge.
 
         The re-read is of the cell as the car *arrives* at that square (see
-        ``_arrival_cell``), which is what a real approach would have left
+        ``arrival_cell``), which is what a real approach would have left
         behind it.
         """
-        machine = _Machine(self._lane_merge_code(), IO())
+        machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 1, "S"
-        machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
+        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
         machine.cells[0] = 1  # latch was taken under cell == 0
-        machine._arrival_cell = 1  # noqa: SLF001 - as the approach left it
-        heading = machine._choose_heading()  # noqa: SLF001
+        # 1 = the cell as the approach left it, on arrival at the turn
+        heading = machine._choose_heading(1)  # noqa: SLF001
         assert heading == "S"
         assert machine._merging_heading is None  # noqa: SLF001
 
@@ -536,12 +538,12 @@ class TestStreetcodeLaneMerge:
         """A wall appearing straight ahead while still approaching the
         latched lane drops the latch, like a heading change does: the
         latch must not wait forever for a target it can no longer reach."""
-        machine = _Machine(self._lane_merge_code(), IO())
+        machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 1, 1, "S"
-        machine._merge_target = (3, 1, "E", "S")  # noqa: SLF001
+        machine._merge_target = (3, 1, "E", "S", False)  # noqa: SLF001
         row = machine.grid[2]
         machine.grid[2] = row[:1] + "+" + row[2:]  # wall directly ahead
-        heading = machine._choose_heading()  # noqa: SLF001
+        heading = machine._choose_heading(0)  # noqa: SLF001
         assert machine._merge_target is None  # noqa: SLF001
         assert heading == "E"  # falls back to plain wall-following
 
@@ -549,10 +551,10 @@ class TestStreetcodeLaneMerge:
         """When the junction fires while the car already sits in the new
         road's right-hand lane (a mouth whose near ``+`` is one cell
         behind, near == -1), there is nothing to drive to: turn now."""
-        machine = _Machine(["|+  ", "  C ", "    ", "|+  "], IO())
+        machine = machine_unvalidated(["|+  ", "  C ", "    ", "|+  "])
         machine.row, machine.col, machine.heading = 1, 2, "S"
         machine.cells[0] = 1  # nonzero -> second-leftmost of [S, W] = West
-        heading = machine._choose_heading()  # noqa: SLF001
+        heading = machine._choose_heading(0)  # noqa: SLF001
         assert heading == "W"
         assert machine._merge_target is None  # noqa: SLF001
 
@@ -579,7 +581,7 @@ class TestStreetcodeLaneMerge:
             " |   |",
             " |   |",
         ]
-        machine = _Machine(code, IO())
+        machine = machine_unvalidated(code)
         positions = [(machine.row, machine.col)]
         for _ in range(7):
             machine.step()
@@ -692,6 +694,259 @@ class TestStreetcodeMalformedPrograms:
     def test_multiple_cars_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="exactly one C"):
             run(["C  ", "  C"], io=IO())
+
+
+class TestStreetcodeStreetWidth:
+    """Construction-time rejection of one-wide streets (``_validate_width``).
+
+    The spec's streets are two-way and two characters wide, so a one-wide
+    corridor has no opposite lane for ``U`` to end its turn in.  The
+    geometry is static, so the check runs before the car moves.  Remember
+    that a blank row or column is a lane -- space is a drivable no-op --
+    so an instruction row paired with a blank row is a legal street, not a
+    one-wide one.
+    """
+
+    def test_one_wide_dead_end_is_rejected(self) -> None:
+        """A single instruction row between two walls has no second lane."""
+        with pytest.raises(ValueError, match="not two-wide"):
+            run(["+----+", "|C^O;|", "+----+"], io=IO())
+
+    def test_one_wide_against_grid_edge_is_rejected(self) -> None:
+        """Off-grid counts as closed, so an edge row is still one-wide."""
+        with pytest.raises(ValueError, match="not two-wide"):
+            run(["C^O;", "+---+"], io=IO())
+
+    def test_one_wide_staircase_is_rejected(self) -> None:
+        """Every cell is a corner, so no cell has an opposite-pair of
+        neighbours -- the dead-end and vertical arms still catch it."""
+        with pytest.raises(ValueError, match="not two-wide"):
+            run(
+                [
+                    "+-+    ",
+                    "|C|    ",
+                    "|^+-+  ",
+                    "|^^^|  ",
+                    "+-+^|  ",
+                    "  |;|  ",
+                    "  +-+  ",
+                ],
+                io=IO(),
+            )
+
+    def test_two_wide_street_is_accepted(self) -> None:
+        """An instruction lane with an oncoming lane beside it is legal."""
+        assert run_street("C^O;") == chr(1)
+
+    def test_wider_than_two_is_rejected(self) -> None:
+        """Streets are two wide, so a three-lane corridor is malformed.
+
+        Cross-section runs cannot measure this -- through an intersection a
+        run reports the crossing street's *length* -- so the rule is a fully
+        open three-by-three block, which a two-wide network never contains.
+        """
+        with pytest.raises(ValueError, match="wider than two"):
+            run(
+                ["+------+", "|C^^^O;|", "|      |", "|      |", "+------+"],
+                io=IO(),
+            )
+
+    def test_three_by_two_room_is_accepted(self) -> None:
+        """The deliberate boundary of the three-by-three rule: a three-by-two
+        room is a two-wide street of length three seen sideways."""
+        _Machine(["+---+", "|C^;|", "|~~~|", "+---+"], IO())
+
+    def test_crossing_of_two_streets_is_accepted(self) -> None:
+        """The load-bearing case: where two legal two-wide streets cross, the
+        open centre is two-by-two with walls at the diagonals, so no fully
+        open three-by-three block exists."""
+        _Machine(
+            [
+                "+--+  +--+",
+                "|  |  |  |",
+                "|  +--+  |",
+                "|   C    |",
+                "|        |",
+                "|  +--+  |",
+                "|  |  |  |",
+                "+--+  +--+",
+            ],
+            IO(),
+        )
+
+    def test_wall_fragment_without_instructions_is_rejected(self) -> None:
+        """The content-sniffing exemption is closed: a one-wide grid is
+        malformed whether or not it happens to contain an instruction."""
+        with pytest.raises(ValueError, match="not two-wide"):
+            _Machine(["+---+", "|C  |", "+---+"], IO())
+
+    def test_grid_without_walls_is_exempt(self) -> None:
+        """With no walls there is no street network to measure."""
+        _Machine(["CU"], IO())
+
+    def test_wall_hole_is_rejected(self) -> None:
+        """A wall that stops and resumes one cell later leaves a gap too
+        narrow to drive.  The width check happens to catch this shape
+        first, since the hole is a reachable one-wide stub; the wall forms
+        reject it independently."""
+        with pytest.raises(ValueError, match=r"not two-wide|malformed wall"):
+            _Machine(["+----+", "|C   |", "|    |", "+- --+"], IO())
+
+    def test_uncapped_divider_end_is_accepted(self) -> None:
+        """Whether a divider must end in a '+' is a spec question the wiki
+        does not settle, and the forms deliberately leave it open: the
+        hello-world example draws bare ends and runs correctly."""
+        _Machine(
+            [
+                "+------+",
+                "|C     |",
+                "|      |",
+                "+  ----+",
+                "|      |",
+                "|      |",
+                "+------+",
+            ],
+            IO(),
+        )
+
+    def test_road_mouth_is_accepted(self) -> None:
+        """A mouth is at least two cells across, so its '+' markers never
+        sandwich a single open cell the way a hole does."""
+        _Machine(
+            [
+                "+--------+",
+                "|C       |",
+                "|        |",
+                "+--+  +--+",
+                "   |  |   ",
+                "   |  |   ",
+                "   +--+   ",
+            ],
+            IO(),
+        )
+
+    def test_detached_geometry_is_rejected(self) -> None:
+        """A second box the car can never reach belongs to no street."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(
+                ["+----+   +--+", "|C   |   |  |", "|    |   |  |", "+----+   +--+"],
+                IO(),
+            )
+
+    def test_stray_wall_fragment_is_rejected(self) -> None:
+        """A scribble of wall outside the program bounds no road."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(["+----+", "|C   |", "|    |", "+----+", "   -- "], IO())
+
+    def test_island_inside_a_ring_is_accepted(self) -> None:
+        """An island is legal geometry -- a block the car drives around --
+        so neither its wall nor the pocket it seals is a leftover."""
+        _Machine(
+            [
+                "+-------+",
+                "|C      |",
+                "|       |",
+                "|  +-+  |",
+                "|  | |  |",
+                "|  +-+  |",
+                "|       |",
+                "|       |",
+                "+-------+",
+            ],
+            IO(),
+        )
+
+    def test_solid_island_is_rejected(self) -> None:
+        """A block thick enough to have an interior: its outer ring bounds
+        the road, but the cells inside bound nothing.  Permitting this
+        would cost a second flood-fill to tell an enclosed hole from the
+        outside, and nothing the repo draws needs it."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(
+                [
+                    "+--------+",
+                    "|C       |",
+                    "|        |",
+                    "|  ++++  |",
+                    "|  ++++  |",
+                    "|  ++++  |",
+                    "|        |",
+                    "|        |",
+                    "+--------+",
+                ],
+                IO(),
+            )
+
+    def test_two_wide_hole_in_a_wall_is_rejected(self) -> None:
+        """A hole two cells across is a legal-width passage, so the width
+        check has no reason to fire: what marks it as a gap is that the
+        road escapes through it to the edge of the grid."""
+        with pytest.raises(ValueError, match="reaches the edge"):
+            _Machine(["+------+", "|C     |", "|      |", "+--  --+"], IO())
+
+    def test_street_open_to_the_grid_edge_is_rejected(self) -> None:
+        """A street is bounded by walls, so the road never touches the
+        border: there is always a wall between it and the outside."""
+        with pytest.raises(ValueError, match="reaches the edge"):
+            _Machine(["+-----", "|C    ", "|     ", "+-----"], IO())
+
+    def test_horizontal_wall_beside_a_vertical_one_is_rejected(self) -> None:
+        """Where a wall changes direction it turns a corner, and a corner
+        is drawn '+'.  A '-' next to a '|' is that turn without the mark."""
+        with pytest.raises(ValueError, match="turns without a corner"):
+            _Machine(["+----+", "|C   |", "|    |", "+--|-+"], IO())
+
+    def test_vertical_wall_above_a_horizontal_one_is_rejected(self) -> None:
+        """The same slip a quarter turn round."""
+        with pytest.raises(ValueError, match="turns without a corner"):
+            _Machine(["+--+", "|C |", "|  |", "-  |", "|  |", "+--+"], IO())
+
+    def test_instruction_sealed_inside_an_island_is_rejected(self) -> None:
+        """Code the car can never drive is not part of the program.
+
+        The check is strict: anything off the street is rejected, not
+        only walls.  Allowing the rest to stand as comments would cost no
+        detection, but is left unimplemented -- see ``_validate_connected``.
+        """
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(
+                [
+                    "+-------+",
+                    "|C      |",
+                    "|       |",
+                    "|  +-+  |",
+                    "|  |^|  |",
+                    "|  +-+  |",
+                    "|       |",
+                    "|       |",
+                    "+-------+",
+                ],
+                IO(),
+            )
+
+    def test_text_beside_the_program_is_rejected(self) -> None:
+        """Strictness means prose beside a program is malformed too, not
+        a comment."""
+        with pytest.raises(ValueError, match="not connected"):
+            _Machine(["+----+  counts up", "|C   |", "|    |", "+----+"], IO())
+
+    def test_blank_padding_is_not_geometry(self) -> None:
+        """A ragged program squared off by ``ljust``, and the background
+        around an L-shaped layout, are blank rather than drawn, so they do
+        not count as disconnected geometry."""
+        _Machine(["+----+", "|C   |", "|    |", "+----+", "      "], IO())
+
+    @pytest.mark.parametrize(
+        "path",
+        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+    )
+    def test_shipped_examples_are_accepted(self, path: str) -> None:
+        """The repo's own programs must survive the check."""
+        root = Path(__file__).resolve().parents[2]
+        code = (root / path).read_text().split("\n")
+        if code and code[-1] == "":
+            code = code[:-1]
+        _Machine(code, IO())
 
 
 class TestStreetcodeWikiExamples:

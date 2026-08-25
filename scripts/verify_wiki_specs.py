@@ -89,7 +89,9 @@ def main() -> int:
     parser.add_argument("--update", action="store_true")
     args = parser.parse_args()
 
-    recorded: dict[str, dict[str, str]] = (
+    # json.loads returns Any; the committed file is written by --update
+    # below, so every value is a {"page", "talk"} mapping.
+    recorded: dict[str, dict[str, str | None]] = (
         json.loads(HASHES.read_text()) if HASHES.exists() else {}
     )
     current: dict[str, dict[str, str]] = {}
@@ -108,8 +110,6 @@ def main() -> int:
             unverified.append(name)
         else:
             old = recorded[name]
-            if isinstance(old, str):
-                old = {"page": old, "talk": None}  # pre-talk format
             if old.get("page") != h["page"]:
                 page_changed.append(name)
             if old.get("talk") != h["talk"]:
