@@ -14,8 +14,9 @@ updates:
       interval: monthly
     open-pull-requests-limit: 5
     groups:
-      python-dev:
-        dependency-type: development
+      python:
+        patterns:
+          - "*"
 
   # The actions in ci.yml and fuzz.yml.
   - package-ecosystem: github-actions
