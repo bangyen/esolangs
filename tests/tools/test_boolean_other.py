@@ -677,32 +677,65 @@ class TestLaserFuck:
 
         A return row's beam travels left, so it may only carry ops that
         read the same in reverse -- which a run of one repeated character
-        does.  The reader run's ``-`` spill is exactly that, so it lands on
-        the return row rather than costing a third row.
+        does.  The boolean generator's readers are rings now, but the fold
+        still lays every leaf band and the whole text generator, so the
+        fill is exercised directly here.
         """
-        rows = boolean.laserfuck("0110", 80).split("\n")
-        # row 0 turns down at the width; row 1 is its return row, and the
-        # '-' between the margin and the '{' are the spilled decrements.
+        grid = [[" "] * 20 for _ in range(2)]
+        end_row, end_col = laserfuck_layout.fold(grid, "-" * 30, 0, 3, 20)
+        rows = ["".join(line).rstrip() for line in grid]
         assert rows[0].endswith("v")
         assert rows[1].endswith("{")
         assert "-" in rows[1], "the return row should carry the spilled run"
-        # Both readers' 49 columns fit in those two rows, so the tree
-        # starts on row 2 rather than after a third reader row.
-        assert "#" in rows[2], "the tree should start right after the readers"
+        # 30 ops at width 20: 16 on the segment row, the rest reversed onto
+        # the return row, so the run never needs a second segment row.
+        assert end_row == 2, "a same-character run should not need a third row"
+        assert end_col == laserfuck_layout.MARGIN + 1
 
     def test_return_rows_only_take_a_same_character_run(self) -> None:
         """The fill stops at the first character that differs.
 
-        A leaf's run mixes pointer moves with its answer, so only its
-        leading same-character stretch may be reversed; the rest has to
-        resume rightwards on the next segment row.
+        A mixed run may only reverse its leading same-character stretch;
+        whatever follows has to resume rightwards on the next segment row.
         """
-        for row in boolean.laserfuck("01101001", 60).split("\n"):
-            body = row[laserfuck_layout.MARGIN + 1 :].rstrip()
-            if not body.endswith("{"):
-                continue  # not a return row
-            ops = body[:-1].strip()
-            assert len(set(ops)) <= 1, f"mixed ops on a return row: {ops!r}"
+        grid = [[" "] * 20 for _ in range(2)]
+        laserfuck_layout.fold(grid, "-" * 30 + ">+++", 0, 3, 20)
+        rows = ["".join(line).rstrip() for line in grid]
+        body = rows[1][laserfuck_layout.MARGIN + 1 :].rstrip()
+        ops = body[:-1].strip() if body.endswith("{") else body.strip()
+        assert set(ops) <= {"-"}, f"mixed ops on a return row: {ops!r}"
+        # the '>' that broke the run resumes on the next segment row
+        assert ">" in rows[2]
+
+    def test_folded_readers_are_rings(self) -> None:
+        """The folded reader loops rather than writing 48 '-' per input.
+
+        Two rings sit on the first row: one multiplies 8 by 6 to build the
+        48 a ``,`` needs subtracting, the other spends that counter one unit
+        at a time across the counter and every input.  Both are one row, so
+        the reader costs a fixed two rows however many inputs there are.
+        """
+        rows = boolean.laserfuck("0110", 80).split("\n")
+        # columns 0..2 are the funnel; the reader starts at the margin
+        head = rows[0][laserfuck_layout.MARGIN :]
+        legs = rows[1][laserfuck_layout.MARGIN :]
+        assert head.count("}") == 3, "the reader's own '}' plus one per ring"
+        assert head.count("#/)") == 2, "each ring tests its counter"
+        assert legs.count("^") == 2, "each ring returns to its own '}'"
+        # no 48-'-' run survives anywhere in the program
+        assert "-" * 10 not in "\n".join(rows)
+
+    def test_ringed_leaves_leave_a_zero_answer_alone(self) -> None:
+        """Cell 0 is the counter *and* the answer, so zero costs nothing.
+
+        The rings spend the counter down to zero and leave it touched,
+        which is exactly what dump() prints for a zero answer -- so a leaf
+        writes a '+' only when the answer is one.
+        """
+        zero = boolean.laserfuck("0000", 80).split("\n")
+        assert "+" not in "\n".join(zero[3:]), "a zero table needs no '+'"
+        ones = boolean.laserfuck("1111", 80).split("\n")
+        assert "+" in "\n".join(ones[3:])
 
     @pytest.mark.parametrize(("table", "n"), [("0001", 2), ("01101001", 3)])
     def test_tree_columns_are_linear_in_the_input_count(

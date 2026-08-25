@@ -338,6 +338,71 @@ def between(truth_table: str) -> str:
     return "\n".join(lines)
 
 
+# The two loops that normalize the input cells.  ``,`` reads a character, so
+# ``'0'``/``'1'`` arrive as 48/49 and every input needs 48 subtracted.
+# Writing that straight costs 48 columns per input; running it as a loop
+# costs a counter instead, and the counter itself is built by a second loop
+# rather than by 48 ``+`` -- ``_LASER_OUTER * _LASER_INNER`` is 48.
+_LASER_OUTER = 8
+_LASER_INNER = 6
+
+
+def _laserfuck_ring_reader(n: int) -> tuple[list[str], int]:
+    r"""Build the looping input reader, and say how wide it is.
+
+    Returns the reader's rows and the column the beam leaves them on, moving
+    right, with the pointer on cell 0.
+
+    The tape is laid out as *cell 0 = counter and answer*, cells 1..n =
+    inputs.  Cell 0 earns that double duty: the counter ends the reader at
+    zero and *touched*, which is exactly the state a ``0`` answer needs to
+    print, so a leaf writes nothing for a zero and a single ``+`` for a one.
+
+    Two loops run left to right, each a ring: a ``}`` faces the beam right
+    along the body, ``#`` skips the deflector so ``)`` can test the cell
+    under the pointer, and a nonzero cell turns the beam back to the ``/``,
+    which drops it onto the return row where ``{`` sends it left to the
+    ``^`` under the ring's own ``}``.  A zero cell lets the beam through the
+    ``)`` and on to whatever follows on the row.
+
+    The first ring multiplies: cell 1 is preloaded with ``_LASER_OUTER`` and
+    each pass adds ``_LASER_INNER`` to cell 0, leaving the 48 the inputs
+    need.  The reads then happen -- cell 1's preload is spent by now, so the
+    inputs may use it -- and the second ring subtracts one from cell 0 and
+    from every input per pass, running until the counter is spent.
+
+    A ring body cannot be folded: the return leg re-enters at the ``}`` and
+    re-runs the *whole* body, so a body split across rows would re-execute
+    only its tail.  Both bodies therefore live on one row, which is what
+    :func:`_laserfuck_ring_reader_stacked` exists to avoid when the width
+    cannot hold them.
+    """
+    preload = ">" + "+" * _LASER_OUTER
+    multiply = "<" + "+" * _LASER_INNER + ">" + "-#/)"
+    reads = ""
+    for i in range(n):
+        reads += ","
+        if i < n - 1:
+            reads += ">"
+    reads += "<" * n  # back to the counter
+    # one '-' for the counter and one for each input, then home again
+    retire = "".join("->" for _ in range(n)) + "-" + "<" * n + "#/)"
+
+    body = "}" + preload + "}" + multiply + reads + "}" + retire
+    top = [" "] * (len(body) + 2)
+    ret = [" "] * (len(body) + 2)
+    for i, char in enumerate(body):
+        top[i] = char
+    # each ring's return leg: '^' under its own '}', '{' under its '/'
+    first = 1 + len(preload)
+    ret[first] = "^"
+    ret[first + 1 + multiply.index("/")] = "{"
+    second = len(body) - len(retire) - 1
+    ret[second] = "^"
+    ret[second + 1 + retire.index("/")] = "{"
+    return ["".join(top).rstrip(), "".join(ret).rstrip()], len(body)
+
+
 def laserfuck(truth_table: str, width: int | None = None) -> str:
     r"""Build a LaserFuck program computing the given truth table.
 
@@ -375,19 +440,32 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     subtracts one more than each bit's value on its way past -- driving cell
     ``i`` to ``-1`` whatever it held -- before walking up to the answer cell.
 
-    The tree is loop-free, so no loop-ring geometry is needed.
+    The tree is loop-free, so no loop-ring geometry is needed there.
 
     ``width`` bounds the columns.  Unfolded, the grid is dominated by its
     straight runs -- the ``n`` input readers are 49 columns each and every
     leaf is another 49 -- which is why a three-input table is 253 columns
-    wide while its decision tree spans only 42.  With a width, each of those
-    runs is folded into a zigzag by
-    :func:`~esolangs.tools.laserfuck_layout.fold` and costs rows instead:
-    the readers fold into a band before the tree, and each leaf folds into a
-    band of its own below it.  The tree itself is never
-    folded, since its columns carry the descent paths that make the program
-    correct; it grows six columns per node, so a width narrower than the
-    tree needs cannot be met and the grid comes out as wide as the tree.
+    wide while its decision tree spans only 42.
+
+    A width changes the readers outright rather than folding them.  The 48
+    ``-`` a ``,`` needs are a *loop* instead
+    (:func:`_laserfuck_ring_reader`): one ring multiplies 8 by 6 to build
+    the 48, a second spends it one unit at a time across every input, and
+    both sit on a single row with their return legs on the next.  The
+    reader is then two rows and a few dozen columns whatever ``n`` is,
+    against 49 columns per input written straight.  That also moves the
+    tape: the ring counter is cell 0 and the inputs are cells 1..n, so the
+    counter's spent zero doubles as the answer cell and a leaf writes a
+    ``+`` only for a one.
+
+    Everything else still folds.  Each leaf's run is laid as a zigzag by
+    :func:`~esolangs.tools.laserfuck_layout.fold`, into a band of its own
+    below the tree, and costs rows instead of columns.  The tree itself is
+    never folded, since its columns carry the descent paths that make the
+    program correct; it grows six columns per node, so a width narrower
+    than the tree needs cannot be met and the grid comes out as wide as the
+    tree.  A width too narrow for the rings' row falls back to folding the
+    reader run as before.
     """
     n = _validate_truth_table(truth_table)
     # The staircase is the tighter layout wherever it fits: it packs the
@@ -406,17 +484,26 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     rows: int = 2 ** (n + 1) - 1
     total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2 + 49 + 8
 
+    # The looping reader replaces the 48 '-' per input with two rings, so it
+    # is a fixed two rows and a few dozen columns whatever ``n`` is.  A ring
+    # body cannot be folded, so it is used only when its row fits.
+    reader_rows, reader_width = _laserfuck_ring_reader(n)
+    ringed = folded and 3 + reader_width + 1 <= fold_width
+
     if folded:
         # A fold trades columns for rows, so a folded grid needs many more of
         # them than the tree alone does.
         def bands(run: int) -> int:
             return laserfuck_layout.rows_needed(run, fold_width)
 
-        readers_len = 49 * n  # ',' + 48 '-' per input, '>' between them
-        rows += bands(readers_len) + 2  # +2 for the turn onto the tree's row
+        if ringed:
+            rows += len(reader_rows) + 2  # the rings, then the turn onto the tree
+        else:
+            readers_len = 49 * n  # ',' + 48 '-' per input, '>' between them
+            rows += bands(readers_len) + 2  # +2 for the turn onto the tree's row
         # each leaf: its drop row, then its own folded band
         rows += sum(bands(49 + int(bit)) + 2 for bit in truth_table)
-        total_cols = max(total_cols, (width or 0) + 2)
+        total_cols = max(total_cols, (width or 0) + 2, 3 + reader_width + 2)
     grid = [[" "] * total_cols for _ in range(rows)]
 
     # the funnel: every heading ends up on row 0 moving right.  Cell (0, 0)
@@ -450,7 +537,26 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     # long straight run -- ',' and 48 '-' per input, '>' between them -- so
     # the fold can break it anywhere.
     base = 0
-    if folded:
+    if ringed:
+        # The rings go straight onto rows 0 and 1, and the beam leaves them
+        # on row 0 still moving right with the pointer on cell 0.
+        for offset, text in enumerate(reader_rows):
+            for index, char in enumerate(text):
+                if char != " ":
+                    grid[offset][3 + index] = char
+        col = 3 + reader_width
+        # Row 1 belongs to the rings' return legs, so the usual two-row
+        # turn-down would drop the beam onto a '^' and climb back into a
+        # ring.  Fall past that row instead: the return legs stop at the '{'
+        # under the last '/', so this column is clear on row 1.
+        laserfuck_layout.reserve(grid, 3)
+        grid[0][col] = "v"
+        grid[2][col] = "{"
+        grid[2][laserfuck_layout.MARGIN] = "v"
+        base = 3
+        grid[base][laserfuck_layout.MARGIN] = "}"
+        col = laserfuck_layout.MARGIN + 1
+    elif folded:
         readers = ""
         for i in range(n):
             readers += "," + "-" * 48
@@ -528,16 +634,28 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         # holds bit i, and one more '-' than its value drives it to -1,
         # which dump() skips; sweeping n-1 down to 0 clears every input, and
         # the pointer then walks back up to cell n for the answer.
-        sweep = ""
-        for i in range(n - 1, -1, -1):
-            bit = (j >> (n - 1 - i)) & 1
-            sweep += "-" * (bit + 1)
-            if i:
+        if ringed:
+            # The rings leave the inputs in cells 1..n and the answer cell
+            # 0 already touched at zero, so the sweep walks *down* to it and
+            # a zero answer needs no code at all -- the counter's own final
+            # value is what dump() prints.
+            sweep = ""
+            for i in range(n, 0, -1):
+                bit = (j >> (n - i)) & 1
+                sweep += "-" * (bit + 1)
                 sweep += "<"
-        sweep += ">" * n
-        # A 0 answer still has to be *touched* to be printed at all, so it
-        # is written as '+-' rather than left alone.
-        run = sweep + ("+" if truth_table[j] == "1" else "+-")
+            run = sweep + ("+" if truth_table[j] == "1" else "")
+        else:
+            sweep = ""
+            for i in range(n - 1, -1, -1):
+                bit = (j >> (n - 1 - i)) & 1
+                sweep += "-" * (bit + 1)
+                if i:
+                    sweep += "<"
+            sweep += ">" * n
+            # A 0 answer still has to be *touched* to be printed at all, so
+            # it is written as '+-' rather than left alone.
+            run = sweep + ("+" if truth_table[j] == "1" else "+-")
         if folded:
             drop = drop_base + j
             laserfuck_layout.reserve(grid, band + 1)
@@ -560,10 +678,17 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         for j in range(2**i):
             r = row(i, j)
             c = cols[(i, j)]
-            # root arrives with the pointer at cell n-1; a child at level i
-            # arrives with it at cell i-1 (its parent tested bit i-1)
-            arrival = n - 1 if i == 0 else i - 1
-            moves = ">" * (i - arrival) if i >= arrival else "<" * (arrival - i)
+            if ringed:
+                # Inputs live in cells 1..n, so a level-i node tests cell
+                # i+1.  The root arrives on cell 0 (the rings end on the
+                # counter) and a level-i child arrives on cell i, the cell
+                # its parent just tested -- one step either way.
+                moves = ">"
+            else:
+                # root arrives with the pointer at cell n-1; a child at level
+                # i arrives with it at cell i-1 (its parent tested bit i-1)
+                arrival = n - 1 if i == 0 else i - 1
+                moves = ">" * (i - arrival) if i >= arrival else "<" * (arrival - i)
             cur = c - len(moves)
             for ch in moves:
                 grid[r][cur] = ch
