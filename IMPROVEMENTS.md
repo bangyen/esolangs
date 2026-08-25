@@ -92,8 +92,16 @@ The name is unclaimed (404), so this also claims it. Until then a `v*` tag
 builds and verifies, then fails at the publish step — deliberately, so a
 mistagged release never reaches the index.
 
-After registering, `git tag v0.1.0 && git push origin v0.1.0` runs the
-release. Nothing else is pending.
+Order matters, because both of these read from the default branch:
+
+1. Merge `worktree-dependabot-scaffolding` to `main`. A tag-push workflow runs
+   from the tagged commit, so tagging before the merge finds no
+   `release.yml` and silently does nothing. Dependabot likewise only reads
+   `dependabot.yml` from the default branch, so none of this is live until
+   the merge.
+2. Register the trusted publisher (above). PyPI accepts a *pending* publisher
+   for a name that does not exist yet, which is what claims `esolangs`.
+3. `git tag v0.1.0 && git push origin v0.1.0`.
 
 ## Also checked, nothing found
 
