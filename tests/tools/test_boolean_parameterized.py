@@ -1185,15 +1185,24 @@ class TestEvalBoolean:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_eval
 
-        # on the input stack (index 1), `` pushes 0 and + bumps it to 1
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "`+" if b else "0",
-            lambda _i, _b: "",
-        )
+        return _fill_eval(tpl, bits)
+
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """The setter is two characters whichever bit it carries."""
+        from esolangs.tools.boolean.examples import _fill_eval
+
+        for n in (1, 2, 3):
+            for i in range(n):
+                placeholder = "{X" + str(i) + "}"
+                zeros = [0] * n
+                ones = list(zeros)
+                ones[i] = 1
+                assert len(_fill_eval(placeholder, zeros)) == len(
+                    _fill_eval(placeholder, ones)
+                ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1248,7 +1257,8 @@ class TestEvalBoolean:
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.eval("0110")
-        assert template.startswith("~{X1}{X0}~")  # inputs MSB-first on stack 1
+        # inputs MSB-first, staged on the tree stack and moved by each `=`
+        assert template.startswith("{X1}{X0}")
         assert template.endswith("*!")
         assert '"~=~?;!"' in template  # root node: one discard
         assert '"~=~?;;!"' in template  # BFS index 1: two discards

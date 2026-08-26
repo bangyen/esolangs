@@ -118,9 +118,12 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     program prints ``'0'`` or ``'1'``.
 
     Eval has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders become a bit push on the input stack
-    (``0`` for a zero, ```+`` for a one) and the harness instantiates one
-    program per input combination.  The tree is stored as a flat, full
+    template's ``{Xi}`` placeholders become a bit push and the harness
+    instantiates one program per input combination.  Each is two characters
+    wide whichever bit it carries, so the program's shape does not reveal
+    its inputs: the bit is staged on the tree stack, where ```` ` ````
+    (``1 - ptr``) pushes a one and ``0`` pushes a zero, and ``=`` then moves
+    it to the input stack the nodes read.  The tree is stored as a flat, full
     binary tree in heap (BFS) order on the tree stack; a node at index
     ``i`` tests the next input and the heap layout pins its two children at
     fixed offsets.
@@ -156,7 +159,7 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
             tree.append("0+." if truth_table[index] == "1" else "0.")
 
     bits = "".join("{X" + str(i) + "}" for i in range(n - 1, -1, -1))
-    return f"~{bits}~" + "".join(f'"{t}"' for t in tree) + "*!"
+    return bits + "".join(f'"{t}"' for t in tree) + "*!"
 
 
 def back(truth_table: str) -> str:
