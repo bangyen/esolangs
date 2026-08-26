@@ -23,7 +23,6 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
-from esolangs.tools.boolean import BOOLEAN
 from esolangs.tools.transpilers import TRANSPILERS
 from esolangs.tools.wrap import takes_width, wrap_program
 from esolangs.vm import VM, make_vm
@@ -163,7 +162,7 @@ def describe(language: str) -> dict[str, object]:
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
         "text_generator": lang.generator is not None,
-        "boolean_generator": language in BOOLEAN,
+        "boolean_generator": lang.boolean is not None,
         "transpilers": transpilers,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{language.replace(' ', '_')}",
