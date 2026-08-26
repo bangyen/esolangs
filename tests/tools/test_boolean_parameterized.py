@@ -162,15 +162,23 @@ class TestParameterizedBack:
         return io.getvalue().split()[n]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_back
 
-        # each {Xi} fills a tape cell: '-' for a one bit, space for zero
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "-" if b else " ",
-            lambda _i, _b: " ",
-        )
+        return _fill_back(tpl, bits)
+
+    def test_program_length_is_the_same_for_every_input(self) -> None:
+        """Both bits cost one command, so the size reveals nothing."""
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_back
+
+        for n in (1, 2, 3):
+            template = parameterized.back(format(0, f"0{2**n}b"))
+            sizes = {
+                len(_fill_back(template, [(c >> (n - 1 - i)) & 1 for i in range(n)]))
+                for c in range(2**n)
+            }
+            assert len(sizes) == 1, f"n={n} sizes {sorted(sizes)}"
 
     @pytest.mark.parametrize(
         ("table", "n"),
