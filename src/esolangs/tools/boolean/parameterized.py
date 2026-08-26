@@ -172,9 +172,11 @@ def back(truth_table: str) -> str:
     the current tape bit, ``+`` steps the beam forward when the current bit
     is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
     and ``*`` halts printing the tape.  Each input is embedded once by
-    filling its tape cell: ``{Xi}`` becomes ``-`` for a one bit and a space
+    filling its tape cell: ``{Xi}`` becomes ``-`` for a one bit and ``+``
     for a zero, so cells ``0..n-1`` hold the inputs and cell ``n`` is the
-    answer cell.
+    answer cell.  Each gets a second load row holding a ``+`` of its own,
+    so both bits cost the same two rows -- a zero used to embed as a blank
+    the rstrip then removed, which made the program's height reveal it.
 
     A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
     the beam straight past the ``\`` when it is 0) and ``\`` reflects the
@@ -208,7 +210,12 @@ def back(truth_table: str) -> str:
     # template characters.
     units: list[str] = []
     for i in range(n):
+        # Two units per input, so neither bit has to be written as a blank:
+        # the beam reads one cell per row in column 0, so the setter's second
+        # command needs a row of its own rather than the column beside it.
+        # Where the tree is the taller of the two these rows already exist.
         units.append("{X" + str(i) + "}")
+        units.append("+")
         if i < n - 1:
             units.append(">")
     units.append(">")
