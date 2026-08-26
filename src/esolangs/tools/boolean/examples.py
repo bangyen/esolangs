@@ -173,6 +173,15 @@ def _fill_bio(template: str, bits: list[int]) -> str:
     commands to ``z``, which the generator never reads, so both bits embed
     as the same number of characters and the program's shape no longer
     reveals its inputs.
+
+    This used to embed a zero as nothing at all, which made the program's
+    length reveal its inputs: at ``n == 2`` the four instantiations ran to
+    236, 240, 244, and 248 characters.  Padding with spaces instead of
+    ``0oz;`` also works -- :func:`~esolangs.interpreters.register_based.bio.parse`
+    discards whitespace before checking that nothing but commands is left --
+    but it pads with characters the language ignores, which is what the
+    bf-pda separators were.  ``y`` is not available for the padding: it
+    carries the running result.
     """
     n = len(bits)
     return instantiate(
@@ -222,6 +231,14 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
     shortest length at which both bits can be written: ``<@@@`` flips three
     times to a one, and ``<[@]`` skips its own body, since ``[`` peeks the
     zero just pushed and jumps past the matching ``]``.
+
+    This used to spell a zero as ``<`` and a one as ``<@``, which made the
+    program's length reveal its inputs.  Four is minimal: an exhaustive
+    search over ``<>@[]`` for runs that push exactly one value finds only a
+    zero at one character, only a one at two, and only zeros at three.
+    Padding with a comment character would be shorter, but every character
+    outside ``@.<>[]`` is a comment here, so that is the padding the
+    separators removed from this generator already were.
     """
     return instantiate(
         template,
@@ -292,6 +309,15 @@ def _fill_home_row(template: str, bits: list[int]) -> str:
     when the cell is zero -- which it is not, having just been raised -- so
     ``aj`` leaves a one.  Both bits are therefore two characters, and the
     program's shape no longer reveals its inputs.
+
+    This used to spell a one as ``a`` and a zero as nothing at all, which
+    made the program's length reveal its inputs.  The padding has to leave
+    the cell's value alone *and* the pointer where it was: ``{Xi}`` sits
+    directly before a gate that tests this cell, so a pad that moves the
+    pointer (``d``/``f``) or changes the count (a second ``a``) misroutes
+    the gate rather than being inert.  Padding with spaces (``a`` against
+    two blanks) works, since the interpreter ignores whitespace, but it
+    pads with characters the language does not read.
     """
     return instantiate(
         template,
@@ -319,6 +345,15 @@ def _fill_eval(template: str, bits: list[int]) -> str:
     ``0`` pushes a zero -- a one-character setter either way.  ``=`` then
     moves it to the input stack the nodes read, so both bits embed as two
     characters and the program's shape does not reveal its inputs.
+
+    This used to push straight onto the input stack, where the backtick
+    yields a zero, so a one needed a second character (``` `+ ```) and a
+    zero only one.  Staging on the tree stack is what makes both bits one
+    character before the shared ``=``.  Padding the old zero to ``0 ``
+    also works, since the interpreter skips anything outside its command
+    set, but it pads with a character the language ignores.  An all-command
+    pad is not available: every ``{Xi}`` must push exactly one value, and a
+    spare ``0`` leaves a residue that a later node reads as a bit.
     """
     return instantiate(
         template,
