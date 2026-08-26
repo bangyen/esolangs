@@ -155,7 +155,7 @@ def __getattr__(name: str) -> frozenset[str]:
     provides -- the failure it used to allow was silent, since a generator
     missing from a hand-written set still worked while ``describe``
     reported it absent.  ``text_generator`` has always been derived this
-    way (``lang.generator is not None``); this puts the boolean side on the
+    way (``lang.text is not None``); this puts the boolean side on the
     same footing.
 
     The lookup is lazy because :mod:`esolangs.registry` imports this

@@ -174,7 +174,7 @@ def _source_link(name: str) -> str:
 def _capabilities(name: str) -> dict[str, bool]:
     lang = LANGUAGES.get(name)
     return {
-        "generator": lang.generator is not None if lang else False,
+        "generator": lang.text is not None if lang else False,
         "interpreter": lang.interpreter is not None if lang else False,
         "cross_check": name in NATIVE,
         "boolean": name in BOOLEAN,
