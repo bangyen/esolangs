@@ -214,10 +214,17 @@ class TestCollatzMultiverse:
         assert program.count("input") == 2
         assert program.count("DO PRINT.") == 1
 
-    def test_constant_tables_skip_the_inputs(self) -> None:
-        """A constant table collapses to a single output."""
-        assert boolean.collatz_multiverse("0000").count("DO PRINT.") == 1
-        assert "input" not in boolean.collatz_multiverse("1111")
+    def test_constant_tables_collapse_but_still_read(self) -> None:
+        """A constant table collapses to one output but still reads its inputs.
+
+        Collapsing the evaluation is the win; the reads are the language's
+        interface and have to stay, or the caller's bits are left unread on the
+        input stream for whatever runs next.
+        """
+        for table in ("0000", "1111"):
+            program = boolean.collatz_multiverse(table)
+            assert program.count("DO PRINT.") == 1
+            assert program.count("input") == 2  # n == 2, read once each
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
