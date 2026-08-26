@@ -445,7 +445,12 @@ def _streetcode_shared(n: int) -> list[str]:
     return ["".join(row) for row in grid]
 
 
-def streetcode(truth_table: str) -> str:
+def _streetcode_columns(program: str) -> int:
+    """Return the widest row of ``program``, which is what a width bounds."""
+    return max(len(line) for line in program.split("\n"))
+
+
+def streetcode(truth_table: str, width: int | None = None) -> str:
     """Build a Streetcode program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -464,6 +469,16 @@ def streetcode(truth_table: str) -> str:
     Whichever shape wins, the leading run then moves to the oncoming lane
     and runs westbound (:func:`_streetcode_lift`), which takes its columns
     off every row of the program.
+
+    ``width`` bounds the columns by *choosing among the shapes* rather than
+    reflowing the winner: a Streetcode program's rows are streets, so no
+    after-the-fact fold can narrow one.  The shapes already differ in
+    aspect -- the ring is the shortest program but the widest, the hallway
+    trades columns for rows -- so a width that the shortest shape overruns
+    is often met by another that was built anyway.  The narrowest shape
+    wins when none fits, since a width is a preference about layout and
+    returning nothing would be worse than returning the best available; the
+    generator has no shape narrower than its tree.
     """
     n = _validate_truth_table(truth_table)
     tree = _streetcode_tree(truth_table)
@@ -484,4 +499,9 @@ def streetcode(truth_table: str) -> str:
     # walks over are exactly the ones the prefix has not reached.
     shared = _streetcode_combine([_streetcode_shared(n), tree])
     programs.append("\n".join(shared))
+    if width is not None:
+        fitting = [p for p in programs if _streetcode_columns(p) <= width]
+        if fitting:
+            return min(fitting, key=len)
+        return min(programs, key=_streetcode_columns)
     return min(programs, key=len)
