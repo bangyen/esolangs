@@ -622,9 +622,7 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         orientation = "".join("R" if choice >> b & 1 else "F" for b in range(count))
         rows_of, exit_row, exit_col = _laserfuck_assemble_reader(n, orientation)
         span = max(len(line) for line in rows_of)
-        candidates.append(
-            (len(rows_of), span, rows_of, exit_row, exit_col, orientation)
-        )
+        candidates.append((len(rows_of), span, rows_of, exit_row, exit_col))
     candidates.sort(key=lambda item: (item[0], item[1]))
     fitting = [
         item
@@ -632,7 +630,7 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         if width is None or laserfuck_layout.MARGIN + item[1] + 2 <= width
     ]
     chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
-    _, _, reader_rows, reader_exit_row, reader_exit_col, orientation_of = chosen
+    _, _, reader_rows, reader_exit_row, reader_exit_col = chosen
 
     margin = laserfuck_layout.MARGIN
     grid: list[list[str]] = []
@@ -744,7 +742,13 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         # further to the right costs nothing but the blank cells it crosses,
         # so the fall column is pushed out to wherever the tree needs it.
         fall = max(margin + reader_exit_col, margin + entry + 1)
-        top = reader_exit_row + (2 if orientation_of[-1] == "F" else 1)
+        # The tree hangs on the first row below the reader.  How far the beam
+        # falls to reach it depends on what the last block left under the
+        # exit -- a flat block keeps its ring's return leg one row down, a
+        # rotated one ends at its own foot -- but the reader is sized to its
+        # own last occupied row either way, so that clearance is just its
+        # height, and the orientation does not have to be consulted at all.
+        top = len(reader_rows)
         put(reader_exit_row, fall, "v")
         for offset, line in enumerate(flipped):
             for index, char in enumerate(line):
