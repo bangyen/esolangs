@@ -16,6 +16,8 @@ from esolangs.tools.text.helpers import (
     _literal_chunks,
     _require_ascii,
     _require_bytes,
+    delta_program,
+    run_step,
 )
 from esolangs.tools.text.laserfuck import laserfuck
 from esolangs.tools.text.streetcode import streetcode
@@ -645,18 +647,7 @@ def nocomment(text: str) -> str:
     from the previous one rather than its full code.
     """
     _require_bytes(text, "NoComment")
-    res: list[str] = []
-    prev = 0
-    for c in text:
-        n = ord(c)
-        delta = n - prev
-        if delta >= 0:
-            res.append("i" * delta)
-        else:
-            res.append("d" * -delta)
-        res.append("o")
-        prev = n
-    return "".join(res)
+    return delta_program(text, run_step("i", "d"), "o")
 
 
 def unsquare(text: str) -> str:
@@ -848,15 +839,14 @@ def basicfuck(text: str) -> str:
     prints it.  ``o=nearest`` pins any accidental overshoot back to the range.
     """
     _require_bytes(text, "Basicfuck")
-    res = ["#basicfuck t=1 r=0~255 o=nearest", "#allocate a"]
-    cur = 0
-    for c in text:
-        t = ord(c)
-        delta = t - cur
-        res.append(f"a += {delta};" if delta >= 0 else f"a -= {-delta};")
-        res.append("write <- a ;")
-        cur = t
-    return "\n".join(res) + "\n"
+    return delta_program(
+        text,
+        lambda cur, target: (
+            f"a += {target - cur};\n" if target >= cur else f"a -= {cur - target};\n"
+        ),
+        "write <- a ;\n",
+        prologue="#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n",
+    )
 
 
 def bit_tilde(text: str) -> str:
