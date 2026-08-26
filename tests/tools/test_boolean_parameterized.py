@@ -894,14 +894,24 @@ class TestParameterizedHomeRow:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_home_row
 
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "a" if b else "",
-            lambda _i, b: "a" if not b else "",
-        )
+        return _fill_home_row(tpl, bits)
+
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """The setter is two characters whichever bit it carries."""
+        from esolangs.tools.boolean.examples import _fill_home_row
+
+        for n in (1, 2, 3):
+            for i in range(n):
+                placeholder = "{X" + str(i) + "}"
+                zeros = [0] * n
+                ones = list(zeros)
+                ones[i] = 1
+                assert len(_fill_home_row(placeholder, zeros)) == len(
+                    _fill_home_row(placeholder, ones)
+                ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
         ("table", "n"),

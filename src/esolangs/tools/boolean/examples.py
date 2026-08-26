@@ -276,11 +276,20 @@ def _fill_ram0(template: str, bits: list[int]) -> str:
 
 
 def _fill_home_row(template: str, bits: list[int]) -> str:
+    """Set the bit cell, in a constant width.
+
+    The cell is zero when a ``{Xi}`` is reached, so ``a`` raises it to one
+    and the second character settles it without moving the pointer: ``s``
+    puts it back to zero, while ``j`` only skips the instruction after it
+    when the cell is zero -- which it is not, having just been raised -- so
+    ``aj`` leaves a one.  Both bits are therefore two characters, and the
+    program's shape no longer reveals its inputs.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "a" if b else "",
-        lambda _i, b: "a" if not b else "",
+        lambda _i, b: "aj" if b else "as",
+        lambda _i, b: "aj" if not b else "as",
     )
 
 
