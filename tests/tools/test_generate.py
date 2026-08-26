@@ -595,7 +595,7 @@ class TestGeneratorRoundTrips:
         :func:`laserfuck`, which would quietly drop a broken snake and fall
         back to another form -- the failure would not show.
         """
-        from esolangs.tools.text.other import _laserfuck_snake_ring
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
 
         for text in ("x" * 20, "Hello, World!", "The quick brown fox"):
             for width in (60, 80, 120):
