@@ -284,9 +284,11 @@ def back(truth_table: str) -> str:
     rows[0][0] = "/"
     for k, unit in enumerate(units):
         rows[height - 1 - k][0] = unit
-    # A zero bit embeds as a space, so a placeholder row can instantiate to a
-    # lone blank; rstrip on both sides of the fill keeps either form free of
-    # trailing whitespace.
+    # Every row is built at the full grid width, so the rstrip trims the pad
+    # each one carries past its last glyph.  It no longer has a bit to hide:
+    # both bits embed as a single command ('-' or '+'), never as the blank a
+    # zero once used, so no placeholder row instantiates to whitespace and
+    # the strip cannot change a filled row's length.
     return "\n".join("".join(row).rstrip() for row in rows)
 
 
