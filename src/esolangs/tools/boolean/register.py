@@ -343,7 +343,10 @@ def dig(truth_table: str) -> str:
     # that one cell for the mole's actual start marker rather than
     # special-casing row 0's emission in two different places above.
     lines[0] = "'" + lines[0][1:]
-    return "\n".join(lines)
+    # Rows are padded to a common width while the blocks are laid out, but the
+    # mole never walks past the last command on a row, so the trailing filler
+    # is inert and is trimmed rather than committed.
+    return "\n".join(line.rstrip() for line in lines)
 
 
 def _qoibl_enc(n: int) -> str:

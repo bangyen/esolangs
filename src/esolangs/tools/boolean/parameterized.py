@@ -844,7 +844,11 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     """
     n = len(bits)
     rows = template.split("\n")
-    return "\n".join(_header_rows(bits) + rows[4 * n + 1 :]).rstrip("\n")
+    # The header rows are built to a fixed width, but the pointer never
+    # travels past the last glyph on a row, so trailing blanks are inert;
+    # trim them so the emitted program carries no whitespace it cannot use.
+    joined = _header_rows(bits) + rows[4 * n + 1 :]
+    return "\n".join(row.rstrip() for row in joined).rstrip("\n")
 
 
 def home_row(truth_table: str) -> str:
