@@ -433,11 +433,12 @@ def bfpda(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     BF-PDA has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders become a push of the bit, and the
-    harness instantiates one program per input combination.  Each input is
-    embedded once: the load phase pushes every ``<@{Xi}`` pair (a constant
-    1 marker, then the bit) up front, so the stack holds all ``n`` bits and
-    markers with ``b0`` on top.
+    template's ``{Xi}`` placeholders become a push of the bit, four
+    characters wide whichever bit it is, so the program's shape does not
+    reveal its inputs.  The harness instantiates one program per input
+    combination.  Each input is embedded once: the load phase pushes every
+    ``<@{Xi}`` pair (a constant 1 marker, then the bit) up front, so the
+    stack holds all ``n`` bits and markers with ``b0`` on top.
 
     Every character outside ``@.<>[]`` is a comment, so the commands are
     emitted unseparated; the fragments below are spaced only to read.

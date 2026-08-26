@@ -215,11 +215,19 @@ def _fill_bitdeque(template: str, bits: list[int]) -> str:
 
 
 def _fill_bfpda(template: str, bits: list[int]) -> str:
+    """Push the bit, in a constant width.
+
+    ``<`` pushes a zero and ``@`` flips the top, so a one is a flip more
+    than a zero.  Padding to a common width takes four characters, the
+    shortest length at which both bits can be written: ``<@@@`` flips three
+    times to a one, and ``<[@]`` skips its own body, since ``[`` peeks the
+    zero just pushed and jumps past the matching ``]``.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "<@" if b else "<",
-        lambda _i, b: "<@" if not b else "<",
+        lambda _i, b: "<@@@" if b else "<[@]",
+        lambda _i, b: "<@@@" if not b else "<[@]",
     )
 
 
