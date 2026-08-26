@@ -336,7 +336,7 @@ def _streetcode_populate(n: int, shape: _Shape) -> list[str]:
 # CP on the counter, so the continue path has to hand it the same CP the
 # first entry does.
 _SHARED_ROWS = (
-    "+  ++{plus}  +",
+    "+  +{dash}+  +",
     "|      {gap}|",
     "|   ~ {gap}_|",
     "| =++{plus}  |",
