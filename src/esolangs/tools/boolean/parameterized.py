@@ -49,7 +49,11 @@ from typing import TypeAlias
 # construction (a search or a grid layout) dwarfs the others.
 from esolangs.tools.boolean.a_painter_ant import a_painter_ant
 from esolangs.tools.boolean.cod import cod
-from esolangs.tools.boolean.helpers import _validate_truth_table, instantiate
+from esolangs.tools.boolean.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    instantiate,
+)
 from esolangs.tools.boolean.wii2d import wii2d
 
 __all__ = [
@@ -110,7 +114,7 @@ def bio(truth_table: str) -> str:
         body = "1ox;" + yop(truth_table[j - 1], truth_table[j]) + inner
         inner = "0ix{" + body + "};"
     init = "0oy;" if truth_table[0] == "1" else ""
-    return pack + " " + init + inner + "0oy;" * 48 + "1iy;"
+    return pack + " " + init + inner + "0oy;" * _ASCII_ZERO + "1iy;"
 
 
 def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
@@ -427,9 +431,9 @@ def nocomment(truth_table: str) -> str:
     setup_move(index)
     setup.append("c")  # index starts at zero
     cells: list[tuple[int, int]] = list(skip_vals.items())
-    cells.append((sentinel, 48))
+    cells.append((sentinel, _ASCII_ZERO))
     for j in range(k):
-        cells.append((tbase + j, 48 + int(truth_table[j])))
+        cells.append((tbase + j, _ASCII_ZERO + int(truth_table[j])))
     cells.sort(key=lambda cv: cv[1])
     if cells:
         first_addr, first_value = cells[0]

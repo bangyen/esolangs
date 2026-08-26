@@ -8,10 +8,12 @@ decision tree (:func:`dimensional_tree`), which wins on dense ones.
 """
 
 from esolangs.tools.boolean.helpers import (
+    _ASCII_ZERO,
     _maybe_complement,
     _validate_truth_table,
     decision_tree_program,
 )
+from esolangs.tools.wrap import shortest
 
 __all__ = ["dimensional", "dimensional_tree"]
 
@@ -101,10 +103,7 @@ def dimensional(truth_table: str) -> str:
     - :func:`dimensional_tree`: a decision tree sharing the bit tests.
       Best for dense tables — XOR-8 is ~8x smaller than the survivor.
     """
-    return min(
-        (_dimensional_survivor(truth_table), dimensional_tree(truth_table)),
-        key=len,
-    )
+    return shortest(_dimensional_survivor(truth_table), dimensional_tree(truth_table))
 
 
 def _dimensional_survivor(truth_table: str) -> str:
@@ -116,7 +115,7 @@ def _dimensional_survivor(truth_table: str) -> str:
     for i in cell.inputs:
         cell.move(i)
         cell.code.append(",")
-        cell.code.append("-" * 48)
+        cell.code.append("-" * _ASCII_ZERO)
     for i in range(n):
         cell.copy(cell.inputs[i], cell.c)
         cell.zero(cell.d)
@@ -155,7 +154,7 @@ def _dimensional_survivor(truth_table: str) -> str:
         cell.move(0)
         cell.code.append("-]")
         cell.zero(0)
-        cell.code.append("+" * 48)
+        cell.code.append("+" * _ASCII_ZERO)
         cell.move(cell.a)
         cell.code.append("[")
         cell.move(0)
@@ -164,7 +163,7 @@ def _dimensional_survivor(truth_table: str) -> str:
         cell.code.append("-]")
         cell.move(0)
     else:
-        cell.code.append("+" * 48)
+        cell.code.append("+" * _ASCII_ZERO)
     cell.code.append(".")
     return "".join(cell.code)
 

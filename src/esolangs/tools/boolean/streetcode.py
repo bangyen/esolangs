@@ -21,6 +21,7 @@ counter sits above the value rather than below it.
 from collections.abc import Callable
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.wrap import shortest
 
 __all__ = ["streetcode"]
 
@@ -502,6 +503,7 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     if width is not None:
         fitting = [p for p in programs if _streetcode_columns(p) <= width]
         if fitting:
-            return min(fitting, key=len)
+            return shortest(*fitting)
+        # Nothing fits: fall back to the narrowest rather than the shortest.
         return min(programs, key=_streetcode_columns)
-    return min(programs, key=len)
+    return shortest(*programs)

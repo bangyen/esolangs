@@ -13,6 +13,7 @@ from esolangs.tools.text.helpers import (
     _require_ascii,
     _require_bytes,
 )
+from esolangs.tools.wrap import shortest
 from esolangs.tools.ztoalc_starts import ANCHORS
 
 __all__ = [
@@ -96,7 +97,7 @@ def clockwise(text: str, width: int | None = None) -> str:
     folded = _clockwise_weave(prog, width)
     ring = _clockwise_ring(prog, width)
     if folded is not None:
-        return min((folded, ring), key=len)
+        return shortest(folded, ring)
     return ring
 
 
@@ -1560,7 +1561,7 @@ def pct_squared_minus_one(text: str) -> str:
     """
     _require_bytes(text, "%^2^-1")
     absolute = "".join("'" + _pct_path(ord(c)) + "e" for c in text)
-    return min((absolute, magnitude(text)), key=len)
+    return shortest(absolute, magnitude(text))
 
 
 def basicfuck(text: str) -> str:
@@ -1716,14 +1717,14 @@ def streetcode(text: str, width: int | None = None) -> str:
         ringed = _streetcode_ring_serpentine(text, width) if text else None
         if ringed is None:
             return folded
-        return min((ringed, folded), key=len)
+        return shortest(ringed, folded)
     # Both shapes are built and the shorter one wins, rather than predicting
     # the winner from the code point: the two layouts are what they cost.
     straight = _streetcode_straight(instructions)
     ring = _streetcode_ring(text) if text else None
     if ring is None:
         return straight
-    return min((ring, straight), key=len)
+    return shortest(ring, straight)
 
 
 def _streetcode_instructions(text: str) -> str:
