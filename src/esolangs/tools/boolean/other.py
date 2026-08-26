@@ -338,6 +338,183 @@ def between(truth_table: str) -> str:
     return "\n".join(lines)
 
 
+# The two loops that normalize the input cells.  ``,`` reads a character, so
+# ``'0'``/``'1'`` arrive as 48/49 and every input needs 48 subtracted.
+# Writing that straight costs 48 columns per input; running it as a loop
+# costs a counter instead, and the counter itself is built by a second loop
+# rather than by 48 ``+`` -- ``_LASER_OUTER * _LASER_INNER`` is 48.
+_LASER_OUTER = 8
+_LASER_INNER = 6
+
+
+def _laserfuck_ring_reader(n: int) -> tuple[list[str], int]:
+    r"""Build the looping input reader, and say how wide it is.
+
+    Returns the reader's rows and the column the beam leaves them on, moving
+    right, with the pointer on cell 0.
+
+    The tape is laid out as *cell 0 = counter and answer*, cells 1..n =
+    inputs.  Cell 0 earns that double duty: the counter ends the reader at
+    zero and *touched*, which is exactly the state a ``0`` answer needs to
+    print, so a leaf writes nothing for a zero and a single ``+`` for a one.
+
+    Two loops run left to right, each a ring: a ``}`` faces the beam right
+    along the body, ``#`` skips the deflector so ``)`` can test the cell
+    under the pointer, and a nonzero cell turns the beam back to the ``/``,
+    which drops it onto the return row where ``{`` sends it left to the
+    ``^`` under the ring's own ``}``.  A zero cell lets the beam through the
+    ``)`` and on to whatever follows on the row.
+
+    The first ring multiplies: cell 1 is preloaded with ``_LASER_OUTER`` and
+    each pass adds ``_LASER_INNER`` to cell 0, leaving the 48 the inputs
+    need.  The reads then happen -- cell 1's preload is spent by now, so the
+    inputs may use it -- and the second ring subtracts one from cell 0 and
+    from every input per pass, running until the counter is spent.
+
+    A ring body cannot be folded: the return leg re-enters at the ``}`` and
+    re-runs the *whole* body, so a body split across rows would re-execute
+    only its tail.  Both bodies therefore live on one row -- and when a
+    width cannot hold that row, :func:`_laserfuck_rotate` stands the whole
+    block on end rather than breaking it.
+    """
+    preload = ">" + "+" * _LASER_OUTER
+    multiply = "<" + "+" * _LASER_INNER + ">" + "-#/)"
+    reads = ""
+    for i in range(n):
+        reads += ","
+        if i < n - 1:
+            reads += ">"
+    reads += "<" * n  # back to the counter
+    # one '-' for the counter and one for each input, then home again
+    retire = "".join("->" for _ in range(n)) + "-" + "<" * n + "#/)"
+
+    body = "}" + preload + "}" + multiply + reads + "}" + retire
+    top = [" "] * (len(body) + 2)
+    ret = [" "] * (len(body) + 2)
+    for i, char in enumerate(body):
+        top[i] = char
+    # each ring's return leg: '^' under its own '}', '{' under its '/'
+    first = 1 + len(preload)
+    ret[first] = "^"
+    ret[first + 1 + multiply.index("/")] = "{"
+    second = len(body) - len(retire) - 1
+    ret[second] = "^"
+    ret[second + 1 + retire.index("/")] = "{"
+    return ["".join(top).rstrip(), "".join(ret).rstrip()], len(body)
+
+
+# Rotating or mirroring a LaserFuck block is a character substitution: the
+# ops are direction-agnostic and only the mirrors and heading-setters carry
+# an orientation.  Rotating a quarter turn clockwise turns a rightward beam
+# into a downward one, which is how a block too wide for a width is made
+# tall instead.
+_LASER_ROTATE = str.maketrans(
+    {
+        "/": "\\",
+        "\\": "/",
+        "_": "|",
+        "|": "_",
+        "(": ")",
+        ")": "(",
+        "{": "^",
+        "}": "v",
+        "^": "}",
+        "v": "{",
+    }
+)
+
+
+def _laserfuck_rotate(rows: list[str]) -> list[str]:
+    r"""Turn ``rows`` a quarter turn, so a rightward block becomes downward.
+
+    The cells move as any rotation moves them -- the last row becomes the
+    first column -- and each one is then substituted, since a mirror or a
+    heading-setter means something different once the beam runs the other
+    way.  ``,``, ``+``, ``-``, ``<``, ``>``, ``#`` and ``x`` are unchanged:
+    they act on the tape, not on the beam.
+
+    A reader is forty-odd columns and two rows laid flat; rotated it is two
+    columns and forty-odd rows, which is what lets a narrow width still be
+    met.
+    """
+    height = len(rows)
+    width = max(len(line) for line in rows)
+    padded = [line.ljust(width) for line in rows]
+    return [
+        "".join(padded[height - 1 - row][col] for row in range(height)).translate(
+            _LASER_ROTATE
+        )
+        for col in range(width)
+    ]
+
+
+_LASER_FLIP_H = str.maketrans({"/": "\\", "\\": "/", "{": "}", "}": "{"})
+
+
+def _laserfuck_flip(rows: list[str]) -> list[str]:
+    r"""Mirror ``rows`` left to right, so a rightward block runs leftward.
+
+    Like the rotation, this is a substitution: only the mirrors and the two
+    horizontal heading-setters mean something different once the beam runs
+    the other way, and the tape ops do not.  The rows are padded to a
+    rectangle first, for the same reason -- a short row would mirror to a
+    block whose cells no longer line up with the ones they pair with.
+    """
+    width = max(len(line) for line in rows)
+    return [line.ljust(width)[::-1].translate(_LASER_FLIP_H) for line in rows]
+
+
+def _laserfuck_reader_blocks(n: int) -> list[list[str]]:
+    """Cut the flat reader into rectangles, padded so a rotation is exact."""
+    rows, _ = _laserfuck_ring_reader(n)
+    width = max(len(line) for line in rows)
+    padded = [line.ljust(width) for line in rows]
+    starts = [col for col, char in enumerate(padded[0]) if char == "}"]
+    return [
+        [
+            line[start : starts[index + 1] if index + 1 < len(starts) else width]
+            for line in padded
+        ]
+        for index, start in enumerate(starts)
+    ]
+
+
+def _laserfuck_assemble_reader(n: int, orientation: str) -> tuple[list[str], int, int]:
+    """Chain the reader's blocks, each flat (``F``) or on end (``R``)."""
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(row: int, col: int, char: str) -> None:
+        if char != " ":
+            cells[(row, col)] = char
+
+    row = col = 0
+    for block, upright in zip(_laserfuck_reader_blocks(n), orientation, strict=True):
+        if upright == "F":
+            for offset, line in enumerate(block):
+                for index, char in enumerate(line):
+                    put(row + offset, col + index, char)
+            col += len(block[0])
+        else:
+            turned = _laserfuck_rotate(block)
+            entry = turned[0].index("v")
+            put(row, col + entry, "v")
+            for offset, line in enumerate(turned):
+                for index, char in enumerate(line):
+                    put(row + 1 + offset, col + index, char)
+            row += 1 + len(turned)
+            col += entry
+            put(row, col, "\\")
+            col += 1
+
+    height = max(r for r, _ in cells) + 1
+    span = max(c for _, c in cells) + 1
+    lines = [
+        "".join(cells.get((r, c), " ") for c in range(span)).rstrip()
+        for r in range(height)
+    ]
+    return lines, row, col
+
+
 def laserfuck(truth_table: str, width: int | None = None) -> str:
     r"""Build a LaserFuck program computing the given truth table.
 
@@ -345,363 +522,187 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     The laser starts at ``o`` with a random heading, so a mirror funnel
-    (``|``/``^``/``_`` plus two ``}`` on the row above) sends every heading to
-    the top row moving right.  There it reads ``n`` bits into cells 0..n-1
-    (each ``,`` then 48 ``-`` normalizes ``'0'``/``'1'`` to 0/1) and enters a
-    decision tree.  Each node at level ``i`` moves the pointer to cell ``i``,
-    then lays down ``#`` ``v`` ``)`` ``\\``: the ``#`` skips the ``v`` on
-    approach, ``)`` routes a zero cell through to ``\\`` (down column c+3) and
-    a nonzero cell back to ``v`` (down column c+1); each child row's ``\\``
-    turns the beam right into the child.  Leaves (one per input combination,
-    at a dedicated high column so no ``+`` run crosses a descent column)
-    retire the input cells, move the pointer to cell ``n``, set it to the
-    result, and hit ``x`` to halt.
+    (``|``/``^``/``_`` plus two ``}`` on the row above) sends every heading
+    to the top row moving right.  There it meets the reader, then the tree.
+
+    **The reader.**  ``,`` reads a character, so ``'0'``/``'1'`` arrive as
+    48/49 and each input needs 48 subtracted.  Written straight that is 49
+    columns per input; instead two rings do it as a loop
+    (:func:`_laserfuck_ring_reader`).  The first multiplies 8 by 6 to build
+    the 48, the second spends that counter one unit at a time across the
+    counter and every input.  Each ring is a ``}`` facing the beam along
+    its body, ``#`` skipping the deflector so ``)`` can test the cell under
+    the pointer, and a return leg beneath.  The reader is two rows and a
+    few dozen columns whatever ``n`` is.
+
+    **The tape.**  The ring counter is cell 0 and the inputs are cells
+    1..n.  That is not an accident of layout: the counter ends *touched at
+    zero*, which is exactly what a zero answer must be for the dump to
+    print it, so cell 0 doubles as the answer cell.
+
+    **The tree.**  Each node writes ``>#v)``: the ``#`` skips the ``v`` on
+    the way in, so ``)`` tests the cell under the pointer.  A zero passes
+    straight through and the next node carries on *along the same row*;
+    only a one turns the beam back onto the ``v``, which drops it to a
+    ``\\`` that faces it right again on a fresh row.  Rows therefore scale
+    with the number of *one* edges rather than with the node count, and the
+    all-zeros path is a single straight line.  A leaf retires each input
+    (one ``-`` more than its value, driving the cell negative so the dump
+    skips it), walks down to cell 0, and adds a ``+`` only if the answer is
+    one -- a zero answer needs no code at all.
 
     LaserFuck has no output instruction: it prints the tape when the last
-    laser dies.  Two properties of that dump make the program print its
-    answer and nothing else.
+    laser dies, in decimal, skipping negative cells.  Cell (0, 0) is left
+    blank deliberately -- a ``\\xff`` there would select byte mode.
 
-    The dump has two modes, and this generator uses the default *decimal*
-    one, which prints each cell as a number.  (A ``\\xff`` in the first grid
-    cell would select byte mode instead, where the answer would come out as
-    the character ``chr(result)``; the generator used to do that and pay 48
-    ``+`` per leaf to reach ASCII ``'0'``/``'1'``.)  So a leaf writes the
-    result itself -- one ``+`` for a one, and ``+-`` for a zero, since a cell
-    has to be *touched* to be dumped at all and leaving it alone would print
-    nothing.
-
-    The dump also skips any cell holding a negative value, which is how the
-    input cells are hidden.  A leaf knows the whole input combination, so it
-    subtracts one more than each bit's value on its way past -- driving cell
-    ``i`` to ``-1`` whatever it held -- before walking up to the answer cell.
-
-    The tree is loop-free, so no loop-ring geometry is needed.
-
-    ``width`` bounds the columns.  Unfolded, the grid is dominated by its
-    straight runs -- the ``n`` input readers are 49 columns each and every
-    leaf is another 49 -- which is why a three-input table is 253 columns
-    wide while its decision tree spans only 42.  With a width, each of those
-    runs is folded into a zigzag by
-    :func:`~esolangs.tools.laserfuck_layout.fold` and costs rows instead:
-    the readers fold into a band before the tree, and each leaf folds into a
-    band of its own below it.  The tree itself is never
-    folded, since its columns carry the descent paths that make the program
-    correct; it grows six columns per node, so a width narrower than the
-    tree needs cannot be met and the grid comes out as wide as the tree.
+    ``width`` bounds the columns.  The tree adds only a column or two past
+    the reader, so the reader is what a width has to bargain with: laid
+    flat it is one row and forty-odd columns, and when that will not fit
+    :func:`_laserfuck_rotate` stands it on end instead -- two columns and
+    forty-odd rows.  A ring body cannot simply be broken across rows, since
+    the return leg re-enters at the ``}`` and re-runs the whole body, which
+    is why the block is rotated rather than folded.  Below the width the
+    *tree* needs there is nothing left to give, and the grid comes out as
+    wide as the tree.
     """
     n = _validate_truth_table(truth_table)
-    # The staircase is the tighter layout wherever it fits: it packs the
-    # tree into ``6 * n`` columns instead of a block per node.  It cannot
-    # fold, though -- the reader run sets its width -- so a caller asking
-    # for a narrower grid still gets the folded one.
-    staircase = _laserfuck_staircase(truth_table, n)
-    if width is None or max(len(ln) for ln in staircase.split("\n")) <= width:
-        return staircase
-    # Every leaf needs a drop corridor of its own, and they take the
-    # rightmost columns inside the width; the folded runs get what is left.
-    # A fold only makes progress if that leaves room for the margin, at
-    # least one op, and the turn-down, so too narrow a width is ignored.
-    fold_width = (width or 0) - 2**n - 1
-    folded = width is not None and fold_width >= laserfuck_layout.MIN_WIDTH
-    rows: int = 2 ** (n + 1) - 1
-    total_cols: int = 3 + 49 * n + (2 ** (n + 1) - 1) * 6 + 2 + 49 + 8
-
-    if folded:
-        # A fold trades columns for rows, so a folded grid needs many more of
-        # them than the tree alone does.
-        def bands(run: int) -> int:
-            return laserfuck_layout.rows_needed(run, fold_width)
-
-        readers_len = 49 * n  # ',' + 48 '-' per input, '>' between them
-        rows += bands(readers_len) + 2  # +2 for the turn onto the tree's row
-        # each leaf: its drop row, then its own folded band
-        rows += sum(bands(49 + int(bit)) + 2 for bit in truth_table)
-        total_cols = max(total_cols, (width or 0) + 2)
-    grid = [[" "] * total_cols for _ in range(rows)]
-
-    # the funnel: every heading ends up on row 0 moving right.  Cell (0, 0)
-    # is deliberately blank: a '\xff' there would select byte output mode,
-    # and this generator wants the default decimal mode (see the docstring).
-    grid[0][1] = "}"
-    grid[0][2] = "}"
-    grid[1][0] = "|"
-    grid[1][1] = "o"
-    grid[1][2] = "^"
-    grid[2][1] = "_"
-
-    # read n bits into cells 0..n-1 on row 0 (pointer ends at cell n-1).
-    # Unfolded these run straight along row 0; folded, they are laid as a
-    # zigzag below (see the fold that follows), and the tree starts after it.
-    col = 3
-    if not folded:
-        for i in range(n):
-            grid[0][col] = ","
-            col += 1
-            for _ in range(48):
-                grid[0][col] = "-"
-                col += 1
-            if i < n - 1:
-                grid[0][col] = ">"
-                col += 1
-
-    # Folded: the readers are laid as a zigzag *before* the tree, and the
-    # tree starts on the row the zigzag ends on, so the beam runs straight
-    # out of the last reader segment into the root.  The readers are one
-    # long straight run -- ',' and 48 '-' per input, '>' between them -- so
-    # the fold can break it anywhere.
-    base = 0
-    if folded:
-        readers = ""
-        for i in range(n):
-            readers += "," + "-" * 48
-            if i < n - 1:
-                readers += ">"
-        base, col = laserfuck_layout.fold(grid, readers, 0, 3, fold_width)
-        laserfuck_layout.reserve(grid, base + 2)
-        # The tree grows rightwards from wherever the readers stopped, so a
-        # long tail on the last reader row would push it past the width no
-        # matter how well the runs folded.  Turn down once more instead, so
-        # the tree always starts at the margin with the full width to grow
-        # into and its span is measured from there.
-        grid[base][col] = "v"
-        grid[base + 1][col] = "{"
-        grid[base + 1][laserfuck_layout.MARGIN] = "v"
-        base += 2
-        grid[base][laserfuck_layout.MARGIN] = "}"
-        col = laserfuck_layout.MARGIN + 1
-
-    # node rows: breadth-first, the root on the row the readers ended on
-    # and children on lower rows
-    def row(i: int, j: int) -> int:
-        return base + int(2**i + j - 1)
-
-    # internal-node columns (preorder); leaves get a dedicated high region
-    cols: dict[tuple[int, int], int] = {}
-    next_col = [col + 1 + n]  # room for the root's pointer-move cells
-
-    def assign_col(i: int, j: int) -> int:
-        if (i, j) in cols:
-            return cols[(i, j)]  # pragma: no cover - a tree node is never revisited
-        c = next_col[0]
-        cols[(i, j)] = c
-        next_col[0] = c + 6
-        if i < n - 1:
-            assign_col(i + 1, 2 * j)
-            assign_col(i + 1, 2 * j + 1)
-        return c
-
-    assign_col(0, 0)
-    leaf_base = next_col[0] + 4  # past every internal column and descent column
-    if folded:
-        laserfuck_layout.reserve(grid, row(n, 2**n - 1) + 2)
-
-    # leaves: one per input combination on its own row, all at the same
-    # high column (past every internal node and descent column), so the
-    # grid needs room for just one leaf rather than one per combination.
-    #
-    # A folded leaf cannot zigzag straight down from its own row: the rows
-    # below it belong to the other leaves, and a beam dropping through them
-    # would run their '+' cells on the way past.  Instead each leaf turns
-    # the beam down a *private* column into a band of rows past every other
-    # row, and folds there.  Bands are stacked, so each leaf owns its rows.
-    #
-    # The drop columns are corridors, not code, but they still occupy
-    # columns, so they take the rightmost strip *inside* the width and the
-    # folded runs stop short of them.  A beam descending a corridor then
-    # crosses only the blank cells to the right of every band's content.
-    band = row(n, 2**n - 1) + 2
-    drop_base = max(leaf_base + 1, fold_width + 1)
-    for j in range(2**n):
-        r = row(n, j)
-        c = leaf_base
-        # the beam arrives from the parent's descent column; it first moved the
-        # pointer to cell i (level i), so here it is at cell n-1.
-        #
-        # The leaf knows the whole input combination -- that is what a leaf
-        # is -- so it can retire each input cell on the way past.  Cell i
-        # holds bit i, and one more '-' than its value drives it to -1,
-        # which dump() skips; sweeping n-1 down to 0 clears every input, and
-        # the pointer then walks back up to cell n for the answer.
-        sweep = ""
-        for i in range(n - 1, -1, -1):
-            bit = (j >> (n - 1 - i)) & 1
-            sweep += "-" * (bit + 1)
-            if i:
-                sweep += "<"
-        sweep += ">" * n
-        # A 0 answer still has to be *touched* to be printed at all, so it
-        # is written as '+-' rather than left alone.
-        run = sweep + ("+" if truth_table[j] == "1" else "+-")
-        if folded:
-            drop = drop_base + j
-            laserfuck_layout.reserve(grid, band + 1)
-            grid[r][drop] = "v"
-            grid[band][drop] = "{"  # head back to the margin
-            grid[band][laserfuck_layout.MARGIN] = "v"
-            end_r, end_c = laserfuck_layout.fold(
-                grid, run, band + 1, laserfuck_layout.MARGIN + 1, fold_width
-            )
-            grid[band + 1][laserfuck_layout.MARGIN] = "}"
-            grid[end_r][end_c] = "x"
-            band = end_r + 2
-        else:
-            for k, char in enumerate(run):
-                grid[r][c + 1 + k] = char
-            grid[r][c + 1 + len(run)] = "x"
-
-    # internal nodes: move the pointer to cell i, then '#','v',')','\\'
-    for i in range(n):
-        for j in range(2**i):
-            r = row(i, j)
-            c = cols[(i, j)]
-            # root arrives with the pointer at cell n-1; a child at level i
-            # arrives with it at cell i-1 (its parent tested bit i-1)
-            arrival = n - 1 if i == 0 else i - 1
-            moves = ">" * (i - arrival) if i >= arrival else "<" * (arrival - i)
-            cur = c - len(moves)
-            for ch in moves:
-                grid[r][cur] = ch
-                cur += 1
-            grid[r][c] = "#"
-            grid[r][c + 1] = "v"
-            grid[r][c + 2] = ")"
-            grid[r][c + 3] = "\\"
-            zero_r = row(i + 1, 2 * j)  # down column c+3
-            one_r = row(i + 1, 2 * j + 1)  # down column c+1
-            grid[zero_r][c + 3] = "\\"  # turn the down-beam right
-            grid[one_r][c + 1] = "\\"  # turn the down-beam right
-
-    lines = ["".join(ln).rstrip() for ln in grid]
-    # a folded grid reserves rows in whole bands, so the last band can leave
-    # blank rows past the final 'x'; they carry no code and only pad the file
-    while lines and not lines[-1]:
-        lines.pop()
-    return "\n".join(lines)
-
-
-def _laserfuck_staircase(truth_table: str, n: int) -> str:
-    r"""Lay the decision tree out as a staircase, one column per *level*.
-
-    The tree used to take a column block per *node*, six columns each, so a
-    grid was ``6 * (2**(n + 1) - 1)`` columns wide and all but a handful of
-    cells in each row were blank.  That width was not the beam's doing: rows
-    were handed out breadth-first, so sibling subtrees interleaved their
-    rows and a column could serve only one node.
-
-    Handing rows out *depth-first* gives every subtree a contiguous band, so
-    two nodes on the same level never share a row and can share a column.
-    Level ``i`` then sits at one column for the whole tree and the grid is
-    ``6 * n`` columns wide -- linear in the input count rather than
-    exponential.
-
-    The descent corridors stay clear under that packing.  A node's zero-child
-    drops down column ``c + 3`` and its one-child down ``c + 1``, and both
-    land inside the node's own subtree band; every other node sharing those
-    columns lives in a disjoint band, so no corridor crosses another node's
-    row.
-
-    The beam also turns back to the left margin below the readers rather
-    than starting the tree where the reader run happens to end, which is
-    what used to leave a blank run of ``49 * n`` columns in front of every
-    tree row.
-    """
-    rows_of: dict[tuple[int, int], int] = {}
-    leaf_row: dict[int, int] = {}
-    counter = 0
-
-    def assign(i: int, j: int) -> None:
-        """Walk the tree depth-first, so a subtree owns a contiguous band."""
-        nonlocal counter
-        if i == n:
-            leaf_row[j] = counter
-        else:
-            rows_of[(i, j)] = counter
-        counter += 1
-        if i < n:
-            assign(i + 1, 2 * j)
-            assign(i + 1, 2 * j + 1)
-
-    assign(0, 0)
+    # The tree adds only a column or two past the reader, so the reader is
+    # what a width has to bargain with: side by side the rings are one row
+    # and forty-odd columns, stacked they are seven rows and under twenty.
+    count = len(_laserfuck_reader_blocks(n))
+    candidates = []
+    for choice in range(2**count):
+        orientation = "".join("R" if choice >> b & 1 else "F" for b in range(count))
+        rows_of, exit_row, exit_col = _laserfuck_assemble_reader(n, orientation)
+        span = max(len(line) for line in rows_of)
+        candidates.append(
+            (len(rows_of), span, rows_of, exit_row, exit_col, orientation)
+        )
+    candidates.sort(key=lambda item: (item[0], item[1]))
+    fitting = [
+        item
+        for item in candidates
+        if width is None or laserfuck_layout.MARGIN + item[1] + 2 <= width
+    ]
+    chosen = fitting[0] if fitting else min(candidates, key=lambda item: item[1])
+    _, _, reader_rows, reader_exit_row, reader_exit_col, orientation_of = chosen
 
     margin = laserfuck_layout.MARGIN
-    node_col = {i: margin + 1 + n + 6 * i for i in range(n)}
-    leaf_base = margin + 1 + n + 6 * n + 4
-    # The funnel owns rows 0-2, the westward return leg runs on row 3, and
-    # the tree starts on row 4.
-    turn = 3
-    base = turn + 1
-    height = base + counter + 1
-    width = max(3 + 49 * n + 4, leaf_base + 4 * n + 8)
-    grid = [[" "] * width for _ in range(height)]
+    grid: list[list[str]] = []
+
+    def put(row: int, col: int, char: str) -> None:
+        while len(grid) <= row:
+            grid.append([])
+        line = grid[row]
+        while len(line) <= col:
+            line.append(" ")
+        line[col] = char
 
     # The funnel: every start heading ends up on row 0 moving right.  Cell
     # (0, 0) stays blank so the tape dumps in decimal rather than byte mode.
-    grid[0][1] = "}"
-    grid[0][2] = "}"
-    grid[1][0] = "|"
-    grid[1][1] = "o"
-    grid[1][2] = "^"
-    grid[2][1] = "_"
+    put(0, 1, "}")
+    put(0, 2, "}")
+    put(1, 0, "|")
+    put(1, 1, "o")
+    put(1, 2, "^")
+    put(2, 1, "_")
 
-    col = 3
-    for i in range(n):
-        grid[0][col] = ","
-        col += 1
-        for _ in range(48):
-            grid[0][col] = "-"
-            col += 1
-        if i < n - 1:
-            grid[0][col] = ">"
-            col += 1
+    # The rings go on rows 0 and 1; the beam leaves them still moving right
+    # with the pointer on cell 0.
+    for offset, text in enumerate(reader_rows):
+        for index, char in enumerate(text):
+            if char != " ":
+                put(offset, margin + index, char)
+    # The beam leaves the reader moving right, and turns down onto a row of
+    # its own for the tree.  How far it has to fall depends on what the last
+    # block left beneath it: a block laid flat keeps its ring's return leg
+    # on the row below, which the beam must clear, while a rotated one ends
+    # at its own foot with nothing under it.
+    # The tree is built as a block of its own, then mirrored and hung under
+    # the reader.  Laid out rightward it would have to be *reached*: the
+    # beam leaves the reader at its far right, and a leftward return leg
+    # would be needed to carry it back to the margin before the tree could
+    # start.  Mirrored, the tree runs leftward from where the beam already
+    # is, so that whole row disappears -- the beam simply turns down at the
+    # reader's end and a '/' faces it into the tree.
+    #
+    # Within the tree a node writes ``>#v)``: the '#' skips the 'v' on the
+    # way in, so ')' tests the cell under the pointer.  A zero passes
+    # straight through and the next node continues on the same row; only a
+    # one turns the beam back onto the 'v' and drops it, to a '\' that
+    # faces it right again on a fresh row.  Rows therefore scale with the
+    # number of *one* edges rather than with the node count, and the
+    # all-zeros path is a single straight line.
+    tree: dict[tuple[int, int], str] = {}
+    used = [0]
 
-    grid[0][col] = "v"
-    grid[turn][col] = "{"
-    grid[turn][margin] = "v"
-    grid[base][margin] = "}"
+    def lay(row: int, col: int, char: str) -> None:
+        if char != " ":
+            tree[(row, col)] = char
 
-    def row(i: int, j: int) -> int:
-        return base + rows_of[(i, j)]
+    def emit(path: list[int], row: int, col: int) -> None:
+        """Lay the subtree for ``path``, entered at ``(row, col)`` going right."""
+        if len(path) == n:
+            index = int("".join(map(str, path)), 2) if path else 0
+            # The rings leave the inputs in cells 1..n and cell 0 already
+            # touched at zero, so the sweep walks down to it and a zero
+            # answer needs no code at all.
+            run = ""
+            for level in range(n, 0, -1):
+                run += "-" * (path[level - 1] + 1) + "<"
+            run += "+" if truth_table[index] == "1" else ""
+            for offset, char in enumerate(run):
+                lay(row, col + offset, char)
+            lay(row, col + len(run), "x")
+            return
+        for offset, char in enumerate(">#v)"):
+            lay(row, col + offset, char)
+        emit([*path, 0], row, col + 4)  # a zero carries on along this row
+        used[0] += 1
+        drop = used[0]
+        lay(drop, col + 2, "\\")  # a one comes down the 'v' column
+        emit([*path, 1], drop, col + 3)
 
-    def leaf(j: int) -> int:
-        return base + leaf_row[j]
+    emit([], 0, 0)
+    height = max(row for row, _ in tree) + 1
+    span = max(col for _, col in tree) + 1
+    upright = [
+        "".join(tree.get((row, col), " ") for col in range(span))
+        for row in range(height)
+    ]
 
-    for i in range(n):
-        for j in range(2**i):
-            r = row(i, j)
-            c = node_col[i]
-            # The root arrives with the pointer at cell n-1; a child at
-            # level i arrives with it at cell i-1, its parent's bit.
-            arrival = n - 1 if i == 0 else i - 1
-            moves = ">" * (i - arrival) if i >= arrival else "<" * (arrival - i)
-            cur = c - len(moves)
-            for char in moves:
-                grid[r][cur] = char
-                cur += 1
-            grid[r][c] = "#"
-            grid[r][c + 1] = "v"
-            grid[r][c + 2] = ")"
-            grid[r][c + 3] = "\\"
-            child = row if i + 1 < n else (lambda _i, j: leaf(j))
-            grid[child(i + 1, 2 * j)][c + 3] = "\\"  # zero: down column c+3
-            grid[child(i + 1, 2 * j + 1)][c + 1] = "\\"  # one: down column c+1
-
-    for j in range(2**n):
-        r = leaf(j)
-        # A leaf knows the whole combination, so it retires each input cell
-        # on the way past: one more '-' than the bit drives cell i to -1,
-        # which the dump skips.  Then it walks up to the answer cell, which
-        # must be *touched* to print at all -- hence '+-' for a zero.
-        sweep = ""
-        for i in range(n - 1, -1, -1):
-            bit = (j >> (n - 1 - i)) & 1
-            sweep += "-" * (bit + 1)
-            if i:
-                sweep += "<"
-        sweep += ">" * n
-        run = sweep + ("+" if truth_table[j] == "1" else "+-")
-        for k, char in enumerate(run):
-            grid[r][leaf_base + k] = char
-        grid[r][leaf_base + len(run)] = "x"
+    # Where the tree goes depends on whether the width can afford it.
+    #
+    # The beam leaves the reader still moving right, so the cheapest thing
+    # is to carry straight on: the tree starts in the next column along, on
+    # the reader's own rows, and costs no rows at all beyond the ones the
+    # tree itself needs.  That only works if the grid may be as wide as the
+    # reader and the tree laid end to end.
+    #
+    # Otherwise the tree is mirrored and hung underneath.  The beam turns
+    # down at the reader's end and a '/' on the tree's first row faces it
+    # left into a tree that runs backwards -- which needs no row to be
+    # *reached*, unlike a rightward tree below, which would need one to
+    # carry the beam back to the margin first.
+    straight = margin + reader_exit_col + max(len(line) for line in upright)
+    if width is None or straight + 1 <= width:
+        for offset, line in enumerate(upright):
+            for index, char in enumerate(line):
+                put(reader_exit_row + offset, margin + reader_exit_col + index, char)
+    else:
+        flipped = _laserfuck_flip(upright)
+        entry = len(flipped[0].rstrip()) - 1
+        # A narrow reader can leave the beam further left than the tree is
+        # wide, and the tree would run off the western edge.  Turning down
+        # further to the right costs nothing but the blank cells it crosses,
+        # so the fall column is pushed out to wherever the tree needs it.
+        fall = max(margin + reader_exit_col, margin + entry + 1)
+        top = reader_exit_row + (2 if orientation_of[-1] == "F" else 1)
+        put(reader_exit_row, fall, "v")
+        for offset, line in enumerate(flipped):
+            for index, char in enumerate(line):
+                put(top + offset, fall - 1 - entry + index, char)
+        put(top, fall, "/")
 
     lines = ["".join(line).rstrip() for line in grid]
     while lines and not lines[-1]:
@@ -858,9 +859,22 @@ def clockwise(truth_table: str) -> str:
     passing paths at acc=0 so they do not turn on another leaf's exit.  Both
     leaves are padded to the same height, so every exit lands on that row.
     The row funnels left to the corner ``R`` and up column 0 to halt.
+
+    The root node needs no spine of its own.  The pointer starts at ``(0, 0)``
+    heading right and walks the whole top row into the corner ``R``, so seven
+    ``.`` laid just left of that corner are the first instructions executed,
+    and the accumulator is already zero when they run -- so the root's ``S``
+    is a no-op too.  Hoisting those eight cells onto row 0 retires seven rows
+    of grid, roughly a fifth of the blanks in a small table.  It needs seven
+    free columns left of the root, i.e. ``2 ** (n + 1) >= 7``, so ``n == 1``
+    (four columns) keeps the spine; widening that ring would cost more than
+    the rows save.
     """
     n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
+    # Seven free columns left of the root are what the hoist needs; see above.
+    hoist = 2 ** (n + 1) >= 7
+    shift = 7 if hoist else 0
     # The spine starts far enough right that the tree's leftward branches
     # clear column 0, which holds the closing corner.  A node at ``bit``
     # displaces its one-branch ``2**(n - bit)`` to the left and puts two
@@ -878,9 +892,15 @@ def clockwise(truth_table: str) -> str:
         if bit == n:
             leaf(x, y, combo)
             return
-        place((x, y), "S")
-        for i in range(7):
-            place((x, y + 1 + i), ".")
+        if bit == 0 and hoist:
+            # The seven reads sit on row 0, left of the corner ``R``; the
+            # node's ``?`` is all that is left of its spine.
+            for i in range(7):
+                place((x - 7 + i, 0), ".")
+        else:
+            place((x, y), "S")
+            for i in range(7):
+                place((x, y + 1 + i), ".")
         place((x, y + 8), "?")
         build(bit + 1, x, y + 9, combo << 1)  # b=0: continue down
         # b=1: '?' turns right (cw from down) then three R's turn left->down
@@ -917,9 +937,11 @@ def clockwise(truth_table: str) -> str:
         for i, ch in enumerate(code):
             place((x, y + i), ch)
 
-    build(0, root, 1, 0)
+    # Hoisting the root's reads onto row 0 retires seven rows of spine, so the
+    # tree starts that much higher and every row below rides up with it.
+    build(0, root, 1 - shift, 0)
 
-    bottom = 1 + 9 * n + _CLOCKWISE_LEAF - 1
+    bottom = 1 + 9 * n + _CLOCKWISE_LEAF - 1 - shift
     for (x, y), ch in list(cells.items()):
         if ch == "?" and y == bottom:
             place((x - 1, bottom), "S")
@@ -932,7 +954,10 @@ def clockwise(truth_table: str) -> str:
     for (x, y), ch in cells.items():
         if 0 <= x < width and 0 <= y < height:
             grid[y][x] = ch
-    return "\n".join("".join(row) for row in grid)
+    # The grid is a fixed-size rectangle of blanks that the cells are painted
+    # into, so a row's trailing filler is never reached; the interpreter pads
+    # short rows itself, so trimming it changes nothing but the file.
+    return "\n".join("".join(row).rstrip() for row in grid)
 
 
 def container(truth_table: str) -> str:
@@ -1212,73 +1237,80 @@ def suptiftam(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-def _flowchart_leaf(bit: str) -> list[str]:
-    """Build a leaf column: force ``bit`` into the register, print, halt.
+# A leaf is exactly as wide as the ``(( ))`` it ends on, so consecutive
+# leaves abut and the tree needs no gutter between them at all.
+_FLOWCHART_PITCH = 5
 
-    The register holds whichever input bit the tree read last, so the leaf
-    sets it outright (``[ }`` for one, ``{ ]`` for zero) rather than
-    relying on what the routing happened to leave behind.
+
+def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
+    """Paint the decision tree onto a sparse ``(x, y) -> character`` grid.
+
+    Leaves are placed first, on a fixed pitch, and the switches are then
+    collapsed upwards: each pair of entry columns yields a ``< >`` centred
+    between them with rails drawn out to both.  Positioning everything from
+    the leaf pitch is what keeps the drawing tight -- an earlier recursive
+    version assembled each subtree into its own padded block and separated
+    the blocks by a gutter, which cost a column of blanks for every leaf at
+    every level even though two ``(( ))`` boxes may sit flush against each
+    other.
+
+    Rows run ``( )``, its rail, then four rows per level (``/ /``, a rail,
+    ``< >``, a rail), then the five-row leaf block.
     """
-    return [
-        "[ }" if bit == "1" else "{ ]",
-        " │ ",
-        "\\ \\",
-        " │ ",
-        "(( ))",
-    ]
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(x: int, y: int, text: str) -> None:
+        for i, char in enumerate(text):
+            cells[(x + i, y)] = char
+
+    n = (len(truth_table) - 1).bit_length()
+    # Leaf ``k`` spans columns ``5k`` to ``5k + 4``, so its middle -- the
+    # column every rail in that leaf's band lands on -- is ``5k + 2``.
+    mids = [_FLOWCHART_PITCH * k + 2 for k in range(len(truth_table))]
+
+    leaf_top = 2 + 4 * n
+    for k, bit in enumerate(truth_table):
+        middle = mids[k]
+        put(middle - 1, leaf_top, "[ }" if bit == "1" else "{ ]")
+        cells[(middle, leaf_top + 1)] = "│"
+        put(middle - 1, leaf_top + 2, "\\ \\")
+        cells[(middle, leaf_top + 3)] = "│"
+        put(middle - 2, leaf_top + 4, "(( ))")
+
+    for depth in range(n - 1, -1, -1):
+        switch_row = 4 + 4 * depth
+        parents = []
+        for j in range(0, len(mids), 2):
+            west, east = mids[j], mids[j + 1]
+            middle = (west + east) // 2
+            put(middle - 1, switch_row - 2, "/ /")
+            cells[(middle, switch_row - 1)] = "│"
+            put(middle - 1, switch_row, "< >")
+            for x in range(west + 1, middle - 1):
+                cells[(x, switch_row)] = "─"
+            for x in range(middle + 2, east):
+                cells[(x, switch_row)] = "─"
+            cells[(west, switch_row)] = "┌"
+            cells[(east, switch_row)] = "┐"
+            cells[(west, switch_row + 1)] = "│"
+            cells[(east, switch_row + 1)] = "│"
+            parents.append(middle)
+        mids = parents
+
+    root = mids[0]
+    put(root - 1, 0, "( )")
+    cells[(root, 1)] = "│"
+    return cells
 
 
-def _flowchart_subtree(truth_table: str) -> list[str]:
-    """Build the block for ``truth_table``, entered at its ``/ /`` node.
-
-    Each level reads one input bit and switches on it.  The tree is always
-    entered travelling downward, and a switch's sides are relative to the
-    pointer's heading, so a set register turns the pointer east and a clear
-    one turns it west: the table's zero half hangs to the west and its one
-    half to the east, matching the index order.  Recursion bottoms out at
-    :func:`_flowchart_leaf`.
-    """
-    if len(truth_table) == 1:
-        return _flowchart_leaf(truth_table[0])
-
-    half = len(truth_table) // 2
-    west = _flowchart_subtree(truth_table[:half])
-    east = _flowchart_subtree(truth_table[half:])
-
-    west_width = max(len(row) for row in west)
-    east_width = max(len(row) for row in east)
-    west = [row.ljust(west_width) for row in west]
-    east = [row.ljust(east_width) for row in east]
-
-    gap = 3
-    total = west_width + gap + east_width
-    west_entry = west_width // 2
-    east_entry = west_width + gap + east_width // 2
-    middle = (west_entry + east_entry) // 2
-
-    rail = [" "] * total
-    for x in range(west_entry, middle):
-        rail[x] = "─"
-    for x in range(middle + 3, east_entry + 1):
-        rail[x] = "─"
-    rail[west_entry] = "┌"
-    rail[east_entry] = "┐"
-    switch = "".join(rail)
-    switch = switch[:middle] + "< >" + switch[middle + 3 :]
-
-    head = [
-        " " * middle + "/ /",
-        " " * (middle + 1) + "│",
-        switch,
-        " " * west_entry + "│" + " " * (east_entry - west_entry - 1) + "│",
-    ]
-
-    depth = max(len(west), len(east))
-    west += [" " * west_width] * (depth - len(west))
-    east += [" " * east_width] * (depth - len(east))
-    body = [a + " " * gap + b for a, b in zip(west, east, strict=True)]
-
-    return [row.ljust(total) for row in head + body]
+def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
+    """Flatten a painted cell map into the finished program text."""
+    height = max(y for _, y in cells) + 1
+    width = max(x for x, _ in cells) + 1
+    grid = [[" "] * width for _ in range(height)]
+    for (x, y), char in cells.items():
+        grid[y][x] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
 
 
 def flowchart(truth_table: str) -> str:
@@ -1298,6 +1330,15 @@ def flowchart(truth_table: str) -> str:
     needed either.  What the layout has to get right instead is routing:
     every switch is centred over the two subtree entries it feeds, with
     rails drawn out to each.
+
+    The leaves are laid down first, on a pitch of exactly one ``(( ))``
+    width, and the switches are collapsed upwards from them.  Nothing
+    separates one leaf from the next: two ``(( ))`` boxes may sit flush
+    against each other, since a rail only has to clear a node when it needs
+    to pass *through* that node's row.  Sibling subtrees never do -- they
+    descend in their own column bands -- so the gutter an earlier version
+    kept between them was never load-bearing, and dropping it takes the
+    ``n = 4`` drawing from 2444 characters to 1557.
 
     **The tree holds many ``/ /`` nodes but reads each input once.**  A
     depth-``n`` tree draws ``2**n - 1`` read nodes, one per internal node,
@@ -1321,8 +1362,4 @@ def flowchart(truth_table: str) -> str:
     silent wrong-answer trap if the pop is ever changed to pop-top.
     """
     _validate_truth_table(truth_table)
-    body = _flowchart_subtree(truth_table)
-    width = max(len(row) for row in body)
-    entry = body[0].index("/ /")
-    head = [" " * entry + "( )", " " * (entry + 1) + "│"]
-    return "\n".join(row.ljust(width) for row in head + body)
+    return _flowchart_render(_flowchart_cells(truth_table))

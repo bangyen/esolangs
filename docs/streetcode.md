@@ -554,3 +554,110 @@ programs are compared as they are.
   proportional to the value -- so it compresses nothing on its own. Its
   conditional half does work: zero at the mouth skips the hallway,
   nonzero enters it.
+
+### The ring in the boolean generator
+
+The counting loop carries over to the boolean generator, where every input
+loop and the loader loop walk a cell by exactly 48. The hallway spends that
+as 48 unary cells over 29 rows; the ring makes it eight laps of six in 8
+rows, at the cost of being 8 columns wide rather than 4. Which is cheaper
+depends on the tree beside it -- the ring wins while the loops set the
+program's height (`n <= 2`, where NOT goes 869 -> 450 bytes and a two-input
+table 1229 -> 943), and the hallway wins once the tree is taller than either
+loop and only the width still counts -- so both programs are built and the
+shorter one is kept, as the text generator does with its own two layouts.
+
+The ring is *mirrored* for this use: the hand-written one holds its
+accumulator above its counter, and the generator needs the opposite, because
+the tree forks on the value and the loop has to leave CP on it. Mirroring
+swaps every `_` for `=`, and moves the CP hop from above the descent gap to
+below it. That move is the whole difficulty. **Every gap crossing is a
+junction and reads the CPth cell**, the ring's two gaps included, so CP must
+name a cell whose zero/nonzero state is known at each one:
+
+- At the descent gap, mid-lap, CP must be on the *counter*. The value passes
+  through 0 for a `'0'` bit, and a zero there steers the car out of the ring
+  and back onto the street, where it re-runs the loop's `I`.
+- At the exit gap, CP is necessarily on the value, and a zero steers the car
+  West back down the street instead of East onto the next loop. This is why
+  the labels leave the value at `bit + 1` rather than a bare bit: the +1 is
+  not slack, it is what keeps that crossing nonzero, and the next label's
+  leading `~` takes it off again.
+
+### Starting the car in the oncoming lane
+
+The northern lane is blank across the whole program -- the car only drives it
+coming back from the hairpin at the western wall. Starting the car *there*
+instead is free, and it takes the leading run's columns off every row: a `C`
+with the northern wall on its right heads **West**, so the run is written
+East-to-West and read in reverse, and the car hairpins at the west wall and
+arrives back along the driving lane at the first loop's mouth exactly as it
+did before. That is `_streetcode_lift`, and it saves nine columns for the
+ring's labels and seven for the hallway's, on every row.
+
+The same gap-junction law governs the westbound leg, and it is the reason the
+lift is safe rather than the reason it is hard: the leg passes over *every*
+loop mouth in the program, and a zero CPth cell captures the car into the
+first mouth it meets. The `^` the start already carried leaves cell 0 nonzero
+for the whole leg, so every crossing passes straight over. Verified both ways
+-- without that `^` the car U-turns into the first mouth's exit gap.
+
+### One counter for every cell
+
+The per-loop shapes spend a whole 48-cell loop on each input and another on
+the loader, but 48 only has to be built *once*. With a counter holding it, a
+single lap that walks every cell -- each input down one, the loader up one,
+the counter down one -- does all that work at once, and the loop's cost stops
+scaling with `n`. The body is `_`×(n+1) to rewind, then `~=` per input, then
+`^`: 3n+2 cells, and the island is widened by `k = max(0, 3n-4)` to hold it,
+the same `k` trick the text generator uses.
+
+What keeps the run safe is the lap's CP *schedule*, not the cells' values. A
+`'0'` input walks 48 down to 0, so inputs do reach zero mid-run -- but CP is
+only ever on an input along the lap's junction-free legs. The two junctions
+read cells chosen for the job: the descent gap and the exit corner both read
+the counter, and the drop on the way out lands CP on the loader, which is
+seeded to 1 and only climbs. That seed is load-bearing for exactly this
+reason.
+
+The prefix runs down a **shaft** rather than along the street:
+
+    +--
+    |
+    |
+    |C^+
+    |==|
+    |I=|
+    |=^|
+    +--+
+
+The car drives the western lane downward and the eastern one back up, so
+the prefix's 2n+6 instructions cost four columns instead of 2n+6 -- and
+since every row of the program is that much shorter, the saving grows with
+the tree: 55 bytes at n=1, 704 at n=4. The eastern lane is drawn bottom-up,
+because that is the order the climb reads it.
+
+The reads carry no `^`, either. `I` stores the code point of an ASCII digit,
+48 or 49, so a cell it just filled is nonzero on its own -- the bump the
+strip shapes carry is redundant here. The ring then subtracts exactly 48 and
+the inputs land on bare bits, so the tail only walks CP back with no
+correction to make. The strip shapes keep their `^` because *their* exit gap
+is crossed with CP on the value itself, which is the whole reason their
+contract is `bit + 1`.
+
+Two things this shape taught, both non-obvious:
+
+- **Continue and entry must hand the body the same CP.** The single-cell ring
+  drops CP one cell on the path that carries on around the island, because
+  its next lap's decrements needed it there. The shared body's rewind is
+  sized for arriving with CP on the counter, so that drop has to be blanked
+  -- otherwise lap 2 starts one cell low, walks CP off the end of the tape,
+  and halts. A divergent-path drop is part of the body's calling convention.
+- **The shared shape cannot be lifted.** Its prefix reads every input and
+  seeds three more cells, which makes it about as long as the street it
+  heads, so a westbound run of it crosses the loops' *and* the tree's mouths
+  -- and at each one CP names a cell nothing has seeded yet, because the
+  prefix is the only code that has run. No ordering of the seeds avoids it:
+  the cells CP walks over are exactly the ones the prefix has not reached.
+  So the lift applies to the strip shapes only, and the three programs are
+  compared as they are.

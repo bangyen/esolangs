@@ -89,6 +89,28 @@ def test_example_files_match_generator() -> None:
         assert path.read_text(encoding="utf-8") == expected
 
 
+def test_no_example_has_trailing_whitespace() -> None:
+    """No committed example ends a line in whitespace.
+
+    Several generators lay their program out on a fixed-width grid and used
+    to emit the filler past the last glyph on a row.  It is inert -- the 2D
+    interpreters pad short rows themselves -- but it is still whitespace no
+    program can use, and ``.pre-commit-config.yaml`` excludes ``examples/``
+    from the ``trailing-whitespace`` hook (the files must match their
+    generator byte for byte, so the hook cannot be the thing that strips
+    them).  The generators rstrip their rows instead, and this test is what
+    holds them to it.
+    """
+    offenders = []
+    for path in sorted((BASE_DIR / "examples").rglob("*.txt")):
+        for number, line in enumerate(
+            path.read_text(encoding="utf-8").split("\n"), start=1
+        ):
+            if line != line.rstrip():
+                offenders.append(f"{path.relative_to(BASE_DIR)}:{number}")
+    assert not offenders, "trailing whitespace in: " + ", ".join(offenders)
+
+
 def test_no_orphan_hello_world_examples() -> None:
     """Every hello-world file belongs to a language that still has a generator.
 

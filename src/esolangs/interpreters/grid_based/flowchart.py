@@ -101,8 +101,28 @@ rather than invented, and every one of the three examples on the page
   node.  A pointer's deque cursor is likewise unspecified; it is kept
   per-pointer here, alongside the register the spec does make per-pointer.
 
-Malformed programs (an unknown node, or no ``( )`` to start from) raise
-:class:`ValueError`.
+One further rule the spec does state, and this interpreter enforces:
+
+* **A vertical path enters a node at the node's middle.**  The wiki says
+  "vertical paths connecting into a node are expected to connect to the
+  middle of the node", and all three worked examples obey it -- 32 vertical
+  attachments, every one centred.  It is tempting to read the sentence as a
+  drawing convention rather than a law, because those same examples enter
+  nodes *horizontally* at their end cells 47 times (the Kolakoski program's
+  top row is one long horizontal chain).  But the two are not in tension: a
+  node is a contiguous run of cells on a single row, so a horizontal
+  neighbour is always at ``x0 - 1`` or ``x0 + len`` and the cell it enters
+  is always an end cell.  Horizontal entry cannot be drawn any other way,
+  so the spec has nothing to say about it and constrains the one case a
+  program can actually get wrong.  Vertical entry off the middle is
+  therefore malformed, and :meth:`_Machine._check_alignment` rejects it.
+
+  Note this is a check on *entry*, not on movement: a pointer already
+  inside a node still leaves through whichever cell of the box its exit
+  sits on, and a rail may still pass a node by without touching it.
+
+Malformed programs (an unknown node, a vertical path meeting a node off its
+middle, or no ``( )`` to start from) raise :class:`ValueError`.
 """
 
 import sys
@@ -259,6 +279,36 @@ class _Machine:
                     if c != " " and c not in _EXITS:
                         raise ValueError(f"unknown character {c!r} at ({x}, {y})")
                     x += 1
+        self._check_alignment()
+
+    def _check_alignment(self) -> None:
+        """Reject a vertical path that enters a node off its middle.
+
+        Runs after the scan above, because a rail's node may be recorded
+        after the rail itself.  Only vertical arms are checked: a node is a
+        contiguous run of cells on one row, so a horizontal neighbour can
+        only ever be at ``x0 - 1`` or ``x0 + len``, and the cell it enters is
+        therefore always an end cell.  Horizontal entry cannot be drawn any
+        other way, which is why the spec constrains only the vertical case.
+        """
+        for y, row in enumerate(self.grid):
+            for x, c in enumerate(row):
+                arms = _EXITS.get(c)
+                if arms is None:
+                    continue
+                for arm in (_UP, _DOWN):
+                    if arm not in arms:
+                        continue
+                    node = self.nodes.get((x, y + arm[1]))
+                    if node is None:
+                        continue
+                    spelling, x0 = node
+                    middle = x0 + len(spelling) // 2
+                    if x != middle:
+                        raise ValueError(
+                            f"vertical path at ({x}, {y}) enters {spelling!r} at "
+                            f"column {x}, but its middle is column {middle}"
+                        )
 
     def _start(self) -> tuple[int, int]:
         """Return the top-most, left-most ``( )`` node's first cell."""
@@ -328,9 +378,22 @@ class _Machine:
         so a pointer can enter one cell of it from the north and still find
         that same northern cell offered again from a different column.
         ``came_from`` is ``None`` at the start, where nothing is excluded.
+
+        Exits are counted per *destination*, not per cell of this box.  Two
+        stacked nodes touch along their whole overlap, so a three-cell box
+        sitting on another offers a step from each of its columns -- but all
+        three land on the one node below, which is a single path onward, not
+        three.  Counting them separately made a ``( )`` drawn directly above
+        another node fork into three pointers that then walked the rest of
+        the program in lock-step, tripling its output.  A rail between the
+        two nodes never showed the bug, because only its middle column
+        carries the ``│``; the wire's real job is narrowing a wide contact
+        down to one path.  Deduplicating here means a drawing that omits it
+        behaves the same way instead of silently multiplying pointers.
         """
         cells = set(self._cells_of(x, y))
         out: list[tuple[int, int, tuple[int, int]]] = []
+        seen: set[tuple[int, int]] = set()
         for cx, cy in sorted(cells, key=lambda c: (c[1], c[0])):
             for d in _HEADINGS:
                 nx, ny = cx + d[0], cy + d[1]
@@ -340,14 +403,13 @@ class _Machine:
                     continue
                 if not self._accepts(nx, ny, d):
                     continue
-                if any(  # pragma: no cover - node boxes are one row tall
-                    step[0] == nx and step[1] == ny for step in out
-                ):
-                    # Two cells of one box share a neighbour only when they
-                    # are two columns apart, and the cell between them is
-                    # inside the box, so `(nx, ny) in cells` already skipped
-                    # it.  Vertical neighbours differ per column.
+                # A node is reached once however many of its cells touch this
+                # box; a bare path cell is its own destination.
+                node = self.nodes.get((nx, ny))
+                target = (node[1], ny) if node else (nx, ny)
+                if target in seen:
                     continue
+                seen.add(target)
                 out.append((nx, ny, d))
         return out
 

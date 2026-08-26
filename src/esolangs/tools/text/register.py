@@ -120,7 +120,10 @@ def dig(text: str) -> str:
     for idx, ch in enumerate(r0):
         if ch == "%":
             r1[idx] = "0"
-    return "\n".join([r0, "".join(r1)])
+    # The depth row is built to the command row's width so the two stay
+    # column-aligned, but blanks past its last digit are never read; trim
+    # them so the emitted program ends where its commands do.
+    return "\n".join([r0, "".join(r1).rstrip()])
 
 
 def polynomial(text: str) -> str:
