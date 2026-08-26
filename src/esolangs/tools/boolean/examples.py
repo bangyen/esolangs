@@ -305,11 +305,17 @@ def _fill_cod(template: str, bits: list[int]) -> str:
 
 
 def _fill_eval(template: str, bits: list[int]) -> str:
-    # on the input stack (index 1), ` pushes 0 and + bumps it to 1
+    """Stage the bit on the tree stack, then move it to the input stack.
+
+    The backtick pushes ``1 - ptr``, so on stack 0 it pushes a one where
+    ``0`` pushes a zero -- a one-character setter either way.  ``=`` then
+    moves it to the input stack the nodes read, so both bits embed as two
+    characters and the program's shape does not reveal its inputs.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "`+" if b else "0",
+        lambda _i, b: "`=" if b else "0=",
         lambda _i, _b: "",
     )
 
