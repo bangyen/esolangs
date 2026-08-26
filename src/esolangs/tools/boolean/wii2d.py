@@ -11,6 +11,7 @@ strings letting each input be embedded exactly once -- see
 tables the search can reach.
 """
 
+import re
 from collections.abc import Callable
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
@@ -444,7 +445,11 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     junction.  Merges and the final decode each leave one blank column of
     separation before what follows them.
     """
-    placeholder_width = len("{X0}")  # every {Xi} is 4 cells: '{X' + digit + '}'
+    # The junction is one cell and the start digit beside it is one more, so
+    # two columns is the whole of what a placeholder's slot has to hold; the
+    # '{Xi}' spelling is four characters only because that is how the
+    # placeholder is written, and instantiation gives the extra back.
+    placeholder_width = 2
 
     placeholder_col = [0] * n
     # column 0 is always '>'; when there's a start digit (_wii2d_search only
@@ -476,9 +481,12 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     if start:
         grid[0][1] = str(start)
     for i in range(n):
-        ph = "{X" + str(i) + "}"
-        for k, ch in enumerate(ph):
-            grid[0][placeholder_col[i] + k] = ch
+        # The two cells of the slot, spelled out once the layout is
+        # finished: the placeholder's four characters are how it is written,
+        # not how much room the junction needs, and the fill gives the
+        # difference back.
+        grid[0][placeholder_col[i]] = "\x00" + str(i) + "\x00"
+        grid[0][placeholder_col[i] + 1] = ""
         r0, r1 = routes[i]
         for k, ch in enumerate(r0):
             grid[0][placeholder_col[i] + placeholder_width + k] = ch
@@ -494,7 +502,10 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     grid[0][decode_start + ascii_zero] = "~"
     grid[0][decode_start + ascii_zero + 1] = "."
     grid[1][0] = "!"
-    return ["".join(row).rstrip() for row in grid]
+    rows = ["".join(row).rstrip() for row in grid]
+    return [
+        re.sub("\x00(\\d+)\x00", lambda m: "{X" + m.group(1) + "}", row) for row in rows
+    ]
 
 
 def wii2d(truth_table: str) -> str:

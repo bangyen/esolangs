@@ -383,11 +383,17 @@ def _fill_eval(template: str, bits: list[int]) -> str:
 
 
 def _fill_wii2d(template: str, bits: list[int]) -> str:
+    """Set each junction: ``v`` takes the 1-branch, ``>`` continues east.
+
+    The junction is one cell and the start digit beside it is one more, so
+    the slot is two columns wide -- the placeholder's own four characters
+    are how it is spelled, not how much grid it needs.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "v   " if b else ">   ",
-        lambda _i, _b: "    ",
+        lambda _i, b: "v " if b else "> ",
+        lambda _i, _b: "  ",
     )
 
 
