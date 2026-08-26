@@ -50,10 +50,14 @@ most significant first, matching the other generators in this package.
   network scalar: the multi-wire path would need a ``<`` splitter tree to
   get back to individual rails, and the splitter's rounding rule makes that
   layout depend on ``n`` in a way this one does not.
-* the ``2n`` **literal buses** -- each input and each input's ``~`` -- are
-  built once, up front.  A bus may be tapped by any number of gates: it is
-  still one wiring with one driver, so fan-out costs nothing and no ``~`` is
-  ever duplicated.
+* the **literal buses** -- each input, and each input's ``~`` where some
+  minterm needs it -- are built once, up front.  A bus may be tapped by any
+  number of gates: it is still one wiring with one driver, so fan-out costs
+  nothing and no ``~`` is ever duplicated.  A complement no minterm selects
+  is not built at all: an input whose bit is 1 in every minterm never reads
+  it, and emitting one anyway leaves a ``~`` driving a bus nothing consumes,
+  plus the tap and the run out to it.  AND needs no ``~`` at all, which
+  takes its drawing from 324 characters to 144.
 * each minterm (a row of the table whose entry is ``1``) is a chain of
   two-input ``a`` gates over the ``n`` literal buses its index selects;
 * the minterms are combined by a chain of ``o`` gates, and the result runs
@@ -369,19 +373,25 @@ class _Builder:
         self._tap(signal, x, y)
 
 
-def _minterm(builder: _Builder, literals: list[tuple[int, int]], index: int) -> int:
+def _minterm(
+    builder: _Builder, literals: list[tuple[int, int | None]], index: int
+) -> int:
     """Return a signal that is 1 exactly when the inputs spell ``index``.
 
     ``literals`` holds, per input position, the ``(plain, negated)`` bus
-    signals; the bits of ``index`` choose which of each pair to AND.
+    signals; the bits of ``index`` choose which of each pair to AND.  The
+    negated half is ``None`` when no minterm needs that input's complement,
+    in which case this never selects it (see :func:`circuit_diagram`).
     """
     n = len(literals)
-    chosen = [
-        literals[position][0]
-        if (index >> (n - 1 - position)) & 1
-        else literals[position][1]
-        for position in range(n)
-    ]
+    chosen = []
+    for position in range(n):
+        plain, negated = literals[position]
+        if (index >> (n - 1 - position)) & 1:
+            chosen.append(plain)
+        else:
+            assert negated is not None, f"input {position} needs its complement"
+            chosen.append(negated)
     result = chosen[0]
     for literal in chosen[1:]:
         result = builder.gate("a", result, literal)
@@ -402,11 +412,24 @@ def circuit_diagram(truth_table: str) -> str:
     _validate_truth_table(truth_table)
 
     builder = _Builder()
-    rails = [builder.input_bus() for _ in range(len(truth_table).bit_length() - 1)]
-    # Each input's complement is computed once and shared by every minterm.
-    literals = [(rail, builder.invert(rail)) for rail in rails]
+    n = len(truth_table).bit_length() - 1
+    rails = [builder.input_bus() for _ in range(n)]
 
     minterms = [i for i, bit in enumerate(truth_table) if bit == "1"]
+    # A complement is computed once and shared by every minterm that selects
+    # it -- but only if one does.  An input whose bit is 1 in every minterm
+    # (both inputs of an AND, say) never reads its ``~``, and building one
+    # anyway leaves a gate driving a bus nothing consumes, plus the tap and
+    # the run out to it.  Deciding per input keeps the shared-complement
+    # property while dropping that dead weight.
+    needs_complement = [
+        any(not (index >> (n - 1 - position)) & 1 for index in minterms)
+        for position in range(n)
+    ]
+    literals: list[tuple[int, int | None]] = [
+        (rail, builder.invert(rail) if needed else None)
+        for rail, needed in zip(rails, needs_complement, strict=True)
+    ]
     if not minterms:
         result = builder.constant(rails[0], "x")
     elif len(minterms) == len(truth_table):

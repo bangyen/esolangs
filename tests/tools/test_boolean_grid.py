@@ -739,6 +739,26 @@ class TestCircuitDiagram:
         """Majority, parity, a projection, and both constants."""
         assert self.run_table(table) == table
 
+    @pytest.mark.parametrize(
+        ("table", "tildes"),
+        [
+            ("0001", 0),  # AND: every minterm bit is 1, so no complement
+            ("01", 0),  # identity: likewise
+            ("10", 1),  # NOT: its one minterm selects the complement
+            ("0110", 2),  # XOR: both inputs appear negated and plain
+        ],
+    )
+    def test_only_needed_complements_are_built(self, table: str, tildes: int) -> None:
+        """A ``~`` is drawn only when some minterm selects that complement.
+
+        Building all ``2n`` literals unconditionally left a gate driving a
+        bus nothing read, plus the tap and the run out to it -- for AND that
+        was more than half the drawing.
+        """
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        assert circuit_diagram(table).count("~") == tildes
+
     def test_four_input_primality(self) -> None:
         """The same function the wiki's own worked example computes.
 
