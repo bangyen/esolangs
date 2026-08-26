@@ -340,7 +340,7 @@ class TestGeneratorRoundTrips:
         code point, so neither shape can be emitted while the other one
         would have been shorter.
         """
-        from esolangs.tools.text.other import (
+        from esolangs.tools.text.streetcode import (
             _streetcode_instructions,
             _streetcode_ring,
             _streetcode_straight,
@@ -413,7 +413,7 @@ class TestGeneratorRoundTrips:
         ``examples/hello-world/streetcode.txt`` is built at, so the shipped
         example shows a loop.
         """
-        from esolangs.tools.text.other import (
+        from esolangs.tools.text.streetcode import (
             _streetcode_instructions,
             _streetcode_ring_serpentine,
             _streetcode_serpentine,
@@ -441,7 +441,7 @@ class TestGeneratorRoundTrips:
         fold is emitted unringed rather than being re-planned to suit the
         width: what a ring costs is what it costs.
         """
-        from esolangs.tools.text.other import _streetcode_ring_serpentine
+        from esolangs.tools.text.streetcode import _streetcode_ring_serpentine
 
         assert _streetcode_ring_serpentine("中文", 80) is None
         program = gen.streetcode("中文", 80)
