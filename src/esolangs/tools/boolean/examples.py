@@ -249,19 +249,22 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
 
 
 def _fill_back(template: str, bits: list[int]) -> str:
-    """Set each input cell: ``-`` flips it to one, a space leaves it zero.
+    """Set each input cell: ``-`` flips it to one, ``+`` leaves it zero.
 
-    Each placeholder sits alone in column 0, so a zero bit leaves that row
-    holding just its space; rstrip drops it, since a blank row is inert to
-    the beam (it only ever passes straight through column 0 there).
+    The beam reads one cell per row as it runs up column 0, so a setter is
+    one command and the template gives each input a second row for the
+    ``+`` that pads it.  ``+`` steps the beam only when the current cell is
+    zero, and here that cell is the answer cell the tree has yet to reach,
+    so the step is inert whichever bit was set.  A zero used to embed as a
+    blank, which the beam ignores just as happily but spends a character
+    the language does not read.
     """
-    filled = instantiate(
+    return instantiate(
         template,
         bits,
-        lambda _i, b: "-" if b else " ",
-        lambda _i, b: "-" if b else " ",
+        lambda _i, b: "-" if b else "+",
+        lambda _i, b: "-" if b else "+",
     )
-    return "\n".join(row.rstrip() for row in filled.split("\n"))
 
 
 def _fill_minsky_swap(template: str, bits: list[int]) -> str:
