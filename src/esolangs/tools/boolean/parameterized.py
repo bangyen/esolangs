@@ -916,8 +916,13 @@ def home_row(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     Home Row has no input command, so this is a parameterized generator:
-    each ``{Xi}`` placeholder becomes an ``a``-run at a bit cell that the
-    harness fills in per instantiation.  Unlike the removed ``n <= 2``
+    each ``{Xi}`` placeholder becomes a two-character setter at a bit cell
+    that the harness fills in per instantiation.  The cell is zero when the
+    placeholder is reached, so the setter raises it with ``a`` and then
+    either clears it again (``s``) or leaves it (``j``, whose skip does not
+    fire on the now-nonzero cell), spending the same width either way.
+
+    Unlike the removed ``n <= 2``
     routing generator (which tried to send the beam to one of ``2**n``
     distinct leaf cells -- a wall past ``n == 2`` on the fixed 5x5 grid),
     this closed-form construction packs the bits into a single binary
