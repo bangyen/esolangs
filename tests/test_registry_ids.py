@@ -34,8 +34,8 @@ def test_id_matches_the_interpreter_module() -> None:
 def test_id_matches_the_generator_function() -> None:
     """The canonical id is also the generator function's name."""
     for name, lang in LANGUAGES.items():
-        if lang.generator:
-            assert lang.id == lang.generator.__name__, name
+        if lang.text:
+            assert lang.id == lang.text.__name__, name
 
 
 def test_modules_are_importable_under_their_id() -> None:

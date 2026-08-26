@@ -35,7 +35,7 @@ TEXT = "Hello, World!"
 def hello_world_programs() -> Iterator[tuple[str, str]]:
     """Yield ``(stem, program)`` for every hello-world example."""
     for lang in sorted(LANGUAGES.values(), key=lambda item: item.name):
-        if not (lang.generator and lang.interpreter):
+        if not (lang.text and lang.interpreter):
             continue
         stem = lang.name.lower().replace(" ", "-")
         # Go through the public generate(), so a generator that lays its own

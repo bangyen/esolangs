@@ -38,9 +38,9 @@ ROUND_TRIP = {
 
 # generators whose interpreters live in extra/: no round-trip, just no crash
 NO_INTERPRETER = {
-    name: lang.generator
+    name: lang.text
     for name, lang in BY_FUNCTION.items()
-    if lang.generator and not lang.interpreter
+    if lang.text and not lang.interpreter
 }
 
 
@@ -56,7 +56,7 @@ def test_text_generators_round_trip() -> None:
         text = _random_text()
         for name, (module, split, kwargs, suffix) in ROUND_TRIP.items():
             try:
-                generator = BY_FUNCTION[name].generator
+                generator = BY_FUNCTION[name].text
                 assert generator is not None
                 program = generator(text)
             except ValueError:
@@ -98,7 +98,7 @@ def test_polynomial_wide_unicode_round_trip() -> None:
     """
     random.seed(6)
     run = importlib.import_module("esolangs.interpreters.register_based.polynomial").run
-    gen = BY_FUNCTION["polynomial"].generator
+    gen = BY_FUNCTION["polynomial"].text
     assert gen is not None
     wide = "".join(
         chr(c) for c in [0x4E2D, 0x4E00, 0x1F600, 0x3042, 0x3044, 0x00E9, 0x1F642]

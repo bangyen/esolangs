@@ -65,7 +65,7 @@ WIDTH_HONOURING = {"laserfuck": "falls back to the foldable linear form"}
 WRAPPED = sorted(
     name
     for name, lang in LANGUAGES.items()
-    if lang.generator and lang.interpreter and lang.id in WRAPPERS
+    if lang.text and lang.interpreter and lang.id in WRAPPERS
 )
 
 
@@ -94,7 +94,7 @@ def _chunks_its_literal(name: str) -> bool:
     :data:`WRAPPERS`, so that is where the token-preserving invariant is
     checked for them.
     """
-    generator = LANGUAGES[name].generator
+    generator = LANGUAGES[name].text
     return generator is not None and takes_width(generator)
 
 
@@ -245,7 +245,7 @@ def test_unwrappable_languages_are_untouched(name: str) -> None:
     """A language that cannot take newlines ignores the width."""
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     assert language.id not in WRAPPERS, UNWRAPPABLE[name]
-    if language.generator:
+    if language.text:
         assert generate(language.name, TEXT, 40) == generate(language.name, TEXT)
 
 
@@ -277,8 +277,8 @@ def test_no_width_is_unchanged(name: str) -> None:
     tests in ``tests/scripts/test_examples.py`` call the generators with no width.
     """
     lang = LANGUAGES[name]
-    assert lang.generator is not None
-    assert generate(name, TEXT) == lang.generator(TEXT)
+    assert lang.text is not None
+    assert generate(name, TEXT) == lang.text(TEXT)
 
 
 def test_clockwise_is_never_reflowed() -> None:
