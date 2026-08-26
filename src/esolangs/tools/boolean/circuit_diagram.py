@@ -276,9 +276,15 @@ class _Builder:
         The spec makes a ``-`` at the start of a line an input port, so each
         input owns a row of its own; the rows are taken in order, which is
         the order the interpreter reads the bits in.
+
+        One bus column is enough.  An input port draws only the ``-`` and
+        the junction its bus starts from -- there is no gate glyph, nothing
+        to its left to read, and no separate output column -- so reserving a
+        whole gate's three columns, as this once did, left two empty
+        columns per input that every later wire then had to run across.
         """
         signal = self._new_signal()
-        _, column = self._gate_columns()
+        column = self._new_column()
         row = self.next_row
         self.next_row += _ROW_STEP
 
