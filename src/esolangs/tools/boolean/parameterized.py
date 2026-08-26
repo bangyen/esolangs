@@ -792,9 +792,21 @@ _TREE_BRANCH_1 = ["*  ", "** ", "   "]  # reflects the down-route back to the ri
 # the ``~``, while every later block is entered heading down from the
 # previous block's exit (each block leaves the pointer heading down at
 # column 3, one row below itself).
-_FIRST_ONE = ["   *", "   ~", "    ", "    ", "    "]
+# A one bit's block used to be its ``~`` and nothing else, where a zero
+# bit's is a dense box, so ``_compact`` dropped the one's blank rows and the
+# emitted program's size counted the ones: at n == 2 the four programs came
+# out 123, 110, 110, and 97 characters.  The one blocks now carry inert
+# walls sized so each block's glyphs occupy the same number of characters as
+# the zero block it stands against (18 for the first, 14 for the rest).
+#
+# ``*`` turns the IP clockwise, so a wall is only inert where the IP cannot
+# reach it.  The IP enters the header at (0, 0) heading right and crosses
+# columns 0-2 of that row to reach its ``*``, so the first block's row 0 is
+# left exactly as it was; every other cell walled here -- columns 0-2 below
+# the entry row, and column 4 -- is one no run visits.
+_FIRST_ONE = ["   *", "***~*", "***", "***", "***"]
 _FIRST_ZERO = ["   *", "*~* ", "*  *", "*  *", "* * "]
-_NEXT_ONE = ["   ~", "    ", "    ", "    "]
+_NEXT_ONE = ["***~*", "***", "***", "***"]
 _NEXT_ZERO = ["*~* ", "*  *", "*  *", "* * "]
 
 # The loop-component section: entered heading down at column 3 from the last
