@@ -256,8 +256,12 @@ def _fill_back(template: str, bits: list[int]) -> str:
     ``+`` that pads it.  ``+`` steps the beam only when the current cell is
     zero, and here that cell is the answer cell the tree has yet to reach,
     so the step is inert whichever bit was set.  A zero used to embed as a
-    blank, which the beam ignores just as happily but spends a character
-    the language does not read.
+    blank, which the beam ignores just as happily -- but the fill rstrips,
+    so that row vanished and the program's size carried the input: at
+    ``n == 2`` the four instantiations were 41, 42, and 43 characters over
+    six or seven rows, where they are now all 47 over nine.  Contrast
+    :func:`_fill_cod`, whose blank is a grid cell that cannot be stripped
+    and so leaks nothing.
     """
     return instantiate(
         template,
@@ -331,8 +335,20 @@ def _fill_home_row(template: str, bits: list[int]) -> str:
 
 
 def _fill_cod(template: str, bits: list[int]) -> str:
-    # each {Xi} sets the cod's value to the bit: ')' for one, space for
-    # zero, read at the start of that input's '+' fork
+    """Set the cod's value to the bit at that input's ``+`` fork.
+
+    ``)`` increments, so a one is ``)`` and a zero is a space -- which is
+    water, an open grid cell the cod passes through, not the inert filler a
+    space is in a language that ignores unknown characters.  Both bits are
+    one cell, so the programs are already all the same size and differ in
+    exactly one character per input, at a fixed column: 89 characters at
+    ``n == 1``, 350 at ``n == 2``, 1495 at ``n == 3``, whatever the inputs.
+
+    Spelling the zero as a command instead (``)(`` against ``)<``) works --
+    it needs the fork box widened by a column and one more of the cascade's
+    leading blanks -- but it buys nothing here and costs size: 350 goes to
+    359 and 1495 to 1529.  The blank is the grid's own zero, not padding.
+    """
     return instantiate(
         template,
         bits,
