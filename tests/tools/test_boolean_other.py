@@ -153,6 +153,41 @@ class TestFlowchart:
         assert program.count("< >") == 15  # 2**4 - 1 internal nodes
         assert program.count("(( ))") == 16  # 2**4 leaves
 
+    @pytest.mark.parametrize(
+        "table", ["01", "0001", "01101001", "0110100110010110", "1000000000000000"]
+    )
+    def test_vertical_rails_meet_node_middles(self, table: str) -> None:
+        """Every ``│`` connects to the middle of the node above and below it.
+
+        The wiki asks that "vertical paths connecting into a node are expected
+        to connect to the middle of the node", and all three of its worked
+        examples honour it.  The interpreter is deliberately lenient about
+        this -- it enters a node through any cell of its box, which is why an
+        earlier, misdrawn version of this tree still computed the right table
+        -- so nothing else would catch the drawing drifting off centre.
+
+        The rule is about vertical rails only: the Kolakoski example's top row
+        chains nodes horizontally (``( )─[ }─\\[ ]/``), attaching at their end
+        cells rather than their middles.
+        """
+        from esolangs.interpreters.grid_based.flowchart import _Machine
+
+        machine = _Machine(boolean.flowchart(table).splitlines(), IO())
+        for y, row in enumerate(machine.grid):
+            for x, char in enumerate(row):
+                if char != "│":
+                    continue
+                for neighbour in (y - 1, y + 1):
+                    node = machine.nodes.get((x, neighbour))
+                    if node is None:
+                        continue
+                    spelling, start = node
+                    middle = start + len(spelling) // 2
+                    assert x == middle, (
+                        f"rail at ({x}, {y}) meets {spelling!r} at column {x}, "
+                        f"but its middle is column {middle}"
+                    )
+
     def test_each_run_reads_exactly_n_bits(self) -> None:
         """The drawn read nodes outnumber the reads any one run performs.
 

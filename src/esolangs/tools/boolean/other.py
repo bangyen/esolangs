@@ -1234,24 +1234,33 @@ def suptiftam(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-def _flowchart_leaf(bit: str) -> list[str]:
-    """Build a leaf column: force ``bit`` into the register, print, halt.
+def _flowchart_leaf(bit: str) -> tuple[list[str], int]:
+    """Build a leaf column, and the column its entry rail arrives on.
 
     The register holds whichever input bit the tree read last, so the leaf
     sets it outright (``[ }`` for one, ``{ ]`` for zero) rather than
     relying on what the routing happened to leave behind.
+
+    The spec asks that "vertical paths connecting into a node are expected to
+    connect to the middle of the node", and a leaf stacks three-cell nodes
+    over a five-cell ``(( ))`` whose middles do not share a column.
+    Indenting the narrow rows by one puts every middle on column 2, so each
+    rail meets the centre of the node above it and the node below.
     """
-    return [
-        "[ }" if bit == "1" else "{ ]",
-        " │ ",
-        "\\ \\",
-        " │ ",
-        "(( ))",
-    ]
+    return (
+        [
+            " " + ("[ }" if bit == "1" else "{ ]"),
+            "  │",
+            " \\ \\",
+            "  │",
+            "(( ))",
+        ],
+        2,
+    )
 
 
-def _flowchart_subtree(truth_table: str) -> list[str]:
-    """Build the block for ``truth_table``, entered at its ``/ /`` node.
+def _flowchart_subtree(truth_table: str) -> tuple[list[str], int]:
+    """Build the block for ``truth_table``, and the column it is entered on.
 
     Each level reads one input bit and switches on it.  The tree is always
     entered travelling downward, and a switch's sides are relative to the
@@ -1259,13 +1268,20 @@ def _flowchart_subtree(truth_table: str) -> list[str]:
     one turns it west: the table's zero half hangs to the west and its one
     half to the east, matching the index order.  Recursion bottoms out at
     :func:`_flowchart_leaf`.
+
+    A block's entry column is returned rather than recomputed from its width.
+    The two are not the same: a block is padded out to the width of its
+    widest row, so its top ``/ /`` sits wherever its own children put it, not
+    at the midpoint of that padding.  Deriving the entry from the width
+    instead is what used to drop the descending rails a column off the node
+    middles the spec asks them to meet.
     """
     if len(truth_table) == 1:
         return _flowchart_leaf(truth_table[0])
 
     half = len(truth_table) // 2
-    west = _flowchart_subtree(truth_table[:half])
-    east = _flowchart_subtree(truth_table[half:])
+    west, west_entry = _flowchart_subtree(truth_table[:half])
+    east, east_entry = _flowchart_subtree(truth_table[half:])
 
     west_width = max(len(row) for row in west)
     east_width = max(len(row) for row in east)
@@ -1274,23 +1290,27 @@ def _flowchart_subtree(truth_table: str) -> list[str]:
 
     gap = 3
     total = west_width + gap + east_width
-    west_entry = west_width // 2
-    east_entry = west_width + gap + east_width // 2
+    # Shift the east block's own entry into the combined block's coordinates.
+    east_entry += west_width + gap
+    # The switch is a three-cell node centred between the two entries, so its
+    # own middle -- the column the rail from ``/ /`` drops onto -- is the
+    # midpoint, and the node starts one column to the left of it.
     middle = (west_entry + east_entry) // 2
+    start = middle - 1
 
     rail = [" "] * total
-    for x in range(west_entry, middle):
+    for x in range(west_entry, start):
         rail[x] = "─"
-    for x in range(middle + 3, east_entry + 1):
+    for x in range(start + 3, east_entry + 1):
         rail[x] = "─"
     rail[west_entry] = "┌"
     rail[east_entry] = "┐"
     switch = "".join(rail)
-    switch = switch[:middle] + "< >" + switch[middle + 3 :]
+    switch = switch[:start] + "< >" + switch[start + 3 :]
 
     head = [
-        " " * middle + "/ /",
-        " " * (middle + 1) + "│",
+        " " * start + "/ /",
+        " " * middle + "│",
         switch,
         " " * west_entry + "│" + " " * (east_entry - west_entry - 1) + "│",
     ]
@@ -1300,7 +1320,7 @@ def _flowchart_subtree(truth_table: str) -> list[str]:
     east += [" " * east_width] * (depth - len(east))
     body = [a + " " * gap + b for a, b in zip(west, east, strict=True)]
 
-    return [row.ljust(total) for row in head + body]
+    return ([row.ljust(total) for row in head + body], middle)
 
 
 def flowchart(truth_table: str) -> str:
@@ -1343,8 +1363,10 @@ def flowchart(truth_table: str) -> str:
     silent wrong-answer trap if the pop is ever changed to pop-top.
     """
     _validate_truth_table(truth_table)
-    body = _flowchart_subtree(truth_table)
+    body, entry = _flowchart_subtree(truth_table)
     width = max(len(row) for row in body)
-    entry = body[0].index("/ /")
-    head = [" " * entry + "( )", " " * (entry + 1) + "│"]
+    # ``entry`` is the middle of the block's top node, so the start ``( )``
+    # is drawn one column left of it and its rail drops straight down onto
+    # that middle.
+    head = [" " * (entry - 1) + "( )", " " * entry + "│"]
     return "\n".join(row.ljust(width) for row in head + body)
