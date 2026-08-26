@@ -112,6 +112,83 @@ def instantiate(template: str, bits: list[int], set_bit: SetBit) -> str:
     return template
 
 
+Leaf = Callable[[int, int], list[str]]
+Node = Callable[[int, list[str], list[str], int], list[str]]
+
+
+def decision_tree_tokens(
+    truth_table: str,
+    leaf: Leaf,
+    node: Node,
+    *,
+    parent_width: int | Callable[[int], int] = 0,
+    start: int = 0,
+    collapse: bool = False,
+) -> list[str]:
+    """Walk a truth table's decision tree, combining caller-emitted parts.
+
+    ``leaf(level, row)`` returns the tokens for a leaf reached at ``level``
+    standing for table entry ``row``; ``node(level, zero, one, at)``
+    combines two finished subtrees, given the level it sits at and the index
+    it begins at.  The walk is *post-order*: both children are complete
+    before their parent runs.
+
+    That is the whole contract, and it is what makes the shared skeleton
+    worth having -- the recursion, the row split, and the running index are
+    the same in every generator, while what a node and a leaf *say* is not.
+
+    ``collapse`` returns a leaf as soon as a subtree's rows agree, so a
+    constant slice emits no branching.
+
+    **The index.**  A language with jumps needs to know where a subtree
+    *lands*, not just what it says.  ``start`` is the index the whole tree
+    begins at and ``parent_width`` how many tokens a node spends before its
+    children -- a constant, or a function of the level when a node's own
+    width grows with depth, as RAM0's address run does.  So ``at`` is the
+    absolute index of the subtree ``node`` is building, which is what lets
+    Bitdeque and RAM0 name the index their one-subtree starts at.  Both used
+    to reserve a slot, recurse, and backpatch it; the index arrives up front
+    instead.
+
+    **What this deliberately cannot do**, with the generator each rules out:
+
+    * A node acts only *after* both children, never between them.  6-5
+      allocates its branch label between the two recursive calls and
+      Polynomial appends to a shared buffer while threading the running cell
+      value, so both need a hook this does not offer; giving them one turns
+      the walker back into the recursion with more moving parts.
+    * The zero subtree is laid down first.  Between emits its *one* subtree
+      first, so the indices threaded here would reach its children swapped
+      and every branch line would name the wrong target -- on any table
+      whose two subtrees differ in size.  Which side goes first is a
+      language's own business, so Between keeps its own arithmetic.
+    * Rows split most-significant-first, keeping each subtree contiguous.
+      Modulous walks its bits the other way, so its halves are not runs.
+    * Lamfunc returns one plain string with no index to thread, so it would
+      spend a one-element list at every use to gain four lines.
+    * The grid generators' tree is a placement on a plane, not a token
+      sequence, and none of this applies to them.
+
+    Contrast :func:`decision_tree_program`, which shares an entire finished
+    construction between two dialects of one language family; this shares
+    only the skeleton and takes the emitting as callbacks.
+    """
+    n = _validate_truth_table(truth_table)
+    width = parent_width if callable(parent_width) else lambda _level: parent_width
+
+    def walk(level: int, lo: int, hi: int, at: int) -> list[str]:
+        values = {truth_table[r] for r in range(lo, hi)}
+        if level == n or (collapse and len(values) == 1):
+            return leaf(level, lo)
+        half = (hi - lo) // 2
+        below = at + width(level)
+        zero = walk(level + 1, lo, lo + half, below)
+        one = walk(level + 1, lo + half, hi, below + len(zero))
+        return node(level, zero, one, at)
+
+    return walk(0, 0, len(truth_table), start)
+
+
 def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     """Build a brainfuck-family decision-tree program for ``truth_table``.
 

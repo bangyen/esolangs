@@ -52,6 +52,7 @@ from esolangs.tools.boolean.cod import cod
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    decision_tree_tokens,
     instantiate,
 )
 from esolangs.tools.boolean.wii2d import wii2d
@@ -493,6 +494,10 @@ def bfpda(truth_table: str) -> str:
         # consume the remaining pre-loaded bits, then print the answer
         return ">" * (2 * (n - level)) + ("<@" if value == "1" else "<") + ".>"
 
+    # Not routed through :func:`decision_tree_tokens`: this tree is a plain
+    # string with no index to thread, so the walker's token lists would have
+    # to be one-element lists unwrapped at every use, which reads worse than
+    # the four lines it saves.
     def node(i: int, rows: list[int]) -> str:
         results = {truth_table[r] for r in rows}
         if i == n or len(results) == 1:
@@ -581,32 +586,37 @@ def bitdeque(truth_table: str) -> str:
     # the load block, most significant placeholder first (so the first POP
     # after the load is the MSB); each placeholder expands to two commands
     head = ["{X" + str(i) + "}" for i in range(n - 1, -1, -1)]
-    tree: list[str] = []
 
-    def emit(level: int, lo: int, hi: int, start: int) -> int:
-        """Emit the subtree for rows ``[lo, hi)``; return the next index.
-
-        ``start`` is the instantiated command index where this subtree begins
-        (the load block occupies ``2n`` commands), so the emitted ``GOTO``
-        operands are correct after substitution.
-        """
-        vals = {truth_table[r] for r in range(lo, hi)}
-        if level == n or len(vals) == 1:
-            answer = vals.pop() if level < n else truth_table[lo]
-            sub = leaf(answer)
-            tree.extend(sub)
-            return start + len(sub)
-        half = (hi - lo) // 2
-        tree.append("POP")
-        marker = len(tree)
-        tree.append("GOTO@ONE")
-        start += 2
-        start = emit(level + 1, lo, lo + half, start)  # zero subtree in place
-        tree[marker] = f"GOTO {start}"  # the one subtree starts here
-        return emit(level + 1, lo + half, hi, start)
-
-    end = emit(0, 0, 2**n, 2 * n)
+    # A node spends ``POP`` and its ``GOTO`` before either subtree, so the
+    # walker's ``at`` lands on this node and ``at + 2`` on the zero subtree.
+    # The load block occupies ``2n`` commands ahead of the tree, which is
+    # where the indices start, so the ``GOTO`` operands are right after
+    # substitution.
+    tree = decision_tree_tokens(
+        truth_table,
+        lambda _level, row: leaf(truth_table[row]),
+        lambda _level, zero, one, at: [
+            "POP",
+            f"GOTO {at + 2 + len(zero)}",
+            *zero,
+            *one,
+        ],
+        parent_width=2,
+        start=2 * n,
+        collapse=True,
+    )
+    end = 2 * n + len(tree)
     return " ".join(head + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree])
+
+
+def _ram0_width(level: int) -> int:
+    """Commands a RAM0 tree node spends before its subtrees.
+
+    ``Z``, an ``A`` per level (the cell address), ``L``, ``C``, and the
+    ``goto`` that reaches the one-subtree -- so the width grows with depth,
+    which is why the walker takes a callable rather than a constant.
+    """
+    return level + 4
 
 
 def ram0(truth_table: str) -> str:
@@ -657,28 +667,35 @@ def ram0(truth_table: str) -> str:
         tokens.append("END@")
         pos += 1
 
-    def emit(level: int, lo: int, hi: int) -> None:
-        nonlocal pos
-        vals = {truth_table[r] for r in range(lo, hi)}
-        if level == n or len(vals) == 1:
-            leaf(vals.pop() if level < n else truth_table[lo])
-            return
-        half = (hi - lo) // 2
-        tokens.append("Z")  # z = the address, then load ram[z]
-        tokens.extend("A" for _ in range(level))
-        tokens.append("L")
-        pos += 1 + level + 1
-        tokens.append("C")
-        pos += 1
-        marker = len(tokens)
-        tokens.append("ONE@")
-        pos += 1
-        emit(level + 1, lo, lo + half)  # zero subtree in place (MSB = 0)
-        tokens[marker] = f"ONE@{pos + 1}"  # 1-based, after the zero subtree
-        emit(level + 1, lo + half, hi)
+    def leaf_tokens(_level: int, row: int) -> list[str]:
+        return ["Z", "A" if truth_table[row] == "1" else "Z", "END@"]
 
-    emit(0, 0, 2**n)
-    end = pos + 1  # 1-based goto operand just past the last command
+    def node(level: int, zero: list[str], one: list[str], at: int) -> list[str]:
+        # ``Z``, the level's ``A`` run, ``L``, ``C`` and the ``ONE@`` slot all
+        # precede the subtrees, which is the node's own width; the one subtree
+        # therefore starts a further ``len(zero)`` along, 1-based.
+        return [
+            "Z",
+            *("A" for _ in range(level)),
+            "L",
+            "C",
+            f"ONE@{at + _ram0_width(level) + len(zero) + 1}",
+            *zero,
+            *one,
+        ]
+
+    # Every tree token is one command (unlike the load block's ``{Xi}``, which
+    # expands to two), so the tree's command count is its token count.
+    tree = decision_tree_tokens(
+        truth_table,
+        leaf_tokens,
+        node,
+        parent_width=_ram0_width,
+        start=pos,
+        collapse=True,
+    )
+    tokens += tree
+    end = pos + len(tree) + 1  # 1-based goto operand just past the last command
     return " ".join(
         str(end) if t == "END@" else str(int(t[4:])) if t.startswith("ONE@") else t
         for t in tokens
