@@ -77,16 +77,10 @@ class TestParameterizedBIO:
         return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_bio
 
-        n = len(bits)
-        # pack each input once by its binary weight
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda i, b: "0ox;" * (2 ** (n - 1 - i)) if b else "",
-            lambda _i, _b: "",
-        )
+        return _fill_bio(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -127,6 +121,29 @@ class TestParameterizedBIO:
             table = format(0, f"0{2**n}b")
             template = parameterized.bio(table)
             assert len(re.findall(r"\{X\d+\}", template)) == n
+
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """A zero pads against the unread ``z``, so the program's length
+        does not reveal the inputs."""
+        from esolangs.tools.boolean.examples import _fill_bio
+
+        for n in (1, 2, 3):
+            for i in range(n):
+                placeholder = "{X" + str(i) + "}"
+                zeros = [0] * n
+                ones = list(zeros)
+                ones[i] = 1
+                assert len(_fill_bio(placeholder, zeros)) == len(
+                    _fill_bio(placeholder, ones)
+                ), f"n={n} input {i}"
+
+    def test_padding_never_touches_a_read_register(self) -> None:
+        """``z`` is inert: the generator emits no command that reads it."""
+        from esolangs.tools.boolean import parameterized
+
+        for n in (1, 2, 3):
+            template = parameterized.bio(format(0, f"0{2**n}b"))
+            assert "z" not in template.lower()
 
 
 class TestParameterizedBack:
