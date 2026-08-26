@@ -15,7 +15,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.interpreters.register_based.qoibl import run
+from esolangs.interpreters.register_based.qoibl import run, tokenize
 
 
 class _TestTimeoutError(Exception):
@@ -350,3 +350,76 @@ class TestQoiblEdgeCases:
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
         assert f.getvalue() == chr(6)
+
+
+WIKI_PROGRAMS = {
+    "adder": (
+        "we e we yyeeee we\n"
+        "we y we et ry ey ry qe e qe we\n"
+        "we ye we et ry ey ry qe e qe we\n"
+        "we y we qe y qe ry ee ry qe ye qe we\n"
+        "we y we qe y qe ry ee ry qe e qe we\n"
+        "tt qe y qe tt"
+    ),
+    "truth": (
+        "we e we et we\nrr qe e qe yr ee yr yyeeey rr tt yyeeey tt rr\ntt yyeeee tt"
+    ),
+    "cat": "rr e yr ee yr e rr tt et tt rr",
+    "hello": (
+        "tt yeeyeee tt\ntt yyeeyey tt\ntt yyeyyee tt\ntt yyeyyee tt\n"
+        "tt yyeyyyy tt\ntt yeyyee tt\ntt yeeeee tt\ntt yyyeyyy tt\n"
+        "tt yyeyyyy tt\ntt yyyeeye tt\ntt yyeyyee tt\ntt yyeeyee tt\n"
+        "tt yeeeey tt\ntt yeye tt"
+    ),
+}
+
+
+class TestQoiblTokenizer:
+    """The wiki calls spaces ignorable, so a program may omit them entirely."""
+
+    @pytest.mark.parametrize("name", sorted(WIKI_PROGRAMS))
+    def test_spacing_does_not_change_statements(self, name: str) -> None:
+        """Spaced, space-free, and single-stream sources tokenize alike."""
+        source = WIKI_PROGRAMS[name]
+        expected = [line.split() for line in source.splitlines()]
+        squeezed = source.replace(" ", "")
+        assert tokenize(source) == expected
+        assert tokenize(squeezed) == expected
+        assert tokenize(squeezed.replace("\n", "")) == expected
+
+    def test_output_matches_without_spaces(self) -> None:
+        """A program run as one unbroken string prints what the spaced one does."""
+        source = WIKI_PROGRAMS["hello"]
+        stream = source.replace(" ", "").replace("\n", "")
+        with redirect_stdout(io.StringIO()) as spaced:
+            run(source, IO())
+        with redirect_stdout(io.StringIO()) as fused:
+            run(stream, IO())
+        assert spaced.getvalue() == fused.getvalue() == "Hello, world!\n"
+
+    def test_input_instruction_reclaims_its_character(self) -> None:
+        """An odd run of `t` spells `et`, which claims the preceding `e`."""
+        assert tokenize("rrttetttrr")[0] == ["rr", "tt", "et", "tt", "rr"]
+
+    def test_comparison_marker_closes_its_pair(self) -> None:
+        """`yr ee yr` must not read as `yr eey ry`, which strands the operand."""
+        assert tokenize("qeeqeyreeyryyeeey")[0] == [
+            "qe",
+            "e",
+            "qe",
+            "yr",
+            "ee",
+            "yr",
+            "yyeeey",
+        ]
+
+    def test_ignores_characters_outside_the_alphabet(self) -> None:
+        """The spec ignores anything that is not part of an instruction."""
+        assert tokenize("tt! yeeyeee? tt") == [["tt", "yeeyeee", "tt"]]
+
+    def test_statements_need_no_line_breaks(self) -> None:
+        """Two complete statements on one line stay two statements."""
+        assert tokenize("tt yeeyeee tt tt yyeeyey tt") == [
+            ["tt", "yeeyeee", "tt"],
+            ["tt", "yyeeyey", "tt"],
+        ]
