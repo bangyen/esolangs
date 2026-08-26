@@ -400,8 +400,9 @@ def _minterm(
         plain, negated = literals[position]
         if (index >> (n - 1 - position)) & 1:
             chosen.append(plain)
+        elif negated is None:
+            raise AssertionError(f"input {position} needs its complement")
         else:
-            assert negated is not None, f"input {position} needs its complement"
             chosen.append(negated)
     result = chosen[0]
     for literal in chosen[1:]:
