@@ -954,7 +954,10 @@ def clockwise(truth_table: str) -> str:
     for (x, y), ch in cells.items():
         if 0 <= x < width and 0 <= y < height:
             grid[y][x] = ch
-    return "\n".join("".join(row) for row in grid)
+    # The grid is a fixed-size rectangle of blanks that the cells are painted
+    # into, so a row's trailing filler is never reached; the interpreter pads
+    # short rows itself, so trimming it changes nothing but the file.
+    return "\n".join("".join(row).rstrip() for row in grid)
 
 
 def container(truth_table: str) -> str:
@@ -1364,9 +1367,11 @@ def flowchart(truth_table: str) -> str:
     """
     _validate_truth_table(truth_table)
     body, entry = _flowchart_subtree(truth_table)
-    width = max(len(row) for row in body)
     # ``entry`` is the middle of the block's top node, so the start ``( )``
     # is drawn one column left of it and its rail drops straight down onto
     # that middle.
     head = [" " * (entry - 1) + "( )", " " * entry + "│"]
-    return "\n".join(row.ljust(width) for row in head + body)
+    # The rows are padded to a common width while the tree is assembled, but
+    # the interpreter pads short rows itself, so the trailing run carries no
+    # meaning once the drawing is finished and is trimmed off the output.
+    return "\n".join(row.rstrip() for row in head + body)
