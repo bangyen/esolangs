@@ -714,15 +714,17 @@ class TestWII2D:
 
     def test_search_start_memoizes_repeated_subproblems(self) -> None:
         """A junction's sub-search is memoized by its requirement set so a
-        repeated subproblem returns the cached result instead of re-solving."""
-        import time
+        repeated subproblem returns the cached result instead of re-solving.
 
+        The budget is a count of ``pre`` evaluations, not a deadline, so it is
+        passed the same ample constant the other budget tests use.
+        """
         from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 4
         table = "0000000000111101"
         t, seqs, pre, index = self._build_search_start_args(2, table)
-        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        result = _wii2d_search_start(n, t, seqs, pre, index, 10**9)
         assert result is not None
 
     def test_wii2d_raises_when_the_search_finds_no_route(self) -> None:
