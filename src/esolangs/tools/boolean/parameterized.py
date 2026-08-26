@@ -194,23 +194,23 @@ def back(truth_table: str) -> str:
     # travels through) sends the beam down to the tree on row 1.  The tree
     # lives at columns >= base on rows >= 1, so row 0's placeholder shrink on
     # instantiation does not misalign it.
-    # The transition '\' below sits at column len(load_line) and has to
-    # shrink to tree_col on instantiation, so the load's *length* is
-    # load-bearing: every {Xi} loses three characters, fixing the raw length
-    # at 6n + 3 and the tail's budget at exactly n + 4.  '>' followed by
-    # n + 3 '<' spends that budget and leaves the pointer back at cell 0;
-    # '<' at cell 0 is a no-op in the interpreter, so the surplus moves are
-    # harmless padding rather than a walk into negative cells.
+    # The transition '\' below sits at column len(load_line) and has to shrink
+    # to tree_col on instantiation, so what is load-bearing is the *equality*
+    # `tree_col == len(load_line) - 3n` (every {Xi} loses three characters),
+    # not any particular load length.  Deriving tree_col from the load below
+    # keeps that equality for whatever the tail costs, so the tail only has to
+    # do its own job: '>' opens the answer cell at n, and n '<' walk the
+    # pointer from cell n back to cell 0 for the tree's first test.
     load_line = (
         "".join("{X" + str(i) + "}" + (">" if i < n - 1 else "") for i in range(n))
         + ">"
-        + "<" * (n + 3)
+        + "<" * n
     )
     # The load's placeholders shrink on instantiation, so the tree lives on
     # rows >= 1 (immune to row 0's shrink).  A '\' at row 0 col len(load_line)
     # sends the beam down; it shrinks to tree_col on instantiation.  A '\' on
     # row 1 at tree_col turns the descending beam right into the tree.
-    tree_col = 3 * n + 3
+    tree_col = len(load_line) - 3 * n
 
     grid: dict[tuple[int, int], str] = {}
     next_row = [2]
