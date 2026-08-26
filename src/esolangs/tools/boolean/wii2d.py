@@ -442,8 +442,13 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
 
     ``{Xi}`` placeholders on row 0, each branch's op cells on row 0 (bit 0)
     or on a dedicated detour row below (bit 1), re-merging before the next
-    junction.  Merges and the final decode each leave one blank column of
-    separation before what follows them.
+    junction.  Nothing is spaced apart: a merge sits directly on the column
+    past the longer branch, the next junction directly past the merge, and
+    the decode directly past the last merge.  The layout used to leave one
+    blank column of separation at each of those seams, but a blank column
+    carries only straight eastward travel -- the pointer crosses it and
+    arrives at the same cell either way -- so it bought legibility in the
+    template at the cost of width in every emitted program.
     """
     # A junction is a single cell: the fill writes 'v' to take the 1-branch
     # or '>' to continue east, and nothing on row 0 ever occupies the column
@@ -464,15 +469,16 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
         r0, r1 = routes[i]
         # row 0 runs placeholder, then r0, ending at placeholder_col[i] +
         # placeholder_width + len(r0); row i+1 runs '>', then r1, ending at
-        # placeholder_col[i] + 1 + len(r1).  The merge sits one blank
-        # column past whichever row runs longer.
+        # placeholder_col[i] + 1 + len(r1).  The merge sits on the first
+        # column past whichever row runs longer, and the next junction on
+        # the first column past the merge.
         row0_end = placeholder_width + len(r0)
         row1_end = 1 + len(r1)
-        merge_col[i] = placeholder_col[i] + max(row0_end, row1_end) + 1
+        merge_col[i] = placeholder_col[i] + max(row0_end, row1_end)
         if i + 1 < n:
-            placeholder_col[i + 1] = merge_col[i] + 2
+            placeholder_col[i + 1] = merge_col[i] + 1
 
-    decode_start = merge_col[n - 1] + 1  # one blank column past the last merge
+    decode_start = merge_col[n - 1] + 1  # the column past the last merge
     ascii_zero = 48
     total_cols = decode_start + ascii_zero + len("~.")
 

@@ -468,9 +468,10 @@ class TestWII2D:
                 for b1 in (0, 1):
                     value = _wii2d_apply(routes[1][b1], _wii2d_apply(routes[0][b0], 0))
                     assert value == t[b0 * 2 + b1], table
-            # and the generated template uses the closed-form routes
+            # and the generated template uses the closed-form routes, laid
+            # out with no blank column between the merge and what follows
             template = boolean.wii2d(table)
-            assert template.startswith(">{X0}- > {X1}"), table
+            assert template.startswith(">{X0}->{X1}"), table
 
     @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
     def test_chain_parity_closed_form(self, n: int) -> None:
