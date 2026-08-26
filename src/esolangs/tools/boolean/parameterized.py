@@ -848,7 +848,34 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     # travels past the last glyph on a row, so trailing blanks are inert;
     # trim them so the emitted program carries no whitespace it cannot use.
     joined = _header_rows(bits) + rows[4 * n + 1 :]
-    return "\n".join(row.rstrip() for row in joined).rstrip("\n")
+    return _compact(joined)
+
+
+def _compact(rows: list[str]) -> str:
+    """Drop the wholly blank rows and columns from an instantiated program.
+
+    The blocks are laid out on fixed pitches -- a ``1`` bit's embedding is
+    one glyph plus three blank rows, and a tree block pads to 3x3 -- so the
+    grid arrives with whole rows and columns that hold no glyph at all.
+    They are not spacing the drawing: a blank line carries only straight
+    pointer travel (a vertical drop stays in its column, and a run off the
+    edge halts either way), so deleting one shortens that travel without
+    changing which cell the pointer reaches next or what it pushes and pops
+    there.  Deleting rows and columns together keeps every glyph's row and
+    column ordering, which is all the routing depends on.
+
+    This runs on the instantiated program rather than in :func:`arrowqueue`
+    because the template's blank header rows are reserved slots, not
+    padding: :func:`_instantiate_arrowqueue` finds the body by slicing past
+    a fixed ``4n + 1`` rows, so compacting them away would misalign it.
+    """
+    width = max((len(row) for row in rows), default=0)
+    padded = [row.ljust(width) for row in rows]
+    kept = [row for row in padded if row.strip()]
+    if not kept:
+        return ""
+    columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
+    return "\n".join("".join(row[x] for x in columns).rstrip() for row in kept)
 
 
 def home_row(truth_table: str) -> str:
