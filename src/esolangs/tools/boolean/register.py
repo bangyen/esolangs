@@ -7,6 +7,7 @@ from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _maybe_complement,
     _validate_truth_table,
+    minterm_literals,
 )
 from esolangs.tools.text.helpers import _cm_constants
 
@@ -271,13 +272,13 @@ def collatz_multiverse(truth_table: str) -> str:
         if truth_table[k] == "0":
             continue
         indicators = []
-        for i in range(n):
-            if (k >> (n - 1 - i)) & 1:
+        for i, negated in minterm_literals(k, n):
+            if negated:
+                indicators.append(flip(f"b{i}"))
+            else:
                 reg = fresh()
                 lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
                 indicators.append(reg)
-            else:
-                indicators.append(flip(f"b{i}"))
         minterm = indicators[0]
         for indicator in indicators[1:]:
             minterm = and_bits(minterm, indicator)
@@ -405,8 +406,8 @@ def qoibl(truth_table: str) -> str:
         if table[k] == "0":
             continue
         factors = []
-        for i in range(n):
-            var = i if ((k >> (n - 1 - i)) & 1) else n + i
+        for i, negated in minterm_literals(k, n):
+            var = n + i if negated else i
             factors.append(f"qe {_qoibl_enc(var)} qe")
         product = factors[0]
         for factor in factors[1:]:
@@ -554,8 +555,8 @@ def point_break(truth_table: str) -> str:
         if truth_table[k] == "0":
             continue
         factors = [
-            _pb_name(1 + n + i) if not ((k >> (n - 1 - i)) & 1) else _pb_name(1 + i)
-            for i in range(n)
+            _pb_name(1 + n + i) if negated else _pb_name(1 + i)
+            for i, negated in minterm_literals(k, n)
         ]
         lines.append(f"LET {_pb_name(2 + 2 * n)}:={factors[0]}")
         for factor in factors[1:]:

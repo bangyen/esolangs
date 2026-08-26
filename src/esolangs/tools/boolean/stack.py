@@ -4,6 +4,7 @@ from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
+    minterm_literals,
 )
 
 
@@ -73,14 +74,14 @@ def grapheme(truth_table: str) -> str:
     prog.append(acc)
     for row in rows:
         prog.append(_grapheme_push1())  # start this minterm at 1
-        for i in range(n):
-            if (row >> (n - 1 - i)) & 1:
-                prog.append(_grapheme_push_key(10 * (i + 1)) + "D")  # factor = b_i
-            else:
+        for i, negated in minterm_literals(row, n):
+            if negated:
                 # factor = 1 - b_i
                 prog.append(
                     _grapheme_push1() + _grapheme_push_key(10 * (i + 1)) + "D" + "B"
                 )
+            else:
+                prog.append(_grapheme_push_key(10 * (i + 1)) + "D")  # factor = b_i
             prog.append("S")
         prog.append(op)  # fold the minterm into the accumulator
     prog.append("Y")

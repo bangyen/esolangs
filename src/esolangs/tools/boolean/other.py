@@ -11,6 +11,7 @@ from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _maybe_complement,
     _validate_truth_table,
+    minterm_literals,
 )
 from esolangs.tools.boolean.streetcode import streetcode
 from esolangs.tools.boolean.ztoalc_l import ztoalc_l_boolean
@@ -1283,9 +1284,8 @@ def suptiftam(truth_table: str) -> str:
         if truth_table[row] != "1":
             continue
         lines.append("p=1")
-        for i in range(n):
-            bit = (row >> (n - 1 - i)) & 1
-            factor = names[i] if bit else f"%-[1]{names[i]}%"
+        for i, negated in minterm_literals(row, n):
+            factor = f"%-[1]{names[i]}%" if negated else names[i]
             lines += ["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"]
         lines.append("sum=%+[sum]p%")
     lines.append("term=sum")
