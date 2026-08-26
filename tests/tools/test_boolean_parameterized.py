@@ -42,8 +42,12 @@ def test_parameterized_generators_embed_each_input_once() -> None:
 
     An input-capable language reads each of its n inputs exactly once per
     run; a no-input language's parameterized generator should match, so each
-    {Xi} (and {Ci}, if used) appears exactly once -- never re-embedded at
-    multiple decision nodes.
+    {Xi} appears exactly once -- never re-embedded at multiple decision
+    nodes.
+
+    A {Ci} complement placeholder must not appear at all.  instantiate no
+    longer fills one, so a template carrying it would ship the literal text
+    to the interpreter instead of failing, which is worth catching here.
     """
     import re
 
@@ -55,9 +59,7 @@ def test_parameterized_generators_embed_each_input_once() -> None:
             cs = re.findall(r"\{C(\d+)\}", template)
             assert sorted(xs) == [str(i) for i in range(n)], (name, n, xs)
             assert len(xs) == n, (name, n, xs)
-            if cs:
-                assert sorted(cs) == [str(i) for i in range(n)], (name, n, cs)
-                assert len(cs) == n, (name, n, cs)
+            assert not cs, (name, n, cs)
 
 
 class TestParameterizedBIO:
@@ -264,7 +266,6 @@ class TestParameterizedNoComment:
             tpl,
             bits,
             lambda _i, b: "c" if b == 0 else "i",
-            lambda _i, b: "c" if b == 1 else "i",
         )
 
     @pytest.mark.parametrize(
@@ -366,7 +367,6 @@ class TestParameterizedLamfunc:
             tpl,
             bits,
             lambda _i, b: "0b" + str(b),
-            lambda _i, b: "0b" + str(b),
         )
 
     @pytest.mark.parametrize(
@@ -460,7 +460,6 @@ class TestParameterizedBitdeque:
             tpl,
             bits,
             lambda i, b: "PUSH INVERT" if b == (n - 1 - i) % 2 else "INVERT PUSH",
-            lambda _i, _b: "PUSH INVERT",
         )
 
     @pytest.mark.parametrize(
@@ -553,7 +552,6 @@ class TestParameterizedRam0:
             tpl,
             bits,
             lambda _i, b: "Z A" if b else "Z Z",
-            lambda _i, _b: "Z Z",
         )
 
     @pytest.mark.parametrize(
@@ -650,7 +648,6 @@ class TestParameterizedMinskySwap:
             tpl,
             bits,
             set_bit,
-            lambda _i, _b: "*" * 2**n,
         )
 
     @pytest.mark.parametrize(
@@ -1033,7 +1030,6 @@ class TestParameterizedCOD:
             tpl,
             bits,
             lambda _i, b: ")" if b else " ",
-            lambda _i, _b: " ",
         )
 
     @pytest.mark.parametrize(

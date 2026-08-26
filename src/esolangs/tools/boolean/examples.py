@@ -188,7 +188,6 @@ def _fill_bio(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda i, b: ("0ox;" if b else "0oz;") * (2 ** (n - 1 - i)),
-        lambda _i, _b: "",
     )
 
 
@@ -197,7 +196,6 @@ def _fill_nocomment(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "c" if b == 0 else "i",
-        lambda _i, b: "c" if b == 1 else "i",
     )
 
 
@@ -206,7 +204,6 @@ def _fill_lamfunc(template: str, bits: list[int]) -> str:
     return instantiate(
         template,
         bits,
-        lambda _i, b: "0b" + str(b),
         lambda _i, b: "0b" + str(b),
     )
 
@@ -219,7 +216,6 @@ def _fill_bitdeque(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda i, b: "PUSH INVERT" if b == (n - 1 - i) % 2 else "INVERT PUSH",
-        lambda _i, _b: "PUSH INVERT",
     )
 
 
@@ -244,7 +240,6 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "<@@@" if b else "<[@]",
-        lambda _i, b: "<@@@" if not b else "<[@]",
     )
 
 
@@ -278,7 +273,6 @@ def _fill_back(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "+" if b else "-",
-        lambda _i, b: "+" if b else "-",
     )
 
 
@@ -310,7 +304,7 @@ def _fill_minsky_swap(template: str, bits: list[int]) -> str:
             return "+" * weight + "*" * (size - weight)
         return "*" * size
 
-    return instantiate(template, bits, set_bit, lambda _i, _b: "*" * size)
+    return instantiate(template, bits, set_bit)
 
 
 def _fill_ram0(template: str, bits: list[int]) -> str:
@@ -323,7 +317,6 @@ def _fill_ram0(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "Z A" if b else "Z Z",
-        lambda _i, _b: "Z Z",
     )
 
 
@@ -350,7 +343,6 @@ def _fill_home_row(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "aj" if b else "as",
-        lambda _i, b: "aj" if not b else "as",
     )
 
 
@@ -373,7 +365,6 @@ def _fill_cod(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: ")" if b else " ",
-        lambda _i, _b: " ",
     )
 
 
@@ -398,7 +389,6 @@ def _fill_eval(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "`=" if b else "0=",
-        lambda _i, _b: "",
     )
 
 
@@ -418,7 +408,6 @@ def _fill_wii2d(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "v" if b else ">",
-        lambda _i, _b: " ",
     )
 
 
