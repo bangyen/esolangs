@@ -228,6 +228,33 @@ class TestParsing:
         with pytest.raises(ValueError, match="no '\\( \\)' start node"):
             _Machine([], ScriptedIO(""))
 
+    def test_stacked_nodes_do_not_fork(self) -> None:
+        """A node drawn directly on top of another is one path, not three.
+
+        Two stacked boxes touch along their whole overlap, so the upper one
+        offers a step from each of its columns -- but every one of them lands
+        on the same node below.  Counting them separately used to start three
+        pointers here and print ``111``.
+        """
+        stacked = [" ( )", " [ }", " \\ \\", "(( ))"]
+        io = ScriptedIO("")
+        run(stacked, io)
+        assert io.getvalue() == "1"
+
+        railed = [" ( )", "  │", " [ }", "  │", " \\ \\", "  │", "(( ))"]
+        io = ScriptedIO("")
+        run(railed, io)
+        assert io.getvalue() == "1", "a rail between the nodes must not change it"
+
+    def test_a_genuine_fork_still_splits(self) -> None:
+        """Deduplicating exits must not collapse real multi-path forks.
+
+        The wiki's Kolakoski program opens with a ``( )`` that has both an
+        east and a south path, and those are two distinct destinations.
+        """
+        machine = _Machine(list(KOLAKOSKI), ScriptedIO(""))
+        assert len(machine.pointers) == 2
+
     def test_off_centre_vertical_entry_is_rejected(self) -> None:
         """A vertical path must meet the middle of the node it enters.
 
