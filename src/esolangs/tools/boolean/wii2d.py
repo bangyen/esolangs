@@ -122,12 +122,24 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
     ``n == 2`` uses a closed form (:func:`_wii2d_n2_closed_form`) instead of
     searching.  Parity and its complement (symmetric tables where the entry
     is the popcount's low bit) get an exact O(1) closed form
-    (:func:`_wii2d_parity_routes`) up front: the general search below *can*
-    reach parity at maxlen == 2 for every arity tested (up to n == 20), but
-    its cost still grows with n (0.01s at n == 12, ~2s at n == 20), so the
-    closed form is a speed win, not a reachability one.  Every other
-    symmetric table (AND/OR/majority/threshold-k of any arity) is left to the
-    general search first, because it is usually faster there too (its
+    (:func:`_wii2d_parity_routes`) up front.  The general search below *can*
+    reach parity -- it finds a chain at every arity tested -- so this is not
+    a reachability requirement the way :func:`_wii2d_symmetric_search` is.
+    It pays on both of the things this package optimizes for, though:
+
+    * **Size.**  The chain the closed form states is shorter than the one the
+      search happens to find first, at every arity: 98 characters against 102
+      at ``n == 3``, 460 against 473 at ``n == 12``.  So the two are not
+      interchangeable -- removing the closed form changes every parity
+      program, and always for the worse.
+    * **Time.**  The search's cost grows sharply, and not smoothly: 137ms at
+      ``n == 12``, then 13.5s at ``n == 13`` and 23s at ``n == 14`` once it
+      falls through to a longer rung of the ladder.  (An earlier note here
+      put the cost at ~2s around ``n == 20``, which understated it by an
+      order of magnitude and at a much lower arity.)
+
+    Every other symmetric table (AND/OR/majority/threshold-k of any arity) is
+    left to the general search first, because it is usually faster there (its
     preimage-effect pruning makes monotone tables cheap); only if every
     length in the general ladder fails does :func:`_wii2d_symmetric_search`
     get a turn, reducing a symmetric table to a popcount accumulator plus a
