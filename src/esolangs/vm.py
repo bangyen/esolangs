@@ -292,10 +292,10 @@ class _QoiblVM(_BaseVM):
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
-        from esolangs.interpreters.register_based.qoibl import State
+        from esolangs.interpreters.register_based.qoibl import State, tokenize
 
         self._state = State(io=self._io)
-        self._state.code = program.splitlines()
+        self._state.code = tokenize(program)
 
     @property
     def halted(self) -> bool:
