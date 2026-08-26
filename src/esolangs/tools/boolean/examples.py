@@ -274,10 +274,19 @@ def _fill_back(template: str, bits: list[int]) -> str:
 def _fill_minsky_swap(template: str, bits: list[int]) -> str:
     """Set each input register by counting ``+`` against a ``*`` pad.
 
-    Minsky Swap has no input instruction, so a bit is embedded as the
-    register's starting value.  Every setter is padded to the same width
-    (``2**n``, or four for the LSB, which needs no ``~``) so the jump
-    targets the template computed stay correct whatever the bits are.
+    Minsky Swap has no input instruction, so a bit is embedded as a run of
+    ``+`` adding its binary weight to ``reg[0]``, padded with ``*`` to a
+    length the template counted on when it computed its jump targets.  Both
+    runs are even because ``*`` swaps the register pointer: an odd pad would
+    leave every later command addressing the wrong register.
+
+    The LSB is the exception, and not merely a shorter one.  Its block is
+    ``+*+*``, which adds its weight of one to ``reg[0]`` and then, across
+    the swap, leaves ``reg[1]`` holding the LSB as well -- the leaves flip
+    that copy into the answer, so the dump reads ``0 {answer}``.  Writing it
+    as the general rule would give ``+`` and an odd pad, which both loses
+    the ``reg[1]`` copy and strands the pointer.  A zero LSB is ``****``,
+    the same four commands doing nothing.
     """
     n = len(bits)
     size: int = 2**n
