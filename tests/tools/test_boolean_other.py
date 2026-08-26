@@ -8,7 +8,7 @@ helper edge paths exercised across generator modules.
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.tools import boolean
+from esolangs.tools import boolean, laserfuck_layout
 from tests.tools.boolean_runners import (
     run_between,
     run_clockwise,
@@ -152,6 +152,41 @@ class TestFlowchart:
         program = boolean.flowchart("0110100110010110")
         assert program.count("< >") == 15  # 2**4 - 1 internal nodes
         assert program.count("(( ))") == 16  # 2**4 leaves
+
+    @pytest.mark.parametrize(
+        "table", ["01", "0001", "01101001", "0110100110010110", "1000000000000000"]
+    )
+    def test_vertical_rails_meet_node_middles(self, table: str) -> None:
+        """Every ``│`` connects to the middle of the node above and below it.
+
+        The wiki asks that "vertical paths connecting into a node are expected
+        to connect to the middle of the node", and all three of its worked
+        examples honour it.  The interpreter is deliberately lenient about
+        this -- it enters a node through any cell of its box, which is why an
+        earlier, misdrawn version of this tree still computed the right table
+        -- so nothing else would catch the drawing drifting off centre.
+
+        The rule is about vertical rails only: the Kolakoski example's top row
+        chains nodes horizontally (``( )─[ }─\\[ ]/``), attaching at their end
+        cells rather than their middles.
+        """
+        from esolangs.interpreters.grid_based.flowchart import _Machine
+
+        machine = _Machine(boolean.flowchart(table).splitlines(), IO())
+        for y, row in enumerate(machine.grid):
+            for x, char in enumerate(row):
+                if char != "│":
+                    continue
+                for neighbour in (y - 1, y + 1):
+                    node = machine.nodes.get((x, neighbour))
+                    if node is None:
+                        continue
+                    spelling, start = node
+                    middle = start + len(spelling) // 2
+                    assert x == middle, (
+                        f"rail at ({x}, {y}) meets {spelling!r} at column {x}, "
+                        f"but its middle is column {middle}"
+                    )
 
     def test_each_run_reads_exactly_n_bits(self) -> None:
         """The drawn read nodes outnumber the reads any one run performs.
@@ -615,11 +650,12 @@ class TestLaserFuck:
             assert got == want, f"inputs {bits}"
 
     def test_loop_free_tree(self) -> None:
-        """The decision tree uses the #/)/\\ branch, not loop rings."""
+        """The decision tree branches with #, ) and a turning mirror."""
         program = boolean.laserfuck("0110")
         assert "#" in program
         assert ")" in program
-        assert "\\" in program
+        # the tree is mirrored, so a one-branch turns on '/' rather than '\\'
+        assert "/" in program
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
@@ -665,33 +701,182 @@ class TestLaserFuck:
                 got = run_laserfuck(program, [str(b) for b in bits], heading)
                 assert got == str(int(table[combo])), f"{bits} heading {heading}"
 
-    def test_width_is_narrower_than_the_unfolded_grid(self) -> None:
-        """Folding buys columns, rather than only reshaping the grid."""
-        table = "01101001"  # XOR3
-        unfolded = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
-        assert unfolded > 80  # the reader run alone is 49 columns per input
-        assert max(len(ln) for ln in boolean.laserfuck(table, 80).split("\n")) <= 80
+    def test_a_width_stands_the_reader_on_end(self) -> None:
+        """A width too narrow for the reader rotates it rather than failing.
 
-    @pytest.mark.parametrize(("table", "n"), [("0001", 2), ("01101001", 3)])
-    def test_tree_columns_are_linear_in_the_input_count(
-        self, table: str, n: int
-    ) -> None:
-        """The staircase shares a column per level, not one per node.
-
-        Rows are handed out depth-first, so a subtree owns a contiguous
-        band and two nodes on the same level never share a row -- which is
-        what lets them share a column.  The tree therefore spans ``6 * n``
-        columns rather than ``6 * (2**(n + 1) - 1)``.
+        Laid flat the rings are one row and forty-odd columns; stood on end
+        they are two columns and forty-odd rows, so a width the flat form
+        cannot meet is still met.
         """
-        program = boolean.laserfuck(table)
-        rows = program.split("\n")
-        width = max(len(line) for line in rows)
-        # Row 0 is the reader run (49 columns per input) and row 3 the leg
-        # that carries the beam back to the margin; the tree starts below.
-        tree_width = max(len(line) for line in rows[4:])
-        assert tree_width < width
-        # Six columns per level, plus the leaf run's sweep and answer.
-        assert tree_width <= 6 * n + 4 * n + 20
+        table = "01101001"  # XOR3
+        natural = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
+        assert natural > 30
+        narrow = boolean.laserfuck(table, 30).split("\n")
+        assert max(len(ln) for ln in narrow) <= 30
+        assert len(narrow) > len(boolean.laserfuck(table).split("\n"))
+
+    def test_the_fold_uses_its_return_rows(self) -> None:
+        """A same-character run fills the leftward leg, not just the right.
+
+        A return row's beam travels left, so it may only carry ops that
+        read the same in reverse -- which a run of one repeated character
+        does.  The boolean generator's readers are rings now, but the fold
+        still lays every leaf band and the whole text generator, so the
+        fill is exercised directly here.
+        """
+        grid = [[" "] * 20 for _ in range(2)]
+        end_row, end_col = laserfuck_layout.fold(grid, "-" * 30, 0, 3, 20)
+        rows = ["".join(line).rstrip() for line in grid]
+        assert rows[0].endswith("v")
+        assert rows[1].endswith("{")
+        assert "-" in rows[1], "the return row should carry the spilled run"
+        # 30 ops at width 20: 16 on the segment row, the rest reversed onto
+        # the return row, so the run never needs a second segment row.
+        assert end_row == 2, "a same-character run should not need a third row"
+        assert end_col == laserfuck_layout.MARGIN + 1
+
+    def test_return_rows_only_take_a_same_character_run(self) -> None:
+        """The fill stops at the first character that differs.
+
+        A mixed run may only reverse its leading same-character stretch;
+        whatever follows has to resume rightwards on the next segment row.
+        """
+        grid = [[" "] * 20 for _ in range(2)]
+        laserfuck_layout.fold(grid, "-" * 30 + ">+++", 0, 3, 20)
+        rows = ["".join(line).rstrip() for line in grid]
+        body = rows[1][laserfuck_layout.MARGIN + 1 :].rstrip()
+        ops = body[:-1].strip() if body.endswith("{") else body.strip()
+        assert set(ops) <= {"-"}, f"mixed ops on a return row: {ops!r}"
+        # the '>' that broke the run resumes on the next segment row
+        assert ">" in rows[2]
+
+    def test_folded_readers_are_rings(self) -> None:
+        """The folded reader loops rather than writing 48 '-' per input.
+
+        Two rings sit on the first row: one multiplies 8 by 6 to build the
+        48 a ``,`` needs subtracting, the other spends that counter one unit
+        at a time across the counter and every input.  Both are one row, so
+        the reader costs a fixed two rows however many inputs there are.
+        """
+        rows = boolean.laserfuck("0110", 80).split("\n")
+        # columns 0..2 are the funnel; the reader starts at the margin
+        head = rows[0][laserfuck_layout.MARGIN :]
+        legs = rows[1][laserfuck_layout.MARGIN :]
+        assert head.count("}") == 3, "the reader's own '}' plus one per ring"
+        assert head.count("#/)") == 2, "each ring tests its counter"
+        assert legs.count("^") == 2, "each ring returns to its own '}'"
+        # no 48-'-' run survives anywhere in the program
+        assert "-" * 10 not in "\n".join(rows)
+
+    def test_ringed_leaves_sit_on_their_own_descent_rows(self) -> None:
+        """A leaf needs no corridor: the beam already arrives moving right.
+
+        The old layout dropped each leaf down a private column into a band
+        of its own below the tree.  With the rings the leaf simply follows
+        the ``\\`` that turns the beam onto its row -- so no ``v``, no return
+        row and no band, and the grid loses better than half its rows.
+        """
+        # width 50 forces the mirrored form, where the tree hangs below
+        rows = boolean.laserfuck("0110", 50).split("\n")
+        # 'x' only ever ends a leaf, so the leaf rows are exactly these
+        leaves = [line for line in rows if "x" in line]
+        assert len(leaves) == 4, "one leaf per input combination"
+        # the all-zero leaf rides the row the tree starts on, so only the
+        # mirrored, a one-branch's leaf hangs under a '/' and its code runs
+        # leftward, so the 'x' comes *before* the turn.  The all-zero leaf
+        # shares the tree's first row, which carries the entry mirror too.
+        first = min(index for index, line in enumerate(rows) if "x" in line)
+        turned = [
+            line for index, line in enumerate(rows) if "x" in line and index > first
+        ]
+        assert len(turned) == 3
+        for line in turned:
+            assert line.index("x") < line.index("/")
+        # nothing below the leaves: no bands, no drop corridors.  Mirrored,
+        # a leaf's row ends at its turn rather than at its 'x'.
+        assert rows[-1].rstrip()[-1] in "x/"
+
+    def test_a_dropping_beam_crosses_no_other_row_s_code(self) -> None:
+        """A one-branch drops through the rows above its own catcher.
+
+        Every ``v`` sends the beam down its column until a mirror faces it
+        along a row again; whatever it passes on the way is executed.  The
+        rows in between must therefore be blank in that column -- which is
+        what lets the tree share rows at all.
+        """
+        for table in ("0110", "01101001", "0110100110010110"):
+            rows = boolean.laserfuck(table, 200).split("\n")
+            for index, line in enumerate(rows):
+                for column, char in enumerate(line):
+                    if char != "v" or index < 3:
+                        continue  # the funnel and reader steer themselves
+                    # find the '\' that catches this drop
+                    below = [
+                        (k, rows[k])
+                        for k in range(index + 1, len(rows))
+                        if column < len(rows[k])
+                    ]
+                    for k, lower in below:
+                        cell = lower[column]
+                        if cell in "\\/":
+                            break  # caught, as intended
+                        assert cell == " ", (
+                            f"{table}: beam from row {index} column {column} "
+                            f"runs {cell!r} on row {k}"
+                        )
+
+    def test_a_wide_grid_runs_the_tree_on_the_reader_s_rows(self) -> None:
+        """Given the width, the tree needs no rows of its own at all.
+
+        The beam leaves the reader still moving right, so the cheapest
+        thing is to carry straight on: the tree starts in the next column
+        along, on the rows the reader is already using.  A width too narrow
+        for that falls back to hanging the tree underneath, mirrored.
+        """
+        wide = boolean.laserfuck("0110", 80).split("\n")
+        narrow = boolean.laserfuck("0110", 50).split("\n")
+        assert len(wide) < len(narrow), "sharing rows should cost fewer rows"
+        assert max(len(line) for line in wide) > max(len(line) for line in narrow)
+        # the reader's own first row carries tree code too
+        assert "#/)" in wide[0], "the reader's last ring is on row 0"
+        assert ">#v)" in wide[0], "and the tree's first node follows it there"
+
+    def test_widths_come_in_bands_not_a_cliff(self) -> None:
+        """Each reader block turns on its own, so widths degrade gradually.
+
+        Turning the whole reader at once gave two sizes and nothing in
+        between; turning its blocks independently fills the gap, and a
+        tighter width buys rows rather than being ignored.
+        """
+        seen = {
+            max(len(line) for line in boolean.laserfuck("0110", width).split("\n"))
+            for width in (45, 40, 30, 25, 18)
+        }
+        assert len(seen) >= 4, f"expected several distinct widths, got {seen}"
+        # asking for less never gives more
+        widths = [
+            max(len(line) for line in boolean.laserfuck("0110", w).split("\n"))
+            for w in (45, 40, 30, 25, 18)
+        ]
+        assert widths == sorted(widths, reverse=True)
+
+    def test_a_narrow_width_beats_the_old_floor(self) -> None:
+        """Standing blocks on end reaches widths the flat reader cannot."""
+        for table, floor in (("0110", 18), ("01101001", 24)):
+            program = boolean.laserfuck(table, floor).split("\n")
+            assert max(len(line) for line in program) <= floor
+
+    def test_ringed_leaves_leave_a_zero_answer_alone(self) -> None:
+        """Cell 0 is the counter *and* the answer, so zero costs nothing.
+
+        The rings spend the counter down to zero and leave it touched,
+        which is exactly what dump() prints for a zero answer -- so a leaf
+        writes a '+' only when the answer is one.
+        """
+        zero = boolean.laserfuck("0000", 80).split("\n")
+        assert "+" not in "\n".join(zero[3:]), "a zero table needs no '+'"
+        ones = boolean.laserfuck("1111", 80).split("\n")
+        assert "+" in "\n".join(ones[3:])
 
     def test_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""

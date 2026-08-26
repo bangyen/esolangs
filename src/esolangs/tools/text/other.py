@@ -428,7 +428,435 @@ def _laserfuck_linear(run: str, width: int | None) -> str:
     return "\n".join(lines)
 
 
+def _laserfuck_base_groups(values: list[int], count: int) -> list[list[int]]:
+    r"""Split the byte values into bands that each get their own base.
+
+    One shared base suits text whose bytes cluster, but most text has two
+    clusters and not one -- the letters up near a hundred and the spaces and
+    punctuation down in the thirties.  Averaging across both leaves every
+    cell a long way from its base, and the residuals are what a base-init
+    program spends most of its width on.
+
+    Splitting the *values* (not the tape positions) into bands and giving
+    each its own ring cuts that: ``Hello, World!`` falls from 292 units of
+    residual to 96.  Each extra ring costs a frame and another walk of the
+    tape, so this returns the bands for one split and lets the caller
+    measure whether the trade paid.
+
+    Bands are contiguous in value, so a cell belongs to exactly one, and the
+    split point is the one minimizing total deviation.
+    """
+    order = sorted(set(values))
+    if len(order) < 2 or count < 2:
+        return [values]
+
+    def deviation(band: list[int]) -> int:
+        base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
+        return sum(abs(base - v) for v in band)
+
+    def total(cut: int) -> int:
+        low = set(order[:cut])
+        return deviation([v for v in values if v in low]) + deviation(
+            [v for v in values if v not in low]
+        )
+
+    # ``order`` has at least two distinct values, so there is always at
+    # least one cut to choose from
+    low = set(order[: min(range(1, len(order)), key=total)])
+    return [
+        [v for v in values if v in low],
+        [v for v in values if v not in low],
+    ]
+
+
+def _laserfuck_base_factor(base: int) -> tuple[int, int, int] | None:
+    r"""Factor ``base`` into a multiply ring, or decline if literal is shorter.
+
+    Counting a cell up to ``base`` with ``+`` costs ``base`` columns, which
+    is most of the width of a base-init program -- 120 of them for a text of
+    ``x``.  A ring counts a scratch cell down from ``outer`` and adds
+    ``inner`` to the counter each pass, so the cost becomes roughly
+    ``outer + inner`` plus a fixed frame, and the shortfall ``rest`` is
+    topped up literally.
+
+    That is the same multiply the boolean generator's reader uses.  This
+    picks the cheapest split of ``base`` alone; whether the ring is worth
+    its frame at all is settled by :func:`laserfuck` building both forms and
+    measuring them, because the ring's row competes with the preload's for
+    the widest line and no formula here can see that.
+
+    ``None`` means ``base`` is too small to factor at all.
+    """
+    best: tuple[int, int, int] | None = None
+    cost = base
+    for outer in range(2, base):
+        inner, rest = divmod(base, outer)
+        if inner < 1:
+            break
+        candidate = outer + inner + rest
+        if candidate < cost:
+            cost, best = candidate, (outer, inner, rest)
+    return best
+
+
+def _laserfuck_base_ring(
+    text: str, *, factored: bool = True, grouped: bool = False
+) -> str:
+    r"""Build the *base-init* LaserFuck program for ``text``.
+
+    Every byte of ``text`` is close to every other -- letters cluster in the
+    nineties and hundreds -- so instead of counting each cell up from zero,
+    one loop counts *all* of them up together to a shared base, and only the
+    differences are written out afterwards.  The base is the value that
+    minimizes the total difference, and the residuals are usually a handful
+    of ``+``/``-`` each.
+
+    The loop is a ring, laid inline: ``}`` faces the beam along a body that
+    walks to cell 0, adds one to every cell on its way back, and decrements
+    the counter; ``#`` skips the deflector so ``)`` can test it; and a
+    return leg carries the beam back to the ``}``.  That is a different
+    shape from the generator's other loop, whose long body is wrapped around
+    a serpentine -- this body is deliberately short, which the serpentine
+    has nothing to do with.
+
+    The counter ends at zero and *touched*, which byte mode would print as a
+    NUL, so a final ``-`` drives it negative where the dump ignores it --
+    the same trick the multiplying form uses for its own counter.
+    """
+    values = [ord(char) for char in text]
+    count = len(values)
+    bands = _laserfuck_base_groups(values, count) if grouped else [values]
+
+    # Each band gets a base and a ring; a cell reaches its own band's base
+    # and is untouched by the others.  ``reached`` tracks what every cell
+    # holds once the rings have run, so the tail can write the residuals.
+    reached = [0] * count
+    stages: list[tuple[int, tuple[int, int, int] | None, list[int]]] = []
+    for band in bands:
+        if not band:
+            continue
+        members = set(band)
+        base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
+        owned = [i for i, v in enumerate(values) if v in members]
+        for index in owned:
+            reached[index] = base
+        stages.append((base, _laserfuck_base_factor(base) if factored else None, owned))
+
+    scratch = any(factor is not None for _, factor, _ in stages)
+    # The counter sits past the text, and a multiply ring's scratch past
+    # that.  The first stage's load rides the preload row: the beam descends
+    # onto the ring row at a fixed column, so that column has to hold the
+    # ring's own '}' and not the tail of a run of ops.
+    home = count + 1 if scratch else count
+    first_base, first_factor, _ = stages[0]
+    preload = ">" * home
+    if first_factor is None:
+        preload += "<" * (home - count) + "+" * first_base + ">" * (home - count)
+    else:
+        preload += "+" * first_factor[0]
+
+    tail = "-"
+    if scratch:
+        # the scratch cell ends at zero and *touched* one cell further on,
+        # which byte mode would print as a NUL, so it is cleared too
+        tail += ">-<"
+    tail += "<" * count
+    for index, value in enumerate(values):
+        step = value - reached[index]
+        tail += ("+" if step > 0 else "-") * abs(step)
+        if index < count - 1:
+            tail += ">"
+
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(row: int, col: int, char: str) -> None:
+        if char != " ":
+            cells[(row, col)] = char
+
+    # byte-mode marker, then the funnel that normalizes the start heading
+    put(0, 0, "\xff")
+    put(0, 1, "}")
+    put(0, 2, "}")
+    put(1, 0, "|")
+    put(1, 1, "o")
+    put(1, 2, "^")
+    put(2, 1, "_")
+
+    col = 3
+    for char in preload:
+        put(0, col, char)
+        col += 1
+    put(0, col, "v")
+    put(1, col, "{")
+    put(1, 3, "v")
+
+    # Rings run left to right along row 2, each with its return leg on row
+    # 3: '^' under the ring's own '}' and '{' under its '/'.  A multiply
+    # ring, when there is one, goes first and hands the counter to the
+    # spread ring already loaded.
+    col = 3
+
+    def put_ring(ops: str) -> None:
+        nonlocal col
+        start = col
+        put(2, col, "}")
+        col += 1
+        for char in ops + "#/)":
+            put(2, col, char)
+            col += 1
+        put(3, start, "^")
+        put(3, col - 2, "{")
+
+    def put_ops(ops: str) -> None:
+        nonlocal col
+        for char in ops:
+            put(2, col, char)
+            col += 1
+
+    for position, (base, factor, owned) in enumerate(stages):
+        if factor is None:
+            # count the counter up to the base one unit at a time; the
+            # first stage's run is already on the preload row
+            if position:
+                put_ops("+" * base)
+        else:
+            # a scratch cell one past the counter drives the multiply: it
+            # counts down from 'outer', adding 'inner' each pass, and the
+            # shortfall is topped up on the way back
+            outer, inner, residual = factor
+            if position:
+                # a later stage starts on the counter, so it has to step out
+                # to the scratch cell before loading the multiply
+                put_ops(">" + "+" * outer)
+            put_ring("<" + "+" * inner + ">" + "-")
+            put_ops("<" + "+" * residual)
+        # the spread ring: walk to cell 0, add one to this band's cells
+        # only, walk back to the counter and spend a pass
+        # The ring tests the cell it starts on, so the body has to come
+        # back to exactly that cell -- the counter -- before it decrements.
+        members = set(owned)
+        spread = "<" * count
+        for index in range(count):
+            if index in members:
+                spread += "+"
+            if index < count - 1:
+                spread += ">"
+        spread += ">" + "-"
+        put_ring(spread)
+
+    for index, char in enumerate(tail):
+        put(2, col + index, char)
+    put(2, col + len(tail), "x")
+
+    height = max(row for row, _ in cells) + 1
+    span = max(c for _, c in cells) + 1
+    lines = [
+        "".join(cells.get((row, c), " ") for c in range(span)).rstrip()
+        for row in range(height)
+    ]
+    return "\n".join(lines)
+
+
+def _laserfuck_snake(body: str, spine: int, right: int) -> list[str] | None:
+    """Lay a ring body across rows between fixed margins.
+
+    Row 0 carries the entry ``}`` at ``spine`` and runs rightward; every
+    later row starts at ``spine + 1``.  Rightward rows drop at ``right``,
+    leftward rows drop at ``spine + 1``, and the row below always catches
+    in the same column.  A leftward row is written right-to-left, which is
+    the order its beam reads -- no reversal is needed on top of that.
+
+    The last body row has to be a leftward one, because the test ``-#/)``
+    is read rightward and a leftward beam would meet its ``)`` first; an
+    empty turn row is added when the body would otherwise end going right.
+
+    ``body`` must *not* carry the counter's ``-``: the test row supplies it,
+    and a body that decrements too would spend the counter twice a pass.
+    """
+    body = body[:-1] if body.endswith("-") else body
+    left = spine + 1
+    first = right - spine - 1
+    rest_width = right - left - 1
+    if first < 1 or rest_width < 1:
+        return None
+
+    chunks = [body[:first]]
+    remaining = body[first:]
+    while remaining:
+        chunks.append(remaining[:rest_width])
+        remaining = remaining[rest_width:]
+    if len(chunks) % 2 == 1:
+        chunks.append("")
+
+    grid = [[" "] * (right + 6) for _ in range(len(chunks) + 2)]
+    for index, chunk in enumerate(chunks):
+        row = grid[index]
+        if index % 2 == 0:
+            start = spine if index == 0 else left
+            row[start] = "}"
+            for offset, char in enumerate(chunk):
+                row[start + 1 + offset] = char
+            row[right] = "v"
+        else:
+            row[right] = "{"
+            for offset, char in enumerate(chunk):
+                row[right - 1 - offset] = char
+            row[left] = "v"
+
+    test = len(chunks)
+    grid[test][left] = "}"
+    for offset, char in enumerate("-#/)"):
+        grid[test][left + 1 + offset] = char
+    grid[test + 1][left + 3] = "{"
+    grid[test + 1][spine] = "^"
+    return ["".join(row).rstrip() for row in grid]
+
+
+def _laserfuck_snake_ring(text: str, width: int) -> str | None:
+    r"""Build a base-init program whose rings are snaked across rows.
+
+    A ring body cannot be folded the way a straight run of ops can -- the
+    return leg re-enters at the ``}`` and re-runs the whole body, so a body
+    split by :func:`~esolangs.tools.laserfuck_layout.fold` would re-execute
+    only its tail.  It can be *snaked*, though, and that is what lets a
+    base-init program meet a width instead of falling back to the linear
+    form: :func:`_laserfuck_snake` walks the body across as many rows as it
+    needs and only then reaches the test.
+
+    Rings stack as self-contained blocks, each with its own spine and
+    return leg.  Nothing is shared between them: the beam leaves a block
+    through the ``)`` on its test row, a ``v`` drops it clear of the return
+    leg, and a ``}`` on a fresh row faces it right again for whatever comes
+    next.  The residual tail is caught the same way and folded, since it is
+    direction-agnostic ops.
+
+    Returns ``None`` when ``width`` cannot hold the frame.
+    """
+    values = [ord(char) for char in text]
+    count = len(values)
+    base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in values))
+
+    # Writing the base out one '+' at a time would push the first spine
+    # past the width before the body even starts, so it is factored into a
+    # multiply block whenever that is shorter.
+    factor = _laserfuck_base_factor(base)
+    scratch = factor is not None
+    home = count + 1 if scratch else count
+
+    # the spread ring starts and ends on the counter, which is the cell its
+    # own test looks at -- a body that came back anywhere else would spend
+    # the wrong cell and never terminate
+    spread = "<" * count + "+" + ">+" * (count - 1) + ">"
+    tail = "-"
+    if scratch:
+        tail += ">-<"
+    tail += "<" * count
+    for index, value in enumerate(values):
+        step = value - base
+        tail += ("+" if step > 0 else "-") * abs(step)
+        if index < count - 1:
+            tail += ">"
+
+    if factor is not None:
+        outer, inner, residual = factor
+        stages = [
+            (">" * home + "+" * outer, "<" + "+" * inner + ">"),
+            ("<" + "+" * residual, spread),
+        ]
+    else:
+        stages = [(">" * home + "+" * base, spread)]
+
+    right = width - 2
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(row: int, col: int, char: str) -> None:
+        if char != " ":
+            cells[(row, col)] = char
+
+    # byte-mode marker, then the funnel that normalizes the start heading
+    put(0, 0, "\xff")
+    put(0, 1, "}")
+    put(0, 2, "}")
+    put(1, 0, "|")
+    put(1, 1, "o")
+    put(1, 2, "^")
+    put(2, 1, "_")
+
+    row, entry = 0, 3
+    for preload, body in stages:
+        col = entry
+        for char in preload:
+            put(row, col, char)
+            col += 1
+        spine = col
+        if spine >= right - 2:
+            return None
+        # drop the beam into this block's entry '}', directly below
+        put(row, spine, "v")
+        block = _laserfuck_snake(body, spine, right)
+        if block is None:
+            return None
+        for offset, line in enumerate(block):
+            for index, char in enumerate(line):
+                put(row + 1 + offset, index, char)
+        # the test row is the second from the end of the block
+        test_row = row + 1 + len(block) - 2
+        exit_col = spine + 6
+        put(test_row, exit_col, "v")
+        row = test_row + 2
+        put(row, exit_col, "}")
+        entry = exit_col + 1
+
+    height = max(index for index, _ in cells) + 1
+    span = max(index for _, index in cells) + 1
+    depth = laserfuck_layout.rows_needed(len(tail) + 1, width)
+    grid = [[" "] * (max(width, span) + 2) for _ in range(height + depth + 3)]
+    for (index, col), char in cells.items():
+        grid[index][col] = char
+
+    end_row, end_col = laserfuck_layout.fold(grid, tail, row, entry, width)
+    grid[end_row][end_col] = "x"
+    lines = ["".join(line).rstrip() for line in grid]
+    while lines and not lines[-1]:
+        lines.pop()
+    if max(map(len, lines)) > width:
+        return None
+    return "\n".join(lines)
+
+
 def laserfuck(text: str, width: int | None = None) -> str:
+    """Build a LaserFuck program that outputs ``text``, the smaller of two.
+
+    Two constructions are available and which wins depends entirely on the
+    text.  :func:`_laserfuck_multiply` factors the byte values and adds them
+    in base-sized chunks, which is best when they are spread out.
+    :func:`_laserfuck_base_ring` counts every cell up to a shared base in one
+    loop and then writes only the differences, which is best when they
+    cluster -- exactly when the multiply passes stop paying and the other
+    form falls back to writing one ``+`` per unit.
+
+    Rather than predict, both are built and the smaller grid is returned.  A
+    ``width`` disqualifies a form that cannot meet it; if neither can, the
+    multiplying form's own fallback still applies.
+    """
+    forms = [_laserfuck_multiply(text, width)]
+    for factored in (False, True):
+        for grouped in (False, True):
+            ring = _laserfuck_base_ring(text, factored=factored, grouped=grouped)
+            if width is None or max(map(len, ring.split("\n"))) <= width:
+                forms.append(ring)
+    if width is not None:
+        # the snaked form exists only for the bounded case: it spends rows
+        # to buy columns, which is a loss when there is no bound to meet
+        snake = _laserfuck_snake_ring(text, width)
+        if snake is not None:
+            forms.append(snake)
+    return min(
+        forms, key=lambda form: (form.count("\n") + 1) * max(map(len, form.split("\n")))
+    )
+
+
+def _laserfuck_multiply(text: str, width: int | None = None) -> str:
     """Build a LaserFuck program that outputs ``text``.
 
     Phase 1 generates a brainfuck-style program: each pass picks a base about

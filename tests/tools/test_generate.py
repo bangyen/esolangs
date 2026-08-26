@@ -493,9 +493,117 @@ class TestGeneratorRoundTrips:
 
     def test_laserfuck_linear_fold_is_narrower(self) -> None:
         """Folding actually buys columns, rather than only reshaping."""
-        text = "The quick brown fox"
-        assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 1000
+        # a text whose bytes are spread out enough that neither the multiply
+        # passes nor a shared base pays, so the linear run is what folds --
+        # three clusters, which one split into two bands cannot cover
+        text = "!Q~!Q~!Q~"
+        assert max(len(ln) for ln in gen.laserfuck(text).split("\n")) > 200
         assert max(len(ln) for ln in gen.laserfuck(text, 80).split("\n")) <= 80
+
+    def test_laserfuck_clustered_text_uses_a_shared_base(self) -> None:
+        """Bytes that cluster are counted up together, not one at a time.
+
+        One loop brings every cell to the base they are all near, and only
+        the differences are written afterwards -- which is what keeps a text
+        like this off the linear fallback it used to land on.
+        """
+        wide = gen.laserfuck("The quick brown fox")
+        assert max(len(ln) for ln in wide.split("\n")) < 600
+        assert "#/)" in wide, "the shared base is set by a ring"
+
+    def test_laserfuck_builds_a_big_base_with_a_second_ring(self) -> None:
+        """A base worth more than its frame is multiplied, not counted out.
+
+        Repeated ``~`` sits at 126, and writing that literally is 126
+        columns of ``+``.  A ring counts a scratch cell down instead, so the
+        grid carries two rings and comes in far under the literal run.
+        """
+        program = gen.laserfuck("~~~~~")
+        assert program.count("#/)") == 2, "a multiply ring and a spread ring"
+        assert max(len(ln) for ln in program.split("\n")) < 126
+
+    def test_laserfuck_small_base_skips_the_multiply_ring(self) -> None:
+        """A base too small to be worth a frame is still written out.
+
+        The ring costs a ``}``, a return leg and a test; below roughly a
+        couple of dozen units that is more than the ``+`` it removes, so the
+        form without it has to win on measurement.
+        """
+        program = gen.laserfuck("\x03\x03\x03")
+        assert program.count("#/)") <= 1
+
+    def test_laserfuck_multiply_ring_leaves_no_stray_cell(self) -> None:
+        """The scratch cell the multiply ring spends never reaches the dump.
+
+        It ends at zero and *touched*, which byte mode would otherwise print
+        as a NUL between the text and nothing -- so the tail drives it
+        negative, where the dump ignores it.
+        """
+        for text in ("~~~~~", "zzzzzzzzzz", "Hello, World!"):
+            for heading in range(4):
+                assert laserfuck_roundtrip(gen.laserfuck(text), heading) == text
+
+    def test_laserfuck_two_clusters_get_their_own_bases(self) -> None:
+        """Text split between two ranges is counted up in two rings.
+
+        Ordinary text has two clusters and not one -- letters up near a
+        hundred, spaces and punctuation down in the thirties -- and one
+        shared base leaves every cell a long way from home.  A ring per band
+        cuts the residuals of ``Hello, World!`` from 292 units to 96, which
+        shows on the grid as a multiply and a spread ring for each band.
+        """
+        # ``!`` and ``~`` sit at opposite ends of printable ASCII, so a
+        # single base leaves every cell about fifty units from home; a band
+        # each takes the residuals to nothing.  Without grouping this is
+        # 524 columns wide.
+        program = gen.laserfuck("!~!~!~!~!~")
+        assert max(len(ln) for ln in program.split("\n")) < 200
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == "!~!~!~!~!~"
+
+    def test_laserfuck_one_cluster_stays_on_one_base(self) -> None:
+        """Bytes already close together are not split into bands.
+
+        A second band costs another frame and another walk of the tape, so
+        for text that is all one cluster the ungrouped form has to win on
+        measurement.
+        """
+        program = gen.laserfuck("xxxxxxxxxxxxxxxxxxxx")
+        # one band, so one multiply ring and one spread ring
+        assert program.count("#/)") == 2
+
+    def test_laserfuck_snakes_a_ring_to_meet_a_width(self) -> None:
+        """A ring too wide for the bound is walked across rows instead.
+
+        A ring body cannot be folded -- the return leg re-enters at the
+        ``}`` and re-runs the whole body -- so a bounded width used to drop
+        the ring forms entirely and fall back to the linear run.  Snaking
+        the body keeps the ring: twenty ``x`` at eighty columns was 41 rows
+        and is now well under half that.
+        """
+        text = "x" * 20
+        program = gen.laserfuck(text, 80)
+        assert max(len(ln) for ln in program.split("\n")) <= 80
+        assert program.count("\n") + 1 < 20
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == text
+
+    def test_laserfuck_snaked_rings_stack_without_sharing_rows(self) -> None:
+        """Each snaked ring is its own block, joined by a drop and a catch.
+
+        This exercises the builder directly rather than through
+        :func:`laserfuck`, which would quietly drop a broken snake and fall
+        back to another form -- the failure would not show.
+        """
+        from esolangs.tools.text.other import _laserfuck_snake_ring
+
+        for text in ("x" * 20, "Hello, World!", "The quick brown fox"):
+            for width in (60, 80, 120):
+                program = _laserfuck_snake_ring(text, width)
+                assert program is not None
+                assert max(len(ln) for ln in program.split("\n")) <= width
+                for heading in range(4):
+                    assert laserfuck_roundtrip(program, heading) == text
 
     def test_laserfuck_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""

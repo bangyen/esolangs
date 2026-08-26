@@ -18,6 +18,13 @@ in order, moving right.
 instead of columns.  A straight run is all it handles, because it may break
 between any two cells.
 
+The zigzag's leftward legs are usable too, for the runs whose order does
+not matter: a stretch of one repeated character reads the same in either
+direction, so ``fold`` lays such a stretch backwards along the return row
+rather than leaving it blank.  Since the runs that make these grids wide
+are precisely the long same-character ones -- 48 ``-`` per reader, one
+``+`` per unit of text -- that halves the rows the fold spends on them.
+
 The text generator's *frame* is not a straight run: it interleaves tape ops
 with bracket markers, and a marker owns mirror cells on the rows beneath it
 whose columns must match its own.  Breaking inside one of those groups
@@ -59,9 +66,21 @@ def fold(
     Each fold takes two rows.  ``v`` ends a segment and drops the beam onto
     a *return* row, whose ``{`` sends it back left to the margin, where a
     second ``v`` drops it onto the next segment row; that row opens with
-    ``}`` to face the beam right again.  The return row is what makes this
-    safe: a beam travelling left along a segment row would re-execute that
-    segment backwards, so the leftward leg gets a row with no code on it.
+    ``}`` to face the beam right again.  The return row exists because a
+    beam travelling left along a segment row would re-execute that segment
+    backwards, so the leftward leg needs a row whose code is safe to run in
+    reverse.
+
+    A run of one repeated character is exactly that: ``-----`` executed
+    right-to-left is the same program as left-to-right.  So the return row
+    is not left blank but carries as much of the remaining run as is a
+    single repeated character, laid leftwards from the turn-down.  A run
+    that is all one character -- every ``+`` run a leaf writes, every ``-``
+    run an input reader normalizes with -- therefore uses both legs of the
+    zigzag instead of only the rightward one, halving the rows it costs.
+    The fill stops at the first character that differs, so the mixed runs
+    (a reader's ``,``, a leaf's pointer moves) simply resume rightwards on
+    the next segment row as before.
 
     ``grid`` grows downwards as the fold needs rows, so a caller only has to
     size it for its own geometry; :func:`rows_needed` still estimates the
@@ -84,11 +103,33 @@ def fold(
             grid[row][col] = "v"
             grid[row + 1][col] = "{"  # return row: head back to the margin
             grid[row + 1][left] = "v"
+            # The leftward leg runs the return row backwards, so it may only
+            # carry ops that read the same either way: one repeated
+            # character.  Lay them from the turn-down back towards the
+            # margin, stopping short of it so the 'v' there still catches
+            # the beam.
+            index += _fill_backwards(grid[row + 1], ops[index:], col - 1, left + 1)
             row += 2
             grid[row][left] = "}"  # next segment row: face right again
             col = left + 1
     reserve(grid, row + 1)
     return row, col
+
+
+def _fill_backwards(row: list[str], ops: str, start: int, stop: int) -> int:
+    """Write the leading same-character run of ``ops`` right-to-left.
+
+    Cells ``start`` down to ``stop`` are filled with the longest prefix of
+    ``ops`` made of one repeated character.  Returns how many ops that
+    consumed, so the caller can resume the run after them.
+    """
+    count = 0
+    limit = start - stop + 1
+    while count < min(len(ops), limit) and ops[count] == ops[0]:
+        count += 1
+    for offset in range(count):
+        row[start - offset] = ops[offset]
+    return count
 
 
 def fold_groups(
@@ -175,6 +216,12 @@ def rows_needed(run: int, width: int, left: int = MARGIN) -> int:
 
     Two rows per segment (the segment and the return row beneath it), plus
     a spare pair so a caller can always put a terminator on a fresh row.
+
+    This is an upper bound, not an exact count: :func:`fold` also fills the
+    return rows when the run is one repeated character, which can halve the
+    rows an all-``+`` or all-``-`` run actually uses.  Callers size their
+    grid from this and :func:`fold` grows it further if it ever needs to,
+    so an overestimate costs only the blank trailing rows a caller trims.
     """
     segment = segment_width(width, left)
     return 2 * (-(-run // segment) + 1)

@@ -50,10 +50,14 @@ most significant first, matching the other generators in this package.
   network scalar: the multi-wire path would need a ``<`` splitter tree to
   get back to individual rails, and the splitter's rounding rule makes that
   layout depend on ``n`` in a way this one does not.
-* the ``2n`` **literal buses** -- each input and each input's ``~`` -- are
-  built once, up front.  A bus may be tapped by any number of gates: it is
-  still one wiring with one driver, so fan-out costs nothing and no ``~`` is
-  ever duplicated.
+* the **literal buses** -- each input, and each input's ``~`` where some
+  minterm needs it -- are built once, up front.  A bus may be tapped by any
+  number of gates: it is still one wiring with one driver, so fan-out costs
+  nothing and no ``~`` is ever duplicated.  A complement no minterm selects
+  is not built at all: an input whose bit is 1 in every minterm never reads
+  it, and emitting one anyway leaves a ``~`` driving a bus nothing consumes,
+  plus the tap and the run out to it.  AND needs no ``~`` at all, which
+  takes its drawing from 324 characters to 144.
 * each minterm (a row of the table whose entry is ``1``) is a chain of
   two-input ``a`` gates over the ``n`` literal buses its index selects;
 * the minterms are combined by a chain of ``o`` gates, and the result runs
@@ -272,9 +276,15 @@ class _Builder:
         The spec makes a ``-`` at the start of a line an input port, so each
         input owns a row of its own; the rows are taken in order, which is
         the order the interpreter reads the bits in.
+
+        One bus column is enough.  An input port draws only the ``-`` and
+        the junction its bus starts from -- there is no gate glyph, nothing
+        to its left to read, and no separate output column -- so reserving a
+        whole gate's three columns, as this once did, left two empty
+        columns per input that every later wire then had to run across.
         """
         signal = self._new_signal()
-        _, column = self._gate_columns()
+        column = self._new_column()
         row = self.next_row
         self.next_row += _ROW_STEP
 
@@ -338,12 +348,17 @@ class _Builder:
         """Draw the ``:`` that prints ``source``'s value.
 
         ``:`` reads only a ``-`` directly to its left, so the signal is
-        brought to a junction and handed one cell along.
-        """
-        _, column = self._gate_columns()
-        row = self._new_band()
+        handed one cell along from the junction its bus already ends on.
 
-        self._tap(source, column, row)
+        No band or gate columns are reserved for it.  ``:`` is two glyphs
+        with nothing above, below, or left of them to keep clear, and the
+        bus it reads is the last one built -- so its own row is free to the
+        right by construction.  Taking a fresh band instead, as this once
+        did, put the output three rows below the gate that drives it and ran
+        the bus down to meet it, which is most of the staircase a small
+        circuit used to end on.
+        """
+        column, row = self.buses[source]
         self.layout.glyph(column + 1, row, "-")
         self.layout.glyph(column + 2, row, ":")
 
@@ -369,19 +384,26 @@ class _Builder:
         self._tap(signal, x, y)
 
 
-def _minterm(builder: _Builder, literals: list[tuple[int, int]], index: int) -> int:
+def _minterm(
+    builder: _Builder, literals: list[tuple[int, int | None]], index: int
+) -> int:
     """Return a signal that is 1 exactly when the inputs spell ``index``.
 
     ``literals`` holds, per input position, the ``(plain, negated)`` bus
-    signals; the bits of ``index`` choose which of each pair to AND.
+    signals; the bits of ``index`` choose which of each pair to AND.  The
+    negated half is ``None`` when no minterm needs that input's complement,
+    in which case this never selects it (see :func:`circuit_diagram`).
     """
     n = len(literals)
-    chosen = [
-        literals[position][0]
-        if (index >> (n - 1 - position)) & 1
-        else literals[position][1]
-        for position in range(n)
-    ]
+    chosen = []
+    for position in range(n):
+        plain, negated = literals[position]
+        if (index >> (n - 1 - position)) & 1:
+            chosen.append(plain)
+        elif negated is None:
+            raise AssertionError(f"input {position} needs its complement")
+        else:
+            chosen.append(negated)
     result = chosen[0]
     for literal in chosen[1:]:
         result = builder.gate("a", result, literal)
@@ -402,16 +424,38 @@ def circuit_diagram(truth_table: str) -> str:
     _validate_truth_table(truth_table)
 
     builder = _Builder()
-    rails = [builder.input_bus() for _ in range(len(truth_table).bit_length() - 1)]
-    # Each input's complement is computed once and shared by every minterm.
-    literals = [(rail, builder.invert(rail)) for rail in rails]
+    n = len(truth_table).bit_length() - 1
+    rails = [builder.input_bus() for _ in range(n)]
 
     minterms = [i for i, bit in enumerate(truth_table) if bit == "1"]
     if not minterms:
-        result = builder.constant(rails[0], "x")
+        constant = "x"
     elif len(minterms) == len(truth_table):
-        result = builder.constant(rails[0], "X")
+        constant = "X"
     else:
+        constant = None
+
+    if constant is not None:
+        # A constant table is one self-fed gate over ``rails[0]``; it reads no
+        # literal at all, so building the complements would leave every one of
+        # them driving a bus nothing consumes.  (An all-ones table is the trap
+        # here: every index is a minterm, so a per-minterm test concludes no
+        # complement is needed for a table that reads none of them either way.)
+        result = builder.constant(rails[0], constant)
+    else:
+        # A complement is computed once and shared by every minterm that
+        # selects it -- but only if one does.  An input whose bit is 1 in every
+        # minterm (both inputs of an AND, say) never reads its ``~``, and
+        # building one anyway leaves a gate driving a bus nothing consumes,
+        # plus the tap and the run out to it.
+        needs_complement = [
+            any(not (index >> (n - 1 - position)) & 1 for index in minterms)
+            for position in range(n)
+        ]
+        literals: list[tuple[int, int | None]] = [
+            (rail, builder.invert(rail) if needed else None)
+            for rail, needed in zip(rails, needs_complement, strict=True)
+        ]
         result = _minterm(builder, literals, minterms[0])
         for index in minterms[1:]:
             result = builder.gate("o", result, _minterm(builder, literals, index))
