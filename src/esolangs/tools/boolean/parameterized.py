@@ -172,11 +172,14 @@ def back(truth_table: str) -> str:
     the current tape bit, ``+`` steps the beam forward when the current bit
     is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
     and ``*`` halts printing the tape.  Each input is embedded once by
-    filling its tape cell: ``{Xi}`` becomes ``-`` for a one bit and ``+``
-    for a zero, so cells ``0..n-1`` hold the inputs and cell ``n`` is the
-    answer cell.  Each gets a second load row holding a ``+`` of its own,
-    so both bits cost the same two rows -- a zero used to embed as a blank
-    the rstrip then removed, which made the program's height reveal it.
+    filling its tape cell over two load rows: a constant ``-`` primes the
+    cell to 1 for either bit, then ``{Xi}`` finishes it -- ``+`` (inert on
+    a set cell) for a one, ``-`` (flipping it back) for a zero.  So cells
+    ``0..n-1`` hold the inputs and cell ``n`` is the answer cell.  Both
+    bits cost the same two rows and, because no ``+`` ever meets a zero
+    cell here, both rows run for either bit.  A zero used to embed as a
+    blank the rstrip then removed, which made the program's height reveal
+    it.
 
     A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
     the beam straight past the ``\`` when it is 0) and ``\`` reflects the
@@ -214,8 +217,15 @@ def back(truth_table: str) -> str:
         # the beam reads one cell per row in column 0, so the setter's second
         # command needs a row of its own rather than the column beside it.
         # Where the tree is the taller of the two these rows already exist.
+        #
+        # The first row is a constant '-' that primes the cell to 1 for both
+        # bits alike, and the *second* carries the placeholder that finishes
+        # it: '-' again to flip a zero back down, '+' to leave a one standing.
+        # Putting the bit on the trailing row rather than the leading one is
+        # what makes every load row execute -- see the fill for why the older
+        # '{Xi}' + '+' order skipped a row instead.
+        units.append("-")
         units.append("{X" + str(i) + "}")
-        units.append("+")
         if i < n - 1:
             units.append(">")
     units.append(">")
