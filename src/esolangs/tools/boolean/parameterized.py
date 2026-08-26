@@ -802,14 +802,20 @@ _TREE_BRANCH_1 = ["*  ", "** ", "   "]  # reflects the down-route back to the ri
 # walls sized so each block's glyphs occupy the same number of characters as
 # the zero block it stands against (18 for the first, 14 for the rest).
 #
+# What a row costs is ``len(row.rstrip())``, so what matters is the column
+# its *last* glyph sits in -- a row needs one wall, not a run of them, and
+# the blanks to its left are paid for either way.  The ``~`` rows are the
+# exception: the ``~`` is at column 3 and the row has to reach 5, so the
+# wall goes at column 4 and columns 0-2 are filled to keep the ``~`` where
+# the routing wants it.
+#
 # ``*`` turns the IP clockwise, so a wall is only inert where the IP cannot
 # reach it.  The IP enters the header at (0, 0) heading right and crosses
 # columns 0-2 of that row to reach its ``*``, so the first block's row 0 is
-# left exactly as it was; every other cell walled here -- columns 0-2 below
-# the entry row, and column 4 -- is one no run visits.
-_FIRST_ONE = ["   *", "***~*", "***", "***", "***"]
+# left exactly as it was; every cell walled here is one no run visits.
+_FIRST_ONE = ["   *", "***~*", "  *", "  *", "  *"]
 _FIRST_ZERO = ["   *", "*~* ", "*  *", "*  *", "* * "]
-_NEXT_ONE = ["***~*", "***", "***", "***"]
+_NEXT_ONE = ["***~*", "  *", "  *", "  *"]
 _NEXT_ZERO = ["*~* ", "*  *", "*  *", "* * "]
 
 # The loop-component section: entered heading down at column 3 from the last
