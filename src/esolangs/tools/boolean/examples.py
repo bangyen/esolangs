@@ -249,31 +249,36 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
 
 
 def _fill_back(template: str, bits: list[int]) -> str:
-    """Set each input cell: ``-`` flips it to one, ``+`` leaves it zero.
+    """Finish each input cell: ``+`` leaves the one, ``-`` flips it to zero.
 
-    The beam reads one cell per row as it runs up column 0, so a setter is
-    one command and the template gives each input a second row for the
-    ``+`` that pads it.  At the pad row the pointer is still on input cell
-    ``i``, the cell just set -- not the answer cell, which the tree reaches
-    only later -- so the pad reads the embedded bit itself.  ``+`` steps the
-    beam only when the current cell is zero, so the two bits spend the pad
-    row differently: a zero's ``+`` setter fires and *skips* the pad, while
-    a one's ``-`` setter leaves the cell at 1 so the pad ``+`` does not fire
-    and simply falls through.  Either way the pair costs exactly two rows
-    and the ``>`` on the row past the pad is reached, which is what keeps
-    the two bits the same size.  A zero used to embed as a
-    blank, which the beam ignores just as happily -- but the fill rstrips,
-    so that row vanished and the program's size carried the input: at
-    ``n == 2`` the four instantiations were 41, 42, and 43 characters over
-    six or seven rows, where they are now all 47 over nine.  Contrast
-    :func:`_fill_cod`, whose blank is a grid cell that cannot be stripped
-    and so leaks nothing.
+    The beam reads one cell per row as it runs up column 0, so setting a
+    cell takes two rows.  The template writes the first as a constant ``-``
+    that primes the cell to 1 whatever the bit is, and this fill supplies
+    the second, which finishes the job against a cell already holding 1: a
+    one bit embeds ``+``, inert on a set cell, and a zero bit embeds ``-``,
+    flipping it back down.  So the pointer is on input cell ``i`` throughout
+    -- never the answer cell, which the tree reaches only later.
+
+    Priming first is what makes both rows *execute*.  ``+`` steps the beam
+    an extra cell when the current cell is zero, so the older ``{Xi}`` +
+    ``+`` order had a zero bit's ``+`` setter fire on the still-zero cell
+    and skip its own pad row; the pair cost two rows but only ever ran one
+    of them, and which one depended on the bit.  Against a primed cell no
+    ``+`` ever fires, so both rows run for either bit and the ``>`` past
+    them is reached the same way.
+
+    A zero used to embed as a blank, which the beam ignores just as happily
+    -- but the fill rstrips, so that row vanished and the program's size
+    carried the input: at ``n == 2`` the four instantiations were 41, 42,
+    and 43 characters over six or seven rows, where they are now all 47
+    over nine.  Contrast :func:`_fill_cod`, whose blank is a grid cell that
+    cannot be stripped and so leaks nothing.
     """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "-" if b else "+",
-        lambda _i, b: "-" if b else "+",
+        lambda _i, b: "+" if b else "-",
+        lambda _i, b: "+" if b else "-",
     )
 
 
