@@ -404,19 +404,37 @@ def _streetcode_shared(n: int) -> list[str]:
     tail = "_" * n
     blocks = [_streetcode_ring("^"), _streetcode_shared_lap(body)]
 
+    # The prefix runs down a shaft rather than along the street: the car
+    # drives the western lane downward and the eastern one back up, so its
+    # 2n+6 instructions cost four columns instead of 2n+6.  The eastern lane
+    # is drawn bottom-up, since that is the order the climb reads it.
+    down, up = prefix[: len(prefix) // 2], prefix[len(prefix) // 2 :]
+    depth = max(len(down), len(up))
+    down = down.ljust(depth)
+    up = up.ljust(depth)
+
     # The street is left open at its eastern end: the tree is joined on there
     # by :func:`_streetcode_combine` and supplies the closing wall, exactly as
     # the strip shapes' populate does.
-    width = 1 + len(prefix) + sum(len(b[0]) for b in blocks) + len(tail)
-    height = 3 + max(len(b) for b in blocks)
+    head = 4  # the shaft's western wall, its two lanes, and its eastern wall
+    width = head + sum(len(b[0]) for b in blocks) + len(tail)
+    height = max(3 + max(len(b) for b in blocks), 5 + depth)
     grid = [[" "] * width for _ in range(height)]
     grid[0] = list("+" + "-" * (width - 1))
     for r in (1, 2):
         grid[r][0] = "|"
     grid[3] = list("+" + "-" * (width - 1))
-    for i, char in enumerate(prefix):
-        grid[2][1 + i] = char
-    left = 1 + len(prefix)
+    # Cut the shaft's mouth into the street's southern wall and draw it.
+    grid[3][1] = grid[3][2] = " "
+    grid[3][3] = "+"
+    for i in range(depth):
+        grid[4 + i][0] = "|"
+        grid[4 + i][1] = down[i]
+        grid[4 + i][2] = up[depth - 1 - i]
+        grid[4 + i][3] = "|"
+    for c in range(head):
+        grid[4 + depth][c] = "+" if c in (0, head - 1) else "-"
+    left = head
     for block in blocks:
         for r, row in enumerate(block):
             for c, char in enumerate(row):

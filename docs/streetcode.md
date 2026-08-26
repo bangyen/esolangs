@@ -620,6 +620,23 @@ the counter, and the drop on the way out lands CP on the loader, which is
 seeded to 1 and only climbs. That seed is load-bearing for exactly this
 reason.
 
+The prefix runs down a **shaft** rather than along the street:
+
+    +--
+    |
+    |
+    |C^+
+    |==|
+    |I=|
+    |=^|
+    +--+
+
+The car drives the western lane downward and the eastern one back up, so
+the prefix's 2n+6 instructions cost four columns instead of 2n+6 -- and
+since every row of the program is that much shorter, the saving grows with
+the tree: 55 bytes at n=1, 704 at n=4. The eastern lane is drawn bottom-up,
+because that is the order the climb reads it.
+
 The reads carry no `^`, either. `I` stores the code point of an ASCII digit,
 48 or 49, so a cell it just filled is nonzero on its own -- the bump the
 strip shapes carry is redundant here. The ring then subtracts exactly 48 and
