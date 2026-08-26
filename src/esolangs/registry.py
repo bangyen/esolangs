@@ -15,6 +15,7 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from esolangs.tools import boolean as _boolean
 from esolangs.tools import text as _generate
 
 # Display names whose canonical id cannot be produced by the slug rules
@@ -80,7 +81,11 @@ class Language:
     ``esolangs.interpreters`` that runs programs (None if the executable
     lives elsewhere, e.g. in extra/).  ``split`` passes the program split
     into lines to the interpreter, and ``kwargs`` holds any extra run()
-    keyword arguments as (name, value) pairs.
+    keyword arguments as (name, value) pairs.  ``boolean`` produces a
+    program computing a truth table (None if the language has no boolean
+    generator); :data:`~esolangs.tools.boolean.BOOLEAN` is derived from it,
+    so registering the generator here is the whole of adding one, with no
+    second list to keep in step.
     """
 
     name: str
@@ -89,6 +94,7 @@ class Language:
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
     id: str = ""
+    boolean: Callable[[str], str] | None = None
 
 
 def _kw(**kwargs: int) -> tuple[tuple[str, int], ...]:
@@ -100,10 +106,12 @@ LANGUAGES: dict[str, Language] = {
         "AddSubJump",
         _generate.addsubjump,
         "register_based.addsubjump",
+        boolean=_boolean.addsubjump,
         id="addsubjump",
     ),
     "A Painter Ant": Language(
         "A Painter Ant",
+        boolean=_boolean.a_painter_ant,
         id="a_painter_ant",
         interpreter="grid_based.a_painter_ant",
     ),
@@ -117,6 +125,7 @@ LANGUAGES: dict[str, Language] = {
         "6-5",
         _generate.six_five,
         "tape_based.six_five",
+        boolean=_boolean.six_five,
         id="six_five",
     ),
     "%^2^-1": Language(
@@ -127,18 +136,21 @@ LANGUAGES: dict[str, Language] = {
     ),
     "ArrowQueue": Language(
         "ArrowQueue",
+        boolean=_boolean.arrowqueue,
         id="arrowqueue",
         interpreter="grid_based.arrowqueue",
         split=True,
     ),
     "Back": Language(
         "Back",
+        boolean=_boolean.back,
         id="back",
         interpreter="tape_based.back",
         split=True,
     ),
     "BF-PDA": Language(
         "BF-PDA",
+        boolean=_boolean.bfpda,
         id="bf_pda",
         interpreter="stack_based.bf_pda",
     ),
@@ -146,12 +158,14 @@ LANGUAGES: dict[str, Language] = {
         "Basicfuck",
         _generate.basicfuck,
         "tape_based.basicfuck",
+        boolean=_boolean.basicfuck,
         id="basicfuck",
     ),
     "Between": Language(
         "Between",
         _generate.between,
         "register_based.between",
+        boolean=_boolean.between,
         id="between",
         split=True,
     ),
@@ -159,28 +173,33 @@ LANGUAGES: dict[str, Language] = {
         "brainfuck",
         _generate.brainfuck,
         "tape_based.brainfuck",
+        boolean=_boolean.brainfuck,
         id="brainfuck",
     ),
     "BFStack": Language(
         "BFStack",
         _generate.bfstack,
         "stack_based.bfstack",
+        boolean=_boolean.bfstack,
         id="bfstack",
     ),
     "BIO": Language(
         "BIO",
         _generate.bio,
         "register_based.bio",
+        boolean=_boolean.bio,
         id="bio",
     ),
     "bit~": Language(
         "bit~",
         _generate.bit_tilde,
         "tape_based.bit_tilde",
+        boolean=_boolean.bit_tilde,
         id="bit_tilde",
     ),
     "Bitdeque": Language(
         "Bitdeque",
+        boolean=_boolean.bitdeque,
         id="bitdeque",
         interpreter="queue_based.bitdeque",
     ),
@@ -188,6 +207,7 @@ LANGUAGES: dict[str, Language] = {
         "BrainIf",
         _generate.brainif,
         "tape_based.brainif",
+        boolean=_boolean.brainif,
         id="brainif",
         split=True,
     ),
@@ -195,10 +215,12 @@ LANGUAGES: dict[str, Language] = {
         "Circlefuck",
         _generate.circlefuck,
         "tape_based.circlefuck",
+        boolean=_boolean.circlefuck,
         id="circlefuck",
     ),
     "Circuit Diagram": Language(
         "Circuit Diagram",
+        boolean=_boolean.circuit_diagram,
         id="circuit_diagram",
         interpreter="grid_based.circuit_diagram",
         split=True,
@@ -207,11 +229,13 @@ LANGUAGES: dict[str, Language] = {
         "Clockwise",
         _generate.clockwise,
         "grid_based.clockwise",
+        boolean=_boolean.clockwise,
         id="clockwise",
         split=True,
     ),
     "COD": Language(
         "COD",
+        boolean=_boolean.cod,
         id="cod",
         interpreter="grid_based.cod",
     ),
@@ -219,18 +243,21 @@ LANGUAGES: dict[str, Language] = {
         "Collatz Multiverse",
         _generate.collatz_multiverse,
         "register_based.collatz_multiverse",
+        boolean=_boolean.collatz_multiverse,
         id="collatz_multiverse",
     ),
     "Decleq": Language(
         "Decleq",
         _generate.decleq,
         "register_based.decleq",
+        boolean=_boolean.decleq,
         id="decleq",
     ),
     "Container": Language(
         "Container",
         _generate.container,
         "other.container",
+        boolean=_boolean.container,
         id="container",
         split=True,
     ),
@@ -238,6 +265,7 @@ LANGUAGES: dict[str, Language] = {
         "Dig",
         _generate.dig,
         "grid_based.dig",
+        boolean=_boolean.dig,
         id="dig",
         split=True,
     ),
@@ -245,22 +273,26 @@ LANGUAGES: dict[str, Language] = {
         "Dimensional",
         _generate.dimensional,
         "tape_based.dimensional",
+        boolean=_boolean.dimensional,
         id="dimensional",
     ),
     "Eval": Language(
         "Eval",
         _generate.eval,
         "stack_based.eval",
+        boolean=_boolean.eval,
         id="eval",
     ),
     "Factor": Language(
         "Factor",
         _generate.factor,
         "tape_based.factor",
+        boolean=_boolean.factor,
         id="factor",
     ),
     "Flowchart": Language(
         "Flowchart",
+        boolean=_boolean.flowchart,
         id="flowchart",
         interpreter="grid_based.flowchart",
         split=True,
@@ -269,16 +301,19 @@ LANGUAGES: dict[str, Language] = {
         "Forþ",
         _generate.forth,
         "stack_based.forth",
+        boolean=_boolean.forth,
         id="forth",
     ),
     "Forbin": Language(
         "Forbin",
         _generate.forbin,
         "other.forbin",
+        boolean=_boolean.forbin_boolean,
         id="forbin",
     ),
     "Grapheme": Language(
         "Grapheme",
+        boolean=_boolean.grapheme,
         id="grapheme",
         interpreter="stack_based.grapheme",
     ),
@@ -286,15 +321,18 @@ LANGUAGES: dict[str, Language] = {
         "Home Row",
         _generate.home_row,
         "tape_based.home_row",
+        boolean=_boolean.home_row,
         id="home_row",
     ),
     "Jaune": Language(
         "Jaune",
+        boolean=_boolean.jaune,
         id="jaune",
         interpreter="tape_based.jaune",
     ),
     "Lamfunc": Language(
         "Lamfunc",
+        boolean=_boolean.lamfunc,
         id="lamfunc",
         interpreter="other.lamfunc",
     ),
@@ -302,6 +340,7 @@ LANGUAGES: dict[str, Language] = {
         "LaserFuck",
         _generate.laserfuck,
         "grid_based.laserfuck",
+        boolean=_boolean.laserfuck,
         id="laserfuck",
         split=True,
     ),
@@ -319,6 +358,7 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Minsky Swap": Language(
         "Minsky Swap",
+        boolean=_boolean.minsky_swap,
         id="minsky_swap",
         interpreter="register_based.minsky_swap",
     ),
@@ -326,18 +366,21 @@ LANGUAGES: dict[str, Language] = {
         "Modulous",
         _generate.modulous,
         "stack_based.modulous",
+        boolean=_boolean.modulous,
         id="modulous",
     ),
     "MyScript": Language(
         "MyScript",
         _generate.myscript,
         "register_based.myscript",
+        boolean=_boolean.myscript,
         id="myscript",
     ),
     "Nevermind": Language(
         "Nevermind",
         _generate.nevermind,
         "register_based.nevermind",
+        boolean=_boolean.nevermind,
         id="nevermind",
         split=True,
     ),
@@ -345,22 +388,26 @@ LANGUAGES: dict[str, Language] = {
         "NoComment",
         _generate.nocomment,
         "tape_based.nocomment",
+        boolean=_boolean.nocomment,
         id="nocomment",
     ),
     "Painfuck": Language(
         "Painfuck",
         _generate.painfuck,
         "tape_based.painfuck",
+        boolean=_boolean.painfuck,
         id="painfuck",
     ),
     "Polynomial": Language(
         "Polynomial",
         _generate.polynomial,
         "register_based.polynomial",
+        boolean=_boolean.polynomial,
         id="polynomial",
     ),
     "Point Break": Language(
         "Point Break",
+        boolean=_boolean.point_break,
         id="point_break",
         interpreter="register_based.point_break",
         split=True,
@@ -369,11 +416,13 @@ LANGUAGES: dict[str, Language] = {
         "Qoibl",
         _generate.qoibl,
         "register_based.qoibl",
+        boolean=_boolean.qoibl,
         id="qoibl",
         split=True,
     ),
     "RAM0": Language(
         "RAM0",
+        boolean=_boolean.ram0,
         id="ram0",
         interpreter="register_based.ram0",
     ),
@@ -381,30 +430,35 @@ LANGUAGES: dict[str, Language] = {
         "ROTfuck",
         _generate.rotfuck,
         "tape_based.rotfuck",
+        boolean=_boolean.rotfuck,
         id="rotfuck",
     ),
     "S*bleq": Language(
         "S*bleq",
         _generate.sbleq,
         "tape_based.sbleq",
+        boolean=_boolean.sbleq,
         id="sbleq",
     ),
     "3D Brainfuck": Language(
         "3D Brainfuck",
         _generate.three_d_brainfuck,
         "tape_based.three_d_brainfuck",
+        boolean=_boolean.three_d_brainfuck,
         id="three_d_brainfuck",
     ),
     "Sophie": Language(
         "Sophie",
         _generate.sophie,
         "register_based.sophie",
+        boolean=_boolean.sophie,
         id="sophie",
     ),
     "Streetcode": Language(
         "Streetcode",
         _generate.streetcode,
         "grid_based.streetcode",
+        boolean=_boolean.streetcode,
         id="streetcode",
         split=True,
     ),
@@ -412,6 +466,7 @@ LANGUAGES: dict[str, Language] = {
         "Suffolk",
         _generate.suffolk,
         "tape_based.suffolk",
+        boolean=_boolean.suffolk,
         id="suffolk",
         kwargs=_kw(limit=1),
     ),
@@ -419,18 +474,21 @@ LANGUAGES: dict[str, Language] = {
         "Suptiftam",
         _generate.suptiftam,
         "other.suptiftam",
+        boolean=_boolean.suptiftam,
         id="suptiftam",
     ),
     "3x": Language(
         "3x",
         _generate.three_x,
         "stack_based.three_x",
+        boolean=_boolean.three_x,
         id="three_x",
     ),
     "Taglate": Language(
         "Taglate",
         _generate.taglate,
         "queue_based.taglate",
+        boolean=_boolean.taglate,
         id="taglate",
         split=True,
     ),
@@ -438,12 +496,14 @@ LANGUAGES: dict[str, Language] = {
         "Unsquare",
         _generate.unsquare,
         "stack_based.unsquare",
+        boolean=_boolean.unsquare,
         id="unsquare",
     ),
     "WII2D": Language(
         "WII2D",
         _generate.wii2d,
         "grid_based.wii2d",
+        boolean=_boolean.wii2d,
         id="wii2d",
         split=True,
     ),
@@ -451,6 +511,7 @@ LANGUAGES: dict[str, Language] = {
         "ZTOALC L",
         _generate.ztoalc_l,
         "other.ztoalc_l",
+        boolean=_boolean.ztoalc_l_boolean,
         id="ztoalc_l",
         split=True,
     ),

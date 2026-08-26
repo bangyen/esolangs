@@ -143,65 +143,30 @@ __all__ = [
     "ztoalc_l_boolean",
 ]
 
-# Display names of the languages that have a boolean-function generator.
-# Single source of truth for the capability matrix and the public API's
-# ``describe``.
-BOOLEAN: frozenset[str] = frozenset(
-    {
-        "3x",
-        "A Painter Ant",
-        "AddSubJump",
-        "3D Brainfuck",
-        "6-5",
-        "ArrowQueue",
-        "Back",
-        "Basicfuck",
-        "Between",
-        "BF-PDA",
-        "Bitdeque",
-        "brainfuck",
-        "BFStack",
-        "BIO",
-        "bit~",
-        "BrainIf",
-        "Circlefuck",
-        "Circuit Diagram",
-        "Clockwise",
-        "COD",
-        "Collatz Multiverse",
-        "Container",
-        "Dig",
-        "Dimensional",
-        "Decleq",
-        "Eval",
-        "Factor",
-        "Flowchart",
-        "Forbin",
-        "Forþ",
-        "Grapheme",
-        "Home Row",
-        "Jaune",
-        "Lamfunc",
-        "LaserFuck",
-        "Minsky Swap",
-        "Modulous",
-        "MyScript",
-        "Nevermind",
-        "NoComment",
-        "Painfuck",
-        "Point Break",
-        "Polynomial",
-        "Qoibl",
-        "RAM0",
-        "ROTfuck",
-        "S*bleq",
-        "Sophie",
-        "Streetcode",
-        "Suffolk",
-        "Suptiftam",
-        "Taglate",
-        "Unsquare",
-        "WII2D",
-        "ZTOALC L",
-    }
-)
+
+def __getattr__(name: str) -> frozenset[str]:
+    """Derive ``BOOLEAN`` from the registry on first access.
+
+    Display names of the languages that have a boolean-function generator,
+    used by the capability matrix and the public API's ``describe``.
+
+    This is computed from :data:`~esolangs.registry.LANGUAGES` rather than
+    listed, so it cannot fall out of step with what the package actually
+    provides -- the failure it used to allow was silent, since a generator
+    missing from a hand-written set still worked while ``describe``
+    reported it absent.  ``text_generator`` has always been derived this
+    way (``lang.generator is not None``); this puts the boolean side on the
+    same footing.
+
+    The lookup is lazy because :mod:`esolangs.registry` imports this
+    package to reference the generators, so it cannot be imported at module
+    scope here.  The same reason ``tools.text`` imports the registry inside
+    its ``main``.
+    """
+    if name != "BOOLEAN":
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    from esolangs.registry import LANGUAGES
+
+    return frozenset(
+        lang.name for lang in LANGUAGES.values() if lang.boolean is not None
+    )
