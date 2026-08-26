@@ -405,15 +405,20 @@ def _fill_eval(template: str, bits: list[int]) -> str:
 def _fill_wii2d(template: str, bits: list[int]) -> str:
     """Set each junction: ``v`` takes the 1-branch, ``>`` continues east.
 
-    The junction is one cell and the start digit beside it is one more, so
-    the slot is two columns wide -- the placeholder's own four characters
-    are how it is spelled, not how much grid it needs.
+    A junction is a single cell, so the embed is one character with no
+    padding -- the placeholder's own four characters are how it is spelled,
+    not how much grid it needs.  The slot used to reserve a second column
+    for "the start digit beside it", but the start digit sits at column 1
+    and precedes junction 0 alone; every junction's second column was blank
+    travel on row 0, which the pointer crosses just as happily without.
+    The 1-branch's ops do start one column past the junction, but that is
+    on the detour row below, so row 0 never needed the room.
     """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "v " if b else "> ",
-        lambda _i, _b: "  ",
+        lambda _i, b: "v" if b else ">",
+        lambda _i, _b: " ",
     )
 
 
