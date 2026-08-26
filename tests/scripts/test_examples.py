@@ -41,7 +41,7 @@ def _file_name(display_name: str) -> str:
 EXAMPLES = {
     _file_name(lang.name): (lang.interpreter, lang.split, dict(lang.kwargs))
     for lang in LANGUAGES.values()
-    if lang.generator and lang.interpreter
+    if lang.text and lang.interpreter
 }
 
 # container halts by calling sys.exit(0)
@@ -77,11 +77,9 @@ def test_example_files_match_generator() -> None:
     newline, so the comparison is against the generator's output plus that
     newline.
     """
-    languages = [
-        lang for lang in LANGUAGES.values() if lang.generator and lang.interpreter
-    ]
+    languages = [lang for lang in LANGUAGES.values() if lang.text and lang.interpreter]
     for lang in languages:
-        assert lang.generator is not None
+        assert lang.text is not None
         path = EXAMPLES_DIR / f"{_file_name(lang.name)}.txt"
         expected = (
             generate(lang.name, "Hello, World!", DEFAULT_WIDTH).rstrip("\n") + "\n"

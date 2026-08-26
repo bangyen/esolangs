@@ -1,6 +1,6 @@
 """Single source of truth for the languages the package supports.
 
-Each :class:`Language` describes a language's generator (if any), its
+Each :class:`Language` describes a language's generators (if any), its
 interpreter (if any), and how a program is handed to that interpreter. The
 public API, the tools, and the test suite all derive from this table, so
 adding a language is a one-place change.
@@ -75,21 +75,24 @@ class Language:
     ``id`` is the language's canonical internal identifier: the slug
     :func:`canonical_id` produces from the display name, used for the
     interpreter module, the generator function, and the test file, so every
-    internal reference to a language uses the same token.  ``generator``
-    produces a program that prints a text (None if the language has no
-    generator).  ``interpreter`` is the dotted module under
+    internal reference to a language uses the same token.
+
+    ``text`` and ``boolean`` are the language's two generators, either of
+    which may be None: ``text`` produces a program that prints a text, and
+    ``boolean`` one computing a truth table.  Both
+    :data:`GENERATORS` and :data:`~esolangs.tools.boolean.BOOLEAN` are
+    derived from them, so registering a generator here is the whole of
+    adding one, with no second list to keep in step.
+
+    ``interpreter`` is the dotted module under
     ``esolangs.interpreters`` that runs programs (None if the executable
     lives elsewhere, e.g. in extra/).  ``split`` passes the program split
     into lines to the interpreter, and ``kwargs`` holds any extra run()
-    keyword arguments as (name, value) pairs.  ``boolean`` produces a
-    program computing a truth table (None if the language has no boolean
-    generator); :data:`~esolangs.tools.boolean.BOOLEAN` is derived from it,
-    so registering the generator here is the whole of adding one, with no
-    second list to keep in step.
+    keyword arguments as (name, value) pairs.
     """
 
     name: str
-    generator: Generator | None = None
+    text: Generator | None = None
     interpreter: str | None = None
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
@@ -520,15 +523,13 @@ LANGUAGES: dict[str, Language] = {
 
 # Display name -> generator function, for languages that have one.
 GENERATORS: dict[str, Generator] = {
-    name: lang.generator for name, lang in LANGUAGES.items() if lang.generator
+    name: lang.text for name, lang in LANGUAGES.items() if lang.text
 }
 
 # Generator function name -> Language, so tests can look a generator up by
 # the name of its function (e.g. ``six_five`` for "6-5").
 BY_FUNCTION: dict[str, Language] = {
-    lang.generator.__name__: lang
-    for lang in LANGUAGES.values()
-    if lang.generator is not None
+    lang.text.__name__: lang for lang in LANGUAGES.values() if lang.text is not None
 }
 
 # Display name -> (interpreter module, split lines, run() keyword arguments).

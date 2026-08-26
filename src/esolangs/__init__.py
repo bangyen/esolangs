@@ -161,7 +161,7 @@ def describe(language: str) -> dict[str, object]:
         "id": lang.id,
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
-        "text_generator": lang.generator is not None,
+        "text_generator": lang.text is not None,
         "boolean_generator": lang.boolean is not None,
         "transpilers": transpilers,
         "examples": examples,
