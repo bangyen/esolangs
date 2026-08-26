@@ -798,14 +798,24 @@ class TestParameterizedBfpda:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_bfpda
 
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "<@" if b else "<",
-            lambda _i, b: "<@" if not b else "<",
-        )
+        return _fill_bfpda(tpl, bits)
+
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """The setter is four characters whichever bit it carries."""
+        from esolangs.tools.boolean.examples import _fill_bfpda
+
+        for n in (1, 2, 3):
+            for i in range(n):
+                placeholder = "{X" + str(i) + "}"
+                zeros = [0] * n
+                ones = list(zeros)
+                ones[i] = 1
+                assert len(_fill_bfpda(placeholder, zeros)) == len(
+                    _fill_bfpda(placeholder, ones)
+                ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
         ("table", "n"),
