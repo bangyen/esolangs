@@ -10,6 +10,8 @@ from typing import cast
 # module stays the import site the package and tests already use.
 from esolangs.tools.boolean.dimensional import dimensional, dimensional_tree
 from esolangs.tools.boolean.helpers import (
+    _ASCII_ONE,
+    _ASCII_ZERO,
     _maybe_complement,
     _validate_truth_table,
     decision_tree_program,
@@ -17,6 +19,7 @@ from esolangs.tools.boolean.helpers import (
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five, six_five_arithmetic
 from esolangs.tools.text.tape import _factor_encode
+from esolangs.tools.wrap import shortest
 
 __all__ = [
     "basicfuck",
@@ -78,11 +81,11 @@ def brainif(truth_table: str) -> str:
         sub0 = build(g0, k + 1)
         sub1 = build(g1, k + 1)
         return [
-            ("if", 48, l0),
-            ("if", 49, l1),
-            ("mr", 48, l0),
+            ("if", _ASCII_ZERO, l0),
+            ("if", _ASCII_ONE, l1),
+            ("mr", _ASCII_ZERO, l0),
             *sub0,
-            ("mr", 49, l1),
+            ("mr", _ASCII_ONE, l1),
             *sub1,
         ]
 
@@ -92,9 +95,9 @@ def brainif(truth_table: str) -> str:
         entries.append(("out", r))
         entries.append(("cmd", "if 48 move right"))
         entries.append(("cmd", "if 49 move right"))
-        entries += [("cmd", f"if {v} increment") for v in range(48 + r)]
-        entries.append(("cmd", f"if {48 + r} output"))
-        entries.append(("cmd", f"if {48 + r} goto end"))
+        entries += [("cmd", f"if {v} increment") for v in range(_ASCII_ZERO + r)]
+        entries.append(("cmd", f"if {_ASCII_ZERO + r} output"))
+        entries.append(("cmd", f"if {_ASCII_ZERO + r} goto end"))
     entries.append(("end",))
 
     # resolve labels from the actual line sequence (the "out" markers emit
@@ -149,7 +152,7 @@ def circlefuck(truth_table: str) -> str:
     tree never needs to skip the sibling branch.  A boolean table is just
     the byte-valued generator with ``48 + bit`` outputs.
     """
-    return circlefuck_byte([48 + int(bit) for bit in truth_table])
+    return circlefuck_byte([_ASCII_ZERO + int(bit) for bit in truth_table])
 
 
 def circlefuck_byte(truth_table: Sequence[int]) -> str:
@@ -174,7 +177,7 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
 
     for _ in range(n):
         emit(",")
-        prog.extend("-" * 48)
+        prog.extend("-" * _ASCII_ZERO)
         emit(">")
     prog.pop()  # the trailing ">" would leave the pointer past the last input
 
@@ -270,7 +273,7 @@ def _bf_minterm(truth_table: str) -> str:
     for i in cell.inputs:
         cell.move(i)
         cell.code.append(",")
-        cell.code.append("-" * 48)
+        cell.code.append("-" * _ASCII_ZERO)
     cell.zero(cell.sum)
     for k in range(2**n):
         if table[k] == "0":
@@ -327,9 +330,9 @@ def _bf_minterm(truth_table: str) -> str:
     if use_complement:
         # The sum holds 0/1 for the complement; print 49 - sum via a fresh
         # cell to the right (cleared, set to 49, decremented by the sum).
-        cell.code.append(">[-]" + "+" * 49 + "<[>-<-]>.")
+        cell.code.append(">[-]" + "+" * _ASCII_ONE + "<[>-<-]>.")
     else:
-        cell.code.append("+" * 48)
+        cell.code.append("+" * _ASCII_ZERO)
         cell.code.append(".")
     return "".join(cell.code)
 
@@ -350,7 +353,7 @@ def brainfuck(truth_table: str) -> str:
     - :func:`bf_tree`: a decision tree sharing the bit tests.  Best for
       dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
     """
-    return min((_bf_minterm(truth_table), bf_tree(truth_table)), key=len)
+    return shortest(_bf_minterm(truth_table), bf_tree(truth_table))
 
 
 def factor(truth_table: str) -> str:
@@ -498,7 +501,7 @@ def basicfuck(truth_table: str) -> str:
         indent = "  " * depth
         if len(rows) == 1:
             value = int(truth_table[rows[0]])
-            return f"{indent}out += {48 + value} ;\n{indent}write <- out ;\n"
+            return f"{indent}out += {_ASCII_ZERO + value} ;\n{indent}write <- out ;\n"
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
         var = f"a{k}"
@@ -604,7 +607,7 @@ def sbleq(truth_table: str) -> str:
             cells += [0, 0, data_base + c]
         else:  # read/normalize: make every data-cell operand absolute
             cells += [data_base + a, -2 if b == -2 else data_base + b, data_base + c]
-    data = [-49, 48, 49, -1] + [0] * (3 * m)
+    data = [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1] + [0] * (3 * m)
     for nid, normalize_addr, one_addr in nodes:
         data[4 + m + nid] = normalize_addr
         data[4 + 2 * m + nid] = one_addr
@@ -824,14 +827,16 @@ def suffolk(truth_table: str) -> str:
         # A constant table needs no minterms, but the reads are the language's
         # interface: skipping them leaves the caller's bits unread on the input
         # stream.  Read each input into its own scratch cell and discard it.
-        reads = "".join(const(2 + i, 48) + ">" * (2 + i) + "," + "!" for i in range(n))
-        return const(1, 49 + int(truth_table[0])) + reads + ">" + "<" + "."
+        reads = "".join(
+            const(2 + i, _ASCII_ZERO) + ">" * (2 + i) + "," + "!" for i in range(n)
+        )
+        return const(1, _ASCII_ONE + int(truth_table[0])) + reads + ">" + "<" + "."
 
-    code = const(1, 49)  # cell 1: the final additive constant
+    code = const(1, _ASCII_ONE)  # cell 1: the final additive constant
     # cells 2..2+n-1: complement of each input bit (1 - bit)
     for i in range(n):
         gap = 2 + i
-        code += const(gap, 48) + ">" * gap + "," + "!"
+        code += const(gap, _ASCII_ZERO) + ">" * gap + "," + "!"
     # cells 2+n..2+2n-1: the raw bit, recovered from the complement
     for i in range(n):
         gap = 2 + i

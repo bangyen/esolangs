@@ -5,7 +5,7 @@ behaviour matches the truth table, checking candidates with a small
 simulator (:func:`_ztoalc_ok`) rather than constructing them directly.
 """
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["ztoalc_l_boolean"]
 
@@ -66,7 +66,7 @@ def _ztoalc_lines(table: str, n: int, b1: int) -> dict[int, str]:
     def build(combos: list[int], root: int, depth: int) -> None:
         results = {table[c] for c in combos}
         if len(results) == 1:
-            lines[root - 1] = f"print {48 + int(results.pop())}"
+            lines[root - 1] = f"print {_ASCII_ZERO + int(results.pop())}"
             return
         lines[root - 1] = f"jump a x{depth}"
         bit = n - 1 - depth

@@ -7,7 +7,11 @@
 from typing import NamedTuple
 
 from esolangs.tools import laserfuck_layout
-from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _ASCII_ZERO,
+    _maybe_complement,
+    _validate_truth_table,
+)
 from esolangs.tools.boolean.streetcode import streetcode
 from esolangs.tools.boolean.ztoalc_l import ztoalc_l_boolean
 
@@ -829,7 +833,7 @@ def taglate(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n == 1:
-        base = 48 + int(truth_table[0])
+        base = _ASCII_ZERO + int(truth_table[0])
         coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536
         seed = "0" + chr(coeff) + chr(base)
         return seed + "\n" + "h" + "e" * 3 + "b" + "e" * 2 + "ca" + "i"
@@ -972,7 +976,7 @@ def clockwise(truth_table: str) -> str:
         result = int(truth_table[combo])
         code = "S"
         acc = 0
-        for bit in format(48 + result, "07b"):
+        for bit in format(_ASCII_ZERO + result, "07b"):
             if acc % 2 != int(bit):
                 code += "+"
                 acc += 1
@@ -1225,7 +1229,7 @@ def forbin_boolean(truth_table: str) -> str:
     def emit(level: int, row: int, depth: int) -> None:
         indent = "  " * depth
         if level == n:
-            byte = 49 if truth_table[row] == "1" else 48
+            byte = _ASCII_ZERO + int(truth_table[row])
             lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
             lines.append(f"{indent}return 0;")
             return
