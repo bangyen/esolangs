@@ -561,6 +561,19 @@ def sbleq(truth_table: str) -> str:
         results = {truth_table[r] for r in rows}
         if len(results) == 1:
             instructions.append((-3, 1 + int(results.pop()), 0))
+            # Drain the reads the untaken siblings would have made, after the
+            # output so they cannot disturb it: an input-capable language reads
+            # each of its n inputs exactly once per run whatever the table
+            # says, or the caller's remaining bits stay on the input stream.
+            # Each drained level allocates a node whose branches both continue
+            # here, so the read happens and the control flow is unchanged.
+            for _ in range(level, n):
+                nid = counter
+                counter += 1
+                instructions.append((4 + nid, -2, 0))  # read; c patched to NXT
+                normalize_addr = 3 * len(instructions)
+                instructions.append((4 + nid, 0, 0))  # normalize; patched below
+                nodes.append((nid, normalize_addr, 3 * len(instructions)))
             instructions.append((0, 0, 3))
             return
         nid = counter
@@ -807,10 +820,12 @@ def suffolk(truth_table: str) -> str:
         """
         return (">" * gap + "!") * value
 
-    if all(c == "0" for c in truth_table):
-        return const(1, 49) + ">" + "<" + "."
-    if all(c == "1" for c in truth_table):
-        return const(1, 50) + ">" + "<" + "."
+    if len({*truth_table}) == 1:
+        # A constant table needs no minterms, but the reads are the language's
+        # interface: skipping them leaves the caller's bits unread on the input
+        # stream.  Read each input into its own scratch cell and discard it.
+        reads = "".join(const(2 + i, 48) + ">" * (2 + i) + "," + "!" for i in range(n))
+        return const(1, 49 + int(truth_table[0])) + reads + ">" + "<" + "."
 
     code = const(1, 49)  # cell 1: the final additive constant
     # cells 2..2+n-1: complement of each input bit (1 - bit)

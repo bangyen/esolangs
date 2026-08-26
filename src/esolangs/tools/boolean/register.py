@@ -129,10 +129,17 @@ def addsubjump(truth_table: str) -> str:
     values["U"] = 0
     values["D48"] = 48
     values["D49"] = 49
+    values["DUMP"] = 0  # scratch the collapsed leaves read into and discard
 
     def build(level: int, rows: list[int]) -> None:
         results = {truth_table[r] for r in rows}
         if len(results) == 1:
+            # Drain the reads the untaken siblings would have made: an
+            # input-capable language reads each of its n inputs exactly once
+            # per run whatever the table says, or the caller's remaining bits
+            # are left on the input stream.  DUMP is write-only scratch.
+            for _ in range(level, n):
+                emit("DUMP", -1, "next", -7)  # DUMP += input byte, discarded
             out = 48 if results.pop() == "0" else 49
             emit(-1, f"D{out}", -8, -7)
             return
@@ -218,10 +225,16 @@ def collatz_multiverse(truth_table: str) -> str:
     byte constants come from the text generator's constant table.
     """
     n = _validate_truth_table(truth_table)
-    if all(c == "0" for c in truth_table):
-        return "\n".join([*_cm_constants({48}), "out = negativeOne x + k48, DO PRINT."])
-    if all(c == "1" for c in truth_table):
-        return "\n".join([*_cm_constants({49}), "out = negativeOne x + k49, DO PRINT."])
+    if all(c == truth_table[0] for c in truth_table):
+        # A constant table needs no evaluation, but the reads are the language's
+        # interface: skipping them would leave the caller's bits unread on the
+        # input stream and drop the prompts a prompting interpreter emits.  So
+        # read every input, discard it, and print the constant.
+        const = 48 + int(truth_table[0])
+        lines = _cm_constants({const})
+        lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
+        lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
+        return "\n".join(lines)
 
     lines = _cm_constants({48})
     for i in range(n):
@@ -446,9 +459,20 @@ def polynomial(truth_table: str) -> str:
         vals = {truth_table[r] for r in rows}
         if len(vals) == 1:
             v = int(vals.pop())
+            # A collapsed subtree still owes the reads its untaken siblings
+            # would have made: an input-capable language reads each of its n
+            # inputs exactly once per run, whatever the table says, or the
+            # caller's remaining bits are left on the input stream.
             emit_delta(48 + v - last)
             instrs.append([0, 1])  # output
-            emit_delta(1 - (48 + v))  # restore reg to nonzero so the else skips
+            # Drain the reads the untaken siblings would have made, *after*
+            # printing so they cannot disturb the value being output: an
+            # input-capable language reads each of its n inputs exactly once
+            # per run whatever the table says, or the caller's remaining bits
+            # are left on the input stream.
+            for _ in range(bit, n):
+                instrs.extend([[0, 2], [48, 2]])  # input; -= 48
+            emit_delta(1)  # reg back to nonzero so the enclosing else skips
             return
         instrs.extend([[0, 2], [48, 2]])  # input; -= 48
         g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
