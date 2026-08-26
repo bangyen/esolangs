@@ -176,9 +176,15 @@ def back(truth_table: str) -> str:
     beam down when it is 1, while ``>`` advances the tape pointer to the next
     input.  Both branches advance the pointer once, so a leaf at depth ``d``
     has the pointer at cell ``d``.  A leaf walks to cell ``n``, flips it with
-    ``-`` when its value is 1, and halts.  The load and the tree share row 0
-    -- the beam runs off the end of the load straight into the root -- so the
-    drawing spends no row and no glyph on getting from one to the other.
+    ``-`` when its value is 1, and halts.
+
+    The load runs *down column 0* and the tree starts at column 1, so no row
+    carries the load's width as indent.  A ``/`` at the origin does both
+    turns: the beam starts heading right, the ``/`` sends it up and off the
+    top edge onto the bottom row, it runs the load upward back to the origin,
+    and the ``/`` -- now taking a beam heading up -- turns it right into the
+    tree.  The load is therefore written bottom-to-top, and the tree is free
+    to begin one column in.
 
     The answer is therefore the *value* of cell ``n``, which the halt dump
     prints, rather than the head's position, which it does not.  An earlier
@@ -191,35 +197,34 @@ def back(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # load (row 0): fill cells 0..n-1 with the inputs, then the 0/1 answer
-    # cells.  '>' opens the answer cell at n and n '<' walk the pointer back
-    # to cell 0 for the tree's first test.
-    load_line = (
-        "".join("{X" + str(i) + "}" + (">" if i < n - 1 else "") for i in range(n))
-        + ">"
-        + "<" * n
-    )
-    # The tree starts on row 0, right where the load ends: the beam is already
-    # travelling right along row 0, so it runs straight into the root with no
-    # transition at all.  An earlier layout dropped the beam to row 1 with a
-    # '\' and turned it right with a second '\', which cost a row and two
-    # glyphs; the bounce existed only to put the tree on rows the load's
-    # placeholder shrink could not move.
-    #
-    # Sharing the row means the shrink does move the tree, so the template is
-    # deliberately *column-torn*: row 0 is written in pre-shrink coordinates
-    # (the load still spells '{Xi}') while rows >= 1 are written in post-shrink
-    # coordinates, and only the instantiated program is geometrically valid.
-    # That works because the shift is a generation-time constant: every '{Xi}'
-    # is four characters and every embedding is exactly one, so row 0 loses 3n
-    # whatever the bits are, landing the root on `root_col`.
-    #
-    # The trap is that constant.  An embedding whose width varied with the bit
-    # -- or any multi-character embedding -- would shift row 0 by an amount
-    # this cannot know, tearing the root away from the rows below it with no
-    # error, just a beam that lands one column off and a wrong answer.
-    root_col = len(load_line) - 3 * n
+    # The load: fill cells 0..n-1 with the inputs, then '>' to open the answer
+    # cell at n and n '<' to walk the pointer back to cell 0 for the tree's
+    # first test.  Held as units because a '{Xi}' is one grid cell but four
+    # template characters.
+    units: list[str] = []
+    for i in range(n):
+        units.append("{X" + str(i) + "}")
+        if i < n - 1:
+            units.append(">")
+    units.append(">")
+    units.extend("<" * n)
 
+    # The load occupies column 0 and the tree everything from column 1, so the
+    # tree carries no indent for it -- the drawing's width is the tree's alone.
+    # A single '/' at the origin performs both turns.  The beam starts at (0,0)
+    # heading right; the '/' turns it up, off the top edge and onto the bottom
+    # row, where it runs the load *upward* back to the origin; the '/' takes it
+    # a second time, now heading up, and turns it right into the tree.  So the
+    # load is written bottom-to-top, and an earlier layout's two '\' -- one to
+    # drop the beam off the load's end, one to turn it back right -- are both
+    # gone along with the row and the indent they cost.
+    #
+    # Riding off the top edge makes the grid's toroidal wrap load-bearing:
+    # ``_Machine.step`` advances with ``% len(code)``, so up from row 0 lands
+    # on the last row.  The wiki text the interpreter quotes does not mention
+    # the edges at all, and no interpreter test covers a wrap, so this is the
+    # one place the generator leans on behaviour with no witness outside this
+    # repo's own interpreter.
     grid: dict[tuple[int, int], str] = {}
     next_row = [1]
 
@@ -248,18 +253,29 @@ def back(truth_table: str) -> str:
         grid[(nrow, col + 2)] = ">"
         emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
 
-    emit(0, 0, 2**n, 0, root_col)  # tree root on row 0, the beam still moving right
-    maxrow = max(r for r, _ in grid)
-    maxcol = max(c for _, c in grid)
-    rows = [[" "] * (maxcol + 1) for _ in range(maxrow + 1)]
+    emit(0, 0, 2**n, 0, 1)  # tree root at column 1, the beam arriving rightward
+
+    # The grid is as tall as whichever of the two needs more rows: the tree
+    # wants 2**n and the load wants one row per unit below the '/'.  Past
+    # n = 3 the tree is the taller of the two, so the load's rows start
+    # sharing with tree rows -- which is safe for the same reason the whole
+    # template is: a '{Xi}' is the only thing on its row that instantiation
+    # resizes, it always shrinks by exactly three (every embedding is one
+    # character, for either bit value), and it sits left of the tree, so the
+    # tree glyphs on that row slide back to the columns they were drawn for.
+    # An embedding whose width depended on the bit would break that silently.
+    height = max(max(r for r, _ in grid) + 1, 1 + len(units))
+    width = max(c for _, c in grid) + 1
+    rows = [[" "] * width for _ in range(height)]
     for (r, c), ch in grid.items():
         rows[r][c] = ch
-    # Row 0 is the one row written in pre-shrink coordinates: the load spells
-    # its placeholders in full, and the tree glyphs that emit() placed at
-    # root_col follow it directly, so the shrink slides them back onto
-    # root_col.
-    rows[0] = list(load_line) + rows[0][root_col:]
-    return "\n".join("".join(r).rstrip() for r in rows)
+    rows[0][0] = "/"
+    for k, unit in enumerate(units):
+        rows[height - 1 - k][0] = unit
+    # A zero bit embeds as a space, so a placeholder row can instantiate to a
+    # lone blank; rstrip on both sides of the fill keeps either form free of
+    # trailing whitespace.
+    return "\n".join("".join(row).rstrip() for row in rows)
 
 
 def nocomment(truth_table: str) -> str:
