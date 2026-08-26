@@ -348,12 +348,17 @@ class _Builder:
         """Draw the ``:`` that prints ``source``'s value.
 
         ``:`` reads only a ``-`` directly to its left, so the signal is
-        brought to a junction and handed one cell along.
-        """
-        _, column = self._gate_columns()
-        row = self._new_band()
+        handed one cell along from the junction its bus already ends on.
 
-        self._tap(source, column, row)
+        No band or gate columns are reserved for it.  ``:`` is two glyphs
+        with nothing above, below, or left of them to keep clear, and the
+        bus it reads is the last one built -- so its own row is free to the
+        right by construction.  Taking a fresh band instead, as this once
+        did, put the output three rows below the gate that drives it and ran
+        the bus down to meet it, which is most of the staircase a small
+        circuit used to end on.
+        """
+        column, row = self.buses[source]
         self.layout.glyph(column + 1, row, "-")
         self.layout.glyph(column + 2, row, ":")
 
