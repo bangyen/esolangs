@@ -422,25 +422,34 @@ def circuit_diagram(truth_table: str) -> str:
     rails = [builder.input_bus() for _ in range(n)]
 
     minterms = [i for i, bit in enumerate(truth_table) if bit == "1"]
-    # A complement is computed once and shared by every minterm that selects
-    # it -- but only if one does.  An input whose bit is 1 in every minterm
-    # (both inputs of an AND, say) never reads its ``~``, and building one
-    # anyway leaves a gate driving a bus nothing consumes, plus the tap and
-    # the run out to it.  Deciding per input keeps the shared-complement
-    # property while dropping that dead weight.
-    needs_complement = [
-        any(not (index >> (n - 1 - position)) & 1 for index in minterms)
-        for position in range(n)
-    ]
-    literals: list[tuple[int, int | None]] = [
-        (rail, builder.invert(rail) if needed else None)
-        for rail, needed in zip(rails, needs_complement, strict=True)
-    ]
     if not minterms:
-        result = builder.constant(rails[0], "x")
+        constant = "x"
     elif len(minterms) == len(truth_table):
-        result = builder.constant(rails[0], "X")
+        constant = "X"
     else:
+        constant = None
+
+    if constant is not None:
+        # A constant table is one self-fed gate over ``rails[0]``; it reads no
+        # literal at all, so building the complements would leave every one of
+        # them driving a bus nothing consumes.  (An all-ones table is the trap
+        # here: every index is a minterm, so a per-minterm test concludes no
+        # complement is needed for a table that reads none of them either way.)
+        result = builder.constant(rails[0], constant)
+    else:
+        # A complement is computed once and shared by every minterm that
+        # selects it -- but only if one does.  An input whose bit is 1 in every
+        # minterm (both inputs of an AND, say) never reads its ``~``, and
+        # building one anyway leaves a gate driving a bus nothing consumes,
+        # plus the tap and the run out to it.
+        needs_complement = [
+            any(not (index >> (n - 1 - position)) & 1 for index in minterms)
+            for position in range(n)
+        ]
+        literals: list[tuple[int, int | None]] = [
+            (rail, builder.invert(rail) if needed else None)
+            for rail, needed in zip(rails, needs_complement, strict=True)
+        ]
         result = _minterm(builder, literals, minterms[0])
         for index in minterms[1:]:
             result = builder.gate("o", result, _minterm(builder, literals, index))
