@@ -52,6 +52,29 @@ def _maybe_complement(truth_table: str) -> tuple[str, bool]:
     return truth_table, False
 
 
+def minterm_literals(row: int, n: int) -> list[tuple[int, bool]]:
+    """Return the literals whose product is 1 exactly on ``row``.
+
+    One ``(input, negated)`` pair per input, in input order: ``negated`` is
+    True where ``row`` has that input clear, so the minterm wants ``1 - b``
+    rather than ``b``.  The table is indexed most significant first, which
+    is what makes input ``i`` bit ``n - 1 - i`` of the row index.
+
+    Every sum-of-minterms generator needs exactly this, and each used to
+    spell it out: ``(k >> (n - 1 - i)) & 1``, once per generator, with the
+    MSB-first convention re-derived each time.  What they do *with* a
+    literal is genuinely per-language -- qoibl names a variable, rotfuck
+    picks a guard cell, Circuit Diagram indexes a bus pair -- so this
+    returns the selection as data and leaves the emitting alone.
+
+    Only the *literals* are shared.  Which rows to enumerate is the
+    caller's: :func:`grapheme` evaluates whichever of the one-rows and
+    zero-rows is the shorter list, so this takes one row at a time rather
+    than walking the table itself.
+    """
+    return [(i, not (row >> (n - 1 - i)) & 1) for i in range(n)]
+
+
 SetBit = Callable[[int, int], str]
 
 
