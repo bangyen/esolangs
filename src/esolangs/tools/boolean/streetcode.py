@@ -382,17 +382,26 @@ def _streetcode_shared(n: int) -> list[str]:
     ring, pointed at the counter, which builds it to 48; the second is the
     shared lap.
 
-    Seeding the loader to 1 rather than 0 is what keeps the whole run safe:
-    every cell but the counter is then at least 1 for all 48 laps (inputs
-    49/50 walk down to 1/2, the loader climbs 1 to 49), so no gap crossing
-    can read a zero except the counter at the exit corner, which is the
-    designed exit.  The trailing ``_~`` pairs then walk CP back to cell 1,
-    taking the +1 off each input on the way, so the tree gets bare bits and
-    CP where it expects them.
+    What keeps the run safe is the lap's CP schedule rather than the cells'
+    values.  A ``'0'`` input walks 48 down to 0, so inputs do reach zero
+    mid-run -- but CP is only ever on an input along the lap's junction-free
+    legs.  The two junctions read cells chosen for the job: the descent gap
+    and the exit corner both read the counter, and the drop on the way out
+    lands CP on the loader, which is seeded to 1 and only climbs from there.
+    That seed is load-bearing for exactly this reason.
+
+    The trailing ``_`` then walk CP back to cell 1.  There is nothing to
+    correct on the way: with no ``^`` after the reads the ring subtracts 48
+    from 48 or 49, so the inputs are already the bare bits the tree wants.
     """
     body = "_" * (n + 1) + "~=" * n + "^"
-    prefix = "C" + "=I^" * n + "=^" + "=" + "=^"
-    tail = "_~" * n
+    # No ``^`` after the reads: ``I`` stores the code point of an ASCII digit,
+    # 48 or 49, so a cell it has just filled is nonzero on its own and needs
+    # no bump to satisfy the mouths' junctions.  The ring then subtracts
+    # exactly 48 and the inputs land on bare bits, so the tail only has to
+    # walk CP back -- there is no +1 for it to take off.
+    prefix = "C" + "=I" * n + "=^" + "=" + "=^"
+    tail = "_" * n
     blocks = [_streetcode_ring("^"), _streetcode_shared_lap(body)]
 
     # The street is left open at its eastern end: the tree is joined on there
