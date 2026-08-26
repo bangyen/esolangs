@@ -378,9 +378,22 @@ class _Machine:
         so a pointer can enter one cell of it from the north and still find
         that same northern cell offered again from a different column.
         ``came_from`` is ``None`` at the start, where nothing is excluded.
+
+        Exits are counted per *destination*, not per cell of this box.  Two
+        stacked nodes touch along their whole overlap, so a three-cell box
+        sitting on another offers a step from each of its columns -- but all
+        three land on the one node below, which is a single path onward, not
+        three.  Counting them separately made a ``( )`` drawn directly above
+        another node fork into three pointers that then walked the rest of
+        the program in lock-step, tripling its output.  A rail between the
+        two nodes never showed the bug, because only its middle column
+        carries the ``│``; the wire's real job is narrowing a wide contact
+        down to one path.  Deduplicating here means a drawing that omits it
+        behaves the same way instead of silently multiplying pointers.
         """
         cells = set(self._cells_of(x, y))
         out: list[tuple[int, int, tuple[int, int]]] = []
+        seen: set[tuple[int, int]] = set()
         for cx, cy in sorted(cells, key=lambda c: (c[1], c[0])):
             for d in _HEADINGS:
                 nx, ny = cx + d[0], cy + d[1]
@@ -390,14 +403,13 @@ class _Machine:
                     continue
                 if not self._accepts(nx, ny, d):
                     continue
-                if any(  # pragma: no cover - node boxes are one row tall
-                    step[0] == nx and step[1] == ny for step in out
-                ):
-                    # Two cells of one box share a neighbour only when they
-                    # are two columns apart, and the cell between them is
-                    # inside the box, so `(nx, ny) in cells` already skipped
-                    # it.  Vertical neighbours differ per column.
+                # A node is reached once however many of its cells touch this
+                # box; a bare path cell is its own destination.
+                node = self.nodes.get((nx, ny))
+                target = (node[1], ny) if node else (nx, ny)
+                if target in seen:
                     continue
+                seen.add(target)
                 out.append((nx, ny, d))
         return out
 
