@@ -46,25 +46,23 @@ def _maybe_complement(truth_table: str) -> tuple[str, bool]:
 
 
 SetBit = Callable[[int, int], str]
-SetComp = Callable[[int, int], str]
 
 
-def instantiate(
-    template: str,
-    bits: list[int],
-    set_bit: SetBit,
-    set_comp: SetComp,
-) -> str:
-    """Substitute each ``{Xi}``/``{Ci}`` placeholder.
+def instantiate(template: str, bits: list[int], set_bit: SetBit) -> str:
+    """Substitute each ``{Xi}`` placeholder.
 
-    ``{Xi}`` becomes ``set_bit(i, bit)`` (code that sets input ``i`` to the
-    bit) and ``{Ci}`` becomes ``set_comp(i, bit)`` (code that sets it to the
-    complement of the bit).  Since the bits are embedded constants, the
-    complement is emitted directly rather than computed at runtime.
+    ``{Xi}`` becomes ``set_bit(i, bit)``, the language's code for setting
+    input ``i`` to the bit.
+
+    There used to be a ``{Ci}`` companion, filled by a ``set_comp`` argument,
+    for a generator that wanted the complement embedded beside the bit.  No
+    generator does: ``bfpda``'s node marker is a constant that never depends
+    on the bit, and ``nocomment`` computes each complement at runtime from
+    ``{Xi}`` with its ``s``-as-NOT-gate, so the placeholder never appeared in
+    a template and every caller passed a ``set_comp`` nothing consumed.
     """
     for i, bit in enumerate(bits):
         template = template.replace("{X" + str(i) + "}", set_bit(i, bit))
-        template = template.replace("{C" + str(i) + "}", set_comp(i, bit))
     return template
 
 

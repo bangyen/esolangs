@@ -32,11 +32,14 @@ generator below therefore stores every input once (a tape load, a register
 pack, a deque/stack push, a variable, or a mirror) and reads it back, rather
 than re-substituting it.
 
-No generator emits a ``{Ci}`` complement placeholder: ``bfpda``'s node
-structure needs a truthy marker to stay on the stack after each bit is
-consumed, but the marker's value never depends on the bit, so it is a
-constant embedded directly in the template; ``nocomment`` computes each
-bit's complement from ``{Xi}`` at runtime instead of embedding it.
+There is no complement placeholder.  :func:`instantiate` used to fill a
+``{Ci}`` beside each ``{Xi}``, for a generator that wanted ``1 - bit``
+embedded as a constant, but none does: ``bfpda``'s node structure needs a
+truthy marker to stay on the stack after each bit is consumed, and the
+marker's value never depends on the bit, so it is a constant written
+straight into the template; ``nocomment`` computes each bit's complement
+from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and
+the ``set_comp`` argument that filled it are gone.
 """
 
 from typing import TypeAlias
