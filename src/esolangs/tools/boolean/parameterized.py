@@ -430,9 +430,12 @@ def bfpda(truth_table: str) -> str:
     BF-PDA has no input command, so this is a parameterized generator: the
     template's ``{Xi}`` placeholders become a push of the bit, and the
     harness instantiates one program per input combination.  Each input is
-    embedded once: the load phase pushes every ``<@ {Xi}`` pair (a constant
+    embedded once: the load phase pushes every ``<@{Xi}`` pair (a constant
     1 marker, then the bit) up front, so the stack holds all ``n`` bits and
     markers with ``b0`` on top.
+
+    Every character outside ``@.<>[]`` is a comment, so the commands are
+    emitted unseparated; the fragments below are spaced only to read.
 
     A node tests its bit and *consumes* it for the next level using a
     ``<``-break loop ``[ > one < ] > [ > zero < ] >``: ``[`` enters when the
@@ -452,11 +455,11 @@ def bfpda(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
 
     # load: push a constant-1 marker then the bit, so top = b0
-    head = " ".join("<@ {X" + str(i) + "}" for i in range(n - 1, -1, -1))
+    head = "".join("<@{X" + str(i) + "}" for i in range(n - 1, -1, -1))
 
     def leaf(level: int, value: str) -> str:
         # consume the remaining pre-loaded bits, then print the answer
-        return "> " * (2 * (n - level)) + ("<@" if value == "1" else "<") + ". > "
+        return ">" * (2 * (n - level)) + ("<@" if value == "1" else "<") + ".>"
 
     def node(i: int, rows: list[int]) -> str:
         results = {truth_table[r] for r in rows}
@@ -468,9 +471,9 @@ def bfpda(truth_table: str) -> str:
         sub1 = node(i + 1, one)
         # one-branch pops ~bi first (expose next bit); zero-branch has it popped
         # by the node's own loop
-        return "[ > " + "> " + sub1 + " < ] > [ > " + sub0 + " < ] >"
+        return "[>" + ">" + sub1 + "<]>[>" + sub0 + "<]>"
 
-    return head + " " + node(0, list(range(2**n)))
+    return head + node(0, list(range(2**n)))
 
 
 def lamfunc(truth_table: str) -> str:

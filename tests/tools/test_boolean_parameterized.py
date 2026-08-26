@@ -855,8 +855,8 @@ class TestParameterizedBfpda:
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda("10")  # NOT: one-leaf prints 1
-        assert "<@. >" in template
-        assert "<. >" in template
+        assert "<@.>" in template
+        assert "<.>" in template
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.boolean import parameterized
