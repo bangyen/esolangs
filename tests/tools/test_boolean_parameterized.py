@@ -1305,3 +1305,46 @@ class TestEvalBoolean:
 
         with pytest.raises(ValueError, match="only '0' and '1'"):
             parameterized.eval("02")
+
+
+def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
+    """No fill may spell a 0 shorter than a 1, or the length leaks the input.
+
+    A program whose length depends on its inputs reveals them without being
+    read: an earlier BIO embedding ran to 236/240/244/248 characters for the
+    four ``n == 2`` instantiations, so ``len(program)`` alone recovered the
+    bits.  Every ``_fill_*`` therefore pads the two sides to equal width, an
+    invariant stated on :func:`~esolangs.tools.boolean.helpers.instantiate`
+    and enforced here.
+
+    The check is per-generator rather than global: fills legitimately differ
+    from each other in width, but for one generator and one table every
+    instantiation must come out the same length.
+    """
+    import itertools
+
+    from esolangs.tools.boolean import examples as ex
+
+    fills = [
+        (name, getattr(ex, name))
+        for name in dir(ex)
+        if name.startswith("_fill_") and callable(getattr(ex, name))
+    ]
+    assert fills, "no _fill_* functions found"
+
+    for name, fill in fills:
+        gen_name = name.removeprefix("_fill_")
+        gen = getattr(ex, gen_name, None) or getattr(
+            importlib.import_module("esolangs.tools.boolean"), gen_name, None
+        )
+        if gen is None:  # pragma: no cover - fill without a same-named generator
+            continue
+        for n in (1, 2):
+            template = gen(format(0, f"0{2**n}b"))
+            lengths = {
+                len(fill(template, list(bits)))
+                for bits in itertools.product((0, 1), repeat=n)
+            }
+            assert len(lengths) == 1, (
+                f"{name} embeds bits at unequal width for n={n}: {sorted(lengths)}"
+            )

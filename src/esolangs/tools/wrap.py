@@ -111,6 +111,25 @@ from collections.abc import Callable
 DEFAULT_WIDTH = 80
 
 
+def shortest(*candidates: str) -> str:
+    """Return the shortest of ``candidates``, preferring the earlier on a tie.
+
+    Several generators can express the same program in more than one shape --
+    a ring against a fold, a minterm sum against a decision tree, an absolute
+    encoding against a delta one -- and which shape wins depends on the input,
+    not on the language.  Rather than predict the winner, those generators
+    build every shape and emit the smallest, a rule the test suite pins in
+    several places (``test_streetcode_emits_the_shorter_of_ring_and_street``,
+    and the ``len(program) <= ...`` bounds in ``test_generate.py``).
+
+    This names that rule so a reader meets it as a decision rather than
+    re-deriving it from a ``min`` with a ``key``.  Ties keep the first
+    argument, so callers should pass the shape they consider canonical first
+    and the output stays stable when two shapes come out the same length.
+    """
+    return min(candidates, key=len)
+
+
 def wrap_space_delimited(program: str, width: int) -> str:
     """Wrap a whitespace-delimited program, never splitting a token.
 

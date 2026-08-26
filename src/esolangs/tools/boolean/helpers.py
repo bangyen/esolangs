@@ -11,6 +11,13 @@ generators take no ``n`` parameter.
 
 from collections.abc import Callable
 
+# ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
+# result prints as ``_ASCII_ZERO + bit``, so this offset appears in every
+# generator that reads or writes a digit.  Named because a bare ``48`` in a run
+# of ``+`` or ``-`` reads as a magic number.
+_ASCII_ZERO = 48
+_ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
+
 
 def _validate_truth_table(truth_table: str) -> int:
     """Validate a truth table and return its input count ``n``.
@@ -53,6 +60,22 @@ def instantiate(template: str, bits: list[int], set_bit: SetBit) -> str:
 
     ``{Xi}`` becomes ``set_bit(i, bit)``, the language's code for setting
     input ``i`` to the bit.
+
+    **A ``set_bit`` must return the same width for a 0 and a 1.**  This is the
+    one place the generators deliberately give up shortness.  Spelling a zero
+    as nothing at all (or as a shorter run than a one) is always tempting and
+    always wrong: it makes the emitted program's *length* a function of its
+    inputs, so the program leaks the very bits it is supposed to be evaluating.
+    At ``n == 2`` an earlier Bio embedding ran to 236, 240, 244, and 248
+    characters for the four instantiations -- the input recoverable from
+    ``len(program)`` without reading a line of it.
+
+    So pad the shorter side to equal width, and prefer padding with characters
+    the language *executes* to a no-op over characters it merely ignores: the
+    ignored kind is what a later cleanup pass strips, reintroducing the leak.
+    :func:`~esolangs.tools.boolean.examples.bio` (``0oz;``) and
+    ``bfstack`` (a four-character run proved minimal by exhaustive search over
+    ``<>@[]``) are the worked examples.
 
     There used to be a ``{Ci}`` companion, filled by a ``set_comp`` argument,
     for a generator that wanted the complement embedded beside the bit.  No
@@ -99,7 +122,7 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     # read bits b_i at cell 2i, leaving the complements (cells 1, 3, ...) zero
     for i in range(n):
         cells.append(",")
-        cells.extend("-" * 48)
+        cells.extend("-" * _ASCII_ZERO)
         if i < n - 1:
             move(pos + 2)
 
@@ -139,7 +162,7 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     result = 2 * n + 2
 
     def leaf(value: str) -> None:
-        cells.extend("+" * (48 + int(value)))
+        cells.extend("+" * (_ASCII_ZERO + int(value)))
         cells.append(".")
         cells.append("[-]")  # clear the result so every ] on the way out sees zero
 

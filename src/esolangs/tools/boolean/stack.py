@@ -1,6 +1,10 @@
 """Boolean-function generators for stack-based languages."""
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _ASCII_ONE,
+    _ASCII_ZERO,
+    _validate_truth_table,
+)
 
 
 def _grapheme_push0() -> str:
@@ -134,7 +138,7 @@ def forth(truth_table: str) -> str:
             body = _forth_const(2 * m + 1) + "+;"
         else:  # leaf: push the result byte
             result = int(truth_table[_forth_combo(m)])
-            body = _forth_const(48 + result)
+            body = _forth_const(_ASCII_ZERO + result)
         prog.append(_forth_const(m) + "{" + body + "}")
     prog.append(",68*-" * n)  # read and normalize each input
     prog.append("1+;.")  # root dispatch, then print the result
@@ -178,7 +182,7 @@ def _bfstack_encoder(n: int) -> str:
     prog = ">>+"  # result cell (0) below the accumulator (1)
     for k in range(n):
         weight = 2 ** (n - 1 - k)
-        prog += "," + "-" * 48 + "[" + "<" + "+" * weight + ">" + "]" + "<"
+        prog += "," + "-" * _ASCII_ZERO + "[" + "<" + "+" * weight + ">" + "]" + "<"
     return prog
 
 
@@ -218,7 +222,13 @@ def bfstack(truth_table: str) -> str:
     number is not one of the table's zero rows.
     """
     n = _validate_truth_table(truth_table)
-    return _bfstack_encoder(n) + _bfstack_decoder(truth_table) + "<" + "+" * 48 + "."
+    return (
+        _bfstack_encoder(n)
+        + _bfstack_decoder(truth_table)
+        + "<"
+        + "+" * _ASCII_ZERO
+        + "."
+    )
 
 
 def unsquare(truth_table: str) -> str:
@@ -242,8 +252,8 @@ def unsquare(truth_table: str) -> str:
     flip = "x->IA<"
 
     def leaf(row: int) -> str:
-        value = 48 + int(truth_table[row])
-        return ("IA" if value == 49 else "OA") + "+" * 24 + "P" + "OA"
+        value = _ASCII_ZERO + int(truth_table[row])
+        return ("IA" if value == _ASCII_ONE else "OA") + "+" * 24 + "P" + "OA"
 
     def build(rows: list[int], k: int) -> str:
         if len(rows) == 1:
