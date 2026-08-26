@@ -445,20 +445,20 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     junction.  Merges and the final decode each leave one blank column of
     separation before what follows them.
     """
-    # The junction is one cell and the start digit beside it is one more, so
-    # two columns is the whole of what a placeholder's slot has to hold; the
-    # '{Xi}' spelling is four characters only because that is how the
-    # placeholder is written, and instantiation gives the extra back.
-    placeholder_width = 2
+    # A junction is a single cell: the fill writes 'v' to take the 1-branch
+    # or '>' to continue east, and nothing on row 0 ever occupies the column
+    # after it.  The '{Xi}' spelling is four characters only because that is
+    # how the placeholder is written, and instantiation gives the rest back.
+    placeholder_width = 1
 
     placeholder_col = [0] * n
     # column 0 is always '>'; when there's a start digit (_wii2d_search only
     # ever returns a single digit 0-9), it sits at column 1 and the first
-    # placeholder is reserved a fixed placeholder_width-wide slot after it
-    # (more than the single digit needs, but matching every other gap's
-    # width in this layout); with no digit the placeholder starts right
-    # after the '>'.
-    placeholder_col[0] = placeholder_width if start != 0 else 1
+    # placeholder follows it at column 2.  With no digit the placeholder
+    # starts right after the '>'.  (No table found at n <= 3 needs a nonzero
+    # start, so this is the untravelled branch -- but the digit's column is
+    # its own, not the junction's.)
+    placeholder_col[0] = 2 if start != 0 else 1
     merge_col = [0] * n
     for i in range(n):
         r0, r1 = routes[i]
@@ -481,12 +481,11 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     if start:
         grid[0][1] = str(start)
     for i in range(n):
-        # The two cells of the slot, spelled out once the layout is
-        # finished: the placeholder's four characters are how it is written,
-        # not how much room the junction needs, and the fill gives the
-        # difference back.
+        # The junction's one cell, spelled out once the layout is finished:
+        # the placeholder's four characters are how it is written, not how
+        # much room the junction needs, and the fill gives the difference
+        # back.
         grid[0][placeholder_col[i]] = "\x00" + str(i) + "\x00"
-        grid[0][placeholder_col[i] + 1] = ""
         r0, r1 = routes[i]
         for k, ch in enumerate(r0):
             grid[0][placeholder_col[i] + placeholder_width + k] = ch
