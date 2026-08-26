@@ -4,6 +4,8 @@
 # (a grid layout or a program search) dwarfs the rest of the category; they
 # are re-exported here so this module stays the import site the package and
 # tests already use.
+from typing import NamedTuple
+
 from esolangs.tools import laserfuck_layout
 from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
 from esolangs.tools.boolean.streetcode import streetcode
@@ -479,8 +481,61 @@ def _laserfuck_reader_blocks(n: int) -> list[list[str]]:
     ]
 
 
+class _LaserBlock(NamedTuple):
+    """A reader ring placed in one of its two orientations.
+
+    The beam always arrives travelling *right* and must leave travelling
+    right, so a placement's whole contract is where it puts its cells and
+    where it hands the beam back.  ``rows`` are the block's own cells, laid
+    ``top`` rows below the origin; ``connectors`` are the extra
+    ``(row, col, char)`` cells that steer the beam in and out; and
+    ``exit_row``/``exit_col`` are the offsets to add to the origin to reach
+    the cell the next block starts from.
+
+    A flat block is the trivial case -- the beam runs straight along its
+    single row, so it sits at the origin, needs no connectors, and hands
+    the beam back on the same row past its right edge.  A rotated one is
+    entered from above and left from below, which is why it sits one row
+    down and carries the two connectors that turn the beam.
+    """
+
+    rows: list[str]
+    top: int
+    connectors: list[tuple[int, int, str]]
+    exit_row: int
+    exit_col: int
+
+
+def _laserfuck_place(block: list[str], upright: str) -> _LaserBlock:
+    r"""Give ``block`` an explicit entry/exit contract in one orientation.
+
+    ``F`` leaves the block flat: the beam enters at its left edge and
+    leaves on the same row past its right edge, so there is nothing to
+    connect.  ``R`` stands it on end with :func:`_laserfuck_rotate`, which
+    turns the rightward beam downward -- so the placement needs a ``v`` one
+    row *above* the block to drop the beam in at the rotated ring's own
+    entry column, and a ``\`` one row *below* to turn it right again.  The
+    entry column is read off the rotated block's first row rather than
+    rediscovered by the caller.
+    """
+    if upright == "F":
+        return _LaserBlock(block, 0, [], 0, len(block[0]))
+
+    turned = _laserfuck_rotate(block)
+    entry = turned[0].index("v")
+    below = 1 + len(turned)
+    # drop in from above, and turn right again once the beam is through
+    connectors = [(0, entry, "v"), (below, entry, "\\")]
+    return _LaserBlock(turned, 1, connectors, below, entry + 1)
+
+
 def _laserfuck_assemble_reader(n: int, orientation: str) -> tuple[list[str], int, int]:
-    """Chain the reader's blocks, each flat (``F``) or on end (``R``)."""
+    """Chain the reader's blocks, each flat (``F``) or on end (``R``).
+
+    Each block is placed by :func:`_laserfuck_place`, which declares where
+    the beam enters and leaves it; this function only walks that contract,
+    laying each block at the cell the previous one handed the beam to.
+    """
     cells: dict[tuple[int, int], str] = {}
 
     def put(row: int, col: int, char: str) -> None:
@@ -489,22 +544,14 @@ def _laserfuck_assemble_reader(n: int, orientation: str) -> tuple[list[str], int
 
     row = col = 0
     for block, upright in zip(_laserfuck_reader_blocks(n), orientation, strict=True):
-        if upright == "F":
-            for offset, line in enumerate(block):
-                for index, char in enumerate(line):
-                    put(row + offset, col + index, char)
-            col += len(block[0])
-        else:
-            turned = _laserfuck_rotate(block)
-            entry = turned[0].index("v")
-            put(row, col + entry, "v")
-            for offset, line in enumerate(turned):
-                for index, char in enumerate(line):
-                    put(row + 1 + offset, col + index, char)
-            row += 1 + len(turned)
-            col += entry
-            put(row, col, "\\")
-            col += 1
+        placed = _laserfuck_place(block, upright)
+        for offset, line in enumerate(placed.rows):
+            for index, char in enumerate(line):
+                put(row + placed.top + offset, col + index, char)
+        for offset, index, char in placed.connectors:
+            put(row + offset, col + index, char)
+        row += placed.exit_row
+        col += placed.exit_col
 
     height = max(r for r, _ in cells) + 1
     span = max(c for _, c in cells) + 1
