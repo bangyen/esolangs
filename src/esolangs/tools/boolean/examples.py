@@ -253,9 +253,15 @@ def _fill_back(template: str, bits: list[int]) -> str:
 
     The beam reads one cell per row as it runs up column 0, so a setter is
     one command and the template gives each input a second row for the
-    ``+`` that pads it.  ``+`` steps the beam only when the current cell is
-    zero, and here that cell is the answer cell the tree has yet to reach,
-    so the step is inert whichever bit was set.  A zero used to embed as a
+    ``+`` that pads it.  At the pad row the pointer is still on input cell
+    ``i``, the cell just set -- not the answer cell, which the tree reaches
+    only later -- so the pad reads the embedded bit itself.  ``+`` steps the
+    beam only when the current cell is zero, so the two bits spend the pad
+    row differently: a zero's ``+`` setter fires and *skips* the pad, while
+    a one's ``-`` setter leaves the cell at 1 so the pad ``+`` does not fire
+    and simply falls through.  Either way the pair costs exactly two rows
+    and the ``>`` on the row past the pad is reached, which is what keeps
+    the two bits the same size.  A zero used to embed as a
     blank, which the beam ignores just as happily -- but the fill rstrips,
     so that row vanished and the program's size carried the input: at
     ``n == 2`` the four instantiations were 41, 42, and 43 characters over
