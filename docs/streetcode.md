@@ -612,10 +612,21 @@ scaling with `n`. The body is `_`×(n+1) to rewind, then `~=` per input, then
 `^`: 3n+2 cells, and the island is widened by `k = max(0, 3n-4)` to hold it,
 the same `k` trick the text generator uses.
 
-Seeding the loader to 1 rather than 0 is what makes the whole run safe: every
-cell but the counter is then at least 1 for all 48 laps (inputs 49/50 walk
-down to 1/2, the loader climbs 1 to 49), so no gap crossing can read a zero
-except the counter at the exit corner, which is the designed exit.
+What keeps the run safe is the lap's CP *schedule*, not the cells' values. A
+`'0'` input walks 48 down to 0, so inputs do reach zero mid-run -- but CP is
+only ever on an input along the lap's junction-free legs. The two junctions
+read cells chosen for the job: the descent gap and the exit corner both read
+the counter, and the drop on the way out lands CP on the loader, which is
+seeded to 1 and only climbs. That seed is load-bearing for exactly this
+reason.
+
+The reads carry no `^`, either. `I` stores the code point of an ASCII digit,
+48 or 49, so a cell it just filled is nonzero on its own -- the bump the
+strip shapes carry is redundant here. The ring then subtracts exactly 48 and
+the inputs land on bare bits, so the tail only walks CP back with no
+correction to make. The strip shapes keep their `^` because *their* exit gap
+is crossed with CP on the value itself, which is the whole reason their
+contract is `bit + 1`.
 
 Two things this shape taught, both non-obvious:
 
