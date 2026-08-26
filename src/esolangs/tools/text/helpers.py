@@ -1,6 +1,6 @@
 """Shared helpers for the text generators."""
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 
 def _ilog(base: int, n: int) -> int:
@@ -9,6 +9,63 @@ def _ilog(base: int, n: int) -> int:
     while base ** (k + 1) <= n:
         k += 1
     return k
+
+
+def run_step(up: str, down: str) -> Callable[[int, int], str]:
+    """Return a :func:`delta_program` step counting one command per unit.
+
+    The commonest way to move a cell: repeat ``up`` to climb and ``down`` to
+    fall.  NoComment spells the pair ``i``/``d`` and Circlefuck ``+``/``-``,
+    so the tokens are the argument and the loop is not written twice.
+    """
+
+    def step(cur: int, target: int) -> str:
+        return up * (target - cur) if target >= cur else down * (cur - target)
+
+    return step
+
+
+def delta_program(
+    text: str,
+    step: Callable[[int, int], str],
+    print_token: str,
+    *,
+    start: int = 0,
+    prologue: str = "",
+    epilogue: str = "",
+) -> str:
+    """Build a program that walks one cell through ``text``, printing each.
+
+    A language with a single accumulator spends nothing on a character it is
+    already holding, so the cheapest program drives the cell from the
+    previous character's value to the next and prints in place.  ``step(cur,
+    target)`` is the language's code for that move and ``print_token`` its
+    output instruction; the cell starts at ``start`` and the result is
+    wrapped in ``prologue`` and ``epilogue``.
+
+    That loop is the whole of several generators, and it was written out
+    four times over.  What differs between them is only the two tokens:
+    NoComment spells the move ``i``/``d``, Circlefuck ``+``/``-``,
+    Basicfuck ``a += n;``, and 6-5 a run of sixes and ``62`` pairs.
+
+    Deliberately *not* general.  A generator that chooses between walking
+    and rebuilding by measuring both (Brainfuck, BFStack -- see the
+    threshold note in :func:`~esolangs.tools.text.tape.bfstack`), carries
+    more state than the one value (Painfuck's tape pointer, 1/2's running
+    XOR, Container's rule index), or rewrites the finished program
+    (ROTfuck's rotation) is not this shape, and giving it a knob here would
+    cost more than it saves.  Validation stays with the caller too, since
+    what a language can print differs.
+    """
+    out = [prologue]
+    cur = start
+    for char in text:
+        target = ord(char)
+        out.append(step(cur, target))
+        out.append(print_token)
+        cur = target
+    out.append(epilogue)
+    return "".join(out)
 
 
 def _factor_triple(value: int) -> tuple[int, int, int]:
