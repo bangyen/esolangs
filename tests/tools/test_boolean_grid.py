@@ -379,11 +379,9 @@ class TestWII2D:
     def run_chain(self, tpl: str, bits: list[int]) -> str:
         """Instantiate the n-embedding chain template and run the interpreter."""
         from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_wii2d
 
-        program = parameterized.instantiate(
-            tpl, bits, lambda _i, b: "v   " if b else ">   ", lambda _i, _b: "    "
-        )
+        program = _fill_wii2d(tpl, bits)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run_wii2d(program.splitlines(), io=IO())
