@@ -1237,93 +1237,80 @@ def suptiftam(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-def _flowchart_leaf(bit: str) -> tuple[list[str], int]:
-    """Build a leaf column, and the column its entry rail arrives on.
+# A leaf is exactly as wide as the ``(( ))`` it ends on, so consecutive
+# leaves abut and the tree needs no gutter between them at all.
+_FLOWCHART_PITCH = 5
 
-    The register holds whichever input bit the tree read last, so the leaf
-    sets it outright (``[ }`` for one, ``{ ]`` for zero) rather than
-    relying on what the routing happened to leave behind.
 
-    The spec asks that "vertical paths connecting into a node are expected to
-    connect to the middle of the node", and a leaf stacks three-cell nodes
-    over a five-cell ``(( ))`` whose middles do not share a column.
-    Indenting the narrow rows by one puts every middle on column 2, so each
-    rail meets the centre of the node above it and the node below.
+def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
+    """Paint the decision tree onto a sparse ``(x, y) -> character`` grid.
+
+    Leaves are placed first, on a fixed pitch, and the switches are then
+    collapsed upwards: each pair of entry columns yields a ``< >`` centred
+    between them with rails drawn out to both.  Positioning everything from
+    the leaf pitch is what keeps the drawing tight -- an earlier recursive
+    version assembled each subtree into its own padded block and separated
+    the blocks by a gutter, which cost a column of blanks for every leaf at
+    every level even though two ``(( ))`` boxes may sit flush against each
+    other.
+
+    Rows run ``( )``, its rail, then four rows per level (``/ /``, a rail,
+    ``< >``, a rail), then the five-row leaf block.
     """
-    return (
-        [
-            " " + ("[ }" if bit == "1" else "{ ]"),
-            "  │",
-            " \\ \\",
-            "  │",
-            "(( ))",
-        ],
-        2,
-    )
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(x: int, y: int, text: str) -> None:
+        for i, char in enumerate(text):
+            cells[(x + i, y)] = char
+
+    n = (len(truth_table) - 1).bit_length()
+    # Leaf ``k`` spans columns ``5k`` to ``5k + 4``, so its middle -- the
+    # column every rail in that leaf's band lands on -- is ``5k + 2``.
+    mids = [_FLOWCHART_PITCH * k + 2 for k in range(len(truth_table))]
+
+    leaf_top = 2 + 4 * n
+    for k, bit in enumerate(truth_table):
+        middle = mids[k]
+        put(middle - 1, leaf_top, "[ }" if bit == "1" else "{ ]")
+        cells[(middle, leaf_top + 1)] = "│"
+        put(middle - 1, leaf_top + 2, "\\ \\")
+        cells[(middle, leaf_top + 3)] = "│"
+        put(middle - 2, leaf_top + 4, "(( ))")
+
+    for depth in range(n - 1, -1, -1):
+        switch_row = 4 + 4 * depth
+        parents = []
+        for j in range(0, len(mids), 2):
+            west, east = mids[j], mids[j + 1]
+            middle = (west + east) // 2
+            put(middle - 1, switch_row - 2, "/ /")
+            cells[(middle, switch_row - 1)] = "│"
+            put(middle - 1, switch_row, "< >")
+            for x in range(west + 1, middle - 1):
+                cells[(x, switch_row)] = "─"
+            for x in range(middle + 2, east):
+                cells[(x, switch_row)] = "─"
+            cells[(west, switch_row)] = "┌"
+            cells[(east, switch_row)] = "┐"
+            cells[(west, switch_row + 1)] = "│"
+            cells[(east, switch_row + 1)] = "│"
+            parents.append(middle)
+        mids = parents
+
+    root = mids[0]
+    put(root - 1, 0, "( )")
+    cells[(root, 1)] = "│"
+    return cells
 
 
-def _flowchart_subtree(truth_table: str) -> tuple[list[str], int]:
-    """Build the block for ``truth_table``, and the column it is entered on.
-
-    Each level reads one input bit and switches on it.  The tree is always
-    entered travelling downward, and a switch's sides are relative to the
-    pointer's heading, so a set register turns the pointer east and a clear
-    one turns it west: the table's zero half hangs to the west and its one
-    half to the east, matching the index order.  Recursion bottoms out at
-    :func:`_flowchart_leaf`.
-
-    A block's entry column is returned rather than recomputed from its width.
-    The two are not the same: a block is padded out to the width of its
-    widest row, so its top ``/ /`` sits wherever its own children put it, not
-    at the midpoint of that padding.  Deriving the entry from the width
-    instead is what used to drop the descending rails a column off the node
-    middles the spec asks them to meet.
-    """
-    if len(truth_table) == 1:
-        return _flowchart_leaf(truth_table[0])
-
-    half = len(truth_table) // 2
-    west, west_entry = _flowchart_subtree(truth_table[:half])
-    east, east_entry = _flowchart_subtree(truth_table[half:])
-
-    west_width = max(len(row) for row in west)
-    east_width = max(len(row) for row in east)
-    west = [row.ljust(west_width) for row in west]
-    east = [row.ljust(east_width) for row in east]
-
-    gap = 3
-    total = west_width + gap + east_width
-    # Shift the east block's own entry into the combined block's coordinates.
-    east_entry += west_width + gap
-    # The switch is a three-cell node centred between the two entries, so its
-    # own middle -- the column the rail from ``/ /`` drops onto -- is the
-    # midpoint, and the node starts one column to the left of it.
-    middle = (west_entry + east_entry) // 2
-    start = middle - 1
-
-    rail = [" "] * total
-    for x in range(west_entry, start):
-        rail[x] = "─"
-    for x in range(start + 3, east_entry + 1):
-        rail[x] = "─"
-    rail[west_entry] = "┌"
-    rail[east_entry] = "┐"
-    switch = "".join(rail)
-    switch = switch[:start] + "< >" + switch[start + 3 :]
-
-    head = [
-        " " * start + "/ /",
-        " " * middle + "│",
-        switch,
-        " " * west_entry + "│" + " " * (east_entry - west_entry - 1) + "│",
-    ]
-
-    depth = max(len(west), len(east))
-    west += [" " * west_width] * (depth - len(west))
-    east += [" " * east_width] * (depth - len(east))
-    body = [a + " " * gap + b for a, b in zip(west, east, strict=True)]
-
-    return ([row.ljust(total) for row in head + body], middle)
+def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
+    """Flatten a painted cell map into the finished program text."""
+    height = max(y for _, y in cells) + 1
+    width = max(x for x, _ in cells) + 1
+    grid = [[" "] * width for _ in range(height)]
+    for (x, y), char in cells.items():
+        grid[y][x] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
 
 
 def flowchart(truth_table: str) -> str:
@@ -1343,6 +1330,15 @@ def flowchart(truth_table: str) -> str:
     needed either.  What the layout has to get right instead is routing:
     every switch is centred over the two subtree entries it feeds, with
     rails drawn out to each.
+
+    The leaves are laid down first, on a pitch of exactly one ``(( ))``
+    width, and the switches are collapsed upwards from them.  Nothing
+    separates one leaf from the next: two ``(( ))`` boxes may sit flush
+    against each other, since a rail only has to clear a node when it needs
+    to pass *through* that node's row.  Sibling subtrees never do -- they
+    descend in their own column bands -- so the gutter an earlier version
+    kept between them was never load-bearing, and dropping it takes the
+    ``n = 4`` drawing from 2444 characters to 1557.
 
     **The tree holds many ``/ /`` nodes but reads each input once.**  A
     depth-``n`` tree draws ``2**n - 1`` read nodes, one per internal node,
@@ -1366,12 +1362,4 @@ def flowchart(truth_table: str) -> str:
     silent wrong-answer trap if the pop is ever changed to pop-top.
     """
     _validate_truth_table(truth_table)
-    body, entry = _flowchart_subtree(truth_table)
-    # ``entry`` is the middle of the block's top node, so the start ``( )``
-    # is drawn one column left of it and its rail drops straight down onto
-    # that middle.
-    head = [" " * (entry - 1) + "( )", " " * entry + "│"]
-    # The rows are padded to a common width while the tree is assembled, but
-    # the interpreter pads short rows itself, so the trailing run carries no
-    # meaning once the drawing is finished and is trimmed off the output.
-    return "\n".join(row.rstrip() for row in head + body)
+    return _flowchart_render(_flowchart_cells(truth_table))
