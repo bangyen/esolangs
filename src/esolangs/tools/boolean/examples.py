@@ -218,13 +218,19 @@ def _fill_bfpda(template: str, bits: list[int]) -> str:
 
 
 def _fill_back(template: str, bits: list[int]) -> str:
-    """Set each input cell: ``-`` flips it to one, a space leaves it zero."""
-    return instantiate(
+    """Set each input cell: ``-`` flips it to one, a space leaves it zero.
+
+    Each placeholder sits alone in column 0, so a zero bit leaves that row
+    holding just its space; rstrip drops it, since a blank row is inert to
+    the beam (it only ever passes straight through column 0 there).
+    """
+    filled = instantiate(
         template,
         bits,
         lambda _i, b: "-" if b else " ",
         lambda _i, b: "-" if b else " ",
     )
+    return "\n".join(row.rstrip() for row in filled.split("\n"))
 
 
 def _fill_minsky_swap(template: str, bits: list[int]) -> str:
