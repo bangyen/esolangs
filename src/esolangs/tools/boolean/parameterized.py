@@ -78,11 +78,13 @@ def bio(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     BIO has three registers (``x``, ``y``, ``z``) and no absolute jumps —
-    its ``{``/``}`` loops are structurally matched — so a variable-length
-    setter is safe.  Each input is embedded once by packing it into ``x``:
+    its ``{``/``}`` loops are structurally matched — so the setter's length
+    is unconstrained.  Each input is embedded once by packing it into ``x``:
     ``{Xi}`` becomes ``0ox`` repeated by the input's binary weight (``2**w``)
-    for a one bit and nothing for a zero, so ``x = sum 2**w_i * bit_i`` is
-    the input's numeric index.
+    for a one bit, so ``x = sum 2**w_i * bit_i`` is the input's numeric
+    index.  A zero writes the same count to ``z`` instead, which nothing
+    reads, so the two bits embed at equal width rather than a zero
+    embedding as nothing.
 
     ``y`` is initialized to the table's first entry (``table[0]``), then
     ``2**n - 1`` *nested* loops each decrement ``x`` once (``0ix{ 1ox; ... };``)

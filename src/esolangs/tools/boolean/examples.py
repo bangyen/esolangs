@@ -167,12 +167,18 @@ def _embedded(
 
 
 def _fill_bio(template: str, bits: list[int]) -> str:
+    """Pack each input into ``x`` by its binary weight, in a constant width.
+
+    A one adds the input's weight to ``x``; a zero writes the same number of
+    commands to ``z``, which the generator never reads, so both bits embed
+    as the same number of characters and the program's shape no longer
+    reveals its inputs.
+    """
     n = len(bits)
-    # pack each input once by its binary weight
     return instantiate(
         template,
         bits,
-        lambda i, b: "0ox;" * (2 ** (n - 1 - i)) if b else "",
+        lambda i, b: ("0ox;" if b else "0oz;") * (2 ** (n - 1 - i)),
         lambda _i, _b: "",
     )
 
