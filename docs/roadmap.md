@@ -349,17 +349,25 @@ rest.  What remains:
 
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
   non-deterministic, so all three stay on the wall-clock backstop.
-- **Recursion stays cycle-undetectable.**  A call that never returns
-  pushes one new frame per `step()` and none is ever popped, so a
-  `snapshot()`'s frame tuple strictly grows and two whole-machine
-  snapshots can never compare equal — unbounded growth, the same class
-  `+[>+]` already falls into.  A separate, narrower check — comparing a
-  newly-pushed frame's own local state against ancestor frames already on
-  the stack, rather than whole-machine snapshots across time — could catch
-  the common case of a call whose local state repeats exactly relative to
-  an ancestor (e.g. an accidental unconditional self-call), but not every
-  infinite recursion, and it doesn't fit the existing `snapshot()`
-  protocol; not built, revisit only if a concrete program needs it.  See
+- **Recursion stays cycle-undetectable, but is now separately checkable.**
+  A call that never returns pushes one new frame per `step()` and none is
+  ever popped, so a `snapshot()`'s frame tuple strictly grows and two
+  whole-machine snapshots can never compare equal — unbounded growth, the
+  same class `+[>+]` already falls into.  `run_until_halt_or_ancestor` is
+  the narrower check that class allows: it compares each newly-pushed
+  frame's entry state (function, bindings, input position) against the
+  frames already beneath it, rather than whole-machine snapshots across
+  time, so a frame about to replay an ancestor proves the recursion cannot
+  terminate.  Built for Forbin, which had no hang test at all before it.
+  The input position carries the soundness — a recursion whose base case
+  waits on an unread byte enters with identical bindings every lap, and
+  keyed on bindings alone would be called a hang one read from returning.
+  It still does not catch every infinite recursion (bindings that
+  genuinely never repeat), so the wall-clock backstop stays for that
+  class, and it costs O(depth) per push against the cycle detector's
+  O(1) — affordable only because it runs once per call, not per step.
+  Suptiftam and Lamfunc also recurse and are the obvious follow-up; each
+  needs a `frame_entry_key` matching its own frame shape.  See
   `docs/walls.md` for the full argument.
 - **Branching cycle detection for `y`/`?` (considered, not started).**
   Forking the walk at every random decision and requiring *every* branch to

@@ -712,6 +712,23 @@ class _Machine:
         """Whether the frame stack has emptied (``main`` returned or ended)."""
         return not self.frames
 
+    def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
+        """Return what ``frame`` is about to run, for the ancestor check.
+
+        Two frames with equal keys replay each other, so the key is the
+        function, its bindings, and the input cursor -- not the statement
+        cursor, which has already moved on in the ancestor by the time the
+        callee is pushed.  The input position is what keeps the check
+        sound: a recursion whose base case waits on an unread byte enters
+        with identical bindings every lap and is one read from returning,
+        not looping.  See :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
+        return (
+            frame.fn.name,
+            tuple(sorted((k, repr(v)) for k, v in frame.locals.items())),
+            self.io.position(),
+        )
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
