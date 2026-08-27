@@ -52,15 +52,18 @@ TEXT = "Hello, World!"
 # tests/tools/test_generate.py instead.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
-    "dig": "2D: newlines separate rows",
 }
 
 # LaserFuck is 2D too, and wrap_program must not touch it either -- but it
 # honours a width itself: the loop layout is tied to the beam's track and
 # cannot fold, so a loop program wider than the width is re-emitted as the
 # (foldable) linear form.  Hence it belongs with Clockwise and the others
-# above rather than in UNWRAPPABLE.
-WIDTH_HONOURING = {"laserfuck": "falls back to the foldable linear form"}
+# above rather than in UNWRAPPABLE.  Dig is the same case: a newline still
+# separates its rows, but it folds its segments over several row pairs.
+WIDTH_HONOURING = {
+    "laserfuck": "falls back to the foldable linear form",
+    "dig": "folds its segments over several row pairs",
+}
 
 WRAPPED = sorted(
     name
