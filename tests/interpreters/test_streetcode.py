@@ -1133,8 +1133,9 @@ class TestStreetcodeDriveStates:
 
     The graph is the movement half of ``snapshot`` enumerated over the
     whole grid, built by driving the real helpers.  It backs the
-    construction-time totality check and, in tests, pins the mouth-depth
-    bound to the behaviour it produces rather than to the cells it scans.
+    construction-time totality check and ``step`` itself, and in tests it
+    pins the mouth-depth bound to the behaviour it produces rather than
+    to the cells it scans.
     """
 
     def _corridor(self) -> list[str]:
@@ -1213,3 +1214,99 @@ class TestStreetcodeDriveStates:
         finally:
             module._MOUTH_MAX_DEPTH = original  # noqa: SLF001
         assert shipped == generous
+
+
+class TestStreetcodeGraphBackedStepping:
+    """Graph-backed stepping must agree with the movement rules exactly.
+
+    ``step`` looks the next state up in the graph enumerated at
+    construction, falling back to calling the phases when there is no
+    graph or the state is outside it.  Those two paths are two ways of
+    computing the same thing, so the test that matters is that they
+    never disagree: drive both in lockstep and compare the whole
+    ``snapshot`` after every step.
+    """
+
+    def _lockstep(self, code: list[str], stdin: str = "", limit: int = 20000) -> int:
+        """Run one machine on the graph and one on the phases, in step."""
+        fast = _Machine(code, ScriptedIO(stdin))
+        slow = _Machine(code, ScriptedIO(stdin))
+        # Emptying the graph forces every step down the fallback path.
+        slow._graph = None  # noqa: SLF001
+        assert fast._graph is not None, "the fixture needs a validated street"  # noqa: SLF001
+
+        steps = 0
+        for steps in range(1, limit + 1):
+            fast_error = slow_error = None
+            try:
+                fast.step()
+            except Exception as exc:  # noqa: BLE001
+                fast_error = type(exc).__name__
+            try:
+                slow.step()
+            except Exception as exc:  # noqa: BLE001
+                slow_error = type(exc).__name__
+            assert fast_error == slow_error, f"step {steps}: {fast_error} vs {slow_error}"
+            assert fast.snapshot() == slow.snapshot(), f"diverged at step {steps}"
+            if fast.halted or fast_error:
+                break
+        return steps
+
+    def test_a_plain_corridor_agrees(self) -> None:
+        assert self._lockstep(["+----+", "|C^O;|", "|    |", "+----+"]) > 1
+
+    def test_a_junction_agrees(self) -> None:
+        """The early-sighted mouth fixture, which defers a turn to the gap."""
+        code = [
+            "+---------+",
+            "|         |",
+            "|C^      ;|",
+            "+--+  ++--+",
+            "   |      |",
+            "   |;     |",
+            "   +------+",
+        ]
+        assert self._lockstep(code) > 1
+
+    @pytest.mark.parametrize(
+        "path",
+        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+    )
+    def test_the_shipped_examples_agree(self, path: str) -> None:
+        root = Path(__file__).resolve().parents[2]
+        code = (root / path).read_text().split("\n")
+        if code and code[-1] == "":
+            code = code[:-1]
+        assert self._lockstep(code, stdin="1\n") > 1
+
+    @pytest.mark.parametrize("text", ["Hi", "Hello, World!"])
+    def test_a_generated_ring_agrees(self, text: str) -> None:
+        """The ring program latches a merge, so it drives the latch path."""
+        from esolangs.registry import LANGUAGES
+
+        generate = LANGUAGES["Streetcode"].text
+        assert generate is not None
+        assert self._lockstep(generate(text).split("\n")) > 1
+
+    def test_an_off_graph_state_falls_back(self) -> None:
+        """A state the search never reached still drives, via the phases.
+
+        Setting the heading by hand is how the interpreter's own tests
+        reach such a state; the graph has no entry for it, and ``step``
+        must not fail looking for one.
+        """
+        machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
+        assert machine._graph is not None  # noqa: SLF001
+        machine.heading = "N"
+        machine._merging_heading = "N"  # noqa: SLF001
+        state = (
+            machine.row,
+            machine.col,
+            machine.heading,
+            machine._merge_target,  # noqa: SLF001
+            machine._merging_heading,  # noqa: SLF001
+            machine._skip_hug,  # noqa: SLF001
+        )
+        assert state not in machine._graph  # noqa: SLF001
+        machine.step()
+        assert not machine.halted
