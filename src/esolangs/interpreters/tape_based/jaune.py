@@ -33,35 +33,47 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from typing import Literal, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 
+# The two command shapes, kept apart by their operators.  Because no
+# operator appears in both, comparing ``cmd.op`` discriminates the union:
+# inside ``cmd.op == "?"`` the checker knows the command is a _Numbered and
+# that its ``arg`` is an ``int``, so the jumps and the call read the operand
+# without testing what :func:`_parse` has already guaranteed.
+_CountedOp = Literal["^", "v", "v+", "v-", ">", "<", "#", "&", "%", "+", "-", ";", "."]
+_NumberedOp = Literal[":", "?", "!", "$", "@"]
+
+
 @dataclass
-class _Command:
-    """One parsed Jaune command."""
+class _Counted:
+    """A Jaune command with no operand, or with a repeat count.
 
-    op: str
-    arg: int | None = None  # the numeric operand, or None for a bare command
+    ``arg`` is the count where the op takes one (``+``/``-``) and ``None``
+    for the bare commands, both of which are legal spellings.
+    """
 
-    @property
-    def number(self) -> int:
-        """The operand of an operator that requires one: ``:?!$@``.
+    op: _CountedOp
+    arg: int | None = None
 
-        :func:`_parse` raises on a bare one of these, so by the time the
-        machine dispatches on it the operand is known to be there.  Reading
-        it through here states that once, rather than each of the jumps and
-        the call re-testing what the parser has already guaranteed.
 
-        A union of a bare and a numbered command would let the checker hold
-        the guarantee instead, but the dispatch keys on ``op`` -- a plain
-        string field -- which narrows nothing, so every branch would need an
-        ``isinstance`` and the check would just move rather than vanish.
-        """
-        if self.arg is None:  # pragma: no cover - _parse rejects bare operators
-            raise HaltError(f"{self.op} requires a number")
-        return self.arg
+@dataclass
+class _Numbered:
+    """A Jaune command whose operator requires a number: ``:?!$@``.
+
+    :func:`_parse` raises on a bare one of these, so the operand is always
+    present by the time the machine dispatches -- which is why ``arg`` is a
+    plain ``int`` rather than an optional one.
+    """
+
+    op: _NumberedOp
+    arg: int
+
+
+_Command = _Counted | _Numbered
 
 
 def _parse(code: str) -> list[_Command]:
@@ -72,18 +84,18 @@ def _parse(code: str) -> list[_Command]:
     while i < n:
         c = code[i]
         if c in "^><#&%.":
-            out.append(_Command(c))
+            out.append(_Counted(cast("_CountedOp", c)))
             i += 1
         elif c == ";":
-            out.append(_Command(";"))
+            out.append(_Counted(";"))
             i += 1
         elif c == "v":
             # 'v' reads a digit; as an operand ('v+') the read value is the count
             if i + 1 < n and code[i + 1] in "+-":
-                out.append(_Command("v" + code[i + 1]))
+                out.append(_Counted(cast("_CountedOp", "v" + code[i + 1])))
                 i += 2
             else:
-                out.append(_Command("v"))
+                out.append(_Counted("v"))
                 i += 1
         elif c in "+-":
             # a run like ++ is a counted command (repeat); a bare + is +1
@@ -91,18 +103,20 @@ def _parse(code: str) -> list[_Command]:
             while j < n and code[j] == c:
                 j += 1
             count = j - i
-            out.append(_Command("+" if c == "+" else "-", count))
+            out.append(_Counted("+" if c == "+" else "-", count))
             i = j
         elif c.isdigit():
             j = i
             while j < n and code[j].isdigit():
                 j += 1
             num = int(code[i:j])
-            if j < n and code[j] in ":-?!$@":
-                out.append(_Command(code[j], num))
+            if j < n and code[j] in ":?!$@":
+                out.append(_Numbered(cast("_NumberedOp", code[j]), num))
                 i = j + 1
             elif j < n and code[j] in "+-":
-                out.append(_Command("+" if code[j] == "+" else "-", num))
+                # "-" reaches here as a counted subtract, never as a jump:
+                # the numbered operators above do not include it.
+                out.append(_Counted("+" if code[j] == "+" else "-", num))
                 i = j + 1
             else:
                 # a bare number with no operator: ignore (no-op)
@@ -193,29 +207,26 @@ class _Machine:
             self.cells[self.ptr] -= cmd.arg or 1
         elif c == ":":
             pass  # a label position; execution falls through
-        elif c == "?":
-            label = cmd.number
-            target = self._label(label)
+        elif cmd.op == "?":
+            target = self._label(cmd.arg)
             if target is None:
-                raise HaltError(f"jump to undefined label {label}")
+                raise HaltError(f"jump to undefined label {cmd.arg}")
             if self.cells[self.ptr] != 0:
                 self.pos = target
                 return
-        elif c == "!":
-            label = cmd.number
-            target = self._label(label)
+        elif cmd.op == "!":
+            target = self._label(cmd.arg)
             if target is None:
-                raise HaltError(f"jump to undefined label {label}")
+                raise HaltError(f"jump to undefined label {cmd.arg}")
             if self.cells[self.ptr] == 0:
                 self.pos = target
                 return
         elif c == "$":
             pass  # a subroutine definition; execution falls through in place
-        elif c == "@":
-            name = cmd.number
-            target = self._subroutine(name)
+        elif cmd.op == "@":
+            target = self._subroutine(cmd.arg)
             if target is None:
-                raise HaltError(f"call to undefined subroutine {name}")
+                raise HaltError(f"call to undefined subroutine {cmd.arg}")
             self.call_stack.append(self.pos + 1)
             self.pos = target
             return
