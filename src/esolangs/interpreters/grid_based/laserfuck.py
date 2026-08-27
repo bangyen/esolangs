@@ -42,8 +42,8 @@ class _Machine:
         self._second_start = False
 
         self.lsrs: list[list[int]] = []
-        for x, line in enumerate(self.text):
-            for y, c in enumerate(line):
+        for row, line in enumerate(self.text):
+            for col, c in enumerate(line):
                 if c == "o":
                     if self.lsrs:
                         self._second_start = True  # a second marker halts
@@ -51,8 +51,8 @@ class _Machine:
                     # The random heading is part of LaserFuck's spec, not a
                     # secret.
                     d = heading if heading is not None else secrets.randbelow(4)
-                    self.lsrs.append([x, y, d])
-                    self.pos = (x, y, d)
+                    self.lsrs.append([row, col, d])
+                    self.pos = (row, col, d)
 
     @property
     def halted(self) -> bool:
@@ -73,31 +73,31 @@ class _Machine:
         """Move the active laser one step and execute the command it lands on."""
         if self.halted:
             return
-        x, y, d = self.lsrs[self.ind]
+        row, col, d = self.lsrs[self.ind]
 
         # move one step in the current direction
-        if (x == 0 and d == 0) or (y == 0 and d == 2):
-            x = self.rows  # step off the grid (top/left edges)
+        if (row == 0 and d == 0) or (col == 0 and d == 2):
+            row = self.rows  # step off the grid (top/left edges)
         elif d == 0:
-            x -= 1
+            row -= 1
         elif d == 1:
-            x += 1
+            row += 1
         elif d == 2:
-            y -= 1
+            col -= 1
         elif d == 3:
-            y += 1
+            col += 1
 
-        self.pos = (x, y, d)
+        self.pos = (row, col, d)
 
         if self.jmp:
             self.jmp = False
-            self.lsrs[self.ind] = [x, y, d]
+            self.lsrs[self.ind] = [row, col, d]
             self.ind = (self.ind + 1) % len(self.lsrs)
             return
 
         op = (
-            self.text[x][y]
-            if 0 <= x < self.rows and 0 <= y < len(self.text[0])
+            self.text[row][col]
+            if 0 <= row < self.rows and 0 <= col < len(self.text[0])
             else "x"
         )
 
@@ -120,7 +120,7 @@ class _Machine:
                 self.ind %= len(self.lsrs)
             return
         elif op == "*":
-            self.lsrs.append([x, y, 2 * (1 - d // 2) + secrets.randbelow(2)])
+            self.lsrs.append([row, col, 2 * (1 - d // 2) + secrets.randbelow(2)])
         elif op in "_(":
             if d < 2 and (self.tape[self.ptr][0] != 0 or op == "_"):
                 d = 1 - d
@@ -142,7 +142,7 @@ class _Machine:
         elif op == "#":
             self.jmp = True
 
-        self.lsrs[self.ind] = [x, y, d]
+        self.lsrs[self.ind] = [row, col, d]
         self.ind = (self.ind + 1) % len(self.lsrs)
 
     def dump(self) -> None:
