@@ -297,37 +297,64 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
         'runner = "python -m pytest -x -q -p no:cacheprovider tests/test_bundled.py"\n'
         'tests_dir = ["tests/"]\n'
     )
-    _reject_decorated_classes(out, module)
+    moved_classes = _undecorate_classes(out)
+    if moved_classes:
+        print(
+            f"[note] applied {', '.join(moved_classes)} after the class body "
+            "so mutmut can see it"
+        )
     return proj, stem, dropped, _own_classes(module)
 
 
-def _reject_decorated_classes(bundle: Path, module: str) -> None:
-    """Refuse to score a module whose class carries a decorator.
+# A decorator line on a class, and the class statement it applies to.
+_DECORATED_CLASS = re.compile(
+    r"^(?P<decorators>(?:@[^\n(]+(?:\([^\n]*\))?\n)+)class (?P<name>\w+)", re.M
+)
 
-    mutmut skips any ``FunctionDef`` or ``ClassDef`` that has decorators --
-    they can have side effects when copied, and ``@property`` breaks the
-    trampoline's signature assignment (``file_mutation.py``, "ignore
-    decorated functions").  A ``@dataclass`` state class therefore produces
-    no mutants at all, and the run still prints a percentage: Eval reported
-    5/6 killed for a 124-line file, because ``run`` was the only thing left
-    to mutate and its ``State`` -- the other 90 lines -- was skipped whole.
 
-    That reads as a near-pass over the interpreter when nothing of it was
-    tested, so it is refused rather than reported.  Nine interpreters define
-    a decorated class; scoring them needs the decorator gone or a mutmut
-    that can see past it.
+def _undecorate_classes(bundle: Path) -> list[str]:
+    """Rewrite ``@d`` on a class into ``Class = d(Class)`` after its body.
+
+    mutmut skips any ``FunctionDef`` or ``ClassDef`` carrying decorators --
+    copying them for the trampoline can have side effects, and ``@property``
+    breaks the signature assignment it does (``file_mutation.py``, "ignore
+    decorated functions").  A ``@dataclass`` state class therefore yields no
+    mutants at all while the run still prints a percentage: Eval scored 5/6
+    over a 124-line file, ``run`` being all that was left to mutate once its
+    ``State`` -- the other ninety lines -- was skipped whole.
+
+    Applying the decorator as a plain call below the class is what the
+    decorator syntax means, so the class behaves identically (same
+    ``__init__``, ``__repr__``, ``__eq__``, same ``field(default_factory=)``
+    handling), but the ``ClassDef`` mutmut parses no longer has decorators
+    and its methods are mutated like any other.  Only classes are rewritten:
+    a decorated *method* keeps its decorator, since ``@property`` is exactly
+    what the trampoline cannot take.
+
+    Returns the decorators moved, for the note the caller prints.
     """
     text = bundle.read_text()
-    marker = f"# --- inlined from esolangs/interpreters/{module.replace('.', '/')}.py"
-    body = text.partition(marker)[2] or text
-    decorated = re.findall(r"^@(\w+)[^\n]*\n(?:@[^\n]*\n)*class (\w+)", body, re.M)
-    if decorated:
-        listed = ", ".join(f"{cls} (@{dec})" for dec, cls in decorated)
-        raise SystemExit(
-            f"{module} defines a decorated class: {listed}.  mutmut does not "
-            "mutate decorated classes, so its body would be scored as though "
-            "it were absent -- a high percentage over whatever is left."
-        )
+    moved: list[str] = []
+
+    def rewrite(match: re.Match[str]) -> str:
+        name = match.group("name")
+        decorators = match.group("decorators").strip().splitlines()
+        moved.extend(f"{d.lstrip('@')} to {name}" for d in decorators)
+        return f"class {name}"
+
+    new = _DECORATED_CLASS.sub(rewrite, text)
+    if not moved:
+        return []
+
+    # The calls go at the end of the module, after every class body has been
+    # defined, innermost decorator first -- the order the syntax applies them.
+    applied = "\n".join(
+        f"{name} = {decorator}({name})"
+        for entry in moved
+        for decorator, name in [entry.split(" to ")]
+    )
+    bundle.write_text(f"{new}\n\n{applied}\n")
+    return moved
 
 
 def _classes_of(dotted: str) -> set[str]:
