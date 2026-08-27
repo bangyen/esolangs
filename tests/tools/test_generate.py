@@ -470,7 +470,7 @@ class TestGeneratorRoundTrips:
         lines = gen.wii2d("Hello, World!", 40).split("\n")
         assert lines[1] == "!"
 
-    @pytest.mark.parametrize("width", [20, 24, 40, 80])
+    @pytest.mark.parametrize("width", [6, 7, 20, 24, 40, 80])
     @pytest.mark.parametrize(
         "text", ["A", "Hi", "Hello", "The quick brown fox", "x" * 20]
     )
@@ -482,6 +482,11 @@ class TestGeneratorRoundTrips:
         a margin without changing what it executes.  It is also the widest
         thing the generator emits: ``"The quick brown fox"`` is 1833
         columns unfolded.
+
+        Six is the floor -- the margin cell that turns the beam right, an
+        op, and the turn-down that ends the segment, plus the column the
+        fold returns to -- so it is exercised here alongside the roomier
+        widths.
         """
         program = gen.laserfuck(text, width)
         assert max(len(line) for line in program.split("\n")) <= width
