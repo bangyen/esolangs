@@ -92,6 +92,7 @@ import argparse
 import contextlib
 import functools
 import io
+import os
 import pathlib
 import random
 import re
@@ -1048,8 +1049,13 @@ def _run_native(
     program: str,
     timeout: float = 5,
     input_bytes: bytes | None = None,
+    extra_env: dict[str, str] | None = None,
 ) -> bytes | None:
     """Run ``program`` (written to a temp file) through ``cmd``.
+
+    ``extra_env`` overlays the child's environment, which is how a reference
+    that draws part of its behaviour at random is pinned to one outcome (see
+    LaserFuck's initial heading).
 
     Returns None if the reference does not terminate within ``timeout``
     seconds (the Rust reference has no step limit and hangs on
@@ -1064,6 +1070,7 @@ def _run_native(
             capture_output=True,
             timeout=timeout,
             input=input_bytes,
+            env=dict(os.environ, **extra_env) if extra_env else None,
         ).stdout
     except subprocess.TimeoutExpired:
         return None
@@ -1122,15 +1129,16 @@ def _run_laserfuck_python(
     return buffer.getvalue()
 
 
-def _check_laserfuck_boolean(table: str, n: int, runs: int = 12) -> tuple[int, int]:
+def _check_laserfuck_boolean(table: str, n: int) -> tuple[int, int]:
     """Differentially check a LaserFuck boolean program for one truth table.
 
     Returns ``(checked, failures)``: one ``checked`` per input combination,
     with ``failures`` counting the combos whose output did not match, plus
-    any Python heading that hung.  ``runs`` is how many times the Rust
-    reference samples the output set; the mirror funnel normalizes every
-    heading, so the set is effectively a singleton and a couple of runs are
-    enough to catch a divergence.
+    any Python heading that hung.  The reference is run once per initial
+    heading rather than sampled repeatedly: the heading is the only thing it
+    draws at random here (no program in this corpus uses the `*` splitter),
+    so four pinned runs enumerate the output set exactly, where sampling
+    could only ever approach it.
     """
     from esolangs.tools.boolean import other
 
@@ -1142,8 +1150,13 @@ def _check_laserfuck_boolean(table: str, n: int, runs: int = 12) -> tuple[int, i
         inputs = [str(b) for b in bits]
         outputs: set[str] = set()
         input_bytes = ("\n".join(inputs) + "\n").encode()
-        for _ in range(runs):
-            out = _run_native([str(RUST_BIN)], program, input_bytes=input_bytes)
+        for rust_heading in range(4):
+            out = _run_native(
+                [str(RUST_BIN)],
+                program,
+                input_bytes=input_bytes,
+                extra_env={"LASERFUCK_HEADING": str(rust_heading)},
+            )
             if out is None:
                 print(
                     f"LaserFuck boolean {table!r} combo {bits}: "
@@ -1198,8 +1211,13 @@ def _verify_laserfuck() -> bool:
         nonlocal failures, checked
         outputs: set[str] = set()
         for out in _run_parallel(
-            lambda _: _run_native([str(RUST_BIN)], program, input_bytes=b"1\n"),
-            range(30),
+            lambda h: _run_native(
+                [str(RUST_BIN)],
+                program,
+                input_bytes=b"1\n",
+                extra_env={"LASERFUCK_HEADING": str(h)},
+            ),
+            range(4),
         ):
             if out is None:
                 print(f"LaserFuck {program!r}: Rust reference does not terminate")
@@ -2221,9 +2239,7 @@ def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     for _ in range(count):
         n = rng.randint(2, 3)
         table = "".join(rng.choice("01") for _ in range(2**n))
-        # 4 runs: the funnel makes the output heading-independent, and the
-        # fuzzer draws many tables, so each needs to stay cheap
-        c, f = _check_laserfuck_boolean(table, n, runs=4)
+        c, f = _check_laserfuck_boolean(table, n)
         checked += c
         failures += f
 
