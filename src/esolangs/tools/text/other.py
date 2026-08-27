@@ -176,7 +176,7 @@ def _weave_slots(grid: list[list[str]]) -> list[tuple[int, int]] | None:
     for _ in range(limit):
         if machine.halted:
             break
-        cell = (machine.x, machine.y)
+        cell = (machine.row, machine.col)
         try:
             machine.step()
         except ValueError:
@@ -188,7 +188,7 @@ def _weave_slots(grid: list[list[str]]) -> list[tuple[int, int]] | None:
         # budget is a guard against one existing, not a path taken.
         return None  # never came home
     seen = Counter(order)
-    return [cell for cell in order if seen[cell] == 1 and grid[cell[1]][cell[0]] == " "]
+    return [cell for cell in order if seen[cell] == 1 and grid[cell[0]][cell[1]] == " "]
 
 
 def _clockwise_weave(prog: str, width: int | None) -> str | None:
@@ -221,8 +221,8 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
                 break
             if len(slots) >= len(prog):
                 filled = [row[:] for row in grid]
-                for (x, y), instruction in zip(slots, prog, strict=False):
-                    filled[y][x] = instruction
+                for (row, col), instruction in zip(slots, prog, strict=False):
+                    filled[row][col] = instruction
                 drawn = "\n".join("".join(row).rstrip() for row in filled)
                 if best is None or len(drawn) < len(best):
                     best = drawn

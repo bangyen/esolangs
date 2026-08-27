@@ -212,10 +212,10 @@ class TestArrowQueue:
         vm = esolangs.make_vm("ArrowQueue", "~+*")
         assert vm.ip == (0, 0, 0)
         vm.step()
-        assert vm.ip == (1, 0, 0)
+        assert vm.ip == (0, 1, 0)
         assert vm.stack == [0]
         vm.step()  # + pops the queued direction (right) and keeps going
-        assert vm.ip == (2, 0, 0)
+        assert vm.ip == (0, 2, 0)
         assert vm.stack == []
         vm.step()  # * turns down off the single row and halts
         assert vm.halted
@@ -264,10 +264,10 @@ class TestClockwise:
         assert vm.ip == (0, 0, 0)  # the pointer starts at the origin heading right
         assert vm.memory == [0]
         vm.step()  # + at the origin increments the accumulator
-        assert vm.ip == (1, 0, 0)
+        assert vm.ip == (0, 1, 0)
         assert vm.memory == [1]
         vm.step()  # ; queues a parity bit
-        assert vm.ip == (2, 0, 0)
+        assert vm.ip == (0, 2, 0)
         assert vm.output == ""
         assert vm.stack == []
 
