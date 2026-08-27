@@ -105,6 +105,11 @@ class _Machine:
         elif ins == "-":
             self.acc -= 1
         elif ins == ".":
+            # Bits are read up front, so an empty queue means the program
+            # was given none: reading one is exhausted input, which this
+            # module documents as EOFError.
+            if not self.inp:
+                raise EOFError
             n = int(self.inp[0])
             self.acc = (self.acc | 1) - 1 + n
             self.inp = [*self.inp[1:], self.inp[0]]

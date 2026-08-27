@@ -87,3 +87,11 @@ class TestStepMachine:
         machine.step()  # the '.' at (4,0) consumes the first bit and rotates it
         assert machine.snapshot() != before
         assert "".join(machine.inp) == "1100000"
+
+
+def test_reading_with_no_input_is_eof() -> None:
+    """Bits are read up front, so an empty queue is exhausted input."""
+    from esolangs.interpreters.io import ScriptedIO
+
+    with pytest.raises(EOFError):
+        run(".", ScriptedIO("\n"))
