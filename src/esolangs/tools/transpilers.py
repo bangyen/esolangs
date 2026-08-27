@@ -10,7 +10,7 @@ own, and the outputs must agree.
 
 import re
 from collections.abc import Callable
-from typing import Any, Literal, cast
+from typing import Any, Literal, get_args
 
 from esolangs.interpreters.register_based.bio import parse as bio_parse
 
@@ -817,6 +817,10 @@ class _LaserGrid:
 # forever, so the walks name the commands they merely skip over.
 _LaserOp = Literal["+", "-", ">", "<", ".", ",", "[", "]"]
 
+# Typed so the parser's membership test narrows the character to a
+# command, instead of asserting it afterwards.
+_LASER_OPS: frozenset[_LaserOp] = frozenset(get_args(_LaserOp))
+
 
 def _laser_funnel(g: _LaserGrid) -> None:
     """Send every initial heading right on row 0 (the start-marker funnel)."""
@@ -979,7 +983,7 @@ def _laser_parse(program: str) -> list[_LaserOp]:
         if ch == "*":
             comment = True
             i += 1
-        elif ch in "+-><.,[]":
+        elif ch in _LASER_OPS:
             if ch in "><":
                 neg = False
                 j = i + 1
@@ -1005,9 +1009,7 @@ def _laser_parse(program: str) -> list[_LaserOp]:
                     )
             else:
                 i += 1
-            # The elif above tested membership in the alphabet, so this is
-            # where a parsed character becomes a typed command.
-            ops.append(cast("_LaserOp", ch))
+            ops.append(ch)
         elif ch == "=":
             if i + 2 >= len(program):
                 raise ValueError("'=' must be followed by two hex digits")

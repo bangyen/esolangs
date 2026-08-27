@@ -38,7 +38,7 @@ the one the frame stack unrolls.
 
 import re
 import sys
-from typing import Literal, cast
+from typing import Literal, get_args
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -62,7 +62,7 @@ _Builtin = Literal[
 ]
 
 # The builtin prefix functions and their fixed arities.
-_ARITY = {
+_ARITY: dict[str, int] = {
     "add": 2,
     "subtract": 2,
     "multiply": 2,
@@ -76,6 +76,11 @@ _ARITY = {
     "say": 1,
     "ask": 0,
 }
+
+# The arity table minus ``ask``, typed: _parse_expr answers ``ask`` before
+# the lookup, so membership here is exactly "is a _Builtin" and narrows the
+# token to the type _apply_builtin dispatches on.
+_BUILTINS: frozenset[_Builtin] = frozenset(get_args(_Builtin))
 
 _TOKEN = re.compile(
     r'"[^"\\]*(?:\\.[^"\\]*)*"'  # string literal with escapes
@@ -261,16 +266,17 @@ def _parse_expr(
         return float(tok) if "." in tok else int(tok), pos + 1
     if tok == "[":
         return _parse_array(tokens, pos + 1, io, scope)
-    arity = _ARITY.get(tok)
-    if arity is not None:
+    # ``ask`` is answered above, so every other arity hit is a _Builtin;
+    # testing the typed set is what lets the token reach _apply_builtin at
+    # that type rather than as a bare str.
+    if tok in _BUILTINS:
+        arity = _ARITY[tok]
         pos += 1
         args: list[object] = []
         for _ in range(arity):
             value, pos = _parse_expr(tokens, pos, io, scope)
             args.append(value)
-        # ``ask`` was answered above, so an arity hit here is one of the
-        # builtins _apply_builtin dispatches on.
-        return _apply_builtin(cast("_Builtin", tok), args, io), pos
+        return _apply_builtin(tok, args, io), pos
     value = scope.get(tok)
     if isinstance(value, _Function):
         pos += 1
