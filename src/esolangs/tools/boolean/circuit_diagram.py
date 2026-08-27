@@ -78,7 +78,14 @@ port) and only ever read after that, which is why the tests can assert that
 a run prints exactly one character.
 """
 
+from typing import Literal
+
 from esolangs.tools.boolean.helpers import _validate_truth_table, minterm_literals
+
+# The gate characters this generator draws: an AND and an OR for the
+# minterm tree, and the two self-fed XOR forms for a constant table.
+_GateGlyph = Literal["a", "o", "x", "X"]
+_ConstGlyph = Literal["x", "X"]
 
 __all__ = ["circuit_diagram"]
 
@@ -309,7 +316,7 @@ class _Builder:
         self.buses[signal] = (column + 1, row)
         return signal
 
-    def gate(self, kind: str, left: int, right: int) -> int:
+    def gate(self, kind: _GateGlyph, left: int, right: int) -> int:
         """Place a two-input ``kind`` gate and return its output signal."""
         _, column = self._gate_columns()
         row = self._new_band()
@@ -323,7 +330,7 @@ class _Builder:
         self.buses[signal] = (column + 1, row)
         return signal
 
-    def constant(self, source: int, kind: str) -> int:
+    def constant(self, source: int, kind: _ConstGlyph) -> int:
         """Return a constant signal, from one bus fed to both gate inputs.
 
         ``x`` of a value with itself is always 0 and ``X`` always 1, so a
@@ -429,7 +436,7 @@ def circuit_diagram(truth_table: str) -> str:
 
     minterms = [i for i, bit in enumerate(truth_table) if bit == "1"]
     if not minterms:
-        constant = "x"
+        constant: _ConstGlyph | None = "x"
     elif len(minterms) == len(truth_table):
         constant = "X"
     else:
