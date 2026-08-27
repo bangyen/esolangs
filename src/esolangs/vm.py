@@ -15,11 +15,16 @@ ones the VM can wrap; the rest of the registry runs whole programs only.
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import RUNNERS
+
+if TYPE_CHECKING:
+    # Only for the chooser stand-in's signature; the interpreters are
+    # imported lazily inside the VMs that use them.
+    from esolangs.interpreters.grid_based.cod import _Direction
 
 
 @runtime_checkable
@@ -466,7 +471,7 @@ class _FirstChoiceRNG:
     junction.
     """
 
-    def choice(self, options: list[str]) -> str:
+    def choice(self, options: list[_Direction]) -> _Direction:
         return options[0]
 
 

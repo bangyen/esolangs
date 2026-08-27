@@ -38,19 +38,29 @@ exist).  The program terminates once no cod remains.
 
 import secrets
 import sys
-from typing import Protocol
+from typing import Literal, Protocol
 
 from esolangs.interpreters.io import IO
+
+# The four directions a cod swims in.  Naming them keeps a direction apart
+# from the grid characters that are also plain strings, so the _DIRS and
+# _OPP lookups are checked rather than trusted.
+_Direction = Literal["N", "S", "E", "W"]
 
 
 class _Chooser(Protocol):
     """Picks one of several open directions, overriding ``secrets``."""
 
-    def choice(self, options: list[str]) -> str: ...
+    def choice(self, options: list[_Direction]) -> _Direction: ...
 
 
-_DIRS = {"N": (-1, 0), "S": (1, 0), "E": (0, 1), "W": (0, -1)}
-_OPP = {"N": "S", "S": "N", "E": "W", "W": "E"}
+_DIRS: dict[_Direction, tuple[int, int]] = {
+    "N": (-1, 0),
+    "S": (1, 0),
+    "E": (0, 1),
+    "W": (0, -1),
+}
+_OPP: dict[_Direction, _Direction] = {"N": "S", "S": "N", "E": "W", "W": "E"}
 _COMMANDS = set("+-)(<_")
 
 
@@ -96,7 +106,7 @@ class _Cod:
 
     __slots__ = ("c", "d", "r", "value")
 
-    def __init__(self, r: int, c: int, d: str, value: int = 0) -> None:
+    def __init__(self, r: int, c: int, d: _Direction, value: int = 0) -> None:
         self.r, self.c, self.d, self.value = r, c, d, value
 
 
@@ -154,14 +164,16 @@ class _Machine:
     def _is_open(self, r: int, c: int) -> bool:
         return self._cell(r, c) != "~"
 
-    def _open_dirs(self, r: int, c: int, exclude: str | None = None) -> list[str]:
+    def _open_dirs(
+        self, r: int, c: int, exclude: _Direction | None = None
+    ) -> list[_Direction]:
         return [
             d
             for d, (dr, dc) in _DIRS.items()
             if d != exclude and self._is_open(r + dr, c + dc)
         ]
 
-    def _choose(self, options: list[str]) -> str:
+    def _choose(self, options: list[_Direction]) -> _Direction:
         if self._rng is not None:
             return self._rng.choice(options)
         return options[secrets.randbelow(len(options))]
