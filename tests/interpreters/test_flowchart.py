@@ -324,6 +324,17 @@ class TestNodes:
         """Popping an exhausted deque clears the register."""
         assert self._register("[ }─\\{ }/") is None
 
+    def test_pushing_an_empty_register_pushes_nothing(self) -> None:
+        """A push with nothing to push leaves the deque as it was.
+
+        Both push nodes read the register and skip when it is empty, so a
+        later pop finds nothing rather than a ``None`` that was pushed as if
+        it were a bit.  ``{ }`` empties the register first, so the push has
+        nothing to work with at either end.
+        """
+        assert self._register("{ }─\\[ ]/─\\{ }/") is None
+        assert self._register("{ }─/[ ]\\─/{ }\\") is None
+
     def test_push_bottom_pop_bottom(self) -> None:
         """``/[ ]\\`` and ``/{ }\\`` use the other end of the deque."""
         assert self._register("[ }─/[ ]\\─{ }─/{ }\\") == 1
