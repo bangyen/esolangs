@@ -168,6 +168,7 @@ label inconsistent with the width its wiring carries -- raise
 
 import sys
 from collections.abc import Iterator
+from typing import Final, Literal, cast
 
 from esolangs.interpreters.io import IO
 
@@ -201,16 +202,24 @@ _WIRE_DIRECTIONS = {
 _WIRES = frozenset(_WIRE_DIRECTIONS)
 _CROSSOVER = "="
 
-# Gates, mapped to the number of input wirings each takes.
+# Gates, mapped to the number of input wirings each takes.  The logic
+# gates are a closed alphabet -- the six binary ones and the inverter --
+# so naming them lets the checker see _apply_gate handles every one.
+_LogicGate = Literal["a", "A", "o", "O", "x", "X", "~"]
+
 _BINARY_GATES = frozenset("aAoOxX")
 _GATES = _BINARY_GATES | frozenset("~")
 
 # The splitter and combiner.  Both are gate-like: they read on the left and
 # drive on the right, but they rearrange wire counts rather than compute.
-_SPLIT = "<"
-_COMBINE = ">"
+_SPLIT: Final = "<"
+_COMBINE: Final = ">"
 
-_OUTPUT = ":"
+_OUTPUT: Final = ":"
+
+# What a _Gate's ``kind`` may be: a logic gate, or one of the three
+# gate-like characters that move wires around rather than compute.
+_GateKind = _LogicGate | Literal["<", ">", ":"]
 
 # Specified by the page but exercised by none of its examples; see the
 # module docstring's scope section.
@@ -339,7 +348,7 @@ class _Gate:
     order in which outputs print.
     """
 
-    def __init__(self, kind: str, x: int, y: int) -> None:
+    def __init__(self, kind: _GateKind, x: int, y: int) -> None:
         """Create a gate of ``kind`` at ``(x, y)`` with no ports bound."""
         self.kind = kind
         self.x = x
@@ -530,7 +539,7 @@ class _Parser:
         for x, y, char in self.grid.cells():
             if char not in _GATES and char not in (_SPLIT, _COMBINE, _OUTPUT):
                 continue
-            gate = _Gate(char, x, y)
+            gate = _Gate(cast("_GateKind", char), x, y)
             if char == _OUTPUT:
                 outputs: list[_Wiring] = []
             elif char == _SPLIT:
@@ -619,7 +628,7 @@ class _Parser:
         return [(gate.outputs[0], 1)]
 
 
-def _apply_gate(kind: str, inputs: list[tuple[int, ...]]) -> tuple[int, ...]:
+def _apply_gate(kind: _LogicGate, inputs: list[tuple[int, ...]]) -> tuple[int, ...]:
     """Return the wires ``kind`` drives given its non-null input wires.
 
     The multi-input readings are the spec's own: AND is 1 iff every wire is
@@ -767,6 +776,11 @@ class _Machine:
             ]
         if gate.kind == _COMBINE:
             return [(gate.outputs[0], inputs[0] + inputs[1])]
+        if gate.kind == _OUTPUT:  # pragma: no cover - step() skips these
+            # An output gate drives nothing by definition, and ``step``
+            # skips them before firing, so this is a shape rather than a
+            # path: it is what lets _apply_gate take only logic gates.
+            return []
         return [(gate.outputs[0], _apply_gate(gate.kind, inputs))]
 
     def _merge(self, driven: list[tuple[int, ...]]) -> tuple[int, ...]:
