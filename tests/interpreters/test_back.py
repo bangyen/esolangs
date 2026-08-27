@@ -59,7 +59,7 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.back import _Machine
 
         machine = _Machine(["-*"], ScriptedIO())
-        assert (machine.x, machine.y, machine.a, machine.b) == (0, 0, 0, 1)
+        assert (machine.row, machine.col, machine.a, machine.b) == (0, 0, 0, 1)
         assert machine.tape == [0]
         machine.step()  # - flips the current bit
         assert machine.tape == [1]
@@ -67,7 +67,7 @@ class TestStepMachine:
         assert machine.io.getvalue() == "1"
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
-        assert machine.x == 0
+        assert machine.row == 0
 
     def test_snapshot_is_hashable(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
