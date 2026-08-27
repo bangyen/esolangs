@@ -425,7 +425,7 @@ class _ForthVM(_BaseVM):
 
 
 class _LaserFuckVM(_BaseVM):
-    """2D grid; ``ip`` is the active laser's (x, y, heading).
+    """2D grid; ``ip`` is the active laser's (row, col, heading).
 
     The heading is fixed to 0 (up) so stepping is reproducible; the
     interpreter's own ``run`` draws a random heading when none is given.
