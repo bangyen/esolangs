@@ -452,6 +452,26 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
     return "\n".join(lines)
 
 
+def _laserfuck_columns(program: str) -> int:
+    """Return the widest row of ``program``, which is what a width bounds."""
+    return max(map(len, program.split("\n")))
+
+
+def _laserfuck_area(program: str) -> int:
+    """Return the cells in ``program``'s bounding box: rows times columns.
+
+    A LaserFuck program is a grid the beam travels, so what it costs is the
+    rectangle it occupies rather than the characters in it.  The two differ
+    because the rows are ragged: a form can hold fewer characters than a
+    rival and still need a wider box to run in, and on ``"Hello, World!"``
+    the shortest form by ``len`` is nearly twice the grid of the smallest
+    one.  Selecting on :func:`len` -- the rule :func:`shortest` names for
+    the one-dimensional generators -- would pick that larger grid, which is
+    why this metric is the generator's own rather than the shared one.
+    """
+    return (program.count("\n") + 1) * _laserfuck_columns(program)
+
+
 def laserfuck(text: str, width: int | None = None) -> str:
     """Build a LaserFuck program that outputs ``text``, the smaller of two.
 
@@ -463,7 +483,8 @@ def laserfuck(text: str, width: int | None = None) -> str:
     cluster -- exactly when the multiply passes stop paying and the other
     form falls back to writing one ``+`` per unit.
 
-    Rather than predict, both are built and the smaller grid is returned.  A
+    Rather than predict, both are built and the smaller grid is returned --
+    smaller by :func:`_laserfuck_area`, the bounding box, not by ``len``.  A
     ``width`` disqualifies a form that cannot meet it; if neither can, the
     multiplying form's own fallback still applies.
     """
@@ -471,7 +492,7 @@ def laserfuck(text: str, width: int | None = None) -> str:
     for factored in (False, True):
         for grouped in (False, True):
             ring = _laserfuck_base_ring(text, factored=factored, grouped=grouped)
-            if width is None or max(map(len, ring.split("\n"))) <= width:
+            if width is None or _laserfuck_columns(ring) <= width:
                 forms.append(ring)
     if width is not None:
         # the snaked form exists only for the bounded case: it spends rows
@@ -479,9 +500,7 @@ def laserfuck(text: str, width: int | None = None) -> str:
         snake = _laserfuck_snake_ring(text, width)
         if snake is not None:
             forms.append(snake)
-    return min(
-        forms, key=lambda form: (form.count("\n") + 1) * max(map(len, form.split("\n")))
-    )
+    return min(forms, key=_laserfuck_area)
 
 
 def _laserfuck_multiply(text: str, width: int | None = None) -> str:
