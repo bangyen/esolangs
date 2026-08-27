@@ -15,9 +15,16 @@ name.)
 The interpreter runs on a :class:`_Machine` (the beam's position and
 direction, the bit tape, and the tape pointer), so it is step-capable:
 ``step()`` executes one cell, printing the tape and setting ``halted`` when
-the beam reaches a ``*``.  A program with no ``*`` bounces the beam forever,
-but the beam lives in a finite grid, so it eventually revisits a snapshot
-and the state-cycle hang detector can prove the loop.
+the beam reaches a ``*``.
+
+A program with no ``*`` bounces the beam forever.  The beam itself lives in
+a finite grid, so a loop that never moves the tape pointer right revisits a
+snapshot and ``esolangs.vm.run_until_halt_or_cycle`` proves it.  A loop that
+crosses ``>`` does not: the pointer advances and the tape grows a cell to
+meet it, so the snapshot is new every step and no repeat exists to find.
+That is the unbounded-growth case the detector documents itself as unable to
+catch, and only the wall-clock timeout stops it.  (The empty program is
+rejected outright, so the fuzz suite's empty-program invariant is unaffected.)
 
 Malformed programs raise :class:`ValueError`.
 """
