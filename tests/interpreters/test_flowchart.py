@@ -162,7 +162,7 @@ class TestKolakoski:
         row 1.
         """
         machine = _Machine(KOLAKOSKI, ScriptedIO(""))
-        assert [(p.x, p.y) for p in machine.pointers] == [(3, 0), (1, 1)]
+        assert [(p.row, p.col) for p in machine.pointers] == [(0, 3), (1, 1)]
 
     def test_it_keeps_producing_output(self) -> None:
         """The generator is infinite, so it runs on rather than halting."""
@@ -206,7 +206,7 @@ class TestParsing:
     def test_longer_spellings_win(self) -> None:
         """``\\[ ]/`` is one push node, not a ``[ ]`` toggle inside noise."""
         machine = _Machine(["( )─\\[ ]/─(( ))"], ScriptedIO(""))
-        assert machine.nodes[(4, 0)][0] == "\\[ ]/"
+        assert machine.nodes[(0, 4)][0] == "\\[ ]/"
 
     def test_end_node_is_not_read_as_a_start(self) -> None:
         """``(( ))`` is matched before ``( )`` so an end never starts a run."""
@@ -273,7 +273,7 @@ class TestParsing:
         way throughout its top row.
         """
         machine = _Machine(["( )─[ }─(( ))"], ScriptedIO(""))
-        assert machine.nodes[(4, 0)][0] == "[ }"
+        assert machine.nodes[(0, 4)][0] == "[ }"
 
     def test_a_rail_passing_beside_a_node_is_not_an_entry(self) -> None:
         """Only a path arm pointing *at* a node counts as entering it.
@@ -282,7 +282,7 @@ class TestParsing:
         column is passing by rather than connecting into it.
         """
         machine = _Machine(["( )────┐  ", "───────┼──", " (( ))─┘  "], ScriptedIO(""))
-        assert machine.nodes[(1, 2)][0] == "(( ))"
+        assert machine.nodes[(2, 1)][0] == "(( ))"
 
 
 class TestNodes:
