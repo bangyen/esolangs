@@ -423,3 +423,55 @@ class TestQoiblTokenizer:
             ["tt", "yeeyeee", "tt"],
             ["tt", "yyeeyey", "tt"],
         ]
+
+
+class TestQoiblCycleDetection:
+    def test_a_terminating_program_is_reported_as_halting(self) -> None:
+        """``snapshot`` is the cycle detector's hook into the interpreter.
+
+        It reports the whole of what a step can change -- the cursor, the
+        variables, and how far input has been read -- so two identical
+        snapshots really do mean the program is going nowhere.  Nothing
+        exercised it before, because ``run`` drives the machine itself.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.qoibl import State
+        from esolangs.vm import run_until_halt_or_cycle
+
+        state = State(io=ScriptedIO(""))
+        state.code = tokenize("we y we yyeeee we\ntt qe y qe tt")
+        assert run_until_halt_or_cycle(state) is True
+
+    def test_the_snapshot_moves_when_a_statement_runs(self) -> None:
+        """A step that assigns changes the snapshot, so it is not a cycle."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.qoibl import State
+
+        state = State(io=ScriptedIO(""))
+        state.code = tokenize("we y we yyeeee we\ntt qe y qe tt")
+        before = state.snapshot()
+        state.step()
+        assert state.snapshot() != before
+
+
+class TestQoiblIncompleteTokens:
+    def test_a_lone_prefix_yields_an_empty_statement(self) -> None:
+        """``w`` and ``q`` only mean something before ``e``.
+
+        A prefix with nothing to pair with contributes no token, so the
+        statement it sits in comes out empty -- which ``step`` then has to
+        skip rather than try to evaluate.
+        """
+        assert tokenize("w") == [[]]
+        assert tokenize("q") == [[]]
+
+    def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
+        """An empty statement is a no-op, not a parse of nothing."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.qoibl import State
+
+        state = State(io=ScriptedIO(""))
+        state.code = tokenize("w")
+        assert state.code == [[]]
+        state.step()
+        assert state.halted
