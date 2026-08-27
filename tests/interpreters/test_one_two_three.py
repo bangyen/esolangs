@@ -49,6 +49,36 @@ class Test123:
         # 3 (FALSE, bit@0) -> next 3 -> 1 flips bit@0 and moves to pos -1.
         assert run_program("3231") == ""
 
+    def test_false_jump_starts_looking_at_the_next_command(self) -> None:
+        """The forward scan begins one past the ``3``, so an adjacent ``3``
+        is the one it finds.
+
+        ``test_false_jump_skips_forward`` puts a command between the two
+        threes, where starting the search one later finds the same one.
+        With them adjacent it does not: the scan runs off the end instead,
+        and the program never reaches the ``1`` that takes the pointer
+        below zero and halts it.
+        """
+        assert run_program("331") == ""
+
+    def test_forward_scan_stops_at_the_end_of_the_code(self) -> None:
+        """The scan for the next ``3`` stops before running off the code.
+
+        A FALSE jump with no later ``3`` walks to the end, where reading
+        one position further is out of range -- the difference between
+        stopping at the last command and stepping past it.
+        """
+        assert run_program("132231") == ""
+
+    def test_unwritten_bits_are_zero(self) -> None:
+        """Bits never assigned read as 0 when the byte is assembled.
+
+        Only the bits a ``1`` has flipped are in the map, so the rest come
+        from the default the lookup supplies: with one bit set the byte is
+        0x80, where treating the absent seven as ones would make it 0xff.
+        """
+        assert run_program("1121") == "\x80"
+
     def test_true_jump_skips_backward(self) -> None:
         """A TRUE 3 jumps back to the previous 3 (or the start) and loops."""
         from esolangs.interpreters.tape_based.one_two_three import _Machine
