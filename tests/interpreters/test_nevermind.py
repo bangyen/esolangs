@@ -251,3 +251,12 @@ class TestStepMachine:
         ):
             with pytest.raises(ValueError, match=message):
                 run_and_capture(code)
+
+    def test_blank_lines_are_skipped_by_the_partner_scan(self) -> None:
+        """A blank line has no command, so ``find`` must step over it."""
+        assert run_and_capture(["if,1,==,1", "  ", "print,X", "endif"]) == "X"
+        assert (
+            run_and_capture(["if,1,==,0", "  ", "print,X", "endif", "print,Y"]) == "Y"
+        )
+        loop = ["make,n,2", "loop,$n", "", "print,h", "endloop"]
+        assert run_and_capture(loop) == "hh"
