@@ -392,3 +392,62 @@ or, where the language has no other generator story, remove it.  The caps
 are documented in `docs/limitations.md` and `docs/walls.md`.
 
 **No language is currently on this list.**
+
+## Evidence types through Streetcode's validators (deferred)
+
+`_Machine._validate` proves five things about a grid in a fixed order —
+width, enclosure, wall shape, glyph pairing, connectivity — and later code
+relies on those proofs.  Two of the reliances are already typed: `_Halt`
+keeps a deliberate stop apart from a wedged street, and `_ReachableCell`
+gates `_block`'s unchecked three-by-three read behind the enclosure proof
+(see the type comments in `streetcode.py`).
+
+The unbuilt third step is to carry the whole pipeline in the types: a chain
+of evidence classes, each minted only by the validator that proves it and
+demanded by the next.
+
+```python
+class WalledGrid: ...      # >=1 wall character, >1 open cell
+class TwoWide: ...         # + every reachable cell is two-wide
+class Enclosed(TwoWide): ...   # + no reachable cell on the border
+class WellFormed(Enclosed): ...  # + walls, glyphs, connectivity
+
+def _flood(g: WalledGrid, start: tuple[int, int]) -> TwoWide | WallLess: ...
+def _check_enclosed(w: TwoWide) -> Enclosed: ...
+def _check_walls(e: Enclosed) -> WellFormed: ...
+```
+
+That would make the ordering a checked fact rather than a docstring, and
+`_validate_width`'s `set | None` return would become two named outcomes —
+the `None` arm being the wall-less grid whose `U` raises `HaltError`, which
+is easy to overlook as "no cells" today.
+
+**Deferred deliberately.**  The cost-benefit does not currently justify it:
+
+- It removes two `pragma: no cover` lines in `_validate_walls`, and nothing
+  else.  Both are already correctly pragma'd.
+- The ordering it would enforce is set in one six-line method with a single
+  call site.  The bug it prevents — calling `_check_walls` before the flood
+  fill — is not one this code is positioned to commit.
+- `NewType` and marker classes are erased at runtime, so this buys
+  provenance under mypy, not a guarantee.  The runtime check would still
+  have to live in the smart constructor and still have to raise.
+- The validator docstrings currently explain *why* each invariant holds
+  ("a wall that stops short leaves a one-wide stub, which the width check
+  catches as a dead end").  A signature asserts the ordering but cannot
+  carry that reasoning, so the rewrite trades explanation for enforcement
+  across the most carefully reasoned prose in the module.
+
+Worth revisiting only if the module is restructured for another reason, or
+if a validator is added whose ordering is genuinely non-obvious.
+
+### What types cannot reach here
+
+Recorded so a future attempt does not over-promise: the value-dependent
+halts — `_` at CP 0, `O` on a non-code-point cell, `I` at end of input —
+are runtime semantics, not geometry.  No grid invariant touches them, and
+`_probe` deliberately does not model them.  Likewise the `U`-without-a-lane
+`HaltError` and `step`'s no-graph fallback are contract, not defensive
+guards: the first is documented behaviour for wall-less grids, the second
+is what lets the interpreter's own wall-shape fixtures disable `_validate`.
+Any redesign has to keep both.
