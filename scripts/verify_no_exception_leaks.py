@@ -31,7 +31,6 @@ Run::
 import json
 import pathlib
 import random
-import subprocess
 import sys
 import time
 
@@ -150,41 +149,11 @@ def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
     return out
 
 
-# Changing any of these changes how *every* interpreter reads, steps, or
-# reports, so touching one sweeps the whole registry rather than nothing.
-_SHARED = (
-    "interpreters/io.py",
-    "interpreters/memory.py",
-    "interpreters/brackets.py",
-    "exceptions.py",
-    "vm.py",
-    "registry.py",
-)
-
-
-def _changed_files() -> list[str]:
-    """Return the repo-relative paths this branch changed, or [] if unknown."""
-    for args in (
-        ["diff", "--name-only", "origin/main...HEAD"],
-        ["diff", "--name-only", "HEAD~1"],
-    ):
-        got = subprocess.run(
-            ["git", *args], capture_output=True, text=True, cwd=_ROOT, check=False
-        )
-        if got.returncode == 0 and got.stdout.strip():
-            names = got.stdout.split()
-            break
-    else:
-        return []
-    status = subprocess.run(
-        ["git", "status", "--porcelain"],
-        capture_output=True,
-        text=True,
-        cwd=_ROOT,
-        check=False,
-    )
-    names += [ln[3:] for ln in status.stdout.splitlines() if ln[3:]]
-    return names
+# The scoping rule (which files changed, and what forces a full sweep) is
+# shared with scripts/verify.py, so both agree on when a narrowed run is safe.
+sys.path.insert(0, str(_ROOT / "scripts"))
+from _scope import SHARED_INTERPRETER as _SHARED
+from _scope import changed_files as _changed_files
 
 
 def _select(
