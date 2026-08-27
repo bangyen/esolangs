@@ -109,23 +109,23 @@ class _Tape:
 
     def __init__(
         self,
-        fixed: str | None = None,
+        fixed: _CellKind | None = None,
         reader: Any = None,
     ) -> None:
-        self.cells: dict[tuple[int, int], tuple[str, int]] = {}
+        self.cells: dict[tuple[int, int], tuple[_CellKind, int]] = {}
         self.fixed = fixed
         self.reader = reader
         self.x = 0
         self.y = 0
 
-    def get_cell(self) -> tuple[str, int]:
+    def get_cell(self) -> tuple[_CellKind, int]:
         """Return the ``(kind, value)`` under the head (zeros beyond input)."""
         if self.reader is not None:
             value = self.reader(self.x, self.y)
             return ("byte", 0) if value is None else ("byte", value)
         return self.cells.get((self.x, self.y), ("byte", 0))
 
-    def set_cell(self, kind: str, value: int) -> None:
+    def set_cell(self, kind: _CellKind, value: int) -> None:
         """Write a ``(kind, value)`` to the cell under the head."""
         self.cells[(self.x, self.y)] = (kind, value)
 
@@ -135,7 +135,7 @@ class _Var:
 
     __slots__ = ("kind", "value")
 
-    def __init__(self, kind: str, value: int) -> None:
+    def __init__(self, kind: _CellKind, value: int) -> None:
         self.kind = kind
         self.value = value
 
@@ -518,7 +518,7 @@ def _operand(
     token: _Token,
     state: _State,
     frame: dict[str, object] | None,
-) -> tuple[str, int]:
+) -> tuple[_CellKind, int]:
     """Evaluate a math operand to a ``(kind, value)`` (tapes use their cell)."""
     value = _eval_value(token, state, frame)
     if isinstance(value, _Tape):
