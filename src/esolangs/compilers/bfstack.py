@@ -3,7 +3,21 @@
 import itertools
 import re
 import sys
-from typing import cast
+from dataclasses import dataclass
+
+
+@dataclass
+class _Routine:
+    """One of the four helper subroutines a BFStack program may call.
+
+    ``used`` records that the program calls it at all (so its body is
+    emitted), and ``looped`` that some call site passed a repeat count (so
+    the body needs the counter loop around it).
+    """
+
+    label: str
+    used: bool = False
+    looped: bool = False
 
 
 def parse(code: str) -> list[tuple[str, int]]:
@@ -68,10 +82,10 @@ def comp(code: str) -> str:
     )
 
     ins = {
-        ">": ["right", False, False],
-        "<": ["left", False, False],
-        ".": ["output", False, False],
-        ",": ["input", False, False],
+        ">": _Routine("right"),
+        "<": _Routine("left"),
+        ".": _Routine("output"),
+        ",": _Routine("input"),
     }
 
     for char, num in tokens:
@@ -83,10 +97,10 @@ def comp(code: str) -> str:
         elif char in "><.,":
             if num > 1:
                 res += f"\tli   s2, {num}\n"
-                ins[char][2] = True
-            res += f"\tcall {ins[char][0]}\n"
+                ins[char].looped = True
+            res += f"\tcall {ins[char].label}\n"
 
-            ins[char][1] = True
+            ins[char].used = True
         elif char in "[]":
             for _ in range(num):
                 if char == "[":
@@ -105,25 +119,25 @@ def comp(code: str) -> str:
             + "\tret\n"
         )
 
-    if ins[">"][1]:
+    if ins[">"].used:
         res += "\nright:\n\taddi s1, s1, -1\n\tsb   zero, 0(s1)\n" + end(
-            "right", mul=cast(bool, ins[">"][2])
+            "right", mul=ins[">"].looped
         )
-    if ins["<"][1]:
+    if ins["<"].used:
         res += "\nleft:\n\tbeq  s1, s3, .done_left\n\taddi s1, s1, 1\n"
-        if ins["<"][2]:
+        if ins["<"].looped:
             res += "\taddi s2, s2, -1\n\tbgt  s2, zero, left\n\taddi s2, s2, 1\n"
         res += ".done_left:\n\tret\n"
-    if ins["."][1]:
+    if ins["."].used:
         res += (
             "\noutput:\n"
             "\tli   a7, 64\n"
             "\tli   a0, 1\n"
             "\tmv   a1, s1\n"
             "\tli   a2, 1\n"
-            "\tecall\n" + end("output", mul=cast(bool, ins["."][2]))
+            "\tecall\n" + end("output", mul=ins["."].looped)
         )
-    if ins[","][1]:
+    if ins[","].used:
         res += (
             "\ninput:\n"
             "\taddi s1, s1, -1\n"
@@ -131,7 +145,7 @@ def comp(code: str) -> str:
             "\tli   a0, 0\n"
             "\tmv   a1, s1\n"
             "\tli   a2, 1\n"
-            "\tecall\n" + end("input", mul=cast(bool, ins[","][2]))
+            "\tecall\n" + end("input", mul=ins[","].looped)
         )
 
     return res
