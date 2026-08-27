@@ -28,7 +28,6 @@ Run::
     python scripts/verify_no_exception_leaks.py --all out.json
 """
 
-
 import json
 import pathlib
 import random
@@ -46,16 +45,74 @@ from esolangs.vm import make_vm
 ALLOWED = (EsolangError, ValueError, EOFError, RecursionError, SystemExit)
 
 GENERIC = [
-    "", " ", "\n", "\n\n", "\t", "\x00", "0", "1", "-1", "999999",
-    "a", "z", "A", "!", "?", "#", ",", ".", ":", ";", "$", "%", "&",
-    "[", "]", "()", "{}", "<>", "[]", "[[[", "]]]", "((", "))",
-    "+-*/", "><", '"', "''", '"unterminated', "\\", "//", "**",
-    ",,,,", "::::", "$$$$", "a,b,c", "1,2,3", "x=", "=x", "..",
-    "0..", "..0", "1..0", "f", "f()", "main{}", "print", "make",
-    "if", "loop", "for", "return", "out", "in",
-    "\u00b2", "\u0661",  # digits str.isdigit accepts but int() will not
-
-    "9" * 40, "z" * 40, "\n".join(["1"] * 8),
+    "",
+    " ",
+    "\n",
+    "\n\n",
+    "\t",
+    "\x00",
+    "0",
+    "1",
+    "-1",
+    "999999",
+    "a",
+    "z",
+    "A",
+    "!",
+    "?",
+    "#",
+    ",",
+    ".",
+    ":",
+    ";",
+    "$",
+    "%",
+    "&",
+    "[",
+    "]",
+    "()",
+    "{}",
+    "<>",
+    "[]",
+    "[[[",
+    "]]]",
+    "((",
+    "))",
+    "+-*/",
+    "><",
+    '"',
+    "''",
+    '"unterminated',
+    "\\",
+    "//",
+    "**",
+    ",,,,",
+    "::::",
+    "$$$$",
+    "a,b,c",
+    "1,2,3",
+    "x=",
+    "=x",
+    "..",
+    "0..",
+    "..0",
+    "1..0",
+    "f",
+    "f()",
+    "main{}",
+    "print",
+    "make",
+    "if",
+    "loop",
+    "for",
+    "return",
+    "out",
+    "in",
+    "\u00b2",
+    "\u0661",  # digits str.isdigit accepts but int() will not
+    "9" * 40,
+    "z" * 40,
+    "\n".join(["1"] * 8),
 ]
 
 # Programs are bounded by *steps*, not by a wall clock.  Most malformed
@@ -83,11 +140,11 @@ def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
         kind = rng.randrange(4)
         i = rng.randrange(len(text))
         if kind == 0:
-            out.append(text[:i])                      # truncate
+            out.append(text[:i])  # truncate
         elif kind == 1:
-            out.append(text[:i] + text[i + 1:])       # drop a char
+            out.append(text[:i] + text[i + 1 :])  # drop a char
         elif kind == 2:
-            out.append(text[:i] + text[i] * 2 + text[i + 1:])  # double a char
+            out.append(text[:i] + text[i] * 2 + text[i + 1 :])  # double a char
         else:
             out.append(text[:i] + rng.choice(",.[]{}()$0az") + text[i:])
     return out
@@ -95,37 +152,53 @@ def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
 
 # Changing any of these changes how *every* interpreter reads, steps, or
 # reports, so touching one sweeps the whole registry rather than nothing.
-_SHARED = ("interpreters/io.py", "interpreters/memory.py", "interpreters/brackets.py",
-           "exceptions.py", "vm.py", "registry.py")
+_SHARED = (
+    "interpreters/io.py",
+    "interpreters/memory.py",
+    "interpreters/brackets.py",
+    "exceptions.py",
+    "vm.py",
+    "registry.py",
+)
 
 
 def _changed_files() -> list[str]:
     """Return the repo-relative paths this branch changed, or [] if unknown."""
-    for args in (["diff", "--name-only", "origin/main...HEAD"],
-                 ["diff", "--name-only", "HEAD~1"]):
-        got = subprocess.run(["git", *args], capture_output=True, text=True,
-                             cwd=_ROOT, check=False)
+    for args in (
+        ["diff", "--name-only", "origin/main...HEAD"],
+        ["diff", "--name-only", "HEAD~1"],
+    ):
+        got = subprocess.run(
+            ["git", *args], capture_output=True, text=True, cwd=_ROOT, check=False
+        )
         if got.returncode == 0 and got.stdout.strip():
             names = got.stdout.split()
             break
     else:
         return []
-    status = subprocess.run(["git", "status", "--porcelain"], capture_output=True,
-                            text=True, cwd=_ROOT, check=False)
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        capture_output=True,
+        text=True,
+        cwd=_ROOT,
+        check=False,
+    )
     names += [ln[3:] for ln in status.stdout.splitlines() if ln[3:]]
     return names
 
 
-def _select(langs: list[str], runners: dict[str, tuple[str, bool, dict[str, int]]]
-            ) -> tuple[list[str], str]:
+def _select(
+    langs: list[str], runners: dict[str, tuple[str, bool, dict[str, int]]]
+) -> tuple[list[str], str]:
     """Return the languages worth sweeping, and why that set was chosen."""
     changed = _changed_files()
     if not changed:
         return langs, "no diff available, sweeping everything"
     if any(f.endswith(_SHARED) for f in changed):
         return langs, "shared interpreter machinery changed"
-    picked = [n for n in langs
-              if any(runners[n][0].replace(".", "/") in f for f in changed)]
+    picked = [
+        n for n in langs if any(runners[n][0].replace(".", "/") in f for f in changed)
+    ]
     if not picked:
         return [], "no interpreter changed"
     return picked, f"{len(picked)} interpreter(s) changed"
@@ -195,8 +268,12 @@ def main() -> None:
                     findings.setdefault(lang, [])
                     if len(findings[lang]) < 6:
                         findings[lang].append(
-                            {"exc": key, "msg": str(e)[:120],
-                             "program": prog[:120], "stdin": stdin}
+                            {
+                                "exc": key,
+                                "msg": str(e)[:120],
+                                "program": prog[:120],
+                                "stdin": stdin,
+                            }
                         )
                     counts[f"{lang}:{key}"] = counts.get(f"{lang}:{key}", 0) + 1
         hits = findings.get(lang)
@@ -205,8 +282,9 @@ def main() -> None:
 
     if args:
         with open(args[0], "w") as fh:
-            json.dump({"findings": findings, "counts": counts}, fh,
-                      indent=1, sort_keys=True)
+            json.dump(
+                {"findings": findings, "counts": counts}, fh, indent=1, sort_keys=True
+            )
     print(f"\nlanguages with leaks: {len(findings)} / {len(langs)}")
     if findings:
         raise SystemExit(1)

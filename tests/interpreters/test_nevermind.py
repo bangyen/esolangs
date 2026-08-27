@@ -219,12 +219,20 @@ class TestStepMachine:
 
     def test_decimal_arithmetic(self) -> None:
         """A decimal spelling is a number: it adds rather than concatenating."""
-        assert run_and_capture(["make,x,2.5", "make,y,4", "make,z,$x,+,$y",
-                                "print,$z"]) == "6.5"
-        assert run_and_capture(["make,x,2.5", "make,y,3", "make,z,$x,*,$y",
-                                "print,$z"]) == "7.5"
-        assert run_and_capture(["make,x,2.5", "make,y,3", "if,$x,<,$y", "print,Y",
-                                "endif"]) == "Y"
+        assert (
+            run_and_capture(["make,x,2.5", "make,y,4", "make,z,$x,+,$y", "print,$z"])
+            == "6.5"
+        )
+        assert (
+            run_and_capture(["make,x,2.5", "make,y,3", "make,z,$x,*,$y", "print,$z"])
+            == "7.5"
+        )
+        assert (
+            run_and_capture(
+                ["make,x,2.5", "make,y,3", "if,$x,<,$y", "print,Y", "endif"]
+            )
+            == "Y"
+        )
 
     def test_non_canonical_decimals_stay_strings(self) -> None:
         """``02.5`` is not a number spelling, so ``++`` keeps what was written."""
