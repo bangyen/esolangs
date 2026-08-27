@@ -182,3 +182,65 @@ class TestPackageEntryPoint:
             runpy.run_module("esolangs", run_name="__main__")
         out = capsys.readouterr().out
         assert esolangs.run("Sophie", out) == "Hi"
+
+
+class TestWidthOption:
+    """``--width`` in all the spellings the parser accepts."""
+
+    def test_width_with_a_value(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """``--width N`` bounds the generated program's columns."""
+        out = call_main(["generate", "brainfuck", "Hello", "--width", "20"], capsys)
+        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
+        assert esolangs.run("brainfuck", out) == "Hello"
+
+    def test_width_with_an_equals_sign(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``--width=N`` is the same option written the other way."""
+        out = call_main(["generate", "brainfuck", "Hello", "--width=20"], capsys)
+        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
+
+    def test_bare_width_takes_the_default(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A bare ``--width`` wraps to the conventional default.
+
+        The common case is "wrap this so I can read it", which needs no
+        number; the option is only followed by one when the caller wants a
+        width other than the default.
+        """
+        from esolangs.tools.wrap import DEFAULT_WIDTH
+
+        out = call_main(["generate", "brainfuck", "Hello, World!", "--width"], capsys)
+        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= DEFAULT_WIDTH
+        assert "\n" in out.rstrip("\n")
+
+    def test_bare_width_before_a_non_integer(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A following word is an argument, not a width.
+
+        Reading the language name as a width would silently generate the
+        wrong thing, so only an integer is taken as the option's value.
+        """
+        out = call_main(["generate", "--width", "brainfuck", "Hi"], capsys)
+        assert esolangs.run("brainfuck", out) == "Hi"
+
+    def test_width_rejects_a_non_integer_after_equals(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``--width=x`` has no integer to parse, so it is refused."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "brainfuck", "Hi", "--width=x"], capsys)
+        assert exc.value.code == 2
+        assert "must be an integer" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("value", ["0", "-5"])
+    def test_width_rejects_a_non_positive_value(
+        self, value: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A width of zero or less bounds nothing."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "brainfuck", "Hi", "--width", value], capsys)
+        assert exc.value.code == 2
+        assert "must be positive" in capsys.readouterr().err
