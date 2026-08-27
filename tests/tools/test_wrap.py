@@ -729,6 +729,25 @@ def test_between_split_keeps_a_line_it_cannot_cut() -> None:
     assert _between_split("'a'b'p.", 4) == ["'a'b'p."]
 
 
+def test_between_split_of_an_empty_literal_yields_nothing() -> None:
+    """A print statement with no payload has no units, so nothing is packed.
+
+    Every other input leaves a part-filled accumulator to flush at the end;
+    this is the one that does not, and it comes out as no lines rather than
+    one empty one.
+    """
+    assert _between_split("''p.", 1) == []
+
+
+def test_polynomial_leaves_a_program_too_short_to_have_a_header() -> None:
+    """The ``f(x) =`` header is three terms; a shorter program has none.
+
+    Joining the first three terms only makes sense once they are the header,
+    so a program that does not start that way is returned as it came.
+    """
+    assert _polynomial("1", 10) == "1"
+
+
 def test_nevermind_keeps_a_dollar_with_the_character_before_it() -> None:
     """A ``$`` opening a line reads as a variable, so it never starts one.
 
