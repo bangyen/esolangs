@@ -268,11 +268,14 @@ def main() -> int:
     parser.add_argument(
         "--jobs",
         type=int,
-        default=2,
-        help="mutants to run at once (default 2; mutmut's own default is "
-        "every core, which saturates the machine for the whole run, and "
-        "even a few workers churn processes fast enough to keep the run "
-        "queue deep -- a load average well above the cores actually burnt)",
+        default=4,
+        help="mutants to run at once (default 4; mutmut's own default is "
+        "every core, which saturates the machine for the whole run).  Fewer "
+        "is not always cheaper: mutmut caps each mutant with an RLIMIT_CPU "
+        "of (baseline + 1) * 30, so with less sibling contention a process "
+        "burns that CPU budget in fewer wall-seconds and more mutants reach "
+        "the cap -- at two workers a Forbin run spent 85% of its time on the "
+        "6% of mutants that timed out",
     )
     args = parser.parse_args()
 
