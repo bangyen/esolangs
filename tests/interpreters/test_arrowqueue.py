@@ -58,6 +58,48 @@ class TestArrowQueue:
     def test_registered_interpreter_runs(self) -> None:
         assert esolangs.run("ArrowQueue", "~*+") == ""
 
+
+class TestMachineState:
+    """Assertions on where the IP ends up, which output cannot show.
+
+    ArrowQueue prints nothing, so a test that only checks ``== ""`` passes
+    for any machine that terminates -- turning the wrong way, padding the
+    grid on the wrong side, or queueing the wrong heading all look alike.
+    These pin the state the empty string hides.
+    """
+
+    def final(self, code: list[str]) -> tuple[int, int, int, list[int]]:
+        machine = _Machine(code)
+        while not machine.halted:
+            machine.step()
+        return machine.row, machine.col, machine.d, list(machine.queue)
+
+    def test_short_lines_pad_on_the_right(self) -> None:
+        """A short line is padded to the right, keeping its content in place.
+
+        ``ljust`` and ``rjust`` agree whenever the short line is the last one
+        or holds only no-ops, which is every ragged grid the suite had.  Here
+        the ``*`` on the short first row must stay at column 0: padding on
+        the left would shift it under the ``+`` and change where the IP goes.
+        """
+        assert self.final(["*", "~+"]) == (2, 0, 1, [1])
+
+    def test_heading_wraps_after_four_turns(self) -> None:
+        """Four turns come back to the start; the heading is one of four.
+
+        Every other program leaves the grid before the fourth ``*``, so a
+        heading counted modulo 5 was never reached -- and a fifth heading has
+        no delta, so this grid raises IndexError under that mutation instead
+        of walking off the edge.
+        """
+        assert self.final(["~**", "*~*", "***"]) == (-1, 0, 3, [0, 1, 0, 3, 2, 3])
+
+    def test_empty_program_has_no_grid(self) -> None:
+        """Code with no lines halts at once on a zero-width, empty grid."""
+        machine = _Machine([])
+        assert machine.halted
+        assert (machine.width, machine.grid) == (0, [])
+
     def test_truth_machine_present_loops_forever(self) -> None:
         """A ~ in the data cell sustains the ring, so the program never halts."""
         program = [" ~*", "+~*", "*~+"]
