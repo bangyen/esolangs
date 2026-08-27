@@ -18,7 +18,7 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.streetcode import _Machine, run
+from esolangs.interpreters.grid_based.streetcode import _Machine, _State, run
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
@@ -1345,7 +1345,7 @@ class TestStreetcodeGraphBackedStepping:
         """
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
-        state = (1, 1, "E", None, None, 0)
+        state: _State = (1, 1, "E", None, None, 0)
         machine._graph[state] = dict.fromkeys(  # noqa: SLF001
             ((0, 0), (0, 1), (1, 0), (1, 1))
         )
