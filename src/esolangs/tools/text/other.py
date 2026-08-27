@@ -79,15 +79,18 @@ def clockwise(text: str, width: int | None = None) -> str:
     origin facing right, where it halts.  Each ``;`` outputs ``acc % 2``, so
     ``+`` is emitted only when the accumulator's parity needs to flip.
 
-    Two layouts are built and the shorter one wins.  The bare *ring* keeps
-    code on the perimeter only and leaves the interior dead, so a program of
-    ``c`` cells costs a square of side about ``c / 4`` -- a long text is
-    better than 97% blank.  The *weave* (:func:`_clockwise_weave`)
-    serpentines through the interior instead and runs over 90% code, so it
-    wins on everything but the shortest texts, where the ring's smaller
-    fixed cost still tells.
+    The *weave* (:func:`_clockwise_weave`) serpentines through the interior
+    and runs over 90% code.  A bare *ring* -- code on the perimeter only,
+    the interior left dead -- was built alongside it and the shorter won,
+    but the ring only ever won on one-character text, and by at most 1.26x:
+    a program of ``c`` cells costs it a square of side about ``c / 4``, so
+    anything longer is better than 97% blank.  It is not worth a second
+    layout, and the weave is now the only shape.
 
-    ``width`` bounds the columns of whichever layout is chosen.
+    ``width`` bounds the columns.  Below ``_WEAVE_MIN_WIDTH`` no weave
+    exists and this raises: the ring used to serve as the fallback there,
+    but it could not honour a width either -- its shape floors the columns
+    at three, so a width of 1 or 2 came back over-wide rather than refused.
     """
     _require_ascii(text, "Clockwise")
     prog = ""
@@ -103,31 +106,11 @@ def clockwise(text: str, width: int | None = None) -> str:
         return ""
 
     folded = _clockwise_weave(prog, width)
-    ring = _clockwise_ring(prog, width)
-    if folded is not None:
-        return shortest(folded, ring)
-    return ring
-
-
-def _clockwise_ring(prog: str, width: int | None) -> str:
-    """Wrap ``prog`` around a rectangle's perimeter, the interior left dead."""
-    height, width_ = _clockwise_shape(len(prog), width)
-    # The three turning corners are overwritten with ``R`` below, so the
-    # ring skips them rather than placing code that would be clobbered.
-    # Only the top-left corner carries an instruction (the origin).
-    ring = [(i, 0) for i in range(width_ - 1)]  # top row, up to the corner
-    ring += [(width_ - 1, y) for y in range(1, height - 1)]  # right, inside
-    ring += [(i, height - 1) for i in range(width_ - 2, 0, -1)]  # bottom back
-    ring += [(0, y) for y in range(height - 2, 0, -1)]  # left column, up
-
-    grid = [[" "] * width_ for _ in range(height)]
-    for (x, y), ch in zip(ring, prog, strict=False):
-        grid[y][x] = ch
-    grid[0][width_ - 1] = "R"  # top-right
-    grid[height - 1][width_ - 1] = "R"  # bottom-right
-    grid[height - 1][0] = "R"  # bottom-left
-
-    return "\n".join("".join(row) for row in grid)
+    if folded is None:
+        raise ValueError(
+            f"Clockwise needs a width of at least {_WEAVE_MIN_WIDTH} (got {width})"
+        )
+    return folded
 
 
 # A weave's turning cells: the hairpin ladder in column 1, the two descent
@@ -208,8 +191,8 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
     origin; every cell any of those lanes crosses only once still holds an
     instruction, so the grid runs better than 90% code.
 
-    Returns ``None`` when no weave fits within ``width``, leaving the caller
-    with the ring.
+    Returns ``None`` when no weave fits within ``width``, which the caller
+    turns into a ``ValueError``: there is no narrower shape to fall back to.
     """
     best: str | None = None
     limit = width if width is not None else len(prog) + _WEAVE_MIN_WIDTH
@@ -234,24 +217,6 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
             if units > len(prog):
                 break
     return best
-
-
-def _clockwise_shape(cells: int, width: int | None) -> tuple[int, int]:
-    """Return the ``(height, width)`` of the ring holding ``cells`` commands.
-
-    An ``h`` x ``w`` perimeter has ``2(h + w) - 4`` cells, but three of them
-    are the turning corners, so a ring carries ``2(h + w) - 7`` instructions
-    and needs ``h + w >= (cells + 7) / 2``.  Splitting that sum evenly gives
-    the square, which minimizes ``max(h, w)``; ``width`` caps ``w`` and moves
-    the remainder onto ``h``.  Both dimensions are at least 3, the smallest
-    ring with an interior.
-    """
-    half = -(-(cells + 7) // 2)  # ceil, the required h + w
-    side = max(3, -(-half // 2))  # ceil, the square's side
-    if width is None or side <= width:
-        return side, side
-    capped = max(3, width)
-    return max(3, half - capped), capped
 
 
 def container(text: str) -> str:
