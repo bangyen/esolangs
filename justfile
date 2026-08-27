@@ -15,11 +15,12 @@ help:
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
-    @echo "  test         - Run the full local check (lint, pytest, bandit, cargo, + verify scripts) (~75s)"
+    @echo "  test         - Local check, scoped to what this branch touched (~5-20s typical)"
+    @echo "  test-full    - Every check over the whole tree (~97s)"
     @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) + cargo (~6s pytest, ~12s total)"
     @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
     @echo "  test-rust    - cargo fmt + cargo test (~1s)"
-    @echo "  test-differential - interpreter vs native differential corpora (~32s)"
+    @echo "  test-differential - interpreter vs native differential corpora (~51s)"
     @echo "  test-unicorn - RISC-V assembly under unicorn (~10s)"
     @echo "  test-generators - extra cross-check generators (~2.6s)"
     @echo "  test-line    - extra/line suites via uv (~3s)"
@@ -27,7 +28,7 @@ help:
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
-    @echo "  Use 'just test-quick' for inner loop, 'just test --only pytest,differential' for subsets."
+    @echo "  Use 'just test-quick' for inner loop, 'just test-full' before a release."
 
 # install tooling
 install-dev:
@@ -89,10 +90,16 @@ lint-lean:
 lint: lint-python lint-rust lint-lean
     @echo "All lint checks completed!"
 
-# test (full local check: lint, pytest, bandit, cargo, verify scripts)
-# pass --quiet to suppress successful step output (only [ok]/FAIL + timing)
+# test (local check: lint, pytest, bandit, cargo, verify scripts)
+# Scoped to the files this branch touched; widens to everything when the diff
+# is unreadable or shared machinery moved.  Use `just test-full` to force the
+# whole tree.  Pass --quiet to suppress successful step output.
 test *args:
     {{PYTHON}} scripts/verify.py {{args}}
+
+# every step over the whole tree, ignoring what this branch touched
+test-full *args:
+    {{PYTHON}} scripts/verify.py --full {{args}}
 
 # fast dev loop: pre-commit + pytest (skip slow) + cargo (skips 32s differential + 10s unicorn) — quiet by default
 test-quick *args:
