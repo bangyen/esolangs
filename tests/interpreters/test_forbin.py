@@ -457,7 +457,11 @@ class TestForbinMutationSurvivors:
 
         machine = _Machine(code, ScriptedIO(stdin))
         steps, deepest = 0, 0
-        while not machine.halted and steps < 20000:
+        # The programs here settle in fifteen steps or fewer.  The cap is
+        # headroom, not a timeout: a mutant that stops one halting should
+        # fail this in microseconds, and at 20000 it burnt 5.7 seconds
+        # apiece instead -- once per such mutant, over eleven hundred.
+        while not machine.halted and steps < 200:
             machine.step()
             steps += 1
             deepest = max(deepest, len(machine.frames))

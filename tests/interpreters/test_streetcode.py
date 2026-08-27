@@ -1392,7 +1392,9 @@ class TestStreetcodeMutationSurvivors:
         scripted = ScriptedIO("")
         machine = _Machine(code, scripted)
         steps = 0
-        while not machine.halted and steps < 5000:
+        # 426 is the real count; the cap is headroom, and a tight one keeps
+        # a mutant that stops the example halting cheap to reject.
+        while not machine.halted and steps < 1000:
             machine.step()
             steps += 1
         assert machine.halted
