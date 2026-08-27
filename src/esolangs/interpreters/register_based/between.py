@@ -35,7 +35,7 @@ runs off the program.
 """
 
 import sys
-from typing import Any, Literal, cast, get_args
+from typing import Any, Literal, get_args
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -65,7 +65,7 @@ _Instr = tuple[_Op, _Arg, _Arg]
 
 ValueT = str | int | bool | None
 
-_OPS = frozenset(get_args(_Op))
+_OPS: frozenset[_Op] = frozenset(get_args(_Op))
 _WHITESPACE = " \t"
 
 
@@ -99,8 +99,7 @@ def _parse_expr(line: str, i: int) -> tuple[_Instr, int]:
     if op not in _OPS:
         raise ValueError(f"unknown operation {op!r}")
     arg2, i = _parse_arg(line, i + 1)
-    # The check above is the membership test, so this is a typed operation.
-    return (cast("_Op", op), arg1, arg2), i
+    return (op, arg1, arg2), i
 
 
 def _parse_group(line: str, i: int) -> tuple[_Group, int]:
