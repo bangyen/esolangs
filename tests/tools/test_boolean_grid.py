@@ -524,6 +524,41 @@ class TestWII2D:
                 v = _wii2d_apply(routes[i][bits[i]], v)
             assert v == (1 if bin(combo).count("1") > n // 2 else 0), bits
 
+    def test_search_fallback_decision_at_small_arity(self) -> None:
+        """The fallback decision itself, without enumerating a real ladder.
+
+        ``_wii2d_search`` ends in two lines that decide what a failed ladder
+        means: a symmetric table gets one more chance through
+        :func:`_wii2d_symmetric_search`, and anything else gives up.  Both
+        the arity-10 test below and its slow sibling reach these through a
+        genuine ladder failure, which is what makes them slow -- so this
+        stubs the ladder out entirely and asks only the decision, at ``n``
+        3, where both answers are still real.
+
+        Kept fast (~4ms against ~5s) so the branch stays covered in a run
+        that deselects the slow marks.
+        """
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        real_domain = wii2d_mod._wii2d_domain  # noqa: SLF001
+
+        def one_char_domain(maxlen: int, cap: int) -> list[int]:
+            return real_domain(min(maxlen, 1), cap)
+
+        n = 3
+        symmetric = "".join(
+            "1" if bin(c).count("1") > n // 2 else "0" for c in range(2**n)
+        )
+        stub_ladder = [(2, 10)]
+        with (
+            patch.object(wii2d_mod, "_wii2d_search_start", return_value=None),
+            patch.object(wii2d_mod, "_WII2D_LADDER", stub_ladder),
+            patch.object(wii2d_mod, "_wii2d_domain", side_effect=one_char_domain),
+        ):
+            # Symmetric: majority-of-3 still resolves, via the popcount path.
+            assert wii2d_mod._wii2d_search(n, symmetric) is not None  # noqa: SLF001
+            # Not symmetric, and no ladder to fall back on: give up.
+            assert wii2d_mod._wii2d_search(n, "00000010") is None  # noqa: SLF001
+
     @pytest.mark.slow
     def test_search_falls_back_to_symmetric_search_when_the_ladder_fails(
         self,
