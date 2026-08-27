@@ -88,8 +88,10 @@ def clockwise(text: str, width: int | None = None) -> str:
     layout, and the weave is now the only shape.
 
     ``width`` bounds the columns, down to ``_WEAVE_MIN_WIDTH``: the weave
-    needs a home lane, a hairpin ladder, a body cell and two descent lanes,
-    so five columns is the narrowest grid the turtle can walk.  A smaller
+    needs a home lane, a hairpin ladder and two descent lanes, so four
+    columns is the narrowest grid the turtle can walk -- the lanes
+    themselves carry instructions wherever the walk crosses them once, so
+    no separate body column is required.  A smaller
     width is met with that narrowest weave rather than refused, the way
     Streetcode answers a width no shape fits with its narrowest shape.  A
     width is a preference about layout, and a program two columns wider
@@ -122,9 +124,11 @@ def clockwise(text: str, width: int | None = None) -> str:
 # lanes on the right, and the corners.  Everything else is a slot.
 _WEAVE_LANES = "0110"
 
-# The narrowest weave: the home lane, the hairpin ladder, one body cell, and
-# the two descent lanes.
-_WEAVE_MIN_WIDTH = 5
+# The narrowest weave: the home lane, the hairpin ladder, and the two descent
+# lanes.  No body column is needed -- at ``body = 0`` the descent lanes and the
+# ladder still cross cells the walk visits exactly once, so a four-wide grid
+# holds instructions (eleven of them per four-row group) and closes.
+_WEAVE_MIN_WIDTH = 4
 
 
 def _weave_template(units: int, body: int) -> list[list[str]]:
@@ -204,7 +208,7 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
     limit = width if width is not None else len(prog) + _WEAVE_MIN_WIDTH
     if limit < _WEAVE_MIN_WIDTH:
         return None
-    for body in range(1, limit - 3):
+    for body in range(0, limit - 3):
         units = 1
         while True:
             grid = _weave_template(units, body)
