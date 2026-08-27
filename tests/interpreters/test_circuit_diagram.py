@@ -357,3 +357,55 @@ class TestParseErrors:
 
     def test_an_empty_program_has_nothing_to_run(self) -> None:
         assert output_for([], "") == ""
+
+
+class TestWireLabelErrors:
+    """A wire label has to name a width, and the widths have to agree."""
+
+    def test_a_non_numeric_label_is_rejected(self) -> None:
+        """``3+x`` is not a sum of widths, so the label means nothing."""
+        with pytest.raises(ValueError, match="malformed wire label"):
+            run(["-3+x-:"], ScriptedIO(""))
+
+    def test_a_zero_width_label_is_rejected(self) -> None:
+        """A wire carrying no bits cannot be read or driven."""
+        with pytest.raises(ValueError, match="must be positive"):
+            run(["-0-:"], ScriptedIO(""))
+
+    def test_a_label_touching_no_wire_is_rejected(self) -> None:
+        """A width written beside nothing annotates nothing."""
+        with pytest.raises(ValueError, match="annotates no wire"):
+            run([" 3 "], ScriptedIO(""))
+
+    def test_two_labels_disagreeing_on_a_wire_are_rejected(self) -> None:
+        """One wire cannot be two widths at once."""
+        with pytest.raises(ValueError, match="inconsistent wire labels"):
+            run(["-2-3-:"], ScriptedIO(""))
+
+    def test_a_splitter_needs_both_its_outputs(self) -> None:
+        """``<`` drives two wires; with one the circuit is malformed."""
+        with pytest.raises(ValueError, match="output"):
+            run(["-2-<-:"], ScriptedIO(""))
+
+
+def test_a_crossover_running_off_the_grid_connects_nothing() -> None:
+    """A ``=`` chain walked to the edge has no cell on the far side.
+
+    The walk hops crossovers rather than stepping one cell, so it has to
+    check the bounds each hop as well as after the last one; a wire that
+    ends in a crossover at the border simply connects to nothing.
+    """
+    io = ScriptedIO("1\n")
+    run(["-1-="], io)
+    assert io.getvalue() == ""
+
+
+def test_a_gate_contradicting_an_explicit_label_is_rejected() -> None:
+    """``~`` preserves width, so the labels either side must agree.
+
+    Widths flow forward from wherever a label fixes them; where that flow
+    meets a *different* explicit label the circuit is contradictory, and
+    guessing which label wins would silently read the wrong number of bits.
+    """
+    with pytest.raises(ValueError, match="implies 2 wire"):
+        run(["-2-~-3-:"], ScriptedIO(""))
