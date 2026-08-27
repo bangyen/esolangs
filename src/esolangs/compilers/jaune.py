@@ -7,13 +7,18 @@ program can only input a single character at a time.
 import sys
 from dataclasses import dataclass
 from re import findall, sub
-from typing import Literal, cast
+from typing import Literal
 
 from esolangs.compilers._riscv_common import MUL32
 
 # The four commands that compile to a called subroutine rather than to
 # inline instructions.
 _Subr = Literal["^", "v", "<", "&"]
+
+# The three that dispatch through the shared table below; "&" is
+# handled by its own arm.  Typed so the membership test narrows the
+# command to the key type rather than asserting it afterwards.
+_CALLED: frozenset[_Subr] = frozenset(("^", "v", "<"))
 
 
 @dataclass
@@ -158,10 +163,8 @@ def comp(code: str) -> str:
         if isinstance(num, str):  # pragma: no cover - see the comment above
             raise ValueError(f"unexpected operand {num!r} for {c!r}")
 
-        if c in "^v<":
-            # The test above is the membership check that makes this a
-            # subroutine command, so the lookup below is keyed correctly.
-            routine = subr[cast("_Subr", c)]
+        if c in _CALLED:
+            routine = subr[c]
             if num > 1:
                 res += f"\tli   s3, {num}\n"
                 routine.looped = True
