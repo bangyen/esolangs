@@ -253,23 +253,21 @@ class TestGeneratorRoundTrips:
             code = sum(1 for c in program if not c.isspace())
             assert code / len(program) > floor, f"{text!r}: sparse grid"
 
-    def test_clockwise_needs_a_width_the_weave_fits(self) -> None:
-        """A width too narrow for any weave is refused, not silently widened.
+    def test_clockwise_clamps_a_width_below_the_weave_floor(self) -> None:
+        """A width under the floor gets the narrowest weave, not an error.
 
-        Clockwise used to answer such a width with a bare perimeter ring,
-        which could not honour it either: the ring's shape floors the
-        columns at three, so a width of 1 or 2 came back over-wide.  The
-        ring was dropped -- it only ever beat the weave on one-character
-        text, and by at most 1.26x -- so the narrow widths it used to cover
-        now raise instead of returning a program that overruns them.
+        Five columns is the narrowest grid the turtle can walk (a home lane,
+        the hairpin ladder, one body cell and two descent lanes), so a
+        smaller width cannot be honoured by any layout.  It is clamped
+        rather than refused: a width is a preference about layout, and every
+        other width-taking generator answers an impossible one the same way.
+        The program still has to run, which is what rules out returning
+        something merely narrow-looking.
         """
-        for width in (1, 2, 3, 4):
-            with pytest.raises(ValueError, match="width of at least"):
-                gen.clockwise("Hello", width)
-
-        # The first width a weave fits is honoured, not refused.
-        program = gen.clockwise("Hello", 5)
-        assert max(len(line) for line in program.split("\n")) <= 5
+        for width in (1, 2, 3, 4, 5):
+            program = gen.clockwise("Hello", width)
+            assert max(len(line) for line in program.split("\n")) == 5
+            assert roundtrip(clockwise_run, program.splitlines()) == "Hello"
 
     @pytest.mark.parametrize("width", [10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["Hi", "Hello, World!", "q" * 30])

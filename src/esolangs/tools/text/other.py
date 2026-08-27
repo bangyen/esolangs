@@ -87,10 +87,13 @@ def clockwise(text: str, width: int | None = None) -> str:
     anything longer is better than 97% blank.  It is not worth a second
     layout, and the weave is now the only shape.
 
-    ``width`` bounds the columns.  Below ``_WEAVE_MIN_WIDTH`` no weave
-    exists and this raises: the ring used to serve as the fallback there,
-    but it could not honour a width either -- its shape floors the columns
-    at three, so a width of 1 or 2 came back over-wide rather than refused.
+    ``width`` bounds the columns, down to ``_WEAVE_MIN_WIDTH``: the weave
+    needs a home lane, a hairpin ladder, a body cell and two descent lanes,
+    so five columns is the narrowest grid the turtle can walk.  A smaller
+    width is met with that narrowest weave rather than refused, the way
+    Streetcode answers a width no shape fits with its narrowest shape.  A
+    width is a preference about layout, and a program two columns wider
+    than asked is more use to a caller than an exception.
     """
     _require_ascii(text, "Clockwise")
     prog = ""
@@ -105,11 +108,13 @@ def clockwise(text: str, width: int | None = None) -> str:
     if not prog:
         return ""
 
+    # Clamped, not refused: below the floor the weave has no narrower shape
+    # to offer, so the floor itself is the answer.
+    if width is not None:
+        width = max(width, _WEAVE_MIN_WIDTH)
     folded = _clockwise_weave(prog, width)
-    if folded is None:
-        raise ValueError(
-            f"Clockwise needs a width of at least {_WEAVE_MIN_WIDTH} (got {width})"
-        )
+    if folded is None:  # pragma: no cover - the floor always admits a weave
+        raise AssertionError("no weave at _WEAVE_MIN_WIDTH")
     return folded
 
 
@@ -191,8 +196,9 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
     origin; every cell any of those lanes crosses only once still holds an
     instruction, so the grid runs better than 90% code.
 
-    Returns ``None`` when no weave fits within ``width``, which the caller
-    turns into a ``ValueError``: there is no narrower shape to fall back to.
+    Returns ``None`` when no weave fits within ``width``.  The caller never
+    sees that: it clamps ``width`` up to ``_WEAVE_MIN_WIDTH`` first, which
+    always admits a weave.
     """
     best: str | None = None
     limit = width if width is not None else len(prog) + _WEAVE_MIN_WIDTH
