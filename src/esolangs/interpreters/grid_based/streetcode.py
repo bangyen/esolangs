@@ -74,6 +74,22 @@ _Heading = Literal["N", "E", "S", "W"]
 # (``not self._junction_kind(...)``) and 0 has to keep meaning false.
 _Junction = Literal[0, 3, 4]
 
+# An in-progress lane merge: the cell the car must reach, the heading it
+# will turn to there, the heading the latch was taken under (so a turn in
+# between voids it), and whether it came from a crossing mouth.  ``None``
+# outside a merge.  See ``_Machine.__init__``.
+_Merge = tuple[int, int, _Heading, _Heading, bool] | None
+
+# The movement half of a machine's state: where the car is, which way it
+# points, and the three latches ``_choose_heading`` carries between steps.
+# The tape, CP and I/O are deliberately absent -- they do not steer, and
+# leaving them out is what makes the state space finite and small enough
+# to enumerate (see ``_Machine._drive_states``).
+_State = tuple[int, int, _Heading, _Merge, _Heading | None, int]
+# A state's successors, keyed by the two branch bits movement can read in
+# one step: the arrival cell and the post-instruction cell, in that order.
+_Edges = dict[tuple[int, int], "_State | None"]
+
 _HEADINGS: tuple[_Heading, ...] = ("N", "E", "S", "W")
 _DELTA: dict[_Heading, tuple[int, int]] = {
     "N": (-1, 0),
@@ -199,7 +215,6 @@ class _Machine:
         self.cp = 0
         self.cells: dict[int, int] = {}
         self._done = False
-        self._validate(starts[0])
         self.heading = self._initial_heading()
         # Lane-merge latches (see ``_choose_heading``): ``_merge_target`` is
         # set when a junction turn is detected but not yet reached (phase 1,
@@ -214,7 +229,7 @@ class _Machine:
         # latch came from a crossing mouth, which decides whether the branch
         # condition is re-read on arrival; carrying it inside the latch keeps
         # the two from drifting apart and keeps ``snapshot`` complete.
-        self._merge_target: tuple[int, int, _Heading, _Heading, bool] | None = None
+        self._merge_target: _Merge = None
         self._merging_heading: _Heading | None = None
         # Steps of ordinary right-hand hugging still to be suppressed after a
         # junction chose to carry straight on past a side road.  The declined
@@ -223,6 +238,9 @@ class _Machine:
         # on the very next step.  Counted down once per step and cleared by
         # any heading change.
         self._skip_hug = 0
+        # Last, because ``_validate_total`` drives the real movement rules
+        # over the grid and so needs every field they touch to exist.
+        self._validate(starts[0])
 
     @property
     def halted(self) -> bool:
@@ -328,6 +346,155 @@ class _Machine:
             self._validate_walls(reachable)
             self._validate_glyphs()
             self._validate_connected(reachable)
+            self._validate_total(start)
+
+    def _drive_states(self, start: tuple[int, int]) -> dict[_State, _Edges]:
+        """Explore every driving state the car can reach from ``start``.
+
+        A driving state is a position, a heading and the three latches
+        ``_choose_heading`` carries between steps -- exactly the movement
+        half of :meth:`snapshot`, minus the tape, CP and I/O, which do not
+        steer.  The geometry is static, so the successors of a state
+        depend on nothing else: the search enumerates the whole space by
+        breadth-first search from the car's start, and it terminates
+        because positions, headings and latch values are all finite.
+
+        Each state maps to its successors keyed by the pair of branch
+        bits that produce them.  Movement reads the tape at exactly two
+        places, both testing ``== 0`` -- ``_heading_from_merge_target``
+        on the ``arrival_cell`` parameter (the cell as the car arrived,
+        before this square ran) and ``_heading_from_junction`` on
+        ``_cell()`` (after it ran, since an ``=`` on a turning square
+        moves CP between the two reads).  A step can consume both, so
+        each state is probed with all four combinations; because both
+        sites test only zero-ness, the two bits cover every tape the car
+        could hold, and the map is exhaustive rather than a sample.
+        A ``None`` successor is a state the car cannot drive out of.
+
+        The probe runs on this machine, so it saves and restores every
+        field it disturbs: ``__init__`` calls this before it has set the
+        real heading, and the car must be left exactly where the search
+        found it.
+        """
+        saved = (
+            self.row,
+            self.col,
+            self.heading,
+            self.cp,
+            self.cells,
+            self._merge_target,
+            self._merging_heading,
+            self._skip_hug,
+        )
+        graph: dict[_State, _Edges] = {}
+        # ``_initial_heading`` reads only the grid and the start, so it is
+        # safe to call here, before ``__init__`` assigns ``self.heading``.
+        self.row, self.col = start
+        origin: _State = (*start, self._initial_heading(), None, None, 0)
+        pending = [origin]
+        graph[origin] = {}
+        while pending:
+            state = pending.pop()
+            edges = graph[state]
+            for arrival in (0, 1):
+                for current in (0, 1):
+                    successor = self._probe(state, arrival, current)
+                    edges[arrival, current] = successor
+                    if successor is not None and successor not in graph:
+                        graph[successor] = {}
+                        pending.append(successor)
+        (
+            self.row,
+            self.col,
+            self.heading,
+            self.cp,
+            self.cells,
+            self._merge_target,
+            self._merging_heading,
+            self._skip_hug,
+        ) = saved
+        return graph
+
+    def _probe(self, state: _State, arrival: int, current: int) -> _State | None:
+        """Return the state one step on from ``state`` under two branch bits.
+
+        Drives the real movement rules rather than a second copy of them:
+        the geometry was reverse-engineered from the wiki's examples and
+        has open questions (see the module docstring), so a re-derivation
+        here would be a second interpretation free to disagree with the
+        one that runs.  ``;`` and ``U`` are handled by :meth:`step`
+        rather than :meth:`_choose_heading`, so they are modelled here
+        too: ``;`` halts deliberately and has no successor, and ``U``
+        reverses and slides into the lane now on the right.
+
+        Only movement is modelled.  The instruction on the square is not
+        run, so the value-dependent halts -- ``_`` at CP 0, ``O`` on a
+        cell that is not a code point, ``I`` at end of input -- are
+        runtime semantics this search deliberately does not predict.
+        """
+        row, col, heading, merge_target, merging, skip = state
+        char = self.grid[row][col]
+        if char == ";":
+            return None
+        if char == "U":
+            reversed_heading = _opposite(heading)
+            lane = self._ahead(row, col, _right(reversed_heading))
+            # A street with no opposite lane is the late-detected width
+            # violation ``step`` raises ``HaltError`` for; it is not a
+            # state the car drives on to.
+            if not self._open(*lane):
+                return None
+            return (*lane, reversed_heading, None, None, 0)
+
+        self.row, self.col = row, col
+        self.heading = heading
+        self._merge_target = merge_target
+        self._merging_heading = merging
+        self._skip_hug = skip
+        self.cp = 0
+        self.cells = {0: current}
+        new_heading = self._choose_heading(arrival)
+        if new_heading is None:
+            return None
+        d_row, d_col = _DELTA[new_heading]
+        # The latches the phases just wrote are part of the successor:
+        # they are what the next step reads.
+        return (
+            row + d_row,
+            col + d_col,
+            new_heading,
+            self._merge_target,
+            self._merging_heading,
+            self._skip_hug,
+        )
+
+    def _validate_total(self, start: tuple[int, int]) -> None:
+        """Reject a street the car can drive into and not out of.
+
+        Ordinary wall-following always finds somewhere to go -- a dead
+        end reverses the car rather than stopping it -- so a state with
+        no successor means the movement rules have run out of road
+        somewhere the car can actually reach.  Only ``;`` halts a
+        well-formed program.  :meth:`step` would meet this as a silent
+        halt partway through a run, with nothing to say about where the
+        street went wrong; the search finds it before the car moves and
+        names the square.
+
+        This is stronger than running the program: it covers every
+        reachable state under both branch conditions, including the
+        arms a particular input never takes.  What it does not cover is
+        the value-dependent halts (see :meth:`_probe`), which are
+        runtime semantics rather than geometry.
+        """
+        for state, edges in self._drive_states(start).items():
+            row, col, heading = state[0], state[1], state[2]
+            if self.grid[row][col] == ";":
+                continue
+            if any(successor is None for successor in edges.values()):
+                raise ValueError(
+                    f"the car cannot drive out of {(row, col)} heading"
+                    f" {heading}: the street is a dead end with no ';'"
+                )
 
     def _validate_width(self, start: tuple[int, int]) -> set[tuple[int, int]] | None:
         """Validate that every street is two characters wide.
