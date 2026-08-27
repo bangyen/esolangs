@@ -281,6 +281,39 @@ def test_no_width_is_unchanged(name: str) -> None:
     assert generate(name, TEXT) == lang.text(TEXT)
 
 
+def test_nevermind_wraps_by_repeating_print() -> None:
+    """Nevermind wraps into more ``print`` statements, not a broken one.
+
+    ``print`` writes its arguments with no separator and no trailing
+    newline, so consecutive statements concatenate and the output survives.
+    Breaking the single statement instead would silently truncate it: a
+    newline ends the statement and the remainder is read as commands.
+    """
+    for width in (8, 12, 20, 40):
+        program = generate("Nevermind", TEXT, width)
+        assert all(line.startswith("print,") for line in program.split("\n"))
+        assert _run("Nevermind", program) == TEXT
+
+    # a width the one-line program overruns really does get broken up
+    assert generate("Nevermind", TEXT, 12).count("\n") >= 1
+
+
+def test_nevermind_never_splits_a_comma_escape() -> None:
+    """A ``*44`` stays whole: split across lines it stops being a comma.
+
+    The interpreter expands ``*44`` within one argument, so a break inside
+    one leaves a literal ``*44`` in the output and loses the comma -- the
+    failure this wrapper's unit packing exists to prevent.
+    """
+    text = "a,b,c,d,e,f"
+    for width in range(1, 30):
+        program = generate("Nevermind", text, width)
+        for line in program.split("\n"):
+            payload = line[len("print,") :]
+            assert "*4" not in payload or "*44" in payload
+        assert _run("Nevermind", program) == text
+
+
 def test_clockwise_is_never_reflowed() -> None:
     """Clockwise honours a width by shaping, never by inserting newlines.
 
