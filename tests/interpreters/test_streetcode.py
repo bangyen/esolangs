@@ -1240,13 +1240,15 @@ class TestStreetcodeGraphBackedStepping:
             fast_error = slow_error = None
             try:
                 fast.step()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 fast_error = type(exc).__name__
             try:
                 slow.step()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 slow_error = type(exc).__name__
-            assert fast_error == slow_error, f"step {steps}: {fast_error} vs {slow_error}"
+            assert fast_error == slow_error, (
+                f"step {steps}: {fast_error} vs {slow_error}"
+            )
             assert fast.snapshot() == slow.snapshot(), f"diverged at step {steps}"
             if fast.halted or fast_error:
                 break
