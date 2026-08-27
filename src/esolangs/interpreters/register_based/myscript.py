@@ -38,9 +38,28 @@ the one the frame stack unrolls.
 
 import re
 import sys
+from typing import Literal, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+
+# The builtin prefix functions _apply_builtin dispatches on.  ``ask`` is
+# not among them: it is answered in _parse_expr before the arity lookup,
+# so naming the eleven that do arrive lets the checker see the dispatch is
+# exhaustive.
+_Builtin = Literal[
+    "add",
+    "subtract",
+    "multiply",
+    "divide",
+    "equals",
+    "less",
+    "not",
+    "concat",
+    "arrlen",
+    "itemat",
+    "say",
+]
 
 # The builtin prefix functions and their fixed arities.
 _ARITY = {
@@ -249,7 +268,9 @@ def _parse_expr(
         for _ in range(arity):
             value, pos = _parse_expr(tokens, pos, io, scope)
             args.append(value)
-        return _apply_builtin(tok, args, io), pos
+        # ``ask`` was answered above, so an arity hit here is one of the
+        # builtins _apply_builtin dispatches on.
+        return _apply_builtin(cast("_Builtin", tok), args, io), pos
     value = scope.get(tok)
     if isinstance(value, _Function):
         pos += 1
@@ -274,7 +295,7 @@ def _parse_array(
     return items, pos + 1
 
 
-def _apply_builtin(name: str, args: list[object], io: IO) -> object:
+def _apply_builtin(name: _Builtin, args: list[object], io: IO) -> object:
     """Apply a builtin function to its already-evaluated arguments."""
     if name == "add":
         return _num(args[0]) + _num(args[1])
@@ -300,10 +321,8 @@ def _apply_builtin(name: str, args: list[object], io: IO) -> object:
         if not 0 <= index < len(array):
             raise HaltError("itemat index out of range")
         return array[int(index)]
-    if name == "say":
-        io.print_value(_as_str(args[0]))
-        return None
-    raise AssertionError(f"unknown builtin: {name}")
+    io.print_value(_as_str(args[0]))
+    return None
 
 
 def _call_function(function: _Function, args: list[object], io: IO) -> object:
