@@ -38,7 +38,6 @@ from typing import Literal, cast
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-
 # The two command shapes, kept apart by their operators.  Because no
 # operator appears in both, comparing ``cmd.op`` discriminates the union:
 # inside ``cmd.op == "?"`` the checker knows the command is a _Numbered and
