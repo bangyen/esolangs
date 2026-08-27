@@ -9,6 +9,7 @@ already use.
 import math
 from collections import Counter, deque
 from functools import cache
+from typing import Literal
 
 from esolangs.tools.text.helpers import (
     _factor_triple,
@@ -462,7 +463,7 @@ def painfuck(text: str) -> str:
     def add(val: int) -> str:
         return (val // 2) * "p" + (val % 2) * "ps"
 
-    def close(val: int, s: str, op: str) -> tuple[int, str]:
+    def close(val: int, s: str, op: Literal["p", "s"]) -> tuple[int, str]:
         if val > 7:
             pwr = _ilog(7, val)
             s += pwr * "c" + op
@@ -477,7 +478,7 @@ def painfuck(text: str) -> str:
 
         return val, s
 
-    def loop(val: int, s: str, op: str) -> tuple[int, str]:
+    def loop(val: int, s: str, op: Literal["p", "s"]) -> tuple[int, str]:
         sqr = math.isqrt(val)
 
         if sqr > 3:
