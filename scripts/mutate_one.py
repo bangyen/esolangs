@@ -51,6 +51,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # the copied test file, so the score is over the tests that can run.
 _UNBUNDLED = ("esolangs.vm", "esolangs.registry")
 
+# The two modules ``bundle_one`` inlines alongside the interpreter.  Their
+# classes are the *only* ones a score may legitimately leave out, which is
+# what ``_score`` checks its exclusions against.
+_INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
+
 
 def _test_file(module: str) -> Path:
     """Return the test file for ``category.module``, or raise if absent."""
@@ -189,21 +194,25 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     return proj, stem, dropped, _own_classes(module)
 
 
-def _own_classes(module: str) -> set[str]:
-    """Return the names of the classes ``module`` itself defines.
-
-    ``RUNNERS`` stores the path from the interpreters package down --
-    ``grid_based.streetcode`` -- so it is qualified here before importing.
-    """
+def _classes_of(dotted: str) -> set[str]:
+    """Return the names of the classes the module at ``dotted`` defines."""
     import importlib
 
-    dotted = f"esolangs.interpreters.{module}"
     mod = importlib.import_module(dotted)
     return {
         obj.__name__
         for obj in vars(mod).values()
         if isinstance(obj, type) and obj.__module__ == dotted
     }
+
+
+def _own_classes(module: str) -> set[str]:
+    """Return the names of the classes the interpreter itself defines.
+
+    ``RUNNERS`` stores the path from the interpreters package down --
+    ``grid_based.streetcode`` -- so it is qualified here before importing.
+    """
+    return _classes_of(f"esolangs.interpreters.{module}")
 
 
 def _score(proj: Path, stem: str, classes: set[str]) -> tuple[int, int, list[str]]:
@@ -219,6 +228,32 @@ def _score(proj: Path, stem: str, classes: set[str]) -> tuple[int, int, list[str
     meta = json.loads((proj / "mutants" / f"{stem}.py.meta").read_text())
     codes = meta["exit_code_by_key"]
     own = {k: v for k, v in codes.items() if "ǁ" not in k or k.split("ǁ")[1] in classes}
+
+    # Every mutant left out has to belong to a class one of the *inlined*
+    # modules defines.  Anything else means the interpreter's own classes
+    # are being dropped -- the bug that scored Streetcode over 59 mutants
+    # while hiding the 843 belonging to _Machine, and reported it as a
+    # normal-looking 57.6%.  The denominator is checked rather than
+    # estimated: mutmut's own file lists every mutant, so what may go
+    # missing from it is known exactly.
+    inlined = set().union(*(_classes_of(mod) for mod in _INLINED))
+    stray: dict[str, int] = {}
+    for key in codes:
+        if key in own:
+            continue
+        name = key.split("ǁ")[1]
+        if name not in inlined:
+            stray[name] = stray.get(name, 0) + 1
+    if stray:
+        lost = sum(stray.values())
+        blame = ", ".join(f"{name} ({n})" for name, n in sorted(stray.items()))
+        raise SystemExit(
+            f"{lost} of this module's own mutants would not be scored: {blame}. "
+            f"No inlined module defines {'them' if len(stray) > 1 else 'it'}, so "
+            f"the score would read {len(own)} mutants where the file lists "
+            f"{len(codes)}."
+        )
+
     killed = sum(1 for v in own.values() if v)
     return killed, len(own), sorted(k for k, v in own.items() if not v)
 
