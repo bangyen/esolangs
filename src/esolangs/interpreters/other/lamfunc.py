@@ -54,10 +54,14 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Literal, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+
+# A frame is always in one of three phases; naming them lets the type
+# checker prove the dispatch below is exhaustive.
+_Phase = Literal["scan", "gather", "body"]
 
 
 @dataclass
@@ -154,7 +158,7 @@ class _Frame:
     tokens: list[str]
     pos: int
     start: int = 0
-    phase: str = "scan"
+    phase: _Phase = "scan"
     fn: _Func | None = None
     args: list[object] = field(default_factory=list)
     result: object = 0
@@ -466,10 +470,8 @@ class _Machine:
             self._resolve(frame)
         elif frame.phase == "gather":
             self._gather(frame)
-        elif frame.phase == "body":
+        else:
             self._step_body(frame)
-        else:  # pragma: no cover - only the three phases above are ever set
-            raise AssertionError(f"unexpected frame phase {frame.phase!r}")
 
 
 def _print_value(value: object) -> str:
