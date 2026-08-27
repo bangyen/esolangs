@@ -25,6 +25,7 @@ help:
     @echo "  test-generators - extra cross-check generators (~2.6s)"
     @echo "  test-line    - extra/line suites via uv (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
+    @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
@@ -136,6 +137,11 @@ test-bandit *args:
 
 test-docstring *args:
     {{PYTHON}} scripts/verify.py --only "docstring check" {{args}}
+
+# mutation-test one interpreter: what its tests would NOT have caught
+# (not part of `just test` -- it is a few minutes per language)
+mutate language *args:
+    {{PYTHON}} scripts/mutate_one.py {{language}} {{args}}
 
 # clean generated
 clean:
