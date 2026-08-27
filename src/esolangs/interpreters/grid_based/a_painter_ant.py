@@ -90,7 +90,9 @@ class _Machine:
 
     def step(self) -> None:
         """Execute one instruction, advancing the pointer cyclically."""
-        if not self.prog:
+        # ``run`` steps ``cycles * len(prog)`` times, so an empty program is
+        # never stepped at all; this keeps a direct caller from indexing it.
+        if not self.prog:  # pragma: no cover - run() never steps an empty program
             return
         command = self.prog[self.ip]
         if command == "p":

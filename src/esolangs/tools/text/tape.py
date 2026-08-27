@@ -245,7 +245,10 @@ def brainif(text: str) -> str:
             way = "right" if step > 0 else "left"
             lines.append(f"if {cells[ptr]} move {way}")
             ptr += step
-            if ptr == len(cells):
+            # The caller only ever walks to a cell it has already allocated
+            # or to the one immediately past the end, and the fresh-cell
+            # targets are appended before the walk starts.
+            if ptr == len(cells):  # pragma: no cover - the target is always parked
                 cells.append(0)
 
     for c in text:
