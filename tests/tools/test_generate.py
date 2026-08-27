@@ -1339,31 +1339,30 @@ class TestWeaveInternals:
     """
 
     def test_slots_rejects_a_template_the_walk_leaves(self) -> None:
-        """A grid the pointer walks out of is not a closed template."""
-        # No turns at all: the pointer runs east and off the edge.
-        grid = [[" "] * 4 for _ in range(4)]
-        assert other._weave_slots(grid) is None
+        """A grid the pointer walks out of is not a closed template.
 
-    def test_slots_rejects_a_template_that_never_comes_home(self) -> None:
-        """A walk that loops forever inside the grid is rejected too.
-
-        A ring of turns cycles without returning to the origin cell, so the
-        step budget runs out and the template is refused rather than the
-        caller waiting on it.
+        With no turns in it the pointer runs east and off the edge, which
+        is how a bad ``units``/``body`` pair is refused: the walk raises
+        rather than returning a cell list that was never a circuit.
         """
-        grid = [list(row) for row in ("RR", "RR")]
-        assert other._weave_slots(grid) is None
+        from esolangs.tools.text.other import _weave_slots
+
+        assert _weave_slots([[" "] * 4 for _ in range(4)]) is None
+        # A ring of turns leaves the grid the same way rather than cycling.
+        assert _weave_slots([list(row) for row in ("RR", "RR")]) is None
 
     def test_weave_refuses_a_width_below_the_floor(self) -> None:
         """Under the floor there is no weave to build; the caller clamps."""
-        assert other._clockwise_weave(";", 3) is None
+        from esolangs.tools.text.other import _clockwise_weave
 
-    def test_weave_gives_up_once_units_outgrow_the_program(self) -> None:
-        """A body that never fits the program stops rather than growing on.
+        assert _clockwise_weave(";", 3) is None
 
-        Each extra unit adds slots, so a program that no template can hold
-        would grow ``units`` forever; the search stops once it exceeds the
-        program's own length, which no useful weave ever needs.
+    def test_the_narrowest_weave_still_holds_a_long_program(self) -> None:
+        """Four columns keep taking units until the slots fit the program.
+
+        Each unit adds about six slots, so the search always terminates by
+        finding a template rather than by outgrowing the program.
         """
-        # A width admitting only body 0, with a program too long for it.
-        assert other._clockwise_weave(";" * 400, 4) is not None
+        from esolangs.tools.text.other import _clockwise_weave
+
+        assert _clockwise_weave(";" * 400, 4) is not None
