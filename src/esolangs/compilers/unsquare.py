@@ -3,11 +3,14 @@
 import sys
 from dataclasses import dataclass
 from re import sub
-from typing import Literal, cast
+from typing import Literal, get_args
 
 # The seven commands that compile to a called subroutine rather than to
 # inline instructions.
 _Func = Literal["O", "I", "A", "S", "P", "o", "i"]
+# Typed so the dispatch's membership test narrows the command to
+# _Func, which is what keys the routine table below.
+_SUBRS: frozenset[_Func] = frozenset(get_args(_Func))
 
 
 @dataclass
@@ -114,10 +117,8 @@ def comp(code: str) -> str:
             res += f"\tli   s2, {num}\n"
             ind = new
             continue
-        if c in "OIASPoi":
-            # The test above is the membership check that makes this a
-            # subroutine command, so the lookup below is keyed correctly.
-            routine = func[cast("_Func", c)]
+        if c in _SUBRS:
+            routine = func[c]
             if num > 1:
                 res += f"\tli   s3, {num}\n"
                 routine.looped = True
