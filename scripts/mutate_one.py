@@ -1,0 +1,217 @@
+"""Mutation-test one interpreter against its own unit tests.
+
+Line coverage says a test *executed* a line; it cannot say the test would
+have noticed the line being wrong.  mutmut answers that by changing the code
+one edit at a time and re-running the tests: an edit no test objects to is a
+"survivor", and a survivor is either an equivalent mutant or a gap.  Run
+against Qoibl at 100% line coverage this found three real gaps, all of them
+guards -- the failure mode where a rejection stops rejecting and nothing
+looks wrong until malformed input gets through.
+
+Mutating the installed package does not work.  mutmut copies the code into
+``mutants/`` and runs the suite from there, which fails two ways: naming one
+module leaves the other 124 unimportable, and copying all of them means
+every module that does trampolined work at *import* time (``registry``
+building LANGUAGES, ``lamfunc``, ...) fires a trampoline before mutmut has
+set ``mutmut.config`` -- "NoneType has no attribute max_stack_depth", once
+per module, unfixable one at a time.
+
+So this mutates the *bundle* instead.  ``scripts/bundle_one.py`` already
+inlines an interpreter plus its shared modules into one dependency-closed
+file, whose executable code is byte-identical to the interpreter's (only
+docstrings move).  That gives mutmut a single self-contained target, and the
+language's own test file -- with its imports repointed at the bundle -- as
+the runner.
+
+Usage:
+    python scripts/mutate_one.py Qoibl
+    python scripts/mutate_one.py Grapheme --keep   # leave the work dir
+
+Requires: mutmut==3.3.1.  Newer versions build the trampoline qualname with
+mangled_name_from_mutant_name(), which strips the class part, so class-method
+mutants can never be selected and are silently reported as killed.
+"""
+
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# Tests that reach past the interpreter -- into the VM or the registry --
+# cannot run against a bundle, which inlines neither.  They are dropped from
+# the copied test file, so the score is over the tests that can run.
+_UNBUNDLED = ("esolangs.vm", "esolangs.registry")
+
+
+def _test_file(module: str) -> Path:
+    """Return the test file for ``category.module``, or raise if absent."""
+    path = ROOT / "tests" / "interpreters" / f"test_{module.rsplit('.', 1)[-1]}.py"
+    if not path.exists():
+        raise SystemExit(f"no test file for {module}: expected {path}")
+    return path
+
+
+def _drop_unbundled_tests(src: str) -> tuple[str, int]:
+    """Remove tests importing modules the bundle does not inline.
+
+    A test that imports ``esolangs.vm`` inside its body cannot be repointed
+    at the bundle, so it is cut whole rather than left to fail and mark every
+    mutant killed for the wrong reason.
+    """
+    dropped = 0
+    for name in re.findall(r"\n    def (test_\w+)\(", src):
+        body = re.search(rf"\n    def {name}\(.*?(?=\n    def |\nclass |\Z)", src, re.S)
+        if body and any(mod in body.group(0) for mod in _UNBUNDLED):
+            src = src.replace(body.group(0), "\n")
+            dropped += 1
+    return src, dropped
+
+
+def _rewrite_imports(src: str, stem: str) -> str:
+    """Repoint every package import at the single bundled module."""
+    return re.sub(r"from esolangs(?:\.[\w.]+)? import ", f"from {stem} import ", src)
+
+
+_CONFTEST = '''"""mutmut workarounds, both of which otherwise fail silently.
+
+1. ``set_start_method`` raises on the second call under macOS + Python 3.12,
+   which aborts the run rather than the mutant.
+2. mutmut names a mutant without the module prefix while the trampoline
+   builds its qualname from ``__module__``, which has it.  Without the
+   prefix the selected mutant never activates and every one "passes".
+"""
+
+import contextlib
+import multiprocessing
+import os
+
+_orig = multiprocessing.set_start_method
+
+
+def _patched(method, force=False):
+    with contextlib.suppress(RuntimeError):
+        _orig(method, force=force)
+
+
+multiprocessing.set_start_method = _patched
+
+_mut = os.environ.get("MUTANT_UNDER_TEST", "")
+if _mut and "__mutmut_" in _mut and not _mut.startswith("{stem}"):
+    os.environ["MUTANT_UNDER_TEST"] = "{stem}" + _mut
+'''
+
+# mutmut parses each file into an AST to build its mutants, and the parsing
+# runs in spawned children on macOS/3.12 -- so the limit has to be raised at
+# interpreter startup, which is what a sitecustomize on PYTHONPATH does.
+_SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
+
+
+def _prepare(language: str, work: Path) -> tuple[Path, str, int]:
+    """Lay out the mutation project; return (project dir, module stem, dropped)."""
+    from bundle_one import Source, bundle
+
+    from esolangs.registry import RUNNERS
+
+    if language not in RUNNERS:
+        raise SystemExit(f"unknown language {language!r}")
+    module = RUNNERS[language][0]
+
+    proj = work / "proj"
+    (proj / "tests").mkdir(parents=True)
+    out = bundle(language, Source(None), proj / "bundled.py")
+    stem = out.stem
+
+    tests, dropped = _drop_unbundled_tests(_test_file(module).read_text())
+    (proj / "tests" / "test_bundled.py").write_text(_rewrite_imports(tests, stem))
+    (proj / "tests" / "conftest.py").write_text(_CONFTEST.replace("{stem}", stem))
+    (work / "sitecustomize.py").write_text(_SITECUSTOMIZE)
+    (proj / "pyproject.toml").write_text(
+        "[tool.mutmut]\n"
+        f'paths_to_mutate = ["{out.name}"]\n'
+        "backup = false\n"
+        'runner = "python -m pytest -x -q -p no:cacheprovider tests/test_bundled.py"\n'
+        'tests_dir = ["tests/"]\n'
+    )
+    return proj, stem, dropped
+
+
+def _score(proj: Path, stem: str) -> tuple[int, int, list[str]]:
+    """Return (killed, total, survivor names) from mutmut's own result file."""
+    meta = json.loads((proj / "mutants" / f"{stem}.py.meta").read_text())
+    codes = meta["exit_code_by_key"]
+    # The bundle inlines io and exceptions too; their mutants are named with a
+    # class separator, and only the interpreter's own are scored here.
+    own = {k: v for k, v in codes.items() if "ǁ" not in k}
+    killed = sum(1 for v in own.values() if v)
+    return killed, len(own), sorted(k for k, v in own.items() if not v)
+
+
+def main() -> int:
+    """Bundle one interpreter, mutate it, and report what survived."""
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("language", help="display name, e.g. Qoibl")
+    parser.add_argument(
+        "--keep", action="store_true", help="leave the work directory in place"
+    )
+    args = parser.parse_args()
+
+    work = Path(tempfile.mkdtemp(prefix="mutate-one-"))
+    try:
+        proj, stem, dropped = _prepare(args.language, work)
+        if dropped:
+            print(f"[note] dropped {dropped} test(s) needing the VM or registry")
+
+        baseline = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "tests/test_bundled.py"],
+            cwd=proj,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if baseline.returncode != 0:
+            print(baseline.stdout[-2000:])
+            raise SystemExit("the bundled tests fail before any mutation")
+
+        env = {"PYTHONPATH": str(work), "PYTHONDONTWRITEBYTECODE": "1"}
+        subprocess.run(
+            [sys.executable, "-m", "mutmut", "run"],
+            cwd=proj,
+            env={**os.environ, **env},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        killed, total, survivors = _score(proj, stem)
+        if not total:
+            raise SystemExit("no mutants were generated")
+        print(
+            f"\n{args.language}: {killed}/{total} killed ({100 * killed / total:.1f}%)"
+        )
+        if survivors:
+            print(f"\n{len(survivors)} survived:")
+            for name in survivors:
+                print(f"  {name}")
+            print(
+                "\nA survivor is an equivalent mutant or a gap; read the diff "
+                "before writing a test for it."
+            )
+        return 0
+    finally:
+        if args.keep:
+            print(f"\nwork dir: {work}")
+        else:
+            shutil.rmtree(work, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
