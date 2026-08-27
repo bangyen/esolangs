@@ -178,9 +178,9 @@ class TestStepMachine:
         from esolangs.interpreters.grid_based.dig import _Machine
 
         machine = _Machine([">$5:", " 2 "], IO())
-        assert (machine.x, machine.y, machine.move, machine.mole) == (0, 0, 1, 0)
+        assert (machine.row, machine.col, machine.move, machine.mole) == (0, 0, 1, 0)
         machine.step()  # > keeps facing right
-        assert (machine.x, machine.y, machine.move) == (0, 1, 1)
+        assert (machine.row, machine.col, machine.move) == (0, 1, 1)
         machine.step()  # $ digs: reads the adjacent digit (5) as the count
         assert machine.num == 5
         machine.step()  # 5 sets the mole and consumes one count

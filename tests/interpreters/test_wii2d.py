@@ -392,11 +392,11 @@ class TestStepMachine:
         from esolangs.interpreters.grid_based.wii2d import _Machine
 
         machine = _Machine([">~.", "!"], IO())
-        assert (machine.x, machine.y, machine.vel, machine.acc) == (0, 0, 0, 0)
+        assert (machine.row, machine.col, machine.vel, machine.acc) == (0, 0, 0, 0)
         machine.step()  # > sets the heading east, then moves one cell
-        assert (machine.x, machine.y, machine.vel) == (0, 1, 3)
+        assert (machine.row, machine.col, machine.vel) == (0, 1, 3)
         machine.step()  # ~ prints the accumulator (0)
-        assert (machine.x, machine.y) == (0, 2)
+        assert (machine.row, machine.col) == (0, 2)
         machine.step()  # . halts
         assert machine.halted
         assert machine.acc == 0
