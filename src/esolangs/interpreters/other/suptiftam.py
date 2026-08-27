@@ -57,7 +57,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -65,11 +65,35 @@ from esolangs.interpreters.io import IO
 _OPERATORS = "+-/"
 _LITERAL_DIGITS = {ch: i for i, ch in enumerate("0123456789ABCD")}
 
-# Tokens and statements are heterogeneous tuples: a byte token is
-# ``("byte", int)``, a math token ``("math", op, x, y)``, a call statement
-# ``("call", name, arg, condition)``.  A ``tuple[Any, ...]`` keeps the
-# narrow shapes usable without a large tagged union.
-_Node = tuple[Any, ...]
+# A tape cell and a scalar carry their type alongside their value: an
+# unbounded integer, or a byte that wraps at 8 bits.
+_CellKind = Literal["int", "byte"]
+
+# Tokens and statements are heterogeneous tuples discriminated by their
+# first element.  Two alphabets, because they are produced by different
+# passes: ``_tokenize`` and the ``_scan_*`` helpers build tokens, and the
+# ``_parse_*`` helpers fold a token line into one statement.
+#
+# ``_Punct`` is the bare punctuation a line is cut on -- a one-tuple, so
+# reading ``[1]`` off one is a type error rather than an IndexError.
+# ``_Math`` and ``_If`` nest tokens, which is why the alias is recursive.
+_Punct = tuple[Literal["(", ")", ":", "~", "="]]
+_Ident = tuple[Literal["ident"], str]
+_Num = tuple[Literal["num"], int]
+_Byte = tuple[Literal["byte"], int]
+_Math = tuple[Literal["math"], str, "_Token", "_Token"]
+_If = tuple[Literal["if"], "_Token"]
+_TapeTok = tuple[Literal["tape"], str, _CellKind]
+_Token = _Punct | _Ident | _Num | _Byte | _Math | _If | _TapeTok
+
+# A value is the subset of tokens that can stand as a call argument or the
+# right-hand side of a declaration; the parsers check for exactly these.
+_Value = _Ident | _Num | _Byte | _Math
+
+_Call = tuple[Literal["call"], str, _Value, "_Token | None"]
+_Assign = tuple[Literal["assign"], str, _Value]
+_TapeDecl = tuple[Literal["tapedecl"], str, _CellKind]
+_Statement = _Call | _Assign | _TapeDecl
 
 
 class _Tape:
@@ -122,7 +146,7 @@ class _State:
     def __init__(self, io: IO) -> None:
         self.io = io
         self.globals: dict[str, object] = {}
-        self.functions: dict[str, list[tuple[str, list[_Node]]]] = {}
+        self.functions: dict[str, list[tuple[str, list[_Statement]]]] = {}
         self._rows: list[list[int] | None] = []
         self.read = _Tape(reader=self._read_cell)
         self.term = _Tape()
@@ -147,9 +171,9 @@ class _State:
 # -- parsing ---------------------------------------------------------------
 
 
-def _tokenize(line: str) -> list[_Node]:
+def _tokenize(line: str) -> list[_Token]:
     """Split one statement line into tokens."""
-    tokens: list[_Node] = []
+    tokens: list[_Token] = []
     i = 0
     n = len(line)
     while i < n:
@@ -157,7 +181,9 @@ def _tokenize(line: str) -> list[_Node]:
         if c == " ":
             i += 1
         elif c in "():~=":
-            tokens.append((c,))
+            # The test above is the membership check; this is where a bare
+            # character becomes a typed punctuation token.
+            tokens.append((cast('Literal["(", ")", ":", "~", "="]', c),))
             i += 1
         elif c == "'":
             if i + 2 >= n or line[i + 2] != "'":
@@ -165,11 +191,11 @@ def _tokenize(line: str) -> list[_Node]:
             tokens.append(("byte", ord(line[i + 1])))
             i += 3
         elif c == "%":
-            token, i = _scan_math(line, i)
-            tokens.append(token)
+            math_token, i = _scan_math(line, i)
+            tokens.append(math_token)
         elif c == "[":
-            token, i = _scan_tape_decl(line, i, tokens)
-            tokens[-1] = token  # replace the trailing identifier with the decl
+            tape_token, i = _scan_tape_decl(line, i, tokens)
+            tokens[-1] = tape_token  # replace the trailing identifier
         elif c.isalpha():
             j = i
             while j < n and line[j].isalpha():
@@ -179,8 +205,8 @@ def _tokenize(line: str) -> list[_Node]:
             while k < n and line[k] == " ":
                 k += 1
             if name == "if" and k < n and line[k] == "(":
-                token, i = _scan_if(line, j)
-                tokens.append(token)
+                if_token, i = _scan_if(line, j)
+                tokens.append(if_token)
             else:
                 tokens.append(("ident", name))
                 i = j
@@ -209,7 +235,7 @@ def _base23(text: str) -> int:
     return value
 
 
-def _scan_value(line: str, i: int) -> tuple[_Node, int]:
+def _scan_value(line: str, i: int) -> tuple[_Value, int]:
     """Parse one value expression (ident, literal, byte, or math) at ``i``."""
     i = _skip_spaces(line, i)
     if i >= len(line):
@@ -234,7 +260,7 @@ def _scan_value(line: str, i: int) -> tuple[_Node, int]:
     raise ValueError(f"expected a value at position {i}")
 
 
-def _scan_math(line: str, i: int) -> tuple[_Node, int]:
+def _scan_math(line: str, i: int) -> tuple[_Math, int]:
     """Parse ``%op[x]y%`` starting at the opening ``%``."""
     if i + 1 >= len(line) or line[i + 1] not in _OPERATORS:
         raise ValueError(f"malformed math at position {i}")
@@ -257,7 +283,7 @@ def _scan_math(line: str, i: int) -> tuple[_Node, int]:
     return ("math", op, x, y), j + 1
 
 
-def _scan_if(line: str, i: int) -> tuple[_Node, int]:
+def _scan_if(line: str, i: int) -> tuple[_If, int]:
     """Parse ``if(<value>)`` after the ident ``if`` at position ``i``."""
     j = _skip_spaces(line, i)
     if j >= len(line) or line[j] != "(":  # pragma: no cover - only called with '('
@@ -281,8 +307,8 @@ def _scan_if(line: str, i: int) -> tuple[_Node, int]:
 def _scan_tape_decl(
     line: str,
     i: int,
-    tokens: list[_Node],
-) -> tuple[_Node, int]:
+    tokens: list[_Token],
+) -> tuple[_TapeTok, int]:
     """Parse ``name[TYPE]`` where TYPE is ``integer`` (a byte tape) or ``byte``."""
     if not tokens or tokens[-1][0] != "ident":
         raise ValueError(f"malformed tape declaration at position {i}")
@@ -298,7 +324,7 @@ def _scan_tape_decl(
     if j >= len(line) or line[j] != "]":
         raise ValueError(f"malformed tape declaration at position {i}")
     if declared == "integer":
-        kind = "byte"
+        kind: _CellKind = "byte"
     elif declared == "byte":
         kind = "int"
     else:
@@ -306,7 +332,7 @@ def _scan_tape_decl(
     return ("tape", name, kind), j + 1
 
 
-def _parse_header(tokens: list[_Node]) -> tuple[str, str]:
+def _parse_header(tokens: list[_Token]) -> tuple[str, str]:
     """Parse an ``fd`` header into ``(name, argument)``.
 
     The argument is written adjacent to the colon (``arg:`` or ``:arg``)
@@ -318,7 +344,7 @@ def _parse_header(tokens: list[_Node]) -> tuple[str, str]:
         raise ValueError("fd header needs a colon")
     before = tokens[colon_idx - 1] if colon_idx > 0 else None
     after = tokens[colon_idx + 1] if colon_idx + 1 < len(tokens) else None
-    arg: _Node | None
+    arg: _Token | None
     if after is not None and after[0] == "ident" and after[1] != "fd":
         arg = after
     else:
@@ -331,7 +357,7 @@ def _parse_header(tokens: list[_Node]) -> tuple[str, str]:
     return others[0], arg[1]
 
 
-def _parse_call(tokens: list[_Node]) -> _Node:
+def _parse_call(tokens: list[_Token]) -> _Call:
     """Parse a function-call statement (the four tokens may be in any order)."""
     colons = [i for i, t in enumerate(tokens) if t[0] == ":"]
     if len(colons) != 2 or colons[1] != colons[0] + 2:
@@ -341,7 +367,7 @@ def _parse_call(tokens: list[_Node]) -> _Node:
         raise ValueError("a call's argument must be a value")
     rest = tokens[: colons[0]] + tokens[colons[1] + 1 :]
     name: str | None = None
-    condition: _Node | None = None
+    condition: _Token | None = None
     parens = 0
     for t in rest:
         if t[0] == "ident":
@@ -361,7 +387,7 @@ def _parse_call(tokens: list[_Node]) -> _Node:
     return ("call", name, arg, condition)
 
 
-def _parse_decl(tokens: list[_Node], kind: str) -> _Node:
+def _parse_decl(tokens: list[_Token], kind: Literal["~", "="]) -> _Assign:
     """Parse ``name~value`` or ``name=value`` into an assignment statement."""
     if len(tokens) != 3 or tokens[0][0] != "ident" or tokens[1][0] != kind:
         raise ValueError(f"malformed {kind} statement")
@@ -370,7 +396,7 @@ def _parse_decl(tokens: list[_Node], kind: str) -> _Node:
     return ("assign", tokens[0][1], tokens[2])
 
 
-def _parse_tape_decl(tokens: list[_Node]) -> _Node:
+def _parse_tape_decl(tokens: list[_Token]) -> _TapeDecl:
     """Parse a lone ``name[TYPE]`` line into a tape declaration."""
     tapes = [t for t in tokens if t[0] == "tape"]
     if len(tokens) != 1 or not tapes:
@@ -381,11 +407,11 @@ def _parse_tape_decl(tokens: list[_Node]) -> _Node:
 
 def _parse(
     lines: Sequence[str],
-) -> tuple[dict[str, list[tuple[str, list[_Node]]]], list[_Node]]:
+) -> tuple[dict[str, list[tuple[str, list[_Statement]]]], list[_Statement]]:
     """Parse a whole program into hoisted functions and top-level statements."""
-    functions: dict[str, list[tuple[str, list[_Node]]]] = {}
-    top: list[_Node] = []
-    stack: list[tuple[str, str, list[_Node]]] = []
+    functions: dict[str, list[tuple[str, list[_Statement]]]] = {}
+    top: list[_Statement] = []
+    stack: list[tuple[str, str, list[_Statement]]] = []
     for raw in lines:
         line = raw.strip()
         if "\t" in line or not line:
@@ -403,7 +429,7 @@ def _parse(
             name, arg = _parse_header(tokens)
             stack.append((name, arg, []))
         elif has_lparen:
-            statement = _parse_call(tokens)
+            statement: _Statement = _parse_call(tokens)
             (stack[-1][2] if stack else top).append(statement)
         elif any(t[0] == "~" for t in tokens):
             statement = _parse_decl(tokens, "~")
@@ -450,17 +476,16 @@ def _put(
 
 
 def _eval_value(
-    token: _Node,
+    token: _Token,
     state: _State,
     frame: dict[str, object] | None,
 ) -> _Var | _Tape:
     """Evaluate a value expression to a ``_Var`` or ``_Tape``."""
-    kind = token[0]
-    if kind == "num":
+    if token[0] == "num":
         return _Var("int", token[1])
-    if kind == "byte":
+    if token[0] == "byte":
         return _Var("byte", token[1])
-    if kind == "math":
+    if token[0] == "math":
         _, op, x, y = token
         left_kind, left = _operand(x, state, frame)
         right_kind, right = _operand(y, state, frame)
@@ -478,6 +503,8 @@ def _eval_value(
         if left_kind == "byte" and right_kind == "byte":
             return _Var("byte", result & 0xFF)
         return _Var("int", result)
+    if token[0] != "ident":
+        raise HaltError(f"expected a value, got {token[0]!r}")
     name = token[1]
     obj = _lookup(name, state, frame)
     if obj is not None:
@@ -488,7 +515,7 @@ def _eval_value(
 
 
 def _operand(
-    token: _Node,
+    token: _Token,
     state: _State,
     frame: dict[str, object] | None,
 ) -> tuple[str, int]:
@@ -548,7 +575,9 @@ class _CallFrame:
     """
 
     name: str
-    blocks: list[tuple[str, list[_Node]]]  # never empty (checked before construction)
+    blocks: list[
+        tuple[str, list[_Statement]]
+    ]  # never empty (checked before construction)
     value: _Var | _Tape
     block_ind: int = 0
     stmt_ind: int = 0
@@ -559,22 +588,21 @@ class _CallFrame:
 
 
 def _dispatch(
-    statement: _Node,
+    statement: _Statement,
     state: _State,
     frame: dict[str, object] | None,
 ) -> _CallFrame | None:
     """Execute one parsed statement, returning a pushed call frame if any."""
-    kind = statement[0]
-    if kind == "call":
+    if statement[0] == "call":
         _, name, argument, condition = statement
         if condition is not None and not _truth(_eval_value(condition, state, frame)):
             return None
         return _start_call(name, argument, state, frame)
-    if kind == "assign":
+    if statement[0] == "assign":
         _, name, value = statement
         _assign(name, _eval_value(value, state, frame), state, frame)
         return None
-    if kind == "tapedecl":
+    if statement[0] == "tapedecl":
         _, name, tape_kind = statement
         if _lookup(name, state, frame) is None:
             _put(name, _Tape(tape_kind), state, frame)
@@ -584,7 +612,7 @@ def _dispatch(
 
 def _start_call(
     name: str,
-    argument: _Node,
+    argument: _Token,
     state: _State,
     frame: dict[str, object] | None,
 ) -> _CallFrame | None:
