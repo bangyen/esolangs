@@ -297,7 +297,37 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
         'runner = "python -m pytest -x -q -p no:cacheprovider tests/test_bundled.py"\n'
         'tests_dir = ["tests/"]\n'
     )
+    _reject_decorated_classes(out, module)
     return proj, stem, dropped, _own_classes(module)
+
+
+def _reject_decorated_classes(bundle: Path, module: str) -> None:
+    """Refuse to score a module whose class carries a decorator.
+
+    mutmut skips any ``FunctionDef`` or ``ClassDef`` that has decorators --
+    they can have side effects when copied, and ``@property`` breaks the
+    trampoline's signature assignment (``file_mutation.py``, "ignore
+    decorated functions").  A ``@dataclass`` state class therefore produces
+    no mutants at all, and the run still prints a percentage: Eval reported
+    5/6 killed for a 124-line file, because ``run`` was the only thing left
+    to mutate and its ``State`` -- the other 90 lines -- was skipped whole.
+
+    That reads as a near-pass over the interpreter when nothing of it was
+    tested, so it is refused rather than reported.  Nine interpreters define
+    a decorated class; scoring them needs the decorator gone or a mutmut
+    that can see past it.
+    """
+    text = bundle.read_text()
+    marker = f"# --- inlined from esolangs/interpreters/{module.replace('.', '/')}.py"
+    body = text.partition(marker)[2] or text
+    decorated = re.findall(r"^@(\w+)[^\n]*\n(?:@[^\n]*\n)*class (\w+)", body, re.M)
+    if decorated:
+        listed = ", ".join(f"{cls} (@{dec})" for dec, cls in decorated)
+        raise SystemExit(
+            f"{module} defines a decorated class: {listed}.  mutmut does not "
+            "mutate decorated classes, so its body would be scored as though "
+            "it were absent -- a high percentage over whatever is left."
+        )
 
 
 def _classes_of(dotted: str) -> set[str]:
