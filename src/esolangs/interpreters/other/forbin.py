@@ -45,17 +45,40 @@ stack.
 from __future__ import annotations
 
 import sys
-from typing import Any, NoReturn, cast
+from typing import Literal, NoReturn, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 # -- parser ---------------------------------------------------------------
 
-_RETURN = ("return",)
+# The parse tree, as tuples discriminated by their first element.  Four
+# families, because the grammar has four: a value, a for-loop pattern, the
+# spec that heads a for-loop, and a statement.  They nest -- a statement
+# holds a spec, a spec holds patterns, a pattern holds values -- so the
+# aliases quote their forward references.
+_Lit = tuple[Literal["lit"], int]
+_Not = tuple[Literal["not"], "_ValueNode"]
+_Var = tuple[Literal["var"], str]
+_FnLit = tuple[Literal["fnlit"], "_Function"]
+_CallNode = tuple[Literal["call"], "_ValueNode", list["_ValueNode"]]
+_ValueNode = _Lit | _Not | _Var | _FnLit | _CallNode
 
+# ``*`` is a wildcard standing for both bit values, so it is a bare
+# one-tuple: reading [1] off one is a type error rather than an IndexError.
+_Star = tuple[Literal["*"]]
+_ValuePat = tuple[Literal["value"], _ValueNode]
+_Group = tuple[Literal["group"], list["_Star | _ValuePat"]]
+_Pattern = _Star | _ValuePat | _Group
 
-_Node = tuple[Any, ...]
+_Range = tuple[Literal["range"], str, _ValueNode, _ValueNode]
+_Iter = tuple[Literal["iter"], list[str], list[_Pattern]]
+_ForSpec = _Range | _Iter
+
+_Return = tuple[Literal["return"], _ValueNode]
+_Assign = tuple[Literal["assign"], list[str], list[_ValueNode]]
+_For = tuple[Literal["for"], _ForSpec, list["_Statement"]]
+_Statement = _Return | _Assign | _CallNode | _For
 
 
 class _Function:
@@ -66,7 +89,7 @@ class _Function:
     def __init__(self, name: str, args: list[str]) -> None:
         self.name = name
         self.args = args
-        self.body: list[_Node] = []
+        self.body: list[_Statement] = []
         self.nested: dict[str, _Function] = {}
 
 
@@ -112,7 +135,7 @@ class _Parser:
             self.i += 1
         return self.t[start : self.i]
 
-    def _value(self) -> _Node:
+    def _value(self) -> _ValueNode:
         self._skip_ws()
         if self.i >= self.n:
             self._fail("expected a value")
@@ -142,8 +165,8 @@ class _Parser:
                 fn.body, fn.nested = body, nested
                 return ("fnlit", fn)
             self.i = save
-            callee = ("var", self._ident())
-            args: list[_Node] = []
+            callee: _Var = ("var", self._ident())
+            args: list[_ValueNode] = []
             self._skip_ws()
             while self._peek() != ")":
                 if args:
@@ -155,7 +178,7 @@ class _Parser:
             self._fail(f"unexpected character {c!r}")
         return ("var", self._ident())
 
-    def _values(self) -> list[_Node]:
+    def _values(self) -> list[_ValueNode]:
         values = [self._value()]
         while self._peek() == ",":
             self.i += 1
@@ -167,16 +190,16 @@ class _Parser:
         if self._peek() == ";":
             self.i += 1
 
-    def _pattern(self) -> _Node:
+    def _pattern(self) -> _Star | _ValuePat:
         self._skip_ws()
         if self._peek() == "*":
             self.i += 1
             return ("*",)
         return ("value", self._value())
 
-    def _pattern_group(self) -> _Node:
+    def _pattern_group(self) -> _Pattern:
         self._expect("(")
-        pats: list[_Node] = []
+        pats: list[_Star | _ValuePat] = []
         while self._peek() != ")":
             if pats:
                 self._expect(",")
@@ -184,7 +207,7 @@ class _Parser:
         self._expect(")")
         return ("group", pats)
 
-    def _for_spec(self) -> _Node:
+    def _for_spec(self) -> _ForSpec:
         self._skip_ws()
         if self._peek() == "(":
             self.i += 1
@@ -199,7 +222,7 @@ class _Parser:
         self._skip_ws()
         if self._peek() == "(":
             self.i += 1
-            items: list[_Node] = []
+            items: list[_Pattern] = []
             while self._peek() != ")":
                 if items:
                     self._expect(",")
@@ -238,9 +261,9 @@ class _Parser:
             break
         return name, params
 
-    def _block(self) -> tuple[list[_Node], dict[str, _Function]]:
+    def _block(self) -> tuple[list[_Statement], dict[str, _Function]]:
         self._expect("{")
-        stmts: list[_Node] = []
+        stmts: list[_Statement] = []
         nested: dict[str, _Function] = {}
         while True:
             self._skip_ws()
@@ -264,7 +287,7 @@ class _Parser:
             if stmt is not None:
                 stmts.append(stmt)
 
-    def _statement(self) -> _Node | None:
+    def _statement(self) -> _Statement | None:
         self._skip_ws()
         if self.t.startswith("return", self.i):
             j = self.i + 6
@@ -290,19 +313,24 @@ class _Parser:
             self._semi()
             return ("assign", [first[1]], rhs)
         if self._peek() == ",":
-            ids = [first]
+            values = [first]
             while self._peek() == ",":
                 self.i += 1
-                ids.append(self._value())
+                values.append(self._value())
             self._skip_ws()
             if self._peek() != "=":
                 self._fail("expected '=' after assignment targets")
             self.i += 1
-            if not all(v[0] == "var" for v in ids):
-                self._fail("assignment target must be a variable")
+            # Collecting the names as they are checked keeps the target
+            # list typed, which an ``all(...)`` over the values would not.
+            names: list[str] = []
+            for v in values:
+                if v[0] != "var":
+                    self._fail("assignment target must be a variable")
+                names.append(v[1])
             rhs = self._values()
             self._semi()
-            return ("assign", [v[1] for v in ids], rhs)
+            return ("assign", names, rhs)
         if first[0] not in ("var", "call"):
             self._fail("statement must be a call, assignment, or return")
         args = (
@@ -377,7 +405,7 @@ class _Frame:
         self.for_rows: list[list[object]] | None = None
         self.for_names: list[str] = []
         self.for_ind = 0
-        self.for_body: list[_Node] = []
+        self.for_body: list[_Statement] = []
         self.for_body_pos = 0
 
 
@@ -397,29 +425,26 @@ def _lookup(frame: _Frame | None, name: str, globals_: dict[str, _Function]) -> 
 
 
 def _eval(
-    node: _Node,
+    node: _ValueNode,
     frame: _Frame,
     globals_: dict[str, _Function],
     reader: _BitReader,
     depth: int,
 ) -> object:
-    kind = node[0]
-    if kind == "lit":
+    if node[0] == "lit":
         return node[1]
-    if kind == "not":
+    if node[0] == "not":
         value = _eval(node[1], frame, globals_, reader, depth)
         if value in (0, 1):
             return 1 - value
         raise HaltError("! needs a bit")
-    if kind == "var":
+    if node[0] == "var":
         return _lookup(frame, node[1], globals_)
-    if kind == "fnlit":
+    if node[0] == "fnlit":
         return node[1]
-    if kind == "call":
-        callee = _eval(node[1], frame, globals_, reader, depth)
-        args = [_eval(a, frame, globals_, reader, depth) for a in node[2]]
-        return _call(callee, args, frame, globals_, reader, depth)
-    raise AssertionError(f"unexpected value node {node!r}")
+    callee = _eval(node[1], frame, globals_, reader, depth)
+    args = [_eval(a, frame, globals_, reader, depth) for a in node[2]]
+    return _call(callee, args, frame, globals_, reader, depth)
 
 
 def _call(
@@ -472,17 +497,16 @@ def _run(
 
 
 def _exec_stmt(
-    stmt: _Node,
+    stmt: _Statement,
     frame: _Frame,
     globals_: dict[str, _Function],
     reader: _BitReader,
     depth: int,
 ) -> object | None:
     """Execute one statement, returning its value if it was a ``return``."""
-    kind = stmt[0]
-    if kind == "return":
+    if stmt[0] == "return":
         return _eval(stmt[1], frame, globals_, reader, depth)
-    if kind == "assign":
+    if stmt[0] == "assign":
         targets, rhs = stmt[1], stmt[2]
         if len(rhs) == 1:
             for name in targets:
@@ -493,67 +517,67 @@ def _exec_stmt(
                 if name != "_":
                     frame.locals[name] = _eval(value, frame, globals_, reader, depth)
         return None
-    if kind == "call":
+    if stmt[0] == "call":
         callee = _eval(stmt[1], frame, globals_, reader, depth)
         args = [_eval(a, frame, globals_, reader, depth) for a in stmt[2]]
         _call(callee, args, frame, globals_, reader, depth)
         return None
-    if kind == "for":
-        spec, body = stmt[1], stmt[2]
-        rows: list[list[object]]
-        if spec[0] == "range":
-            _, name, start_node, end_node = spec
-            start = _eval(start_node, frame, globals_, reader, depth)
-            end = _eval(end_node, frame, globals_, reader, depth)
-            rows = (
-                [[v] for v in range(cast(int, start), cast(int, end) + 1)]
-                if cast(int, start) <= cast(int, end)
-                else []
-            )
-            names = [name]
-        else:
-            _, names, patterns = spec
-            rows = []
-            for pat in patterns:
-                items = pat[1] if pat[0] == "group" else [pat]
-                wilds = [j for j, p in enumerate(items) if p[0] == "*"]
-                if not wilds:
-                    rows.append(
-                        [
-                            (
-                                _eval(p[1], frame, globals_, reader, depth)
-                                if p[0] == "value"
-                                else 0
-                            )
-                            for p in items
-                        ]
-                    )
-                else:
-                    import itertools
+    # The three arms above are the other statement kinds, so what is
+    # left is a ``for``.
+    spec, body = stmt[1], stmt[2]
+    rows: list[list[object]]
+    if spec[0] == "range":
+        _, name, start_node, end_node = spec
+        start = _eval(start_node, frame, globals_, reader, depth)
+        end = _eval(end_node, frame, globals_, reader, depth)
+        rows = (
+            [[v] for v in range(cast(int, start), cast(int, end) + 1)]
+            if cast(int, start) <= cast(int, end)
+            else []
+        )
+        names = [name]
+    else:
+        _, names, patterns = spec
+        rows = []
+        for pat in patterns:
+            items = pat[1] if pat[0] == "group" else [pat]
+            wilds = [j for j, p in enumerate(items) if p[0] == "*"]
+            if not wilds:
+                rows.append(
+                    [
+                        (
+                            _eval(p[1], frame, globals_, reader, depth)
+                            if p[0] == "value"
+                            else 0
+                        )
+                        for p in items
+                    ]
+                )
+            else:
+                import itertools
 
-                    for combo in itertools.product((0, 1), repeat=len(wilds)):
-                        row: list[object] = []
-                        w = 0
-                        for p in items:
-                            if p[0] == "*":
-                                row.append(combo[w])
-                                w += 1
-                            else:
-                                row.append(_eval(p[1], frame, globals_, reader, depth))
-                        rows.append(row)
-        for row in rows:
-            for name, value in zip(names, row, strict=False):
-                if name != "_":
-                    frame.locals[name] = value
-            got = _exec_block(body, frame, globals_, reader, depth)
-            if got is not None:
-                return got
-        return None
-    raise AssertionError(f"unexpected statement {stmt!r}")
+                for combo in itertools.product((0, 1), repeat=len(wilds)):
+                    row: list[object] = []
+                    w = 0
+                    for p in items:
+                        if p[0] == "*":
+                            row.append(combo[w])
+                            w += 1
+                        else:
+                            row.append(_eval(p[1], frame, globals_, reader, depth))
+                    rows.append(row)
+    for row in rows:
+        for name, bound in zip(names, row, strict=False):
+            if name != "_":
+                frame.locals[name] = bound
+        got = _exec_block(body, frame, globals_, reader, depth)
+        if got is not None:
+            return got
+    return None
 
 
 def _exec_block(
-    stmts: list[_Node],
+    stmts: list[_Statement],
     frame: _Frame,
     globals_: dict[str, _Function],
     reader: _BitReader,
@@ -568,7 +592,7 @@ def _exec_block(
 
 
 def _for_rows(
-    spec: _Node,
+    spec: _ForSpec,
     frame: _Frame,
     globals_: dict[str, _Function],
     reader: _BitReader,
@@ -618,7 +642,7 @@ def _for_rows(
 
 
 def _start_statement_call(
-    stmt: _Node,
+    stmt: _Statement,
     frame: _Frame,
     globals_: dict[str, _Function],
     reader: _BitReader,
@@ -757,7 +781,12 @@ class _Machine:
         for name, value in zip(frame.for_names, row, strict=False):
             if name != "_":
                 frame.locals[name] = value
-        frame.for_body = frame.body[frame.pos][2]
+        # This method only runs while the cursor sits on the ``for``
+        # whose rows it is walking, so the statement under it is that
+        # ``for``; testing the tag is what lets its body be read.
+        current = frame.body[frame.pos]
+        if current[0] == "for":
+            frame.for_body = current[2]
         frame.for_body_pos = 0
 
     def _pop(self) -> None:
