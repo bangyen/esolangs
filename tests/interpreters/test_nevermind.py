@@ -236,3 +236,18 @@ class TestStepMachine:
         """``++`` is unaffected by the numeric guards."""
         code = ["make,x,ab", "make,y,cd", "make,z,$x,++,$y", "print,$z"]
         assert run_and_capture(code) == "abcd"
+
+    def test_missing_operands_are_rejected(self) -> None:
+        """A command short of its operands is malformed program text."""
+        import pytest
+
+        for code, message in (
+            (["make,x"], "make requires"),
+            (["make,x,"], "make requires"),
+            (["make"], "make requires"),
+            (["make,x,1", "if,$x,>"], "if requires"),
+            (["if"], "if requires"),
+            (["loop"], "loop requires"),
+        ):
+            with pytest.raises(ValueError, match=message):
+                run_and_capture(code)
