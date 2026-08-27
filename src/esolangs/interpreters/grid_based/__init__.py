@@ -15,6 +15,9 @@ indexed two different axes across the package.  That is the trap the
 single convention exists to close; ``x``/``y`` was retired deliberately
 and should not come back for a new grid language.
 
+``back`` lives in ``tape_based`` but pads and walks a program grid just
+like these, and follows the same convention.
+
 ``a_painter_ant`` is the one exception, and it is not a program grid.  Its
 ant paints an unbounded sparse plane keyed by coordinate, with an origin
 and negative coordinates in every direction, and nothing indexes a line of

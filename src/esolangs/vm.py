@@ -822,7 +822,7 @@ class _SixFiveVM(_BaseVM):
 
 
 class _BackVM(_BaseVM):
-    """2D beam; ``ip`` is the beam's (x, y, direction), ``memory`` the bit tape."""
+    """2D beam; ``ip`` is the beam's (row, col, direction), ``memory`` the bit tape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -839,7 +839,7 @@ class _BackVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.a, self._machine.b)
+        return (self._machine.row, self._machine.col, self._machine.a, self._machine.b)
 
     @property
     def memory(self) -> list[int]:
