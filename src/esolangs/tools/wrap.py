@@ -518,6 +518,59 @@ def _taglate(program: str, width: int) -> str:
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
 
 
+def _nevermind(program: str, width: int) -> str:
+    """Wrap Nevermind by re-emitting ``print,`` per line, not by breaking one.
+
+    ``print`` writes its arguments with no separator and no trailing
+    newline, so consecutive ``print`` lines concatenate: the text is split
+    across as many statements as the width needs and the output is
+    unchanged.  Breaking the single statement the generator emits would
+    *not* work -- a newline ends it, and the remainder would be read as
+    further commands, silently truncating the output.
+
+    So the payload is cut between *units* rather than at any offset.  A
+    comma in the text is encoded as ``*44``, and the interpreter expands
+    that only within one argument -- split across two ``print`` lines it
+    stays a literal ``*44`` and the comma is lost -- so the escape is one
+    unit.  A ``$`` opening a line reads as a variable reference and halts
+    the program, so it binds to the character before it.
+
+    A unit can exceed the room a narrow width leaves, which is why the
+    lines are packed rather than sliced: a width too small for a unit gets
+    a line as wide as that unit needs, the same preference-not-guarantee
+    the shape-building generators give it.
+    """
+    head, _, payload = program.partition(",")
+    if head != "print" or not payload:
+        return program
+    room = max(width - len("print,"), 1)
+
+    # The payload is cut between *units*, never inside one: a ``*44`` escape
+    # is three characters that only expand together, and a ``$`` binds to the
+    # character before it so it never opens a line.
+    units: list[str] = []
+    i = 0
+    while i < len(payload):
+        step = 3 if payload.startswith("*44", i) else 1
+        # a following ``$`` would start the next line as a variable reference
+        while i + step < len(payload) and payload[i + step] == "$":
+            step += 1
+        units.append(payload[i : i + step])
+        i += step
+
+    lines: list[str] = []
+    current = ""
+    for unit in units:
+        if current and len(current) + len(unit) > room:
+            lines.append(current)
+            current = unit
+        else:
+            current += unit
+    if current:
+        lines.append(current)
+    return "\n".join("print," + line for line in lines)
+
+
 # Language id -> the wrapper that language needs.  A language absent here
 # is never wrapped: either its newlines are semantic (the 2D grid
 # languages), it rejects them outright (NoComment), or its own execution
@@ -572,6 +625,10 @@ WRAPPERS = {
     # outright.  Their hello-world programs are short; the boolean ones are
     # the single long lines that need this.
     "taglate": _taglate,
+    # Line-based: a newline ends a statement rather than continuing it, so
+    # this re-emits ``print,`` per line instead of breaking the one the
+    # generator produces.  See :func:`_nevermind`.
+    "nevermind": _nevermind,
     "a_painter_ant": wrap_chars,
 }
 
