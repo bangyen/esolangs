@@ -256,17 +256,17 @@ class TestGeneratorRoundTrips:
     def test_clockwise_clamps_a_width_below_the_weave_floor(self) -> None:
         """A width under the floor gets the narrowest weave, not an error.
 
-        Five columns is the narrowest grid the turtle can walk (a home lane,
-        the hairpin ladder, one body cell and two descent lanes), so a
-        smaller width cannot be honoured by any layout.  It is clamped
-        rather than refused: a width is a preference about layout, and every
-        other width-taking generator answers an impossible one the same way.
-        The program still has to run, which is what rules out returning
-        something merely narrow-looking.
+        Four columns is the narrowest grid the turtle can walk (a home lane,
+        the hairpin ladder and two descent lanes), so a smaller width cannot
+        be honoured by any layout.  It is clamped rather than refused: a
+        width is a preference about layout, and every other width-taking
+        generator answers an impossible one the same way.  The program still
+        has to run, which is what rules out returning something merely
+        narrow-looking.
         """
-        for width in (1, 2, 3, 4, 5):
+        for width in (1, 2, 3, 4):
             program = gen.clockwise("Hello", width)
-            assert max(len(line) for line in program.split("\n")) == 5
+            assert max(len(line) for line in program.split("\n")) == 4
             assert roundtrip(clockwise_run, program.splitlines()) == "Hello"
 
     @pytest.mark.parametrize("width", [10, 20, 40, 80])

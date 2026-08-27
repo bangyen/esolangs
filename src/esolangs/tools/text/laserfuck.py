@@ -33,7 +33,7 @@ def _laserfuck_linear(run: str, width: int | None) -> str:
     than columns.  The funnel stays where it is, on the two rows below the
     first, and the fold returns to a margin clear of it.
     """
-    if width is None or width < laserfuck_layout.MIN_WIDTH + 2:
+    if width is None or width < laserfuck_layout.MIN_WIDTH + 1:
         return f"\xff}}}}{run}\n|o^\n _ "
 
     grid = [[" "] * (width + 1) for _ in range(3)]
