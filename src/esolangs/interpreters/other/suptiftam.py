@@ -602,12 +602,12 @@ def _dispatch(
         _, name, value = statement
         _assign(name, _eval_value(value, state, frame), state, frame)
         return None
-    if statement[0] == "tapedecl":
-        _, name, tape_kind = statement
-        if _lookup(name, state, frame) is None:
-            _put(name, _Tape(tape_kind), state, frame)
-        return None
-    raise AssertionError(f"unexpected statement {statement!r}")
+    # The two arms above are the other statement kinds, so what is left is
+    # a tape declaration.
+    _, name, tape_kind = statement
+    if _lookup(name, state, frame) is None:
+        _put(name, _Tape(tape_kind), state, frame)
+    return None
 
 
 def _start_call(
