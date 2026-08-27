@@ -63,10 +63,14 @@ def find(code: list[list[str | int | float]], ind: int) -> int:
     while num:
         if not 0 <= ind < len(code):
             raise ValueError(f"unmatched {op}")
-        if code[ind][0] == op:
-            num += move
-        elif code[ind][0] == match:
-            num -= move
+        # A blank line parses to no tokens and ``step`` skips it, so the
+        # scan for the partner has to skip it too rather than read a
+        # command out of it.
+        if line := code[ind]:
+            if line[0] == op:
+                num += move
+            elif line[0] == match:
+                num -= move
         ind += move
     return ind - 1
 
