@@ -27,6 +27,11 @@ machinery or the verification tooling itself, the run widens back to
 everything (see ``scripts/_scope.py``).  ``--full`` forces that too, and CI
 still runs the complete suite on every push regardless.
 
+A default run also leaves the steps in ``FULL_ONLY`` to CI: they guard real
+bugs but cost more than they save at push time, and CI runs them anyway (the
+differential twice, with ``--fuzz 50``).  ``--full``, ``just test-full``, and
+an explicit ``--only`` all still run them.
+
 Usage:
     python scripts/verify.py [--only STEPS] [--skip STEPS] [--full] [--list]
     python scripts/verify.py --full                       # every step, whole tree
@@ -65,6 +70,12 @@ def python_cmd() -> list[str]:
 
 
 PY = python_cmd()
+
+# Steps a default run leaves to CI.  These guard real bugs but cost more than
+# they save at push time, and CI already runs them on every push -- the
+# differential twice, and with --fuzz 50, so more thoroughly than here.  They
+# still run under --full, under an explicit --only, and via `just test-full`.
+FULL_ONLY = frozenset({"interpreter vs native differential corpora"})
 
 # Which paths each step actually guards.  A step whose prefixes the branch did
 # not touch cannot have been broken by that branch, so a scoped run skips it.
@@ -379,6 +390,9 @@ def main() -> int:
             continue
         if skip is not None and name in skip:
             print(f"[skip] {name}: filtered via --skip")
+            continue
+        if name in FULL_ONLY and only is None and not full:
+            print(f"[skip] {name}: left to CI and --full")
             continue
         if unaffected is not None and name in unaffected:
             print(f"[skip] {name}: branch touched none of its files")

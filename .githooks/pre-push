@@ -13,7 +13,8 @@
 # moved one interpreter does not re-prove the other twelve cross-checks.  It
 # widens back to the full stack whenever the diff cannot be read or shared
 # machinery moved, and CI still runs everything on every push regardless.
-# Set VERIFY_FULL=1 to force the complete stack locally.
+# The differential corpora are left to CI entirely (which runs them twice,
+# with --fuzz 50).  Set VERIFY_FULL=1 to force the complete stack locally.
 #
 # Branch deletions are exempt.  Git runs this hook for every push, including
 # `git push --delete`, but a deletion sends no commits, so there is nothing
