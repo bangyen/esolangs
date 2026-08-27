@@ -64,6 +64,16 @@ _Pattern = Literal["?", "W", "."]
 # against the wrong alphabet.
 _Heading = Literal["N", "E", "S", "W"]
 
+# What a junction detector reports: the number of roads the drawn shape
+# offers, counting the one the car came in on, or 0 for no junction at
+# all.  Only 0, 3 and 4 are reachable -- a "two-way junction" is a
+# corridor and a five-way needs a fifth direction -- so naming the three
+# lets the checker reject an arm for a count that cannot occur, the same
+# way ``_Pattern`` does for the form alphabet.  The values stay plain
+# ints rather than an enum: ``_junction_kind`` is used as a truth value
+# (``not self._junction_kind(...)``) and 0 has to keep meaning false.
+_Junction = Literal[0, 3, 4]
+
 _HEADINGS: tuple[_Heading, ...] = ("N", "E", "S", "W")
 _DELTA: dict[_Heading, tuple[int, int]] = {
     "N": (-1, 0),
@@ -669,7 +679,7 @@ class _Machine:
         left, right = self._plus_dist(_left(heading)), self._plus_dist(_right(heading))
         return left is not None and right is not None and left != right
 
-    def _junction_kind(self, heading: _Heading) -> int:
+    def _junction_kind(self, heading: _Heading) -> _Junction:
         """Detect a real intersection ahead, returning the open-option count.
 
         A junction is a road mouth (see :meth:`_road_mouth`) opening off
@@ -678,8 +688,8 @@ class _Machine:
         branch to the left with wall on the right, a branch to the right with
         wall on the left, and a branch to both sides at once (a four-way, or a
         T whose crossbar the car is driving into when straight ahead is
-        blocked).  Returns 3, 4, or 0 (no junction -- an ordinary corner or a
-        straight stretch).
+        blocked).  Returns a :data:`_Junction`: 3 or 4 roads, or 0
+        for no junction -- an ordinary corner or a straight stretch.
 
         The earlier rule looked only at a 4x4 window built on the wall the car
         was hugging and required a ``+`` pair on that window's *far* side,
@@ -700,7 +710,7 @@ class _Machine:
         # boundary, and ordinary wall-following handles it.
         return kind if len(self._junction_choices(heading)) >= 2 else 0
 
-    def _junction_shape(self, heading: _Heading) -> int:
+    def _junction_shape(self, heading: _Heading) -> _Junction:
         """Classify the wall shape alone, before the roads are counted."""
         ahead_open = self._open_toward(heading)
         left_mouth = self._road_mouth(heading, _left(heading)) is not None
