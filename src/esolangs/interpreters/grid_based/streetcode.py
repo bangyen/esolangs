@@ -1120,11 +1120,12 @@ class _Machine:
             self._merge_target
         )
         heading = self.heading
-        # Nothing between latching and the turn changes the heading -- the
-        # car holds it precisely so the turn is made from the lane it was
-        # latched in -- so the latch is never abandoned this way in
-        # practice; it keeps a stale target from firing if that changes.
-        if heading != latched_heading:  # pragma: no cover - the heading is held
+        # A 'U' during the approach turns the car around, and the latch must
+        # not wait forever for a cell it no longer visits: abandoning it here
+        # is what keeps a divert from disabling junction detection for the
+        # rest of the run (see
+        # ``test_diverting_before_the_target_abandons_the_merge_latch``).
+        if heading != latched_heading:
             self._merge_target = None
             return None
         if (self.row, self.col) != (target_row, target_col):
