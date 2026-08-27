@@ -15,7 +15,7 @@ help:
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
-    @echo "  test         - Local check, scoped to this branch; differential left to CI"
+    @echo "  test         - Local check, scoped to this branch; slow/differential left to CI"
     @echo "  test-full    - Every check incl. the differential, whole tree"
     @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) + cargo (~6s pytest, ~12s total)"
     @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
