@@ -1,7 +1,28 @@
 """Compiler that turns Unsquare programs into RISC-V Linux assembly."""
 
 import sys
+from dataclasses import dataclass
 from re import sub
+from typing import Literal, cast
+
+# The seven commands that compile to a called subroutine rather than to
+# inline instructions.
+_Func = Literal["O", "I", "A", "S", "P", "o", "i"]
+
+
+@dataclass
+class _Routine:
+    """One emittable subroutine: its label, and whether the program needs it.
+
+    ``used`` is set when a call to the routine is emitted, and ``looped``
+    when a repeat count is passed in ``s3`` -- which is what decides
+    whether the routine ends by branching back on the counter or plainly
+    returning.  Both start false and only ever turn on.
+    """
+
+    label: str
+    used: bool = False
+    looped: bool = False
 
 
 def count(code: str, ind: int) -> tuple[int, int]:
@@ -74,14 +95,14 @@ def comp(code: str) -> str:
         "    li   s2, 0\n"
         "    li   s3, 1\n\n"
     )
-    func = {
-        "O": ["zero", False, False],
-        "I": ["one", False, False],
-        "A": ["down", False, False],
-        "S": ["swap", False, False],
-        "P": ["up", False, False],
-        "o": ["output", False, False],
-        "i": ["input", False, False],
+    func: dict[_Func, _Routine] = {
+        "O": _Routine("zero"),
+        "I": _Routine("one"),
+        "A": _Routine("down"),
+        "S": _Routine("swap"),
+        "P": _Routine("up"),
+        "o": _Routine("output"),
+        "i": _Routine("input"),
     }
 
     code = prep(code)
@@ -94,11 +115,14 @@ def comp(code: str) -> str:
             ind = new
             continue
         if c in "OIASPoi":
+            # The test above is the membership check that makes this a
+            # subroutine command, so the lookup below is keyed correctly.
+            routine = func[cast("_Func", c)]
             if num > 1:
                 res += f"\tli   s3, {num}\n"
-                func[c][2] = True
-            res += f"\tcall {func[c][0]}\n"
-            func[c][1] = True
+                routine.looped = True
+            res += f"\tcall {routine.label}\n"
+            routine.used = True
         elif c in "+-":
             if num:
                 res += f"\taddi s2, s2, {num}\n"
@@ -115,11 +139,11 @@ def comp(code: str) -> str:
 
     res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n\n"
 
-    def end(opr: str) -> str:
-        if func[opr][2]:
+    def end(opr: _Func) -> str:
+        if func[opr].looped:
             mul = (
                 "\taddi s3, s3, -1\n"
-                f"\tbgt  s3, zero, {func[opr][0]}\n"
+                f"\tbgt  s3, zero, {func[opr].label}\n"
                 "\taddi s3, s3, 1\n"
                 "\tret\n"
             )
@@ -127,14 +151,14 @@ def comp(code: str) -> str:
             mul = "\tret\n"
         return mul
 
-    if func["O"][1]:
+    if func["O"].used:
         res += "zero:\n\taddi s1, s1, -4\n\tsw   zero, 0(s1)\n" + end("O")
-    if func["I"][1]:
+    if func["I"].used:
         res += "one:\n\taddi s1, s1, -4\n\tli   t0, 1\n\tsw   t0, 0(s1)\n" + end("I")
-    if func["P"][1]:
+    if func["P"].used:
         res += "up:\n\taddi s1, s1, -4\n\tsw   s2, 0(s1)\n" + end("P")
-    if func["A"][1]:
-        if func["A"][2]:
+    if func["A"].used:
+        if func["A"].looped:
             res += (
                 "down:\n"
                 "\taddi s3, s3, -1\n"
@@ -147,7 +171,7 @@ def comp(code: str) -> str:
             )
         else:
             res += "down:\n\tlw   s2, 0(s1)\n\taddi s1, s1, 4\n\tret\n"
-    if func["S"][1]:
+    if func["S"].used:
         res += (
             "swap:\n"
             "\tlw   t0, 0(s1)\n"
@@ -156,7 +180,7 @@ def comp(code: str) -> str:
             "\tsw   t0, 4(s1)\n"
             "\tret\n"
         )
-    if func["o"][1]:
+    if func["o"].used:
         res += (
             "output:\n"
             "\tli   a7, 64\n"
@@ -165,7 +189,7 @@ def comp(code: str) -> str:
             "\tli   a2, 1\n"
             "\tecall\n" + end("o")
         )
-    if func["i"][1]:
+    if func["i"].used:
         res += (
             "input:\n"
             "\taddi s1, s1, -4\n"
