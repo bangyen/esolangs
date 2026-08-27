@@ -111,7 +111,7 @@ class _FramedMachine(Protocol):
         """Return ``frame``'s entry state, hashable and comparable."""
 
 
-def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 10000) -> bool:
+def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool:
     """Step ``machine`` until it halts or a call provably replays an ancestor.
 
     :func:`run_until_halt_or_cycle` cannot catch infinite recursion: a call
@@ -139,18 +139,29 @@ def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 10000) -> b
     over unbounded integers) never repeats a key, so callers keep the
     wall-clock backstop for that class.  And it costs O(depth) per push
     rather than the cycle detector's O(1), which is affordable only because
-    it runs once per *call*, not once per step.  ``limit`` bounds the walk
-    so an undecided program returns ``True`` rather than spinning; a caller
-    wanting proof of a halt should check ``machine.halted`` itself.
+    it runs once per *call*, not once per step.
+
+    ``limit`` bounds the walk in *pushes examined*, not steps, and 64 is
+    generous: a repeat that exists at all shows up within a few frames --
+    three, for every case the Forbin suite covers -- because the key does
+    not vary with how long the program has been running.  Exhausting it
+    raises :class:`TimeoutError` rather than returning a verdict, so a
+    program the check cannot decide is never silently reported as halting.
+    That distinction is what keeps the bound cheap: a caller need not leave
+    headroom "just in case", and a mutant that defeats the early return
+    fails a test in milliseconds instead of walking ten thousand steps of
+    live recursion.
     """
     keys: dict[int, Hashable] = {}
-    for _ in range(limit):
+    pushes = 0
+    while pushes < limit:
         if machine.halted:
             return True
         depth_before = len(machine.frames)
         machine.step()
         if len(machine.frames) <= depth_before:
             continue
+        pushes += 1
         depth = len(machine.frames) - 1
         # A shallower frame at this index belongs to a call that has since
         # returned, so drop it rather than compare against a dead ancestor.
@@ -158,7 +169,10 @@ def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 10000) -> b
         keys[depth] = machine.frame_entry_key(machine.frames[-1])
         if keys[depth] in [k for d, k in keys.items() if d < depth]:
             return False
-    return True
+    raise TimeoutError(
+        f"undecided after {limit} pushed frames: neither halted nor repeated "
+        "an ancestor's entry state"
+    )
 
 
 @runtime_checkable
