@@ -181,7 +181,10 @@ def _weave_slots(grid: list[list[str]]) -> list[tuple[int, int]] | None:
         except ValueError:
             return None  # walked off the grid: the template is not closed
         order.append(cell)
-    else:
+    else:  # pragma: no cover - every grid searched halts or leaves first
+        # A walk that neither halts nor leaves would cycle, and no grid over
+        # the turn and accumulator characters was found that does: the
+        # budget is a guard against one existing, not a path taken.
         return None  # never came home
     seen = Counter(order)
     return [cell for cell in order if seen[cell] == 1 and grid[cell[1]][cell[0]] == " "]
@@ -213,7 +216,7 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
         while True:
             grid = _weave_template(units, body)
             slots = _weave_slots(grid)
-            if slots is None:
+            if slots is None:  # pragma: no cover - every template so far closes
                 break
             if len(slots) >= len(prog):
                 filled = [row[:] for row in grid]
@@ -224,7 +227,10 @@ def _clockwise_weave(prog: str, width: int | None) -> str | None:
                     best = drawn
                 break
             units += 1
-            if units > len(prog):
+            if units > len(prog):  # pragma: no cover - slots outgrow the program
+                # Each unit adds about six slots, so a template holds the
+                # program long before this; it stops a runaway search rather
+                # than ending a real one.
                 break
     return best
 
@@ -674,7 +680,10 @@ def unsquare(text: str) -> str:
                 if -2 <= moved <= 2 * 0xFF and moved not in seen:
                     seen.add(moved)
                     queue.append((moved, run + op))
-        return None
+        # The band is connected, so the queue never empties first: over every
+        # (start, value) pair the generator can ask for, the search either
+        # finds a run or the parity guard above rejects it.
+        return None  # pragma: no cover - unreachable, see above
 
     def seed(v: int) -> str:
         """Reload the parity constant and climb to ``v`` from there."""

@@ -26,10 +26,14 @@ from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
+    _between,
+    _between_split,
     _bio,
     _cell_width,
+    _nevermind,
     _polynomial,
     _span,
+    _taglate,
     takes_width,
     wrap_chars,
     wrap_grid,
@@ -680,3 +684,59 @@ def test_bio_indent_leaves_no_trailing_whitespace() -> None:
     """No line carries the separator the boolean generator writes."""
     wrapped = _bio(_NESTED_BIO, DEFAULT_WIDTH)
     assert all(line == line.rstrip() for line in wrapped.split("\n"))
+
+
+def test_wrappers_refuse_input_they_do_not_recognize() -> None:
+    """Each wrapper hands back anything outside the shape it knows.
+
+    A wrapper only ever sees its own generator's output in practice, so
+    these guards never fire there -- but they are what keeps a wrapper from
+    half-transforming a program it does not understand, and a half-wrapped
+    program is the failure mode the whole module exists to prevent.
+    """
+    # An empty program has no tokens to pack, in either packer.
+    assert wrap_space_delimited("", 40) == ""
+    assert wrap_grid("", 40) == ""
+    # BIO's tokens have to tile the program exactly; a stray character means
+    # the regex did not account for something, so the program is left alone.
+    assert _bio("0ox;!!!", 40) == "0ox;!!!"
+    # Taglate needs a queue seed *and* commands below it.
+    assert _taglate("seed-only", 40) == "seed-only"
+    # Nevermind wraps a "print," statement and nothing else.
+    assert _nevermind("goto,5", 40) == "goto,5"
+    assert _nevermind("print,", 40) == "print,"
+
+
+def test_between_leaves_a_computed_jump_alone() -> None:
+    """A branch whose target is an expression cannot be renumbered.
+
+    Splitting a statement moves the lines below it, so every literal
+    ``|N|f`` target is rewritten to match.  A computed target -- one that
+    reads a variable -- evaluates to a line number this cannot know, so the
+    program is returned untouched rather than renumbered wrongly.
+    """
+    program = "\n".join(["'AAAAAAAAAA'p.", "|[a]|f.", ".x."])
+    assert _between(program, 6) == program
+
+
+def test_between_split_keeps_a_line_it_cannot_cut() -> None:
+    """Only an over-wide print statement is split; everything else stands."""
+    # Already inside the width.
+    assert _between_split("'ab'p.", 40) == ["'ab'p."]
+    # Not a print statement at all.
+    assert _between_split("|12|f([0]=|0|)", 4) == ["|12|f([0]=|0|)"]
+    # A bare apostrophe means the literal is not the shape this expects.
+    assert _between_split("'a'b'p.", 4) == ["'a'b'p."]
+
+
+def test_nevermind_keeps_a_dollar_with_the_character_before_it() -> None:
+    """A ``$`` opening a line reads as a variable, so it never starts one.
+
+    The unit packing binds a ``$`` to the character it follows.  With a run
+    of them the step has to keep growing, which is the loop this exercises.
+    """
+    text = "a$$$b"
+    program = _nevermind(f"print,{text}", 8)
+    for line in program.split("\n"):
+        assert not line[len("print,") :].startswith("$")
+    assert _run("Nevermind", program) == text

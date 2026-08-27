@@ -119,7 +119,7 @@ def _laserfuck_base_factor(base: int) -> tuple[int, int, int] | None:
     cost = base
     for outer in range(2, base):
         inner, rest = divmod(base, outer)
-        if inner < 1:
+        if inner < 1:  # pragma: no cover - outer < base keeps inner at least 1
             break
         candidate = outer + inner + rest
         if candidate < cost:
@@ -161,7 +161,7 @@ def _laserfuck_base_ring(
     reached = [0] * count
     stages: list[tuple[int, tuple[int, int, int] | None, list[int]]] = []
     for band in bands:
-        if not band:
+        if not band:  # pragma: no cover - the grouper never emits an empty band
             continue
         members = set(band)
         base = min(range(1, 128), key=lambda m: sum(abs(m - v) for v in band))
@@ -422,7 +422,7 @@ def _laserfuck_snake_ring(text: str, width: int) -> str | None:
         # drop the beam into this block's entry '}', directly below
         put(row, spine, "v")
         block = _laserfuck_snake(body, spine, right)
-        if block is None:
+        if block is None:  # pragma: no cover - the spine guard above covers it
             return None
         for offset, line in enumerate(block):
             for index, char in enumerate(line):
@@ -626,7 +626,11 @@ def _laserfuck_multiply(text: str, width: int | None = None) -> str:
             groups.append(("".join(tops), "".join(mids), "".join(bots)))
             parts = []
 
-    if parts:  # an unbalanced frame: keep it whole rather than dropping it
+    if parts:  # pragma: no cover - the frames the builder emits are balanced
+        # An unbalanced frame: keep it whole rather than dropping it.  Every
+        # frame this is handed closes its own brackets, so the remainder is
+        # always empty; this is what would keep a future unbalanced one from
+        # losing its tail silently.
         tops, mids, bots = zip(*parts, strict=True)
         groups.append(("".join(tops), "".join(mids), "".join(bots)))
 
