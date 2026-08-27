@@ -577,7 +577,7 @@ class _AddSubJumpVM(_BaseVM):
 
 
 class _ArrowQueueVM(_BaseVM):
-    """Direction queue; ``ip`` is the IP's (x, y, heading)."""
+    """Direction queue; ``ip`` is the IP's (row, col, heading)."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -594,7 +594,7 @@ class _ArrowQueueVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.d)
+        return (self._machine.row, self._machine.col, self._machine.d)
 
     @property
     def memory(self) -> list[int]:
@@ -674,7 +674,7 @@ class _APainterAntVM(_BaseVM):
 
 
 class _ClockwiseVM(_BaseVM):
-    """2D ring; ``ip`` is the pointer's (x, y, heading), ``memory`` the accumulator."""
+    """2D ring; ``ip`` is the pointer's (row, col, heading), ``memory`` the acc."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -691,7 +691,7 @@ class _ClockwiseVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.r)
+        return (self._machine.row, self._machine.col, self._machine.r)
 
     @property
     def memory(self) -> list[int]:
