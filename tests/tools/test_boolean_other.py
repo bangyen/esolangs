@@ -173,18 +173,18 @@ class TestFlowchart:
         from esolangs.interpreters.grid_based.flowchart import _Machine
 
         machine = _Machine(boolean.flowchart(table).splitlines(), IO())
-        for y, row in enumerate(machine.grid):
-            for x, char in enumerate(row):
+        for row, line in enumerate(machine.grid):
+            for col, char in enumerate(line):
                 if char != "│":
                     continue
-                for neighbour in (y - 1, y + 1):
-                    node = machine.nodes.get((x, neighbour))
+                for neighbour in (row - 1, row + 1):
+                    node = machine.nodes.get((neighbour, col))
                     if node is None:
                         continue
                     spelling, start = node
                     middle = start + len(spelling) // 2
-                    assert x == middle, (
-                        f"rail at ({x}, {y}) meets {spelling!r} at column {x}, "
+                    assert col == middle, (
+                        f"rail at ({col}, {row}) meets {spelling!r} at column {col}, "
                         f"but its middle is column {middle}"
                     )
 

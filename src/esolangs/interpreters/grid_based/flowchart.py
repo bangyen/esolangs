@@ -111,7 +111,7 @@ One further rule the spec does state, and this interpreter enforces:
   nodes *horizontally* at their end cells 47 times (the Kolakoski program's
   top row is one long horizontal chain).  But the two are not in tension: a
   node is a contiguous run of cells on a single row, so a horizontal
-  neighbour is always at ``x0 - 1`` or ``x0 + len`` and the cell it enters
+  neighbour is always at ``col0 - 1`` or ``col0 + len`` and the cell it enters
   is always an end cell.  Horizontal entry cannot be drawn any other way,
   so the spec has nothing to say about it and constrains the one case a
   program can actually get wrong.  Vertical entry off the middle is
@@ -129,11 +129,11 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-# Headings, as (dx, dy) with y growing downward.
-_UP = (0, -1)
-_DOWN = (0, 1)
-_LEFT = (-1, 0)
-_RIGHT = (1, 0)
+# Headings, as (d_row, d_col) with rows growing downward.
+_UP = (-1, 0)
+_DOWN = (1, 0)
+_LEFT = (0, -1)
+_RIGHT = (0, 1)
 _HEADINGS = (_RIGHT, _DOWN, _LEFT, _UP)
 
 # Node spellings, longest first: ``\[ ]/`` contains ``[ ]``, and ``[ }``,
@@ -176,20 +176,20 @@ _EXITS = {
 
 def _turn_left(d: tuple[int, int]) -> tuple[int, int]:
     """Return the heading 90 degrees to the left of ``d``."""
-    dx, dy = d
-    return (dy, -dx)
+    d_row, d_col = d
+    return (-d_col, d_row)
 
 
 def _turn_right(d: tuple[int, int]) -> tuple[int, int]:
     """Return the heading 90 degrees to the right of ``d``."""
-    dx, dy = d
-    return (-dy, dx)
+    d_row, d_col = d
+    return (d_col, -d_row)
 
 
 class _Pointer:
     """One program pointer: a position, a heading, a register, a cursor.
 
-    ``x``/``y`` is the cell the pointer currently occupies, ``d`` the
+    ``row``/``col`` is the cell the pointer currently occupies, ``d`` the
     heading it is travelling on, ``reg`` its own register (``None`` when
     empty), and ``deque`` its index into the shared tape of deques.  A
     pointer that has reached an ``(( ))`` is ``done``.
@@ -197,15 +197,15 @@ class _Pointer:
 
     def __init__(
         self,
-        x: int,
-        y: int,
+        row: int,
+        col: int,
         d: tuple[int, int],
         reg: int | None = None,
         deque: int = 0,
     ) -> None:
-        """Place the pointer at ``(x, y)`` heading ``d``."""
-        self.x = x
-        self.y = y
+        """Place the pointer at ``(row, col)`` heading ``d``."""
+        self.row = row
+        self.col = col
         self.d = d
         self.reg = reg
         self.deque = deque
@@ -222,8 +222,8 @@ class _Pointer:
     def state(self) -> tuple[object, ...]:
         """Return this pointer's state, hashable for cycle detection."""
         return (
-            self.x,
-            self.y,
+            self.row,
+            self.col,
             self.d,
             self.reg,
             self.deque,
@@ -251,7 +251,7 @@ class _Machine:
         self.width = max((len(r) for r in self.grid), default=0)
         self.grid = [r.ljust(self.width) for r in self.grid]
 
-        # (x, y) -> (node spelling, x of the node's first character); every
+        # (row, col) -> (node spelling, col of the node's first character); every
         # cell a node covers maps to that node, so a pointer arriving at any
         # column of the box executes it.
         self.nodes: dict[tuple[int, int], tuple[str, int]] = {}
@@ -265,20 +265,20 @@ class _Machine:
 
     def _parse(self) -> None:
         """Record every node on the grid, longest spelling first."""
-        for y, row in enumerate(self.grid):
-            x = 0
-            while x < len(row):
+        for row, line in enumerate(self.grid):
+            col = 0
+            while col < len(line):
                 for spelling in _NODES:
-                    if row.startswith(spelling, x):
+                    if line.startswith(spelling, col):
                         for i in range(len(spelling)):
-                            self.nodes[(x + i, y)] = (spelling, x)
-                        x += len(spelling)
+                            self.nodes[(row, col + i)] = (spelling, col)
+                        col += len(spelling)
                         break
                 else:
-                    c = row[x]
+                    c = line[col]
                     if c != " " and c not in _EXITS:
-                        raise ValueError(f"unknown character {c!r} at ({x}, {y})")
-                    x += 1
+                        raise ValueError(f"unknown character {c!r} at ({col}, {row})")
+                    col += 1
         self._check_alignment()
 
     def _check_alignment(self) -> None:
@@ -287,36 +287,36 @@ class _Machine:
         Runs after the scan above, because a rail's node may be recorded
         after the rail itself.  Only vertical arms are checked: a node is a
         contiguous run of cells on one row, so a horizontal neighbour can
-        only ever be at ``x0 - 1`` or ``x0 + len``, and the cell it enters is
+        only ever be at ``col0 - 1`` or ``col0 + len``, and the cell it enters is
         therefore always an end cell.  Horizontal entry cannot be drawn any
         other way, which is why the spec constrains only the vertical case.
         """
-        for y, row in enumerate(self.grid):
-            for x, c in enumerate(row):
+        for row, line in enumerate(self.grid):
+            for col, c in enumerate(line):
                 arms = _EXITS.get(c)
                 if arms is None:
                     continue
                 for arm in (_UP, _DOWN):
                     if arm not in arms:
                         continue
-                    node = self.nodes.get((x, y + arm[1]))
+                    node = self.nodes.get((row + arm[0], col))
                     if node is None:
                         continue
-                    spelling, x0 = node
-                    middle = x0 + len(spelling) // 2
-                    if x != middle:
+                    spelling, col0 = node
+                    middle = col0 + len(spelling) // 2
+                    if col != middle:
                         raise ValueError(
-                            f"vertical path at ({x}, {y}) enters {spelling!r} at "
-                            f"column {x}, but its middle is column {middle}"
+                            f"vertical path at ({col}, {row}) enters {spelling!r} at "
+                            f"column {col}, but its middle is column {middle}"
                         )
 
     def _start(self) -> tuple[int, int]:
         """Return the top-most, left-most ``( )`` node's first cell."""
-        for y in range(len(self.grid)):
-            for x in range(self.width):
-                node = self.nodes.get((x, y))
-                if node and node[0] == "( )" and node[1] == x:
-                    return (x, y)
+        for row in range(len(self.grid)):
+            for col in range(self.width):
+                node = self.nodes.get((row, col))
+                if node and node[0] == "( )" and node[1] == col:
+                    return (row, col)
         raise ValueError("Flowchart program has no '( )' start node")
 
     def _fork_at_start(self) -> None:
@@ -326,22 +326,22 @@ class _Machine:
         heading to exclude, so every attached path gets a pointer.
         """
         p = self.pointers[0]
-        here = (p.x, p.y)
-        exits = self._reading_order(self._exits_from_node(p.x, p.y, None))
+        here = (p.row, p.col)
+        exits = self._reading_order(self._exits_from_node(p.row, p.col, None))
         if not exits:
             p.done = True
             return
         started = []
-        for x, y, d in exits:
-            fresh = _Pointer(x, y, d)
+        for row, col, d in exits:
+            fresh = _Pointer(row, col, d)
             fresh.prev = here
             started.append(fresh)
         self.pointers = started
 
-    def _cells_of(self, x: int, y: int) -> list[tuple[int, int]]:
-        """Return every cell covered by the node at ``(x, y)``."""
-        spelling, x0 = self.nodes[(x, y)]
-        return [(x0 + i, y) for i in range(len(spelling))]
+    def _cells_of(self, row: int, col: int) -> list[tuple[int, int]]:
+        """Return every cell covered by the node at ``(row, col)``."""
+        spelling, col0 = self.nodes[(row, col)]
+        return [(row, col0 + i) for i in range(len(spelling))]
 
     @staticmethod
     def _reading_order(
@@ -355,22 +355,22 @@ class _Machine:
         enumeration also feeds :meth:`_leave`'s fallback, which the spec says
         nothing about.
         """
-        return sorted(exits, key=lambda step: (step[1], step[0]))
+        return sorted(exits, key=lambda step: (step[0], step[1]))
 
-    def _anchor(self, x: int, y: int) -> tuple[int, int]:
+    def _anchor(self, row: int, col: int) -> tuple[int, int]:
         """Return the key a cell's re-entry memory is stored under.
 
         A node is several cells wide and a rail may re-enter it at any of
         them, so every cell of a box shares its first cell's key; a bare
         path character is its own anchor.
         """
-        node = self.nodes.get((x, y))
-        return (node[1], y) if node else (x, y)
+        node = self.nodes.get((row, col))
+        return (row, node[1]) if node else (row, col)
 
     def _exits_from_node(
-        self, x: int, y: int, came_from: tuple[int, int] | None
+        self, row: int, col: int, came_from: tuple[int, int] | None
     ) -> list[tuple[int, int, tuple[int, int]]]:
-        """Return the ``(x, y, heading)`` steps leaving the node at ``(x, y)``.
+        """Return the ``(row, col, heading)`` steps leaving the node at ``(row, col)``.
 
         A node's exits are the path cells and nodes touching any cell of its
         box, minus the cell the pointer entered from -- excluding by *cell*
@@ -391,45 +391,45 @@ class _Machine:
         down to one path.  Deduplicating here means a drawing that omits it
         behaves the same way instead of silently multiplying pointers.
         """
-        cells = set(self._cells_of(x, y))
+        cells = set(self._cells_of(row, col))
         out: list[tuple[int, int, tuple[int, int]]] = []
         seen: set[tuple[int, int]] = set()
-        for cx, cy in sorted(cells, key=lambda c: (c[1], c[0])):
+        for c_row, c_col in sorted(cells, key=lambda c: (c[0], c[1])):
             for d in _HEADINGS:
-                nx, ny = cx + d[0], cy + d[1]
-                if (nx, ny) in cells or not self._in_bounds(nx, ny):
+                n_row, n_col = c_row + d[0], c_col + d[1]
+                if (n_row, n_col) in cells or not self._in_bounds(n_row, n_col):
                     continue
-                if (nx, ny) == came_from:
+                if (n_row, n_col) == came_from:
                     continue
-                if not self._accepts(nx, ny, d):
+                if not self._accepts(n_row, n_col, d):
                     continue
                 # A node is reached once however many of its cells touch this
                 # box; a bare path cell is its own destination.
-                node = self.nodes.get((nx, ny))
-                target = (node[1], ny) if node else (nx, ny)
+                node = self.nodes.get((n_row, n_col))
+                target = (n_row, node[1]) if node else (n_row, n_col)
                 if target in seen:
                     continue
                 seen.add(target)
-                out.append((nx, ny, d))
+                out.append((n_row, n_col, d))
         return out
 
-    def _in_bounds(self, x: int, y: int) -> bool:
-        """Whether ``(x, y)`` is on the grid."""
-        return 0 <= y < len(self.grid) and 0 <= x < self.width
+    def _in_bounds(self, row: int, col: int) -> bool:
+        """Whether ``(row, col)`` is on the grid."""
+        return 0 <= row < len(self.grid) and 0 <= col < self.width
 
-    def _accepts(self, x: int, y: int, d: tuple[int, int]) -> bool:
-        """Whether a pointer may enter ``(x, y)`` travelling on ``d``.
+    def _accepts(self, row: int, col: int, d: tuple[int, int]) -> bool:
+        """Whether a pointer may enter ``(row, col)`` travelling on ``d``.
 
         A line character connects only in the directions its shape draws, so
         it can be entered exactly when one of those arms points back at the
         cell the pointer is coming from -- a ``┐`` reached travelling right
         is entered through its left arm and then turns down.
         """
-        if not self._in_bounds(x, y):
+        if not self._in_bounds(row, col):
             return False
-        if (x, y) in self.nodes:
+        if (row, col) in self.nodes:
             return True
-        c = self.grid[y][x]
+        c = self.grid[row][col]
         return c in _EXITS and (-d[0], -d[1]) in _EXITS[c]
 
     @property
@@ -455,14 +455,14 @@ class _Machine:
 
     def _advance(self, p: _Pointer) -> None:
         """Execute the cell under ``p``, then move it one cell on."""
-        if (p.x, p.y) in self.nodes:
+        if (p.row, p.col) in self.nodes:
             self._execute(p)
         else:
             self._follow_path(p)
 
     def _follow_path(self, p: _Pointer) -> None:
         """Move ``p`` along the line character it is standing on."""
-        c = self.grid[p.y][p.x]
+        c = self.grid[p.row][p.col]
         back = (-p.d[0], -p.d[1])
         allowed = [d for d in _EXITS.get(c, ()) if d != back]
         if not allowed:  # pragma: no cover - no line character has a single arm
@@ -474,25 +474,25 @@ class _Machine:
             p.done = True
             return
         if len(allowed) > 1:
-            remembered = self._remembered(p, p.x, p.y, allowed)
+            remembered = self._remembered(p, p.row, p.col, allowed)
             if remembered is not None:
                 allowed = [remembered]
             elif p.d in allowed:
                 allowed = [p.d]
         d = allowed[0]
-        p.memory[self._anchor(p.x, p.y)] = d
+        p.memory[self._anchor(p.row, p.col)] = d
         self._move(p, d)
 
     def _remembered(
-        self, p: _Pointer, x: int, y: int, allowed: list[tuple[int, int]]
+        self, p: _Pointer, row: int, col: int, allowed: list[tuple[int, int]]
     ) -> tuple[int, int] | None:
-        """Return ``p``'s remembered exit from ``(x, y)``, if it may be taken.
+        """Return ``p``'s remembered exit from ``(row, col)``, if it may be taken.
 
         The spec declines the remembered direction when following it would
         turn the pointer 180 degrees, so a rail that re-enters a cell head-on
         falls back to the ordinary rules instead.
         """
-        d = p.memory.get(self._anchor(x, y))
+        d = p.memory.get(self._anchor(row, col))
         if d is None or d not in allowed:
             return None
         if d == (-p.d[0], -p.d[1]):  # pragma: no cover - no known grid reaches it
@@ -505,12 +505,12 @@ class _Machine:
 
     def _move(self, p: _Pointer, d: tuple[int, int]) -> None:
         """Step ``p`` one cell along ``d``, stopping if that leaves the grid."""
-        nx, ny = p.x + d[0], p.y + d[1]
-        if not self._accepts(nx, ny, d):
+        n_row, n_col = p.row + d[0], p.col + d[1]
+        if not self._accepts(n_row, n_col, d):
             p.done = True
             return
-        p.prev = (p.x, p.y)
-        p.x, p.y, p.d = nx, ny, d
+        p.prev = (p.row, p.col)
+        p.row, p.col, p.d = n_row, n_col, d
 
     def _leave(self, p: _Pointer, prefer: tuple[int, int] | None = None) -> None:
         """Move ``p`` off the node it occupies.
@@ -520,33 +520,33 @@ class _Machine:
         direction settles the choice and the pointer's current heading
         breaks any remaining tie.
         """
-        exits = self._exits_from_node(p.x, p.y, p.prev)
+        exits = self._exits_from_node(p.row, p.col, p.prev)
         if not exits:
             p.done = True
             return
         if prefer is not None:
-            for nx, ny, d in exits:
+            for n_row, n_col, d in exits:
                 if d == prefer:
-                    self._step_to(p, nx, ny, d)
+                    self._step_to(p, n_row, n_col, d)
                     return
         if len(exits) > 1:
-            remembered = self._remembered(p, p.x, p.y, [d for _, _, d in exits])
-            for nx, ny, d in exits:
+            remembered = self._remembered(p, p.row, p.col, [d for _, _, d in exits])
+            for n_row, n_col, d in exits:
                 if d == remembered:
-                    self._step_to(p, nx, ny, d)
+                    self._step_to(p, n_row, n_col, d)
                     return
-            for nx, ny, d in exits:
+            for n_row, n_col, d in exits:
                 if d == p.d:
-                    self._step_to(p, nx, ny, d)
+                    self._step_to(p, n_row, n_col, d)
                     return
-        nx, ny, d = exits[0]
-        self._step_to(p, nx, ny, d)
+        n_row, n_col, d = exits[0]
+        self._step_to(p, n_row, n_col, d)
 
-    def _step_to(self, p: _Pointer, x: int, y: int, d: tuple[int, int]) -> None:
-        """Record the exit taken from ``p``'s node and move it to ``(x, y)``."""
-        p.memory[self._anchor(p.x, p.y)] = d
-        p.prev = (p.x, p.y)
-        p.x, p.y, p.d = x, y, d
+    def _step_to(self, p: _Pointer, row: int, col: int, d: tuple[int, int]) -> None:
+        """Record the exit taken from ``p``'s node and move it to ``(row, col)``."""
+        p.memory[self._anchor(p.row, p.col)] = d
+        p.prev = (p.row, p.col)
+        p.row, p.col, p.d = row, col, d
 
     def _fork(self, p: _Pointer) -> None:
         """Split ``p`` across every path leaving a ``( )`` node.
@@ -555,18 +555,18 @@ class _Machine:
         carrying a copy of the register and deque cursor, is appended for
         each of the others.
         """
-        exits = self._reading_order(self._exits_from_node(p.x, p.y, p.prev))
+        exits = self._reading_order(self._exits_from_node(p.row, p.col, p.prev))
         if not exits:
             p.done = True
             return
-        here = (p.x, p.y)
-        for nx, ny, d in exits[1:]:
-            forked = _Pointer(nx, ny, d, p.reg, p.deque)
+        here = (p.row, p.col)
+        for n_row, n_col, d in exits[1:]:
+            forked = _Pointer(n_row, n_col, d, p.reg, p.deque)
             forked.prev = here
             forked.memory = dict(p.memory)
             self.pointers.append(forked)
-        nx, ny, d = exits[0]
-        self._step_to(p, nx, ny, d)
+        n_row, n_col, d = exits[0]
+        self._step_to(p, n_row, n_col, d)
 
     def _deque(self, p: _Pointer) -> list[int]:
         """Return ``p``'s currently selected deque, creating it if needed."""
@@ -574,7 +574,7 @@ class _Machine:
 
     def _execute(self, p: _Pointer) -> None:
         """Run the node under ``p``, then move it off that node."""
-        spelling = self.nodes[(p.x, p.y)][0]
+        spelling = self.nodes[(p.row, p.col)][0]
 
         if spelling == "(( ))":
             p.done = True
@@ -629,7 +629,7 @@ class _Machine:
             self._leave(p, p.d)
             return
         prefer = _turn_left(p.d) if p.reg == 1 else _turn_right(p.d)
-        exits = self._exits_from_node(p.x, p.y, p.prev)
+        exits = self._exits_from_node(p.row, p.col, p.prev)
         if not any(d == prefer for _, _, d in exits):
             prefer = p.d
         self._leave(p, prefer)
