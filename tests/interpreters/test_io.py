@@ -20,6 +20,22 @@ def test_input_char() -> None:
         assert IO().input_char() == ord("X")
 
 
+def test_input_char_on_an_empty_line() -> None:
+    """An empty line is one ended immediately: the character is its newline."""
+    with patch("builtins.input", return_value=""):
+        assert IO().input_char() == ord("\n")
+
+
+def test_input_char_empty_line_is_not_end_of_input() -> None:
+    """A blank line still feeds a character; only exhaustion is EOF."""
+    import pytest
+
+    io_obj = ScriptedIO("\n")
+    assert io_obj.input_char() == ord("\n")
+    with pytest.raises(EOFError):
+        io_obj.input_char()
+
+
 def test_scripted_io_feeds_string_and_captures() -> None:
     """``ScriptedIO`` reads from a string and captures all output."""
     io_obj = ScriptedIO("Hello\nWorld")
