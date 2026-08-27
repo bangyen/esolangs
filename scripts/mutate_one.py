@@ -268,9 +268,11 @@ def main() -> int:
     parser.add_argument(
         "--jobs",
         type=int,
-        default=4,
-        help="mutants to run at once (default 4; mutmut's own default is "
-        "every core, which saturates the machine for the whole run)",
+        default=2,
+        help="mutants to run at once (default 2; mutmut's own default is "
+        "every core, which saturates the machine for the whole run, and "
+        "even a few workers churn processes fast enough to keep the run "
+        "queue deep -- a load average well above the cores actually burnt)",
     )
     args = parser.parse_args()
 
