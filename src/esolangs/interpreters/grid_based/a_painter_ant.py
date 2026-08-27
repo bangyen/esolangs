@@ -44,7 +44,7 @@ result is which one the ant is resting in).
 """
 
 import sys
-from typing import Literal, cast
+from typing import Literal
 
 from esolangs.interpreters.io import IO
 
@@ -66,6 +66,10 @@ _MOVE: dict[_Heading, tuple[int, int]] = {
 # validation string from _MOVE keeps it in step with the headings the move
 # branch can actually look up.
 _INSTRUCTIONS = "".join(h + h.upper() for h in _MOVE) + "pP"
+
+# The same headings keyed by their own spelling, so the move branch
+# can turn a parsed character into a _Heading without asserting it.
+_HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
 
 
 class _Machine:
@@ -112,7 +116,12 @@ class _Machine:
         elif command == "P":
             self.grid[(self.x, self.y)] = 1
         else:
-            dx, dy = _MOVE[cast("_Heading", command.lower())]
+            # Not a move command at all unless the lowercased character is
+            # one of the four headings, which is what the lookup requires.
+            heading = _HEADING.get(command.lower())
+            if heading is None:  # pragma: no cover - _INSTRUCTIONS admits no other
+                raise ValueError(f"unknown command {command!r}")
+            dx, dy = _MOVE[heading]
             target = self.grid.get((self.x + dx, self.y + dy), 0)
             if (target == 1) == command.isupper():
                 self.x += dx

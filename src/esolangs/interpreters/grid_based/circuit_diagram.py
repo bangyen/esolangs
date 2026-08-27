@@ -168,7 +168,7 @@ label inconsistent with the width its wiring carries -- raise
 
 import sys
 from collections.abc import Iterator
-from typing import Final, Literal, cast
+from typing import Final, Literal
 
 from esolangs.interpreters.io import IO
 
@@ -208,8 +208,11 @@ _CROSSOVER = "="
 # so naming them lets the checker see _apply_gate handles every one.
 _LogicGate = Literal["a", "A", "o", "O", "x", "X", "~"]
 
-_BINARY_GATES = frozenset("aAoOxX")
-_GATES = _BINARY_GATES | frozenset("~")
+# Typed rather than bare frozensets of str, so that testing a grid
+# character for membership narrows it to the gate alphabet the _Gate
+# constructor and _apply_gate expect.
+_BINARY_GATES: frozenset[_LogicGate] = frozenset(("a", "A", "o", "O", "x", "X"))
+_GATES: frozenset[_LogicGate] = _BINARY_GATES | frozenset(("~",))
 
 # The splitter and combiner.  Both are gate-like: they read on the left and
 # drive on the right, but they rearrange wire counts rather than compute.
@@ -221,6 +224,10 @@ _OUTPUT: Final = ":"
 # What a _Gate's ``kind`` may be: a logic gate, or one of the three
 # gate-like characters that move wires around rather than compute.
 _GateKind = _LogicGate | Literal["<", ">", ":"]
+
+# The gate-like trio as a typed set: comparing against the three Final
+# constants above cannot narrow a str, but membership here does.
+_MOVERS: frozenset[Literal["<", ">", ":"]] = frozenset(("<", ">", ":"))
 
 # Specified by the page but exercised by none of its examples; see the
 # module docstring's scope section.
@@ -538,9 +545,13 @@ class _Parser:
         """
         gates = []
         for row, col, char in self.grid.cells():
-            if char not in _GATES and char not in (_SPLIT, _COMBINE, _OUTPUT):
+            if char in _GATES:
+                kind: _GateKind = char
+            elif char in _MOVERS:
+                kind = char
+            else:
                 continue
-            gate = _Gate(cast("_GateKind", char), row, col)
+            gate = _Gate(kind, row, col)
             if char == _OUTPUT:
                 outputs: list[_Wiring] = []
             elif char == _SPLIT:
