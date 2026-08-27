@@ -603,6 +603,65 @@ class TestGeneratorRoundTrips:
         program = gen.laserfuck("\x03\x03\x03")
         assert program.count("#/)") <= 1
 
+    @pytest.mark.parametrize("width", [5, 8, 12, 20, 30])
+    def test_laserfuck_snake_ring_refuses_a_width_it_cannot_fit(
+        self, width: int
+    ) -> None:
+        """Too narrow for the ring, the builder answers None, not a bad grid.
+
+        The snake needs a spine to count down and a right margin to turn in,
+        and the finished block still has to sit inside the width.  Each of
+        those is checked separately and each answers ``None``, which is what
+        lets :func:`laserfuck` fall back to a form that does fit rather than
+        emitting a ring whose rows overrun.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        assert _laserfuck_snake_ring("Hi", width) is None
+
+    def test_laserfuck_snake_needs_a_spine_and_a_margin(self) -> None:
+        """A spine with no room either side cannot carry a snake."""
+        from esolangs.tools.text.laserfuck import _laserfuck_snake
+
+        # right - spine - 1 < 1: no column for the first chunk.
+        assert _laserfuck_snake("+++", 1, 2) is None
+        # and with the spine past the right edge entirely.
+        assert _laserfuck_snake("+++", 5, 6) is None
+
+    def test_laserfuck_base_factor_gives_up_on_a_small_base(self) -> None:
+        """Under six there is no split that beats counting the base out.
+
+        The ring costs ``outer + inner`` plus its frame, so a base with no
+        factor pair cheaper than itself is left for the caller to write
+        literally.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_base_factor
+
+        assert all(_laserfuck_base_factor(base) is None for base in range(6))
+        assert _laserfuck_base_factor(6) == (2, 3, 0)
+
+    def test_laserfuck_counts_a_small_base_out_literally(self) -> None:
+        """A base too small to factor is written as a run, with no ring.
+
+        ``\\x01`` needs one unit, and no ``outer``/``inner`` split is cheaper
+        than the frame a ring would cost, so the stage is a plain ``+`` run.
+        """
+        program = gen.laserfuck("\x01", 5)
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == "\x01"
+
+    def test_laserfuck_falls_back_when_the_loop_grid_overruns(self) -> None:
+        """A loop grid wider than the width is re-emitted as the linear form.
+
+        The loop layout is tied to the beam's track, so it cannot be folded
+        the way the linear run can; when it does not fit, the whole form is
+        swapped rather than squeezed.
+        """
+        program = gen.laserfuck("aaa", 25)
+        assert max(len(line) for line in program.split("\n")) <= 25
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == "aaa"
+
     def test_laserfuck_multiply_ring_leaves_no_stray_cell(self) -> None:
         """The scratch cell the multiply ring spends never reaches the dump.
 
@@ -809,6 +868,31 @@ class TestGeneratorRoundTrips:
         # the backslash, form-feed, and NUL escapes take the remaining branches
         assert roundtrip(myscript_run, gen.myscript("a\\b\fc")) == "a\\b\fc"
         assert roundtrip(myscript_run, gen.myscript("a\x00b")) == "a\x00b"
+
+    @pytest.mark.parametrize("width", [1, 4, 10, 12, 40])
+    def test_myscript_splits_across_say_statements(self, width: int) -> None:
+        """A width cuts the text across several ``say`` lines, never a escape.
+
+        ``say`` writes with no trailing newline, so the statements
+        concatenate.  The escapes (``\\n``, ``\\t``) are two characters that
+        only mean a byte together, so a line break must fall between whole
+        pieces -- which is why the packing is by piece rather than by slice.
+        A width too narrow for one piece still gets that piece.
+        """
+        text = 'a\tb\nc"d\\e'
+        program = gen.myscript(text, width)
+        assert all(line.startswith('say "') for line in program.split("\n"))
+        assert roundtrip(myscript_run, program) == text
+
+    def test_myscript_rejects_a_byte_it_cannot_escape(self) -> None:
+        """A byte outside the printable range has no ``say`` escape."""
+        with pytest.raises(ValueError, match="representable bytes"):
+            gen.myscript("caf\xe9")
+
+    def test_taglate_rejects_a_line_break(self) -> None:
+        """The queue is one line, so a break in the text would split it."""
+        with pytest.raises(ValueError, match="newline or other line break"):
+            gen.taglate("a\nb")
 
     def test_empty_text_returns_empty(self) -> None:
         """The register generators return an empty program for empty text."""
@@ -1226,3 +1310,43 @@ class TestGeneratorBranches:
         with patch.object(sys, "argv", ["esolangs.tools.text", "Hi"]):
             runpy.run_module("esolangs.tools.text", run_name="__main__")
         assert "--- BFStack ---" in capsys.readouterr().out
+
+
+class TestWeaveInternals:
+    """The weave's rejection paths, which the public generator never reaches.
+
+    :func:`~esolangs.tools.text.other.clockwise` clamps its width up to the
+    floor before folding, so the "no weave fits" answers below are
+    unreachable through it.  They are what keeps a bad template from being
+    filled with instructions anyway, so they are exercised directly.
+    """
+
+    def test_slots_rejects_a_template_the_walk_leaves(self) -> None:
+        """A grid the pointer walks out of is not a closed template."""
+        # No turns at all: the pointer runs east and off the edge.
+        grid = [[" "] * 4 for _ in range(4)]
+        assert other._weave_slots(grid) is None
+
+    def test_slots_rejects_a_template_that_never_comes_home(self) -> None:
+        """A walk that loops forever inside the grid is rejected too.
+
+        A ring of turns cycles without returning to the origin cell, so the
+        step budget runs out and the template is refused rather than the
+        caller waiting on it.
+        """
+        grid = [list(row) for row in ("RR", "RR")]
+        assert other._weave_slots(grid) is None
+
+    def test_weave_refuses_a_width_below_the_floor(self) -> None:
+        """Under the floor there is no weave to build; the caller clamps."""
+        assert other._clockwise_weave(";", 3) is None
+
+    def test_weave_gives_up_once_units_outgrow_the_program(self) -> None:
+        """A body that never fits the program stops rather than growing on.
+
+        Each extra unit adds slots, so a program that no template can hold
+        would grow ``units`` forever; the search stops once it exceeds the
+        program's own length, which no useful weave ever needs.
+        """
+        # A width admitting only body 0, with a program too long for it.
+        assert other._clockwise_weave(";" * 400, 4) is not None
