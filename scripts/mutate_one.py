@@ -51,6 +51,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # the copied test file, so the score is over the tests that can run.
 _UNBUNDLED = ("esolangs.vm", "esolangs.registry")
 
+# Packages the bundle does not inline, whose imports must therefore keep
+# resolving against the installed package.  This is deliberately *not*
+# ``_UNBUNDLED``: that constant also drives ``_drop_unbundled_tests``, and a
+# test importing one of these is still perfectly runnable -- BrainIf's suite
+# checks its own generated hello-world through ``esolangs.tools.text``, which
+# only needs to be left alone, not cut.  Rewriting it to ``from bundled
+# import brainif`` asked the bundle for a text generator it never inlines.
+_NOT_REWRITTEN = ("vm", "registry", "tools")
+
 # The two modules ``bundle_one`` inlines alongside the interpreter.  Their
 # classes are the *only* ones a score may legitimately leave out, which is
 # what ``_score`` checks its exclusions against.
@@ -91,6 +100,31 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
     return src, dropped
 
 
+def _copy_test_helpers(src: str, tests_dir: Path, stem: str) -> str:
+    """Copy the sibling test modules ``src`` imports, and flatten the imports.
+
+    Only the one test file is copied into the work dir, so a suite sharing
+    helpers with another language -- ``from tests.interpreters.oisc import
+    memory, run_program``, as Decleq's and AddSubJump's both do -- failed
+    collection outright: no ``tests.interpreters`` package exists there.
+
+    The helper is copied in beside the test and the import flattened to a
+    plain ``from oisc import ...``, which resolves because pytest puts the
+    test's own directory on the path.  Helpers import from the package too
+    (``oisc`` needs ``ScriptedIO``), so they get the same rewrite -- and
+    mutmut copies ``tests/`` wholesale into ``mutants/``, so the copy carries
+    across on its own.
+    """
+    for name in sorted(set(re.findall(r"from tests\.interpreters\.(\w+) import", src))):
+        helper = ROOT / "tests" / "interpreters" / f"{name}.py"
+        if not helper.exists():
+            raise SystemExit(f"test helper not found: {helper}")
+        (tests_dir / f"{name}.py").write_text(
+            _rewrite_imports(helper.read_text(), stem)
+        )
+    return re.sub(r"from tests\.interpreters\.(\w+) import", r"from \1 import", src)
+
+
 def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
     """Repoint every package import at the single bundled module.
 
@@ -113,7 +147,20 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
             rf"import {stem} as \1",
             src,
         )
-    skip = "|".join(mod.split(".", 1)[1] for mod in _UNBUNDLED)
+        # ``importlib.import_module("esolangs.interpreters.<module>")`` names
+        # the interpreter in a *string*, which no import-statement rewrite can
+        # see.  Eight suites load the interpreter this way, and left alone
+        # they test the installed package instead of the bundle: no mutant is
+        # visible, so mutmut's forced-fail check aborts the run before a
+        # single one is scored.  The quoted module path is rewritten rather
+        # than the call, because the call is not always on one line -- the
+        # %^2^-1 suite splits it across three.
+        src = re.sub(
+            rf"""(['"])esolangs\.interpreters\.{re.escape(module)}\1""",
+            rf"\g<1>{stem}\g<1>",
+            src,
+        )
+    skip = "|".join(_NOT_REWRITTEN)
     return re.sub(
         rf"from esolangs(?!\.(?:{skip})\b)(?:\.[\w.]+)? import ",
         f"from {stem} import ",
@@ -192,7 +239,14 @@ def _split_inlined(bundle: Path, module: str) -> int:
     if not inlined.strip():
         return 0
 
-    (bundle.parent / "_inlined.py").write_text(preamble + inlined)
+    # ``from _inlined import *`` skips underscore-prefixed names unless the
+    # module says otherwise, and the names bundled alongside an interpreter
+    # are often private: Factor is built on brainfuck, so brainfuck's
+    # ``_Machine`` lands here and ``_BFMachine = _Machine`` in the other half
+    # died on a NameError.  An explicit ``__all__`` re-exports everything the
+    # prefix defines, underscores included.
+    export = '\n\n__all__ = [_n for _n in dir() if not _n.startswith("__")]\n'
+    (bundle.parent / "_inlined.py").write_text(preamble + inlined + export)
     bundle.write_text(
         preamble + "from _inlined import *  # noqa: F403\n\n" + sep + tail
     )
@@ -218,6 +272,7 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
         print(f"[note] moved {moved} inlined lines out of the mutation target")
 
     tests, dropped = _drop_unbundled_tests(_test_file(module).read_text())
+    tests = _copy_test_helpers(tests, proj / "tests", stem)
     (proj / "tests" / "test_bundled.py").write_text(
         _rewrite_imports(tests, stem, module)
     )
