@@ -190,14 +190,19 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
 
 
 def _own_classes(module: str) -> set[str]:
-    """Return the names of the classes ``module`` itself defines."""
+    """Return the names of the classes ``module`` itself defines.
+
+    ``RUNNERS`` stores the path from the interpreters package down --
+    ``grid_based.streetcode`` -- so it is qualified here before importing.
+    """
     import importlib
 
-    mod = importlib.import_module(module)
+    dotted = f"esolangs.interpreters.{module}"
+    mod = importlib.import_module(dotted)
     return {
         obj.__name__
         for obj in vars(mod).values()
-        if isinstance(obj, type) and obj.__module__ == module
+        if isinstance(obj, type) and obj.__module__ == dotted
     }
 
 
