@@ -329,9 +329,14 @@ class _Machine:
     def _at(self, row: int, col: int) -> str:
         """Return the character at ``(row, col)``, or ``'?'`` if out of bounds.
 
-        ``'?'`` matches no wall character, so wall-shape scans treat the
-        grid's implicit edge as open ground (``_open`` is the only check
-        that treats it as closed).
+        ``'?'`` matches no wall character, so the scans reading through
+        here -- the mouth scans, which look several cells out and can
+        legitimately run off the grid, and ``_validate_glyphs`` -- treat
+        the grid's implicit edge as open ground (``_open`` is the only
+        check that treats it as closed).  The wall-shape scan no longer
+        comes through here: it reads a reachable cell's neighbourhood
+        via :meth:`_block`, where the enclosure check has already ruled
+        the edge out.
         """
         if not (0 <= row < self.height and 0 <= col < self.width):
             return "?"
