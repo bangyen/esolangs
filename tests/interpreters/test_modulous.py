@@ -73,6 +73,26 @@ class TestModulous:
         """JMP ... NIF jumps only when the top does not match."""
         assert run_and_capture("[PSH INT 5][JMP F 1 NIF 5][PRT INT][END]") == "5"
 
+    def test_conditional_jump_nif_takes_the_jump(self) -> None:
+        """NIF jumps when the top does *not* match, which is its whole point.
+
+        ``test_conditional_jump_nif`` compares 5 against 5, so the condition
+        is false and no jump happens -- the same output a NIF that never
+        jumped, or one whose comparison was inverted, would give.  A
+        mismatched operand makes it jump, and a distance of two lands
+        somewhere the fall-through does not.
+        """
+        program = "[PSH INT 5][JMP F 2 NIF 9][PRT INT][PSH INT 7][PRT INT][END]"
+        assert run_and_capture(program) == "7"
+
+    def test_jump_compares_zero_on_an_empty_stack(self) -> None:
+        """With nothing pushed the compared value is 0, not some other
+        default: ``NIF 1`` therefore jumps, skipping the push it would
+        otherwise print."""
+        program = "[JMP F 2 NIF 1][PSH INT 3][PRT INT][PSH INT 8][PRT INT][END]"
+        with pytest.raises(HaltError):
+            run_and_capture(program)
+
     def test_backward_jump(self) -> None:
         """JMP B jumps backwards, eventually landing on END."""
         assert run_and_capture("[JMP B 1][END]") == ""
