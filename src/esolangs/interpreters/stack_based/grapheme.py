@@ -36,12 +36,21 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Final, Literal
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-_FUNC = "func"
+_FUNC: Final = "func"
+
+# A Grapheme value is a number, a string, or a function -- and a function
+# is always the pair ``(_FUNC, body)``, built in the two places a frame's
+# buffer is closed.  Naming the three lets the checker see that the
+# conversions below handle every one, so none needs a trailing assertion
+# for a fourth kind that cannot exist, and the function body no longer has
+# to be cast to str at each use.
+_Function = tuple[Literal["func"], str]
+_Value = int | str | _Function
 
 
 def _int_from(buf: list[str]) -> int:
@@ -52,14 +61,12 @@ def _int_from(buf: list[str]) -> int:
     return res
 
 
-def _to_int(value: object) -> int:
+def _to_int(value: _Value) -> int:
     """Convert a value to an integer (the ``J`` command)."""
     if isinstance(value, int):
         return value
     if isinstance(value, tuple):  # function -> number of commands
         return len(value[1])
-    if not isinstance(value, str):
-        raise AssertionError(f"unexpected value {value!r}")
     res = 0
     for c in value:
         if c == "F":
@@ -68,14 +75,12 @@ def _to_int(value: object) -> int:
     return res
 
 
-def _to_str(value: object) -> str:
+def _to_str(value: _Value) -> str:
     """Convert a value to a string (the ``N`` command)."""
     if isinstance(value, str):
         return value
     if isinstance(value, tuple):  # function -> its body
-        return cast(str, value[1])
-    if not isinstance(value, int):
-        raise AssertionError(f"unexpected value {value!r}")
+        return value[1]
     digits = "JABCDEFGHI"  # J = 0, A = 1, ..., I = 9
     if value == 0:
         return "J"
@@ -86,7 +91,7 @@ def _to_str(value: object) -> str:
     return "".join(reversed(res))
 
 
-def _as_num(value: object) -> int:
+def _as_num(value: _Value) -> int:
     """Math operand: an integer, or the ord of a string's first character."""
     if isinstance(value, int):
         return value
@@ -95,15 +100,13 @@ def _as_num(value: object) -> int:
     raise HaltError("math on a function is undefined")
 
 
-def _truthy(value: object) -> bool:
+def _truthy(value: _Value) -> bool:
     """Falsy values are zero, the empty string, and the empty function."""
     if isinstance(value, int):
         return value != 0
     if isinstance(value, str):
         return value != ""
-    if isinstance(value, tuple):
-        return cast(str, value[1]) != ""
-    raise AssertionError(f"unexpected value {value!r}")
+    return value[1] != ""
 
 
 @dataclass
@@ -123,8 +126,8 @@ class _Machine:
     """Shared stack, variables, step counter, and call stack for a run."""
 
     def __init__(self, io: IO, limit: int) -> None:
-        self.stack: list[object] = []
-        self.vars: dict[object, object] = {}
+        self.stack: list[_Value] = []
+        self.vars: dict[_Value, _Value] = {}
         self.io = io
         self.limit = limit
         self.steps = 0
@@ -151,7 +154,7 @@ class _Machine:
             self.io.position(),
         )
 
-    def pop(self) -> object:
+    def pop(self) -> _Value:
         if not self.stack:
             raise HaltError("popped an empty stack")
         return self.stack.pop()
