@@ -357,9 +357,9 @@ def _run_statement(
     """Execute one statement (a line's tokens and its indented block)."""
     head = tokens[0]
     if head == "var":
-        name = tokens[1]
-        if tokens[2] != "is":
+        if len(tokens) < 3 or tokens[2] != "is":
             raise ValueError("malformed var declaration")
+        name = tokens[1]
         rest = tokens[3:]
         if rest and rest[0] == "func":
             scope.declare(name, _Function(rest[1:], children, scope))
