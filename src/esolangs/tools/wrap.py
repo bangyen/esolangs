@@ -502,6 +502,97 @@ def _polynomial(program: str, _width: int) -> str:
     return "\n".join(terms)
 
 
+def _between(program: str, width: int) -> str:
+    """Wrap Between by re-emitting ``'...'p.`` per line, not by breaking one.
+
+    ``p`` writes with no trailing newline, so consecutive print statements
+    concatenate exactly as Nevermind's do (see :func:`_nevermind`): the text
+    is split across as many statements as the width needs and the output is
+    unchanged.  Breaking the single statement the generator emits would not
+    work -- each instruction is one line, so a newline inside the literal
+    cuts the instruction in two.
+
+    Both dialects wrap.  Between is goto-based and its branch addresses are
+    0-indexed *line numbers*, so splitting one statement into several moves
+    every line after it: the addresses are recomputed against the new
+    layout rather than the wrapper giving up on a program that jumps.  Only
+    a literal ``|N|f`` target is rewritten -- a computed one is an
+    expression whose value this cannot know, and a program carrying any is
+    returned untouched.
+
+    A literal is cut between *units*: an apostrophe inside it is written
+    ``''`` and both halves have to stay on the one line, or each half closes
+    a literal of its own.  As with Nevermind, a unit too wide for the width
+    gets its own over-wide line rather than being split.
+    """
+    lines = program.split("\n")
+    if any(_BETWEEN_COMPUTED_JUMP.match(line) for line in lines):
+        return program
+
+    # Split each printing statement in place, remembering how many lines
+    # each original line became so the jump targets can be moved onto it.
+    expanded: list[list[str]] = [_between_split(line, width) for line in lines]
+    starts: list[int] = []
+    total = 0
+    for group in expanded:
+        starts.append(total)
+        total += len(group)
+    starts.append(total)
+
+    out: list[str] = []
+    for group in expanded:
+        for line in group:
+            match = _BETWEEN_LITERAL_JUMP.match(line)
+            if match is None:
+                out.append(line)
+                continue
+            target = int(match.group(1))
+            # A target past the end halts, which is a real program's way of
+            # stopping; keep it past the new end rather than clamping it in.
+            moved = starts[target] if target < len(starts) else total
+            out.append(f"|{moved}|f{match.group(2)}")
+    return "\n".join(out)
+
+
+# ``|N|f`` -- a branch whose target is a literal line number, which is what
+# the boolean generator emits and all this wrapper knows how to move.
+_BETWEEN_LITERAL_JUMP = re.compile(r"^\|(\d+)\|f(.*)$")
+
+# Any other ``f`` branch: its target is an expression (a variable, or
+# arithmetic) whose value depends on state this cannot see, so a program
+# containing one is left alone rather than renumbered wrongly.
+_BETWEEN_COMPUTED_JUMP = re.compile(r"^(?!\|\d+\|f).*[^']f[^']*$")
+
+
+def _between_split(line: str, width: int) -> list[str]:
+    """Split one ``'...'p.`` statement to ``width``, or keep the line whole."""
+    if len(line) <= width or not line.startswith("'") or not line.endswith("'p."):
+        return [line]
+    payload = line[1:-3]
+    if "'" in payload.replace("''", ""):  # a bare quote is not ours to cut
+        return [line]
+    room = max(width - len("''p."), 1)
+
+    units: list[str] = []
+    i = 0
+    while i < len(payload):
+        step = 2 if payload.startswith("''", i) else 1
+        units.append(payload[i : i + step])
+        i += step
+
+    packed: list[str] = []
+    current = ""
+    for unit in units:
+        if current and len(current) + len(unit) > room:
+            packed.append(current)
+            current = unit
+        else:
+            current += unit
+    if current:
+        packed.append(current)
+    return [f"'{chunk}'p." for chunk in packed]
+
+
 def _taglate(program: str, width: int) -> str:
     """Wrap Taglate's commands, leaving its queue-seed line alone.
 
@@ -629,15 +720,19 @@ WRAPPERS = {
     # this re-emits ``print,`` per line instead of breaking the one the
     # generator produces.  See :func:`_nevermind`.
     "nevermind": _nevermind,
+    # Line-based like Nevermind, and wrapped the same way: ``p`` writes with
+    # no trailing newline, so the literal is split across several print
+    # statements rather than broken inside one.  See :func:`_between`.
+    "between": _between,
     "a_painter_ant": wrap_chars,
 }
 
 
 # The languages whose wrapper handles an already-multi-line program itself,
 # rather than being skipped by :func:`wrap_program` for having a newline in
-# it.  Taglate's first line seeds its queue and is structural; every other
-# wrapped language arrives as a single line.
-MULTILINE = frozenset({"taglate"})
+# it.  Taglate's first line seeds its queue and is structural; Between's
+# ``.x.`` trailer is a second instruction and its wrapper re-emits it.
+MULTILINE = frozenset({"taglate", "between"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:

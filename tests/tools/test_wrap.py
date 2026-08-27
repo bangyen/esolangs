@@ -212,7 +212,18 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     """
     for repeat in (1, 2, 4, 8):
         program = generate(name, TEXT * repeat)
-        if "\n" not in program and len(program) > 40:
+        # A MULTILINE language's text program has structural newlines of its
+        # own (Between's ``.x.`` trailer), so "did it wrap?" is whether
+        # wrapping added a line, not whether one is there at all.  The width
+        # itself is not asserted here: Taglate's queue seed is one line the
+        # wrapper must leave over-wide, and the round-trip tests above hold
+        # each wrapper to the width it can actually promise.
+        if LANGUAGES[name].id in MULTILINE:
+            if max(map(len, program.split("\n"))) > 40:
+                wrapped = generate(name, TEXT * repeat, 40)
+                assert wrapped.count("\n") > program.count("\n")
+                return
+        elif "\n" not in program and len(program) > 40:
             assert "\n" in generate(name, TEXT * repeat, 40)
             return
     # Some languages' hello-world programs are too terse to ever need a
@@ -312,6 +323,79 @@ def test_nevermind_never_splits_a_comma_escape() -> None:
             payload = line[len("print,") :]
             assert "*4" not in payload or "*44" in payload
         assert _run("Nevermind", program) == text
+
+
+def test_between_wraps_by_repeating_print() -> None:
+    """Between wraps into more print statements, the way Nevermind does.
+
+    ``p`` writes with no trailing newline, so consecutive ``'...'p.`` lines
+    concatenate.  Breaking the literal instead would cut the instruction in
+    two, since each Between instruction is one line.
+    """
+    for width in (5, 8, 12, 20):
+        program = generate("Between", TEXT, width)
+        body, _, trailer = program.rpartition("\n")
+        assert trailer == ".x."
+        assert all(line.endswith("'p.") for line in body.split("\n"))
+        assert _run("Between", program) == TEXT
+
+    # a width the one-line program overruns really does get broken up
+    assert generate("Between", TEXT, 8).count("\n") > 1
+
+
+def test_between_never_splits_an_apostrophe_escape() -> None:
+    """A doubled ``''`` stays whole: split, each half closes a literal.
+
+    An apostrophe inside a Between literal is written ``''``, so a break
+    between the two would end one statement early and leave the next
+    starting mid-literal -- a load error rather than a quiet wrong answer,
+    but a break the unit packing has to prevent all the same.
+    """
+    text = "a'b'c'd"
+    for width in range(1, 30):
+        program = generate("Between", text, width)
+        assert _run("Between", program) == text
+
+
+def test_between_moves_a_jump_target_past_a_split() -> None:
+    """Splitting a statement moves every line after it, so branches follow.
+
+    Between is goto-based on 0-indexed line numbers, so a wrapper that added
+    lines without renumbering would leave each branch pointing at whatever
+    now sits at the old address.  Here line 1 jumps over line 2; once the
+    long literal above it splits, the target has to move with its line or
+    the skipped statement runs.
+    """
+    program = "\n".join(
+        [
+            "'ABCDEFGHIJKL'p.",
+            "|3|f.",
+            "'SKIPPED'p.",
+            "'END'p.",
+            ".x.",
+        ]
+    )
+    assert _run("Between", program) == "ABCDEFGHIJKLEND"
+    for width in (6, 8, 10, 20):
+        wrapped = wrap_program(program, "between", width)
+        assert _run("Between", wrapped) == "ABCDEFGHIJKLEND"
+    # the split really happened, and the target really moved
+    wrapped = wrap_program(program, "between", 8)
+    assert wrapped.count("\n") > program.count("\n")
+    assert "|3|f." not in wrapped
+
+
+def test_between_boolean_still_computes_its_table() -> None:
+    """The boolean dialect survives wrapping, branches and all."""
+    from esolangs.tools import boolean
+
+    for table, bits in (("01", 1), ("0110", 2), ("01101001", 3)):
+        program = boolean.between(table)
+        for width in (5, 20, 40):
+            wrapped = wrap_program(program, "between", width)
+            for row, expected in enumerate(table):
+                stdin = "".join(b + "\n" for b in format(row, f"0{bits}b"))
+                assert run("Between", wrapped, stdin) == expected
 
 
 def test_clockwise_is_never_reflowed() -> None:
