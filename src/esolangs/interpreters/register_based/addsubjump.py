@@ -25,7 +25,10 @@ Documented decisions for gaps in the wiki spec:
 - a non-numeric token is malformed (:class:`ValueError`), and a program
   that has not halted after ``limit`` instructions is rejected with
   :class:`HaltError` (the wiki has no termination convention beyond falling
-  off the special addresses).
+  off the special addresses);
+- a *value* is an unbounded integer, but a write to an address too large
+  to allocate halts with :class:`HaltError`: the cell is unbounded, the
+  list of cells is not.
 
 The interpreter runs on a :class:`_Machine` (memory, instruction pointer,
 and flags), so it is step-capable: ``step()`` executes one instruction and
@@ -34,9 +37,16 @@ end of memory, making a repeating program a finite-state cycle the state
 cycle detector can prove.
 """
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
 from esolangs.interpreters.oisc_cli import main_with_limit, run_with_limit
+
+# The largest memory a run will grow.  Cell values are unbounded, but the
+# list backing them is not: past this the allocation is one no machine
+# would satisfy, so the run halts instead of raising OverflowError (or
+# spending the box's memory finding out).
+_MAX_MEMORY = 1 << 24
 
 _IO = -1
 _CF, _ZF, _NF, _OF = -2, -3, -4, -5
@@ -109,6 +119,12 @@ class _Machine:
                 self.fum = value
         else:
             if addr >= len(self.memory):
+                # Cell *values* are unbounded (above), but the memory
+                # holding them is a real list: an address that cannot be
+                # allocated is a resource the run does not have, so it
+                # halts rather than raising Python's OverflowError.
+                if addr + 1 > _MAX_MEMORY:
+                    raise HaltError(f"memory address {addr} is too large")
                 self.memory.extend([0] * (addr + 1 - len(self.memory)))
             self.memory[addr] = value
 
