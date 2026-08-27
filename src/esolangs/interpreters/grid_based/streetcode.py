@@ -58,8 +58,19 @@ from esolangs.interpreters.io import IO
 # pattern character that no form contains.
 _Pattern = Literal["?", "W", "."]
 
-_HEADINGS = ("N", "E", "S", "W")
-_DELTA = {"N": (-1, 0), "E": (0, 1), "S": (1, 0), "W": (0, -1)}
+# The four compass headings the car drives under.  Naming them keeps a
+# heading distinct from the cell characters and form patterns that are also
+# plain strings, so a mix-up is a type error rather than a silent lookup
+# against the wrong alphabet.
+_Heading = Literal["N", "E", "S", "W"]
+
+_HEADINGS: tuple[_Heading, ...] = ("N", "E", "S", "W")
+_DELTA: dict[_Heading, tuple[int, int]] = {
+    "N": (-1, 0),
+    "E": (0, 1),
+    "S": (1, 0),
+    "W": (0, -1),
+}
 _WALLS = frozenset("+-|")
 
 # How far perpendicular to the direction of travel ``_road_mouth`` looks for
@@ -125,17 +136,17 @@ def _matches(block: tuple[str, ...], form: tuple[_Pattern, ...]) -> bool:
     return True
 
 
-def _right(heading: str) -> str:
+def _right(heading: _Heading) -> _Heading:
     """Return the heading 90 degrees clockwise from ``heading``."""
     return _HEADINGS[(_HEADINGS.index(heading) + 1) % 4]
 
 
-def _left(heading: str) -> str:
+def _left(heading: _Heading) -> _Heading:
     """Return the heading 90 degrees counter-clockwise from ``heading``."""
     return _HEADINGS[(_HEADINGS.index(heading) - 1) % 4]
 
 
-def _opposite(heading: str) -> str:
+def _opposite(heading: _Heading) -> _Heading:
     """Return the heading 180 degrees from ``heading``."""
     return _HEADINGS[(_HEADINGS.index(heading) + 2) % 4]
 
@@ -188,8 +199,8 @@ class _Machine:
         # latch came from a crossing mouth, which decides whether the branch
         # condition is re-read on arrival; carrying it inside the latch keeps
         # the two from drifting apart and keeps ``snapshot`` complete.
-        self._merge_target: tuple[int, int, str, str, bool] | None = None
-        self._merging_heading: str | None = None
+        self._merge_target: tuple[int, int, _Heading, _Heading, bool] | None = None
+        self._merging_heading: _Heading | None = None
         # Steps of ordinary right-hand hugging still to be suppressed after a
         # junction chose to carry straight on past a side road.  The declined
         # road's mouth is open ground exactly where the hug looks, so without
@@ -255,19 +266,19 @@ class _Machine:
             return "?"
         return self.grid[row][col]
 
-    def _ahead(self, row: int, col: int, heading: str) -> tuple[int, int]:
+    def _ahead(self, row: int, col: int, heading: _Heading) -> tuple[int, int]:
         d_row, d_col = _DELTA[heading]
         return row + d_row, col + d_col
 
-    def _step_to(self, heading: str) -> tuple[int, int]:
+    def _step_to(self, heading: _Heading) -> tuple[int, int]:
         """Return the cell one step from the car along ``heading``."""
         return self._ahead(self.row, self.col, heading)
 
-    def _open_toward(self, heading: str) -> bool:
+    def _open_toward(self, heading: _Heading) -> bool:
         """Whether the cell one step from the car along ``heading`` is open."""
         return self._open(*self._step_to(heading))
 
-    def _initial_heading(self) -> str:
+    def _initial_heading(self) -> _Heading:
         """Pick the heading consistent with hugging the wall at ``C``.
 
         The car starts as if it had just arrived driving on the right, so
@@ -539,7 +550,9 @@ class _Machine:
                     f"geometry not connected to the street at {(r, c)} ({char!r})"
                 )
 
-    def _road_mouth(self, heading: str, side: str) -> tuple[int, int, int] | None:
+    def _road_mouth(
+        self, heading: _Heading, side: _Heading
+    ) -> tuple[int, int, int] | None:
         """Detect a road opening off ``side`` of the car, or ``None``.
 
         A branch is drawn as a gap in the wall running along ``side``, with a
@@ -612,7 +625,7 @@ class _Machine:
                 return None
         return None
 
-    def _plus_dist(self, side: str) -> int | None:
+    def _plus_dist(self, side: _Heading) -> int | None:
         """Return the distance to the nearest ``+`` on ``side``, or ``None``.
 
         Scans ``1.._MOUTH_MAX_DIST`` cells out from the car
@@ -629,7 +642,7 @@ class _Machine:
             None,
         )
 
-    def _crossing_mouth(self, heading: str) -> bool:
+    def _crossing_mouth(self, heading: _Heading) -> bool:
         """Whether the car is driving *out through* a side road's mouth.
 
         The same drawn junction presents two different shapes depending on
@@ -651,7 +664,7 @@ class _Machine:
         left, right = self._plus_dist(_left(heading)), self._plus_dist(_right(heading))
         return left is not None and right is not None and left != right
 
-    def _junction_kind(self, heading: str) -> int:
+    def _junction_kind(self, heading: _Heading) -> int:
         """Detect a real intersection ahead, returning the open-option count.
 
         A junction is a road mouth (see :meth:`_road_mouth`) opening off
@@ -682,7 +695,7 @@ class _Machine:
         # boundary, and ordinary wall-following handles it.
         return kind if len(self._junction_choices(heading)) >= 2 else 0
 
-    def _junction_shape(self, heading: str) -> int:
+    def _junction_shape(self, heading: _Heading) -> int:
         """Classify the wall shape alone, before the roads are counted."""
         ahead_open = self._open_toward(heading)
         left_mouth = self._road_mouth(heading, _left(heading)) is not None
@@ -700,7 +713,7 @@ class _Machine:
         return 3 if self._crossing_mouth(heading) else 0
 
     def _lane_bounded(
-        self, heading: str, side: str, mouth: tuple[int, int, int]
+        self, heading: _Heading, side: _Heading, mouth: tuple[int, int, int]
     ) -> bool:
         """Whether ``mouth`` bounds a genuinely multi-lane road.
 
@@ -727,7 +740,7 @@ class _Machine:
         )
 
     def _lane_merge_target(
-        self, heading: str, new_heading: str, mouth: tuple[int, int, int]
+        self, heading: _Heading, new_heading: _Heading, mouth: tuple[int, int, int]
     ) -> tuple[int, int]:
         """Return the cell the car must reach before turning to ``new_heading``.
 
@@ -752,7 +765,7 @@ class _Machine:
             return self.row + depth * d_row, self.col
         return self.row, self.col + depth * d_col
 
-    def _junction_choices(self, heading: str) -> list[str]:
+    def _junction_choices(self, heading: _Heading) -> list[_Heading]:
         """Return the roads a junction offers, in the spec's choice order.
 
         Only a detected side road (:meth:`_road_mouth`) counts as a turn the
@@ -782,7 +795,7 @@ class _Machine:
                 roads.append(side)
         return roads
 
-    def _road_deep(self, heading: str) -> bool:
+    def _road_deep(self, heading: _Heading) -> bool:
         """Whether ``heading`` leads onto a road, rather than across one.
 
         Streets are two characters wide, so a direction with a single open
@@ -796,7 +809,7 @@ class _Machine:
             self.row + 2 * d_row, self.col + 2 * d_col
         )
 
-    def _lawful_turn(self, heading: str) -> bool:
+    def _lawful_turn(self, heading: _Heading) -> bool:
         """Whether entering ``heading`` leaves the car driving on the right.
 
         The lane a car belongs in has that road's wall on its right, so a
@@ -816,7 +829,7 @@ class _Machine:
         )
         return not wrong_side
 
-    def _choose_heading(self, arrival_cell: int) -> str | None:
+    def _choose_heading(self, arrival_cell: int) -> _Heading | None:
         """Pick the car's next heading.
 
         Ordinary movement hugs the wall on the right; a detected
@@ -854,7 +867,7 @@ class _Machine:
                 return heading
         return None
 
-    def _heading_leaving_merge(self) -> str | None:
+    def _heading_leaving_merge(self) -> _Heading | None:
         """Phase 2 of a merge: hold straight until the new wall picks up.
 
         After turning onto the new road the car is not yet against that
@@ -873,7 +886,7 @@ class _Machine:
         self._merging_heading = None
         return None
 
-    def _heading_from_merge_target(self, arrival_cell: int) -> str | None:
+    def _heading_from_merge_target(self, arrival_cell: int) -> _Heading | None:
         """Phase 1 of a merge: drive to the latched lane, then turn.
 
         Returns a heading while the approach is still running or when the
@@ -949,7 +962,7 @@ class _Machine:
             return new_heading
         return None
 
-    def _heading_from_junction(self) -> str | None:
+    def _heading_from_junction(self) -> _Heading | None:
         """Apply the spec's ambiguous-turn rule at a detected intersection.
 
         Returns the heading to take, or ``None`` when no junction fires or
@@ -1040,7 +1053,7 @@ class _Machine:
                 self._skip_hug = max(self._skip_hug, far - near - 1)
         return new_heading
 
-    def _heading_from_hug(self) -> str | None:
+    def _heading_from_hug(self) -> _Heading | None:
         """Ordinary right-hand wall-following, the default movement rule."""
         heading = self.heading
         if self._skip_hug > 0:
