@@ -173,14 +173,15 @@ from typing import Final, Literal, cast
 from esolangs.interpreters.io import IO
 
 # Wire characters, and the directions each one accepts a connection from.
-# A direction is (dx, dy) pointing *out* of the cell, y growing downward.
-_UP = (0, -1)
-_DOWN = (0, 1)
-_LEFT = (-1, 0)
-_RIGHT = (1, 0)
+# A direction is (d_row, d_col) pointing *out* of the cell, rows growing
+# downward, so "up" is a negative row step.
+_UP = (-1, 0)
+_DOWN = (1, 0)
+_LEFT = (0, -1)
+_RIGHT = (0, 1)
 _UP_LEFT = (-1, -1)
-_UP_RIGHT = (1, -1)
-_DOWN_LEFT = (-1, 1)
+_UP_RIGHT = (-1, 1)
+_DOWN_LEFT = (1, -1)
 _DOWN_RIGHT = (1, 1)
 
 _DIAGONALS = (_UP_LEFT, _UP_RIGHT, _DOWN_LEFT, _DOWN_RIGHT)
@@ -236,8 +237,8 @@ _OUT_OF_SCOPE = {
 
 def _opposite(direction: tuple[int, int]) -> tuple[int, int]:
     """Return the direction pointing the other way along the same line."""
-    dx, dy = direction
-    return (-dx, -dy)
+    d_row, d_col = direction
+    return (-d_row, -d_col)
 
 
 class _Grid:
@@ -250,17 +251,17 @@ class _Grid:
         self.rows = [r.ljust(self.width) for r in self.rows]
         self.height = len(self.rows)
 
-    def at(self, x: int, y: int) -> str:
-        """Return the character at ``(x, y)``, or a space when off-grid."""
-        if 0 <= y < self.height and 0 <= x < self.width:
-            return self.rows[y][x]
+    def at(self, row: int, col: int) -> str:
+        """Return the character at ``(row, col)``, or a space when off-grid."""
+        if 0 <= row < self.height and 0 <= col < self.width:
+            return self.rows[row][col]
         return " "
 
     def cells(self) -> Iterator[tuple[int, int, str]]:
-        """Yield ``(x, y, char)`` for every cell, in reading order."""
-        for y, row in enumerate(self.rows):
-            for x, char in enumerate(row):
-                yield x, y, char
+        """Yield ``(row, col, char)`` for every cell, in reading order."""
+        for row, line in enumerate(self.rows):
+            for col, char in enumerate(line):
+                yield row, col, char
 
 
 class _Wiring:
@@ -293,34 +294,34 @@ class _Connections:
         """Build the connection graph for ``grid``."""
         self.grid = grid
 
-    def reaches(self, x: int, y: int, direction: tuple[int, int]) -> bool:
-        """Return whether the wire at ``(x, y)`` extends in ``direction``."""
-        char = self.grid.at(x, y)
+    def reaches(self, row: int, col: int, direction: tuple[int, int]) -> bool:
+        """Return whether the wire at ``(row, col)`` extends in ``direction``."""
+        char = self.grid.at(row, col)
         directions = _WIRE_DIRECTIONS.get(char)
         return directions is not None and direction in directions
 
     def through(
-        self, x: int, y: int, direction: tuple[int, int]
+        self, row: int, col: int, direction: tuple[int, int]
     ) -> tuple[int, int] | None:
-        """Follow ``direction`` from ``(x, y)``, crossing any ``=`` chain.
+        """Follow ``direction`` from ``(row, col)``, crossing any ``=`` chain.
 
         Returns the first non-crossover cell reached, or ``None`` when the
         chain runs off the grid.  A ``=`` extends the connection one more
         character, and the prime tester's ``.===.`` chains three of them,
         so the walk repeats rather than hopping a single cell.
         """
-        dx, dy = direction
-        nx, ny = x + dx, y + dy
-        while self.grid.at(nx, ny) == _CROSSOVER:
-            nx, ny = nx + dx, ny + dy
-            if not (0 <= ny < self.grid.height and 0 <= nx < self.grid.width):
+        d_row, d_col = direction
+        n_row, n_col = row + d_row, col + d_col
+        while self.grid.at(n_row, n_col) == _CROSSOVER:
+            n_row, n_col = n_row + d_row, n_col + d_col
+            if not (0 <= n_row < self.grid.height and 0 <= n_col < self.grid.width):
                 return None
-        if not (0 <= ny < self.grid.height and 0 <= nx < self.grid.width):
+        if not (0 <= n_row < self.grid.height and 0 <= n_col < self.grid.width):
             return None
-        return nx, ny
+        return n_row, n_col
 
-    def neighbours(self, x: int, y: int) -> list[tuple[int, int]]:
-        """Return the wire cells mutually connected to the wire at ``(x, y)``.
+    def neighbours(self, row: int, col: int) -> list[tuple[int, int]]:
+        """Return the wire cells mutually connected to the wire at ``(row, col)``.
 
         Only directions this cell reaches in are tried, and the cell found
         must reach back along the same line -- the spec's requirement that a
@@ -329,9 +330,9 @@ class _Connections:
         """
         found = []
         for direction in _ALL_DIRECTIONS:
-            if not self.reaches(x, y, direction):
+            if not self.reaches(row, col, direction):
                 continue
-            target = self.through(x, y, direction)
+            target = self.through(row, col, direction)
             if target is None:
                 continue
             if self.reaches(target[0], target[1], _opposite(direction)):
@@ -344,15 +345,15 @@ class _Gate:
 
     ``kind`` is the character drawn, ``inputs`` the wirings feeding it in
     top-to-bottom order, and ``outputs`` the wirings it drives, likewise
-    ordered.  ``x``/``y`` locate it for error messages and for the reading
-    order in which outputs print.
+    ordered.  ``row``/``col`` locate it for error messages and for the
+    reading order in which outputs print.
     """
 
-    def __init__(self, kind: _GateKind, x: int, y: int) -> None:
-        """Create a gate of ``kind`` at ``(x, y)`` with no ports bound."""
+    def __init__(self, kind: _GateKind, row: int, col: int) -> None:
+        """Create a gate of ``kind`` at ``(row, col)`` with no ports bound."""
         self.kind = kind
-        self.x = x
-        self.y = y
+        self.row = row
+        self.col = col
         self.inputs: list[_Wiring] = []
         self.outputs: list[_Wiring] = []
 
@@ -372,7 +373,7 @@ class _Parser:
 
     def _check_characters(self) -> None:
         """Reject characters that are unknown or out of scope."""
-        for x, y, char in self.grid.cells():
+        for row, col, char in self.grid.cells():
             # ``+`` only ever joins the parts of a summed wire label
             # (``-1+2-``), which ``_label_widths`` reads as a whole.
             if char == " " or char.isdigit() or char == "+":
@@ -383,23 +384,23 @@ class _Parser:
                 continue
             if char in _OUT_OF_SCOPE:
                 raise ValueError(
-                    f"{_OUT_OF_SCOPE[char]} is out of scope: {char!r} at ({x}, {y})"
+                    f"{_OUT_OF_SCOPE[char]} is out of scope: {char!r} at ({col}, {row})"
                 )
             if char.isalpha():
                 raise ValueError(
                     "letter-labelled multi-wires are out of scope: "
-                    f"{char!r} at ({x}, {y})"
+                    f"{char!r} at ({col}, {row})"
                 )
-            raise ValueError(f"unknown character {char!r} at ({x}, {y})")
+            raise ValueError(f"unknown character {char!r} at ({col}, {row})")
 
     def _build_wirings(self) -> list[_Wiring]:
         """Group every wire cell into maximal connected components."""
         seen: set[tuple[int, int]] = set()
         wirings = []
-        for x, y, char in self.grid.cells():
-            if char not in _WIRES or (x, y) in seen:
+        for row, col, char in self.grid.cells():
+            if char not in _WIRES or (row, col) in seen:
                 continue
-            stack = [(x, y)]
+            stack = [(row, col)]
             group: set[tuple[int, int]] = set()
             while stack:
                 cell = stack.pop()
@@ -426,32 +427,32 @@ class _Parser:
         joins them and fixes the width for the whole group.  The spec allows
         a sum spelling (``-1+2-``), which totals to the same width.
         """
-        for y in range(self.grid.height):
-            x = 0
-            while x < self.grid.width:
-                if not self.grid.at(x, y).isdigit():
-                    x += 1
+        for row in range(self.grid.height):
+            col = 0
+            while col < self.grid.width:
+                if not self.grid.at(row, col).isdigit():
+                    col += 1
                     continue
-                start = x
-                while x < self.grid.width and (
-                    self.grid.at(x, y).isdigit() or self.grid.at(x, y) == "+"
+                start = col
+                while col < self.grid.width and (
+                    self.grid.at(row, col).isdigit() or self.grid.at(row, col) == "+"
                 ):
-                    x += 1
-                text = "".join(self.grid.at(i, y) for i in range(start, x))
-                width = self._label_width(text, start, y)
-                self._apply_label(start, x, y, width)
+                    col += 1
+                text = "".join(self.grid.at(row, i) for i in range(start, col))
+                width = self._label_width(text, row, start)
+                self._apply_label(start, col, row, width)
 
-    def _label_width(self, text: str, x: int, y: int) -> int:
+    def _label_width(self, text: str, row: int, col: int) -> int:
         """Return the total width a ``-n-`` label spells, e.g. ``1+2`` -> 3."""
         parts = text.split("+")
         if not all(part.isdigit() for part in parts):
-            raise ValueError(f"malformed wire label {text!r} at ({x}, {y})")
+            raise ValueError(f"malformed wire label {text!r} at ({col}, {row})")
         width = sum(int(part) for part in parts)
         if width < 1:
-            raise ValueError(f"wire label {text!r} at ({x}, {y}) must be positive")
+            raise ValueError(f"wire label {text!r} at ({col}, {row}) must be positive")
         return width
 
-    def _apply_label(self, start: int, end: int, y: int, width: int) -> None:
+    def _apply_label(self, start: int, end: int, row: int, width: int) -> None:
         """Join the wirings flanking a label and fix their common width.
 
         The label interrupts a wire, so the cells immediately left and right
@@ -459,12 +460,12 @@ class _Parser:
         result carries ``width`` wires.
         """
         flanking = []
-        for cell in ((start - 1, y), (end, y)):
+        for cell in ((row, start - 1), (row, end)):
             wiring = self._wiring_at(cell)
             if wiring is not None and wiring not in flanking:
                 flanking.append(wiring)
         if not flanking:
-            raise ValueError(f"wire label at ({start}, {y}) annotates no wire")
+            raise ValueError(f"wire label at ({start}, {row}) annotates no wire")
 
         merged = _Wiring(frozenset().union(*(w.cells for w in flanking)))
         merged.width = width
@@ -472,7 +473,7 @@ class _Parser:
         for wiring in flanking:
             if wiring.labelled and wiring.width != width:
                 raise ValueError(
-                    f"inconsistent wire labels at ({start}, {y}): "
+                    f"inconsistent wire labels at ({start}, {row}): "
                     f"{wiring.width} and {width}"
                 )
             self.wirings.remove(wiring)
@@ -480,8 +481,8 @@ class _Parser:
 
     def _ports(
         self,
-        x: int,
-        y: int,
+        row: int,
+        col: int,
         side: int,
         offsets: tuple[int, ...] = (-1, 0, 1),
     ) -> list[_Wiring]:
@@ -507,11 +508,11 @@ class _Parser:
         """
         found: list[_Wiring] = []
         seen: set[tuple[int, int]] = set()
-        for dy in offsets:
-            cell = self.links.through(x, y, (side, dy))
+        for d_row in offsets:
+            cell = self.links.through(row, col, (d_row, side))
             if cell is None or cell in seen:
                 continue
-            if not self.links.reaches(cell[0], cell[1], (-side, -dy)):
+            if not self.links.reaches(cell[0], cell[1], (-d_row, -side)):
                 continue
             wiring = self._wiring_at(cell)
             if wiring is not None:
@@ -536,22 +537,22 @@ class _Parser:
         splitter's input and the run continuing past it.
         """
         gates = []
-        for x, y, char in self.grid.cells():
+        for row, col, char in self.grid.cells():
             if char not in _GATES and char not in (_SPLIT, _COMBINE, _OUTPUT):
                 continue
-            gate = _Gate(cast("_GateKind", char), x, y)
+            gate = _Gate(cast("_GateKind", char), row, col)
             if char == _OUTPUT:
                 outputs: list[_Wiring] = []
             elif char == _SPLIT:
-                outputs = self._ports(x, y, 1, offsets=(-1, 1))
+                outputs = self._ports(row, col, 1, offsets=(-1, 1))
             else:
-                outputs = self._ports(x, y, 1)
-            incoming = self._ports(x, y, -1)
+                outputs = self._ports(row, col, 1)
+            incoming = self._ports(row, col, -1)
             if char == "~" and len(incoming) > 1:
                 # NOT takes exactly one input, drawn level with it (the
                 # spec's sample is ``.~.``), so a diagonal neighbour is
                 # some other wiring routed past the gate, not an input.
-                level = self._ports(x, y, -1, offsets=(0,))
+                level = self._ports(row, col, -1, offsets=(0,))
                 if len(level) == 1:
                     incoming = level
             inputs = [w for w in incoming if w not in outputs]
@@ -566,7 +567,7 @@ class _Parser:
         wanted_in = 1 if gate.kind in ("~", _SPLIT, _OUTPUT) else 2
         if len(gate.inputs) != wanted_in:
             raise ValueError(
-                f"{gate.kind!r} at ({gate.x}, {gate.y}) takes {wanted_in} "
+                f"{gate.kind!r} at ({gate.col}, {gate.row}) takes {wanted_in} "
                 f"input(s), found {len(gate.inputs)}"
             )
         if gate.kind == _OUTPUT:
@@ -574,7 +575,7 @@ class _Parser:
         wanted_out = 2 if gate.kind == _SPLIT else 1
         if len(gate.outputs) != wanted_out:
             raise ValueError(
-                f"{gate.kind!r} at ({gate.x}, {gate.y}) drives {wanted_out} "
+                f"{gate.kind!r} at ({gate.col}, {gate.row}) drives {wanted_out} "
                 f"output(s), found {len(gate.outputs)}"
             )
 
@@ -594,7 +595,7 @@ class _Parser:
                         continue
                     if wiring.labelled:
                         raise ValueError(
-                            f"{gate.kind!r} at ({gate.x}, {gate.y}) implies "
+                            f"{gate.kind!r} at ({gate.col}, {gate.row}) implies "
                             f"{width} wire(s) for a wiring labelled "
                             f"{wiring.width}"
                         )
@@ -703,13 +704,13 @@ class _Machine:
         so a diagram with several is fed top to bottom.  Input arrives in
         generation zero only -- it is an event like any other.
         """
-        for y in range(self.grid.height):
-            row = self.grid.rows[y]
-            stripped = row.lstrip()
+        for row in range(self.grid.height):
+            line = self.grid.rows[row]
+            stripped = line.lstrip()
             if not stripped.startswith("-"):
                 continue
-            x = len(row) - len(stripped)
-            wiring = self._wiring_at((x, y))
+            col = len(line) - len(stripped)
+            wiring = self._wiring_at((row, col))
             # A row opening on "-" always has its own unvalued wiring: the
             # wirings are built from those very cells, and each input row is
             # read once.
