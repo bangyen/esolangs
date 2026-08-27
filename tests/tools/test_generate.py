@@ -460,6 +460,75 @@ class TestGeneratorRoundTrips:
         assert max(len(line) for line in lines) <= width
         assert roundtrip(wii2d_run, lines) == text
 
+    @pytest.mark.parametrize("width", [5, 6, 8, 12, 20, 40])
+    @pytest.mark.parametrize(
+        "text",
+        ["A", "Hi", "Hello, World!", "abc 123 xyz", "123456", "a b c d e f"],
+    )
+    def test_dig_honours_a_width(self, text: str, width: int) -> None:
+        """The segments fold over row pairs and the mole still prints them.
+
+        The digit texts are the ones that matter: a segment whose character
+        is a digit carries a pad cell, so it is one column wider than the
+        rest and the turn has to stay clear of it.  The spaced text drives
+        the other reader, ``%``, which takes its 0 from the depth row below.
+        """
+        program = gen.dig(text, width)
+        lines = program.split("\n")
+        # A padded segment gives every row one more column; nothing else may.
+        assert max(len(line) for line in lines) <= width + 1
+        assert roundtrip(dig_run, lines) == text
+
+    def test_dig_narrower_widths_are_never_wider(self) -> None:
+        """Asking for less never gets more: the shapes agree at the seam."""
+        text = "Hello, World!"
+        widest = [
+            max(len(line) for line in gen.dig(text, w).split("\n"))
+            for w in range(1, 41)
+        ]
+        assert widest == sorted(widest), widest
+
+    @pytest.mark.parametrize(
+        "text", ["Hi", "Hello, World!", "abc 123 xyz", "123456", "a b c"]
+    )
+    def test_dig_stands_the_program_on_end_below_the_fold_floor(
+        self, text: str
+    ) -> None:
+        """A width no fold can turn in gets the vertical form, two wide.
+
+        The mole falls south through the commands in column 0 and reads its
+        counts from column 1, since ``_value`` takes a digit from any
+        neighbour rather than the cell below.  Two columns is the floor of
+        the language itself, so even width 1 is answered with a program.
+        """
+        for width in (1, 2, 3, 4):
+            program = gen.dig(text, width)
+            assert max(len(line) for line in program.split("\n")) == 2
+            assert roundtrip(dig_run, program.splitlines()) == text
+
+    def test_dig_vertical_needs_no_padding_cell(self) -> None:
+        """A leading digit needs no pad standing up: the count is beside it.
+
+        Folded, a segment starting with a digit takes a padding cell so the
+        ``$`` does not read that digit as its own count.  Standing up, the
+        count sits in the *other* column, so the character below a ``$`` is
+        never mistaken for it and the pad is not emitted.
+        """
+        program = gen.dig("123456", 2)
+        assert "  " not in program
+        assert roundtrip(dig_run, program.splitlines()) == "123456"
+
+    def test_dig_without_a_width_is_unchanged(self) -> None:
+        """No width leaves the one-pair program the generator always built.
+
+        The refactor that added the fold moved the segment building into
+        :func:`~esolangs.tools.text.register._dig_segments`, so this pins the
+        width-less output the committed examples depend on.
+        """
+        assert gen.dig("Hello, World!") == (
+            ">$H:e:l:l:$o:,:%:W:$o:r:l:d:$!:@\n 8        8    0   8        2"
+        )
+
     def test_wii2d_start_marker_sits_below_the_first_row(self) -> None:
         """The pointer starts *above* the ``!``, so it must not be on top.
 
