@@ -583,3 +583,30 @@ class TestForbinAncestorHangDetection:
             "main { f 0; }\n"
         )
         assert self._verdict(code, "@\nA") is True
+
+    def test_an_undecided_walk_raises_rather_than_claiming_a_halt(self) -> None:
+        """Exhausting the bound is not a verdict, and must not read as one.
+
+        A machine whose entry key never repeats is one the check cannot
+        decide.  Returning ``True`` there would report a hanging program as
+        halting, and -- because the walk ran to a generous bound first --
+        would do it slowly: a mutant that defeats the early return took 4.5
+        seconds to answer wrongly, once per mutant, which is what made a
+        mutation run of this module crawl.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        class _NeverRepeats(_Machine):
+            """Stands in for any mutant whose key stops repeating."""
+
+            counter = 0
+
+            def frame_entry_key(self, _frame: object) -> tuple[object, ...]:
+                _NeverRepeats.counter += 1
+                return ("unique", _NeverRepeats.counter)
+
+        machine = _NeverRepeats("main {\n f {\n  f 0;\n }\n f 0;\n}\n", ScriptedIO(""))
+        with pytest.raises(TimeoutError, match="undecided"):
+            run_until_halt_or_ancestor(machine)
