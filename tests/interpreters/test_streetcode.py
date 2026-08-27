@@ -1126,3 +1126,90 @@ def test_the_generated_ring_program_runs() -> None:
     assert generate is not None
     for text in ("Hi", "Hello, World!"):
         assert esolangs.run("Streetcode", generate(text)) == text
+
+
+class TestStreetcodeDriveStates:
+    """The drive-state graph (``_drive_states``) and its two uses.
+
+    The graph is the movement half of ``snapshot`` enumerated over the
+    whole grid, built by driving the real helpers.  It backs the
+    construction-time totality check and, in tests, pins the mouth-depth
+    bound to the behaviour it produces rather than to the cells it scans.
+    """
+
+    def _corridor(self) -> list[str]:
+        return ["+----+", "|C  ;|", "|    |", "+----+"]
+
+    def test_every_state_has_a_successor(self) -> None:
+        """A validated street is total: no reachable state wedges the car."""
+        machine = _Machine(self._corridor(), IO())
+        graph = machine._drive_states((1, 1))  # noqa: SLF001
+        wedged = [
+            state
+            for state, edges in graph.items()
+            if machine.grid[state[0]][state[1]] != ";"
+            and any(succ is None for succ in edges.values())
+        ]
+        assert wedged == []
+
+    def test_exploring_leaves_the_machine_untouched(self) -> None:
+        """``_drive_states`` drives the live machine, so it must restore it."""
+        machine = _Machine(self._corridor(), IO())
+        before = machine.snapshot()
+        machine._drive_states((1, 1))  # noqa: SLF001
+        assert machine.snapshot() == before
+
+    def test_each_state_is_keyed_by_both_branch_bits(self) -> None:
+        """Both tape reads a step can make are probed, so all four pairs."""
+        machine = _Machine(self._corridor(), IO())
+        graph = machine._drive_states((1, 1))  # noqa: SLF001
+        assert graph
+        for edges in graph.values():
+            assert set(edges) == {(0, 0), (0, 1), (1, 0), (1, 1)}
+
+    def test_a_wedging_phase_is_rejected_at_construction(self) -> None:
+        """The check fires when the movement rules do run out of road.
+
+        Ordinary wall-following cannot wedge on a validated street (see
+        ``_validate_total``), so the state this rejects is reached by
+        breaking a phase rather than by drawing one: the check is a
+        regression net over the phases, and this is what tripping it
+        looks like.
+        """
+        with (
+            patch.object(_Machine, "_heading_from_hug", lambda *_: None),
+            pytest.raises(ValueError, match="cannot drive out of"),
+        ):
+            _Machine(self._corridor(), IO())
+
+    @pytest.mark.parametrize(
+        "path",
+        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+    )
+    def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
+        """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans.
+
+        The bound is two-sided -- raising it makes the scan run past the
+        box it is reading and pair up two ``+`` that bound nothing, which
+        is what happens in the 1-arity boolean programs -- so the check
+        that matters is not "the same mouths are found" but "the car
+        drives the same way".  Comparing the whole drive-state graph at
+        the shipped bound against a generous one says exactly that.
+        """
+        from esolangs.interpreters.grid_based import streetcode as module
+
+        root = Path(__file__).resolve().parents[2]
+        code = (root / path).read_text().split("\n")
+        if code and code[-1] == "":
+            code = code[:-1]
+        machine = _Machine(code, IO())
+        start = (machine.row, machine.col)
+        shipped = machine._drive_states(start)  # noqa: SLF001
+
+        original = module._MOUTH_MAX_DEPTH  # noqa: SLF001
+        module._MOUTH_MAX_DEPTH = machine.height + machine.width  # noqa: SLF001
+        try:
+            generous = machine._drive_states(start)  # noqa: SLF001
+        finally:
+            module._MOUTH_MAX_DEPTH = original  # noqa: SLF001
+        assert shipped == generous
