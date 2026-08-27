@@ -49,6 +49,46 @@ class TestPointer:
         # d wraps the bottom row back to the top the same way.
         assert run_program("ad" * 5 + "k;") == "\x01"
 
+    def test_down_lands_on_the_next_row(self) -> None:
+        """``d`` moves a whole row forward, not backward.
+
+        Every other pointer test moves in multiples of five, which return
+        to the start either way -- so moving down and moving up were the
+        same thing.  One ``d`` has to land on cell 5.
+        """
+        from esolangs.interpreters.tape_based.home_row import _Machine
+
+        machine = _Machine("d", ScriptedIO())
+        machine.step()
+        assert machine.ptr == 5
+
+    def test_forward_wraps_at_the_row_edge(self) -> None:
+        """``f`` returns to the start of its row rather than crossing into
+        the next.
+
+        The wrap fires on the column the pointer lands in, and only there:
+        after a single ``f`` the pointer is at cell 1 and must *not* have
+        been pulled back a row.  Five ``f``s return it to cell 0, which is
+        the wrap doing its job -- but that alone cannot tell a check on the
+        wrong column apart, since both land there.
+        """
+        from esolangs.interpreters.tape_based.home_row import _Machine
+
+        machine = _Machine("f", ScriptedIO())
+        machine.step()
+        assert machine.ptr == 1
+
+        machine = _Machine("fffff", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.ptr == 0
+
+    def test_grid_is_five_by_five(self) -> None:
+        """The grid holds exactly twenty-five cells."""
+        from esolangs.interpreters.tape_based.home_row import _Machine
+
+        assert len(_Machine("", ScriptedIO()).grid) == 25
+
     def test_move_then_edit_distinct_cells(self) -> None:
         # increment cell 0, move down, increment cell 5, move back up (d x4
         # wraps), and print cell 0.
@@ -70,6 +110,16 @@ class TestSkip:
     def test_jump_preserves_an_unskipped_increment(self) -> None:
         # cell 0 is nonzero, so j does not skip the a and it increments twice.
         assert run_program("ajak;") == "\x02"
+
+    def test_jump_skips_relative_to_itself(self) -> None:
+        """``j`` steps over the command after it, wherever it sits.
+
+        Every other skip runs ``j`` as the first or second command, where
+        moving one forward and jumping to a fixed second position are the
+        same thing.  Two moves first put it further along, where they are
+        not.
+        """
+        assert run_program("ffjak;") == "\x00"
 
 
 class TestLoop:
