@@ -45,7 +45,7 @@ stack.
 from __future__ import annotations
 
 import sys
-from typing import Literal, NoReturn, cast
+from typing import Literal, NoReturn
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -447,6 +447,18 @@ def _eval(
     return _call(callee, args, frame, globals_, reader, depth)
 
 
+def _bound(value: object, which: str) -> int:
+    """Return a ``for`` range bound, halting if it is not a number.
+
+    ``_eval`` yields any Forbin value, so a bound can be a function; the
+    language gives no meaning to counting from one, and comparing it would
+    otherwise raise Python's own TypeError instead of halting.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise HaltError(f"for {which} bound must be a number, got {value!r}")
+    return value
+
+
 def _call(
     callee: object,
     args: list[object],
@@ -472,7 +484,14 @@ def _call(
                 raise HaltError("out needs exactly 8 bit arguments")
             byte = 0
             for bit in args:
-                byte = byte * 2 + cast(int, bit)
+                # Same rule as ``!`` above: a bit is 0 or 1, and anything
+                # else has no byte to contribute.
+                if bit == 0:
+                    byte *= 2
+                elif bit == 1:
+                    byte = byte * 2 + 1
+                else:
+                    raise HaltError("out needs bit arguments")
             reader.io.print_char(chr(byte))
             return 0
     raise HaltError("called value is not a function")
@@ -530,11 +549,8 @@ def _exec_stmt(
         _, name, start_node, end_node = spec
         start = _eval(start_node, frame, globals_, reader, depth)
         end = _eval(end_node, frame, globals_, reader, depth)
-        rows = (
-            [[v] for v in range(cast(int, start), cast(int, end) + 1)]
-            if cast(int, start) <= cast(int, end)
-            else []
-        )
+        lo, hi = _bound(start, "start"), _bound(end, "end")
+        rows = [[v] for v in range(lo, hi + 1)] if lo <= hi else []
         names = [name]
     else:
         _, names, patterns = spec
@@ -603,10 +619,9 @@ def _for_rows(
         _, name, start_node, end_node = spec
         start = _eval(start_node, frame, globals_, reader, depth)
         end = _eval(end_node, frame, globals_, reader, depth)
+        lo, hi = _bound(start, "start"), _bound(end, "end")
         range_rows: list[list[object]] = (
-            [[v] for v in range(cast(int, start), cast(int, end) + 1)]
-            if cast(int, start) <= cast(int, end)
-            else []
+            [[v] for v in range(lo, hi + 1)] if lo <= hi else []
         )
         return range_rows, [name]
     _, names, patterns = spec

@@ -395,3 +395,21 @@ class TestStepMachine:
         assert hash(machine.snapshot()) is not None
         machine.step()
         assert hash(machine.snapshot()) is not None
+
+    def test_non_numeric_range_bound_halts(self) -> None:
+        """A ``for`` bound has to be a number, not a function."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_program("f { return 0; }\nmain { for _:f..1 { return 0; } return 0; }")
+
+    def test_non_bit_out_argument_halts(self) -> None:
+        """``out`` takes bits, matching the rule ``!`` already enforces."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_program("f { return 0; }\nmain { out f,0,1,1,0,0,0,1; return 0; }")
