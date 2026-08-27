@@ -445,6 +445,23 @@ class TestGeneratorRoundTrips:
         assert "U" not in program
         assert roundtrip(streetcode_run, program.split("\n")) == "中文"
 
+    def test_streetcode_text_opening_on_a_nul_has_no_ring(self) -> None:
+        """A first character of zero is already the cell's value.
+
+        The ring exists to multiply the first code point up from zero, so
+        a text starting at zero has nothing to count: the plan is refused
+        and the straight walk is emitted, which prints it just the same.
+        """
+        from esolangs.tools.text.streetcode import (
+            _plan_ring,
+            _streetcode_ring_serpentine,
+        )
+
+        assert _plan_ring(0) is None
+        assert _streetcode_ring_serpentine("\x00", 80) is None
+        program = gen.streetcode("\x00A")
+        assert roundtrip(streetcode_run, program.split("\n")) == "\x00A"
+
     @pytest.mark.parametrize("width", [10, 20, 40, 60, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
     def test_wii2d_honours_a_width(self, text: str, width: int) -> None:

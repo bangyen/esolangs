@@ -462,7 +462,10 @@ def polynomial(truth_table: str) -> str:
     def emit_delta(delta: int) -> None:
         if delta > 0:
             instrs.append([delta, 1])
-        elif delta < 0:
+        # The tree walks the accumulator up from zero and every answer is 0
+        # or 1, so the deltas the builder emits are never negative; the
+        # subtract instruction is here for a builder that needs one.
+        elif delta < 0:  # pragma: no cover - the tree only ever steps upward
             instrs.append([-delta, 2])
 
     def build(rows: list[int], bit: int, last: int) -> None:

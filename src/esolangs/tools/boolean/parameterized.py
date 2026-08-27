@@ -659,14 +659,6 @@ def ram0(truth_table: str) -> str:
         tokens.append("S")
         pos += 1
 
-    def leaf(answer: str) -> None:
-        nonlocal pos
-        tokens.append("Z")
-        tokens.append("A" if answer == "1" else "Z")
-        pos += 2
-        tokens.append("END@")
-        pos += 1
-
     def leaf_tokens(_level: int, row: int) -> list[str]:
         return ["Z", "A" if truth_table[row] == "1" else "Z", "END@"]
 
@@ -967,7 +959,7 @@ def _compact(rows: list[str]) -> str:
     width = max((len(row) for row in rows), default=0)
     padded = [row.ljust(width) for row in rows]
     kept = [row for row in padded if row.strip()]
-    if not kept:
+    if not kept:  # pragma: no cover - every table lays down at least one cell
         return ""
     columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
     return "\n".join("".join(row[x] for x in columns).rstrip() for row in kept)
