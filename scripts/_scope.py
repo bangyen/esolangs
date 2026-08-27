@@ -80,7 +80,12 @@ def changed_files() -> list[str]:
             path = line[3:].strip().split(" -> ")[-1]
             if path:
                 names.append(path)
-    return names
+
+    # A file that is both committed on the branch and dirty in the tree appears
+    # in both queries.  Passing the same path to a checker twice is not merely
+    # wasteful -- mypy rejects the repeat as a duplicate module -- so the list
+    # is deduplicated while keeping its order stable for readable output.
+    return list(dict.fromkeys(names))
 
 
 def widens_to_everything(changed: list[str]) -> str | None:
