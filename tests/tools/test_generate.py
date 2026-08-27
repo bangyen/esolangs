@@ -931,6 +931,24 @@ class TestGeneratorRoundTrips:
         with pytest.raises(ValueError, match="only output"):
             gen.dig("a~b")
 
+    @pytest.mark.parametrize(
+        ("generator", "name"),
+        [
+            ("clockwise", "Clockwise"),
+            ("container", "Container"),
+            ("minifuck", "Minifuck"),
+        ],
+    )
+    def test_non_ascii_is_refused(self, generator: str, name: str) -> None:
+        """A 7-bit target rejects text it could only emit as the wrong byte.
+
+        These three keep a 7-bit accumulator or parity, so a character above
+        127 would wrap silently.  The shared guard names the generator that
+        refused, so the message says which one to retarget.
+        """
+        with pytest.raises(ValueError, match=f"{name} can only output ASCII"):
+            getattr(gen, generator)("café")
+
     def test_polynomial(self) -> None:
         """The register walks each character, and roots encode the instructions."""
         assert roundtrip(polynomial_run, gen.polynomial("Hi")) == "Hi"

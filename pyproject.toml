@@ -178,6 +178,11 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["src/esolangs"]
+# Python 3.12's sys.monitoring costs a fraction of what the trace-function
+# backend does: measured over this suite, 0.9s of overhead instead of 11.5s,
+# reporting the same 15295 statements either way.  coverage falls back to the
+# C tracer automatically on older interpreters.
+core = "sysmon"
 omit = [
     "*/__pycache__/*",
     "*/migrations/*",
@@ -201,4 +206,7 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
+    # Imports guarded by TYPE_CHECKING exist for the type checker and are
+    # never executed, so they can only ever read as uncovered.
+    "if TYPE_CHECKING:",
 ]
