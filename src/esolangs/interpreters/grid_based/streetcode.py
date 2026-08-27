@@ -114,7 +114,10 @@ def _matches(block: tuple[str, ...], form: tuple[str, ...]) -> bool:
         elif want == ".":
             if actual in _WALLS:
                 return False
-        elif actual != want:
+        # Every form is written in "W", "." and " ", so a literal cell to
+        # compare against never appears; this keeps a future form that used
+        # one from matching everything.
+        elif actual != want:  # pragma: no cover - no wall form has a literal cell
             return False
     return True
 
@@ -405,9 +408,18 @@ class _Machine:
             block = tuple(
                 self._at(r + dr, c + dc) for dr in (-1, 0, 1) for dc in (-1, 0, 1)
             )
-            if not any(ch in _WALLS for ch in block):
+            # A street is two cells wide, so every reachable cell has a wall
+            # within one of it; a wall-free neighbourhood means an interior
+            # wider than two, which the width check has already rejected.
+            if not any(ch in _WALLS for ch in block):  # pragma: no cover
                 continue
-            if not any(_matches(block, form) for form in _WALL_FORMS):
+            # The two-wide check runs first and rejects every malformed
+            # shape found so far -- a wall that stops short leaves a
+            # one-wide stub, which it catches as a dead end.  This stands
+            # as the independent check the forms were written to be.
+            if not any(  # pragma: no cover - the width check rejects these first
+                _matches(block, form) for form in _WALL_FORMS
+            ):
                 shape = " ".join(
                     "".join("." if ch not in _WALLS else ch for ch in block[i : i + 3])
                     for i in (0, 3, 6)
@@ -874,7 +886,11 @@ class _Machine:
             self._merge_target
         )
         heading = self.heading
-        if heading != latched_heading:
+        # Nothing between latching and the turn changes the heading -- the
+        # car holds it precisely so the turn is made from the lane it was
+        # latched in -- so the latch is never abandoned this way in
+        # practice; it keeps a stale target from firing if that changes.
+        if heading != latched_heading:  # pragma: no cover - the heading is held
             self._merge_target = None
             return None
         if (self.row, self.col) != (target_row, target_col):
@@ -956,7 +972,11 @@ class _Machine:
         # Lane merging applies only to a turn onto a detected side road:
         # continuing straight is not a turn at all, and a road whose
         # mouth is not bounded by real wall arms has no lanes to land in.
-        if turning and not self._open_toward(new_heading):
+        # No committed or generated program sights a road this early, so
+        # the deferral is a correctness guard rather than a path taken.
+        if turning and not self._open_toward(  # pragma: no cover
+            new_heading
+        ):
             # The chosen road was sighted before the car is level with
             # its gap: ``_road_mouth`` anchors the near ``+`` up to one
             # cell ahead, so the cell this turn would step onto can
