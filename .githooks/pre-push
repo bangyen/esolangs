@@ -9,6 +9,12 @@
 # pytest, bandit, cargo, the Python-only verify scripts) so failures are
 # caught before pushing rather than in GitHub Actions.
 #
+# verify.py scopes itself to the files the branch touched, so a push that
+# moved one interpreter does not re-prove the other twelve cross-checks.  It
+# widens back to the full stack whenever the diff cannot be read or shared
+# machinery moved, and CI still runs everything on every push regardless.
+# Set VERIFY_FULL=1 to force the complete stack locally.
+#
 # Branch deletions are exempt.  Git runs this hook for every push, including
 # `git push --delete`, but a deletion sends no commits, so there is nothing
 # for the checks to validate -- running the suite there only makes a cleanup
@@ -49,4 +55,7 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT=""
 [ -n "$ROOT" ] || ROOT="$(dirname "$0")/.."
 # verify.py picks the project interpreter itself (.venv, then uv run), so
 # the hook can hand it any python that can execute the file.
+if [ -n "$VERIFY_FULL" ] && [ "$VERIFY_FULL" != "0" ]; then
+    exec "${PY:-python3}" "$ROOT/scripts/verify.py" --full
+fi
 exec "${PY:-python3}" "$ROOT/scripts/verify.py"
