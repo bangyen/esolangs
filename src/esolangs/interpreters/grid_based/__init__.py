@@ -1,17 +1,25 @@
 """Interpreters for esolangs that operate on a 2D grid or beam.
 
-Two coordinate conventions live here, one per module and never mixed
-within one.  Which a module uses follows its language, not a house rule:
+Every module that indexes a *program grid* addresses it as
+``grid[row][col]`` and spells its coordinates ``row``/``col``, its deltas
+``d_row``/``d_col``, and its headings ``(d_row, d_col)`` with rows growing
+downward.  Tuples are built and unpacked in that order throughout, so a
+position reads the same way it indexes.  The one convention holds across
+``flowchart``, ``circuit_diagram``, ``clockwise``, ``arrowqueue``,
+``streetcode``, ``wii2d``, ``dig``, ``cod`` and ``laserfuck``.
 
-* ``x``/``y`` -- ``x`` is the column, ``y`` the row.  Used by the
-  geometric languages, where headings are direction vectors and turning
-  is Cartesian rotation (``flowchart``'s ``(dx, dy) -> (dy, -dx)``):
-  ``flowchart``, ``circuit_diagram``, ``clockwise``, ``arrowqueue``.
-* ``row``/``col`` -- Used by the languages whose specs navigate the
-  program text by line: ``streetcode``, ``wii2d``, ``dig``, ``cod``,
-  ``a_painter_ant``, ``laserfuck``.
+Some of these used ``x``/``y`` before, and not all of them agreed on what
+``x`` meant: it was the column in ``flowchart`` and ``circuit_diagram``
+but the *row* in ``laserfuck``, ``dig`` and ``wii2d``, so the same name
+indexed two different axes across the package.  That is the trap the
+single convention exists to close; ``x``/``y`` was retired deliberately
+and should not come back for a new grid language.
 
-When adding a module, pick the convention its wiki page reads in and
-stay with it throughout; the hazard is a module that switches midway, or
-one that calls the row ``x``.
+``a_painter_ant`` is the one exception, and it is not a program grid.  Its
+ant paints an unbounded sparse plane keyed by coordinate, with an origin
+and negative coordinates in every direction, and nothing indexes a line of
+program text.  Its moves are a compass table (``"e": (1, 0)``) and its
+rendering walks a computed bounding box, so ``x``/``y`` describe what that
+code actually is; row/col there would name axes the language does not
+have.
 """
