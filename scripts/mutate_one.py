@@ -150,8 +150,8 @@ if _mut and "__mutmut_" in _mut and not _mut.startswith("{stem}"):
 _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 
-def _prepare(language: str, work: Path) -> tuple[Path, str, int]:
-    """Lay out the mutation project; return (project dir, module stem, dropped)."""
+def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
+    """Lay out the project; return (dir, stem, dropped, the module's classes)."""
     from bundle_one import Source, bundle
 
     from esolangs.registry import RUNNERS
@@ -186,16 +186,34 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int]:
         'runner = "python -m pytest -x -q -p no:cacheprovider tests/test_bundled.py"\n'
         'tests_dir = ["tests/"]\n'
     )
-    return proj, stem, dropped
+    return proj, stem, dropped, _own_classes(module)
 
 
-def _score(proj: Path, stem: str) -> tuple[int, int, list[str]]:
-    """Return (killed, total, survivor names) from mutmut's own result file."""
+def _own_classes(module: str) -> set[str]:
+    """Return the names of the classes ``module`` itself defines."""
+    import importlib
+
+    mod = importlib.import_module(module)
+    return {
+        obj.__name__
+        for obj in vars(mod).values()
+        if isinstance(obj, type) and obj.__module__ == module
+    }
+
+
+def _score(proj: Path, stem: str, classes: set[str]) -> tuple[int, int, list[str]]:
+    """Return (killed, total, survivor names) from mutmut's own result file.
+
+    The bundle inlines io and exceptions too, and only the interpreter's own
+    mutants are scored.  A class method is named ``x<sep>Class<sep>method``,
+    so the class part says whose it is -- dropping every name that *has* a
+    class part instead threw away the interpreter's own classes, which for a
+    grid language is nearly all of it: Streetcode scored 59 mutants and hid
+    843 belonging to ``_Machine``, its entire stepping engine.
+    """
     meta = json.loads((proj / "mutants" / f"{stem}.py.meta").read_text())
     codes = meta["exit_code_by_key"]
-    # The bundle inlines io and exceptions too; their mutants are named with a
-    # class separator, and only the interpreter's own are scored here.
-    own = {k: v for k, v in codes.items() if "ǁ" not in k}
+    own = {k: v for k, v in codes.items() if "ǁ" not in k or k.split("ǁ")[1] in classes}
     killed = sum(1 for v in own.values() if v)
     return killed, len(own), sorted(k for k, v in own.items() if not v)
 
@@ -218,7 +236,7 @@ def main() -> int:
 
     work = Path(tempfile.mkdtemp(prefix="mutate-one-"))
     try:
-        proj, stem, dropped = _prepare(args.language, work)
+        proj, stem, dropped, classes = _prepare(args.language, work)
         if dropped:
             print(f"[note] dropped {dropped} test(s) needing the VM or registry")
 
@@ -243,7 +261,7 @@ def main() -> int:
             check=False,
         )
 
-        killed, total, survivors = _score(proj, stem)
+        killed, total, survivors = _score(proj, stem, classes)
         if not total:
             raise SystemExit("no mutants were generated")
         if not killed:
