@@ -170,3 +170,69 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.halted
+
+    def test_arithmetic_on_a_string_halts(self) -> None:
+        """``+ - * /`` are numeric; ``++`` is the operator that joins text."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        for op in ("+", "-", "*", "/"):
+            with pytest.raises(HaltError):
+                run_and_capture(
+                    ["make,x,ab", "make,y,cd", f"make,z,$x,{op},$y", "print,$z"]
+                )
+
+    def test_mixed_operands_halt(self) -> None:
+        """A number and a string have no defined sum (the wiki's calculator)."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["make,x,3", "make,y,cd", "make,z,$x,+,$y", "print,$z"])
+
+    def test_ordered_comparison_on_a_string_halts(self) -> None:
+        """``>``/``<`` order numbers; they do not compare text."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        for cmp_op in (">", "<"):
+            with pytest.raises(HaltError):
+                run_and_capture(
+                    ["make,x,ab", "make,y,cd", f"if,$x,{cmp_op},$y", "print,Y", "endif"]
+                )
+
+    def test_equality_still_compares_strings(self) -> None:
+        """``=`` is not ordering, so it keeps working on text."""
+        code = ["make,x,ab", "make,y,ab", "if,$x,=,$y", "print,Y", "endif"]
+        assert run_and_capture(code) == "Y"
+
+    def test_loop_count_must_be_a_number(self) -> None:
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_and_capture(["make,x,ab", "loop,$x", "print,h", "endloop"])
+
+    def test_decimal_arithmetic(self) -> None:
+        """A decimal spelling is a number: it adds rather than concatenating."""
+        assert run_and_capture(["make,x,2.5", "make,y,4", "make,z,$x,+,$y",
+                                "print,$z"]) == "6.5"
+        assert run_and_capture(["make,x,2.5", "make,y,3", "make,z,$x,*,$y",
+                                "print,$z"]) == "7.5"
+        assert run_and_capture(["make,x,2.5", "make,y,3", "if,$x,<,$y", "print,Y",
+                                "endif"]) == "Y"
+
+    def test_non_canonical_decimals_stay_strings(self) -> None:
+        """``02.5`` is not a number spelling, so ``++`` keeps what was written."""
+        code = ["make,x,0", "make,y,2.5", "make,z,$x,++,$y", "print,$z"]
+        assert run_and_capture(code) == "02.5"
+        assert run_and_capture(["print,02.5"]) == "02.5"
+
+    def test_string_concatenation_still_works(self) -> None:
+        """``++`` is unaffected by the numeric guards."""
+        code = ["make,x,ab", "make,y,cd", "make,z,$x,++,$y", "print,$z"]
+        assert run_and_capture(code) == "abcd"
