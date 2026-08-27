@@ -329,10 +329,21 @@ def _verify_rust(
     prepare = prepare or (lambda program: program)
     label = label or (lambda program: program)
 
+    # Prepared once, then handed to both sides: the two interpreters have to
+    # be compared on the same program text, so nothing here may depend on
+    # prepare being called twice and agreeing with itself.
+    prepared = [prepare(entry) for entry, _ in corpus]
+
+    # Every native run is a subprocess the caller only waits on, so the corpus
+    # is spawned across threads rather than one at a time.  Results come back
+    # in corpus order, keeping a divergence report identical to the serial
+    # run's.  The Python side stays sequential: it is interpreted in-process,
+    # where threads would contend on the GIL rather than overlap.
+    cases = [(p, stdin) for p, (_, stdin) in zip(prepared, corpus, strict=True)]
+    natives = _run_parallel(lambda case: run_native(*case), cases)
+
     failures = 0
-    for entry, stdin in corpus:
-        program = prepare(entry)
-        native = run_native(program, stdin)
+    for (entry, stdin), program, native in zip(corpus, prepared, natives, strict=True):
         if native is None:
             print(f"{name} {label(entry)!r}: Rust reference did not terminate")
             failures += 1
