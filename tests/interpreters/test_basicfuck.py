@@ -132,6 +132,73 @@ class TestBasicfuck:
             run_program(ub + "read -> a->5 ;", "A\n")
 
 
+class TestMalformedStatements:
+    """Each part of a statement's shape is checked, not just its first token.
+
+    The parser walks ``if``/``while`` and ``write``/``read`` piece by piece,
+    giving up at the first part that does not fit.  Every one of those
+    give-up points rejected the same way, so a program that got a later part
+    wrong was accepted or rejected by whichever check happened to run --
+    these pin one malformed program per part.  Each carries trailing
+    statements so the ``ind + 4 < size`` lookahead is satisfied and the
+    parse really does reach the part under test.
+    """
+
+    TAIL = "\na += 1;\na += 1;\na += 1;\n"
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            pytest.param("while a ) { }", id="no-open-paren"),
+            pytest.param("while ( 5 ) { }", id="condition-not-a-name"),
+            pytest.param("while ( a a { }", id="no-closing-paren"),
+            pytest.param("while ( a ) a", id="no-opening-brace"),
+        ],
+    )
+    def test_a_malformed_loop_header_is_rejected(self, body: str) -> None:
+        with pytest.raises(ValueError, match="Invalid syntax"):
+            run_program(H + body + self.TAIL)
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            pytest.param("write -> a ;", id="write-takes-left-arrow"),
+            pytest.param("write <- 5 ;", id="target-not-a-name"),
+            pytest.param("write <- a a", id="no-semicolon"),
+            pytest.param("read <- a ;", id="read-takes-right-arrow"),
+        ],
+    )
+    def test_a_malformed_io_statement_is_rejected(self, body: str) -> None:
+        with pytest.raises(ValueError, match="Invalid syntax"):
+            run_program(H + body + self.TAIL)
+
+
+class TestNestedBlocks:
+    def test_a_block_inside_a_loop_body_is_matched_to_its_own_close(self) -> None:
+        """Finding a loop's end counts nesting rather than taking the first ``}``.
+
+        The scan walks the compiled program keeping a depth counter, so an
+        inner block's close belongs to the inner block.  Without the count
+        the outer loop would end early, at the ``if``'s brace, and run only
+        part of its body.
+        """
+        header = "#basicfuck t=4 r=0~255 o=nearest\n#allocate a b\n"
+        program = (
+            "a += 2;\n"
+            "while ( a ) {\n"
+            "  b += 1;\n"
+            "  if ( b ) {\n"
+            "    b -= 1;\n"
+            "  }\n"
+            "  a -= 1;\n"
+            "}\n"
+            "a += 65;\n"
+            "write <- a ;"
+        )
+        # The loop runs to completion (a reaches 0) before the 65 is added.
+        assert run_program(header + program) == "A"
+
+
 class TestStepMachine:
     def test_step_tracks_tape_and_cursor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
