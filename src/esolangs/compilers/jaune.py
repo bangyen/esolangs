@@ -141,24 +141,10 @@ def comp(code: str) -> str:
         c = code[ind]
         num, new = count(code, ind)
 
-        if c in "^v<":
-            # The test above is the membership check that makes this a
-            # subroutine command, so the lookup below is keyed correctly.
-            routine = subr[cast("_Subr", c)]
-            if cast(int, num) > 1:
-                res += f"\tli   s3, {num}\n"
-                routine.looped = True
-            res += f"\tcall {routine.label}\n"
-            routine.used = True
-        elif c == "&":
-            if cast(int, num) > 1:
-                res += f"\tli   s3, {num}\n\tcall {subr['&'].label}\n"
-                subr["&"].used = subr["&"].looped = True
-            else:
-                res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s2\n\tsw   t0, 0(s1)\n"
-        elif c == ">":
-            res += f"\tli   t0, {4 * cast(int, num)}\n\tsub  s1, s1, t0\n"
-        elif c in "+-":
+        # ``+``/``-`` is the only command whose operand can be a bare ``v``,
+        # which ``count`` reports as a str; taking that arm first leaves
+        # ``num`` narrowed to int for every command below.
+        if c in "+-":
             if num:
                 if isinstance(num, int):
                     res += f"\tlw   t0, 0(s1)\n\taddi t0, t0, {num}\n\tsw   t0, 0(s1)\n"
@@ -166,25 +152,48 @@ def comp(code: str) -> str:
                     res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s7\n\tsw   t0, 0(s1)\n"
                 else:
                     res += "\tlw   t0, 0(s1)\n\tsub  t0, t0, s7\n\tsw   t0, 0(s1)\n"
+            ind = new
+            continue
+
+        if isinstance(num, str):  # pragma: no cover - see the comment above
+            raise ValueError(f"unexpected operand {num!r} for {c!r}")
+
+        if c in "^v<":
+            # The test above is the membership check that makes this a
+            # subroutine command, so the lookup below is keyed correctly.
+            routine = subr[cast("_Subr", c)]
+            if num > 1:
+                res += f"\tli   s3, {num}\n"
+                routine.looped = True
+            res += f"\tcall {routine.label}\n"
+            routine.used = True
+        elif c == "&":
+            if num > 1:
+                res += f"\tli   s3, {num}\n\tcall {subr['&'].label}\n"
+                subr["&"].used = subr["&"].looped = True
+            else:
+                res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s2\n\tsw   t0, 0(s1)\n"
+        elif c == ">":
+            res += f"\tli   t0, {4 * num}\n\tsub  s1, s1, t0\n"
         elif c == "#":
             res += "\tlw   s2, 0(s1)\n"
         elif c == ":":
-            res += f".label{add(cast(int, num))}:\n"
+            res += f".label{add(num)}:\n"
         elif c in "?!":
             res += "\tlw   t0, 0(s1)\n"
             jcc = "bnez" if c == "?" else "beqz"
-            if cast(int, num) >= 0:
-                res += f"\t{jcc} t0, .label{add(cast(int, num))}\n"
+            if num >= 0:
+                res += f"\t{jcc} t0, .label{add(num)}\n"
             else:
                 res += f"\t{jcc} t0, .switch\n"
                 inp[0] = True
         elif c == ".":
             res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n"
         elif c == "$":
-            res += f"sub{add(cast(int, num))}:\n"
+            res += f"sub{add(num)}:\n"
         elif c == "@":
-            if cast(int, num) >= 0:
-                res += f"\tcall sub{add(cast(int, num))}\n"
+            if num >= 0:
+                res += f"\tcall sub{add(num)}\n"
             else:
                 res += "\tcall switch\n"
                 inp[1] = True
