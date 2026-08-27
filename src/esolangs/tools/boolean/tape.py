@@ -2,7 +2,7 @@
 
 import sys
 from collections.abc import Sequence
-from typing import cast
+from dataclasses import dataclass
 
 # dimensional, rotfuck, and six_five each own a file because their
 # construction (a survivor walk, a per-position rotation, an assembler)
@@ -43,6 +43,44 @@ __all__ = [
 ]
 
 
+@dataclass
+class _Cmd:
+    """A line emitted verbatim, apart from its ``goto`` placeholder."""
+
+    text: str
+
+
+@dataclass
+class _If:
+    """An ``if <char> goto <label>`` line, resolved once labels are known."""
+
+    char: int
+    label: int
+
+
+@dataclass
+class _MoveRight:
+    """An ``if <char> move right`` line that also *defines* ``label``."""
+
+    char: int
+    label: int
+
+
+@dataclass
+class _Out:
+    """A marker defining output routine ``which``; it emits no line itself."""
+
+    which: int
+
+
+@dataclass
+class _End:
+    """The trailing blank line every program ends on."""
+
+
+_Entry = _Cmd | _If | _MoveRight | _Out | _End
+
+
 def brainif(truth_table: str) -> str:
     """Build a BrainIf program computing the given truth table.
 
@@ -58,22 +96,22 @@ def brainif(truth_table: str) -> str:
     incrementing a fresh cell itself.
     """
     n = _validate_truth_table(truth_table)
-    entries: list[tuple[object, ...]] = []
+    entries: list[_Entry] = []
     for i in range(n):
-        entries.append(("cmd", "if 0 input"))
+        entries.append(_Cmd("if 0 input"))
         if i < n - 1:
-            entries.append(("cmd", "if 48 move right"))
-            entries.append(("cmd", "if 49 move right"))
+            entries.append(_Cmd("if 48 move right"))
+            entries.append(_Cmd("if 49 move right"))
     for _ in range(n - 1):
-        entries.append(("cmd", "if 48 move left"))
-        entries.append(("cmd", "if 49 move left"))
+        entries.append(_Cmd("if 48 move left"))
+        entries.append(_Cmd("if 49 move left"))
 
     counter = [0]
 
-    def build(rows: list[int], k: int) -> list[tuple[object, ...]]:
+    def build(rows: list[int], k: int) -> list[_Entry]:
         if len(rows) == 1:
             r = int(truth_table[rows[0]])
-            return [("cmd", f"if 0 goto OUT{r}")]
+            return [_Cmd(f"if 0 goto OUT{r}")]
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
         l0, l1 = counter[0], counter[0] + 1
@@ -81,24 +119,24 @@ def brainif(truth_table: str) -> str:
         sub0 = build(g0, k + 1)
         sub1 = build(g1, k + 1)
         return [
-            ("if", _ASCII_ZERO, l0),
-            ("if", _ASCII_ONE, l1),
-            ("mr", _ASCII_ZERO, l0),
+            _If(_ASCII_ZERO, l0),
+            _If(_ASCII_ONE, l1),
+            _MoveRight(_ASCII_ZERO, l0),
             *sub0,
-            ("mr", _ASCII_ONE, l1),
+            _MoveRight(_ASCII_ONE, l1),
             *sub1,
         ]
 
     entries += build(list(range(2**n)), 1)
     # two shared output routines: every leaf's pointer is on a fresh cell
     for r in (0, 1):
-        entries.append(("out", r))
-        entries.append(("cmd", "if 48 move right"))
-        entries.append(("cmd", "if 49 move right"))
-        entries += [("cmd", f"if {v} increment") for v in range(_ASCII_ZERO + r)]
-        entries.append(("cmd", f"if {_ASCII_ZERO + r} output"))
-        entries.append(("cmd", f"if {_ASCII_ZERO + r} goto end"))
-    entries.append(("end",))
+        entries.append(_Out(r))
+        entries.append(_Cmd("if 48 move right"))
+        entries.append(_Cmd("if 49 move right"))
+        entries += [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO + r)]
+        entries.append(_Cmd(f"if {_ASCII_ZERO + r} output"))
+        entries.append(_Cmd(f"if {_ASCII_ZERO + r} goto end"))
+    entries.append(_End())
 
     # resolve labels from the actual line sequence (the "out" markers emit
     # no line, so the marker's target is the next line that does)
@@ -107,32 +145,32 @@ def brainif(truth_table: str) -> str:
     line_no = 0
     pending: int | None = None
     for entry in entries:
-        if entry[0] == "out":
-            pending = cast(int, entry[1])
+        if isinstance(entry, _Out):
+            pending = entry.which
             continue
         line_no += 1
         if pending is not None:
             out_labels[pending] = line_no
             pending = None
-        if entry[0] == "mr":
-            labels[cast(int, entry[2])] = line_no
+        if isinstance(entry, _MoveRight):
+            labels[entry.label] = line_no
     end_line = line_no + 1
 
     lines: list[str] = []
     for entry in entries:
-        if entry[0] == "cmd":
-            s = cast(str, entry[1])
-            if "goto OUT" in s:
-                r = int(s.split("OUT")[1])
-                s = f"if 0 goto {out_labels[r]}"
-            elif "goto end" in s:
-                s = s.replace("goto end", f"goto {end_line}")
-            lines.append(s)
-        elif entry[0] == "if":
-            lines.append(f"if {entry[1]} goto {labels[cast(int, entry[2])]}")
-        elif entry[0] == "mr":
-            lines.append(f"if {entry[1]} move right")
-        elif entry[0] == "out":
+        if isinstance(entry, _Cmd):
+            text = entry.text
+            if "goto OUT" in text:
+                r = int(text.split("OUT")[1])
+                text = f"if 0 goto {out_labels[r]}"
+            elif "goto end" in text:
+                text = text.replace("goto end", f"goto {end_line}")
+            lines.append(text)
+        elif isinstance(entry, _If):
+            lines.append(f"if {entry.char} goto {labels[entry.label]}")
+        elif isinstance(entry, _MoveRight):
+            lines.append(f"if {entry.char} move right")
+        elif isinstance(entry, _Out):
             continue
         else:
             lines.append("")
