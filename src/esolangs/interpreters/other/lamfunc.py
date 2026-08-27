@@ -318,8 +318,8 @@ class _Machine:
         if _is_int(tok):
             self._finish(frame, _parse_int(tok), 1)
             return
-        if tok in self.vars and isinstance(self.vars[tok], _Func):
-            fn = cast(_Func, self.vars[tok])
+        if tok in self.vars and isinstance(bound := self.vars[tok], _Func):
+            fn = bound
         elif tok in _BUILTINS or tok in self.defs:
             fn = self._lookup(tok)
         elif tok in self.vars:
