@@ -27,10 +27,11 @@ machinery or the verification tooling itself, the run widens back to
 everything (see ``scripts/_scope.py``).  ``--full`` forces that too, and CI
 still runs the complete suite on every push regardless.
 
-A default run also leaves the steps in ``FULL_ONLY`` to CI: they guard real
-bugs but cost more than they save at push time, and CI runs them anyway (the
-differential twice, with ``--fuzz 50``).  ``--full``, ``just test-full``, and
-an explicit ``--only`` all still run them.
+A default run also leaves work to CI where CI already covers it: the steps in
+``FULL_ONLY`` (the differential corpora, which CI runs twice with ``--fuzz
+50``) and pytest's ``slow`` marker (the fuzzers' divergence-detection tests,
+which CI runs by that same marker and errors on if they skip).  ``--full``,
+``just test-full``, and an explicit ``--only`` all still run them.
 
 Usage:
     python scripts/verify.py [--only STEPS] [--skip STEPS] [--full] [--list]
@@ -403,6 +404,15 @@ def main() -> int:
                 print(f"[skip] {name}: branch touched none of its files")
                 continue
             cmd = narrowed
+        # The `slow` marker is on the fuzzers' divergence-detection tests,
+        # which drive the native toolchains: ~19s of the suite's ~25s for 10
+        # of its 3758 tests.  CI runs exactly those ten (ci.yml:323, `-m
+        # slow`) and errors if any is skipped, so deselecting them locally
+        # trades no coverage.  This is keyed on --full rather than on scoping
+        # because a run that widens back to everything -- a tooling change, an
+        # unreadable diff -- should still not pay for them.
+        if name == "pytest" and only is None and not full:
+            cmd = [*cmd, "-m", "not slow"]
         if not have_unicorn and "unicorn" in name:
             print(f"[skip] {name}: unicorn not installed (pip install unicorn)")
             continue
