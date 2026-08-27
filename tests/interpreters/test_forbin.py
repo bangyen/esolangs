@@ -431,3 +431,87 @@ class TestStepMachine:
 
         with pytest.raises(HaltError):
             run_program("f { return 0; }\nmain { out f,0,1,1,0,0,0,1; return 0; }")
+
+
+class TestForbinMutationSurvivors:
+    """The step granularity a mutation survived, pinned by counting steps.
+
+    Mutation testing (mutmut against a ``bundle_one`` build of this module)
+    reported thirteen changes no test noticed, and every one of them left
+    the output byte-for-byte identical while changing *how many* ``step()``
+    calls the program took.  That is exactly the module's central claim --
+    ``step()`` is interruptible between statements, between a ``for``
+    loop's rows, and between statement-position calls -- and the suite
+    asserted only what each program printed, so a mutant that collapsed the
+    frame-stack path back into the recursive evaluator was invisible.
+
+    Each was confirmed by loading the mutant and the original side by side
+    and diffing their behaviour.
+    """
+
+    @staticmethod
+    def _drive(code: str, stdin: str = "") -> tuple[int, str, int]:
+        """Run ``code`` to a halt; return (steps, output, deepest frame stack)."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+
+        machine = _Machine(code, ScriptedIO(stdin))
+        steps, deepest = 0, 0
+        while not machine.halted and steps < 20000:
+            machine.step()
+            steps += 1
+            deepest = max(deepest, len(machine.frames))
+        assert machine.halted
+        return steps, machine.io.getvalue(), deepest
+
+    def test_a_statement_position_call_is_its_own_step(self) -> None:
+        """A call pushes a frame rather than recursing inside one step.
+
+        ``_start_statement_call`` returns the pushed frame, and a mutant
+        that returned ``None`` instead ran the call natively through
+        ``_exec_stmt``: same two bytes out, seven steps down to three, and
+        the stack never reached the depth a pushed frame gives it.
+        """
+        code = "main {\n helper x { out 0,1,0,0,0,0,0,x; }\n helper 1;\n helper 0;\n}\n"
+        steps, out, deepest = self._drive(code)
+        assert out == "A@"
+        assert steps == 7
+        assert deepest == 2  # main, plus the frame each call pushes
+
+    def test_a_for_loop_steps_once_per_row(self) -> None:
+        """The loop yields between rows instead of running to completion.
+
+        A mutant of ``_Machine.step`` ran each loop out inside one step:
+        every program still printed the right bytes, in half the steps.
+        """
+        once_and_twice = (
+            "main {\n n = 0;\n for i:0..0 { n = !n; }\n"
+            " out 0,0,0,0,0,0,0,n;\n n = 0;\n for i:0..1 { n = !n; }\n"
+            " out 0,0,0,0,0,0,0,n;\n}\n"
+        )
+        steps, out, _ = self._drive(once_and_twice)
+        assert out == "\x01\x00"
+        assert steps == 15
+
+        as_if = (
+            "main {\n c = 0;\n for _:!c..c { out 0,1,0,0,0,0,0,1; }\n"
+            " c = 1;\n for _:!c..c { out 0,1,0,0,0,0,0,1; }\n}\n"
+        )
+        steps, out, _ = self._drive(as_if)
+        assert out == "AA"
+        assert steps == 11
+
+    def test_an_iteration_loop_selects_the_wildcard_columns(self) -> None:
+        """``*`` marks the columns to expand, and the test is ``==``.
+
+        ``_for_rows`` collects the wildcard positions with ``p[0] == "*"``.
+        Read as ``!=`` it expanded every *non*-wildcard column instead, and
+        the loop still reached the same answer -- over six more rows.
+        """
+        code = (
+            "main {\n any = 0;\n for i:(0, 0, 1) { for _:!i..i { any = 1; } }\n"
+            " out 0,0,0,0,0,0,0,any;\n}\n"
+        )
+        steps, out, _ = self._drive(code)
+        assert out == "\x01"
+        assert steps == 11
