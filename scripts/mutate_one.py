@@ -66,19 +66,54 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
     A test that imports ``esolangs.vm`` inside its body cannot be repointed
     at the bundle, so it is cut whole rather than left to fail and mark every
     mutant killed for the wrong reason.
+
+    "Whole" has to include the decorators, which sit *above* the ``def``.
+    Cutting from the ``def`` alone leaves a ``@pytest.mark.parametrize``
+    stranded on whichever test follows, and pytest rejects the file at
+    collection: "function uses no argument 'text'".
     """
     dropped = 0
     for name in re.findall(r"\n    def (test_\w+)\(", src):
-        body = re.search(rf"\n    def {name}\(.*?(?=\n    def |\nclass |\Z)", src, re.S)
+        body = re.search(
+            rf"\n(?:    @[^\n]*\n(?:        [^\n]*\n)*)*    def {name}\("
+            rf".*?(?=\n    @|\n    def |\nclass |\Z)",
+            src,
+            re.S,
+        )
         if body and any(mod in body.group(0) for mod in _UNBUNDLED):
             src = src.replace(body.group(0), "\n")
             dropped += 1
     return src, dropped
 
 
-def _rewrite_imports(src: str, stem: str) -> str:
-    """Repoint every package import at the single bundled module."""
-    return re.sub(r"from esolangs(?:\.[\w.]+)? import ", f"from {stem} import ", src)
+def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
+    """Repoint every package import at the single bundled module.
+
+    Imports of the modules the bundle does not inline are left alone, so
+    they keep resolving against the installed package.  A test file that
+    imports a VM helper at module level -- ``run_until_halt_or_cycle``, as
+    the three largest grid interpreters' suites all do -- is not reachable
+    by ``_drop_unbundled_tests``, which only reads test bodies; repointing
+    it at the bundle broke collection before a single mutant ran.  Nothing
+    outside the bundle is mutated, so importing the real module is safe.
+    """
+    if module:
+        # ``from esolangs.<pkg> import <name> as m`` imports the interpreter
+        # *module*, not a name inside it.  The bundle is that module, so the
+        # rewrite is a plain alias -- repointing it at ``from {stem} import
+        # <name>`` asks for an attribute the bundle has no reason to define.
+        leaf = module.rsplit(".", 1)[-1]
+        src = re.sub(
+            rf"from esolangs(?:\.[\w.]+)? import {leaf} as (\w+)",
+            rf"import {stem} as \1",
+            src,
+        )
+    skip = "|".join(mod.split(".", 1)[1] for mod in _UNBUNDLED)
+    return re.sub(
+        rf"from esolangs(?!\.(?:{skip})\b)(?:\.[\w.]+)? import ",
+        f"from {stem} import ",
+        src,
+    )
 
 
 _CONFTEST = '''"""mutmut workarounds, both of which otherwise fail silently.
@@ -131,9 +166,16 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int]:
     stem = out.stem
 
     tests, dropped = _drop_unbundled_tests(_test_file(module).read_text())
-    (proj / "tests" / "test_bundled.py").write_text(_rewrite_imports(tests, stem))
+    (proj / "tests" / "test_bundled.py").write_text(
+        _rewrite_imports(tests, stem, module)
+    )
     (proj / "tests" / "conftest.py").write_text(_CONFTEST.replace("{stem}", stem))
     (work / "sitecustomize.py").write_text(_SITECUSTOMIZE)
+    # Several suites read a shipped example through ``Path(__file__)
+    # .parents[2]``, which resolves to the work dir once the test file is
+    # copied.  Link the real tree in rather than copying it: nothing outside
+    # ``bundled.py`` is mutated, so the examples are safe to share.
+    (work / "examples").symlink_to(ROOT / "examples")
     (proj / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
         f'paths_to_mutate = ["{out.name}"]\n'
