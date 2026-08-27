@@ -433,6 +433,6 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
         put(top, fall, "/")
 
     lines = ["".join(line).rstrip() for line in grid]
-    while lines and not lines[-1]:
+    while lines and not lines[-1]:  # pragma: no cover - the grid ends on content
         lines.pop()
     return "\n".join(lines)

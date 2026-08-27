@@ -184,7 +184,7 @@ class _Layout:
             | set(self.junctions)
             | set(self.glyphs)
         )
-        if not cells:
+        if not cells:  # pragma: no cover - every table lays down at least a wire
             return ""
         width = max(x for x, _ in cells) + 1
         height = max(y for _, y in cells) + 1

@@ -135,3 +135,13 @@ class TestStepMachine:
 
         program = _instantiate_apa(a_painter_ant("0110"), [1, 0])  # XOR, f=1
         assert run_until_halt_or_cycle(_Machine(program)) is False
+
+
+def test_an_empty_program_leaves_the_ant_where_it_started() -> None:
+    """With no instructions each step returns at once, painting nothing.
+
+    The grid is still dumped, because that is how the language is made
+    observable at all -- so what an empty program shows is the ant's own
+    starting cell and nothing else.
+    """
+    assert run_program("") == "o"

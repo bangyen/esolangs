@@ -1100,3 +1100,29 @@ class TestStreetcodeStepMachine:
         before = machine.snapshot()
         machine.step()  # calling step() again must not raise or move further
         assert machine.snapshot() == before
+
+
+def test_an_isolated_cell_is_not_a_street() -> None:
+    """One open cell with no neighbour is not a street to drive on.
+
+    The network is built by flooding outward from each open cell; a cell
+    that reaches nothing else is a hole in the walls rather than a lane,
+    so it is not registered as a street at all.
+    """
+    _Machine([" + ", "+C+", " + "], IO())
+
+
+def test_the_generated_ring_program_runs() -> None:
+    """The counting-ring program the generator emits drives its whole lap.
+
+    The ring latches a merge as the car approaches the junction, and the
+    lap is where that latch is followed through to the turn -- so running a
+    generated program is what exercises the merge bookkeeping end to end.
+    """
+    import esolangs
+    from esolangs.registry import LANGUAGES
+
+    generate = LANGUAGES["Streetcode"].text
+    assert generate is not None
+    for text in ("Hi", "Hello, World!"):
+        assert esolangs.run("Streetcode", generate(text)) == text

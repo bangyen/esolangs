@@ -124,3 +124,13 @@ class TestStepMachine:
         from esolangs.vm import run_until_halt_or_cycle
 
         assert run_until_halt_or_cycle(_Machine(["if 0 goto 1"], ScriptedIO())) is False
+
+
+def test_a_blank_line_is_skipped() -> None:
+    """A line with nothing on it advances the counter and does no work.
+
+    Blank lines are how a BrainIf program is spaced out, so they have to be
+    stepped over rather than raising the malformed-line error a one-token
+    line gets.
+    """
+    assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"

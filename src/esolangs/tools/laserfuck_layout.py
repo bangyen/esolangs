@@ -171,7 +171,9 @@ def fold_groups(
                 break
             used += span
             take += 1
-            if used >= room:
+            # Exactly filling the row ends it here rather than on the check
+            # above; the groups so far always leave a cell short of it.
+            if used >= room:  # pragma: no cover - no group set fills a row exactly
                 break
 
         for top, middle, bottom in groups[index : index + take]:
