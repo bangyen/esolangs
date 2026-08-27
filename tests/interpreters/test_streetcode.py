@@ -1344,3 +1344,76 @@ class TestStreetcodeGraphBackedStepping:
         assert machine._probe((0, 1, "W", None, None, 0), 0, 0) is None  # noqa: SLF001
         # ...while a lane that is on the grid does produce a successor.
         assert machine._probe((0, 1, "N", None, None, 0), 0, 0) is not None  # noqa: SLF001
+
+
+class TestStreetcodeMutationSurvivors:
+    """Four conditions a mutation survived, each pinned by behaviour.
+
+    Mutation testing (mutmut against a ``bundle_one`` build of this module)
+    reported these as changeable without any test noticing.  Two are the
+    bounds of the isolated-cell exemption in :meth:`_Machine._validate_width`,
+    one is the halt the shipped example reaches, and one is the ``+`` search
+    the junction rules steer by.  Each was confirmed by loading the mutant
+    and the original side by side and diffing their behaviour.
+    """
+
+    def test_a_single_walled_cell_is_not_a_street(self) -> None:
+        """One reachable cell is exempt: there is no street to measure.
+
+        The exemption reads ``len(visited) <= 1``.  A mutant that tightened
+        it to ``< 1`` stopped exempting the one-cell case, and the wall
+        check behind it then rejected a grid the interpreter accepts.
+        """
+        machine = _Machine(["+-+", "|C|", "+-+"], IO())
+        assert (machine.row, machine.col) == (1, 1)
+
+    def test_a_one_wide_corridor_is_still_rejected(self) -> None:
+        """The exemption covers one cell, not two: a corridor is a street.
+
+        A mutant that loosened the bound to ``len(visited) <= 2`` exempted
+        this grid instead of measuring it, and a one-wide street -- which
+        has no opposite lane for ``U`` to end in -- was accepted.
+        """
+        with pytest.raises(ValueError, match="not two-wide"):
+            _Machine(["+-+", "|C|", "|U|", "+-+"], IO())
+
+    def test_the_hello_world_example_halts(self) -> None:
+        """The example halts, and in a bounded number of steps.
+
+        Asserting only on the output leaves the halt untested: a mutant of
+        ``step`` printed ``Hello, World!`` in full and then drove on for
+        ever, parked on one cell.  The step count pins the termination the
+        output alone does not.
+        """
+        root = Path(__file__).resolve().parents[2]
+        code = (root / "examples/hello-world/streetcode.txt").read_text().split("\n")
+        if code and code[-1] == "":
+            code = code[:-1]
+        scripted = ScriptedIO("")
+        machine = _Machine(code, scripted)
+        steps = 0
+        while not machine.halted and steps < 5000:
+            machine.step()
+            steps += 1
+        assert machine.halted
+        assert steps == 426
+        assert scripted.getvalue() == "Hello, World!"
+
+    def test_plus_dist_measures_the_nearest_plus_on_a_side(self) -> None:
+        """The scan reports the distance, and ``None`` when there is no ``+``.
+
+        ``_crossing_mouth`` reads this to find the two ``+`` bounding a
+        mouth, so a mutant that always returned ``None`` unpacked nothing
+        and crashed both shipped examples.  Pinning one hit and the misses
+        keeps the search itself under test.
+        """
+        root = Path(__file__).resolve().parents[2]
+        code = (root / "examples/hello-world/streetcode.txt").read_text().split("\n")
+        if code and code[-1] == "":
+            code = code[:-1]
+        machine = _Machine(code, IO())
+        assert (machine.row, machine.col) == (5, 3)
+        assert machine._plus_dist("S") == 1  # noqa: SLF001
+        assert machine._plus_dist("N") is None  # noqa: SLF001
+        assert machine._plus_dist("E") is None  # noqa: SLF001
+        assert machine._plus_dist("W") is None  # noqa: SLF001
