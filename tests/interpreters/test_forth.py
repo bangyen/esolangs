@@ -112,6 +112,35 @@ class TestForth:
 
 
 class TestStepMachine:
+    def test_arithmetic_wraps_to_a_signed_32_bit_range(self) -> None:
+        """Results wrap into -2**31 .. 2**31-1, which only the stack shows.
+
+        ``.`` prints ``value & 0xFF``, so every test that reads output sees
+        the low byte alone -- the wrap could land anywhere above it and the
+        printed character would not change.  Squaring 9 five times passes
+        2**31 and has to come back negative.
+        """
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine("9:*:*:*:*", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.stack == [-501334399]
+
+    def test_a_loop_reenters_its_frame_each_pass(self) -> None:
+        """A loop restarts its body until the top reaches zero.
+
+        The frame it re-enters has to be marked a loop, or the second pass
+        would not run.  Counting down while duplicating leaves one value
+        per pass, so the stack shows how many times the body ran.
+        """
+        from esolangs.interpreters.stack_based.forth import _Machine
+
+        machine = _Machine("3[:1-]", ScriptedIO())
+        while not machine.halted:
+            machine.step()
+        assert machine.stack == [3, 2, 1, 0]
+
     def test_step_tracks_stack_and_active_frame_cursor(self) -> None:
         from esolangs.interpreters.stack_based.forth import _Machine
 
