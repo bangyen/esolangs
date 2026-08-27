@@ -1145,11 +1145,13 @@ class TestStreetcodeDriveStates:
         """A validated street is total: no reachable state wedges the car."""
         machine = _Machine(self._corridor(), IO())
         graph = machine._drive_states((1, 1))  # noqa: SLF001
+        # ``None`` means only "ran out of road" now -- a deliberate stop at
+        # ``;`` reports itself as ``"halt"`` -- so a wedge needs no check
+        # against the square underneath.
         wedged = [
             state
             for state, edges in graph.items()
-            if machine.grid[state[0]][state[1]] != ";"
-            and any(succ is None for succ in edges.values())
+            if any(succ is None for succ in edges.values())
         ]
         assert wedged == []
 
@@ -1313,24 +1315,45 @@ class TestStreetcodeGraphBackedStepping:
         machine.step()
         assert not machine.halted
 
-    def test_a_graph_edge_with_no_successor_halts(self) -> None:
-        """A ``None`` edge stops the car rather than driving it nowhere.
+    def test_a_halt_edge_stops_the_car(self) -> None:
+        """A ``"halt"`` edge stops the car rather than driving it nowhere.
 
-        Every ``None`` the search records sits on ``;`` in a real program,
+        Every edge without a successor in a real program sits on ``;``,
         and ``;`` halts before the lookup is reached, so this arm is the
         graph's own guard rather than a path a validated street takes.
-        Blanking the ``;`` after construction leaves the recorded ``None``
-        in place and lets the lookup answer for it.
+        Blanking the ``;`` after construction leaves the recorded
+        ``"halt"`` in place and lets the lookup answer for it.
         """
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
         state = (1, 4, "N", None, None, 0)
-        assert all(v is None for v in machine._graph[state].values())  # noqa: SLF001
+        assert all(v == "halt" for v in machine._graph[state].values())  # noqa: SLF001
 
         machine.row, machine.col, machine.heading = 1, 4, "N"
         machine.grid[1] = list("|C   |")  # the ';' would halt one arm earlier
         machine.step()
         assert machine.halted
+
+    def test_a_wedged_edge_raises_rather_than_halting(self) -> None:
+        """A ``None`` edge is a validator bug, and must not pass for a stop.
+
+        ``_validate_total`` rejects a street with a wedged state, so a
+        ``None`` surviving into the lookup means the graph and the check
+        disagree.  Halting on it would hand back a truncated run as though
+        the program had finished; the two are told apart precisely so this
+        can raise instead.  Only forging the edge reaches it.
+        """
+        machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
+        assert machine._graph is not None  # noqa: SLF001
+        state = (1, 1, "E", None, None, 0)
+        machine._graph[state] = dict.fromkeys(  # noqa: SLF001
+            ((0, 0), (0, 1), (1, 0), (1, 1))
+        )
+
+        machine.row, machine.col, machine.heading = 1, 1, "E"
+        with pytest.raises(AssertionError, match="outlived"):
+            machine.step()
+        assert not machine.halted
 
     def test_a_u_turn_without_an_opposite_lane_has_no_successor(self) -> None:
         """``U`` needs a lane to turn into; without one the state is a dead end.
