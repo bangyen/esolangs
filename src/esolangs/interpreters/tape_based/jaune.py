@@ -45,6 +45,24 @@ class _Command:
     op: str
     arg: int | None = None  # the numeric operand, or None for a bare command
 
+    @property
+    def number(self) -> int:
+        """The operand of an operator that requires one: ``:?!$@``.
+
+        :func:`_parse` raises on a bare one of these, so by the time the
+        machine dispatches on it the operand is known to be there.  Reading
+        it through here states that once, rather than each of the jumps and
+        the call re-testing what the parser has already guaranteed.
+
+        A union of a bare and a numbered command would let the checker hold
+        the guarantee instead, but the dispatch keys on ``op`` -- a plain
+        string field -- which narrows nothing, so every branch would need an
+        ``isinstance`` and the check would just move rather than vanish.
+        """
+        if self.arg is None:  # pragma: no cover - _parse rejects bare operators
+            raise HaltError(f"{self.op} requires a number")
+        return self.arg
+
 
 def _parse(code: str) -> list[_Command]:
     """Parse a program into commands, expanding counts and number operands."""
@@ -176,31 +194,28 @@ class _Machine:
         elif c == ":":
             pass  # a label position; execution falls through
         elif c == "?":
-            if cmd.arg is None:  # pragma: no cover - _parse rejects bare operators
-                raise HaltError(f"{c} requires a number")
-            target = self._label(cmd.arg)
+            label = cmd.number
+            target = self._label(label)
             if target is None:
-                raise HaltError(f"jump to undefined label {cmd.arg}")
+                raise HaltError(f"jump to undefined label {label}")
             if self.cells[self.ptr] != 0:
                 self.pos = target
                 return
         elif c == "!":
-            if cmd.arg is None:  # pragma: no cover - _parse rejects bare operators
-                raise HaltError(f"{c} requires a number")
-            target = self._label(cmd.arg)
+            label = cmd.number
+            target = self._label(label)
             if target is None:
-                raise HaltError(f"jump to undefined label {cmd.arg}")
+                raise HaltError(f"jump to undefined label {label}")
             if self.cells[self.ptr] == 0:
                 self.pos = target
                 return
         elif c == "$":
             pass  # a subroutine definition; execution falls through in place
         elif c == "@":
-            if cmd.arg is None:  # pragma: no cover - _parse rejects bare operators
-                raise HaltError(f"{c} requires a number")
-            target = self._subroutine(cmd.arg)
+            name = cmd.number
+            target = self._subroutine(name)
             if target is None:
-                raise HaltError(f"call to undefined subroutine {cmd.arg}")
+                raise HaltError(f"call to undefined subroutine {name}")
             self.call_stack.append(self.pos + 1)
             self.pos = target
             return
