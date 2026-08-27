@@ -253,6 +253,24 @@ class TestFunctions:
             run_program("main { out 0,0,0,0,0,0,0 } extra")
 
 
+class TestKeywordPrefixedNames:
+    def test_an_identifier_may_start_with_a_keyword(self) -> None:
+        """``returnvar`` is a name, not ``return`` followed by ``var``.
+
+        The statement parser checks the character after each keyword and
+        only takes the keyword branch when the word ends there, so a name
+        that merely starts with one parses as an ordinary assignment.
+        """
+        eight = lambda name: ",".join([name] * 8)  # noqa: E731
+        code = (
+            "main { returnvar = 1,1,1,1,1,1,1,1;"
+            " forvar = 0,1,0,0,0,0,0,1;"
+            f" out {eight('returnvar')};"
+            f" out {eight('forvar')}; }}"
+        )
+        assert run_program(code) == "\xff\x00"
+
+
 class TestParserErrors:
     def test_line_comments_are_ignored(self) -> None:
         code = "main { // header\n a = 1; // trailing\n out 0,0,0,0,0,0,0,a; }"
