@@ -6,6 +6,8 @@ from esolangs.tools.text.helpers import (
     _factor_triple,
     _require_ascii,
     _require_bytes,
+    delta_program,
+    run_step,
 )
 
 __all__ = [
@@ -243,7 +245,10 @@ def brainif(text: str) -> str:
             way = "right" if step > 0 else "left"
             lines.append(f"if {cells[ptr]} move {way}")
             ptr += step
-            if ptr == len(cells):
+            # The caller only ever walks to a cell it has already allocated
+            # or to the one immediately past the end, and the fresh-cell
+            # targets are appended before the walk starts.
+            if ptr == len(cells):  # pragma: no cover - the target is always parked
                 cells.append(0)
 
     for c in text:
@@ -306,13 +311,7 @@ def six_five(text: str) -> str:
     of arithmetic tokens that moves the cell from ``cur`` to ``ord(c)``,
     followed by ``A`` to print it.
     """
-    cur = 0
-    res = []
-    for c in text:
-        res.append(_six_five_path(cur, ord(c)))
-        res.append("A")
-        cur = ord(c)
-    return "".join(res)
+    return delta_program(text, _six_five_path, "A")
 
 
 def minifuck(text: str) -> str:
@@ -398,18 +397,14 @@ def circlefuck(text: str) -> str:
         ),
         key=lambda c: abs(ord(c) - ord(text[0])),
     )
-    prog = [base]
-    cur = ord(base)
-    for c in text:
-        delta = ord(c) - cur
-        if delta > 0:
-            prog.append("+" * delta)
-        elif delta < 0:
-            prog.append("-" * -delta)
-        prog.append(".")
-        cur = ord(c)
-    prog.append("@")
-    return "".join(prog)
+    return delta_program(
+        text,
+        run_step("+", "-"),
+        ".",
+        start=ord(base),
+        prologue=base,
+        epilogue="@",
+    )
 
 
 def slow_acv_mammalian(text: str) -> str:

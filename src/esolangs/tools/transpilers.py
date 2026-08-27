@@ -10,7 +10,7 @@ own, and the outputs must agree.
 
 import re
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal, cast
 
 from esolangs.interpreters.register_based.bio import parse as bio_parse
 
@@ -809,6 +809,13 @@ class _LaserGrid:
         return "\n".join("".join(ln).rstrip() for ln in g)
 
 
+# The command alphabet ``_laser_parse`` emits: brainfuck's eight commands
+# and nothing else.  Naming it lets the checker see that the emit and
+# analyze walks handle every one, so neither needs a fallback arm for a
+# character the parser has already rejected.
+_LaserOp = Literal["+", "-", ">", "<", ".", ",", "[", "]"]
+
+
 def _laser_funnel(g: _LaserGrid) -> None:
     """Send every initial heading right on row 0 (the start-marker funnel)."""
     g.set(0, 0, "\u00ff")
@@ -820,7 +827,9 @@ def _laser_funnel(g: _LaserGrid) -> None:
     g.set(2, 1, "_")
 
 
-def _laser_emit(g: _LaserGrid, ops: list[str], row: int, col: int) -> tuple[int, int]:
+def _laser_emit(
+    g: _LaserGrid, ops: list[_LaserOp], row: int, col: int
+) -> tuple[int, int]:
     """Lay out ``ops`` on ``row`` heading right; return (next_col, bottom_row)."""
     i = 0
     bottom = row + 1
@@ -845,13 +854,11 @@ def _laser_emit(g: _LaserGrid, ops: list[str], row: int, col: int) -> tuple[int,
             col, lbottom = _laser_loop(g, row, col, body)
             bottom = max(bottom, lbottom)
             i = j
-        else:  # pragma: no cover - only validated commands reach emission
-            i += 1
     return col, bottom
 
 
 def _laser_loop(
-    g: _LaserGrid, strip_row: int, c: int, body: list[str]
+    g: _LaserGrid, strip_row: int, c: int, body: list[_LaserOp]
 ) -> tuple[int, int]:
     r"""Emit a while-loop ring below the strip's ``v`` at (strip_row, c).
 
@@ -883,7 +890,7 @@ def _laser_loop(
     return u_exit + 1, exit_row + 1
 
 
-def _laser_analyze(ops: list[str]) -> tuple[int, int, int | None]:
+def _laser_analyze(ops: list[_LaserOp]) -> tuple[int, int, int | None]:
     """Analyze the ops statically: final pointer, max cell, output cell.
 
     Loops must have net-zero pointer displacement (so the pointer stays
@@ -938,12 +945,10 @@ def _laser_analyze(ops: list[str]) -> tuple[int, int, int | None]:
                 )
             maxcell = max(maxcell, ptr + bmax)
             i = j
-        else:  # pragma: no cover - only validated commands reach analysis
-            i += 1
     return ptr, maxcell, out_cell
 
 
-def _laser_parse(program: str) -> list[str]:
+def _laser_parse(program: str) -> list[_LaserOp]:
     """Parse a Dimensional program into the supported command list.
 
     The supported class is Dimensional's brainfuck-like core on a linear
@@ -951,7 +956,7 @@ def _laser_parse(program: str) -> list[str]:
     the ``=HH``/``:CH`` literals (emitted as a clear plus increments);
     ``*``..``*`` comments are skipped.  Everything else is rejected.
     """
-    ops: list[str] = []
+    ops: list[_LaserOp] = []
     comment = False
     i = 0
     while i < len(program):
@@ -990,7 +995,9 @@ def _laser_parse(program: str) -> list[str]:
                     )
             else:
                 i += 1
-            ops.append(ch)
+            # The elif above tested membership in the alphabet, so this is
+            # where a parsed character becomes a typed command.
+            ops.append(cast("_LaserOp", ch))
         elif ch == "=":
             if i + 2 >= len(program):
                 raise ValueError("'=' must be followed by two hex digits")
@@ -1047,7 +1054,7 @@ def dimensional_to_laserfuck(program: str) -> str:
     """
     ops = _laser_parse(program)
     ptr, maxcell, out_cell = _laser_analyze(ops)
-    epi: list[str] = []
+    epi: list[_LaserOp] = []
     epi.extend(["<"] * ptr)
     for cell in range(0, maxcell + 1):
         if cell == out_cell:

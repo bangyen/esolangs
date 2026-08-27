@@ -26,10 +26,14 @@ from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
+    _between,
+    _between_split,
     _bio,
     _cell_width,
+    _nevermind,
     _polynomial,
     _span,
+    _taglate,
     takes_width,
     wrap_chars,
     wrap_grid,
@@ -52,20 +56,23 @@ TEXT = "Hello, World!"
 # tests/tools/test_generate.py instead.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
-    "dig": "2D: newlines separate rows",
 }
 
 # LaserFuck is 2D too, and wrap_program must not touch it either -- but it
 # honours a width itself: the loop layout is tied to the beam's track and
 # cannot fold, so a loop program wider than the width is re-emitted as the
 # (foldable) linear form.  Hence it belongs with Clockwise and the others
-# above rather than in UNWRAPPABLE.
-WIDTH_HONOURING = {"laserfuck": "falls back to the foldable linear form"}
+# above rather than in UNWRAPPABLE.  Dig is the same case: a newline still
+# separates its rows, but it folds its segments over several row pairs.
+WIDTH_HONOURING = {
+    "laserfuck": "falls back to the foldable linear form",
+    "dig": "folds its segments over several row pairs",
+}
 
 WRAPPED = sorted(
     name
     for name, lang in LANGUAGES.items()
-    if lang.generator and lang.interpreter and lang.id in WRAPPERS
+    if lang.text and lang.interpreter and lang.id in WRAPPERS
 )
 
 
@@ -94,7 +101,7 @@ def _chunks_its_literal(name: str) -> bool:
     :data:`WRAPPERS`, so that is where the token-preserving invariant is
     checked for them.
     """
-    generator = LANGUAGES[name].generator
+    generator = LANGUAGES[name].text
     return generator is not None and takes_width(generator)
 
 
@@ -212,7 +219,18 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     """
     for repeat in (1, 2, 4, 8):
         program = generate(name, TEXT * repeat)
-        if "\n" not in program and len(program) > 40:
+        # A MULTILINE language's text program has structural newlines of its
+        # own (Between's ``.x.`` trailer), so "did it wrap?" is whether
+        # wrapping added a line, not whether one is there at all.  The width
+        # itself is not asserted here: Taglate's queue seed is one line the
+        # wrapper must leave over-wide, and the round-trip tests above hold
+        # each wrapper to the width it can actually promise.
+        if LANGUAGES[name].id in MULTILINE:
+            if max(map(len, program.split("\n"))) > 40:
+                wrapped = generate(name, TEXT * repeat, 40)
+                assert wrapped.count("\n") > program.count("\n")
+                return
+        elif "\n" not in program and len(program) > 40:
             assert "\n" in generate(name, TEXT * repeat, 40)
             return
     # Some languages' hello-world programs are too terse to ever need a
@@ -245,7 +263,7 @@ def test_unwrappable_languages_are_untouched(name: str) -> None:
     """A language that cannot take newlines ignores the width."""
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     assert language.id not in WRAPPERS, UNWRAPPABLE[name]
-    if language.generator:
+    if language.text:
         assert generate(language.name, TEXT, 40) == generate(language.name, TEXT)
 
 
@@ -277,8 +295,114 @@ def test_no_width_is_unchanged(name: str) -> None:
     tests in ``tests/scripts/test_examples.py`` call the generators with no width.
     """
     lang = LANGUAGES[name]
-    assert lang.generator is not None
-    assert generate(name, TEXT) == lang.generator(TEXT)
+    assert lang.text is not None
+    assert generate(name, TEXT) == lang.text(TEXT)
+
+
+def test_nevermind_wraps_by_repeating_print() -> None:
+    """Nevermind wraps into more ``print`` statements, not a broken one.
+
+    ``print`` writes its arguments with no separator and no trailing
+    newline, so consecutive statements concatenate and the output survives.
+    Breaking the single statement instead would silently truncate it: a
+    newline ends the statement and the remainder is read as commands.
+    """
+    for width in (8, 12, 20, 40):
+        program = generate("Nevermind", TEXT, width)
+        assert all(line.startswith("print,") for line in program.split("\n"))
+        assert _run("Nevermind", program) == TEXT
+
+    # a width the one-line program overruns really does get broken up
+    assert generate("Nevermind", TEXT, 12).count("\n") >= 1
+
+
+def test_nevermind_never_splits_a_comma_escape() -> None:
+    """A ``*44`` stays whole: split across lines it stops being a comma.
+
+    The interpreter expands ``*44`` within one argument, so a break inside
+    one leaves a literal ``*44`` in the output and loses the comma -- the
+    failure this wrapper's unit packing exists to prevent.
+    """
+    text = "a,b,c,d,e,f"
+    for width in range(1, 30):
+        program = generate("Nevermind", text, width)
+        for line in program.split("\n"):
+            payload = line[len("print,") :]
+            assert "*4" not in payload or "*44" in payload
+        assert _run("Nevermind", program) == text
+
+
+def test_between_wraps_by_repeating_print() -> None:
+    """Between wraps into more print statements, the way Nevermind does.
+
+    ``p`` writes with no trailing newline, so consecutive ``'...'p.`` lines
+    concatenate.  Breaking the literal instead would cut the instruction in
+    two, since each Between instruction is one line.
+    """
+    for width in (5, 8, 12, 20):
+        program = generate("Between", TEXT, width)
+        body, _, trailer = program.rpartition("\n")
+        assert trailer == ".x."
+        assert all(line.endswith("'p.") for line in body.split("\n"))
+        assert _run("Between", program) == TEXT
+
+    # a width the one-line program overruns really does get broken up
+    assert generate("Between", TEXT, 8).count("\n") > 1
+
+
+def test_between_never_splits_an_apostrophe_escape() -> None:
+    """A doubled ``''`` stays whole: split, each half closes a literal.
+
+    An apostrophe inside a Between literal is written ``''``, so a break
+    between the two would end one statement early and leave the next
+    starting mid-literal -- a load error rather than a quiet wrong answer,
+    but a break the unit packing has to prevent all the same.
+    """
+    text = "a'b'c'd"
+    for width in range(1, 30):
+        program = generate("Between", text, width)
+        assert _run("Between", program) == text
+
+
+def test_between_moves_a_jump_target_past_a_split() -> None:
+    """Splitting a statement moves every line after it, so branches follow.
+
+    Between is goto-based on 0-indexed line numbers, so a wrapper that added
+    lines without renumbering would leave each branch pointing at whatever
+    now sits at the old address.  Here line 1 jumps over line 2; once the
+    long literal above it splits, the target has to move with its line or
+    the skipped statement runs.
+    """
+    program = "\n".join(
+        [
+            "'ABCDEFGHIJKL'p.",
+            "|3|f.",
+            "'SKIPPED'p.",
+            "'END'p.",
+            ".x.",
+        ]
+    )
+    assert _run("Between", program) == "ABCDEFGHIJKLEND"
+    for width in (6, 8, 10, 20):
+        wrapped = wrap_program(program, "between", width)
+        assert _run("Between", wrapped) == "ABCDEFGHIJKLEND"
+    # the split really happened, and the target really moved
+    wrapped = wrap_program(program, "between", 8)
+    assert wrapped.count("\n") > program.count("\n")
+    assert "|3|f." not in wrapped
+
+
+def test_between_boolean_still_computes_its_table() -> None:
+    """The boolean dialect survives wrapping, branches and all."""
+    from esolangs.tools import boolean
+
+    for table, bits in (("01", 1), ("0110", 2), ("01101001", 3)):
+        program = boolean.between(table)
+        for width in (5, 20, 40):
+            wrapped = wrap_program(program, "between", width)
+            for row, expected in enumerate(table):
+                stdin = "".join(b + "\n" for b in format(row, f"0{bits}b"))
+                assert run("Between", wrapped, stdin) == expected
 
 
 def test_clockwise_is_never_reflowed() -> None:
@@ -560,3 +684,59 @@ def test_bio_indent_leaves_no_trailing_whitespace() -> None:
     """No line carries the separator the boolean generator writes."""
     wrapped = _bio(_NESTED_BIO, DEFAULT_WIDTH)
     assert all(line == line.rstrip() for line in wrapped.split("\n"))
+
+
+def test_wrappers_refuse_input_they_do_not_recognize() -> None:
+    """Each wrapper hands back anything outside the shape it knows.
+
+    A wrapper only ever sees its own generator's output in practice, so
+    these guards never fire there -- but they are what keeps a wrapper from
+    half-transforming a program it does not understand, and a half-wrapped
+    program is the failure mode the whole module exists to prevent.
+    """
+    # An empty program has no tokens to pack, in either packer.
+    assert wrap_space_delimited("", 40) == ""
+    assert wrap_grid("", 40) == ""
+    # BIO's tokens have to tile the program exactly; a stray character means
+    # the regex did not account for something, so the program is left alone.
+    assert _bio("0ox;!!!", 40) == "0ox;!!!"
+    # Taglate needs a queue seed *and* commands below it.
+    assert _taglate("seed-only", 40) == "seed-only"
+    # Nevermind wraps a "print," statement and nothing else.
+    assert _nevermind("goto,5", 40) == "goto,5"
+    assert _nevermind("print,", 40) == "print,"
+
+
+def test_between_leaves_a_computed_jump_alone() -> None:
+    """A branch whose target is an expression cannot be renumbered.
+
+    Splitting a statement moves the lines below it, so every literal
+    ``|N|f`` target is rewritten to match.  A computed target -- one that
+    reads a variable -- evaluates to a line number this cannot know, so the
+    program is returned untouched rather than renumbered wrongly.
+    """
+    program = "\n".join(["'AAAAAAAAAA'p.", "|[a]|f.", ".x."])
+    assert _between(program, 6) == program
+
+
+def test_between_split_keeps_a_line_it_cannot_cut() -> None:
+    """Only an over-wide print statement is split; everything else stands."""
+    # Already inside the width.
+    assert _between_split("'ab'p.", 40) == ["'ab'p."]
+    # Not a print statement at all.
+    assert _between_split("|12|f([0]=|0|)", 4) == ["|12|f([0]=|0|)"]
+    # A bare apostrophe means the literal is not the shape this expects.
+    assert _between_split("'a'b'p.", 4) == ["'a'b'p."]
+
+
+def test_nevermind_keeps_a_dollar_with_the_character_before_it() -> None:
+    """A ``$`` opening a line reads as a variable, so it never starts one.
+
+    The unit packing binds a ``$`` to the character it follows.  With a run
+    of them the step has to keep growing, which is the loop this exercises.
+    """
+    text = "a$$$b"
+    program = _nevermind(f"print,{text}", 8)
+    for line in program.split("\n"):
+        assert not line[len("print,") :].startswith("$")
+    assert _run("Nevermind", program) == text

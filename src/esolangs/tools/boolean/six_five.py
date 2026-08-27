@@ -7,7 +7,11 @@ Both emit through :class:`_SixFiveAsm`, which tracks the accumulator and
 cell pointer so the helpers can navigate by cell index.
 """
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _ASCII_ONE,
+    _ASCII_ZERO,
+    _validate_truth_table,
+)
 from esolangs.tools.transpilers import _six_five_label
 
 __all__ = ["six_five", "six_five_arithmetic"]
@@ -41,7 +45,7 @@ def six_five(truth_table: str) -> str:
         def build(rows: list[int], bit: int, base: int) -> str:
             nonlocal marker
             if len(rows) == 1:
-                delta = 48 + int(truth_table[rows[0]]) - base
+                delta = _ASCII_ZERO + int(truth_table[rows[0]]) - base
                 q, r = divmod(delta, 6)
                 return "6" * q + "62" * r + "A0"
             g0 = [r for r in rows if ((r >> (n - bit)) & 1) == 0]
@@ -241,8 +245,8 @@ def six_five_arithmetic(truth_table: str) -> str:
         # complement table: output 49 - p, so p == 0 prints '1' and p == 1 prints '0'
         a.raw(_six_five_nav(1, 5))
         a.raw("70").j("OUT_48")
-        a.raw(_six_five_nav(5, 2) + "62" * 49 + "A0")
-        a.m("OUT_48").raw(_six_five_nav(5, 2) + "62" * 48 + "A0")
+        a.raw(_six_five_nav(5, 2) + "62" * _ASCII_ONE + "A0")
+        a.m("OUT_48").raw(_six_five_nav(5, 2) + "62" * _ASCII_ZERO + "A0")
     else:
-        a.raw(_six_five_nav(1, 5) + "62" * 48 + "A0")
+        a.raw(_six_five_nav(1, 5) + "62" * _ASCII_ZERO + "A0")
     return a.build()

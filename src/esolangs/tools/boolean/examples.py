@@ -167,13 +167,27 @@ def _embedded(
 
 
 def _fill_bio(template: str, bits: list[int]) -> str:
+    """Pack each input into ``x`` by its binary weight, in a constant width.
+
+    A one adds the input's weight to ``x``; a zero writes the same number of
+    commands to ``z``, which the generator never reads, so both bits embed
+    as the same number of characters and the program's shape no longer
+    reveals its inputs.
+
+    This used to embed a zero as nothing at all, which made the program's
+    length reveal its inputs: at ``n == 2`` the four instantiations ran to
+    236, 240, 244, and 248 characters.  Padding with spaces instead of
+    ``0oz;`` also works -- :func:`~esolangs.interpreters.register_based.bio.parse`
+    discards whitespace before checking that nothing but commands is left --
+    but it pads with characters the language ignores, which is what the
+    bf-pda separators were.  ``y`` is not available for the padding: it
+    carries the running result.
+    """
     n = len(bits)
-    # pack each input once by its binary weight
     return instantiate(
         template,
         bits,
-        lambda i, b: "0ox;" * (2 ** (n - 1 - i)) if b else "",
-        lambda _i, _b: "",
+        lambda i, b: ("0ox;" if b else "0oz;") * (2 ** (n - 1 - i)),
     )
 
 
@@ -182,7 +196,6 @@ def _fill_nocomment(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "c" if b == 0 else "i",
-        lambda _i, b: "c" if b == 1 else "i",
     )
 
 
@@ -191,7 +204,6 @@ def _fill_lamfunc(template: str, bits: list[int]) -> str:
     return instantiate(
         template,
         bits,
-        lambda _i, b: "0b" + str(b),
         lambda _i, b: "0b" + str(b),
     )
 
@@ -204,36 +216,82 @@ def _fill_bitdeque(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda i, b: "PUSH INVERT" if b == (n - 1 - i) % 2 else "INVERT PUSH",
-        lambda _i, _b: "PUSH INVERT",
     )
 
 
 def _fill_bfpda(template: str, bits: list[int]) -> str:
+    """Push the bit, in a constant width.
+
+    ``<`` pushes a zero and ``@`` flips the top, so a one is a flip more
+    than a zero.  Padding to a common width takes four characters, the
+    shortest length at which both bits can be written: ``<@@@`` flips three
+    times to a one, and ``<[@]`` skips its own body, since ``[`` peeks the
+    zero just pushed and jumps past the matching ``]``.
+
+    This used to spell a zero as ``<`` and a one as ``<@``, which made the
+    program's length reveal its inputs.  Four is minimal: an exhaustive
+    search over ``<>@[]`` for runs that push exactly one value finds only a
+    zero at one character, only a one at two, and only zeros at three.
+    Padding with a comment character would be shorter, but every character
+    outside ``@.<>[]`` is a comment here, so that is the padding the
+    separators removed from this generator already were.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "<@" if b else "<",
-        lambda _i, b: "<@" if not b else "<",
+        lambda _i, b: "<@@@" if b else "<[@]",
     )
 
 
 def _fill_back(template: str, bits: list[int]) -> str:
-    """Set each input cell: ``-`` flips it to one, a space leaves it zero."""
+    """Finish each input cell: ``+`` leaves the one, ``-`` flips it to zero.
+
+    The beam reads one cell per row as it runs up column 0, so setting a
+    cell takes two rows.  The template writes the first as a constant ``-``
+    that primes the cell to 1 whatever the bit is, and this fill supplies
+    the second, which finishes the job against a cell already holding 1: a
+    one bit embeds ``+``, inert on a set cell, and a zero bit embeds ``-``,
+    flipping it back down.  So the pointer is on input cell ``i`` throughout
+    -- never the answer cell, which the tree reaches only later.
+
+    Priming first is what makes both rows *execute*.  ``+`` steps the beam
+    an extra cell when the current cell is zero, so the older ``{Xi}`` +
+    ``+`` order had a zero bit's ``+`` setter fire on the still-zero cell
+    and skip its own pad row; the pair cost two rows but only ever ran one
+    of them, and which one depended on the bit.  Against a primed cell no
+    ``+`` ever fires, so both rows run for either bit and the ``>`` past
+    them is reached the same way.
+
+    A zero used to embed as a blank, which the beam ignores just as happily
+    -- but the fill rstrips, so that row vanished and the program's size
+    carried the input: at ``n == 2`` the four instantiations were 41, 42,
+    and 43 characters over six or seven rows, where they are now all 47
+    over nine.  Contrast :func:`_fill_cod`, whose blank is a grid cell that
+    cannot be stripped and so leaks nothing.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "-" if b else " ",
-        lambda _i, b: "-" if b else " ",
+        lambda _i, b: "+" if b else "-",
     )
 
 
 def _fill_minsky_swap(template: str, bits: list[int]) -> str:
     """Set each input register by counting ``+`` against a ``*`` pad.
 
-    Minsky Swap has no input instruction, so a bit is embedded as the
-    register's starting value.  Every setter is padded to the same width
-    (``2**n``, or four for the LSB, which needs no ``~``) so the jump
-    targets the template computed stay correct whatever the bits are.
+    Minsky Swap has no input instruction, so a bit is embedded as a run of
+    ``+`` adding its binary weight to ``reg[0]``, padded with ``*`` to a
+    length the template counted on when it computed its jump targets.  Both
+    runs are even because ``*`` swaps the register pointer: an odd pad would
+    leave every later command addressing the wrong register.
+
+    The LSB is the exception, and not merely a shorter one.  Its block is
+    ``+*+*``, which adds its weight of one to ``reg[0]`` and then, across
+    the swap, leaves ``reg[1]`` holding the LSB as well -- the leaves flip
+    that copy into the answer, so the dump reads ``0 {answer}``.  Writing it
+    as the general rule would give ``+`` and an odd pad, which both loses
+    the ``reg[1]`` copy and strands the pointer.  A zero LSB is ``****``,
+    the same four commands doing nothing.
     """
     n = len(bits)
     size: int = 2**n
@@ -246,7 +304,7 @@ def _fill_minsky_swap(template: str, bits: list[int]) -> str:
             return "+" * weight + "*" * (size - weight)
         return "*" * size
 
-    return instantiate(template, bits, set_bit, lambda _i, _b: "*" * size)
+    return instantiate(template, bits, set_bit)
 
 
 def _fill_ram0(template: str, bits: list[int]) -> str:
@@ -259,46 +317,97 @@ def _fill_ram0(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "Z A" if b else "Z Z",
-        lambda _i, _b: "Z Z",
     )
 
 
 def _fill_home_row(template: str, bits: list[int]) -> str:
+    """Set the bit cell, in a constant width.
+
+    The cell is zero when a ``{Xi}`` is reached, so ``a`` raises it to one
+    and the second character settles it without moving the pointer: ``s``
+    puts it back to zero, while ``j`` only skips the instruction after it
+    when the cell is zero -- which it is not, having just been raised -- so
+    ``aj`` leaves a one.  Both bits are therefore two characters, and the
+    program's shape no longer reveals its inputs.
+
+    This used to spell a one as ``a`` and a zero as nothing at all, which
+    made the program's length reveal its inputs.  The padding has to leave
+    the cell's value alone *and* the pointer where it was: ``{Xi}`` sits
+    directly before a gate that tests this cell, so a pad that moves the
+    pointer (``d``/``f``) or changes the count (a second ``a``) misroutes
+    the gate rather than being inert.  Padding with spaces (``a`` against
+    two blanks) works, since the interpreter ignores whitespace, but it
+    pads with characters the language does not read.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "a" if b else "",
-        lambda _i, b: "a" if not b else "",
+        lambda _i, b: "aj" if b else "as",
     )
 
 
 def _fill_cod(template: str, bits: list[int]) -> str:
-    # each {Xi} sets the cod's value to the bit: ')' for one, space for
-    # zero, read at the start of that input's '+' fork
+    """Set the cod's value to the bit at that input's ``+`` fork.
+
+    ``)`` increments, so a one is ``)`` and a zero is a space -- which is
+    water, an open grid cell the cod passes through, not the inert filler a
+    space is in a language that ignores unknown characters.  Both bits are
+    one cell, so the programs are already all the same size and differ in
+    exactly one character per input, at a fixed column: 89 characters at
+    ``n == 1``, 350 at ``n == 2``, 1495 at ``n == 3``, whatever the inputs.
+
+    Spelling the zero as a command instead (``)(`` against ``)<``) works --
+    it needs the fork box widened by a column and one more of the cascade's
+    leading blanks -- but it buys nothing here and costs size: 350 goes to
+    359 and 1495 to 1529.  The blank is the grid's own zero, not padding.
+    """
     return instantiate(
         template,
         bits,
         lambda _i, b: ")" if b else " ",
-        lambda _i, _b: " ",
     )
 
 
 def _fill_eval(template: str, bits: list[int]) -> str:
-    # on the input stack (index 1), ` pushes 0 and + bumps it to 1
+    """Stage the bit on the tree stack, then move it to the input stack.
+
+    The backtick pushes ``1 - ptr``, so on stack 0 it pushes a one where
+    ``0`` pushes a zero -- a one-character setter either way.  ``=`` then
+    moves it to the input stack the nodes read, so both bits embed as two
+    characters and the program's shape does not reveal its inputs.
+
+    This used to push straight onto the input stack, where the backtick
+    yields a zero, so a one needed a second character (``` `+ ```) and a
+    zero only one.  Staging on the tree stack is what makes both bits one
+    character before the shared ``=``.  Padding the old zero to ``0 ``
+    also works, since the interpreter skips anything outside its command
+    set, but it pads with a character the language ignores.  An all-command
+    pad is not available: every ``{Xi}`` must push exactly one value, and a
+    spare ``0`` leaves a residue that a later node reads as a bit.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "`+" if b else "0",
-        lambda _i, _b: "",
+        lambda _i, b: "`=" if b else "0=",
     )
 
 
 def _fill_wii2d(template: str, bits: list[int]) -> str:
+    """Set each junction: ``v`` takes the 1-branch, ``>`` continues east.
+
+    A junction is a single cell, so the embed is one character with no
+    padding -- the placeholder's own four characters are how it is spelled,
+    not how much grid it needs.  The slot used to reserve a second column
+    for "the start digit beside it", but the start digit sits at column 1
+    and precedes junction 0 alone; every junction's second column was blank
+    travel on row 0, which the pointer crosses just as happily without.
+    The 1-branch's ops do start one column past the junction, but that is
+    on the detour row below, so row 0 never needed the room.
+    """
     return instantiate(
         template,
         bits,
-        lambda _i, b: "v   " if b else ">   ",
-        lambda _i, _b: "    ",
+        lambda _i, b: "v" if b else ">",
     )
 
 

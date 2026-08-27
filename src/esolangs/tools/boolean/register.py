@@ -2,7 +2,13 @@
 
 from typing import Any
 
-from esolangs.tools.boolean.helpers import _maybe_complement, _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _ASCII_ONE,
+    _ASCII_ZERO,
+    _maybe_complement,
+    _validate_truth_table,
+    minterm_literals,
+)
 from esolangs.tools.text.helpers import _cm_constants
 
 # Dig blocks for one level of the decision tree.
@@ -75,8 +81,8 @@ def decleq(truth_table: str) -> str:
     node(0, 0)
 
     mem.extend([0] * (out49 - len(mem) + 1))
-    mem[out48] = 48
-    mem[out49] = 49
+    mem[out48] = _ASCII_ZERO
+    mem[out49] = _ASCII_ONE
     # One past the last cell: the interpreter halts as soon as the pointer
     # leaves memory, so this is the smallest address that stops the program.
     #
@@ -125,15 +131,22 @@ def addsubjump(truth_table: str) -> str:
         return idx
 
     emit(-9, -6, "next", -7)  # enable flag mode
-    values["C48"] = -48
+    values["C48"] = -_ASCII_ZERO
     values["U"] = 0
-    values["D48"] = 48
-    values["D49"] = 49
+    values["D48"] = _ASCII_ZERO
+    values["D49"] = _ASCII_ONE
+    values["DUMP"] = 0  # scratch the collapsed leaves read into and discard
 
     def build(level: int, rows: list[int]) -> None:
         results = {truth_table[r] for r in rows}
         if len(results) == 1:
-            out = 48 if results.pop() == "0" else 49
+            # Drain the reads the untaken siblings would have made: an
+            # input-capable language reads each of its n inputs exactly once
+            # per run whatever the table says, or the caller's remaining bits
+            # are left on the input stream.  DUMP is write-only scratch.
+            for _ in range(level, n):
+                emit("DUMP", -1, "next", -7)  # DUMP += input byte, discarded
+            out = _ASCII_ZERO + int(results.pop())
             emit(-1, f"D{out}", -8, -7)
             return
         base = len(instructions)
@@ -218,12 +231,18 @@ def collatz_multiverse(truth_table: str) -> str:
     byte constants come from the text generator's constant table.
     """
     n = _validate_truth_table(truth_table)
-    if all(c == "0" for c in truth_table):
-        return "\n".join([*_cm_constants({48}), "out = negativeOne x + k48, DO PRINT."])
-    if all(c == "1" for c in truth_table):
-        return "\n".join([*_cm_constants({49}), "out = negativeOne x + k49, DO PRINT."])
+    if all(c == truth_table[0] for c in truth_table):
+        # A constant table needs no evaluation, but the reads are the language's
+        # interface: skipping them would leave the caller's bits unread on the
+        # input stream and drop the prompts a prompting interpreter emits.  So
+        # read every input, discard it, and print the constant.
+        const = _ASCII_ZERO + int(truth_table[0])
+        lines = _cm_constants({const})
+        lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
+        lines.append(f"out = negativeOne x + k{const}, DO PRINT.")
+        return "\n".join(lines)
 
-    lines = _cm_constants({48})
+    lines = _cm_constants({_ASCII_ZERO})
     for i in range(n):
         lines.append(f"b{i} = negativeOne x + input, NOT PRINT.")
 
@@ -253,13 +272,13 @@ def collatz_multiverse(truth_table: str) -> str:
         if truth_table[k] == "0":
             continue
         indicators = []
-        for i in range(n):
-            if (k >> (n - 1 - i)) & 1:
+        for i, negated in minterm_literals(k, n):
+            if negated:
+                indicators.append(flip(f"b{i}"))
+            else:
                 reg = fresh()
                 lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
                 indicators.append(reg)
-            else:
-                indicators.append(flip(f"b{i}"))
         minterm = indicators[0]
         for indicator in indicators[1:]:
             minterm = and_bits(minterm, indicator)
@@ -295,7 +314,7 @@ def sophie(truth_table: str) -> str:
             row = 0
             for bit in path:
                 row = row * 2 + bit
-            return f"#${48 + int(truth_table[row])},&"
+            return f"#${_ASCII_ZERO + int(truth_table[row])},&"
         return ";" + "@$48{" + build([*path, 0]) + "}" + "{" + build([*path, 1]) + "}"
 
     return build([])
@@ -376,7 +395,7 @@ def qoibl(truth_table: str) -> str:
     table, use_complement = _maybe_complement(truth_table)
     lines = []
     for i in range(n):
-        lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(48)} we")
+        lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we")
     for i in range(n):
         lines.append(
             f"we {_qoibl_enc(n + i)} we {_qoibl_enc(1)} "
@@ -387,8 +406,8 @@ def qoibl(truth_table: str) -> str:
         if table[k] == "0":
             continue
         factors = []
-        for i in range(n):
-            var = i if ((k >> (n - 1 - i)) & 1) else n + i
+        for i, negated in minterm_literals(k, n):
+            var = n + i if negated else i
             factors.append(f"qe {_qoibl_enc(var)} qe")
         product = factors[0]
         for factor in factors[1:]:
@@ -399,9 +418,13 @@ def qoibl(truth_table: str) -> str:
             f"qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we",
         )
     if use_complement:
-        lines.append(f"tt {_qoibl_enc(49)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt")
+        lines.append(
+            f"tt {_qoibl_enc(_ASCII_ONE)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt"
+        )
     else:
-        lines.append(f"tt qe {_qoibl_enc(2 * n)} qe ry ee ry {_qoibl_enc(48)} tt")
+        lines.append(
+            f"tt qe {_qoibl_enc(2 * n)} qe ry ee ry {_qoibl_enc(_ASCII_ZERO)} tt"
+        )
     return "\n".join(lines)
 
 
@@ -439,18 +462,28 @@ def polynomial(truth_table: str) -> str:
     def emit_delta(delta: int) -> None:
         if delta > 0:
             instrs.append([delta, 1])
-        elif delta < 0:
+        # The tree walks the accumulator up from zero and every answer is 0
+        # or 1, so the deltas the builder emits are never negative; the
+        # subtract instruction is here for a builder that needs one.
+        elif delta < 0:  # pragma: no cover - the tree only ever steps upward
             instrs.append([-delta, 2])
 
     def build(rows: list[int], bit: int, last: int) -> None:
         vals = {truth_table[r] for r in rows}
         if len(vals) == 1:
             v = int(vals.pop())
-            emit_delta(48 + v - last)
+            emit_delta(_ASCII_ZERO + v - last)
             instrs.append([0, 1])  # output
-            emit_delta(1 - (48 + v))  # restore reg to nonzero so the else skips
+            # Drain the reads the untaken siblings would have made, *after*
+            # printing so they cannot disturb the value being output: an
+            # input-capable language reads each of its n inputs exactly once
+            # per run whatever the table says, or the caller's remaining bits
+            # are left on the input stream.
+            for _ in range(bit, n):
+                instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+            emit_delta(1)  # reg back to nonzero so the enclosing else skips
             return
-        instrs.extend([[0, 2], [48, 2]])  # input; -= 48
+        instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
         g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
         g0 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 0]
         instrs.append([1])  # if reg > 0 -> the one-bit subtree
@@ -525,8 +558,8 @@ def point_break(truth_table: str) -> str:
         if truth_table[k] == "0":
             continue
         factors = [
-            _pb_name(1 + n + i) if not ((k >> (n - 1 - i)) & 1) else _pb_name(1 + i)
-            for i in range(n)
+            _pb_name(1 + n + i) if negated else _pb_name(1 + i)
+            for i, negated in minterm_literals(k, n)
         ]
         lines.append(f"LET {_pb_name(2 + 2 * n)}:={factors[0]}")
         for factor in factors[1:]:

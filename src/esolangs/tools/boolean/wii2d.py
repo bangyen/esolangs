@@ -11,9 +11,10 @@ strings letting each input be embedded exactly once -- see
 tables the search can reach.
 """
 
+import re
 from collections.abc import Callable
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["wii2d"]
 
@@ -43,9 +44,45 @@ __all__ = ["wii2d"]
 # :class:`ValueError` when it cannot fit a table in its budget (large dense
 # non-symmetric tables past ``n == 5``).
 
+
+class _WII2DBudgetError(Exception):
+    """The route search spent its work budget; unwind and try the next length."""
+
+
 # The op alphabet the search composes per junction branch: digits set the
 # accumulator, ``+ - * / s`` are arithmetic, and a space is a no-op.
 _WII2D_OPS = ["+", "-", "*", "/", "s"] + [str(d) for d in range(10)]
+
+# ``(maxlen, budget)`` for the search ladder, the budget in ``pre`` evaluations
+# (the search's inner unit of work: profiling a dense n == 5 table put 9.3M of
+# its 95M calls in ``pre``, and it is the term that grows with both the
+# op-string pool and the requirement count).
+#
+# Measured cost of a *successful* search, over seeded random tables:
+#
+#   n == 3   686 evaluations (every table)
+#   n == 4   1.5K - 32K
+#   n == 5   0.4M - 20.2M
+#
+# Each level gets ~4x the largest success measured at it, so the budget cuts
+# off only searches that have clearly diverged from the pattern of ones that
+# finish.  The cost of proving a table *unreachable* is the whole ladder:
+# ~300M evaluations, which at the observed ~0.5M/s is roughly ten minutes.  A
+# clock-based ladder capped that at ~114 seconds, but only by making the answer
+# depend on the machine -- a bounded wrong answer is not better than a slow
+# right one here, since the caller is generating a program to keep.
+#
+# These replace a ladder of wall-clock seconds; see :func:`_wii2d_search` for
+# why counted work is the right unit.  Note the old 30s level-5 clock was
+# itself below the cost of the slowest success measured above, so it failed on
+# tables this ladder solves.
+_WII2D_LADDER: tuple[tuple[int, int], ...] = (
+    (2, 1_000_000),
+    (3, 2_000_000),
+    (4, 4_000_000),
+    (5, 100_000_000),
+    (6, 200_000_000),
+)
 
 
 def _wii2d_apply(ops: str, value: int) -> int:
@@ -85,12 +122,24 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
     ``n == 2`` uses a closed form (:func:`_wii2d_n2_closed_form`) instead of
     searching.  Parity and its complement (symmetric tables where the entry
     is the popcount's low bit) get an exact O(1) closed form
-    (:func:`_wii2d_parity_routes`) up front: the general search below *can*
-    reach parity at maxlen == 2 for every arity tested (up to n == 20), but
-    its cost still grows with n (0.01s at n == 12, ~2s at n == 20), so the
-    closed form is a speed win, not a reachability one.  Every other
-    symmetric table (AND/OR/majority/threshold-k of any arity) is left to the
-    general search first, because it is usually faster there too (its
+    (:func:`_wii2d_parity_routes`) up front.  The general search below *can*
+    reach parity -- it finds a chain at every arity tested -- so this is not
+    a reachability requirement the way :func:`_wii2d_symmetric_search` is.
+    It pays on both of the things this package optimizes for, though:
+
+    * **Size.**  The chain the closed form states is shorter than the one the
+      search happens to find first, at every arity: 98 characters against 102
+      at ``n == 3``, 460 against 473 at ``n == 12``.  So the two are not
+      interchangeable -- removing the closed form changes every parity
+      program, and always for the worse.
+    * **Time.**  The search's cost grows sharply, and not smoothly: 137ms at
+      ``n == 12``, then 13.5s at ``n == 13`` and 23s at ``n == 14`` once it
+      falls through to a longer rung of the ladder.  (An earlier note here
+      put the cost at ~2s around ``n == 20``, which understated it by an
+      order of magnitude and at a much lower arity.)
+
+    Every other symmetric table (AND/OR/majority/threshold-k of any arity) is
+    left to the general search first, because it is usually faster there (its
     preimage-effect pruning makes monotone tables cheap); only if every
     length in the general ladder fails does :func:`_wii2d_symmetric_search`
     get a turn, reducing a symmetric table to a popcount accumulator plus a
@@ -113,9 +162,17 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
     and preimages are bit-vectors (one bit per reachable accumulator value),
     and routes that share a preimage effect are deduplicated, so the search
     stays tractable at the longer lengths.
-    """
-    import time
 
+    The budget is counted in ``pre`` evaluations, not seconds.  A wall-clock
+    budget makes the *output* depend on the machine: a slow host times out at
+    a short op-string length, falls through to a longer one, and emits a
+    different (longer) program than a fast host does -- or exhausts the ladder
+    and raises where the fast host succeeds.  Counting work instead makes the
+    program a pure function of the truth table, which is what lets the same
+    table be regenerated and diffed anywhere.  The price is that a slow
+    machine takes longer rather than silently degrading, and this search is
+    not interruptible mid-table.
+    """
     if n == 2:
         return 0, _wii2d_n2_closed_form(table)
     popcount_map = _wii2d_symmetric_popcount_map(n, table)
@@ -127,7 +184,7 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
 
     # Longer op strings cover denser tables (every table through n == 4 at
     # length 3, sampled n == 5 at length 5-6); the budgets grow accordingly.
-    for maxlen, budget in ((2, 4.0), (3, 8.0), (4, 12.0), (5, 30.0), (6, 60.0)):
+    for maxlen, budget in _WII2D_LADDER:
         domain = _wii2d_domain(maxlen, cap=10**6)
         index = {v: i for i, v in enumerate(domain)}
         seqs = _wii2d_sequences(maxlen, domain)
@@ -154,8 +211,7 @@ def _wii2d_search(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
                 bits ^= low
             return out
 
-        deadline = time.monotonic() + budget
-        result = _wii2d_search_start(n, t, seqs, pre, index, deadline)
+        result = _wii2d_search_start(n, t, seqs, pre, index, budget)
         if result is not None:
             return result
     if popcount_map is not None:
@@ -238,14 +294,18 @@ def _wii2d_symmetric_search(
     general chain search starts to struggle, though it can still fail (e.g.
     non-monotone symmetric tables like "exactly k of n ones" for large ``n``)
     since a single op string cannot express every popcount -> bit map.
-    """
-    import time
 
+    The ladder needs no budget: it is bounded by construction.  ``maxlen``
+    stops at 6 and the only growing term is the op-string pool, which tops out
+    at 7182 strings over a 1062-value domain -- the whole ladder is a bounded
+    amount of work (~14s worst case, and far less whenever an earlier length
+    decodes the table), so there is nothing to cut short.  An earlier 8-second
+    deadline here truncated that fixed ladder at whatever length the machine
+    happened to reach, which made a symmetric table's program depend on the
+    host rather than on the table.
+    """
     domain_size = n  # popcount before the last bit ranges over 0..n-1
-    deadline = time.monotonic() + 8.0
     for maxlen in range(0, 7):
-        if time.monotonic() > deadline:
-            return None
         dom = _wii2d_domain(maxlen, cap=10**6)
         if not all(p in dom for p in range(domain_size)):
             continue  # op strings this short can't even reach every popcount
@@ -283,7 +343,7 @@ def _wii2d_search_start(
     seqs: list[str],
     pre: Callable[[int, int], int],
     index: dict[int, int],
-    deadline: float,
+    budget: int,
 ) -> tuple[int, list[tuple[str, str]]] | None:
     """Search the junction routes, returning ``(start, routes)``.
 
@@ -296,9 +356,11 @@ def _wii2d_search_start(
     value the chain works for.  A junction's sub-search depends only on its
     requirement set, so results are memoized by ``(junction, requirement set)``
     to avoid re-solving the same sub-problem reached through different parents.
-    """
-    import time
 
+    ``budget`` caps the number of ``pre`` evaluations, so an over-long search
+    is abandoned after a fixed amount of *work* rather than a fixed amount of
+    time and the result does not depend on how fast the machine is.
+    """
     start_bits = 0
     for v in range(10):
         if v in index:
@@ -307,10 +369,17 @@ def _wii2d_search_start(
         tuple[int, tuple[int, ...]], tuple[list[tuple[str, str]], int] | None
     ] = {}
     reqsets = [[1 << index[t[c]] for c in range(2**n)]]
+    work = 0
+
+    def metered(sidx: int, targets: int) -> int:
+        """``pre`` with the work counter; raises once the budget is spent."""
+        nonlocal work
+        work += 1
+        if work > budget:
+            raise _WII2DBudgetError
+        return pre(sidx, targets)
 
     def search(i: int) -> tuple[list[tuple[str, str]], int] | None:
-        if time.monotonic() > deadline:
-            raise TimeoutError
         cur = reqsets[0]  # 2**(i+1) requirements
         key = (i, tuple(cur))
         if key in memo:
@@ -321,10 +390,10 @@ def _wii2d_search_start(
         # |seqs|**2 pair search -- dense n == 5 tables exhaust this way.
         eff0: dict[tuple[int, ...], str] = {}
         for si, s in enumerate(seqs):
-            eff0.setdefault(tuple(pre(si, cur[2 * p]) for p in range(2**i)), s)
+            eff0.setdefault(tuple(metered(si, cur[2 * p]) for p in range(2**i)), s)
         eff1: dict[tuple[int, ...], str] = {}
         for si, s in enumerate(seqs):
-            eff1.setdefault(tuple(pre(si, cur[2 * p + 1]) for p in range(2**i)), s)
+            eff1.setdefault(tuple(metered(si, cur[2 * p + 1]) for p in range(2**i)), s)
         # Try the least-constraining effects first (largest coverage: the most
         # incoming values they accept), so a solution is reached after a handful
         # of sub-problems instead of hundreds of dead ends.
@@ -359,7 +428,7 @@ def _wii2d_search_start(
 
     try:
         result = search(n - 1)
-    except TimeoutError:
+    except _WII2DBudgetError:
         return None
     if result is None:
         return None
@@ -441,34 +510,44 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
 
     ``{Xi}`` placeholders on row 0, each branch's op cells on row 0 (bit 0)
     or on a dedicated detour row below (bit 1), re-merging before the next
-    junction.  Merges and the final decode each leave one blank column of
-    separation before what follows them.
+    junction.  Nothing is spaced apart: a merge sits directly on the column
+    past the longer branch, the next junction directly past the merge, and
+    the decode directly past the last merge.  The layout used to leave one
+    blank column of separation at each of those seams, but a blank column
+    carries only straight eastward travel -- the pointer crosses it and
+    arrives at the same cell either way -- so it bought legibility in the
+    template at the cost of width in every emitted program.
     """
-    placeholder_width = len("{X0}")  # every {Xi} is 4 cells: '{X' + digit + '}'
+    # A junction is a single cell: the fill writes 'v' to take the 1-branch
+    # or '>' to continue east, and nothing on row 0 ever occupies the column
+    # after it.  The '{Xi}' spelling is four characters only because that is
+    # how the placeholder is written, and instantiation gives the rest back.
+    placeholder_width = 1
 
     placeholder_col = [0] * n
     # column 0 is always '>'; when there's a start digit (_wii2d_search only
     # ever returns a single digit 0-9), it sits at column 1 and the first
-    # placeholder is reserved a fixed placeholder_width-wide slot after it
-    # (more than the single digit needs, but matching every other gap's
-    # width in this layout); with no digit the placeholder starts right
-    # after the '>'.
-    placeholder_col[0] = placeholder_width if start != 0 else 1
+    # placeholder follows it at column 2.  With no digit the placeholder
+    # starts right after the '>'.  (No table found at n <= 3 needs a nonzero
+    # start, so this is the untravelled branch -- but the digit's column is
+    # its own, not the junction's.)
+    placeholder_col[0] = 2 if start != 0 else 1
     merge_col = [0] * n
     for i in range(n):
         r0, r1 = routes[i]
         # row 0 runs placeholder, then r0, ending at placeholder_col[i] +
         # placeholder_width + len(r0); row i+1 runs '>', then r1, ending at
-        # placeholder_col[i] + 1 + len(r1).  The merge sits one blank
-        # column past whichever row runs longer.
+        # placeholder_col[i] + 1 + len(r1).  The merge sits on the first
+        # column past whichever row runs longer, and the next junction on
+        # the first column past the merge.
         row0_end = placeholder_width + len(r0)
         row1_end = 1 + len(r1)
-        merge_col[i] = placeholder_col[i] + max(row0_end, row1_end) + 1
+        merge_col[i] = placeholder_col[i] + max(row0_end, row1_end)
         if i + 1 < n:
-            placeholder_col[i + 1] = merge_col[i] + 2
+            placeholder_col[i + 1] = merge_col[i] + 1
 
-    decode_start = merge_col[n - 1] + 1  # one blank column past the last merge
-    ascii_zero = 48
+    decode_start = merge_col[n - 1] + 1  # the column past the last merge
+    ascii_zero = _ASCII_ZERO
     total_cols = decode_start + ascii_zero + len("~.")
 
     grid = [[" "] * total_cols for _ in range(n + 1)]
@@ -476,9 +555,11 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     if start:
         grid[0][1] = str(start)
     for i in range(n):
-        ph = "{X" + str(i) + "}"
-        for k, ch in enumerate(ph):
-            grid[0][placeholder_col[i] + k] = ch
+        # The junction's one cell, spelled out once the layout is finished:
+        # the placeholder's four characters are how it is written, not how
+        # much room the junction needs, and the fill gives the difference
+        # back.
+        grid[0][placeholder_col[i]] = "\x00" + str(i) + "\x00"
         r0, r1 = routes[i]
         for k, ch in enumerate(r0):
             grid[0][placeholder_col[i] + placeholder_width + k] = ch
@@ -494,7 +575,10 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     grid[0][decode_start + ascii_zero] = "~"
     grid[0][decode_start + ascii_zero + 1] = "."
     grid[1][0] = "!"
-    return ["".join(row).rstrip() for row in grid]
+    rows = ["".join(row).rstrip() for row in grid]
+    return [
+        re.sub("\x00(\\d+)\x00", lambda m: "{X" + m.group(1) + "}", row) for row in rows
+    ]
 
 
 def wii2d(truth_table: str) -> str:
@@ -519,7 +603,9 @@ def wii2d(truth_table: str) -> str:
     dense tables at five (the earlier ``n == 4`` wall was a length cap, not a
     representation limit).  The requirement sets and preimages are bit-vectors
     and routes that share a preimage effect are deduplicated, keeping the
-    longer lengths tractable.  When the search cannot fit the table in its
+    longer lengths tractable.  The budget is counted in units of search work,
+    not seconds, so the program a table yields is the same on every machine.
+    When the search cannot fit the table in its
     budget it raises :class:`ValueError` -- a genuine cap, not a
     representation limit: the counting-bound argument in :func:`_wii2d_search`
     shows no chain with bounded op strings can represent every table once

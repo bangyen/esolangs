@@ -253,24 +253,21 @@ class TestGeneratorRoundTrips:
             code = sum(1 for c in program if not c.isspace())
             assert code / len(program) > floor, f"{text!r}: sparse grid"
 
-    def test_clockwise_never_beaten_by_the_bare_ring(self) -> None:
-        """Whichever layout is smaller is what comes out.
+    def test_clockwise_clamps_a_width_below_the_weave_floor(self) -> None:
+        """A width under the floor gets the narrowest weave, not an error.
 
-        The ring is still built and compared, so a text the weave cannot
-        improve on keeps the ring rather than growing.
+        Four columns is the narrowest grid the turtle can walk (a home lane,
+        the hairpin ladder and two descent lanes), so a smaller width cannot
+        be honoured by any layout.  It is clamped rather than refused: a
+        width is a preference about layout, and every other width-taking
+        generator answers an impossible one the same way.  The program still
+        has to run, which is what rules out returning something merely
+        narrow-looking.
         """
-        from esolangs.tools.text.other import _clockwise_ring
-
-        for text in ("A", "Hi", "Hello, World!", "Clockwise test 123!"):
-            program = gen.clockwise(text)
-            parity, bits = 0, ""
-            for char in text:
-                for bit in f"{ord(char):07b}":
-                    if parity != int(bit):
-                        bits += "+"
-                        parity = int(bit)
-                    bits += ";"
-            assert len(program) <= len(_clockwise_ring(bits, None))
+        for width in (1, 2, 3, 4):
+            program = gen.clockwise("Hello", width)
+            assert max(len(line) for line in program.split("\n")) == 4
+            assert roundtrip(clockwise_run, program.splitlines()) == "Hello"
 
     @pytest.mark.parametrize("width", [10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["Hi", "Hello, World!", "q" * 30])
@@ -340,7 +337,7 @@ class TestGeneratorRoundTrips:
         code point, so neither shape can be emitted while the other one
         would have been shorter.
         """
-        from esolangs.tools.text.other import (
+        from esolangs.tools.text.streetcode import (
             _streetcode_instructions,
             _streetcode_ring,
             _streetcode_straight,
@@ -413,7 +410,7 @@ class TestGeneratorRoundTrips:
         ``examples/hello-world/streetcode.txt`` is built at, so the shipped
         example shows a loop.
         """
-        from esolangs.tools.text.other import (
+        from esolangs.tools.text.streetcode import (
             _streetcode_instructions,
             _streetcode_ring_serpentine,
             _streetcode_serpentine,
@@ -441,12 +438,29 @@ class TestGeneratorRoundTrips:
         fold is emitted unringed rather than being re-planned to suit the
         width: what a ring costs is what it costs.
         """
-        from esolangs.tools.text.other import _streetcode_ring_serpentine
+        from esolangs.tools.text.streetcode import _streetcode_ring_serpentine
 
         assert _streetcode_ring_serpentine("中文", 80) is None
         program = gen.streetcode("中文", 80)
         assert "U" not in program
         assert roundtrip(streetcode_run, program.split("\n")) == "中文"
+
+    def test_streetcode_text_opening_on_a_nul_has_no_ring(self) -> None:
+        """A first character of zero is already the cell's value.
+
+        The ring exists to multiply the first code point up from zero, so
+        a text starting at zero has nothing to count: the plan is refused
+        and the straight walk is emitted, which prints it just the same.
+        """
+        from esolangs.tools.text.streetcode import (
+            _plan_ring,
+            _streetcode_ring_serpentine,
+        )
+
+        assert _plan_ring(0) is None
+        assert _streetcode_ring_serpentine("\x00", 80) is None
+        program = gen.streetcode("\x00A")
+        assert roundtrip(streetcode_run, program.split("\n")) == "\x00A"
 
     @pytest.mark.parametrize("width", [10, 20, 40, 60, 80])
     @pytest.mark.parametrize("text", ["A", "Hi", "Hello, World!"])
@@ -463,6 +477,75 @@ class TestGeneratorRoundTrips:
         assert max(len(line) for line in lines) <= width
         assert roundtrip(wii2d_run, lines) == text
 
+    @pytest.mark.parametrize("width", [5, 6, 8, 12, 20, 40])
+    @pytest.mark.parametrize(
+        "text",
+        ["A", "Hi", "Hello, World!", "abc 123 xyz", "123456", "a b c d e f"],
+    )
+    def test_dig_honours_a_width(self, text: str, width: int) -> None:
+        """The segments fold over row pairs and the mole still prints them.
+
+        The digit texts are the ones that matter: a segment whose character
+        is a digit carries a pad cell, so it is one column wider than the
+        rest and the turn has to stay clear of it.  The spaced text drives
+        the other reader, ``%``, which takes its 0 from the depth row below.
+        """
+        program = gen.dig(text, width)
+        lines = program.split("\n")
+        # A padded segment gives every row one more column; nothing else may.
+        assert max(len(line) for line in lines) <= width + 1
+        assert roundtrip(dig_run, lines) == text
+
+    def test_dig_narrower_widths_are_never_wider(self) -> None:
+        """Asking for less never gets more: the shapes agree at the seam."""
+        text = "Hello, World!"
+        widest = [
+            max(len(line) for line in gen.dig(text, w).split("\n"))
+            for w in range(1, 41)
+        ]
+        assert widest == sorted(widest), widest
+
+    @pytest.mark.parametrize(
+        "text", ["Hi", "Hello, World!", "abc 123 xyz", "123456", "a b c"]
+    )
+    def test_dig_stands_the_program_on_end_below_the_fold_floor(
+        self, text: str
+    ) -> None:
+        """A width no fold can turn in gets the vertical form, two wide.
+
+        The mole falls south through the commands in column 0 and reads its
+        counts from column 1, since ``_value`` takes a digit from any
+        neighbour rather than the cell below.  Two columns is the floor of
+        the language itself, so even width 1 is answered with a program.
+        """
+        for width in (1, 2, 3, 4):
+            program = gen.dig(text, width)
+            assert max(len(line) for line in program.split("\n")) == 2
+            assert roundtrip(dig_run, program.splitlines()) == text
+
+    def test_dig_vertical_needs_no_padding_cell(self) -> None:
+        """A leading digit needs no pad standing up: the count is beside it.
+
+        Folded, a segment starting with a digit takes a padding cell so the
+        ``$`` does not read that digit as its own count.  Standing up, the
+        count sits in the *other* column, so the character below a ``$`` is
+        never mistaken for it and the pad is not emitted.
+        """
+        program = gen.dig("123456", 2)
+        assert "  " not in program
+        assert roundtrip(dig_run, program.splitlines()) == "123456"
+
+    def test_dig_without_a_width_is_unchanged(self) -> None:
+        """No width leaves the one-pair program the generator always built.
+
+        The refactor that added the fold moved the segment building into
+        :func:`~esolangs.tools.text.register._dig_segments`, so this pins the
+        width-less output the committed examples depend on.
+        """
+        assert gen.dig("Hello, World!") == (
+            ">$H:e:l:l:$o:,:%:W:$o:r:l:d:$!:@\n 8        8    0   8        2"
+        )
+
     def test_wii2d_start_marker_sits_below_the_first_row(self) -> None:
         """The pointer starts *above* the ``!``, so it must not be on top.
 
@@ -473,7 +556,7 @@ class TestGeneratorRoundTrips:
         lines = gen.wii2d("Hello, World!", 40).split("\n")
         assert lines[1] == "!"
 
-    @pytest.mark.parametrize("width", [20, 24, 40, 80])
+    @pytest.mark.parametrize("width", [6, 7, 20, 24, 40, 80])
     @pytest.mark.parametrize(
         "text", ["A", "Hi", "Hello", "The quick brown fox", "x" * 20]
     )
@@ -485,6 +568,11 @@ class TestGeneratorRoundTrips:
         a margin without changing what it executes.  It is also the widest
         thing the generator emits: ``"The quick brown fox"`` is 1833
         columns unfolded.
+
+        Six is the floor -- the margin cell that turns the beam right, an
+        op, and the turn-down that ends the segment, plus the column the
+        fold returns to -- so it is exercised here alongside the roomier
+        widths.
         """
         program = gen.laserfuck(text, width)
         assert max(len(line) for line in program.split("\n")) <= width
@@ -531,6 +619,65 @@ class TestGeneratorRoundTrips:
         """
         program = gen.laserfuck("\x03\x03\x03")
         assert program.count("#/)") <= 1
+
+    @pytest.mark.parametrize("width", [5, 8, 12, 20, 30])
+    def test_laserfuck_snake_ring_refuses_a_width_it_cannot_fit(
+        self, width: int
+    ) -> None:
+        """Too narrow for the ring, the builder answers None, not a bad grid.
+
+        The snake needs a spine to count down and a right margin to turn in,
+        and the finished block still has to sit inside the width.  Each of
+        those is checked separately and each answers ``None``, which is what
+        lets :func:`laserfuck` fall back to a form that does fit rather than
+        emitting a ring whose rows overrun.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
+
+        assert _laserfuck_snake_ring("Hi", width) is None
+
+    def test_laserfuck_snake_needs_a_spine_and_a_margin(self) -> None:
+        """A spine with no room either side cannot carry a snake."""
+        from esolangs.tools.text.laserfuck import _laserfuck_snake
+
+        # right - spine - 1 < 1: no column for the first chunk.
+        assert _laserfuck_snake("+++", 1, 2) is None
+        # and with the spine past the right edge entirely.
+        assert _laserfuck_snake("+++", 5, 6) is None
+
+    def test_laserfuck_base_factor_gives_up_on_a_small_base(self) -> None:
+        """Under six there is no split that beats counting the base out.
+
+        The ring costs ``outer + inner`` plus its frame, so a base with no
+        factor pair cheaper than itself is left for the caller to write
+        literally.
+        """
+        from esolangs.tools.text.laserfuck import _laserfuck_base_factor
+
+        assert all(_laserfuck_base_factor(base) is None for base in range(6))
+        assert _laserfuck_base_factor(6) == (2, 3, 0)
+
+    def test_laserfuck_counts_a_small_base_out_literally(self) -> None:
+        """A base too small to factor is written as a run, with no ring.
+
+        ``\\x01`` needs one unit, and no ``outer``/``inner`` split is cheaper
+        than the frame a ring would cost, so the stage is a plain ``+`` run.
+        """
+        program = gen.laserfuck("\x01", 5)
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == "\x01"
+
+    def test_laserfuck_falls_back_when_the_loop_grid_overruns(self) -> None:
+        """A loop grid wider than the width is re-emitted as the linear form.
+
+        The loop layout is tied to the beam's track, so it cannot be folded
+        the way the linear run can; when it does not fit, the whole form is
+        swapped rather than squeezed.
+        """
+        program = gen.laserfuck("aaa", 25)
+        assert max(len(line) for line in program.split("\n")) <= 25
+        for heading in range(4):
+            assert laserfuck_roundtrip(program, heading) == "aaa"
 
     def test_laserfuck_multiply_ring_leaves_no_stray_cell(self) -> None:
         """The scratch cell the multiply ring spends never reaches the dump.
@@ -595,7 +742,7 @@ class TestGeneratorRoundTrips:
         :func:`laserfuck`, which would quietly drop a broken snake and fall
         back to another form -- the failure would not show.
         """
-        from esolangs.tools.text.other import _laserfuck_snake_ring
+        from esolangs.tools.text.laserfuck import _laserfuck_snake_ring
 
         for text in ("x" * 20, "Hello, World!", "The quick brown fox"):
             for width in (60, 80, 120):
@@ -738,6 +885,31 @@ class TestGeneratorRoundTrips:
         # the backslash, form-feed, and NUL escapes take the remaining branches
         assert roundtrip(myscript_run, gen.myscript("a\\b\fc")) == "a\\b\fc"
         assert roundtrip(myscript_run, gen.myscript("a\x00b")) == "a\x00b"
+
+    @pytest.mark.parametrize("width", [1, 4, 10, 12, 40])
+    def test_myscript_splits_across_say_statements(self, width: int) -> None:
+        """A width cuts the text across several ``say`` lines, never a escape.
+
+        ``say`` writes with no trailing newline, so the statements
+        concatenate.  The escapes (``\\n``, ``\\t``) are two characters that
+        only mean a byte together, so a line break must fall between whole
+        pieces -- which is why the packing is by piece rather than by slice.
+        A width too narrow for one piece still gets that piece.
+        """
+        text = 'a\tb\nc"d\\e'
+        program = gen.myscript(text, width)
+        assert all(line.startswith('say "') for line in program.split("\n"))
+        assert roundtrip(myscript_run, program) == text
+
+    def test_myscript_rejects_a_byte_it_cannot_escape(self) -> None:
+        """A byte outside the printable range has no ``say`` escape."""
+        with pytest.raises(ValueError, match="representable bytes"):
+            gen.myscript("caf\xe9")
+
+    def test_taglate_rejects_a_line_break(self) -> None:
+        """The queue is one line, so a break in the text would split it."""
+        with pytest.raises(ValueError, match="newline or other line break"):
+            gen.taglate("a\nb")
 
     def test_empty_text_returns_empty(self) -> None:
         """The register generators return an empty program for empty text."""
@@ -1155,3 +1327,42 @@ class TestGeneratorBranches:
         with patch.object(sys, "argv", ["esolangs.tools.text", "Hi"]):
             runpy.run_module("esolangs.tools.text", run_name="__main__")
         assert "--- BFStack ---" in capsys.readouterr().out
+
+
+class TestWeaveInternals:
+    """The weave's rejection paths, which the public generator never reaches.
+
+    :func:`~esolangs.tools.text.other.clockwise` clamps its width up to the
+    floor before folding, so the "no weave fits" answers below are
+    unreachable through it.  They are what keeps a bad template from being
+    filled with instructions anyway, so they are exercised directly.
+    """
+
+    def test_slots_rejects_a_template_the_walk_leaves(self) -> None:
+        """A grid the pointer walks out of is not a closed template.
+
+        With no turns in it the pointer runs east and off the edge, which
+        is how a bad ``units``/``body`` pair is refused: the walk raises
+        rather than returning a cell list that was never a circuit.
+        """
+        from esolangs.tools.text.other import _weave_slots
+
+        assert _weave_slots([[" "] * 4 for _ in range(4)]) is None
+        # A ring of turns leaves the grid the same way rather than cycling.
+        assert _weave_slots([list(row) for row in ("RR", "RR")]) is None
+
+    def test_weave_refuses_a_width_below_the_floor(self) -> None:
+        """Under the floor there is no weave to build; the caller clamps."""
+        from esolangs.tools.text.other import _clockwise_weave
+
+        assert _clockwise_weave(";", 3) is None
+
+    def test_the_narrowest_weave_still_holds_a_long_program(self) -> None:
+        """Four columns keep taking units until the slots fit the program.
+
+        Each unit adds about six slots, so the search always terminates by
+        finding a template rather than by outgrowing the program.
+        """
+        from esolangs.tools.text.other import _clockwise_weave
+
+        assert _clockwise_weave(";" * 400, 4) is not None

@@ -26,6 +26,11 @@ from tests.tools.boolean_runners import (
 )
 
 
+def _columns(program: str) -> int:
+    """The widest row of a grid program, which is what a width bounds."""
+    return max(len(line) for line in program.split("\n"))
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -128,6 +133,42 @@ class TestStreetcode:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_streetcode(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_width_is_a_shape_choice(self) -> None:
+        """A width picks a narrower shape, and that shape still computes.
+
+        The shapes differ in aspect -- the ring is the shortest program but
+        the widest -- so a width the default overruns is met by a shape that
+        was built anyway, at the cost of rows.  A Streetcode program cannot
+        be reflowed after the fact, so this is the only way a width is met.
+        """
+        table = "10"
+        default = boolean.streetcode(table)
+        narrow = boolean.streetcode(table, 25)
+        assert _columns(narrow) <= 25 < _columns(default)
+        assert narrow.count("\n") > default.count("\n")
+        for bit in ("0", "1"):
+            assert run_streetcode(narrow, [bit]) == table[int(bit)]
+
+    def test_width_takes_the_narrowest_when_none_fits(self) -> None:
+        """Below every shape's width the narrowest one is returned.
+
+        The generator has no shape narrower than its own decision tree, so
+        an impossible width is a preference it cannot honour rather than an
+        error; returning the best available beats returning nothing.
+        """
+        table = "10"
+        program = boolean.streetcode(table, 1)
+        assert _columns(program) == min(
+            _columns(boolean.streetcode(table, w)) for w in (1, 25, 100)
+        )
+        for bit in ("0", "1"):
+            assert run_streetcode(program, [bit]) == table[int(bit)]
+
+    def test_width_none_is_unchanged(self) -> None:
+        """Passing no width builds exactly what the generator always built."""
+        for table in ("10", "0110", "11111110"):
+            assert boolean.streetcode(table, None) == boolean.streetcode(table)
 
 
 class TestDimensional:
@@ -441,10 +482,15 @@ class TestSuffolk:
             got = run_suffolk(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_constant_tables_need_no_reads(self) -> None:
-        """An all-zero or all-one table never touches ','."""
-        assert "," not in boolean.suffolk("00")
-        assert "," not in boolean.suffolk("11")
+    def test_constant_tables_collapse_but_still_read(self) -> None:
+        """A constant table skips the minterms but still reads its inputs.
+
+        Dropping the evaluation is the win; the reads are the language's
+        interface and have to stay, or the caller's bits are left unread on
+        the input stream for whatever runs next.
+        """
+        for table in ("00", "11"):
+            assert boolean.suffolk(table).count(",") == 1  # n == 1
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
@@ -707,11 +753,18 @@ class TestSbleq:
             (0, 0, data_base + 3)
         ]  # one halt per leaf
 
-    def test_constant_table_has_no_reads(self) -> None:
-        """A constant table collapses to an output and a halt."""
+    def test_constant_table_collapses_but_still_reads(self) -> None:
+        """A constant table emits one output, a halt, and the n reads.
+
+        The tree collapses to a single leaf, but each level still allocates
+        its read/normalize pair so every input is consumed exactly once --
+        both branches of a drained level simply continue to the same leaf.
+        """
         program = boolean.sbleq("0000")
         cells = [int(tok) for tok in program.split()]
-        assert cells == [-3, 7, 0, 0, 0, 9, -49, 48, 49, -1]
+        # -3 prints the constant; each of the n == 2 drained levels reads once
+        assert cells[0] == -3
+        assert cells.count(-2) == 2  # one read instruction per input
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):

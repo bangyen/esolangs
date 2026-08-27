@@ -42,8 +42,12 @@ def test_parameterized_generators_embed_each_input_once() -> None:
 
     An input-capable language reads each of its n inputs exactly once per
     run; a no-input language's parameterized generator should match, so each
-    {Xi} (and {Ci}, if used) appears exactly once -- never re-embedded at
-    multiple decision nodes.
+    {Xi} appears exactly once -- never re-embedded at multiple decision
+    nodes.
+
+    A {Ci} complement placeholder must not appear at all.  instantiate no
+    longer fills one, so a template carrying it would ship the literal text
+    to the interpreter instead of failing, which is worth catching here.
     """
     import re
 
@@ -55,9 +59,7 @@ def test_parameterized_generators_embed_each_input_once() -> None:
             cs = re.findall(r"\{C(\d+)\}", template)
             assert sorted(xs) == [str(i) for i in range(n)], (name, n, xs)
             assert len(xs) == n, (name, n, xs)
-            if cs:
-                assert sorted(cs) == [str(i) for i in range(n)], (name, n, cs)
-                assert len(cs) == n, (name, n, cs)
+            assert not cs, (name, n, cs)
 
 
 class TestParameterizedBIO:
@@ -77,16 +79,10 @@ class TestParameterizedBIO:
         return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_bio
 
-        n = len(bits)
-        # pack each input once by its binary weight
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda i, b: "0ox;" * (2 ** (n - 1 - i)) if b else "",
-            lambda _i, _b: "",
-        )
+        return _fill_bio(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -128,6 +124,29 @@ class TestParameterizedBIO:
             template = parameterized.bio(table)
             assert len(re.findall(r"\{X\d+\}", template)) == n
 
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """A zero pads against the unread ``z``, so the program's length
+        does not reveal the inputs."""
+        from esolangs.tools.boolean.examples import _fill_bio
+
+        for n in (1, 2, 3):
+            for i in range(n):
+                placeholder = "{X" + str(i) + "}"
+                zeros = [0] * n
+                ones = list(zeros)
+                ones[i] = 1
+                assert len(_fill_bio(placeholder, zeros)) == len(
+                    _fill_bio(placeholder, ones)
+                ), f"n={n} input {i}"
+
+    def test_padding_never_touches_a_read_register(self) -> None:
+        """``z`` is inert: the generator emits no command that reads it."""
+        from esolangs.tools.boolean import parameterized
+
+        for n in (1, 2, 3):
+            template = parameterized.bio(format(0, f"0{2**n}b"))
+            assert "z" not in template.lower()
+
 
 class TestParameterizedBack:
     """Input-by-substitution generators for the no-input language Back."""
@@ -145,15 +164,23 @@ class TestParameterizedBack:
         return io.getvalue().split()[n]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_back
 
-        # each {Xi} fills a tape cell: '-' for a one bit, space for zero
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "-" if b else " ",
-            lambda _i, _b: " ",
-        )
+        return _fill_back(tpl, bits)
+
+    def test_program_length_is_the_same_for_every_input(self) -> None:
+        """Both bits cost one command, so the size reveals nothing."""
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_back
+
+        for n in (1, 2, 3):
+            template = parameterized.back(format(0, f"0{2**n}b"))
+            sizes = {
+                len(_fill_back(template, [(c >> (n - 1 - i)) & 1 for i in range(n)]))
+                for c in range(2**n)
+            }
+            assert len(sizes) == 1, f"n={n} sizes {sorted(sizes)}"
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -239,7 +266,6 @@ class TestParameterizedNoComment:
             tpl,
             bits,
             lambda _i, b: "c" if b == 0 else "i",
-            lambda _i, b: "c" if b == 1 else "i",
         )
 
     @pytest.mark.parametrize(
@@ -341,7 +367,6 @@ class TestParameterizedLamfunc:
             tpl,
             bits,
             lambda _i, b: "0b" + str(b),
-            lambda _i, b: "0b" + str(b),
         )
 
     @pytest.mark.parametrize(
@@ -435,7 +460,6 @@ class TestParameterizedBitdeque:
             tpl,
             bits,
             lambda i, b: "PUSH INVERT" if b == (n - 1 - i) % 2 else "INVERT PUSH",
-            lambda _i, _b: "PUSH INVERT",
         )
 
     @pytest.mark.parametrize(
@@ -528,7 +552,6 @@ class TestParameterizedRam0:
             tpl,
             bits,
             lambda _i, b: "Z A" if b else "Z Z",
-            lambda _i, _b: "Z Z",
         )
 
     @pytest.mark.parametrize(
@@ -625,7 +648,6 @@ class TestParameterizedMinskySwap:
             tpl,
             bits,
             set_bit,
-            lambda _i, _b: "*" * 2**n,
         )
 
     @pytest.mark.parametrize(
@@ -781,14 +803,24 @@ class TestParameterizedBfpda:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_bfpda
 
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "<@" if b else "<",
-            lambda _i, b: "<@" if not b else "<",
-        )
+        return _fill_bfpda(tpl, bits)
+
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """The setter is four characters whichever bit it carries."""
+        from esolangs.tools.boolean.examples import _fill_bfpda
+
+        for n in (1, 2, 3):
+            for i in range(n):
+                placeholder = "{X" + str(i) + "}"
+                zeros = [0] * n
+                ones = list(zeros)
+                ones[i] = 1
+                assert len(_fill_bfpda(placeholder, zeros)) == len(
+                    _fill_bfpda(placeholder, ones)
+                ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -855,8 +887,8 @@ class TestParameterizedBfpda:
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda("10")  # NOT: one-leaf prints 1
-        assert "<@. >" in template
-        assert "<. >" in template
+        assert "<@.>" in template
+        assert "<.>" in template
 
     def test_bad_table_rejected(self) -> None:
         from esolangs.tools.boolean import parameterized
@@ -877,14 +909,24 @@ class TestParameterizedHomeRow:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_home_row
 
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "a" if b else "",
-            lambda _i, b: "a" if not b else "",
-        )
+        return _fill_home_row(tpl, bits)
+
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """The setter is two characters whichever bit it carries."""
+        from esolangs.tools.boolean.examples import _fill_home_row
+
+        for n in (1, 2, 3):
+            for i in range(n):
+                placeholder = "{X" + str(i) + "}"
+                zeros = [0] * n
+                ones = list(zeros)
+                ones[i] = 1
+                assert len(_fill_home_row(placeholder, zeros)) == len(
+                    _fill_home_row(placeholder, ones)
+                ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -988,7 +1030,6 @@ class TestParameterizedCOD:
             tpl,
             bits,
             lambda _i, b: ")" if b else " ",
-            lambda _i, _b: " ",
         )
 
     @pytest.mark.parametrize(
@@ -1158,15 +1199,24 @@ class TestEvalBoolean:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean import parameterized
+        """Fill the template the way the example harness does."""
+        from esolangs.tools.boolean.examples import _fill_eval
 
-        # on the input stack (index 1), `` pushes 0 and + bumps it to 1
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "`+" if b else "0",
-            lambda _i, _b: "",
-        )
+        return _fill_eval(tpl, bits)
+
+    def test_both_bits_embed_at_the_same_width(self) -> None:
+        """The setter is two characters whichever bit it carries."""
+        from esolangs.tools.boolean.examples import _fill_eval
+
+        for n in (1, 2, 3):
+            for i in range(n):
+                placeholder = "{X" + str(i) + "}"
+                zeros = [0] * n
+                ones = list(zeros)
+                ones[i] = 1
+                assert len(_fill_eval(placeholder, zeros)) == len(
+                    _fill_eval(placeholder, ones)
+                ), f"n={n} input {i}"
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1221,7 +1271,8 @@ class TestEvalBoolean:
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.eval("0110")
-        assert template.startswith("~{X1}{X0}~")  # inputs MSB-first on stack 1
+        # inputs MSB-first, staged on the tree stack and moved by each `=`
+        assert template.startswith("{X1}{X0}")
         assert template.endswith("*!")
         assert '"~=~?;!"' in template  # root node: one discard
         assert '"~=~?;;!"' in template  # BFS index 1: two discards
@@ -1254,3 +1305,46 @@ class TestEvalBoolean:
 
         with pytest.raises(ValueError, match="only '0' and '1'"):
             parameterized.eval("02")
+
+
+def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
+    """No fill may spell a 0 shorter than a 1, or the length leaks the input.
+
+    A program whose length depends on its inputs reveals them without being
+    read: an earlier BIO embedding ran to 236/240/244/248 characters for the
+    four ``n == 2`` instantiations, so ``len(program)`` alone recovered the
+    bits.  Every ``_fill_*`` therefore pads the two sides to equal width, an
+    invariant stated on :func:`~esolangs.tools.boolean.helpers.instantiate`
+    and enforced here.
+
+    The check is per-generator rather than global: fills legitimately differ
+    from each other in width, but for one generator and one table every
+    instantiation must come out the same length.
+    """
+    import itertools
+
+    from esolangs.tools.boolean import examples as ex
+
+    fills = [
+        (name, getattr(ex, name))
+        for name in dir(ex)
+        if name.startswith("_fill_") and callable(getattr(ex, name))
+    ]
+    assert fills, "no _fill_* functions found"
+
+    for name, fill in fills:
+        gen_name = name.removeprefix("_fill_")
+        gen = getattr(ex, gen_name, None) or getattr(
+            importlib.import_module("esolangs.tools.boolean"), gen_name, None
+        )
+        if gen is None:  # pragma: no cover - fill without a same-named generator
+            continue
+        for n in (1, 2):
+            template = gen(format(0, f"0{2**n}b"))
+            lengths = {
+                len(fill(template, list(bits)))
+                for bits in itertools.product((0, 1), repeat=n)
+            }
+            assert len(lengths) == 1, (
+                f"{name} embeds bits at unequal width for n={n}: {sorted(lengths)}"
+            )
