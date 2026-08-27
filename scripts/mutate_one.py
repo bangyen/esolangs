@@ -172,10 +172,13 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int]:
     (proj / "tests" / "conftest.py").write_text(_CONFTEST.replace("{stem}", stem))
     (work / "sitecustomize.py").write_text(_SITECUSTOMIZE)
     # Several suites read a shipped example through ``Path(__file__)
-    # .parents[2]``, which resolves to the work dir once the test file is
-    # copied.  Link the real tree in rather than copying it: nothing outside
-    # ``bundled.py`` is mutated, so the examples are safe to share.
+    # .parents[2]``.  That resolves to the work dir for the baseline run and
+    # to *proj* for the mutation runs, because mutmut re-copies tests/ into
+    # mutants/ and chdirs there -- so both need the link, or the example
+    # tests fail inside mutants/ even unmutated and mutmut scores nothing.
+    # Link rather than copy: nothing outside ``bundled.py`` is mutated.
     (work / "examples").symlink_to(ROOT / "examples")
+    (proj / "examples").symlink_to(ROOT / "examples")
     (proj / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
         f'paths_to_mutate = ["{out.name}"]\n'
@@ -204,6 +207,13 @@ def main() -> int:
     parser.add_argument(
         "--keep", action="store_true", help="leave the work directory in place"
     )
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=4,
+        help="mutants to run at once (default 4; mutmut's own default is "
+        "every core, which saturates the machine for the whole run)",
+    )
     args = parser.parse_args()
 
     work = Path(tempfile.mkdtemp(prefix="mutate-one-"))
@@ -224,8 +234,8 @@ def main() -> int:
             raise SystemExit("the bundled tests fail before any mutation")
 
         env = {"PYTHONPATH": str(work), "PYTHONDONTWRITEBYTECODE": "1"}
-        subprocess.run(
-            [sys.executable, "-m", "mutmut", "run"],
+        mutation = subprocess.run(
+            [sys.executable, "-m", "mutmut", "run", "--max-children", str(args.jobs)],
             cwd=proj,
             env={**os.environ, **env},
             capture_output=True,
@@ -236,6 +246,17 @@ def main() -> int:
         killed, total, survivors = _score(proj, stem)
         if not total:
             raise SystemExit("no mutants were generated")
+        if not killed:
+            # Every exit code still at its initial 0 means no mutant run ever
+            # reported, which a suite that passes its baseline cannot cause.
+            # It reads as a perfect survivor sweep, so say what it is instead.
+            print(mutation.stdout[-3000:] or mutation.stderr[-3000:])
+            raise SystemExit(
+                f"0 of {total} mutants killed with a passing baseline: the "
+                "mutants did not run.  Check the output above -- usually the "
+                "suite fails inside mutants/, where it runs from a different "
+                "directory than the baseline."
+            )
         print(
             f"\n{args.language}: {killed}/{total} killed ({100 * killed / total:.1f}%)"
         )
