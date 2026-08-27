@@ -50,13 +50,22 @@ def generate(language: str, text: str, width: int | None = None) -> str:
 
     Most languages honour it by *wrapping* the finished program, breaking
     only between whole tokens so it still means the same thing.  A few build
-    a shape rather than a line -- Clockwise lays its code around a
-    rectangle's perimeter -- and cannot be reflowed after the fact; those
+    a shape rather than a line -- Clockwise weaves its code through a grid
+    the turtle walks -- and cannot be reflowed after the fact; those
     generators take the width themselves and lay the program out to fit.
 
     A language whose newlines are semantic (the 2D grid languages) or that
     rejects them outright (NoComment) ignores ``width`` rather than raising,
     so one width can be passed across every language.
+
+    ``width`` is therefore considered but not guaranteed: every generator
+    narrows what it can, and one asked for less than its construction can
+    occupy returns its narrowest form rather than raising.  The floor is
+    the generator's own -- five columns for Clockwise's weave, but a
+    function of the *text* for the generators whose programs grow with it,
+    so there is no one width below which a caller can expect a refusal.
+    Passing a width no generator can meet is safe; it just gets the
+    narrowest program each of them can build.
     """
     try:
         fn = GENERATORS[language]
