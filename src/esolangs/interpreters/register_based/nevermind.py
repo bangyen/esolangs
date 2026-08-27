@@ -20,8 +20,11 @@ A number is written in ASCII, either as digits or as digits around a
 single ``.``; a decimal is only read as one when the spelling matches how
 it prints back, so ``02.5`` stays the text the program wrote.
 
-An ``if``/``loop``/``endloop`` with no matching partner is a structurally
-malformed program and is rejected with :class:`ValueError`; dividing by zero,
+An ``if``/``loop``/``endloop`` with no matching partner, or a command
+short of the operands its form requires (``make`` without a value,
+``if`` without both sides of its comparison, ``loop`` without a count),
+is a structurally malformed program and is rejected with
+:class:`ValueError`; dividing by zero,
 referencing an undefined ``$name``, or ``input`` with no prompt are invalid
 operations that halt the program with :class:`~esolangs.exceptions.HaltError`
 (or, for the missing prompt, :class:`ValueError`).
@@ -156,6 +159,8 @@ class _Machine:
                     raise ValueError("input requires a prompt")
                 self.var["answer"] = self.io.input_str(str(c[1]))
             elif op == "make":
+                if len(c) < 3:
+                    raise ValueError("make requires a name and a value")
                 if len(c) == 5:
                     v: int | float | str
                     if (o := c[3]) == "++":
@@ -177,6 +182,8 @@ class _Machine:
                 else:
                     self.var[str(c[1])] = c[2]
             elif op == "if":
+                if len(c) < 4:
+                    raise ValueError("if requires two operands and a comparison")
                 lhs, cmp_op, rhs = c[1:4]
                 if cmp_op == ">":
                     b = _number(lhs, ">") > _number(rhs, ">")
@@ -187,6 +194,8 @@ class _Machine:
                 if not b:
                     self.ind = find(self.code, self.ind)
             elif op == "loop":
+                if len(c) < 2:
+                    raise ValueError("loop requires a count")
                 if c[1]:
                     c[1] = _number(c[1], "loop") - 1
                 else:
