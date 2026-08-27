@@ -57,7 +57,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -77,7 +77,10 @@ _CellKind = Literal["int", "byte"]
 # ``_Punct`` is the bare punctuation a line is cut on -- a one-tuple, so
 # reading ``[1]`` off one is a type error rather than an IndexError.
 # ``_Math`` and ``_If`` nest tokens, which is why the alias is recursive.
-_Punct = tuple[Literal["(", ")", ":", "~", "="]]
+_PunctChar = Literal["(", ")", ":", "~", "="]
+_Punct = tuple[_PunctChar]
+# Typed so the tokenizer's membership test narrows the character.
+_PUNCT: frozenset[_PunctChar] = frozenset(("(", ")", ":", "~", "="))
 _Ident = tuple[Literal["ident"], str]
 _Num = tuple[Literal["num"], int]
 _Byte = tuple[Literal["byte"], int]
@@ -180,10 +183,8 @@ def _tokenize(line: str) -> list[_Token]:
         c = line[i]
         if c == " ":
             i += 1
-        elif c in "():~=":
-            # The test above is the membership check; this is where a bare
-            # character becomes a typed punctuation token.
-            tokens.append((cast('Literal["(", ")", ":", "~", "="]', c),))
+        elif c in _PUNCT:
+            tokens.append((c,))
             i += 1
         elif c == "'":
             if i + 2 >= n or line[i + 2] != "'":
