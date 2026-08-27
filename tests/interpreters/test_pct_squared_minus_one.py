@@ -61,6 +61,43 @@ class TestPct:
     def test_empty_program(self) -> None:
         assert run_program("") == ""
 
+    def test_unknown_characters_are_no_ops(self) -> None:
+        """Characters outside the command set do nothing at all.
+
+        Every other program here is built purely from commands, so the tail
+        of the dispatch chain was never reached by a character it does not
+        handle: inverting ``char == "'"`` or ``char == "t"`` there changed
+        nothing the suite could see.  A no-op between two commands has to
+        leave both the accumulator and the cursor alone -- ``ixe`` prints
+        exactly what ``ie`` does.
+        """
+        assert run_program("ixe") == run_program("ie") == "\xfd"
+        assert run_program("i.l") == "-3"
+        # an uppercase T is not the rewind command, so it changes nothing
+        assert run_program("iTl") == "-3"
+
+    def test_reset_clears_an_accumulated_value(self) -> None:
+        """' zeroes a magnitude that is already nonzero.
+
+        The reset was only ever run first, on the zero it starts at, where
+        setting the accumulator to 0 and leaving it alone look the same.
+        """
+        assert run_program("i'l") == "0"
+        assert run_program("i'e") == "\x00"
+
+    def test_reset_boundary_is_exclusive(self) -> None:
+        """3003 itself survives; the reset needs the magnitude to exceed it.
+
+        ``test_reset_above_3003`` jumps from 1536 to 3072, so every value in
+        between -- 3003 included -- went unchecked.  1001 subtractions of 3
+        then a negation land on the boundary exactly.
+        """
+        assert run_program("i" * 1001 + "pl") == "3003"
+        assert run_program("i" * 1002 + "pl") == "0"
+        # 3004 is the first magnitude that resets, so it pins the threshold
+        # from the other side: one higher and the reset would let it through
+        assert run_program("s" * 1502 + "pl") == "0"
+
 
 class TestStepMachine:
     def test_snapshot_changes_after_a_step(self) -> None:
