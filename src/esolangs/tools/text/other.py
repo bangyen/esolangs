@@ -680,8 +680,11 @@ def unsquare(text: str) -> str:
         best = seed(value)
         if acc is not None:
             chain = build(acc, value)
-            if chain is not None and len(chain) < len(best):
-                best = chain
+            if chain is not None:
+                # The seed goes first: it is the construction that always
+                # exists, so a tie keeps it and the chain has to be strictly
+                # shorter to displace it.
+                best = shortest(best, chain)
         res.append(best + "Po")
         acc = value
     return "".join(res)
