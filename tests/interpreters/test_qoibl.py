@@ -475,3 +475,51 @@ class TestQoiblIncompleteTokens:
         assert state.code == [[]]
         state.step()
         assert state.halted
+
+
+class TestQoiblParserGuards:
+    """The three conditions a mutation survived, each pinned by behaviour.
+
+    Mutation testing (mutmut against a ``bundle_one`` build of this module)
+    reported these as changeable without any test noticing: the tokenizer's
+    give-back guard, its empty-input guard, and the closing-marker check in
+    ``_wellformed``.  Each is a rejection, and a rejection that stops
+    rejecting is invisible until something malformed is accepted.
+    """
+
+    def test_steal_declines_a_literal_without_the_character(self) -> None:
+        """Nothing is given back unless the literal actually ends in it.
+
+        The mutant that reads this guard with ``and`` instead of ``or``
+        returned the literal shortened anyway, inventing a token split the
+        source never spelled.
+        """
+        from esolangs.interpreters.register_based.qoibl import _steal
+
+        assert _steal(["yy"], "e") is None  # no trailing 'e' to give back
+        assert _steal(["e"], "e") == []  # a one-character literal vanishes
+        assert _steal(["ye"], "e") == ["y"]  # a longer one is shortened
+
+    def test_steal_declines_an_empty_token_list(self) -> None:
+        """The emptiness check has to come first, or indexing raises.
+
+        ``tokens[-1]`` is evaluated the moment the guard stops short-
+        circuiting, so a mutant that reorders it crashes with IndexError
+        rather than returning None.
+        """
+        from esolangs.interpreters.register_based.qoibl import _steal
+
+        assert _steal([], "e") is None
+
+    def test_a_binary_operator_needs_its_closing_marker(self) -> None:
+        """``yr``/``ry`` wrap an operator, and both ends must be the same one.
+
+        Only the matched form parses; a mismatched closing marker or none at
+        all is malformed.  Without this check both were accepted, so a
+        program that never spelled a complete operation would still run.
+        """
+        from esolangs.interpreters.register_based.qoibl import _wellformed
+
+        assert _wellformed(["e", "yr", "ee", "yr", "y"]) is True
+        assert _wellformed(["e", "yr", "ee", "ry", "y"]) is False  # wrong close
+        assert _wellformed(["e", "yr", "ee"]) is False  # no close at all
