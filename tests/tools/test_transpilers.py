@@ -18,6 +18,7 @@ from esolangs.exceptions import (
     EsolangError,
     UnsupportedTranspilationError,
 )
+from esolangs.tools.transpilers import _laser_analyze
 
 # (brainfuck program, stdin) pairs; every pair must terminate and agree.
 BATTERY = (
@@ -374,6 +375,17 @@ def test_laserfuck_grid_is_rectangular_with_start_and_marker() -> None:
 def test_laserfuck_out_of_class_rejected(program: str, match: str) -> None:
     with pytest.raises(ValueError, match=match):
         esolangs.transpile("Dimensional", "LaserFuck", program)
+
+
+@pytest.mark.parametrize("op", ["+", "-", ">", "><", ".", ",", "[]"])
+def test_laserfuck_analyze_advances_on_every_command(op: str) -> None:
+    """Every command steps the walk, so none of them can spin forever.
+
+    ``_laser_analyze`` dispatches per command and advances an index by hand;
+    a command handled by no arm never steps that index and hangs the walk
+    rather than failing, so each one is pinned here.
+    """
+    assert _laser_analyze(list(op))[0] >= 0
 
 
 def test_laserfuck_fuzz_bounded_programs() -> None:

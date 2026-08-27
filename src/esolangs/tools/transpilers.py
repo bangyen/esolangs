@@ -812,7 +812,9 @@ class _LaserGrid:
 # The command alphabet ``_laser_parse`` emits: brainfuck's eight commands
 # and nothing else.  Naming it lets the checker see that the emit and
 # analyze walks handle every one, so neither needs a fallback arm for a
-# character the parser has already rejected.
+# character the parser has already rejected.  Every arm must still advance
+# the walk: a command that falls through without stepping ``i`` spins
+# forever, so the walks name the commands they merely skip over.
 _LaserOp = Literal["+", "-", ">", "<", ".", ",", "[", "]"]
 
 
@@ -835,7 +837,11 @@ def _laser_emit(
     bottom = row + 1
     while i < len(ops):
         c = ops[i]
-        if c in "+-><.,":
+        if c == "]":
+            # A loop close is consumed by the ``[`` arm below; one reaching
+            # the walk directly has no cell of its own, so just step past it.
+            i += 1
+        elif c in "+-><.,":
             g.set(row, col, c)
             col += 1
             i += 1
@@ -904,7 +910,11 @@ def _laser_analyze(ops: list[_LaserOp]) -> tuple[int, int, int | None]:
     out_cell: int | None = None
     while i < len(ops):
         c = ops[i]
-        if c == ">":
+        if c in "+-,]":
+            # Cell mutation and the loop close move no pointer and reach no
+            # new cell, so they only need to advance the walk.
+            i += 1
+        elif c == ">":
             ptr += 1
             maxcell = max(maxcell, ptr)
             i += 1
