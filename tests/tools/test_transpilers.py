@@ -827,3 +827,20 @@ def test_decleq_fuzz_countdowns() -> None:
         except ValueError:
             continue  # a counter cell doubled as a re-read operand
         assert esolangs.run("S*bleq", sb_program) == expected
+
+
+def test_laser_emit_steps_past_a_stray_loop_close() -> None:
+    """A ``]`` reaching the walk directly costs no cell.
+
+    The ``[`` arm consumes its matching close while laying out the loop, so
+    a ``]`` the walk sees itself has already been accounted for -- it is
+    stepped over rather than given a square of its own.  Emitting ``]+``
+    therefore lays out exactly the one cell that ``+`` needs.
+    """
+    from esolangs.tools.transpilers import _laser_emit, _LaserGrid
+
+    grid = _LaserGrid()
+    next_col, _bottom = _laser_emit(grid, list("]+"), 4, 0)
+
+    plain = _LaserGrid()
+    assert _laser_emit(plain, list("+"), 4, 0) == (next_col, _bottom)
