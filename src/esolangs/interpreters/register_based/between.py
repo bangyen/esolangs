@@ -35,15 +35,37 @@ runs off the program.
 """
 
 import sys
-from typing import Any, cast
+from typing import Any, Literal, cast, get_args
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-Node = tuple[Any, ...]
+# The parse tree, as tuples discriminated by their first element.  Two
+# families: an argument, which _eval reduces to a value, and an
+# instruction, which _exec runs.  A group holds an instruction, so the
+# aliases quote their forward references.
+_Str = tuple[Literal["str"], str]
+_Int = tuple[Literal["int"], int]
+_Var = tuple[Literal["var"], str]
+_Cond = tuple[Literal["cond"], bool]
+
+# ``.`` -- the absent second argument.  A bare one-tuple, so reading [1]
+# off one is a type error rather than an IndexError.
+_None = tuple[Literal["none"]]
+
+# ``|expr|`` and ``(expr)``: the kind names which of the two the group is
+# required to produce.
+_Group = tuple[Literal["group"], Literal["int", "cond"], "_Instr"]
+_Arg = _Str | _Int | _Var | _Cond | _None | _Group
+
+# The thirteen operations, spelled once here and derived into the set
+# the parser validates against, so the two cannot drift apart.
+_Op = Literal["p", "v", "s", "c", "+", "*", "=", ">", "r", "n", "f", "i", "x"]
+_Instr = tuple[_Op, _Arg, _Arg]
+
 ValueT = str | int | bool | None
 
-_OPS = frozenset("pvsc+*=>rnfix")
+_OPS = frozenset(get_args(_Op))
 _WHITESPACE = " \t"
 
 
@@ -67,7 +89,7 @@ def _skip_space(line: str, i: int) -> int:
     return i
 
 
-def _parse_expr(line: str, i: int) -> tuple[Node, int]:
+def _parse_expr(line: str, i: int) -> tuple[_Instr, int]:
     """Parse ``<arg1><op><arg2>`` at ``i``, returning its node and the next index."""
     arg1, i = _parse_arg(line, i)
     i = _skip_space(line, i)
@@ -77,12 +99,13 @@ def _parse_expr(line: str, i: int) -> tuple[Node, int]:
     if op not in _OPS:
         raise ValueError(f"unknown operation {op!r}")
     arg2, i = _parse_arg(line, i + 1)
-    return (op, arg1, arg2), i
+    # The check above is the membership test, so this is a typed operation.
+    return (cast("_Op", op), arg1, arg2), i
 
 
-def _parse_group(line: str, i: int) -> tuple[Node, int]:
+def _parse_group(line: str, i: int) -> tuple[_Group, int]:
     """Parse a ``|...|`` or ``(...)`` expression group opened at ``i``."""
-    kind = "int" if line[i] == "|" else "cond"
+    kind: Literal["int", "cond"] = "int" if line[i] == "|" else "cond"
     closer = "|" if line[i] == "|" else ")"
     expr, j = _parse_expr(line, i + 1)
     if j >= len(line) or line[j] != closer:
@@ -90,7 +113,7 @@ def _parse_group(line: str, i: int) -> tuple[Node, int]:
     return ("group", kind, expr), j + 1
 
 
-def _parse_arg(line: str, i: int) -> tuple[Node, int]:
+def _parse_arg(line: str, i: int) -> tuple[_Arg, int]:
     """Parse one argument at ``i``, returning its node and the next index."""
     i = _skip_space(line, i)
     if i >= len(line):
@@ -125,7 +148,7 @@ def _parse_arg(line: str, i: int) -> tuple[Node, int]:
     raise ValueError(f"invalid argument {c!r}")
 
 
-def _parse_line(line: str) -> Node:
+def _parse_line(line: str) -> _Instr:
     """Parse one instruction line into an ``(op, arg1, arg2)`` node."""
     node, i = _parse_expr(line, 0)
     if _skip_space(line, i) != len(line):
@@ -136,36 +159,33 @@ def _parse_line(line: str) -> Node:
 
 
 def _eval(
-    node: Node, state: dict[str, ValueT], control: dict[str, Any], io: IO
+    node: _Arg, state: dict[str, ValueT], control: dict[str, Any], io: IO
 ) -> ValueT:
     """Evaluate a value node (or run an instruction) and return its value."""
-    kind = node[0]
-    if kind == "str":
-        return cast(str, node[1])
-    if kind == "int":
-        return cast(int, node[1])
-    if kind == "cond":
-        return cast(bool, node[1])
-    if kind == "none":
+    if node[0] == "str":
+        return node[1]
+    if node[0] == "int":
+        return node[1]
+    if node[0] == "cond":
+        return node[1]
+    if node[0] == "none":
         return None
-    if kind == "var":
+    if node[0] == "var":
         try:
             return state[node[1]]
         except KeyError:
             raise HaltError(f"undeclared variable {node[1]!r}") from None
-    if kind == "group":
-        value = _exec(node[2], state, control, io)
-        expected = node[1]
-        if expected == "int" and type(value) is not int:
-            raise HaltError("expected an integer expression")
-        if expected == "cond" and type(value) is not bool:
-            raise HaltError("expected a condition expression")
-        return value
-    raise AssertionError(f"evaluated an instruction as a value: {node!r}")
+    value = _exec(node[2], state, control, io)
+    expected = node[1]
+    if expected == "int" and type(value) is not int:
+        raise HaltError("expected an integer expression")
+    if expected == "cond" and type(value) is not bool:
+        raise HaltError("expected a condition expression")
+    return value
 
 
 def _exec(
-    instr: Node, state: dict[str, ValueT], control: dict[str, Any], io: IO
+    instr: _Instr, state: dict[str, ValueT], control: dict[str, Any], io: IO
 ) -> ValueT:
     """Execute one instruction, returning the value it produces (usually none)."""
     op, arg1, arg2 = instr[0], instr[1], instr[2]
@@ -247,10 +267,10 @@ def _exec(
             raise HaltError("i needs a variable on the left")
         state[arg1[1]] = io.input_str()
         return None
-    if op == "x":
-        control["exit"] = True
-        return None
-    raise AssertionError(f"unhandled operation {op!r}")
+    # The twelve arms above are the other operations, so what is left is
+    # ``x``.
+    control["exit"] = True
+    return None
 
 
 class _Machine:
@@ -258,7 +278,7 @@ class _Machine:
 
     def __init__(self, code: list[str], io: IO) -> None:
         self.io = io
-        program: list[Node] = []
+        program: list[_Instr] = []
         for line in code:
             stripped = line.strip()
             if not stripped or stripped.startswith("#"):
