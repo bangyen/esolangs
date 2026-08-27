@@ -7,6 +7,19 @@ the answer variable, ``make`` computes arithmetic (``+ - * /`` on numbers,
 ``++`` concatenating strings), and ``if``/``loop``/``endloop`` branch on
 comparisons.  ``$name`` references a variable.
 
+The wiki never states operand types: its only arithmetic example is a
+calculator whose operands come from ``input``, so any of them can be
+text.  Since the language has ``++`` for joining strings, ``+ - * /`` and
+the ordered comparisons ``<``/``>`` are read as numeric, and a string
+reaching one of them halts with :class:`~esolangs.exceptions.HaltError`
+rather than falling through to Python's meaning for it (which would
+concatenate, repeat, or order the operands instead).  ``=`` is not an
+ordering, so it still compares strings.
+
+A number is written in ASCII, either as digits or as digits around a
+single ``.``; a decimal is only read as one when the spelling matches how
+it prints back, so ``02.5`` stays the text the program wrote.
+
 An ``if``/``loop``/``endloop`` with no matching partner is a structurally
 malformed program and is rejected with :class:`ValueError`; dividing by zero,
 referencing an undefined ``$name``, or ``input`` with no prompt are invalid
@@ -22,7 +35,6 @@ reaches the end of the program.
 """
 
 import sys
-from typing import cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -54,6 +66,42 @@ def find(code: list[list[str | int | float]], ind: int) -> int:
             num -= move
         ind += move
     return ind - 1
+
+
+def _as_number(value: str) -> int | float | None:
+    """Return ``value`` as a number, or ``None`` if it does not spell one.
+
+    Only ASCII spellings count: :meth:`str.isdigit` is also true for
+    superscript and Arabic-Indic digits, which :func:`int` either rejects
+    or reads as a value the program never wrote, so those stay strings.
+    """
+    if not value.isascii():
+        return None
+    if value.isdigit():
+        return int(value)
+    whole, dot, frac = value.partition(".")
+    if dot and whole.isdigit() and frac.isdigit():
+        # Only a spelling that survives the round trip: ``str`` renders a
+        # float back without the written leading zeros, so "02.5" would
+        # print as "2.5" and silently lose a character the program wrote.
+        number = float(value)
+        if str(number) == value:
+            return number
+    return None
+
+
+def _number(value: str | int | float, op: str) -> int | float:
+    """Return ``value`` as a number, halting if it is not one.
+
+    ``+ - * /`` and the ``<``/``>`` comparisons are arithmetic: the wiki
+    gives Nevermind ``++`` for joining strings, so a string reaching one of
+    the numeric operators has no defined result and the program halts
+    rather than falling through to Python's own meaning for it (which would
+    concatenate, repeat, or order the operands instead).
+    """
+    if isinstance(value, str):
+        raise HaltError(f"{op} needs a number, got {value!r}")
+    return value
 
 
 class _Machine:
@@ -98,47 +146,49 @@ class _Machine:
                             raise HaltError
                         c[i + 1] = self.var[name]
                     nxt = c[i + 1]
-                    if isinstance(nxt, str) and nxt.isascii() and nxt.isdigit():
-                        c[i + 1] = int(nxt)
+                    if isinstance(nxt, str) and (num := _as_number(nxt)) is not None:
+                        c[i + 1] = num
 
             if (op := c[0]) == "print":
                 self.io.print_str("".join(map(str, c[1:])))
             elif op == "input":
                 if len(c) < 2:
                     raise ValueError("input requires a prompt")
-                self.var["answer"] = self.io.input_str(cast(str, c[1]))
+                self.var["answer"] = self.io.input_str(str(c[1]))
             elif op == "make":
                 if len(c) == 5:
                     v: int | float | str
-                    if (o := c[3]) == "+":
-                        v = cast(int | float, c[2]) + cast(int | float, c[4])
-                    elif o == "-":
-                        v = cast(int | float, c[2]) - cast(int | float, c[4])
-                    elif o == "*":
-                        v = cast(int | float, c[2]) * cast(int | float, c[4])
-                    elif o == "++":
+                    if (o := c[3]) == "++":
                         v = str(c[2]) + str(c[4])
                     else:
-                        n = cast(int | float, c[4])
-                        if n == 0:
-                            raise HaltError
-                        v = cast(int | float, c[2]) / n
-                    self.var[cast(str, c[1])] = v
+                        name = str(o)
+                        left, right = _number(c[2], name), _number(c[4], name)
+                        if o == "+":
+                            v = left + right
+                        elif o == "-":
+                            v = left - right
+                        elif o == "*":
+                            v = left * right
+                        else:
+                            if right == 0:
+                                raise HaltError
+                            v = left / right
+                    self.var[str(c[1])] = v
                 else:
-                    self.var[cast(str, c[1])] = c[2]
+                    self.var[str(c[1])] = c[2]
             elif op == "if":
                 lhs, cmp_op, rhs = c[1:4]
                 if cmp_op == ">":
-                    b = cast(int | float, lhs) > cast(int | float, rhs)
+                    b = _number(lhs, ">") > _number(rhs, ">")
                 elif cmp_op == "<":
-                    b = cast(int | float, lhs) < cast(int | float, rhs)
+                    b = _number(lhs, "<") < _number(rhs, "<")
                 else:
                     b = lhs == rhs
                 if not b:
                     self.ind = find(self.code, self.ind)
             elif op == "loop":
                 if c[1]:
-                    c[1] = cast(int | float, c[1]) - 1
+                    c[1] = _number(c[1], "loop") - 1
                 else:
                     self.ind = find(self.code, self.ind)
                     self.skip = True
