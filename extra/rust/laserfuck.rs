@@ -17,6 +17,10 @@
 //! (empty line -> 0).  A second `o` halts immediately.
 //!
 //! Invocation: `laserfuck <program-file>`; program text from `argv[1]`.
+//! Setting `LASERFUCK_HEADING` to 0-3 pins the initial heading that the
+//! language otherwise draws at random, which lets the differential check
+//! one heading at a time instead of re-running until chance covers all
+//! four.  Leaving it unset keeps the random behaviour described above.
 //! Input: the program file is `argv[1]`; `,` reads from stdin.
 
 use rand::RngExt;
@@ -43,7 +47,7 @@ fn wrap(lsr: &mut Laser, len: usize) {
     }
 }
 
-fn run(text: Vec<Vec<char>>) {
+fn run(text: Vec<Vec<char>>, heading: Option<usize>) {
     let mut rng = rand::rng();
     let mut lsrs = Vec::new();
     let mut jmp = false;
@@ -59,7 +63,7 @@ fn run(text: Vec<Vec<char>>) {
             if !lsrs.is_empty() {
                 return;
             } else {
-                let num = rng.random_range(0..4);
+                let num = heading.unwrap_or_else(|| rng.random_range(0..4));
                 let lsr = Laser(k, n, num);
                 lsrs.push(lsr);
             }
@@ -170,6 +174,18 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let file = fs::File::open(&args[1]).expect("invalid file");
 
+    // LASERFUCK_HEADING pins the initial heading (0-3).  The language picks
+    // it at random, and that is still what an ordinary run does; fixing it
+    // lets the differential ask for one heading at a time rather than
+    // re-running the program until chance covers all four.  It is read from
+    // the environment rather than argv so that the program file stays the
+    // sole positional argument.
+    let heading: Option<usize> = env::var("LASERFUCK_HEADING").ok().map(|s| {
+        let n: usize = s.parse().expect("LASERFUCK_HEADING must be an integer");
+        assert!(n < 4, "LASERFUCK_HEADING must be 0-3");
+        n
+    });
+
     let buff = io::BufReader::new(file);
     let clct = |s: Result<String, _>| s.unwrap().chars().collect();
     let mut text: Vec<Vec<char>> = buff.lines().map(clct).collect();
@@ -182,7 +198,7 @@ fn main() {
         }
     }
 
-    run(text);
+    run(text, heading);
 }
 
 #[cfg(test)]
