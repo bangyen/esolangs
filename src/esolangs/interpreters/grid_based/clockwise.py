@@ -22,24 +22,24 @@ ROW = [0, 1, 0, -1]
 
 
 def move(
-    x: int,
-    y: int,
+    row: int,
+    col: int,
     r: int,
     code: list[str],
     acc: int,
 ) -> tuple[int, int, int, str, int]:
     """Step the pointer one cell, returning position, direction, and the cell."""
-    if not 0 <= y < len(code) or not 0 <= x < len(code[y]):
+    if not 0 <= row < len(code) or not 0 <= col < len(code[row]):
         raise ValueError("Clockwise ring is not closed")
-    o = code[y][x]
+    o = code[row][col]
     c = (o == "R") or (o == "?" and acc) or (o == "!" and not acc)
 
     r = (r + c) % 4
-    x += COL[r]
-    y += ROW[r]
-    b = x or y or not r
+    row += ROW[r]
+    col += COL[r]
+    b = col or row or not r
 
-    return x, y, r, o, b
+    return row, col, r, o, b
 
 
 class _Machine:
@@ -60,7 +60,7 @@ class _Machine:
         self.io = io
         size = max(len(lne) for lne in code)
         self.code = [c.ljust(size) for c in code]
-        self.x = self.y = self.r = 0
+        self.row = self.col = self.r = 0
         self.acc = 0
         self.out: list[str] = []
         self.inp: list[str] = []
@@ -79,8 +79,8 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
-            self.x,
-            self.y,
+            self.row,
+            self.col,
             self.r,
             self.acc,
             tuple(self.out),
@@ -92,8 +92,8 @@ class _Machine:
         """Move the pointer one cell and execute the instruction it left."""
         if self._done:
             return
-        x, y, r, ins, cont = move(self.x, self.y, self.r, self.code, self.acc)
-        self.x, self.y, self.r = x, y, r
+        row, col, r, ins, cont = move(self.row, self.col, self.r, self.code, self.acc)
+        self.row, self.col, self.r = row, col, r
 
         if ins in "R?!":
             if not cont:

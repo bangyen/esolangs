@@ -44,13 +44,13 @@ class TestStepMachine:
         from esolangs.interpreters.grid_based.clockwise import _Machine
 
         machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
-        assert (machine.x, machine.y, machine.r, machine.acc) == (0, 0, 0, 0)
+        assert (machine.row, machine.col, machine.r, machine.acc) == (0, 0, 0, 0)
         machine.step()  # + at the origin: acc 1, head right
-        assert (machine.x, machine.y, machine.r, machine.acc) == (1, 0, 0, 1)
-        machine.step()  # ; at (1,0): parity bit queued
-        assert (machine.x, machine.y, machine.r) == (2, 0, 0)
-        machine.step()  # S at (2,0): acc zeroed
-        assert (machine.x, machine.y, machine.r, machine.acc) == (3, 0, 0, 0)
+        assert (machine.row, machine.col, machine.r, machine.acc) == (0, 1, 0, 1)
+        machine.step()  # ; at row 0, col 1: parity bit queued
+        assert (machine.row, machine.col, machine.r) == (0, 2, 0)
+        machine.step()  # S at row 0, col 2: acc zeroed
+        assert (machine.row, machine.col, machine.r, machine.acc) == (0, 3, 0, 0)
 
     def test_halting_ring_is_detected(self) -> None:
         from esolangs.interpreters.grid_based.clockwise import _Machine

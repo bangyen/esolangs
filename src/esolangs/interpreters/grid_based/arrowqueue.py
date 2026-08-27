@@ -21,7 +21,8 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-DELTA = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+# (d_row, d_col) per heading, in the clockwise order right, down, left, up.
+DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
 
 class _Machine:
@@ -39,7 +40,7 @@ class _Machine:
         """Pad ``code`` to a rectangle and reset the machine to the corner."""
         self.code = code
         self._done = False
-        self.x = self.y = self.d = 0
+        self.row = self.col = self.d = 0
         self.queue: list[int] = []
         if code:
             self.width = max(len(line) for line in code)
@@ -56,16 +57,16 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.x, self.y, self.d, tuple(self.queue))
+        return (self.row, self.col, self.d, tuple(self.queue))
 
     def step(self) -> None:
         """Execute one grid cell, advancing the IP."""
         if self.halted:
             return
-        if not 0 <= self.x < self.width or not 0 <= self.y < len(self.grid):
+        if not 0 <= self.col < self.width or not 0 <= self.row < len(self.grid):
             self._done = True
             return
-        cell = self.grid[self.y][self.x]
+        cell = self.grid[self.row][self.col]
         if cell == "*":
             self.d = (self.d + 1) % 4
         elif cell == "~":
@@ -75,10 +76,10 @@ class _Machine:
                 self._done = True
                 return
             self.d = self.queue.pop(0)
-        dx, dy = DELTA[self.d]
-        self.x += dx
-        self.y += dy
-        if not 0 <= self.x < self.width or not 0 <= self.y < len(self.grid):
+        d_row, d_col = DELTA[self.d]
+        self.row += d_row
+        self.col += d_col
+        if not 0 <= self.col < self.width or not 0 <= self.row < len(self.grid):
             self._done = True
 
 
