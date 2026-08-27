@@ -253,24 +253,23 @@ class TestGeneratorRoundTrips:
             code = sum(1 for c in program if not c.isspace())
             assert code / len(program) > floor, f"{text!r}: sparse grid"
 
-    def test_clockwise_never_beaten_by_the_bare_ring(self) -> None:
-        """Whichever layout is smaller is what comes out.
+    def test_clockwise_needs_a_width_the_weave_fits(self) -> None:
+        """A width too narrow for any weave is refused, not silently widened.
 
-        The ring is still built and compared, so a text the weave cannot
-        improve on keeps the ring rather than growing.
+        Clockwise used to answer such a width with a bare perimeter ring,
+        which could not honour it either: the ring's shape floors the
+        columns at three, so a width of 1 or 2 came back over-wide.  The
+        ring was dropped -- it only ever beat the weave on one-character
+        text, and by at most 1.26x -- so the narrow widths it used to cover
+        now raise instead of returning a program that overruns them.
         """
-        from esolangs.tools.text.other import _clockwise_ring
+        for width in (1, 2, 3, 4):
+            with pytest.raises(ValueError, match="width of at least"):
+                gen.clockwise("Hello", width)
 
-        for text in ("A", "Hi", "Hello, World!", "Clockwise test 123!"):
-            program = gen.clockwise(text)
-            parity, bits = 0, ""
-            for char in text:
-                for bit in f"{ord(char):07b}":
-                    if parity != int(bit):
-                        bits += "+"
-                        parity = int(bit)
-                    bits += ";"
-            assert len(program) <= len(_clockwise_ring(bits, None))
+        # The first width a weave fits is honoured, not refused.
+        program = gen.clockwise("Hello", 5)
+        assert max(len(line) for line in program.split("\n")) <= 5
 
     @pytest.mark.parametrize("width", [10, 20, 40, 80])
     @pytest.mark.parametrize("text", ["Hi", "Hello, World!", "q" * 30])
