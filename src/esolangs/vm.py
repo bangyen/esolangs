@@ -703,7 +703,7 @@ class _ClockwiseVM(_BaseVM):
 
 
 class _DigVM(_BaseVM):
-    """2D mole grid; ``ip`` is the mole's (x, y, heading), ``memory`` the mole."""
+    """2D mole grid; ``ip`` is the mole's (row, col, heading), ``memory`` the mole."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -720,7 +720,7 @@ class _DigVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.move)
+        return (self._machine.row, self._machine.col, self._machine.move)
 
     @property
     def memory(self) -> list[int]:
@@ -732,7 +732,10 @@ class _DigVM(_BaseVM):
 
 
 class _Wii2dVM(_BaseVM):
-    """2D wrap-around grid; ``ip`` is (x, y, heading), ``memory`` the accumulator."""
+    """2D wrap-around grid.
+
+    ``ip`` is (row, col, heading), ``memory`` the accumulator.
+    """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -749,7 +752,7 @@ class _Wii2dVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.vel)
+        return (self._machine.row, self._machine.col, self._machine.vel)
 
     @property
     def memory(self) -> list[int]:

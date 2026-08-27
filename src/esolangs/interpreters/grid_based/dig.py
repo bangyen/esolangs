@@ -19,6 +19,8 @@ from collections.abc import Callable
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
+# Headings as (drow, dcol), in the order the ``^>'<`` glyphs select
+# them: up, right, down, left.  Row grows downward.
 _DIRECT = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
 
@@ -44,7 +46,7 @@ class _Machine:
         self.func = func
         self.size = max(len(lne) for lne in code)
         self.code = [c.ljust(self.size) for c in code]
-        self.mole = self.num = self.x = self.y = 0
+        self.mole = self.num = self.row = self.col = 0
         self.move = 1
         self._done = False
 
@@ -59,8 +61,8 @@ class _Machine:
         The grid is included because ``;`` writes the mole back into it.
         """
         return (
-            self.x,
-            self.y,
+            self.row,
+            self.col,
             self.move,
             self.mole,
             self.num,
@@ -71,9 +73,12 @@ class _Machine:
     def _value(self) -> int:
         """Get the first digit value from cells adjacent to the mole."""
         lst = []
-        for i, j in _DIRECT:
-            if 0 <= self.x + i < len(self.code) and 0 <= self.y + j < self.size:
-                val = self.code[self.x + i][self.y + j]
+        for d_row, d_col in _DIRECT:
+            if (
+                0 <= self.row + d_row < len(self.code)
+                and 0 <= self.col + d_col < self.size
+            ):
+                val = self.code[self.row + d_row][self.col + d_col]
                 if val.isdigit():
                     lst.append(int(val))
         if not lst:
@@ -84,7 +89,7 @@ class _Machine:
         """Execute the cell under the mole, then move it one cell."""
         if self._done:
             return
-        char = self.code[self.x][self.y]
+        char = self.code[self.row][self.col]
         if self.num:
             if char == "%":
                 if (n := self._value()) == 1:
@@ -119,10 +124,10 @@ class _Machine:
                     raise HaltError
                 self.mole //= n
             elif char == ";":
-                self.code[self.x] = (
-                    self.code[self.x][: self.y]
+                self.code[self.row] = (
+                    self.code[self.row][: self.col]
                     + str(self.mole)
-                    + self.code[self.x][self.y + 1 :]
+                    + self.code[self.row][self.col + 1 :]
                 )
             elif char.isdigit():
                 self.mole = int(char)
@@ -146,11 +151,16 @@ class _Machine:
             self._done = True
             return
 
-        self.x += _DIRECT[self.move][0]
-        self.y += _DIRECT[self.move][1]
+        self.row += _DIRECT[self.move][0]
+        self.col += _DIRECT[self.move][1]
 
         # Bounds checking to prevent IndexError
-        if self.x < 0 or self.x >= len(self.code) or self.y < 0 or self.y >= self.size:
+        if (
+            self.row < 0
+            or self.row >= len(self.code)
+            or self.col < 0
+            or self.col >= self.size
+        ):
             self._done = True
 
 
