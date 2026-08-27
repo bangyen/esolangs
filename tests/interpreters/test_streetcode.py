@@ -1312,3 +1312,35 @@ class TestStreetcodeGraphBackedStepping:
         assert state not in machine._graph  # noqa: SLF001
         machine.step()
         assert not machine.halted
+
+    def test_a_graph_edge_with_no_successor_halts(self) -> None:
+        """A ``None`` edge stops the car rather than driving it nowhere.
+
+        Every ``None`` the search records sits on ``;`` in a real program,
+        and ``;`` halts before the lookup is reached, so this arm is the
+        graph's own guard rather than a path a validated street takes.
+        Blanking the ``;`` after construction leaves the recorded ``None``
+        in place and lets the lookup answer for it.
+        """
+        machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
+        assert machine._graph is not None  # noqa: SLF001
+        state = (1, 4, "N", None, None, 0)
+        assert all(v is None for v in machine._graph[state].values())  # noqa: SLF001
+
+        machine.row, machine.col, machine.heading = 1, 4, "N"
+        machine.grid[1] = list("|C   |")  # the ';' would halt one arm earlier
+        machine.step()
+        assert machine.halted
+
+    def test_a_u_turn_without_an_opposite_lane_has_no_successor(self) -> None:
+        """``U`` needs a lane to turn into; without one the state is a dead end.
+
+        A one-row grid has nothing north or south of the ``U``, so heading
+        East the reversed lane is off the grid.  ``step`` reports that as a
+        width violation at run time; the search just declines to drive on.
+        """
+        machine = _Machine(["CU;"], IO())
+        assert machine._probe((0, 1, "E", None, None, 0), 0, 0) is None  # noqa: SLF001
+        assert machine._probe((0, 1, "W", None, None, 0), 0, 0) is None  # noqa: SLF001
+        # ...while a lane that is on the grid does produce a successor.
+        assert machine._probe((0, 1, "N", None, None, 0), 0, 0) is not None  # noqa: SLF001

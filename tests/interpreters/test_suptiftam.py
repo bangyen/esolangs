@@ -167,6 +167,20 @@ class TestVariables:
         with pytest.raises(HaltError, match="undeclared identifier"):
             run_program("term=zzz")
 
+    def test_a_non_value_token_halts(self) -> None:
+        """Only the value tokens stand where a value is expected.
+
+        ``_Value`` is the subset of ``_Token`` a declaration or argument
+        accepts, and the parsers check for it before evaluating -- so this
+        guard answers for a token that lexed fine but is not one, which is
+        reached by handing the evaluator one directly.
+        """
+        from esolangs.interpreters.other.suptiftam import _eval_value, _State
+
+        state = _State(ScriptedIO(""))
+        with pytest.raises(HaltError, match="expected a value, got 'if'"):
+            _eval_value(("if", ("num", 1)), state, None)
+
 
 class TestCalls:
     def test_call_tokens_in_any_order(self) -> None:
