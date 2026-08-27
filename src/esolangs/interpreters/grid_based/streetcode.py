@@ -696,8 +696,10 @@ class _Machine:
         # rather than past it (see :meth:`_crossing_mouth`).
         return 3 if self._crossing_mouth(heading) else 0
 
-    def _lane_bounded(self, heading: str, side: str) -> bool:
-        """Whether the mouth on ``side`` bounds a genuinely multi-lane road.
+    def _lane_bounded(
+        self, heading: str, side: str, mouth: tuple[int, int, int]
+    ) -> bool:
+        """Whether ``mouth`` bounds a genuinely multi-lane road.
 
         A mouth's two ``+`` mark where the side road's own bounding walls
         meet the wall the car is driving along.  When those ``+`` continue
@@ -709,9 +711,6 @@ class _Machine:
         bare ``+`` floating with nothing beyond it (as in an open room)
         bounds no such corridor and turns immediately.
         """
-        mouth = self._road_mouth(heading, side)
-        if mouth is None:  # pragma: no cover - guarded by the caller
-            return False
         dist, near, far = mouth
         d_row, d_col = _DELTA[heading]
         s_row, s_col = _DELTA[side]
@@ -725,7 +724,7 @@ class _Machine:
         )
 
     def _lane_merge_target(
-        self, heading: str, new_heading: str, side: str
+        self, heading: str, new_heading: str, mouth: tuple[int, int, int]
     ) -> tuple[int, int]:
         """Return the cell the car must reach before turning to ``new_heading``.
 
@@ -740,9 +739,6 @@ class _Machine:
         during this approach, so the target keeps its perpendicular
         coordinate fixed and only advances along the travel axis.
         """
-        mouth = self._road_mouth(heading, side)
-        if mouth is None:  # pragma: no cover - guarded by the caller
-            return self.row, self.col
         _, near, far = mouth
         d_row, d_col = _DELTA[heading]
         depth = far - 1 if _right(new_heading) == heading else near + 1
@@ -1001,8 +997,16 @@ class _Machine:
             # open, so the loop above always advances at least one cell.
             self._merge_target = (*target, new_heading, heading, True)
             return None
-        if turning and self._lane_bounded(heading, new_heading):
-            target = self._lane_merge_target(heading, new_heading, new_heading)
+        # The mouth is looked up once and handed to both helpers: each used
+        # to re-find it and guard against a miss the other had already ruled
+        # out, so the lookup and the guard were both duplicated.
+        mouth = self._road_mouth(heading, new_heading)
+        if (
+            turning
+            and mouth is not None
+            and self._lane_bounded(heading, new_heading, mouth)
+        ):
+            target = self._lane_merge_target(heading, new_heading, mouth)
             if target != (self.row, self.col):
                 self._merge_target = (*target, new_heading, heading, False)
                 return None
