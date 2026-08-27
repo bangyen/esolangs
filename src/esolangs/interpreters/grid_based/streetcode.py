@@ -108,8 +108,19 @@ _MOUTH_MAX_DIST = 3
 # ``+`` closing a road's mouth.  Sweeping the value against the test suite
 # puts the floor at 5 -- at 4 the mouths of the wider drawn junctions stop
 # being seen and three tests fail -- while 5 and up are indistinguishable.
-# 7 is that floor plus slack for mouths wider than anything drawn so far;
-# nothing depends on the exact value above 5.
+# 7 is that floor plus slack for mouths wider than anything drawn so far.
+#
+# Raising it is not conservatively safer, which is why the slack is small.
+# The bound is two-sided: too low and a real mouth is truncated, too high
+# and the scan runs past the box it is reading and pairs up two ``+`` that
+# bound nothing.  The 1-arity boolean programs are the worked example --
+# from ``(9, 6)`` heading East, a generous bound finds a "mouth" spanning
+# the blank margin between two drawn boxes, which 7 correctly does not
+# see.  Behaviour is unaffected there only because ``_junction_choices``
+# offers one road and the junction does not fire.  So what is checked is
+# the driving, not the scan: ``tests`` compares the whole drive-state
+# graph at this bound against a generous one over the corpus, and the
+# graphs agree.  Nothing depends on the exact value in that sense.
 _MOUTH_MAX_DEPTH = 7
 
 
@@ -471,16 +482,31 @@ class _Machine:
     def _validate_total(self, start: tuple[int, int]) -> None:
         """Reject a street the car can drive into and not out of.
 
-        Ordinary wall-following always finds somewhere to go -- a dead
-        end reverses the car rather than stopping it -- so a state with
-        no successor means the movement rules have run out of road
-        somewhere the car can actually reach.  Only ``;`` halts a
-        well-formed program.  :meth:`step` would meet this as a silent
-        halt partway through a run, with nothing to say about where the
+        Only ``;`` halts a well-formed program, so a reachable state
+        with no successor is a street the movement rules have run out
+        of road on.  :meth:`step` would meet that as a silent halt
+        partway through a run, with nothing to say about where the
         street went wrong; the search finds it before the car moves and
         names the square.
 
-        This is stronger than running the program: it covers every
+        What this can actually catch is narrower than "dead ends", and
+        worth stating plainly.  :meth:`_heading_from_hug` falls back
+        through all four directions including the reverse, and a
+        validated street is connected with at least two cells, so every
+        reachable cell has an open neighbour and the hug cannot return
+        ``None``.  Ordinary wall-following is therefore total by
+        construction, not by this search.  That leaves exactly one
+        class of program for the check to reject today -- a reachable
+        ``U`` whose opposite lane is walled, which promotes the runtime
+        ``HaltError`` the module contract documents to a construction-
+        time :class:`ValueError` -- and a regression net over the
+        movement phases, which is the rest of its value.  A brute force
+        over 137472 small walled grids found none that only this check
+        rejects, which is consistent with that: those grids are plain
+        corridors, where totality is the theorem above rather than
+        something a search discovers.
+
+        It is still stronger than running the program: it covers every
         reachable state under both branch conditions, including the
         arms a particular input never takes.  What it does not cover is
         the value-dependent halts (see :meth:`_probe`), which are
