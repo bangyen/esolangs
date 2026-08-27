@@ -86,6 +86,12 @@ class TestErrors:
         with pytest.raises(HaltError):
             run_and_capture("say missing")
 
+    def test_missing_operands_are_rejected(self) -> None:
+        """A prefix call that ends before its arity is malformed text."""
+        for code in ("say", "add", "add 1", "not", "itemat"):
+            with pytest.raises(ValueError, match="ended before its operands"):
+                run_and_capture(code)
+
     def test_assign_to_undefined_halts(self) -> None:
         with pytest.raises(HaltError):
             run_and_capture("x is 5")

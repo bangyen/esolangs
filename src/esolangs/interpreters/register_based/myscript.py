@@ -254,7 +254,15 @@ def _run_block(nodes: list[Node], io: IO, scope: Scope) -> None:
 def _parse_expr(
     tokens: list[str], pos: int, io: IO, scope: Scope
 ) -> tuple[object, int]:
-    """Parse one prefix expression from ``tokens[pos:]``, returning (value, pos)."""
+    """Parse one prefix expression from ``tokens[pos:]``, returning (value, pos).
+
+    A prefix call consumes exactly as many expressions as its operator's
+    arity, so a line that ends early (``say`` with nothing to say) is a
+    malformed program rather than a bad value, and is rejected the same
+    way as the other malformed forms here.
+    """
+    if pos >= len(tokens):
+        raise ValueError("expression ended before its operands")
     tok = tokens[pos]
     if tok == "ask":
         return io.input_str(), pos + 1
