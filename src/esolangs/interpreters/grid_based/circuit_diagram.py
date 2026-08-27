@@ -593,7 +593,12 @@ class _Parser:
                     changed = True
             if not changed:
                 return
-        raise ValueError("multi-wire widths do not settle")
+        # Each pass fixes at least one wiring's width or stops, so the
+        # fixpoint is reached within one pass per wiring; this catches a
+        # flow that somehow cycles rather than letting it spin.
+        raise ValueError(  # pragma: no cover - the width flow always settles
+            "multi-wire widths do not settle"
+        )
 
     def _implied_widths(self, gate: _Gate) -> list[tuple[_Wiring, int]]:
         """Return the widths ``gate`` forces on its output wirings."""
@@ -696,7 +701,10 @@ class _Machine:
                 continue
             x = len(row) - len(stripped)
             wiring = self._wiring_at((x, y))
-            if wiring is None or wiring.value is not None:
+            # A row opening on "-" always has its own unvalued wiring: the
+            # wirings are built from those very cells, and each input row is
+            # read once.
+            if wiring is None or wiring.value is not None:  # pragma: no cover
                 continue
             wiring.value = tuple(self._read_bit() for _ in range(wiring.width))
 
@@ -705,7 +713,9 @@ class _Machine:
         for wiring in self.wirings:
             if cell in wiring.cells:
                 return wiring
-        return None
+        # The machine only looks up cells it took from a wiring in the first
+        # place, so the miss is a guard rather than a path.
+        return None  # pragma: no cover - every cell asked for is covered
 
     def _read_bit(self) -> int:
         """Read one bit of input, taking exhausted input as a zero bit."""

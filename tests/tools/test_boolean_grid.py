@@ -379,11 +379,9 @@ class TestWII2D:
     def run_chain(self, tpl: str, bits: list[int]) -> str:
         """Instantiate the n-embedding chain template and run the interpreter."""
         from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_wii2d
 
-        program = parameterized.instantiate(
-            tpl, bits, lambda _i, b: "v   " if b else ">   ", lambda _i, _b: "    "
-        )
+        program = _fill_wii2d(tpl, bits)
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run_wii2d(program.splitlines(), io=IO())
@@ -470,9 +468,10 @@ class TestWII2D:
                 for b1 in (0, 1):
                     value = _wii2d_apply(routes[1][b1], _wii2d_apply(routes[0][b0], 0))
                     assert value == t[b0 * 2 + b1], table
-            # and the generated template uses the closed-form routes
+            # and the generated template uses the closed-form routes, laid
+            # out with no blank column between the merge and what follows
             template = boolean.wii2d(table)
-            assert template.startswith(">{X0}- > {X1}"), table
+            assert template.startswith(">{X0}->{X1}"), table
 
     @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
     def test_chain_parity_closed_form(self, n: int) -> None:
@@ -567,18 +566,22 @@ class TestWII2D:
             result = _wii2d_search(n, non_symmetric_table)
         assert result is None
 
-    def test_symmetric_search_deadline_stops_the_ladder(self) -> None:
-        """The per-``maxlen`` deadline check aborts the ladder early."""
+    def test_symmetric_search_runs_the_whole_ladder(self) -> None:
+        """The symmetric ladder is bounded by construction, not by a clock.
+
+        It used to carry an 8-second deadline, which truncated a fixed
+        ``maxlen`` 0..6 ladder at whatever length the machine happened to
+        reach -- so a symmetric table's program depended on the host.  The
+        ladder is now run to completion, and a table it can decode is decoded
+        regardless of how slow the machine is.
+        """
         from esolangs.tools.boolean.wii2d import _wii2d_symmetric_search
 
-        calls = [0.0, 100.0]
-
-        def fake_monotonic() -> float:
-            return calls.pop(0) if calls else 100.0
-
-        with patch("time.monotonic", side_effect=fake_monotonic):
-            result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
-        assert result is None
+        result = _wii2d_symmetric_search(3, [0, 1, 0, 1])
+        assert result is not None
+        start, routes = result
+        assert len(routes) == 3
+        assert start == 0
 
     def test_symmetric_search_gives_up_after_the_full_ladder(self) -> None:
         """No decode is found once every ``maxlen`` in the ladder is tried."""
@@ -624,42 +627,104 @@ class TestWII2D:
         t = [int(c) for c in table]
         return t, seqs, pre, index
 
-    def test_search_start_timeout_returns_none(self) -> None:
-        """An already-expired deadline aborts the search immediately."""
-        import time
+    def test_search_start_exhausted_budget_returns_none(self) -> None:
+        """A spent work budget aborts the search immediately.
 
+        The budget counts ``pre`` evaluations rather than seconds, so this
+        needs no clock patching and the cut-off lands in the same place on
+        every machine -- which is the point of counting work.
+        """
         from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 3
         t, seqs, pre, index = self._build_search_start_args(2, "01101001")
-        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() - 1.0)
+        result = _wii2d_search_start(n, t, seqs, pre, index, 0)
         assert result is None
 
-    def test_search_start_clean_failure_returns_none(self) -> None:
-        """A deadline with plenty of time left can still fail cleanly (no
-        route pair fits every requirement), exercising the dead-end and
-        final-``None`` paths instead of the timeout path."""
-        import time
+    def test_output_does_not_depend_on_machine_speed(self) -> None:
+        """A slow machine emits the same program a fast one does.
 
+        This is the regression the counted budget exists for.  The search used
+        to stop on ``time.monotonic``, so the amount of it that completed --
+        and therefore which op-string length produced the answer -- depended on
+        how fast the host was.  Slowing every unit of work down by a large
+        factor here left the old code raising ``ValueError`` on a table it
+        solves when unloaded; the program must now be byte-identical no matter
+        how long the work takes.
+
+        The slowdown is applied to ``pre``, the metered unit, so it costs wall
+        time without changing the work count -- exactly the axis the old clock
+        was sensitive to and the new counter is not.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start as original
+
+        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        table = "01101001"  # XOR3: solved quickly, so the slow run stays cheap
+        fast = wii2d_mod.wii2d(table)
+
+        def slowed(
+            n: int,
+            t: list[int],
+            seqs: list[str],
+            pre: Callable[[int, int], int],
+            index: dict[int, int],
+            budget: int,
+        ) -> tuple[int, list[tuple[str, str]]] | None:
+            def slow_pre(sidx: int, targets: int) -> int:
+                for _ in range(200):  # burn time, not budget
+                    pass
+                return pre(sidx, targets)
+
+            return original(n, t, seqs, slow_pre, index, budget)
+
+        with patch.object(wii2d_mod, "_wii2d_search_start", slowed):
+            slow = wii2d_mod.wii2d(table)
+        assert slow == fast
+
+    def test_search_start_is_machine_independent(self) -> None:
+        """The same table and budget give the same program, run after run.
+
+        The old ladder took its cut-off from ``time.monotonic``, so a busy or
+        slow host could fall through to a longer op string and emit a
+        different program.  With a counted budget the search is a pure
+        function of its inputs.
+        """
+        from esolangs.tools.boolean.wii2d import _wii2d_search_start
+
+        n = 3
+        runs = set()
+        for _ in range(3):
+            t, seqs, pre, index = self._build_search_start_args(2, "01101001")
+            out = _wii2d_search_start(n, t, seqs, pre, index, 10**9)
+            assert out is not None
+            runs.add(repr(out))
+        assert len(runs) == 1
+
+    def test_search_start_clean_failure_returns_none(self) -> None:
+        """An ample budget can still fail cleanly (no route pair fits every
+        requirement), exercising the dead-end and final-``None`` paths instead
+        of the budget path."""
         from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 3
         # maxlen=1 gives too small an op-string pool to realize XOR3
         t, seqs, pre, index = self._build_search_start_args(1, "01101001")
-        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        result = _wii2d_search_start(n, t, seqs, pre, index, 10**9)
         assert result is None
 
     def test_search_start_memoizes_repeated_subproblems(self) -> None:
         """A junction's sub-search is memoized by its requirement set so a
-        repeated subproblem returns the cached result instead of re-solving."""
-        import time
+        repeated subproblem returns the cached result instead of re-solving.
 
+        The budget is a count of ``pre`` evaluations, not a deadline, so it is
+        passed the same ample constant the other budget tests use.
+        """
         from esolangs.tools.boolean.wii2d import _wii2d_search_start
 
         n = 4
         table = "0000000000111101"
         t, seqs, pre, index = self._build_search_start_args(2, table)
-        result = _wii2d_search_start(n, t, seqs, pre, index, time.monotonic() + 5.0)
+        result = _wii2d_search_start(n, t, seqs, pre, index, 10**9)
         assert result is not None
 
     def test_wii2d_raises_when_the_search_finds_no_route(self) -> None:

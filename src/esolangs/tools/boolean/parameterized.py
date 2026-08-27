@@ -32,11 +32,14 @@ generator below therefore stores every input once (a tape load, a register
 pack, a deque/stack push, a variable, or a mirror) and reads it back, rather
 than re-substituting it.
 
-No generator emits a ``{Ci}`` complement placeholder: ``bfpda``'s node
-structure needs a truthy marker to stay on the stack after each bit is
-consumed, but the marker's value never depends on the bit, so it is a
-constant embedded directly in the template; ``nocomment`` computes each
-bit's complement from ``{Xi}`` at runtime instead of embedding it.
+There is no complement placeholder.  :func:`instantiate` used to fill a
+``{Ci}`` beside each ``{Xi}``, for a generator that wanted ``1 - bit``
+embedded as a constant, but none does: ``bfpda``'s node structure needs a
+truthy marker to stay on the stack after each bit is consumed, and the
+marker's value never depends on the bit, so it is a constant written
+straight into the template; ``nocomment`` computes each bit's complement
+from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and
+the ``set_comp`` argument that filled it are gone.
 """
 
 from typing import TypeAlias
@@ -46,7 +49,12 @@ from typing import TypeAlias
 # construction (a search or a grid layout) dwarfs the others.
 from esolangs.tools.boolean.a_painter_ant import a_painter_ant
 from esolangs.tools.boolean.cod import cod
-from esolangs.tools.boolean.helpers import _validate_truth_table, instantiate
+from esolangs.tools.boolean.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    decision_tree_tokens,
+    instantiate,
+)
 from esolangs.tools.boolean.wii2d import wii2d
 
 __all__ = [
@@ -78,11 +86,13 @@ def bio(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     BIO has three registers (``x``, ``y``, ``z``) and no absolute jumps —
-    its ``{``/``}`` loops are structurally matched — so a variable-length
-    setter is safe.  Each input is embedded once by packing it into ``x``:
+    its ``{``/``}`` loops are structurally matched — so the setter's length
+    is unconstrained.  Each input is embedded once by packing it into ``x``:
     ``{Xi}`` becomes ``0ox`` repeated by the input's binary weight (``2**w``)
-    for a one bit and nothing for a zero, so ``x = sum 2**w_i * bit_i`` is
-    the input's numeric index.
+    for a one bit, so ``x = sum 2**w_i * bit_i`` is the input's numeric
+    index.  A zero writes the same count to ``z`` instead, which nothing
+    reads, so the two bits embed at equal width rather than a zero
+    embedding as nothing.
 
     ``y`` is initialized to the table's first entry (``table[0]``), then
     ``2**n - 1`` *nested* loops each decrement ``x`` once (``0ix{ 1ox; ... };``)
@@ -105,7 +115,7 @@ def bio(truth_table: str) -> str:
         body = "1ox;" + yop(truth_table[j - 1], truth_table[j]) + inner
         inner = "0ix{" + body + "};"
     init = "0oy;" if truth_table[0] == "1" else ""
-    return pack + " " + init + inner + "0oy;" * 48 + "1iy;"
+    return pack + " " + init + inner + "0oy;" * _ASCII_ZERO + "1iy;"
 
 
 def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
@@ -116,9 +126,12 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     program prints ``'0'`` or ``'1'``.
 
     Eval has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders become a bit push on the input stack
-    (``0`` for a zero, ```+`` for a one) and the harness instantiates one
-    program per input combination.  The tree is stored as a flat, full
+    template's ``{Xi}`` placeholders become a bit push and the harness
+    instantiates one program per input combination.  Each is two characters
+    wide whichever bit it carries, so the program's shape does not reveal
+    its inputs: the bit is staged on the tree stack, where ```` ` ````
+    (``1 - ptr``) pushes a one and ``0`` pushes a zero, and ``=`` then moves
+    it to the input stack the nodes read.  The tree is stored as a flat, full
     binary tree in heap (BFS) order on the tree stack; a node at index
     ``i`` tests the next input and the heap layout pins its two children at
     fixed offsets.
@@ -154,7 +167,7 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
             tree.append("0+." if truth_table[index] == "1" else "0.")
 
     bits = "".join("{X" + str(i) + "}" for i in range(n - 1, -1, -1))
-    return f"~{bits}~" + "".join(f'"{t}"' for t in tree) + "*!"
+    return bits + "".join(f'"{t}"' for t in tree) + "*!"
 
 
 def back(truth_table: str) -> str:
@@ -167,9 +180,14 @@ def back(truth_table: str) -> str:
     the current tape bit, ``+`` steps the beam forward when the current bit
     is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
     and ``*`` halts printing the tape.  Each input is embedded once by
-    filling its tape cell: ``{Xi}`` becomes ``-`` for a one bit and a space
-    for a zero, so cells ``0..n-1`` hold the inputs and cell ``n`` is the
-    answer cell.
+    filling its tape cell over two load rows: a constant ``-`` primes the
+    cell to 1 for either bit, then ``{Xi}`` finishes it -- ``+`` (inert on
+    a set cell) for a one, ``-`` (flipping it back) for a zero.  So cells
+    ``0..n-1`` hold the inputs and cell ``n`` is the answer cell.  Both
+    bits cost the same two rows and, because no ``+`` ever meets a zero
+    cell here, both rows run for either bit.  A zero used to embed as a
+    blank the rstrip then removed, which made the program's height reveal
+    it.
 
     A decision node is ``+\>``: ``+`` tests the current tape bit (advancing
     the beam straight past the ``\`` when it is 0) and ``\`` reflects the
@@ -177,6 +195,14 @@ def back(truth_table: str) -> str:
     input.  Both branches advance the pointer once, so a leaf at depth ``d``
     has the pointer at cell ``d``.  A leaf walks to cell ``n``, flips it with
     ``-`` when its value is 1, and halts.
+
+    The load runs *down column 0* and the tree starts at column 1, so no row
+    carries the load's width as indent.  A ``/`` at the origin does both
+    turns: the beam starts heading right, the ``/`` sends it up and off the
+    top edge onto the bottom row, it runs the load upward back to the origin,
+    and the ``/`` -- now taking a beam heading up -- turns it right into the
+    tree.  The load is therefore written bottom-to-top, and the tree is free
+    to begin one column in.
 
     The answer is therefore the *value* of cell ``n``, which the halt dump
     prints, rather than the head's position, which it does not.  An earlier
@@ -189,31 +215,48 @@ def back(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # load (row 0): fill cells 0..n-1 with the inputs, then the 0/1 answer
-    # cells.  A '\' at column `base` (past the load, with a space gap the beam
-    # travels through) sends the beam down to the tree on row 1.  The tree
-    # lives at columns >= base on rows >= 1, so row 0's placeholder shrink on
-    # instantiation does not misalign it.
-    # The transition '\' below sits at column len(load_line) and has to
-    # shrink to tree_col on instantiation, so the load's *length* is
-    # load-bearing: every {Xi} loses three characters, fixing the raw length
-    # at 6n + 3 and the tail's budget at exactly n + 4.  '>' followed by
-    # n + 3 '<' spends that budget and leaves the pointer back at cell 0;
-    # '<' at cell 0 is a no-op in the interpreter, so the surplus moves are
-    # harmless padding rather than a walk into negative cells.
-    load_line = (
-        "".join("{X" + str(i) + "}" + (">" if i < n - 1 else "") for i in range(n))
-        + ">"
-        + "<" * (n + 3)
-    )
-    # The load's placeholders shrink on instantiation, so the tree lives on
-    # rows >= 1 (immune to row 0's shrink).  A '\' at row 0 col len(load_line)
-    # sends the beam down; it shrinks to tree_col on instantiation.  A '\' on
-    # row 1 at tree_col turns the descending beam right into the tree.
-    tree_col = 3 * n + 3
+    # The load: fill cells 0..n-1 with the inputs, then '>' to open the answer
+    # cell at n and n '<' to walk the pointer back to cell 0 for the tree's
+    # first test.  Held as units because a '{Xi}' is one grid cell but four
+    # template characters.
+    units: list[str] = []
+    for i in range(n):
+        # Two units per input, so neither bit has to be written as a blank:
+        # the beam reads one cell per row in column 0, so the setter's second
+        # command needs a row of its own rather than the column beside it.
+        # Where the tree is the taller of the two these rows already exist.
+        #
+        # The first row is a constant '-' that primes the cell to 1 for both
+        # bits alike, and the *second* carries the placeholder that finishes
+        # it: '-' again to flip a zero back down, '+' to leave a one standing.
+        # Putting the bit on the trailing row rather than the leading one is
+        # what makes every load row execute -- see the fill for why the older
+        # '{Xi}' + '+' order skipped a row instead.
+        units.append("-")
+        units.append("{X" + str(i) + "}")
+        if i < n - 1:
+            units.append(">")
+    units.append(">")
+    units.extend("<" * n)
 
+    # The load occupies column 0 and the tree everything from column 1, so the
+    # tree carries no indent for it -- the drawing's width is the tree's alone.
+    # A single '/' at the origin performs both turns.  The beam starts at (0,0)
+    # heading right; the '/' turns it up, off the top edge and onto the bottom
+    # row, where it runs the load *upward* back to the origin; the '/' takes it
+    # a second time, now heading up, and turns it right into the tree.  So the
+    # load is written bottom-to-top, and an earlier layout's two '\' -- one to
+    # drop the beam off the load's end, one to turn it back right -- are both
+    # gone along with the row and the indent they cost.
+    #
+    # Riding off the top edge makes the grid's toroidal wrap load-bearing:
+    # ``_Machine.step`` advances with ``% len(code)``, so up from row 0 lands
+    # on the last row.  The wiki text the interpreter quotes does not mention
+    # the edges at all, and no interpreter test covers a wrap, so this is the
+    # one place the generator leans on behaviour with no witness outside this
+    # repo's own interpreter.
     grid: dict[tuple[int, int], str] = {}
-    next_row = [2]
+    next_row = [1]
 
     def leaf(level: int, value: str, row: int, col: int) -> None:
         # walk to the single answer cell, write a 1 there when the leaf's
@@ -240,16 +283,31 @@ def back(truth_table: str) -> str:
         grid[(nrow, col + 2)] = ">"
         emit(level + 1, mid, hi, nrow, col + 3)  # one (bit=1) child
 
-    grid[(0, len(load_line))] = "\\"  # transition down (shrinks to tree_col)
-    grid[(1, tree_col)] = "\\"  # turn the descending beam right
-    emit(0, 0, 2**n, 1, tree_col + 1)  # tree root on row 1, moving right
-    maxrow = max(r for r, _ in grid)
-    maxcol = max(c for _, c in grid)
-    rows = [[" "] * (maxcol + 1) for _ in range(maxrow + 1)]
-    rows[0][: len(load_line)] = list(load_line)
+    emit(0, 0, 2**n, 0, 1)  # tree root at column 1, the beam arriving rightward
+
+    # The grid is as tall as whichever of the two needs more rows: the tree
+    # wants 2**n and the load wants one row per unit below the '/'.  Past
+    # n = 3 the tree is the taller of the two, so the load's rows start
+    # sharing with tree rows -- which is safe for the same reason the whole
+    # template is: a '{Xi}' is the only thing on its row that instantiation
+    # resizes, it always shrinks by exactly three (every embedding is one
+    # character, for either bit value), and it sits left of the tree, so the
+    # tree glyphs on that row slide back to the columns they were drawn for.
+    # An embedding whose width depended on the bit would break that silently.
+    height = max(max(r for r, _ in grid) + 1, 1 + len(units))
+    width = max(c for _, c in grid) + 1
+    rows = [[" "] * width for _ in range(height)]
     for (r, c), ch in grid.items():
         rows[r][c] = ch
-    return "\n".join("".join(r).rstrip() for r in rows)
+    rows[0][0] = "/"
+    for k, unit in enumerate(units):
+        rows[height - 1 - k][0] = unit
+    # Every row is built at the full grid width, so the rstrip trims the pad
+    # each one carries past its last glyph.  It no longer has a bit to hide:
+    # both bits embed as a single command ('-' or '+'), never as the blank a
+    # zero once used, so no placeholder row instantiates to whitespace and
+    # the strip cannot change a filled row's length.
+    return "\n".join("".join(row).rstrip() for row in rows)
 
 
 def nocomment(truth_table: str) -> str:
@@ -374,9 +432,9 @@ def nocomment(truth_table: str) -> str:
     setup_move(index)
     setup.append("c")  # index starts at zero
     cells: list[tuple[int, int]] = list(skip_vals.items())
-    cells.append((sentinel, 48))
+    cells.append((sentinel, _ASCII_ZERO))
     for j in range(k):
-        cells.append((tbase + j, 48 + int(truth_table[j])))
+        cells.append((tbase + j, _ASCII_ZERO + int(truth_table[j])))
     cells.sort(key=lambda cv: cv[1])
     if cells:
         first_addr, first_value = cells[0]
@@ -402,11 +460,15 @@ def bfpda(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     BF-PDA has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders become a push of the bit, and the
-    harness instantiates one program per input combination.  Each input is
-    embedded once: the load phase pushes every ``<@ {Xi}`` pair (a constant
-    1 marker, then the bit) up front, so the stack holds all ``n`` bits and
-    markers with ``b0`` on top.
+    template's ``{Xi}`` placeholders become a push of the bit, four
+    characters wide whichever bit it is, so the program's shape does not
+    reveal its inputs.  The harness instantiates one program per input
+    combination.  Each input is embedded once: the load phase pushes every
+    ``<@{Xi}`` pair (a constant 1 marker, then the bit) up front, so the
+    stack holds all ``n`` bits and markers with ``b0`` on top.
+
+    Every character outside ``@.<>[]`` is a comment, so the commands are
+    emitted unseparated; the fragments below are spaced only to read.
 
     A node tests its bit and *consumes* it for the next level using a
     ``<``-break loop ``[ > one < ] > [ > zero < ] >``: ``[`` enters when the
@@ -426,12 +488,16 @@ def bfpda(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
 
     # load: push a constant-1 marker then the bit, so top = b0
-    head = " ".join("<@ {X" + str(i) + "}" for i in range(n - 1, -1, -1))
+    head = "".join("<@{X" + str(i) + "}" for i in range(n - 1, -1, -1))
 
     def leaf(level: int, value: str) -> str:
         # consume the remaining pre-loaded bits, then print the answer
-        return "> " * (2 * (n - level)) + ("<@" if value == "1" else "<") + ". > "
+        return ">" * (2 * (n - level)) + ("<@" if value == "1" else "<") + ".>"
 
+    # Not routed through :func:`decision_tree_tokens`: this tree is a plain
+    # string with no index to thread, so the walker's token lists would have
+    # to be one-element lists unwrapped at every use, which reads worse than
+    # the four lines it saves.
     def node(i: int, rows: list[int]) -> str:
         results = {truth_table[r] for r in rows}
         if i == n or len(results) == 1:
@@ -442,9 +508,9 @@ def bfpda(truth_table: str) -> str:
         sub1 = node(i + 1, one)
         # one-branch pops ~bi first (expose next bit); zero-branch has it popped
         # by the node's own loop
-        return "[ > " + "> " + sub1 + " < ] > [ > " + sub0 + " < ] >"
+        return "[>" + ">" + sub1 + "<]>[>" + sub0 + "<]>"
 
-    return head + " " + node(0, list(range(2**n)))
+    return head + node(0, list(range(2**n)))
 
 
 def lamfunc(truth_table: str) -> str:
@@ -520,32 +586,37 @@ def bitdeque(truth_table: str) -> str:
     # the load block, most significant placeholder first (so the first POP
     # after the load is the MSB); each placeholder expands to two commands
     head = ["{X" + str(i) + "}" for i in range(n - 1, -1, -1)]
-    tree: list[str] = []
 
-    def emit(level: int, lo: int, hi: int, start: int) -> int:
-        """Emit the subtree for rows ``[lo, hi)``; return the next index.
-
-        ``start`` is the instantiated command index where this subtree begins
-        (the load block occupies ``2n`` commands), so the emitted ``GOTO``
-        operands are correct after substitution.
-        """
-        vals = {truth_table[r] for r in range(lo, hi)}
-        if level == n or len(vals) == 1:
-            answer = vals.pop() if level < n else truth_table[lo]
-            sub = leaf(answer)
-            tree.extend(sub)
-            return start + len(sub)
-        half = (hi - lo) // 2
-        tree.append("POP")
-        marker = len(tree)
-        tree.append("GOTO@ONE")
-        start += 2
-        start = emit(level + 1, lo, lo + half, start)  # zero subtree in place
-        tree[marker] = f"GOTO {start}"  # the one subtree starts here
-        return emit(level + 1, lo + half, hi, start)
-
-    end = emit(0, 0, 2**n, 2 * n)
+    # A node spends ``POP`` and its ``GOTO`` before either subtree, so the
+    # walker's ``at`` lands on this node and ``at + 2`` on the zero subtree.
+    # The load block occupies ``2n`` commands ahead of the tree, which is
+    # where the indices start, so the ``GOTO`` operands are right after
+    # substitution.
+    tree = decision_tree_tokens(
+        truth_table,
+        lambda _level, row: leaf(truth_table[row]),
+        lambda _level, zero, one, at: [
+            "POP",
+            f"GOTO {at + 2 + len(zero)}",
+            *zero,
+            *one,
+        ],
+        parent_width=2,
+        start=2 * n,
+        collapse=True,
+    )
+    end = 2 * n + len(tree)
     return " ".join(head + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree])
+
+
+def _ram0_width(level: int) -> int:
+    """Commands a RAM0 tree node spends before its subtrees.
+
+    ``Z``, an ``A`` per level (the cell address), ``L``, ``C``, and the
+    ``goto`` that reaches the one-subtree -- so the width grows with depth,
+    which is why the walker takes a callable rather than a constant.
+    """
+    return level + 4
 
 
 def ram0(truth_table: str) -> str:
@@ -588,36 +659,35 @@ def ram0(truth_table: str) -> str:
         tokens.append("S")
         pos += 1
 
-    def leaf(answer: str) -> None:
-        nonlocal pos
-        tokens.append("Z")
-        tokens.append("A" if answer == "1" else "Z")
-        pos += 2
-        tokens.append("END@")
-        pos += 1
+    def leaf_tokens(_level: int, row: int) -> list[str]:
+        return ["Z", "A" if truth_table[row] == "1" else "Z", "END@"]
 
-    def emit(level: int, lo: int, hi: int) -> None:
-        nonlocal pos
-        vals = {truth_table[r] for r in range(lo, hi)}
-        if level == n or len(vals) == 1:
-            leaf(vals.pop() if level < n else truth_table[lo])
-            return
-        half = (hi - lo) // 2
-        tokens.append("Z")  # z = the address, then load ram[z]
-        tokens.extend("A" for _ in range(level))
-        tokens.append("L")
-        pos += 1 + level + 1
-        tokens.append("C")
-        pos += 1
-        marker = len(tokens)
-        tokens.append("ONE@")
-        pos += 1
-        emit(level + 1, lo, lo + half)  # zero subtree in place (MSB = 0)
-        tokens[marker] = f"ONE@{pos + 1}"  # 1-based, after the zero subtree
-        emit(level + 1, lo + half, hi)
+    def node(level: int, zero: list[str], one: list[str], at: int) -> list[str]:
+        # ``Z``, the level's ``A`` run, ``L``, ``C`` and the ``ONE@`` slot all
+        # precede the subtrees, which is the node's own width; the one subtree
+        # therefore starts a further ``len(zero)`` along, 1-based.
+        return [
+            "Z",
+            *("A" for _ in range(level)),
+            "L",
+            "C",
+            f"ONE@{at + _ram0_width(level) + len(zero) + 1}",
+            *zero,
+            *one,
+        ]
 
-    emit(0, 0, 2**n)
-    end = pos + 1  # 1-based goto operand just past the last command
+    # Every tree token is one command (unlike the load block's ``{Xi}``, which
+    # expands to two), so the tree's command count is its token count.
+    tree = decision_tree_tokens(
+        truth_table,
+        leaf_tokens,
+        node,
+        parent_width=_ram0_width,
+        start=pos,
+        collapse=True,
+    )
+    tokens += tree
+    end = pos + len(tree) + 1  # 1-based goto operand just past the last command
     return " ".join(
         str(end) if t == "END@" else str(int(t[4:])) if t.startswith("ONE@") else t
         for t in tokens
@@ -738,9 +808,26 @@ _TREE_BRANCH_1 = ["*  ", "** ", "   "]  # reflects the down-route back to the ri
 # the ``~``, while every later block is entered heading down from the
 # previous block's exit (each block leaves the pointer heading down at
 # column 3, one row below itself).
-_FIRST_ONE = ["   *", "   ~", "    ", "    ", "    "]
+# A one bit's block used to be its ``~`` and nothing else, where a zero
+# bit's is a dense box, so ``_compact`` dropped the one's blank rows and the
+# emitted program's size counted the ones: at n == 2 the four programs came
+# out 123, 110, 110, and 97 characters.  The one blocks now carry inert
+# walls sized so each block's glyphs occupy the same number of characters as
+# the zero block it stands against (18 for the first, 14 for the rest).
+#
+# What a row costs is ``len(row.rstrip())``, so what matters is the column
+# its *last* glyph sits in -- a row needs one wall, not a run of them, and
+# the blanks to its left are paid for either way.  That holds for the ``~``
+# rows too: leading blanks hold the ``~`` at column 3 just as well as glyphs
+# would, so the row is a bare ``~`` with one wall past it.
+#
+# ``*`` turns the IP clockwise, so a wall is only inert where the IP cannot
+# reach it.  The IP enters the header at (0, 0) heading right and crosses
+# columns 0-2 of that row to reach its ``*``, so the first block's row 0 is
+# left exactly as it was; every cell walled here is one no run visits.
+_FIRST_ONE = ["   *", "   ~*", "  *", "  *", "  *"]
 _FIRST_ZERO = ["   *", "*~* ", "*  *", "*  *", "* * "]
-_NEXT_ONE = ["   ~", "    ", "    ", "    "]
+_NEXT_ONE = ["   ~*", "  *", "  *", "  *"]
 _NEXT_ZERO = ["*~* ", "*  *", "*  *", "* * "]
 
 # The loop-component section: entered heading down at column 3 from the last
@@ -872,7 +959,7 @@ def _compact(rows: list[str]) -> str:
     width = max((len(row) for row in rows), default=0)
     padded = [row.ljust(width) for row in rows]
     kept = [row for row in padded if row.strip()]
-    if not kept:
+    if not kept:  # pragma: no cover - every table lays down at least one cell
         return ""
     columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
     return "\n".join("".join(row[x] for x in columns).rstrip() for row in kept)
@@ -885,8 +972,13 @@ def home_row(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     Home Row has no input command, so this is a parameterized generator:
-    each ``{Xi}`` placeholder becomes an ``a``-run at a bit cell that the
-    harness fills in per instantiation.  Unlike the removed ``n <= 2``
+    each ``{Xi}`` placeholder becomes a two-character setter at a bit cell
+    that the harness fills in per instantiation.  The cell is zero when the
+    placeholder is reached, so the setter raises it with ``a`` and then
+    either clears it again (``s``) or leaves it (``j``, whose skip does not
+    fire on the now-nonzero cell), spending the same width either way.
+
+    Unlike the removed ``n <= 2``
     routing generator (which tried to send the beam to one of ``2**n``
     distinct leaf cells -- a wall past ``n == 2`` on the fixed 5x5 grid),
     this closed-form construction packs the bits into a single binary

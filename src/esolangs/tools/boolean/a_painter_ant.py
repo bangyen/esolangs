@@ -259,5 +259,4 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
         template,
         bits,
         replace,
-        lambda _i, _b: "",
     )

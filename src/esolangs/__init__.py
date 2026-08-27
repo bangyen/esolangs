@@ -23,7 +23,6 @@ from esolangs.exceptions import (
 )
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
-from esolangs.tools.boolean import BOOLEAN
 from esolangs.tools.transpilers import TRANSPILERS
 from esolangs.tools.wrap import takes_width, wrap_program
 from esolangs.vm import VM, make_vm
@@ -51,13 +50,22 @@ def generate(language: str, text: str, width: int | None = None) -> str:
 
     Most languages honour it by *wrapping* the finished program, breaking
     only between whole tokens so it still means the same thing.  A few build
-    a shape rather than a line -- Clockwise lays its code around a
-    rectangle's perimeter -- and cannot be reflowed after the fact; those
+    a shape rather than a line -- Clockwise weaves its code through a grid
+    the turtle walks -- and cannot be reflowed after the fact; those
     generators take the width themselves and lay the program out to fit.
 
     A language whose newlines are semantic (the 2D grid languages) or that
     rejects them outright (NoComment) ignores ``width`` rather than raising,
     so one width can be passed across every language.
+
+    ``width`` is therefore considered but not guaranteed: every generator
+    narrows what it can, and one asked for less than its construction can
+    occupy returns its narrowest form rather than raising.  The floor is
+    the generator's own -- five columns for Clockwise's weave, but a
+    function of the *text* for the generators whose programs grow with it,
+    so there is no one width below which a caller can expect a refusal.
+    Passing a width no generator can meet is safe; it just gets the
+    narrowest program each of them can build.
     """
     try:
         fn = GENERATORS[language]
@@ -162,8 +170,8 @@ def describe(language: str) -> dict[str, object]:
         "id": lang.id,
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
-        "text_generator": lang.generator is not None,
-        "boolean_generator": language in BOOLEAN,
+        "text_generator": lang.text is not None,
+        "boolean_generator": lang.boolean is not None,
         "transpilers": transpilers,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{language.replace(' ', '_')}",

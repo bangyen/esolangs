@@ -78,7 +78,7 @@ port) and only ever read after that, which is why the tests can assert that
 a run prints exactly one character.
 """
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import _validate_truth_table, minterm_literals
 
 __all__ = ["circuit_diagram"]
 
@@ -184,7 +184,7 @@ class _Layout:
             | set(self.junctions)
             | set(self.glyphs)
         )
-        if not cells:
+        if not cells:  # pragma: no cover - every table lays down at least a wire
             return ""
         width = max(x for x, _ in cells) + 1
         height = max(y for _, y in cells) + 1
@@ -396,9 +396,9 @@ def _minterm(
     """
     n = len(literals)
     chosen = []
-    for position in range(n):
+    for position, wants_complement in minterm_literals(index, n):
         plain, negated = literals[position]
-        if (index >> (n - 1 - position)) & 1:
+        if not wants_complement:
             chosen.append(plain)
         elif negated is None:
             raise AssertionError(f"input {position} needs its complement")

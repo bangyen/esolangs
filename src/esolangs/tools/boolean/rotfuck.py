@@ -7,7 +7,11 @@ a command spelling that survives its rotation
 (:func:`_rotfuck_allowed`, :func:`_rotfuck_neutral`).
 """
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    minterm_literals,
+)
 
 __all__ = ["rotfuck"]
 
@@ -156,7 +160,7 @@ def rotfuck(truth_table: str) -> str:
     # complements to 1, set the minterm cells to 1 (mismatch cells start 0).
     for i in range(n):
         emit([","])
-        emit(["-"] * 48)
+        emit(["-"] * _ASCII_ZERO)
         if i < n - 1:
             emit([">"])
     emit([">"] * (c[0] - (n - 1)))
@@ -177,8 +181,8 @@ def rotfuck(truth_table: str) -> str:
     for i in range(n):
         block_specs.append((b[i], c[i], "-"))  # complement c_i = 1 - b_i
     for k in range(2**n):
-        for i in range(n):
-            guard = c[i] if ((k >> (n - 1 - i)) & 1) else b[i]
+        for i, negated in minterm_literals(k, n):
+            guard = b[i] if negated else c[i]
             block_specs.append((guard, mc[k], "+"))  # mismatch count
         block_specs.append((mc[k], m[k], "-"))  # zero minterm on any mismatch
     for k in range(2**n):
@@ -206,7 +210,7 @@ def rotfuck(truth_table: str) -> str:
     while ptr > r:
         emit(["<"])
         ptr -= 1
-    emit(["+"] * 48)
+    emit(["+"] * _ASCII_ZERO)
     emit(["."])
 
     return "".join(
