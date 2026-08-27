@@ -47,9 +47,16 @@ Runtime error contract:
 """
 
 import sys
+from typing import Literal, cast
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+
+# The alphabet a wall form is written in: ``?`` matches any cell, ``W`` a
+# wall character, and ``.`` a non-wall.  Naming the three lets the checker
+# see that :func:`_matches` handles every one, so it needs no arm for a
+# pattern character that no form contains.
+_Pattern = Literal["?", "W", "."]
 
 _HEADINGS = ("N", "E", "S", "W")
 _DELTA = {"N": (-1, 0), "E": (0, 1), "S": (1, 0), "W": (0, -1)}
@@ -69,14 +76,14 @@ _MOUTH_MAX_DIST = 3
 _MOUTH_MAX_DEPTH = 7
 
 
-def _rotate(form: tuple[str, ...]) -> tuple[str, ...]:
+def _rotate(form: tuple[_Pattern, ...]) -> tuple[_Pattern, ...]:
     """Rotate a three-by-three form a quarter turn clockwise."""
     return tuple(form[i] for i in (6, 3, 0, 7, 4, 1, 8, 5, 2))
 
 
-def _rotations(form: str) -> list[tuple[str, ...]]:
+def _rotations(form: str) -> list[tuple[_Pattern, ...]]:
     """Return the four rotations of a nine-character form."""
-    out, cur = [], tuple(form)
+    out, cur = [], cast("tuple[_Pattern, ...]", tuple(form))
     for _ in range(4):
         cur = _rotate(cur)
         out.append(cur)
@@ -103,7 +110,7 @@ _WALL_FORMS = [
 ]
 
 
-def _matches(block: tuple[str, ...], form: tuple[str, ...]) -> bool:
+def _matches(block: tuple[str, ...], form: tuple[_Pattern, ...]) -> bool:
     """Whether a three-by-three neighbourhood matches one form."""
     for actual, want in zip(block, form, strict=True):
         if want == "?":
@@ -111,13 +118,9 @@ def _matches(block: tuple[str, ...], form: tuple[str, ...]) -> bool:
         if want == "W":
             if actual not in _WALLS:
                 return False
-        elif want == ".":
-            if actual in _WALLS:
-                return False
-        # Every form is written in "W", "." and " ", so a literal cell to
-        # compare against never appears; this keeps a future form that used
-        # one from matching everything.
-        elif actual != want:  # pragma: no cover - no wall form has a literal cell
+        # ``want`` is "." here: the alphabet has no fourth character, so
+        # there is nothing left to fall through to.
+        elif actual in _WALLS:
             return False
     return True
 
