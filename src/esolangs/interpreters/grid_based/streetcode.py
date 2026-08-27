@@ -249,6 +249,14 @@ class _Machine:
         # on the very next step.  Counted down once per step and cleared by
         # any heading change.
         self._skip_hug = 0
+        # The enumerated drive-state graph, or ``None`` when there is no
+        # graph to consult: a program whose geometry is not a street
+        # (``_validate_width`` exempts those) or one whose validation the
+        # interpreter's own fixtures have patched out.  ``step`` falls
+        # back to calling the movement helpers directly in that case, so
+        # a machine without a graph behaves exactly as it did before the
+        # graph existed.
+        self._graph: dict[_State, _Edges] | None = None
         # Last, because ``_validate_total`` drives the real movement rules
         # over the grid and so needs every field they touch to exist.
         self._validate(starts[0])
@@ -361,6 +369,11 @@ class _Machine:
 
     def _drive_states(self, start: tuple[int, int]) -> dict[_State, _Edges]:
         """Explore every driving state the car can reach from ``start``.
+
+        Built once at construction and kept as ``_graph``, where it
+        serves two callers: :meth:`_validate_total` reads it to reject a
+        street the car cannot drive out of, and :meth:`step` looks up
+        each move in it rather than re-running the mouth scans.
 
         A driving state is a position, a heading and the three latches
         ``_choose_heading`` carries between steps -- exactly the movement
@@ -512,7 +525,8 @@ class _Machine:
         the value-dependent halts (see :meth:`_probe`), which are
         runtime semantics rather than geometry.
         """
-        for state, edges in self._drive_states(start).items():
+        self._graph = self._drive_states(start)
+        for state, edges in self._graph.items():
             row, col, heading = state[0], state[1], state[2]
             if self.grid[row][col] == ";":
                 continue
@@ -1287,6 +1301,19 @@ class _Machine:
             self._done = True
             return
 
+        # The driving state as the car arrives, for the graph lookup below.
+        # Taken here because an instruction moves CP and the tape but never
+        # the car, its heading or the latches, and ``U`` returns before the
+        # lookup; so this is still the state when the lookup happens.
+        state: _State = (
+            self.row,
+            self.col,
+            self.heading,
+            self._merge_target,
+            self._merging_heading,
+            self._skip_hug,
+        )
+
         # The cell as the car arrives, before this square's instruction runs.
         # A junction decision is about the road the car is arriving at, so it
         # branches on this rather than on whatever the square itself does to
@@ -1341,6 +1368,27 @@ class _Machine:
             return
         # 'C' and space (and any other undefined character) are no-ops.
 
+        # Where the car goes next was worked out for every reachable state
+        # at construction, so the ordinary case is a dictionary lookup
+        # rather than a re-run of the mouth scans and junction rules.  The
+        # two branch bits are the same two reads ``_choose_heading`` makes
+        # -- the arrival cell and the cell after this square ran -- and
+        # only their zero-ness is asked for, because those are the only
+        # tests movement applies to them (see :meth:`_drive_states`).
+        edges = None if self._graph is None else self._graph.get(state)
+        if edges is not None:
+            successor = edges[int(arrival_cell != 0), int(self._cell() != 0)]
+            if successor is None:
+                self._done = True
+                return
+            self.row, self.col, self.heading = successor[0], successor[1], successor[2]
+            self._merge_target, self._merging_heading, self._skip_hug = successor[3:]
+            return
+
+        # No graph, or a state outside it: a machine whose geometry is not
+        # a street, or one a test has driven to a state the search never
+        # reached by setting the heading or a latch by hand.  Drive the
+        # rules directly, exactly as before the graph existed.
         heading = self._choose_heading(arrival_cell)
         if heading is None:
             self._done = True
