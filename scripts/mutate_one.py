@@ -155,6 +155,50 @@ if _mut and "__mutmut_" in _mut and not _mut.startswith("{stem}"):
 _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 
+def _split_inlined(bundle: Path, module: str) -> int:
+    """Move the bundle's inlined prefix into a module the mutants import.
+
+    ``bundle_one`` inlines ``esolangs.exceptions`` and
+    ``esolangs.interpreters.io`` ahead of the interpreter so the file runs
+    standalone.  mutmut mutates whatever is in ``paths_to_mutate``, so those
+    two ride along: ~64 mutants per language that :func:`_score` then throws
+    away for not being the interpreter's, and -- because a mutated ``IO``
+    hangs the suite rather than failing it -- most of the run's timeouts.
+    Each timeout costs mutmut's whole ``(estimate + 1) * 30`` CPU budget,
+    so the discarded quarter of the mutants was the expensive quarter.
+
+    The prefix moves to ``_inlined.py``, which the bundle imports with a
+    star import, leaving executable code identical and the interpreter's
+    own definitions the only thing left to mutate.  Returns the number of
+    lines moved.
+    """
+    text = bundle.read_text()
+    marker = (
+        f"# --- inlined from esolangs/interpreters/{module.replace('.', '/')}.py ---"
+    )
+    head, sep, tail = text.partition(marker)
+    if not sep:
+        raise SystemExit(f"no inline marker for {module} in {bundle.name}")
+
+    # The header (shebang, docstring, __future__ and stdlib imports) has to
+    # stay with both halves: the prefix needs it to import, and a
+    # ``from __future__`` must be the first statement in each file.
+    lines = head.splitlines(keepends=True)
+    first_inline = next(
+        (i for i, line in enumerate(lines) if line.startswith("# --- inlined from")),
+        len(lines),
+    )
+    preamble, inlined = "".join(lines[:first_inline]), "".join(lines[first_inline:])
+    if not inlined.strip():
+        return 0
+
+    (bundle.parent / "_inlined.py").write_text(preamble + inlined)
+    bundle.write_text(
+        preamble + "from _inlined import *  # noqa: F403\n\n" + sep + tail
+    )
+    return inlined.count("\n")
+
+
 def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     """Lay out the project; return (dir, stem, dropped, the module's classes)."""
     from bundle_one import Source, bundle
@@ -169,6 +213,9 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     (proj / "tests").mkdir(parents=True)
     out = bundle(language, Source(None), proj / "bundled.py")
     stem = out.stem
+    moved = _split_inlined(out, module)
+    if moved:
+        print(f"[note] moved {moved} inlined lines out of the mutation target")
 
     tests, dropped = _drop_unbundled_tests(_test_file(module).read_text())
     (proj / "tests" / "test_bundled.py").write_text(
@@ -187,6 +234,10 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     (proj / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
         f'paths_to_mutate = ["{out.name}"]\n'
+        # mutmut copies only what it mutates into mutants/, so the inlined
+        # half has to be carried across explicitly or every mutant dies on
+        # an import that the baseline -- which runs from proj/ -- resolves.
+        'also_copy = ["_inlined.py"]\n'
         "backup = false\n"
         'runner = "python -m pytest -x -q -p no:cacheprovider tests/test_bundled.py"\n'
         'tests_dir = ["tests/"]\n'
