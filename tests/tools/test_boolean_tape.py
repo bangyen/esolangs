@@ -239,9 +239,16 @@ class TestDimensionalTree:
         assert len(boolean.dimensional_tree(xor6)) < 10_000  # vs ~34K survivor
 
     def test_dimensional_dispatches(self) -> None:
-        """dimensional picks the survivor for sparse and the tree for dense."""
-        sparse = boolean.dimensional("0" * 15 + "1")  # AND4
-        assert len(sparse) < len(boolean.dimensional_tree("0" * 15 + "1"))
+        """dimensional picks the tree, sparse or dense.
+
+        The survivor form used to win on sparse tables, but a tree that
+        folds constant subtrees beats it on *every* table at n <= 4 -- the
+        survivor spends a block per row where the folded tree spends one
+        leaf per constant run.  ``shortest`` still guards the choice, so
+        this pins the outcome rather than removing the survivor.
+        """
+        sparse = "0" * 15 + "1"  # AND4
+        assert boolean.dimensional(sparse) == boolean.dimensional_tree(sparse)
         xor = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
         assert boolean.dimensional(xor) == boolean.dimensional_tree(xor)
 
@@ -305,10 +312,29 @@ class TestBf:
             got = run_bf(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_bf_sparse_uses_the_minterm(self) -> None:
-        """bf picks the minterm for sparse tables (shorter than the tree)."""
-        program = boolean.brainfuck("0" * 15 + "1")  # AND4: one one-row
-        assert len(program) < len(boolean.bf_tree("0" * 15 + "1"))
+    def test_bf_constant_uses_the_minterm(self) -> None:
+        """bf picks the minterm for a constant table.
+
+        The two constant tables are the only ones where the minterm form
+        still wins: it emits no test at all, while the tree still spends a
+        guard pair on the root.  Sparse-but-not-constant tables go to the
+        tree now that it folds constant subtrees -- AND4 is 852 characters
+        as a folded tree against 1637 as a minterm -- which is what
+        :meth:`test_bf_sparse_uses_the_tree` pins.
+        """
+        program = boolean.brainfuck("0" * 16)
+        assert len(program) < len(boolean.bf_tree("0" * 16))
+
+    def test_bf_sparse_uses_the_tree(self) -> None:
+        """bf picks the folded tree for a sparse table.
+
+        Folding reversed this dispatch: a single-one table used to favour
+        the minterm, but a folded tree collapses the fifteen zero rows into
+        a handful of leaves and comes out shorter for every single-one
+        table at n == 4.
+        """
+        table = "0" * 15 + "1"  # AND4: one one-row
+        assert boolean.brainfuck(table) == boolean.bf_tree(table)
 
     def test_bf_dense_uses_the_tree(self) -> None:
         """bf picks the decision tree for dense tables."""
@@ -352,6 +378,26 @@ class TestBfTree:
         """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.bf_tree(xor6)) < 10_000  # vs the minterm's ~1.2M
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice emits a leaf instead of branching on more bits.
+
+        Both tables have the same number of ones, so the difference is the
+        arrangement alone: ``11110000`` is two constant halves and folds to
+        one leaf each, while the parity table has no constant subtree above
+        a single row and emits the full tree.
+        """
+        assert len(boolean.bf_tree("11110000")) < len(boolean.bf_tree("10010110"))
+
+    def test_parity_table_is_unfolded(self) -> None:
+        """A table with no constant subtree still spends a leaf per row.
+
+        The guard against a fold that fires too eagerly: parity has no
+        constant slice above one row, so every one of the ``2**n`` rows
+        keeps its own leaf.
+        """
+        xor3 = "10010110"
+        assert boolean.bf_tree(xor3).count(".") == 8
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
