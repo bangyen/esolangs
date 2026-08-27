@@ -75,7 +75,45 @@ def sophie(text: str) -> str:
     return "".join(f"#${ord(c)}," if c in "\n$" else f"#{c}," for c in text)
 
 
-def dig(text: str) -> str:
+def _dig_segments(text: str, per_segment: int = 4) -> list[tuple[str, str]]:
+    """Cut ``text`` into work segments, each a ``(commands, depths)`` pair.
+
+    A segment is ``$`` followed by up to ``per_segment`` ``<char>:`` pairs,
+    and the ``$`` reads its length as a single digit from the cell below --
+    so a segment can drive at most nine work commands, which is four pairs.
+    A segment whose first character is a digit gets one padding cell, or the
+    digit would be read as the count instead of the ``$``'s own.
+
+    The two strings of a pair are the same length, so a caller can stack
+    them and keep the columns aligned however it lays the segments out.
+    """
+    segments: list[tuple[str, str]] = []
+
+    def flush(seg: list[str]) -> None:
+        if not seg:
+            return
+        pad = 1 if seg[0][0].isdigit() else 0
+        n = pad + len(seg) * 2
+        commands = "$" + " " * pad + "".join(seg)
+        depths = str(n) + " " * (len(commands) - 1)
+        # A "%" reads its 0 from directly below, so the depth row carries one
+        # under each; every other depth cell stays blank.
+        depths = "".join(
+            "0" if commands[i] == "%" else ch for i, ch in enumerate(depths)
+        )
+        segments.append((commands, depths))
+
+    seg: list[str] = []
+    for c in text:
+        seg.append("%:" if c == " " else f"{c}:")
+        if len(seg) == per_segment:
+            flush(seg)
+            seg = []
+    flush(seg)
+    return segments
+
+
+def dig(text: str, width: int | None = None) -> str:
     """Build a Dig program that outputs ``text``.
 
     Each character is a work segment: ``<char>:`` prints the mole's value as
@@ -83,47 +121,132 @@ def dig(text: str) -> str:
     ``$`` reads a single-digit segment length from the row below, so a
     segment is flushed every four characters; a segment starting with a digit
     gets one padding cell so it is not read as the count.
+
+    ``width`` folds those segments over several row pairs instead of one
+    long pair (:func:`_dig_fold`).  Below the narrowest width a fold can
+    turn in, the program is stood on end instead and runs down two columns
+    (:func:`_dig_vertical`), so a width is always answered with a program
+    rather than refused.
     """
     if not all(c == " " or c in ".,!?" or c.isalnum() for c in text):
         raise ValueError("Dig can only output letters, digits, spaces and .,!?")
-    # Each "$" reads a single-digit count from the row below, so a segment can
-    # drive at most nine work commands: four "c:" pairs (two per character).
-    # A segment that starts with a digit would be read as the count instead,
-    # so it gets one extra padding cell first.
-    row0 = [">"]
-    row1 = [" "]
-    seg: list[str] = []
+    if width is not None:
+        if width < _DIG_MIN_WIDTH:
+            return _dig_vertical(text)
+        return _dig_fold(text, width)
 
-    def flush() -> None:
-        if not seg:
-            return
-        pad = 1 if seg[0][0].isdigit() else 0
-        n = pad + len(seg) * 2
-        row0.append("$")
-        row1.append(str(n))
-        if pad:
-            row0.append(" ")
-        row0.extend(seg)
-        row1.extend(" " * n)
-        seg.clear()
-
-    for c in text:
-        seg.append("%:" if c == " " else f"{c}:")
-        if len(seg) == 4:
-            flush()
-    flush()
-    row0.append("@")
-    row1.append(" ")
-
-    r0 = "".join(row0)
-    r1 = list("".join(row1))
-    for idx, ch in enumerate(r0):
-        if ch == "%":
-            r1[idx] = "0"
+    segments = _dig_segments(text)
+    r0 = ">" + "".join(commands for commands, _ in segments) + "@"
+    r1 = " " + "".join(depths for _, depths in segments) + " "
     # The depth row is built to the command row's width so the two stay
     # column-aligned, but blanks past its last digit are never read; trim
     # them so the emitted program ends where its commands do.
-    return "\n".join([r0, "".join(r1).rstrip()])
+    return "\n".join([r0, r1.rstrip()])
+
+
+# A folded row needs the heading in column 0, a segment of ``$`` and one
+# ``c:`` pair, and the turn column that ends it.  A segment whose character
+# is a digit takes its pad cell past that, so such a row comes out one column
+# wider than asked rather than the floor being raised for every text.  Below
+# this the program is stood on end instead -- see :func:`_dig_vertical`.
+_DIG_MIN_WIDTH = 5
+
+
+def _dig_vertical(text: str) -> str:
+    """Stand the whole program on end, two columns wide.
+
+    The mole is turned south by a ``'`` and simply falls through the
+    program: every command that ran left-to-right along a row now runs
+    top-to-bottom down column 0, and the segment is as atomic as it ever
+    was, since falling through it consumes the cells in the same order.
+
+    Column 1 carries the digits.  :meth:`_Machine._value` reads a digit from
+    *any* neighbouring cell rather than specifically the one below, so a
+    count beside its ``$`` is found exactly as one under it was, and the
+    ``%`` that prints a space reads its ``0`` the same way.  This is also
+    why the vertical form needs no padding cell: the count never shares the
+    column its segment's characters run down, so a leading digit cannot be
+    mistaken for it.
+
+    Two columns is the floor of the language rather than of a layout -- one
+    for the commands, one for the digits they read -- so nothing narrower is
+    offered and a width below it gets this.
+    """
+    rows = ["'"]
+    for commands, depths in _dig_segments(text):
+        for index, char in enumerate(commands):
+            digit = depths[index] if index < len(depths) else " "
+            rows.append(char + digit.rstrip())
+    rows.append("@")
+    return "\n".join(rows)
+
+
+def _dig_fold(text: str, width: int) -> str:
+    """Fold ``text``'s segments into rows ``width`` columns wide.
+
+    Every content row runs *rightward*, the way the unfolded program does,
+    and a blank return lane below each pair carries the mole back to the
+    left margin.  Each row states its own heading rather than inheriting
+    one -- ``>`` opens a command row and ``'`` turns the mole down at the
+    end of it -- which is the same reason WII2D's serpentine spells out
+    every turn: no row depends on the heading the previous one ended with.
+
+    A true boustrophedon would cost the same three rows per pair, since a
+    leftward command row still needs a spacer between it and the depth
+    digits above it.  The return lane is preferred because it doubles as
+    that spacer: ``$`` and ``%`` read a digit from *any* adjacent cell, and
+    :meth:`_Machine._value` scans upward first, so a command row must never
+    sit directly beneath another pair's depth digits.  Running every row
+    rightward also keeps each segment's cells in the one order.
+
+    A segment is never split across rows: while a ``$`` count is running,
+    every cell is consumed as a work command, so a turn character inside
+    one would be eaten as a command rather than steering the mole.  Segments
+    are therefore sized to the row, and narrow widths simply carry fewer
+    ``c:`` pairs per ``$``.
+    """
+    # Column 0 holds the heading and the last column the turn, so a segment
+    # has the columns between them.  Each "c:" pair is two cells past the
+    # "$" and its worst-case pad.
+    room = width - 2
+    per_segment = max(1, min(4, (room - 2) // 2))
+    segments = _dig_segments(text, per_segment)
+
+    # A segment carrying a pad cell is one column wider than ``room`` was
+    # sized for, and the turn has to stay clear of it: the rows are laid out
+    # to whichever is wider, so a padded segment gives every row one more
+    # column rather than pushing its own turn off the end.
+    span = max([room, *(len(c) for c, _ in segments)])
+
+    rows: list[str] = []
+    line: list[tuple[str, str]] = []
+
+    def emit(*, last: bool) -> None:
+        """Write the packed segments as a command row, depths, and a lane.
+
+        A row is padded out to ``span`` only while more rows follow, so the
+        turns stay in one column; the last row stops at its own commands
+        rather than trailing filler out to a width it never needed.
+        """
+        commands = "".join(c for c, _ in line)
+        depths = "".join(d for _, d in line)
+        tail = "@" if last else "'"
+        body = commands if last else commands.ljust(span)
+        rows.append(">" + body + tail)
+        rows.append(" " + depths.ljust(len(body)) + " ")
+        if not last:
+            # The row's trailing "'" turns the mole down, and it falls past
+            # the depth row into the lane's "<" and walks west.  The "'" in
+            # column 0 turns it down again, onto the next row's own ">".
+            rows.append("'" + " " * span + "<")
+
+    for commands, depths in segments:
+        if line and sum(len(c) for c, _ in line) + len(commands) > span:
+            emit(last=False)
+            line = []
+        line.append((commands, depths))
+    emit(last=True)
+    return "\n".join(row.rstrip() for row in rows)
 
 
 def polynomial(text: str) -> str:
