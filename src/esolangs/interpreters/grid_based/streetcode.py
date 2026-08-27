@@ -47,7 +47,7 @@ Runtime error contract:
 """
 
 import sys
-from typing import Literal, cast
+from typing import Literal
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -92,9 +92,14 @@ def _rotate(form: tuple[_Pattern, ...]) -> tuple[_Pattern, ...]:
     return tuple(form[i] for i in (6, 3, 0, 7, 4, 1, 8, 5, 2))
 
 
+# The pattern alphabet keyed by its own spelling, so a written form is
+# validated into _Pattern characters rather than asserted to be them.
+_PATTERNS: dict[str, _Pattern] = {"?": "?", "W": "W", ".": "."}
+
+
 def _rotations(form: str) -> list[tuple[_Pattern, ...]]:
     """Return the four rotations of a nine-character form."""
-    out, cur = [], cast("tuple[_Pattern, ...]", tuple(form))
+    out, cur = [], tuple(_PATTERNS[c] for c in form)
     for _ in range(4):
         cur = _rotate(cur)
         out.append(cur)
