@@ -134,6 +134,29 @@ class TestFunctions:
             run_program("FAFHYHQ")
 
 
+class TestConditionalsThatDoNothing:
+    """Each conditional command's other arm: the case where it declines.
+
+    ``Q``, ``V`` and ``Z`` all guard on what they popped, and the suite only
+    ever showed them acting.  A command that quietly does nothing is the
+    half more likely to go wrong unnoticed, so each is pinned here by what
+    it leaves behind.
+    """
+
+    def test_q_ignores_a_value_that_is_not_a_function(self) -> None:
+        # Q pops two integers rather than a function and a test, so there is
+        # no body to run; the third copy is what Y prints.
+        assert run_program("FAFKKQY") == "10"
+
+    def test_v_does_not_jump_when_the_test_is_truthy(self) -> None:
+        # V pops a truthy value, so the pc is left alone and Y still runs.
+        assert run_program("FAFKKVY") == "10"
+
+    def test_z_ignores_a_value_that_is_not_a_function(self) -> None:
+        # Z needs a function to loop over; an integer leaves the stack as is.
+        assert run_program("FAFKZY") == "10"
+
+
 class TestSkips:
     def test_u_skips_when_falsy(self) -> None:
         # [10, 0]: U pops 0 (falsy) and skips the K, so Y prints the 10
