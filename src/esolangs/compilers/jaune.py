@@ -5,10 +5,30 @@ program can only input a single character at a time.
 """
 
 import sys
+from dataclasses import dataclass
 from re import findall, sub
-from typing import cast
+from typing import Literal, cast
 
 from esolangs.compilers._riscv_common import MUL32
+
+# The four commands that compile to a called subroutine rather than to
+# inline instructions.
+_Subr = Literal["^", "v", "<", "&"]
+
+
+@dataclass
+class _Routine:
+    """One emittable subroutine: its label, and whether the program needs it.
+
+    ``used`` is set when a call to the routine is emitted, and ``looped``
+    when a repeat count is passed in ``s3`` -- which is what decides
+    whether the routine ends by branching back on the counter or plainly
+    returning.  Both start false and only ever turn on.
+    """
+
+    label: str
+    used: bool = False
+    looped: bool = False
 
 
 def count(code: str, ind: int) -> tuple[int | str, int]:
@@ -110,11 +130,11 @@ def comp(code: str) -> str:
         "    li   s3, 1\n"
         "    li   s7, 0\n\n"
     )
-    subr = {
-        "^": ["output", False, False],
-        "v": ["input", False, False],
-        "<": ["left", False, False],
-        "&": ["mult", False, False],
+    subr: dict[_Subr, _Routine] = {
+        "^": _Routine("output"),
+        "v": _Routine("input"),
+        "<": _Routine("left"),
+        "&": _Routine("mult"),
     }
 
     while ind < len(code):
@@ -122,15 +142,18 @@ def comp(code: str) -> str:
         num, new = count(code, ind)
 
         if c in "^v<":
+            # The test above is the membership check that makes this a
+            # subroutine command, so the lookup below is keyed correctly.
+            routine = subr[cast("_Subr", c)]
             if cast(int, num) > 1:
                 res += f"\tli   s3, {num}\n"
-                subr[c][2] = True
-            res += f"\tcall {subr[c][0]}\n"
-            subr[c][1] = True
+                routine.looped = True
+            res += f"\tcall {routine.label}\n"
+            routine.used = True
         elif c == "&":
             if cast(int, num) > 1:
-                res += f"\tli   s3, {num}\n\tcall {subr[c][0]}\n"
-                subr[c][1] = subr[c][2] = True
+                res += f"\tli   s3, {num}\n\tcall {subr['&'].label}\n"
+                subr["&"].used = subr["&"].looped = True
             else:
                 res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s2\n\tsw   t0, 0(s1)\n"
         elif c == ">":
@@ -192,11 +215,11 @@ def comp(code: str) -> str:
                 res += f".sub{n}:\n"
             res += f"\tcall sub{n}\n\tret\n"
 
-    def end(opr: str) -> str:
-        if subr[opr][2]:
+    def end(opr: _Subr) -> str:
+        if subr[opr].looped:
             mul = (
                 "\taddi s3, s3, -1\n"
-                f"\tbgt  s3, zero, {subr[opr][0]}\n"
+                f"\tbgt  s3, zero, {subr[opr].label}\n"
                 "\taddi s3, s3, 1\n"
                 "\tret\n"
             )
@@ -204,7 +227,7 @@ def comp(code: str) -> str:
             mul = "\tret\n"
         return mul
 
-    if subr["^"][1]:
+    if subr["^"].used:
         res += (
             "\noutput:\n"
             "\taddi sp, sp, -16\n"
@@ -261,7 +284,7 @@ def comp(code: str) -> str:
             "\tmv   a0, t0\n"
             "\tret\n"
         )
-    if subr["v"][1]:
+    if subr["v"].used:
         res += (
             "\ninput:\n"
             "\taddi s1, s1, -4\n"
@@ -274,7 +297,7 @@ def comp(code: str) -> str:
             "\taddi s7, s7, -48\n"
             "\taddi s1, s1, 4\n" + end("v")
         )
-    if subr["<"][1]:
+    if subr["<"].used:
         res += (
             "\nleft:\n"
             "\tslli t0, s3, 2\n"
@@ -285,7 +308,7 @@ def comp(code: str) -> str:
             ".left_done:\n"
             "\tret\n"
         )
-    if subr["&"][1]:
+    if subr["&"].used:
         res += (
             "\nmult:\n"
             "\taddi sp, sp, -16\n"
