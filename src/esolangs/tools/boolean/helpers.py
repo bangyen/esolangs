@@ -207,6 +207,18 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     guard cell before its ``]``, so the loop exits after one pass, and a
     fired leaf clears the result cell, so every ``]`` on the way out sees
     zero.  The tree is O(2**n) characters, sharing the bit tests.
+
+    A subtree whose rows all agree collapses to a leaf rather than branching
+    on bits that cannot change the answer: the side jumps straight to the
+    result cell and prints.  This is what the deepest level always did --
+    a one-row span is trivially constant -- lifted to any level, so a table
+    like ``11110000`` spends one leaf per half instead of a full tree.  The
+    inputs are still all read (the reads are unconditional, above the tree),
+    so a folded program consumes its input the same way an unfolded one
+    does.  Factor is the generator that most wants this: it encodes this
+    program as an integer and refuses tables whose encoding exceeds
+    Python's digit limit, so folding turns some previously unrenderable
+    tables into runnable ones.
     """
     n = _validate_truth_table(truth_table)
 
@@ -266,26 +278,43 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
         cells.append(".")
         cells.append("[-]")  # clear the result so every ] on the way out sees zero
 
+    def constant(i: int, combo: int) -> str | None:
+        """Return the shared value of the subtree at ``(i, combo)``, else None.
+
+        ``combo`` has the bits above level ``i`` set, so the subtree covers
+        the ``2**(n - i)`` rows that agree with it there -- a contiguous run,
+        since rows split most-significant-first.
+        """
+        span = 2 ** (n - i)
+        rows = truth_table[combo : combo + span]
+        return rows[0] if len(set(rows)) == 1 else None
+
+    def branch(i: int, combo: int, bit: int) -> None:
+        """Emit one side of node ``i``: a leaf when constant, else a subtree.
+
+        A folded leaf prints from the result cell just as a full-depth one
+        does, so the guard-cell dance around it is unchanged; only the depth
+        it is reached at differs.
+        """
+        value = constant(i + 1, combo)
+        move(result if value is not None else bit + 2)
+        if value is not None:
+            leaf(value)
+        else:
+            node(i + 1, combo)
+
     def node(i: int, combo: int) -> None:
         bit = 2 * i
-        nxt = result if i == n - 1 else bit + 2
+        one = combo | (1 << (n - 1 - i))
         move(bit)
         cells.append("[")  # one-side: if b_i
-        move(nxt)
-        if i == n - 1:
-            leaf(truth_table[combo | (1 << (n - 1 - i))])
-        else:
-            node(i + 1, combo | (1 << (n - 1 - i)))
+        branch(i, one, bit)
         move(bit)
         cells.append("[-]")  # clear b_i so this ] exits
         cells.append("]")
         move(bit + 1)
         cells.append("[")  # zero-side: if 1 - b_i
-        move(nxt)
-        if i == n - 1:
-            leaf(truth_table[combo])
-        else:
-            node(i + 1, combo)
+        branch(i, combo, bit)
         move(bit + 1)
         cells.append("[-]")  # clear the complement so this ] exits
         cells.append("]")
