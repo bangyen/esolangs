@@ -515,3 +515,71 @@ class TestForbinMutationSurvivors:
         steps, out, _ = self._drive(code)
         assert out == "\x01"
         assert steps == 11
+
+
+class TestForbinAncestorHangDetection:
+    """Infinite recursion, proven rather than waited out.
+
+    ``run_until_halt_or_cycle`` cannot catch a Forbin hang: a call that
+    never returns pushes one frame per step and pops none, so the
+    whole-machine snapshot grows forever and never repeats.  Every Forbin
+    hang is in that unbounded-growth class, which is why this language had
+    no hang test at all and leaned on the wall-clock backstop -- the one
+    that deadlocks under ``pytest --cov`` (see ``docs/walls.md``).
+
+    ``run_until_halt_or_ancestor`` is the narrower check that class allows:
+    a frame entering the same function, with the same bindings, at the same
+    input position as an ancestor is about to replay what that ancestor is
+    still in the middle of.
+    """
+
+    @staticmethod
+    def _verdict(code: str, stdin: str = "") -> bool:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        return run_until_halt_or_ancestor(_Machine(code, ScriptedIO(stdin)))
+
+    def test_an_unconditional_self_call_is_a_proven_hang(self) -> None:
+        """``f`` calls itself with nothing changed, so it never returns."""
+        assert self._verdict("main {\n f {\n  f 0;\n }\n f 0;\n}\n") is False
+
+    def test_mutual_recursion_is_a_proven_hang(self) -> None:
+        """The ancestor need not be the same function, only the same state."""
+        assert self._verdict("a { b 0; }\nb { a 0; }\nmain { a 0; }\n") is False
+
+    def test_a_flipping_argument_still_repeats(self) -> None:
+        """``f !x`` alternates, so the second lap re-enters the first's state.
+
+        ``docs/walls.md`` notes that a genuinely changing argument would
+        slip through.  Forbin's only datatype is bits, so an argument that
+        changes still has to come back around, and the key repeats within
+        two frames.
+        """
+        assert self._verdict("main {\n f x {\n  f !x;\n }\n f 0;\n}\n") is False
+
+    def test_a_terminating_program_is_not_flagged(self) -> None:
+        """The ordinary programs the suite already runs must stay unflagged."""
+        assert self._verdict("main {\n h x { out 0,1,0,0,0,0,0,x; }\n h 1;\n h 0;\n}\n")
+        assert self._verdict(
+            "main {\n g x {\n  for _:!x..x { return 0; }\n  g 1;\n }\n g 0;\n}\n"
+        )
+
+    def test_the_same_helper_called_twice_is_not_recursion(self) -> None:
+        """Two sequential calls share a key but neither is the other's ancestor."""
+        assert self._verdict("main {\n h x { out 0,1,0,0,0,0,0,x; }\n h 1;\n h 1;\n}\n")
+
+    def test_recursion_waiting_on_input_is_not_a_hang(self) -> None:
+        """The input cursor is in the key, and that is what keeps it sound.
+
+        This function re-enters with identical bindings every lap -- its
+        base case depends on a byte it has not read yet.  Keyed on bindings
+        alone it is called a hang while it is one read from returning; the
+        ``'@'`` lap recurses and the ``'A'`` lap returns.
+        """
+        code = (
+            "f {\n a,b,c,d,e,g,h,i = (in 0);\n for _:!i..i { return 0; }\n f 0;\n}\n"
+            "main { f 0; }\n"
+        )
+        assert self._verdict(code, "@\nA") is True

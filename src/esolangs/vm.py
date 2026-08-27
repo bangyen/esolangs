@@ -14,7 +14,7 @@ ones the VM can wrap; the rest of the registry runs whole programs only.
 
 from __future__ import annotations
 
-from collections.abc import Hashable
+from collections.abc import Hashable, Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
@@ -82,6 +82,82 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
             tortoise = machine.snapshot()
             power *= 2
             length = 0
+    return True
+
+
+@runtime_checkable
+class _FramedMachine(Protocol):
+    """A :class:`_StepMachine` that also exposes its call stack.
+
+    ``frames`` is the live stack, outermost first, and ``frame_entry_key``
+    returns what a frame is *about to run* -- its function, its bindings,
+    and the input cursor -- so two frames with equal keys will replay each
+    other.  Separate from :class:`_StepMachine` because the cycle detector
+    needs neither.
+    """
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+    @property
+    def frames(self) -> Sequence[object]:
+        """The live call stack, outermost frame first."""
+
+    def frame_entry_key(self, frame: object) -> Hashable:
+        """Return ``frame``'s entry state, hashable and comparable."""
+
+
+def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 10000) -> bool:
+    """Step ``machine`` until it halts or a call provably replays an ancestor.
+
+    :func:`run_until_halt_or_cycle` cannot catch infinite recursion: a call
+    that never returns pushes one frame per step and pops none, so the
+    machine's whole-state snapshot grows forever and never repeats.  That is
+    the unbounded-growth class, and it is why recursive languages keep a
+    wall-clock backstop -- one that deadlocks under ``pytest --cov`` (see
+    ``docs/walls.md``).
+
+    This is the narrower check that class allows.  Rather than comparing
+    whole-machine states across time, it compares each newly-pushed frame
+    against the frames already beneath it: if a frame enters the same
+    function, with the same bindings, at the same input position as an
+    ancestor, it is about to replay exactly what that ancestor is still in
+    the middle of, and the recursion cannot terminate.  Returns ``True``
+    when the machine halts and ``False`` once such a frame is pushed.
+
+    The input position is part of the key and carries the soundness.  A
+    recursion whose base case depends on a byte it has yet to read enters
+    with identical bindings every lap and would otherwise be called a hang
+    while it is one read away from returning.
+
+    Two things this does not do.  It does not catch every infinite
+    recursion -- one whose bindings genuinely differ every lap (``f(x - 1)``
+    over unbounded integers) never repeats a key, so callers keep the
+    wall-clock backstop for that class.  And it costs O(depth) per push
+    rather than the cycle detector's O(1), which is affordable only because
+    it runs once per *call*, not once per step.  ``limit`` bounds the walk
+    so an undecided program returns ``True`` rather than spinning; a caller
+    wanting proof of a halt should check ``machine.halted`` itself.
+    """
+    keys: dict[int, Hashable] = {}
+    for _ in range(limit):
+        if machine.halted:
+            return True
+        depth_before = len(machine.frames)
+        machine.step()
+        if len(machine.frames) <= depth_before:
+            continue
+        depth = len(machine.frames) - 1
+        # A shallower frame at this index belongs to a call that has since
+        # returned, so drop it rather than compare against a dead ancestor.
+        keys = {d: k for d, k in keys.items() if d < depth}
+        keys[depth] = machine.frame_entry_key(machine.frames[-1])
+        if keys[depth] in [k for d, k in keys.items() if d < depth]:
+            return False
     return True
 
 
