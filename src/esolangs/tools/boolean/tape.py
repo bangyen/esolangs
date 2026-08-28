@@ -391,6 +391,17 @@ def basicfuck(truth_table: str) -> str:
     per input combination.  Each leaf adds ``48 + entry`` to the ``out``
     variable (which starts at 0 and is touched by exactly one leaf) and
     prints it with ``write <- out ;``.
+
+    A subtree whose rows all agree becomes a leaf instead of branching on
+    bits that cannot change the answer, which is what makes a table like
+    ``11110000`` two leaves rather than eight.  This is safe because a leaf
+    here is self-contained -- it names ``out`` and writes it, with nothing
+    but cosmetic indentation depending on how deep it sits -- so the
+    "exactly one leaf runs" invariant holds at any depth.  Generators whose
+    leaf depends on the path that reached it cannot do this: BrainIf's
+    leaves jump to a shared output routine that assumes the pointer has
+    passed every level's marker, and Streetcode's hall geometry is sized
+    from its subtree's height.
     """
     n = _validate_truth_table(truth_table)
 
@@ -402,7 +413,7 @@ def basicfuck(truth_table: str) -> str:
 
     def build(rows: list[int], k: int, depth: int) -> str:
         indent = "  " * depth
-        if len(rows) == 1:
+        if len({truth_table[row] for row in rows}) == 1:
             value = int(truth_table[rows[0]])
             return f"{indent}out += {_ASCII_ZERO + value} ;\n{indent}write <- out ;\n"
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
