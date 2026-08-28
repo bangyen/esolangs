@@ -352,26 +352,30 @@ class TestDecleq:
         assert len(decs) == 47 * 3 + 1  # three normalize chains, one branch
         assert len(boolean.decleq("11110000")) < len(boolean.decleq("10101010"))
 
-    def test_folding_shrinks_the_data_cells_too(self) -> None:
-        """The data cells are sized from the *folded* tree, not the full one.
+    def test_folding_leaves_no_dead_cells(self) -> None:
+        """Every cell is an instruction or live data -- none is filler.
 
-        ``data_base`` is computed before emitting, so a fold that shrank
-        the tree while still reserving room for a full one would pad the
-        gap with zeros.  That is not a correctness bug -- the padding runs
-        out to whatever address was reserved, so the leaves still resolve
-        -- which is exactly why it needs pinning here: the program merely
-        comes out larger, and nothing else would notice.
+        ``data_base`` is computed before emitting, so the tree has to be
+        *counted* before it is walked.  When that count is right the code
+        ends exactly at ``data_base`` and the only zero cells in the
+        finished program are the ``n`` read cells, which the reads fill in
+        at runtime.
+
+        A count that assumed nothing folded would still produce a working
+        program -- the allocation fills out to the reserved address, so
+        every leaf resolves -- with a run of dead zero cells wedged in
+        between (63 at ``n == 3``).  Nothing about the output reveals
+        that, so the cell count is what has to be pinned.
         """
         for table in ("11111111", "11110000", "11001100"):
             n = len(table).bit_length() - 1
             cells = [int(tok) for tok in boolean.decleq(table).split()]
-            trailing = 0
+            zeros_at_end = 0
             for value in reversed(cells[:-2]):  # the two output cells hold 48/49
                 if value:
                     break
-                trailing += 1
-            # exactly the n read cells, which are storage rather than padding
-            assert trailing == n, f"{table} pads {trailing - n} unused cells"
+                zeros_at_end += 1
+            assert zeros_at_end == n, f"{table} carries {zeros_at_end - n} dead cells"
 
     def test_folded_leaves_still_print_correctly(self) -> None:
         """Every folded table still prints its entry for every input."""

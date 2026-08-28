@@ -186,12 +186,16 @@ a leaf test plus whatever index bookkeeping the language needs.
   turns out to be. A second walk (`tree_instrs`) sizes the tree first and must
   stop in exactly the places the emitting walk will.
 
-  Getting that wrong is invisible: `mem.extend([0] * (out49 - len(mem) + 1))`
-  pads out to whatever address was reserved, so the leaves still resolve and
-  every program still prints correctly — it just carries a block of dead zero
-  cells (63 of them at n=3). The test therefore pins the *padding*, not the
-  output; an output-based test passes either way, which I confirmed by
-  desyncing the count deliberately.
+  When the count is right, the code ends exactly at `data_base` and
+  `mem.extend([0] * (out49 - len(mem) + 1))` allocates only the `n` read cells
+  and the two output cells — the finished program contains no filler at all.
+
+  Getting the count wrong is invisible from the output: the allocation fills
+  out to whatever address was reserved, so every leaf still resolves and the
+  program still prints correctly — it just carries a block of dead zero cells
+  (63 at n=3). The test therefore pins the *cell count*, not the output; an
+  output-based test passes either way, which I confirmed by desyncing the
+  count deliberately.
 
   Savings are modest at small `n` because the 47-step normalize chains are a
   fixed `47n` cost the fold cannot touch, but they grow as the tree overtakes
