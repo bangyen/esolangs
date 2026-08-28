@@ -273,6 +273,32 @@ class TestSixFive:
                 got = run_six_five(program, [str(b) for b in bits])
                 assert got == table[combo], f"inputs {bits}"
 
+    def test_greedy_order_can_be_the_only_renderable_one(self) -> None:
+        """Past the search cap, the greedy pick alone can carry a table.
+
+        This is the one path where nothing else can render: at n == 7 an
+        alternating table spends 127 labels in stream order, so the
+        node-read build raises *and* the hoisted identity order returns
+        ``""``, leaving the greedy order as the sole candidate.  Every
+        smaller case is covered by the exhaustive search and every larger
+        table the tests render (AND-8) comes out of the node-read build, so
+        without this the fallback is never exercised as the only survivor.
+        """
+        n = 7
+        alternating = ("10" * 128)[: 2**n]
+        assert _six_five_markers(alternating) == 2**n - 1 > 35
+        with pytest.raises(ValueError, match="35 branch labels"):
+            _six_five_node_read(alternating)
+        assert _six_five_hoisted(alternating, tuple(range(n))) == ""
+
+        program = boolean.six_five(alternating)
+        assert _markers(program) == 1  # greedy tests the last input first
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            feed = iter([str(b) for b in bits])
+            assert run_six_five_from(program, feed) == alternating[combo]
+            assert not list(feed), f"inputs {bits} left input unread"
+
     @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
     def test_total_through_five_inputs(self, n: int) -> None:
         """Every table up to five inputs renders: the worst case still fits.
@@ -359,8 +385,15 @@ class TestSixFive:
         # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.boolean.six_five")
 
-        for n, orders in ((6, 720), (8, 2)):
-            table = "0" * (2**n - 1) + "1"  # AND-n, which renders at any n
+        # AND-n is symmetric, so its greedy pick *is* the identity and the
+        # two dedupe to a single build -- the point being that neither is
+        # 40320.  An alternating table, whose greedy pick differs, is the
+        # two-candidate case.
+        for n, table, orders in (
+            (6, "0" * 63 + "1", 720),
+            (8, "0" * 255 + "1", 1),
+            (7, ("10" * 128)[:128], 2),
+        ):
             built = 0
 
             def counted(
