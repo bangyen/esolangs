@@ -681,12 +681,64 @@ def jaune(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Jaune reads each input bit with ``v`` (a digit character, ``ord-48``) into
-    a fresh cell and routes a decision tree with ``?``/``!`` jumps: ``v`` then
-    ``N?`` jumps to label ``N`` when the cell is nonzero, else falls through,
-    and each leaf builds 48 or 49 in a fresh cell and prints it with ``^``
-    before jumping to a shared end label.  A subtree whose table slice is a
-    constant collapses to a single leaf.
+    All ``n`` bits are read up front -- one ``v`` each (a digit character,
+    ``ord-48``) -- and the tree then routes with ``?`` jumps: a node walks to
+    the cell holding its bit and ``N?`` jumps to label ``N`` when that cell is
+    nonzero, else falls through.  Each leaf prints its answer with ``^`` and
+    jumps to a shared end label.  A subtree whose table slice is a constant
+    collapses to a single leaf.
+
+    Only the inputs the tree actually branches on get a cell of their own:
+    a read is followed by ``>`` when its bit is needed later and left to be
+    overwritten by the next read when it is not, so the kept bits sit in one
+    contiguous block and the tree navigates a span as wide as the function's
+    real dependencies.  A leaf then prints from the cell it is already
+    standing on -- its parent's test cell, whose value it knows -- so the
+    answer costs at most one ``+``/``-`` and no navigation at all.
+
+    **Reading up front is what makes the input count constant.**  The reads
+    used to sit *at* the nodes, so a folded tree skipped them: a constant
+    table consumed no input at all while a parity table consumed every bit,
+    making the program's stream consumption a function of its truth table.
+    That is the one thing every generator here may not do -- the reads are
+    the interface -- and Jaune escaped the contract test that sweeps for it
+    only by not being registered in ``BY_FUNCTION``.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
+    which the hoist is what enables: with every bit parked in its own cell,
+    a node can test any of them.  Navigation costs one ``>``/``<`` per cell
+    crossed, so an order pays for the folds it wins, and the search measures
+    rather than assumes.
+    """
+    return best_input_order(truth_table, _jaune_ordered)
+
+
+def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Jaune program; see :func:`jaune`.
+
+    Two things keep this cheap, and both come from the tree's shape being
+    known before a line is emitted.
+
+    **Inputs the tree never tests are clobbered rather than stored.**  The
+    read contract asks that every input be *consumed*, not that every value
+    be *kept*, so an input no node branches on is read into the cell the
+    next read overwrites -- ``v`` without the following ``>``.  The tested
+    bits then land in adjacent cells, so the tree navigates a block as wide
+    as the function's real dependencies rather than one as wide as ``n``.  A
+    constant table reads every input and stores none.
+
+    **A leaf prints from the cell it is already standing on.**  It was
+    reached by its parent's test, so the pointer is on that parent's cell
+    and the value there is known -- 1 on the then-branch, 0 on the else --
+    which makes the leaf one ``+``/``-`` and a ``^`` with no navigation at
+    all.  Mutating a bit cell is safe because exactly one leaf runs per
+    execution and it jumps straight to the end.
+
+    The pointer's position on entry to a node is a function of its *level*
+    alone, never of the path taken: both of a parent's branches leave the
+    pointer on the parent's cell, so the navigation is computed per level
+    instead of threaded through the branch history.
     """
     n = _validate_truth_table(truth_table)
     label = [1]
@@ -695,22 +747,69 @@ def jaune(truth_table: str) -> str:
         label[0] += 1
         return label[0]
 
-    def leaf(value: str, end: int) -> str:
-        # move to a fresh cell, build 0 or 1, print, then force nonzero and jump
-        body = ">+^" if value == "1" else ">^"
-        return body + f"+{end}?"
+    def move(frm: int, to: int) -> str:
+        return ">" * (to - frm) if to >= frm else "<" * (frm - to)
 
-    def node(level: int, lo: int, hi: int, end: int) -> str:
+    # Which levels the tree can branch on.  ``truth_table`` is already
+    # permuted, so this is computed in *level* space and then translated to
+    # the *stream* inputs the read block runs over -- level ``k`` reads
+    # input ``perm[k]``, and mixing the two frames stores the wrong bits.
+    branching = {
+        k
+        for k in range(n)
+        if any(
+            truth_table[r] != truth_table[r | (1 << (n - 1 - k))]
+            for r in range(2**n)
+            if not r & (1 << (n - 1 - k))
+        )
+    }
+    stored = {perm[k] for k in branching}
+    # Reads run in input order; only a stored input advances the pointer, so
+    # the kept bits occupy a contiguous block from cell 0.
+    cell_of: dict[int, int] = {}
+    reads = ""
+    slot = 0
+    for i in range(n):
+        reads += "v"
+        if i in stored:
+            cell_of[i] = slot
+            slot += 1
+            reads += ">"
+    # A clobbered read leaves its value under the pointer, so the cell the
+    # reads finish on is blank only when the last read advanced off it.  A
+    # whole-table constant prints from there and needs it zero, so step once
+    # more when the final read clobbered -- and the entry cell moves with it.
+    scratch = slot
+    if n and (n - 1) not in stored:
+        reads += ">"
+        scratch = slot + 1
+
+    def leaf(value: str, held: int | None, end: int) -> str:
+        want = int(value)
+        have = 0 if held is None else held
+        adjust = "+" * (want - have) if want >= have else "-" * (have - want)
+        return adjust + "^" + f"+{end}?"
+
+    def node(
+        level: int, lo: int, hi: int, entry: int, held: int | None, end: int
+    ) -> str:
         if level == n or len(set(truth_table[lo:hi])) == 1:
-            return leaf(truth_table[lo], end)
+            return leaf(truth_table[lo], held, end)
+        # A clobbered input has no cell to test.  Its bit cannot change the
+        # answer, so the two halves of this span are value-identical and
+        # descending into either one is the same function -- take the zero
+        # half, which keeps the row span halving in step with the level.
+        if perm[level] not in cell_of:
+            return node(level + 1, lo, (lo + hi) // 2, entry, held, end)
+        cell = cell_of[perm[level]]
         then_lbl = fresh()
         mid = (lo + hi) // 2
-        then = node(level + 1, mid, hi, end)
-        else_ = node(level + 1, lo, mid, end)
-        return f"v{then_lbl}?{else_}{then_lbl}:{then}"
+        then = node(level + 1, mid, hi, cell, 1, end)
+        else_ = node(level + 1, lo, mid, cell, 0, end)
+        return move(entry, cell) + f"{then_lbl}?{else_}{then_lbl}:{then}"
 
     end = fresh()
-    return node(0, 0, 2**n, end) + f"{end}:."
+    return reads + node(0, 0, 2**n, scratch, None, end) + f"{end}:."
 
 
 def jaune_multiply() -> str:
