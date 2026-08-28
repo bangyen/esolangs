@@ -159,6 +159,20 @@ class TestFlowchart:
         assert program.count("< >") == 15  # 2**4 - 1 internal nodes
         assert program.count("(( ))") == 16  # 2**4 leaves
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice is one leaf, and takes one column band.
+
+        The leaves keep their pitch but are handed out as the walk reaches
+        them, so a folded subtree narrows the drawing rather than leaving a
+        gap where its rows would have been.
+        """
+        assert boolean.flowchart("11111111").count("(( ))") == 1
+        assert boolean.flowchart("11110000").count("(( ))") == 2
+        assert boolean.flowchart("10010110").count("(( ))") == 8  # no fold
+        # a constant table needs no switch at all
+        assert boolean.flowchart("11111111").count("< >") == 0
+        assert boolean.flowchart("11110000").count("< >") == 1
+
     @pytest.mark.parametrize(
         "table", ["01", "0001", "01101001", "0110100110010110", "1000000000000000"]
     )
