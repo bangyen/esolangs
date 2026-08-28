@@ -873,9 +873,10 @@ class TestBrainIf:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """A one-input function reads one input then branches on it."""
+        """The answer byte is built first, then an input is read and tested."""
         program = boolean.brainif("10")
-        assert program.startswith("if 0 input")
+        assert program.startswith("if 0 increment")
+        assert "if 0 input" in program
         assert "if 48 goto" in program
 
     def test_the_answer_byte_is_built_once(self) -> None:
@@ -884,21 +885,30 @@ class TestBrainIf:
         Two per-digit output routines cost 48 + 49 increments and dominated
         the program; building the byte ahead of the branch leaves the tree
         deciding only whether to add one, so the count is 48 plus one line
-        per '1' leaf and does not grow with the table's size.
+        per ``1`` *leaf*.  Leaves, not rows: a constant slice folds to one
+        leaf, so ``11111110`` spends three rather than seven.
         """
-        for table in ("10", "0110", "11111110"):
-            program = boolean.brainif(table)
-            ones = table.count("1")
-            assert program.count("increment") == 48 + ones
+        for table, one_leaves in (("10", 1), ("0110", 2), ("11111110", 3)):
+            assert boolean.brainif(table).count("increment") == 48 + one_leaves
 
     def test_one_shared_output_tail(self) -> None:
         """Both answers print from the same two lines."""
         program = boolean.brainif("0110")
         assert program.count("output") == 2
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice stops the branching, though not the reads.
+
+        Reads carry the pointer home, so a leaf spends no moves reaching
+        the answer and the fold is not handed back -- which is what an
+        earlier layout, with the answer past the inputs, did.
+        """
+        assert len(boolean.brainif("11111111")) < len(boolean.brainif("11110000"))
+        assert len(boolean.brainif("11110000")) < len(boolean.brainif("10010110"))
+
     @pytest.mark.parametrize("table", ["11111111", "11110000", "10010110"])
     def test_reads_every_input(self, table: str) -> None:
-        """All n reads happen before the answer byte is built."""
+        """All n reads happen, including the ones a folded leaf skipped."""
         n = len(table).bit_length() - 1
         program = boolean.brainif(table)
         with pytest.raises(EOFError):
