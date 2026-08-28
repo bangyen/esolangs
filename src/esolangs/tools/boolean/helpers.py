@@ -200,9 +200,17 @@ def best_input_order(
     **The read order does not move.**  Only the order the tree *tests* the
     inputs in changes; the reads (or the load block, or the ``{Xi}``
     placeholders) stay in input order, so the program consumes its input
-    stream exactly as it did.  That is what rules out the generators whose
-    node reads its own bit: 6-5 and Polynomial read at the node that tests
-    the bit, so for them the test order *is* the stream order.
+    stream exactly as it did.  That is what rules out Polynomial, whose node
+    reads its own bit and which has *no addressable storage* -- one register,
+    no tape and no variables -- so a bit can only be branched on before the
+    next read overwrites it, and the test order is forced to be the stream
+    order.
+
+    6-5 and Jaune were once excluded here for the same phrase, wrongly: both
+    have a tape and a pointer (``B``/``v`` read into the *current* cell,
+    ``1``/``3`` and ``>``/``<`` move it), so their reads *could* be hoisted
+    and their nodes could test any cell.  Only their current generators read
+    at the node.  Reordering them is open work, not a wall.
 
     **Whether a generator can be reordered is a property of the language,
     not of what its generator happens to emit.**  Bitdeque looked excluded
