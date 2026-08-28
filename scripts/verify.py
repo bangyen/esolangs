@@ -88,9 +88,14 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "cargo build": ("extra/rust/",),
     "cargo test": ("extra/rust/",),
     "extra/line suites (uv)": ("extra/line/",),
+    # The check re-derives the anchor table and diffs it against the committed
+    # file, importing nothing from the interpreters -- so the only things that
+    # can break it are the generator script and the table itself.  Scoping to
+    # `interpreters/` instead both ran it for every unrelated interpreter edit
+    # and missed a hand-edit of the table, the one case it exists to catch.
     "ztoalc anchor table is reproducible": (
-        "src/esolangs/interpreters/",
         "scripts/make_ztoalc_table.py",
+        "src/esolangs/tools/ztoalc_starts.py",
     ),
     "RISC-V assembly under unicorn (compilers + cross-checks)": (
         "extra/assembly/",
