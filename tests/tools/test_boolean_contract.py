@@ -223,3 +223,38 @@ def test_wide_tables_skip_the_exhaustive_search() -> None:
     assert len(boolean.brainfuck(table)) <= len(
         _decision_tree_program(table, ">", "<", tuple(range(n)))
     )
+
+
+def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
+    """A greedily-ordered program still computes its table.
+
+    Above ``_ORDER_SEARCH_MAX`` the order is picked greedily rather than
+    searched, and this is the only path where a *non-identity* order is
+    chosen without every candidate having been built and measured, so it
+    gets run rather than merely sized.  ``"01" * 64`` depends only on its
+    last input, which the greedy pick fronts.
+    """
+    import io as _io
+    from contextlib import redirect_stdout
+    from unittest.mock import patch
+
+    from esolangs.interpreters.io import IO
+    from esolangs.interpreters.tape_based.brainfuck import run
+    from esolangs.tools.boolean.helpers import _greedy_input_order
+
+    n = 7
+    table = "01" * 64
+    assert _greedy_input_order(table, n) != tuple(range(n)), (
+        "this table must exercise a non-identity greedy order"
+    )
+    program = boolean.brainfuck(table)
+    for combo in range(2**n):
+        bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+        buffer = _io.StringIO()
+        with (
+            patch("builtins.input", side_effect=bits),
+            redirect_stdout(buffer),
+            contextlib.suppress(SystemExit),
+        ):
+            run(program, io=IO())
+        assert buffer.getvalue() == table[combo], f"inputs {bits}"
