@@ -9,6 +9,7 @@ import pytest
 from esolangs.tools import boolean
 from tests.tools.boolean_runners import (
     run_bfstack,
+    run_forth,
     run_grapheme,
     run_modulous,
 )
@@ -57,10 +58,14 @@ class TestGrapheme:
 
 class TestForth:
     def test_program_structure(self) -> None:
-        """The program defines one function per tree node and reads n bits."""
+        """The program defines one function per surviving node, reading n bits.
+
+        AND's zero-side subtree is constant, so it folds to a leaf: four
+        nodes rather than the full six.
+        """
         program = boolean.forth("0001")
         assert program.endswith("1+;.")
-        assert program.count("{") == program.count("}") == 6  # 6 nodes
+        assert program.count("{") == program.count("}") == 4
         assert program.count(",68*-") == 2  # read and normalize 2 inputs
 
     def test_leaf_results_are_the_byte(self) -> None:
@@ -74,6 +79,52 @@ class TestForth:
         program = boolean.forth("0" * 16 + "1" * 16)
         assert program.count("{") == 2 ** (5 + 1) - 2
         assert program.count(",68*-") == 5
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_truth_table(self, n: int) -> None:
+        """Every table up to three inputs produces the right result.
+
+        The other Forþ tests assert program structure only; this runs the
+        program, which is what pins the fold's behaviour rather than its
+        shape.
+        """
+        for table_int in range(2 ** (2**n)):
+            table = format(table_int, f"0{2**n}b")
+            program = boolean.forth(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_forth(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant subtree answers in place and drops its descendants.
+
+        Forþ stores each scope in a dict keyed by the number pushed before
+        ``{`` and calls it with a default, so an unemitted node simply
+        never exists -- folding is skip-emission with no renumbering.
+
+        The tree splits least-significant bit first (see ``_forth_combo``),
+        so its subtrees are strides rather than contiguous runs: a table
+        like ``00001111`` is constant over an axis this tree never splits
+        on and keeps every node, while ``01010101`` collapses to the two
+        root children.
+        """
+        assert boolean.forth("1" * 8).count("{") == 2
+        assert boolean.forth("01" * 4).count("{") == 2
+        assert boolean.forth("0" * 4 + "1" * 4).count("{") == 2 ** (3 + 1) - 2
+
+    def test_folded_subtree_leaves_no_orphans(self) -> None:
+        """Folding drops the whole subtree, not just the two children.
+
+        A grandchild below a folded node is just as unreachable; emitting
+        it would be dead code the program never calls, so the node count
+        must fall to exactly the surviving frontier.
+        """
+        from esolangs.tools.boolean.stack import _forth_const
+
+        program = boolean.forth("1" * 8)
+        for m in range(3, 15):  # every node below the two root children
+            assert _forth_const(m) + "{" not in program
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
