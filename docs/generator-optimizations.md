@@ -135,6 +135,29 @@ characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 `arrowqueue` were all on this list and now fold — see below. **Every tree
 generator in the catalogue folds its constant subtrees.**
 
+**Re-checked by measurement 2026-08-28, and it still holds.** The worry is a
+generator that special-cases a *whole-table* constant without folding
+subtrees, since that collects the easiest case and leaves the general one.
+The signature is a table depending on a single input costing the same as
+parity — a full tree either way — while the constant is tiny. Screening all
+59 generators on `00000000` / `11110000` / `01101001` flags twelve, but eight
+of those fold under a *different* split order (Modulous, Forth, Circlefuck
+and Unsquare branch last-input-first, so `10101010` is their folding case,
+not `11110000`), and the comparison has to allow for that: measured against
+the best of all six one-dependency tables, they save 56–77%.
+
+The seven that genuinely never fold — `point_break`, `collatz_multiverse`,
+`suptiftam`, `bit_tilde`, `a_painter_ant`, `qoibl`, `suffolk` — are all
+**sum-of-minterms**, and a minterm sum has no subtrees to fold. Its cost is
+one term per selected row, so a constant table is small because the sum is
+*empty*, not because anything was collapsed. That is a different technique
+(6, complement/polarity), not a missing one. **Nothing is left to convert.**
+
+Their read counts were checked at the same time, since an empty sum can drop
+the reads the way a folded tree can: all seven consume every input on a
+constant table. The note below that `suffolk`'s "constant tables need no
+reads at all" is stale — it reads all 8.
+
 Each was written off at some point on structural grounds, and each of those
 arguments was wrong in the same way: they described why a folded node could
 not be *removed*, when the fold only needs it *replaced* (`eval`) or its
@@ -811,7 +834,7 @@ single self-fed gate.
 | `nocomment` | computes the numeric index and uses it as a byte-sized skip into a staircase — straight-line, no leaf chains. `s` doubles as a NOT gate, so the complement is computed at runtime from one embed |
 | `home_row` | packs bits into one accumulator + linear chain; the removed routing generator walled at n=2 |
 | `bfstack` | avoids branching entirely — encodes inputs as a number, decodes with nested loops |
-| `suffolk` | branch-free minterms at `limit=1`; **constant tables need no reads at all**; dense tables evaluated from their zero rows and inverted |
+| `suffolk` | branch-free minterms at `limit=1`; a constant table needs no minterm *blocks*, though it still reads every input (measured 2026-08-28: 8 reads on every table, constant or not — an earlier note here claimed it read none); dense tables evaluated from their zero rows and inverted |
 | `three_x` | result defaults to the **majority** table value, so only differing rows emit an override |
 | `bitdeque` / `ram0` | fixed-length setters keep absolute `GOTO` targets stable — this is what unblocked the earlier "variable-length setter" wall |
 | `lamfunc` / `ram0` | each input stored once and read back, rather than re-embedded at every node |
