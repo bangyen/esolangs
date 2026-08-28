@@ -859,6 +859,32 @@ class TestCircuitDiagram:
 
         assert circuit_diagram(table).count("~") == tildes
 
+    def test_a_dense_table_is_drawn_as_its_complement(self) -> None:
+        """More ones than zeros costs less built from the zero rows.
+
+        A chain is a gate per literal plus the runs feeding it, so the
+        saving is far larger than the one ``~`` that inverts the result:
+        NAND3 selects seven rows drawn directly and one complemented.
+        """
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        dense = circuit_diagram("11111110")  # NAND3: seven ones
+        sparse = circuit_diagram("00000001")  # its complement: one
+        assert len(dense) < 2 * len(sparse)
+        # both compute their own table, whichever way they were drawn
+        assert self.run_table("11111110") == "11111110"
+        assert self.run_table("00000001") == "00000001"
+
+    def test_a_constant_table_is_never_complemented(self) -> None:
+        """It is already one gate, so complementing only swaps the glyph.
+
+        An all-ones table is the trap: complementing leaves no minterms at
+        all, which is the all-zeros shape, so the result would print the
+        wrong constant unless the table is excluded outright.
+        """
+        assert self.run_table("1111") == "1111"
+        assert self.run_table("0000") == "0000"
+
     def test_four_input_primality(self) -> None:
         """The same function the wiki's own worked example computes.
 
