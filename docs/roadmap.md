@@ -434,8 +434,11 @@ skipped level, the fold cancels.
   index unpopped and the next dispatch reads the wrong value.
 - **Eval** — a node's code *is* its heap index: `~=~?` then `i + 1`
   semicolons.  Dropping a node renumbers every node after it.
-- **6-5** — the `n <= 5` path is the non-folding tree, but above that the
-  generator already delegates to `six_five_arithmetic`, which folds.
+- **6-5** — **done.** The tree folds its constant subtrees, and since
+  folding is what spends the 35 branch labels, the generator now picks the
+  tree by counting them rather than by `n`. That left `six_five_arithmetic`
+  unreachable — a buildable `T` confines the ones to low indices, which
+  leaves the rest of the table constant, which folds — so it was retired.
 
 The generators that are not decision trees at all — the sum-of-minterms
 group (bit~, Suptiftam, Suffolk, Collatz Multiverse, Qoibl, Point Break,

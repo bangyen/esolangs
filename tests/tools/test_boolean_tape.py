@@ -194,68 +194,51 @@ class TestSixFive:
         ):
             assert _six_five_markers(table) == _markers(boolean.six_five(table))
 
-    def test_wide_table_still_falls_back(self) -> None:
-        """A table whose folded tree exceeds 35 labels leaves the tree path."""
+    def test_wide_table_is_refused(self) -> None:
+        """A table whose folded tree exceeds 35 labels has no representation.
+
+        The arithmetic kernel that used to catch these was retired: it needs
+        ``T`` (or its complement) small enough to build, which confines the
+        ones to low indices, which leaves the rest of the table constant --
+        the shape that folds well inside the budget.  So it never covered a
+        table the tree could not.
+        """
         scattered = "10010110" * 8  # n == 6, 63 labels after folding
         assert _six_five_markers(scattered) > 35
-        with pytest.raises(ValueError, match="~2 MB setup"):
-            boolean.six_five(scattered)  # and its T is unbuildable too
+        with pytest.raises(ValueError, match="35 branch labels"):
+            boolean.six_five(scattered)
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("n", [6, 7, 8])
-    @pytest.mark.parametrize("table", ["10", "1100"])
-    def test_arithmetic_kernel_table(self, n: int, table: str) -> None:
-        """The arithmetic kernel computes every combination for small-T tables.
+    @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+    def test_total_through_five_inputs(self, n: int) -> None:
+        """Every table up to five inputs renders: the worst case still fits.
 
-        Reached directly: since folding, no table routes here through
-        :func:`six_five` -- a small ``T`` puts the ones at low indices, which
-        leaves the rest of the table constant, which folds well inside the
-        label budget.  The kernel stays exported and tested on its own.
+        An alternating table folds nothing, so it spends the full ``2**n - 1``
+        internal nodes -- 31 at n == 5, inside the 35-label budget.  The
+        refusals therefore begin at n == 6, where that worst case is 63.
         """
-        table = table + "0" * (2**n - len(table))  # ones only at low indices
-        program = boolean.six_five_arithmetic(table)
-        assert len(program) < 2000  # the small-T setup stays short
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_six_five(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
+        alternating = ("10" * 2**n)[: 2**n]
+        assert _six_five_markers(alternating) == 2**n - 1 <= 35
+        boolean.six_five(alternating)  # renders rather than raising
 
-    def test_arithmetic_kernel_constant_markers(self) -> None:
-        """A loop-based x build keeps the kernel's marker count constant in n."""
-        markers = {
-            n: _markers(boolean.six_five_arithmetic("1" + "0" * (2**n - 1)))
-            for n in (6, 9, 12, 16)
-        }
-        assert len(set(markers.values())) == 1  # constant in n
-        assert markers[6] <= 35  # well within the label budget
+    def test_refusals_begin_at_six_inputs(self) -> None:
+        """n == 6 is the first width whose worst case overflows the budget."""
+        alternating = ("10" * 64)[:64]
+        assert _six_five_markers(alternating) == 63 > 35
+        with pytest.raises(ValueError, match="35 branch labels"):
+            boolean.six_five(alternating)
 
-    def test_arithmetic_kernel_refuses_large_t(self) -> None:
-        """AND-n is the worst case: T == 2**(2**n - 1) blows up the setup."""
-        with pytest.raises(ValueError, match="~2 MB setup"):
-            boolean.six_five_arithmetic("0" * 63 + "1")  # AND6: T == 2**63
+    def test_retired_arithmetic_kernel_is_gone(self) -> None:
+        """The second construction and its assembler are no longer exported."""
+        import importlib
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize("n", [6, 8])
-    def test_arithmetic_kernel_complement(self, n: int) -> None:
-        """Tables whose complement is cheap use it instead of a huge T."""
-        table = "00" + "1" * (2**n - 2)  # zeros only at indices 0,1: T' == 3
-        program = boolean.six_five_arithmetic(table)
-        assert len(program) < 2000
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_six_five(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.six_five")
 
-    def test_arithmetic_kernel_compact_setup(self) -> None:
-        """+6 runs make the setup ~T/6, far below the naive 2T pairs."""
-        program = boolean.six_five_arithmetic("1" * 20 + "0" * 44)  # T == 2**20 - 1
-        assert len(program) < 500_000  # ~T/6, not ~2T
-        assert program[:32].count("6") > program[:32].count("62")  # uses +6 runs
-
-    def test_arithmetic_kernel_complement_marker_budget(self) -> None:
-        """The complement output branch stays inside the label budget."""
-        program = boolean.six_five_arithmetic("00" + "1" * 62)
-        assert _markers(program) <= 35
+        assert not hasattr(boolean, "six_five_arithmetic")
+        assert module.__all__ == ["six_five"]
+        assert not hasattr(module, "_SixFiveAsm")  # the assembler went too
+        assert not hasattr(module, "_six_five_nav")
 
 
 class TestStreetcode:

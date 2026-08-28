@@ -16,7 +16,7 @@ from esolangs.tools.boolean.helpers import (
     decision_tree_program,
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
-from esolangs.tools.boolean.six_five import six_five, six_five_arithmetic
+from esolangs.tools.boolean.six_five import six_five
 from esolangs.tools.text.tape import _factor_encode
 
 __all__ = [
@@ -35,7 +35,6 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
-    "six_five_arithmetic",
     "suffolk",
     "three_d_brainfuck",
 ]
