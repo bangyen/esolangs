@@ -29,7 +29,8 @@ still runs the complete suite on every push regardless.
 
 A default run also leaves work to CI where CI already covers it: the steps in
 ``FULL_ONLY`` (the differential corpora, which CI runs twice with ``--fuzz
-50``, and the ZTOALC anchor table, which CI's lint job re-derives) and
+50``; the ZTOALC anchor table, which CI's lint job re-derives; and the
+RISC-V unicorn round-trip, which CI's assembly job runs) and
 pytest's ``slow`` marker (the fuzzers' divergence-detection tests,
 which CI runs by that same marker and errors on if they skip).  ``--full``,
 ``just test-full``, and an explicit ``--only`` all still run them.
@@ -83,6 +84,11 @@ FULL_ONLY = frozenset(
         # Re-deriving the table costs ~3.2s and only guards two files that
         # rarely move; CI's lint job runs it on every push instead.
         "ztoalc anchor table is reproducible",
+        # Assembling and emulating every compiler's output is the slowest
+        # non-pytest step (~8s, a third of the rest put together), and its
+        # scope includes all of src/esolangs/, so it fires on any interpreter
+        # edit.  CI's assembly job runs the identical script on every push.
+        "RISC-V assembly under unicorn (compilers + cross-checks)",
     }
 )
 
