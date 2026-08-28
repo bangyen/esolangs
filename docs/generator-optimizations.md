@@ -27,6 +27,7 @@ three.
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
 | 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
+| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold | `boolean/helpers.py` `best_input_order` |
 
 Technique 9 is the one deliberate refusal to shorten. A zero embedded as
 nothing makes `len(program)` a function of the inputs, leaking the very bits
@@ -598,6 +599,61 @@ Every scratch harness written for this without that convention produced
 confident, wrong conclusions — the same failure as arrowqueue's leaf-entry
 assumption earlier in this branch. Scrape the input convention from the
 repo's own test or fill code before building a verifier.
+
+**Taglate's `_reorder_tt` is not this technique**, despite the name: it
+permutes the *table entries* into the slot order the reduce blocks expect,
+which is correctness plumbing rather than a saving. What taglate optimizes
+is the dependency reduction above. Reordering the inputs a *tree* splits on
+is technique 11.
+
+### Input reordering — the decision-tree generators
+
+A decision tree splits on its inputs in some order, but which order is free:
+the function is the same however its arguments are named. What the order
+decides is which rows each subtree covers, and therefore how often technique
+5 gets to fold one — `11110000` folds after a single split, while the same
+function written as `10101010` folds only at the very bottom.
+
+So the tree generators build the program under every input order and keep
+the shortest (`best_input_order`), which is technique 4 applied to a family
+of `n!` candidates rather than two hand-written constructions. The identity
+order goes first and ties keep it, so a table no reorder helps emits exactly
+what it emitted before — this can only shrink a program, never churn one.
+
+| generator | n=3 (all 256 tables) | n=4 (sampled) | tables improved at n=3 |
+|---|---|---|---|
+| `ram0` | **14.8%** | **19.5%** | 212/256 |
+| `lamfunc` | 11.7% | 12.3% | 112/256 |
+| `between` | 11.4% | 12.1% | 112/256 |
+| `brainfuck` | 8.6% | 7.8% | 114/256 |
+| `dimensional` | 7.6% | 5.9% | 114/256 |
+
+`factor` and `three_d_brainfuck` reuse brainfuck's output and inherit the
+saving unchanged; a shorter program also shrinks factor's set of tables
+whose integer encoding exceeds Python's digit limit.
+
+**Why measure instead of model.** The obvious model — count the folds — is
+right for Brainfuck, which pays the same for every input, and wrong for
+RAM0, which spells an input as a run of `A` as long as its *address*, so a
+cheap RAM0 order also wants the low addresses at the deep, oft-repeated
+levels. That is exactly why RAM0 gains the most. Building the candidates and
+comparing `len` gets both, and any future language's cost shape for free.
+
+**The read order never moves.** Only the order the tree *tests* the inputs
+in changes; the reads (or the load block, or the `{Xi}` placeholders) stay
+in input order, so the program consumes its input stream exactly as before.
+That is what excludes four otherwise tree-shaped generators: `six_five` and
+`polynomial` read each bit *at the node that tests it*, and `modulous` and
+`bitdeque` pop a stack the load pushed in order — for all four the test
+order **is** the stream order and cannot be permuted independently.
+
+**The search is capped at 6 inputs.** `n!` builds of an `O(2**n)` program is
+a cost that does not announce itself: Dimensional renders a 4096-row table,
+and `12!` is 479 million candidates — an uncapped search turned a
+millisecond call into a test that hung. Above the cap the order is picked
+greedily (each level takes the input creating the most constant subtrees),
+which stays within milliseconds through n=12 and is still never worse than
+the identity.
 
 `_maybe_complement`'s docstring flags the trap: an all-ones table complements to
 *no* minterms, indistinguishable from all-zeros. Fine where the sum feeds an

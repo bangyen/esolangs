@@ -136,3 +136,90 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
         f"resolving to them: {sorted(stale)} -- remove them from BOOLEAN, or "
         f"export the generator from tools/boolean/__init__.py"
     )
+
+
+# The tree generators that pick their input split order by measuring, and the
+# builder that emits one fixed order, so a test can compare the two.
+def _reordering_generators() -> list[tuple[str, object, object]]:
+    from esolangs.tools.boolean.helpers import _decision_tree_program
+    from esolangs.tools.boolean.other import _between_ordered
+    from esolangs.tools.boolean.parameterized import _lamfunc_ordered, _ram0_ordered
+
+    return [
+        (
+            "brainfuck",
+            boolean.brainfuck,
+            lambda t, p: _decision_tree_program(t, ">", "<", p),
+        ),
+        (
+            "dimensional",
+            boolean.dimensional,
+            lambda t, p: _decision_tree_program(t, ">0", "<0", p),
+        ),
+        ("ram0", boolean.ram0, _ram0_ordered),
+        ("between", boolean.between, _between_ordered),
+        ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
+    ]
+
+
+@pytest.mark.parametrize(("name", "fn", "ordered"), _reordering_generators())
+def test_reordering_never_grows_a_program(
+    name: str, fn: object, ordered: object
+) -> None:
+    """Choosing the input order can only shrink the emitted program.
+
+    The identity order is one of the candidates, so the winner is at worst a
+    tie with what the generator emitted before reordering existed -- which
+    is what makes this optimization safe to apply unconditionally.
+    """
+    for n in (1, 2, 3):
+        for value in range(2 ** (2**n)):
+            table = bin(value)[2:].zfill(2**n)
+            assert len(fn(table)) <= len(ordered(table, tuple(range(n)))), (
+                f"{name} grew on {table}"
+            )
+
+
+@pytest.mark.parametrize(("name", "fn", "ordered"), _reordering_generators())
+def test_reordering_shrinks_the_tables_it_should(
+    name: str, fn: object, ordered: object
+) -> None:
+    """A table only one input order folds well is emitted from that order.
+
+    ``10101010`` depends solely on the *last* input, so splitting on it
+    first folds the whole tree to a single leaf, while the identity order
+    folds nothing until the bottom level.
+    """
+    table = "10101010"
+    assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
+        f"{name} did not reorder a table that only reordering folds"
+    )
+
+
+def test_reorder_permutation_preserves_the_function() -> None:
+    """Permuting the table renames the inputs without changing the function."""
+    from esolangs.tools.boolean.helpers import permute_truth_table
+
+    table = "01101001"
+    n = 3
+    for perm in [(0, 1, 2), (2, 0, 1), (2, 1, 0)]:
+        permuted = permute_truth_table(table, perm)
+        for row in range(2**n):
+            bits = [(row >> (n - 1 - level)) & 1 for level in range(n)]
+            original = sum(bits[level] << (n - 1 - i) for level, i in enumerate(perm))
+            assert permuted[row] == table[original]
+
+
+def test_wide_tables_skip_the_exhaustive_search() -> None:
+    """Above the cap the order is picked greedily, so wide tables stay fast.
+
+    ``12!`` is 479 million orders; an uncapped search never returns.  The
+    greedy fallback still may not emit more than the identity order does.
+    """
+    from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX, _decision_tree_program
+
+    n = _ORDER_SEARCH_MAX + 2
+    table = "0" * (2**n - 1) + "1"
+    assert len(boolean.brainfuck(table)) <= len(
+        _decision_tree_program(table, ">", "<", tuple(range(n)))
+    )
