@@ -152,6 +152,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         _lamfunc_ordered,
         _ram0_ordered,
     )
+    from esolangs.tools.boolean.tape import _basicfuck_ordered
     from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
 
     return [
@@ -172,6 +173,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         ("ztoalc_l_boolean", boolean.ztoalc_l_boolean, _ztoalc_ordered),
         ("myscript", boolean.myscript, _myscript_ordered),
         ("nevermind", boolean.nevermind, _nevermind_ordered),
+        ("basicfuck", boolean.basicfuck, _basicfuck_ordered),
     ]
 
 
