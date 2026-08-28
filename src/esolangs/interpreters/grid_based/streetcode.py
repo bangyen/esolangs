@@ -1343,38 +1343,44 @@ class _Machine:
         """Whether the car has halted."""
         return self._done
 
-    # The car's three coordinates, as a view onto the one record that
-    # holds them.  Reading or writing one at a time is what the rest of
-    # the interpreter and its fixtures already do, and rebuilding the
-    # record on each write keeps that spelling working while the movement
-    # rules receive the whole car at once.
+    # Where the car is, as read-only views onto the one record that holds
+    # it.  They are reads and not writes on purpose: a caller that wants
+    # to *move* the car states the whole position at once through
+    # :meth:`place`, so a machine can never be left holding two of the
+    # three coordinates from one place and the third from another.
 
     @property
     def row(self) -> int:
         """The row the car occupies."""
         return self._car.row
 
-    @row.setter
-    def row(self, value: int) -> None:
-        self._car = self._car._replace(row=value)
-
     @property
     def col(self) -> int:
         """The column the car occupies."""
         return self._car.col
-
-    @col.setter
-    def col(self, value: int) -> None:
-        self._car = self._car._replace(col=value)
 
     @property
     def heading(self) -> _Heading:
         """The direction the car points."""
         return self._car.heading
 
-    @heading.setter
-    def heading(self, value: _Heading) -> None:
-        self._car = self._car._replace(heading=value)
+    def place(self, row: int, col: int, heading: _Heading) -> None:
+        """Put the car at ``(row, col)`` pointing ``heading``.
+
+        For a caller that needs to drive a machine from somewhere other
+        than the square its ``C`` is on: the interpreter's own fixtures
+        do this to reach a geometry that a whole program would take many
+        steps to arrive at.  It is one call rather than three assignments
+        because the three coordinates only mean anything together --
+        assigning them separately left the machine briefly holding a
+        position that was half of one place and half of another, and
+        nothing but ordering stopped a caller from forgetting the third.
+
+        The latches are deliberately left alone: a test that places a car
+        *and* sets up a merge wants both, and clearing them here would
+        silently undo half of what it asked for.
+        """
+        self._car = _Car(row, col, heading)
 
     # The three latches are stored as one :class:`_Latches` record but
     # read and written one at a time by the steering phases, which each
@@ -1487,25 +1493,6 @@ class _Machine:
             for d_row in (-1, 0, 1)
             for d_col in (-1, 0, 1)
         )
-
-    def _open_toward(self, heading: _Heading) -> bool:
-        """Whether the cell one step from the car along ``heading`` is open."""
-        return _open_toward(self.grid, self._car, heading)
-
-    def _probe(
-        self, state: _State, arrival: int, current: int
-    ) -> _State | _Halt | None:
-        """Return the state one step on from ``state`` under two branch bits.
-
-        The machine's view of :func:`_drive`, which is the movement
-        semantics and needs nothing from this object but the drawing.
-        It used to be the other way round: probing a state meant moving
-        the machine onto it, running the rules for their effects on
-        ``self``, reading the result back off the fields, and restoring
-        what was there before.  Now the state is an argument and the
-        successor is the return value.
-        """
-        return _drive(self.grid, state, arrival, current)
 
     def _validate(self, start: tuple[int, int]) -> None:
         """Reject a malformed street network before the car moves.
@@ -1983,76 +1970,6 @@ class _Machine:
                 return f"geometry not connected to the street at {(r, c)} ({char!r})"
         return None
 
-    # The movement rules themselves are module-level functions of the
-    # grid and a :class:`_Car` (see ``_road_mouth`` through ``_drive``),
-    # not methods: they read no machine state and write none, so they can
-    # be asked about a hypothetical car without one being driven there.
-    # What remains here are the views onto them from the machine's own
-    # car -- each one line, each passing ``self._car``.  Keeping them is
-    # what lets the geometry be interrogated at a position ("is there a
-    # mouth off the south side of the car at (0,1) heading south?")
-    # without a caller having to assemble the record itself.
-
-    def _road_mouth(self, heading: _Heading, side: _Heading) -> _Mouth | None:
-        """Detect a road opening off ``side``; see :func:`_road_mouth`."""
-        return _road_mouth(self.grid, self._car.facing(heading), side)
-
-    def _plus_dist(self, side: _Heading) -> int | None:
-        """Distance to the nearest ``+`` on ``side``; see :func:`_plus_dist`."""
-        return _plus_dist(self.grid, self._car, side)
-
-    def _crossing_mouth(self, heading: _Heading) -> bool:
-        """Whether the car drives out through a mouth; see :func:`_crossing_mouth`."""
-        return _crossing_mouth(self.grid, self._car.facing(heading))
-
-    def _junction_kind(self, heading: _Heading) -> _Junction:
-        """Count the roads a real intersection offers; see :func:`_junction_kind`."""
-        return _junction_kind(self.grid, self._car.facing(heading))
-
-    def _junction_shape(self, heading: _Heading) -> _Junction:
-        """Classify the wall shape alone; see :func:`_junction_shape`."""
-        return _junction_shape(self.grid, self._car.facing(heading))
-
-    def _lane_bounded(self, heading: _Heading, side: _Heading, mouth: _Mouth) -> bool:
-        """Whether ``mouth`` bounds a multi-lane road; see :func:`_lane_bounded`."""
-        return _lane_bounded(self.grid, self._car.facing(heading), side, mouth)
-
-    def _lane_merge_target(
-        self, heading: _Heading, new_heading: _Heading, mouth: _Mouth
-    ) -> tuple[int, int]:
-        """Return the cell to reach before turning; see :func:`_lane_merge_target`."""
-        return _lane_merge_target(self._car.facing(heading), new_heading, mouth)
-
-    def _junction_choices(self, heading: _Heading) -> list[_Heading]:
-        """Return the roads a junction offers; see :func:`_junction_choices`."""
-        return _junction_choices(self.grid, self._car.facing(heading))
-
-    def _road_deep(self, heading: _Heading) -> bool:
-        """Whether ``heading`` leads onto a road; see :func:`_road_deep`."""
-        return _road_deep(self.grid, self._car, heading)
-
-    def _lawful_turn(self, heading: _Heading) -> bool:
-        """Whether the turn keeps the car on the right; see :func:`_lawful_turn`."""
-        return _lawful_turn(self.grid, self._car, heading)
-
-    def _choose_heading(self, arrival_cell: int) -> _Heading | None:
-        """Pick the next heading and commit the latches it leaves behind.
-
-        The decision itself is :func:`_choose_heading`, which is pure;
-        this is where its result becomes the machine's, and the only
-        place a steering phase's latch write reaches ``self``.  The two
-        tape reads movement makes are supplied here rather than fetched
-        inside the rules: ``arrival_cell`` as the caller measured it
-        before this square's instruction ran, and the current cell after.
-        """
-        steer = _choose_heading(
-            self.grid, self._car, self._latches, arrival_cell, self._cell()
-        )
-        if steer is None:
-            return None
-        self._latches = steer.latches
-        return steer.heading
-
     def step(self) -> None:
         """Execute the cell under the car, then drive it one cell further."""
         if self._done:
@@ -2097,7 +2014,6 @@ class _Machine:
             except ValueError:
                 raise HaltError from None
         elif op == "TURN":
-            self.heading = _opposite(self.heading)
             # Streets are two-way and two wide, and the car drives on the
             # right: after turning around, the lane it belongs in is the
             # one now on its right, so the U-turn ends there -- that slide
@@ -2108,15 +2024,20 @@ class _Machine:
             # right turns -- back onto the original heading one lane over,
             # cancelling the U-turn.  The heading changed, so every latch
             # keyed to the old one is void.
-            # A street with no opposite lane is narrower than the spec
-            # allows, so there is nowhere legal to end the turn: that is a
-            # malformed street met at runtime, not a manoeuvre with a
-            # sensible fallback.
-            lane_row, lane_col = self._car.ahead(_right(self.heading))
-            if not self._open(lane_row, lane_col):
+            #
+            # The manoeuvre itself is :func:`_drive`, which models ``U``
+            # because the drive-state search has to predict it too; going
+            # through it here is what keeps the run and the graph agreeing
+            # about where a U-turn ends, rather than two spellings free to
+            # drift.  A street with no opposite lane is narrower than the
+            # spec allows, so there is nowhere legal to end the turn: the
+            # rule answers ``None``, and that is a malformed street met at
+            # runtime rather than a manoeuvre with a sensible fallback.
+            turned = _drive(self.grid, state, arrival_cell, arrival_cell)
+            if turned is None or turned == "halt":
                 raise HaltError
-            self._latches = _NO_LATCHES
-            self.row, self.col = lane_row, lane_col
+            self._car = _Car(turned.row, turned.col, turned.heading)
+            self._latches = turned.latches
             return
         # "NOP" is the remaining case: ``C``, space, and every character
         # the spec does not define all fold to it (see ``_Op``), so there
