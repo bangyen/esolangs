@@ -284,7 +284,7 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
     prog.pop()  # the trailing ">" would leave the pointer past the last input
 
     def span(k: int, row: int) -> range:
-        """The table rows the subtree at ``(k, row)`` stands for.
+        """Return the table rows the subtree at ``(k, row)`` stands for.
 
         The tree branches on the cell the pointer is over, which is the
         *last* input first, so a subtree fixes the low ``n - 1 - k`` bits
