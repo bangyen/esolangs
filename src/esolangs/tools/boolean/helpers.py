@@ -10,6 +10,7 @@ generators take no ``n`` parameter.
 """
 
 from collections.abc import Callable
+from itertools import permutations
 
 # ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
 # result prints as ``_ASCII_ZERO + bit``, so this offset appears in every
@@ -17,6 +18,13 @@ from collections.abc import Callable
 # of ``+`` or ``-`` reads as a magic number.
 _ASCII_ZERO = 48
 _ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
+
+# Largest input count :func:`best_input_order` searches exhaustively.  The
+# search builds ``n!`` programs of ``O(2**n)`` characters each, so the work
+# is the product of two factorial-ish terms: 6 inputs is 720 builds of a
+# 64-row table (milliseconds), 7 is 5040, and Dimensional's 12-input table
+# would be 479 million.  Above this the order is picked greedily instead.
+_ORDER_SEARCH_MAX = 6
 
 
 def _validate_truth_table(truth_table: str) -> int:
@@ -128,6 +136,146 @@ def instantiate(template: str, bits: list[int], set_bit: SetBit) -> str:
     return template
 
 
+def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Rewrite ``truth_table`` so level ``k`` splits on original input ``perm[k]``.
+
+    A decision tree splits on its inputs in a fixed order, but *which* order
+    is free: the function is the same however its arguments are named.  This
+    returns the table of the same function with the inputs renamed, so a
+    walker that always splits most-significant-first ends up testing
+    ``perm[0]`` at the root, ``perm[1]`` below it, and so on.
+
+    The point is :func:`decision_tree_tokens`'s ``collapse`` (and the
+    equivalent fold in the private recursions): a subtree folds to a leaf
+    only when the rows it covers agree, and which rows a subtree covers is
+    exactly what the split order decides.  ``11110000`` folds after one
+    split; the same function written as ``10101010`` folds only at the
+    bottom.  Reordering lets the second be emitted as the first.
+    """
+    n = _validate_truth_table(truth_table)
+    rows = []
+    for row in range(2**n):
+        original = 0
+        for level, i in enumerate(perm):
+            if (row >> (n - 1 - level)) & 1:
+                original |= 1 << (n - 1 - i)
+        rows.append(truth_table[original])
+    return "".join(rows)
+
+
+def best_input_order(
+    truth_table: str,
+    build: Callable[[str, tuple[int, ...]], str],
+) -> str:
+    """Return the shortest program over every input order.
+
+    ``build(permuted_table, perm)`` emits the program that splits on
+    ``perm[k]`` at level ``k``, reading the *permuted* table -- so every row
+    index inside the build is in the permuted frame and self-consistent, and
+    ``perm`` surfaces only where a node names the input it tests.
+
+    **The winner is measured, not modelled.**  What a reorder saves is the
+    subtrees it folds, but what it costs is per-language: RAM0 spells an
+    input as a run of ``A`` as long as its address, so a cheap order there
+    also wants low addresses deep, while Brainfuck pays the same for every
+    input and cares only about the fold.  Building all ``n!`` candidates and
+    taking the shortest gets both right, and any future language's cost
+    shape for free.
+
+    **The exhaustive search is capped at ``_ORDER_SEARCH_MAX`` inputs**,
+    because ``n!`` builds of an ``O(2**n)`` program is the kind of cost that
+    does not announce itself: Dimensional renders a 4096-row table, and
+    ``12!`` is 479 million candidates, so an uncapped search turns a
+    millisecond call into one that never returns.  Above the cap the order
+    is chosen greedily instead -- level by level, each remaining input
+    scored by how many of the subtrees it would create come out constant,
+    which is the fold the search is hunting for -- at ``O(n**2)`` builds of
+    nothing.  Both paths keep the guarantee below.
+
+    The identity order is tried first and ties keep it, so a table no
+    reorder improves emits exactly what it emitted before -- reordering can
+    only shrink a program, never grow or churn one.  The greedy path takes
+    the identity too whenever its own pick does not measure shorter.
+
+    **The read order does not move.**  Only the order the tree *tests* the
+    inputs in changes; the reads (or the load block, or the ``{Xi}``
+    placeholders) stay in input order, so the program consumes its input
+    stream exactly as it did.  That is what rules out the generators whose
+    node reads its own bit -- 6-5 and Polynomial read at each node, and
+    Modulous and Bitdeque pop a stack the load pushed in order, so for all
+    four the test order *is* the stream order and cannot be permuted
+    independently.
+    """
+    n = _validate_truth_table(truth_table)
+    identity = tuple(range(n))
+    if n <= _ORDER_SEARCH_MAX:
+        orders = [p for p in permutations(range(n)) if p != identity]
+    else:
+        greedy = _greedy_input_order(truth_table, n)
+        orders = [] if greedy == identity else [greedy]
+
+    best = build(truth_table, identity)
+    for perm in orders:
+        candidate = build(permute_truth_table(truth_table, perm), perm)
+        if len(candidate) < len(best):
+            best = candidate
+    return best
+
+
+def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
+    """Pick an input order one level at a time, for tables too wide to search.
+
+    At each level every input still unchosen is scored by the number of
+    constant subtrees splitting on it would produce among the blocks still
+    live, and the best-scoring one is taken.  That is a direct proxy for
+    what the exhaustive search finds by measuring -- a constant subtree is
+    the leaf a fold emits -- without the language's own per-input cost,
+    which is why it is the fallback rather than the rule.
+
+    Ties keep the lowest input index, so a table no order helps yields the
+    identity and the caller emits exactly what it emitted before.
+    """
+    order: list[int] = []
+    remaining = list(range(n))
+    # Blocks of rows still to be separated: each is a list of row indices
+    # that agree on every input chosen so far.
+    blocks = [list(range(2**n))]
+    while remaining:
+        best_input = remaining[0]
+        best_score = -1
+        for i in remaining:
+            bit = 1 << (n - 1 - i)
+            score = 0
+            for block in blocks:
+                for half in (
+                    [r for r in block if not r & bit],
+                    [r for r in block if r & bit],
+                ):
+                    if half and len({truth_table[r] for r in half}) == 1:
+                        score += 1
+            if score > best_score:
+                best_input, best_score = i, score
+        order.append(best_input)
+        remaining.remove(best_input)
+        bit = 1 << (n - 1 - best_input)
+        split = []
+        for block in blocks:
+            for half in (
+                [r for r in block if not r & bit],
+                [r for r in block if r & bit],
+            ):
+                # A block that is already constant needs no further splitting.
+                if half and len({truth_table[r] for r in half}) > 1:
+                    split.append(half)
+        blocks = split
+        if not blocks:
+            # Everything below folds; the rest of the order cannot matter, so
+            # keep it ascending to stay closest to the identity.
+            order.extend(remaining)
+            break
+    return tuple(order)
+
+
 Leaf = Callable[[int, int], list[str]]
 Node = Callable[[int, list[str], list[str], int], list[str]]
 
@@ -236,6 +384,26 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     Python's digit limit, so folding turns some previously unrenderable
     tables into runnable ones.
     """
+    return best_input_order(
+        truth_table,
+        lambda table, perm: _decision_tree_program(table, right, left, perm),
+    )
+
+
+def _decision_tree_program(
+    truth_table: str,
+    right: str,
+    left: str,
+    perm: tuple[int, ...],
+) -> str:
+    """Emit one input order's program; see :func:`decision_tree_program`.
+
+    ``truth_table`` is already permuted, so every row index here is in the
+    permuted frame.  ``perm`` is spent in exactly one place -- the cell a
+    node tests, ``2 * perm[i]`` with its complement at ``2 * perm[i] + 1``.
+    The reads and the complement construction above the tree run over the
+    inputs in their own order and are untouched by it.
+    """
     n = _validate_truth_table(truth_table)
 
     cells: list[str] = []
@@ -305,7 +473,7 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
         rows = truth_table[combo : combo + span]
         return rows[0] if len(set(rows)) == 1 else None
 
-    def branch(i: int, combo: int, bit: int) -> None:
+    def branch(i: int, combo: int) -> None:
         """Emit one side of node ``i``: a leaf when constant, else a subtree.
 
         A folded leaf prints from the result cell just as a full-depth one
@@ -313,27 +481,31 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
         it is reached at differs.
         """
         value = constant(i + 1, combo)
-        move(result if value is not None else bit + 2)
+        # A subtree is entered at the cell holding *its* input, which is
+        # ``2 * perm[i + 1]`` -- adjacent only when the order is the
+        # identity, so the target is computed rather than stepped over.
+        move(result if value is not None else 2 * perm[i + 1])
         if value is not None:
             leaf(value)
         else:
             node(i + 1, combo)
 
     def node(i: int, combo: int) -> None:
-        bit = 2 * i
+        bit = 2 * perm[i]
         one = combo | (1 << (n - 1 - i))
         move(bit)
         cells.append("[")  # one-side: if b_i
-        branch(i, one, bit)
+        branch(i, one)
         move(bit)
         cells.append("[-]")  # clear b_i so this ] exits
         cells.append("]")
         move(bit + 1)
         cells.append("[")  # zero-side: if 1 - b_i
-        branch(i, combo, bit)
+        branch(i, combo)
         move(bit + 1)
         cells.append("[-]")  # clear the complement so this ] exits
         cells.append("]")
 
+    move(2 * perm[0])
     node(0, 0)
     return "".join(cells)
