@@ -857,15 +857,54 @@ class TestParameterizedArrowQueue:
     def test_folded_zero_leaf_needs_no_drain(self) -> None:
         """A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
         from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.parameterized import _drained_leaf
+        from esolangs.tools.boolean.parameterized import _TREE_0, _drained_leaf
 
-        leaf = _drained_leaf("0", 3)
-        assert leaf  # it still carries the drains, which cost nothing to keep
+        # It carries no drain at all.  Paying for one is not free: the
+        # staircase sits a column right of the branches it replaces, so
+        # ``_compact`` finds fewer all-blank columns and the instantiated
+        # program grows -- which is what made AND-2 larger than before the
+        # fold until this case was carved out.
+        assert _drained_leaf("0", 3) == list(_TREE_0)
         for table, n in (("0000", 2), ("0" * 8, 3)):
             template = parameterized.arrowqueue(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 assert self.run_arrowqueue(self.instantiate(template, bits)) == "0"
+
+    def test_folding_never_grows_a_program(self) -> None:
+        """No instantiated program is larger than its unfolded equivalent.
+
+        A fold that costs characters is not a fold.  AND-2 briefly regressed
+        (124 to 128 bytes) when ``0`` leaves were drained too: a folded
+        ``00`` half gained a staircase where the branch pair it replaced was
+        cheaper, and the extra column blocked ``_compact``.  This pins the
+        whole n <= 2 space, where such a regression showed up.
+        """
+        from esolangs.tools.boolean.parameterized import (
+            _TREE_0,
+            _TREE_1,
+            _connect,
+            _tree,
+        )
+
+        def unfolded(values: list[str]) -> list[str]:
+            """The pre-fold construction: a branch per level, never collapsed."""
+            if len(values) == 2:
+                return _connect(
+                    _TREE_1 if values[0] == "1" else _TREE_0,
+                    _TREE_1 if values[1] == "1" else _TREE_0,
+                )
+            half = len(values) // 2
+            return _connect(unfolded(values[:half]), unfolded(values[half:]))
+
+        for n in (1, 2, 3):
+            for value in range(2 ** (2**n)):
+                table = format(value, f"0{2**n}b")
+                folded = _tree(list(table))
+                plain = unfolded(list(table))
+                assert sum(len(r.rstrip()) for r in folded) <= sum(
+                    len(r.rstrip()) for r in plain
+                ), table
 
     def test_fold_keeps_equal_width_embedding(self) -> None:
         """Every instantiation of a folded template is the same length.

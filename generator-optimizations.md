@@ -329,9 +329,10 @@ corrections and **is now folded** (see above). `streetcode` was attempted and
 
 #### arrowqueue: done — the queue is drained, not worked around
 
-**Resolved.** A constant table is 128 characters against 275 at n=3, and 130
-against 1434 at n=5. No table's template grows (checked exhaustively over all
-65812 tables through n=4).
+**Resolved.** A constant table is 93 characters against 275 at n=3, and 130
+against 1434 at n=5. No program grows, instantiated or template (checked
+exhaustively through n=3 against the pre-fold generator). The committed
+example dropped 124→110 bytes.
 
 The fold was **asymmetric** before the drain existed, which is what made it
 look blocked. Collapsing a subtree to a bare leaf at n=2, against the real
@@ -378,12 +379,16 @@ Verified exhaustively at n≤3 (every table × every input, through
 n=5, and the whole n=4 split family. Deliberately removing the drains fails
 16 tests, so they are pinned by behaviour.
 
-The one cost: an *instantiated* program can grow a few characters, because
-the drain's staircase sits a column right of the branches it replaced and
-`_compact` then finds fewer all-blank columns. AND-2 is the case — only its
-`00` half is constant, and a `0` leaf needs no drain — so the committed
-example went 124→128 bytes. Bounded, and only on shallow tables where the
-fold had nothing to buy.
+**Only `1` leaves are drained.** Draining `0` leaves too was a measurable
+mistake: a `0` leaf halts by running off the grid whatever is queued, so its
+drain buys nothing, and it *costs* — the staircase sits a column right of the
+branches it replaced, leaving `_compact` fewer all-blank columns to drop.
+AND-2 is the case (only its `00` half is constant), and it went 124→128 bytes
+until the case was carved out. It is 109 now, below where it started.
+
+That the fold must never grow a program is pinned by
+`test_folding_never_grows_a_program`, which compares every table at n≤3
+against the pre-fold construction.
 
 ### streetcode: done — but it needed an interpreter fix first
 
