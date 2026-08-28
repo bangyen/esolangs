@@ -24,6 +24,7 @@ from esolangs.interpreters.grid_based.streetcode import (
     _VOID,
     _WALLS,
     _Grid,
+    _Latches,
     _left,
     _Machine,
     _Merge,
@@ -1464,6 +1465,109 @@ class TestStreetcodeDriveStates:
         finally:
             module._MOUTH_MAX_DEPTH = original  # noqa: SLF001
         assert shipped == generous
+
+
+class TestStreetcodeDriveInvariants:
+    """What holds of a drive state under every reading of the spec.
+
+    The geometry rules are reverse-engineered and several remain
+    judgement calls; these are not.  A car inside a wall, or one that
+    teleports rather than driving a cell at a time, is wrong however the
+    spec is read, so ``_check_state_invariants`` asserts them over the
+    whole drive-state graph at construction.  Each test drives the
+    checker with a state the enumeration cannot currently produce --
+    that is the point, since a reachable breach would be a live bug.
+    """
+
+    def _machine(self) -> _Machine:
+        """The grid from ``701de45``, whose lower room the car drove into."""
+        return _Machine(
+            [
+                "+---------+",
+                "|         |",
+                "|C^      ;|",
+                "+--+  ++--+",
+                "   |      |",
+                "   |;     |",
+                "   +------+",
+            ],
+            IO(),
+        )
+
+    def test_a_car_inside_a_wall_is_caught(self) -> None:
+        """The regression from ``701de45``, as a construction-time failure.
+
+        A junction fired while its gap still opened a cell ahead, and the
+        turn drove the car inside the wall the mouth opens through --
+        ``(3, 2)`` on this very grid, which is the ``-`` of the lower
+        room's top wall.  That was found by hand-drawing a program and
+        watching the car misbehave; the invariant names the square.
+        """
+        machine = self._machine()
+        assert not machine._open(3, 2)  # noqa: SLF001
+        with pytest.raises(AssertionError, match="not open floor"):
+            machine._check_state_invariants(  # noqa: SLF001
+                _State(3, 2, "S", _NO_LATCHES), {}
+            )
+
+    def test_a_teleporting_step_is_caught(self) -> None:
+        """A successor two cells away is the car skipping a square."""
+        machine = self._machine()
+        state = _State(2, 1, "E", _NO_LATCHES)
+        edges = {(0, 0): _State(2, 3, "E", _NO_LATCHES)}
+        with pytest.raises(AssertionError, match="not one orthogonal step"):
+            machine._check_state_invariants(state, edges)  # noqa: SLF001
+
+    def test_a_step_into_a_wall_is_caught(self) -> None:
+        """A successor on a wall cell, one step away or not."""
+        machine = self._machine()
+        state = _State(2, 2, "S", _NO_LATCHES)
+        edges = {(0, 0): _State(3, 2, "S", _NO_LATCHES)}
+        with pytest.raises(AssertionError, match="which is not open"):
+            machine._check_state_invariants(state, edges)  # noqa: SLF001
+
+    def test_a_merge_target_off_the_travel_axis_is_caught(self) -> None:
+        """The approach holds its lane, so the target is straight ahead."""
+        machine = self._machine()
+        # Heading East from (2, 1), so the axis is row 2; row 1 is beside it.
+        merge = _Merge(1, 4, "right", "E", crossing=False)
+        state = _State(2, 1, "E", _Latches(merge, None, 0))
+        with pytest.raises(AssertionError, match="off the axis"):
+            machine._check_state_invariants(state, {})  # noqa: SLF001
+
+    def test_a_merge_target_behind_the_car_is_caught(self) -> None:
+        """The car drives forwards onto the target; it cannot reverse to it."""
+        machine = self._machine()
+        merge = _Merge(2, 1, "right", "E", crossing=False)
+        state = _State(2, 3, "E", _Latches(merge, None, 0))
+        with pytest.raises(AssertionError, match="behind it"):
+            machine._check_state_invariants(state, {})  # noqa: SLF001
+
+    def test_a_stale_latch_is_not_checked(self) -> None:
+        """A latch the next step abandons describes no geometry.
+
+        Once the heading no longer matches the one the latch was taken
+        under, ``_heading_from_merge_target`` drops it; its target is
+        stale by construction, and holding it to the axis rule would
+        reject states the enumeration really does reach (1,116 of them
+        across the example and generated programs).
+        """
+        machine = self._machine()
+        # Off-axis and behind -- but latched under a heading the state no
+        # longer holds, so neither rule applies.
+        merge = _Merge(5, 4, "right", "S", crossing=False)
+        state = _State(2, 1, "E", _Latches(merge, None, 0))
+        machine._check_state_invariants(state, {})  # noqa: SLF001
+
+    def test_every_shipped_program_satisfies_them(self) -> None:
+        """The invariants hold over every program the repo ships.
+
+        Construction runs the check, so this passing means the whole
+        drive-state graph of each example is clean -- not just the paths
+        a particular input drives.
+        """
+        for path in sorted(Path("examples").glob("**/streetcode.txt")):
+            _Machine(path.read_text().split("\n"), IO())
 
 
 class TestStreetcodeGraphBackedStepping:
