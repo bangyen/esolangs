@@ -727,7 +727,7 @@ not a verdict:
 
 | generator | upside | why it cannot be reordered |
 |---|---|---|
-| `polynomial` | 25.1% | **no addressable storage at all** — one register, no tape or variables, so a bit that is read can only be branched on before the next read overwrites it |
+| `polynomial` | 25.1% | **no addressable storage at all** — one register, no tape or variables, so a bit that is read can only be branched on before the next read overwrites it. Still true, and the 25.1% is unreachable *as a reorder* — but see [below](#polynomial-the-saving-a-reorder-would-have-bought-taken-a-different-way), where a different construction collects it |
 | `modulous` | 16.4% | stack reaches top two only; variables store and print but never load back |
 | `sophie` | 16.4% | reads inside the tree (`;` then `@$48{}`) with only an accumulator to hold a bit |
 | `addsubjump` | 16.7% | reads at the node, drains skipped reads at each leaf |
@@ -843,6 +843,76 @@ tests it* and has nowhere else to put one — so its test order **is** its
 stream order. `six_five` reads at the node too, but that was a property of
 its generator rather than of the language: it has a tape, so its reads were
 hoisted into cells of their own and the two orders came apart.
+
+### Polynomial — the saving a reorder would have bought, taken a different way
+
+Polynomial's exclusion above is correct and stays: its reads are
+**positional and destructive**. `[0, 2]` *assigns* the read character to the
+one register (verified: `reg += 7` then reading `'A'` prints `'A'`, not
+`'H'`), so nothing survives a read and the bit a node tests is always the
+one it just read. Testing in a different order than the stream supplies is
+therefore not expressible.
+
+**A tempting near-miss, worth recording because it type-checks.** Since
+`permute_truth_table` renames inputs, one can build the tree over a permuted
+table and hope the positional reads line up. They do not: the resulting
+program computes a *different function* — for `00000101` under `(0,2,1)`,
+rows `101` and `110` come out swapped. The fold count genuinely drops
+(13.8% fewer instructions at n=3, 112/256 tables), which is what makes the
+mistake attractive; the program is simply wrong. **A saving that shows up in
+a size measurement is not a saving until the program is executed.**
+
+**What the upside was really measuring.** A reorder's payoff is the extra
+*constant subtables* it exposes. But collapsing a constant subtable is a
+special case of a more general merge: two prefixes can share a continuation
+whenever their **residual subfunctions are equal**, constant or not. That
+merge needs no reordering at all — it is available under the fixed stream
+order — and it subsumes the folds a better order would have found. The
+result is an ordered BDD where the tree was a plain tree.
+
+Polynomial can express it because the *instruction cursor* is a second store
+the register-only analysis missed: state lives in **which branch is
+running**. Each level is a chain of `-= 1` / `if == 0` tests over the live
+states; the branch that fires reads its bit and moves to its child's index.
+
+| | tree | state machine |
+|---|---|---|
+| merges | constant subtables | equal residual subfunctions |
+| parity-3 | 66 instrs | 41 |
+| parity-4 | 138 | 54 |
+| parity-6 | 570 | 80 |
+| parity-8 | 2298 | 106 |
+| random n=3 | 52 (median) | 45 |
+| random n=6 | 447 | 193 |
+
+Parity is the tree's worst case at every width and needs two states per
+level, so the machine is **linear in n** — 13 instructions per input. The
+tree still wins on small and near-constant tables (`00001111` is 20
+instructions against 39), so both are built and the shorter is emitted, ties
+keeping the tree. Measured over all 256 tables at n=3: **18.4% shorter,
+112 improved, none grown.**
+
+**The gate moved from `n` to instructions**, the same correction `six_five`'s
+label budget made. Cost here is the sympy factorization recovering roots,
+which tracks the polynomial's degree and so the instruction count — measured
+at 52 instrs → 1.0s, 78 → 4.0s, 116 → 15s, 207 → 110s. Gating on `n <= 4`
+refused parity-5 (67 instructions, ~2s) while admitting n=4 trees of 138.
+Gating at 138 instructions renders AND-5 and parity through n=8, and refuses
+scattered n=6 tables, which is where the time actually goes.
+
+**Two interpreter traps this construction has to respect**, both found by
+executing rather than reading:
+
+- **`[0, b]` is I/O, not arithmetic.** The interpreter tests `a == 0` before
+  the opcode, so `[0, 3]` reads a character instead of multiplying by zero —
+  exactly the instruction a naive builder emits when both children merge,
+  which is the DAG's whole payoff. The merge case divides the bit away
+  (`//= 50`) instead, and an assertion keeps any other `a == 0` out.
+- **A chain of equality tests re-fires.** A taken branch leaves the register
+  holding its child state, and the chain's remaining `-= 1` steps keep
+  running, so a later test can zero it and fire too. Every branch parks the
+  register at `offset + child + remaining`, so the trailing decrements bring
+  each to the same `offset + child`, never zero mid-chain.
 
 **A correction worth recording, because the method was the error.**
 `bitdeque` was first excluded alongside `modulous` for "popping a stack the
