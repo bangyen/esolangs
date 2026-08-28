@@ -292,3 +292,37 @@ class TestStepMachine:
         machine = _Machine(ScriptedIO(), 1_000_000)
         machine.frames.append(_Frame("FAFHKMHZ", 0))
         assert run_until_halt_or_cycle(machine) is False
+
+
+class TestNumberEncoding:
+    """Letters stand for digits, with Z standing for zero.
+
+    Numbers only ever reach the tests through programs that print their
+    result, where the encoding and the arithmetic that follows it cannot be
+    told apart.  These read the conversion directly.
+    """
+
+    def test_letters_count_from_a(self) -> None:
+        from esolangs.interpreters.stack_based.grapheme import _to_int
+
+        assert _to_int("A") == 10
+        assert _to_int("B") == 20
+
+    def test_z_is_zero_not_its_place_in_the_alphabet(self) -> None:
+        """``Z`` is the one letter that does not stand for its offset."""
+        from esolangs.interpreters.stack_based.grapheme import _to_int
+
+        assert _to_int("Z") == 0
+
+    def test_each_letter_shifts_the_ones_before_it(self) -> None:
+        """Position matters: AZ and ZA are different numbers."""
+        from esolangs.interpreters.stack_based.grapheme import _to_int
+
+        assert _to_int("AZ") == 100
+        assert _to_int("ZA") == 10
+        assert _to_int("AB") == 120
+
+    def test_an_empty_value_is_zero(self) -> None:
+        from esolangs.interpreters.stack_based.grapheme import _to_int
+
+        assert _to_int("") == 0
