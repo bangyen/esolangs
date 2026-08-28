@@ -929,6 +929,12 @@ def _drained_leaf(value: str, skipped: int) -> list[str]:
 
     The drains push nothing, so the ring receives the queue it expects.
     """
+    # A ``0`` leaf halts by running off the grid, which no queue content can
+    # prevent, so it needs no drain at all -- and paying for one costs real
+    # characters: the staircase sits a column right of the branches it
+    # replaced, leaving ``_compact`` fewer all-blank columns to drop.
+    if value != "1":
+        return list(_TREE_0)
     # The leaf is 3x3 placed at (skipped, skipped + 1), so the grid needs
     # ``skipped + 3`` rows and one more column than that.
     grid = [[" "] * (skipped + 4) for _ in range(skipped + 3)]
@@ -989,17 +995,11 @@ def arrowqueue(truth_table: str) -> str:
 
     A constant subtree folds to a single leaf, which drains the bits the
     skipped branches would have popped -- see :func:`_drained_leaf`.  A
-    constant table is 128 characters against 275 at n == 3, and 130 against
-    1434 at n == 5, and no table's *template* grows (checked exhaustively
-    through n == 4).
-
-    An *instantiated* program can grow by a few characters, though, because
-    the drain's staircase sits one column further right than the branches it
-    replaced and :func:`_compact` then has fewer all-blank columns to drop.
-    AND-2 is the case: only its ``00`` half is constant, a ``0`` leaf needs
-    no drain to halt, so the drain buys nothing there and the committed
-    example went 124 to 128 bytes.  It is bounded and shallow-table-only --
-    the fold is worth many times that wherever a ``1`` leaf folds at all.
+    constant table is 93 characters against 275 at n == 3, and 130 against
+    1434 at n == 5.  No program grows: only a ``1`` leaf is drained, since a
+    ``0`` leaf halts by running off the grid whatever is queued, and draining
+    it anyway cost more than the branches it replaced (AND-2 briefly went
+    124 to 128 bytes that way -- it is 109 now).
     """
     n = _validate_truth_table(truth_table)
     header = ["{X0}"]

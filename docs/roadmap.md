@@ -433,15 +433,15 @@ against `10010110` at n=3 unless noted):
 - **Streetcode** — 389 vs 1439.  Needed an interpreter fix first
   (`_junction_choices` dropped a road that was sighted but not yet
   drivable), not the geometry rework this section used to predict.
-- **ArrowQueue** — 128 vs 275, and 130 vs 1434 at n=5.  A `0` leaf folds on
-  geometry alone (it halts by leaving the grid, which the queue cannot
-  stop); a `1` leaf needs its skipped bits **drained**, or its ring's corner
-  pops find them instead of `R, D, L, U`.  The drain works because `+`
-  erases arrival direction, so the two exits only have to reach the same
-  *cell*, not the same heading — a 4-glyph gadget stepping one row down and
-  one column right per bit.  Instantiated programs can grow a few characters
-  on shallow tables (AND-2's example went 124→128) because `_compact` finds
-  fewer blank columns; no template grows, checked exhaustively through n=4.
+- **ArrowQueue** — 93 vs 275, and 130 vs 1434 at n=5.  A `0` leaf folds to
+  nothing (it halts by leaving the grid, which the queue cannot stop); a `1`
+  leaf needs its skipped bits **drained**, or its ring's corner pops find
+  them instead of `R, D, L, U`.  The drain works because `+` erases arrival
+  direction, so the two exits only have to reach the same *cell*, not the
+  same heading — a 4-glyph gadget stepping one row down and one column right
+  per bit.  Draining `0` leaves as well was a real cost (AND-2's example
+  went 124→128 before that case was carved out; it is 110 now), so the
+  no-growth property is pinned by a test against the pre-fold construction.
 - **6-5** — 44 vs 226.  Since folding is what spends the 35 branch labels,
   the generator now picks the tree by counting them rather than by `n`,
   which renders tables the old `n <= 5` gate refused (AND-6 needs 6
