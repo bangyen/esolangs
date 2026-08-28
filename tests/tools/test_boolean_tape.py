@@ -8,6 +8,7 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 import pytest
 
 from esolangs.tools import boolean
+from esolangs.tools.boolean.six_five import _six_five_markers
 from tests.tools.boolean_runners import (
     run_bf,
     run_bit_tilde,
@@ -29,6 +30,17 @@ from tests.tools.boolean_runners import (
 def _columns(program: str) -> int:
     """The widest row of a grid program, which is what a width bounds."""
     return max(len(line) for line in program.split("\n"))
+
+
+def _markers(program: str) -> int:
+    """How many ``4`` markers a 6-5 program really has.
+
+    Counting ``4`` characters overcounts: a ``8n`` jump whose operand is
+    ``4`` contributes one, so this tokenizes the way the interpreter does.
+    """
+    from esolangs.interpreters.tape_based.six_five import _tokens
+
+    return sum(1 for token in _tokens(program) if token == "4")
 
 
 def _leaves(table: str) -> int:
@@ -138,62 +150,112 @@ class TestSixFive:
 
         assert reads_on_each_path(program) == {n}
 
-    def test_arithmetic_fallback_path(self) -> None:
-        """n > 5 falls back to the arithmetic kernel instead of the tree."""
-        program = boolean.six_five("1" + "0" * 63)  # f(x) = (x == 0): T == 1
-        assert "8" in program  # loops use 8n jumps
-        assert "70" in program  # loop conditionals
-        assert program.count("4") <= 35  # within the label budget
+    @pytest.mark.parametrize(
+        ("table", "n", "labels"),
+        [
+            ("0" * 63 + "1", 6, 6),  # AND6: was refused by both paths
+            ("1" * 32 + "0" * 32, 6, 1),  # one split
+            ("1" * 48 + "0" * 16, 6, 2),  # two regions
+            ("1" * 64, 6, 0),  # constant
+            ("0" * 255 + "1", 8, 8),  # AND8
+        ],
+    )
+    def test_tree_past_five_inputs(self, table: str, n: int, labels: int) -> None:
+        """A folded tree that fits the label budget is used at any ``n``.
+
+        The old gate was ``n <= 5`` on the *unfolded* node count, so these
+        tables fell through to the arithmetic kernel -- which refuses most of
+        them, since a table with ones at high indices has a huge ``T``.
+        Folding is what spends the labels, so the choice counts them instead.
+        """
+        program = boolean.six_five(table)
+        assert _markers(program) == labels <= 35
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_six_five(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_marker_precheck_matches_emitted_tree(self) -> None:
+        """The dispatch's label count is what the tree actually allocates.
+
+        The gate decides before building, so a miscount would either refuse a
+        renderable table or emit one past the 35-label budget.  Counting
+        ``4`` *characters* is not the same thing -- an ``8n`` jump whose
+        operand is ``4`` contributes one -- so this compares against the
+        interpreter's own tokenizer.
+        """
+        for table in (
+            "0" * 63 + "1",
+            "1" + "0" * 63,
+            "1" * 48 + "0" * 16,
+            "1" * 64,
+            "1" * 127 + "0",
+            "0" * 255 + "1",
+        ):
+            assert _six_five_markers(table) == _markers(boolean.six_five(table))
+
+    def test_wide_table_still_falls_back(self) -> None:
+        """A table whose folded tree exceeds 35 labels leaves the tree path."""
+        scattered = "10010110" * 8  # n == 6, 63 labels after folding
+        assert _six_five_markers(scattered) > 35
+        with pytest.raises(ValueError, match="~2 MB setup"):
+            boolean.six_five(scattered)  # and its T is unbuildable too
 
     @pytest.mark.slow
     @pytest.mark.parametrize("n", [6, 7, 8])
     @pytest.mark.parametrize("table", ["10", "1100"])
-    def test_arithmetic_fallback_table(self, n: int, table: str) -> None:
-        """The fallback computes every combination for small-T tables."""
+    def test_arithmetic_kernel_table(self, n: int, table: str) -> None:
+        """The arithmetic kernel computes every combination for small-T tables.
+
+        Reached directly: since folding, no table routes here through
+        :func:`six_five` -- a small ``T`` puts the ones at low indices, which
+        leaves the rest of the table constant, which folds well inside the
+        label budget.  The kernel stays exported and tested on its own.
+        """
         table = table + "0" * (2**n - len(table))  # ones only at low indices
-        program = boolean.six_five(table)
+        program = boolean.six_five_arithmetic(table)
         assert len(program) < 2000  # the small-T setup stays short
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_six_five(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_arithmetic_fallback_constant_markers(self) -> None:
-        """A loop-based x build keeps the marker count constant in n."""
+    def test_arithmetic_kernel_constant_markers(self) -> None:
+        """A loop-based x build keeps the kernel's marker count constant in n."""
         markers = {
-            n: boolean.six_five("1" + "0" * (2**n - 1)).count("4")
+            n: _markers(boolean.six_five_arithmetic("1" + "0" * (2**n - 1)))
             for n in (6, 9, 12, 16)
         }
-        assert markers == {6: markers[6], 9: markers[6], 12: markers[6], 16: markers[6]}
+        assert len(set(markers.values())) == 1  # constant in n
         assert markers[6] <= 35  # well within the label budget
 
-    def test_arithmetic_fallback_refuses_large_t(self) -> None:
+    def test_arithmetic_kernel_refuses_large_t(self) -> None:
         """AND-n is the worst case: T == 2**(2**n - 1) blows up the setup."""
         with pytest.raises(ValueError, match="~2 MB setup"):
-            boolean.six_five("0" * 63 + "1")  # AND6: T == 2**63
+            boolean.six_five_arithmetic("0" * 63 + "1")  # AND6: T == 2**63
 
     @pytest.mark.slow
     @pytest.mark.parametrize("n", [6, 8])
-    def test_arithmetic_fallback_complement(self, n: int) -> None:
+    def test_arithmetic_kernel_complement(self, n: int) -> None:
         """Tables whose complement is cheap use it instead of a huge T."""
         table = "00" + "1" * (2**n - 2)  # zeros only at indices 0,1: T' == 3
-        program = boolean.six_five(table)
+        program = boolean.six_five_arithmetic(table)
         assert len(program) < 2000
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_six_five(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_arithmetic_fallback_compact_setup(self) -> None:
+    def test_arithmetic_kernel_compact_setup(self) -> None:
         """+6 runs make the setup ~T/6, far below the naive 2T pairs."""
-        program = boolean.six_five("1" * 20 + "0" * 44)  # T == 2**20 - 1
+        program = boolean.six_five_arithmetic("1" * 20 + "0" * 44)  # T == 2**20 - 1
         assert len(program) < 500_000  # ~T/6, not ~2T
         assert program[:32].count("6") > program[:32].count("62")  # uses +6 runs
 
-    def test_arithmetic_fallback_complement_marker_budget(self) -> None:
+    def test_arithmetic_kernel_complement_marker_budget(self) -> None:
         """The complement output branch stays inside the label budget."""
-        program = boolean.six_five("00" + "1" * 62)
-        assert program.count("4") <= 35
+        program = boolean.six_five_arithmetic("00" + "1" * 62)
+        assert _markers(program) <= 35
 
 
 class TestStreetcode:
