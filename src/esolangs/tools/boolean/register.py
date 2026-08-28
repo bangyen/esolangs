@@ -552,6 +552,22 @@ def qoibl(truth_table: str) -> str:
     return "\n".join(lines)
 
 
+# Largest instruction count :func:`polynomial` will emit.  Each instruction
+# consumes a fresh prime and contributes a factor, so the polynomial's degree
+# -- and the cost of the sympy factorization the interpreter runs to recover
+# the instructions -- tracks this count and nothing else.  One run measured
+# on the interpreter: 52 instructions in 1.0s, 78 in 4.0s, 116 in 15s, 128 in
+# 20s, 207 in 110s.  The bound sits just past the old gate's worst accepted
+# case (an n == 4 tree, ~138 instructions at ~10s), which keeps every
+# renderable table runnable in about the time this generator always cost.
+#
+# It replaces an ``n <= 4`` gate, which measured the wrong thing: the cost is
+# instructions, not inputs, so a table that collapses to few states is cheap
+# at any width -- parity renders through n == 8 at 106 instructions, where
+# the old gate refused it from n == 5.
+_POLYNOMIAL_MAX_INSTRS = 138
+
+
 def polynomial(truth_table: str) -> str:
     """Build a Polynomial program computing the given truth table.
 
@@ -559,28 +575,91 @@ def polynomial(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     Polynomial programs are polynomials whose roots encode instructions, so
-    the generator builds a decision tree of complex ``[a, b]`` (arithmetic,
-    input, output) and real ``[val]`` (if/endif) roots and expands them into
-    ``f(x) = ...``.  A subtree whose rows are all the same value is collapsed
-    to its single output, so constant and near-constant tables skip the tree
-    that would otherwise isolate every leaf.  Each instruction consumes a
-    fresh prime, so the coefficients of a deeper tree grow quickly -- at
-    ``n == 3`` they reach ~10**360 and at ``n == 4`` ~10**729.  The
-    interpreter recovers roots by factoring the integer polynomial (exact,
-    so the huge coefficients are no obstacle); ``n == 3`` runs in ~1s and
-    ``n == 4`` in ~10s, while ``n == 5`` (degree 376, coefficients ~10**1746)
-    does not factor in practical time.  ``n > 4`` is rejected.
-    """
-    n = _validate_truth_table(truth_table)
-    if n > 4:
-        raise ValueError(
-            "the Polynomial boolean generator supports n <= 4: "
-            "each instruction consumes a fresh prime, so a deeper tree's "
-            "coefficients make the factorization impractically slow",
-        )
+    both constructions below emit complex ``[a, b]`` (arithmetic, input,
+    output) and real ``[val]`` (if/endif) roots that expand into
+    ``f(x) = ...``.  Each instruction consumes a fresh prime, so the
+    program's size and the interpreter's factorization cost both track the
+    *instruction count* -- which is what the two constructions compete on.
 
+    :func:`_polynomial_tree` is a decision tree that collapses a constant
+    subtable to its output.  :func:`_polynomial_dag` is a state machine
+    whose state lives in the instruction cursor, merging any two prefixes
+    with the *same residual subfunction* rather than only constant ones --
+    an ordered BDD where the tree is a plain tree.  **The shortest wins,
+    with the tree first so ties keep the emission this generator already
+    had.**
+
+    The merge is strictly stronger than the fold and the gap grows with
+    ``n``: parity is the tree's worst case at every width (``2**n - 1``
+    internal nodes, 2298 instructions at n == 8) and needs just two states
+    per level, so the machine is *linear* -- 13 instructions per input, 106
+    at n == 8.  Over random tables the machine wins from n == 3 up (median
+    0.87x the tree's instructions at n == 3, 0.43x at n == 6), while small
+    or near-constant tables still favour the tree, which is why both are
+    built and measured.  Measured over all 256 tables at n == 3, the
+    dispatch is 18.4% shorter than the tree alone, improving 112 and
+    growing none.
+
+    **The order the tree tests its inputs in is not free here**, unlike
+    every other decision-tree generator: a read *assigns* to the single
+    register, so nothing survives it and the tested bit is always the one
+    just read.  Both constructions therefore consume input in stream order,
+    and reordering is unreachable rather than merely unhelpful.  What the
+    machine recovers is the *saving* a reorder would have bought -- the
+    residual merge subsumes the folds a better order would have exposed.
+
+    A table needing more than ``_POLYNOMIAL_MAX_INSTRS`` instructions under
+    both constructions raises :class:`ValueError`: the interpreter recovers
+    instructions by factoring the polynomial, and that is what becomes
+    impractical.  The bound is on instructions rather than on ``n``, so a
+    table that collapses to few states renders at any width -- parity, the
+    old gate's worst case, now renders through n == 8.
+    """
+    _validate_truth_table(truth_table)
+    candidates = [_polynomial_tree(truth_table), _polynomial_dag(truth_table)]
+    fits = [c for c in candidates if len(c) <= _POLYNOMIAL_MAX_INSTRS]
+    if not fits:
+        raise ValueError(
+            "the Polynomial boolean generator emits one instruction per "
+            f"prime and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
+            f"needs {min(len(c) for c in candidates)} under its cheaper "
+            "construction, which the interpreter cannot factor in "
+            "practical time",
+        )
+    # The tree is first and the comparison is strict, so a table the state
+    # machine does not shorten emits exactly what it emitted before.
+    return _polynomial_assemble(min(fits, key=len))
+
+
+def _polynomial_assemble(instrs: list[list[int]]) -> str:
+    """Expand an instruction list into its ``f(x) = ...`` polynomial.
+
+    The k-th instruction takes the k-th prime ``p``: a complex instruction
+    ``[a, b]`` contributes ``(x - a)**2 + p**(2*b)`` and a real one ``[v]``
+    contributes ``x - p**v``, so the roots the interpreter factors back out
+    are exactly the instructions.
+    """
     from esolangs.tools._polynomial import format_coeffs, multiply, primes
 
+    coeffs = [1]
+    for instr, p in zip(instrs, primes(len(instrs)), strict=True):
+        if len(instr) == 2:
+            a, b = instr
+            coeffs = multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
+        else:
+            coeffs = multiply(coeffs, [1, -(p ** instr[0])])
+    return str(format_coeffs(coeffs))
+
+
+def _polynomial_tree(truth_table: str) -> list[list[int]]:
+    """Emit the decision-tree instructions; see :func:`polynomial`.
+
+    A subtree whose rows are all the same value is collapsed to its single
+    output, so constant and near-constant tables skip the tree that would
+    otherwise isolate every leaf.  A collapsed leaf still drains the reads
+    its untaken siblings would have made, so every path consumes ``n``.
+    """
+    n = _validate_truth_table(truth_table)
     instrs: list[list[int]] = []
 
     def emit_delta(delta: int) -> None:
@@ -618,14 +697,111 @@ def polynomial(truth_table: str) -> str:
         instrs.append([2])
 
     build(list(range(2**n)), 0, 0)
-    coeffs = [1]
-    for instr, p in zip(instrs, primes(len(instrs)), strict=True):
-        if len(instr) == 2:
-            a, b = instr
-            coeffs = multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
-        else:
-            coeffs = multiply(coeffs, [1, -(p ** instr[0])])
-    return str(format_coeffs(coeffs))
+    return instrs
+
+
+def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
+    """Return the distinct residual subfunctions at each level.
+
+    Level ``k``'s states are the distinct subtables of width ``2**(n-k)``
+    reachable after reading ``k`` bits.  Two prefixes that leave the same
+    subtable are the *same* state and share one continuation -- the merge
+    a decision tree cannot make, since it can only collapse a subtable that
+    is constant.
+    """
+    levels = [[truth_table]]
+    for k in range(n):
+        width = 2 ** (n - k - 1)
+        nxt: list[str] = []
+        for state in levels[k]:
+            for half in (state[:width], state[width:]):
+                if half not in nxt:
+                    nxt.append(half)
+        levels.append(nxt)
+    return levels
+
+
+def _polynomial_dag(truth_table: str) -> list[list[int]]:
+    """Emit the state-machine instructions; see :func:`polynomial`.
+
+    The register is the only storage and a read *assigns* to it, so nothing
+    survives a read except the instruction cursor.  The state is therefore
+    carried as *which branch is running*: each level is a chain of
+    ``-= 1`` / ``if == 0`` tests over the live states, and the branch that
+    fires reads its bit and moves to the child state's index.
+
+    Two details are load-bearing.
+
+    **``[0, b]`` is I/O, not arithmetic.**  The interpreter tests ``a == 0``
+    before the opcode, so ``[0, 3]`` reads a character rather than
+    multiplying by zero -- which is exactly the instruction a naive builder
+    wants when both children merge.  That case instead reads and divides the
+    bit away (``//= 50``), and an assertion below keeps any other ``a == 0``
+    from being emitted.
+
+    **A chain of equality tests re-fires.**  A taken branch leaves the
+    register holding its child state, and the chain's remaining ``-= 1``
+    steps keep running, so a later test can zero it and fire too.  Every
+    branch therefore parks the register at ``offset + child + remaining``,
+    so the trailing decrements bring each to the same ``offset + child`` and
+    the value is never zero mid-chain; the next level's chain subtracts
+    ``offset`` to recover the index.
+
+    Exactly one branch fires per level, and every branch reads once, so each
+    path consumes ``n`` inputs by construction rather than by draining.
+    """
+    n = _validate_truth_table(truth_table)
+    levels = _polynomial_states(truth_table, n)
+    index = [{s: i for i, s in enumerate(level)} for level in levels]
+    # Keeps a taken branch's register clear of every later test in its own
+    # chain.  Only widens literals, never the instruction count that costs.
+    offset = max(len(level) for level in levels) + 1
+    instrs: list[list[int]] = []
+
+    for k in range(n):
+        width = 2 ** (n - k - 1)
+        states = levels[k]
+        for i, state in enumerate(states):
+            if i:
+                instrs.append([1, 2])  # -= 1
+            instrs.append([4])  # if reg == 0
+            remaining = len(states) - 1 - i
+            zero_index = index[k + 1][state[:width]]
+            one_index = index[k + 1][state[width:]]
+            zero_target = offset + zero_index + remaining
+            instrs.append([0, 2])  # input
+            if zero_index == one_index:
+                # Both children merge, so this bit cannot change the answer.
+                # Divide it away rather than multiplying by zero, which the
+                # interpreter would read as an input instruction.
+                instrs.append([_ASCII_ZERO + 2, 4])  # //= 50 -> 0
+            else:
+                instrs.append([_ASCII_ZERO, 2])  # -= 48, leaving 0 or 1
+                span = one_index - zero_index
+                if span != 1:
+                    instrs.append([span, 3])  # *= span, never zero here
+            instrs.append([zero_target, 1])  # += the child's parked value
+            instrs.append([2])  # endif
+        instrs.append([offset, 2])  # -= offset, recovering the child index
+
+    # The leaf states are one-wide subtables, so each *is* its answer.  No
+    # guard is needed after printing: the register holds 48 or 49 and the
+    # one decrement a two-state chain can still apply leaves 47 or 48.
+    for i, state in enumerate(levels[n]):
+        if i:
+            instrs.append([1, 2])  # -= 1
+        instrs.append([4])  # if reg == 0
+        instrs.append([_ASCII_ZERO + int(state), 1])
+        instrs.append([0, 1])  # output
+        instrs.append([2])  # endif
+
+    for instr in instrs:
+        # ``a == 0`` is how the interpreter spells I/O, so an arithmetic
+        # instruction that computed a zero operand would silently become a
+        # read.  The builder never emits one; this is the guard that keeps
+        # a future edit from reintroducing the trap.
+        assert len(instr) != 2 or instr[0] != 0 or instr in ([0, 1], [0, 2]), instr
+    return instrs
 
 
 def _pb_name(index: int) -> str:

@@ -9,6 +9,11 @@ import pytest
 
 import esolangs
 from esolangs.tools import boolean
+from esolangs.tools.boolean.register import (
+    _polynomial_dag,
+    _polynomial_states,
+    _polynomial_tree,
+)
 from tests.tools.boolean_runners import (
     _PB_CONSTANTS,
     _PB_TABLES,
@@ -20,6 +25,7 @@ from tests.tools.boolean_runners import (
     run_decleq,
     run_dig,
     run_polynomial,
+    run_polynomial_from,
     run_qoibl,
     run_sophie,
 )
@@ -123,9 +129,79 @@ class TestPolynomial:
         """A 3-input table is factored exactly by the interpreter."""
         assert boolean.polynomial("00000001").startswith("f(x) = ")
 
-    def test_five_inputs_rejected(self) -> None:
-        with pytest.raises(ValueError, match="n <= 4"):
-            boolean.polynomial("0" * 31 + "1")
+    def test_wide_table_rejected(self) -> None:
+        """The gate is the instruction count, not the input count.
+
+        Each instruction takes a fresh prime and becomes a polynomial
+        factor, so what the interpreter's factorization cannot afford is
+        instructions.  A scattered n == 6 table needs ~200 under the
+        cheaper of the two constructions and is refused; the message names
+        the count rather than ``n``.
+        """
+        import random
+
+        random.seed(0)
+        scattered = "".join(random.choice("01") for _ in range(64))
+        with pytest.raises(ValueError, match="one instruction per prime"):
+            boolean.polynomial(scattered)
+
+    def test_state_machine_renders_past_the_old_input_gate(self) -> None:
+        """Tables the ``n <= 4`` gate refused outright now render and run.
+
+        The gate was on ``n`` because a decision tree doubles with it.  The
+        state machine merges prefixes with equal residual subfunctions, so a
+        table that collapses is cheap at any width: AND-5 was rejected and
+        is 63 instructions, and parity -- the tree's worst case, 2298
+        instructions at n == 8 -- is linear here and renders through n == 8.
+        """
+        and5 = "0" * 31 + "1"
+        program = boolean.polynomial(and5)
+        assert program.startswith("f(x) = ")
+        for combo in range(2**5):
+            bits = [(combo >> (4 - i)) & 1 for i in range(5)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == and5[combo], f"inputs {bits}"
+
+        for n in (6, 8):
+            parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
+            assert len(_polynomial_dag(parity)) == 13 * n + 2
+            assert boolean.polynomial(parity).startswith("f(x) = ")
+
+    def test_state_machine_merges_what_the_tree_cannot(self) -> None:
+        """A subtable that is not constant can still collapse to one state.
+
+        ``10101010`` is NOT of the last input: the tree folds nothing and
+        spends an internal node per level, while every prefix leaves the
+        same residual subfunction, so the machine needs one state per level
+        until the last.  This is the merge that makes the construction
+        stronger than the fold, rather than another way to spell it.
+        """
+        table = "10101010"
+        assert [len(level) for level in _polynomial_states(table, 3)] == [1, 1, 1, 2]
+        assert len(_polynomial_dag(table)) < len(_polynomial_tree(table))
+        program = boolean.polynomial(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
+
+    def test_every_path_reads_each_input_once(self) -> None:
+        """Whichever construction wins, a run consumes exactly ``n`` inputs.
+
+        The reads are the interface: a caller feeding several programs from
+        one stream desyncs if a path leaves bits unconsumed.  The tree
+        drains the reads a folded leaf skipped; the state machine reads once
+        inside the single branch each level's chain fires, so the count is
+        structural.  Feeding an exhaustible iterator proves both directions
+        -- an over-read raises, and a leftover proves an under-read.
+        """
+        for table, n in (("0110", 2), ("10101010", 3), ("00001111", 3)):
+            program = boolean.polynomial(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                feed = iter([str(b) for b in bits])
+                got = run_polynomial_from(program, feed)
+                assert got == table[combo], f"{table} inputs {bits}"
+                assert not list(feed), f"{table} inputs {bits} left input unread"
 
 
 class TestDig:
