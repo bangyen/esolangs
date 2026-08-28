@@ -35,11 +35,16 @@ def _six_five_markers(table: str) -> int:
     """How many branch labels the folded decision tree spends on ``table``.
 
     One per internal node the fold leaves standing.  This counts exactly
-    what :func:`six_five`'s ``build`` allocates rather than re-deriving it:
-    the tree splits most-significant-first over a contiguous row range, so
-    a node's two children are always the two halves of its table slice, and
-    a slice whose characters agree is the constant subtree that folds to a
-    leaf and takes no label.
+    what either construction allocates rather than re-deriving it: both
+    split most-significant-first over a contiguous row range, so a node's
+    two children are always the two halves of its table slice, and a slice
+    whose characters agree is the constant subtree that folds to a leaf and
+    takes no label.
+
+    ``table`` is whatever table the caller is about to build, so passing a
+    *permuted* one gives that input order's count.  The counts differ per
+    order -- that is what makes the 35-label budget a per-order gate rather
+    than a property of the function.
     """
     if len(set(table)) == 1:
         return 0
@@ -124,7 +129,8 @@ def six_five(truth_table: str) -> str:
     if n <= _ORDER_SEARCH_MAX:
         orders = list(permutations(range(n)))
     else:
-        orders = [identity, _greedy_input_order(truth_table, n)]
+        greedy = _greedy_input_order(truth_table, n)
+        orders = [identity] if greedy == identity else [identity, greedy]
     for perm in orders:
         table = (
             truth_table if perm == identity else permute_truth_table(truth_table, perm)
