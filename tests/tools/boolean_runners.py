@@ -95,6 +95,15 @@ def run_rotfuck(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
+def run_forth(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.stack_based.forth import run
+
+    buffer = io.StringIO()
+    with patch("builtins.input", side_effect=inputs), redirect_stdout(buffer):
+        run(program, io=IO())
+    return buffer.getvalue()
+
+
 def run_circlefuck(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.circlefuck import run
 

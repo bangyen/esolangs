@@ -127,8 +127,8 @@ forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
 characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 
-**Build a tree but never fold (6):** clockwise, decleq, forth, eval,
-arrowqueue, streetcode, six_five (n≤5). `circlefuck` / `circlefuck_byte` were
+**Build a tree but never fold (5):** clockwise, decleq, eval, arrowqueue,
+streetcode, six_five (n≤5). `circlefuck` / `circlefuck_byte` and `forth` were
 on this list and now fold — see below.
 
 These emit a byte-identical program size for every table of a given `n`,
@@ -157,12 +157,25 @@ a leaf test plus whatever index bookkeeping the language needs.
   too high. Verified exhaustively over every table at n≤3 (276 tables × every
   input combination) through the real interpreter, plus 47 tables at n=4 and
   random byte tables for `circlefuck_byte`.
-- `forth` — writes every node of a full heap-indexed tree,
-  `for m in range(1, 2**(n+1) - 1)` (`stack.py:136`). The heap indices look
-  like an obstacle but are not: the interpreter stores scopes in a
-  `dict[int, str]` and calls with `.get()`
-  (`interpreters/stack_based/forth.py:86,168`), so sparse indices are legal
-  and a fold is skip-emission — no renumbering.
+- `forth` — **done on this branch.** It wrote every node of a full
+  heap-indexed tree, `for m in range(1, 2**(n+1) - 1)`. The heap indices
+  looked like an obstacle but were not: the interpreter stores scopes in a
+  `dict[int, str]` keyed by the pushed number and calls with `.get()`
+  (`interpreters/stack_based/forth.py:86,168`), so a gap in the numbering is
+  just a scope that never exists — the fold is skip-emission, no renumbering.
+  Measured: n=3 constant `119→35`, n=5 constant `571→45` (12.7x), and even a
+  random n=5 table improves `753→571`. The committed example went `58→44`.
+
+  Doing this surfaced a coverage gap: `forth`'s tests asserted program
+  *structure* only and never ran a program, unlike every other generator's
+  `test_truth_table`. That test now exists (every table at n≤3 × every input,
+  through the interpreter), so the fold is pinned by behaviour, not shape.
+
+  The catch was **orphans**. Marking only a folded node's two children leaves
+  its grandchildren emitted but unreachable — dead code that still costs
+  bytes. The first version produced a *constant* table (99 chars) larger than
+  a partly-constant one (63), which is what exposed it; the fix walks the
+  whole subtree. Pinned by `test_folded_subtree_leaves_no_orphans`.
 - `decleq` — same self-modifying-memory family as `sbleq`, which already folds
   with backpatched addresses, so there is a worked in-repo precedent.
 - `eval` — genuinely harder: its tree is *positional* on the tree stack in BFS
