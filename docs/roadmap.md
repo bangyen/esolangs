@@ -517,6 +517,34 @@ Container's rose 636 → 732 across the ones-count, which is a real slope;
 reading it as flat next to a generator whose curve doubles is what hid a
 12% saving.  Measure the slope, do not eyeball the shape.
 
+## Dependency reduction (taglate done; gapped sets open)
+
+A table that ignores some of its inputs is a smaller table.  Where a
+generator's cost scales with the *input count* rather than the row count,
+emitting the reduced table is worth far more than any per-row saving.
+Taglate is the extreme case — nothing there costs per row, so every table of
+a given `n` was byte-identical — and it now reduces: 451 characters down to
+21 for a constant table or one depending on a single input, and 17 at
+`n == 4`.  The ignored inputs are read and discarded (`h` to the queue tail,
+`e` once per queued cell to rotate it to the front, `f` to drop it), so the
+queue is untouched and the rotation count is computed from the seed length
+rather than searched.
+
+**Two shapes remain open on taglate.**  A *gapped* dependency set (inputs 0
+and 2 but not 1) needs a discard between the reduced program's own reads,
+where the queue is not what the following reduce block assumes; the output
+comes out arithmetically corrupted rather than permuted, so this is a real
+obstacle and not an off-by-one.  That is 10 of the 40 reducible tables at
+`n == 3`.  An *odd-sized* dependency set is sidestepped by widening the
+window, which costs a tier back — narrowing it properly would need the
+reduced program's own ghost handling to be suppressed.
+
+**Worth checking elsewhere.**  Any generator whose fixed cost scales with
+`n` admits the same reduction — decleq's `47n` normalize chains and
+clockwise's per-level rows are the obvious candidates.  Neither has been
+measured; a table ignoring an input would shorten both if the reads can be
+consumed as cheaply as taglate's rotate-and-discard.
+
 ## Severely constrained boolean generators (remove or lift)
 
 Each boolean generator with a low cap is tracked here so the decision is
