@@ -62,6 +62,25 @@ class TestSuptiftam:
         program = boolean.suptiftam("0000")
         assert "mulStep(:p:)if(p)" not in program
 
+    def test_a_dense_table_is_summed_over_its_zeros(self) -> None:
+        """More ones than zeros costs less summed the other way and inverted.
+
+        An all-ones table is the interesting case: it complements to no
+        minterms at all, leaving ``sum`` at 0, and the inversion turns that
+        into the 1 it should print -- so it needs no special-casing the way
+        a gate-network generator's constant table does.
+        """
+        assert "term=%-[1]sum%" in boolean.suptiftam("1111")
+        assert "mulStep(:p:)if(p)" not in boolean.suptiftam("1111")
+        assert "term=sum" in boolean.suptiftam("0001")  # sparse: drawn directly
+        # and both still compute their table
+        for table in ("1111", "11111110"):
+            n = len(table).bit_length() - 1
+            program = boolean.suptiftam(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_suptiftam(program, bits) == table[combo]
+
     def test_bit_names_extend_beyond_the_alphabet(self) -> None:
         """Identifiers are alphabetical, so past 'z' the names grow a prefix."""
         from esolangs.tools.boolean.other import _suptiftam_bit
