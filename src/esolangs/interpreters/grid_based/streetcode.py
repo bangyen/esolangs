@@ -126,6 +126,34 @@ _WALLS = frozenset("+-|")
 # this is a wall, because off the grid is not drivable either.
 _VOID = "?"
 
+# What a drivable square does when the car runs it.  Closed: every glyph
+# the spec defines maps to one of these, and everything else -- ``C``,
+# space, and any character the language does not use -- maps to ``NOP``,
+# which is what makes the set closed rather than open-ended.  Folding the
+# undefined characters here rather than at the point of dispatch is what
+# lets :meth:`_Machine.step` be exhaustive over a finite set instead of a
+# chain of comparisons with a silent fallthrough at the end.
+#
+# The fold is of the *meaning*, not the character: a cell keeps the glyph
+# as drawn (see :class:`_Open`), because ``_validate_connected`` rejects
+# stray ink off the street and names the glyph it found.  A ``#`` on the
+# street is a no-op; the same ``#`` beside the street is a malformed
+# program, and the two are told apart by where it is, not by what it does.
+_Op = Literal["NOP", "INC", "DEC", "RIGHT", "LEFT", "IN", "OUT", "TURN", "HALT"]
+
+# The spec's instruction glyphs, keyed by the glyph.  Anything absent is
+# a no-op; see ``_Op``.
+_OPS: dict[str, _Op] = {
+    "^": "INC",
+    "~": "DEC",
+    "=": "RIGHT",
+    "_": "LEFT",
+    "I": "IN",
+    "O": "OUT",
+    "U": "TURN",
+    ";": "HALT",
+}
+
 # How far perpendicular to the direction of travel ``_road_mouth`` looks for
 # the wall a side road opens through: a two-way street is two cells wide, so
 # the far lane's wall can sit two cells out, and 3 covers that with a cell to
@@ -283,6 +311,21 @@ class _Grid:
         if not (0 <= row < self.height and 0 <= col < self.width):
             return False
         return self._rows[row][col] not in _WALLS
+
+    def op_at(self, row: int, col: int) -> _Op:
+        """Return what the square at ``(row, col)`` does when the car runs it.
+
+        A wall has no instruction and neither does the void, so both
+        answer ``"NOP"``: the car never stands on either, and a caller
+        asking anyway gets the harmless answer rather than an error.
+        Every other character is looked up, with anything the spec does
+        not define -- ``C``, space, a stray ``#`` -- folding to ``"NOP"``
+        as well.  See ``_Op`` for why the fold happens here.
+        """
+        char = self[row, col]
+        if char in _WALLS or char == _VOID:
+            return "NOP"
+        return _OPS.get(char, "NOP")
 
 
 def _right(heading: _Heading) -> _Heading:
@@ -603,10 +646,10 @@ class _Machine:
         runtime semantics this search deliberately does not predict.
         """
         row, col, heading, merge_target, merging, skip = state
-        char = self.grid[row, col]
-        if char == ";":
+        op = self.grid.op_at(row, col)
+        if op == "HALT":
             return "halt"
-        if char == "U":
+        if op == "TURN":
             reversed_heading = _opposite(heading)
             lane = self._ahead(row, col, _right(reversed_heading))
             # A street with no opposite lane is the late-detected width
@@ -1486,8 +1529,8 @@ class _Machine:
         """Execute the cell under the car, then drive it one cell further."""
         if self._done:
             return
-        char = self.grid[self.row, self.col]
-        if char == ";":
+        op = self.grid.op_at(self.row, self.col)
+        if op == "HALT":
             self._done = True
             return
 
@@ -1514,25 +1557,25 @@ class _Machine:
         # cycle detector snapshots.
         arrival_cell = self._cell()
 
-        if char == "^":
+        if op == "INC":
             self._set_cell(self._cell() + 1)
-        elif char == "~":
+        elif op == "DEC":
             self._set_cell(self._cell() - 1)
-        elif char == "=":
+        elif op == "RIGHT":
             self.cp += 1
-        elif char == "_":
+        elif op == "LEFT":
             if self.cp == 0:
                 raise HaltError
             self.cp -= 1
-        elif char == "I":
+        elif op == "IN":
             value = self.io.input_str()
             self._set_cell(ord(value[0]) if value else 0)
-        elif char == "O":
+        elif op == "OUT":
             try:
                 self.io.print_char(chr(self._cell()))
             except ValueError:
                 raise HaltError from None
-        elif char == "U":
+        elif op == "TURN":
             self.heading = _opposite(self.heading)
             # Streets are two-way and two wide, and the car drives on the
             # right: after turning around, the lane it belongs in is the
@@ -1556,7 +1599,9 @@ class _Machine:
             self._skip_hug = 0
             self.row, self.col = lane_row, lane_col
             return
-        # 'C' and space (and any other undefined character) are no-ops.
+        # "NOP" is the remaining case: ``C``, space, and every character
+        # the spec does not define all fold to it (see ``_Op``), so there
+        # is nothing to do and nothing left to test for.
 
         # Where the car goes next was worked out for every reachable state
         # at construction, so the ordinary case is a dictionary lookup

@@ -1007,6 +1007,54 @@ class TestStreetcodeGrid:
         assert grid[1, 2] == "X"
 
 
+class TestStreetcodeOps:
+    """What a square does, as a closed set rather than a character."""
+
+    def _grid(self) -> _Grid:
+        return _Grid(["+----+", "|C^~=|", "|_IOU|", "+--;#+"])
+
+    @pytest.mark.parametrize(
+        ("where", "op"),
+        [
+            ((1, 2), "INC"),
+            ((1, 3), "DEC"),
+            ((1, 4), "RIGHT"),
+            ((2, 1), "LEFT"),
+            ((2, 2), "IN"),
+            ((2, 3), "OUT"),
+            ((2, 4), "TURN"),
+            ((3, 3), "HALT"),
+        ],
+    )
+    def test_each_glyph_maps_to_its_op(self, where: tuple[int, int], op: str) -> None:
+        assert self._grid().op_at(*where) == op
+
+    @pytest.mark.parametrize("where", [(1, 1), (3, 4), (0, 0), (-1, -1)])
+    def test_everything_undefined_is_a_nop(self, where: tuple[int, int]) -> None:
+        """``C``, a stray ``#``, a wall and the void all do nothing.
+
+        The fold is what closes the set: ``step`` has no arm for "some
+        other character", because there is no such case left.
+        """
+        assert self._grid().op_at(*where) == "NOP"
+
+    def test_an_undefined_glyph_is_a_nop_but_still_drawn(self) -> None:
+        """The op is folded; the character is not.
+
+        ``_validate_connected`` rejects ink off the street and names the
+        glyph it found, so a ``#`` has to stay a ``#`` even though it
+        executes as nothing.  Folding the character too would lose that.
+        """
+        grid = self._grid()
+        assert grid.op_at(3, 4) == "NOP"
+        assert grid[3, 4] == "#"
+
+    def test_stray_ink_is_still_rejected_by_its_glyph(self) -> None:
+        """The end-to-end version: a '#' off the street fails validation."""
+        with pytest.raises(ValueError, match=re.escape("('#')")):
+            _Machine(["+---+", "|C  |", "|   |", "+---+", "  #  "], IO())
+
+
 class TestStreetcodeStatedInvariants:
     """The invariants the interpreter relies on, as executable checks.
 
