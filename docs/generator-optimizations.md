@@ -645,9 +645,6 @@ in changes; the reads (or the load block, or the `{Xi}` placeholders) stay
 in input order, so the program consumes its input stream exactly as before.
 That is what excludes `six_five` and `polynomial`, which read each bit *at
 the node that tests it* — for both, the test order **is** the stream order.
-`modulous` is out for the neighbouring reason: its stack reaches only the
-top two cells (`SWP` swaps them, and there is no rotate), so a node cannot
-get at a bit the load buried.
 
 **A correction worth recording, because the method was the error.**
 `bitdeque` was first excluded alongside `modulous` for "popping a stack the
@@ -665,6 +662,25 @@ simply loses to the identity. The rotations go *inside the tree* — the
 `{Xi}` setter's `INVERT PUSH`/`PUSH INVERT` choice depends on register
 parity at its load position, so touching the load block would desync every
 fill site, and the emitted load is byte-identical whatever the order.
+
+**`modulous` is where the same check comes back negative**, and the negative
+result is worth as much as bitdeque's positive one. Its stack reaches only
+the top two cells (`SWP` swaps them; there is no rotate), so the natural
+escape is to pop the bits into its `VAR1`-`VAR4` variables and push them
+back in whatever order the tree wants. There is no pushing them back:
+
+| op | effect |
+|---|---|
+| `[PSH VAR n]` | **stores** the stack top *into* variable `n` |
+| `[PRT VAR n]` | reads variable `n` — but only to *print* it |
+| `[JMP F n IF v]` | tests the **stack top**, never a variable |
+
+So a bit can go into a variable and never come out anywhere a branch can
+see it — the round trip has no return leg. Probed directly against the
+interpreter (`PSH VAR VAR1` on an emptied stack halts; `PRT VAR VAR1`
+prints the stored value fine) and confirmed against the wiki, which
+describes the variables as settable and printable with no load. `modulous`
+stays excluded, now for a checked reason rather than an assumed one.
 
 **The search is capped at 6 inputs.** `n!` builds of an `O(2**n)` program is
 a cost that does not announce itself: Dimensional renders a 4096-row table,

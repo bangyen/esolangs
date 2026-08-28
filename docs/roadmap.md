@@ -568,10 +568,17 @@ of evidence classes, each minted only by the validator that proves it and
 demanded by the next.
 
 ```python
-class WalledGrid: ...      # >=1 wall character, >1 open cell
-class TwoWide: ...         # + every reachable cell is two-wide
-class Enclosed(TwoWide): ...   # + no reachable cell on the border
+class WalledGrid: ...  # >=1 wall character, >1 open cell
+
+
+class TwoWide: ...  # + every reachable cell is two-wide
+
+
+class Enclosed(TwoWide): ...  # + no reachable cell on the border
+
+
 class WellFormed(Enclosed): ...  # + walls, glyphs, connectivity
+
 
 def _flood(g: WalledGrid, start: tuple[int, int]) -> TwoWide | WallLess: ...
 def _check_enclosed(w: TwoWide) -> Enclosed: ...
