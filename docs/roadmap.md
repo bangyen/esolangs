@@ -464,28 +464,37 @@ Painter Ant's grid placement, and WII2D's searched op-chain — have no
 constant subtree to fold and are not candidates.  The minterm group has its
 own optimization, below.
 
-## Suffolk's minterm complement (open, ~5%)
+## Suffolk's minterm complement — done
 
 A sum-of-minterms program costs one term per row it selects, so a table
 with more ones than zeros is cheaper evaluated complemented and inverted.
-Every generator in that family takes this through `_maybe_complement`
-except Suffolk, where a measured 5.1% is still on the table.
+Suffolk was the last generator in that family not taking it; it does now,
+worth **5.1% averaged over every table at n == 3** and up to **45% on the
+densest tables at n == 4** (1977 characters down to 1081 for fifteen ones
+of sixteen).
 
-It is not a language limit, though it reads like one at first.  `<` only
-*adds* the cell under the pointer to the accumulator, so the result
-`48 + sum` looks uninvertible — but `!` is
-`tape[ptr] = max(0, tape[ptr] + 1 - acc)`, which subtracts the
-accumulator from a cell.  With the minterm sum in `acc`, a cell holding
-48 becomes `49 - sum`: exactly the complement, and the clamp never bites
-because the sum is 0 or 1.
+The apparent language limit was not one.  `<` only *adds* the cell under
+the pointer to the accumulator, so `48 + sum` looks uninvertible — but `!`
+is `tape[ptr] = max(0, tape[ptr] + 1 - acc)`, which subtracts the
+accumulator from a cell.  Preload cell 1 with 49, add the sum `S` into the
+accumulator, `!` that cell to get `50 - S`, read it back and print: `.`
+emits `chr(acc - 1)`, so the program prints `chr(49 - S)`, which is `'1'`
+when `S == 0` and `'0'` when `S == 1`.  The clamp never bites, since `S`
+is 0 or 1.  Preloading 48 is the earlier attempt's off-by-one that printed
+`/` — the print's `- 1` and `!`'s `+ 1` both have to be counted.
 
-**What is left is the arithmetic around it.**  A first attempt printed
-one too low (`/` where `0` was wanted), because `.` emits `chr(acc - 1)`
-and `!`'s own `+ 1` has to be accounted for in the constant the cell is
-preloaded with.  Getting that right is a matter of picking the preload,
-not of finding a new primitive — worth doing when the 5% is worth the
-care, and recorded here so the next attempt starts from `!` rather than
-re-deriving that `<` alone cannot do it.
+Two things were worth getting right beyond the arithmetic.  The flip
+constant has to live at **cell 1**: `const` re-walks the gap once per
+unit, so 49 units cost 98 characters there but several hundred out past
+the minterm cells, which is enough to swamp the saving and make the
+dispatch never choose it.  And the generator builds **both** polarities
+and returns the shorter rather than counting rows, because the two are not
+symmetric — a complement literal sits at a nearer cell than a raw one, so
+row counts alone do not decide which is smaller.
+
+`_maybe_complement` is deliberately not used: its all-ones case
+complements to *no* minterms, which Suffolk's constant-table branch
+already handles better.
 
 ## Severely constrained boolean generators (remove or lift)
 

@@ -712,6 +712,39 @@ class TestSuffolk:
         for table in ("00", "11"):
             assert boolean.suffolk(table).count(",") == 1  # n == 1
 
+    def test_dense_tables_evaluate_the_complement(self) -> None:
+        """A table with more ones than zeros is evaluated from its zero rows.
+
+        Cost is one minterm block per evaluated row, so before this the
+        length rose monotonically with the ones-count.  Now it peaks at half
+        and falls again -- the signature of picking whichever row-set is
+        smaller -- which is what this pins.
+        """
+        lengths = [len(boolean.suffolk("1" * k + "0" * (8 - k))) for k in range(1, 8)]
+        assert lengths[3] == max(lengths)  # four ones is the worst case
+        assert lengths[6] < lengths[3]  # seven ones is cheaper than four
+        # and roughly as cheap as its one-one mirror image
+        assert abs(lengths[6] - lengths[0]) < lengths[0] // 4
+
+    @pytest.mark.parametrize(
+        "table",
+        ["11111110", "1111111111111110", "0111111111111111", "11111100"],
+    )
+    def test_complemented_tables_still_compute(self, table: str) -> None:
+        """The inverted print stage answers the original table, not its flip.
+
+        ``.`` emits ``chr(acc - 1)`` and ``!`` computes
+        ``max(0, cell + 1 - acc)``, so the constant the flip cell carries has
+        to account for both; preloading it one low prints ``'/'`` instead of
+        ``'0'``, which is how an earlier attempt failed.
+        """
+        n = (len(table) - 1).bit_length()
+        program = boolean.suffolk(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_suffolk(program, [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):

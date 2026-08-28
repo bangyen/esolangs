@@ -546,6 +546,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `collatz_multiverse` | **free** — the OR already ends on the flip it would have added |
 | `point_break` | **free** — `g` is `1 - f` for its own loop-guard reasons |
 | `suptiftam` | one line, against four lines per input per minterm |
+| `suffolk` | one minterm block per row saved — 5.1% averaged over every n=3 table, 45% on the densest n=4 ones. Builds **both** polarities and returns the shorter, since a complement literal sits at a nearer cell than a raw one, so row counts alone do not decide it |
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
 
 `_maybe_complement`'s docstring flags the trap: an all-ones table complements to
@@ -573,7 +574,7 @@ single self-fed gate.
 | `nocomment` | computes the numeric index and uses it as a byte-sized skip into a staircase — straight-line, no leaf chains. `s` doubles as a NOT gate, so the complement is computed at runtime from one embed |
 | `home_row` | packs bits into one accumulator + linear chain; the removed routing generator walled at n=2 |
 | `bfstack` | avoids branching entirely — encodes inputs as a number, decodes with nested loops |
-| `suffolk` | branch-free minterms at `limit=1`; **constant tables need no reads at all** |
+| `suffolk` | branch-free minterms at `limit=1`; **constant tables need no reads at all**; dense tables evaluated from their zero rows and inverted |
 | `three_x` | result defaults to the **majority** table value, so only differing rows emit an override |
 | `bitdeque` / `ram0` | fixed-length setters keep absolute `GOTO` targets stable — this is what unblocked the earlier "variable-length setter" wall |
 | `lamfunc` / `ram0` | each input stored once and read back, rather than re-embedded at every node |
