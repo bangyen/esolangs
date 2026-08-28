@@ -302,6 +302,40 @@ class TestCirclefuck:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.circlefuck_byte([1, 2, 3])
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice prints its answer instead of branching further.
+
+        Circlefuck branches on the cell the pointer is over, which is the
+        *last* input, so its subtrees are strided rather than contiguous
+        runs -- a table like ``11110000`` is constant over halves, an axis
+        this split never sees, and folds nothing.  ``10101010`` is constant
+        along the axis it does split on, so it collapses.
+        """
+        assert len(boolean.circlefuck("11111111")) < len(
+            boolean.circlefuck("10101010"),
+        )
+        assert len(boolean.circlefuck("10101010")) < len(
+            boolean.circlefuck("10010110"),
+        )
+        assert len(boolean.circlefuck("11110000")) == len(
+            boolean.circlefuck("10010110"),
+        )
+
+    def test_folded_leaf_clears_its_cell(self) -> None:
+        """A folded leaf builds its value on a cleared cell.
+
+        The ``[-]`` a full-depth leaf relies on is emitted inside each
+        ``[`` on the way down, so a leaf that skips those levels has to
+        clear the cell itself.  Without it the cell still holds the input
+        bit and every one-valued input prints one too high -- which only
+        shows on an input of ``1``, so it is worth pinning per input.
+        """
+        program = boolean.circlefuck("11111111")
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            got = run_circlefuck(program, [str(b) for b in bits])
+            assert got == "1", f"inputs {bits}"
+
 
 class TestBf:
     @pytest.mark.parametrize(

@@ -241,6 +241,9 @@ def circlefuck(truth_table: str) -> str:
     ``+``s, prints it, and halts with ``@`` -- halting at the leaf means the
     tree never needs to skip the sibling branch.  A boolean table is just
     the byte-valued generator with ``48 + bit`` outputs.
+
+    A subtree whose rows all agree folds to a leaf; see
+    :func:`circlefuck_byte`, which both share.
     """
     return circlefuck_byte([_ASCII_ZERO + int(bit) for bit in truth_table])
 
@@ -253,6 +256,15 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
     by the table length.  This is the boolean generator generalized to
     arbitrary byte outputs: each leaf prints ``chr(value)`` instead of
     ``chr(48 + bit)``.
+
+    A subtree whose rows all agree becomes a leaf rather than branching on
+    bits that cannot change the answer.  The rows a subtree stands for are
+    a *stride*, not a contiguous run (see :func:`span`), because the tree
+    branches on the last input first -- so ``10101010`` folds to 263
+    characters against 594 scattered, while ``11110000`` is constant over
+    an axis this split never sees and folds nothing.  The reads sit above
+    the tree and are unconditional, so a folded program consumes its input
+    exactly as an unfolded one does.
     """
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
@@ -271,6 +283,20 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
         emit(">")
     prog.pop()  # the trailing ">" would leave the pointer past the last input
 
+    def span(k: int, row: int) -> range:
+        """The table rows the subtree at ``(k, row)`` stands for.
+
+        The tree branches on the cell the pointer is over, which is the
+        *last* input first, so a subtree fixes the low ``n - 1 - k`` bits
+        and varies the ones above: its rows are a stride of
+        ``2 ** (n - 1 - k)``, not a contiguous run.  That is the same
+        split direction Modulous and Unsquare use, and it is why a table
+        like ``11110000`` -- constant over halves, not over strides --
+        folds nothing here while ``10101010`` folds hard.
+        """
+        step = 2 ** (n - 1 - k)
+        return range(row, len(truth_table), step)
+
     def build(k: int, row: int) -> None:
         if k < 0:
             value = truth_table[row]
@@ -278,6 +304,21 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
                 prog.extend("+" * value)
             emit(".")
             emit("@")
+            return
+        if len({truth_table[r] for r in span(k, row)}) == 1:
+            # Every row this subtree could reach agrees, so the bits it
+            # would branch on cannot change the answer.  The reads are
+            # unconditional, above the tree, so a folded program still
+            # consumes its input the same way an unfolded one does.
+            #
+            # The ``[-]`` is what a full-depth leaf relies on: it is
+            # emitted inside each ``[`` on the way down, so a leaf builds
+            # its value on a cleared cell.  A folded leaf skips those
+            # levels and so must clear the cell itself -- without this the
+            # pointer still holds the input bit and every one-valued input
+            # prints one too high.
+            emit("[-]")
+            build(-1, row)
             return
         emit("[")
         emit("[-]")
