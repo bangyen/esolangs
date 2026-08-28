@@ -548,6 +548,7 @@ zero rows and inverting — one term saved per row, paid for once.
 | `suptiftam` | one line, against four lines per input per minterm |
 | `suffolk` | one minterm block per row saved — 5.1% averaged over every n=3 table, 45% on the densest n=4 ones. Builds **both** polarities and returns the shorter, since a complement literal sits at a nearer cell than a raw one, so row counts alone do not decide it |
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
+| `container` | `OUT` spends one `+1 S{row}>=Gout` line per one-row, so a dense table sums its zero rows from a 49 start and subtracts — 12.7% on the densest n=4 table. The per-row survivor blocks are fixed and unaffected |
 
 `_maybe_complement`'s docstring flags the trap: an all-ones table complements to
 *no* minterms, indistinguishable from all-zeros. Fine where the sum feeds an

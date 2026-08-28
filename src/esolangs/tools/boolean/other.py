@@ -728,6 +728,13 @@ def container(truth_table: str) -> str:
     * At tick ``2n`` a gate ``Gout`` dips to 1, so ``+1 S_r>=Gout`` adds the
       table entry of the surviving row to ``OUT``; ``PRINT`` fires and
       ``EXIT`` halts.
+
+    That last block costs one line per row the table sends to 1, so a dense
+    table is summed from its **zero** rows instead: ``OUT`` starts at 49 and
+    each surviving zero row subtracts one, printing ``49 - S``.  The clamp
+    at zero never bites, since the value stays at 48 or 49.  Worth up to
+    12.7% at ``n == 4`` (1356 characters down to 1184 for fifteen ones of
+    sixteen); the per-row survivor blocks above are fixed and unaffected.
     """
     n = _validate_truth_table(truth_table)
 
@@ -759,12 +766,22 @@ def container(truth_table: str) -> str:
     lines.append("Gout=2:")
     lines.append(f"-1 T>={2 * n - 1}")
     lines.append(f"+1 T>={2 * n}")
+    # OUT is 48 plus one ``+1`` per row the table sends to 1, so a dense
+    # table pays for nearly every row.  Evaluating the *zero* rows instead
+    # costs one line each and starts from 49, subtracting: ``49 - S`` is the
+    # complement, and since ``S`` is 0 or 1 the value stays at 48 or 49, so
+    # the container's clamp at zero never bites.  Whichever row-set is
+    # smaller wins; ties keep the plain form.
+    ones = truth_table.count("1")
+    invert = ones > 2**n - ones
     lines.append("OUT:")
-    lines.append(f"+48 T>={2 * n}")
-    lines.append(f"-48 T>={2 * n + 1}")
+    lines.append(f"+{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n}")
+    lines.append(f"-{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n + 1}")
+    wanted = "0" if invert else "1"
+    delta = "-1" if invert else "+1"
     for row in range(2**n):
-        if truth_table[row] == "1":
-            lines.append(f"+1 S{row}>=Gout")
+        if truth_table[row] == wanted:
+            lines.append(f"{delta} S{row}>=Gout")
     lines.append("PRINT:")
     lines.append(f"+1 T>={2 * n}")
     lines.append("EXIT=1:")
