@@ -1,8 +1,7 @@
 """Boolean-function generators for stack-based languages."""
 
-from collections import deque
 from functools import cache
-from itertools import permutations
+from itertools import permutations, product
 
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
@@ -154,8 +153,8 @@ def forth(truth_table: str) -> str:
 
     Every rotation costs characters, so an order pays for the folds it wins
     or loses to the natural one; the search measures rather than assumes.
-    Measured over all 256 tables at n == 3 the saving is 13.9% (112
-    improved), with 12.0% and 15.9% over samples at n == 4 and n == 5.
+    Measured over all 256 tables at n == 3 the saving is 13.8% (112
+    improved), with 13.2% and 14.3% over samples at n == 4 and n == 5.
     """
     n = _validate_truth_table(truth_table)
     # ``;`` pops, so the tree tests the *last* input at the root: the order
@@ -179,72 +178,64 @@ def forth(truth_table: str) -> str:
 _FORTH_READ = ",68*-"
 
 
-def _forth_swap_top_two(stack: tuple[int, ...]) -> tuple[int, ...]:
-    """``v``: the top two bits trade places."""
-    *rest, second, first = stack
-    return (*rest, first, second)
+def _forth_sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
+    """Move the top bit down by ``places``, leaving the others in order."""
+    *below, top = stack
+    at = len(below) - places
+    return (*below[:at], top, *below[at:])
 
 
-def _forth_rotate_third_up(stack: tuple[int, ...]) -> tuple[int, ...]:
-    """``c``: the third bit from the top moves to the top."""
-    *rest, third, second, first = stack
-    return (*rest, second, first, third)
-
-
-# The stack ops the search may use, each with the character that spells it
-# and the number of *bits* it needs above the scope indices.  ``o`` is absent
-# deliberately: it reverses the whole stack, which would drag those indices
-# up with the bits.
-_FORTH_STACK_OPS = (
-    ("v", _forth_swap_top_two, 2),
-    ("c", _forth_rotate_third_up, 3),
-)
+# How far a freshly-read bit can sink, and the ops that put it there.  ``v``
+# swaps the top two and ``c`` rotates the third up, so two ``c``s bury the
+# new bit under the two below it.  ``o`` is unusable and absent deliberately:
+# it reverses the *whole* stack, which would drag the scope indices sitting
+# under the bits up with them.
+_FORTH_SINKS = ((0, ""), (1, "v"), (2, "cc"))
 
 
 @cache
 def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
-    """Shortest read-and-rotate program reaching each stack arrangement.
+    """Read-and-rotate program for each reachable stack arrangement.
 
-    The state is (arrangement, reads done) and the moves are "read the next
-    input" or one of :data:`_FORTH_STACK_OPS`; breadth-first order makes the
-    first program to reach an arrangement a shortest one.  An arrangement
-    absent from the result is one the ops cannot reach.
+    Returns the arrangement (bottom to top, by input index) mapped to the
+    program producing it; an absent arrangement is one the ops cannot reach.
 
-    **Interleaving is what makes this worth searching.**  A preamble after
-    all ``n`` reads permutes only the last three bits -- 6 arrangements at
-    every width -- while moving a bit before later reads bury it reaches 18
-    at n == 4 and 54 at n == 5.
+    **The reachable set is a product, not a search.**  A read leaves its bit
+    on top, and the only choice that outlasts the next read is how far that
+    bit sinks -- 0, 1 or 2 places, since ``v`` and ``c`` reach no deeper.
+    Composing one choice per read therefore enumerates every arrangement,
+    ``2 * 3**(n - 2)`` of them, which a test pins.
 
-    **The reachable set alone would not need a search**, and a test pins it
-    by its closed form: each read past the first independently sinks its bit
-    0, 1 or 2 places, so the count is ``2 * 3**(n - 2)``.  The *op strings*
-    are why this searches -- they compose across reads, so a late ``c`` does
-    work that several per-read ``v``s would each repeat, and building them
-    per-read came out longer on 30 of 54 arrangements at n == 5.
+    **Interleaving the sinks with the reads is what makes this worth doing.**
+    Rotating only after all ``n`` reads would permute just the last three
+    bits -- 6 arrangements at every width, which collapses the saving to
+    2.4% at n == 4 and nothing at n == 5.  Sinking each bit as it arrives,
+    before later reads bury it, reaches 18 at n == 4 and 54 at n == 5.
+
+    A breadth-first search over (arrangement, reads done) finds op strings
+    that are shorter on some arrangements, because they compose across reads
+    -- a late ``c`` can do work several per-read ``v``s would each repeat.
+    It is not used: the difference is 1-2 characters on an intermediate
+    string, and since :func:`forth` keeps the shortest program over every
+    order, a longer rotation usually loses to a different order instead.
+    Measured over the emitted programs the whole effect is +0.13% at n == 3
+    and +0.03% at n == 5, which does not pay for a search in a generator
+    meant to be read.
     """
     reached: dict[tuple[int, ...], str] = {}
-    seen: set[tuple[tuple[int, ...], int]] = {((), 0)}
-    frontier: deque[tuple[tuple[int, ...], int, str]] = deque([((), 0, "")])
-    while frontier:
-        stack, reads, text = frontier.popleft()
-        if reads == n:
-            # Breadth-first, so the first program to reach an arrangement is
-            # a shortest one and later arrivals are discarded.
-            reached.setdefault(stack, text)
-
-        moves: list[tuple[tuple[int, ...], int, str]] = []
-        if reads < n:
-            moves.append(((*stack, reads), reads + 1, _FORTH_READ))  # lands on top
-        moves += [
-            (rearrange(stack), reads, code)
-            for code, rearrange, needs in _FORTH_STACK_OPS
-            if len(stack) >= needs
-        ]
-
-        for next_stack, next_reads, code in moves:
-            if (next_stack, next_reads) not in seen:
-                seen.add((next_stack, next_reads))
-                frontier.append((next_stack, next_reads, text + code))
+    for sinks in product(_FORTH_SINKS, repeat=n):
+        stack: tuple[int, ...] = ()
+        text = ""
+        for read_index, (places, ops) in enumerate(sinks):
+            stack = (*stack, read_index)
+            text += _FORTH_READ
+            if places >= len(stack):
+                break  # nothing below to sink under
+            stack = _forth_sink_top(stack, places)
+            text += ops
+        else:
+            if stack not in reached or len(text) < len(reached[stack]):
+                reached[stack] = text
     return reached
 
 
