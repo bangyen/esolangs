@@ -52,6 +52,7 @@ from esolangs.tools.boolean.cod import cod
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
+    best_input_order,
     decision_tree_tokens,
     instantiate,
 )
@@ -566,6 +567,24 @@ def lamfunc(truth_table: str) -> str:
     nonzero else ``z`` — with ``p 0``/``p 1`` at the leaves printing the
     table's result as binary.  A subtree whose table slice is a constant
     collapses to a single leaf, so constant rows emit no branching.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
+    since whether a subtree collapses depends on which rows it covers, and
+    that is what the split order decides.  Reading a bit back is by *name*,
+    so the reorder costs nothing here: the ``vs v{i} {Xi}`` head still
+    stores input ``i`` in ``v{i}``, and only the variable a node names
+    changes.
+    """
+    return best_input_order(truth_table, _lamfunc_ordered)
+
+
+def _lamfunc_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Lamfunc template; see :func:`lamfunc`.
+
+    ``truth_table`` is already permuted, so the ``lo``/``hi`` row span is
+    in the permuted frame; ``perm`` is spent only on the variable a node
+    reads back, ``v{perm[level]}``.
     """
     n = _validate_truth_table(truth_table)
 
@@ -575,7 +594,9 @@ def lamfunc(truth_table: str) -> str:
             return f"p {results.pop()}"
         mid = (lo + hi) // 2
         # i x y z returns y when x is nonzero else z: y is the one-case
-        return f"i vg v{level} {node(level + 1, mid, hi)} {node(level + 1, lo, mid)}"
+        return (
+            f"i vg v{perm[level]} {node(level + 1, mid, hi)} {node(level + 1, lo, mid)}"
+        )
 
     head = " ".join(f"vs v{i} {{X{i}}}" for i in range(n))
     return head + " " + node(0, 0, 2**n)
@@ -645,14 +666,17 @@ def bitdeque(truth_table: str) -> str:
     return " ".join(head + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree])
 
 
-def _ram0_width(level: int) -> int:
+def _ram0_width(address: int) -> int:
     """Commands a RAM0 tree node spends before its subtrees.
 
-    ``Z``, an ``A`` per level (the cell address), ``L``, ``C``, and the
-    ``goto`` that reaches the one-subtree -- so the width grows with depth,
-    which is why the walker takes a callable rather than a constant.
+    ``Z``, an ``A`` per unit of the cell address, ``L``, ``C``, and the
+    ``goto`` that reaches the one-subtree -- so the width varies from node
+    to node, which is why the walker takes a callable rather than a
+    constant.  The address is the *input* the node tests, which is its
+    level only under the identity order; :func:`_ram0_ordered` maps one to
+    the other.
     """
-    return level + 4
+    return address + 4
 
 
 def ram0(truth_table: str) -> str:
@@ -678,8 +702,34 @@ def ram0(truth_table: str) -> str:
     ``z`` to the answer and uses RAM0's *unconditional* ``goto`` to run off
     the program end, so the final ``z`` read from the state dump is the
     answer.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    Folding a subtree needs the rows it covers to agree, and which rows a
+    subtree covers is what the split order decides; RAM0 also spells an
+    input as a run of ``A`` as long as its *address*, so a cheap order here
+    additionally wants the low addresses at the deep, oft-repeated levels.
+    Both effects come out of measuring the emitted candidates rather than
+    modelling either.  The load phase still stores bit ``i`` in cell ``i``
+    in input order, so the ``{Xi}`` placeholders and their positions are
+    untouched -- only which cell a node loads moves.
+    """
+    return best_input_order(truth_table, _ram0_ordered)
+
+
+def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's RAM0 template; see :func:`ram0`.
+
+    ``truth_table`` is already permuted, so every row index here is in the
+    permuted frame.  ``perm`` is spent on the address a node names: the
+    ``A`` run is ``perm[level]`` long, which is also what makes the node's
+    width -- and therefore every absolute ``goto`` operand below it --
+    depend on the order.
     """
     n = _validate_truth_table(truth_table)
+
+    def width(level: int) -> int:
+        return _ram0_width(perm[level])
 
     tokens: list[str] = []
     pos = 0  # instantiated command index of the next command
@@ -704,10 +754,10 @@ def ram0(truth_table: str) -> str:
         # therefore starts a further ``len(zero)`` along, 1-based.
         return [
             "Z",
-            *("A" for _ in range(level)),
+            *("A" for _ in range(perm[level])),
             "L",
             "C",
-            f"ONE@{at + _ram0_width(level) + len(zero) + 1}",
+            f"ONE@{at + width(level) + len(zero) + 1}",
             *zero,
             *one,
         ]
@@ -718,7 +768,7 @@ def ram0(truth_table: str) -> str:
         truth_table,
         leaf_tokens,
         node,
-        parent_width=_ram0_width,
+        parent_width=width,
         start=pos,
         collapse=True,
     )

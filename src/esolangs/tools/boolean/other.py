@@ -9,6 +9,7 @@ from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _maybe_complement,
     _validate_truth_table,
+    best_input_order,
     minterm_literals,
 )
 from esolangs.tools.boolean.laserfuck import laserfuck
@@ -322,6 +323,25 @@ def between(truth_table: str) -> str:
     of the path alone -- ``constant`` -- so both walks stop in the same
     places; a check either walk applied and the other did not would leave
     every branch below it naming the wrong line.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
+    since which rows a subtree covers -- and so whether it folds -- is what
+    the split order decides.  The reads stay put: the ``'i'v.``/``[i]i.``
+    block above the tree still stores input ``i`` in variable ``[i]`` in
+    stream order, and only the variable a branch line *names* moves.
+    """
+    return best_input_order(truth_table, _between_ordered)
+
+
+def _between_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Between program; see :func:`between`.
+
+    ``truth_table`` is already permuted, so the rows and the ``path``
+    indexing them are in the permuted frame.  ``perm`` is spent only on the
+    variable a branch tests, ``[perm[len(path)]]`` -- a substitution that
+    changes no line count, so ``size`` and ``emit`` still fold in the same
+    places and every branch address stays right.
     """
     n = _validate_truth_table(truth_table)
 
@@ -366,7 +386,7 @@ def between(truth_table: str) -> str:
             lines.append(".x.")
             return offset + 2
         zero_addr = offset + 1 + size([*path, 1])
-        lines.append(f"|{zero_addr}|f([{len(path)}]=|0|)")
+        lines.append(f"|{zero_addr}|f([{perm[len(path)]}]=|0|)")
         offset += 1
         offset = emit([*path, 1], offset)
         return emit([*path, 0], offset)
