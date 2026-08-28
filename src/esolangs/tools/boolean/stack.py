@@ -194,6 +194,17 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     n == 4 and 54 at n == 5, because a bit can be moved while it is still
     within reach and then buried in place.
 
+    **The reachable set is calculable; the shortest program is not, which is
+    why this searches.**  After each read the new bit is on top and its only
+    lasting freedom is how far it sinks -- 0, 1 or 2 places -- so the set is
+    a product of one independent choice per read, ``2 * 3**(n - 2)``, and a
+    test pins that count rather than the magic numbers above.  Building the
+    op strings that way is what does not work: they compose *across* reads,
+    so a ``c`` placed late can do work several per-read ``v``s would each
+    have to redo.  Enumerating per-read choices and keeping the shortest
+    still came out longer on 30 of 54 arrangements at n == 5 (up to two
+    characters each), and program length is the whole objective.
+
     ``v`` needs two values and ``c`` three, and they are gated on that many
     *bits* rather than on the stack depth: the scope indices sit below and
     must not move, and ``c`` would not abort on them -- it would silently

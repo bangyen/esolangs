@@ -168,13 +168,37 @@ class TestForth:
         """
         from esolangs.tools.boolean.stack import _forth_stack_programs
 
+        # The reachable *set* has a closed form, which is what pins the
+        # search: after each read the new bit is on top, and the only
+        # lasting freedom is how far it sinks -- 0, 1 or 2 places, one
+        # independent choice per read past the first.
+        for n in range(2, 7):
+            assert len(_forth_stack_programs(n)) == 2 * 3 ** (n - 2)
         assert len(_forth_stack_programs(3)) == 6  # all of 3!
         assert len(_forth_stack_programs(4)) == 18  # of 24
         assert len(_forth_stack_programs(5)) == 54  # of 120
+
         # The reads themselves are still one per input, whatever the weave.
         for n in (3, 4, 5):
             for program in _forth_stack_programs(n).values():
                 assert program.count(",68*-") == n
+
+    def test_stack_programs_are_shortest_not_merely_reachable(self) -> None:
+        """The search is kept for the op strings, not for the set it finds.
+
+        The reachable set is a product of per-read choices and needs no
+        search.  The shortest *program* is not: op strings compose across
+        reads, so a single ``c`` placed late can do work that several
+        per-read ``v``s would each have to redo -- the arrangement
+        ``(1, 2, 3, 4, 0)`` is 7 ops found by search against 9 built
+        per-read.  Rebuilding this constructively would emit longer
+        programs, which is the thing the generator exists to avoid.
+        """
+        from esolangs.tools.boolean.stack import _forth_stack_programs
+
+        programs = _forth_stack_programs(5)
+        assert programs[(1, 2, 3, 4, 0)].count("c") == 2
+        assert len(programs[(1, 2, 3, 4, 0)]) == 5 * len(",68*-") + 2
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
