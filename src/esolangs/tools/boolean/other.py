@@ -414,6 +414,39 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
     return "e" * rot + zero + swap + bring + er
 
 
+def _taglate_dependencies(truth_table: str, n: int) -> list[int]:
+    """Which input positions the table's value actually depends on.
+
+    Input ``i`` matters when some row's value changes if only that bit is
+    flipped; a table where none does is constant in ``i``.
+    """
+    used = []
+    for i in range(n):
+        bit = 1 << (n - 1 - i)
+        if any(
+            truth_table[row] != truth_table[row | bit]
+            for row in range(2**n)
+            if not row & bit
+        ):
+            used.append(i)
+    return used
+
+
+def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
+    """Rewrite the function over just the inputs in ``used``."""
+    width = len(used)
+    return "".join(
+        truth_table[
+            sum(
+                1 << (n - 1 - i)
+                for slot, i in enumerate(used)
+                if (row >> (width - 1 - slot)) & 1
+            )
+        ]
+        for row in range(2**width)
+    )
+
+
 def taglate(truth_table: str) -> str:
     r"""Build a Taglate program computing the given truth table.
 
@@ -440,8 +473,69 @@ def taglate(truth_table: str) -> str:
     the queue into the 8-cell ``[0, v0, 0, v1, 48, 48, prev, curr]``
     layout, and ``_SEL1_N2`` selects between the last two candidate
     values on the two remaining inputs and prints ``48 + bit``.
+
+    **A table that ignores some of its inputs is emitted as the smaller
+    table.**  Nothing here costs anything per *row* -- a one and a zero are
+    both two characters (``bd``/``bb``) -- but almost everything costs per
+    *input*, and the seed alone is ``2**(n_eff + 2)`` cells, so dropping one
+    input drops a whole tier: a constant table goes from 451 characters to
+    21, and ``11110000`` (which depends only on its first input) to 21 as
+    well.  The ignored inputs are still read, then discarded: ``h`` appends
+    the character to the queue's tail, ``e`` repeated once per queued cell
+    rotates it back to the front, and ``f`` drops it, leaving the queue
+    exactly as it was so the reduces' positional arithmetic is undisturbed.
+    The rotation count is the queue length at that point, which before any
+    command has run is the seed's -- computed, not searched.
+
+    Two shapes are left alone.  A *gapped* dependency set (a table needing
+    inputs 0 and 2 but not 1) would want a discard between the reduced
+    program's own reads, where the queue is not what the following reduce
+    block assumes.  And an odd-sized dependency set would make the reduced
+    program ghost-pad itself and expect an input the stream does not carry,
+    so the window is widened by one adjacent ignored input to keep it even.
     """
     n = _validate_truth_table(truth_table)
+
+    # A table that ignores some of its inputs is really a smaller table, and
+    # taglate's cost is almost all fixed overhead scaled by the input count
+    # -- the seed alone is ``2**(n_eff + 2)`` cells -- so dropping one input
+    # drops a whole tier.  Emit the reduced table's program and read the
+    # ignored inputs anyway, discarding each: ``h`` appends the character to
+    # the queue's tail, ``e`` rotated once per queued cell brings it back to
+    # the front, and ``f`` drops it, leaving the queue exactly as it was so
+    # the reduces' positional arithmetic is undisturbed.
+    #
+    # Only a *contiguous* run of used inputs is handled.  A gapped set (a
+    # table depending on inputs 0 and 2, say) would need a discard between
+    # the reduced program's own reads, and the queue there is not what the
+    # following reduce block assumes -- the output comes out arithmetically
+    # corrupted rather than merely permuted.
+    used = _taglate_dependencies(truth_table, n)
+    # A constant table depends on nothing, so it reduces to the smallest
+    # valid table there is -- a one-input constant, never the length-1
+    # table, which is not a valid shape.
+    if not used and n > 1:
+        used = [0]
+    if used == list(range(used[0], used[0] + len(used))) if used else False:
+        # An odd-sized dependency set would make the *reduced* program
+        # ghost-pad itself and expect an input the stream does not carry,
+        # so widen the window by one adjacent ignored input to keep it even.
+        if len(used) % 2 == 1 and len(used) > 1:
+            if used[-1] + 1 < n:
+                used = [*used, used[-1] + 1]
+            elif used[0] > 0:
+                used = [used[0] - 1, *used]
+        if 0 < len(used) < n and (len(used) % 2 == 0 or len(used) == 1):
+            reduced = _taglate_reduced_table(truth_table, n, used)
+            seed, commands = taglate(reduced).split("\n", 1)
+            discard = "h" + "e" * len(seed) + "f"
+            # Odd ``n`` above 1 is called with a leading ghost digit, which
+            # is one more input to read and throw away before the real ones.
+            ghost = 1 if n % 2 == 1 and n > 1 else 0
+            leading = used[0] + ghost
+            trailing = n - len(used) - used[0]
+            return seed + "\n" + discard * leading + commands + "h" * trailing
+
     if n == 1:
         base = _ASCII_ZERO + int(truth_table[0])
         coeff = (int(truth_table[1]) - int(truth_table[0])) % 65536

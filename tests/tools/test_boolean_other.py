@@ -635,6 +635,56 @@ class TestTaglate:
                         )
         assert failures == 0, f"{failures} failures out of 2048 combos"
 
+    def test_tables_ignoring_inputs_shrink(self) -> None:
+        """A table that ignores inputs is emitted as the smaller table.
+
+        Taglate's cost is almost all fixed overhead scaled by the input
+        count -- the seed alone is ``2**(n_eff + 2)`` cells -- so dropping
+        an input drops a whole tier.  Every table of a given ``n`` used to
+        be the same length; now the ones that depend on fewer inputs are
+        dramatically shorter.
+        """
+        full = len(boolean.taglate("10010110"))  # depends on all three
+        for table in ("11110000", "11001100", "10101010", "00000000"):
+            assert len(boolean.taglate(table)) < full // 10, table
+
+    def test_reduced_programs_still_read_every_input(self) -> None:
+        """A reduced program consumes the inputs it no longer uses.
+
+        The ignored ones are read and discarded (``h`` appends to the
+        queue's tail, ``e`` once per queued cell rotates it to the front,
+        ``f`` drops it), so the queue is left exactly as it was and a caller
+        feeding several programs from one stream stays in sync.  Odd ``n``
+        above 1 also takes a leading ghost digit, which is one more read.
+        """
+        for n in (1, 2, 3, 4):
+            expected = n + (1 if n % 2 == 1 and n > 1 else 0)
+            for table in (
+                "1" * 2**n,
+                "1" * 2 ** (n - 1) + "0" * 2 ** (n - 1),
+                ("10" * 2**n)[: 2**n],
+            ):
+                program = boolean.taglate(table)
+                assert program.count("h") == expected, (n, table)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("1111111100000000", 4),  # depends on input 0
+            ("1111000011110000", 4),  # input 1
+            ("1010101010101010", 4),  # input 3
+            ("1111111111111111", 4),  # none at all
+        ],
+    )
+    def test_reduced_tables_compute_past_three_inputs(self, table: str, n: int) -> None:
+        """The reduction stays correct deeper than the exhaustive sweep."""
+        program = boolean.taglate(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            ghost = ["0"] if n % 2 == 1 and n > 1 else []
+            got = run_taglate(program, ghost + [str(b) for b in bits])
+            assert got == table[combo], f"inputs {bits}"
+
     def test_wrong_length_truth_table_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
