@@ -1489,10 +1489,22 @@ class TestStreetcodeDriveStates:
         breaking a phase rather than by drawing one: the check is a
         regression net over the phases, and this is what tripping it
         looks like.
+
+        The phase is patched through the imported module object rather
+        than by its dotted string path: ``scripts/mutate_one.py`` bundles
+        the interpreter into a single module to mutate it, and a string
+        target naming the package still resolves to the *unbundled*
+        interpreter there, so the patch lands on a function the bundled
+        machine never calls and the wedge never happens.  Patching the
+        module object works either way, because the bundler rewrites the
+        import that produced it.
         """
+        from esolangs.interpreters.grid_based import streetcode as module
+
         with (
-            patch(
-                "esolangs.interpreters.grid_based.streetcode._heading_from_hug",
+            patch.object(
+                module,
+                "_heading_from_hug",
                 lambda _grid, _car, latches: (None, latches),
             ),
             pytest.raises(ValueError, match="cannot drive out of"),
