@@ -73,7 +73,6 @@ from esolangs.tools.boolean.tape import (
     rotfuck,
     sbleq,
     six_five,
-    six_five_arithmetic,
     suffolk,
     three_d_brainfuck,
 )
@@ -130,7 +129,6 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
-    "six_five_arithmetic",
     "sophie",
     "streetcode",
     "suffolk",

@@ -1101,10 +1101,13 @@ class TestGeneratorEdgePaths:
             boolean.dimensional_tree("0123")
 
     def test_six_five_helper_edges(self) -> None:
-        """Same-cell navigation and the +5 tail of the constant encoder."""
-        from esolangs.tools.boolean.six_five import _six_five_const, _six_five_nav
+        """The +5 tail of the constant encoder.
 
-        assert _six_five_nav(3, 3) == ""
+        ``_six_five_nav`` was retired with the arithmetic kernel; the folded
+        leaf's own hop to cell 1 is a literal ``13``.
+        """
+        from esolangs.tools.boolean.six_five import _six_five_const
+
         assert _six_five_const(5) == "5"
         assert _six_five_const(11) == "65"
 

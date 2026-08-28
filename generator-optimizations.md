@@ -117,8 +117,9 @@ Verified in `boolean-constant-folding.md` by a ones-count-controlled length
 test (equal ones-counts prevent complement effects from confounding).
 
 **Fold (16):** addsubjump, back, bfpda, bio, bitdeque, grapheme, jaune,
-lamfunc, nocomment, polynomial, ram0, rotfuck, sbleq, six_five_arithmetic,
-three_x, ztoalc_l — plus basicfuck, brainif, dig, laserfuck, between, and the
+lamfunc, nocomment, polynomial, ram0, rotfuck, sbleq, six_five_arithmetic
+(since retired — see below), three_x, ztoalc_l — plus basicfuck, brainif,
+dig, laserfuck, between, and the
 `decision_tree_program` pair (brainfuck/bf_tree, dimensional/dimensional_tree),
 which fold inside their own construction.
 
@@ -216,10 +217,11 @@ a leaf test plus whatever index bookkeeping the language needs.
   Being parameterized, this one also has to preserve equal-width embedding.
   It does so for free — the fold shrinks the *template*, which is shared by
   every instantiation — but that is now pinned by a test rather than assumed.
-- `six_five` — **done on this branch**, and not marginal after all. Only the
-  n≤5 path uses this tree (the n>5 path, `six_five_arithmetic`, already
-  folds), but within that range the saving is the largest of any fold
-  measured here:
+- `six_five` — **done on this branch**, and not marginal after all. It was
+  listed here as marginal because only the n≤5 path used the tree, but the
+  fold changed that too: it now decides the dispatch, and the second
+  construction it used to defer to is gone (both below). The saving is the
+  largest of any fold measured here:
 
   | n | constant | mixed (equal ones-count) | |
   |---|---|---|---|
@@ -285,15 +287,34 @@ a leaf test plus whatever index bookkeeping the language needs.
   `8n` jump whose operand happens to be `4` contributes one, which is why
   the test tokenizes the way the interpreter does.
 
-  **Side effect worth recording: the arithmetic path is now unreachable
-  through `six_five`.** A small `T` means ones confined to low indices,
-  which leaves the rest of the table constant, which folds well inside the
-  budget — the two conditions are mutually exclusive. A search over
-  contiguous families and 1500 random tables each at n=6,7,8,9 found no
-  table that both exceeds 35 labels and renders arithmetically. That is the
-  same pattern that retired `brainfuck`'s and `dimensional`'s second
-  constructions, but `six_five_arithmetic` is exported API, so it is kept
-  and now tested directly rather than through the dispatch.
+  **`six_five_arithmetic` is retired.** A small `T` means ones confined to
+  low indices, which leaves the rest of the table constant, which folds well
+  inside the budget — the two conditions are mutually exclusive, so the
+  kernel never covered a table the tree could not. Searching for a
+  counterexample (contiguous prefix/suffix families exhaustively at n=6,7,8,
+  plus ~18000 random sparse and dense tables) found **none**. The
+  construction, its `_SixFiveAsm` assembler and `_six_five_nav` went with
+  it: 299 lines down to 122. This is the third such retirement, after
+  `brainfuck`'s and `dimensional`'s minterm evaluators — in each case the
+  fold made the second construction redundant rather than merely worse.
+
+  **Is the generator total?** No, and the boundary is exact. Labels are the
+  only limit, and the worst case for the fold is an alternating table, which
+  folds nothing and spends the full `2**n - 1`:
+
+  | n | worst case | budget 35 |
+  |---|---|---|
+  | ≤5 | 31 | fits — **every table renders** |
+  | 6 | 63 | over |
+  | 7 | 127 | over |
+  | 8 | 255 | over |
+
+  So `six_five` is total through n=5 and partial above it, where it now
+  raises `ValueError` naming the label count instead of falling through to
+  a kernel that would have refused the table anyway. What survives past n=5
+  is tables that fold hard: at n=6 about 1% of random tables fit (measured
+  2000), and at n≥7 essentially none — though structured tables like AND-n
+  fit at any width, needing just `n` labels.
 
 **Grid trees.** `clockwise`, `streetcode`, `arrowqueue` place their tree on a
 plane. `clockwise` turned out to need only a leaf test plus two geometry
@@ -441,7 +462,6 @@ zero rows and inverting — one term saved per row, paid for once.
 | `point_break` | **free** — `g` is `1 - f` for its own loop-guard reasons |
 | `suptiftam` | one line, against four lines per input per minterm |
 | `qoibl`, `bit_tilde`, `grapheme` | fewer minterms; grapheme picks whichever row-set is shorter |
-| `six_five_arithmetic` | evaluates `T'` when the complement integer is smaller — rescues NAND-n from outright rejection |
 
 `_maybe_complement`'s docstring flags the trap: an all-ones table complements to
 *no* minterms, indistinguishable from all-zeros. Fine where the sum feeds an
@@ -467,7 +487,6 @@ single self-fed gate.
 | `bf_tree` | tree shares bit tests: `O(2**n)` vs minterm's `O(n * 2**n)` — XOR-n at n=8 is 20K vs 33M characters |
 | `nocomment` | computes the numeric index and uses it as a byte-sized skip into a staircase — straight-line, no leaf chains. `s` doubles as a NOT gate, so the complement is computed at runtime from one embed |
 | `home_row` | packs bits into one accumulator + linear chain; the removed routing generator walled at n=2 |
-| `six_five_arithmetic` | builds `x` by a **loop**, not unrolled per bit, so marker count is constant in n (removes the 35-label cap) |
 | `bfstack` | avoids branching entirely — encodes inputs as a number, decodes with nested loops |
 | `suffolk` | branch-free minterms at `limit=1`; **constant tables need no reads at all** |
 | `three_x` | result defaults to the **majority** table value, so only differing rows emit an override |
