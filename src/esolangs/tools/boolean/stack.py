@@ -131,12 +131,65 @@ def forth(truth_table: str) -> str:
     The definition indices are left on the stack below the result; the
     ``{ }`` construct reads (but does not pop) the top index, and ``;`` pops
     it, so the stale indices never get in the way of the dispatch arithmetic.
+
+    A subtree whose rows all agree answers in place -- the node pushes the
+    result byte instead of dispatching, and its whole subtree goes
+    unemitted.  That costs nothing to arrange because Forþ keys its scope
+    table by the number pushed before ``{`` and looks it up with a default,
+    so a gap in the numbering is simply a scope that never exists; no index
+    has to move.  The rows a node stands for are a *stride* rather than a
+    contiguous run (``_forth_combo`` reads the path least-significant bit
+    first), so ``01010101`` collapses to the two root children while
+    ``00001111`` is constant over an axis this tree never splits on and
+    keeps every node.  The reads sit outside the tree, so a folded program
+    consumes its input exactly as an unfolded one does.
     """
     n = _validate_truth_table(truth_table)
+    last_internal = 2**n - 2
+
+    def rows_under(m: int) -> list[int]:
+        """Return the table rows the subtree rooted at heap index ``m`` covers.
+
+        A leaf stands for the one row :func:`_forth_combo` names; an
+        internal node stands for its two children's rows together.  Those
+        rows are a *stride* rather than a contiguous run, because
+        ``_forth_combo`` reads the path least-significant bit first -- so a
+        table like ``11110000`` is constant over an axis this tree never
+        splits on and folds nothing, while ``10101010`` folds hard.
+        """
+        if m > last_internal:
+            return [_forth_combo(m)]
+        return rows_under(2 * m + 1) + rows_under(2 * m + 2)
+
     prog = []
+    folded: set[int] = set()
     for m in range(1, 2 ** (n + 1) - 1):
-        if m <= 2**n - 2:  # internal node: dispatch on the top bit
-            body = _forth_const(2 * m + 1) + "+;"
+        if m in folded:
+            # An ancestor already answered for this subtree, so its scope is
+            # never called.  Forþ stores scopes in a dict keyed by the
+            # pushed number and looks them up with a default, so a gap in
+            # the numbering costs nothing -- the node simply never exists.
+            continue
+        if m <= last_internal:
+            rows = rows_under(m)
+            if len({truth_table[row] for row in rows}) == 1:
+                # Every row under this node agrees, so the bits it would
+                # branch on cannot change the answer: answer here and drop
+                # the whole subtree.  The inputs are read up front, outside
+                # the tree, so a folded program still consumes its input
+                # exactly as an unfolded one does.
+                body = _forth_const(_ASCII_ZERO + int(truth_table[rows[0]]))
+                # Drop the *whole* subtree, not just the two children: a
+                # grandchild is just as unreachable, and marking one level
+                # leaves the deeper nodes emitted but never called.
+                below = [2 * m + 1, 2 * m + 2]
+                while below:
+                    child = below.pop()
+                    folded.add(child)
+                    if child <= last_internal:
+                        below += [2 * child + 1, 2 * child + 2]
+            else:  # internal node: dispatch on the top bit
+                body = _forth_const(2 * m + 1) + "+;"
         else:  # leaf: push the result byte
             result = int(truth_table[_forth_combo(m)])
             body = _forth_const(_ASCII_ZERO + result)
