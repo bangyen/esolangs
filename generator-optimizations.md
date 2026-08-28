@@ -2,9 +2,8 @@
 
 Catalog of the size-and-shape optimizations each of the 45 text and 61 boolean
 generators applies to the *emitted program*. Read from source and docstrings on
-2026-08-27 (against the working checkout, which is ahead of `origin/main`); the
-constant-folding column for the boolean side reuses the verified results in
-`boolean-constant-folding.md` rather than re-deriving them.
+2026-08-27; the constant-folding column for the boolean side reuses the verified
+results in `boolean-constant-folding.md` rather than re-deriving them.
 
 "Optimization" here means what the generator does to make its output smaller
 or better-shaped — not the runtime of the generator itself.
