@@ -798,9 +798,14 @@ def _polynomial_dag(truth_table: str) -> list[list[int]]:
     for instr in instrs:
         # ``a == 0`` is how the interpreter spells I/O, so an arithmetic
         # instruction that computed a zero operand would silently become a
-        # read.  The builder never emits one; this is the guard that keeps
-        # a future edit from reintroducing the trap.
-        assert len(instr) != 2 or instr[0] != 0 or instr in ([0, 1], [0, 2]), instr
+        # read -- a wrong program rather than a failure.  The builder never
+        # emits one; this raises rather than asserting so the guard survives
+        # ``-O``, where the trap it catches would be silent.
+        if len(instr) == 2 and instr[0] == 0 and instr not in ([0, 1], [0, 2]):
+            raise AssertionError(
+                f"{instr} has a zero operand, which the interpreter reads as "
+                "I/O rather than arithmetic",
+            )
     return instrs
 
 
