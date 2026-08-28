@@ -7,6 +7,7 @@ Forþ, Modulous, BFStack, and Unsquare.
 import pytest
 
 from esolangs.tools import boolean
+from esolangs.tools.boolean.helpers import permute_truth_table
 from tests.tools.boolean_runners import (
     run_bfstack,
     run_forth,
@@ -75,8 +76,10 @@ class TestForth:
         assert "3F*4+" in program  # the '1' leaf pushes 49 = 3*15+4
 
     def test_scales(self) -> None:
-        """More inputs mean more tree functions."""
-        program = boolean.forth("0" * 16 + "1" * 16)
+        """More inputs mean more tree functions, and every input is read."""
+        # Parity folds nothing under any order, so it spends the full tree.
+        parity = "".join(str(bin(row).count("1") % 2) for row in range(32))
+        program = boolean.forth(parity)
         assert program.count("{") == 2 ** (5 + 1) - 2
         assert program.count(",68*-") == 5
 
@@ -103,15 +106,20 @@ class TestForth:
         ``{`` and calls it with a default, so an unemitted node simply
         never exists -- folding is skip-emission with no renumbering.
 
-        The tree splits least-significant bit first (see ``_forth_combo``),
-        so its subtrees are strides rather than contiguous runs: a table
-        like ``00001111`` is constant over an axis this tree never splits
-        on and keeps every node, while ``01010101`` collapses to the two
-        root children.
+        Which subtrees are constant depends on the order the tree splits
+        in, and the order is chosen per table: ``00001111`` depends on the
+        first input alone and ``01010101`` on the last, so each collapses to
+        the two root children under the order that tests its input first.
+        A stack-ordered tree could only fold the second.
+
+        Parity is what folds under no order at all, so it is the witness
+        that the fold is doing work rather than the search hiding it.
         """
         assert boolean.forth("1" * 8).count("{") == 2
         assert boolean.forth("01" * 4).count("{") == 2
-        assert boolean.forth("0" * 4 + "1" * 4).count("{") == 2 ** (3 + 1) - 2
+        assert boolean.forth("0" * 4 + "1" * 4).count("{") == 2
+        parity = "".join(str(bin(row).count("1") % 2) for row in range(8))
+        assert boolean.forth(parity).count("{") == 2 ** (3 + 1) - 2
 
     def test_folded_subtree_leaves_no_orphans(self) -> None:
         """Folding drops the whole subtree, not just the two children.
@@ -125,6 +133,48 @@ class TestForth:
         program = boolean.forth("1" * 8)
         for m in range(3, 15):  # every node below the two root children
             assert _forth_const(m) + "{" not in program
+
+    def test_reordering_only_shrinks(self) -> None:
+        """No table comes out longer than the stack-ordered program.
+
+        The natural order here is the *reversal* -- ``;`` pops, so the tree
+        has always tested the last input at the root -- and it is tried
+        first with ties keeping it.  Pinning against that build is what
+        proves the search cannot churn an emission it does not shorten.
+        """
+        from esolangs.tools.boolean.stack import _forth_ordered
+
+        natural = (2, 1, 0)
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            dispatched = len(boolean.forth(table))
+            stack_ordered = len(
+                _forth_ordered(permute_truth_table(table, natural), natural)
+            )
+            assert dispatched <= stack_ordered, table
+            improved += dispatched < stack_ordered
+        assert improved == 112
+
+    def test_rotations_are_interleaved_with_the_reads(self) -> None:
+        """Weaving the rotations into the reads reaches more arrangements.
+
+        ``v`` and ``c`` touch only the top three cells, so rotating after
+        all ``n`` reads can only permute the last three bits -- 6
+        arrangements however wide the table.  Moving a bit while it is
+        still near the top reaches three times as many at n == 4 and nine
+        times as many at n == 5, which is what keeps the saving from
+        collapsing as ``n`` grows.
+        """
+        from esolangs.tools.boolean.stack import _forth_stack_programs
+
+        assert len(_forth_stack_programs(3)) == 6  # all of 3!
+        assert len(_forth_stack_programs(4)) == 18  # of 24
+        assert len(_forth_stack_programs(5)) == 54  # of 120
+        # The reads themselves are still one per input, whatever the weave.
+        for n in (3, 4, 5):
+            for program in _forth_stack_programs(n).values():
+                assert program.count(",68*-") == n
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""

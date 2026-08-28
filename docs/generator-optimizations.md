@@ -696,6 +696,7 @@ what it emitted before — this can only shrink a program, never churn one.
 | `ztoalc_l` | **32.4%** | — | 150/256 |
 | `addsubjump` | 31.7% | **41.0%** | 254/256 |
 | `myscript` | 18.6% | 17.8% | 112/256 |
+| `forth` | 13.9% | 12.0% | 112/256 |
 | `six_five` | 18.1% | **23.6%** | 186/256 |
 | `nevermind` | 16.3% | 16.2% | 112/256 |
 | `bitdeque` | 14.9% | 14.8% | 112/256 |
@@ -824,7 +825,7 @@ most likely place for this.
 `wii2d` 3.4%) all screen with real upside, but their trees are placements on
 a plane rather than token sequences, so reordering them is 2D layout surgery
 rather than renaming a branch operand. The upside is measured and recorded;
-the work is not attempted here. Likewise `forth` (14.5%), `eval` (11.8%),
+the work is not attempted here. Likewise `eval` (11.8%),
 `arrowqueue` (12.4%), `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
 `three_x` (4.5%), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
 `decleq` (1.4%), `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and
@@ -851,6 +852,41 @@ tests it* and has nowhere else to put one — so its test order **is** its
 stream order. `six_five` reads at the node too, but that was a property of
 its generator rather than of the language: it has a tape, so its reads were
 hoisted into cells of their own and the two orders came apart.
+
+### Forþ — the natural order is the reversal, and rotations go between the reads
+
+Two things here generalize to any **stack-ordered** tree generator.
+
+**The build to preserve is not the identity order.** `;` pops, so the tree
+tests the *last* input at the root — in `best_input_order`'s convention the
+existing emission is the reversal, and identity-first-ties-keep-it would
+churn every unhelped table instead of preserving it. `forth` therefore rolls
+its own wrapper with the reversal first. Any generator whose delivery is a
+stack has this property; check which permutation reproduces today's output
+before wiring the shared helper, and pin it — `test_reordering_only_shrinks`
+compares against the *reversal* build, and the prototype asserted
+byte-equality with the previous emission across all 256 tables at n=3.
+
+**Reachability is a composition question, and the answer depends on where
+the ops go.** `v` (swap top two) and `c` (rotate third to top) reach only
+the top three cells, so a preamble after all `n` reads permutes just the
+last three bits — 6 arrangements at *every* width, which collapses the
+saving to 2.4% at n=4 and 0.0% at n=5. Interleaving the same two ops with
+the reads, so a bit can move while it is still near the top, reaches 18 of
+24 at n=4 and 54 of 120 at n=5 for a median 2–3 extra characters, restoring
+12.0% and 15.9%. A BFS over (arrangement, reads done) finds the shortest
+program per target; counting what a fixed op pool can do would have called
+this impossible.
+
+`o` reverses the *whole* stack, which drags the scope indices sitting below
+the bits up with them, so it is unusable — and `c` does not abort on those
+indices either, it silently rotates one up to be dispatched on. Gate the ops
+on the number of *bits* present, not on stack depth.
+
+**Expect the screen to be an upper bound here**, the opposite of a
+node-reading generator: the reads are already outside the tree, so there is
+no hoist bonus, and every rotation costs characters. The delivered 13.9%
+against a screened 14.5% is the expected shape.
 
 ### Sophie — the merge transfers, and the saving grows with n
 
