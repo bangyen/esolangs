@@ -622,12 +622,73 @@ what it emitted before — this can only shrink a program, never churn one.
 
 | generator | n=3 (all 256 tables) | n=4 (sampled) | tables improved at n=3 |
 |---|---|---|---|
-| `bitdeque` | **14.9%** | 14.8% | 112/256 |
+| `ztoalc_l` | **32.4%** | — | 150/256 |
+| `myscript` | 18.6% | 17.8% | 112/256 |
+| `nevermind` | 16.3% | 16.2% | 112/256 |
+| `bitdeque` | 14.9% | 14.8% | 112/256 |
 | `ram0` | 14.8% | **19.5%** | 212/256 |
+| `basicfuck` | 14.2% | 15.2% | 112/256 |
+| `forbin_boolean` | 12.7% | — | 152/256 |
 | `lamfunc` | 11.7% | 12.3% | 112/256 |
 | `between` | 11.4% | 12.1% | 112/256 |
 | `brainfuck` | 8.6% | 7.8% | 114/256 |
 | `dimensional` | 7.6% | 5.9% | 114/256 |
+
+`factor` and `three_d_brainfuck` inherit brainfuck's output unchanged.
+
+### The audit — every generator screened
+
+All 59 exported boolean generators were screened by measuring, at n=3 over
+all 256 tables, the shortest program any of the 6 input orders produces
+against the identity's. That bounds what reordering could ever buy, so a
+generator with **zero** upside is closed without reading a line of it.
+
+**Screened clean (0% upside), no code read:** `a_painter_ant`,
+`circlefuck_byte`, `circuit_diagram`, `cod`, `container`, `grapheme`,
+`home_row`, `jaune_multiply`, `point_break`, `suffolk`, `suptiftam`. Most
+are sum-of-minterms, where the minterm count does not depend on split order
+— reordering is *not applicable* there rather than merely unhelpful.
+
+**Excluded after checking the interpreter or construction** — each has real
+measured upside and is still unreachable, which is why the screen alone is
+not a verdict:
+
+| generator | upside | why it cannot be reordered |
+|---|---|---|
+| `polynomial` | 25.1% | reads at the node that tests the bit, drains at the leaf |
+| `six_five` | 17.9% | same — `B` reads inside the node |
+| `modulous` | 16.4% | stack reaches top two only; variables store and print but never load back |
+| `sophie` | 16.4% | reads inside the tree (`;` then `@$48{}`) |
+| `addsubjump` | 16.7% | reads at the node, drains skipped reads at each leaf |
+| `jaune` | 16.3% | `v` reads and tests in one instruction |
+| `unsquare` | 15.7% | reads up front but pops LIFO; `S` swaps the top two and there is one accumulator, so no rotation to depth |
+
+The rule that decides these is **read the interpreter's op set, not what the
+generator emits** — `bitdeque` was wrongly excluded on the latter and turned
+out to be one of the largest wins.
+
+**A trap for whoever wires the rest.** A generator that *validates its own
+output during construction* needs that check frame-mapped too. ZTOALC L
+searches for a collision-free line placement and asks its simulator whether
+the program computes `truth_table[c]` on stream input `c` — but a reordered
+tree walks to the row whose bits are gathered in `perm` order, so the
+unmapped check demands a *different* function and rejects every correct
+placement. The symptom is not an error: it is a clean 0.00% across every
+table, indistinguishable from "reordering does not help here". A 0% result
+on a generator the screen says has upside is a signal to go and diagnose,
+not a verdict. `wii2d`'s budget and requirement-set machinery is the next
+most likely place for this.
+
+**Not yet done.** The grid generators (`dig` 19.8%, `flowchart` 17.1%,
+`streetcode` 16.8%, `laserfuck` 16.3%, `back` 12.0%, `clockwise` 1.3%,
+`wii2d` 3.4%) all screen with real upside, but their trees are placements on
+a plane rather than token sequences, so reordering them is 2D layout surgery
+rather than renaming a branch operand. The upside is measured and recorded;
+the work is not attempted here. Likewise `forth` (14.5%), `eval` (11.8%),
+`arrowqueue` (12.4%), `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
+`three_x` (4.5%), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
+`decleq` (1.4%), `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and
+`bfstack` (0.2%) remain unexamined candidates.
 
 `factor` and `three_d_brainfuck` reuse brainfuck's output and inherit the
 saving unchanged; a shorter program also shrinks factor's set of tables
