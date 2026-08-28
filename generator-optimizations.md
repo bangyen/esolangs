@@ -123,10 +123,17 @@ three_x, ztoalc_l — plus basicfuck, brainif, dig, laserfuck, between, and the
 `decision_tree_program` pair (brainfuck/bf_tree, dimensional/dimensional_tree),
 which fold inside their own construction.
 
-**Build a tree but never fold (28):** myscript, nevermind, clockwise,
+**Build a tree but never fold (16):** myscript, nevermind, clockwise,
 forbin_boolean, flowchart, circlefuck, circlefuck_byte, decleq, sophie, forth,
-modulous, unsquare, eval, arrowqueue, streetcode, six_five (n≤5), and the
-translations that inherit a non-folding parent.
+modulous, unsquare, eval, arrowqueue, streetcode, six_five (n≤5).
+
+Three generators inherit folding rather than implementing it: `factor`,
+`painfuck`, and `three_d_brainfuck` all call `brainfuck()` and transform its
+output, so they fold because it does. Their docstrings still describe a
+"shorter of minterm and tree" dispatch that no longer exists — stale prose, not
+stale code. Folding matters most to `factor`, which encodes the program as an
+integer and refuses tables whose encoding exceeds Python's digit limit, so
+folding turns some previously unrenderable tables into runnable ones.
 
 Folding was decisive enough to **retire whole constructions**: both `brainfuck`
 and `dimensional` used to return the shorter of a tree and a minterm evaluator;
@@ -204,5 +211,6 @@ making the program's *height* reveal the input.
 - Shared machinery: `text/helpers.py`, `boolean/helpers.py`, `wrap.py`,
   `laserfuck_layout.py`, `ztoalc_starts.py`, `_polynomial.py`
 - Folding classification: `boolean-constant-folding.md` (measured, not inferred)
+  — currently untracked in the working checkout, not on this branch
 - Everything else: generator docstrings and bodies under
   `src/esolangs/tools/{text,boolean}/`
