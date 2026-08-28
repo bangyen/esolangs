@@ -1056,7 +1056,17 @@ def forbin_boolean(truth_table: str) -> str:
     body once when ``b`` is 1 (the ``return`` cuts the second iteration)
     and falls through when ``b`` is 0, so each node emits the 1-subtree then
     the 0-subtree and every leaf prints the result byte and returns.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The ``(in 0)`` reads stay in input order -- all ``8n`` of them -- so
+    only the bit a ``for`` names moves.
     """
+    return best_input_order(truth_table, _forbin_ordered)
+
+
+def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Forbin program; see :func:`forbin_boolean`."""
     n = _validate_truth_table(truth_table)
 
     lines: list[str] = ["main {"]
@@ -1073,7 +1083,8 @@ def forbin_boolean(truth_table: str) -> str:
             lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
             lines.append(f"{indent}return 0;")
             return
-        lines.append(f"{indent}for _:!{bits[level]}..{bits[level]} {{")
+        bit = bits[perm[level]]
+        lines.append(f"{indent}for _:!{bit}..{bit} {{")
         emit(level + 1, row + 2 ** (n - 1 - level), depth + 1)
         lines.append(f"{indent}}}")
         emit(level + 1, row, depth)

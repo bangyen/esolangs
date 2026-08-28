@@ -144,6 +144,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
     from esolangs.tools.boolean.helpers import _decision_tree_program
     from esolangs.tools.boolean.other import (
         _between_ordered,
+        _forbin_ordered,
         _myscript_ordered,
         _nevermind_ordered,
     )
@@ -174,6 +175,7 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         ("myscript", boolean.myscript, _myscript_ordered),
         ("nevermind", boolean.nevermind, _nevermind_ordered),
         ("basicfuck", boolean.basicfuck, _basicfuck_ordered),
+        ("forbin_boolean", boolean.forbin_boolean, _forbin_ordered),
     ]
 
 
