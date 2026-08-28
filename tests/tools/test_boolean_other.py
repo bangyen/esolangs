@@ -886,11 +886,45 @@ class TestLaserFuck:
         The rings spend the counter down to zero and leave it touched,
         which is exactly what dump() prints for a zero answer -- so a leaf
         writes a '+' only when the answer is one.
+
+        Both tables are constant, so each folds to a single leaf that fits
+        on the reader's own row; the '+' is counted over the whole program
+        rather than over the rows below the reader, which a folded tree no
+        longer occupies.
         """
-        zero = boolean.laserfuck("0000", 80).split("\n")
-        assert "+" not in "\n".join(zero[3:]), "a zero table needs no '+'"
-        ones = boolean.laserfuck("1111", 80).split("\n")
-        assert "+" in "\n".join(ones[3:])
+        zero = boolean.laserfuck("0000", 80)
+        ones = boolean.laserfuck("1111", 80)
+        assert ones.count("+") == zero.count("+") + 1, "a one costs exactly one '+'"
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice becomes one leaf instead of branching further.
+
+        Leaves are the ``x`` that ends each one, so counting those counts
+        the leaves: a constant table spends one, two constant halves spend
+        two, and a parity table -- which has no constant slice above a
+        single row -- still spends one per combination.
+        """
+        assert boolean.laserfuck("11111111").count("x") == 1
+        assert boolean.laserfuck("11110000").count("x") == 2
+        assert boolean.laserfuck("10010110").count("x") == 8
+
+    def test_a_table_that_folds_nothing_keeps_the_sized_sweep(self) -> None:
+        """Parity's leaves retire each input by its own bit, not flatly.
+
+        Only the cells above a leaf's depth need the flat two-``-``
+        retiring; a parity table has no folded leaf, so every cell is one
+        its path consumed and every run is sized to the bits.  Reading the
+        runs back off each leaf is what pins that -- a leaf reached by
+        ``bits`` spends ``bit + 1`` dashes per cell, most recent first.
+        """
+        program = boolean.laserfuck("10010110")
+        leaves = program.split("x")[:-1]
+        for path in range(8):
+            bits = [(path >> (2 - i)) & 1 for i in range(3)]
+            want = "".join("-" * (b + 1) + "<" for b in reversed(bits))
+            assert any(leaf.endswith(want) or want in leaf for leaf in leaves), (
+                f"no leaf retires {bits} with its sized run {want!r}"
+            )
 
     def test_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""
