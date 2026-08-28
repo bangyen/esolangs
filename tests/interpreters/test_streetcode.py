@@ -30,6 +30,7 @@ from esolangs.interpreters.grid_based.streetcode import (
     _ReachableCell,
     _right,
     _State,
+    _turn_of,
     run,
 )
 from esolangs.interpreters.io import IO, ScriptedIO
@@ -561,7 +562,7 @@ class TestStreetcodeLaneMerge:
         wall-following instead of blindly trusting the stale latch."""
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 1, "S"
-        machine._merge = _Merge(3, 1, "E", "S", crossing=False)  # noqa: SLF001
+        machine._merge = _Merge(3, 1, "left", "S", crossing=False)  # noqa: SLF001
         row = machine.grid[3]
         machine.grid[3] = row[:2] + "+" + row[3:]  # wall directly East
         heading = machine._choose_heading(0)  # noqa: SLF001
@@ -590,7 +591,7 @@ class TestStreetcodeLaneMerge:
         """
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 3, 1, "S"
-        machine._merge = _Merge(3, 1, "E", "S", crossing=False)  # noqa: SLF001
+        machine._merge = _Merge(3, 1, "left", "S", crossing=False)  # noqa: SLF001
         machine.cells[0] = 1  # latch was taken under cell == 0
         # 1 = the cell as the approach left it, on arrival at the turn
         heading = machine._choose_heading(1)  # noqa: SLF001
@@ -603,12 +604,40 @@ class TestStreetcodeLaneMerge:
         latch must not wait forever for a target it can no longer reach."""
         machine = machine_unvalidated(self._lane_merge_code())
         machine.row, machine.col, machine.heading = 1, 1, "S"
-        machine._merge = _Merge(3, 1, "E", "S", crossing=False)  # noqa: SLF001
+        machine._merge = _Merge(3, 1, "left", "S", crossing=False)  # noqa: SLF001
         row = machine.grid[2]
         machine.grid[2] = row[:1] + "+" + row[2:]  # wall directly ahead
         heading = machine._choose_heading(0)  # noqa: SLF001
         assert machine._merge is None  # noqa: SLF001
         assert heading == "E"  # falls back to plain wall-following
+
+    def test_a_merge_recovers_the_heading_it_turns_to(self) -> None:
+        """``_Merge`` stores the turn; the destination is derived from it.
+
+        The latch holds a :data:`_Turn` rather than a second
+        :data:`_Heading` so the two direction fields cannot be swapped
+        (see the class docstring).  That only works if ``new_heading``
+        recovers exactly what the old field held, for every heading.
+        """
+        for heading in ("N", "E", "S", "W"):
+            left = _Merge(0, 0, "left", heading, crossing=False)
+            right = _Merge(0, 0, "right", heading, crossing=False)
+            assert left.new_heading == _left(heading)
+            assert right.new_heading == _right(heading)
+
+    def test_a_merge_turn_is_only_ever_a_left_or_a_right(self) -> None:
+        """``_turn_of`` refuses a straight-ahead or reversing "turn".
+
+        A merge latch is only set for a turn onto a detected side road,
+        so those two are unreachable; classifying one silently as a
+        right turn would latch a road the junction never offered and
+        steer the car into a wall several steps later.
+        """
+        assert _turn_of("S", "E") == "left"
+        assert _turn_of("S", "W") == "right"
+        for impossible in ("S", "N"):  # straight ahead, and the reverse
+            with pytest.raises(AssertionError, match="neither a left nor a right"):
+                _turn_of("S", impossible)
 
     def test_turn_lands_in_the_lane_without_an_approach(self) -> None:
         """When the junction fires while the car already sits in the new
