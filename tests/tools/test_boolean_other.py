@@ -246,7 +246,21 @@ class TestBetween:
         program = boolean.between("0110")
         lines = program.splitlines()
         assert lines[:3] == ["'0'v.", "[0]i.", "[0]s|[0]c.|"]
-        assert lines.count(".x.") == 4  # one leaf per input combination
+        # XOR has no constant slice above a single row, so nothing folds and
+        # every combination keeps its own leaf.
+        assert lines.count(".x.") == 4
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice becomes one leaf instead of branching further.
+
+        The jump addresses come from a second walk over the tree, so this
+        also covers the two walks agreeing: a leaf count that matched while
+        the addresses did not would still run the wrong branch, which
+        :meth:`test_truth_table` would catch.
+        """
+        assert boolean.between("11111111").count(".x.") == 1
+        assert boolean.between("11110000").count(".x.") == 2
+        assert boolean.between("10010110").count(".x.") == 8  # parity: no fold
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
