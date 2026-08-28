@@ -409,7 +409,21 @@ class TestPointBreak:
 
     @pytest.mark.parametrize("table", _PB_CONSTANTS)
     def test_constant_tables(self, table: str) -> None:
-        """Constant tables skip the reads and never vary with the inputs."""
+        """A constant table skips the tree but still consumes its inputs.
+
+        The body may shrink to the bare template -- there is no sum to
+        build -- but the reads are the interface: a program whose input
+        count depended on its truth table would leave the caller's
+        remaining bits on the stream for whatever ran next.  These tables
+        take the short-circuit path that bypasses the tree entirely, so
+        they are where a lost read would hide.
+        """
+        import contextlib
+
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.point_break import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
         n = len(table).bit_length() - 1
         program = boolean.point_break(table)
         for combo in range(2**n):
@@ -417,6 +431,12 @@ class TestPointBreak:
             assert got == table[combo], (
                 f"table {table} inputs {_pb_combo_bits(combo, n)}"
             )
+        io = ScriptedIO("0\n" * (n + 4))
+        with contextlib.suppress(Exception, SystemExit):
+            run_until_halt_or_cycle(_Machine(program.splitlines(), io))
+        assert io.position() == n, (
+            f"table {table} consumed {io.position()} inputs, expected {n}"
+        )
 
     def test_random_tables(self) -> None:
         for table in _pb_random_tables():
