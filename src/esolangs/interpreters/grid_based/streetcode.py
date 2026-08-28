@@ -876,15 +876,94 @@ class _Machine:
         """
         self._graph = self._drive_states(start)
         for state, edges in self._graph.items():
-            row, col, heading = state[0], state[1], state[2]
             # ``;`` reports itself as ``"halt"`` rather than ``None``, so a
             # deliberate stop no longer has to be told from a wedge by
             # re-reading the square: ``None`` now means only the one thing.
             if any(successor is None for successor in edges.values()):
                 raise ValueError(
-                    f"the car cannot drive out of {(row, col)} heading"
-                    f" {heading}: the street is a dead end with no ';'"
+                    f"the car cannot drive out of {(state.row, state.col)} heading"
+                    f" {state.heading}: the street is a dead end with no ';'"
                 )
+            self._check_state_invariants(state, edges)
+
+    def _check_state_invariants(self, state: _State, edges: _Edges) -> None:
+        """Assert what must hold of a drive state under any reading of the spec.
+
+        The movement rules were reverse-engineered from the wiki's
+        examples and several of them remain judgement calls (see the
+        module docstring).  These are not: a car inside a wall, or one
+        that teleports rather than driving a cell at a time, is wrong
+        under every reading, so they can be checked outright rather than
+        interpreted.  Keeping them apart from the geometry rules is the
+        point -- a rule that might be misread should not be asserted,
+        and one that cannot be misread should not be left to a test.
+
+        The bug ``701de45`` fixed is the worked example: a junction fired
+        while its gap still opened a cell ahead, and the turn drove the
+        car *inside* the wall the mouth opens through, after which it
+        wall-followed along the wall's far side.  That was found by
+        hand-drawing a program and watching the car misbehave; here it is
+        a construction-time failure naming the square.
+
+        These are :class:`AssertionError` rather than :class:`ValueError`
+        because they do not describe a malformed program.  The validators
+        around them reject bad *drawings*; a breach here means the
+        movement rules disagree with the grid they are driving on, which
+        is a bug in this module -- the same distinction :meth:`step`
+        draws when a ``None`` edge survives the totality check.
+        """
+        if not self._open(state.row, state.col):
+            raise AssertionError(
+                f"the car occupies {(state.row, state.col)}, which is not"
+                f" open floor: {self.grid[state.row, state.col]!r}"
+            )
+        for successor in edges.values():
+            if successor is None or successor == "halt":
+                continue
+            # A step drives one cell along one axis.  Anything else is the
+            # car teleporting, which no movement rule is allowed to do.
+            steps = abs(successor.row - state.row) + abs(successor.col - state.col)
+            if steps != 1:
+                raise AssertionError(
+                    f"the car moved from {(state.row, state.col)} to"
+                    f" {(successor.row, successor.col)}, which is not one"
+                    " orthogonal step"
+                )
+            if not self._open(successor.row, successor.col):
+                raise AssertionError(
+                    f"the car drove from {(state.row, state.col)} into"
+                    f" {(successor.row, successor.col)}, which is not open"
+                    f" floor: {self.grid[successor.row, successor.col]!r}"
+                )
+        merge = state.latches.merge
+        # A latch whose heading no longer matches is abandoned on the next
+        # step (see :meth:`_heading_from_merge_target`), so its target is
+        # stale by construction and describes no geometry to check.
+        if merge is None or state.heading != merge.latched_heading:
+            return
+        if not self._open(merge.target_row, merge.target_col):
+            raise AssertionError(
+                f"the merge latched at {(state.row, state.col)} is driving to"
+                f" {merge.target}, which is not open floor:"
+                f" {self.grid[merge.target_row, merge.target_col]!r}"
+            )
+        # The approach does not change lane, so the target sits straight
+        # ahead along the latched heading -- never off to one side, and
+        # never behind a car that can only drive forwards onto it.
+        d_row, d_col = _DELTA[merge.latched_heading]
+        off_row, off_col = merge.target_row - state.row, merge.target_col - state.col
+        if off_row * d_col - off_col * d_row != 0:
+            raise AssertionError(
+                f"the merge latched at {(state.row, state.col)} heading"
+                f" {merge.latched_heading} is driving to {merge.target}, which"
+                " is off the axis it is travelling along"
+            )
+        if off_row * d_row + off_col * d_col < 0:
+            raise AssertionError(
+                f"the merge latched at {(state.row, state.col)} heading"
+                f" {merge.latched_heading} is driving to {merge.target}, which"
+                " is behind it"
+            )
 
     def _validate_width(self, start: tuple[int, int]) -> set[_ReachableCell] | None:
         """Validate that every street is two characters wide.
