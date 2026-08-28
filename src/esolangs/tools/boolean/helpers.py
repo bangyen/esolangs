@@ -44,8 +44,24 @@ def _complement(truth_table: str) -> str:
 def _maybe_complement(truth_table: str) -> tuple[str, bool]:
     """Return the table (or its complement) and whether it was flipped.
 
-    A table with more ones than zeros is cheaper to evaluate complemented
-    and inverted, so generators flip when ones dominate.
+    A sum-of-minterms program costs one term per row it selects, so a table
+    with more ones than zeros is cheaper evaluated complemented and
+    inverted: every term saved is paid for once, by whatever the language
+    spells ``1 - x`` as.
+
+    Every generator in that family uses this, and each reads the *returned*
+    table -- selecting its ``1`` rows, which are the original's ``0`` rows
+    when it flipped.  What differs is only how the flag is spent, and it is
+    often free: Collatz Multiverse's OR already ends on the complement it
+    would have added, and Point Break's loop guard is ``1 - f`` for reasons
+    of its own, so both simply drop a step instead of gaining one.
+
+    **A constant table may need excluding, and that is the caller's.**  An
+    all-ones table complements to no minterms at all, which is the shape an
+    all-*zeros* table has -- fine where the sum feeds an inversion that
+    turns 0 back into 1, and wrong where the empty case is special-cased
+    into a different construction, as Circuit Diagram's single self-fed
+    gate is.
     """
     if truth_table.count("1") > len(truth_table) // 2:
         return _complement(truth_table), True

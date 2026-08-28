@@ -896,14 +896,12 @@ def suptiftam(truth_table: str) -> str:
     for name in names:
         lines.append(f"{name}=%-[read]22%")
         lines.append("down(:read:)")
-    # One minterm per row selected, so a table with more ones than zeros is
-    # cheaper summed over its *zero* rows and the sum inverted -- ``1 - sum``
-    # is one more line however many minterms it saves.  The same trade
-    # :func:`~esolangs.tools.boolean.helpers._maybe_complement` makes for the
-    # other sum-of-minterms generators.
-    invert = truth_table.count("1") > len(truth_table) // 2
+    # One minterm per row selected, so a dense table is summed over its
+    # zeros and the sum inverted -- ``1 - sum`` is one line however many
+    # minterms it saves.
+    table, invert = _maybe_complement(truth_table)
     for row in range(2**n):
-        if truth_table[row] != ("0" if invert else "1"):
+        if table[row] != "1":
             continue
         lines.append("p=1")
         for i, negated in minterm_literals(row, n):

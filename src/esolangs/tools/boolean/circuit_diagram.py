@@ -92,7 +92,11 @@ a run prints exactly one character.
 
 from typing import Literal
 
-from esolangs.tools.boolean.helpers import _validate_truth_table, minterm_literals
+from esolangs.tools.boolean.helpers import (
+    _maybe_complement,
+    _validate_truth_table,
+    minterm_literals,
+)
 
 # The gate characters this generator draws: an AND and an OR for the
 # minterm tree, and the two self-fed XOR forms for a constant table.
@@ -459,13 +463,11 @@ def circuit_diagram(truth_table: str) -> str:
     # inverted: every chain that saves costs a share of one ``~``.  A
     # constant table is excluded because it is already a single gate, and
     # complementing it would only swap which glyph that gate uses.
-    constant_table = len(set(truth_table)) == 1
-    invert_result = (
-        not constant_table and truth_table.count("1") > len(truth_table) // 2
-    )
-    minterms = [
-        i for i, bit in enumerate(truth_table) if bit == ("0" if invert_result else "1")
-    ]
+    if len(set(truth_table)) == 1:
+        table, invert_result = truth_table, False
+    else:
+        table, invert_result = _maybe_complement(truth_table)
+    minterms = [i for i, bit in enumerate(table) if bit == "1"]
     if not minterms:
         constant: _ConstGlyph | None = "x"
     elif len(minterms) == len(truth_table):
