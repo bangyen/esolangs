@@ -29,6 +29,46 @@ three.
 | 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
 | 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold | `boolean/helpers.py` `best_input_order` |
 
+## Which shape a boolean generator is
+
+Most of the boolean techniques apply to one shape and are meaningless for
+the other, so the shape is worth knowing before reaching for one. Folding
+(5), input reordering (11) and dependency reduction (10) are tree
+optimizations; complement/polarity (6) is a minterm one.
+
+The two are told apart by **what the size depends on**. A minterm sum costs
+one term per selected row, so its size tracks the ones-count and is blind to
+*which* inputs those rows involve. A decision tree costs one leaf per
+surviving subtree, so at the same ones-count a table depending on a single
+input is far cheaper than parity. Measured 2026-08-28 over all 59 exported
+generators, comparing the best of the six one-dependency tables against
+`01101001` (both ones-count 4):
+
+**Tree-shaped (43).** taglate, ztoalc_l, polynomial, dig, myscript, six_five,
+addsubjump, sophie, modulous, laserfuck, nevermind, jaune, bitdeque,
+unsquare, flowchart, streetcode, forth, basicfuck, bfpda, ram0,
+forbin_boolean, arrowqueue, back, lamfunc, between, eval, factor, circlefuck,
+painfuck, bf_tree, brainfuck, three_d_brainfuck, sbleq, dimensional,
+dimensional_tree, clockwise, brainif, three_x, circuit_diagram, minsky_swap,
+decleq, grapheme, bio — folding 95% (taglate) down to 5% (bio).
+
+**Minterm-shaped (13).** a_painter_ant, bfstack, bit_tilde, cod,
+collatz_multiverse, container, home_row, nocomment, point_break, qoibl,
+rotfuck, suffolk, suptiftam — all within 4% of parity on a one-dependency
+table, because there is no subtree to collapse.
+
+**Neither (1).** `wii2d` measures *negative* (a one-dependency table costs
+slightly more than parity): its construction is a route search over a grid,
+so neither model describes it.
+
+Two entries sit near the boundary and are worth reading as measurements
+rather than labels. `circuit_diagram` folds only 12.6% yet special-cases a
+constant to 57 characters against 2756 — it is a minterm sum whose
+*constants* are special-cased, so the split-order metric puts it on the tree
+side for the wrong reason. `minsky_swap` comes out at 10% only because a
+one-dependency table is *smaller* than parity there by a few characters of
+embedding, not because anything folds.
+
 Technique 9 is the one deliberate refusal to shorten. A zero embedded as
 nothing makes `len(program)` a function of the inputs, leaking the very bits
 the program is supposed to compute — an earlier Bio embedding ran to 236/240/
@@ -152,6 +192,14 @@ The seven that genuinely never fold — `point_break`, `collatz_multiverse`,
 one term per selected row, so a constant table is small because the sum is
 *empty*, not because anything was collapsed. That is a different technique
 (6, complement/polarity), not a missing one. **Nothing is left to convert.**
+
+`point_break` is the one to look at if this seems too neat, since it *does*
+carry an explicit constant short-circuit. Both constants complement to zero
+selected rows, so the general path would emit an empty sum — the reads, the
+complement setup and the loop scaffolding wrapped around nothing. The
+short-circuit skips that scaffolding; it is not standing in for a fold,
+because there is no tree underneath it to fold. What it must still do is
+read its inputs, which it did not until this branch fixed it.
 
 Their read counts were checked at the same time, since an empty sum can drop
 the reads the way a folded tree can: all seven consume every input on a

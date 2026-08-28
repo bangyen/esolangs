@@ -319,3 +319,87 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
         ):
             run(program, io=IO())
         assert buffer.getvalue() == table[combo], f"inputs {bits}"
+
+
+# The shape each boolean generator's construction takes, which decides which
+# optimizations even apply to it: folding, input reordering and dependency
+# reduction are tree techniques, complement/polarity is a minterm one.  The
+# lists are measured (see the doc's "Which shape a boolean generator is"),
+# so this test is what keeps them true rather than a comment that rots.
+_MINTERM_SHAPED = {
+    "a_painter_ant",
+    "bfstack",
+    "bit_tilde",
+    "cod",
+    "collatz_multiverse",
+    "container",
+    "home_row",
+    "nocomment",
+    "point_break",
+    "qoibl",
+    "rotfuck",
+    "suffolk",
+    "suptiftam",
+}
+
+# Neither model describes these.  ``wii2d`` is a route search over a grid,
+# not a sum and not a tree.  The other two do not take a boolean truth table
+# at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
+# numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
+_UNSHAPED = {"wii2d", "jaune_multiply", "circlefuck_byte"}
+
+# Every table depending on exactly one input, at n == 3, both polarities.
+# All have ones-count 4, as parity does, so the comparison below is not
+# measuring density.
+_ONE_DEPENDENCY = (
+    "11110000",
+    "00001111",
+    "11001100",
+    "00110011",
+    "10101010",
+    "01010101",
+)
+_PARITY = "01101001"
+
+
+@pytest.mark.parametrize(
+    "name",
+    sorted(
+        n
+        for n in boolean.__all__
+        if n not in ("BOOLEAN", "instantiate")
+        and callable(getattr(boolean, n, None))
+        and n not in _UNSHAPED
+    ),
+)
+def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
+    """A tree generator folds a one-dependency table; a minterm sum cannot.
+
+    The discriminator is what the size depends on.  A minterm sum spends
+    one term per selected row, so at a fixed ones-count it costs the same
+    whichever inputs those rows involve.  A decision tree spends one leaf
+    per surviving subtree, so a table depending on a single input collapses
+    to two leaves while parity keeps all eight.
+
+    Both sides are compared at ones-count 4 so density cannot confound it.
+    The one-dependency tables are tried in both split orders, because a
+    generator that branches last-input-first folds ``10101010`` where an
+    MSB-first one folds ``11110000`` -- reading only the latter is what
+    made an earlier audit call four folding generators unfolding.
+    """
+    fn = getattr(boolean, name)
+    best = min(len(fn(table)) for table in _ONE_DEPENDENCY)
+    parity = len(fn(_PARITY))
+    folds = 1 - best / parity
+    if name in _MINTERM_SHAPED:
+        assert folds < 0.05, (
+            f"{name} is listed as minterm-shaped but folds {folds:.1%} on a "
+            f"one-dependency table -- if it grew a tree, move it to the "
+            f"tree-shaped list and consider whether reordering now applies"
+        )
+    else:
+        assert folds >= 0.05, (
+            f"{name} is listed as tree-shaped but folds only {folds:.1%} -- "
+            f"either its folding regressed or it is a minterm sum and belongs "
+            f"in _MINTERM_SHAPED"
+        )
