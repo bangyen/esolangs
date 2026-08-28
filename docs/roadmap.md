@@ -387,58 +387,74 @@ rest.  What remains:
 ## Boolean generators that still emit a full decision tree
 
 A generator "folds" when a subtree whose table rows all agree becomes a
-leaf instead of branching on bits that cannot change the answer.  Most of
-the tree generators do; the ones below still spend a branch per level on
-every path, and each is recorded with what it would take, because the
-reason differs per language and reasoning from the shape of the code
+leaf instead of branching on bits that cannot change the answer.  **Every
+tree generator now folds except ArrowQueue** — measured, not read off the
+source: a ones-count-controlled length test over the tree generators leaves
+ArrowQueue alone emitting a byte-identical 275 characters for a constant
+and a mixed table, which is the signature of not folding.
+
+Each entry is recorded with what it took or what it would take, because
+the reason differs per language and reasoning from the shape of the code
 proved unreliable — Between, LaserFuck, BrainIf, Dig, Modulous, Unsquare
 and Nevermind were each written off on structural grounds and each folded
-once actually probed.
+once actually probed, as later did Clockwise, Forþ and Eval below.
 
 The rule that did hold: folding pays when a folded leaf's cost does not
 scale with the depth it skipped.  Where a leaf has to make up work per
 skipped level, the fold cancels.
 
-**Still open, in rough order of promise.**
+**One left: ArrowQueue.**  Everything else on this list now folds.  Note
+how the "ruled out" entries went: Clockwise, Forþ and Eval were each closed
+with a specific structural argument, and all three were wrong — the
+arguments were about *removing* a node, when the fold only needs the node
+*replaced* or its skipped work carried.  Treat a structural impossibility
+claim here as a hypothesis to probe, not a result.
 
-- **Circlefuck** (and `circlefuck_byte`) — the closest.  A folded leaf
-  must clear the cell the skipped `[[-]` would have cleared and make up
-  the `<` moves those levels walked; adding the clear alone fixes `n == 1`
-  and leaves `n >= 2` wrong, so the pointer bookkeeping needs a real trace
-  of the interpreter rather than another guess.
-- **Streetcode** — the tree itself folds (`_streetcode_tree` recurses on
-  table halves, and a constant slice is a leaf).  Two things break: the
-  hall that joins two subtrees is sized `height * 2` from `len(top)` and
-  assumes both children are the same height, and a folded leaf arrives
-  with CP short by the `=` each skipped hall would have spent, since the
-  leaf prints from the loader loop's cell.  Compensating the CP inside the
-  leaf widens it, and `_streetcode_combine` pads blocks to a common height
-  but assumes a uniform width, so the collapsed tree then misaligns
-  against the input loops beside it.  Wants the hall and the combine
-  reworked together.
-- **Decleq** — folds correctly with a one-line change, and gains 1.3%.
-  Its size is dominated by fixed data cells and the read preamble rather
-  than by the tree, so the saving is real but not worth the change on its
-  own.
+- **ArrowQueue** — the fold is **asymmetric**, measured against the
+  interpreter at n=2.  A `0` leaf folds: it halts by running off the grid,
+  and leftover queue contents cannot stop that.  A `1` leaf does not.  Its
+  ring pops a direction at every corner and needs the queue to hold exactly
+  `R, D, L, U`; skipping a `+` branch leaves that bit's direction queued
+  ahead of them.  Tracing a folded all-ones program shows the queue
+  arriving as `[R, R, R, D, L, U]`, so the corners pop `R, R, R`, the ring
+  never closes, and the pointer leaves the grid — reporting `0` for a `1`
+  entry.
 
-**Ruled out, with the reason.**
+  What it would take: a **drain** — one `+` per skipped level whose two
+  exits reconverge, the ArrowQueue analogue of the `=` CP advances
+  Streetcode carries.  That is a layout design plus per-instantiation
+  halt-vs-loop verification, i.e. Streetcode-class effort (which needed an
+  interpreter fix and one revert before it landed).  The 0-leaf half is
+  reachable on geometry alone if a partial win is wanted first.
 
-- **Clockwise** — its reads are *inside* the tree: `S` plus seven `.` down
-  a column, nine rows per level.  A folded leaf still has to consume the
-  inputs it skipped, at nine rows each, which is exactly what the
-  branching cost.  The cancellation is arithmetic, not a layout artifact.
-- **Forþ** — each level does two paired things: consumes an input bit
-  through the dispatch arithmetic, and pops one definition index with
-  `;`, which is the only way to pop and also dispatches.  The stack holds
-  the definition indices, so a folded node leaves both a bit unread and an
-  index unpopped and the next dispatch reads the wrong value.
-- **Eval** — a node's code *is* its heap index: `~=~?` then `i + 1`
-  semicolons.  Dropping a node renumbers every node after it.
-- **6-5** — **done.** The tree folds its constant subtrees, and since
-  folding is what spends the 35 branch labels, the generator now picks the
-  tree by counting them rather than by `n`. That left `six_five_arithmetic`
-  unreachable — a buildable `T` confines the ones to low indices, which
-  leaves the rest of the table constant, which folds — so it was retired.
+**Done** (each verified by a ones-count-controlled length test, `11110000`
+against `10010110` at n=3 unless noted):
+
+- **Circlefuck** / `circlefuck_byte` — 263 vs 594 (byte form 219 vs 733).
+  Subtrees are *strides*, not runs — it branches on the last input first —
+  and a folded leaf must emit its own `[-]`, since the clear a full-depth
+  leaf relies on lives inside each `[` on the way down.
+- **Forþ** — 35 vs 119.  Heap indices were not the obstacle: the
+  interpreter keys scopes in a `dict` and calls with `.get()`, so a gap is
+  just a scope that never exists.  The catch was orphans — marking only a
+  folded node's two children leaves its grandchildren emitted but
+  unreachable.
+- **Decleq** — 1746 vs 1920.  Modest at small `n` because the 47-step
+  normalize chains are a fixed `47n` cost, but 44% at n=6.
+- **Eval** — 55 vs 127.  A folded subtree cannot be *removed* (the heap is
+  positional) but can be *replaced*: the node becomes its leaf and the
+  descendants become empty strings, so every index stays put.
+- **Clockwise** — 411 vs 621.  Needed a leaf test plus two geometry
+  corrections.
+- **Streetcode** — 389 vs 1439.  Needed an interpreter fix first
+  (`_junction_choices` dropped a road that was sighted but not yet
+  drivable), not the geometry rework this section used to predict.
+- **6-5** — 44 vs 226.  Since folding is what spends the 35 branch labels,
+  the generator now picks the tree by counting them rather than by `n`,
+  which renders tables the old `n <= 5` gate refused (AND-6 needs 6
+  labels).  That left `six_five_arithmetic` unreachable — a buildable `T`
+  confines the ones to low indices, which leaves the rest constant, which
+  folds — so it was retired.
 
 The generators that are not decision trees at all — the sum-of-minterms
 group (bit~, Suptiftam, Suffolk, Collatz Multiverse, Qoibl, Point Break,
