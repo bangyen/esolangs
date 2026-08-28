@@ -278,12 +278,12 @@ def collatz_multiverse(truth_table: str) -> str:
     acc = "acc"
     lines.append("acc = negativeOne x + k1, NOT PRINT.")
     # Each selected row costs a minterm -- an indicator per input, an AND
-    # chain, and a flip -- so a table with more ones than zeros is cheaper
-    # built from its *zero* rows.  Inverting the answer is free here: the
-    # OR already ends on a ``flip``, so the complement just drops it.
-    invert = truth_table.count("1") > len(truth_table) // 2
+    # chain, and a flip -- so a dense table is built from its zeros.
+    # Inverting is free here: the OR already ends on a ``flip``, so the
+    # complement drops it rather than adding one.
+    table, invert = _maybe_complement(truth_table)
     for k in range(2**n):
-        if truth_table[k] == ("1" if invert else "0"):
+        if table[k] == "0":
             continue
         indicators = []
         for i, negated in minterm_literals(k, n):
@@ -634,9 +634,9 @@ def point_break(truth_table: str) -> str:
     # a table with more ones than zeros is cheaper summed over its *zero*
     # rows.  Inverting is free: the tail already needs ``1 - f`` for the
     # loop guard, so a complemented sum *is* that guard.
-    invert = truth_table.count("1") > len(truth_table) // 2
+    table, invert = _maybe_complement(truth_table)
     for k in range(2**n):
-        if truth_table[k] == ("1" if invert else "0"):
+        if table[k] == "0":
             continue
         factors = [
             _pb_name(1 + n + i) if negated else _pb_name(1 + i)
