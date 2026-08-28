@@ -309,17 +309,39 @@ def between(truth_table: str) -> str:
     to the ``0`` subtree; each leaf prints ``|0|``/``|1|`` and exits.  The
     branch addresses are 0-indexed line numbers, so the size of each subtree
     is computed ahead of the linear layout.
+
+    A subtree whose rows all agree becomes a leaf rather than branching on
+    bits that cannot change the answer.  Because the addresses come from
+    ``size`` walking the tree a second time, the fold has to be a property
+    of the path alone -- ``constant`` -- so both walks stop in the same
+    places; a check either walk applied and the other did not would leave
+    every branch below it naming the wrong line.
     """
     n = _validate_truth_table(truth_table)
 
-    def leaf_value(path: list[int]) -> int:
+    def first_row(path: list[int]) -> int:
+        """Return the lowest table row ``path`` reaches.
+
+        A full path spells a row outright; a short one has its unconsumed
+        bits still to come, so it names the *start* of the ``2**(n - len)``
+        run they span.  Shifting by those bits is what makes a folded leaf
+        read its own slice rather than the small index the raw path spells.
+        """
         row = 0
         for bit in path:
             row = row * 2 + bit
-        return int(truth_table[row])
+        return row << (n - len(path))
+
+    def leaf_value(path: list[int]) -> int:
+        return int(truth_table[first_row(path)])
+
+    def constant(path: list[int]) -> bool:
+        """Whether every row ``path`` reaches holds the same entry."""
+        row = first_row(path)
+        return len(set(truth_table[row : row + 2 ** (n - len(path))])) == 1
 
     def size(path: list[int]) -> int:
-        if len(path) == n:
+        if len(path) == n or constant(path):
             return 2
         return 1 + size([*path, 1]) + size([*path, 0])
 
@@ -330,7 +352,10 @@ def between(truth_table: str) -> str:
         lines.append(f"[{bit}]s|[{bit}]c.|")
 
     def emit(path: list[int], offset: int) -> int:
-        if len(path) == n:
+        # Must stop exactly where ``size`` stops: the branch addresses are
+        # line numbers ``size`` computed ahead of the layout, so a subtree
+        # that folds here and not there would name the wrong target.
+        if len(path) == n or constant(path):
             lines.append(f"|{leaf_value(path)}|p.")
             lines.append(".x.")
             return offset + 2
