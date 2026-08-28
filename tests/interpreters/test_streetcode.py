@@ -35,12 +35,15 @@ from esolangs.interpreters.grid_based.streetcode import (
     _lawful_turn,
     _left,
     _Machine,
+    _matches,
     _Merge,
     _open_toward,
     _plus_dist,
     _ReachableCell,
     _right,
     _road_mouth,
+    _rotate,
+    _rotations,
     _State,
     _turn_of,
     run,
@@ -307,6 +310,33 @@ class TestStreetcodeAmbiguousTurns:
         width of the road, not a road leading off it."""
         grid = _Grid([" C ", "+ +", "   ", "+ +", " | "])
         assert _junction_kind(grid, _Car(0, 1, "S")) == 0
+
+    def test_every_road_a_junction_offers_is_open_ahead(self) -> None:
+        """A junction never offers a road the car cannot step onto.
+
+        This is what retired the deferral guard ``701de45`` added at the
+        turn (see :func:`_heading_from_junction`).  ``_road_deep``'s first
+        test is the very cell that turn would step onto, and the crossing
+        branch tests ``_open_toward`` directly, so an offered road is open
+        by construction and the "sighted too early" case cannot arise.
+        Weakening either check brings the bug back with nothing to catch
+        it, so the invariant is asserted rather than left implied: over
+        every reachable drive state of the committed examples, every road
+        offered is open ahead.
+        """
+        for path in (
+            "examples/hello-world/streetcode.txt",
+            "examples/boolean/streetcode.txt",
+        ):
+            code = Path(path).read_text().split("\n")
+            if code and code[-1] == "":
+                code = code[:-1]
+            machine = _Machine(code, IO())
+            assert machine._graph is not None  # noqa: SLF001
+            for state in machine._graph:  # noqa: SLF001
+                car = _Car(state.row, state.col, state.heading)
+                for road in _junction_choices(machine.grid, car):
+                    assert _open_toward(machine.grid, car, road), (path, state, road)
 
     # A mouth whose gap opens ahead of the car (its near ``+`` sighted at
     # depth 0 or +1) and whose far ``+`` has open interior beneath it (so
@@ -1869,3 +1899,89 @@ class TestStreetcodeMutationSurvivors:
         assert _plus_dist(machine.grid, car, "N") is None
         assert _plus_dist(machine.grid, car, "E") is None
         assert _plus_dist(machine.grid, car, "W") is None
+
+
+class TestStreetcodeWallForms:
+    """The wall-form machinery, asserted directly rather than through a run.
+
+    Mutation testing left 17 survivors in :func:`_rotate`,
+    :func:`_rotations` and :func:`_matches` -- the densest cluster in the
+    module -- and 14 of them provably change how the car drives or crash
+    the drive-state search outright.  They survived because nothing tested
+    the forms directly: they are only ever exercised through whole-program
+    validation, where a broken rotation still happens to accept every
+    committed program.  These pin the pieces themselves.
+    """
+
+    def test_a_rotation_is_a_quarter_turn_clockwise(self) -> None:
+        """``_rotate`` permutes a 3x3 form, and which permutation matters.
+
+        Ten mutants perturbing a single index of that permutation
+        survived.  Labelling the cells makes the mapping checkable, which
+        pins all nine indices at once.
+        """
+        form = tuple("012345678")
+        # Clockwise: the bottom-left corner becomes the top-left, and the
+        # top-left becomes the top-right.
+        assert _rotate(form) == tuple("630741852")  # type: ignore[arg-type]
+        # Four quarter turns are the identity -- a property no
+        # single-index perturbation of the permutation can satisfy.
+        turned = form
+        for _ in range(4):
+            turned = _rotate(turned)  # type: ignore[arg-type]
+        assert turned == form
+
+    def test_rotations_returns_all_four_and_validates_the_alphabet(self) -> None:
+        """``_rotations`` is four turns of one written form, no more.
+
+        Seven mutants here survived: the loop count, the accumulation, and
+        the alphabet lookup.  A wall form is written as a string and must
+        come back as :data:`_Pattern` characters, four distinct ways
+        round, so ``_matches`` sees every orientation of a corner.
+        """
+        rots = _rotations("?W?W..?..")
+        assert len(rots) == 4
+        assert len(set(rots)) == 4  # a corner is not symmetric
+        # The written string is validated into the pattern alphabet rather
+        # than asserted to be it: every cell is one of the three.
+        assert all(set(rot) <= {"?", "W", "."} for rot in rots)
+        # Four turns return the form as written.
+        assert rots[-1] == tuple("?W?W..?..")
+
+    def test_matches_honours_each_letter_of_the_form_alphabet(self) -> None:
+        """``?`` matches anything, ``W`` a wall, ``.`` a non-wall.
+
+        Six ``_matches`` mutants survived by flipping one of those three
+        rules, which whole-program validation absorbs.  Checking each
+        letter against both a wall and a non-wall pins the alphabet.
+        """
+        wall, floor = "+", " "
+        # '?' accepts either.
+        assert _matches((wall,), ("?",))
+        assert _matches((floor,), ("?",))
+        # 'W' accepts only a wall, and every wall glyph counts.
+        assert _matches((wall,), ("W",))
+        assert _matches(("-",), ("W",))
+        assert _matches(("|",), ("W",))
+        assert not _matches((floor,), ("W",))
+        # '.' accepts only a non-wall.
+        assert _matches((floor,), (".",))
+        assert not _matches((wall,), (".",))
+        # Off the grid is not a wall, so the void satisfies '.'.
+        assert _matches((_VOID,), (".",))
+        assert not _matches((_VOID,), ("W",))
+
+    def test_a_form_and_a_block_of_different_lengths_is_a_bug(self) -> None:
+        """``_matches`` zips strictly, so a size mismatch raises.
+
+        Three mutants relaxing that ``strict=True`` survived, because
+        every real call passes a 3x3 block against a nine-cell form and a
+        relaxed zip is then identical.  It stops being identical the
+        moment a form is written with the wrong number of cells -- which
+        is the mistake ``strict`` exists to catch, and it would otherwise
+        be silently truncated into a rule that matches on a prefix.
+        """
+        with pytest.raises(ValueError, match="argument"):
+            _matches(("+", " "), ("W",))
+        with pytest.raises(ValueError, match="argument"):
+            _matches(("+",), ("W", "."))
