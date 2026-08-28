@@ -388,10 +388,11 @@ rest.  What remains:
 
 A generator "folds" when a subtree whose table rows all agree becomes a
 leaf instead of branching on bits that cannot change the answer.  **Every
-tree generator now folds except ArrowQueue** — measured, not read off the
-source: a ones-count-controlled length test over the tree generators leaves
-ArrowQueue alone emitting a byte-identical 275 characters for a constant
-and a mixed table, which is the signature of not folding.
+tree generator now folds** — ArrowQueue, the last holdout, landed with the
+drain described below.  This is measured rather than read off the source:
+a ones-count-controlled length test (`11110000` against `10010110`, equal
+ones-counts so nothing shrinks for the wrong reason) shows every one of
+them strictly shorter on the constant table.
 
 Each entry is recorded with what it took or what it would take, because
 the reason differs per language and reasoning from the shape of the code
@@ -403,29 +404,12 @@ The rule that did hold: folding pays when a folded leaf's cost does not
 scale with the depth it skipped.  Where a leaf has to make up work per
 skipped level, the fold cancels.
 
-**One left: ArrowQueue.**  Everything else on this list now folds.  Note
-how the "ruled out" entries went: Clockwise, Forþ and Eval were each closed
-with a specific structural argument, and all three were wrong — the
-arguments were about *removing* a node, when the fold only needs the node
-*replaced* or its skipped work carried.  Treat a structural impossibility
-claim here as a hypothesis to probe, not a result.
-
-- **ArrowQueue** — the fold is **asymmetric**, measured against the
-  interpreter at n=2.  A `0` leaf folds: it halts by running off the grid,
-  and leftover queue contents cannot stop that.  A `1` leaf does not.  Its
-  ring pops a direction at every corner and needs the queue to hold exactly
-  `R, D, L, U`; skipping a `+` branch leaves that bit's direction queued
-  ahead of them.  Tracing a folded all-ones program shows the queue
-  arriving as `[R, R, R, D, L, U]`, so the corners pop `R, R, R`, the ring
-  never closes, and the pointer leaves the grid — reporting `0` for a `1`
-  entry.
-
-  What it would take: a **drain** — one `+` per skipped level whose two
-  exits reconverge, the ArrowQueue analogue of the `=` CP advances
-  Streetcode carries.  That is a layout design plus per-instantiation
-  halt-vs-loop verification, i.e. Streetcode-class effort (which needed an
-  interpreter fix and one revert before it landed).  The 0-leaf half is
-  reachable on geometry alone if a partial win is wanted first.
+**None left — every tree generator folds.**  Note how the "ruled out"
+entries went: Clockwise, Forþ and Eval were each closed with a specific
+structural argument, and all three were wrong, in the same way as ArrowQueue
+turned out to be — the arguments were about *removing* a node, when the fold
+only needs the node *replaced* or its skipped work *carried*.  Treat a
+structural impossibility claim here as a hypothesis to probe, not a result.
 
 **Done** (each verified by a ones-count-controlled length test, `11110000`
 against `10010110` at n=3 unless noted):
@@ -449,6 +433,15 @@ against `10010110` at n=3 unless noted):
 - **Streetcode** — 389 vs 1439.  Needed an interpreter fix first
   (`_junction_choices` dropped a road that was sighted but not yet
   drivable), not the geometry rework this section used to predict.
+- **ArrowQueue** — 128 vs 275, and 130 vs 1434 at n=5.  A `0` leaf folds on
+  geometry alone (it halts by leaving the grid, which the queue cannot
+  stop); a `1` leaf needs its skipped bits **drained**, or its ring's corner
+  pops find them instead of `R, D, L, U`.  The drain works because `+`
+  erases arrival direction, so the two exits only have to reach the same
+  *cell*, not the same heading — a 4-glyph gadget stepping one row down and
+  one column right per bit.  Instantiated programs can grow a few characters
+  on shallow tables (AND-2's example went 124→128) because `_compact` finds
+  fewer blank columns; no template grows, checked exhaustively through n=4.
 - **6-5** — 44 vs 226.  Since folding is what spends the 35 branch labels,
   the generator now picks the tree by counting them rather than by `n`,
   which renders tables the old `n <= 5` gate refused (AND-6 needs 6
