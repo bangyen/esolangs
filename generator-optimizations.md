@@ -127,9 +127,9 @@ forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
 characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 
-**Build a tree but never fold (5):** clockwise, decleq, eval, arrowqueue,
-streetcode, six_five (n≤5). `circlefuck` / `circlefuck_byte` and `forth` were
-on this list and now fold — see below.
+**Build a tree but never fold (4):** clockwise, eval, arrowqueue, streetcode,
+six_five (n≤5). `circlefuck` / `circlefuck_byte`, `forth` and `decleq` were on
+this list and now fold — see below.
 
 These emit a byte-identical program size for every table of a given `n`,
 which is the signature of not folding: the leaf count is fixed by `n` alone.
@@ -176,8 +176,27 @@ a leaf test plus whatever index bookkeeping the language needs.
   bytes. The first version produced a *constant* table (99 chars) larger than
   a partly-constant one (63), which is what exposed it; the fix walks the
   whole subtree. Pinned by `test_folded_subtree_leaves_no_orphans`.
-- `decleq` — same self-modifying-memory family as `sbleq`, which already folds
-  with backpatched addresses, so there is a worked in-repo precedent.
+- `decleq` — **done on this branch.** Same self-modifying-memory family as
+  `sbleq`. Unlike the other two it splits **most-significant-first**, so its
+  subtrees are contiguous runs and `11110000` folds here (to a single branch)
+  where it folds nothing in circlefuck or forth.
+
+  The twist is that `data_base` is computed *before* emitting — the output
+  cells sit above the code, so their addresses depend on how long the tree
+  turns out to be. A second walk (`tree_instrs`) sizes the tree first and must
+  stop in exactly the places the emitting walk will.
+
+  Getting that wrong is invisible: `mem.extend([0] * (out49 - len(mem) + 1))`
+  pads out to whatever address was reserved, so the leaves still resolve and
+  every program still prints correctly — it just carries a block of dead zero
+  cells (63 of them at n=3). The test therefore pins the *padding*, not the
+  output; an output-based test passes either way, which I confirmed by
+  desyncing the count deliberately.
+
+  Savings are modest at small `n` because the 47-step normalize chains are a
+  fixed `47n` cost the fold cannot touch, but they grow as the tree overtakes
+  them: constant vs XOR is 7% at n=2, 16% at n=4, and **44% at n=6**
+  (3448 vs 6148 characters).
 - `eval` — genuinely harder: its tree is *positional* on the tree stack in BFS
   order, dense by construction, so a collapsed subtree shifts every later
   index. The opposite case from `forth`.

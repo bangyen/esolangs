@@ -337,6 +337,52 @@ class TestDecleq:
         assert len(decs) == 47 * 2 + 3
         assert sum(1 for ins in instrs if ins[0] == -1) == 2  # one read each
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant subtree becomes a leaf instead of branching further.
+
+        Decleq splits most-significant-first, so its subtrees are
+        contiguous runs: ``11110000`` is two constant halves and folds to
+        one branch, while ``10101010`` is constant over no run at all and
+        keeps the full tree.
+        """
+        program = boolean.decleq("11110000")
+        cells = [int(tok) for tok in program.split()]
+        instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
+        decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
+        assert len(decs) == 47 * 3 + 1  # three normalize chains, one branch
+        assert len(boolean.decleq("11110000")) < len(boolean.decleq("10101010"))
+
+    def test_folding_shrinks_the_data_cells_too(self) -> None:
+        """The data cells are sized from the *folded* tree, not the full one.
+
+        ``data_base`` is computed before emitting, so a fold that shrank
+        the tree while still reserving room for a full one would pad the
+        gap with zeros.  That is not a correctness bug -- the padding runs
+        out to whatever address was reserved, so the leaves still resolve
+        -- which is exactly why it needs pinning here: the program merely
+        comes out larger, and nothing else would notice.
+        """
+        for table in ("11111111", "11110000", "11001100"):
+            n = len(table).bit_length() - 1
+            cells = [int(tok) for tok in boolean.decleq(table).split()]
+            trailing = 0
+            for value in reversed(cells[:-2]):  # the two output cells hold 48/49
+                if value:
+                    break
+                trailing += 1
+            # exactly the n read cells, which are storage rather than padding
+            assert trailing == n, f"{table} pads {trailing - n} unused cells"
+
+    def test_folded_leaves_still_print_correctly(self) -> None:
+        """Every folded table still prints its entry for every input."""
+        for table in ("11111111", "11110000", "11001100", "00001111"):
+            program = boolean.decleq(table)
+            n = len(table).bit_length() - 1
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_decleq(program, [str(b) for b in bits])
+                assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
