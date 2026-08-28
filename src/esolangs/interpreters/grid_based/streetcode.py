@@ -197,6 +197,24 @@ def _matches(block: tuple[str, ...], form: tuple[_Pattern, ...]) -> bool:
     return True
 
 
+def _require(*, condition: bool, message: str) -> None:
+    """Raise when an invariant this module relies on does not hold.
+
+    Distinct from the ``ValueError`` the validators raise.  That one says
+    the *program* is malformed, and is part of the documented contract; a
+    failure here says the *interpreter* is wrong -- some code depended on
+    a property that an earlier check was supposed to have established and
+    no longer does.  A caller cannot provoke it with a bad program.
+
+    Not written as ``assert``: bandit rejects those in ``src`` (B101), and
+    an invariant that disappears under ``python -O`` is not one the code
+    can lean on.  The condition is keyword-only so a call reads as a
+    statement of what must be true rather than a bare boolean argument.
+    """
+    if not condition:
+        raise AssertionError(message)
+
+
 def _right(heading: _Heading) -> _Heading:
     """Return the heading 90 degrees clockwise from ``heading``."""
     return _HEADINGS[(_HEADINGS.index(heading) + 1) % 4]
@@ -345,15 +363,23 @@ class _Machine:
     def _block(self, cell: _ReachableCell) -> tuple[str, ...]:
         """Return the three-by-three neighbourhood around a reachable cell.
 
-        Unlike :meth:`_at` this does not bounds-check, and does not need
-        to: ``_validate_enclosed`` has already rejected any street whose
-        road touches the border, so a cell that survives to be passed
-        here has all eight of its neighbours on the grid.  The argument
-        type is the proof -- only the flood fill mints a
-        ``_ReachableCell``, so there is no way to reach this read from a
-        coordinate that has not been through the enclosure check.
+        Unlike :meth:`_at` this does not bounds-check the eight reads.
+        What makes that sound is :meth:`_validate_enclosed`, which has
+        already rejected any street whose road touches the border, so a
+        cell reaching here has all eight neighbours on the grid.  The
+        ``_ReachableCell`` type records where the cell came from; the
+        precondition below states the property that actually matters,
+        and is what fails if the fill ever yields a border cell.
         """
         row, col = cell
+        _require(
+            condition=0 < row < self.height - 1 and 0 < col < self.width - 1,
+            message=(
+                f"{cell} is on the border of the grid, so its neighbourhood"
+                " runs off it: the enclosure check did not establish what"
+                " this read depends on"
+            ),
+        )
         return tuple(
             self.grid[row + d_row][col + d_col]
             for d_row in (-1, 0, 1)
@@ -649,21 +675,35 @@ class _Machine:
         # Isolated single cell is not a street
         if len(visited) <= 1:
             return None
-        for r, c in visited:
+        violation = self._width_violation(visited)
+        if violation is not None:
+            raise ValueError(violation)
+        return visited
+
+    def _width_violation(self, reachable: set[_ReachableCell]) -> str | None:
+        """Name a cell breaking the two-wide rule, or ``None`` if none does.
+
+        The rule :meth:`_validate_width` enforces, as a value rather than
+        a raise, so the same statement of it can be asked as a question --
+        after the fact, or of a grid the validator has not seen -- without
+        a second implementation free to drift from this one.  The message
+        is the one the validator raises with.
+        """
+        for r, c in reachable:
             n = self._open(r - 1, c)
             s = self._open(r + 1, c)
             e = self._open(r, c + 1)
             w2 = self._open(r, c - 1)
             cnt = sum((n, s, e, w2))
             if cnt == 1:
-                raise ValueError(f"not two-wide at {(r, c)} (dead end)")
+                return f"not two-wide at {(r, c)} (dead end)"
             if n and s and not (e or w2):
-                raise ValueError(f"not two-wide at {(r, c)} (vertical)")
+                return f"not two-wide at {(r, c)} (vertical)"
             if e and w2 and not (n or s):
-                raise ValueError(f"not two-wide at {(r, c)} (horizontal)")
+                return f"not two-wide at {(r, c)} (horizontal)"
             if all(self._open(r + dr, c + dc) for dr in (0, 1, 2) for dc in (0, 1, 2)):
-                raise ValueError(f"not two-wide at {(r, c)} (wider than two)")
-        return visited
+                return f"not two-wide at {(r, c)} (wider than two)"
+        return None
 
     def _validate_walls(self, reachable: set[_ReachableCell]) -> None:
         """Validate the wall structure around every drivable cell.
@@ -742,12 +782,24 @@ class _Machine:
         looks like an ordinary road: only the fact that it leads off the
         grid marks it as a gap rather than a street.
         """
+        violation = self._enclosure_violation(reachable)
+        if violation is not None:
+            raise ValueError(violation)
+
+    def _enclosure_violation(self, reachable: set[_ReachableCell]) -> str | None:
+        """Name a road cell on the grid's border, or ``None`` if none is.
+
+        The property :meth:`_block` depends on, stated once so that the
+        read's precondition and this check cannot disagree about where the
+        border is.
+        """
         for r, c in reachable:
             if r in (0, self.height - 1) or c in (0, self.width - 1):
-                raise ValueError(
+                return (
                     f"street reaches the edge of the grid at {(r, c)}:"
                     " the road is not enclosed by walls"
                 )
+        return None
 
     def _validate_glyphs(self) -> None:
         """Reject a ``-`` and a ``|`` drawn side by side.
@@ -764,6 +816,12 @@ class _Machine:
         match any wall character alike.  Neither example, neither wiki
         diagram, nor any of the generated programs draws such a pair.
         """
+        violation = self._glyph_violation()
+        if violation is not None:
+            raise ValueError(violation)
+
+    def _glyph_violation(self) -> str | None:
+        """Name a ``-`` drawn beside a ``|``, or ``None`` if none is."""
         for r in range(self.height):
             for c in range(self.width):
                 char = self.grid[r][c]
@@ -777,10 +835,11 @@ class _Machine:
                     continue
                 for nr, nc in neighbours:
                     if self._at(nr, nc) == other:
-                        raise ValueError(
+                        return (
                             f"wall turns without a corner at {(r, c)}:"
                             f" {char!r} beside {other!r} at {(nr, nc)}"
                         )
+        return None
 
     def _validate_connected(self, reachable: set[_ReachableCell]) -> None:
         """Reject geometry that is not part of the one street network.
@@ -821,6 +880,12 @@ class _Machine:
         unimplemented: a program that contains stray marks is more likely
         drawn wrong than annotated, and nothing in the repo needs them.
         """
+        violation = self._connection_violation(reachable)
+        if violation is not None:
+            raise ValueError(violation)
+
+    def _connection_violation(self, reachable: set[_ReachableCell]) -> str | None:
+        """Name drawn geometry off the street, or ``None`` if none is."""
         grown = {
             (r + dr, c + dc)
             for r, c in reachable
@@ -832,9 +897,8 @@ class _Machine:
                 char = self.grid[r][c]
                 if char == " " or (r, c) in grown:
                     continue
-                raise ValueError(
-                    f"geometry not connected to the street at {(r, c)} ({char!r})"
-                )
+                return f"geometry not connected to the street at {(r, c)} ({char!r})"
+        return None
 
     def _road_mouth(
         self, heading: _Heading, side: _Heading
