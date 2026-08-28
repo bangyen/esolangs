@@ -7,6 +7,7 @@ Break.
 
 import pytest
 
+import esolangs
 from esolangs.tools import boolean
 from tests.tools.boolean_runners import (
     _PB_CONSTANTS,
@@ -158,6 +159,53 @@ class TestDig:
             "            > >$30:@"
         )
         assert boolean.dig("0110") == expected
+
+    def test_a_constant_table_is_one_line(self) -> None:
+        """Nothing to branch on, so the whole grid is a single leaf."""
+        program = boolean.dig("1111")
+        assert [line for line in program.split("\n") if line.strip()] == [
+            "'",
+            ">$5~~1:@",
+        ]
+
+    def test_constant_subtrees_prune_their_rows(self) -> None:
+        """A folded node's descendants are never written.
+
+        Both tables have four ones, so the difference is arrangement alone:
+        ``11110000`` is two constant halves and keeps one row per half,
+        while parity has no constant slice above a single row and fills the
+        grid.
+        """
+        folded = boolean.dig("11110000")
+        full = boolean.dig("10010110")
+        assert len(folded) < len(full)
+        assert sum(1 for r in folded.split("\n") if r.strip()) < sum(
+            1 for r in full.split("\n") if r.strip()
+        )
+
+    @pytest.mark.parametrize("table", ["11", "1111", "11110000", "10010110"])
+    def test_a_folded_program_still_reads_every_input(self, table: str) -> None:
+        """Folding drops branching, never a read.
+
+        A program whose input count depended on its table would desync a
+        caller feeding several programs from one stream, so a folded leaf
+        consumes what it did not branch on; one line short is an EOF.
+        """
+        n = len(table).bit_length() - 1
+        with pytest.raises(EOFError):
+            esolangs.run("Dig", boolean.dig(table), stdin="\n".join(["0"] * (n - 1)))
+
+    def test_a_long_read_run_chains_its_windows(self) -> None:
+        """Past nine cells the ``$`` runs chain rather than growing a digit.
+
+        ``$`` takes its count from the digit beside it, so one window holds
+        at most nine cells -- six reads plus the three that print.  A
+        constant table at n == 7 needs more than that, and must still run.
+        """
+        table = "1" * 128  # n == 7, constant
+        program = boolean.dig(table)
+        assert program.count("$") > 1  # more than one window
+        assert esolangs.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
 
 
 class TestSophie:

@@ -15,6 +15,9 @@ from esolangs.tools.text.helpers import _cm_constants
 _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
 _DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own block
 _DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
+# ``$`` reads its repeat count from the digit beside it, so a run of cells
+# under one ``$`` is at most nine long.
+_DIG_SPAN = 9
 
 
 def decleq(truth_table: str) -> str:
@@ -332,30 +335,74 @@ def dig(truth_table: str) -> str:
     down or up on that bit.  The two children of a node keep facing right
     into the next level's branch, and the leaves print the function's value
     for the input combination they stand for.
+
+    A subtree whose rows all agree becomes a leaf, and the rows it would
+    have filled are simply never written -- which is what the walk buys
+    over filling the grid level by level, where a pruned row still had to
+    be skipped by hand.  A constant table collapses to a single line.
+
+    A folded leaf still reads the inputs it never branched on, since a
+    program whose input count depended on its table would desync a caller
+    feeding several programs from one stream.  Those reads are cheap: a
+    branch spends ``;`` to store its bit for its own ``#``, and a leaf
+    turns nowhere, so the read is bare -- and ``$`` covers a run of cells
+    at once, so they need no block each.  ``$`` takes its count from the
+    digit beside it, so a run is at most nine cells and longer ones chain,
+    each window spending one cell on the ``>`` that opens the next.
     """
     n = _validate_truth_table(truth_table)
     total = 2 ** (n + 1) - 1
     lines = ["" for _ in range(total)]
-    rows = [total // 2]
+    width = len(_DIG_BRANCH)
 
-    for level in range(n + 1):
-        if level < n:
-            step = 2 ** (n - level - 1)
-            children = [row + step for row in rows] + [row - step for row in rows]
-            for row in range(total):
-                if row in rows:
-                    block = _DIG_BRANCH
-                elif row in children:
-                    # the mole arrives here vertically from the parent's "#";
-                    # right-justify the turn so the ">" sits under that "#"
-                    block = _DIG_CONTINUE.rjust(len(_DIG_BRANCH))
-                else:
-                    block = " " * len(_DIG_BRANCH)
-                lines[row] += block
-            rows = children
-        else:
-            for k in range(2**n):
-                lines[2 * k] += _DIG_LEAF.format(int(truth_table[k]))
+    def place(row: int, level: int, block: str) -> None:
+        """Write ``block`` on ``row``, in the column ``level`` owns."""
+        lines[row] = lines[row].ljust(level * width) + block
+
+    def leaf(reads: int, value: int) -> str:
+        """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
+
+        ``$`` makes the cells after it commands, as many as the digit
+        beside it says, so the reads a folded leaf still owes need no block
+        each: one ``$`` covers every ``~`` plus the three cells that print.
+
+        Its count is a single digit, so a window holds at most nine cells.
+        Past that the windows chain -- each spends one of its nine on the
+        ``>`` that opens the next -- which stays linear in the reads where
+        a block apiece is four characters each.
+        """
+        if reads == 0:
+            return _DIG_LEAF.format(value)
+        out = ""
+        while reads + 3 > _DIG_SPAN:
+            take = _DIG_SPAN - 3
+            out += f">${take + 1}" + "~" * take
+            reads -= take
+        return out + f">${reads + 3}" + "~" * reads + f"{value}:@"
+
+    def walk(row: int, level: int, lo: int, hi: int) -> None:
+        """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
+        if level == n or len(set(truth_table[lo:hi])) == 1:
+            # A constant slice cannot be told apart by more branching, so
+            # this is a leaf and every row below it goes unwritten.  It
+            # still reads what it did not branch on: a program whose input
+            # count depended on its table would desync a caller feeding
+            # several programs from one stream.
+            place(row, level, leaf(n - level, int(truth_table[lo])))
+            return
+        place(row, level, _DIG_BRANCH)
+        step = 2 ** (n - level - 1)
+        half = (hi - lo) // 2
+        for child, bounds in (
+            (row + step, (lo + half, hi)),
+            (row - step, (lo, lo + half)),
+        ):
+            # the mole arrives here vertically from the parent's "#";
+            # right-justify the turn so the ">" sits under that "#"
+            place(child, level, _DIG_CONTINUE.rjust(width))
+            walk(child, level + 1, *bounds)
+
+    walk(total // 2, 0, 0, 2**n)
 
     # Row 0 is always written first (as the tree's root branch, or -- for
     # n == 0 -- its sole leaf), and both block kinds start with '>'; swap
