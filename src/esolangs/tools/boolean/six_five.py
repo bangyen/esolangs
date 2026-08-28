@@ -92,17 +92,17 @@ def six_five(truth_table: str) -> str:
     them (:func:`_six_five_markers`) rather than by ``n``: any table whose
     folded tree fits in 35 labels uses the tree, at any ``n``.
 
-    **The budget is now per-order**, which widens what renders: a table whose
-    identity tree overflows may fold inside the budget under some other
-    order, and only a table that overflows under *every* order is refused.
-    An alternating n == 6 table used to be the standard refusal -- it folds
-    nothing in stream order -- but it is NOT of the last input, so the order
-    that tests that input first folds it to a single label and it now
-    renders.  What is still refused is a table no renaming can fold:
-    **parity** of all six inputs needs 63 labels under all 720 orders, since
-    any permutation of parity is parity.  Every table is renderable through
-    n == 5 (the worst case spends 31), so the refusals still begin at
-    n == 6, and a table refused under every order raises :class:`ValueError`.
+    **The budget is spent per input order**, so a table whose identity tree
+    overflows may fold inside it under some other order, and only a table
+    overflowing under *every* order is refused.  The worst case is therefore
+    the shape no renaming folds -- **parity**, which needs 63 labels under
+    all 720 orders because any permutation of parity is parity.  An
+    alternating table folds nothing in stream order but is only NOT of the
+    last input, so one reorder collapses it to a single label: a table that
+    merely looks scattered is not a refusal witness.  Every table is
+    renderable through n == 5 (the worst case spends 31), so the refusals
+    begin at n == 6, and a table refused under every order raises
+    :class:`ValueError`.
 
     **The order search is capped at ``_ORDER_SEARCH_MAX`` inputs**, the same
     bound and the same greedy fallback ``best_input_order`` uses.  The cap
