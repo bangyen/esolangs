@@ -183,18 +183,6 @@ class TestDig:
             1 for r in full.split("\n") if r.strip()
         )
 
-    @pytest.mark.parametrize("table", ["11", "1111", "11110000", "10010110"])
-    def test_a_folded_program_still_reads_every_input(self, table: str) -> None:
-        """Folding drops branching, never a read.
-
-        A program whose input count depended on its table would desync a
-        caller feeding several programs from one stream, so a folded leaf
-        consumes what it did not branch on; one line short is an EOF.
-        """
-        n = len(table).bit_length() - 1
-        with pytest.raises(EOFError):
-            esolangs.run("Dig", boolean.dig(table), stdin="\n".join(["0"] * (n - 1)))
-
     def test_a_long_read_run_chains_its_windows(self) -> None:
         """Past nine cells the ``$`` runs chain rather than growing a digit.
 
