@@ -666,11 +666,21 @@ not a verdict:
 what their *generators* currently emit, not what the languages allow. Both
 have a tape and a pointer:
 
-- `jaune` — `v` reads into the *current* cell and `?` branches on the current
-  cell, with `>`/`<` to move and `#`/`&` to copy through a hold register. So
-  `v>v>v` reads every bit into its own cell and a node can walk to any of
-  them. Verified: a hand-written program reading three bits up front and
-  testing the **last** one first is correct on all 8 combinations.
+- `jaune` — the wiki calls it "an array of data cells, similar to brainfuck,
+  with the addition of one 'hold' cell", and `?` branches on "the value of
+  the current cell". With `>`/`<` to move, reads land in distinct cells and
+  a node can walk to any of them. Verified: a hand-written program reading
+  three bits up front and testing the **last** one first is correct on all 8
+  combinations, and reading three bits then walking back prints each cell's
+  own bit — which is what rules out a single accumulator.
+
+  One caveat on the *spelling*. The wiki defines `v` as "Reads user input to
+  the number", which — unlike `^`, `%` and `#`, which all say "current cell"
+  explicitly — does not name a destination; it most likely describes the
+  `v+`/`v-` operand form. This repo's interpreter has bare `v` write straight
+  into `cells[ptr]`, a reasonable reading of vague wording rather than a
+  quotation. Nothing here depends on it: `%` then `v+` puts a read bit in a
+  chosen cell using only unambiguous commands.
 - `six_five` — `B` reads into the current cell, `1`/`3` move the pointer
   (+2/-1), and `7n` compares the current cell. Same story, verified the same
   way.
