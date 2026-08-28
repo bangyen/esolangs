@@ -42,6 +42,8 @@ from ``{Xi}`` at runtime with its ``s``-as-NOT-gate.  The placeholder and
 the ``set_comp`` argument that filled it are gone.
 """
 
+from collections import deque
+from functools import cache
 from typing import TypeAlias
 
 # Re-exported so this module stays the import site for the whole
@@ -55,6 +57,7 @@ from esolangs.tools.boolean.helpers import (
     best_input_order,
     decision_tree_tokens,
     instantiate,
+    permute_truth_table,
 )
 from esolangs.tools.boolean.wii2d import wii2d
 
@@ -119,6 +122,77 @@ def bio(truth_table: str) -> str:
     return pack + " " + init + inner + "0oy;" * _ASCII_ZERO + "1iy;"
 
 
+# Eval's two stacks and the ops that move values between them.  ``~`` swaps
+# which stack is active, ``*`` reverses the active one, and ``=`` pops the
+# active stack onto the other.  The pair is a spindle: moving values across
+# reverses them, so composing the three reaches essentially any arrangement.
+_EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
+# Longest op string worth building.  Costs run to roughly 3 characters per
+# displaced input, and an arrangement that expensive has already lost to the
+# folds it was meant to buy; the cap keeps the search finite.
+_EVAL_MAX_OPS = 16
+# (tree stack, input stack, which stack is active), each stack listed
+# bottom to top by the input index it carries.
+_EvalState: TypeAlias = tuple[tuple[int, ...], tuple[int, ...], int]
+
+
+@cache
+def _eval_stack_programs(n: int) -> dict[tuple[int, ...], str]:
+    """Shortest ops rearranging the staged bits into each arrangement.
+
+    Returns the input stack (bottom to top, by input index) mapped to the
+    ops producing it.  The staging blocks leave the bits on the input stack
+    and nothing else, so these ops run between the staging and the tree and
+    are free to reverse or shuttle them.
+
+    A breadth-first walk over (tree stack, input stack, active stack) finds
+    the shortest.  Only states that end back on the tree stack with nothing
+    left staged are usable, since the tree expects to start there.
+
+    **This is a runtime reorder, not a relabelling.**  The ``{Xi}`` blocks
+    keep their slots and the harness fills them exactly as before; what
+    changes is the emitted program, which now rearranges the stack the nodes
+    pop from.  The nodes themselves name no input -- each is ``~=~?`` plus a
+    semicolon run fixed by its heap index -- so the arrangement is the only
+    thing that decides which input a level tests.
+    """
+    start: _EvalState = ((), tuple(range(n)), _EVAL_TREE_STACK)
+    seen = {start: ""}
+    frontier = deque([start])
+    reached: dict[tuple[int, ...], str] = {}
+    while frontier:
+        state = frontier.popleft()
+        tree, read, active = state
+        ops = seen[state]
+        if active == _EVAL_TREE_STACK and not tree and read not in reached:
+            reached[read] = ops
+        if len(ops) >= _EVAL_MAX_OPS:
+            continue
+
+        stacks = {_EVAL_TREE_STACK: tree, _EVAL_READ_STACK: read}
+        moves: list[tuple[_EvalState, str]] = [((tree, read, 1 - active), "~")]
+        flipped = tuple(reversed(stacks[active]))
+        moves.append(
+            ((flipped, read, active), "*")
+            if active == _EVAL_TREE_STACK
+            else ((tree, flipped, active), "*")
+        )
+        if stacks[active]:
+            moved, rest = stacks[active][-1], stacks[active][:-1]
+            other = (*stacks[1 - active], moved)
+            moves.append(
+                ((rest, other, active), "=")
+                if active == _EVAL_TREE_STACK
+                else ((other, rest, active), "=")
+            )
+
+        for next_state, op in moves:
+            if next_state not in seen:
+                seen[next_state] = ops + op
+                frontier.append(next_state)
+    return reached
+
+
 def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     """Build an Eval template for the given truth table.
 
@@ -158,6 +232,39 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     instead leaves the arithmetic untouched, and an emptied slot is never
     popped because the only node that routed into it has become a leaf.  A
     constant table goes from 127 to 47 characters at ``n == 3``.
+    """
+    n = _validate_truth_table(truth_table)
+    # The staging leaves the input stack holding only the bits and nothing
+    # else, so the tree can be preceded by ops that rearrange them.  Every
+    # reachable arrangement is a candidate, including the one staging
+    # already produces, which costs no ops.
+    #
+    # The tree pops the input stack top-first, so an arrangement listed
+    # bottom-to-top tests its *last* entry at the root: the split order is
+    # the arrangement reversed.  Staging pushes X0 first, so the free
+    # arrangement is ``(0, ..., n-1)`` and its split order is the reversal
+    # -- which is why the no-ops candidate is not the identity permutation.
+    best = ""
+    for arrangement, ops in sorted(
+        _eval_stack_programs(n).items(), key=lambda item: len(item[1])
+    ):
+        perm = tuple(reversed(arrangement))
+        candidate = _eval_ordered(permute_truth_table(truth_table, perm), ops)
+        # Sorted by op cost with the free arrangement first, and the
+        # comparison is strict, so a table no reorder helps emits exactly
+        # what it emitted before.
+        if not best or len(candidate) < len(best):
+            best = candidate
+    return best
+
+
+def _eval_ordered(truth_table: str, ops: str) -> str:
+    """Emit one input order's Eval template; see :func:`eval`.
+
+    ``truth_table`` is already permuted, so the heap walk below is unchanged
+    from the single-order construction.  What the emitted program does
+    differently is run ``ops`` between the staging blocks and the tree,
+    rearranging the input stack so the nodes pop the bits in this order.
     """
     n = _validate_truth_table(truth_table)
 
@@ -203,8 +310,13 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
         else:  # leaf: print the table entry for this path
             tree.append("0+." if truth_table[rows[0]] == "1" else "0.")
 
-    bits = "".join("{X" + str(i) + "}" for i in range(n - 1, -1, -1))
-    return bits + "".join(f'"{t}"' for t in tree) + "*!"
+    # Staged forward, like every other parameterized generator.  The order
+    # is a free choice rather than a constraint: it decides only *which*
+    # arrangement costs no ops, and the reachable set and every other
+    # arrangement's cost are identical either way, because ``*`` is an
+    # involution -- staging one way and reversing is the other way exactly.
+    bits = "".join("{X" + str(i) + "}" for i in range(n))
+    return bits + ops + "".join(f'"{t}"' for t in tree) + "*!"
 
 
 def back(truth_table: str) -> str:

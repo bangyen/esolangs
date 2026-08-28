@@ -1447,8 +1447,11 @@ class TestEvalBoolean:
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.eval("0110")
-        # inputs MSB-first, staged on the tree stack and moved by each `=`
-        assert template.startswith("{X1}{X0}")
+        # Staged forward, like every other parameterized generator: each
+        # block pushes its bit on the tree stack and `=` moves it across.
+        # Which order they are staged in only decides *which* arrangement
+        # costs no reorder ops, since `*` reverses either way.
+        assert template.startswith("{X0}{X1}")
         assert template.endswith("*!")
         assert '"~=~?;!"' in template  # root node: one discard
         assert '"~=~?;;!"' in template  # BFS index 1: two discards
@@ -1456,6 +1459,68 @@ class TestEvalBoolean:
         assert template.count('"0+.') + template.count('"0.') == 4  # leaves
         # leaves are the XOR table in heap order: 0 1 1 0
         assert template.endswith('"0.""0+.""0+.""0."*!')
+
+    def test_reordering_only_shrinks(self) -> None:
+        """No table is longer than the arrangement staging already produces.
+
+        The candidates are sorted by op cost with the free arrangement
+        first and the comparison is strict, so a table no reorder helps
+        emits exactly what it emitted before.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.helpers import permute_truth_table
+        from esolangs.tools.boolean.parameterized import _eval_ordered
+
+        # Staging pushes X0 first, so the free arrangement's split order is
+        # the reversal -- the no-ops build is not the identity permutation.
+        free = tuple(reversed(range(3)))
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            dispatched = len(parameterized.eval(table))
+            staged = len(_eval_ordered(permute_truth_table(table, free), ""))
+            assert dispatched <= staged, table
+            improved += dispatched < staged
+        assert improved == 114
+
+    def test_reorder_ops_run_outside_the_placeholders(self) -> None:
+        """The rearrangement is emitted code, not a change to the fills.
+
+        This is what makes it a reorder rather than a relabelling: the
+        ``{Xi}`` blocks keep their slots and the harness fills them exactly
+        as before, while the emitted program gains ops that rearrange the
+        stack its nodes pop from.  Equal-width embedding therefore still
+        holds, since nothing inside a placeholder moved.
+        """
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.examples import _fill_eval
+
+        # A table whose cheapest order is not the free one.
+        table = "00001101"
+        template = parameterized.eval(table)
+        assert template.startswith("{X0}{X1}{X2}")  # slots unmoved
+        widths = {
+            len(_fill_eval(template, [(c >> (2 - i)) & 1 for i in range(3)]))
+            for c in range(8)
+        }
+        assert len(widths) == 1  # every fill the same length
+
+    def test_stack_ops_reach_every_arrangement(self) -> None:
+        """Two stacks with a reverse and a cross-move permute the bits.
+
+        ``~`` switches stacks, ``*`` reverses the active one and ``=`` moves
+        its top across; the pair is a spindle, so the three compose to reach
+        every arrangement at n <= 4.  Unlike Forþ's ``o``, ``*`` is usable
+        here because the staging leaves the bits alone on that stack.
+        """
+        from math import factorial
+
+        from esolangs.tools.boolean.parameterized import _eval_stack_programs
+
+        for n in (2, 3, 4):
+            assert len(_eval_stack_programs(n)) == factorial(n)
+        # The free arrangement is the one staging produces, and costs nothing.
+        assert _eval_stack_programs(3)[(0, 1, 2)] == ""
 
     def test_scales_to_more_inputs(self) -> None:
         """The heap tree grows to any n (spot-checked at n = 6)."""
