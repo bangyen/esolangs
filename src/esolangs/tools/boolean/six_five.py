@@ -17,6 +17,22 @@ from esolangs.tools.transpilers import _six_five_label
 __all__ = ["six_five", "six_five_arithmetic"]
 
 
+def _six_five_markers(table: str) -> int:
+    """How many branch labels the folded decision tree spends on ``table``.
+
+    One per internal node the fold leaves standing.  This counts exactly
+    what :func:`six_five`'s ``build`` allocates rather than re-deriving it:
+    the tree splits most-significant-first over a contiguous row range, so
+    a node's two children are always the two halves of its table slice, and
+    a slice whose characters agree is the constant subtree that folds to a
+    leaf and takes no label.
+    """
+    if len(set(table)) == 1:
+        return 0
+    half = len(table) // 2
+    return 1 + _six_five_markers(table[:half]) + _six_five_markers(table[half:])
+
+
 def six_five(truth_table: str) -> str:
     """Build a 6-5 program computing the given truth table.
 
@@ -43,14 +59,20 @@ def six_five(truth_table: str) -> str:
     cell 0 and every leaf halts -- and builds the digit from zero there.
 
     The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
-    as ``8n`` operands), one per internal node, so the decision tree caps at
-    n == 5 (31 internal nodes).  For larger ``n`` the generator falls back
-    to :func:`six_five_arithmetic`, which packs the inputs and the table
-    into single cells and decodes the table entry arithmetically with a
-    constant number of loop constructs.
+    as ``8n`` operands), one per internal node the fold leaves standing.
+    An unfolded tree would therefore cap at n == 5 (31 internal nodes), but
+    since folding is what spends the labels, the choice is made by counting
+    them (:func:`_six_five_markers`) rather than by ``n``: any table whose
+    folded tree fits in 35 labels uses the tree, at any ``n``.  This is what
+    renders tables the old ``n <= 5`` gate could not -- AND-6 needs 6 labels
+    but was refused outright, since its ``T == 2**63`` also overflows the
+    arithmetic setup.  Tables that stay wide under folding (a scattered n=6
+    table needs 63) still fall back to :func:`six_five_arithmetic`, which
+    packs the inputs and the table into single cells and decodes the table
+    entry arithmetically with a constant number of loop constructs.
     """
     n = _validate_truth_table(truth_table)
-    if 2**n - 1 <= 35:
+    if n <= 5 or _six_five_markers(truth_table) <= 35:
         marker = 0
 
         def build(rows: list[int], bit: int, base: int) -> str:
