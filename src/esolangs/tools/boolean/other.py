@@ -1230,10 +1230,19 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
             # depth, so the rail from the switch above covers the levels
             # this fold skipped: the rows are a fixed grid and only the
             # branching goes away.
+            #
+            # The *reads* those levels would have done do not go away.  A
+            # program must consume its ``n`` inputs whatever the table says
+            # -- the reads are the interface, and a folded run that skipped
+            # them left the caller's remaining bits on the stream -- so each
+            # skipped level puts its ``/ /`` on the rail, where the pointer
+            # runs straight through it into the leaf below.
             middle = leaf(slots[0], truth_table[lo])
             slots[0] += 1
             for y in range(4 * depth + 2, leaf_top):
                 cells.setdefault((middle, y), "│")
+            for skipped in range(depth, n):
+                put(middle - 1, 4 * skipped + 2, "/ /")
             return middle
         half = (hi - lo) // 2
         west = walk(lo, lo + half, depth + 1)
@@ -1286,7 +1295,12 @@ def flowchart(truth_table: str) -> str:
     **The tree holds many ``/ /`` nodes but reads each input once.**  A
     depth-``n`` tree draws ``2**n - 1`` read nodes, one per internal node,
     yet any single run walks one root-to-leaf path and so executes exactly
-    ``n`` of them -- the duplication is spatial, the way an unrolled
+    ``n`` of them -- which is why a *folded* leaf carries the reads of the
+    levels it skipped on its own rail.  Without them a run that folded
+    early would consume fewer inputs than one that did not, making the
+    program's stream consumption a function of its truth table; only the
+    branching may fold away, never the reads.  The duplication is spatial,
+    the way an unrolled
     brainfuck branch repeats ``,`` in each arm of a nested ``[ ]`` without
     any one execution reading twice.  This is deliberately *not* the
     once-only embedding rule that ``tools.boolean.parameterized`` documents:
