@@ -390,6 +390,55 @@ That the fold must never grow a program is pinned by
 `test_folding_never_grows_a_program`, which compares every table at n≤3
 against the pre-fold construction.
 
+#### the reusable drain — verified, deliberately not shipped
+
+The staircase unrolls one gadget per skipped bit, so a deep fold's leaf is
+wide. A **single** drain cell can do the whole job instead, because a `+`
+whose exits both return to it keeps popping until the queue is spent —
+verified draining k=0..5, every stale pattern. This one works (user's
+design, verified here rather than invented):
+
+```
+    +~+
+    ~ ~
+    +~+
+  *~  *
+*  *  ~
+***+*~*
+  ***
+```
+
+Wired in behind a depth dispatch it is **correct everywhere** — 0/2120 on
+the exhaustive n≤3 sweep, plus n=5/6/7 constants and half-constants in both
+entry modes. It is not shipped because neither construction dominates:
+
+| skipped | staircase | reusable drain |
+|---|---|---|
+| 1 | 60 | 92 |
+| 3 | 93 | 108 |
+| 4 | 111 | 116 |
+| **5** | 130 | **124** |
+| 8 | 193 | **148** |
+
+They cross at five skipped levels, which needs n≥5 — past where the test
+suite exercises folding at all. Shipping both would mean a second
+construction and a dispatch for a win nothing currently reaches, so the
+staircase stays and this is recorded instead.
+
+**What it cost to find, and the constraint that matters.** The drain accepts
+exactly *one* entry: falling **south down column 1**. But a folded leaf is
+reached three ways — the root by that southward descent from `_MIDDLE`, and
+a child by travelling **east** along its row 0, either straight from the
+0-branch or from the 1-branch (which turns a southward IP back east). Every
+attempt that put the ring on row 0 failed identically (530/2120), because an
+eastward arrival popped stale bits at the ring's corners and ran off the
+grid; column-trimming never helped, since trimming changes columns and the
+entry is a *row*. The fix is one `*`: at column 1 it converts an eastward
+arrival into the southward one the drain wants. The two lead-ins are
+mutually exclusive — a `*` at column 1 serves east and breaks south, at
+column 0 serves south and breaks east, both together break both — so the
+entry mode has to be a parameter, not a property of the block.
+
 ### streetcode: done — but it needed an interpreter fix first
 
 **Resolved.** A constant table is 428 characters against 1439 at n=3, and
