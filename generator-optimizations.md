@@ -130,9 +130,11 @@ characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 **Build a tree but never fold (2):** arrowqueue, six_five (n≤5).
 `circlefuck` / `circlefuck_byte`, `forth`, `decleq`, `eval`, `clockwise` and
 `streetcode` were all on this list and now fold — see below. What remains is
-`arrowqueue` (3×3 ring-block leaves with queued routing, untried) and
-`six_five`, whose n≤5 path is the only one using its tree and whose n>5 path
-already folds.
+`arrowqueue` (3×3 ring-block leaves with queued routing — measured, and the
+1-leaf half is blocked on queue order, see below) and `six_five`, whose n≤5
+path is the only one using its tree and whose n>5 path already folds.
+`six_five`'s tree shows the signature plainly: 226 characters for both
+`11110000` and `10010110` at n=3, and 466 for both at n=4.
 
 These emit a byte-identical program size for every table of a given `n`,
 which is the signature of not folding: the leaf count is fixed by `n` alone.
@@ -223,8 +225,40 @@ a leaf test plus whatever index bookkeeping the language needs.
 **Grid trees.** `clockwise`, `streetcode`, `arrowqueue` place their tree on a
 plane. `clockwise` turned out to need only a leaf test plus two geometry
 corrections and **is now folded** (see above). `streetcode` was attempted and
-**reverted** — see below. `arrowqueue` is untried: its leaves are 3×3 ring
-blocks with queued routing.
+**reverted** — see below. `arrowqueue` is the remaining one, and a fold there
+is **blocked on the queue, not the geometry** (measured 2026-08-28, below).
+
+#### arrowqueue: the fold is asymmetric — 0-leaves fold, 1-leaves cannot
+
+Collapsing a subtree to a bare leaf was tried at n=2 against the real
+interpreter, with `run_until_halt_or_cycle` reading the termination
+convention. The result splits cleanly by leaf type:
+
+| folded tree | want | got | size |
+|---|---|---|---|
+| whole tree → bare `1` leaf | `1111` | `0000` | 82 vs 178 |
+| whole tree → bare `0` leaf | `0000` | `0000` ✓ | 70 vs 107 |
+| left half → `1` leaf | `1100` | `0000` | 111 vs 144 |
+| left half → `0` leaf | `0011` | `0011` ✓ | 127 vs 141 |
+
+The cause is the one `_tree`'s docstring names: every leaf relies on the
+queue holding exactly `R, D, L, U`, because the ring's corner pops consume
+them in that order. Skipping a `+` branch leaves that bit's direction queued
+ahead of them. Tracing the folded all-ones program shows the queue arriving
+at the tree as `[R, R, R, D, L, U]`, so the ring's corners pop `R, R, R`,
+never close, and the pointer runs off the grid — reporting `0` for a `1`
+entry.
+
+A **0-leaf is immune**: it halts by leaving the grid, and leftover queue
+contents cannot stop that. So all-zeros subtrees fold on geometry alone,
+which is a real but one-sided saving (the 0-leaf rows above are already
+shorter than their unfolded forms).
+
+Making 1-leaves fold means draining the skipped bits — one `+` per skipped
+level whose two exits reconverge — the arrowqueue analogue of the `=` CP
+advances streetcode had to carry. That is a layout design plus per-
+instantiation halt-vs-loop verification, i.e. streetcode-class effort, and
+streetcode needed an interpreter fix and one revert before it landed.
 
 ### streetcode: done — but it needed an interpreter fix first
 
