@@ -464,7 +464,7 @@ Painter Ant's grid placement, and WII2D's searched op-chain — have no
 constant subtree to fold and are not candidates.  The minterm group has its
 own optimization, below.
 
-## Suffolk's minterm complement — done
+## Polarity: Suffolk and Container — done
 
 A sum-of-minterms program costs one term per row it selects, so a table
 with more ones than zeros is cheaper evaluated complemented and inverted.
@@ -495,6 +495,27 @@ row counts alone do not decide which is smaller.
 `_maybe_complement` is deliberately not used: its all-ones case
 complements to *no* minterms, which Suffolk's constant-table branch
 already handles better.
+
+**Container took the same optimization**, and an audit that first cleared
+it was wrong.  Its length curve looked flat next to the minterm
+generators', so it was written off as "per-row enumeration, every row costs
+the same".  It is not: the survivor blocks are indeed per-row and fixed,
+but `OUT` spends one `+1 S{row}>=Gout` line per row the table sends to 1 —
+12 characters each.  Summing the **zero** rows instead starts `OUT` at 49
+and subtracts, printing `49 - S`; the clamp at zero never bites because the
+value stays at 48 or 49.  Worth 12.7% on the densest table at `n == 4`, and
+the length curve is now symmetric about half ones
+(`636 648 660 672 684 672 660 648 636` at `n == 3`).
+
+**Taglate genuinely cannot**, and that one was checked properly: its
+selectors are `bd` for a one and `bb` for a zero, both two characters, so
+every table of a given `n` is byte-identical in length — all 256 tables at
+`n == 3` are 451 characters.  Polarity cannot change what does not vary.
+
+The lesson worth keeping: a flat-*looking* length curve is not evidence.
+Container's rose 636 → 732 across the ones-count, which is a real slope;
+reading it as flat next to a generator whose curve doubles is what hid a
+12% saving.  Measure the slope, do not eyeball the shape.
 
 ## Severely constrained boolean generators (remove or lift)
 
