@@ -928,40 +928,55 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
             cells[(x + i, y)] = char
 
     n = (len(truth_table) - 1).bit_length()
-    # Leaf ``k`` spans columns ``5k`` to ``5k + 4``, so its middle -- the
-    # column every rail in that leaf's band lands on -- is ``5k + 2``.
-    mids = [_FLOWCHART_PITCH * k + 2 for k in range(len(truth_table))]
-
     leaf_top = 2 + 4 * n
-    for k, bit in enumerate(truth_table):
-        middle = mids[k]
+
+    def leaf(slot: int, bit: str) -> int:
+        """Draw the leaf for ``bit`` in column slot ``slot``; return its middle.
+
+        Leaf ``k`` spans columns ``5k`` to ``5k + 4``, so its middle -- the
+        column every rail in that leaf's band lands on -- is ``5k + 2``.
+        """
+        middle = _FLOWCHART_PITCH * slot + 2
         put(middle - 1, leaf_top, "[ }" if bit == "1" else "{ ]")
         cells[(middle, leaf_top + 1)] = "│"
         put(middle - 1, leaf_top + 2, "\\ \\")
         cells[(middle, leaf_top + 3)] = "│"
         put(middle - 2, leaf_top + 4, "(( ))")
+        return middle
 
-    for depth in range(n - 1, -1, -1):
+    def switch(depth: int, west: int, east: int) -> int:
+        """Join two subtrees at ``depth``; return the column it sits on."""
         switch_row = 4 + 4 * depth
-        parents = []
-        for j in range(0, len(mids), 2):
-            west, east = mids[j], mids[j + 1]
-            middle = (west + east) // 2
-            put(middle - 1, switch_row - 2, "/ /")
-            cells[(middle, switch_row - 1)] = "│"
-            put(middle - 1, switch_row, "< >")
-            for x in range(west + 1, middle - 1):
-                cells[(x, switch_row)] = "─"
-            for x in range(middle + 2, east):
-                cells[(x, switch_row)] = "─"
-            cells[(west, switch_row)] = "┌"
-            cells[(east, switch_row)] = "┐"
-            cells[(west, switch_row + 1)] = "│"
-            cells[(east, switch_row + 1)] = "│"
-            parents.append(middle)
-        mids = parents
+        middle = (west + east) // 2
+        put(middle - 1, switch_row - 2, "/ /")
+        cells[(middle, switch_row - 1)] = "│"
+        put(middle - 1, switch_row, "< >")
+        for x in range(west + 1, middle - 1):
+            cells[(x, switch_row)] = "─"
+        for x in range(middle + 2, east):
+            cells[(x, switch_row)] = "─"
+        cells[(west, switch_row)] = "┌"
+        cells[(east, switch_row)] = "┐"
+        cells[(west, switch_row + 1)] = "│"
+        cells[(east, switch_row + 1)] = "│"
+        return middle
 
-    root = mids[0]
+    def walk(lo: int, hi: int, slot: int, depth: int) -> int:
+        """Draw the subtree for ``truth_table[lo:hi]``; return its column.
+
+        ``slot`` is the leaf column slot its leftmost leaf occupies, and
+        ``depth`` the level it sits at -- together they say where the
+        drawing goes, which is what the level-by-level fill computed from
+        the leaf pitch instead.
+        """
+        if hi - lo == 1:
+            return leaf(slot, truth_table[lo])
+        half = (hi - lo) // 2
+        west = walk(lo, lo + half, slot, depth + 1)
+        east = walk(lo + half, hi, slot + half, depth + 1)
+        return switch(depth, west, east)
+
+    root = walk(0, len(truth_table), 0, 0)
     put(root - 1, 0, "( )")
     cells[(root, 1)] = "│"
     return cells
