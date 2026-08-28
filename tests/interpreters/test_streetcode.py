@@ -11,6 +11,7 @@ them, including all four of the wiki's worked examples.
 """
 
 import io
+import re
 from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
@@ -18,7 +19,12 @@ from unittest.mock import patch
 import pytest
 
 from esolangs.exceptions import HaltError
-from esolangs.interpreters.grid_based.streetcode import _Machine, _State, run
+from esolangs.interpreters.grid_based.streetcode import (
+    _Machine,
+    _ReachableCell,
+    _State,
+    run,
+)
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
@@ -947,6 +953,65 @@ class TestStreetcodeStreetWidth:
         if code and code[-1] == "":
             code = code[:-1]
         _Machine(code, IO())
+
+
+class TestStreetcodeStatedInvariants:
+    """The invariants the interpreter relies on, as executable checks.
+
+    Each validator's rule is a ``_*_violation`` method returning the
+    offending cell, and the validator raises on whatever it returns; the
+    tests below pin that the two cannot drift apart, and that ``_block``'s
+    precondition really fires rather than being decoration.
+    """
+
+    def _street(self) -> list[str]:
+        return ["+----+", "|C  ;|", "|    |", "+----+"]
+
+    def test_a_border_cell_trips_the_block_precondition(self) -> None:
+        """``_block`` states what it needs rather than trusting the caller.
+
+        ``_ReachableCell`` records that a cell came from the flood fill;
+        it cannot record that the fill never yields a border cell, which
+        is the property the unchecked read actually depends on.  Forging
+        one (the type is erased at run time) must raise rather than read
+        off the grid.
+        """
+        machine = _Machine(self._street(), IO())
+        with pytest.raises(AssertionError, match="on the border"):
+            machine._block(_ReachableCell((0, 0)))  # noqa: SLF001
+
+    @pytest.mark.parametrize("cell", [(1, 1), (2, 4)])
+    def test_an_interior_cell_reads_its_neighbourhood(
+        self, cell: tuple[int, int]
+    ) -> None:
+        """The precondition admits every cell the enclosure check allows."""
+        machine = _Machine(self._street(), IO())
+        assert len(machine._block(_ReachableCell(cell))) == 9  # noqa: SLF001
+
+    def test_a_valid_street_violates_nothing(self) -> None:
+        """Every stated rule holds of a program the validator accepted."""
+        machine = _Machine(self._street(), IO())
+        reachable = machine._validate_width((machine.row, machine.col))  # noqa: SLF001
+        assert reachable is not None
+        assert machine._width_violation(reachable) is None  # noqa: SLF001
+        assert machine._enclosure_violation(reachable) is None  # noqa: SLF001
+        assert machine._glyph_violation() is None  # noqa: SLF001
+        assert machine._connection_violation(reachable) is None  # noqa: SLF001
+
+    def test_a_violation_is_what_the_validator_raises(self) -> None:
+        """The rule and the rejection are one statement, not two.
+
+        A grid whose road runs off the edge: the finder names the cell,
+        and the message it returns is the one construction fails with.
+        """
+        code = ["+---", "|C  ", "|   ", "+---"]
+        machine = machine_unvalidated(code)
+        reachable = machine._validate_width((machine.row, machine.col))  # noqa: SLF001
+        assert reachable is not None
+        violation = machine._enclosure_violation(reachable)  # noqa: SLF001
+        assert violation is not None
+        with pytest.raises(ValueError, match=re.escape(violation)):
+            _Machine(code, IO())
 
 
 class TestStreetcodeWikiExamples:
