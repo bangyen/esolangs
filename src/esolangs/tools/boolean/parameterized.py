@@ -907,14 +907,56 @@ def _connect(t0: list[str], t1: list[str]) -> list[str]:
     return ["".join(row) for row in grid]
 
 
-def _tree(values: list[str]) -> list[str]:
-    """Build the full decision tree for the ``2**n`` table values.
+def _drained_leaf(value: str, skipped: int) -> list[str]:
+    """Build a folded leaf that drains the ``skipped`` bits it never popped.
 
-    The tree is full (it never collapses a constant slice): every path pops
-    all ``n`` bits, so the queue holds exactly the four loop components at
-    every leaf, which both leaf types rely on (the ring's corner pops must
-    be R, D, L, U in order).
+    Folding a constant subtree skips its ``+`` branches, which would leave
+    those bits queued *ahead* of the four loop components.  A ``0`` leaf
+    does not care -- it halts by running off the grid, and no queue content
+    prevents that -- but a ``1`` leaf's ring pops a direction at each corner
+    and needs to find exactly ``R, D, L, U``.
+
+    So each skipped bit gets a drain: a ``+`` whose two exits reconverge on
+    one cell.  Popping a ``0`` sends the IP right into a ``*`` that turns it
+    down; popping a ``1`` sends it down around three ``*`` that walk it back
+    up and right.  Both arrive at the same cell -- with *different* headings,
+    which is fine, because a ``+`` pops on arrival regardless of direction.
+    Chaining them steps one row down and one column right per bit::
+
+         +*        the ``+`` pops a stale bit
+        *  *       0 goes right then down, 1 goes down then round
+        ** +*      both land on the next ``+``
+
+    The drains push nothing, so the ring receives the queue it expects.
     """
+    # The leaf is 3x3 placed at (skipped, skipped + 1), so the grid needs
+    # ``skipped + 3`` rows and one more column than that.
+    grid = [[" "] * (skipped + 4) for _ in range(skipped + 3)]
+    for i in range(skipped):
+        grid[i][i + 1] = "+"
+        grid[i][i + 2] = "*"
+        grid[i + 1][i] = "*"
+        grid[i + 2][i] = "*"
+        grid[i + 2][i + 1] = "*"
+    leaf = _TREE_1 if value == "1" else _TREE_0
+    for r, line in enumerate(leaf):
+        for c, char in enumerate(line):
+            if char != " ":
+                grid[skipped + r][skipped + 1 + c] = char
+    return ["".join(row) for row in grid]
+
+
+def _tree(values: list[str]) -> list[str]:
+    """Build the decision tree for the ``2**n`` table values.
+
+    A subtree whose values all agree folds to a single leaf rather than the
+    branches that would all reach it.  The slice's own length says how many
+    bits the leaf must drain -- see :func:`_drained_leaf`, which is what
+    lets a ``1`` leaf fold at all.
+    """
+    if len(set(values)) == 1:
+        skipped = len(values).bit_length() - 1
+        return _drained_leaf(values[0], skipped)
     if len(values) == 2:
         return _connect(
             _TREE_1 if values[0] == "1" else _TREE_0,
@@ -940,10 +982,24 @@ def arrowqueue(truth_table: str) -> str:
 
     The construction embeds each bit once in the header rows (a ``1`` bit
     pushes down, a ``0`` bit pushes right), queues the right/down/left/up
-    loop components, and routes a full decision tree by popping the bits at
+    loop components, and routes a decision tree by popping the bits at
     ``+`` branches.  Each leaf is a 3x3 block: a ``1`` entry is a
     self-sustaining ring and a ``0`` entry is empty (the pointer runs off
     the grid, which halts).
+
+    A constant subtree folds to a single leaf, which drains the bits the
+    skipped branches would have popped -- see :func:`_drained_leaf`.  A
+    constant table is 128 characters against 275 at n == 3, and 130 against
+    1434 at n == 5, and no table's *template* grows (checked exhaustively
+    through n == 4).
+
+    An *instantiated* program can grow by a few characters, though, because
+    the drain's staircase sits one column further right than the branches it
+    replaced and :func:`_compact` then has fewer all-blank columns to drop.
+    AND-2 is the case: only its ``00`` half is constant, a ``0`` leaf needs
+    no drain to halt, so the drain buys nothing there and the committed
+    example went 124 to 128 bytes.  It is bounded and shallow-table-only --
+    the fold is worth many times that wherever a ``1`` leaf folds at all.
     """
     n = _validate_truth_table(truth_table)
     header = ["{X0}"]

@@ -790,6 +790,103 @@ class TestParameterizedArrowQueue:
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.arrowqueue("011")
 
+    @pytest.mark.parametrize(
+        ("table", "mixed"),
+        [
+            ("1111", "1010"),
+            ("11110000", "10010110"),
+            ("1111111100000000", "1001011001101001"),
+        ],
+    )
+    def test_constant_subtrees_fold(self, table: str, mixed: str) -> None:
+        """A constant subtree emits one drained leaf, not a full branch set.
+
+        The comparison table has the same ones-count, so a shorter template
+        means the tree folded rather than that something else shrank.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        assert len(parameterized.arrowqueue(table)) < len(
+            parameterized.arrowqueue(mixed)
+        )
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("1" * 16, 4),
+            ("0" * 16, 4),
+            ("1111111100000000", 4),
+            ("1111000000000000", 4),
+            ("1" * 32, 5),
+            ("1" * 16 + "0" * 16, 5),
+        ],
+    )
+    def test_folded_tables_past_three_inputs(self, table: str, n: int) -> None:
+        """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep."""
+        from esolangs.tools.boolean import parameterized
+
+        template = parameterized.arrowqueue(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_arrowqueue(self.instantiate(template, bits))
+            assert got == table[combo], f"inputs {bits}"
+
+    def test_folded_one_leaf_drains_the_bits_it_skipped(self) -> None:
+        """The drain is load-bearing: a ring needs the queue it expects.
+
+        A folded ``1`` leaf pops a direction at each of its ring's corners
+        and requires exactly ``R, D, L, U``.  Without the drains, the bits
+        the skipped branches never popped sit ahead of those components, the
+        corners pop the wrong directions, the ring does not close, and the
+        program halts -- reporting ``0`` for a ``1`` entry.  Dropping the
+        drains here must therefore break the table.
+        """
+        from esolangs.tools.boolean.parameterized import _TREE_1, _drained_leaf
+
+        undrained = _drained_leaf("1", 0)  # no drains at all
+        assert [row.strip() for row in undrained if row.strip()] == [
+            row.strip() for row in _TREE_1
+        ]
+
+        # With two levels skipped the drained leaf is strictly taller than
+        # the bare ring, and that extra height is the drain chain.
+        drained = _drained_leaf("1", 2)
+        assert len(drained) == len(_TREE_1) + 2
+        assert sum(row.count("+") for row in drained) == 4 + 2  # ring + drains
+
+    def test_folded_zero_leaf_needs_no_drain(self) -> None:
+        """A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
+        from esolangs.tools.boolean import parameterized
+        from esolangs.tools.boolean.parameterized import _drained_leaf
+
+        leaf = _drained_leaf("0", 3)
+        assert leaf  # it still carries the drains, which cost nothing to keep
+        for table, n in (("0000", 2), ("0" * 8, 3)):
+            template = parameterized.arrowqueue(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                assert self.run_arrowqueue(self.instantiate(template, bits)) == "0"
+
+    def test_fold_keeps_equal_width_embedding(self) -> None:
+        """Every instantiation of a folded template is the same length.
+
+        The fold shrinks the tree, which is shared by all instantiations, so
+        the program's size still cannot leak which bits were embedded.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table, n in (("1111", 2), ("1100", 2), ("11110000", 3)):
+            template = parameterized.arrowqueue(table)
+            sizes = {
+                len(
+                    self.instantiate(
+                        template, [(c >> (n - 1 - i)) & 1 for i in range(n)]
+                    )
+                )
+                for c in range(2**n)
+            }
+            assert len(sizes) == 1, f"{table}: {sizes}"
+
 
 class TestParameterizedBfpda:
     """Input-by-substitution boolean generator for the no-input language BF-PDA."""

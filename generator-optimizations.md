@@ -128,18 +128,23 @@ forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
 characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 
-**Build a tree but never fold (1):** arrowqueue.
-`circlefuck` / `circlefuck_byte`, `forth`, `decleq`, `eval`, `clockwise`,
-`streetcode` and now `six_five` were all on this list and fold — see below.
-What remains is `arrowqueue` (3×3 ring-block leaves with queued routing —
-measured, and the 1-leaf half is blocked on queue order, see below).
+**Build a tree but never fold (0).** `circlefuck` / `circlefuck_byte`,
+`forth`, `decleq`, `eval`, `clockwise`, `streetcode`, `six_five` and finally
+`arrowqueue` were all on this list and now fold — see below. **Every tree
+generator in the catalogue folds its constant subtrees.**
 
-These emit a byte-identical program size for every table of a given `n`,
-which is the signature of not folding: the leaf count is fixed by `n` alone.
-Their size still grows ~2x per added input (measured n=2→4: forth 58→332,
-streetcode 591→3391, clockwise 255→1479), so the per-row cost a fold would
-collapse is real and exponential. They are *not* uniform in how reachable
-that saving is:
+Each was written off at some point on structural grounds, and each of those
+arguments was wrong in the same way: they described why a folded node could
+not be *removed*, when the fold only needs it *replaced* (`eval`) or its
+skipped work *carried* (`streetcode`'s `=` advances, `arrowqueue`'s drains).
+Treat the next such claim as a hypothesis.
+
+Each used to emit a byte-identical program size for every table of a given
+`n` — the signature of not folding, since the leaf count was fixed by `n`
+alone — while growing ~2x per added input (measured n=2→4 before the folds:
+forth 58→332, streetcode 591→3391, clockwise 255→1479). That per-row cost is
+what the folds collapse. They were *not* uniform in how reachable the saving
+was, and the accounts below are kept because the obstacles differed:
 
 **Token-stream trees — tractable.** `circlefuck` / `circlefuck_byte`, `forth`,
 `decleq`, `eval`, `six_five` (n≤5) emit a linear token sequence, so a fold is
@@ -319,40 +324,66 @@ a leaf test plus whatever index bookkeeping the language needs.
 **Grid trees.** `clockwise`, `streetcode`, `arrowqueue` place their tree on a
 plane. `clockwise` turned out to need only a leaf test plus two geometry
 corrections and **is now folded** (see above). `streetcode` was attempted and
-**reverted** — see below. `arrowqueue` is the remaining one, and a fold there
-is **blocked on the queue, not the geometry** (measured 2026-08-28, below).
+**reverted** — see below. `arrowqueue` was the last one and **is now folded**
+(below), so every tree generator in the catalogue folds.
 
-#### arrowqueue: the fold is asymmetric — 0-leaves fold, 1-leaves cannot
+#### arrowqueue: done — the queue is drained, not worked around
 
-Collapsing a subtree to a bare leaf was tried at n=2 against the real
-interpreter, with `run_until_halt_or_cycle` reading the termination
-convention. The result splits cleanly by leaf type:
+**Resolved.** A constant table is 128 characters against 275 at n=3, and 130
+against 1434 at n=5. No table's template grows (checked exhaustively over all
+65812 tables through n=4).
 
-| folded tree | want | got | size |
-|---|---|---|---|
-| whole tree → bare `1` leaf | `1111` | `0000` | 82 vs 178 |
-| whole tree → bare `0` leaf | `0000` | `0000` ✓ | 70 vs 107 |
-| left half → `1` leaf | `1100` | `0000` | 111 vs 144 |
-| left half → `0` leaf | `0011` | `0011` ✓ | 127 vs 141 |
+The fold was **asymmetric** before the drain existed, which is what made it
+look blocked. Collapsing a subtree to a bare leaf at n=2, against the real
+interpreter:
 
-The cause is the one `_tree`'s docstring names: every leaf relies on the
-queue holding exactly `R, D, L, U`, because the ring's corner pops consume
-them in that order. Skipping a `+` branch leaves that bit's direction queued
-ahead of them. Tracing the folded all-ones program shows the queue arriving
-at the tree as `[R, R, R, D, L, U]`, so the ring's corners pop `R, R, R`,
-never close, and the pointer runs off the grid — reporting `0` for a `1`
-entry.
+| folded tree | want | got |
+|---|---|---|
+| whole tree → bare `1` leaf | `1111` | `0000` ✗ |
+| whole tree → bare `0` leaf | `0000` | `0000` ✓ |
+| left half → `1` leaf | `1100` | `0000` ✗ |
+| left half → `0` leaf | `0011` | `0011` ✓ |
 
-A **0-leaf is immune**: it halts by leaving the grid, and leftover queue
-contents cannot stop that. So all-zeros subtrees fold on geometry alone,
-which is a real but one-sided saving (the 0-leaf rows above are already
-shorter than their unfolded forms).
+Every leaf relies on the queue holding exactly `R, D, L, U`, because the
+ring's corner pops consume them in that order. Skipping a `+` branch leaves
+that bit's direction queued ahead of them: the folded all-ones program
+reaches the tree with `[R, R, R, D, L, U]`, so the corners pop `R, R, R`,
+the ring never closes, and the pointer leaves the grid — reporting `0` for a
+`1`. A **0-leaf is immune**, since it halts by leaving the grid anyway.
 
-Making 1-leaves fold means draining the skipped bits — one `+` per skipped
-level whose two exits reconverge — the arrowqueue analogue of the `=` CP
-advances streetcode had to carry. That is a layout design plus per-
-instantiation halt-vs-loop verification, i.e. streetcode-class effort, and
-streetcode needed an interpreter fix and one revert before it landed.
+**The drain is what unblocked it,** and the key fact is that `+` *erases
+arrival direction* — it points the IP wherever the popped value says,
+regardless of how the IP got there. So a drain does not have to merge two
+headed paths, only route two paths to the same **cell**:
+
+```
+ +*      the + pops one stale bit
+*  *     a 0 goes right, then a * turns it down
+** +*    a 1 goes down and three * walk it back up and right
+```
+
+Both exits land on the next `+` — the 0 route arriving headed down, the 1
+route headed right, which a `+` does not care about. Chaining steps one row
+down and one column right per drained bit, and the chain pushes nothing, so
+the ring receives exactly the queue it expects.
+
+Two things were only visible from the interpreter. The gadget's first draft
+lost the 0 route: without a `*` at the exit column it runs straight off the
+grid instead of turning down. And the drained leaf's grid needs
+`skipped + 4` columns, not `skipped + 3`, since the 3-wide leaf sits at
+column `skipped + 1`.
+
+Verified exhaustively at n≤3 (every table × every input, through
+`run_until_halt_or_cycle`), plus structured and random tables at n=4 and
+n=5, and the whole n=4 split family. Deliberately removing the drains fails
+16 tests, so they are pinned by behaviour.
+
+The one cost: an *instantiated* program can grow a few characters, because
+the drain's staircase sits a column right of the branches it replaced and
+`_compact` then finds fewer all-blank columns. AND-2 is the case — only its
+`00` half is constant, and a `0` leaf needs no drain — so the committed
+example went 124→128 bytes. Bounded, and only on shallow tables where the
+fold had nothing to buy.
 
 ### streetcode: done — but it needed an interpreter fix first
 
