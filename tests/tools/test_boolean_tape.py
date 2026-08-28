@@ -31,6 +31,19 @@ def _columns(program: str) -> int:
     return max(len(line) for line in program.split("\n"))
 
 
+def _leaves(table: str) -> int:
+    """How many leaves a tree that folds constant subtrees spends on ``table``.
+
+    One per maximal constant slice: the walk stops as soon as the rows it
+    covers agree, so this is ``2**n`` only when no slice above a single row
+    is constant.
+    """
+    if len(set(table)) == 1:
+        return 1
+    half = len(table) // 2
+    return _leaves(table[:half]) + _leaves(table[half:])
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -714,7 +727,18 @@ class TestBasicfuck:
             == "#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out"
         )
         assert program.count("read ->") == n  # one read per input
-        assert program.count("write <- out ;") == 2**n  # one leaf per row
+        # One leaf per *constant slice*, not per row: the tree folds a
+        # subtree whose rows agree, so a table with no constant slice above
+        # a single row (parity) still spends 2**n leaves while a constant
+        # table spends one.
+        assert program.count("write <- out ;") == _leaves(table)
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice emits one leaf instead of branching further."""
+        assert boolean.basicfuck("1" * 16).count("write <- out ;") == 1
+        assert boolean.basicfuck("11110000").count("write <- out ;") == 2
+        # parity has no constant slice above one row, so nothing folds
+        assert boolean.basicfuck("10010110").count("write <- out ;") == 8
 
     def test_decision_tree(self) -> None:
         """Each internal node branches both ways with the wiki's if!(...)."""
