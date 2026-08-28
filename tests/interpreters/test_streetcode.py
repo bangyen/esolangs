@@ -1429,7 +1429,10 @@ class TestStreetcodeDriveStates:
         looks like.
         """
         with (
-            patch.object(_Machine, "_heading_from_hug", lambda *_: None),
+            patch(
+                "esolangs.interpreters.grid_based.streetcode._heading_from_hug",
+                lambda _grid, _car, latches: (None, latches),
+            ),
             pytest.raises(ValueError, match="cannot drive out of"),
         ):
             _Machine(self._corridor(), IO())
