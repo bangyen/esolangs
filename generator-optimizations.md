@@ -127,28 +127,37 @@ forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
 characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 
-**Build a tree but never fold (10):** clockwise, circlefuck, circlefuck_byte,
-decleq, forth, eval, arrowqueue, streetcode, six_five (n≤5), and `modulous` /
-`unsquare` — see below.
+**Build a tree but never fold (8):** clockwise, circlefuck, circlefuck_byte,
+decleq, forth, eval, arrowqueue, streetcode, six_five (n≤5).
 
-**`modulous` and `unsquare` are a special case: the fold is written but can
-never fire.** Both contain the `len({truth_table[row] for row in rows}) == 1`
-leaf test (`stack.py:163`, `stack.py:260`), yet both emit byte-identical
-lengths on constant and scattered tables. The reason is the split direction:
-they branch on `row >> k` with `k` counting up from the **LSB**, so a subtree
-is a stride, not a contiguous run, and the rows of a constant *prefix* never
-land in the same subtree. This is the constraint `decision_tree_tokens`
-already documents at `helpers.py:182` ("Modulous walks its bits the other way,
-so its halves are not runs"). Making these fold means reversing the bit order,
-not adding a check.
+**`modulous` and `unsquare` fold along a different axis.** Both branch on the
+stack top, which is the *last* input, so they split on `row >> k` counting up
+from the **LSB** — a subtree is a stride, not a contiguous run. They therefore
+fold constant *strides* rather than constant prefixes:
+
+| table | modulous | unsquare | |
+|---|---|---|---|
+| `11111111` | 52 | 48 | fully constant — folds hard |
+| `10101010` | 115 | 94 | constant along the LSB axis |
+| `11001100` | 242 | 186 | partly constant that way |
+| `11110000` | 496 | 370 | constant along the *MSB* axis — no saving |
+| `10010110` | 496 | 370 | scattered |
+
+The standard `11110000` probe therefore reports "no fold" for these two even
+though the fold is live and effective; `test_constant_subtrees_fold`
+(`tests/tools/test_boolean_stack.py:110`) documents exactly this. This is the
+same constraint `decision_tree_tokens` records at `helpers.py:182`
+("Modulous walks its bits the other way, so its halves are not runs"), which
+is why they cannot share the helper — not a defect.
 
 Three generators inherit folding rather than implementing it: `factor`,
 `painfuck`, and `three_d_brainfuck` all call `brainfuck()` and transform its
-output, so they fold because it does. Their docstrings still describe a
-"shorter of minterm and tree" dispatch that no longer exists — stale prose, not
-stale code. Folding matters most to `factor`, which encodes the program as an
-integer and refuses tables whose encoding exceeds Python's digit limit, so
-folding turns some previously unrenderable tables into runnable ones.
+output, so they fold because it does. `painfuck` and `three_d_brainfuck`
+described a "shorter of minterm and tree" dispatch that no longer exists;
+their docstrings are corrected on this branch. Folding matters most to
+`factor`, which encodes the program as an integer and refuses tables whose
+encoding exceeds Python's digit limit, so folding turns some previously
+unrenderable tables into runnable ones.
 
 Folding was decisive enough to **retire whole constructions**: both `brainfuck`
 and `dimensional` used to return the shorter of a tree and a minterm evaluator;
