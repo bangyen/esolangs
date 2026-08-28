@@ -46,7 +46,7 @@ from esolangs.interpreters.grid_based.streetcode import (
     run,
 )
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.vm import run_until_halt_or_cycle
+from esolangs.vm import _StepMachine, run_until_halt_or_cycle
 
 
 def street(instructions: str) -> list[str]:
@@ -1344,6 +1344,61 @@ class TestStreetcodeStepMachine:
         after = machine.snapshot()
         assert before != after
         assert machine.io.position() == 1
+
+    def test_the_machine_satisfies_the_vm_step_protocol(self) -> None:
+        """``run_until_halt_or_cycle`` steps this, so it must conform.
+
+        ``_StepMachine`` is ``runtime_checkable``, so the structural
+        check is the contract itself rather than a restatement of it.
+        """
+        assert isinstance(_Machine(["C;"], IO()), _StepMachine)
+
+    def test_snapshot_separates_every_state_the_machine_carries(self) -> None:
+        """No two distinct states may share a snapshot, and it must hash.
+
+        The hang detector's verdict is only sound if a repeat is a real
+        repeat: two states that differ anywhere must differ here, or a
+        program that is still making progress looks like a proven cycle.
+        The state is one :class:`_State` record beside the tape, CP, I/O
+        and halted flag, so this walks every field of it -- including
+        each latch separately, which a snapshot that dropped the record
+        or flattened it carelessly would be the way to get wrong.
+        """
+        code = ["+----+", "|C  ;|", "|    |", "+----+"]
+        merge = _Merge(1, 1, "left", "S", crossing=False)
+        # The fixture starts heading South, so "N" and "W" are both real
+        # changes; using "S" here would silently retest the base state.
+        latch_sets = [
+            _NO_LATCHES._replace(merge=merge),
+            _NO_LATCHES._replace(merging_heading="N"),
+            _NO_LATCHES._replace(skip_hug=3),
+        ]
+        states = [
+            _State(1, 1, "S", _NO_LATCHES),  # the machine's own start
+            _State(2, 1, "S", _NO_LATCHES),
+            _State(1, 2, "S", _NO_LATCHES),
+            _State(1, 1, "N", _NO_LATCHES),
+            _State(1, 1, "W", _NO_LATCHES),
+            *[_State(1, 1, "S", latches) for latches in latch_sets],
+        ]
+
+        snapshots = []
+        for state in states:
+            machine = _Machine(code, IO())
+            machine._state = state  # noqa: SLF001
+            snapshots.append(machine.snapshot())
+        # ...and the three fields that are not part of the drive state.
+        for mutate in (
+            lambda m: setattr(m, "cp", 5),
+            lambda m: m.cells.__setitem__(0, 9),
+            lambda m: setattr(m, "_done", True),
+        ):
+            machine = _Machine(code, IO())
+            mutate(machine)
+            snapshots.append(machine.snapshot())
+
+        assert len(set(snapshots)) == len(snapshots)
+        assert all(hash(s) is not None for s in snapshots)
 
     def test_halting_program_is_detected_as_halted(self) -> None:
         assert run_until_halt_or_cycle(_Machine(["C;"], IO())) is True
