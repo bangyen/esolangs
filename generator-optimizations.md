@@ -122,9 +122,25 @@ three_x, ztoalc_l — plus basicfuck, brainif, dig, laserfuck, between, and the
 `decision_tree_program` pair (brainfuck/bf_tree, dimensional/dimensional_tree),
 which fold inside their own construction.
 
-**Build a tree but never fold (16):** myscript, nevermind, clockwise,
-forbin_boolean, flowchart, circlefuck, circlefuck_byte, decleq, sophie, forth,
-modulous, unsquare, eval, arrowqueue, streetcode, six_five (n≤5).
+**Also fold (5, re-measured 2026-08-27):** myscript, nevermind,
+forbin_boolean, flowchart, sophie. The prior audit listed these as
+non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
+characters and flowchart 164 vs 632 on `11110000` against `10010110`.
+
+**Build a tree but never fold (10):** clockwise, circlefuck, circlefuck_byte,
+decleq, forth, eval, arrowqueue, streetcode, six_five (n≤5), and `modulous` /
+`unsquare` — see below.
+
+**`modulous` and `unsquare` are a special case: the fold is written but can
+never fire.** Both contain the `len({truth_table[row] for row in rows}) == 1`
+leaf test (`stack.py:163`, `stack.py:260`), yet both emit byte-identical
+lengths on constant and scattered tables. The reason is the split direction:
+they branch on `row >> k` with `k` counting up from the **LSB**, so a subtree
+is a stride, not a contiguous run, and the rows of a constant *prefix* never
+land in the same subtree. This is the constraint `decision_tree_tokens`
+already documents at `helpers.py:182` ("Modulous walks its bits the other way,
+so its halves are not runs"). Making these fold means reversing the bit order,
+not adding a check.
 
 Three generators inherit folding rather than implementing it: `factor`,
 `painfuck`, and `three_d_brainfuck` all call `brainfuck()` and transform its
@@ -209,7 +225,13 @@ making the program's *height* reveal the input.
 
 - Shared machinery: `text/helpers.py`, `boolean/helpers.py`, `wrap.py`,
   `laserfuck_layout.py`, `ztoalc_starts.py`, `_polynomial.py`
-- Folding classification: `boolean-constant-folding.md` (measured, not inferred)
-  — currently untracked in the working checkout, not on this branch
+- Folding classification: `boolean-constant-folding.md` (untracked in the
+  working checkout, not on this branch). **Partly superseded** — its
+  fold/non-fold split was re-measured here and five generators moved.
+- Re-measurement method: ones-count-controlled length test, comparing
+  `11110000` against `10010110` and `1111111100000000` against
+  `1001011001101001`. Equal ones-counts keep `_maybe_complement` and
+  minterm-count-driven generators from shrinking for the wrong reason, so a
+  strictly shorter program on the constant table means the generator folds.
 - Everything else: generator docstrings and bodies under
   `src/esolangs/tools/{text,boolean}/`
