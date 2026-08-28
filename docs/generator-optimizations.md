@@ -244,7 +244,7 @@ what the folds collapse. They were *not* uniform in how reachable the saving
 was, and the accounts below are kept because the obstacles differed:
 
 **Token-stream trees — tractable.** `circlefuck` / `circlefuck_byte`, `forth`,
-`decleq`, `eval`, `six_five` (n≤5) emit a linear token sequence, so a fold is
+`decleq`, `eval` and `six_five` emit a linear token sequence, so a fold is
 a leaf test plus whatever index bookkeeping the language needs.
 
 - `circlefuck` — Reads are unconditional and up front,
