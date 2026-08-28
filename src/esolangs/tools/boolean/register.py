@@ -228,10 +228,16 @@ def collatz_multiverse(truth_table: str) -> str:
     A register holding 0 or 1 is always odd, so on such registers the Collatz
     rule is affine (``v`` becomes ``v*var2+var3``), which makes AND, NOT, and
     minterms buildable: ``t = src x + zero`` multiplies by a 0/1 ``src`` and
-    ``t = negativeOne x + one`` complements.  Each ``1`` row of the table
+    ``t = negativeOne x + one`` complements.  Each selected row of the table
     contributes its minterm (the AND of each bit's equality indicator); the
     OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
     byte constants come from the text generator's constant table.
+
+    A table with more ones than zeros selects its *zero* rows instead, since
+    a minterm costs an indicator per input plus an AND chain.  Inverting
+    the answer costs nothing: the OR already ends on the ``flip`` that turns
+    ``prod (1 - minterm)`` into the result, so a complemented table simply
+    keeps the accumulator as it stands.
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
@@ -271,8 +277,13 @@ def collatz_multiverse(truth_table: str) -> str:
 
     acc = "acc"
     lines.append("acc = negativeOne x + k1, NOT PRINT.")
+    # Each selected row costs a minterm -- an indicator per input, an AND
+    # chain, and a flip -- so a table with more ones than zeros is cheaper
+    # built from its *zero* rows.  Inverting the answer is free here: the
+    # OR already ends on a ``flip``, so the complement just drops it.
+    invert = truth_table.count("1") > len(truth_table) // 2
     for k in range(2**n):
-        if truth_table[k] == "0":
+        if truth_table[k] == ("1" if invert else "0"):
             continue
         indicators = []
         for i, negated in minterm_literals(k, n):
@@ -291,7 +302,9 @@ def collatz_multiverse(truth_table: str) -> str:
         lines.append(f"{nacc} = {complement} x + zero, NOT PRINT.")
         acc = nacc
 
-    result = flip(acc)
+    # ``acc`` holds prod(1 - minterm), so the answer is its flip -- unless
+    # the minterms were the table's zeros, when ``acc`` is already it.
+    result = acc if invert else flip(acc)
     out = fresh()
     lines.append(f"{out} = negativeOne x + {result}, NOT PRINT.")
     lines.append(f"{out} = k1 x + k48, DO PRINT.")
