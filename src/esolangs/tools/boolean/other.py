@@ -534,12 +534,37 @@ def clockwise(truth_table: str) -> str:
     free columns left of the root, i.e. ``2 ** (n + 1) >= 7``, so ``n == 1``
     (four columns) keeps the spine; widening that ring would cost more than
     the rows save.
+
+    A subtree whose rows all agree stops branching, which narrows the ring:
+    the width is the sum of the displacements its nodes spend, and a folded
+    node spends none.  Since that width grows as ``2 ** (n + 1)``, the
+    saving is real -- a constant table is 411 characters against 621 at
+    ``n == 3`` and 863 against 1479 at ``n == 4``.
+
+    Two things the fold does *not* get to do.  It cannot drop the reads:
+    Clockwise reads inside the tree, seven ``.`` per level, so a folded
+    column still spends them (and an ``S`` where the ``?`` would have been,
+    keeping every column the same height so each leaf's exit lands on the
+    shared bottom row the ring closes through).  And it cannot narrow past
+    the hoist: at ``n == 2`` a tree folded to seven columns loses those
+    seven hoisted rows and comes out *larger* than the unfolded program,
+    263 characters against 255, so the width floors at what the hoist
+    needs.
     """
     n = _validate_truth_table(truth_table)
     cells: dict[tuple[int, int], str] = {}
-    # Seven free columns left of the root are what the hoist needs; see above.
-    hoist = 2 ** (n + 1) >= 7
-    shift = 7 if hoist else 0
+
+    def constant(bit: int, combo: int) -> bool:
+        """Whether every row this subtree covers agrees.
+
+        Rows split most-significant-first, so the subtree entered at
+        ``bit`` with prefix ``combo`` covers the contiguous run of
+        ``2 ** (n - bit)`` rows starting at ``combo << (n - bit)``.
+        """
+        span = 2 ** (n - bit)
+        start = combo << (n - bit)
+        return len(set(truth_table[start : start + span])) == 1
+
     # The spine starts far enough right that the tree's leftward branches
     # clear column 0, which holds the closing corner.  A node at ``bit``
     # displaces its one-branch ``2**(n - bit)`` to the left and puts two
@@ -548,7 +573,35 @@ def clockwise(truth_table: str) -> str:
     # and ``2**(n + 1)`` leaves exactly one free column at the left edge.
     # Anything wider is dead space: the turns are relative, so the tree's
     # absolute column never matters.
-    root = 2 ** (n + 1)
+    #
+    # A folded node spends no displacement, since it has no one-branch to
+    # send anywhere -- so the span is summed over the nodes that actually
+    # branch rather than assumed full.  This is where the fold pays: the
+    # full width grows as ``2 ** (n + 1)``, and a table whose subtrees
+    # collapse needs only the columns its surviving branches displace.
+    def tree_span(bit: int, combo: int) -> int:
+        if bit == n or (bit > 0 and constant(bit, combo)):
+            return 0
+        below: int = max(
+            tree_span(bit + 1, combo << 1),
+            tree_span(bit + 1, (combo << 1) | 1),
+        )
+        displacement: int = 2 ** (n - bit)
+        return displacement + below
+
+    # Never narrow past the hoist's own requirement.  The hoist puts the
+    # root's seven reads on row 0, left of the corner, which retires seven
+    # rows of spine -- worth more than the columns narrowing below it would
+    # save, and at ``n == 2`` a tree folded to seven columns loses the
+    # hoist and comes out *larger* than the unfolded program (263 against
+    # 255 characters).  So the tree may shrink only down to the width the
+    # hoist needs, and a table whose fold would go further simply keeps
+    # those columns blank.
+    root = max(tree_span(0, 0) + 2, 8 if 2 ** (n + 1) >= 8 else 0)
+    # Seven free columns left of the root are what the hoist needs; see
+    # above.
+    hoist = root >= 8
+    shift = 7 if hoist else 0
 
     def place(node: tuple[int, int], ch: str) -> None:
         cells[node] = ch
@@ -556,6 +609,28 @@ def clockwise(truth_table: str) -> str:
     def build(bit: int, x: int, y: int, combo: int) -> None:
         if bit == n:
             leaf(x, y, combo)
+            return
+        if bit > 0 and constant(bit, combo):
+            # Every row below here agrees, so the remaining bits cannot
+            # change the answer and this column needs no more branching.
+            # The reads are not optional, though: a program whose input
+            # count depended on its table would desync a caller feeding
+            # several from one stream, and unlike the tape generators
+            # clockwise reads *inside* the tree.  So the skipped levels
+            # still spend their ``S`` and seven ``.`` -- everything but
+            # the ``?`` that would have turned the pointer.
+            # A skipped level spends 9 rows in an unfolded column (``S``,
+            # seven ``.``, ``?``) and only 8 here, since nothing turns.  The
+            # ninth is padded with an ``S`` -- a no-op on an accumulator the
+            # reads leave at 0 or 1, and the reads reset it anyway -- so the
+            # column still ends on the shared bottom row.  Every leaf's exit
+            # has to land there or the ring does not close.
+            for level in range(n - bit):
+                place((x, y + 9 * level), "S")
+                for i in range(7):
+                    place((x, y + 9 * level + 1 + i), ".")
+                place((x, y + 9 * level + 8), "S")
+            leaf(x, y + 9 * (n - bit), combo << (n - bit))
             return
         if bit == 0 and hoist:
             # The seven reads sit on row 0, left of the corner ``R``; the
@@ -606,6 +681,10 @@ def clockwise(truth_table: str) -> str:
     # tree starts that much higher and every row below rides up with it.
     build(0, root, 1 - shift, 0)
 
+    # A folded column pads its skipped levels to the same 9 rows an
+    # unfolded one spends, so every column is the same height however much
+    # of it folded and the bottom row is where it always was.  The fold
+    # buys columns, not rows: the width is what grows as ``2 ** (n + 1)``.
     bottom = 1 + 9 * n + _CLOCKWISE_LEAF - 1 - shift
     for (x, y), ch in list(cells.items()):
         if ch == "?" and y == bottom:
