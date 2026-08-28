@@ -5,8 +5,12 @@ or variable value; POP/SWP/DUP reshape the stack; PRT prints the top as an
 integer or byte; INP reads a line; JMP/IF conditionally jump; RST resets the
 pointer to the start of the program; and END halts.
 
-The wiki declares four variables (VAR1-VAR4); the interpreter initializes
-those but accepts any ``VARn`` name rather than enforcing the limit.
+The wiki declares four variables (VAR1-VAR4), and those are the four that
+exist: every variable op -- the ``PSH`` store, the ``PRT`` read, and the
+``VARn+k``/``VARn-k`` arithmetic -- halts on any other name.  The store
+used to be the exception, creating whatever name it was given, which made
+``[PSH VAR VAR1]`` (the keyword spelling; the syntax is ``[PSH VAR1]``)
+store into a phantom ``VAR`` and silently leave ``VAR1`` alone.
 
 Operations that act on an empty stack, an undefined variable, or a missing
 operand are invalid: they halt the program with
@@ -124,7 +128,16 @@ def _psh(state: State, mod: str, arg: list[str]) -> str | None:
         m = mod.split('"')[1]
         state.stk += [ord(c) for c in m][::-1]
     elif "VAR" in mod:
-        state.var[_operand(arg, 1)] = _top(state)
+        # The store names its target the same way every other variable op
+        # does, so it rejects an unknown name the same way too: ``PRT`` and
+        # the ``VARn+k`` arithmetic both halt on one, and letting the store
+        # through created the variable instead.  That made ``[PSH VAR VAR1]``
+        # -- the keyword spelling, which the syntax is ``[PSH VAR1]`` -- store
+        # into a phantom ``VAR`` and silently do nothing to ``VAR1``.
+        name = _operand(arg, 1)
+        if name not in state.var:
+            raise HaltError
+        state.var[name] = _top(state)
     return None
 
 
