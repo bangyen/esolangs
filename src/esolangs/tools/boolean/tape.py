@@ -4,22 +4,20 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-# dimensional, rotfuck, and six_five each own a file because their
-# construction (a survivor walk, a per-position rotation, an assembler)
-# dwarfs the rest of the category; they are re-exported here so this
-# module stays the import site the package and tests already use.
+# rotfuck and six_five each own a file because their construction (a
+# per-position rotation, an assembler) dwarfs the rest of the category, and
+# dimensional keeps one for its pinned-dimension moves; they are re-exported
+# here so this module stays the import site the package and tests already use.
 from esolangs.tools.boolean.dimensional import dimensional, dimensional_tree
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _maybe_complement,
     _validate_truth_table,
     decision_tree_program,
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five, six_five_arithmetic
 from esolangs.tools.text.tape import _factor_encode
-from esolangs.tools.wrap import shortest
 
 __all__ = [
     "basicfuck",
@@ -241,157 +239,24 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
     return "".join(prog)
 
 
-def _bf_minterm(truth_table: str) -> str:
-    """Build a brainfuck program evaluating ``truth_table`` via its minterms.
-
-    The output is ``48 + sum_k tt[k] * M_k`` where ``M_k`` is the product of
-    the input bits (or their complements) that select row ``k``.  BF has no
-    branching that would let leaves skip siblings, so a branch-free sum of
-    minterms (each computed with 0/1 copies and ANDs) is used instead.
-    Cells: inputs at 1..n, the running sum at n+1, and fresh scratch cells
-    allocated above that.
-
-    When the table has more ``1``s than ``0``s the complement is evaluated
-    instead (fewer minterms) and ``49 - sum`` is printed.
-    """
-    n = _validate_truth_table(truth_table)
-    table, use_complement = _maybe_complement(truth_table)
-
-    class _Cell:
-        def __init__(self, n: int) -> None:
-            self.n = n
-            self.inputs = list(range(1, n + 1))
-            self.sum = n + 1
-            self.next_cell = n + 2
-            self.code: list[str] = []
-            self.ptr = 0
-
-        def alloc(self) -> int:
-            cell = self.next_cell
-            self.next_cell += 1
-            return cell
-
-        def move(self, dst: int) -> None:
-            delta = dst - self.ptr
-            self.code.append(">" * delta if delta >= 0 else "<" * -delta)
-            self.ptr = dst
-
-        def zero(self, cell: int) -> None:
-            self.move(cell)
-            self.code.append("[-]")
-
-        def copy(self, src: int, dst: int) -> None:
-            """Copy ``src`` to ``dst`` preserving ``src`` (two scratch cells)."""
-            a, b = self.alloc(), self.alloc()
-            self.zero(a)
-            self.zero(b)
-            self.move(src)
-            self.code.append("[")
-            self.move(a)
-            self.code.append("+")
-            self.move(b)
-            self.code.append("+")
-            self.move(src)
-            self.code.append("-]")
-            self.move(a)
-            self.code.append("[")
-            self.move(src)
-            self.code.append("+")
-            self.move(a)
-            self.code.append("-]")
-            self.move(b)
-            self.code.append("[")
-            self.move(dst)
-            self.code.append("+")
-            self.move(b)
-            self.code.append("-]")
-            self.move(dst)
-
-    cell = _Cell(n)
-    for i in cell.inputs:
-        cell.move(i)
-        cell.code.append(",")
-        cell.code.append("-" * _ASCII_ZERO)
-    cell.zero(cell.sum)
-    for k in range(2**n):
-        if table[k] == "0":
-            continue
-        factors: list[int] = []
-        for i in range(n):
-            f = cell.alloc()
-            cell.zero(f)
-            if (k >> (n - 1 - i)) & 1:
-                cell.copy(cell.inputs[i], f)
-            else:
-                cell.move(f)
-                cell.code.append("[-]+")
-                tmp = cell.alloc()
-                cell.copy(cell.inputs[i], tmp)
-                cell.move(tmp)
-                cell.code.append("[")
-                cell.move(f)
-                cell.code.append("-")
-                cell.move(tmp)
-                cell.code.append("-]")
-            factors.append(f)
-        prod = factors[0]
-        for factor in factors[1:]:
-            newp = cell.alloc()
-            cell.zero(newp)
-            t1 = cell.alloc()
-            cell.zero(t1)
-            cell.copy(prod, t1)
-            t2 = cell.alloc()
-            cell.zero(t2)
-            cell.copy(factor, t2)
-            cell.move(t1)
-            cell.code.append("[")
-            cell.move(t2)
-            cell.code.append("[")
-            cell.move(newp)
-            cell.code.append("+")
-            cell.move(t2)
-            cell.code.append("-]")
-            cell.move(t1)
-            cell.code.append("-]")
-            prod = newp
-        tmp = cell.alloc()
-        cell.zero(tmp)
-        cell.copy(prod, tmp)
-        cell.move(tmp)
-        cell.code.append("[")
-        cell.move(cell.sum)
-        cell.code.append("+")
-        cell.move(tmp)
-        cell.code.append("-]")
-    cell.move(cell.sum)
-    if use_complement:
-        # The sum holds 0/1 for the complement; print 49 - sum via a fresh
-        # cell to the right (cleared, set to 49, decremented by the sum).
-        cell.code.append(">[-]" + "+" * _ASCII_ONE + "<[>-<-]>.")
-    else:
-        cell.code.append("+" * _ASCII_ZERO)
-        cell.code.append(".")
-    return "".join(cell.code)
-
-
 def brainfuck(truth_table: str) -> str:
     """Build a brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Two generators exist with complementary strengths, and ``bf`` returns
-    the shorter of the two for the given table:
+    This is :func:`bf_tree`, a decision tree sharing the bit tests.
 
-    - ``_bf_minterm``: a branch-free sum of minterms (each input read and
-      normalized to 0/1, the result ``48 + sum_k tt[k] * M_k``).  Best for
-      sparse tables (few one-rows) — an all-zeros table is ~450 chars even
-      at n == 8.
-    - :func:`bf_tree`: a decision tree sharing the bit tests.  Best for
-      dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
+    There used to be a second construction here -- a branch-free sum of
+    minterms -- and ``bf`` returned whichever came out shorter, because the
+    tree was full and so paid for every input on sparse tables where the
+    minterm paid only per one-row.  Once the tree started folding constant
+    subtrees it won on every table at n <= 4 but the two constant ones,
+    where it costs about 2.5x the minterm (629 against 253 characters at
+    n == 4) -- a bounded factor on two tables out of 65536, which is not
+    worth a second construction and a dispatch to choose between them.
     """
-    return shortest(_bf_minterm(truth_table), bf_tree(truth_table))
+    return bf_tree(truth_table)
 
 
 def factor(truth_table: str) -> str:
