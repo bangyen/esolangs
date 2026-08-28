@@ -14,6 +14,8 @@ from esolangs.tools.boolean.register import (
     _polynomial_dag,
     _polynomial_states,
     _polynomial_tree,
+    _sophie_dag,
+    _sophie_tree,
 )
 from tests.tools.boolean_runners import (
     _PB_CONSTANTS,
@@ -30,6 +32,7 @@ from tests.tools.boolean_runners import (
     run_polynomial_from,
     run_qoibl,
     run_sophie,
+    run_sophie_from,
 )
 
 
@@ -356,6 +359,77 @@ class TestSophie:
     def test_structure(self) -> None:
         """A one-input function is a single conditional pair."""
         assert boolean.sophie("10") == ";@$48{#$49,&}{#$48,&}"
+
+    def test_state_machine_merges_what_the_tree_cannot(self) -> None:
+        """A subtable that is not constant can still collapse to one state.
+
+        ``10101010`` is NOT of the last input: the nested tree branches at
+        every level, while every prefix leaves the same residual
+        subfunction, so the chain needs one state per level until the last.
+        The accumulator carries the state label between levels, which is
+        what a nested construction cannot express.
+        """
+        table = "10101010"
+        assert [len(level) for level in _polynomial_states(table, 3)] == [1, 1, 1, 2]
+        assert len(_sophie_dag(table)) < len(_sophie_tree(table))
+        program = boolean.sophie(table)
+        for combo in range(8):
+            bits = [(combo >> (2 - i)) & 1 for i in range(3)]
+            assert run_sophie(program, [str(b) for b in bits]) == table[combo]
+
+    def test_merge_only_shrinks(self) -> None:
+        """No table comes out longer than the nested tree alone.
+
+        A state block costs more than a tree node, so the tree wins small and
+        near-constant tables -- 22 of 256 at n == 3 go the other way.  Both
+        are built and the shorter is emitted, ties keeping the tree, so the
+        dispatch cannot regress a table the merge does not help.
+        """
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            dispatched = len(boolean.sophie(table))
+            tree = len(_sophie_tree(table))
+            assert dispatched <= tree, table
+            improved += dispatched < tree
+        assert improved == 22
+
+    def test_merge_is_linear_where_the_tree_doubles(self) -> None:
+        """Parity needs two states per level however wide it gets.
+
+        Parity is the nested tree's worst case at every width -- nothing
+        folds, so it branches at all ``2**n - 1`` internal nodes -- and is
+        the merge's best, since the running parity is the whole state.  The
+        saving therefore grows with ``n`` rather than being a fixed trim.
+        """
+        previous = None
+        for n in (4, 5, 6):
+            parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
+            assert [len(level) for level in _polynomial_states(parity, n)] == [1] + [
+                2
+            ] * n
+            ratio = len(_sophie_dag(parity)) / len(_sophie_tree(parity))
+            assert ratio < 1
+            if previous is not None:
+                assert ratio < previous  # the gap widens with n
+            previous = ratio
+
+    def test_every_path_reads_each_input_once(self) -> None:
+        """A run consumes exactly ``n`` inputs, whichever build won.
+
+        The tree spends the reads a folded leaf skipped; the state machine
+        reads once inside the single block each level's chain fires.  An
+        exhaustible feed proves both directions -- an over-read raises, a
+        leftover proves an under-read.
+        """
+        for table, n in (("10101010", 3), ("11111111", 3), ("01101001", 3)):
+            program = boolean.sophie(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                feed = iter([str(b) for b in bits])
+                got = run_sophie_from(program, feed)
+                assert got == table[combo], f"{table} inputs {bits}"
+                assert not list(feed), f"{table} inputs {bits} left input unread"
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice prints outright, but still reads its inputs.
