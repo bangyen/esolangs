@@ -440,7 +440,36 @@ def sophie(truth_table: str) -> str:
     ``@$48{then}{else}`` -- the else block runs flat after a failed check, so
     consecutive conditionals must use the block form. Each leaf sets the
     result with ``#$48``/``#$49`` and prints it before halting.
+
+    Two constructions compete, as in :func:`polynomial` and for the same
+    reason.  :func:`_sophie_tree` nests the branches, so it can only collapse
+    a subtable that is *constant*.  :func:`_sophie_dag` carries a state label
+    in the accumulator between levels, which lets two prefixes with equal
+    *residual subfunctions* share one block -- an ordered BDD.  **The shorter
+    wins, with the tree first so ties keep the emission this generator
+    already had.**
+
+    A DAG block costs more than a tree node, so the tree keeps small and
+    near-constant tables and the aggregate saving at n == 3 is only 1.9%
+    (22 of 256 tables).  It grows with width as the tree doubles and the
+    state count does not: 3.1% at n == 5, 13.4% at n == 6 and 29.3% at
+    n == 7 over random tables, and parity -- the tree's worst case -- goes
+    from 1911 characters to 283 at n == 7.
+
+    **Reordering the inputs is not available here**, unlike most tree
+    generators: ``;`` and ``:`` *assign* to the accumulator, ``#`` loads only
+    a literal, and nothing else writes it, so a bit can only be branched on
+    before the next read and the test order is the stream order.  The merge
+    is what collects the saving a reorder would have found.
     """
+    _validate_truth_table(truth_table)
+    tree = _sophie_tree(truth_table)
+    dag = _sophie_dag(truth_table)
+    return dag if len(dag) < len(tree) else tree
+
+
+def _sophie_tree(truth_table: str) -> str:
+    """Emit the nested-branch Sophie program; see :func:`sophie`."""
     n = _validate_truth_table(truth_table)
 
     def build(path: list[int]) -> str:
@@ -461,6 +490,62 @@ def sophie(truth_table: str) -> str:
         return ";" + "@$48{" + build([*path, 0]) + "}" + "{" + build([*path, 1]) + "}"
 
     return build([])
+
+
+# Label bands for :func:`_sophie_dag`.  Consecutive levels must not share a
+# label, or a block that fires would leave the accumulator holding a value a
+# later test in the *same* chain matches, running two blocks for one input.
+# Alternating two disjoint bands is enough, and both avoid 48/49, which the
+# leaves test against.
+_SOPHIE_BANDS = ((1, 20), (21, 40))
+
+
+def _sophie_dag(truth_table: str) -> str:
+    """Emit the state-machine Sophie program; see :func:`sophie`.
+
+    Each level is a *flat chain* of ``@$L{...}`` blocks, one per live state,
+    and the read happens inside whichever block fires.  Nesting the blocks
+    instead would just restate the tree -- what makes this a DAG is that two
+    prefixes leaving the same residual subfunction get the same label and
+    therefore the same block.
+
+    Re-fire needs no arithmetic here, unlike :func:`_polynomial_dag`: Sophie
+    tests equality against an arbitrary literal, so it is enough that
+    consecutive levels draw labels from disjoint bands.  A fired block leaves
+    the accumulator holding a *next*-level label, which no remaining test in
+    the current chain can match.
+
+    Level 0 has one state and the accumulator starts at 0, so its dispatch is
+    skipped.  Leaves halt inside their block, so the last level cannot
+    re-fire whatever the labels.
+    """
+    n = _validate_truth_table(truth_table)
+    levels = _polynomial_states(truth_table, n)
+
+    def label(level: int, state: str) -> int:
+        return _SOPHIE_BANDS[level % 2][0] + levels[level].index(state)
+
+    out: list[str] = []
+    for k in range(n):
+        width = 2 ** (n - k - 1)
+        blocks: list[str] = []
+        for state in levels[k]:
+            zero, one = state[:width], state[width:]
+            if k + 1 == n:
+                # The children are single characters -- the answers.
+                body = (
+                    f";@$48{{#${_ASCII_ZERO + int(zero)},&}}"
+                    f"{{#${_ASCII_ZERO + int(one)},&}}"
+                )
+            elif zero == one:
+                # Merged children: this bit cannot change the answer, so the
+                # read still happens and the label is set unconditionally.
+                body = f";#${label(k + 1, zero)}"
+            else:
+                body = f";@$48{{#${label(k + 1, zero)}}}{{#${label(k + 1, one)}}}"
+            blocks.append(body if k == 0 else f"@${label(k, state)}{{{body}}}")
+        out.append("".join(blocks))
+    return "".join(out)
 
 
 def dig(truth_table: str) -> str:
