@@ -141,9 +141,19 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
         # *module*, not a name inside it.  The bundle is that module, so the
         # rewrite is a plain alias -- repointing it at ``from {stem} import
         # <name>`` asks for an attribute the bundle has no reason to define.
+        #
+        # The skip list applies here too, and not applying it was a bug an
+        # interpreter only hits when a package in that list exports a
+        # module of the *same leaf name*.  Streetcode is the case: its
+        # generator is ``esolangs.tools.boolean.streetcode``, so
+        # ``from esolangs.tools.boolean import streetcode as gen`` matched
+        # this rule and ``gen`` came out bound to the bundled interpreter.
+        # The suite then called it -- ``gen("00110100")`` -- and died with
+        # "'module' object is not callable" before a single mutant ran.
         leaf = module.rsplit(".", 1)[-1]
+        skipped = "|".join(_NOT_REWRITTEN)
         src = re.sub(
-            rf"from esolangs(?:\.[\w.]+)? import {leaf} as (\w+)",
+            rf"from esolangs(?!\.(?:{skipped})\b)(?:\.[\w.]+)? import {leaf} as (\w+)",
             rf"import {stem} as \1",
             src,
         )
