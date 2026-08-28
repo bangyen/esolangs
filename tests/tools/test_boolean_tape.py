@@ -236,16 +236,14 @@ class TestDimensionalTree:
     def test_tree_small_on_dense_tables(self) -> None:
         """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.dimensional_tree(xor6)) < 10_000  # vs ~34K survivor
+        assert len(boolean.dimensional_tree(xor6)) < 10_000
 
-    def test_dimensional_dispatches(self) -> None:
-        """dimensional picks the tree, sparse or dense.
+    def test_dimensional_is_the_tree(self) -> None:
+        """dimensional is the tree, sparse or dense.
 
-        The survivor form used to win on sparse tables, but a tree that
-        folds constant subtrees beats it on *every* table at n <= 4 -- the
-        survivor spends a block per row where the folded tree spends one
-        leaf per constant run.  ``shortest`` still guards the choice, so
-        this pins the outcome rather than removing the survivor.
+        A survivor evaluator used to sit beside it, chosen when it came out
+        shorter.  Folding constant subtrees put the tree ahead on every
+        table at n <= 4, so the survivor was unreachable and was removed.
         """
         sparse = "0" * 15 + "1"  # AND4
         assert boolean.dimensional(sparse) == boolean.dimensional_tree(sparse)
@@ -312,34 +310,18 @@ class TestBf:
             got = run_bf(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_bf_constant_uses_the_minterm(self) -> None:
-        """bf picks the minterm for a constant table.
+    def test_bf_is_the_tree(self) -> None:
+        """bf is the folded tree, for constant and sparse tables alike.
 
-        The two constant tables are the only ones where the minterm form
-        still wins: it emits no test at all, while the tree still spends a
-        guard pair on the root.  Sparse-but-not-constant tables go to the
-        tree now that it folds constant subtrees -- AND4 is 852 characters
-        as a folded tree against 1637 as a minterm -- which is what
-        :meth:`test_bf_sparse_uses_the_tree` pins.
+        There used to be a minterm construction here and ``bf`` returned
+        whichever was shorter.  Folding left the tree ahead on every table
+        but the two constant ones -- where it costs about 2.5x, a bounded
+        factor on two tables out of 65536 -- so the minterm went away and
+        the constant tables go to the tree with everything else.
         """
-        program = boolean.brainfuck("0" * 16)
-        assert len(program) < len(boolean.bf_tree("0" * 16))
-
-    def test_bf_sparse_uses_the_tree(self) -> None:
-        """bf picks the folded tree for a sparse table.
-
-        Folding reversed this dispatch: a single-one table used to favour
-        the minterm, but a folded tree collapses the fifteen zero rows into
-        a handful of leaves and comes out shorter for every single-one
-        table at n == 4.
-        """
-        table = "0" * 15 + "1"  # AND4: one one-row
-        assert boolean.brainfuck(table) == boolean.bf_tree(table)
-
-    def test_bf_dense_uses_the_tree(self) -> None:
-        """bf picks the decision tree for dense tables."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert boolean.brainfuck(xor6) == boolean.bf_tree(xor6)
+        for table in ("0" * 16, "0" * 15 + "1", xor6):  # constant, AND4, dense
+            assert boolean.brainfuck(table) == boolean.bf_tree(table)
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
@@ -377,7 +359,7 @@ class TestBfTree:
     def test_tree_small_on_dense_tables(self) -> None:
         """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.bf_tree(xor6)) < 10_000  # vs the minterm's ~1.2M
+        assert len(boolean.bf_tree(xor6)) < 10_000
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice emits a leaf instead of branching on more bits.
