@@ -44,16 +44,32 @@ result is which one the ant is resting in).
 """
 
 import sys
+from typing import Literal
 
 from esolangs.interpreters.io import IO
 
-_MOVE = {
+# The heading an instruction moves along, as (dx, dy).  The ant's plane is
+# an unbounded sparse grid rather than rows of text, so x really is the
+# horizontal axis here.  Naming the four keeps a heading distinct from the
+# instruction characters that spell it in either case.
+_Heading = Literal["n", "e", "s", "w"]
+
+_MOVE: dict[_Heading, tuple[int, int]] = {
     "n": (0, -1),
     "e": (1, 0),
     "s": (0, 1),
     "w": (-1, 0),
 }
-_INSTRUCTIONS = "nNeEsSwWpP"
+
+# An instruction is a heading in either case -- lowercase moves onto a
+# black cell, uppercase onto a white one -- or a paint.  Deriving the
+# validation string from _MOVE keeps it in step with the headings the move
+# branch can actually look up.
+_INSTRUCTIONS = "".join(h + h.upper() for h in _MOVE) + "pP"
+
+# The same headings keyed by their own spelling, so the move branch
+# can turn a parsed character into a _Heading without asserting it.
+_HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
 
 
 class _Machine:
@@ -100,7 +116,12 @@ class _Machine:
         elif command == "P":
             self.grid[(self.x, self.y)] = 1
         else:
-            dx, dy = _MOVE[command.lower()]
+            # Not a move command at all unless the lowercased character is
+            # one of the four headings, which is what the lookup requires.
+            heading = _HEADING.get(command.lower())
+            if heading is None:  # pragma: no cover - _INSTRUCTIONS admits no other
+                raise ValueError(f"unknown command {command!r}")
+            dx, dy = _MOVE[heading]
             target = self.grid.get((self.x + dx, self.y + dy), 0)
             if (target == 1) == command.isupper():
                 self.x += dx

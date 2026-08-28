@@ -92,6 +92,8 @@ import argparse
 import contextlib
 import functools
 import io
+import os
+import pathlib
 import random
 import re
 import shutil
@@ -328,10 +330,21 @@ def _verify_rust(
     prepare = prepare or (lambda program: program)
     label = label or (lambda program: program)
 
+    # Prepared once, then handed to both sides: the two interpreters have to
+    # be compared on the same program text, so nothing here may depend on
+    # prepare being called twice and agreeing with itself.
+    prepared = [prepare(entry) for entry, _ in corpus]
+
+    # Every native run is a subprocess the caller only waits on, so the corpus
+    # is spawned across threads rather than one at a time.  Results come back
+    # in corpus order, keeping a divergence report identical to the serial
+    # run's.  The Python side stays sequential: it is interpreted in-process,
+    # where threads would contend on the GIL rather than overlap.
+    cases = [(p, stdin) for p, (_, stdin) in zip(prepared, corpus, strict=True)]
+    natives = _run_parallel(lambda case: run_native(*case), cases)
+
     failures = 0
-    for entry, stdin in corpus:
-        program = prepare(entry)
-        native = run_native(program, stdin)
+    for (entry, stdin), program, native in zip(corpus, prepared, natives, strict=True):
         if native is None:
             print(f"{name} {label(entry)!r}: Rust reference did not terminate")
             failures += 1
@@ -1036,8 +1049,13 @@ def _run_native(
     program: str,
     timeout: float = 5,
     input_bytes: bytes | None = None,
+    extra_env: dict[str, str] | None = None,
 ) -> bytes | None:
     """Run ``program`` (written to a temp file) through ``cmd``.
+
+    ``extra_env`` overlays the child's environment, which is how a reference
+    that draws part of its behaviour at random is pinned to one outcome (see
+    LaserFuck's initial heading).
 
     Returns None if the reference does not terminate within ``timeout``
     seconds (the Rust reference has no step limit and hangs on
@@ -1052,6 +1070,7 @@ def _run_native(
             capture_output=True,
             timeout=timeout,
             input=input_bytes,
+            env=dict(os.environ, **extra_env) if extra_env else None,
         ).stdout
     except subprocess.TimeoutExpired:
         return None
@@ -1110,15 +1129,16 @@ def _run_laserfuck_python(
     return buffer.getvalue()
 
 
-def _check_laserfuck_boolean(table: str, n: int, runs: int = 12) -> tuple[int, int]:
+def _check_laserfuck_boolean(table: str, n: int) -> tuple[int, int]:
     """Differentially check a LaserFuck boolean program for one truth table.
 
     Returns ``(checked, failures)``: one ``checked`` per input combination,
     with ``failures`` counting the combos whose output did not match, plus
-    any Python heading that hung.  ``runs`` is how many times the Rust
-    reference samples the output set; the mirror funnel normalizes every
-    heading, so the set is effectively a singleton and a couple of runs are
-    enough to catch a divergence.
+    any Python heading that hung.  The reference is run once per initial
+    heading rather than sampled repeatedly: the heading is the only thing it
+    draws at random here (no program in this corpus uses the `*` splitter),
+    so four pinned runs enumerate the output set exactly, where sampling
+    could only ever approach it.
     """
     from esolangs.tools.boolean import other
 
@@ -1130,8 +1150,13 @@ def _check_laserfuck_boolean(table: str, n: int, runs: int = 12) -> tuple[int, i
         inputs = [str(b) for b in bits]
         outputs: set[str] = set()
         input_bytes = ("\n".join(inputs) + "\n").encode()
-        for _ in range(runs):
-            out = _run_native([str(RUST_BIN)], program, input_bytes=input_bytes)
+        for rust_heading in range(4):
+            out = _run_native(
+                [str(RUST_BIN)],
+                program,
+                input_bytes=input_bytes,
+                extra_env={"LASERFUCK_HEADING": str(rust_heading)},
+            )
             if out is None:
                 print(
                     f"LaserFuck boolean {table!r} combo {bits}: "
@@ -1186,8 +1211,13 @@ def _verify_laserfuck() -> bool:
         nonlocal failures, checked
         outputs: set[str] = set()
         for out in _run_parallel(
-            lambda _: _run_native([str(RUST_BIN)], program, input_bytes=b"1\n"),
-            range(30),
+            lambda h: _run_native(
+                [str(RUST_BIN)],
+                program,
+                input_bytes=b"1\n",
+                extra_env={"LASERFUCK_HEADING": str(h)},
+            ),
+            range(4),
         ):
             if out is None:
                 print(f"LaserFuck {program!r}: Rust reference does not terminate")
@@ -2209,9 +2239,7 @@ def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
     for _ in range(count):
         n = rng.randint(2, 3)
         table = "".join(rng.choice("01") for _ in range(2**n))
-        # 4 runs: the funnel makes the output heading-independent, and the
-        # fuzzer draws many tables, so each needs to stay cheap
-        c, f = _check_laserfuck_boolean(table, n, runs=4)
+        c, f = _check_laserfuck_boolean(table, n)
         checked += c
         failures += f
 
@@ -2221,6 +2249,66 @@ def _fuzz_laserfuck(rng: random.Random, count: int) -> bool:
         else f"LaserFuck fuzz: {failures} failures of {checked}"
     )
     return failures == 0
+
+
+# Each language pairs its verifier with the two files it cross-checks: the
+# in-package interpreter and the native reference.  --scope runs a language
+# only when the branch touched one of its two sides, since nothing else in the
+# tree can make a Python interpreter and its native oracle disagree.
+_LANGUAGES: tuple[tuple[str, str, str], ...] = (
+    ("laserfuck", "interpreters/grid_based/laserfuck.py", "extra/rust/laserfuck.rs"),
+    (
+        "nocomment",
+        "interpreters/tape_based/nocomment.py",
+        "extra/assembly/nocomment-riscv.s",
+    ),
+    ("bfpda", "interpreters/stack_based/bf_pda.py", "extra/assembly/bfpda-riscv.s"),
+    ("ram0", "interpreters/register_based/ram0.py", "extra/assembly/ram0-riscv.s"),
+    ("bio", "interpreters/register_based/bio.py", "extra/assembly/bio-riscv.s"),
+    (
+        "minsky_swap",
+        "interpreters/register_based/minsky_swap.py",
+        "extra/assembly/minsky_swap-riscv.s",
+    ),
+    ("forth", "interpreters/stack_based/forth.py", "extra/rust/forth.rs"),
+    ("basicfuck", "interpreters/tape_based/basicfuck.py", "extra/rust/basicfuck.rs"),
+    ("unsquare", "interpreters/stack_based/unsquare.py", "extra/rust/unsquare.rs"),
+    ("three_x", "interpreters/stack_based/three_x.py", "extra/rust/three_x.rs"),
+    (
+        "pct",
+        "interpreters/register_based/pct_squared_minus_one.py",
+        "extra/rust/pct_squared_minus_one.rs",
+    ),
+    ("painfuck", "interpreters/tape_based/painfuck.py", "extra/rust/painfuck.rs"),
+    ("bit_tilde", "interpreters/tape_based/bit_tilde.py", "extra/rust/bit_tilde.rs"),
+)
+
+# common.rs is linked into every Rust cross-check, so a change there can move
+# any of them away from its Python counterpart.
+_SHARED_NATIVE = ("extra/rust/common.rs", "extra/rust/Cargo.toml")
+
+
+def _scoped_languages() -> tuple[set[str] | None, str]:
+    """Return the languages worth cross-checking, and why that set was chosen.
+
+    ``None`` means "run them all" -- the answer was unclear, or something
+    shared moved -- so an unreadable diff never silently drops the corpus.
+    """
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    from _scope import changed_files, widens_to_everything
+
+    changed = changed_files()
+    reason = widens_to_everything(changed)
+    if reason is not None:
+        return None, reason
+    if any(f.endswith(_SHARED_NATIVE) for f in changed):
+        return None, "shared Rust cross-check machinery changed"
+    picked = {
+        name
+        for name, py, native in _LANGUAGES
+        if any(f.endswith(py) or f.endswith(native) for f in changed)
+    }
+    return picked, f"{len(picked)} cross-checked language(s) changed"
 
 
 def main() -> int:
@@ -2243,37 +2331,67 @@ def main() -> int:
         default=0,
         help="seeded RNG for the fuzzers (default: 0)",
     )
+    parser.add_argument(
+        "--scope",
+        action="store_true",
+        help="only cross-check languages this branch touched (full run when "
+        "the diff is unreadable or shared machinery moved)",
+    )
     args = parser.parse_args()
 
-    ok = _verify_laserfuck()
-    ok = _verify_nocomment() and ok
-    ok = _verify_bfpda() and ok
-    ok = _verify_ram0() and ok
-    ok = _verify_bio() and ok
-    ok = _verify_minsky_swap() and ok
-    ok = _verify_forth() and ok
-    ok = _verify_basicfuck() and ok
-    ok = _verify_unsquare() and ok
-    ok = _verify_three_x() and ok
-    ok = _verify_pct() and ok
-    ok = _verify_painfuck() and ok
-    ok = _verify_bit_tilde() and ok
+    verifiers = {
+        "laserfuck": _verify_laserfuck,
+        "nocomment": _verify_nocomment,
+        "bfpda": _verify_bfpda,
+        "ram0": _verify_ram0,
+        "bio": _verify_bio,
+        "minsky_swap": _verify_minsky_swap,
+        "forth": _verify_forth,
+        "basicfuck": _verify_basicfuck,
+        "unsquare": _verify_unsquare,
+        "three_x": _verify_three_x,
+        "pct": _verify_pct,
+        "painfuck": _verify_painfuck,
+        "bit_tilde": _verify_bit_tilde,
+    }
+
+    selected = set(verifiers)
+    if args.scope:
+        picked, why = _scoped_languages()
+        selected = set(verifiers) if picked is None else picked
+        scope_note = "all" if picked is None else (", ".join(sorted(picked)) or "none")
+        print(f"differential scope: {scope_note} ({why})")
+        if not selected:
+            print("differential corpus: all ok")
+            return 0
+
+    ok = True
+    for name, verify in verifiers.items():
+        if name in selected:
+            ok = verify() and ok
+
     if args.fuzz:
         rng = random.Random(args.seed)
-        ok = _fuzz_nocomment(rng, args.fuzz) and ok
-        ok = _fuzz_bfpda(rng, args.fuzz) and ok
-        ok = _fuzz_ram0(rng, args.fuzz) and ok
-        ok = _fuzz_bio(rng, args.fuzz) and ok
-        ok = _fuzz_minsky_swap(rng, args.fuzz) and ok
-        ok = _fuzz_forth(rng, args.fuzz) and ok
-        ok = _fuzz_basicfuck(rng, args.fuzz) and ok
-        ok = _fuzz_unsquare(rng, args.fuzz) and ok
-        ok = _fuzz_three_x(rng, args.fuzz) and ok
-        ok = _fuzz_painfuck(rng, args.fuzz) and ok
+        fuzzers = {
+            "nocomment": _fuzz_nocomment,
+            "bfpda": _fuzz_bfpda,
+            "ram0": _fuzz_ram0,
+            "bio": _fuzz_bio,
+            "minsky_swap": _fuzz_minsky_swap,
+            "forth": _fuzz_forth,
+            "basicfuck": _fuzz_basicfuck,
+            "unsquare": _fuzz_unsquare,
+            "three_x": _fuzz_three_x,
+            "painfuck": _fuzz_painfuck,
+        }
+        for name, fuzz in fuzzers.items():
+            if name in selected:
+                ok = fuzz(rng, args.fuzz) and ok
         # LaserFuck fuzz is far slower per iteration (each truth table needs
         # 12 Rust runs per input combination), so it gets a tenth of the
         # budget.
-        ok = _fuzz_laserfuck(rng, max(1, args.fuzz // 10)) and ok
+        if "laserfuck" in selected:
+            ok = _fuzz_laserfuck(rng, max(1, args.fuzz // 10)) and ok
     print("differential corpus: all ok" if ok else "differential corpus: FAILURES")
     return 0 if ok else 1
 

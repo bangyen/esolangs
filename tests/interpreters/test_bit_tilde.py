@@ -67,6 +67,45 @@ class TestBitTilde:
     def test_two_inputs_and_outputs(self) -> None:
         assert run_scripted(")()(", "hi\n!") == "h!"
 
+    def test_input_grows_the_pool_to_fit_its_window(self) -> None:
+        """``)`` past the first cell extends the pool to hold all eight bits.
+
+        Input was only ever read at cells 0 and 1, where the window already
+        fits inside the eight cells the pool starts with -- so the growth
+        the read has to do, and how far, went unexercised.  Reading further
+        right still round-trips the byte, which it cannot do unless the
+        window was made to fit.
+        """
+        assert run_scripted(">>)(", "A") == "A"
+        assert run_scripted(">>>>)(", "A") == "A"
+
+    def test_input_extends_the_pool_by_exactly_the_shortfall(self) -> None:
+        """The pool grows to the end of the window and no further.
+
+        The byte prints the same however much slack is added past it, so
+        the amount is only visible in the pool itself.
+        """
+        from esolangs.interpreters.tape_based.bit_tilde import _Machine
+
+        machine = _Machine(">>)(", ScriptedIO("A"))
+        while not machine.halted:
+            machine.step()
+        assert len(machine.tape) == 10  # two moves right, eight bits of window
+
+    def test_input_replaces_exactly_eight_cells(self) -> None:
+        """``)`` overwrites the eight bits of its window and no more.
+
+        Coming back left leaves the pool longer than the window, so a
+        wider write would swallow the spare cell instead of leaving it --
+        which the printed byte, being the first eight bits, cannot show.
+        """
+        from esolangs.interpreters.tape_based.bit_tilde import _Machine
+
+        machine = _Machine(">><<)", ScriptedIO("A"))
+        while not machine.halted:
+            machine.step()
+        assert machine.tape == [0, 1, 0, 0, 0, 0, 0, 1, 0]
+
     def test_loop_skips_when_the_bit_is_zero(self) -> None:
         """``{`` jumps past its body when the current bit is zero."""
         assert run_and_capture("{(~}(") == "\x00"

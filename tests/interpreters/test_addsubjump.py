@@ -151,6 +151,11 @@ class TestHaltAndErrors:
     def test_empty_program(self) -> None:
         assert _run("") == ""
 
+    def test_unallocatable_address_halts(self) -> None:
+        """Cell values are unbounded; the list holding them is not."""
+        with pytest.raises(HaltError, match="too large"):
+            _run("9" * 40)
+
 
 class TestStepMachine:
     def test_step_tracks_ip_and_memory(self) -> None:

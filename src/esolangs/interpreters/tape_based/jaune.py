@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import Literal
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -45,6 +45,13 @@ from esolangs.interpreters.io import IO
 # without testing what :func:`_parse` has already guaranteed.
 _CountedOp = Literal["^", "v", "v+", "v-", ">", "<", "#", "&", "%", "+", "-", ";", "."]
 _NumberedOp = Literal[":", "?", "!", "$", "@"]
+
+# Spelling the alphabets as typed containers rather than plain strings is
+# what lets ``in`` narrow a parsed character to its operator type, so the
+# constructors below take it directly instead of casting.
+_BARE: frozenset[_CountedOp] = frozenset(("^", ">", "<", "#", "&", "%", "."))
+_NUMBERED: frozenset[_NumberedOp] = frozenset((":", "?", "!", "$", "@"))
+_READ_OPERAND: dict[str, _CountedOp] = {"+": "v+", "-": "v-"}
 
 
 @dataclass
@@ -82,16 +89,16 @@ def _parse(code: str) -> list[_Command]:
     n = len(code)
     while i < n:
         c = code[i]
-        if c in "^><#&%.":
-            out.append(_Counted(cast("_CountedOp", c)))
+        if c in _BARE:
+            out.append(_Counted(c))
             i += 1
         elif c == ";":
             out.append(_Counted(";"))
             i += 1
         elif c == "v":
             # 'v' reads a digit; as an operand ('v+') the read value is the count
-            if i + 1 < n and code[i + 1] in "+-":
-                out.append(_Counted(cast("_CountedOp", "v" + code[i + 1])))
+            if i + 1 < n and (read := _READ_OPERAND.get(code[i + 1])) is not None:
+                out.append(_Counted(read))
                 i += 2
             else:
                 out.append(_Counted("v"))
@@ -109,8 +116,8 @@ def _parse(code: str) -> list[_Command]:
             while j < n and code[j].isdigit():
                 j += 1
             num = int(code[i:j])
-            if j < n and code[j] in ":?!$@":
-                out.append(_Numbered(cast("_NumberedOp", code[j]), num))
+            if j < n and (op := code[j]) in _NUMBERED:
+                out.append(_Numbered(op, num))
                 i = j + 1
             elif j < n and code[j] in "+-":
                 # "-" reaches here as a counted subtract, never as a jump:

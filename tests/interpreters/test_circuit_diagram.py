@@ -409,3 +409,54 @@ def test_a_gate_contradicting_an_explicit_label_is_rejected() -> None:
     """
     with pytest.raises(ValueError, match="implies 2 wire"):
         run(["-2-~-3-:"], ScriptedIO(""))
+
+
+class TestCircuitDiagramMutationSurvivors:
+    """Two conditions a mutation survived, both about *when* the machine stops.
+
+    Mutation testing (mutmut against a ``bundle_one`` build of this module)
+    reported these as changeable without any test noticing.  The suite
+    checks what each circuit computes and that it halts at all, so a mutant
+    that produced the right answer a generation early was invisible: the
+    output is the same string either way.  Each was confirmed by loading
+    the mutant and the original side by side and diffing their behaviour.
+    """
+
+    def test_the_prime_tester_settles_in_ten_generations(self) -> None:
+        """Quiescence needs *both* halves: nothing fired and no wire is live.
+
+        The rule reads ``not fired and all(... is None ...)``.  A mutant
+        reading it with ``or`` halted as soon as either half held, one
+        generation early, and every input still printed the right answer --
+        so only the count says the halt moved.
+        """
+        for value in range(16):
+            machine = _Machine(PRIME_TESTER, ScriptedIO(bits_of(value)))
+            generations = 0
+            while not machine.halted and generations < 500:
+                machine.step()
+                generations += 1
+            assert machine.halted
+            assert generations == 10
+
+    def test_a_not_gate_settles_in_three_generations(self) -> None:
+        """The smallest circuit pins the same rule without the replay."""
+        scripted = ScriptedIO("0\n")
+        machine = _Machine(["-.~.-:"], scripted)
+        generations = 0
+        while not machine.halted and generations < 500:
+            machine.step()
+            generations += 1
+        assert generations == 3
+        assert scripted.getvalue() == "1"
+
+    def test_halted_starts_as_the_boolean_false(self) -> None:
+        """``halted`` is a bool, not merely something falsy.
+
+        The VM's cycle detector puts this in every snapshot it hashes, and
+        a mutant that initialised it to ``None`` compared equal to nothing
+        while still reading as false.  Pinning the type keeps the flag a
+        flag.
+        """
+        machine = _Machine(["-.~.-:"], ScriptedIO("0\n"))
+        assert machine.halted is False

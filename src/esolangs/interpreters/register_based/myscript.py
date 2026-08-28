@@ -38,12 +38,31 @@ the one the frame stack unrolls.
 
 import re
 import sys
+from typing import Literal, get_args
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
+# The builtin prefix functions _apply_builtin dispatches on.  ``ask`` is
+# not among them: it is answered in _parse_expr before the arity lookup,
+# so naming the eleven that do arrive lets the checker see the dispatch is
+# exhaustive.
+_Builtin = Literal[
+    "add",
+    "subtract",
+    "multiply",
+    "divide",
+    "equals",
+    "less",
+    "not",
+    "concat",
+    "arrlen",
+    "itemat",
+    "say",
+]
+
 # The builtin prefix functions and their fixed arities.
-_ARITY = {
+_ARITY: dict[str, int] = {
     "add": 2,
     "subtract": 2,
     "multiply": 2,
@@ -57,6 +76,11 @@ _ARITY = {
     "say": 1,
     "ask": 0,
 }
+
+# The arity table minus ``ask``, typed: _parse_expr answers ``ask`` before
+# the lookup, so membership here is exactly "is a _Builtin" and narrows the
+# token to the type _apply_builtin dispatches on.
+_BUILTINS: frozenset[_Builtin] = frozenset(get_args(_Builtin))
 
 _TOKEN = re.compile(
     r'"[^"\\]*(?:\\.[^"\\]*)*"'  # string literal with escapes
@@ -230,7 +254,15 @@ def _run_block(nodes: list[Node], io: IO, scope: Scope) -> None:
 def _parse_expr(
     tokens: list[str], pos: int, io: IO, scope: Scope
 ) -> tuple[object, int]:
-    """Parse one prefix expression from ``tokens[pos:]``, returning (value, pos)."""
+    """Parse one prefix expression from ``tokens[pos:]``, returning (value, pos).
+
+    A prefix call consumes exactly as many expressions as its operator's
+    arity, so a line that ends early (``say`` with nothing to say) is a
+    malformed program rather than a bad value, and is rejected the same
+    way as the other malformed forms here.
+    """
+    if pos >= len(tokens):
+        raise ValueError("expression ended before its operands")
     tok = tokens[pos]
     if tok == "ask":
         return io.input_str(), pos + 1
@@ -242,8 +274,11 @@ def _parse_expr(
         return float(tok) if "." in tok else int(tok), pos + 1
     if tok == "[":
         return _parse_array(tokens, pos + 1, io, scope)
-    arity = _ARITY.get(tok)
-    if arity is not None:
+    # ``ask`` is answered above, so every other arity hit is a _Builtin;
+    # testing the typed set is what lets the token reach _apply_builtin at
+    # that type rather than as a bare str.
+    if tok in _BUILTINS:
+        arity = _ARITY[tok]
         pos += 1
         args: list[object] = []
         for _ in range(arity):
@@ -274,7 +309,7 @@ def _parse_array(
     return items, pos + 1
 
 
-def _apply_builtin(name: str, args: list[object], io: IO) -> object:
+def _apply_builtin(name: _Builtin, args: list[object], io: IO) -> object:
     """Apply a builtin function to its already-evaluated arguments."""
     if name == "add":
         return _num(args[0]) + _num(args[1])
@@ -300,10 +335,8 @@ def _apply_builtin(name: str, args: list[object], io: IO) -> object:
         if not 0 <= index < len(array):
             raise HaltError("itemat index out of range")
         return array[int(index)]
-    if name == "say":
-        io.print_value(_as_str(args[0]))
-        return None
-    raise AssertionError(f"unknown builtin: {name}")
+    io.print_value(_as_str(args[0]))
+    return None
 
 
 def _call_function(function: _Function, args: list[object], io: IO) -> object:
@@ -324,9 +357,9 @@ def _run_statement(
     """Execute one statement (a line's tokens and its indented block)."""
     head = tokens[0]
     if head == "var":
-        name = tokens[1]
-        if tokens[2] != "is":
+        if len(tokens) < 3 or tokens[2] != "is":
             raise ValueError("malformed var declaration")
+        name = tokens[1]
         rest = tokens[3:]
         if rest and rest[0] == "func":
             scope.declare(name, _Function(rest[1:], children, scope))

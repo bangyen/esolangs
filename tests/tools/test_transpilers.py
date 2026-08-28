@@ -18,6 +18,7 @@ from esolangs.exceptions import (
     EsolangError,
     UnsupportedTranspilationError,
 )
+from esolangs.tools.transpilers import _laser_analyze
 
 # (brainfuck program, stdin) pairs; every pair must terminate and agree.
 BATTERY = (
@@ -374,6 +375,17 @@ def test_laserfuck_grid_is_rectangular_with_start_and_marker() -> None:
 def test_laserfuck_out_of_class_rejected(program: str, match: str) -> None:
     with pytest.raises(ValueError, match=match):
         esolangs.transpile("Dimensional", "LaserFuck", program)
+
+
+@pytest.mark.parametrize("op", ["+", "-", ">", "><", ".", ",", "[]"])
+def test_laserfuck_analyze_advances_on_every_command(op: str) -> None:
+    """Every command steps the walk, so none of them can spin forever.
+
+    ``_laser_analyze`` dispatches per command and advances an index by hand;
+    a command handled by no arm never steps that index and hangs the walk
+    rather than failing, so each one is pinned here.
+    """
+    assert _laser_analyze(list(op))[0] >= 0
 
 
 def test_laserfuck_fuzz_bounded_programs() -> None:
@@ -815,3 +827,20 @@ def test_decleq_fuzz_countdowns() -> None:
         except ValueError:
             continue  # a counter cell doubled as a re-read operand
         assert esolangs.run("S*bleq", sb_program) == expected
+
+
+def test_laser_emit_steps_past_a_stray_loop_close() -> None:
+    """A ``]`` reaching the walk directly costs no cell.
+
+    The ``[`` arm consumes its matching close while laying out the loop, so
+    a ``]`` the walk sees itself has already been accounted for -- it is
+    stepped over rather than given a square of its own.  Emitting ``]+``
+    therefore lays out exactly the one cell that ``+`` needs.
+    """
+    from esolangs.tools.transpilers import _laser_emit, _LaserGrid
+
+    grid = _LaserGrid()
+    next_col, _bottom = _laser_emit(grid, list("]+"), 4, 0)
+
+    plain = _LaserGrid()
+    assert _laser_emit(plain, list("+"), 4, 0) == (next_col, _bottom)

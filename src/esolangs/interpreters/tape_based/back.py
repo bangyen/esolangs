@@ -15,9 +15,16 @@ name.)
 The interpreter runs on a :class:`_Machine` (the beam's position and
 direction, the bit tape, and the tape pointer), so it is step-capable:
 ``step()`` executes one cell, printing the tape and setting ``halted`` when
-the beam reaches a ``*``.  A program with no ``*`` bounces the beam forever,
-but the beam lives in a finite grid, so it eventually revisits a snapshot
-and the state-cycle hang detector can prove the loop.
+the beam reaches a ``*``.
+
+A program with no ``*`` bounces the beam forever.  The beam itself lives in
+a finite grid, so a loop that never moves the tape pointer right revisits a
+snapshot and ``esolangs.vm.run_until_halt_or_cycle`` proves it.  A loop that
+crosses ``>`` does not: the pointer advances and the tape grows a cell to
+meet it, so the snapshot is new every step and no repeat exists to find.
+That is the unbounded-growth case the detector documents itself as unable to
+catch, and only the wall-clock timeout stops it.  (The empty program is
+rejected outright, so the fuzz suite's empty-program invariant is unaffected.)
 
 Malformed programs raise :class:`ValueError`.
 """
@@ -42,8 +49,8 @@ class _Machine:
         self.io = io
         self.size = max(len(line) for line in code)
         self.code = [line.ljust(self.size) for line in code]
-        self.x = 0
-        self.y = 0
+        self.row = 0
+        self.col = 0
         self.a, self.b = 0, 1
         self.tape: list[int] = [0]
         self.cell = 0
@@ -57,8 +64,8 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         return (
-            self.x,
-            self.y,
+            self.row,
+            self.col,
             self.a,
             self.b,
             tuple(self.tape),
@@ -70,7 +77,7 @@ class _Machine:
         """Execute one cell, moving the beam."""
         if self.halted:
             return
-        c = self.code[self.x][self.y]
+        c = self.code[self.row][self.col]
         if c == "\\":
             self.a, self.b = self.b, self.a
         elif c == "/":
@@ -85,14 +92,14 @@ class _Machine:
         elif c == "-":
             self.tape[self.cell] ^= 1
         elif c == "+" and not self.tape[self.cell]:
-            self.x, self.y = self.x + self.a, self.y + self.b
+            self.row, self.col = self.row + self.a, self.col + self.b
         elif c == "*":
             self.io.print_str(" ".join(map(str, self.tape)))
             self._done = True
             return
 
-        self.x = (self.x + self.a) % len(self.code)
-        self.y = (self.y + self.b) % self.size
+        self.row = (self.row + self.a) % len(self.code)
+        self.col = (self.col + self.b) % self.size
 
 
 def run(code: list[str], io: IO) -> None:

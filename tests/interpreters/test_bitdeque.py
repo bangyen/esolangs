@@ -34,6 +34,57 @@ class TestBitdeque:
         """GOTO with a nonzero register jumps to a numbered instruction."""
         assert run_and_capture("INVERT GOTO 2 PUSH PUSH") == "1 1"
 
+    def test_goto_target_is_zero_based(self) -> None:
+        """GOTO N lands on the Nth command counting from zero.
+
+        ``test_goto`` jumps to 2, and the two commands after the GOTO are
+        both PUSH -- so landing on either printed the same thing.  Jumping
+        to 3 skips the first of them and prints one value instead of two.
+        """
+        assert run_and_capture("INVERT GOTO 3 PUSH PUSH") == "1"
+
+    def test_goto_without_a_space(self) -> None:
+        """The space after GOTO is optional, as the token pattern allows.
+
+        With a space the target is read from ``"GOTO 3"[4:]`` -- ``" 3"`` --
+        which int() parses the same as ``"3"``, so dropping one more
+        character made no difference to any spaced program.  Written tight,
+        the two disagree: one reads 12 and the other 2.
+        """
+        assert run_and_capture("INVERT GOTO12 PUSH PUSH") == ""
+
+    def test_inject_adds_to_the_front(self) -> None:
+        """INJECT puts the register at the front, where PUSH appends.
+
+        Nothing in the suite used INJECT at all: the token could be spelled
+        anything and every test still passed.
+        """
+        assert run_and_capture("INVERT PUSH INVERT INJECT") == "0 1"
+        assert run_and_capture("INVERT PUSH PUSH INVERT INJECT") == "0 1 1"
+
+    def test_eject_takes_from_the_front(self) -> None:
+        """EJECT pops the front, where POP takes the back.
+
+        EJECT went unused too, so the two ends were never told apart: the
+        same program run through POP leaves the other value behind.
+        """
+        assert run_and_capture("INVERT PUSH INVERT PUSH EJECT PUSH") == "0 1"
+        assert run_and_capture("INVERT PUSH INVERT PUSH POP PUSH") == "1 0"
+
+    def test_taking_from_an_empty_deque_gives_zero(self) -> None:
+        """POP and EJECT on an empty deque clear the register.
+
+        ``test_pop_restores_register`` pops a 0 that was pushed, so the
+        register was already 0 and the empty case could have returned
+        anything.  Inverting first makes the difference visible.
+        """
+        assert run_and_capture("INVERT POP PUSH") == "0"
+        assert run_and_capture("INVERT EJECT PUSH") == "0"
+
+    def test_invert_is_a_flip_not_a_set(self) -> None:
+        """Two INVERTs cancel; the register is flipped, not set to one."""
+        assert run_and_capture("INVERT INVERT PUSH") == "0"
+
 
 class TestStepMachine:
     def test_step_tracks_cursor_register_and_deque(self) -> None:

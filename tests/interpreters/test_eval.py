@@ -42,6 +42,56 @@ class TestEval:
     def test_truth_machine(self) -> None:
         assert run_and_capture('"0+.^!"^0?!0.') == "0"
 
+    def test_duplicate(self) -> None:
+        """^ copies the top without removing it, so it can be printed twice.
+
+        Nothing used ``^`` except the truth machine, where its result is
+        consumed by ``!`` rather than shown -- so the command could have
+        done nothing at all.
+        """
+        assert run_and_capture("0+^..") == "11"
+
+    def test_decrement(self) -> None:
+        """- subtracts one, where + adds it."""
+        assert run_and_capture("0-.") == "-1"
+        assert run_and_capture("0--.") == "-2"
+        assert run_and_capture("0+-.") == "0"
+
+    def test_pop_discards_the_top(self) -> None:
+        """; drops the top value, leaving the one beneath it."""
+        assert run_and_capture("0+0+;.") == "1"
+
+    def test_reverse_turns_the_stack_over(self) -> None:
+        """* reverses the current stack, so the bottom becomes the top."""
+        assert run_and_capture("0+0*.") == "1"
+        assert run_and_capture("0+0+*..") == "11"
+
+    def test_backtick_pushes_the_stack_index(self) -> None:
+        """` pushes which stack is *not* current -- 1 on the first, 0 on the
+        second.
+
+        ``test_pointer_check`` adds two of them together, where pushing the
+        current index instead sums to 0 rather than 2 -- but nothing showed
+        the value itself, or that it follows the switch.
+        """
+        assert run_and_capture("`.") == "1"
+        assert run_and_capture("~`.") == "0"
+
+    def test_move_targets_the_other_stack(self) -> None:
+        """= puts the value on the stack that is not current.
+
+        ``test_move_between_stacks`` moves a 0 and prints a 0, which the
+        same program prints whether or not the move happened.  Moving a 1
+        and finding it only after ``~`` shows where it went.
+        """
+        assert run_and_capture("0+=~.") == "1"
+
+    def test_output_on_empty_stack_halts(self) -> None:
+        """Reading a value that is not there is an invalid operation."""
+        for code in (".", ";", "^"):
+            with pytest.raises(HaltError):
+                run(code, IO())
+
     def test_eval_string_halts_on_non_string(self) -> None:
         """! on a non-string value is an invalid operation."""
         with pytest.raises(HaltError):

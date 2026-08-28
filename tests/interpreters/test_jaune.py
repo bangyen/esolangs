@@ -112,6 +112,40 @@ class TestParsing:
         with pytest.raises(ValueError, match="requires a number"):
             run_program("?")
 
+    def test_runs_of_an_operator_carry_their_length(self) -> None:
+        """``++`` is one command repeated twice, not two commands.
+
+        Parsing is only ever checked through what a program prints, where
+        a run and a sequence of singles reach the same total -- so the
+        count the parser attaches went unread.
+        """
+        from esolangs.interpreters.tape_based.jaune import _parse
+
+        assert [(c.op, c.arg) for c in _parse("+++")] == [("+", 3)]
+        assert [(c.op, c.arg) for c in _parse("--")] == [("-", 2)]
+        assert [(c.op, c.arg) for c in _parse("++-")] == [("+", 2), ("-", 1)]
+
+    def test_a_read_operand_needs_a_character_after_it(self) -> None:
+        """``v`` takes the next character as its operand only if there is
+        one; at the end of the code it stands alone.
+
+        The lookahead is a boundary the suite never reached, since every
+        ``v`` it uses has something after it.
+        """
+        from esolangs.interpreters.tape_based.jaune import _parse
+
+        assert [c.op for c in _parse("v+")] == ["v+"]
+        assert [c.op for c in _parse("v")] == ["v"]
+        assert [c.op for c in _parse("vv")] == ["v", "v"]
+
+    def test_a_number_takes_the_operator_that_follows_it(self) -> None:
+        """``3+`` is a single counted command; a number alone is dropped."""
+        from esolangs.interpreters.tape_based.jaune import _parse
+
+        assert [(c.op, c.arg) for c in _parse("3+")] == [("+", 3)]
+        assert [(c.op, c.arg) for c in _parse("12+")] == [("+", 12)]
+        assert _parse("12") == []
+
 
 class TestErrors:
     def test_undefined_label(self) -> None:

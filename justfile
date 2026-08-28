@@ -15,19 +15,21 @@ help:
     @echo "  lint-rust    - Lint Rust files with rustfmt and clippy"
     @echo "  lint-lean    - Lint Lean files with lean linter"
     @echo "  lint         - Run all linting targets"
-    @echo "  test         - Run the full local check (lint, pytest, bandit, cargo, + verify scripts) (~75s)"
+    @echo "  test         - Local check, scoped to this branch; slow/differential left to CI"
+    @echo "  test-full    - Every check incl. the differential, whole tree"
     @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) + cargo (~6s pytest, ~12s total)"
     @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
     @echo "  test-rust    - cargo fmt + cargo test (~1s)"
-    @echo "  test-differential - interpreter vs native differential corpora (~32s)"
+    @echo "  test-differential - interpreter vs native differential corpora (~51s)"
     @echo "  test-unicorn - RISC-V assembly under unicorn (~10s)"
     @echo "  test-generators - extra cross-check generators (~2.6s)"
     @echo "  test-line    - extra/line suites via uv (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
+    @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
-    @echo "  Use 'just test-quick' for inner loop, 'just test --only pytest,differential' for subsets."
+    @echo "  Use 'just test-quick' for inner loop, 'just test-full' before a release."
 
 # install tooling
 install-dev:
@@ -89,10 +91,16 @@ lint-lean:
 lint: lint-python lint-rust lint-lean
     @echo "All lint checks completed!"
 
-# test (full local check: lint, pytest, bandit, cargo, verify scripts)
-# pass --quiet to suppress successful step output (only [ok]/FAIL + timing)
+# test (local check: lint, pytest, bandit, cargo, verify scripts)
+# Scoped to the files this branch touched; widens to everything when the diff
+# is unreadable or shared machinery moved.  Use `just test-full` to force the
+# whole tree.  Pass --quiet to suppress successful step output.
 test *args:
     {{PYTHON}} scripts/verify.py {{args}}
+
+# every step over the whole tree, ignoring what this branch touched
+test-full *args:
+    {{PYTHON}} scripts/verify.py --full {{args}}
 
 # fast dev loop: pre-commit + pytest (skip slow) + cargo (skips 32s differential + 10s unicorn) — quiet by default
 test-quick *args:
@@ -129,6 +137,11 @@ test-bandit *args:
 
 test-docstring *args:
     {{PYTHON}} scripts/verify.py --only "docstring check" {{args}}
+
+# mutation-test one interpreter: what its tests would NOT have caught
+# (not part of `just test` -- it is a few minutes per language)
+mutate language *args:
+    {{PYTHON}} scripts/mutate_one.py {{language}} {{args}}
 
 # clean generated
 clean:

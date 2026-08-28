@@ -64,6 +64,39 @@ class TestBFStack:
         with pytest.raises(HaltError):
             run_and_capture(">]")
 
+    def test_decrement(self) -> None:
+        """- subtracts one from the top of the stack.
+
+        Nothing in the suite used ``-`` outside a loop body whose output it
+        never reached, so the whole line was unconstrained: subtracting,
+        adding, or storing None to the top all passed.
+        """
+        assert run_and_capture(">+-.") == "\x00"
+        assert run_and_capture(">++-.") == "\x01"
+
+    def test_cells_wrap_at_a_byte(self) -> None:
+        """+ and - wrap modulo 256, in both directions.
+
+        ``test_increment_twice`` reaches 2, so the modulus was never
+        approached from either side: one below zero and one above 255 are
+        where a wrap at any other width would show.
+        """
+        assert run_and_capture(">-.") == "\xff"
+        assert run_and_capture(">" + "+" * 256 + ".") == "\x00"
+        assert run_and_capture(">" + "+" * 255 + ".") == "\xff"
+
+    def test_pop_on_empty_stack_raises(self) -> None:
+        """< on an empty stack is an invalid operation."""
+        with pytest.raises(HaltError):
+            run_and_capture("<")
+
+    def test_arithmetic_on_empty_stack_raises(self) -> None:
+        """+ and - need a value to act on."""
+        with pytest.raises(HaltError):
+            run_and_capture("+")
+        with pytest.raises(HaltError):
+            run_and_capture("-")
+
 
 class TestStepMachine:
     def test_step_tracks_stack_and_cursor(self) -> None:

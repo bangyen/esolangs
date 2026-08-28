@@ -708,15 +708,27 @@ whole-machine snapshots across time -- would catch the common case of a
 call whose local state repeats identically relative to an ancestor (e.g.
 `f(x) { f(x) }`, an accidental unconditional or non-decrementing
 self-call): frame N+1 is then provably about to replay exactly what frame
-N already did.  It would not catch every infinite recursion (a call like
+N already did.  It does not catch every infinite recursion (a call like
 `f(x) { f(x - 1) }` that recurses forever without any local state ever
-repeating exactly would still slip through), and it does not fit the
-existing `snapshot()`/Brent's-algorithm protocol -- it needs its own
-per-`step()`, per-frame comparison against the live stack (O(depth) per
-push, not the current mechanism's O(1)), so it would be new machinery, not
-a tweak to the existing one.  Not built: no concrete program has needed
-it yet, matching the same "revisit if a real case shows up" posture as
-Forbin's expression-position gap in `docs/roadmap.md`.
+repeating exactly still slips through -- though *how* much slips through
+is language-dependent: Forbin's only datatype is bits, so even a changing
+argument has to come back around, and `f x { f !x; }` repeats its key
+within two frames), and it does not fit the existing
+`snapshot()`/Brent's-algorithm protocol -- it needs its own per-`step()`,
+per-frame comparison against the live stack (O(depth) per push, not the
+current mechanism's O(1)), so it is new machinery, not a tweak to the
+existing one.
+
+Built as `esolangs.vm.run_until_halt_or_ancestor`, keyed on a frame's
+function, bindings and *input position*.  That last component is what
+makes it sound rather than merely eager: a recursion whose base case
+depends on a byte it has not read yet enters with identical bindings on
+every lap, and a bindings-only key calls it a hang while it is one read
+away from returning.  A machine opts in by exposing `frames` and a
+`frame_entry_key`; Forbin does, and gained its first hang test as a
+result -- it had none, every one of its hangs being in this class.
+Suptiftam and Lamfunc recurse too and are the obvious follow-up.  The
+wall-clock backstop stays for the recursion this cannot prove.
 `scripts/verify_differential.py`'s NoComment Python side is likewise
 bounded by state-cycle detection, keeping the alarm as backstop for its
 unbounded-growth class (a loop that keeps pushing the stack never revisits

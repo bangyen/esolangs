@@ -102,8 +102,16 @@ class IO:
         return val
 
     def input_char(self, prompt: str = "Input: ") -> int:
-        """Read a line and return its first character as a byte value."""
-        return ord(self.input_str(prompt)[0])
+        """Read a line and return its first character as a byte value.
+
+        A line is delivered without its terminator, so an *empty* line is
+        one the user ended immediately: the character read is the newline
+        that ended it, which is what a terminal hands a program for a bare
+        Enter.  Reading past the end of the input is a different thing and
+        still raises :class:`EOFError`, from :meth:`input_str`.
+        """
+        line = self.input_str(prompt)
+        return ord(line[0]) if line else ord("\n")
 
     def input_num(self, prompt: str = "Input: ") -> int:
         """Read a line and parse it as an integer."""

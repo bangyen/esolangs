@@ -15,12 +15,6 @@ if (a1) {
   }
 }
 if !(a1) {
-  if (a2) {
-    out += 48 ;
-    write <- out ;
-  }
-  if !(a2) {
-    out += 48 ;
-    write <- out ;
-  }
+  out += 48 ;
+  write <- out ;
 }

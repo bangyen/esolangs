@@ -407,7 +407,74 @@ class TestRAM0Integration:
         assert "15: 15" in output
 
 
+class TestDumpFormat:
+    """The exact text of the state dump.
+
+    Every other test asserts substrings -- ``"z: 0" in output`` -- so the
+    punctuation holding the dump together was never checked: the braces,
+    the indent, and the newline that closes the RAM block could all be
+    spelled differently and nothing would notice.
+    """
+
+    def dump(self, code: str) -> str:
+        with redirect_stdout(io.StringIO()) as f:
+            run(code, io=IO())
+        return f.getvalue()
+
+    def test_dump_with_memory(self) -> None:
+        assert self.dump("A N S") == "z: 1\nn: 1\nram: {\n    1: 1\n}"
+
+    def test_dump_without_memory(self) -> None:
+        assert self.dump("A") == "z: 1\nn: 0\nram: {}"
+
+
 class TestStepMachine:
+    def test_load_reads_the_address_in_z(self) -> None:
+        """L loads RAM at the address z holds, not at a fixed one.
+
+        ``test_l_command_load_from_memory`` loads from an address that was
+        never written, so it asserts the 0 that a *missing* key gives --
+        which is what looking up the wrong address gives too.  Storing 1 at
+        address 1 and loading it back separates them.
+        """
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        machine = _Machine("A N S L", IO())
+        while not machine.halted:
+            machine.step()
+        assert (machine.z, machine.ram) == (1, {1: 1})
+
+    def test_conditional_skip_is_relative(self) -> None:
+        """C skips the next command; it does not jump to a fixed index.
+
+        Both conditional tests run C at the second token, where skipping
+        ahead and jumping to token 1 land in the same place.  Putting a
+        command before it tells them apart.
+        """
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        machine = _Machine("A Z C A A", IO())
+        while not machine.halted:
+            machine.step()
+        # exactly one A was skipped: skipping none leaves 2, skipping both 0
+        assert machine.z == 1
+
+    def test_state_is_dumped_only_once(self) -> None:
+        """Stepping a halted machine again does not repeat the dump.
+
+        ``run`` steps once past the end, so a flag that never latches looks
+        identical there; only a second post-halt step shows the repeat.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.ram0 import _Machine
+
+        machine = _Machine("A", ScriptedIO(""))
+        while not machine.halted:
+            machine.step()
+        machine.step()  # dumps
+        machine.step()  # must not dump again
+        assert machine.io.getvalue() == "z: 1\nn: 0\nram: {}"
+
     def test_snapshot_changes_after_a_step(self) -> None:
         from esolangs.interpreters.register_based.ram0 import _Machine
 

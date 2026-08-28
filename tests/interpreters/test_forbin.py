@@ -253,6 +253,24 @@ class TestFunctions:
             run_program("main { out 0,0,0,0,0,0,0 } extra")
 
 
+class TestKeywordPrefixedNames:
+    def test_an_identifier_may_start_with_a_keyword(self) -> None:
+        """``returnvar`` is a name, not ``return`` followed by ``var``.
+
+        The statement parser checks the character after each keyword and
+        only takes the keyword branch when the word ends there, so a name
+        that merely starts with one parses as an ordinary assignment.
+        """
+        eight = lambda name: ",".join([name] * 8)  # noqa: E731
+        code = (
+            "main { returnvar = 1,1,1,1,1,1,1,1;"
+            " forvar = 0,1,0,0,0,0,0,1;"
+            f" out {eight('returnvar')};"
+            f" out {eight('forvar')}; }}"
+        )
+        assert run_program(code) == "\xff\x00"
+
+
 class TestParserErrors:
     def test_line_comments_are_ignored(self) -> None:
         code = "main { // header\n a = 1; // trailing\n out 0,0,0,0,0,0,0,a; }"
@@ -395,3 +413,204 @@ class TestStepMachine:
         assert hash(machine.snapshot()) is not None
         machine.step()
         assert hash(machine.snapshot()) is not None
+
+    def test_non_numeric_range_bound_halts(self) -> None:
+        """A ``for`` bound has to be a number, not a function."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_program("f { return 0; }\nmain { for _:f..1 { return 0; } return 0; }")
+
+    def test_non_bit_out_argument_halts(self) -> None:
+        """``out`` takes bits, matching the rule ``!`` already enforces."""
+        import pytest
+
+        from esolangs.exceptions import HaltError
+
+        with pytest.raises(HaltError):
+            run_program("f { return 0; }\nmain { out f,0,1,1,0,0,0,1; return 0; }")
+
+
+class TestForbinMutationSurvivors:
+    """The step granularity a mutation survived, pinned by counting steps.
+
+    Mutation testing (mutmut against a ``bundle_one`` build of this module)
+    reported thirteen changes no test noticed, and every one of them left
+    the output byte-for-byte identical while changing *how many* ``step()``
+    calls the program took.  That is exactly the module's central claim --
+    ``step()`` is interruptible between statements, between a ``for``
+    loop's rows, and between statement-position calls -- and the suite
+    asserted only what each program printed, so a mutant that collapsed the
+    frame-stack path back into the recursive evaluator was invisible.
+
+    Each was confirmed by loading the mutant and the original side by side
+    and diffing their behaviour.
+    """
+
+    @staticmethod
+    def _drive(code: str, stdin: str = "") -> tuple[int, str, int]:
+        """Run ``code`` to a halt; return (steps, output, deepest frame stack)."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+
+        machine = _Machine(code, ScriptedIO(stdin))
+        steps, deepest = 0, 0
+        # The programs here settle in fifteen steps or fewer.  The cap is
+        # headroom, not a timeout: a mutant that stops one halting should
+        # fail this in microseconds, and at 20000 it burnt 5.7 seconds
+        # apiece instead -- once per such mutant, over eleven hundred.
+        while not machine.halted and steps < 200:
+            machine.step()
+            steps += 1
+            deepest = max(deepest, len(machine.frames))
+        assert machine.halted
+        return steps, machine.io.getvalue(), deepest
+
+    def test_a_statement_position_call_is_its_own_step(self) -> None:
+        """A call pushes a frame rather than recursing inside one step.
+
+        ``_start_statement_call`` returns the pushed frame, and a mutant
+        that returned ``None`` instead ran the call natively through
+        ``_exec_stmt``: same two bytes out, seven steps down to three, and
+        the stack never reached the depth a pushed frame gives it.
+        """
+        code = "main {\n helper x { out 0,1,0,0,0,0,0,x; }\n helper 1;\n helper 0;\n}\n"
+        steps, out, deepest = self._drive(code)
+        assert out == "A@"
+        assert steps == 7
+        assert deepest == 2  # main, plus the frame each call pushes
+
+    def test_a_for_loop_steps_once_per_row(self) -> None:
+        """The loop yields between rows instead of running to completion.
+
+        A mutant of ``_Machine.step`` ran each loop out inside one step:
+        every program still printed the right bytes, in half the steps.
+        """
+        once_and_twice = (
+            "main {\n n = 0;\n for i:0..0 { n = !n; }\n"
+            " out 0,0,0,0,0,0,0,n;\n n = 0;\n for i:0..1 { n = !n; }\n"
+            " out 0,0,0,0,0,0,0,n;\n}\n"
+        )
+        steps, out, _ = self._drive(once_and_twice)
+        assert out == "\x01\x00"
+        assert steps == 15
+
+        as_if = (
+            "main {\n c = 0;\n for _:!c..c { out 0,1,0,0,0,0,0,1; }\n"
+            " c = 1;\n for _:!c..c { out 0,1,0,0,0,0,0,1; }\n}\n"
+        )
+        steps, out, _ = self._drive(as_if)
+        assert out == "AA"
+        assert steps == 11
+
+    def test_an_iteration_loop_selects_the_wildcard_columns(self) -> None:
+        """``*`` marks the columns to expand, and the test is ``==``.
+
+        ``_for_rows`` collects the wildcard positions with ``p[0] == "*"``.
+        Read as ``!=`` it expanded every *non*-wildcard column instead, and
+        the loop still reached the same answer -- over six more rows.
+        """
+        code = (
+            "main {\n any = 0;\n for i:(0, 0, 1) { for _:!i..i { any = 1; } }\n"
+            " out 0,0,0,0,0,0,0,any;\n}\n"
+        )
+        steps, out, _ = self._drive(code)
+        assert out == "\x01"
+        assert steps == 11
+
+
+class TestForbinAncestorHangDetection:
+    """Infinite recursion, proven rather than waited out.
+
+    ``run_until_halt_or_cycle`` cannot catch a Forbin hang: a call that
+    never returns pushes one frame per step and pops none, so the
+    whole-machine snapshot grows forever and never repeats.  Every Forbin
+    hang is in that unbounded-growth class, which is why this language had
+    no hang test at all and leaned on the wall-clock backstop -- the one
+    that deadlocks under ``pytest --cov`` (see ``docs/walls.md``).
+
+    ``run_until_halt_or_ancestor`` is the narrower check that class allows:
+    a frame entering the same function, with the same bindings, at the same
+    input position as an ancestor is about to replay what that ancestor is
+    still in the middle of.
+    """
+
+    @staticmethod
+    def _verdict(code: str, stdin: str = "") -> bool:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        return run_until_halt_or_ancestor(_Machine(code, ScriptedIO(stdin)))
+
+    def test_an_unconditional_self_call_is_a_proven_hang(self) -> None:
+        """``f`` calls itself with nothing changed, so it never returns."""
+        assert self._verdict("main {\n f {\n  f 0;\n }\n f 0;\n}\n") is False
+
+    def test_mutual_recursion_is_a_proven_hang(self) -> None:
+        """The ancestor need not be the same function, only the same state."""
+        assert self._verdict("a { b 0; }\nb { a 0; }\nmain { a 0; }\n") is False
+
+    def test_a_flipping_argument_still_repeats(self) -> None:
+        """``f !x`` alternates, so the second lap re-enters the first's state.
+
+        ``docs/walls.md`` notes that a genuinely changing argument would
+        slip through.  Forbin's only datatype is bits, so an argument that
+        changes still has to come back around, and the key repeats within
+        two frames.
+        """
+        assert self._verdict("main {\n f x {\n  f !x;\n }\n f 0;\n}\n") is False
+
+    def test_a_terminating_program_is_not_flagged(self) -> None:
+        """The ordinary programs the suite already runs must stay unflagged."""
+        assert self._verdict("main {\n h x { out 0,1,0,0,0,0,0,x; }\n h 1;\n h 0;\n}\n")
+        assert self._verdict(
+            "main {\n g x {\n  for _:!x..x { return 0; }\n  g 1;\n }\n g 0;\n}\n"
+        )
+
+    def test_the_same_helper_called_twice_is_not_recursion(self) -> None:
+        """Two sequential calls share a key but neither is the other's ancestor."""
+        assert self._verdict("main {\n h x { out 0,1,0,0,0,0,0,x; }\n h 1;\n h 1;\n}\n")
+
+    def test_recursion_waiting_on_input_is_not_a_hang(self) -> None:
+        """The input cursor is in the key, and that is what keeps it sound.
+
+        This function re-enters with identical bindings every lap -- its
+        base case depends on a byte it has not read yet.  Keyed on bindings
+        alone it is called a hang while it is one read from returning; the
+        ``'@'`` lap recurses and the ``'A'`` lap returns.
+        """
+        code = (
+            "f {\n a,b,c,d,e,g,h,i = (in 0);\n for _:!i..i { return 0; }\n f 0;\n}\n"
+            "main { f 0; }\n"
+        )
+        assert self._verdict(code, "@\nA") is True
+
+    def test_an_undecided_walk_raises_rather_than_claiming_a_halt(self) -> None:
+        """Exhausting the bound is not a verdict, and must not read as one.
+
+        A machine whose entry key never repeats is one the check cannot
+        decide.  Returning ``True`` there would report a hanging program as
+        halting, and -- because the walk ran to a generous bound first --
+        would do it slowly: a mutant that defeats the early return took 4.5
+        seconds to answer wrongly, once per mutant, which is what made a
+        mutation run of this module crawl.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.forbin import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        class _NeverRepeats(_Machine):
+            """Stands in for any mutant whose key stops repeating."""
+
+            counter = 0
+
+            def frame_entry_key(self, _frame: object) -> tuple[object, ...]:
+                _NeverRepeats.counter += 1
+                return ("unique", _NeverRepeats.counter)
+
+        machine = _NeverRepeats("main {\n f {\n  f 0;\n }\n f 0;\n}\n", ScriptedIO(""))
+        with pytest.raises(TimeoutError, match="undecided"):
+            run_until_halt_or_ancestor(machine)
