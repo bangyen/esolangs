@@ -20,6 +20,9 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.streetcode import (
+    _VOID,
+    _WALLS,
+    _Grid,
     _Machine,
     _ReachableCell,
     _State,
@@ -953,6 +956,55 @@ class TestStreetcodeStreetWidth:
         if code and code[-1] == "":
             code = code[:-1]
         _Machine(code, IO())
+
+
+class TestStreetcodeGrid:
+    """The drawing as a total map from coordinates to characters."""
+
+    def _grid(self) -> _Grid:
+        return _Grid(["+--+", "|C;|", "+--+"])
+
+    @pytest.mark.parametrize(
+        "where", [(-1, 0), (0, -1), (3, 0), (0, 4), (-5, -5), (99, 99)]
+    )
+    def test_a_read_off_the_drawing_is_void(self, where: tuple[int, int]) -> None:
+        """Any coordinate at all answers, so no caller range-checks first."""
+        assert self._grid()[where] == _VOID
+
+    def test_void_is_neither_a_wall_nor_a_glyph(self) -> None:
+        """The property the mouth scans depend on.
+
+        A border of real wall characters would have them sight junctions
+        that were never drawn, so what lies off the drawing has to match
+        no rule rather than look like a wall.
+        """
+        assert _VOID not in _WALLS
+        for glyph in "+-|C;^~=_IOU":
+            assert glyph != _VOID
+
+    def test_off_the_grid_is_not_drivable(self) -> None:
+        """``open_at`` reads the bounds, not the character.
+
+        ``_VOID`` is not a wall, so asking "is this a wall?" would call
+        the void open road; there is no road out there at all.
+        """
+        grid = self._grid()
+        assert not grid.open_at(-1, 0)
+        assert not grid.open_at(0, 0)  # a real wall
+        assert grid.open_at(1, 1)  # the 'C'
+
+    def test_a_ragged_program_is_squared_off(self) -> None:
+        """Short rows are padded, so every row is ``width`` long."""
+        grid = _Grid(["+---+", "|C;"])
+        assert grid.width == 5
+        assert grid[1] == "|C;  "
+        assert grid[1, 4] == " "
+
+    def test_a_row_can_be_redrawn(self) -> None:
+        """The fixtures build geometry by assigning whole rows."""
+        grid = self._grid()
+        grid[1] = "|CX|"
+        assert grid[1, 2] == "X"
 
 
 class TestStreetcodeStatedInvariants:

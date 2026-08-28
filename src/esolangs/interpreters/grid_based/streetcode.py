@@ -47,6 +47,7 @@ Runtime error contract:
 """
 
 import sys
+from collections.abc import Iterator
 from typing import Literal, NewType
 
 from esolangs.exceptions import HaltError
@@ -117,6 +118,13 @@ _DELTA: dict[_Heading, tuple[int, int]] = {
     "W": (0, -1),
 }
 _WALLS = frozenset("+-|")
+
+# What a read off the edge of the drawing returns.  Not a wall (so the
+# form, glyph and mouth scans see nothing there rather than a phantom
+# wall) and not any glyph a program can contain, so it matches no rule.
+# ``_Grid.open_at`` tests the bounds itself rather than asking whether
+# this is a wall, because off the grid is not drivable either.
+_VOID = "?"
 
 # How far perpendicular to the direction of travel ``_road_mouth`` looks for
 # the wall a side road opens through: a two-way street is two cells wide, so
@@ -215,6 +223,68 @@ def _require(*, condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+class _Grid:
+    """The program's characters, addressable at any coordinate at all.
+
+    Reads are total: ``grid[row, col]`` off the drawing returns
+    :data:`_VOID` rather than raising or needing the caller to have
+    range-checked first.  The bounds test does not disappear -- it moves
+    here, to one place, from the six or so call sites that each used to
+    make it -- so a scan can walk off the edge and get a definite answer
+    instead of a special case.
+
+    ``_VOID`` is deliberately not a wall glyph, and this is the whole
+    reason the off-grid value is its own character rather than padding
+    the drawing with ``+``.  Off the grid has two meanings here that no
+    single real character serves: :meth:`_Machine._open` must treat it as
+    *closed* (there is no road out there to drive onto), while the wall
+    forms, the glyph rule and the mouth scans must treat it as matching
+    *nothing* -- a border of ``+`` would have the mouth scans sight
+    junctions that were never drawn.  ``_VOID`` satisfies both: it is not
+    in ``_WALLS``, and it equals no glyph.
+
+    Rows stay strings and stay assignable, because the interpreter's own
+    tests redraw a row to build a fixture (``grid[1] = "|C   |"``).
+    """
+
+    __slots__ = ("_rows", "height", "width")
+
+    def __init__(self, rows: list[str]) -> None:
+        """Square the drawing off, so every row is ``width`` characters."""
+        self.width = max(len(row) for row in rows)
+        self._rows = [row.ljust(self.width) for row in rows]
+        self.height = len(self._rows)
+
+    def __getitem__(self, where: int | tuple[int, int]) -> str:
+        """Return a whole row by index, or one character by coordinate."""
+        if isinstance(where, int):
+            return self._rows[where]
+        row, col = where
+        if not (0 <= row < self.height and 0 <= col < self.width):
+            return _VOID
+        return self._rows[row][col]
+
+    def __setitem__(self, row: int, value: str) -> None:
+        """Redraw one row, for the fixtures that build geometry by hand."""
+        self._rows[row] = "".join(value).ljust(self.width)
+
+    def __iter__(self) -> Iterator[str]:
+        """Iterate the rows, so the drawing can be scanned as text."""
+        return iter(self._rows)
+
+    def open_at(self, row: int, col: int) -> bool:
+        """Whether ``(row, col)`` is drivable: on the grid and not a wall.
+
+        ``_VOID`` is not in ``_WALLS``, so the off-grid test is explicit
+        here rather than riding on the character: outside the drawing
+        there is no road, which is the opposite of what a non-wall
+        character means anywhere else.
+        """
+        if not (0 <= row < self.height and 0 <= col < self.width):
+            return False
+        return self._rows[row][col] not in _WALLS
+
+
 def _right(heading: _Heading) -> _Heading:
     """Return the heading 90 degrees clockwise from ``heading``."""
     return _HEADINGS[(_HEADINGS.index(heading) + 1) % 4]
@@ -245,9 +315,9 @@ class _Machine:
         if not code or not any(line.strip() for line in code):
             raise ValueError("Streetcode program cannot be empty")
         self.io = io
-        self.width = max(len(line) for line in code)
-        self.grid = [line.ljust(self.width) for line in code]
-        self.height = len(self.grid)
+        self.grid = _Grid(code)
+        self.width = self.grid.width
+        self.height = self.grid.height
 
         starts = [
             (r, c)
@@ -340,25 +410,20 @@ class _Machine:
 
     def _open(self, row: int, col: int) -> bool:
         """Whether ``(row, col)`` is in bounds and not a wall character."""
-        if not (0 <= row < self.height and 0 <= col < self.width):
-            return False
-        return self.grid[row][col] not in _WALLS
+        return self.grid.open_at(row, col)
 
     def _at(self, row: int, col: int) -> str:
-        """Return the character at ``(row, col)``, or ``'?'`` if out of bounds.
+        """Return the character at ``(row, col)``, or ``_VOID`` off the grid.
 
-        ``'?'`` matches no wall character, so the scans reading through
-        here -- the mouth scans, which look several cells out and can
-        legitimately run off the grid, and ``_validate_glyphs`` -- treat
-        the grid's implicit edge as open ground (``_open`` is the only
-        check that treats it as closed).  The wall-shape scan no longer
-        comes through here: it reads a reachable cell's neighbourhood
-        via :meth:`_block`, where the enclosure check has already ruled
-        the edge out.
+        The read is total (see :class:`_Grid`), so the scans that come
+        through here -- the mouth scans, which look several cells out and
+        can legitimately run off the drawing, and ``_validate_glyphs`` --
+        need no bounds test of their own.  ``_VOID`` matches no glyph and
+        is not a wall, so what they find out there is nothing rather than
+        a phantom wall; :meth:`_open` is the one read that treats off the
+        grid as closed instead.
         """
-        if not (0 <= row < self.height and 0 <= col < self.width):
-            return "?"
-        return self.grid[row][col]
+        return self.grid[row, col]
 
     def _block(self, cell: _ReachableCell) -> tuple[str, ...]:
         """Return the three-by-three neighbourhood around a reachable cell.
@@ -381,7 +446,7 @@ class _Machine:
             ),
         )
         return tuple(
-            self.grid[row + d_row][col + d_col]
+            self.grid[row + d_row, col + d_col]
             for d_row in (-1, 0, 1)
             for d_col in (-1, 0, 1)
         )
@@ -538,7 +603,7 @@ class _Machine:
         runtime semantics this search deliberately does not predict.
         """
         row, col, heading, merge_target, merging, skip = state
-        char = self.grid[row][col]
+        char = self.grid[row, col]
         if char == ";":
             return "halt"
         if char == "U":
@@ -655,7 +720,6 @@ class _Machine:
         # BFS reachable open cells from C (open = not a wall)
         from collections import deque
 
-        h, w = self.height, self.width
         sr, sc = start
         visited: set[_ReachableCell] = set()
         q: deque[_ReachableCell] = deque([_ReachableCell((sr, sc))])
@@ -664,12 +728,9 @@ class _Machine:
             r, c = q.popleft()
             for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 nr, nc = r + dr, c + dc
-                if (
-                    0 <= nr < h
-                    and 0 <= nc < w
-                    and self._open(nr, nc)
-                    and (nr, nc) not in visited
-                ):
+                # No bounds test: off the grid is not open (see ``_Grid``),
+                # so the fill cannot walk out of the drawing.
+                if self._open(nr, nc) and (nr, nc) not in visited:
                     visited.add(_ReachableCell((nr, nc)))
                     q.append(_ReachableCell((nr, nc)))
         # Isolated single cell is not a street
@@ -824,7 +885,7 @@ class _Machine:
         """Name a ``-`` drawn beside a ``|``, or ``None`` if none is."""
         for r in range(self.height):
             for c in range(self.width):
-                char = self.grid[r][c]
+                char = self.grid[r, c]
                 if char == "-":
                     neighbours = ((r, c - 1), (r, c + 1))
                     other = "|"
@@ -894,7 +955,7 @@ class _Machine:
         }
         for r in range(self.height):
             for c in range(self.width):
-                char = self.grid[r][c]
+                char = self.grid[r, c]
                 if char == " " or (r, c) in grown:
                     continue
                 return f"geometry not connected to the street at {(r, c)} ({char!r})"
@@ -1425,7 +1486,7 @@ class _Machine:
         """Execute the cell under the car, then drive it one cell further."""
         if self._done:
             return
-        char = self.grid[self.row][self.col]
+        char = self.grid[self.row, self.col]
         if char == ";":
             self._done = True
             return
