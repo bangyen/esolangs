@@ -7,16 +7,24 @@ structural reason it cannot be lifted.  Completed constructions (the
 working generators, and how they work) live in the commit history, not
 here.
 
-## 6-5 (constant program size is impossible)
+## 6-5 (35 branch labels bound the tree)
 
-A generator that must work for any table has to embed the table, and the
-single-integer representation 6-5 requires (the pointer cannot net-advance,
-so there is no computed array indexing) costs O(`2**(2**n)`) characters for
-dense tables.  A ~2 MB setup guard rejects the `n > 5` and large-`T` region
-(AND-n is the pathological case), and runtime is O(x*T) — minutes at the
-size guard.  The shipped decision tree stays primary (total through
-`n <= 5`); the arithmetic kernel is the fallback for small-`T` tables past
-that.
+The generator is a decision tree that folds its constant subtrees, and 6-5
+has exactly 35 branch labels (`0..9`, `A..Z`), one spent per internal node
+the fold leaves standing.  That makes the limit a property of the *table*,
+not of `n`: the fold's worst case is an alternating table, which folds
+nothing and spends `2**n - 1`, so the tree is total through `n == 5` (31)
+and begins refusing at `n == 6` (63).  Tables that fold hard still render at
+any width — AND-`n` needs only `n` labels.
+
+An arithmetic kernel used to catch the `n > 5` region by embedding the table
+as a single integer (6-5's pointer cannot net-advance, so there is no
+computed array indexing), at O(`2**(2**n)`) characters for dense tables
+behind a ~2 MB setup guard.  It was **retired**: a buildable `T` confines
+the ones to low indices, which leaves the rest of the table constant, which
+folds well inside the label budget — so it never covered a table the tree
+could not.  A search over contiguous families at n=6,7,8 and ~18000 random
+tables found no counterexample.
 
 ## ZTOALC L (dense non-symmetric n > 3 wall, re-verified)
 
