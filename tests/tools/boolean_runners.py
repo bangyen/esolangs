@@ -62,6 +62,11 @@ def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
     return _run_from("esolangs.interpreters.register_based.addsubjump", program, feed)
 
 
+def run_sophie_from(program: str, feed: Iterator[str]) -> str:
+    """Run a Sophie program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.register_based.sophie", program, feed)
+
+
 def run_dimensional(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.tape_based.dimensional import run
 

@@ -730,7 +730,7 @@ not a verdict:
 |---|---|---|
 | `polynomial` | 25.1% | **no addressable storage at all** — one register, no tape or variables, so a bit that is read can only be branched on before the next read overwrites it. The 25.1% is unreachable as a reorder; [residual merging](#polynomial--merging-beats-reordering-and-the-gate-is-instructions) collects it instead |
 | `modulous` | 16.4% | stack reaches top two only; variables store and print but never load back |
-| `sophie` | 16.4% | reads inside the tree (`;` then `@$48{}`) with only an accumulator to hold a bit — **the weakest entry here**: this is the accumulator-only reasoning Polynomial's cursor state disproved, and "reads inside the tree" is the phrase that was wrong four times. Read the interpreter before trusting this row |
+| `sophie` | 16.4% | `;`/`:` **assign** to the accumulator, `#` loads only a literal, and nothing else writes it, so a bit can only be branched on before the next read. Verified against the interpreter; the 16.4% is unreachable as a reorder, and [residual merging](#sophie--the-merge-transfers-and-the-saving-grows-with-n) collects what it was measuring |
 | `unsquare` | 15.7% | reads up front but pops LIFO; `S` swaps the top two and there is one accumulator, so no rotation to depth |
 
 **Two of these were wrong, and both are now done.** `six_five` and `jaune`
@@ -851,6 +851,38 @@ tests it* and has nowhere else to put one — so its test order **is** its
 stream order. `six_five` reads at the node too, but that was a property of
 its generator rather than of the language: it has a tape, so its reads were
 hoisted into cells of their own and the two orders came apart.
+
+### Sophie — the merge transfers, and the saving grows with n
+
+Sophie's exclusion from technique 11 is real and verified against the
+interpreter: `;` and `:` **assign** to the accumulator, `#` loads only a
+literal, and no instruction stores the accumulator anywhere, so a bit can
+only be branched on before the next read. The loop stack holds code
+positions, not data. The test order is the stream order.
+
+Residual merging still applies, as it does for Polynomial, and for the same
+structural reason: the accumulator can carry a **state label** between
+levels. Each level is a *flat chain* of `@$L{...}` blocks, one per live
+state, with the read inside whichever block fires. Nesting the blocks
+instead would merely restate the tree — the merge is that two prefixes
+leaving the same residual subfunction get the same label and share a block.
+
+**Re-fire is cheaper to prevent here than in Polynomial.** Sophie tests
+equality against an arbitrary literal, so no offset arithmetic is needed:
+it suffices that consecutive levels draw labels from disjoint bands, since
+a fired block leaves the accumulator holding a *next*-level label. Any
+change to `_SOPHIE_BANDS` must keep the two bands disjoint and keep 48/49
+out of both, or one input runs two blocks.
+
+**Expect a small aggregate and a growing one.** A state block costs more
+than a tree node, so the tree keeps small and near-constant tables and both
+constructions are built with the shorter emitted, ties keeping the tree.
+The n=3 aggregate is only 1.9% (22 of 256 tables); it is 3.1% at n=5, 13.4%
+at n=6 and 29.3% at n=7, because the tree doubles with width and the state
+count does not. Parity — the tree's worst case at every width — goes from
+1911 characters to 283 at n=7. A future change should judge this
+construction on the scaling, not on the n=3 number.
+
 
 ### Polynomial — merging beats reordering, and the gate is instructions
 
