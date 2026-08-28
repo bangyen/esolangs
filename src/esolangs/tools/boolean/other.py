@@ -961,22 +961,34 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         cells[(east, switch_row + 1)] = "│"
         return middle
 
-    def walk(lo: int, hi: int, slot: int, depth: int) -> int:
+    # Slots are handed out left to right as the walk reaches each leaf, so a
+    # folded subtree takes one column band instead of the ``2**k`` its rows
+    # would have filled -- the drawing narrows rather than leaving a gap.
+    slots = [0]
+
+    def walk(lo: int, hi: int, depth: int) -> int:
         """Draw the subtree for ``truth_table[lo:hi]``; return its column.
 
-        ``slot`` is the leaf column slot its leftmost leaf occupies, and
-        ``depth`` the level it sits at -- together they say where the
-        drawing goes, which is what the level-by-level fill computed from
-        the leaf pitch instead.
+        ``depth`` is the level it sits at, which fixes its rows; its columns
+        come from the leaf slots it consumes.
         """
-        if hi - lo == 1:
-            return leaf(slot, truth_table[lo])
+        if len(set(truth_table[lo:hi])) == 1:
+            # Constant: no branch below here can change the answer, so this
+            # is a leaf.  Leaves all sit on the bottom row whatever their
+            # depth, so the rail from the switch above covers the levels
+            # this fold skipped: the rows are a fixed grid and only the
+            # branching goes away.
+            middle = leaf(slots[0], truth_table[lo])
+            slots[0] += 1
+            for y in range(4 * depth + 2, leaf_top):
+                cells.setdefault((middle, y), "│")
+            return middle
         half = (hi - lo) // 2
-        west = walk(lo, lo + half, slot, depth + 1)
-        east = walk(lo + half, hi, slot + half, depth + 1)
+        west = walk(lo, lo + half, depth + 1)
+        east = walk(lo + half, hi, depth + 1)
         return switch(depth, west, east)
 
-    root = walk(0, len(truth_table), 0, 0)
+    root = walk(0, len(truth_table), 0)
     put(root - 1, 0, "( )")
     cells[(root, 1)] = "│"
     return cells
