@@ -7,6 +7,7 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 
 import pytest
 
+import esolangs
 from esolangs.tools import boolean
 from tests.tools.boolean_runners import (
     run_bf,
@@ -374,6 +375,23 @@ class TestBfTree:
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.bf_tree(xor6)) < 10_000
 
+    @pytest.mark.parametrize("table", ["11111111", "11110000", "10010110"])
+    def test_a_folded_program_still_reads_every_input(self, table: str) -> None:
+        """Folding removes branching, never a read.
+
+        A folded leaf is reached without testing every bit, so it would be
+        easy to emit a tree that also stops *reading* every bit -- and a
+        program whose input consumption depended on its table would desync
+        any caller feeding several programs from one stream.  The reads sit
+        above the tree and run unconditionally, so even an all-constant
+        table (whose tree is a single leaf) consumes all n; one line short
+        is an EOF rather than an answer.
+        """
+        n = len(table).bit_length() - 1
+        program = boolean.bf_tree(table)
+        with pytest.raises(EOFError):
+            esolangs.run("brainfuck", program, stdin="\n".join(["0"] * (n - 1)))
+
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice emits a leaf instead of branching on more bits.
 
@@ -740,6 +758,14 @@ class TestBasicfuck:
         # parity has no constant slice above one row, so nothing folds
         assert boolean.basicfuck("10010110").count("write <- out ;") == 8
 
+    @pytest.mark.parametrize("table", ["11111111", "11110000", "10010110"])
+    def test_a_folded_program_still_reads_every_input(self, table: str) -> None:
+        """Basicfuck's reads sit above its tree, so folding cannot skip one."""
+        n = len(table).bit_length() - 1
+        program = boolean.basicfuck(table)
+        with pytest.raises(EOFError):
+            esolangs.run("Basicfuck", program, stdin="\n".join(["0"] * (n - 1)))
+
     def test_decision_tree(self) -> None:
         """Each internal node branches both ways with the wiki's if!(...)."""
         program = boolean.basicfuck("0110")
@@ -869,6 +895,14 @@ class TestBrainIf:
         """Both answers print from the same two lines."""
         program = boolean.brainif("0110")
         assert program.count("output") == 2
+
+    @pytest.mark.parametrize("table", ["11111111", "11110000", "10010110"])
+    def test_reads_every_input(self, table: str) -> None:
+        """All n reads happen before the answer byte is built."""
+        n = len(table).bit_length() - 1
+        program = boolean.brainif(table)
+        with pytest.raises(EOFError):
+            esolangs.run("BrainIf", program, stdin="\n".join(["0"] * (n - 1)))
 
 
 class TestRotfuck:
