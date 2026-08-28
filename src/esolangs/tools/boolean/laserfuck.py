@@ -271,9 +271,22 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     ``\\`` that faces it right again on a fresh row.  Rows therefore scale
     with the number of *one* edges rather than with the node count, and the
     all-zeros path is a single straight line.  A leaf retires each input
-    (one ``-`` more than its value, driving the cell negative so the dump
-    skips it), walks down to cell 0, and adds a ``+`` only if the answer is
-    one -- a zero answer needs no code at all.
+    (driving the cell negative so the dump skips it), walks down to cell 0,
+    and adds a ``+`` only if the answer is one -- a zero answer needs no
+    code at all.
+
+    A subtree whose rows all agree becomes a leaf rather than branching on
+    bits that cannot change the answer, and how a leaf retires the inputs
+    is what the fold turns on.  Sized to the bit, retiring is one ``-`` for
+    a zero and two for a one -- but a folded leaf never learned the bits it
+    did not branch on.  It does not have to: only the cells *above* its
+    depth are unknown, and a flat two ``-`` retires either value (0 -> -2,
+    1 -> -1), while the cells the path did consume keep the sized run.  So
+    the flat form is spent exactly on the cells that need it, and a table
+    with no constant subtree comes out exactly as it did before folding.
+    The sweep still covers all ``n`` cells, since an unconsumed one sits at
+    0 or 1 and would print beside the answer, so a folded leaf steps out to
+    cell ``n`` first and sweeps back from there.
 
     LaserFuck has no output instruction: it prints the tape when the last
     laser dies, in decimal, skipping negative cells.  Cell (0, 0) is left
@@ -358,19 +371,35 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     tree: dict[tuple[int, int], str] = {}
     used = [0]
 
+    # Whether any subtree is constant, decided before the walk because it
+    # picks the sweep.  A leaf retires the inputs by driving each cell
+    # negative, which the dump then skips; sized to the bit it is one ``-``
+    # for a zero and two for a one, but that needs a bit a *folded* leaf
     def lay(row: int, col: int, char: str) -> None:
         if char != " ":
             tree[(row, col)] = char
 
     def emit(path: list[int], row: int, col: int) -> None:
         """Lay the subtree for ``path``, entered at ``(row, col)`` going right."""
-        if len(path) == n:
-            index = int("".join(map(str, path)), 2) if path else 0
+        depth = len(path)
+        first = int("".join(map(str, path)), 2) << (n - depth) if path else 0
+        if depth == n or len(set(truth_table[first : first + 2 ** (n - depth)])) == 1:
+            index = first
             # The rings leave the inputs in cells 1..n and cell 0 already
             # touched at zero, so the sweep walks down to it and a zero
-            # answer needs no code at all.
-            run = ""
-            for level in range(n, 0, -1):
+            # answer needs no code at all.  The sweep must cover all ``n``
+            # cells however deep the leaf is: an unconsumed one sits at 0 or
+            # 1 and would print beside the answer.  The pointer is on cell
+            # ``depth``, so step out to cell ``n`` before sweeping back.
+            #
+            # Cells above ``depth`` were never branched on, so their value is
+            # unknown here and two ``-`` retire either one (0 -> -2, 1 ->
+            # -1).  The cells the path *did* consume are known, and keep the
+            # sized run of one ``-`` more than the bit -- which is why a
+            # table that folds nothing comes out exactly as it always did.
+            run = ">" * (n - depth)
+            run += "--<" * (n - depth)
+            for level in range(depth, 0, -1):
                 run += "-" * (path[level - 1] + 1) + "<"
             run += "+" if truth_table[index] == "1" else ""
             for offset, char in enumerate(run):
