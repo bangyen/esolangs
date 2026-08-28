@@ -31,7 +31,7 @@ three.
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
 | 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
-| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold | `boolean/helpers.py` `best_input_order` (`six_five` rolls its own, to keep its node-read build as a candidate) |
+| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold — the bar is that the **emitted program changes** and still **consumes its inputs in the same order**, which rules out permuting a parameterized template's fill slots | `boolean/helpers.py` `best_input_order` (`six_five` and `forth` roll their own) |
 
 ## Which shape a boolean generator is
 
@@ -835,7 +835,17 @@ is a redefined benchmark rather than a smaller program. **The bar is that
 the emitted program changes and still consumes its inputs in the same
 order.**
 
-Likewise `eval` (11.8%), `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
+`eval` (11.8%) is out for the same reason and is worth spelling out, because
+its shape looks reorderable and is not. Its nodes are all `~=~?` plus a
+semicolon run equal to the node's **heap index** — no node names an input, so
+a node at level `k` tests whatever bit is `k`-th on the input stack. The only
+lever is the order the `{Xi}` staging blocks are emitted in (currently
+hardcoded to the reversal), and moving those changes which slot receives
+which input rather than what the program does with them. **A generator whose
+nodes are input-agnostic has no runtime reorder** — the split order lives in
+the staging, and staging is the fill interface.
+
+Likewise `circlefuck` (10.5%), `sbleq` (8.3%), `brainif` (4.9%),
 `three_x` (4.5%), `taglate` (3.1%), `minsky_swap` (2.8%), `bio` (1.5%),
 `decleq` (1.4%), `nocomment` (0.7%), `painfuck` (0.5%), `rotfuck` (0.4%) and
 `bfstack` (0.2%) remain unexamined candidates. Read each figure as a **lower
