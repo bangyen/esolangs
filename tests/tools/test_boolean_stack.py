@@ -183,22 +183,23 @@ class TestForth:
             for program in _forth_stack_programs(n).values():
                 assert program.count(",68*-") == n
 
-    def test_stack_programs_are_shortest_not_merely_reachable(self) -> None:
-        """The search is kept for the op strings, not for the set it finds.
+    def test_sinking_a_bit_deeper_than_the_stack_is_skipped(self) -> None:
+        """A sink needs values below it, so early reads have fewer choices.
 
-        The reachable set is a product of per-read choices and needs no
-        search.  The shortest *program* is not: op strings compose across
-        reads, so a single ``c`` placed late can do work that several
-        per-read ``v``s would each have to redo -- the arrangement
-        ``(1, 2, 3, 4, 0)`` is 7 ops found by search against 9 built
-        per-read.  Rebuilding this constructively would emit longer
-        programs, which is the thing the generator exists to avoid.
+        The first read cannot sink at all and the second can sink at most
+        one place, which is why the arrangement count is ``2 * 3**(n - 2)``
+        rather than ``3**n``: the enumeration walks every combination and
+        drops the ones that would sink a bit past the bottom of the stack.
         """
-        from esolangs.tools.boolean.stack import _forth_stack_programs
+        from esolangs.tools.boolean.stack import _forth_sink_top, _forth_stack_programs
 
-        programs = _forth_stack_programs(5)
-        assert programs[(1, 2, 3, 4, 0)].count("c") == 2
-        assert len(programs[(1, 2, 3, 4, 0)]) == 5 * len(",68*-") + 2
+        assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange
+        assert len(_forth_stack_programs(2)) == 2  # the second bit may swap
+
+        # The sink itself keeps everything but the moved bit in order.
+        assert _forth_sink_top((0, 1, 2), 0) == (0, 1, 2)
+        assert _forth_sink_top((0, 1, 2), 1) == (0, 2, 1)
+        assert _forth_sink_top((0, 1, 2), 2) == (2, 0, 1)
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""

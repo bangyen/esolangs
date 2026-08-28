@@ -696,7 +696,7 @@ what it emitted before — this can only shrink a program, never churn one.
 | `ztoalc_l` | **32.4%** | — | 150/256 |
 | `addsubjump` | 31.7% | **41.0%** | 254/256 |
 | `myscript` | 18.6% | 17.8% | 112/256 |
-| `forth` | 13.9% | 12.0% | 112/256 |
+| `forth` | 13.8% | 13.2% | 112/256 |
 | `six_five` | 18.1% | **23.6%** | 186/256 |
 | `nevermind` | 16.3% | 16.2% | 112/256 |
 | `bitdeque` | 14.9% | 14.8% | 112/256 |
@@ -874,9 +874,19 @@ last three bits — 6 arrangements at *every* width, which collapses the
 saving to 2.4% at n=4 and 0.0% at n=5. Interleaving the same two ops with
 the reads, so a bit can move while it is still near the top, reaches 18 of
 24 at n=4 and 54 of 120 at n=5 for a median 2–3 extra characters, restoring
-12.0% and 15.9%. A BFS over (arrangement, reads done) finds the shortest
-program per target; counting what a fixed op pool can do would have called
-this impossible.
+13.2% and 14.3%. Counting what a fixed op pool can do would have called this
+impossible.
+
+The reachable set needs no search: a read leaves its bit on top, and the only
+choice outlasting the next read is how far that bit sinks — 0, 1 or 2 places,
+since `v` and `c` reach no deeper — so composing one choice per read
+enumerates every arrangement, `2 * 3**(n-2)` of them. A breadth-first search
+does find *shorter op strings* on some arrangements, because they compose
+across reads, but that is worth 1–2 characters on an intermediate string and
+`forth` keeps the shortest program over every order anyway, so a longer
+rotation usually loses to a different order instead. Measured end-to-end the
+whole difference is +0.13% at n=3 and +0.03% at n=5, which is why the
+enumeration is written out rather than searched.
 
 `o` reverses the *whole* stack, which drags the scope indices sitting below
 the bits up with them, so it is unusable — and `c` does not abort on those
@@ -885,7 +895,7 @@ on the number of *bits* present, not on stack depth.
 
 **Expect the screen to be an upper bound here**, the opposite of a
 node-reading generator: the reads are already outside the tree, so there is
-no hoist bonus, and every rotation costs characters. The delivered 13.9%
+no hoist bonus, and every rotation costs characters. The delivered 13.8%
 against a screened 14.5% is the expected shape.
 
 ### Sophie — the merge transfers, and the saving grows with n
