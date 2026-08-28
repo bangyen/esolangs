@@ -33,15 +33,16 @@ def run_six_five(program: str, inputs: list[str]) -> str:
     return buffer.getvalue()
 
 
-def run_six_five_from(program: str, feed: Iterator[str]) -> str:
-    """Run a 6-5 program against an iterator, leaving what it did not read.
+def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
+    """Run ``program`` against an iterator, leaving what it did not read.
 
-    ``run_six_five`` takes a list, so a caller cannot tell an exact read
-    from an under-read.  Draining a shared iterator instead lets the caller
-    assert it came back empty, which is how the "every path consumes exactly
-    ``n`` inputs" contract is checked without parsing the emission.
+    The plain ``run_*`` helpers take a list, so a caller cannot tell an
+    exact read from an under-read.  Draining a shared iterator instead lets
+    the caller assert it came back empty, which is how the "every path
+    consumes exactly ``n`` inputs" contract is checked without parsing the
+    emission -- an over-read already raises, so the two together pin it.
     """
-    run = importlib.import_module("esolangs.interpreters.tape_based.six_five").run
+    run = importlib.import_module(module).run
     buffer = io.StringIO()
     with (
         patch("builtins.input", side_effect=lambda *_: next(feed)),
@@ -49,6 +50,16 @@ def run_six_five_from(program: str, feed: Iterator[str]) -> str:
     ):
         run(program, io=IO())
     return buffer.getvalue()
+
+
+def run_six_five_from(program: str, feed: Iterator[str]) -> str:
+    """Run a 6-5 program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.tape_based.six_five", program, feed)
+
+
+def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
+    """Run an AddSubJump program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.register_based.addsubjump", program, feed)
 
 
 def run_dimensional(program: str, inputs: list[str]) -> str:
@@ -223,22 +234,8 @@ def run_polynomial(program: str, inputs: list[str]) -> str:
 
 
 def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
-    """Run a Polynomial program against an iterator, leaving what it did not read.
-
-    ``run_polynomial`` takes a list, so a caller cannot tell an exact read
-    from an under-read.  Draining a shared iterator instead lets the caller
-    assert it came back empty, which is how the "every path consumes exactly
-    ``n`` inputs" contract is checked without parsing the emission.
-    """
-    from esolangs.interpreters.register_based.polynomial import run
-
-    buffer = io.StringIO()
-    with (
-        patch("builtins.input", side_effect=lambda *_: next(feed)),
-        redirect_stdout(buffer),
-    ):
-        run(program, io=IO())
-    return buffer.getvalue()
+    """Run a Polynomial program against an iterator; see :func:`_run_from`."""
+    return _run_from("esolangs.interpreters.register_based.polynomial", program, feed)
 
 
 def run_bfstack(program: str, inputs: list[str]) -> str:
