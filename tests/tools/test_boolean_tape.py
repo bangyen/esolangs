@@ -70,6 +70,74 @@ class TestSixFive:
         assert "78" in program
         assert program.endswith("A0")
 
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [
+            ("11", 1),
+            ("1111", 2),
+            ("11110000", 3),
+            ("1111111100000000", 4),
+            ("1" * 32, 5),
+        ],
+    )
+    def test_constant_subtrees_fold(self, table: str, n: int) -> None:
+        """A constant subtree emits one leaf instead of a full branch set.
+
+        The comparison table has the same ones-count, so a shorter program
+        means the tree folded rather than that some other count shrank.
+        """
+        mixed = {
+            1: "10",
+            2: "1010",
+            3: "10010110",
+            4: "1001011001101001",
+            5: "10010110" * 4,
+        }[n]
+        assert len(boolean.six_five(table)) < len(boolean.six_five(mixed))
+        # One ``A`` per emitted leaf: the fold collapses the leaf count to
+        # the number of distinct constant regions, not ``2**n``.
+        assert boolean.six_five(table).count("A") == _leaves(table)
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [("11", 1), ("1111", 2), ("11110000", 3), ("1000000000000000", 4)],
+    )
+    def test_folded_leaf_still_reads_every_input(self, table: str, n: int) -> None:
+        """Every path through a folded tree reads all ``n`` inputs.
+
+        A folded leaf skips branches but not reads: a caller feeding several
+        programs from one stream would desync if a short path left bits
+        unconsumed.  The interpreter raises ``EOFError`` on an over-read, so
+        supplying exactly ``n`` bits proves no path reads too many, and
+        counting the ``B``s down each path proves none reads too few.
+        """
+        program = boolean.six_five(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_six_five(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
+        # Walk the emitted tree: a branch spends one read, then its two
+        # halves follow; a leaf carries the reads its fold skipped.
+        def reads_on_each_path(code: str) -> set[int]:
+            if not code.startswith("B" + "2" * 8):  # a leaf
+                return {code.count("B")}
+            body = code[len("B" + "2" * 8) + len("78") + 2 :]
+            depth = 0
+            for i, char in enumerate(body):
+                if body[i : i + 2] == "78":
+                    depth += 1
+                elif char == "4":
+                    if depth == 0:
+                        left, right = body[:i], body[i + 1 :]
+                        break
+                    depth -= 1
+            else:  # pragma: no cover - a branch always has its 4 separator
+                raise AssertionError("no separator")
+            return {1 + r for r in reads_on_each_path(left) | reads_on_each_path(right)}
+
+        assert reads_on_each_path(program) == {n}
+
     def test_arithmetic_fallback_path(self) -> None:
         """n > 5 falls back to the arithmetic kernel instead of the tree."""
         program = boolean.six_five("1" + "0" * 63)  # f(x) = (x == 0): T == 1

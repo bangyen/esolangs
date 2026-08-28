@@ -127,14 +127,11 @@ forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
 characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 
-**Build a tree but never fold (2):** arrowqueue, six_five (n≤5).
-`circlefuck` / `circlefuck_byte`, `forth`, `decleq`, `eval`, `clockwise` and
-`streetcode` were all on this list and now fold — see below. What remains is
-`arrowqueue` (3×3 ring-block leaves with queued routing — measured, and the
-1-leaf half is blocked on queue order, see below) and `six_five`, whose n≤5
-path is the only one using its tree and whose n>5 path already folds.
-`six_five`'s tree shows the signature plainly: 226 characters for both
-`11110000` and `10010110` at n=3, and 466 for both at n=4.
+**Build a tree but never fold (1):** arrowqueue.
+`circlefuck` / `circlefuck_byte`, `forth`, `decleq`, `eval`, `clockwise`,
+`streetcode` and now `six_five` were all on this list and fold — see below.
+What remains is `arrowqueue` (3×3 ring-block leaves with queued routing —
+measured, and the 1-leaf half is blocked on queue order, see below).
 
 These emit a byte-identical program size for every table of a given `n`,
 which is the signature of not folding: the leaf count is fixed by `n` alone.
@@ -219,8 +216,50 @@ a leaf test plus whatever index bookkeeping the language needs.
   Being parameterized, this one also has to preserve equal-width embedding.
   It does so for free — the fold shrinks the *template*, which is shared by
   every instantiation — but that is now pinned by a test rather than assumed.
-- `six_five` — marginal. Only the n≤5 path uses this tree, and the n>5 path
-  (`six_five_arithmetic`) already folds.
+- `six_five` — **done on this branch**, and not marginal after all. Only the
+  n≤5 path uses this tree (the n>5 path, `six_five_arithmetic`, already
+  folds), but within that range the saving is the largest of any fold
+  measured here:
+
+  | n | constant | mixed (equal ones-count) | |
+  |---|---|---|---|
+  | 1 | 15 | 46 | 3.1x |
+  | 2 | 16 | 106 | 6.6x |
+  | 3 | 44 | 226 | 5.1x |
+  | 4 | 46 | 466 | 10.1x |
+  | 5 | 19 | 946 | 49.8x |
+
+  The committed example went 106→74 bytes.
+
+  Markers needed no bookkeeping — unlike `forth`'s heap indices, `8n` jumps
+  resolve by counting emitted `4`s in order, and a folded subtree simply
+  allocates no marker and emits no `4`, so the numbering stays dense. The
+  leaf tokens contain no bare `4` or `8` to miscount.
+
+  The one real catch is the **leaf's base**. A full-depth leaf adds
+  `48 + value - base` where `base` is 8 or 9, recording which way the last
+  branch went. That cannot survive a fold: `B` *overwrites* the cell, so
+  after the reads a folded leaf skipped it holds the last input character —
+  48 or 49, differing per input — and every cell op (`5`, `6`, `2`, `9`)
+  adds an unconditional constant, so no fixed suffix maps both to one
+  value. Converging them conditionally would cost a `78` plus a jump, i.e.
+  a marker, which is the scarce resource. The leaf instead steps to cell 1
+  (`13`) and builds the digit from zero: cell 1 is untouched, because every
+  tree path works in cell 0 and every leaf halts.
+
+  The reads themselves are still spent — `B * (n - bit + 1)` — so a caller
+  feeding several programs from one stream stays in sync. That invariant is
+  pinned by `test_folded_leaf_still_reads_every_input`, which walks the
+  emitted tree and asserts every root-to-leaf path spends exactly `n`
+  reads; deliberately dropping the reads makes it fail `{1,2,3,4} == {4}`
+  at n=4, so it is not a vacuous test. Verified exhaustively over every
+  table at n≤3 (2120 runs through the real interpreter) plus constants and
+  half-constants at n=4 and n=5.
+
+  Left alone deliberately: the `2**n - 1 <= 35` gate. Folding lowers the
+  marker count, so a build-then-count dispatch could admit some n≥6 tables
+  that currently hit the arithmetic fallback's size cap — a behaviour
+  change, and a separate decision.
 
 **Grid trees.** `clockwise`, `streetcode`, `arrowqueue` place their tree on a
 plane. `clockwise` turned out to need only a leaf test plus two geometry
