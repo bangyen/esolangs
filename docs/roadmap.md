@@ -384,6 +384,66 @@ rest.  What remains:
   handles both languages correctly, so this is only worth building if the
   "always hangs" guarantee is specifically needed.
 
+## Boolean generators that still emit a full decision tree
+
+A generator "folds" when a subtree whose table rows all agree becomes a
+leaf instead of branching on bits that cannot change the answer.  Most of
+the tree generators do; the ones below still spend a branch per level on
+every path, and each is recorded with what it would take, because the
+reason differs per language and reasoning from the shape of the code
+proved unreliable — Between, LaserFuck, BrainIf, Dig, Modulous, Unsquare
+and Nevermind were each written off on structural grounds and each folded
+once actually probed.
+
+The rule that did hold: folding pays when a folded leaf's cost does not
+scale with the depth it skipped.  Where a leaf has to make up work per
+skipped level, the fold cancels.
+
+**Still open, in rough order of promise.**
+
+- **Circlefuck** (and `circlefuck_byte`) — the closest.  A folded leaf
+  must clear the cell the skipped `[[-]` would have cleared and make up
+  the `<` moves those levels walked; adding the clear alone fixes `n == 1`
+  and leaves `n >= 2` wrong, so the pointer bookkeeping needs a real trace
+  of the interpreter rather than another guess.
+- **Streetcode** — the tree itself folds (`_streetcode_tree` recurses on
+  table halves, and a constant slice is a leaf).  Two things break: the
+  hall that joins two subtrees is sized `height * 2` from `len(top)` and
+  assumes both children are the same height, and a folded leaf arrives
+  with CP short by the `=` each skipped hall would have spent, since the
+  leaf prints from the loader loop's cell.  Compensating the CP inside the
+  leaf widens it, and `_streetcode_combine` pads blocks to a common height
+  but assumes a uniform width, so the collapsed tree then misaligns
+  against the input loops beside it.  Wants the hall and the combine
+  reworked together.
+- **Decleq** — folds correctly with a one-line change, and gains 1.3%.
+  Its size is dominated by fixed data cells and the read preamble rather
+  than by the tree, so the saving is real but not worth the change on its
+  own.
+
+**Ruled out, with the reason.**
+
+- **Clockwise** — its reads are *inside* the tree: `S` plus seven `.` down
+  a column, nine rows per level.  A folded leaf still has to consume the
+  inputs it skipped, at nine rows each, which is exactly what the
+  branching cost.  The cancellation is arithmetic, not a layout artifact.
+- **Forþ** — each level does two paired things: consumes an input bit
+  through the dispatch arithmetic, and pops one definition index with
+  `;`, which is the only way to pop and also dispatches.  The stack holds
+  the definition indices, so a folded node leaves both a bit unread and an
+  index unpopped and the next dispatch reads the wrong value.
+- **Eval** — a node's code *is* its heap index: `~=~?` then `i + 1`
+  semicolons.  Dropping a node renumbers every node after it.
+- **6-5** — the `n <= 5` path is the non-folding tree, but above that the
+  generator already delegates to `six_five_arithmetic`, which folds.
+
+The generators that are not decision trees at all — the sum-of-minterms
+group (bit~, Suptiftam, Suffolk, Collatz Multiverse, Qoibl, Point Break,
+Circuit Diagram), Container's per-row enumeration, Taglate's table-as-data,
+the arithmetic-index cascades (BFStack, COD, Minsky Swap, Home Row), A
+Painter Ant's grid placement, and WII2D's searched op-chain — have no
+constant subtree to fold and are not candidates.
+
 ## Severely constrained boolean generators (remove or lift)
 
 Each boolean generator with a low cap is tracked here so the decision is
