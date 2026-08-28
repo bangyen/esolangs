@@ -560,9 +560,9 @@ class TestStreetcodeLaneMerge:
         machine = machine_unvalidated(code)
         for _ in range(4):
             machine.step()  # down the west lane; the latch forms en route
-        assert machine._merge is not None  # noqa: SLF001
+        assert machine._latches.merge is not None  # noqa: SLF001
         machine.step()  # 'U' at (4,1): turns around into the opposite lane
-        assert machine._merge is None  # noqa: SLF001
+        assert machine._latches.merge is None  # noqa: SLF001
 
     def test_wall_at_the_turn_destination_falls_back_to_plain_rules(self) -> None:
         """The phase-1 turn must not step onto a wall that appears at the
@@ -1664,7 +1664,7 @@ class TestStreetcodeGraphBackedStepping:
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
         machine.place(machine.row, machine.col, "N")
-        machine._merging_heading = "N"  # noqa: SLF001
+        machine._latches = _NO_LATCHES._replace(merging_heading="N")  # noqa: SLF001
         state = _State(
             machine.row,
             machine.col,
