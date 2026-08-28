@@ -567,10 +567,6 @@ class _Car(NamedTuple):
         """Return the same position under a new heading."""
         return _Car(self.row, self.col, heading)
 
-    def moved(self, heading: _Heading) -> "_Car":
-        """Return the car one cell along ``heading``, now pointing that way."""
-        return _Car(*self.ahead(heading), heading)
-
 
 def _ahead(row: int, col: int, heading: _Heading) -> tuple[int, int]:
     """Return the cell one step from ``(row, col)`` along ``heading``."""
@@ -1309,30 +1305,33 @@ class _Machine:
         self.cp = 0
         self.cells: dict[int, int] = {}
         self._done = False
-        # The steering latches (see ``_choose_heading`` and
+        # The steering latches (see :func:`_choose_heading` and
         # :class:`_Latches`), held as one record so that everything which
         # carries them -- the drive-state graph, ``snapshot``, and the
-        # save/restore around the probe -- names the same fields rather
-        # than spelling out three of them each time.  ``_merge`` is set
-        # when a junction turn is detected but not yet reached (phase 1,
-        # driving to the new road's lane before turning);
-        # ``_merging_heading`` is set after that turn while the new
-        # road's right-hand wall has not yet picked up (phase 2,
-        # suppressing the immediate right-hand-hug re-turn).  Both are
-        # ``None`` outside an in-progress merge.  ``_skip_hug`` counts
-        # steps of ordinary right-hand hugging still to be suppressed
-        # after a junction chose to carry straight on past a side road:
-        # the declined road's mouth is open ground exactly where the hug
-        # looks, so without it the car would be steered into the road it
-        # just chose against on the very next step.
+        # states the movement rules return -- names the same fields
+        # rather than spelling out three of them each time.  ``merge`` is
+        # set when a junction turn is detected but not yet reached (phase
+        # 1, driving to the new road's lane before turning);
+        # ``merging_heading`` is set after that turn while the new road's
+        # right-hand wall has not yet picked up (phase 2, suppressing the
+        # immediate right-hand-hug re-turn).  Both are ``None`` outside
+        # an in-progress merge.  ``skip_hug`` counts steps of ordinary
+        # right-hand hugging still to be suppressed after a junction
+        # chose to carry straight on past a side road: the declined
+        # road's mouth is open ground exactly where the hug looks, so
+        # without it the car would be steered into the road it just
+        # chose against on the very next step.
+        #
+        # This is the machine's copy of what the rules thread through as
+        # an argument; ``step`` stores back whatever the rules answer.
         self._latches = _NO_LATCHES
         # The enumerated drive-state graph, or ``None`` when there is no
         # graph to consult: a program whose geometry is not a street
         # (``_validate_width`` exempts those) or one whose validation the
-        # interpreter's own fixtures have patched out.  ``step`` falls
-        # back to calling the movement helpers directly in that case, so
-        # a machine without a graph behaves exactly as it did before the
-        # graph existed.
+        # interpreter's own fixtures have patched out.  ``step`` calls
+        # :func:`_drive` directly in that case -- the same function that
+        # filled the graph, so the answer does not depend on which way it
+        # was reached.
         self._graph: dict[_State, _Edges] | None = None
         # Last, because ``_validate_total`` drives the real movement rules
         # over the grid and so needs every field they touch to exist.
@@ -1381,40 +1380,6 @@ class _Machine:
         silently undo half of what it asked for.
         """
         self._car = _Car(row, col, heading)
-
-    # The three latches are stored as one :class:`_Latches` record but
-    # read and written one at a time by the steering phases, which each
-    # care about a single one.  These properties are that view: the
-    # record stays the single place the field list is written down, and
-    # a phase still says ``self._merge = None`` rather than rebuilding
-    # the whole record and risking a stale sibling field.
-
-    @property
-    def _merge(self) -> _Merge | None:
-        """The in-progress lane merge, or ``None``."""
-        return self._latches.merge
-
-    @_merge.setter
-    def _merge(self, value: _Merge | None) -> None:
-        self._latches = self._latches._replace(merge=value)
-
-    @property
-    def _merging_heading(self) -> _Heading | None:
-        """The heading held while a merged-onto road's wall picks up."""
-        return self._latches.merging_heading
-
-    @_merging_heading.setter
-    def _merging_heading(self, value: _Heading | None) -> None:
-        self._latches = self._latches._replace(merging_heading=value)
-
-    @property
-    def _skip_hug(self) -> int:
-        """Steps of right-hand hugging still to be suppressed."""
-        return self._latches.skip_hug
-
-    @_skip_hug.setter
-    def _skip_hug(self, value: int) -> None:
-        self._latches = self._latches._replace(skip_hug=value)
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
