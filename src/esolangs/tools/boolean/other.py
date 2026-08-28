@@ -81,7 +81,9 @@ def myscript(truth_table: str) -> str:
     lines = [f"var b{i} is ask" for i in range(n)]
 
     def build(i: int, combo: int, pad: str) -> list[str]:
-        if i == n:
+        # ``combo`` has the bits above level ``i`` set and the rest clear,
+        # so it is the first row of the run this subtree covers.
+        if i == n or len(set(truth_table[combo : combo + 2 ** (n - i)])) == 1:
             return [f'{pad}say "{truth_table[combo]}"']
         one = build(i + 1, combo | (1 << (n - 1 - i)), pad + "    ")
         zero = build(i + 1, combo, pad + "    ")
@@ -832,7 +834,7 @@ def forbin_boolean(truth_table: str) -> str:
 
     def emit(level: int, row: int, depth: int) -> None:
         indent = "  " * depth
-        if level == n:
+        if level == n or len(set(truth_table[row : row + 2 ** (n - level)])) == 1:
             byte = _ASCII_ZERO + int(truth_table[row])
             lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
             lines.append(f"{indent}return 0;")

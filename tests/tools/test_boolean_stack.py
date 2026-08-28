@@ -107,6 +107,19 @@ class TestModulous:
         assert boolean.modulous("10").startswith("[INP INT]")
         assert "[JMP F 2 IF 0]" in boolean.modulous("10")
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice pushes its answer instead of branching further.
+
+        Modulous branches on the stack top, which is the *last* input, so
+        its subtrees are strided rather than contiguous runs -- a table
+        like ``11110000`` has no constant subtree under that split and
+        folds nothing.  A table that agrees outright still collapses to a
+        single push, which is where the saving comes from.
+        """
+        leaves = "[PRT INT]"
+        assert boolean.modulous("11111111").count(leaves) == 1
+        assert boolean.modulous("10010110").count(leaves) == 8
+
 
 class TestBfstack:
     @pytest.mark.parametrize(
@@ -149,6 +162,16 @@ class TestUnsquare:
         program = boolean.unsquare("0110")
         assert "x->IA<" in program  # the stack-clean flip
         assert program.count("x>") >= 3  # one guard per branch
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice prints its answer instead of branching further.
+
+        Like Modulous, Unsquare branches on the last input first, so its
+        subtrees are strided and a table such as ``11110000`` folds
+        nothing; a table that agrees outright collapses to one leaf.
+        """
+        assert boolean.unsquare("11111111").count("P") == 3 + 1  # 3 reads, 1 leaf
+        assert boolean.unsquare("10010110").count("P") == 3 + 8
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""

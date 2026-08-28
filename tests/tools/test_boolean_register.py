@@ -231,6 +231,19 @@ class TestSophie:
         """A one-input function is a single conditional pair."""
         assert boolean.sophie("10") == ";@$48{#$49,&}{#$48,&}"
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice prints outright, but still reads its inputs.
+
+        Sophie reads *inside* the tree -- a node is ``;`` then its branch
+        -- so a folded leaf carries the ``;`` it skipped.  Dropping them
+        would make the program's input count depend on its table, which
+        :mod:`tests.tools.test_boolean_contract` rejects for every
+        generator.
+        """
+        assert boolean.sophie("1111") == ";;#$49,&"
+        assert boolean.sophie("0000") == ";;#$48,&"
+        assert boolean.sophie("0110").count(";") == 3  # nothing folds
+
 
 class TestCollatzMultiverse:
     @pytest.mark.parametrize(
