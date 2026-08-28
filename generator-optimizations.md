@@ -127,9 +127,11 @@ forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
 characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 
-**Build a tree but never fold (4):** clockwise, eval, arrowqueue, streetcode,
-six_five (n≤5). `circlefuck` / `circlefuck_byte`, `forth` and `decleq` were on
-this list and now fold — see below.
+**Build a tree but never fold (3):** clockwise, arrowqueue, streetcode,
+six_five (n≤5). `circlefuck` / `circlefuck_byte`, `forth`, `decleq` and `eval`
+were on this list and now fold — see below. Every token-stream tree that had
+headroom has now been folded; what remains is the grid trio plus `six_five`,
+whose n≤5 path is the only one using its tree.
 
 These emit a byte-identical program size for every table of a given `n`,
 which is the signature of not folding: the leaf count is fixed by `n` alone.
@@ -201,9 +203,19 @@ a leaf test plus whatever index bookkeeping the language needs.
   fixed `47n` cost the fold cannot touch, but they grow as the tree overtakes
   them: constant vs XOR is 7% at n=2, 16% at n=4, and **44% at n=6**
   (3448 vs 6148 characters).
-- `eval` — genuinely harder: its tree is *positional* on the tree stack in BFS
-  order, dense by construction, so a collapsed subtree shifts every later
-  index. The opposite case from `forth`.
+- `eval` — **done on this branch**, and the "positional indexing blocks it"
+  call above was wrong. The premise held: the heap *is* positional, a node's
+  `;` run is a function of its own index, and children sit at pinned
+  `2i+1`/`2i+2`, so a folded subtree genuinely cannot be **removed**. The
+  error was concluding it therefore cannot fold. It can be *replaced*: the
+  node becomes the leaf it would have reached and its descendants become
+  empty strings, so every index stays exactly where it was and the emptied
+  slots are never popped, because the only node that routed into them is
+  gone. Constant tables go `127→47` at n=3.
+
+  Being parameterized, this one also has to preserve equal-width embedding.
+  It does so for free — the fold shrinks the *template*, which is shared by
+  every instantiation — but that is now pinned by a test rather than assumed.
 - `six_five` — marginal. Only the n≤5 path uses this tree, and the n>5 path
   (`six_five_arithmetic`) already folds.
 
