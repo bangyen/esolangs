@@ -315,44 +315,49 @@ linear scan rather than a genuine representation limit.  See
   two branches are op strings that transform the accumulator before re-merging
   ahead of the next junction; the final accumulator is the table entry.  The
   ops are not monotone (`s` sends -1 to 1), so the decoding works for any
-  table at small arity (every table through four inputs is verified against
-  the interpreter — exhaustively through three, sampled dense at four; two
-  inputs use a closed form — bit 0 packed as -1/0, each column decoded by a
-  single op).  The search tries op strings of length 2
-  through 6 with a growing budget and generally fails past `n == 5` for dense
-  non-symmetric tables.  Symmetric tables (AND/OR/XOR/majority/threshold-k of
-  any arity) get their own closed forms first: parity/XNOR is exact and O(1)
-  at any `n` (pack bit 0, then fold every later bit with `-s`, which flips
-  0/1 since `(v-1)**2` sends 0->1 and 1->0), and other symmetric tables
-  reduce to a popcount-accumulator prefix plus a decode search over `n`
-  points instead of the full `2**n` rows — see `_wii2d_search`'s docstring
-  for the counting-bound proof that the general (non-symmetric) search must
-  eventually fail at high arity regardless of tuning, and why parity's exact
-  case is a speed win rather than a reachability one.  When the search
-  cannot fit a table in its budget the generator raises :class:`ValueError`
-  — a genuine cap, not a representation limit: the counting bound shows no
-  chain with bounded op strings can represent every table once ``n`` is
-  large, so large dense non-symmetric tables (past ``n == 5``) are out of
+  table at small arity (two inputs use a closed form — bit 0 packed as -1/0,
+  each column decoded by a single op).  The op strings are **constructed, not
+  searched**: because no cell's behaviour can depend on the accumulator, a
+  junction's two op strings are shared by every prefix that reaches it, which
+  leaves exactly one shape.  The first `n - 1` junctions accumulate the bits
+  into an index by Horner's rule (`('*', '*+')`), and the last junction's two
+  branches decode that index into the table's two columns.  The decode is
+  built out of *folds*: `s` is the only op that is not order-preserving, and
+  `'-' * c + 's'` merges exactly the pairs equidistant from `c`, so folding
+  drives the live values together until two remain — which a threshold
+  `'-' * t + '/' * k + '+'` = `[x >= t]` reads out.  Compression (`/`,
+  steered with `+` when a plain halving would collide two values needing
+  different bits) keeps the fold centres narrow enough to spell out in the
+  grid.  Every 0/1 pattern on 16 points (the `n == 5` decode domain) folds,
+  so every table through five inputs is reachable, and dense non-symmetric
+  tables reach `n == 6`.  Symmetric tables (AND/OR/XOR/majority/threshold-k
+  of any arity) get their own routes first: parity/XNOR is exact and O(1) at
+  any `n` (pack bit 0, then fold every later bit with `-s`, which flips 0/1
+  since `(v-1)**2` sends 0->1 and 1->0), and other symmetric tables take a
+  popcount-accumulator prefix plus the same fold decode over `n` points
+  instead of the full `2**n` rows — majority-of-20 constructs in a fraction
+  of a second.  Past `n == 6` the general (non-symmetric) path raises
+  :class:`ValueError`: the decode domain doubles with each input and the op
+  strings it produces grow past any width worth emitting (a 64-point decode
+  measured 187243 cells), so large dense non-symmetric tables are out of
   reach, and there is no universal fallback (a tree would need each input
   re-embedded at every node, which WII2D has no way to store).
 
-  **A search-free chain (no BFS/DFS at all, just a formula) was assessed and
-  found not to generalize.**  The idea: pack the first `n - 1` bits into a
-  single non-negative integer with a fixed, table-independent prefix
-  (`("*", "*+")` per junction — double on a 0 bit, double-and-increment on a
-  1 bit), leaving only the last junction's two op-strings to depend on the
-  table.  At `n == 3` this is total (a decode search up to length 7 covers
-  all 256 tables, including non-monotone ones like XOR3, since the *decode
-  string* can dip negative even though the packing prefix stays
-  non-negative).  It collapses fast past that: the decode step must hit one
-  specific function out of `2**(2**(n-1))` possible 0/1-valued functions on
-  the `2**(n-1)`-point packed domain, and the count of *usable* (pure
-  0/1-output) op-strings up to length 6 barely grows with length (8, 15, 24
-  at lengths 4, 5, 6) while the target count doubles-of-doubles — coverage
-  falls from 94% at `n == 3` to 9% at `n == 4` to 0.04% at `n == 5`.  Moving
-  the hard part into a single final decode junction does not avoid the
-  counting-bound wall; it relocates a smaller copy of the same pigeonhole
-  problem (arbitrary lookup table, short formula) to that junction.
+  **This replaced an earlier chain search.**  A previous note here recorded a
+  search-free chain as "assessed and found not to generalize", on the ground
+  that the final decode must hit one specific function out of
+  `2**(2**(n-1))`, while the count of *usable* (pure 0/1-output) op-strings
+  up to length 6 barely grows with length (8, 15, 24 at lengths 4, 5, 6) --
+  coverage falling from 94% at `n == 3` to 0.04% at `n == 5`.
+  That measurement was of the wrong thing.  It counted how many decodes could
+  be *drawn from a fixed pool of short op-strings*, which is a real bound on
+  picking a decode but not on **building** one: the fold construction above
+  composes a decode of whatever length the pattern needs, so the pool never
+  has to contain the answer.  Every one of the 65536 patterns on the 16-point
+  `n == 5` domain folds -- the case the old note put at 0.04% coverage.  The
+  counting bound is still real, and it is why the general path stops at
+  `n == 6`; it just binds at a much higher arity than a fixed-length pool
+  suggests.
 
 ## 2dFish (the WII2D-style merging chain is affine-only; a decision tree is the universal construction)
 
@@ -370,10 +375,9 @@ accumulator, and there is no runtime conditional nor a way to combine two
 technique transfers almost verbatim — junction cells filled `/` (bit 0,
 continue east) or `v` (bit 1, detour onto a lower row and remerge ahead),
 branch op strings from the fish alphabet `i d s` (increment, decrement,
-square) transforming the accumulator, and the BFS behavior-dedup /
-backward requirement-set search
-(:func:`esolangs.tools.boolean.wii2d`'s `_wii2d_sequences` /
-`_wii2d_domain` / `_wii2d_search_start`) is op-agnostic — but the chain is
+square) transforming the accumulator, and the fold decode
+(:func:`esolangs.tools.boolean.wii2d`'s `_wii2d_decode`) is written against
+an op alphabet rather than a specific one — but the chain is
 **strictly weaker** than WII2D's.
 
 The chain must finish with the accumulator **exactly** 0 or 1 (`o` prints
