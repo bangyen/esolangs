@@ -13,6 +13,7 @@ from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
     _validate_truth_table,
+    best_input_order,
     decision_tree_program,
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
@@ -500,6 +501,20 @@ def basicfuck(truth_table: str) -> str:
     leaves jump to a shared output routine that assumes the pointer has
     passed every level's marker, and Streetcode's hall geometry is sized
     from its subtree's height.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The ``read -> a_i`` block stays in input order, so only the variable an
+    ``if`` names moves.
+    """
+    return best_input_order(truth_table, _basicfuck_ordered)
+
+
+def _basicfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Basicfuck program; see :func:`basicfuck`.
+
+    The variables are 1-based (``a1``..``an``) while ``perm`` indexes from
+    zero, so the level's variable is ``a{perm[k - 1] + 1}``.
     """
     n = _validate_truth_table(truth_table)
 
@@ -516,7 +531,7 @@ def basicfuck(truth_table: str) -> str:
             return f"{indent}out += {_ASCII_ZERO + value} ;\n{indent}write <- out ;\n"
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
-        var = f"a{k}"
+        var = f"a{perm[k - 1] + 1}"
         return (
             f"{indent}if ({var}) {{\n"
             + build(g1, k + 1, depth + 1)
