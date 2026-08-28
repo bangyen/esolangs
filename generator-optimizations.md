@@ -219,12 +219,39 @@ a leaf test plus whatever index bookkeeping the language needs.
 - `six_five` — marginal. Only the n≤5 path uses this tree, and the n>5 path
   (`six_five_arithmetic`) already folds.
 
-**Grid trees — a layout redesign, not a leaf test.** `clockwise`,
-`streetcode`, `arrowqueue` place their tree on a plane. `decision_tree_tokens`
-notes the grid generators' tree "is a placement on a plane, not a token
-sequence", and `basicfuck`'s docstring names Streetcode specifically: its
-"hall geometry is sized from its subtree's height". Real headroom,
-disproportionate cost.
+**Grid trees.** `clockwise`, `streetcode`, `arrowqueue` place their tree on a
+plane. `clockwise` turned out to need only a leaf test plus two geometry
+corrections and **is now folded** (see above). `streetcode` was attempted and
+**reverted** — see below. `arrowqueue` is untried: its leaves are 3×3 ring
+blocks with queued routing.
+
+### streetcode: attempted, reverted (the fold is a hall rewrite)
+
+The leaf test itself is trivial and the reads are safe — `_streetcode_populate`
+emits `[col] * n` *before* the tree, so folding cannot change input
+consumption. Two further obstacles were solved:
+
+- **CP advances.** Each hall spends one `=` advancing the cell pointer, so a
+  folded leaf must spend the ones it skipped or it prints from the wrong cell
+  (an all-zeros table came out as `\x00`). Verified against the unfolded
+  output, which reaches its leaf as `=~O;` rather than `~O;`.
+- **Sibling widths.** `_streetcode_combine` stacks the two children and wraps
+  one wall around the pair, so a folded leaf beside a full subtree leaves that
+  wall ending mid-grid.
+
+The blocker is the third. The hall's rows are hardcoded four-character strings
+(`"|  |"`, `"|  +"`) that nest against each child's own wall, so the unfolded
+tree reads `|  ||  +---+` — hall wall and child wall in *adjacent* columns,
+forming corners. A folded leaf is a single block whose top wall lands where the
+hall expects that corner cell, and the interpreter rejects it: *"wall turns
+without a corner: `-` beside `|`"*. This holds even when both siblings fold to
+equal width, so it is not a raggedness problem — the hall's row construction
+itself assumes a full-depth child. Rewriting it is the layout redesign, and the
+attempt was reverted rather than iterated further.
+
+Worth having anyway, because the prize is real: rows double per level while a
+hall adds four columns, so a constant table measured **395 characters against
+1439** in the working prototype before the wall check rejected it.
 
 **`modulous` and `unsquare` fold along a different axis.** Both branch on the
 stack top, which is the *last* input, so they split on `row >> k` counting up
