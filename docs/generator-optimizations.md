@@ -622,7 +622,8 @@ what it emitted before — this can only shrink a program, never churn one.
 
 | generator | n=3 (all 256 tables) | n=4 (sampled) | tables improved at n=3 |
 |---|---|---|---|
-| `ram0` | **14.8%** | **19.5%** | 212/256 |
+| `bitdeque` | **14.9%** | 14.8% | 112/256 |
+| `ram0` | 14.8% | **19.5%** | 212/256 |
 | `lamfunc` | 11.7% | 12.3% | 112/256 |
 | `between` | 11.4% | 12.1% | 112/256 |
 | `brainfuck` | 8.6% | 7.8% | 114/256 |
@@ -642,10 +643,28 @@ comparing `len` gets both, and any future language's cost shape for free.
 **The read order never moves.** Only the order the tree *tests* the inputs
 in changes; the reads (or the load block, or the `{Xi}` placeholders) stay
 in input order, so the program consumes its input stream exactly as before.
-That is what excludes four otherwise tree-shaped generators: `six_five` and
-`polynomial` read each bit *at the node that tests it*, and `modulous` and
-`bitdeque` pop a stack the load pushed in order — for all four the test
-order **is** the stream order and cannot be permuted independently.
+That is what excludes `six_five` and `polynomial`, which read each bit *at
+the node that tests it* — for both, the test order **is** the stream order.
+`modulous` is out for the neighbouring reason: its stack reaches only the
+top two cells (`SWP` swaps them, and there is no rotate), so a node cannot
+get at a bit the load buried.
+
+**A correction worth recording, because the method was the error.**
+`bitdeque` was first excluded alongside `modulous` for "popping a stack the
+load pushed in order" — read off *what its generator emits* (`PUSH`/`POP`)
+rather than *what the language has*. It is a *deque*: `INJECT`/`EJECT` work
+the head where `PUSH`/`POP` work the tail, so `EJECT PUSH` rotates head to
+tail, `POP INJECT` rotates the other way, and any bit can be brought to an
+end. It is now the **largest** n=3 saving in the table. Whether a tree can
+be reordered is a property of the interpreter's op set; check that, not the
+current generator's habits.
+
+Rotation costs two commands per position, which is why measuring rather than
+modelling matters here too: an order whose rotations outweigh its folds
+simply loses to the identity. The rotations go *inside the tree* — the
+`{Xi}` setter's `INVERT PUSH`/`PUSH INVERT` choice depends on register
+parity at its load position, so touching the load block would desync every
+fill site, and the emitted load is byte-identical whatever the order.
 
 **The search is capped at 6 inputs.** `n!` builds of an `O(2**n)` program is
 a cost that does not announce itself: Dimensional renders a 4096-row table,
