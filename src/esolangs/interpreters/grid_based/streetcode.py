@@ -48,7 +48,7 @@ Runtime error contract:
 
 import sys
 from collections.abc import Iterator
-from typing import Literal, NewType
+from typing import Literal, NamedTuple, NewType
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -75,18 +75,107 @@ _Heading = Literal["N", "E", "S", "W"]
 # (``not self._junction_kind(...)``) and 0 has to keep meaning false.
 _Junction = Literal[0, 3, 4]
 
-# An in-progress lane merge: the cell the car must reach, the heading it
-# will turn to there, the heading the latch was taken under (so a turn in
-# between voids it), and whether it came from a crossing mouth.  ``None``
-# outside a merge.  See ``_Machine.__init__``.
-_Merge = tuple[int, int, _Heading, _Heading, bool] | None
 
-# The movement half of a machine's state: where the car is, which way it
-# points, and the three latches ``_choose_heading`` carries between steps.
-# The tape, CP and I/O are deliberately absent -- they do not steer, and
-# leaving them out is what makes the state space finite and small enough
-# to enumerate (see ``_Machine._drive_states``).
-_State = tuple[int, int, _Heading, _Merge, _Heading | None, int]
+class _Mouth(NamedTuple):
+    """A road mouth as :meth:`_Machine._road_mouth` measured it.
+
+    Three bare ints that mean three different things, and the two depths
+    are interchangeable to the checker: named fields are what keep
+    ``near`` and ``far`` from being read in the wrong order by the
+    helpers that consume a mouth (:meth:`_Machine._lane_bounded`,
+    :meth:`_Machine._lane_merge_target`, and the hug suppression in
+    :meth:`_Machine._heading_from_junction`).
+    """
+
+    # Perpendicular distance from the car to the wall carrying the mouth.
+    dist: int
+    # Depth along the direction of travel of the ``+`` nearer the car.
+    near: int
+    # Depth along the direction of travel of the ``+`` further along.
+    far: int
+
+    @property
+    def width(self) -> int:
+        """How many open cells the gap between the two ``+`` spans."""
+        return self.far - self.near - 1
+
+
+class _Merge(NamedTuple):
+    """An in-progress lane merge, latched until the car reaches ``target``.
+
+    ``new_heading`` and ``latched_heading`` are both a :data:`_Heading`,
+    so before this was a named record nothing but reading order stopped
+    the two from being swapped at either of the construction sites in
+    :meth:`_Machine._heading_from_junction` -- a mistake the checker
+    could not see and the drive-state graph would faithfully reproduce.
+    ``None`` (rather than an instance) means no merge is in progress.
+    See ``_Machine.__init__``.
+
+    A NamedTuple cannot make its fields keyword-only, so the checker
+    still accepts the two headings swapped in a positional call; both
+    construction sites therefore pass every field by name, which is what
+    actually rules the swap out.  Keep it that way when adding a third.
+    """
+
+    # The cell the car must reach before the turn is made.
+    target_row: int
+    target_col: int
+    # The heading it will turn to there.
+    new_heading: _Heading
+    # The heading the latch was taken under; a turn in between voids it.
+    latched_heading: _Heading
+    # Whether the latch came from a crossing mouth, which decides whether
+    # the branch condition is re-read on arrival.
+    crossing: bool
+
+    @property
+    def target(self) -> tuple[int, int]:
+        """The cell the car is driving to, as a coordinate pair."""
+        return self.target_row, self.target_col
+
+
+class _Latches(NamedTuple):
+    """The three values ``_choose_heading`` carries between steps.
+
+    Grouped into one record because they travel together everywhere: the
+    machine's fields, :meth:`_Machine.snapshot`, the save/restore in
+    :meth:`_Machine._drive_states`, and the successor
+    :meth:`_Machine._probe` builds all used to spell the same three
+    fields out independently, so adding or reordering a latch meant
+    editing four lists in step and silently corrupting the drive-state
+    graph on missing one.  :meth:`_Machine._latches` and
+    :meth:`_Machine._set_latches` are now the only places that know the
+    field order.
+    """
+
+    # Set when a junction turn is detected but not yet reached (phase 1).
+    merge: "_Merge | None"
+    # Set after that turn, while the new road's right-hand wall has not
+    # yet picked up (phase 2).
+    merging_heading: _Heading | None
+    # Steps of ordinary right-hand hugging still to be suppressed.
+    skip_hug: int
+
+
+class _State(NamedTuple):
+    """The movement half of a machine's state.
+
+    Where the car is, which way it points, and the latches it carries.
+    The tape, CP and I/O are deliberately absent -- they do not steer,
+    and leaving them out is what makes the state space finite and small
+    enough to enumerate (see ``_Machine._drive_states``).  A NamedTuple
+    rather than a plain tuple so that the graph's keys, the probe's
+    successors and ``step``'s lookup all name their fields; it stays
+    hashable and tuple-compatible, which is what the graph dict and
+    :meth:`_Machine.snapshot` need.
+    """
+
+    row: int
+    col: int
+    heading: _Heading
+    latches: _Latches
+
+
 # An open cell the flood fill in ``_validate_width`` reached from ``C``.
 # Only that fill mints these, and ``_validate_enclosed`` then proves none
 # of them sits on the border of the grid -- so the eight neighbours of one
@@ -109,6 +198,11 @@ _Halt = Literal["halt"]
 # A state's successors, keyed by the two branch bits movement can read in
 # one step: the arrival cell and the post-instruction cell, in that order.
 _Edges = dict[tuple[int, int], "_State | _Halt | None"]
+
+# No merge in progress and nothing to suppress: the latches a car starts
+# with, and the ones it is reset to whenever a 'U' clears them.  Named so
+# the reset is one value rather than three assignments that have to agree.
+_NO_LATCHES = _Latches(merge=None, merging_heading=None, skip_hug=0)
 
 _HEADINGS: tuple[_Heading, ...] = ("N", "E", "S", "W")
 _DELTA: dict[_Heading, tuple[int, int]] = {
@@ -377,28 +471,23 @@ class _Machine:
         self.cells: dict[int, int] = {}
         self._done = False
         self.heading = self._initial_heading()
-        # Lane-merge latches (see ``_choose_heading``): ``_merge_target`` is
-        # set when a junction turn is detected but not yet reached (phase 1,
-        # driving to the new road's lane before turning); ``_merging_heading``
-        # is set after that turn while the new road's right-hand wall has not
-        # yet picked up (phase 2, suppressing the immediate right-hand-hug
-        # re-turn).  Both are ``None`` outside an in-progress merge.
-        # ``_merge_target``'s fourth element is the heading it was latched
-        # under, so any change of heading before the target is reached (a
-        # 'U', or a corner forcing a turn) invalidates the latch instead of
-        # silently misapplying a stale turn.  The fifth records whether the
-        # latch came from a crossing mouth, which decides whether the branch
-        # condition is re-read on arrival; carrying it inside the latch keeps
-        # the two from drifting apart and keeps ``snapshot`` complete.
-        self._merge_target: _Merge = None
-        self._merging_heading: _Heading | None = None
-        # Steps of ordinary right-hand hugging still to be suppressed after a
-        # junction chose to carry straight on past a side road.  The declined
-        # road's mouth is open ground exactly where the hug looks, so without
-        # this the car would be steered into the road it just chose against
-        # on the very next step.  Counted down once per step and cleared by
-        # any heading change.
-        self._skip_hug = 0
+        # The steering latches (see ``_choose_heading`` and
+        # :class:`_Latches`), held as one record so that everything which
+        # carries them -- the drive-state graph, ``snapshot``, and the
+        # save/restore around the probe -- names the same fields rather
+        # than spelling out three of them each time.  ``_merge`` is set
+        # when a junction turn is detected but not yet reached (phase 1,
+        # driving to the new road's lane before turning);
+        # ``_merging_heading`` is set after that turn while the new
+        # road's right-hand wall has not yet picked up (phase 2,
+        # suppressing the immediate right-hand-hug re-turn).  Both are
+        # ``None`` outside an in-progress merge.  ``_skip_hug`` counts
+        # steps of ordinary right-hand hugging still to be suppressed
+        # after a junction chose to carry straight on past a side road:
+        # the declined road's mouth is open ground exactly where the hug
+        # looks, so without it the car would be steered into the road it
+        # just chose against on the very next step.
+        self._latches = _NO_LATCHES
         # The enumerated drive-state graph, or ``None`` when there is no
         # graph to consult: a program whose geometry is not a street
         # (``_validate_width`` exempts those) or one whose validation the
@@ -416,15 +505,51 @@ class _Machine:
         """Whether the car has halted."""
         return self._done
 
+    # The three latches are stored as one :class:`_Latches` record but
+    # read and written one at a time by the steering phases, which each
+    # care about a single one.  These properties are that view: the
+    # record stays the single place the field list is written down, and
+    # a phase still says ``self._merge = None`` rather than rebuilding
+    # the whole record and risking a stale sibling field.
+
+    @property
+    def _merge(self) -> _Merge | None:
+        """The in-progress lane merge, or ``None``."""
+        return self._latches.merge
+
+    @_merge.setter
+    def _merge(self, value: _Merge | None) -> None:
+        self._latches = self._latches._replace(merge=value)
+
+    @property
+    def _merging_heading(self) -> _Heading | None:
+        """The heading held while a merged-onto road's wall picks up."""
+        return self._latches.merging_heading
+
+    @_merging_heading.setter
+    def _merging_heading(self, value: _Heading | None) -> None:
+        self._latches = self._latches._replace(merging_heading=value)
+
+    @property
+    def _skip_hug(self) -> int:
+        """Steps of right-hand hugging still to be suppressed."""
+        return self._latches.skip_hug
+
+    @_skip_hug.setter
+    def _skip_hug(self, value: int) -> None:
+        self._latches = self._latches._replace(skip_hug=value)
+
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
         Every attribute the machine carries between steps appears here, so
         two equal snapshots really do have equal futures.  Per-step values
         are deliberately not attributes at all -- the arrival cell is passed
-        to ``_choose_heading`` as a parameter -- and the merge latch carries
-        its crossing flag inside the tuple, so neither can drift out of the
-        snapshot the way a separate attribute could.
+        to ``_choose_heading`` as a parameter -- and the steering latches
+        enter as the single :class:`_Latches` record, so a latch added
+        later is carried here without this method being touched, rather
+        than drifting out of the snapshot the way a separate attribute
+        could.
 
         ``_done`` matters even though a halted machine takes no further
         steps: ``;`` halts without moving the car, so the states either
@@ -439,9 +564,7 @@ class _Machine:
             tuple(sorted(self.cells.items())),
             self.io.position(),
             self._done,
-            self._merge_target,
-            self._merging_heading,
-            self._skip_hug,
+            self._latches,
         )
 
     def _cell(self) -> int:
@@ -582,15 +705,13 @@ class _Machine:
             self.heading,
             self.cp,
             self.cells,
-            self._merge_target,
-            self._merging_heading,
-            self._skip_hug,
+            self._latches,
         )
         graph: dict[_State, _Edges] = {}
         # ``_initial_heading`` reads only the grid and the start, so it is
         # safe to call here, before ``__init__`` assigns ``self.heading``.
         self.row, self.col = start
-        origin: _State = (*start, self._initial_heading(), None, None, 0)
+        origin = _State(*start, self._initial_heading(), _NO_LATCHES)
         pending = [origin]
         graph[origin] = {}
         while pending:
@@ -613,9 +734,7 @@ class _Machine:
             self.heading,
             self.cp,
             self.cells,
-            self._merge_target,
-            self._merging_heading,
-            self._skip_hug,
+            self._latches,
         ) = saved
         return graph
 
@@ -645,25 +764,23 @@ class _Machine:
         cell that is not a code point, ``I`` at end of input -- are
         runtime semantics this search deliberately does not predict.
         """
-        row, col, heading, merge_target, merging, skip = state
-        op = self.grid.op_at(row, col)
+        op = self.grid.op_at(state.row, state.col)
         if op == "HALT":
             return "halt"
         if op == "TURN":
-            reversed_heading = _opposite(heading)
-            lane = self._ahead(row, col, _right(reversed_heading))
+            reversed_heading = _opposite(state.heading)
+            lane = self._ahead(state.row, state.col, _right(reversed_heading))
             # A street with no opposite lane is the late-detected width
             # violation ``step`` raises ``HaltError`` for; it is not a
             # state the car drives on to.
             if not self._open(*lane):
                 return None
-            return (*lane, reversed_heading, None, None, 0)
+            # A 'U' clears the latches, the same reset ``step`` applies.
+            return _State(*lane, reversed_heading, _NO_LATCHES)
 
-        self.row, self.col = row, col
-        self.heading = heading
-        self._merge_target = merge_target
-        self._merging_heading = merging
-        self._skip_hug = skip
+        self.row, self.col = state.row, state.col
+        self.heading = state.heading
+        self._latches = state.latches
         self.cp = 0
         self.cells = {0: current}
         new_heading = self._choose_heading(arrival)
@@ -672,13 +789,11 @@ class _Machine:
         d_row, d_col = _DELTA[new_heading]
         # The latches the phases just wrote are part of the successor:
         # they are what the next step reads.
-        return (
-            row + d_row,
-            col + d_col,
+        return _State(
+            state.row + d_row,
+            state.col + d_col,
             new_heading,
-            self._merge_target,
-            self._merging_heading,
-            self._skip_hug,
+            self._latches,
         )
 
     def _validate_total(self, start: tuple[int, int]) -> None:
@@ -1004,9 +1119,7 @@ class _Machine:
                 return f"geometry not connected to the street at {(r, c)} ({char!r})"
         return None
 
-    def _road_mouth(
-        self, heading: _Heading, side: _Heading
-    ) -> tuple[int, int, int] | None:
+    def _road_mouth(self, heading: _Heading, side: _Heading) -> _Mouth | None:
         """Detect a road opening off ``side`` of the car, or ``None``.
 
         A branch is drawn as a gap in the wall running along ``side``, with a
@@ -1067,7 +1180,7 @@ class _Machine:
                     if self._at(*pos(far, dist)) != "+":
                         continue
                     if all(self._open(*pos(k, dist)) for k in range(near + 1, far)):
-                        return dist, near, far
+                        return _Mouth(dist=dist, near=near, far=far)
                     break
             if any(self._at(*pos(d, dist)) in _WALLS for d in (-1, 0, 1)):
                 # This line is the wall the car is driving along, and it
@@ -1166,9 +1279,7 @@ class _Machine:
         # rather than past it (see :meth:`_crossing_mouth`).
         return 3 if self._crossing_mouth(heading) else 0
 
-    def _lane_bounded(
-        self, heading: _Heading, side: _Heading, mouth: tuple[int, int, int]
-    ) -> bool:
+    def _lane_bounded(self, heading: _Heading, side: _Heading, mouth: _Mouth) -> bool:
         """Whether ``mouth`` bounds a genuinely multi-lane road.
 
         A mouth's two ``+`` mark where the side road's own bounding walls
@@ -1181,7 +1292,7 @@ class _Machine:
         bare ``+`` floating with nothing beyond it (as in an open room)
         bounds no such corridor and turns immediately.
         """
-        dist, near, far = mouth
+        dist, near, far = mouth.dist, mouth.near, mouth.far
         d_row, d_col = _DELTA[heading]
         s_row, s_col = _DELTA[side]
         return all(
@@ -1194,7 +1305,7 @@ class _Machine:
         )
 
     def _lane_merge_target(
-        self, heading: _Heading, new_heading: _Heading, mouth: tuple[int, int, int]
+        self, heading: _Heading, new_heading: _Heading, mouth: _Mouth
     ) -> tuple[int, int]:
         """Return the cell the car must reach before turning to ``new_heading``.
 
@@ -1209,7 +1320,7 @@ class _Machine:
         during this approach, so the target keeps its perpendicular
         coordinate fixed and only advances along the travel axis.
         """
-        _, near, far = mouth
+        near, far = mouth.near, mouth.far
         d_row, d_col = _DELTA[heading]
         depth = far - 1 if _right(new_heading) == heading else near + 1
         # d_row/d_col is a unit vector with exactly one nonzero component;
@@ -1311,7 +1422,7 @@ class _Machine:
         right-hand lane of the road it is turning onto, and after turning
         keeps driving straight until that new road's right-hand wall
         actually picks up, before resuming ordinary wall-following (see
-        ``_merge_target``/``_merging_heading`` and
+        ``_merge``/``_merging_heading`` and
         ``docs/streetcode.md``).
         Both latches are abandoned -- falling back to plain wall-following
         -- the moment anything about the approach stops matching what was
@@ -1363,21 +1474,20 @@ class _Machine:
         Returns a heading while the approach is still running or when the
         turn is made, and ``None`` once the latch is spent or abandoned.
         """
-        if self._merge_target is None:
+        merge = self._merge
+        if merge is None:
             return None
-        target_row, target_col, new_heading, latched_heading, crossing = (
-            self._merge_target
-        )
+        new_heading = merge.new_heading
         heading = self.heading
         # A 'U' during the approach turns the car around, and the latch must
         # not wait forever for a cell it no longer visits: abandoning it here
         # is what keeps a divert from disabling junction detection for the
         # rest of the run (see
         # ``test_diverting_before_the_target_abandons_the_merge_latch``).
-        if heading != latched_heading:
-            self._merge_target = None
+        if heading != merge.latched_heading:
+            self._merge = None
             return None
-        if (self.row, self.col) != (target_row, target_col):
+        if (self.row, self.col) != merge.target:
             # Still approaching the lane where the turn will be made.
             # Hold the latched heading rather than letting an ordinary
             # right-hand hug peel the car away mid-approach -- the road
@@ -1385,10 +1495,10 @@ class _Machine:
             # would otherwise turn early and never reach the target.
             if self._open_toward(heading):
                 return heading
-            self._merge_target = None
+            self._merge = None
             return None
 
-        self._merge_target = None
+        self._merge = None
         # Re-read the branch condition here rather than trusting the
         # value the latch was taken under: the approach drives over
         # real cells, and an ``I`` or ``=`` along the way can change
@@ -1419,11 +1529,11 @@ class _Machine:
         # (a ``^`` on the way to the lane) overturn a choice that was
         # already made, which is the same "preparation must not double
         # as the decision" the arrival read exists to prevent.
-        if not crossing:
+        if not merge.crossing:
             choices = (
-                [new_heading, latched_heading]
-                if new_heading == _left(latched_heading)
-                else [latched_heading, new_heading]
+                [new_heading, merge.latched_heading]
+                if new_heading == _left(merge.latched_heading)
+                else [merge.latched_heading, new_heading]
             )
             new_heading = choices[0] if arrival_cell == 0 else choices[1]
         if new_heading == heading:
@@ -1483,7 +1593,13 @@ class _Machine:
                 target = target[0] + d_row, target[1] + d_col
             # ``_crossing_mouth`` guarantees the cell straight ahead is
             # open, so the loop above always advances at least one cell.
-            self._merge_target = (*target, new_heading, heading, True)
+            self._merge = _Merge(
+                target_row=target[0],
+                target_col=target[1],
+                new_heading=new_heading,
+                latched_heading=heading,
+                crossing=True,
+            )
             return None
         # The mouth is looked up once and handed to both helpers: each used
         # to re-find it and guard against a miss the other had already ruled
@@ -1496,7 +1612,13 @@ class _Machine:
         ):
             target = self._lane_merge_target(heading, new_heading, mouth)
             if target != (self.row, self.col):
-                self._merge_target = (*target, new_heading, heading, False)
+                self._merge = _Merge(
+                    target_row=target[0],
+                    target_col=target[1],
+                    new_heading=new_heading,
+                    latched_heading=heading,
+                    crossing=False,
+                )
                 return None
             return new_heading
 
@@ -1512,7 +1634,7 @@ class _Machine:
             # ever extended, never restarted shorter.
             declined = [h for h in roads if h != heading]
             mouth = self._road_mouth(heading, declined[0])
-            if mouth is not None and mouth[1] <= 0:
+            if mouth is not None and mouth.near <= 0:
                 # Suppress the hug across the mouth, but only when the
                 # gap opens immediately beside the car (``near <= 0``)
                 # -- those are the cells where the fallen-away wall
@@ -1521,8 +1643,7 @@ class _Machine:
                 # ordinary wall-following still holds the car against
                 # the wall until it arrives, and by then the junction
                 # is behind it, so nothing needs suppressing.
-                _, near, far = mouth
-                self._skip_hug = max(self._skip_hug, far - near - 1)
+                self._skip_hug = max(self._skip_hug, mouth.width)
         return new_heading
 
     def _heading_from_hug(self) -> _Heading | None:
@@ -1555,14 +1676,7 @@ class _Machine:
         # Taken here because an instruction moves CP and the tape but never
         # the car, its heading or the latches, and ``U`` returns before the
         # lookup; so this is still the state when the lookup happens.
-        state: _State = (
-            self.row,
-            self.col,
-            self.heading,
-            self._merge_target,
-            self._merging_heading,
-            self._skip_hug,
-        )
+        state = _State(self.row, self.col, self.heading, self._latches)
 
         # The cell as the car arrives, before this square's instruction runs.
         # A junction decision is about the road the car is arriving at, so it
@@ -1611,9 +1725,7 @@ class _Machine:
             lane_row, lane_col = self._ahead(self.row, self.col, _right(self.heading))
             if not self._open(lane_row, lane_col):
                 raise HaltError
-            self._merge_target = None
-            self._merging_heading = None
-            self._skip_hug = 0
+            self._latches = _NO_LATCHES
             self.row, self.col = lane_row, lane_col
             return
         # "NOP" is the remaining case: ``C``, space, and every character
@@ -1644,8 +1756,9 @@ class _Machine:
                     f" {self.heading}: the drive-state graph outlived"
                     " the totality check"
                 )
-            self.row, self.col, self.heading = successor[0], successor[1], successor[2]
-            self._merge_target, self._merging_heading, self._skip_hug = successor[3:]
+            self.row, self.col = successor.row, successor.col
+            self.heading = successor.heading
+            self._latches = successor.latches
             return
 
         # No graph, or a state outside it: a machine whose geometry is not
