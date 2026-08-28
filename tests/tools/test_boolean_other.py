@@ -460,12 +460,25 @@ class TestZtoalc:
             got = run_ztoalc(program, [str(b) for b in bits])
             assert got == str(int("0110100110010110"[combo])), f"inputs {bits}"
 
-    def test_dense_non_symmetric_raises(self) -> None:
-        """A dense non-symmetric n=4 tree cannot be placed and is rejected."""
-        with pytest.raises(ValueError, match="no collision-free placement"):
-            # tree fails, and the table is not popcount-symmetric, so the
-            # linear fallback cannot help either
-            boolean.ztoalc_l_boolean("1010001000011000")
+    def test_dense_non_symmetric_places_under_a_reordered_tree(self) -> None:
+        """A table the identity order cannot place is rendered by another order.
+
+        This table used to be refused: its tree found no collision-free
+        placement and it is not popcount-symmetric, so the linear fallback
+        could not help either.  Choosing the input split order gives the
+        search a differently-shaped tree to place, and one of the orders
+        fits -- the same effect that shrinks factor's unrenderable set.
+        """
+        from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
+
+        table = "1010001000011000"
+        assert not _ztoalc_ordered(table, (0, 1, 2, 3)), (
+            "the identity order should still fail to place this table"
+        )
+        program = boolean.ztoalc_l_boolean(table)
+        for combo in range(16):
+            bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
+            assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""

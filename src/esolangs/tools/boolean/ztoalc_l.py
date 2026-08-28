@@ -5,7 +5,11 @@ behaviour matches the truth table, checking candidates with a small
 simulator (:func:`_ztoalc_ok`) rather than constructing them directly.
 """
 
-from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.boolean.helpers import (
+    _ASCII_ZERO,
+    _validate_truth_table,
+    best_input_order,
+)
 
 __all__ = ["ztoalc_l_boolean"]
 
@@ -55,8 +59,13 @@ def _ztoalc_ok(lines: dict[int, str], n: int, inputs: str, expected: str) -> boo
     return len(out) == 1 and out[0] == expected
 
 
-def _ztoalc_lines(table: str, n: int, b1: int) -> dict[int, str]:
-    """Place the reads, normalizes, branches, and leaves for ``table``."""
+def _ztoalc_lines(table: str, n: int, b1: int, perm: tuple[int, ...]) -> dict[int, str]:
+    """Place the reads, normalizes, branches, and leaves for ``table``.
+
+    ``perm[depth]`` is the input the tree tests at ``depth``; the reads
+    stay in input order on the initial descent, so only the ``jump a x``
+    operand moves.
+    """
     start = b1 * 4**n
     lines: dict[int, str] = {0: str(start)}
     for i in range(n):
@@ -68,7 +77,7 @@ def _ztoalc_lines(table: str, n: int, b1: int) -> dict[int, str]:
         if len(results) == 1:
             lines[root - 1] = f"print {_ASCII_ZERO + int(results.pop())}"
             return
-        lines[root - 1] = f"jump a x{depth}"
+        lines[root - 1] = f"jump a x{perm[depth]}"
         bit = n - 1 - depth
         zero = [c for c in combos if not (c >> bit) & 1]
         one = [c for c in combos if (c >> bit) & 1]
@@ -145,12 +154,51 @@ def ztoalc_l_boolean(truth_table: str) -> str:
     small table.  That program is guaranteed collision-free (a pure
     power-of-two descent) but huge (``2**L`` lines), so it is gated by a
     size limit and the generator raises :class:`ValueError` only for dense,
-    non-symmetric tables past ``n == 3``.
+    non-symmetric tables past ``n == 3`` that no input order can place --
+    reordering shrank that set, since a differently-shaped tree gives the
+    placement search a different problem, and some tables that were refused
+    outright now render.
 
     Verified exhaustively for every table at ``n <= 3`` and for structured
     and symmetric tables at ``n == 4``; all tests run the real interpreter.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The reads ride the initial descent in input order and a node names its
+    input as ``x{i}``, so only the ``jump a x`` operand moves.  Reordering
+    buys two things here: the usual extra constant subtrees, and -- because
+    the program is ``b1 * 4**n`` lines and every ``b1`` is tried in turn --
+    a shallower tree often places at a *smaller* ``b1``, which scales the
+    whole program down.
     """
+    best = best_input_order(truth_table, _ztoalc_ordered)
+    if best:
+        return best
+    # Every order failed to place, so re-run the identity to raise the
+    # error the caller expects, with its own message and no mention of the
+    # search that happened first.
+    return _ztoalc_placed(truth_table, tuple(range(_validate_truth_table(truth_table))))
+
+
+def _ztoalc_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's ZTOALC L program, or ``""`` if it cannot place.
+
+    An order that finds no collision-free placement is a candidate that
+    lost, not an error -- another order may well place.  Returning the
+    empty string keeps it out of :func:`best_input_order`'s comparison
+    without unwinding the search, and the caller re-raises from the
+    identity order when *every* order comes back empty.
+    """
+    try:
+        return _ztoalc_placed(truth_table, perm)
+    except ValueError:
+        return ""
+
+
+def _ztoalc_placed(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Place one input order's program, raising when it cannot."""
     n = _validate_truth_table(truth_table)
+
     # Every ``b1`` is tried, not just the multiples of four.  A one-branch
     # jumps to ``root + 1``, whose Collatz step is ``3 * root + 4`` -- a
     # multiple of four only when ``root`` is, so the ``b1 % 4 == 0`` family
@@ -160,14 +208,28 @@ def ztoalc_l_boolean(truth_table: str) -> str:
     # collision, and the simulator below is what decides either way.  Since
     # the program is ``b1 * 4**n`` lines long, those smaller starts are
     # worth having -- AND drops from 384 lines to 96.
+    def expected(combo: int) -> str:
+        """Return the answer for stream input ``combo``, in the permuted frame.
+
+        The tree tests input ``perm[k]`` at level ``k``, so the row of the
+        permuted table it walks to is ``combo``'s bits gathered in that
+        order.  Under the identity this is ``combo`` itself and the check
+        is the one it always was; under any other order, checking
+        ``truth_table[combo]`` would demand the program compute a
+        *different* function and reject every correct placement -- which
+        reads exactly like "no order helps here".
+        """
+        row = sum(((combo >> (n - 1 - perm[k])) & 1) << (n - 1 - k) for k in range(n))
+        return truth_table[row]
+
     for b1 in range(1, 4000):
-        lines = _ztoalc_lines(truth_table, n, b1)
+        lines = _ztoalc_lines(truth_table, n, b1, perm)
         if all(
             _ztoalc_ok(
                 lines,
                 n,
                 "".join(str((c >> (n - 1 - i)) & 1) for i in range(n)),
-                truth_table[c],
+                expected(c),
             )
             for c in range(2**n)
         ):
