@@ -208,8 +208,12 @@ def nevermind(truth_table: str) -> str:
 
     def build(k: int, row: int) -> None:
         indent = "  " * k
-        if k == n:
-            lines.append(f"{indent}print,{truth_table[row]}")
+        # ``row`` is accumulated a bit at a time, so at depth ``k`` it is a
+        # partial index: shifting it into place names the first row of the
+        # run its remaining bits span.
+        lo = row << (n - k)
+        if k == n or len(set(truth_table[lo : lo + 2 ** (n - k)])) == 1:
+            lines.append(f"{indent}print,{truth_table[lo]}")
             return
         for bit in (0, 1):
             lines.append(f"{indent}if,${chr(ord('a') + k)},==,{bit}")
