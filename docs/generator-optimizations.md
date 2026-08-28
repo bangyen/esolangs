@@ -31,7 +31,7 @@ three.
 | 8 | **Literal batching** | print a whole string in one statement rather than per character | `text/helpers.py` `_literal_chunks` |
 | 9 | **Equal-width embedding** | *anti*-optimization: pad both bits to equal width so length can't leak inputs | `boolean/helpers.py:97` `instantiate` |
 | 10 | **Dependency reduction** | a table that ignores an input is emitted as the *smaller* table, reading and discarding the rest | `boolean/other.py` `_taglate_dependencies` |
-| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold | `boolean/helpers.py` `best_input_order` |
+| 11 | **Input reordering** | the tree splits on its inputs in whichever order emits the shortest program, so more subtrees fold | `boolean/helpers.py` `best_input_order` (`six_five` rolls its own, to keep its node-read build as a candidate) |
 
 ## Which shape a boolean generator is
 
@@ -405,8 +405,12 @@ a leaf test plus whatever index bookkeeping the language needs.
   fold made the second construction redundant rather than merely worse.
 
   **Is the generator total?** No, and the boundary is exact. Labels are the
-  only limit, and the worst case for the fold is an alternating table, which
-  folds nothing and spends the full `2**n - 1`:
+  only limit, and the worst case for the fold is a table no *input order*
+  folds, which is **parity**: any permutation of parity is parity, so it
+  spends the full `2**n - 1` under all `n!` orders. (An alternating table
+  also folds nothing in stream order, and used to be quoted as the worst
+  case, but it is only NOT of the last input — one reorder folds it to a
+  single label.)
 
   | n | worst case | budget 35 |
   |---|---|---|
@@ -418,9 +422,12 @@ a leaf test plus whatever index bookkeeping the language needs.
   So `six_five` is total through n=5 and partial above it, where it now
   raises `ValueError` naming the label count instead of falling through to
   a kernel that would have refused the table anyway. What survives past n=5
-  is tables that fold hard: at n=6 about 1% of random tables fit (measured
-  2000), and at n≥7 essentially none — though structured tables like AND-n
-  fit at any width, needing just `n` labels.
+  is tables that fold hard — and since the budget is spent per input order,
+  a table only has to fold under *some* order. Measured over 2000 random
+  n=6 tables, 1.5% fit in stream order and **13.6% fit under the best of
+  the 720 orders**, so reordering widened the renderable set about ninefold.
+  At n=7 neither figure is above 0% (500 sampled) — though structured
+  tables like AND-n fit at any width, needing just `n` labels.
 
 **Grid trees.** `clockwise`, `streetcode`, `arrowqueue` place their tree on a
 plane. `clockwise` turned out to need only a leaf test plus two geometry
@@ -688,6 +695,7 @@ what it emitted before — this can only shrink a program, never churn one.
 |---|---|---|---|
 | `ztoalc_l` | **32.4%** | — | 150/256 |
 | `myscript` | 18.6% | 17.8% | 112/256 |
+| `six_five` | 18.1% | **23.6%** | 186/256 |
 | `nevermind` | 16.3% | 16.2% | 112/256 |
 | `bitdeque` | 14.9% | 14.8% | 112/256 |
 | `ram0` | 14.8% | **19.5%** | 212/256 |
@@ -725,10 +733,10 @@ not a verdict:
 | `addsubjump` | 16.7% | reads at the node, drains skipped reads at each leaf |
 | `unsquare` | 15.7% | reads up front but pops LIFO; `S` swaps the top two and there is one accumulator, so no rotation to depth |
 
-**Two of these were wrong and are now candidates.** `six_five` (17.9%) and
-`jaune` (16.3%) were excluded for "reading at the node" — but that describes
-what their *generators* currently emit, not what the languages allow. Both
-have a tape and a pointer:
+**Two of these were wrong, and both are now done.** `six_five` and `jaune`
+were excluded for "reading at the node" — but that describes what their
+*generators* emitted, not what the languages allow. Both have a tape and a
+pointer:
 
 - `jaune` — the wiki calls it "an array of data cells, similar to brainfuck,
   with the addition of one 'hold' cell", and `?` branches on "the value of
@@ -749,12 +757,45 @@ have a tape and a pointer:
   (+2/-1), and `7n` compares the current cell. Same story, verified the same
   way.
 
-Reordering them means restructuring each generator to hoist its reads, which
-is more than renaming a branch operand, so it is recorded here as open rather
-than done. **This is the third time the "reads at the node" reasoning came
-from the generator instead of the interpreter** (`bitdeque` was the first,
-and it became one of the largest wins). The rule holds: a generator's current
-emission is evidence about the generator, never about the language.
+Reordering them meant restructuring each generator to hoist its reads, which
+is more than renaming a branch operand. **This is the third time the "reads
+at the node" reasoning came from the generator instead of the interpreter**
+(`bitdeque` was the first, and it became one of the largest wins). The rule
+holds: a generator's current emission is evidence about the generator, never
+about the language.
+
+**6-5 is where the hoist turned out to have a price, and that changed the
+shape of the fix.** Every other generator in the table replaced its build
+outright, because reordering there costs nothing an unreordered program
+was not already paying. Hoisting 6-5's reads does cost: the node-read tree
+normalizes each bit in the one cell it ever uses and spends no pointer moves
+at all, while the hoisted tree pays a move per node and eight `2`s per
+stored input. Measured over all 256 tables at n=3, the hoisted program under
+the *identity* order is longer than the node-read build on 96 of them — so
+replacing the construction would have been a trade, not a win.
+
+Keeping the node-read build as one more candidate (technique 4, over
+`1 + n!` constructions rather than `n!`) is what makes it a pure shrink:
+18.1% shorter at n=3, improving 186 tables and growing none, and 23.6% over
+a sample at n=4. The generalizable point is that **"can this be reordered?"
+and "should the reordered build replace the old one?" are separate
+questions**, and the screen only answers the first. Where a hoist is needed
+to enable the reorder, the old construction is worth keeping as a candidate
+rather than deleting.
+
+**Reordering also widened what 6-5 can render at all**, which no other
+generator in the table did, because 6-5 is the only one with a hard budget:
+35 branch labels, one per internal node the fold leaves standing. That count
+is per *order*, so a table that overflows in stream order may fold inside the
+budget under another — an alternating n=6 table was the standard refusal and
+now emits in 51 characters (it is NOT of the last input, so the order testing
+that input first folds it to a single label), and the scattered
+`10010110`-repeated table folds from 63 labels to 7. What is still refused is
+the shape no renaming can fold: **parity of all six inputs needs 63 labels
+under all 720 orders**, since any permutation of parity is parity. Both of
+the repo's old refusal witnesses had become renderable, so the test that
+pinned the boundary was asserting something no longer true — worth checking
+whenever a budget becomes per-order.
 
 The rule that decides these is **read the interpreter's op set, not what the
 generator emits** — `bitdeque` was wrongly excluded on the latter and turned
@@ -797,8 +838,11 @@ comparing `len` gets both, and any future language's cost shape for free.
 **The read order never moves.** Only the order the tree *tests* the inputs
 in changes; the reads (or the load block, or the `{Xi}` placeholders) stay
 in input order, so the program consumes its input stream exactly as before.
-That is what excludes `six_five` and `polynomial`, which read each bit *at
-the node that tests it* — for both, the test order **is** the stream order.
+That is what excludes `polynomial`, which reads each bit *at the node that
+tests it* and has nowhere else to put one — so its test order **is** its
+stream order. `six_five` reads at the node too, but that was a property of
+its generator rather than of the language: it has a tape, so its reads were
+hoisted into cells of their own and the two orders came apart.
 
 **A correction worth recording, because the method was the error.**
 `bitdeque` was first excluded alongside `modulous` for "popping a stack the
