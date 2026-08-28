@@ -184,7 +184,12 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         _lamfunc_ordered,
         _ram0_ordered,
     )
-    from esolangs.tools.boolean.tape import _basicfuck_ordered, _jaune_ordered
+    from esolangs.tools.boolean.tape import (
+        _ASCII_ZERO,
+        _basicfuck_ordered,
+        _circlefuck_ordered,
+        _jaune_ordered,
+    )
     from esolangs.tools.boolean.ztoalc_l import _ztoalc_ordered
 
     return [
@@ -206,6 +211,16 @@ def _reordering_generators() -> list[tuple[str, object, object]]:
         ("myscript", boolean.myscript, _myscript_ordered),
         ("nevermind", boolean.nevermind, _nevermind_ordered),
         ("basicfuck", boolean.basicfuck, _basicfuck_ordered),
+        (
+            "circlefuck",
+            boolean.circlefuck,
+            # The byte-valued builder underneath takes a *byte* table,
+            # so the contract's binary-string table is lifted the way
+            # circlefuck() itself lifts it.
+            lambda t, p: _circlefuck_ordered(
+                [_ASCII_ZERO + int(b) for b in t], p
+            ),
+        ),
         ("forbin_boolean", boolean.forbin_boolean, _forbin_ordered),
         ("jaune", boolean.jaune, _jaune_ordered),
     ]
@@ -251,7 +266,10 @@ def test_reordering_shrinks_the_tables_it_should(
     """
     if name == "jaune":
         pytest.skip("clobbering already makes the identity order optimal here")
-    table = "10101010"
+    # Circlefuck splits last-input-first, so ``10101010`` is the table its
+    # identity order already folds; the one only a reorder folds is the
+    # same function with its inputs renamed the other way.
+    table = "11110000" if name == "circlefuck" else "10101010"
     assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
     )

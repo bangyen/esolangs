@@ -633,11 +633,19 @@ class TestCirclefuck:
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice prints its answer instead of branching further.
 
-        Circlefuck branches on the cell the pointer is over, which is the
-        *last* input, so its subtrees are strided rather than contiguous
-        runs -- a table like ``11110000`` is constant over halves, an axis
-        this split never sees, and folds nothing.  ``10101010`` is constant
-        along the axis it does split on, so it collapses.
+        Circlefuck branches on the cell the pointer is over, so the split
+        axis used to be fixed to the last input and only tables constant
+        along *that* axis folded -- ``11110000`` folded nothing and cost
+        the same as a scattered table.  The tree now picks its order, so
+        both single-dependency tables fold to one branch.
+
+        They do not come out *equal*, and the residue is the reorder's
+        price: a node tests the cell under the pointer, so ``11110000``
+        walks to cell 0 and pays two moves the already-aligned
+        ``10101010`` does not.  Pinning the gap as a small constant rather
+        than as equality is what keeps that cost visible -- if the walk
+        ever stopped being emitted, this would read as an improvement
+        instead of the correctness bug it would be.
         """
         assert len(boolean.circlefuck("11111111")) < len(
             boolean.circlefuck("10101010"),
@@ -645,9 +653,10 @@ class TestCirclefuck:
         assert len(boolean.circlefuck("10101010")) < len(
             boolean.circlefuck("10010110"),
         )
-        assert len(boolean.circlefuck("11110000")) == len(
-            boolean.circlefuck("10010110"),
-        )
+        aligned = len(boolean.circlefuck("10101010"))
+        walked = len(boolean.circlefuck("11110000"))
+        assert walked - aligned == 2, "the reorder should pay exactly its walk"
+        assert walked < len(boolean.circlefuck("10010110"))
 
     def test_folded_leaf_clears_its_cell(self) -> None:
         """A folded leaf builds its value on a cleared cell.
