@@ -5,6 +5,8 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 ``six_five``, ``dimensional``, and ``streetcode``.
 """
 
+import contextlib
+
 import pytest
 
 from esolangs.tools import boolean
@@ -880,6 +882,41 @@ class TestJaune:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_jaune(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
+
+    def test_reads_every_input_whatever_the_table(self) -> None:
+        """Every table consumes exactly ``n`` inputs, folds included.
+
+        This is the cross-cutting contract in
+        ``test_boolean_contract.py``, pinned here because that sweep
+        cannot see Jaune: it iterates the generators registered in
+        ``BY_FUNCTION``, and Jaune is not one of them.  The reads used to
+        sit *at* the tree's nodes, so a folded tree skipped them and a
+        constant table consumed no input at all -- making the program's
+        stream consumption a function of its truth table.  Without this
+        test nothing would catch that coming back.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.jaune import run
+
+        n = 3
+        for table in ("11111111", "00000000", "11110000", "10101010", "10010110"):
+            io = ScriptedIO("0\n" * n)
+            with contextlib.suppress(Exception, SystemExit):
+                run(boolean.jaune(table), io=io)
+            assert io.position() == n, (
+                f"{table} consumed {io.position()} inputs, expected {n}"
+            )
+
+    def test_unused_inputs_are_clobbered_not_stored(self) -> None:
+        """An input no node branches on is read without keeping a cell.
+
+        ``10101010`` depends only on its last input, so the first two
+        reads need no cell of their own and the tree navigates a
+        one-cell block instead of a three-cell one.
+        """
+        assert boolean.jaune("10101010").startswith("vvv")
+        # every input matters here, so every read keeps its cell
+        assert boolean.jaune("10010110").startswith("v>v>v>")
 
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
