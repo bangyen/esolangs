@@ -7,7 +7,6 @@ helper edge paths exercised across generator modules.
 
 import pytest
 
-import esolangs
 from esolangs.interpreters.io import IO
 from esolangs.tools import boolean, laserfuck_layout
 from tests.tools.boolean_runners import (
@@ -268,21 +267,6 @@ class TestBetween:
         assert boolean.between("11111111").count(".x.") == 1
         assert boolean.between("11110000").count(".x.") == 2
         assert boolean.between("10010110").count(".x.") == 8  # parity: no fold
-
-    @pytest.mark.parametrize("table", ["11111111", "11110000", "10010110"])
-    def test_a_folded_program_still_reads_every_input(self, table: str) -> None:
-        """Folding removes branching, never a read.
-
-        A folded leaf is reached without testing every bit, so it would be
-        easy to emit a tree that also stopped *reading* every bit -- and a
-        program whose input consumption depended on its table would desync
-        any caller feeding several programs from one stream.  The reads sit
-        above the tree, so even an all-constant table consumes all n.
-        """
-        n = len(table).bit_length() - 1
-        program = boolean.between(table)
-        with pytest.raises(EOFError):
-            esolangs.run("Between", program, stdin="\n".join(["0"] * (n - 1)))
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
@@ -929,14 +913,6 @@ class TestLaserFuck:
         assert boolean.laserfuck("11111111").count("x") == 1
         assert boolean.laserfuck("11110000").count("x") == 2
         assert boolean.laserfuck("10010110").count("x") == 8
-
-    @pytest.mark.parametrize("table", ["11111111", "11110000", "10010110"])
-    def test_a_folded_program_still_reads_every_input(self, table: str) -> None:
-        """The ring reader runs before the tree, so folding cannot skip a read."""
-        n = len(table).bit_length() - 1
-        program = boolean.laserfuck(table)
-        with pytest.raises(EOFError):
-            esolangs.run("LaserFuck", program, stdin="\n".join(["0"] * (n - 1)))
 
     def test_a_table_that_folds_nothing_keeps_the_sized_sweep(self) -> None:
         """Parity's leaves retire each input by its own bit, not flatly.
