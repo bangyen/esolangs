@@ -113,7 +113,7 @@ class TestModulous:
         )
 
     def test_push_variable(self) -> None:
-        """PSH VAR stores the top of the stack in a variable."""
+        """``[PSH VARn]`` stores the top of the stack in a variable."""
         assert run_and_capture("[PSH INT 7][PSH VAR1][PRT VAR1 INT][END]") == "7"
 
     def test_random(self) -> None:
@@ -158,6 +158,28 @@ class TestModulous:
     def test_arithmetic_undefined_variable_halts(self) -> None:
         with pytest.raises(HaltError):
             run("[VAR9+3]", IO())
+
+    def test_push_undefined_variable_halts(self) -> None:
+        """Storing into an undeclared variable is invalid, as reading one is.
+
+        ``PRT`` and the ``VARn+k`` arithmetic both halt on a name that was
+        never declared; the store used to be the one variable op that did
+        not check, so it created the name instead.
+        """
+        with pytest.raises(HaltError):
+            run("[PSH INT 7][PSH VAR9]", IO())
+
+    def test_push_variable_keyword_spelling_halts(self) -> None:
+        """``[PSH VAR VAR1]`` is not the syntax and does not quietly store.
+
+        The store names its variable directly (``[PSH VAR1]``), so the
+        keyword spelling names a variable called ``VAR`` -- which does not
+        exist.  It used to be accepted, creating ``VAR`` and leaving the
+        ``VAR1`` the program meant untouched: a silent no-op that made the
+        stored value simply disappear.
+        """
+        with pytest.raises(HaltError):
+            run("[PSH INT 7][PSH VAR VAR1]", IO())
 
     def test_subtract_undefined_variable_halts(self) -> None:
         with pytest.raises(HaltError):
