@@ -32,12 +32,59 @@ def decleq(truth_table: str) -> str:
     jumps to ``c``, a ``1`` bit (2) falls through.  The decision tree routes
     those branches to leaves that output 48 or 49 (placed in data cells of
     the self-modifying memory) and then halt.
+
+    A subtree whose rows all agree becomes a leaf rather than branching on
+    bits that cannot change the answer.  Rows split most-significant-first,
+    so a subtree is a contiguous run and ``11110000`` folds to a single
+    branch -- unlike the generators that split the other way, where that
+    table folds nothing.
+
+    The fold has to be counted *before* it is emitted.  ``data_base`` sits
+    above the code, so the output cells' addresses depend on how long the
+    tree came out; :func:`tree_instrs` walks it first and must stop in
+    exactly the places :func:`node` will.  Getting that wrong does not
+    produce a broken program -- the padding below runs out to whatever
+    address was reserved, so the leaves still resolve -- it just leaves a
+    block of unused zero cells, which is why the test pins the padding
+    rather than the output.
+
+    The 47-step normalize chains are a fixed ``47 * n`` cost the fold
+    cannot touch, so the saving grows with ``n`` as the tree overtakes
+    them: 7% at ``n == 2`` against 44% at ``n == 6``.
     """
     n = _validate_truth_table(truth_table)
 
-    # instructions: n reads, n*47 normalizations, and the tree
-    # (2**n - 1 branches plus 2**n leaves of output+halt each).
-    n_instr = n + 47 * n + 3 * 2**n - 1
+    def constant(level: int, row: int) -> bool:
+        """Whether every row this subtree covers agrees.
+
+        Rows split most-significant-first, so a subtree covers the
+        contiguous run of ``2 ** (n - level)`` rows starting at ``row``.
+        """
+        span = 2 ** (n - level)
+        return len(set(truth_table[row : row + span])) == 1
+
+    def tree_instrs(level: int, row: int) -> int:
+        """Instructions the subtree at ``(level, row)`` emits.
+
+        The data cells sit above the code, so their addresses depend on
+        how long the tree turns out to be -- which folding changes.  The
+        count has to come from the same walk that emits, or every leaf
+        would name the wrong output cell.
+        """
+        if level == n or constant(level, row):
+            return 2  # output, then halt
+        return (
+            1
+            + tree_instrs(level + 1, row + 2 ** (n - 1 - level))
+            + tree_instrs(
+                level + 1,
+                row,
+            )
+        )
+
+    # instructions: n reads, n*47 normalizations, and the tree, whose size
+    # depends on how much of it folds away.
+    n_instr = n + 47 * n + tree_instrs(0, 0)
     data_base = 3 * n_instr
     read_cells = [data_base + i for i in range(n)]
     out48 = data_base + n
@@ -68,7 +115,10 @@ def decleq(truth_table: str) -> str:
     halts: list[int] = []
 
     def node(level: int, row: int) -> None:
-        if level == n:
+        # The fold has to stop in exactly the places tree_instrs stopped:
+        # it sized the data cells from that walk, so a check applied here
+        # and not there would leave every leaf naming the wrong address.
+        if level == n or constant(level, row):
             emit(-2, out49 if truth_table[row] == "1" else out48, 0)
             emit(0, 0, 0)
             halts.append(pc() - 1)
