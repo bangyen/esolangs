@@ -1236,6 +1236,23 @@ class _Machine:
         """
         roads = []
         crossing = self._crossing_mouth(heading)
+        # Crossing a mouth head-on, the branch below takes "whichever way
+        # is open", because a perpendicular road's extent cannot be probed
+        # from inside the mouth.  That is sound only while the open sides
+        # *are* the road being joined.  When a side road is detected but
+        # not yet drivable -- _road_mouth anchors a mouth up to one cell
+        # ahead, so a junction fires as the car arrives -- taking whatever
+        # is open instead fills that road's slot with the oncoming lane of
+        # the two-wide street the car is already on, and the car decides a
+        # junction the drawing never offered.  Defer: ordinary
+        # wall-following brings it level with the gap, where the same mouth
+        # re-detects and the cell is read there.
+        if crossing:
+            for side in (_left(heading), _right(heading)):
+                if self._road_mouth(
+                    heading, side
+                ) is not None and not self._open_toward(side):
+                    return []
         for side in (_left(heading), heading, _right(heading)):
             if crossing:
                 # Driving out through a mouth head-on, the roads to either

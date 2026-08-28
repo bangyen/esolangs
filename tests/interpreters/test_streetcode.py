@@ -23,8 +23,10 @@ from esolangs.interpreters.grid_based.streetcode import (
     _VOID,
     _WALLS,
     _Grid,
+    _left,
     _Machine,
     _ReachableCell,
+    _right,
     _State,
     run,
 )
@@ -434,6 +436,56 @@ class TestStreetcodeCrossingMouthDecision:
         # leaves the six cells around the divider's tip.
         assert (1, 4) in seen, sorted(seen)
         assert machine.halted
+
+    def test_a_detected_but_unreachable_road_defers_the_crossing(self) -> None:
+        """A crossing does not offer the oncoming lane in a closed road's place.
+
+        Driving out through a mouth, ``_junction_choices`` takes whichever
+        way is open, because a perpendicular road's extent cannot be probed
+        from inside the mouth.  That is sound only while the open sides are
+        the road being joined.  ``_road_mouth`` anchors a mouth up to one
+        cell ahead, so a junction fires as the car *arrives* -- and one
+        cell short of the gap the road it found is detected but not yet
+        drivable.  Taking whatever is open there fills that road's slot
+        with the oncoming lane of the two-wide street the car is already
+        on, and the car decides a junction the drawing never offered.
+
+        Below, the car drives East along the southern lane.  The gap in the
+        wall beneath it at ``(3,4)``/``(3,5)`` is the road; one cell short
+        of it, at ``(2,3)``, the mouth is already detected while South is
+        still the ``+``.  The choice there must be deferred rather than
+        made between North (the blank oncoming lane) and East.
+        """
+        # A generated boolean program supplies the geometry: a two-wide
+        # street whose leaf row carries several junctions, so a crossing
+        # sights the next fork while still a cell short of it.  Hand-drawn
+        # fragments of this shape do not validate as street networks on
+        # their own, which is why the case is pinned through a real
+        # program rather than a cut-down grid.
+        from esolangs.tools.boolean import streetcode as gen
+
+        machine = _Machine(gen("00110100").split("\n"), ScriptedIO("1\n0\n1\n"))
+        hits = []
+        for _ in range(2000):
+            if machine.halted:
+                break
+            heading = machine.heading
+            if machine._crossing_mouth(heading):  # noqa: SLF001
+                blocked = any(
+                    machine._road_mouth(heading, side) is not None  # noqa: SLF001
+                    and not machine._open_toward(side)  # noqa: SLF001
+                    for side in (_left(heading), _right(heading))
+                )
+                if blocked:
+                    hits.append(
+                        (machine.row, machine.col, machine._junction_choices(heading))  # noqa: SLF001
+                    )
+            machine.step()
+        # the case has to actually arise, or the assertion below is vacuous
+        assert hits, "no crossing sighted an unreachable road"
+        # and wherever it does, the choice is deferred rather than filled
+        # out with whatever else happens to be open
+        assert all(choices == [] for _, _, choices in hits), hits
 
 
 class TestStreetcodeLaneMerge:
