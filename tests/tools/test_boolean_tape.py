@@ -852,6 +852,24 @@ class TestBrainIf:
         assert program.startswith("if 0 input")
         assert "if 48 goto" in program
 
+    def test_the_answer_byte_is_built_once(self) -> None:
+        """The climb to 48 is paid before the tree, not once per digit.
+
+        Two per-digit output routines cost 48 + 49 increments and dominated
+        the program; building the byte ahead of the branch leaves the tree
+        deciding only whether to add one, so the count is 48 plus one line
+        per '1' leaf and does not grow with the table's size.
+        """
+        for table in ("10", "0110", "11111110"):
+            program = boolean.brainif(table)
+            ones = table.count("1")
+            assert program.count("increment") == 48 + ones
+
+    def test_one_shared_output_tail(self) -> None:
+        """Both answers print from the same two lines."""
+        program = boolean.brainif("0110")
+        assert program.count("output") == 2
+
 
 class TestRotfuck:
     """The ROTfuck boolean generator.
