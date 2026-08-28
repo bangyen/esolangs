@@ -165,12 +165,31 @@ class TestFlowchart:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result.
+
+        The read count is checked alongside the answer: a folded leaf
+        carries the reads of the levels it skipped, so a heavily folding
+        table (the constants, AND4) must still consume all ``n`` inputs.
+        Without those the drawing would be correct and the program would
+        still leave the caller's remaining bits on the stream.
+        """
+        import contextlib
+
+        from esolangs.interpreters.grid_based.flowchart import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.vm import run_until_halt_or_cycle
+
         program = boolean.flowchart(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_flowchart(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
+        io = ScriptedIO("0\n" * (n + 4))
+        with contextlib.suppress(Exception, SystemExit):
+            run_until_halt_or_cycle(_Machine(program.splitlines(), io))
+        assert io.position() == n, (
+            f"table {table} consumed {io.position()} inputs, expected {n}"
+        )
 
     def test_tree_depth_matches_input_count(self) -> None:
         """One ``/ /`` read node sits on each path from entry to a leaf."""
