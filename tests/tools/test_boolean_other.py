@@ -371,6 +371,34 @@ class TestContainer:
         assert program.count("S") >= 4  # a survivor per row
         assert program.count("PRINT:") == 1
 
+    def test_dense_tables_evaluate_the_complement(self) -> None:
+        """A dense table is summed from its zero rows and inverted.
+
+        ``OUT`` costs one ``+1 S{row}>=Gout`` line per row the table sends
+        to 1, so before this the length rose with the ones-count all the way
+        to the all-ones table.  Now it peaks at half and falls back
+        symmetrically, which is the signature of taking whichever row-set is
+        smaller.
+        """
+        lengths = [len(boolean.container("1" * k + "0" * (8 - k))) for k in range(9)]
+        assert lengths[4] == max(lengths)  # four ones is the worst case
+        assert lengths == lengths[::-1]  # and the curve is symmetric
+
+    @pytest.mark.parametrize("table", ["11111110", "11111111", "1110", "0111"])
+    def test_complemented_tables_still_compute(self, table: str) -> None:
+        """The inverted form answers the original table.
+
+        It starts ``OUT`` at 49 and subtracts one per surviving zero row, so
+        the printed byte is ``49 - S``; the container clamp at zero never
+        bites, since the value stays at 48 or 49.
+        """
+        n = (len(table) - 1).bit_length()
+        program = boolean.container(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = run_container(program, [str(b) for b in bits])
+            assert got == str(int(table[combo])), f"inputs {bits}"
+
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
         with pytest.raises(ValueError, match="entries"):
