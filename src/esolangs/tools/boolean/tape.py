@@ -65,6 +65,19 @@ class _MoveRight:
 
 
 @dataclass
+class _MoveLeft:
+    """An ``if <char> move left`` line that also *defines* ``label``.
+
+    The mirror of :class:`_MoveRight`, for a tree whose branches walk *down*
+    the tape: BrainIf reads its inputs from the far cell back toward the
+    answer, so a branch steps left onto the next input rather than right.
+    """
+
+    char: int
+    label: int
+
+
+@dataclass
 class _Out:
     """A marker defining output routine ``which``; it emits no line itself."""
 
@@ -76,7 +89,7 @@ class _End:
     """The trailing blank line every program ends on."""
 
 
-_Entry = _Cmd | _If | _MoveRight | _Out | _End
+_Entry = _Cmd | _If | _MoveRight | _MoveLeft | _Out | _End
 
 
 def brainif(truth_table: str) -> str:
@@ -90,56 +103,65 @@ def brainif(truth_table: str) -> str:
     groups' checks sit adjacent so a failed check falls through to the next
     candidate).
 
-    The answer byte is built *before* the tree, on the cell past the inputs:
-    48 ``increment`` lines once, rather than a climb per digit.  A leaf then
-    steps out to that cell, adds one iff its entry is a ``1``, and joins a
-    two-line tail that prints whichever byte it now holds.
+    The answer byte is built *first*, on cell 0: 48 ``increment`` lines
+    once, rather than a climb per digit.  There is no way to copy a byte in
+    BrainIf, and a climb of ``if v increment`` lines converges -- every
+    entry value 0..47 leaves it holding 48 -- so one climb cannot serve both
+    digits however it is entered.  Two climbs is 48 + 49 lines, which used
+    to dominate: a ``11110000`` program was 97 increments out of 153 lines.
 
-    This is what a digit costs.  There is no way to copy a byte in BrainIf
-    and the inputs are consumed by the tree, so an answer built *after* the
-    branch has to be climbed to from zero -- and since a climb of ``if v
-    increment`` lines converges (every entry value 0..47 leaves it at 48),
-    one climb cannot serve both digits.  Two climbs is 48 + 49 lines, which
-    dominated the program: a folded ``11110000`` was 97 increments out of
-    153 lines.  Building first inverts that -- the climb is paid once and
-    the branch only decides whether to add one.
+    Building first also fixes which way the tape runs.  The pointer steps
+    out over cells that are still zero, where one ``if 0 move right``
+    advances exactly one cell -- no digit is around to fire the next line
+    too -- and the tree then reads its inputs from that far cell back down
+    toward the answer.  So a level is a read, two branch tests, and a step
+    left, and a leaf is simply *there*: the reads have already carried the
+    pointer home, and it adds one iff its entry is a ``1`` before joining a
+    two-line tail.
+
+    That is what makes the tree foldable.  A subtree whose rows all agree
+    becomes a leaf rather than branching on bits that cannot change the
+    answer -- and because a leaf spends no moves getting to the answer, the
+    saving is not handed back.  The skipped levels' *reads* still happen:
+    consumption must not depend on the table, or a caller feeding several
+    programs from one stream would desync.  An earlier arrangement built
+    the answer past the inputs and had each leaf walk out to it, which cost
+    two lines per skipped level and cancelled the fold exactly.
     """
     n = _validate_truth_table(truth_table)
     entries: list[_Entry] = []
-    for i in range(n):
-        entries.append(_Cmd("if 0 input"))
-        if i < n - 1:
-            entries.append(_Cmd("if 48 move right"))
-            entries.append(_Cmd("if 49 move right"))
-    # Build the answer byte once, before the tree, on the cell past the
-    # inputs.  Each leaf then only has to decide whether to add one, which
-    # is what retires the two per-digit output routines.
-    entries.append(_Cmd("if 48 move right"))
-    entries.append(_Cmd("if 49 move right"))
+    # The answer byte goes on cell 0 and the inputs above it, read from the
+    # far end back down.  Building first means stepping out over cells that
+    # are still zero, where one ``if 0 move right`` advances exactly one
+    # cell -- no digit is around to fire the next line as well.
     entries += [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO)]
-    # Walk home to cell 0 for the tree.  Both guards are needed at every
-    # step: the answer cell holds 48 and an input cell holds 48 or 49, so
-    # guarding on one digit alone stalls the walk on the other.
-    for _ in range(n):
-        entries.append(_Cmd(f"if {_ASCII_ZERO} move left"))
-        entries.append(_Cmd(f"if {_ASCII_ONE} move left"))
+    entries.append(_Cmd(f"if {_ASCII_ZERO} move right"))
+    entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
 
     counter = [0]
 
     def build(rows: list[int], k: int) -> list[_Entry]:
-        if len(rows) == 1:
-            r = int(truth_table[rows[0]])
-            # The pointer is on cell ``k - 1``; step out to the answer cell,
-            # add one iff the answer is a 1, and join the shared tail.
+        """Emit the subtree for ``rows``, entered with the pointer on cell n-k+1."""
+        rest = n - (k - 1)
+        if rest == 0 or len({truth_table[row] for row in rows}) == 1:
+            # Consume the inputs this path never branched on, which walks
+            # the pointer the rest of the way home; then add one iff the
+            # answer is a 1 and join the tail.  Reading them is not optional:
+            # a program whose input count depended on its table would desync
+            # a caller feeding several programs from one stream.
             out: list[_Entry] = []
-            for _ in range(n - (k - 1)):
-                out.append(_Cmd(f"if {_ASCII_ZERO} move right"))
-                out.append(_Cmd(f"if {_ASCII_ONE} move right"))
-            if r:
+            for _ in range(rest):
+                out.append(_Cmd("if 0 input"))
+                out.append(_Cmd(f"if {_ASCII_ZERO} move left"))
+                out.append(_Cmd(f"if {_ASCII_ONE} move left"))
+            if int(truth_table[rows[0]]):
                 out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
             out.append(_Cmd(f"if {_ASCII_ZERO} goto OUT0"))
             out.append(_Cmd(f"if {_ASCII_ONE} goto OUT0"))
             return out
+        # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
+        # bit it selects is the table's usual most-significant-first one --
+        # the reads are in input order even though the pointer walks down.
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
         l0, l1 = counter[0], counter[0] + 1
@@ -147,11 +169,12 @@ def brainif(truth_table: str) -> str:
         sub0 = build(g0, k + 1)
         sub1 = build(g1, k + 1)
         return [
+            _Cmd("if 0 input"),
             _If(_ASCII_ZERO, l0),
             _If(_ASCII_ONE, l1),
-            _MoveRight(_ASCII_ZERO, l0),
+            _MoveLeft(_ASCII_ZERO, l0),
             *sub0,
-            _MoveRight(_ASCII_ONE, l1),
+            _MoveLeft(_ASCII_ONE, l1),
             *sub1,
         ]
 
@@ -177,7 +200,7 @@ def brainif(truth_table: str) -> str:
         if pending is not None:
             out_labels[pending] = line_no
             pending = None
-        if isinstance(entry, _MoveRight):
+        if isinstance(entry, _MoveRight | _MoveLeft):
             labels[entry.label] = line_no
     end_line = line_no + 1
 
@@ -197,6 +220,8 @@ def brainif(truth_table: str) -> str:
             lines.append(f"if {entry.char} goto {labels[entry.label]}")
         elif isinstance(entry, _MoveRight):
             lines.append(f"if {entry.char} move right")
+        elif isinstance(entry, _MoveLeft):
+            lines.append(f"if {entry.char} move left")
         elif isinstance(entry, _Out):
             continue
         else:
