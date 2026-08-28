@@ -62,6 +62,25 @@ class TestSuptiftam:
         program = boolean.suptiftam("0000")
         assert "mulStep(:p:)if(p)" not in program
 
+    def test_a_dense_table_is_summed_over_its_zeros(self) -> None:
+        """More ones than zeros costs less summed the other way and inverted.
+
+        An all-ones table is the interesting case: it complements to no
+        minterms at all, leaving ``sum`` at 0, and the inversion turns that
+        into the 1 it should print -- so it needs no special-casing the way
+        a gate-network generator's constant table does.
+        """
+        assert "term=%-[1]sum%" in boolean.suptiftam("1111")
+        assert "mulStep(:p:)if(p)" not in boolean.suptiftam("1111")
+        assert "term=sum" in boolean.suptiftam("0001")  # sparse: drawn directly
+        # and both still compute their table
+        for table in ("1111", "11111110"):
+            n = len(table).bit_length() - 1
+            program = boolean.suptiftam(table)
+            for combo in range(2**n):
+                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                assert run_suptiftam(program, bits) == table[combo]
+
     def test_bit_names_extend_beyond_the_alphabet(self) -> None:
         """Identifiers are alphabetical, so past 'z' the names grow a prefix."""
         from esolangs.tools.boolean.other import _suptiftam_bit
@@ -110,6 +129,12 @@ class TestForbinBoolean:
         # one 8-variable read, then a decision tree that prints '1' for bit 1
         assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice returns its answer instead of branching further."""
+        assert boolean.forbin_boolean("11111111").count("return 0;") == 1
+        assert boolean.forbin_boolean("11110000").count("return 0;") == 2
+        assert boolean.forbin_boolean("10010110").count("return 0;") == 8
+
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):
             boolean.forbin_boolean("011")
@@ -153,6 +178,20 @@ class TestFlowchart:
         assert program.count("< >") == 15  # 2**4 - 1 internal nodes
         assert program.count("(( ))") == 16  # 2**4 leaves
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice is one leaf, and takes one column band.
+
+        The leaves keep their pitch but are handed out as the walk reaches
+        them, so a folded subtree narrows the drawing rather than leaving a
+        gap where its rows would have been.
+        """
+        assert boolean.flowchart("11111111").count("(( ))") == 1
+        assert boolean.flowchart("11110000").count("(( ))") == 2
+        assert boolean.flowchart("10010110").count("(( ))") == 8  # no fold
+        # a constant table needs no switch at all
+        assert boolean.flowchart("11111111").count("< >") == 0
+        assert boolean.flowchart("11110000").count("< >") == 1
+
     @pytest.mark.parametrize(
         "table", ["01", "0001", "01101001", "0110100110010110", "1000000000000000"]
     )
@@ -173,18 +212,18 @@ class TestFlowchart:
         from esolangs.interpreters.grid_based.flowchart import _Machine
 
         machine = _Machine(boolean.flowchart(table).splitlines(), IO())
-        for y, row in enumerate(machine.grid):
-            for x, char in enumerate(row):
+        for row, line in enumerate(machine.grid):
+            for col, char in enumerate(line):
                 if char != "│":
                     continue
-                for neighbour in (y - 1, y + 1):
-                    node = machine.nodes.get((x, neighbour))
+                for neighbour in (row - 1, row + 1):
+                    node = machine.nodes.get((neighbour, col))
                     if node is None:
                         continue
                     spelling, start = node
                     middle = start + len(spelling) // 2
-                    assert x == middle, (
-                        f"rail at ({x}, {y}) meets {spelling!r} at column {x}, "
+                    assert col == middle, (
+                        f"rail at ({col}, {row}) meets {spelling!r} at column {col}, "
                         f"but its middle is column {middle}"
                     )
 
@@ -246,7 +285,21 @@ class TestBetween:
         program = boolean.between("0110")
         lines = program.splitlines()
         assert lines[:3] == ["'0'v.", "[0]i.", "[0]s|[0]c.|"]
-        assert lines.count(".x.") == 4  # one leaf per input combination
+        # XOR has no constant slice above a single row, so nothing folds and
+        # every combination keeps its own leaf.
+        assert lines.count(".x.") == 4
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice becomes one leaf instead of branching further.
+
+        The jump addresses come from a second walk over the tree, so this
+        also covers the two walks agreeing: a leaf count that matched while
+        the addresses did not would still run the wrong branch, which
+        :meth:`test_truth_table` would catch.
+        """
+        assert boolean.between("11111111").count(".x.") == 1
+        assert boolean.between("11110000").count(".x.") == 2
+        assert boolean.between("10010110").count(".x.") == 8  # parity: no fold
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
@@ -282,6 +335,12 @@ class TestNevermind:
         assert program.startswith("input,?")
         assert "if,$a,==,0" in program
         assert program.count("endif") == 2
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice prints its answer instead of branching further."""
+        assert boolean.nevermind("11111111").count("print,") == 1
+        assert boolean.nevermind("11110000").count("print,") == 2
+        assert boolean.nevermind("10010110").count("print,") == 8  # no fold
 
 
 class TestContainer:
@@ -872,11 +931,45 @@ class TestLaserFuck:
         The rings spend the counter down to zero and leave it touched,
         which is exactly what dump() prints for a zero answer -- so a leaf
         writes a '+' only when the answer is one.
+
+        Both tables are constant, so each folds to a single leaf that fits
+        on the reader's own row; the '+' is counted over the whole program
+        rather than over the rows below the reader, which a folded tree no
+        longer occupies.
         """
-        zero = boolean.laserfuck("0000", 80).split("\n")
-        assert "+" not in "\n".join(zero[3:]), "a zero table needs no '+'"
-        ones = boolean.laserfuck("1111", 80).split("\n")
-        assert "+" in "\n".join(ones[3:])
+        zero = boolean.laserfuck("0000", 80)
+        ones = boolean.laserfuck("1111", 80)
+        assert ones.count("+") == zero.count("+") + 1, "a one costs exactly one '+'"
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice becomes one leaf instead of branching further.
+
+        Leaves are the ``x`` that ends each one, so counting those counts
+        the leaves: a constant table spends one, two constant halves spend
+        two, and a parity table -- which has no constant slice above a
+        single row -- still spends one per combination.
+        """
+        assert boolean.laserfuck("11111111").count("x") == 1
+        assert boolean.laserfuck("11110000").count("x") == 2
+        assert boolean.laserfuck("10010110").count("x") == 8
+
+    def test_a_table_that_folds_nothing_keeps_the_sized_sweep(self) -> None:
+        """Parity's leaves retire each input by its own bit, not flatly.
+
+        Only the cells above a leaf's depth need the flat two-``-``
+        retiring; a parity table has no folded leaf, so every cell is one
+        its path consumed and every run is sized to the bits.  Reading the
+        runs back off each leaf is what pins that -- a leaf reached by
+        ``bits`` spends ``bit + 1`` dashes per cell, most recent first.
+        """
+        program = boolean.laserfuck("10010110")
+        leaves = program.split("x")[:-1]
+        for path in range(8):
+            bits = [(path >> (2 - i)) & 1 for i in range(3)]
+            want = "".join("-" * (b + 1) + "<" for b in reversed(bits))
+            assert any(leaf.endswith(want) or want in leaf for leaf in leaves), (
+                f"no leaf retires {bits} with its sized run {want!r}"
+            )
 
     def test_without_a_width_is_unchanged(self) -> None:
         """The default stays exactly what the generator always produced."""
@@ -918,6 +1011,12 @@ class TestMyScript:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_myscript(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice says its answer instead of branching further."""
+        assert boolean.myscript("11111111").count("say") == 1
+        assert boolean.myscript("11110000").count("say") == 2
+        assert boolean.myscript("10010110").count("say") == 8  # parity: no fold
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):

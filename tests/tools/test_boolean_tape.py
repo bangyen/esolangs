@@ -31,6 +31,19 @@ def _columns(program: str) -> int:
     return max(len(line) for line in program.split("\n"))
 
 
+def _leaves(table: str) -> int:
+    """How many leaves a tree that folds constant subtrees spends on ``table``.
+
+    One per maximal constant slice: the walk stops as soon as the rows it
+    covers agree, so this is ``2**n`` only when no slice above a single row
+    is constant.
+    """
+    if len(set(table)) == 1:
+        return 1
+    half = len(table) // 2
+    return _leaves(table[:half]) + _leaves(table[half:])
+
+
 class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -236,12 +249,17 @@ class TestDimensionalTree:
     def test_tree_small_on_dense_tables(self) -> None:
         """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.dimensional_tree(xor6)) < 10_000  # vs ~34K survivor
+        assert len(boolean.dimensional_tree(xor6)) < 10_000
 
-    def test_dimensional_dispatches(self) -> None:
-        """dimensional picks the survivor for sparse and the tree for dense."""
-        sparse = boolean.dimensional("0" * 15 + "1")  # AND4
-        assert len(sparse) < len(boolean.dimensional_tree("0" * 15 + "1"))
+    def test_dimensional_is_the_tree(self) -> None:
+        """dimensional is the tree, sparse or dense.
+
+        A survivor evaluator used to sit beside it, chosen when it came out
+        shorter.  Folding constant subtrees put the tree ahead on every
+        table at n <= 4, so the survivor was unreachable and was removed.
+        """
+        sparse = "0" * 15 + "1"  # AND4
+        assert boolean.dimensional(sparse) == boolean.dimensional_tree(sparse)
         xor = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
         assert boolean.dimensional(xor) == boolean.dimensional_tree(xor)
 
@@ -305,15 +323,18 @@ class TestBf:
             got = run_bf(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_bf_sparse_uses_the_minterm(self) -> None:
-        """bf picks the minterm for sparse tables (shorter than the tree)."""
-        program = boolean.brainfuck("0" * 15 + "1")  # AND4: one one-row
-        assert len(program) < len(boolean.bf_tree("0" * 15 + "1"))
+    def test_bf_is_the_tree(self) -> None:
+        """bf is the folded tree, for constant and sparse tables alike.
 
-    def test_bf_dense_uses_the_tree(self) -> None:
-        """bf picks the decision tree for dense tables."""
+        There used to be a minterm construction here and ``bf`` returned
+        whichever was shorter.  Folding left the tree ahead on every table
+        but the two constant ones -- where it costs about 2.5x, a bounded
+        factor on two tables out of 65536 -- so the minterm went away and
+        the constant tables go to the tree with everything else.
+        """
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert boolean.brainfuck(xor6) == boolean.bf_tree(xor6)
+        for table in ("0" * 16, "0" * 15 + "1", xor6):  # constant, AND4, dense
+            assert boolean.brainfuck(table) == boolean.bf_tree(table)
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
@@ -351,7 +372,27 @@ class TestBfTree:
     def test_tree_small_on_dense_tables(self) -> None:
         """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        assert len(boolean.bf_tree(xor6)) < 10_000  # vs the minterm's ~1.2M
+        assert len(boolean.bf_tree(xor6)) < 10_000
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice emits a leaf instead of branching on more bits.
+
+        Both tables have the same number of ones, so the difference is the
+        arrangement alone: ``11110000`` is two constant halves and folds to
+        one leaf each, while the parity table has no constant subtree above
+        a single row and emits the full tree.
+        """
+        assert len(boolean.bf_tree("11110000")) < len(boolean.bf_tree("10010110"))
+
+    def test_parity_table_is_unfolded(self) -> None:
+        """A table with no constant subtree still spends a leaf per row.
+
+        The guard against a fold that fires too eagerly: parity has no
+        constant slice above one row, so every one of the ``2**n`` rows
+        keeps its own leaf.
+        """
+        xor3 = "10010110"
+        assert boolean.bf_tree(xor3).count(".") == 8
 
     def test_rejects_bad_table(self) -> None:
         """A truth table of the wrong length is rejected."""
@@ -686,7 +727,18 @@ class TestBasicfuck:
             == "#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out"
         )
         assert program.count("read ->") == n  # one read per input
-        assert program.count("write <- out ;") == 2**n  # one leaf per row
+        # One leaf per *constant slice*, not per row: the tree folds a
+        # subtree whose rows agree, so a table with no constant slice above
+        # a single row (parity) still spends 2**n leaves while a constant
+        # table spends one.
+        assert program.count("write <- out ;") == _leaves(table)
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice emits one leaf instead of branching further."""
+        assert boolean.basicfuck("1" * 16).count("write <- out ;") == 1
+        assert boolean.basicfuck("11110000").count("write <- out ;") == 2
+        # parity has no constant slice above one row, so nothing folds
+        assert boolean.basicfuck("10010110").count("write <- out ;") == 8
 
     def test_decision_tree(self) -> None:
         """Each internal node branches both ways with the wiki's if!(...)."""
@@ -753,19 +805,6 @@ class TestSbleq:
             (0, 0, data_base + 3)
         ]  # one halt per leaf
 
-    def test_constant_table_collapses_but_still_reads(self) -> None:
-        """A constant table emits one output, a halt, and the n reads.
-
-        The tree collapses to a single leaf, but each level still allocates
-        its read/normalize pair so every input is consumed exactly once --
-        both branches of a drained level simply continue to the same leaf.
-        """
-        program = boolean.sbleq("0000")
-        cells = [int(tok) for tok in program.split()]
-        # -3 prints the constant; each of the n == 2 drained levels reads once
-        assert cells[0] == -3
-        assert cells.count(-2) == 2  # one read instruction per input
-
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.sbleq("011")
@@ -795,10 +834,38 @@ class TestBrainIf:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """A one-input function reads one input then branches on it."""
+        """The answer byte is built first, then an input is read and tested."""
         program = boolean.brainif("10")
-        assert program.startswith("if 0 input")
+        assert program.startswith("if 0 increment")
+        assert "if 0 input" in program
         assert "if 48 goto" in program
+
+    def test_the_answer_byte_is_built_once(self) -> None:
+        """The climb to 48 is paid before the tree, not once per digit.
+
+        Two per-digit output routines cost 48 + 49 increments and dominated
+        the program; building the byte ahead of the branch leaves the tree
+        deciding only whether to add one, so the count is 48 plus one line
+        per ``1`` *leaf*.  Leaves, not rows: a constant slice folds to one
+        leaf, so ``11111110`` spends three rather than seven.
+        """
+        for table, one_leaves in (("10", 1), ("0110", 2), ("11111110", 3)):
+            assert boolean.brainif(table).count("increment") == 48 + one_leaves
+
+    def test_one_shared_output_tail(self) -> None:
+        """Both answers print from the same two lines."""
+        program = boolean.brainif("0110")
+        assert program.count("output") == 2
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice stops the branching, though not the reads.
+
+        Reads carry the pointer home, so a leaf spends no moves reaching
+        the answer and the fold is not handed back -- which is what an
+        earlier layout, with the answer past the inputs, did.
+        """
+        assert len(boolean.brainif("11111111")) < len(boolean.brainif("11110000"))
+        assert len(boolean.brainif("11110000")) < len(boolean.brainif("10010110"))
 
 
 class TestRotfuck:

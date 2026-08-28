@@ -134,6 +134,29 @@ class TestFunctions:
             run_program("FAFHYHQ")
 
 
+class TestConditionalsThatDoNothing:
+    """Each conditional command's other arm: the case where it declines.
+
+    ``Q``, ``V`` and ``Z`` all guard on what they popped, and the suite only
+    ever showed them acting.  A command that quietly does nothing is the
+    half more likely to go wrong unnoticed, so each is pinned here by what
+    it leaves behind.
+    """
+
+    def test_q_ignores_a_value_that_is_not_a_function(self) -> None:
+        # Q pops two integers rather than a function and a test, so there is
+        # no body to run; the third copy is what Y prints.
+        assert run_program("FAFKKQY") == "10"
+
+    def test_v_does_not_jump_when_the_test_is_truthy(self) -> None:
+        # V pops a truthy value, so the pc is left alone and Y still runs.
+        assert run_program("FAFKKVY") == "10"
+
+    def test_z_ignores_a_value_that_is_not_a_function(self) -> None:
+        # Z needs a function to loop over; an integer leaves the stack as is.
+        assert run_program("FAFKZY") == "10"
+
+
 class TestSkips:
     def test_u_skips_when_falsy(self) -> None:
         # [10, 0]: U pops 0 (falsy) and skips the K, so Y prints the 10
@@ -269,3 +292,37 @@ class TestStepMachine:
         machine = _Machine(ScriptedIO(), 1_000_000)
         machine.frames.append(_Frame("FAFHKMHZ", 0))
         assert run_until_halt_or_cycle(machine) is False
+
+
+class TestNumberEncoding:
+    """Letters stand for digits, with Z standing for zero.
+
+    Numbers only ever reach the tests through programs that print their
+    result, where the encoding and the arithmetic that follows it cannot be
+    told apart.  These read the conversion directly.
+    """
+
+    def test_letters_count_from_a(self) -> None:
+        from esolangs.interpreters.stack_based.grapheme import _to_int
+
+        assert _to_int("A") == 10
+        assert _to_int("B") == 20
+
+    def test_z_is_zero_not_its_place_in_the_alphabet(self) -> None:
+        """``Z`` is the one letter that does not stand for its offset."""
+        from esolangs.interpreters.stack_based.grapheme import _to_int
+
+        assert _to_int("Z") == 0
+
+    def test_each_letter_shifts_the_ones_before_it(self) -> None:
+        """Position matters: AZ and ZA are different numbers."""
+        from esolangs.interpreters.stack_based.grapheme import _to_int
+
+        assert _to_int("AZ") == 100
+        assert _to_int("ZA") == 10
+        assert _to_int("AB") == 120
+
+    def test_an_empty_value_is_zero(self) -> None:
+        from esolangs.interpreters.stack_based.grapheme import _to_int
+
+        assert _to_int("") == 0

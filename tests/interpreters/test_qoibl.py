@@ -423,3 +423,103 @@ class TestQoiblTokenizer:
             ["tt", "yeeyeee", "tt"],
             ["tt", "yyeeyey", "tt"],
         ]
+
+
+class TestQoiblCycleDetection:
+    def test_a_terminating_program_is_reported_as_halting(self) -> None:
+        """``snapshot`` is the cycle detector's hook into the interpreter.
+
+        It reports the whole of what a step can change -- the cursor, the
+        variables, and how far input has been read -- so two identical
+        snapshots really do mean the program is going nowhere.  Nothing
+        exercised it before, because ``run`` drives the machine itself.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.qoibl import State
+        from esolangs.vm import run_until_halt_or_cycle
+
+        state = State(io=ScriptedIO(""))
+        state.code = tokenize("we y we yyeeee we\ntt qe y qe tt")
+        assert run_until_halt_or_cycle(state) is True
+
+    def test_the_snapshot_moves_when_a_statement_runs(self) -> None:
+        """A step that assigns changes the snapshot, so it is not a cycle."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.qoibl import State
+
+        state = State(io=ScriptedIO(""))
+        state.code = tokenize("we y we yyeeee we\ntt qe y qe tt")
+        before = state.snapshot()
+        state.step()
+        assert state.snapshot() != before
+
+
+class TestQoiblIncompleteTokens:
+    def test_a_lone_prefix_yields_an_empty_statement(self) -> None:
+        """``w`` and ``q`` only mean something before ``e``.
+
+        A prefix with nothing to pair with contributes no token, so the
+        statement it sits in comes out empty -- which ``step`` then has to
+        skip rather than try to evaluate.
+        """
+        assert tokenize("w") == [[]]
+        assert tokenize("q") == [[]]
+
+    def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
+        """An empty statement is a no-op, not a parse of nothing."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.qoibl import State
+
+        state = State(io=ScriptedIO(""))
+        state.code = tokenize("w")
+        assert state.code == [[]]
+        state.step()
+        assert state.halted
+
+
+class TestQoiblParserGuards:
+    """The three conditions a mutation survived, each pinned by behaviour.
+
+    Mutation testing (mutmut against a ``bundle_one`` build of this module)
+    reported these as changeable without any test noticing: the tokenizer's
+    give-back guard, its empty-input guard, and the closing-marker check in
+    ``_wellformed``.  Each is a rejection, and a rejection that stops
+    rejecting is invisible until something malformed is accepted.
+    """
+
+    def test_steal_declines_a_literal_without_the_character(self) -> None:
+        """Nothing is given back unless the literal actually ends in it.
+
+        The mutant that reads this guard with ``and`` instead of ``or``
+        returned the literal shortened anyway, inventing a token split the
+        source never spelled.
+        """
+        from esolangs.interpreters.register_based.qoibl import _steal
+
+        assert _steal(["yy"], "e") is None  # no trailing 'e' to give back
+        assert _steal(["e"], "e") == []  # a one-character literal vanishes
+        assert _steal(["ye"], "e") == ["y"]  # a longer one is shortened
+
+    def test_steal_declines_an_empty_token_list(self) -> None:
+        """The emptiness check has to come first, or indexing raises.
+
+        ``tokens[-1]`` is evaluated the moment the guard stops short-
+        circuiting, so a mutant that reorders it crashes with IndexError
+        rather than returning None.
+        """
+        from esolangs.interpreters.register_based.qoibl import _steal
+
+        assert _steal([], "e") is None
+
+    def test_a_binary_operator_needs_its_closing_marker(self) -> None:
+        """``yr``/``ry`` wrap an operator, and both ends must be the same one.
+
+        Only the matched form parses; a mismatched closing marker or none at
+        all is malformed.  Without this check both were accepted, so a
+        program that never spelled a complete operation would still run.
+        """
+        from esolangs.interpreters.register_based.qoibl import _wellformed
+
+        assert _wellformed(["e", "yr", "ee", "yr", "y"]) is True
+        assert _wellformed(["e", "yr", "ee", "ry", "y"]) is False  # wrong close
+        assert _wellformed(["e", "yr", "ee"]) is False  # no close at all

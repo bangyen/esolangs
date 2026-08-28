@@ -128,14 +128,23 @@ def main() -> int:
             continue
         for text in TEXTS:
             text_tasks.append((name, cmd, generator(text), text))
+    # Report per phrase only when one diverges: a passing phrase says nothing
+    # a count does not, and printing all 24 buried the boolean summaries below
+    # them.  This matches how the boolean and const checks below already
+    # report -- one line each, detail only on failure.
+    checked: dict[str, int] = {}
     for (name, _cmd, _program, text), out in zip(
         text_tasks,
         _run_parallel(lambda t: _run(t[1], t[2]), text_tasks),
         strict=True,
     ):
-        ok = out == text.encode()
-        failures += not ok
-        print(f"{name}: {'ok' if ok else 'FAIL'} -> {out!r}")
+        if out == text.encode():
+            checked[name] = checked.get(name, 0) + 1
+            continue
+        failures += 1
+        print(f"{name} {text!r}: FAIL -> {out!r}")
+    for name, count in checked.items():
+        print(f"{name}: {count} phrases match")
 
     # Boolean generators: 3x computes truth tables via a variable decision
     # tree (Rust), Forþ via a function-dispatch tree (Rust), Basicfuck via an
@@ -177,8 +186,12 @@ def main() -> int:
         failures += not ok
         if not ok:
             print(f"{name} boolean {table!r} n={n} combo {bits}: FAIL -> {out!r}")
-    for name, _, _ in boolean_refs:
-        print(f"{name} boolean: verified tables for n = 1..4")
+    # Only the languages that actually ran: iterating boolean_refs would
+    # claim "verified" for one whose toolchain was missing, directly under
+    # the [skip] line saying it never ran.
+    for name, _, cmd in boolean_refs:
+        if cmd is not None:
+            print(f"{name} boolean: verified tables for n = 1..4")
 
     # 3x constants: the closed-form _const must push its value on a clean
     # stack for a wide range of n (the tables above only reach names <= 6).

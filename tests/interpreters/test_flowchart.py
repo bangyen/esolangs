@@ -162,7 +162,7 @@ class TestKolakoski:
         row 1.
         """
         machine = _Machine(KOLAKOSKI, ScriptedIO(""))
-        assert [(p.x, p.y) for p in machine.pointers] == [(3, 0), (1, 1)]
+        assert [(p.row, p.col) for p in machine.pointers] == [(0, 3), (1, 1)]
 
     def test_it_keeps_producing_output(self) -> None:
         """The generator is infinite, so it runs on rather than halting."""
@@ -206,7 +206,7 @@ class TestParsing:
     def test_longer_spellings_win(self) -> None:
         """``\\[ ]/`` is one push node, not a ``[ ]`` toggle inside noise."""
         machine = _Machine(["( )─\\[ ]/─(( ))"], ScriptedIO(""))
-        assert machine.nodes[(4, 0)][0] == "\\[ ]/"
+        assert machine.nodes[(0, 4)][0] == "\\[ ]/"
 
     def test_end_node_is_not_read_as_a_start(self) -> None:
         """``(( ))`` is matched before ``( )`` so an end never starts a run."""
@@ -273,7 +273,7 @@ class TestParsing:
         way throughout its top row.
         """
         machine = _Machine(["( )─[ }─(( ))"], ScriptedIO(""))
-        assert machine.nodes[(4, 0)][0] == "[ }"
+        assert machine.nodes[(0, 4)][0] == "[ }"
 
     def test_a_rail_passing_beside_a_node_is_not_an_entry(self) -> None:
         """Only a path arm pointing *at* a node counts as entering it.
@@ -282,7 +282,7 @@ class TestParsing:
         column is passing by rather than connecting into it.
         """
         machine = _Machine(["( )────┐  ", "───────┼──", " (( ))─┘  "], ScriptedIO(""))
-        assert machine.nodes[(1, 2)][0] == "(( ))"
+        assert machine.nodes[(2, 1)][0] == "(( ))"
 
 
 class TestNodes:
@@ -323,6 +323,17 @@ class TestNodes:
     def test_pop_from_empty_leaves_it_empty(self) -> None:
         """Popping an exhausted deque clears the register."""
         assert self._register("[ }─\\{ }/") is None
+
+    def test_pushing_an_empty_register_pushes_nothing(self) -> None:
+        """A push with nothing to push leaves the deque as it was.
+
+        Both push nodes read the register and skip when it is empty, so a
+        later pop finds nothing rather than a ``None`` that was pushed as if
+        it were a bit.  ``{ }`` empties the register first, so the push has
+        nothing to work with at either end.
+        """
+        assert self._register("{ }─\\[ ]/─\\{ }/") is None
+        assert self._register("{ }─/[ ]\\─/{ }\\") is None
 
     def test_push_bottom_pop_bottom(self) -> None:
         """``/[ ]\\`` and ``/{ }\\`` use the other end of the deque."""

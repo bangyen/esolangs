@@ -7,6 +7,7 @@ Break.
 
 import pytest
 
+import esolangs
 from esolangs.tools import boolean
 from tests.tools.boolean_runners import (
     _PB_CONSTANTS,
@@ -159,6 +160,41 @@ class TestDig:
         )
         assert boolean.dig("0110") == expected
 
+    def test_a_constant_table_is_one_line(self) -> None:
+        """Nothing to branch on, so the whole grid is a single leaf."""
+        program = boolean.dig("1111")
+        assert [line for line in program.split("\n") if line.strip()] == [
+            "'",
+            ">$5~~1:@",
+        ]
+
+    def test_constant_subtrees_prune_their_rows(self) -> None:
+        """A folded node's descendants are never written.
+
+        Both tables have four ones, so the difference is arrangement alone:
+        ``11110000`` is two constant halves and keeps one row per half,
+        while parity has no constant slice above a single row and fills the
+        grid.
+        """
+        folded = boolean.dig("11110000")
+        full = boolean.dig("10010110")
+        assert len(folded) < len(full)
+        assert sum(1 for r in folded.split("\n") if r.strip()) < sum(
+            1 for r in full.split("\n") if r.strip()
+        )
+
+    def test_a_long_read_run_chains_its_windows(self) -> None:
+        """Past nine cells the ``$`` runs chain rather than growing a digit.
+
+        ``$`` takes its count from the digit beside it, so one window holds
+        at most nine cells -- six reads plus the three that print.  A
+        constant table at n == 7 needs more than that, and must still run.
+        """
+        table = "1" * 128  # n == 7, constant
+        program = boolean.dig(table)
+        assert program.count("$") > 1  # more than one window
+        assert esolangs.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
+
 
 class TestSophie:
     @pytest.mark.parametrize(
@@ -182,6 +218,19 @@ class TestSophie:
     def test_structure(self) -> None:
         """A one-input function is a single conditional pair."""
         assert boolean.sophie("10") == ";@$48{#$49,&}{#$48,&}"
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice prints outright, but still reads its inputs.
+
+        Sophie reads *inside* the tree -- a node is ``;`` then its branch
+        -- so a folded leaf carries the ``;`` it skipped.  Dropping them
+        would make the program's input count depend on its table, which
+        :mod:`tests.tools.test_boolean_contract` rejects for every
+        generator.
+        """
+        assert boolean.sophie("1111") == ";;#$49,&"
+        assert boolean.sophie("0000") == ";;#$48,&"
+        assert boolean.sophie("0110").count(";") == 3  # nothing folds
 
 
 class TestCollatzMultiverse:
@@ -213,6 +262,23 @@ class TestCollatzMultiverse:
         program = boolean.collatz_multiverse("0110")
         assert program.count("input") == 2
         assert program.count("DO PRINT.") == 1
+
+    def test_a_dense_table_selects_its_zero_rows(self) -> None:
+        """More ones than zeros costs less built the other way.
+
+        Inverting is free here rather than one operation: the OR ends on a
+        ``flip`` turning ``prod(1 - minterm)`` into the answer, so a
+        complemented table keeps the accumulator instead.  A dense table is
+        therefore *shorter* than its sparse complement, not merely equal.
+        """
+        dense = boolean.collatz_multiverse("11111110")  # one zero row
+        sparse = boolean.collatz_multiverse("00000001")  # one one row
+        assert len(dense) < len(sparse)
+        for table in ("11111110", "00000001"):
+            program = boolean.collatz_multiverse(table)
+            for combo in range(8):
+                bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                assert run_collatz_multiverse(program, bits) == table[combo]
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
         """A constant table collapses to one output but still reads its inputs.
@@ -320,6 +386,28 @@ class TestPointBreak:
         assert sum(":=?" in line for line in program) == 2  # one read per input
         assert program.count("LET f:=f+g") == 2  # one minterm per 1 row
         assert program[-3:] == ["POINT loop", "IF h BREAK loop", "END loop"]
+
+    def test_a_dense_table_sums_its_zero_rows(self) -> None:
+        """More ones than zeros costs less summed the other way.
+
+        The guard breaks the loop on a nonzero, so it is already the
+        complement of the answer -- which makes inverting free here: the
+        complemented sum *is* the guard, and the ``one-f`` subtraction is
+        dropped rather than added to.
+        """
+        dense = boolean.point_break("11111110").splitlines()
+        sparse = boolean.point_break("00000001").splitlines()
+        # one minterm each: summing the dense table's ones would be seven
+        assert dense.count("LET h:=h+i") == 1
+        assert sparse.count("LET h:=h+i") == 1
+        # the dense one aliases the guard instead of subtracting for it
+        assert "LET j:=h" in dense
+        assert "LET j:=a-h" in sparse
+        for table in ("11111110", "00000001"):
+            program = boolean.point_break(table)
+            for combo in range(8):
+                bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
+                assert point_break_result(program, bits) == table[combo]
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):

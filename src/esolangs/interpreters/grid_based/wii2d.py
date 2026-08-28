@@ -21,13 +21,15 @@ def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
     """Initialize movement function for WII2D grid navigation."""
     n = len(code)
     m = len(code[0])
-    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # North, South, West, East
+    # Headings as (drow, dcol): North, South, West, East.  Row grows
+    # downward, and both axes wrap.
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-    def move(x: int, y: int, vel: int) -> tuple[int, int]:
-        dx, dy = directions[vel]
-        x = (x + dx) % n
-        y = (y + dy) % m
-        return x, y
+    def move(row: int, col: int, vel: int) -> tuple[int, int]:
+        d_row, d_col = directions[vel]
+        row = (row + d_row) % n
+        col = (col + d_col) % m
+        return row, col
 
     return move
 
@@ -35,11 +37,11 @@ def init(code: list[str]) -> Callable[[int, int, int], tuple[int, int]]:
 def close(code: list[str]) -> Callable[[int, int], tuple[int, int] | None]:
     """Create a function to find the closest @ command for jump operations."""
 
-    def start(x: int, y: int) -> Callable[[tuple[int, int]], int]:
+    def start(row: int, col: int) -> Callable[[tuple[int, int]], int]:
         """Create a distance function for sorting @ positions."""
 
         def dist(c: tuple[int, int]) -> int:
-            return abs(c[0] - x) + abs(c[1] - y)
+            return abs(c[0] - row) + abs(c[1] - col)
 
         return dist
 
@@ -50,11 +52,11 @@ def close(code: list[str]) -> Callable[[int, int], tuple[int, int] | None]:
             if row_idx > 0 and char == "@":
                 at_positions.append((row_idx, col_idx))
 
-    def find(x: int, y: int) -> tuple[int, int] | None:
+    def find(row: int, col: int) -> tuple[int, int] | None:
         """Find the closest @ position to the given coordinates."""
         positions = copy.deepcopy(at_positions)
-        positions.sort(key=start(x, y))
-        current_pos = (x, y)
+        positions.sort(key=start(row, col))
+        current_pos = (row, col)
         if current_pos in positions:
             positions.remove(current_pos)
         return positions[0] if positions else None
@@ -97,7 +99,7 @@ class _Machine:
         starts = [(r, row.find("!")) for r, row in enumerate(code) if "!" in row]
         if len(starts) != 1:
             raise ValueError("WII2D program must contain exactly one '!' start marker")
-        x, y = starts[0]
+        start_row, start_col = starts[0]
 
         max_width = max(len(row) for row in code)
         self.code = [row.ljust(max_width) for row in code]
@@ -106,8 +108,8 @@ class _Machine:
         self._move_pointer = init(self.code)
 
         # start above the ! marker, moving northward
-        self.x = x - 1
-        self.y = y
+        self.row = start_row - 1
+        self.col = start_col
         self.vel = 0  # 0 = north, 1 = south, 2 = west, 3 = east
         self.acc = 0
         self._done = False
@@ -119,13 +121,13 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        return (self.x, self.y, self.vel, self.acc, self.io.position())
+        return (self.row, self.col, self.vel, self.acc, self.io.position())
 
     def step(self) -> None:
         """Execute the cell under the pointer, then move one cell."""
         if self._done:
             return
-        op = self.code[self.x][self.y]
+        op = self.code[self.row][self.col]
 
         if op in "^v<>":
             self.vel = "^v<>".index(op)
@@ -137,16 +139,16 @@ class _Machine:
             else:  # If moving horizontally
                 self.vel += 1
         elif op == "@":
-            if target := self._find_closest_at(self.x, self.y):
-                self.x, self.y = target
-                self.x -= 1  # Move to position above the @
+            if target := self._find_closest_at(self.row, self.col):
+                self.row, self.col = target
+                self.row -= 1  # Move to position above the @
                 return
         elif op == ".":
             self._done = True
             return
 
         self.acc = update(op, self.acc, self.io)
-        self.x, self.y = self._move_pointer(self.x, self.y, self.vel)
+        self.row, self.col = self._move_pointer(self.row, self.col, self.vel)
 
 
 def run(code: list[str], io: IO) -> None:

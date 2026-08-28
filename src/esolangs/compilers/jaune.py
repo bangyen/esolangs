@@ -5,10 +5,35 @@ program can only input a single character at a time.
 """
 
 import sys
+from dataclasses import dataclass
 from re import findall, sub
-from typing import cast
+from typing import Literal
 
 from esolangs.compilers._riscv_common import MUL32
+
+# The four commands that compile to a called subroutine rather than to
+# inline instructions.
+_Subr = Literal["^", "v", "<", "&"]
+
+# The three that dispatch through the shared table below; "&" is
+# handled by its own arm.  Typed so the membership test narrows the
+# command to the key type rather than asserting it afterwards.
+_CALLED: frozenset[_Subr] = frozenset(("^", "v", "<"))
+
+
+@dataclass
+class _Routine:
+    """One emittable subroutine: its label, and whether the program needs it.
+
+    ``used`` is set when a call to the routine is emitted, and ``looped``
+    when a repeat count is passed in ``s3`` -- which is what decides
+    whether the routine ends by branching back on the counter or plainly
+    returning.  Both start false and only ever turn on.
+    """
+
+    label: str
+    used: bool = False
+    looped: bool = False
 
 
 def count(code: str, ind: int) -> tuple[int | str, int]:
@@ -110,32 +135,21 @@ def comp(code: str) -> str:
         "    li   s3, 1\n"
         "    li   s7, 0\n\n"
     )
-    subr = {
-        "^": ["output", False, False],
-        "v": ["input", False, False],
-        "<": ["left", False, False],
-        "&": ["mult", False, False],
+    subr: dict[_Subr, _Routine] = {
+        "^": _Routine("output"),
+        "v": _Routine("input"),
+        "<": _Routine("left"),
+        "&": _Routine("mult"),
     }
 
     while ind < len(code):
         c = code[ind]
         num, new = count(code, ind)
 
-        if c in "^v<":
-            if cast(int, num) > 1:
-                res += f"\tli   s3, {num}\n"
-                subr[c][2] = True
-            res += f"\tcall {subr[c][0]}\n"
-            subr[c][1] = True
-        elif c == "&":
-            if cast(int, num) > 1:
-                res += f"\tli   s3, {num}\n\tcall {subr[c][0]}\n"
-                subr[c][1] = subr[c][2] = True
-            else:
-                res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s2\n\tsw   t0, 0(s1)\n"
-        elif c == ">":
-            res += f"\tli   t0, {4 * cast(int, num)}\n\tsub  s1, s1, t0\n"
-        elif c in "+-":
+        # ``+``/``-`` is the only command whose operand can be a bare ``v``,
+        # which ``count`` reports as a str; taking that arm first leaves
+        # ``num`` narrowed to int for every command below.
+        if c in "+-":
             if num:
                 if isinstance(num, int):
                     res += f"\tlw   t0, 0(s1)\n\taddi t0, t0, {num}\n\tsw   t0, 0(s1)\n"
@@ -143,25 +157,46 @@ def comp(code: str) -> str:
                     res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s7\n\tsw   t0, 0(s1)\n"
                 else:
                     res += "\tlw   t0, 0(s1)\n\tsub  t0, t0, s7\n\tsw   t0, 0(s1)\n"
+            ind = new
+            continue
+
+        if isinstance(num, str):  # pragma: no cover - see the comment above
+            raise ValueError(f"unexpected operand {num!r} for {c!r}")
+
+        if c in _CALLED:
+            routine = subr[c]
+            if num > 1:
+                res += f"\tli   s3, {num}\n"
+                routine.looped = True
+            res += f"\tcall {routine.label}\n"
+            routine.used = True
+        elif c == "&":
+            if num > 1:
+                res += f"\tli   s3, {num}\n\tcall {subr['&'].label}\n"
+                subr["&"].used = subr["&"].looped = True
+            else:
+                res += "\tlw   t0, 0(s1)\n\tadd  t0, t0, s2\n\tsw   t0, 0(s1)\n"
+        elif c == ">":
+            res += f"\tli   t0, {4 * num}\n\tsub  s1, s1, t0\n"
         elif c == "#":
             res += "\tlw   s2, 0(s1)\n"
         elif c == ":":
-            res += f".label{add(cast(int, num))}:\n"
+            res += f".label{add(num)}:\n"
         elif c in "?!":
             res += "\tlw   t0, 0(s1)\n"
             jcc = "bnez" if c == "?" else "beqz"
-            if cast(int, num) >= 0:
-                res += f"\t{jcc} t0, .label{add(cast(int, num))}\n"
+            if num >= 0:
+                res += f"\t{jcc} t0, .label{add(num)}\n"
             else:
                 res += f"\t{jcc} t0, .switch\n"
                 inp[0] = True
         elif c == ".":
             res += "\n\tli   a0, 0\n\tli   a7, 93\n\tecall\n"
         elif c == "$":
-            res += f"sub{add(cast(int, num))}:\n"
+            res += f"sub{add(num)}:\n"
         elif c == "@":
-            if cast(int, num) >= 0:
-                res += f"\tcall sub{add(cast(int, num))}\n"
+            if num >= 0:
+                res += f"\tcall sub{add(num)}\n"
             else:
                 res += "\tcall switch\n"
                 inp[1] = True
@@ -192,11 +227,11 @@ def comp(code: str) -> str:
                 res += f".sub{n}:\n"
             res += f"\tcall sub{n}\n\tret\n"
 
-    def end(opr: str) -> str:
-        if subr[opr][2]:
+    def end(opr: _Subr) -> str:
+        if subr[opr].looped:
             mul = (
                 "\taddi s3, s3, -1\n"
-                f"\tbgt  s3, zero, {subr[opr][0]}\n"
+                f"\tbgt  s3, zero, {subr[opr].label}\n"
                 "\taddi s3, s3, 1\n"
                 "\tret\n"
             )
@@ -204,7 +239,7 @@ def comp(code: str) -> str:
             mul = "\tret\n"
         return mul
 
-    if subr["^"][1]:
+    if subr["^"].used:
         res += (
             "\noutput:\n"
             "\taddi sp, sp, -16\n"
@@ -261,7 +296,7 @@ def comp(code: str) -> str:
             "\tmv   a0, t0\n"
             "\tret\n"
         )
-    if subr["v"][1]:
+    if subr["v"].used:
         res += (
             "\ninput:\n"
             "\taddi s1, s1, -4\n"
@@ -274,7 +309,7 @@ def comp(code: str) -> str:
             "\taddi s7, s7, -48\n"
             "\taddi s1, s1, 4\n" + end("v")
         )
-    if subr["<"][1]:
+    if subr["<"].used:
         res += (
             "\nleft:\n"
             "\tslli t0, s3, 2\n"
@@ -285,7 +320,7 @@ def comp(code: str) -> str:
             ".left_done:\n"
             "\tret\n"
         )
-    if subr["&"][1]:
+    if subr["&"].used:
         res += (
             "\nmult:\n"
             "\taddi sp, sp, -16\n"

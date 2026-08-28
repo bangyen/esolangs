@@ -2,24 +2,22 @@
 
 import sys
 from collections.abc import Sequence
-from typing import cast
+from dataclasses import dataclass
 
-# dimensional, rotfuck, and six_five each own a file because their
-# construction (a survivor walk, a per-position rotation, an assembler)
-# dwarfs the rest of the category; they are re-exported here so this
-# module stays the import site the package and tests already use.
+# rotfuck and six_five each own a file because their construction (a
+# per-position rotation, an assembler) dwarfs the rest of the category, and
+# dimensional keeps one for its pinned-dimension moves; they are re-exported
+# here so this module stays the import site the package and tests already use.
 from esolangs.tools.boolean.dimensional import dimensional, dimensional_tree
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _maybe_complement,
     _validate_truth_table,
     decision_tree_program,
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five, six_five_arithmetic
 from esolangs.tools.text.tape import _factor_encode
-from esolangs.tools.wrap import shortest
 
 __all__ = [
     "basicfuck",
@@ -43,6 +41,57 @@ __all__ = [
 ]
 
 
+@dataclass
+class _Cmd:
+    """A line emitted verbatim, apart from its ``goto`` placeholder."""
+
+    text: str
+
+
+@dataclass
+class _If:
+    """An ``if <char> goto <label>`` line, resolved once labels are known."""
+
+    char: int
+    label: int
+
+
+@dataclass
+class _MoveRight:
+    """An ``if <char> move right`` line that also *defines* ``label``."""
+
+    char: int
+    label: int
+
+
+@dataclass
+class _MoveLeft:
+    """An ``if <char> move left`` line that also *defines* ``label``.
+
+    The mirror of :class:`_MoveRight`, for a tree whose branches walk *down*
+    the tape: BrainIf reads its inputs from the far cell back toward the
+    answer, so a branch steps left onto the next input rather than right.
+    """
+
+    char: int
+    label: int
+
+
+@dataclass
+class _Out:
+    """A marker defining output routine ``which``; it emits no line itself."""
+
+    which: int
+
+
+@dataclass
+class _End:
+    """The trailing blank line every program ends on."""
+
+
+_Entry = _Cmd | _If | _MoveRight | _MoveLeft | _Out | _End
+
+
 def brainif(truth_table: str) -> str:
     """Build a BrainIf program computing the given truth table.
 
@@ -52,28 +101,67 @@ def brainif(truth_table: str) -> str:
     BrainIf reads each input into a cell with ``if 0 input``, then a
     recursive decision tree checks each cell with ``if 48/49 goto`` (the
     groups' checks sit adjacent so a failed check falls through to the next
-    candidate).  Every leaf lands on a fresh cell (the last marker moved the
-    pointer past the inputs), so it jumps to one of two shared output
-    routines that build 48 or 49 in place and print it, instead of each leaf
-    incrementing a fresh cell itself.
+    candidate).
+
+    The answer byte is built *first*, on cell 0: 48 ``increment`` lines
+    once, rather than a climb per digit.  There is no way to copy a byte in
+    BrainIf, and a climb of ``if v increment`` lines converges -- every
+    entry value 0..47 leaves it holding 48 -- so one climb cannot serve both
+    digits however it is entered.  Two climbs is 48 + 49 lines, which used
+    to dominate: a ``11110000`` program was 97 increments out of 153 lines.
+
+    Building first also fixes which way the tape runs.  The pointer steps
+    out over cells that are still zero, where one ``if 0 move right``
+    advances exactly one cell -- no digit is around to fire the next line
+    too -- and the tree then reads its inputs from that far cell back down
+    toward the answer.  So a level is a read, two branch tests, and a step
+    left, and a leaf is simply *there*: the reads have already carried the
+    pointer home, and it adds one iff its entry is a ``1`` before joining a
+    two-line tail.
+
+    That is what makes the tree foldable.  A subtree whose rows all agree
+    becomes a leaf rather than branching on bits that cannot change the
+    answer -- and because a leaf spends no moves getting to the answer, the
+    saving is not handed back.  The skipped levels' *reads* still happen:
+    consumption must not depend on the table, or a caller feeding several
+    programs from one stream would desync.  An earlier arrangement built
+    the answer past the inputs and had each leaf walk out to it, which cost
+    two lines per skipped level and cancelled the fold exactly.
     """
     n = _validate_truth_table(truth_table)
-    entries: list[tuple[object, ...]] = []
-    for i in range(n):
-        entries.append(("cmd", "if 0 input"))
-        if i < n - 1:
-            entries.append(("cmd", "if 48 move right"))
-            entries.append(("cmd", "if 49 move right"))
-    for _ in range(n - 1):
-        entries.append(("cmd", "if 48 move left"))
-        entries.append(("cmd", "if 49 move left"))
+    entries: list[_Entry] = []
+    # The answer byte goes on cell 0 and the inputs above it, read from the
+    # far end back down.  Building first means stepping out over cells that
+    # are still zero, where one ``if 0 move right`` advances exactly one
+    # cell -- no digit is around to fire the next line as well.
+    entries += [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO)]
+    entries.append(_Cmd(f"if {_ASCII_ZERO} move right"))
+    entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
 
     counter = [0]
 
-    def build(rows: list[int], k: int) -> list[tuple[object, ...]]:
-        if len(rows) == 1:
-            r = int(truth_table[rows[0]])
-            return [("cmd", f"if 0 goto OUT{r}")]
+    def build(rows: list[int], k: int) -> list[_Entry]:
+        """Emit the subtree for ``rows``, entered with the pointer on cell n-k+1."""
+        rest = n - (k - 1)
+        if rest == 0 or len({truth_table[row] for row in rows}) == 1:
+            # Consume the inputs this path never branched on, which walks
+            # the pointer the rest of the way home; then add one iff the
+            # answer is a 1 and join the tail.  Reading them is not optional:
+            # a program whose input count depended on its table would desync
+            # a caller feeding several programs from one stream.
+            out: list[_Entry] = []
+            for _ in range(rest):
+                out.append(_Cmd("if 0 input"))
+                out.append(_Cmd(f"if {_ASCII_ZERO} move left"))
+                out.append(_Cmd(f"if {_ASCII_ONE} move left"))
+            if int(truth_table[rows[0]]):
+                out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
+            out.append(_Cmd(f"if {_ASCII_ZERO} goto OUT0"))
+            out.append(_Cmd(f"if {_ASCII_ONE} goto OUT0"))
+            return out
+        # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
+        # bit it selects is the table's usual most-significant-first one --
+        # the reads are in input order even though the pointer walks down.
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
         l0, l1 = counter[0], counter[0] + 1
@@ -81,24 +169,22 @@ def brainif(truth_table: str) -> str:
         sub0 = build(g0, k + 1)
         sub1 = build(g1, k + 1)
         return [
-            ("if", _ASCII_ZERO, l0),
-            ("if", _ASCII_ONE, l1),
-            ("mr", _ASCII_ZERO, l0),
+            _Cmd("if 0 input"),
+            _If(_ASCII_ZERO, l0),
+            _If(_ASCII_ONE, l1),
+            _MoveLeft(_ASCII_ZERO, l0),
             *sub0,
-            ("mr", _ASCII_ONE, l1),
+            _MoveLeft(_ASCII_ONE, l1),
             *sub1,
         ]
 
     entries += build(list(range(2**n)), 1)
-    # two shared output routines: every leaf's pointer is on a fresh cell
-    for r in (0, 1):
-        entries.append(("out", r))
-        entries.append(("cmd", "if 48 move right"))
-        entries.append(("cmd", "if 49 move right"))
-        entries += [("cmd", f"if {v} increment") for v in range(_ASCII_ZERO + r)]
-        entries.append(("cmd", f"if {_ASCII_ZERO + r} output"))
-        entries.append(("cmd", f"if {_ASCII_ZERO + r} goto end"))
-    entries.append(("end",))
+    # One shared tail: the answer cell already holds the byte to print, so
+    # this is two lines rather than a climb per digit.
+    entries.append(_Out(0))
+    entries.append(_Cmd(f"if {_ASCII_ZERO} output"))
+    entries.append(_Cmd(f"if {_ASCII_ONE} output"))
+    entries.append(_End())
 
     # resolve labels from the actual line sequence (the "out" markers emit
     # no line, so the marker's target is the next line that does)
@@ -107,32 +193,36 @@ def brainif(truth_table: str) -> str:
     line_no = 0
     pending: int | None = None
     for entry in entries:
-        if entry[0] == "out":
-            pending = cast(int, entry[1])
+        if isinstance(entry, _Out):
+            pending = entry.which
             continue
         line_no += 1
         if pending is not None:
             out_labels[pending] = line_no
             pending = None
-        if entry[0] == "mr":
-            labels[cast(int, entry[2])] = line_no
+        if isinstance(entry, _MoveRight | _MoveLeft):
+            labels[entry.label] = line_no
     end_line = line_no + 1
 
     lines: list[str] = []
     for entry in entries:
-        if entry[0] == "cmd":
-            s = cast(str, entry[1])
-            if "goto OUT" in s:
-                r = int(s.split("OUT")[1])
-                s = f"if 0 goto {out_labels[r]}"
-            elif "goto end" in s:
-                s = s.replace("goto end", f"goto {end_line}")
-            lines.append(s)
-        elif entry[0] == "if":
-            lines.append(f"if {entry[1]} goto {labels[cast(int, entry[2])]}")
-        elif entry[0] == "mr":
-            lines.append(f"if {entry[1]} move right")
-        elif entry[0] == "out":
+        if isinstance(entry, _Cmd):
+            text = entry.text
+            if "goto OUT" in text:
+                # keep the line's own guard: a leaf reaches the tail from a
+                # cell holding 48 or 49, so it emits one goto for each
+                guard, target = text.split(" goto OUT")
+                text = f"{guard} goto {out_labels[int(target)]}"
+            elif "goto end" in text:
+                text = text.replace("goto end", f"goto {end_line}")
+            lines.append(text)
+        elif isinstance(entry, _If):
+            lines.append(f"if {entry.char} goto {labels[entry.label]}")
+        elif isinstance(entry, _MoveRight):
+            lines.append(f"if {entry.char} move right")
+        elif isinstance(entry, _MoveLeft):
+            lines.append(f"if {entry.char} move left")
+        elif isinstance(entry, _Out):
             continue
         else:
             lines.append("")
@@ -203,157 +293,24 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
     return "".join(prog)
 
 
-def _bf_minterm(truth_table: str) -> str:
-    """Build a brainfuck program evaluating ``truth_table`` via its minterms.
-
-    The output is ``48 + sum_k tt[k] * M_k`` where ``M_k`` is the product of
-    the input bits (or their complements) that select row ``k``.  BF has no
-    branching that would let leaves skip siblings, so a branch-free sum of
-    minterms (each computed with 0/1 copies and ANDs) is used instead.
-    Cells: inputs at 1..n, the running sum at n+1, and fresh scratch cells
-    allocated above that.
-
-    When the table has more ``1``s than ``0``s the complement is evaluated
-    instead (fewer minterms) and ``49 - sum`` is printed.
-    """
-    n = _validate_truth_table(truth_table)
-    table, use_complement = _maybe_complement(truth_table)
-
-    class _Cell:
-        def __init__(self, n: int) -> None:
-            self.n = n
-            self.inputs = list(range(1, n + 1))
-            self.sum = n + 1
-            self.next_cell = n + 2
-            self.code: list[str] = []
-            self.ptr = 0
-
-        def alloc(self) -> int:
-            cell = self.next_cell
-            self.next_cell += 1
-            return cell
-
-        def move(self, dst: int) -> None:
-            delta = dst - self.ptr
-            self.code.append(">" * delta if delta >= 0 else "<" * -delta)
-            self.ptr = dst
-
-        def zero(self, cell: int) -> None:
-            self.move(cell)
-            self.code.append("[-]")
-
-        def copy(self, src: int, dst: int) -> None:
-            """Copy ``src`` to ``dst`` preserving ``src`` (two scratch cells)."""
-            a, b = self.alloc(), self.alloc()
-            self.zero(a)
-            self.zero(b)
-            self.move(src)
-            self.code.append("[")
-            self.move(a)
-            self.code.append("+")
-            self.move(b)
-            self.code.append("+")
-            self.move(src)
-            self.code.append("-]")
-            self.move(a)
-            self.code.append("[")
-            self.move(src)
-            self.code.append("+")
-            self.move(a)
-            self.code.append("-]")
-            self.move(b)
-            self.code.append("[")
-            self.move(dst)
-            self.code.append("+")
-            self.move(b)
-            self.code.append("-]")
-            self.move(dst)
-
-    cell = _Cell(n)
-    for i in cell.inputs:
-        cell.move(i)
-        cell.code.append(",")
-        cell.code.append("-" * _ASCII_ZERO)
-    cell.zero(cell.sum)
-    for k in range(2**n):
-        if table[k] == "0":
-            continue
-        factors: list[int] = []
-        for i in range(n):
-            f = cell.alloc()
-            cell.zero(f)
-            if (k >> (n - 1 - i)) & 1:
-                cell.copy(cell.inputs[i], f)
-            else:
-                cell.move(f)
-                cell.code.append("[-]+")
-                tmp = cell.alloc()
-                cell.copy(cell.inputs[i], tmp)
-                cell.move(tmp)
-                cell.code.append("[")
-                cell.move(f)
-                cell.code.append("-")
-                cell.move(tmp)
-                cell.code.append("-]")
-            factors.append(f)
-        prod = factors[0]
-        for factor in factors[1:]:
-            newp = cell.alloc()
-            cell.zero(newp)
-            t1 = cell.alloc()
-            cell.zero(t1)
-            cell.copy(prod, t1)
-            t2 = cell.alloc()
-            cell.zero(t2)
-            cell.copy(factor, t2)
-            cell.move(t1)
-            cell.code.append("[")
-            cell.move(t2)
-            cell.code.append("[")
-            cell.move(newp)
-            cell.code.append("+")
-            cell.move(t2)
-            cell.code.append("-]")
-            cell.move(t1)
-            cell.code.append("-]")
-            prod = newp
-        tmp = cell.alloc()
-        cell.zero(tmp)
-        cell.copy(prod, tmp)
-        cell.move(tmp)
-        cell.code.append("[")
-        cell.move(cell.sum)
-        cell.code.append("+")
-        cell.move(tmp)
-        cell.code.append("-]")
-    cell.move(cell.sum)
-    if use_complement:
-        # The sum holds 0/1 for the complement; print 49 - sum via a fresh
-        # cell to the right (cleared, set to 49, decremented by the sum).
-        cell.code.append(">[-]" + "+" * _ASCII_ONE + "<[>-<-]>.")
-    else:
-        cell.code.append("+" * _ASCII_ZERO)
-        cell.code.append(".")
-    return "".join(cell.code)
-
-
 def brainfuck(truth_table: str) -> str:
     """Build a brainfuck program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Two generators exist with complementary strengths, and ``bf`` returns
-    the shorter of the two for the given table:
+    This is :func:`bf_tree`, a decision tree sharing the bit tests.
 
-    - ``_bf_minterm``: a branch-free sum of minterms (each input read and
-      normalized to 0/1, the result ``48 + sum_k tt[k] * M_k``).  Best for
-      sparse tables (few one-rows) — an all-zeros table is ~450 chars even
-      at n == 8.
-    - :func:`bf_tree`: a decision tree sharing the bit tests.  Best for
-      dense tables — XOR-n is ~1000x smaller than the minterm at n == 8.
+    There used to be a second construction here -- a branch-free sum of
+    minterms -- and ``bf`` returned whichever came out shorter, because the
+    tree was full and so paid for every input on sparse tables where the
+    minterm paid only per one-row.  Once the tree started folding constant
+    subtrees it won on every table at n <= 4 but the two constant ones,
+    where it costs about 2.5x the minterm (629 against 253 characters at
+    n == 4) -- a bounded factor on two tables out of 65536, which is not
+    worth a second construction and a dispatch to choose between them.
     """
-    return shortest(_bf_minterm(truth_table), bf_tree(truth_table))
+    return bf_tree(truth_table)
 
 
 def factor(truth_table: str) -> str:
@@ -368,6 +325,10 @@ def factor(truth_table: str) -> str:
     prime-search the text generator uses (walk primes upward, handing each
     instruction the next one with the right residue mod 11; Dirichlet's
     theorem guarantees one always exists).
+
+    Folding the constant subtrees of that program is what turns some
+    otherwise unrenderable tables into runnable ones, since the cap below is
+    on the encoded integer's size.
 
     This is a program-size cap, not an ``n`` cap: sparse tables (e.g. an
     all-zero or all-one table) stay small at any ``n``, while dense tables
@@ -401,9 +362,8 @@ def three_d_brainfuck(truth_table: str) -> str:
 
     3D Brainfuck's ``>``/``<`` set the generation pointer's heading (a no-op
     in this interpreter), so the array is walked along one axis with
-    ``e``/``w`` instead; the brainfuck minterm and decision-tree strategies
-    otherwise translate directly, and :func:`bf` picks the shorter of the
-    two.
+    ``e``/``w`` instead; :func:`brainfuck`'s decision tree otherwise
+    translates directly, so this folds constant subtrees because that does.
     """
     return brainfuck(truth_table).translate(str.maketrans("><", "ew"))
 
@@ -421,8 +381,9 @@ def painfuck(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     Painfuck is brainfuck-compatible: the commands ``a``/``b`` are while-
-    nonzero loops, ``j`` reads a byte and ``u`` prints one.  The brainfuck
-    minterm and decision-tree strategies translate directly, mapping BF's
+    nonzero loops, ``j`` reads a byte and ``u`` prints one.
+    :func:`brainfuck`'s decision tree translates directly (so this folds
+    constant subtrees because that does), mapping BF's
     ``>``/``<`` (each one cell) to ``rl`` (+1) / ``l`` (-1), ``+``/``-`` to
     ``ps`` (+1) / ``s`` (-1), and ``[``/``]``/``,``/``.`` to ``a``/``b``/
     ``j``/``u``.  The interpreter then rewrites the source through two
@@ -488,6 +449,17 @@ def basicfuck(truth_table: str) -> str:
     per input combination.  Each leaf adds ``48 + entry`` to the ``out``
     variable (which starts at 0 and is touched by exactly one leaf) and
     prints it with ``write <- out ;``.
+
+    A subtree whose rows all agree becomes a leaf instead of branching on
+    bits that cannot change the answer, which is what makes a table like
+    ``11110000`` two leaves rather than eight.  This is safe because a leaf
+    here is self-contained -- it names ``out`` and writes it, with nothing
+    but cosmetic indentation depending on how deep it sits -- so the
+    "exactly one leaf runs" invariant holds at any depth.  Generators whose
+    leaf depends on the path that reached it cannot do this: BrainIf's
+    leaves jump to a shared output routine that assumes the pointer has
+    passed every level's marker, and Streetcode's hall geometry is sized
+    from its subtree's height.
     """
     n = _validate_truth_table(truth_table)
 
@@ -499,7 +471,7 @@ def basicfuck(truth_table: str) -> str:
 
     def build(rows: list[int], k: int, depth: int) -> str:
         indent = "  " * depth
-        if len(rows) == 1:
+        if len({truth_table[row] for row in rows}) == 1:
             value = int(truth_table[rows[0]])
             return f"{indent}out += {_ASCII_ZERO + value} ;\n{indent}write <- out ;\n"
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]

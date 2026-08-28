@@ -349,17 +349,25 @@ rest.  What remains:
 
 - Painfuck's `y`, WII2D's `?`, and LaserFuck's random heading are
   non-deterministic, so all three stay on the wall-clock backstop.
-- **Recursion stays cycle-undetectable.**  A call that never returns
-  pushes one new frame per `step()` and none is ever popped, so a
-  `snapshot()`'s frame tuple strictly grows and two whole-machine
-  snapshots can never compare equal — unbounded growth, the same class
-  `+[>+]` already falls into.  A separate, narrower check — comparing a
-  newly-pushed frame's own local state against ancestor frames already on
-  the stack, rather than whole-machine snapshots across time — could catch
-  the common case of a call whose local state repeats exactly relative to
-  an ancestor (e.g. an accidental unconditional self-call), but not every
-  infinite recursion, and it doesn't fit the existing `snapshot()`
-  protocol; not built, revisit only if a concrete program needs it.  See
+- **Recursion stays cycle-undetectable, but is now separately checkable.**
+  A call that never returns pushes one new frame per `step()` and none is
+  ever popped, so a `snapshot()`'s frame tuple strictly grows and two
+  whole-machine snapshots can never compare equal — unbounded growth, the
+  same class `+[>+]` already falls into.  `run_until_halt_or_ancestor` is
+  the narrower check that class allows: it compares each newly-pushed
+  frame's entry state (function, bindings, input position) against the
+  frames already beneath it, rather than whole-machine snapshots across
+  time, so a frame about to replay an ancestor proves the recursion cannot
+  terminate.  Built for Forbin, which had no hang test at all before it.
+  The input position carries the soundness — a recursion whose base case
+  waits on an unread byte enters with identical bindings every lap, and
+  keyed on bindings alone would be called a hang one read from returning.
+  It still does not catch every infinite recursion (bindings that
+  genuinely never repeat), so the wall-clock backstop stays for that
+  class, and it costs O(depth) per push against the cycle detector's
+  O(1) — affordable only because it runs once per call, not per step.
+  Suptiftam and Lamfunc also recurse and are the obvious follow-up; each
+  needs a `frame_entry_key` matching its own frame shape.  See
   `docs/walls.md` for the full argument.
 - **Branching cycle detection for `y`/`?` (considered, not started).**
   Forking the walk at every random decision and requiring *every* branch to
@@ -376,6 +384,90 @@ rest.  What remains:
   handles both languages correctly, so this is only worth building if the
   "always hangs" guarantee is specifically needed.
 
+## Boolean generators that still emit a full decision tree
+
+A generator "folds" when a subtree whose table rows all agree becomes a
+leaf instead of branching on bits that cannot change the answer.  Most of
+the tree generators do; the ones below still spend a branch per level on
+every path, and each is recorded with what it would take, because the
+reason differs per language and reasoning from the shape of the code
+proved unreliable — Between, LaserFuck, BrainIf, Dig, Modulous, Unsquare
+and Nevermind were each written off on structural grounds and each folded
+once actually probed.
+
+The rule that did hold: folding pays when a folded leaf's cost does not
+scale with the depth it skipped.  Where a leaf has to make up work per
+skipped level, the fold cancels.
+
+**Still open, in rough order of promise.**
+
+- **Circlefuck** (and `circlefuck_byte`) — the closest.  A folded leaf
+  must clear the cell the skipped `[[-]` would have cleared and make up
+  the `<` moves those levels walked; adding the clear alone fixes `n == 1`
+  and leaves `n >= 2` wrong, so the pointer bookkeeping needs a real trace
+  of the interpreter rather than another guess.
+- **Streetcode** — the tree itself folds (`_streetcode_tree` recurses on
+  table halves, and a constant slice is a leaf).  Two things break: the
+  hall that joins two subtrees is sized `height * 2` from `len(top)` and
+  assumes both children are the same height, and a folded leaf arrives
+  with CP short by the `=` each skipped hall would have spent, since the
+  leaf prints from the loader loop's cell.  Compensating the CP inside the
+  leaf widens it, and `_streetcode_combine` pads blocks to a common height
+  but assumes a uniform width, so the collapsed tree then misaligns
+  against the input loops beside it.  Wants the hall and the combine
+  reworked together.
+- **Decleq** — folds correctly with a one-line change, and gains 1.3%.
+  Its size is dominated by fixed data cells and the read preamble rather
+  than by the tree, so the saving is real but not worth the change on its
+  own.
+
+**Ruled out, with the reason.**
+
+- **Clockwise** — its reads are *inside* the tree: `S` plus seven `.` down
+  a column, nine rows per level.  A folded leaf still has to consume the
+  inputs it skipped, at nine rows each, which is exactly what the
+  branching cost.  The cancellation is arithmetic, not a layout artifact.
+- **Forþ** — each level does two paired things: consumes an input bit
+  through the dispatch arithmetic, and pops one definition index with
+  `;`, which is the only way to pop and also dispatches.  The stack holds
+  the definition indices, so a folded node leaves both a bit unread and an
+  index unpopped and the next dispatch reads the wrong value.
+- **Eval** — a node's code *is* its heap index: `~=~?` then `i + 1`
+  semicolons.  Dropping a node renumbers every node after it.
+- **6-5** — the `n <= 5` path is the non-folding tree, but above that the
+  generator already delegates to `six_five_arithmetic`, which folds.
+
+The generators that are not decision trees at all — the sum-of-minterms
+group (bit~, Suptiftam, Suffolk, Collatz Multiverse, Qoibl, Point Break,
+Circuit Diagram), Container's per-row enumeration, Taglate's table-as-data,
+the arithmetic-index cascades (BFStack, COD, Minsky Swap, Home Row), A
+Painter Ant's grid placement, and WII2D's searched op-chain — have no
+constant subtree to fold and are not candidates.  The minterm group has its
+own optimization, below.
+
+## Suffolk's minterm complement (open, ~5%)
+
+A sum-of-minterms program costs one term per row it selects, so a table
+with more ones than zeros is cheaper evaluated complemented and inverted.
+Every generator in that family takes this through `_maybe_complement`
+except Suffolk, where a measured 5.1% is still on the table.
+
+It is not a language limit, though it reads like one at first.  `<` only
+*adds* the cell under the pointer to the accumulator, so the result
+`48 + sum` looks uninvertible — but `!` is
+`tape[ptr] = max(0, tape[ptr] + 1 - acc)`, which subtracts the
+accumulator from a cell.  With the minterm sum in `acc`, a cell holding
+48 becomes `49 - sum`: exactly the complement, and the clamp never bites
+because the sum is 0 or 1.
+
+**What is left is the arithmetic around it.**  A first attempt printed
+one too low (`/` where `0` was wanted), because `.` emits `chr(acc - 1)`
+and `!`'s own `+ 1` has to be accounted for in the constant the cell is
+preloaded with.  Getting that right is a matter of picking the preload,
+not of finding a new primitive — worth doing when the 5% is worth the
+care, and recorded here so the next attempt starts from `!` rather than
+re-deriving that `<` alone cannot do it.
+
 ## Severely constrained boolean generators (remove or lift)
 
 Each boolean generator with a low cap is tracked here so the decision is
@@ -384,3 +476,62 @@ or, where the language has no other generator story, remove it.  The caps
 are documented in `docs/limitations.md` and `docs/walls.md`.
 
 **No language is currently on this list.**
+
+## Evidence types through Streetcode's validators (deferred)
+
+`_Machine._validate` proves five things about a grid in a fixed order —
+width, enclosure, wall shape, glyph pairing, connectivity — and later code
+relies on those proofs.  Two of the reliances are already typed: `_Halt`
+keeps a deliberate stop apart from a wedged street, and `_ReachableCell`
+gates `_block`'s unchecked three-by-three read behind the enclosure proof
+(see the type comments in `streetcode.py`).
+
+The unbuilt third step is to carry the whole pipeline in the types: a chain
+of evidence classes, each minted only by the validator that proves it and
+demanded by the next.
+
+```python
+class WalledGrid: ...      # >=1 wall character, >1 open cell
+class TwoWide: ...         # + every reachable cell is two-wide
+class Enclosed(TwoWide): ...   # + no reachable cell on the border
+class WellFormed(Enclosed): ...  # + walls, glyphs, connectivity
+
+def _flood(g: WalledGrid, start: tuple[int, int]) -> TwoWide | WallLess: ...
+def _check_enclosed(w: TwoWide) -> Enclosed: ...
+def _check_walls(e: Enclosed) -> WellFormed: ...
+```
+
+That would make the ordering a checked fact rather than a docstring, and
+`_validate_width`'s `set | None` return would become two named outcomes —
+the `None` arm being the wall-less grid whose `U` raises `HaltError`, which
+is easy to overlook as "no cells" today.
+
+**Deferred deliberately.**  The cost-benefit does not currently justify it:
+
+- It removes two `pragma: no cover` lines in `_validate_walls`, and nothing
+  else.  Both are already correctly pragma'd.
+- The ordering it would enforce is set in one six-line method with a single
+  call site.  The bug it prevents — calling `_check_walls` before the flood
+  fill — is not one this code is positioned to commit.
+- `NewType` and marker classes are erased at runtime, so this buys
+  provenance under mypy, not a guarantee.  The runtime check would still
+  have to live in the smart constructor and still have to raise.
+- The validator docstrings currently explain *why* each invariant holds
+  ("a wall that stops short leaves a one-wide stub, which the width check
+  catches as a dead end").  A signature asserts the ordering but cannot
+  carry that reasoning, so the rewrite trades explanation for enforcement
+  across the most carefully reasoned prose in the module.
+
+Worth revisiting only if the module is restructured for another reason, or
+if a validator is added whose ordering is genuinely non-obvious.
+
+### What types cannot reach here
+
+Recorded so a future attempt does not over-promise: the value-dependent
+halts — `_` at CP 0, `O` on a non-code-point cell, `I` at end of input —
+are runtime semantics, not geometry.  No grid invariant touches them, and
+`_probe` deliberately does not model them.  Likewise the `U`-without-a-lane
+`HaltError` and `step`'s no-graph fallback are contract, not defensive
+guards: the first is documented behaviour for wall-less grids, the second
+is what lets the interpreter's own wall-shape fixtures disable `_validate`.
+Any redesign has to keep both.

@@ -49,6 +49,74 @@ class TestSuffolk:
         with pytest.raises(ValueError, match="empty"):
             run("", IO())
 
+    def test_default_limit_is_ten_passes(self) -> None:
+        """``run`` defaults to ten whole passes over the code.
+
+        Every other call here passes ``limit`` explicitly, so nothing pinned
+        the default: it could be any number and the suite would still pass.
+        ``!<.`` prints one byte per pass, so the output length *is* the
+        default.
+        """
+        assert run_and_capture("!<.", limit=10) == "\x00" * 10
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run("!<.", IO())
+        assert buffer.getvalue() == "\x00" * 10
+
+    def test_pointer_walks_past_the_second_cell(self) -> None:
+        """Consecutive > keep incrementing the pointer, they do not set it.
+
+        ``test_move_right`` returns to the origin with ``<`` before the
+        distance matters, so a pointer *pinned* at 1 behaved identically.
+        Three ``>`` in a row have to reach cell 3.
+        """
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine(">>>!", IO())
+        for expected in (0, 1, 2, 3):
+            assert machine.ptr == expected
+            machine.step()
+        assert machine.tape == [0, 0, 0, 1]
+
+    def test_cell_clamps_at_zero(self) -> None:
+        """! floors the cell at 0 when the accumulator overshoots.
+
+        ``!`` writes ``tape[ptr] + 1 - acc``, which goes negative once the
+        accumulator exceeds the cell: three increments give ``acc`` 3, and
+        ``!`` on a fresh cell computes ``0 + 1 - 3 = -2``.  Nothing else here
+        drives the expression below zero, so the floor was never exercised.
+        """
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine("!!!<>!", IO())
+        for _ in range(6):
+            machine.step()
+        assert machine.tape == [3, 0]
+
+    def test_accumulator_is_subtracted_at_the_cell(self) -> None:
+        """! subtracts the accumulator rather than adding it.
+
+        With ``acc`` 2 on a cell holding 2 the result is ``2 + 1 - 2 = 1``;
+        adding instead would give 5.  Every other ``!`` here runs with an
+        empty accumulator, where the two agree.
+        """
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine("!!<!", IO())
+        for _ in range(4):
+            machine.step()
+        assert machine.tape == [1]
+
+    def test_empty_input_clears_the_accumulator(self) -> None:
+        """, on an empty line leaves the accumulator at zero, not one."""
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.suffolk import _Machine
+
+        machine = _Machine(",.", ScriptedIO("\n"))
+        machine.step()
+        assert machine.acc == 0
+
 
 class TestStepMachine:
     def test_snapshot_changes_after_a_step(self) -> None:

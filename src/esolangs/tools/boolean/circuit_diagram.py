@@ -63,6 +63,18 @@ most significant first, matching the other generators in this package.
 * the minterms are combined by a chain of ``o`` gates, and the result runs
   into ``-:``.
 
+**A dense table is drawn as its complement.**  The cost is one ``a`` chain
+per row selected, so a table with more ones than zeros is built from its
+*zero* rows and the result inverted -- one ``~``, however many chains that
+saves.  It is the trade
+:func:`~esolangs.tools.boolean.helpers._maybe_complement` makes for the
+other sum-of-minterms generators, and it is worth more here, because a
+chain is not one instruction but a gate per literal plus the runs feeding
+it: a dense three-input table goes from ~7000 characters to ~190.  Choosing
+by the *count* rather than per minterm also keeps the complement buses
+honest -- which literals get a ``~`` is decided from the rows actually
+drawn.
+
 **Constant tables need no minterms.**  An all-zero table has none to sum and
 an all-one table would need ``2**n`` of them, so both are emitted as a
 single gate fed from one bus on both inputs: ``x`` of a value with itself is
@@ -78,7 +90,18 @@ port) and only ever read after that, which is why the tests can assert that
 a run prints exactly one character.
 """
 
-from esolangs.tools.boolean.helpers import _validate_truth_table, minterm_literals
+from typing import Literal
+
+from esolangs.tools.boolean.helpers import (
+    _maybe_complement,
+    _validate_truth_table,
+    minterm_literals,
+)
+
+# The gate characters this generator draws: an AND and an OR for the
+# minterm tree, and the two self-fed XOR forms for a constant table.
+_GateGlyph = Literal["a", "o", "x", "X"]
+_ConstGlyph = Literal["x", "X"]
 
 __all__ = ["circuit_diagram"]
 
@@ -309,7 +332,7 @@ class _Builder:
         self.buses[signal] = (column + 1, row)
         return signal
 
-    def gate(self, kind: str, left: int, right: int) -> int:
+    def gate(self, kind: _GateGlyph, left: int, right: int) -> int:
         """Place a two-input ``kind`` gate and return its output signal."""
         _, column = self._gate_columns()
         row = self._new_band()
@@ -323,7 +346,7 @@ class _Builder:
         self.buses[signal] = (column + 1, row)
         return signal
 
-    def constant(self, source: int, kind: str) -> int:
+    def constant(self, source: int, kind: _ConstGlyph) -> int:
         """Return a constant signal, from one bus fed to both gate inputs.
 
         ``x`` of a value with itself is always 0 and ``X`` always 1, so a
@@ -420,6 +443,14 @@ def circuit_diagram(truth_table: str) -> str:
     bit, a bus per literal, an ``a`` chain per table row that is a 1, an
     ``o`` chain combining them, and a ``:`` printing the result.  A constant
     table is emitted as a single self-fed gate instead.
+
+    A table with more ones than zeros is built from its *zero* rows and the
+    result inverted, since the cost is one chain per row selected and a
+    ``~`` is one gate however many chains it saves -- the same trade
+    :func:`~esolangs.tools.boolean.helpers._maybe_complement` makes for the
+    other sum-of-minterms generators.  It is worth more here than there: a
+    chain is a gate per literal plus the runs feeding it, so a dense
+    three-input table drops from ~7000 characters to ~130.
     """
     _validate_truth_table(truth_table)
 
@@ -427,9 +458,18 @@ def circuit_diagram(truth_table: str) -> str:
     n = len(truth_table).bit_length() - 1
     rails = [builder.input_bus() for _ in range(n)]
 
-    minterms = [i for i, bit in enumerate(truth_table) if bit == "1"]
+    # A sum of minterms spends one ``a`` chain per 1-row, so a table with
+    # more ones than zeros is cheaper built from its *zero* rows and
+    # inverted: every chain that saves costs a share of one ``~``.  A
+    # constant table is excluded because it is already a single gate, and
+    # complementing it would only swap which glyph that gate uses.
+    if len(set(truth_table)) == 1:
+        table, invert_result = truth_table, False
+    else:
+        table, invert_result = _maybe_complement(truth_table)
+    minterms = [i for i, bit in enumerate(table) if bit == "1"]
     if not minterms:
-        constant = "x"
+        constant: _ConstGlyph | None = "x"
     elif len(minterms) == len(truth_table):
         constant = "X"
     else:
@@ -460,5 +500,7 @@ def circuit_diagram(truth_table: str) -> str:
         for index in minterms[1:]:
             result = builder.gate("o", result, _minterm(builder, literals, index))
 
+    if invert_result:
+        result = builder.invert(result)
     builder.output(result)
     return builder.layout.render()

@@ -60,6 +60,63 @@ class TestNoComment:
         assert run_and_capture("cii" + "n" + "s" + "ii" + "o") == "\x02"
         assert run_and_capture("ci" + "n" + "s" + "i" + "o") == "\x01"
 
+    def test_jump_back(self) -> None:
+        """b jumps back X-1 and loops until the cell reaches zero.
+
+        The suite reached ``b`` only through the out-of-range error, so a
+        backward jump was never actually taken.  Here ``n`` pushes 2 and the
+        body decrements, so the jump fires once and the loop ends: the
+        stack still holds its 2 afterwards, which is what makes the jump a
+        peek rather than a pop.
+        """
+        assert run_and_capture("ciindbo") == "\x00"
+        assert run_and_capture("ciindbdo") == "\xff"
+
+    def test_jump_needs_a_nonzero_cell(self) -> None:
+        """s and b do nothing when the current cell is zero.
+
+        Both jumps are guarded on the cell *and* the stack, and every test
+        ran them with both satisfied -- so requiring either one alone would
+        have passed.  Clearing the cell first leaves the jump untaken and
+        the skipped commands run.
+        """
+        assert run_and_capture("ciincsio") == "\x01"
+        assert run_and_capture("cbo") == "\x00"
+
+    def test_jump_needs_a_stacked_value(self) -> None:
+        """s and b do nothing when the stack is empty.
+
+        Nothing is pushed here, so the jump has no distance to read: it is
+        skipped silently rather than raising, and the following commands
+        all run.
+        """
+        assert run_and_capture("cisio") == "\x02"
+        assert run_and_capture("cibo") == "\x01"
+
+    def test_jump_target_is_checked_one_past_the_jump(self) -> None:
+        """The range check looks at the command the jump lands on.
+
+        ``test_jump_out_of_range_is_error`` overshoots by a wide margin, so
+        the exact edge went unchecked: the target could be computed one
+        either side and still be far outside.  Here the skip of 2 from the
+        ``s`` targets one past the last command -- rejected by a single
+        position, which computing the target one lower, or comparing the
+        upper bound inclusively, would have allowed.
+        """
+        with pytest.raises(HaltError):
+            run_and_capture("ciinsio")
+
+    def test_backward_jump_of_zero_leaves_the_code(self) -> None:
+        """A backward jump of 0 targets one past the jump, which is off the end.
+
+        Pushing a zero and jumping back by it gives a target of ``ind + 1``
+        -- past the last command here, so it is rejected.  It is the only
+        way to reach the low edge of the range check, where a bound of 1 or
+        an exclusive comparison would behave differently.
+        """
+        with pytest.raises(HaltError):
+            run_and_capture("nib")
+
     def test_unrecognized_command_is_error(self) -> None:
         """The wiki allows no comments; a non-command is a malformed program."""
         with pytest.raises(ValueError, match="unrecognized NoComment command"):

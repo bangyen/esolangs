@@ -14,7 +14,7 @@ ones the VM can wrap; the rest of the registry runs whole programs only.
 
 from __future__ import annotations
 
-from collections.abc import Hashable
+from collections.abc import Hashable, Sequence
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
@@ -83,6 +83,96 @@ def run_until_halt_or_cycle(machine: _StepMachine) -> bool:
             power *= 2
             length = 0
     return True
+
+
+@runtime_checkable
+class _FramedMachine(Protocol):
+    """A :class:`_StepMachine` that also exposes its call stack.
+
+    ``frames`` is the live stack, outermost first, and ``frame_entry_key``
+    returns what a frame is *about to run* -- its function, its bindings,
+    and the input cursor -- so two frames with equal keys will replay each
+    other.  Separate from :class:`_StepMachine` because the cycle detector
+    needs neither.
+    """
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+    @property
+    def frames(self) -> Sequence[object]:
+        """The live call stack, outermost frame first."""
+
+    def frame_entry_key(self, frame: object) -> Hashable:
+        """Return ``frame``'s entry state, hashable and comparable."""
+
+
+def run_until_halt_or_ancestor(machine: _FramedMachine, limit: int = 64) -> bool:
+    """Step ``machine`` until it halts or a call provably replays an ancestor.
+
+    :func:`run_until_halt_or_cycle` cannot catch infinite recursion: a call
+    that never returns pushes one frame per step and pops none, so the
+    machine's whole-state snapshot grows forever and never repeats.  That is
+    the unbounded-growth class, and it is why recursive languages keep a
+    wall-clock backstop -- one that deadlocks under ``pytest --cov`` (see
+    ``docs/walls.md``).
+
+    This is the narrower check that class allows.  Rather than comparing
+    whole-machine states across time, it compares each newly-pushed frame
+    against the frames already beneath it: if a frame enters the same
+    function, with the same bindings, at the same input position as an
+    ancestor, it is about to replay exactly what that ancestor is still in
+    the middle of, and the recursion cannot terminate.  Returns ``True``
+    when the machine halts and ``False`` once such a frame is pushed.
+
+    The input position is part of the key and carries the soundness.  A
+    recursion whose base case depends on a byte it has yet to read enters
+    with identical bindings every lap and would otherwise be called a hang
+    while it is one read away from returning.
+
+    Two things this does not do.  It does not catch every infinite
+    recursion -- one whose bindings genuinely differ every lap (``f(x - 1)``
+    over unbounded integers) never repeats a key, so callers keep the
+    wall-clock backstop for that class.  And it costs O(depth) per push
+    rather than the cycle detector's O(1), which is affordable only because
+    it runs once per *call*, not once per step.
+
+    ``limit`` bounds the walk in *pushes examined*, not steps, and 64 is
+    generous: a repeat that exists at all shows up within a few frames --
+    three, for every case the Forbin suite covers -- because the key does
+    not vary with how long the program has been running.  Exhausting it
+    raises :class:`TimeoutError` rather than returning a verdict, so a
+    program the check cannot decide is never silently reported as halting.
+    That distinction is what keeps the bound cheap: a caller need not leave
+    headroom "just in case", and a mutant that defeats the early return
+    fails a test in milliseconds instead of walking ten thousand steps of
+    live recursion.
+    """
+    keys: dict[int, Hashable] = {}
+    pushes = 0
+    while pushes < limit:
+        if machine.halted:
+            return True
+        depth_before = len(machine.frames)
+        machine.step()
+        if len(machine.frames) <= depth_before:
+            continue
+        pushes += 1
+        depth = len(machine.frames) - 1
+        # A shallower frame at this index belongs to a call that has since
+        # returned, so drop it rather than compare against a dead ancestor.
+        keys = {d: k for d, k in keys.items() if d < depth}
+        keys[depth] = machine.frame_entry_key(machine.frames[-1])
+        if keys[depth] in [k for d, k in keys.items() if d < depth]:
+            return False
+    raise TimeoutError(
+        f"undecided after {limit} pushed frames: neither halted nor repeated "
+        "an ancestor's entry state"
+    )
 
 
 @runtime_checkable
@@ -425,7 +515,7 @@ class _ForthVM(_BaseVM):
 
 
 class _LaserFuckVM(_BaseVM):
-    """2D grid; ``ip`` is the active laser's (x, y, heading).
+    """2D grid; ``ip`` is the active laser's (row, col, heading).
 
     The heading is fixed to 0 (up) so stepping is reproducible; the
     interpreter's own ``run`` draws a random heading when none is given.
@@ -577,7 +667,7 @@ class _AddSubJumpVM(_BaseVM):
 
 
 class _ArrowQueueVM(_BaseVM):
-    """Direction queue; ``ip`` is the IP's (x, y, heading)."""
+    """Direction queue; ``ip`` is the IP's (row, col, heading)."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -594,7 +684,7 @@ class _ArrowQueueVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.d)
+        return (self._machine.row, self._machine.col, self._machine.d)
 
     @property
     def memory(self) -> list[int]:
@@ -674,7 +764,7 @@ class _APainterAntVM(_BaseVM):
 
 
 class _ClockwiseVM(_BaseVM):
-    """2D ring; ``ip`` is the pointer's (x, y, heading), ``memory`` the accumulator."""
+    """2D ring; ``ip`` is the pointer's (row, col, heading), ``memory`` the acc."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -691,7 +781,7 @@ class _ClockwiseVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.r)
+        return (self._machine.row, self._machine.col, self._machine.r)
 
     @property
     def memory(self) -> list[int]:
@@ -703,7 +793,7 @@ class _ClockwiseVM(_BaseVM):
 
 
 class _DigVM(_BaseVM):
-    """2D mole grid; ``ip`` is the mole's (x, y, heading), ``memory`` the mole."""
+    """2D mole grid; ``ip`` is the mole's (row, col, heading), ``memory`` the mole."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -720,7 +810,7 @@ class _DigVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.move)
+        return (self._machine.row, self._machine.col, self._machine.move)
 
     @property
     def memory(self) -> list[int]:
@@ -732,7 +822,10 @@ class _DigVM(_BaseVM):
 
 
 class _Wii2dVM(_BaseVM):
-    """2D wrap-around grid; ``ip`` is (x, y, heading), ``memory`` the accumulator."""
+    """2D wrap-around grid.
+
+    ``ip`` is (row, col, heading), ``memory`` the accumulator.
+    """
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -749,7 +842,7 @@ class _Wii2dVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.vel)
+        return (self._machine.row, self._machine.col, self._machine.vel)
 
     @property
     def memory(self) -> list[int]:
@@ -819,7 +912,7 @@ class _SixFiveVM(_BaseVM):
 
 
 class _BackVM(_BaseVM):
-    """2D beam; ``ip`` is the beam's (x, y, direction), ``memory`` the bit tape."""
+    """2D beam; ``ip`` is the beam's (row, col, direction), ``memory`` the bit tape."""
 
     def __init__(self, program: str, stdin: str = "") -> None:
         super().__init__(program, stdin)
@@ -836,7 +929,7 @@ class _BackVM(_BaseVM):
 
     @property
     def ip(self) -> tuple[int, ...]:
-        return (self._machine.x, self._machine.y, self._machine.a, self._machine.b)
+        return (self._machine.row, self._machine.col, self._machine.a, self._machine.b)
 
     @property
     def memory(self) -> list[int]:

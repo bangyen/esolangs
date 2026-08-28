@@ -43,6 +43,11 @@ dev = [
     "pre-commit>=3.0.0",
     "types-requests",
     "types-setuptools",
+    # Pinned: mutmut >=3.4 builds the trampoline qualname with
+    # mangled_name_from_mutant_name(), which strips the class part, so
+    # class-method mutants can never be selected and are silently reported
+    # as killed.  3.3.1 uses orig.__name__ and works.  See scripts/mutate_one.py.
+    "mutmut==3.3.1",
 ]
 
 [project.urls]
@@ -94,6 +99,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "**/__main__.py" = ["E402"]
+# The leak sweep imports the package under test, so it has to extend
+# sys.path before those imports can resolve.
+"scripts/verify_no_exception_leaks.py" = ["E402"]
 # The badge is a single multi-line SVG template string; its long lines are
 # part of the generated markup and cannot be wrapped without changing it.
 "scripts/make_coverage_badge.py" = ["E501"]
@@ -175,6 +183,11 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["src/esolangs"]
+# Python 3.12's sys.monitoring costs a fraction of what the trace-function
+# backend does: measured over this suite, 0.9s of overhead instead of 11.5s,
+# reporting the same 15295 statements either way.  coverage falls back to the
+# C tracer automatically on older interpreters.
+core = "sysmon"
 omit = [
     "*/__pycache__/*",
     "*/migrations/*",
@@ -198,4 +211,7 @@ exclude_lines = [
     "if __name__ == .__main__.:",
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
+    # Imports guarded by TYPE_CHECKING exist for the type checker and are
+    # never executed, so they can only ever read as uncovered.
+    "if TYPE_CHECKING:",
 ]

@@ -81,7 +81,9 @@ def myscript(truth_table: str) -> str:
     lines = [f"var b{i} is ask" for i in range(n)]
 
     def build(i: int, combo: int, pad: str) -> list[str]:
-        if i == n:
+        # ``combo`` has the bits above level ``i`` set and the rest clear,
+        # so it is the first row of the run this subtree covers.
+        if i == n or len(set(truth_table[combo : combo + 2 ** (n - i)])) == 1:
             return [f'{pad}say "{truth_table[combo]}"']
         one = build(i + 1, combo | (1 << (n - 1 - i)), pad + "    ")
         zero = build(i + 1, combo, pad + "    ")
@@ -206,8 +208,12 @@ def nevermind(truth_table: str) -> str:
 
     def build(k: int, row: int) -> None:
         indent = "  " * k
-        if k == n:
-            lines.append(f"{indent}print,{truth_table[row]}")
+        # ``row`` is accumulated a bit at a time, so at depth ``k`` it is a
+        # partial index: shifting it into place names the first row of the
+        # run its remaining bits span.
+        lo = row << (n - k)
+        if k == n or len(set(truth_table[lo : lo + 2 ** (n - k)])) == 1:
+            lines.append(f"{indent}print,{truth_table[lo]}")
             return
         for bit in (0, 1):
             lines.append(f"{indent}if,${chr(ord('a') + k)},==,{bit}")
@@ -309,17 +315,39 @@ def between(truth_table: str) -> str:
     to the ``0`` subtree; each leaf prints ``|0|``/``|1|`` and exits.  The
     branch addresses are 0-indexed line numbers, so the size of each subtree
     is computed ahead of the linear layout.
+
+    A subtree whose rows all agree becomes a leaf rather than branching on
+    bits that cannot change the answer.  Because the addresses come from
+    ``size`` walking the tree a second time, the fold has to be a property
+    of the path alone -- ``constant`` -- so both walks stop in the same
+    places; a check either walk applied and the other did not would leave
+    every branch below it naming the wrong line.
     """
     n = _validate_truth_table(truth_table)
 
-    def leaf_value(path: list[int]) -> int:
+    def first_row(path: list[int]) -> int:
+        """Return the lowest table row ``path`` reaches.
+
+        A full path spells a row outright; a short one has its unconsumed
+        bits still to come, so it names the *start* of the ``2**(n - len)``
+        run they span.  Shifting by those bits is what makes a folded leaf
+        read its own slice rather than the small index the raw path spells.
+        """
         row = 0
         for bit in path:
             row = row * 2 + bit
-        return int(truth_table[row])
+        return row << (n - len(path))
+
+    def leaf_value(path: list[int]) -> int:
+        return int(truth_table[first_row(path)])
+
+    def constant(path: list[int]) -> bool:
+        """Whether every row ``path`` reaches holds the same entry."""
+        row = first_row(path)
+        return len(set(truth_table[row : row + 2 ** (n - len(path))])) == 1
 
     def size(path: list[int]) -> int:
-        if len(path) == n:
+        if len(path) == n or constant(path):
             return 2
         return 1 + size([*path, 1]) + size([*path, 0])
 
@@ -330,7 +358,10 @@ def between(truth_table: str) -> str:
         lines.append(f"[{bit}]s|[{bit}]c.|")
 
     def emit(path: list[int], offset: int) -> int:
-        if len(path) == n:
+        # Must stop exactly where ``size`` stops: the branch addresses are
+        # line numbers ``size`` computed ahead of the layout, so a subtree
+        # that folds here and not there would name the wrong target.
+        if len(path) == n or constant(path):
             lines.append(f"|{leaf_value(path)}|p.")
             lines.append(".x.")
             return offset + 2
@@ -807,7 +838,7 @@ def forbin_boolean(truth_table: str) -> str:
 
     def emit(level: int, row: int, depth: int) -> None:
         indent = "  " * depth
-        if level == n:
+        if level == n or len(set(truth_table[row : row + 2 ** (n - level)])) == 1:
             byte = _ASCII_ZERO + int(truth_table[row])
             lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
             lines.append(f"{indent}return 0;")
@@ -843,6 +874,13 @@ def suptiftam(truth_table: str) -> str:
     recursive add-until-zero ``mulStep`` guarded by ``if``), and the sum is
     written to ``term``.  Exactly one minterm is 1 for any input, so the
     sum is the table entry.
+
+    A table with more ones than zeros is summed over its *zero* rows and the
+    sum inverted, since a minterm is four lines per input and ``1 - sum`` is
+    one line however many it saves.  No constant table needs excluding here,
+    unlike the gate-network generators: an all-ones table complements to no
+    minterms at all, leaving ``sum`` at 0, and ``1 - 0`` is the 1 it should
+    print.
     """
     n = _validate_truth_table(truth_table)
     names = [_suptiftam_bit(i) for i in range(n)]
@@ -858,15 +896,19 @@ def suptiftam(truth_table: str) -> str:
     for name in names:
         lines.append(f"{name}=%-[read]22%")
         lines.append("down(:read:)")
+    # One minterm per row selected, so a dense table is summed over its
+    # zeros and the sum inverted -- ``1 - sum`` is one line however many
+    # minterms it saves.
+    table, invert = _maybe_complement(truth_table)
     for row in range(2**n):
-        if truth_table[row] != "1":
+        if table[row] != "1":
             continue
         lines.append("p=1")
         for i, negated in minterm_literals(row, n):
             factor = f"%-[1]{names[i]}%" if negated else names[i]
             lines += ["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"]
         lines.append("sum=%+[sum]p%")
-    lines.append("term=sum")
+    lines.append("term=%-[1]sum%" if invert else "term=sum")
     return "\n".join(lines)
 
 
@@ -897,40 +939,67 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
             cells[(x + i, y)] = char
 
     n = (len(truth_table) - 1).bit_length()
-    # Leaf ``k`` spans columns ``5k`` to ``5k + 4``, so its middle -- the
-    # column every rail in that leaf's band lands on -- is ``5k + 2``.
-    mids = [_FLOWCHART_PITCH * k + 2 for k in range(len(truth_table))]
-
     leaf_top = 2 + 4 * n
-    for k, bit in enumerate(truth_table):
-        middle = mids[k]
+
+    def leaf(slot: int, bit: str) -> int:
+        """Draw the leaf for ``bit`` in column slot ``slot``; return its middle.
+
+        Leaf ``k`` spans columns ``5k`` to ``5k + 4``, so its middle -- the
+        column every rail in that leaf's band lands on -- is ``5k + 2``.
+        """
+        middle = _FLOWCHART_PITCH * slot + 2
         put(middle - 1, leaf_top, "[ }" if bit == "1" else "{ ]")
         cells[(middle, leaf_top + 1)] = "│"
         put(middle - 1, leaf_top + 2, "\\ \\")
         cells[(middle, leaf_top + 3)] = "│"
         put(middle - 2, leaf_top + 4, "(( ))")
+        return middle
 
-    for depth in range(n - 1, -1, -1):
+    def switch(depth: int, west: int, east: int) -> int:
+        """Join two subtrees at ``depth``; return the column it sits on."""
         switch_row = 4 + 4 * depth
-        parents = []
-        for j in range(0, len(mids), 2):
-            west, east = mids[j], mids[j + 1]
-            middle = (west + east) // 2
-            put(middle - 1, switch_row - 2, "/ /")
-            cells[(middle, switch_row - 1)] = "│"
-            put(middle - 1, switch_row, "< >")
-            for x in range(west + 1, middle - 1):
-                cells[(x, switch_row)] = "─"
-            for x in range(middle + 2, east):
-                cells[(x, switch_row)] = "─"
-            cells[(west, switch_row)] = "┌"
-            cells[(east, switch_row)] = "┐"
-            cells[(west, switch_row + 1)] = "│"
-            cells[(east, switch_row + 1)] = "│"
-            parents.append(middle)
-        mids = parents
+        middle = (west + east) // 2
+        put(middle - 1, switch_row - 2, "/ /")
+        cells[(middle, switch_row - 1)] = "│"
+        put(middle - 1, switch_row, "< >")
+        for x in range(west + 1, middle - 1):
+            cells[(x, switch_row)] = "─"
+        for x in range(middle + 2, east):
+            cells[(x, switch_row)] = "─"
+        cells[(west, switch_row)] = "┌"
+        cells[(east, switch_row)] = "┐"
+        cells[(west, switch_row + 1)] = "│"
+        cells[(east, switch_row + 1)] = "│"
+        return middle
 
-    root = mids[0]
+    # Slots are handed out left to right as the walk reaches each leaf, so a
+    # folded subtree takes one column band instead of the ``2**k`` its rows
+    # would have filled -- the drawing narrows rather than leaving a gap.
+    slots = [0]
+
+    def walk(lo: int, hi: int, depth: int) -> int:
+        """Draw the subtree for ``truth_table[lo:hi]``; return its column.
+
+        ``depth`` is the level it sits at, which fixes its rows; its columns
+        come from the leaf slots it consumes.
+        """
+        if len(set(truth_table[lo:hi])) == 1:
+            # Constant: no branch below here can change the answer, so this
+            # is a leaf.  Leaves all sit on the bottom row whatever their
+            # depth, so the rail from the switch above covers the levels
+            # this fold skipped: the rows are a fixed grid and only the
+            # branching goes away.
+            middle = leaf(slots[0], truth_table[lo])
+            slots[0] += 1
+            for y in range(4 * depth + 2, leaf_top):
+                cells.setdefault((middle, y), "│")
+            return middle
+        half = (hi - lo) // 2
+        west = walk(lo, lo + half, depth + 1)
+        east = walk(lo + half, hi, depth + 1)
+        return switch(depth, west, east)
+
+    root = walk(0, len(truth_table), 0)
     put(root - 1, 0, "( )")
     cells[(root, 1)] = "│"
     return cells
