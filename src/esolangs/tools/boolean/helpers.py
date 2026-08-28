@@ -209,8 +209,13 @@ def best_input_order(
     6-5 and Jaune were once excluded here for the same phrase, wrongly: both
     have a tape and a pointer (``B``/``v`` read into the *current* cell,
     ``1``/``3`` and ``>``/``<`` move it), so their reads *could* be hoisted
-    and their nodes could test any cell.  Only their current generators read
-    at the node.  Reordering them is open work, not a wall.
+    and their nodes could test any cell.  Only their old generators read at
+    the node.  Both now hoist and reorder, which is what the phrase never
+    ruled out -- what it rules out is a language with nowhere to put a bit,
+    and 6-5's case is the one where hoisting also has a *price*: it spends a
+    pointer move per node and a normalization per stored input, so
+    :func:`~esolangs.tools.boolean.six_five.six_five` keeps its node-read
+    build as one more candidate rather than replacing it, and measures.
 
     **Whether a generator can be reordered is a property of the language,
     not of what its generator happens to emit.**  Bitdeque looked excluded

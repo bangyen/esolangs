@@ -6,11 +6,17 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 """
 
 import contextlib
+from itertools import permutations
 
 import pytest
 
 from esolangs.tools import boolean
-from esolangs.tools.boolean.six_five import _six_five_markers
+from esolangs.tools.boolean.helpers import permute_truth_table
+from esolangs.tools.boolean.six_five import (
+    _six_five_hoisted,
+    _six_five_markers,
+    _six_five_node_read,
+)
 from tests.tools.boolean_runners import (
     run_bf,
     run_bit_tilde,
@@ -23,6 +29,7 @@ from tests.tools.boolean_runners import (
     run_rotfuck,
     run_sbleq,
     run_six_five,
+    run_six_five_from,
     run_streetcode,
     run_suffolk,
     run_three_d_brainfuck,
@@ -78,11 +85,17 @@ class TestSixFive:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_branch_structure(self) -> None:
-        """Each level reads a bit and branches to a 4 marker."""
-        program = boolean.six_five("0110")
-        assert program.startswith("B" + "2" * 8)
-        assert "78" in program
-        assert program.endswith("A0")
+        """Both builds read, normalize to 8/9, branch on ``78``, and halt.
+
+        The two constructions differ in where the reads sit, not in the
+        branch: each starts by reading a bit and subtracting 40, tests it
+        with ``78``, and ends every path on ``A0``.
+        """
+
+        for program in (boolean.six_five("0110"), _six_five_node_read("0110")):
+            assert program.startswith("B" + "2" * 8)
+            assert "78" in program
+            assert program.endswith("A0")
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -117,15 +130,22 @@ class TestSixFive:
         [("11", 1), ("1111", 2), ("11110000", 3), ("1000000000000000", 4)],
     )
     def test_folded_leaf_still_reads_every_input(self, table: str, n: int) -> None:
-        """Every path through a folded tree reads all ``n`` inputs.
+        """Every path through a folded node-read tree reads all ``n`` inputs.
 
         A folded leaf skips branches but not reads: a caller feeding several
         programs from one stream would desync if a short path left bits
         unconsumed.  The interpreter raises ``EOFError`` on an over-read, so
         supplying exactly ``n`` bits proves no path reads too many, and
         counting the ``B``s down each path proves none reads too few.
+
+        The walker below parses the node-read emission specifically, so it
+        asks for that build rather than whichever one the dispatch picks;
+        the same contract over the *dispatched* program is checked by
+        :meth:`test_every_path_consumes_exactly_n_inputs`, which counts what
+        the program consumes instead of reading its shape.
         """
-        program = boolean.six_five(table)
+
+        program = _six_five_node_read(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_six_five(program, [str(b) for b in bits])
@@ -178,13 +198,18 @@ class TestSixFive:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_marker_precheck_matches_emitted_tree(self) -> None:
-        """The dispatch's label count is what the tree actually allocates.
+        """The label count is what the emitted tree actually allocates.
 
         The gate decides before building, so a miscount would either refuse a
         renderable table or emit one past the 35-label budget.  Counting
         ``4`` *characters* is not the same thing -- an ``8n`` jump whose
         operand is ``4`` contributes one -- so this compares against the
         interpreter's own tokenizer.
+
+        The count is per *order*, so ``_six_five_markers`` on the unpermuted
+        table bounds the emission rather than equalling it in general.  These
+        tables are the ones where the bound is tight: each is a constant, a
+        single prefix run, or an AND, whose folding no renaming improves.
         """
         for table in (
             "0" * 63 + "1",
@@ -196,8 +221,21 @@ class TestSixFive:
         ):
             assert _six_five_markers(table) == _markers(boolean.six_five(table))
 
+        # And the bound itself, over every n == 3 table: reordering can only
+        # fold more subtrees, never fewer, so the emission never allocates
+        # more labels than the stream-order count.
+        for value in range(256):
+            table = format(value, "08b")
+            assert _markers(boolean.six_five(table)) <= _six_five_markers(table)
+
     def test_wide_table_is_refused(self) -> None:
-        """A table whose folded tree exceeds 35 labels has no representation.
+        """A table no input order can fold has no representation.
+
+        The budget is spent per *order*, so overflowing in stream order is
+        not a refusal: the table must overflow under all ``n!`` of them.
+        Parity is the shape that does -- any permutation of parity is parity
+        -- so it needs the full 63 internal nodes however its inputs are
+        renamed.
 
         The arithmetic kernel that used to catch these was retired: it needs
         ``T`` (or its complement) small enough to build, which confines the
@@ -205,10 +243,35 @@ class TestSixFive:
         the shape that folds well inside the budget.  So it never covered a
         table the tree could not.
         """
-        scattered = "10010110" * 8  # n == 6, 63 labels after folding
-        assert _six_five_markers(scattered) > 35
+        parity = "".join(str(bin(row).count("1") % 2) for row in range(64))
+        assert _six_five_markers(parity) == 63 > 35
+        for perm in permutations(range(6)):
+            assert _six_five_markers(permute_truth_table(parity, perm)) == 63
         with pytest.raises(ValueError, match="35 branch labels"):
-            boolean.six_five(scattered)
+            boolean.six_five(parity)
+
+    def test_reordering_widens_what_renders(self) -> None:
+        """A table that overflows in stream order can fold under another.
+
+        These two were the refusal witnesses before the tree could split in
+        any input order, and neither is one any more: the scattered table is
+        an XNOR of the last three inputs, and the alternating table is NOT
+        of the last input, so the order that tests those inputs first folds
+        each well inside the budget.  Both still compute their function.
+        """
+        for table, folded in (("10010110" * 8, 7), (("10" * 64)[:64], 1)):
+            assert _six_five_markers(table) == 63 > 35  # refused in stream order
+            best = min(
+                _six_five_markers(permute_truth_table(table, perm))
+                for perm in permutations(range(6))
+            )
+            assert best == folded <= 35
+            program = boolean.six_five(table)
+            assert _markers(program) == folded
+            for combo in range(64):
+                bits = [(combo >> (5 - i)) & 1 for i in range(6)]
+                got = run_six_five(program, [str(b) for b in bits])
+                assert got == table[combo], f"inputs {bits}"
 
     @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
     def test_total_through_five_inputs(self, n: int) -> None:
@@ -223,11 +286,96 @@ class TestSixFive:
         boolean.six_five(alternating)  # renders rather than raising
 
     def test_refusals_begin_at_six_inputs(self) -> None:
-        """n == 6 is the first width whose worst case overflows the budget."""
-        alternating = ("10" * 64)[:64]
-        assert _six_five_markers(alternating) == 63 > 35
+        """n == 6 is the first width whose worst case overflows the budget.
+
+        The worst case is the table no renaming folds, which is parity --
+        an alternating table is only the worst case for a tree stuck with
+        stream order, and reordering renders it (see
+        :meth:`test_reordering_widens_what_renders`).
+        """
+        parity5 = "".join(str(bin(row).count("1") % 2) for row in range(32))
+        assert _six_five_markers(parity5) == 31 <= 35
+        boolean.six_five(parity5)  # renders rather than raising
+
+        parity6 = "".join(str(bin(row).count("1") % 2) for row in range(64))
+        assert _six_five_markers(parity6) == 63 > 35
         with pytest.raises(ValueError, match="35 branch labels"):
-            boolean.six_five(alternating)
+            boolean.six_five(parity6)
+
+    def test_reordering_only_shrinks(self) -> None:
+        """No table comes out longer than the node-read build alone.
+
+        The hoist is not free -- a pointer move per node and eight ``2``s
+        per stored input -- so it loses on shallow tables, which is why the
+        node-read build stays a candidate and ties keep it.  Sweeping every
+        n == 3 table proves the dispatch is a pure shrink rather than a
+        trade.
+        """
+
+        improved = 0
+        for value in range(256):
+            table = format(value, "08b")
+            dispatched = len(boolean.six_five(table))
+            node_read = len(_six_five_node_read(table))
+            assert dispatched <= node_read, table
+            improved += dispatched < node_read
+        assert improved == 186  # the rest tie, keeping the old emission
+
+    @pytest.mark.parametrize(
+        ("table", "n"),
+        [("0110", 2), ("10010110", 3), ("1001011001101001", 4)],
+    )
+    def test_every_path_consumes_exactly_n_inputs(self, table: str, n: int) -> None:
+        """Each run reads all ``n`` inputs and no more, whichever build won.
+
+        The reads are the interface: a caller feeding several programs from
+        one stream desyncs if a path leaves bits unconsumed.  Supplying
+        exactly ``n`` proves no path over-reads (the interpreter raises
+        ``EOFError``), and checking the feed is exhausted proves none
+        under-reads -- which execution alone does not catch.  This replaces
+        a walker that parsed the node-read emission, since the winning
+        construction now varies per table.
+        """
+        program = boolean.six_five(table)
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            feed = iter([str(b) for b in bits])
+            got = run_six_five_from(program, feed)
+            assert got == table[combo], f"inputs {bits}"
+            assert not list(feed), f"inputs {bits} left input unread"
+
+    def test_wide_tables_do_not_search_every_order(self) -> None:
+        """Past the cap only the identity and a greedy order are built.
+
+        This generator renders past n == 6 whenever a table folds hard, so
+        the ``n!`` search is reachable rather than theoretical: AND-8 has
+        40320 orders and searching them takes about 17 seconds against
+        milliseconds for the greedy pick.  Timing is not the assertion --
+        the build count is, since that is what a future change would break.
+        """
+        import importlib
+
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
+        module = importlib.import_module("esolangs.tools.boolean.six_five")
+
+        for n, orders in ((6, 720), (8, 2)):
+            table = "0" * (2**n - 1) + "1"  # AND-n, which renders at any n
+            built = 0
+
+            def counted(
+                table: str,
+                perm: tuple[int, ...],
+                _build: object = _six_five_hoisted,
+            ) -> str:
+                nonlocal built
+                built += 1
+                return _build(table, perm)  # type: ignore[operator, no-any-return]
+
+            with pytest.MonkeyPatch.context() as patch:
+                patch.setattr(module, "_six_five_hoisted", counted)
+                boolean.six_five(table)
+            assert built == orders, f"n={n} built {built} candidates"
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
         """The second construction and its assembler are no longer exported."""
