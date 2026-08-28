@@ -326,6 +326,10 @@ def factor(truth_table: str) -> str:
     instruction the next one with the right residue mod 11; Dirichlet's
     theorem guarantees one always exists).
 
+    Folding the constant subtrees of that program is what turns some
+    otherwise unrenderable tables into runnable ones, since the cap below is
+    on the encoded integer's size.
+
     This is a program-size cap, not an ``n`` cap: sparse tables (e.g. an
     all-zero or all-one table) stay small at any ``n``, while dense tables
     grow the underlying brainfuck program (and so the encoded integer)
@@ -358,9 +362,8 @@ def three_d_brainfuck(truth_table: str) -> str:
 
     3D Brainfuck's ``>``/``<`` set the generation pointer's heading (a no-op
     in this interpreter), so the array is walked along one axis with
-    ``e``/``w`` instead; the brainfuck minterm and decision-tree strategies
-    otherwise translate directly, and :func:`bf` picks the shorter of the
-    two.
+    ``e``/``w`` instead; :func:`brainfuck`'s decision tree otherwise
+    translates directly, so this folds constant subtrees because that does.
     """
     return brainfuck(truth_table).translate(str.maketrans("><", "ew"))
 
@@ -378,8 +381,9 @@ def painfuck(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     Painfuck is brainfuck-compatible: the commands ``a``/``b`` are while-
-    nonzero loops, ``j`` reads a byte and ``u`` prints one.  The brainfuck
-    minterm and decision-tree strategies translate directly, mapping BF's
+    nonzero loops, ``j`` reads a byte and ``u`` prints one.
+    :func:`brainfuck`'s decision tree translates directly (so this folds
+    constant subtrees because that does), mapping BF's
     ``>``/``<`` (each one cell) to ``rl`` (+1) / ``l`` (-1), ``+``/``-`` to
     ``ps`` (+1) / ``s`` (-1), and ``[``/``]``/``,``/``.`` to ``a``/``b``/
     ``j``/``u``.  The interpreter then rewrites the source through two
