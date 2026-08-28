@@ -1258,6 +1258,46 @@ class TestEvalBoolean:
                 got = self.run_eval(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
+    def test_constant_subtrees_fold_in_place(self) -> None:
+        """A constant subtree becomes a leaf; its slots empty but remain.
+
+        The heap is positional -- a node's ``;`` run is a function of its
+        own index and its children sit at pinned offsets -- so the folded
+        subtree cannot be *removed* without shifting every later index.
+        The slots stay and are emptied instead, which is why the string
+        count never changes while the program still gets shorter.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        full = parameterized.eval("10010110")
+        folded = parameterized.eval("11111111")
+        assert len(folded) < len(full)
+        # every heap slot is still present, just empty
+        assert folded.count('"') == full.count('"')
+        assert '""' in folded
+
+    def test_folding_keeps_both_bits_equal_width(self) -> None:
+        """Folding shrinks the template, never one instantiation.
+
+        The embedding's whole point is that ``len(program)`` cannot reveal
+        the inputs.  A fold that depended on the bits would reintroduce
+        exactly that leak, so this pins equal width on folded tables too.
+        """
+        from esolangs.tools.boolean import parameterized
+
+        for table in ("11111111", "11110000", "11001100", "0001"):
+            n = len(table).bit_length() - 1
+            template = parameterized.eval(table)
+            widths = {
+                len(
+                    self.instantiate(
+                        template, [(c >> (n - 1 - i)) & 1 for i in range(n)]
+                    )
+                )
+                for c in range(2**n)
+            }
+            assert len(widths) == 1, f"{table} leaks its inputs: {widths}"
+
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
