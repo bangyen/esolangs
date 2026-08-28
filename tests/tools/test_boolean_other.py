@@ -111,6 +111,12 @@ class TestForbinBoolean:
         # one 8-variable read, then a decision tree that prints '1' for bit 1
         assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
 
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice returns its answer instead of branching further."""
+        assert boolean.forbin_boolean("11111111").count("return 0;") == 1
+        assert boolean.forbin_boolean("11110000").count("return 0;") == 2
+        assert boolean.forbin_boolean("10010110").count("return 0;") == 8
+
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):
             boolean.forbin_boolean("011")
@@ -990,6 +996,12 @@ class TestMyScript:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_myscript(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
+
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant slice says its answer instead of branching further."""
+        assert boolean.myscript("11111111").count("say") == 1
+        assert boolean.myscript("11110000").count("say") == 2
+        assert boolean.myscript("10010110").count("say") == 8  # parity: no fold
 
     def test_rejects_bad_table(self) -> None:
         with pytest.raises(ValueError, match="entries"):

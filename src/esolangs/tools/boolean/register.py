@@ -313,11 +313,19 @@ def sophie(truth_table: str) -> str:
 
     def build(path: list[int]) -> str:
         depth = len(path)
-        if depth == n:
-            row = 0
-            for bit in path:
-                row = row * 2 + bit
-            return f"#${_ASCII_ZERO + int(truth_table[row])},&"
+        row = 0
+        for bit in path:
+            row = row * 2 + bit
+        # A short path has its unconsumed bits still to come, so it names
+        # the start of the run they span rather than a row outright.
+        row <<= n - depth
+        if depth == n or len(set(truth_table[row : row + 2 ** (n - depth)])) == 1:
+            # Sophie reads inside the tree -- a node is ``;`` then its
+            # branch -- so a folded leaf still spends the reads it skipped.
+            # A program whose input count depended on its table would
+            # desync a caller feeding several programs from one stream.
+            reads = ";" * (n - depth)
+            return f"{reads}#${_ASCII_ZERO + int(truth_table[row])},&"
         return ";" + "@$48{" + build([*path, 0]) + "}" + "{" + build([*path, 1]) + "}"
 
     return build([])

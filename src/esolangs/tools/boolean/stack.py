@@ -160,7 +160,7 @@ def modulous(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
 
     def build(rows: list[int], k: int) -> str:
-        if len(rows) == 1:
+        if len({truth_table[row] for row in rows}) == 1:
             return f"[PSH INT {truth_table[rows[0]]}][PRT INT][END]"
         g0 = [r for r in rows if ((r >> (n - k)) & 1) == 0]
         g1 = [r for r in rows if ((r >> (n - k)) & 1) == 1]
@@ -257,7 +257,7 @@ def unsquare(truth_table: str) -> str:
         return ("IA" if value == _ASCII_ONE else "OA") + "+" * 24 + "P" + "OA"
 
     def build(rows: list[int], k: int) -> str:
-        if len(rows) == 1:
+        if len({truth_table[row] for row in rows}) == 1:
             return leaf(rows[0])
         g1 = [row for row in rows if ((row >> k) & 1) == 1]
         g0 = [row for row in rows if ((row >> k) & 1) == 0]
