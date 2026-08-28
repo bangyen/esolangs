@@ -127,8 +127,9 @@ forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
 characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 
-**Build a tree but never fold (8):** clockwise, circlefuck, circlefuck_byte,
-decleq, forth, eval, arrowqueue, streetcode, six_five (n≤5).
+**Build a tree but never fold (6):** clockwise, decleq, forth, eval,
+arrowqueue, streetcode, six_five (n≤5). `circlefuck` / `circlefuck_byte` were
+on this list and now fold — see below.
 
 These emit a byte-identical program size for every table of a given `n`,
 which is the signature of not folding: the leaf count is fixed by `n` alone.
@@ -141,11 +142,21 @@ that saving is:
 `decleq`, `eval`, `six_five` (n≤5) emit a linear token sequence, so a fold is
 a leaf test plus whatever index bookkeeping the language needs.
 
-- `circlefuck` — cheapest. Reads are unconditional and up front, and each leaf
-  halts with `@`, so "the tree never needs to skip the sibling branch"
-  (`tape.py:241`) — there is no sibling bookkeeping for a fold to disturb.
-  `circlefuck` is a thin wrapper over `circlefuck_byte`, so one fold serves
-  both.
+- `circlefuck` — **done on this branch.** Reads are unconditional and up front,
+  and each leaf halts with `@`, so there was no sibling bookkeeping for a fold
+  to disturb. `circlefuck` is a thin wrapper over `circlefuck_byte`, so the one
+  fold serves both. Measured at n=3: `11111111` 594→203, `10101010` 594→263,
+  `11001100` 594→384 characters.
+
+  Two things were only visible from the code. Its subtrees are **strides**, not
+  contiguous runs — it branches on the last input first, like Modulous — so the
+  constant-test walks `range(row, len(table), 2**(n-1-k))` and `11110000` still
+  folds nothing. And a folded leaf must emit its own `[-]`: the clear a
+  full-depth leaf relies on lives inside each `[` on the way down, so skipping
+  levels leaves the input bit in the cell and every one-valued input prints one
+  too high. Verified exhaustively over every table at n≤3 (276 tables × every
+  input combination) through the real interpreter, plus 47 tables at n=4 and
+  random byte tables for `circlefuck_byte`.
 - `forth` — writes every node of a full heap-indexed tree,
   `for m in range(1, 2**(n+1) - 1)` (`stack.py:136`). The heap indices look
   like an obstacle but are not: the interpreter stores scopes in a
