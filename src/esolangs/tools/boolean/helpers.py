@@ -215,13 +215,17 @@ def best_input_order(
     reason is worth keeping.**  Its stack reaches only the top two cells
     (``SWP`` swaps them; there is no rotate), so the obvious escape is to
     park the bits in its ``VAR1``-``VAR4`` variables and read them back in
-    any order.  There is no reading them back: ``[PSH VAR n]`` *stores* the
+    any order.  There is no reading them back: ``[PSH VAR1]`` *stores* the
     stack top into a variable, and the only op that reads one is
-    ``[PRT VAR n]``, which prints it.  Every conditional (``JMP ... IF``)
+    ``[PRT VAR1 INT]``, which prints it.  Every conditional (``JMP ... IF``)
     inspects the stack top alone, so a bit in a variable can never be
-    branched on -- the round trip has no return leg.  Verified against both
-    this repo's interpreter and the wiki, which calls the variables
-    write-once-read-to-print.
+    branched on -- the round trip has no return leg.
+
+    Arithmetic does not open one either.  ``[VAR1+k]`` works, but ``k`` is a
+    literal parsed at execution time, and ``ADD``/``SUB`` and ``JMP ... IF``
+    all reject a variable operand: a variable can be *computed on* and never
+    read back.  Verified against both this repo's interpreter and the wiki,
+    which calls the variables settable and printable with no load.
     """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))

@@ -671,14 +671,20 @@ back in whatever order the tree wants. There is no pushing them back:
 
 | op | effect |
 |---|---|
-| `[PSH VAR n]` | **stores** the stack top *into* variable `n` |
-| `[PRT VAR n]` | reads variable `n` — but only to *print* it |
-| `[JMP F n IF v]` | tests the **stack top**, never a variable |
+| `[PSH VAR1]` | **stores** the stack top *into* the variable |
+| `[VAR1+k]`, `[VAR1-k]` | adds/subtracts a **literal** `k` — never a stack or variable value |
+| `[PRT VAR1 INT]` | reads the variable — but only to *print* it |
+| `[JMP F n IF v]` | tests the **stack top**; rejects a variable operand |
 
 So a bit can go into a variable and never come out anywhere a branch can
-see it — the round trip has no return leg. Probed directly against the
-interpreter (`PSH VAR VAR1` on an emptied stack halts; `PRT VAR VAR1`
-prints the stored value fine) and confirmed against the wiki, which
+see it — the round trip has no return leg. **Arithmetic does not open one
+either**, which is the natural follow-up: `[VAR1+k]` really does work
+(storing 7 then `[VAR1+5]` prints 12), but its right-hand side is a literal
+parsed at execution time, and both `ADD`/`SUB` and `JMP ... IF` reject a
+variable operand outright. Variables can be *computed on*; their contents
+just cannot travel back to the stack.
+
+Probed against the interpreter and confirmed against the wiki, which
 describes the variables as settable and printable with no load. `modulous`
 stays excluded, now for a checked reason rather than an assumed one.
 
