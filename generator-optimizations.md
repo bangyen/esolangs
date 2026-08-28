@@ -127,11 +127,12 @@ forbin_boolean, flowchart, sophie. The prior audit listed these as
 non-folding; the ones-count-controlled test disagrees, e.g. sophie 25 vs 111
 characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 
-**Build a tree but never fold (3):** clockwise, arrowqueue, streetcode,
-six_five (n≤5). `circlefuck` / `circlefuck_byte`, `forth`, `decleq` and `eval`
-were on this list and now fold — see below. Every token-stream tree that had
-headroom has now been folded; what remains is the grid trio plus `six_five`,
-whose n≤5 path is the only one using its tree.
+**Build a tree but never fold (2):** arrowqueue, six_five (n≤5).
+`circlefuck` / `circlefuck_byte`, `forth`, `decleq`, `eval`, `clockwise` and
+`streetcode` were all on this list and now fold — see below. What remains is
+`arrowqueue` (3×3 ring-block leaves with queued routing, untried) and
+`six_five`, whose n≤5 path is the only one using its tree and whose n>5 path
+already folds.
 
 These emit a byte-identical program size for every table of a given `n`,
 which is the signature of not folding: the leaf count is fixed by `n` alone.
@@ -225,7 +226,33 @@ corrections and **is now folded** (see above). `streetcode` was attempted and
 **reverted** — see below. `arrowqueue` is untried: its leaves are 3×3 ring
 blocks with queued routing.
 
-### streetcode: attempted, reverted (the fold is a hall rewrite)
+### streetcode: done — but it needed an interpreter fix first
+
+**Resolved.** A constant table is 428 characters against 1439 at n=3, and
+389 against 3391 at n=4. The committed example dropped 592→444 bytes.
+
+The generator side is three changes: fold a subtree whose rendered block is
+constant (detected as `count('~') == count('O')` or no `~` at all — the same
+test at any depth), pad siblings to a common width with `ljust`, and carry the
+skipped halls' `=` CP advances into the folded leaf. Two hall markers were
+keyed on assumptions folding breaks: `k == 4` tested `size == 2` when it meant
+"the child is four rows tall", and the hall ran `height * 2` when it meant
+`len(top) + len(bot)`.
+
+**What blocked it for most of this session was an interpreter bug, not the
+geometry.** `_junction_choices` takes "whichever way is open" when crossing a
+mouth head-on. One cell short of a gap the road is detected but not yet
+drivable, so that road was dropped and its slot filled with the *oncoming lane*
+of the two-wide street the car was already on — contradicting the method's own
+rule that an open cell with no mouth "is not a road, and must not consume a
+slot". The car then chose between the oncoming lane and straight on, and the
+resulting merge latch suppressed every junction to the end of the row. Fixed by
+deferring while a sighted road is not yet drivable (commit `1e33eb3`).
+
+The account below is what the investigation looked like before that was found,
+kept because the three obstacles it identifies were all real.
+
+### the original diagnosis (obstacles solved along the way)
 
 The leaf test itself is trivial and the reads are safe — `_streetcode_populate`
 emits `[col] * n` *before* the tree, so folding cannot change input
