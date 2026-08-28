@@ -130,6 +130,43 @@ characters and flowchart 164 vs 632 on `11110000` against `10010110`.
 **Build a tree but never fold (8):** clockwise, circlefuck, circlefuck_byte,
 decleq, forth, eval, arrowqueue, streetcode, six_five (n≤5).
 
+These emit a byte-identical program size for every table of a given `n`,
+which is the signature of not folding: the leaf count is fixed by `n` alone.
+Their size still grows ~2x per added input (measured n=2→4: forth 58→332,
+streetcode 591→3391, clockwise 255→1479), so the per-row cost a fold would
+collapse is real and exponential. They are *not* uniform in how reachable
+that saving is:
+
+**Token-stream trees — tractable.** `circlefuck` / `circlefuck_byte`, `forth`,
+`decleq`, `eval`, `six_five` (n≤5) emit a linear token sequence, so a fold is
+a leaf test plus whatever index bookkeeping the language needs.
+
+- `circlefuck` — cheapest. Reads are unconditional and up front, and each leaf
+  halts with `@`, so "the tree never needs to skip the sibling branch"
+  (`tape.py:241`) — there is no sibling bookkeeping for a fold to disturb.
+  `circlefuck` is a thin wrapper over `circlefuck_byte`, so one fold serves
+  both.
+- `forth` — writes every node of a full heap-indexed tree,
+  `for m in range(1, 2**(n+1) - 1)` (`stack.py:136`). The heap indices look
+  like an obstacle but are not: the interpreter stores scopes in a
+  `dict[int, str]` and calls with `.get()`
+  (`interpreters/stack_based/forth.py:86,168`), so sparse indices are legal
+  and a fold is skip-emission — no renumbering.
+- `decleq` — same self-modifying-memory family as `sbleq`, which already folds
+  with backpatched addresses, so there is a worked in-repo precedent.
+- `eval` — genuinely harder: its tree is *positional* on the tree stack in BFS
+  order, dense by construction, so a collapsed subtree shifts every later
+  index. The opposite case from `forth`.
+- `six_five` — marginal. Only the n≤5 path uses this tree, and the n>5 path
+  (`six_five_arithmetic`) already folds.
+
+**Grid trees — a layout redesign, not a leaf test.** `clockwise`,
+`streetcode`, `arrowqueue` place their tree on a plane. `decision_tree_tokens`
+notes the grid generators' tree "is a placement on a plane, not a token
+sequence", and `basicfuck`'s docstring names Streetcode specifically: its
+"hall geometry is sized from its subtree's height". Real headroom,
+disproportionate cost.
+
 **`modulous` and `unsquare` fold along a different axis.** Both branch on the
 stack top, which is the *last* input, so they split on `row >> k` counting up
 from the **LSB** — a subtree is a stride, not a contiguous run. They therefore
